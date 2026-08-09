@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@theme {
+  --font-display: "Inter", system-ui, sans-serif;
+
+  --color-canvas: #090909;
+  --color-canvas-elevated: #151515;
+  --color-surface: #151515;
+  --color-surface-raised: #1a1a1a;
+  --color-surface-muted: #1f1f1f;
+  --color-surface-dark: #101010;
+
+  --color-ink: #ffffff;
+  --color-ink-secondary: rgba(255, 255, 255, 0.72);
+  --color-ink-tertiary: rgba(255, 255, 255, 0.45);
+  --color-ink-inverse: #ffffff;
+
+  --color-accent: #ec4899;
+  --color-accent-strong: #a855f7;
+  --color-brand: #8b5cf6;
+  --color-champagne: #d4af37;
+  --color-rose: #ec4899;
+  --color-berry: #8b5cf6;
+  --color-social: #2f80ed;
+  --color-danger: #ef4444;
+  --color-success: #34d399;
+  --color-like: #ec4899;
+  --color-nope: #34d399;
+
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.12);
+
+  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.35);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}

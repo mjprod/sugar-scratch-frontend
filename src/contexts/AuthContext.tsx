@@ -1,0 +1,437 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  clearEmailVerified,
+  createSession,
+  destroySession,
+  getAuthEmail,
+  isAuthenticated,
+  isEmailVerified,
+  markEmailVerified,
+  needsEmailVerification,
+  type AuthSuccessResult,
+  type ProtectedAction,
+} from "@/services/auth";
+import {
+  clearRecommendationState,
+  evaluateRecommendationEligibility,
+  isRecommendationInitialized,
+  markRecommendationBehaviorSeeded,
+  noteCreatorEngagement,
+  setRecommendationSeedCreator,
+} from "@/services/recommendation";
+import { clearHomeFeedCache } from "@/services/creatorFeed";
+import type { PurchaseFlowPack } from "@/services/purchase";
+import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
+import type { AppTab, OnboardingData } from "@/types/app";
+import { Paths, pathForTab, PUBLIC_TABS } from "@/routes/Paths";
+
+const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
+  email: "",
+  password: "",
+  username: "",
+  displayName: "",
+  avatar: null,
+  genderInterest: null,
+  likedCreators: [],
+  passedCreators: [],
+  welcomeClaimed: false,
+  referralCode: "",
+  referralApplied: false,
+  homeTutorialDone: true,
+};
+
+function actionNeedsVerifiedEmail(action: ProtectedAction) {
+  if (action.type === "buy") return true;
+  if (action.type === "tab" && action.tab === "hub") return true;
+  return false;
+}
+
+function isHighIntentForDefer(action: ProtectedAction) {
+  return (
+    action.type === "buy" || (action.type === "tab" && action.tab === "hub")
+  );
+}
+
+type AuthContextValue = {
+  authed: boolean;
+  guest: boolean;
+  profile: Omit<OnboardingData, "coins" | "diamonds">;
+  setProfile: Dispatch<
+    SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
+  >;
+  authOpen: boolean;
+  pending: ProtectedAction | null;
+  emailVerified: boolean;
+  verifyOpen: boolean;
+  resumeLikeId: string | null;
+  navNotice: string;
+  purchasedPacks: number;
+  setPurchasedPacks: Dispatch<SetStateAction<number>>;
+  requireAuth: (action: ProtectedAction) => boolean;
+  requestTab: (tab: AppTab) => void;
+  openStore: () => void;
+  openCreator: (id: string) => void;
+  openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
+  openSettings: () => void;
+  completeAuth: (result: AuthSuccessResult) => void;
+  dismissAuth: () => void;
+  onVerified: () => void;
+  onVerifyLater: () => void;
+  onEmailChanged: (email: string) => void;
+  notePackPurchaseSeed: (creatorName?: string) => void;
+  finishRecommendationAndResume: () => void;
+  setPendingAfterRecFromSwipe: (
+    liked: string[],
+    passed: string[],
+  ) => void;
+  logout: () => void;
+  restart: () => void;
+  setNavNotice: (msg: string) => void;
+  consumeResumeLike: () => void;
+  applyRecommendationDecision: (action: ProtectedAction | null) => void;
+  verifyEmail: string;
+};
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [profile, setProfile] = useState(initialProfile);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [pending, setPending] = useState<ProtectedAction | null>(null);
+  const [resumeLikeId, setResumeLikeId] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(() => isEmailVerified());
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [verifyPending, setVerifyPending] = useState<ProtectedAction | null>(
+    null,
+  );
+  const [pendingAfterRec, setPendingAfterRec] =
+    useState<ProtectedAction | null>(null);
+  const [navNotice, setNavNotice] = useState("");
+  const [purchasedPacks, setPurchasedPacks] = useState(0);
+
+  const guest = !authed;
+
+  const resumePending = useCallback(
+    (action: ProtectedAction | null) => {
+      if (!action) return;
+      if (action.type === "buy") {
+        if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
+        navigate(Paths.purchase(action.pack.packId), {
+          state: { pack: action.pack },
+        });
+        return;
+      }
+      if (action.type === "like") {
+        setResumeLikeId(action.feedItemId);
+        navigate(Paths.home);
+        return;
+      }
+      if (action.type === "scratch") return;
+      if (action.type === "tab") {
+        if (action.tab === "hub") {
+          navigate(Paths.store);
+          return;
+        }
+        navigate(pathForTab(action.tab));
+      }
+    },
+    [navigate],
+  );
+
+  const applyRecommendationDecision = useCallback(
+    (pendingAction: ProtectedAction | null) => {
+      const decision = evaluateRecommendationEligibility({
+        pending: pendingAction,
+      });
+
+      if (decision.action === "launch-initialization") {
+        if (pendingAction && !isHighIntentForDefer(pendingAction)) {
+          setPendingAfterRec(pendingAction);
+        }
+        navigate(Paths.recommend);
+        return;
+      }
+
+      resumePending(pendingAction);
+    },
+    [navigate, resumePending],
+  );
+
+  const finishRecommendationAndResume = useCallback(() => {
+    const deferred = pendingAfterRec;
+    setPendingAfterRec(null);
+    navigate(Paths.home);
+    if (deferred) {
+      window.setTimeout(() => resumePending(deferred), 0);
+    }
+  }, [navigate, pendingAfterRec, resumePending]);
+
+  function applyUserFromEmail(email: string) {
+    const local = email.split("@")[0] || "collector";
+    const username =
+      local.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) ||
+      "collector";
+    setProfile((d) => ({
+      ...d,
+      email,
+      username: d.username || username,
+      displayName: d.displayName || d.username || username,
+      avatar: d.avatar || "✨",
+      homeTutorialDone: true,
+    }));
+  }
+
+  const requireAuth = useCallback(
+    (action: ProtectedAction) => {
+      if (authed || isAuthenticated()) {
+        if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
+          setVerifyPending(action);
+          setVerifyOpen(true);
+          return false;
+        }
+        resumePending(action);
+        return true;
+      }
+      setPending(action);
+      setAuthOpen(true);
+      return false;
+    },
+    [authed, resumePending],
+  );
+
+  const requestTab = useCallback(
+    (next: AppTab) => {
+      if (PUBLIC_TABS.includes(next) || authed) {
+        if (next === "hub" && authed) {
+          requireAuth({ type: "tab", tab: "hub" });
+          return;
+        }
+        navigate(pathForTab(next));
+        return;
+      }
+      requireAuth({ type: "tab", tab: next });
+    },
+    [authed, navigate, requireAuth],
+  );
+
+  const openStore = useCallback(() => {
+    if (!requireAuth({ type: "tab", tab: "hub" })) return;
+    navigate(Paths.store);
+  }, [navigate, requireAuth]);
+
+  const openCreator = useCallback(
+    (id: string) => {
+      noteCreatorEngagement(id);
+      navigate(Paths.creator(id));
+    },
+    [navigate],
+  );
+
+  const openPurchase = useCallback(
+    (pack: PurchaseFlowPack, kind: "buy-pack" | "open-pack" = "buy-pack") => {
+      if (pack.creator) noteCreatorEngagement(pack.creator);
+      requireAuth({ type: "buy", pack, kind });
+    },
+    [requireAuth],
+  );
+
+  const openSettings = useCallback(() => {
+    if (guest) {
+      requireAuth({ type: "tab", tab: "profile" });
+      return;
+    }
+    navigate(Paths.settings);
+  }, [guest, navigate, requireAuth]);
+
+  const completeAuth = useCallback(
+    (result: AuthSuccessResult) => {
+      const wasUnresolved = !isRecommendationInitialized();
+      const action = pending;
+      createSession(result.email, result.provider);
+      applyUserFromEmail(result.email);
+      markEntered();
+      markOnboardingDone();
+      setAuthOpen(false);
+      setAuthed(true);
+      setEmailVerified(isEmailVerified());
+
+      if (result.provider === "email" && wasUnresolved) {
+        clearEmailVerified();
+        setEmailVerified(false);
+      }
+
+      setPending(null);
+      window.setTimeout(() => {
+        if (
+          action &&
+          actionNeedsVerifiedEmail(action) &&
+          needsEmailVerification()
+        ) {
+          setVerifyPending(action);
+          setVerifyOpen(true);
+          return;
+        }
+        applyRecommendationDecision(action);
+      }, 0);
+    },
+    [applyRecommendationDecision, pending],
+  );
+
+  const dismissAuth = useCallback(() => {
+    setAuthOpen(false);
+    setPending(null);
+  }, []);
+
+  const onVerified = useCallback(() => {
+    markEmailVerified();
+    setEmailVerified(true);
+    setVerifyOpen(false);
+    const action = verifyPending;
+    setVerifyPending(null);
+    window.setTimeout(() => applyRecommendationDecision(action), 0);
+  }, [applyRecommendationDecision, verifyPending]);
+
+  const onVerifyLater = useCallback(() => {
+    setVerifyOpen(false);
+    setVerifyPending(null);
+  }, []);
+
+  const onEmailChanged = useCallback((email: string) => {
+    setProfile((d) => ({ ...d, email }));
+  }, []);
+
+  const notePackPurchaseSeed = useCallback((creatorName?: string) => {
+    markRecommendationBehaviorSeeded(creatorName);
+  }, []);
+
+  const setPendingAfterRecFromSwipe = useCallback(
+    (liked: string[], passed: string[]) => {
+      setProfile((d) => ({
+        ...d,
+        likedCreators: liked,
+        passedCreators: passed,
+      }));
+    },
+    [],
+  );
+
+  const logout = useCallback(() => {
+    destroySession();
+    setAuthed(false);
+    setPending(null);
+    setAuthOpen(false);
+    setVerifyOpen(false);
+    setVerifyPending(null);
+    setPendingAfterRec(null);
+    navigate(Paths.home);
+    setNavNotice("Signed out — browsing as guest");
+    window.setTimeout(() => setNavNotice(""), 1800);
+  }, [navigate]);
+
+  const restart = useCallback(() => {
+    clearV8Session();
+    clearRecommendationState();
+    clearEmailVerified();
+    destroySession();
+    clearHomeFeedCache();
+    setProfile(initialProfile);
+    setAuthed(false);
+    setEmailVerified(false);
+    setVerifyOpen(false);
+    setVerifyPending(null);
+    setPendingAfterRec(null);
+    setPurchasedPacks(0);
+    setPending(null);
+    setAuthOpen(false);
+    navigate(Paths.loading);
+  }, [navigate]);
+
+  const consumeResumeLike = useCallback(() => setResumeLikeId(null), []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      authed,
+      guest,
+      profile,
+      setProfile,
+      authOpen,
+      pending,
+      emailVerified,
+      verifyOpen,
+      resumeLikeId,
+      navNotice,
+      purchasedPacks,
+      setPurchasedPacks,
+      requireAuth,
+      requestTab,
+      openStore,
+      openCreator,
+      openPurchase,
+      openSettings,
+      completeAuth,
+      dismissAuth,
+      onVerified,
+      onVerifyLater,
+      onEmailChanged,
+      notePackPurchaseSeed,
+      finishRecommendationAndResume,
+      setPendingAfterRecFromSwipe,
+      logout,
+      restart,
+      setNavNotice,
+      consumeResumeLike,
+      applyRecommendationDecision,
+      verifyEmail: profile.email || getAuthEmail(),
+    }),
+    [
+      applyRecommendationDecision,
+      authOpen,
+      authed,
+      completeAuth,
+      consumeResumeLike,
+      dismissAuth,
+      emailVerified,
+      finishRecommendationAndResume,
+      guest,
+      logout,
+      navNotice,
+      notePackPurchaseSeed,
+      onEmailChanged,
+      onVerified,
+      onVerifyLater,
+      openCreator,
+      openPurchase,
+      openSettings,
+      openStore,
+      pending,
+      profile,
+      purchasedPacks,
+      requireAuth,
+      requestTab,
+      restart,
+      resumeLikeId,
+      setPendingAfterRecFromSwipe,
+      verifyOpen,
+    ],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
