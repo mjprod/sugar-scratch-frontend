@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   Compass,
   Gift,
@@ -36,8 +36,11 @@ const TABS: TabConfig[] = [
 const DOCK_PATH =
   "M470.5,23.6h-173.6C288.7,9.5,273.5,0,256.1,0s-32.6,9.4-40.8,23.5H41.7C18.8,23.6.2,42.1.2,65H.2c0,22.9,18.6,41.5,41.5,41.5h428.9c22.9,0,41.5-18.6,41.5-41.5h0c0-22.9-18.6-41.5-41.5-41.5h0Z";
 
+// Symmetric bleed around the path so left/right caps aren't clipped by mask AA
+// or a one-sided viewBox stretch (path lives ~0.2 → 512.1 in a 512.2 artboard).
+const DOCK_VIEWBOX = "-2 -1 516.2 108.5";
 const DOCK_MASK = `url("data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512.2 106.5" preserveAspectRatio="none"><path fill="white" d="${DOCK_PATH}"/></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${DOCK_VIEWBOX}" preserveAspectRatio="none"><path fill="white" d="${DOCK_PATH}"/></svg>`,
 )}")`;
 
 const COVER_IMAGE =
@@ -46,103 +49,159 @@ const COVER_IMAGE =
 /** Exactly 3 mesh colors for Collection BorderGlow rim */
 const COLLECTION_GLOW_COLORS = ["#ff8fb1", "#f472b6", "#c084fc"] as const;
 
-type CutoutDebug = {
-  /** Hole center X as % of glow box */
-  offsetX: number;
-  /** Hole center Y as % of glow box */
-  offsetY: number;
-  /** Transparent hole radius as % of glow box */
-  size: number;
-  /** Soft edge after size (solid glow starts here), as % */
-  feather: number;
-  /** edge-light layer is larger — scale hole % relative to that layer */
-  edgeScale: number;
-};
-
-const DEFAULT_CUTOUT: CutoutDebug = {
-  offsetX: 51.5,
+/** Locked Collection glow center cutout */
+const CUTOUT = {
+  offsetX: 50.5,
   offsetY: 52,
-  size: 64.5,
+  size: 62,
   feather: 72,
-  edgeScale: 0.49,
+  edgeScale: 0.63,
+} as const;
+
+const CUTOUT_STYLE = {
+  ["--cutout-x" as string]: `${CUTOUT.offsetX}%`,
+  ["--cutout-y" as string]: `${CUTOUT.offsetY}%`,
+  ["--cutout-size" as string]: `${CUTOUT.size}%`,
+  ["--cutout-feather" as string]: `${Math.max(CUTOUT.size, CUTOUT.feather)}%`,
+  ["--cutout-edge-size" as string]: `${Math.max(1, CUTOUT.size * CUTOUT.edgeScale)}%`,
+  ["--cutout-edge-feather" as string]: `${Math.max(
+    CUTOUT.size * CUTOUT.edgeScale + 1,
+    Math.max(CUTOUT.size, CUTOUT.feather) * CUTOUT.edgeScale,
+  )}%`,
 };
 
-function buildCutoutCss(c: CutoutDebug) {
-  const solid = Math.max(c.size, Math.min(c.feather, 99));
-  const edgeSize = Math.max(1, Math.min(90, c.size * c.edgeScale));
-  const edgeSolid = Math.max(edgeSize + 1, Math.min(95, solid * c.edgeScale));
-  const pos = `${c.offsetX}% ${c.offsetY}%`;
+type RimId = "a" | "c" | "brA" | "brC";
+
+type RimLayerDebug = {
+  x: number;
+  y: number;
+  /** Layer height in px (overrides shared base height when set) */
+  height: number;
+  scale: number;
+  opacity: number;
+};
+
+type RimBaseDebug = {
+  left: number;
+  right: number;
+  bottom: number;
+  height: number;
+};
+
+type RimDebugState = {
+  base: RimBaseDebug;
+  layers: Record<RimId, RimLayerDebug>;
+};
+
+const RIM_META: { id: RimId; label: string; className: string }[] = [
+  { id: "a", label: "Left soft (rim-a)", className: "nav-test-dock-rim-a" },
+  { id: "c", label: "Left crisp (rim-c)", className: "nav-test-dock-rim-c" },
+  { id: "brA", label: "BR soft (rim-br-a)", className: "nav-test-dock-rim-br-a" },
+  { id: "brC", label: "BR crisp (rim-br-c)", className: "nav-test-dock-rim-br-c" },
+];
+
+/** Locked rim layout from debug panel. */
+const DEFAULT_RIM_DEBUG: RimDebugState = {
+  base: { left: -3, right: -3, bottom: 13, height: 87 },
+  layers: {
+    a: { x: 60.5, y: -11, height: 60, scale: 1.4, opacity: 0.68 },
+    c: { x: 0.5, y: 5, height: 94, scale: 1, opacity: 0.9 },
+    brA: { x: -34, y: 2.5, height: 91, scale: 1, opacity: 0.64 },
+    brC: { x: -36, y: 4, height: 91.5, scale: 1, opacity: 0.9 },
+  },
+};
+
+function rimLayerStyle(layer: RimLayerDebug): CSSProperties {
+  return {
+    ["--rim-x" as string]: `${layer.x}px`,
+    ["--rim-y" as string]: `${layer.y}px`,
+    ["--rim-layer-height" as string]: `${layer.height}px`,
+    ["--rim-scale" as string]: String(layer.scale),
+    ["--rim-opacity" as string]: String(layer.opacity),
+  };
+}
+
+function rimBaseStyle(base: RimBaseDebug): CSSProperties {
+  return {
+    ["--rim-left" as string]: `${base.left}px`,
+    ["--rim-right" as string]: `${base.right}px`,
+    ["--rim-bottom" as string]: `${base.bottom}px`,
+    ["--rim-height" as string]: `${base.height}px`,
+  };
+}
+
+function buildRimExport(state: RimDebugState) {
+  const cssLines = [
+    "/* Shared rim box */",
+    `.nav-test-dock-rim {`,
+    `  left: ${state.base.left}px;`,
+    `  right: ${state.base.right}px;`,
+    `  bottom: ${state.base.bottom}px;`,
+    `  height: ${state.base.height}px;`,
+    `}`,
+    "",
+  ];
+
+  for (const meta of RIM_META) {
+    const layer = state.layers[meta.id];
+    cssLines.push(
+      `.${meta.className} {`,
+      `  height: ${layer.height}px;`,
+      `  transform: translate(${layer.x}px, ${layer.y}px) scale(${layer.scale});`,
+      `  opacity: ${layer.opacity};`,
+      `}`,
+      "",
+    );
+  }
 
   return {
-    json: {
-      offsetX: c.offsetX,
-      offsetY: c.offsetY,
-      size: c.size,
-      feather: solid,
-      edgeScale: c.edgeScale,
-      edgeSize: Number(edgeSize.toFixed(2)),
-      edgeFeather: Number(edgeSolid.toFixed(2)),
-      position: pos,
-      radialSurface: `radial-gradient(circle at ${pos}, transparent 0 ${c.size}%, #000 ${solid}% 100%)`,
-      radialEdge: `radial-gradient(circle at ${pos}, transparent 0 ${edgeSize.toFixed(2)}%, #000 ${edgeSolid.toFixed(2)}% 100%)`,
-    },
-    css: `/* Collection glow center cutout */
---cutout-x: ${c.offsetX}%;
---cutout-y: ${c.offsetY}%;
---cutout-size: ${c.size}%;
---cutout-feather: ${solid}%;
---cutout-edge-size: ${edgeSize.toFixed(2)}%;
---cutout-edge-feather: ${edgeSolid.toFixed(2)}%;
-
-/* surface / ::before / ::after hole */
-radial-gradient(
-  circle at ${pos},
-  transparent 0 ${c.size}%,
-  #000 ${solid}% 100%
-)
-
-/* .edge-light hole (scaled) */
-radial-gradient(
-  circle at ${pos},
-  transparent 0 ${edgeSize.toFixed(2)}%,
-  #000 ${edgeSolid.toFixed(2)}% 100%
-)`,
+    json: state,
+    css: cssLines.join("\n"),
   };
 }
 
 export function NavTestPage() {
   const [active, setActive] = useState<NavTestTab>("home");
-  const [cutout, setCutout] = useState<CutoutDebug>(DEFAULT_CUTOUT);
+  const [rimDebug, setRimDebug] = useState<RimDebugState>(DEFAULT_RIM_DEBUG);
+  const [activeRim, setActiveRim] = useState<RimId>("a");
   const [copyMsg, setCopyMsg] = useState("");
-  const [showGuide, setShowGuide] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(true);
 
-  const cutoutExport = useMemo(() => buildCutoutCss(cutout), [cutout]);
-
-  const cutoutStyle = {
-    ["--cutout-x" as string]: `${cutout.offsetX}%`,
-    ["--cutout-y" as string]: `${cutout.offsetY}%`,
-    ["--cutout-size" as string]: `${cutout.size}%`,
-    ["--cutout-feather" as string]: `${Math.max(cutout.size, cutout.feather)}%`,
-    ["--cutout-edge-size" as string]: `${Math.max(1, cutout.size * cutout.edgeScale)}%`,
-    ["--cutout-edge-feather" as string]: `${Math.max(
-      cutout.size * cutout.edgeScale + 1,
-      Math.max(cutout.size, cutout.feather) * cutout.edgeScale,
-    )}%`,
-  };
+  const rimExport = useMemo(() => buildRimExport(rimDebug), [rimDebug]);
+  const baseStyle = rimBaseStyle(rimDebug.base);
 
   async function copyText(label: string, text: string) {
     try {
       await navigator.clipboard.writeText(text);
       setCopyMsg(`Copied ${label}`);
     } catch {
-      setCopyMsg("Copy failed — select the text manually");
+      setCopyMsg("Copy failed — select text manually");
     }
     window.setTimeout(() => setCopyMsg(""), 1600);
   }
 
-  function setField<K extends keyof CutoutDebug>(key: K, value: number) {
-    setCutout((prev) => ({ ...prev, [key]: value }));
+  function setBase<K extends keyof RimBaseDebug>(key: K, value: number) {
+    setRimDebug((prev) => ({
+      ...prev,
+      base: { ...prev.base, [key]: value },
+    }));
   }
+
+  function setLayer<K extends keyof RimLayerDebug>(
+    id: RimId,
+    key: K,
+    value: number,
+  ) {
+    setRimDebug((prev) => ({
+      ...prev,
+      layers: {
+        ...prev.layers,
+        [id]: { ...prev.layers[id], [key]: value },
+      },
+    }));
+  }
+
+  const layer = rimDebug.layers[activeRim];
 
   return (
     <section className="nav-test">
@@ -155,112 +214,200 @@ export function NavTestPage() {
         aria-label={`${active} cover background`}
       />
 
-      <aside className="nav-test-debug" aria-label="Cutout debug controls">
-        <header className="nav-test-debug-header">
-          <strong>Cutout debug</strong>
-          <span>offset + size %</span>
-        </header>
+      {panelOpen ? (
+        <aside className="nav-test-rim-debug" aria-label="Rim light debug controls">
+          <header className="nav-test-rim-debug-header">
+            <div>
+              <strong>Rim lights</strong>
+              <span>scale · transform · position</span>
+            </div>
+            <button
+              type="button"
+              className="nav-test-rim-debug-hide"
+              onClick={() => setPanelOpen(false)}
+            >
+              Hide
+            </button>
+          </header>
 
-        <label className="nav-test-debug-row">
-          <span>Offset X %</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={0.5}
-            value={cutout.offsetX}
-            onChange={(e) => setField("offsetX", Number(e.target.value))}
-          />
-          <em>{cutout.offsetX}</em>
-        </label>
+          <p className="nav-test-rim-debug-section">Shared box</p>
+          <label className="nav-test-rim-debug-row">
+            <span>Left px</span>
+            <input
+              type="range"
+              min={-20}
+              max={20}
+              step={0.5}
+              value={rimDebug.base.left}
+              onChange={(e) => setBase("left", Number(e.target.value))}
+            />
+            <em>{rimDebug.base.left}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Right px</span>
+            <input
+              type="range"
+              min={-20}
+              max={20}
+              step={0.5}
+              value={rimDebug.base.right}
+              onChange={(e) => setBase("right", Number(e.target.value))}
+            />
+            <em>{rimDebug.base.right}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Bottom px</span>
+            <input
+              type="range"
+              min={-10}
+              max={40}
+              step={0.5}
+              value={rimDebug.base.bottom}
+              onChange={(e) => setBase("bottom", Number(e.target.value))}
+            />
+            <em>{rimDebug.base.bottom}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Height px</span>
+            <input
+              type="range"
+              min={60}
+              max={120}
+              step={0.5}
+              value={rimDebug.base.height}
+              onChange={(e) => setBase("height", Number(e.target.value))}
+            />
+            <em>{rimDebug.base.height}</em>
+          </label>
 
-        <label className="nav-test-debug-row">
-          <span>Offset Y %</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={0.5}
-            value={cutout.offsetY}
-            onChange={(e) => setField("offsetY", Number(e.target.value))}
-          />
-          <em>{cutout.offsetY}</em>
-        </label>
+          <p className="nav-test-rim-debug-section">Layer</p>
+          <div className="nav-test-rim-debug-tabs">
+            {RIM_META.map((meta) => (
+              <button
+                key={meta.id}
+                type="button"
+                className={activeRim === meta.id ? "is-active" : ""}
+                onClick={() => setActiveRim(meta.id)}
+              >
+                {meta.id}
+              </button>
+            ))}
+          </div>
+          <p className="nav-test-rim-debug-layer-name">
+            {RIM_META.find((m) => m.id === activeRim)?.label}
+          </p>
 
-        <label className="nav-test-debug-row">
-          <span>Circle size %</span>
-          <input
-            type="range"
-            min={5}
-            max={90}
-            step={0.5}
-            value={cutout.size}
-            onChange={(e) => setField("size", Number(e.target.value))}
-          />
-          <em>{cutout.size}</em>
-        </label>
+          <label className="nav-test-rim-debug-row">
+            <span>X px</span>
+            <input
+              type="range"
+              min={-120}
+              max={120}
+              step={0.5}
+              value={layer.x}
+              onChange={(e) => setLayer(activeRim, "x", Number(e.target.value))}
+            />
+            <em>{layer.x}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Y px</span>
+            <input
+              type="range"
+              min={-120}
+              max={120}
+              step={0.5}
+              value={layer.y}
+              onChange={(e) => setLayer(activeRim, "y", Number(e.target.value))}
+            />
+            <em>{layer.y}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Height px</span>
+            <input
+              type="range"
+              min={60}
+              max={120}
+              step={0.5}
+              value={layer.height}
+              onChange={(e) =>
+                setLayer(activeRim, "height", Number(e.target.value))
+              }
+            />
+            <em>{layer.height}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Scale</span>
+            <input
+              type="range"
+              min={0.7}
+              max={3}
+              step={0.01}
+              value={layer.scale}
+              onChange={(e) =>
+                setLayer(activeRim, "scale", Number(e.target.value))
+              }
+            />
+            <em>{layer.scale.toFixed(2)}</em>
+          </label>
+          <label className="nav-test-rim-debug-row">
+            <span>Opacity</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={layer.opacity}
+              onChange={(e) =>
+                setLayer(activeRim, "opacity", Number(e.target.value))
+              }
+            />
+            <em>{layer.opacity.toFixed(2)}</em>
+          </label>
 
-        <label className="nav-test-debug-row">
-          <span>Feather %</span>
-          <input
-            type="range"
-            min={6}
-            max={95}
-            step={0.5}
-            value={cutout.feather}
-            onChange={(e) => setField("feather", Number(e.target.value))}
-          />
-          <em>{Math.max(cutout.size, cutout.feather)}</em>
-        </label>
+          <div className="nav-test-rim-debug-actions">
+            <button
+              type="button"
+              onClick={() =>
+                copyText("JSON", JSON.stringify(rimExport.json, null, 2))
+              }
+            >
+              Copy JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => copyText("CSS", rimExport.css)}
+            >
+              Copy CSS
+            </button>
+            <button
+              type="button"
+              onClick={() => setRimDebug(DEFAULT_RIM_DEBUG)}
+            >
+              Reset
+            </button>
+          </div>
 
-        <label className="nav-test-debug-row">
-          <span>Edge scale</span>
-          <input
-            type="range"
-            min={0.2}
-            max={1}
-            step={0.01}
-            value={cutout.edgeScale}
-            onChange={(e) => setField("edgeScale", Number(e.target.value))}
-          />
-          <em>{cutout.edgeScale.toFixed(2)}</em>
-        </label>
+          {copyMsg ? <p className="nav-test-rim-debug-msg">{copyMsg}</p> : null}
 
-        <label className="nav-test-debug-check">
-          <input
-            type="checkbox"
-            checked={showGuide}
-            onChange={(e) => setShowGuide(e.target.checked)}
-          />
-          Show cutout guide
-        </label>
+          <pre className="nav-test-rim-debug-pre">
+            {JSON.stringify(rimExport.json, null, 2)}
+          </pre>
+        </aside>
+      ) : (
+        <button
+          type="button"
+          className="nav-test-rim-debug-show"
+          onClick={() => setPanelOpen(true)}
+        >
+          Rim debug
+        </button>
+      )}
 
-        <div className="nav-test-debug-actions">
-          <button
-            type="button"
-            onClick={() =>
-              copyText("JSON", JSON.stringify(cutoutExport.json, null, 2))
-            }
-          >
-            Copy JSON
-          </button>
-          <button
-            type="button"
-            onClick={() => copyText("CSS", cutoutExport.css)}
-          >
-            Copy CSS
-          </button>
-          <button type="button" onClick={() => setCutout(DEFAULT_CUTOUT)}>
-            Reset
-          </button>
-        </div>
-
-        {copyMsg ? <p className="nav-test-debug-msg">{copyMsg}</p> : null}
-
-        <pre className="nav-test-debug-pre">{JSON.stringify(cutoutExport.json, null, 2)}</pre>
-      </aside>
-
-      <nav className="nav-test-dock" aria-label="Experimental bottom navigation">
+      <nav
+        className="nav-test-dock"
+        style={baseStyle}
+        aria-label="Experimental bottom navigation"
+      >
         {/*
           Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
           (not clip-path) so backdrop-filter is shaped.
@@ -276,33 +423,75 @@ export function NavTestPage() {
 
         {/*
           White stroke rims — same path as the mask.
-          Three layers so you can offset each for a realistic rim light.
+          Transforms driven by debug CSS vars.
         */}
         <svg
           className="nav-test-dock-rim nav-test-dock-rim-a"
-          viewBox="0 0 512.2 106.5"
+          viewBox={DOCK_VIEWBOX}
           preserveAspectRatio="none"
           aria-hidden="true"
+          style={rimLayerStyle(rimDebug.layers.a)}
         >
           <path
             d={DOCK_PATH}
             fill="none"
             stroke="#fff"
-            strokeWidth="1.5"
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
         </svg>
         <svg
           className="nav-test-dock-rim nav-test-dock-rim-c"
-          viewBox="0 0 512.2 106.5"
+          viewBox={DOCK_VIEWBOX}
           preserveAspectRatio="none"
           aria-hidden="true"
+          style={rimLayerStyle(rimDebug.layers.c)}
         >
           <path
             d={DOCK_PATH}
             fill="none"
             stroke="#fff"
-            strokeWidth="1.5"
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+
+        {/* Bottom-right rim light — soft + crisp, masked to BR corner */}
+        <svg
+          className="nav-test-dock-rim nav-test-dock-rim-br-a"
+          viewBox={DOCK_VIEWBOX}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          style={rimLayerStyle(rimDebug.layers.brA)}
+        >
+          <path
+            d={DOCK_PATH}
+            fill="none"
+            stroke="#fff"
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        <svg
+          className="nav-test-dock-rim nav-test-dock-rim-br-c"
+          viewBox={DOCK_VIEWBOX}
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          style={rimLayerStyle(rimDebug.layers.brC)}
+        >
+          <path
+            d={DOCK_PATH}
+            fill="none"
+            stroke="#fff"
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
         </svg>
@@ -324,11 +513,11 @@ export function NavTestPage() {
                     .join(" ")}
                 >
                   <BorderGlow
-                    className="nav-test-dock-primary-glow border-glow-always-on"
+                    className="nav-test-dock-primary-glow nav-test-hero-btn border-glow-always-on"
                     borderRadius={999}
                     backgroundColor="transparent"
                     glowColor="330 90 78"
-                    glowRadius={18}
+                    glowRadius={21}
                     glowIntensity={1.05}
                     coneSpread={28}
                     edgeSensitivity={0}
@@ -337,7 +526,7 @@ export function NavTestPage() {
                     orbit
                     orbitDuration={7}
                     colors={[...COLLECTION_GLOW_COLORS]}
-                    style={cutoutStyle}
+                    style={CUTOUT_STYLE}
                   >
                     <button
                       type="button"
@@ -351,9 +540,6 @@ export function NavTestPage() {
                         aria-hidden="true"
                       />
                     </button>
-                    {showGuide ? (
-                      <span className="nav-test-cutout-guide" aria-hidden="true" />
-                    ) : null}
                   </BorderGlow>
                   <span className="nav-test-dock-primary-label" aria-hidden="true">
                     {tab.label}
@@ -395,7 +581,8 @@ const NAV_TEST_CSS = `
   position: relative;
   min-height: 100dvh;
   width: 100%;
-  overflow: hidden;
+  /* visible so dock rims / mask bleed aren't clipped at the page edge */
+  overflow: visible;
   background: #0c0c0e;
 }
 
@@ -412,10 +599,11 @@ const NAV_TEST_CSS = `
 /* ── Experimental dock ─────────────────────────────────────────── */
 .nav-test-dock {
   position: fixed;
-  right: 14px;
+  /* Extra side inset so the rounded caps + rim stroke aren't viewport-clipped */
+  right: max(18px, env(safe-area-inset-right, 0px));
   /* Lift off the bottom edge (dvh scales with dynamic viewport) */
   bottom: calc(2.5dvh + env(safe-area-inset-bottom, 0px));
-  left: 14px;
+  left: max(18px, env(safe-area-inset-left, 0px));
   z-index: 10;
   height: 96px;
   overflow: visible;
@@ -428,10 +616,11 @@ const NAV_TEST_CSS = `
  */
 .nav-test-dock-surface {
   position: absolute;
-  right: 0;
+  /* Symmetric bleed so both end caps + stroke AA have room */
+  right: -3px;
   bottom: 9px;
-  left: 0;
-  height: 85px;
+  left: -3px;
+  height: 93px;
   pointer-events: none;
   background: rgb(0 0 0 / 70%);
   backdrop-filter: blur(3px) brightness(1.8);
@@ -442,41 +631,64 @@ const NAV_TEST_CSS = `
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
+  /* Avoid filter/mask paint getting clipped to the border box */
+  overflow: visible;
 }
 
-/* White path stroke — shared rim base (offset each layer below) */
+/*
+ * White path stroke — shared rim base.
+ * Position/size driven by debug vars on .nav-test-dock:
+ *   --rim-left --rim-right --rim-bottom --rim-height
+ * Per-layer transform/size/opacity via:
+ *   --rim-x --rim-y --rim-layer-height --rim-scale --rim-opacity
+ */
 .nav-test-dock-rim {
   position: absolute;
-  right: 0;
-  bottom: 9px;
-  left: 0;
+  left: var(--rim-left, -3px);
+  right: var(--rim-right, -3px);
+  bottom: var(--rim-bottom, 13px);
   z-index: 1;
-  height: 85px;
-  width: 100%;
+  /* Per-layer height wins; falls back to shared base height */
+  height: var(--rim-layer-height, var(--rim-height, 87px));
+  width: auto;
   overflow: visible;
   pointer-events: none;
+  opacity: var(--rim-opacity, 1);
+  transform: translate(var(--rim-x, 0px), var(--rim-y, 0px))
+    scale(var(--rim-scale, 1));
+  transform-origin: center center;
   -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 22%, transparent 58%);
   mask-image: linear-gradient(149deg, #000 8%, transparent 21%);
-  /* filter: blur(1px); */
-  opacity: 1;
 }
 
 .nav-test-dock-rim path {
   fill: none;
   stroke: #fff;
+  paint-order: stroke fill;
 }
 
-/* Offset these independently for layered rim light */
+/* Soft outer glow layer */
 .nav-test-dock-rim-a {
-  left: 2px;
-  opacity: 1;
-  filter: blur(2px);
-  -webkit-mask-image: linear-gradient(166deg, #000 38%, transparent 51%);
-  mask-image: linear-gradient(166deg, #000 38%, transparent 51%);
+  filter: blur(1.5px);
+  -webkit-mask-image: linear-gradient(166deg, #000 8%, transparent 41%);
+  mask-image: linear-gradient(166deg, #000 8%, transparent 41%);
 }
 
+/* Crisp left edge (transform/height via debug vars / DEFAULT_RIM_DEBUG) */
 .nav-test-dock-rim-c {
-  /* e.g. transform: translate(-1px, 0); opacity: 0.3; */
+}
+
+/* Bottom-right soft glow */
+.nav-test-dock-rim-br-a {
+  filter: blur(1.5px);
+  -webkit-mask-image: linear-gradient(304deg, #000 0%, #000 4%, transparent 20%);
+  mask-image: linear-gradient(304deg, #000 0%, #000 4%, transparent 20%);
+}
+
+/* Bottom-right crisp edge */
+.nav-test-dock-rim-br-c {
+  -webkit-mask-image: linear-gradient(355deg, #000 0%, #000 2%, transparent 12%);
+  mask-image: linear-gradient(355deg, #000 0%, #000 2%, transparent 12%);
 }
 
 .nav-test-dock-items {
@@ -542,18 +754,19 @@ const NAV_TEST_CSS = `
   padding-bottom: 6px;
 }
 
-/* BorderGlow wrapper = Collection icon parent with permanent rim glow */
-.nav-test-dock-primary-glow {
+/* Hero button — Collection icon + cutout glow (~10% larger) */
+.nav-test-dock-primary-glow,
+.nav-test-hero-btn {
   position: absolute;
-  top: -11px;
+  top: -14px;
   left: 50%;
-  z-index: 2;
-  width: 52px;
-  height: 52px;
+  z-index: 5;
+  width: 60px;
+  height: 60px;
   border: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
-  transform: translateX(-50%);
+  transform: translate(-50%, -6px);
   transition: transform 160ms ease;
 }
 
@@ -588,8 +801,8 @@ const NAV_TEST_CSS = `
       #000 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 51.5%) var(--cutout-y, 52%),
-      transparent 0 var(--cutout-size, 64.5%),
+      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
   mask-image:
@@ -603,8 +816,8 @@ const NAV_TEST_CSS = `
       #000 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 51.5%) var(--cutout-y, 52%),
-      transparent 0 var(--cutout-size, 64.5%),
+      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
   -webkit-mask-composite: source-in;
@@ -626,8 +839,8 @@ const NAV_TEST_CSS = `
       transparent 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 51.5%) var(--cutout-y, 52%),
-      transparent 0 var(--cutout-size, 64.5%),
+      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
   mask-image:
@@ -640,8 +853,8 @@ const NAV_TEST_CSS = `
       transparent 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 51.5%) var(--cutout-y, 52%),
-      transparent 0 var(--cutout-size, 64.5%),
+      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
   -webkit-mask-composite: source-in;
@@ -665,9 +878,9 @@ const NAV_TEST_CSS = `
       #000 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 51.5%) var(--cutout-y, 52%),
-      transparent 0 var(--cutout-edge-size, 31.61%),
-      #000 var(--cutout-edge-feather, 35.28%) 100%
+      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      transparent 0 var(--cutout-edge-size, 39.06%),
+      #000 var(--cutout-edge-feather, 45.36%) 100%
     );
   mask-image:
     conic-gradient(
@@ -680,9 +893,9 @@ const NAV_TEST_CSS = `
       #000 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 51.5%) var(--cutout-y, 52%),
-      transparent 0 var(--cutout-edge-size, 31.61%),
-      #000 var(--cutout-edge-feather, 35.28%) 100%
+      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      transparent 0 var(--cutout-edge-size, 39.06%),
+      #000 var(--cutout-edge-feather, 45.36%) 100%
     );
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
@@ -690,34 +903,6 @@ const NAV_TEST_CSS = `
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
-}
-
-/* Visual guide for the cutout circle (debug only) */
-.nav-test-cutout-guide {
-  position: absolute;
-  left: var(--cutout-x, 51.5%);
-  top: var(--cutout-y, 52%);
-  z-index: 5;
-  width: calc(var(--cutout-size, 64.5%) * 2);
-  height: calc(var(--cutout-size, 64.5%) * 2);
-  border: 1px dashed rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.nav-test-cutout-guide::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
-  transform: translate(-50%, -50%);
 }
 
 .nav-test-dock-primary-btn {
@@ -738,7 +923,7 @@ const NAV_TEST_CSS = `
 }
 
 .nav-test-dock-primary-glow:active {
-  transform: translateX(-50%) scale(0.97);
+  transform: translate(-50%, -6px) scale(0.97);
 }
 
 .nav-test-dock-primary-btn:focus-visible {
@@ -747,9 +932,9 @@ const NAV_TEST_CSS = `
 }
 
 .nav-test-dock-primary-icon {
-  width: 24px;
-  height: 24px;
-  filter: drop-shadow(0 0 6px rgba(255, 86, 157, 0.35));
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 0 7px rgba(255, 86, 157, 0.35));
 }
 
 .nav-test-dock-primary-label {
@@ -763,109 +948,193 @@ const NAV_TEST_CSS = `
   color: #ff8fb1;
 }
 
-/* ── Cutout debug panel ───────────────────────────────────────── */
-.nav-test-debug {
+/* ── Rim light debug panel ───────────────────────────────────── */
+.nav-test-rim-debug {
   position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 50;
-  width: min(320px, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px);
+  top: 10px;
+  left: 10px;
+  z-index: 80;
+  width: min(360px, calc(100vw - 20px));
+  max-height: calc(100dvh - 20px);
   overflow: auto;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(8, 8, 10, 0.88);
-  color: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  font-size: 12px;
-}
-
-.nav-test-debug-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.nav-test-debug-header strong {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(8, 8, 10, 0.92);
+  color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
   font-size: 13px;
+}
+
+.nav-test-rim-debug-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.nav-test-rim-debug-header strong {
+  display: block;
+  font-size: 14px;
   letter-spacing: 0.02em;
 }
 
-.nav-test-debug-header span {
+.nav-test-rim-debug-header span {
+  display: block;
+  margin-top: 2px;
   color: rgba(255, 255, 255, 0.45);
   font-size: 11px;
 }
 
-.nav-test-debug-row {
+.nav-test-rim-debug-hide,
+.nav-test-rim-debug-show,
+.nav-test-rim-debug-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.nav-test-rim-debug-show {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 80;
+}
+
+.nav-test-rim-debug-section {
+  margin: 14px 0 8px;
+  color: rgba(255, 143, 177, 0.9);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-test-rim-debug-row {
   display: grid;
-  grid-template-columns: 88px 1fr 40px;
+  grid-template-columns: 72px 1fr 48px;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-.nav-test-debug-row span {
-  color: rgba(255, 255, 255, 0.7);
+.nav-test-rim-debug-row span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
 }
 
-.nav-test-debug-row em {
+.nav-test-rim-debug-row em {
   font-style: normal;
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: #ffb0c8;
+  font-size: 12px;
 }
 
-.nav-test-debug-row input[type="range"] {
+/* Big slider track + thumb for touch / precision */
+.nav-test-rim-debug-row input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  accent-color: #ff8fb1;
-}
-
-.nav-test-debug-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 10px;
-  color: rgba(255, 255, 255, 0.7);
+  height: 18px;
+  background: transparent;
   cursor: pointer;
 }
 
-.nav-test-debug-actions {
-  display: flex;
-  flex-wrap: wrap;
+.nav-test-rim-debug-row input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.nav-test-rim-debug-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -9px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: #ff8fb1;
+  box-shadow: 0 2px 10px rgba(255, 80, 145, 0.45);
+}
+
+.nav-test-rim-debug-row input[type="range"]::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.nav-test-rim-debug-row input[type="range"]::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: #ff8fb1;
+  box-shadow: 0 2px 10px rgba(255, 80, 145, 0.45);
+}
+
+.nav-test-rim-debug-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   margin-bottom: 8px;
 }
 
-.nav-test-debug-actions button {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  padding: 6px 10px;
-  font-size: 11px;
+.nav-test-rim-debug-tabs button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 650;
   cursor: pointer;
 }
 
-.nav-test-debug-actions button:hover {
+.nav-test-rim-debug-tabs button.is-active {
+  border-color: rgba(255, 143, 177, 0.55);
   background: rgba(255, 143, 177, 0.18);
-  border-color: rgba(255, 143, 177, 0.4);
+  color: #fff;
 }
 
-.nav-test-debug-msg {
-  margin: 0 0 8px;
-  color: #9dffc0;
+.nav-test-rim-debug-layer-name {
+  margin: 0 0 10px;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 11px;
 }
 
-.nav-test-debug-pre {
+.nav-test-rim-debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+
+.nav-test-rim-debug-actions button:hover,
+.nav-test-rim-debug-hide:hover,
+.nav-test-rim-debug-show:hover {
+  background: rgba(255, 143, 177, 0.2);
+  border-color: rgba(255, 143, 177, 0.45);
+}
+
+.nav-test-rim-debug-msg {
+  margin: 0 0 8px;
+  color: #9dffc0;
+  font-size: 12px;
+}
+
+.nav-test-rim-debug-pre {
   margin: 0;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(0, 0, 0, 0.35);
   color: rgba(255, 220, 235, 0.9);
   font-size: 10px;
@@ -873,5 +1142,6 @@ const NAV_TEST_CSS = `
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
+  max-height: 180px;
 }
 `;
