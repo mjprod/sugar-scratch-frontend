@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:v8": "vite --config vite.old-app.config.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",

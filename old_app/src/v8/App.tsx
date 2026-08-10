@@ -48,6 +48,7 @@ import { HomeFeedScreen } from "./screens/HomeFeedScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { HubScreen } from "./screens/HubScreen";
 import { LoadingScreen } from "./screens/LoadingScreen";
+import { InboxScreen } from "./screens/InboxScreen";
 import { PersonalizationCompleteScreen } from "./screens/PersonalizationCompleteScreen";
 import { PersonalizationSwipeScreen } from "./screens/PersonalizationSwipeScreen";
 import { RecommendationIntroScreen } from "./screens/RecommendationIntroScreen";
@@ -56,6 +57,8 @@ import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { StoreScreen } from "./screens/StoreScreen";
 import { UserDashboardScreen } from "./screens/UserDashboardScreen";
+import type { InboxMessage } from "./flow/inbox";
+import { resolveSecondaryBack } from "./flow/navigation";
 
 const initialData: OnboardingData = {
   email: "",
@@ -90,16 +93,43 @@ function actionNeedsVerifiedEmail(action: ProtectedAction) {
 export default function V8App() {
   const [step, setStep] = useState<Step>(() => {
     try {
-      return new URLSearchParams(window.location.search).has("reset")
-        ? "reset-password"
-        : "loading";
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("reset")) return "reset-password";
+      const preview = params.get("preview");
+      if (
+        preview === "recommend-intro" ||
+        preview === "personalize-swipe" ||
+        preview === "personalize-complete"
+      ) {
+        return preview;
+      }
+      if (preview === "inbox") return "app";
+      return "loading";
     } catch {
       return "loading";
     }
   });
   const [data, setData] = useState<OnboardingData>(initialData);
-  const [tab, setTab] = useState<AppTab>("home");
-  const [overlay, setOverlay] = useState<AppOverlay>(null);
+  const [tab, setTab] = useState<AppTab>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("preview") === "inbox"
+        ? "hub"
+        : "home";
+    } catch {
+      return "home";
+    }
+  });
+  const [overlay, setOverlay] = useState<AppOverlay>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("preview") === "inbox"
+        ? "inbox"
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  /** Tab to restore when leaving a secondary overlay (Inbox / Store / Settings). */
+  const [overlayReturnTab, setOverlayReturnTab] = useState<AppTab | null>(null);
   const [creatorId, setCreatorId] = useState<string | null>(null);
   const [purchaseFlow, setPurchaseFlow] = useState<PurchaseFlowPack | null>(null);
   const [purchaseReturn, setPurchaseReturn] = useState<{
@@ -292,6 +322,7 @@ export default function V8App() {
     if (PUBLIC_TABS.includes(next) || authed) {
       setCreatorId(null);
       setOverlay(null);
+      setOverlayReturnTab(null);
       setTab(next);
       return;
     }
@@ -300,9 +331,60 @@ export default function V8App() {
 
   function openStore() {
     if (!requireAuth({ type: "store" })) return;
+    setOverlayReturnTab(tab);
     setCreatorId(null);
     setPurchaseFlow(null);
     setOverlay("store");
+  }
+
+  function openInbox() {
+    if (!requireAuth({ type: "tab", tab: "hub" })) return;
+    setOverlayReturnTab(tab);
+    setCreatorId(null);
+    setPurchaseFlow(null);
+    setOverlay("inbox");
+  }
+
+  function closeSecondary(
+    surface: "inbox" | "store" | "settings",
+  ) {
+    const next = resolveSecondaryBack(overlayReturnTab, surface);
+    setOverlay(null);
+    setOverlayReturnTab(null);
+    setTab(next);
+  }
+
+  function handleInboxAction(message: InboxMessage, source: "row" | "cta") {
+    const cta = message.cta;
+    if (source === "cta" && cta) {
+      if (cta.action === "navigate" && cta.targetId === "store") {
+        openStore();
+        return;
+      }
+      if (cta.action === "open_pack" || cta.action === "view_pack") {
+        setOverlay(null);
+        requestTab("bag");
+        return;
+      }
+      if (cta.action === "view_reward") {
+        setOverlay(null);
+        setTab("hub");
+        return;
+      }
+    }
+    if (message.type === "creator_drop" && message.creatorId) {
+      setOverlay(null);
+      setCreatorId(message.creatorId);
+      return;
+    }
+    if (message.type === "payment_failure") {
+      openStore();
+      return;
+    }
+    if (message.type === "limited_expiring") {
+      setOverlay(null);
+      setTab("feed");
+    }
   }
 
   function restart() {
@@ -467,12 +549,46 @@ export default function V8App() {
             />
           ) : overlay === "settings" ? (
             <SettingsScreen
-              onBack={() => setOverlay(null)}
+              onBack={() => closeSecondary("settings")}
               onReplayTutorials={() => {
                 setTab("home");
                 setOverlay(null);
+                setOverlayReturnTab(null);
               }}
             />
+          ) : overlay === "inbox" ? (
+            <>
+              <TopNav
+                coins={coins}
+                diamonds={data.diamonds}
+                showBalances
+                activeTab={tab}
+                onTabChange={(next) => {
+                  setOverlay(null);
+                  setOverlayReturnTab(null);
+                  requestTab(next);
+                }}
+                onProfile={() => {
+                  setOverlay(null);
+                  setOverlayReturnTab(null);
+                  requestTab("profile");
+                }}
+                onOpenStore={openStore}
+              />
+              <InboxScreen
+                onBack={() => closeSecondary("inbox")}
+                onMessageAction={handleInboxAction}
+              />
+              <FooterNav
+                active={tab}
+                visible={!authOpen}
+                onChange={(next) => {
+                  setOverlay(null);
+                  setOverlayReturnTab(null);
+                  requestTab(next);
+                }}
+              />
+            </>
           ) : creatorId ? (
             <>
               <CreatorScreen
@@ -495,7 +611,7 @@ export default function V8App() {
               />
               <FooterNav
                 active="bag"
-                visible
+                visible={!authOpen}
                 onChange={(next) => {
                   setCreatorId(null);
                   requestTab(next);
@@ -507,9 +623,10 @@ export default function V8App() {
                     coins={coins}
                     diamonds={data.diamonds}
                     avatar={data.avatar}
-                    onBack={() => setOverlay(null)}
+                    onBack={() => closeSecondary("store")}
                     onProfile={() => {
                       setOverlay(null);
+                      setOverlayReturnTab(null);
                       setCreatorId(null);
                       requestTab("profile");
                     }}
@@ -535,7 +652,10 @@ export default function V8App() {
                 onProfile={() => requestTab("profile")}
                 onSettings={() => {
                   if (guest) requireAuth({ type: "tab", tab: "profile" });
-                  else setOverlay("settings");
+                  else {
+                    setOverlayReturnTab(tab);
+                    setOverlay("settings");
+                  }
                 }}
                 onOpenStore={openStore}
                 onSearch={() => {
@@ -588,7 +708,7 @@ export default function V8App() {
                 />
               )}
               {tab === "hub" && !guest && (
-                <HubScreen onOpenStore={openStore} />
+                <HubScreen onOpenStore={openStore} onOpenInbox={openInbox} />
               )}
               {tab === "bag" && !guest && (
                 <CollectionScreen
@@ -616,7 +736,7 @@ export default function V8App() {
                     });
                   }}
                   inventoryRevision={bagRevision}
-                  onExplorePacks={() => setTab("home")}
+                  onExplorePacks={() => setTab("feed")}
                 />
               )}
               {tab === "profile" && !guest && (
@@ -625,12 +745,16 @@ export default function V8App() {
                   avatar={data.avatar}
                   coins={coins}
                   diamonds={data.diamonds}
-                  onSettings={() => setOverlay("settings")}
+                  onSettings={() => {
+                    setOverlayReturnTab(tab);
+                    setOverlay("settings");
+                  }}
+                  onLogout={logout}
                 />
               )}
               <FooterNav
                 active={tab}
-                visible={overlay !== "store"}
+                visible={!authOpen && overlay !== "store"}
                 onChange={requestTab}
                 bagBadge={
                   !guest &&
@@ -646,9 +770,10 @@ export default function V8App() {
                     coins={coins}
                     diamonds={data.diamonds}
                     avatar={data.avatar}
-                    onBack={() => setOverlay(null)}
+                    onBack={() => closeSecondary("store")}
                     onProfile={() => {
                       setOverlay(null);
+                      setOverlayReturnTab(null);
                       requestTab("profile");
                     }}
                     onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
@@ -661,7 +786,7 @@ export default function V8App() {
                   />
                   <FooterNav
                     active={tab}
-                    visible
+                    visible={!authOpen}
                     onChange={(next) => {
                       setOverlay(null);
                       requestTab(next);
@@ -704,20 +829,6 @@ export default function V8App() {
             <div className="pointer-events-none absolute bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">
               {navNotice}
             </div>
-          ) : null}
-
-          {authed &&
-          !purchaseFlow &&
-          !overlay &&
-          !creatorId &&
-          tab === "profile" ? (
-            <button
-              type="button"
-              className="auth7-logout-fab"
-              onClick={logout}
-            >
-              Log out
-            </button>
           ) : null}
         </div>
       )}

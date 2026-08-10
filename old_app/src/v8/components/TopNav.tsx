@@ -38,9 +38,10 @@ export function TopNav({
   return (
     <>
       <MobileDiamondUtility
+        coins={coins}
         balance={diamonds}
         onOpenStore={onOpenStore}
-        visible={showMobileDiamond && showBalances}
+        visible={showMobileDiamond && showBalances && activeTab !== "profile"}
       />
 
       <header className="sticky top-0 z-30 hidden h-[72px] border-b border-white/[0.08] bg-[#090909]/88 backdrop-blur-xl lg:block">

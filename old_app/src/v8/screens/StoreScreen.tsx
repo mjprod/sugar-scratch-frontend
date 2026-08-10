@@ -437,7 +437,7 @@ function StoreTopNav({
         <button
           type="button"
           onClick={onBack}
-          className="grid size-11 shrink-0 place-items-center rounded-full text-white/75 transition active:scale-95 hover:bg-white/10"
+          className="subpage-back"
           aria-label="Back"
         >
           <ChevronLeft className="size-5" />
@@ -445,7 +445,7 @@ function StoreTopNav({
 
         <span className="min-w-0 flex-1 truncate text-[18px] font-bold">Store</span>
 
-        <MobileDiamondBalance balance={diamonds} />
+        <MobileDiamondBalance balance={diamonds} standalone />
 
         <button
           type="button"
@@ -461,7 +461,7 @@ function StoreTopNav({
         <button
           type="button"
           onClick={onBack}
-          className="grid size-11 shrink-0 place-items-center rounded-full text-white/75 transition hover:bg-white/10"
+          className="subpage-back"
           aria-label="Back"
         >
           <ChevronLeft className="size-5" />

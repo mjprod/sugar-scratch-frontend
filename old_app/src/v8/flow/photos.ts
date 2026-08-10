@@ -64,8 +64,13 @@ export const SPLASH_PHOTOS = [
   HOLO_PACKS.racingHolo,
 ] as const;
 
+/** Full creator card art (photo + chrome) from FigJam reference */
+export const CREATOR_CARD_PHOTOS = {
+  juliana: "/images/cards/juliana-card.png",
+} as const;
+
 export const PREFERENCE_PHOTOS = [
-  HOLO_PACKS.cyberHolo,
+  CREATOR_CARD_PHOTOS.juliana,
   HOLO_PACKS.kimonoHolo,
   HOLO_PACKS.idolHolo,
   HOLO_PACKS.nurseHolo,

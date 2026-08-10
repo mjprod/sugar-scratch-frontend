@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layers } from "lucide-react";
 import { type ScratchReadyGroup, type UnopenedPack } from "../../flow/collection";
 import { listUnopenedGroups } from "../../flow/packInventory";
 import {
@@ -14,10 +13,19 @@ function themeLabel(name: string) {
   return name.replace(/\s+Pack$/i, "");
 }
 
+function defaultSegment(
+  scratchCount: number,
+  packCount: number,
+): ReadySegment {
+  if (scratchCount > 0) return "scratch";
+  if (packCount > 0) return "packs";
+  return "scratch";
+}
+
 export function ReadyToReveal({
   onOpenPack,
   onScratch,
-  onExplorePacks,
+  onExplorePacks: _onExplorePacks,
   scratchGroups,
   unopenedPacks,
   inventoryRevision = 0,
@@ -46,8 +54,15 @@ export function ReadyToReveal({
     }
   }, [scratchCount, inventoryRevision]);
 
-  // Spec: Unscratched Cards is always the default when entering My Bag.
-  const [segment, setSegment] = useState<ReadySegment>("scratch");
+  const [segment, setSegment] = useState<ReadySegment>(() =>
+    defaultSegment(scratchCount, packCount),
+  );
+
+  useEffect(() => {
+    setSegment(defaultSegment(scratchCount, packCount));
+  }, [scratchCount, packCount, inventoryRevision]);
+
+  if (packCount === 0 && scratchCount === 0) return null;
 
   return (
     <section className="collection-section" aria-labelledby="ready-heading">
@@ -111,9 +126,9 @@ export function ReadyToReveal({
             ))
           ) : (
             <article className="collection-empty-panel ready-scratch-card">
-              <h3 className="collection-empty-title">Nothing waiting to be scratched</h3>
+              <h3 className="collection-empty-title">No unscratched cards</h3>
               <p className="collection-empty-copy">
-                Open a pack, then come back here when you are ready to reveal.
+                Open a pack to add cards here.
               </p>
             </article>
           )
@@ -124,12 +139,10 @@ export function ReadyToReveal({
                 <img src={pack.coverUrl} alt="" className="size-full object-cover" />
               </div>
               <div className="ready-pack-body">
-                <h3 className="ready-card-title">
-                  {pack.creator} · {themeLabel(pack.name)}
-                </h3>
+                <h3 className="ready-card-title">{themeLabel(pack.name)}</h3>
+                <p className="ready-card-meta">by {pack.creator}</p>
                 <p className="ready-card-qty">
-                  {pack.count}{" "}
-                  {pack.count === 1 ? "pack ready" : "packs ready"}
+                  {pack.count} {pack.count === 1 ? "Pack" : "Packs"}
                 </p>
                 <button
                   type="button"
@@ -145,25 +158,10 @@ export function ReadyToReveal({
           <article className="collection-empty-panel ready-pack-card">
             <h3 className="collection-empty-title">No unopened packs</h3>
             <p className="collection-empty-copy">
-              Purchase packs from Home or Explore to fill this shelf.
+              Purchase packs from Browse to fill this shelf.
             </p>
           </article>
         )}
-
-        <article className="ready-explore-card">
-          <span className="ready-explore-icon" aria-hidden="true">
-            <Layers className="size-6" strokeWidth={1.6} />
-          </span>
-          <p className="ready-card-meta">Need more packs?</p>
-          <h3 className="ready-card-title">
-            Explore new
-            <br />
-            collections
-          </h3>
-          <button type="button" className="collection-cta-ghost" onClick={onExplorePacks}>
-            Explore Packs
-          </button>
-        </article>
       </div>
     </section>
   );

@@ -1,0 +1,25 @@
+---
+description: When committing or pushing, only old_app and always ask first
+alwaysApply: true
+---
+
+# Git: old_app only + ask permission
+
+When the user asks to commit, push, or "update" the remote:
+
+1. **Ask for explicit permission first.** Do not commit or push until they say yes.
+2. **Stage and commit only files under `old_app/`.** Never stage, commit, or push changes outside `old_app/` (e.g. `src/`, `public/`, root config).
+3. Prefer staging the specific paths changed (often `old_app/src/v8/`) rather than the whole repo.
+4. Before committing, show `git status` / staged paths and confirm they are all under `old_app/`.
+5. Default push target for this workflow is the current branch's upstream (usually `origin/dev`); still ask before pushing.
+
+```bash
+# ✅ OK
+git add old_app/
+git add old_app/src/v8/
+
+# ❌ Never for this workflow
+git add .
+git add -A
+git add src/ public/
+```

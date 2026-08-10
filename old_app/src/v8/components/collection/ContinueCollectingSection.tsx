@@ -1,13 +1,14 @@
-import { CREATOR_PROGRESS, type CreatorProgress } from "../../flow/collection";
+import type { CreatorProgress } from "../../flow/collection";
 
 export function ContinueCollectingSection({
+  creators,
   onOpenCreator,
   onViewAll,
 }: {
+  creators: CreatorProgress[];
   onOpenCreator: (creatorId: string) => void;
   onViewAll: () => void;
 }) {
-  const creators = CREATOR_PROGRESS;
   if (creators.length === 0) return null;
 
   return (

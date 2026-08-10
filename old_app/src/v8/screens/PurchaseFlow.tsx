@@ -31,6 +31,10 @@ import {
   type PurchaseFlowPack,
 } from "../flow/purchase";
 import {
+  noteCreatorStarted,
+  recordRevealedCards,
+} from "../flow/collectionState";
+import {
   addUnopenedFromPurchase,
   countUnopened,
   getPackInstance,
@@ -263,6 +267,7 @@ export function PurchaseFlow({
       });
       const first = owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
+      noteCreatorStarted(first.creatorId, pack.creator);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
       setSession(null);
@@ -345,6 +350,11 @@ export function PurchaseFlow({
     const coins = session.cards
       .filter((card) => fresh.includes(card.id))
       .reduce((total, card) => total + card.reward, 0);
+    recordRevealedCards({
+      count: fresh.length,
+      creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+      creatorName: pack.creator,
+    });
     onComplete({ cards: fresh.length, coins });
   }
 

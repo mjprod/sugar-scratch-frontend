@@ -1,0 +1,20 @@
+---
+description: Only maintain the sugar-scratch-frontend clone; never sync to /Users/apple7/sugar
+alwaysApply: true
+---
+
+# Maintain clone only
+
+Source of truth for v8 prototype work:
+
+`/Users/apple7/Documents/sugar-scratch-frontend/old_app/src/v8`
+
+Do **not**:
+
+- Copy or sync files into `/Users/apple7/sugar`
+- Patch `/Users/apple7/sugar/src/v8` to “make the phone tunnel work”
+- Treat `/Users/apple7/sugar` as the project workspace
+
+If the user needs a phone preview, run/tunnel the **clone** app (this repo), not the separate sugar directory.
+
+Git commit/push still applies only to this clone (`old_app/` only when pushing updates, and ask permission first).

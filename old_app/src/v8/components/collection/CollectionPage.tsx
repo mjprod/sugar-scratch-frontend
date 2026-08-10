@@ -1,12 +1,14 @@
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   type CollectionLibraryFilter,
   type LibraryPreviewCard,
   type ScratchReadyGroup,
   type UnopenedPack,
 } from "../../flow/collection";
+import { getCollectionPageState } from "../../flow/collectionState";
 import type { PurchaseFlowPack } from "../../flow/purchase";
 import { CardLibraryPreview } from "./CardLibraryPreview";
+import { CollectionEmptyState } from "./CollectionEmptyState";
 import { CollectionPlaceholder } from "./CollectionPlaceholder";
 import { CollectionSnapshot } from "./CollectionSnapshot";
 import { ContinueCollectingSection } from "./ContinueCollectingSection";
@@ -20,7 +22,7 @@ type HubOverlay =
   | null;
 
 /**
- * Collection hub — achievement → ready-to-reveal → creator progress → library.
+ * Collection hub — modules appear only when inventory makes them relevant.
  */
 export function CollectionPage({
   onOpenCreator,
@@ -36,6 +38,10 @@ export function CollectionPage({
   inventoryRevision?: number;
 }) {
   const [overlay, setOverlay] = useState<HubOverlay>(null);
+  const state = useMemo(
+    () => getCollectionPageState(),
+    [inventoryRevision],
+  );
 
   function openPack(pack: UnopenedPack) {
     onOpenPack({
@@ -68,27 +74,46 @@ export function CollectionPage({
       }
     >
       <div className="collection-page-content">
-        <CollectionSnapshot
-          onOpenLibrary={(filter) => setOverlay({ kind: "library", filter })}
-          onOpenCreators={() => setOverlay({ kind: "creators" })}
-        />
+        {state.isTrueEmpty ? (
+          <CollectionEmptyState onExplorePacks={onExplorePacks} />
+        ) : (
+          <>
+            {state.hasCollectedCards ? (
+              <CollectionSnapshot
+                summary={state.summary}
+                onOpenLibrary={(filter) =>
+                  setOverlay({ kind: "library", filter })
+                }
+                onOpenCreators={() => setOverlay({ kind: "creators" })}
+              />
+            ) : null}
 
-        <ReadyToReveal
-          onOpenPack={openPack}
-          onScratch={openScratch}
-          onExplorePacks={onExplorePacks}
-          inventoryRevision={inventoryRevision}
-        />
+            {state.hasPendingReveal ? (
+              <ReadyToReveal
+                onOpenPack={openPack}
+                onScratch={openScratch}
+                onExplorePacks={onExplorePacks}
+                inventoryRevision={inventoryRevision}
+              />
+            ) : null}
 
-        <ContinueCollectingSection
-          onOpenCreator={onOpenCreator}
-          onViewAll={() => setOverlay({ kind: "creators" })}
-        />
+            {state.hasStartedCollection &&
+            state.continueCreators.length > 0 ? (
+              <ContinueCollectingSection
+                creators={state.continueCreators}
+                onOpenCreator={onOpenCreator}
+                onViewAll={() => setOverlay({ kind: "creators" })}
+              />
+            ) : null}
 
-        <CardLibraryPreview
-          onViewAll={() => setOverlay({ kind: "library", filter: "all" })}
-          onOpenCard={(card) => setOverlay({ kind: "card", card })}
-        />
+            {state.hasCollectedCards ? (
+              <CardLibraryPreview
+                onViewAll={() => setOverlay({ kind: "library", filter: "all" })}
+                onOpenCard={(card) => setOverlay({ kind: "card", card })}
+              />
+            ) : null}
+          </>
+        )}
       </div>
 
       {overlay ? (

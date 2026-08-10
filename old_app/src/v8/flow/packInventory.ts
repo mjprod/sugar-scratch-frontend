@@ -114,6 +114,15 @@ export function addUnopenedFromPurchase(input: {
   return created;
 }
 
+/** All owned pack instances (unopened + opened). */
+export function listOwnedPacks(): OwnedPackInstance[] {
+  return readAll();
+}
+
+export function countOwnedPacks(): number {
+  return readAll().length;
+}
+
 export function getPackInstance(instanceId: string): OwnedPackInstance | null {
   return readAll().find((pack) => pack.instanceId === instanceId) ?? null;
 }

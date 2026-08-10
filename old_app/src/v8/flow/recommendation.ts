@@ -42,10 +42,10 @@ export type RecommendationCard = {
 export const RECOMMENDATION_CARDS: RecommendationCard[] = [
   {
     id: "oc1",
-    creatorId: "emily",
-    name: "Emily",
-    theme: "Cyber Nights",
-    tagline: "Futuristic cosplay creator",
+    creatorId: "juliana",
+    name: "Juliana",
+    theme: "Buenos Aires",
+    tagline: "@julianaval",
   },
   {
     id: "oc2",
