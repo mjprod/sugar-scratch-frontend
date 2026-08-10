@@ -15,32 +15,26 @@ export function CardLibraryPreview({
   if (cards.length === 0) {
     return (
       <section className="collection-section" aria-labelledby="library-heading">
-        <div className="collection-section-intro">
+        <div className="collection-section-head-row collection-section-head-row--inline">
           <h2 id="library-heading" className="collection-section-title">
             Your Card Library
           </h2>
-          <p className="collection-section-copy">
-            Your revealed cards will appear here.
-          </p>
+          <button type="button" className="collection-text-link" onClick={onViewAll}>
+            View All &gt;
+          </button>
         </div>
-        <button type="button" className="collection-cta" onClick={onViewAll}>
-          View Library
-        </button>
       </section>
     );
   }
 
   return (
     <section className="collection-section" aria-labelledby="library-heading">
-      <div className="collection-section-head-row">
-        <div className="collection-section-intro">
-          <h2 id="library-heading" className="collection-section-title">
-            Your Card Library
-          </h2>
-          <p className="collection-section-copy">Browse all your collected cards.</p>
-        </div>
+      <div className="collection-section-head-row collection-section-head-row--inline">
+        <h2 id="library-heading" className="collection-section-title">
+          Your Card Library
+        </h2>
         <button type="button" className="collection-text-link" onClick={onViewAll}>
-          View all cards →
+          View All &gt;
         </button>
       </div>
 

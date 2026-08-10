@@ -1,4 +1,3 @@
-import { Bell, Gem, Sparkles, UserRound } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -22,26 +21,16 @@ import {
 const SNAP_MS = 220;
 
 export function HomeFeedScreen({
-  coins,
-  diamonds,
-  avatar,
   active,
-  guest = false,
   resumeLikeId = null,
   onResumeLikeConsumed,
   onBuyPack,
   onLikeAttempt,
-  onProfile,
-  onOpenStore,
-  onNotify,
+  onOpenCreator,
   personalizationPrompt = null,
 }: {
-  coins: number;
-  diamonds: number;
-  avatar: string | null;
   /** When false, stay mounted but pause media (preserve scroll). */
   active: boolean;
-  guest?: boolean;
   /** After auth, apply this like without a second tap. */
   resumeLikeId?: string | null;
   onResumeLikeConsumed?: () => void;
@@ -53,9 +42,7 @@ export function HomeFeedScreen({
   }) => void;
   /** Guest like gate — return false to block toggle. */
   onLikeAttempt?: (itemId: string) => boolean;
-  onProfile: () => void;
-  onOpenStore?: () => void;
-  onNotify?: () => void;
+  onOpenCreator?: (creatorId: string) => void;
   personalizationPrompt?: ReactNode;
 }) {
   const cached = readHomeFeedCache();
@@ -276,49 +263,6 @@ export function HomeFeedScreen({
     >
       {personalizationPrompt}
       <div className="hf-frame">
-        <header className="hf-topnav">
-          <span className="hf-logo" aria-label="Sugar">
-            Sugar
-          </span>
-          <div className="hf-balances" aria-label="Balances">
-            <span className="hf-balance">
-              <Sparkles className="size-3.5" aria-hidden="true" />
-              <span className="tabular-nums">{coins}</span>
-            </span>
-            <button
-              type="button"
-              className="hf-balance is-button"
-              onClick={onOpenStore}
-              aria-label={`${diamonds} diamonds`}
-            >
-              <Gem className="size-3.5" aria-hidden="true" />
-              <span className="tabular-nums">{diamonds}</span>
-            </button>
-          </div>
-          <div className="hf-top-actions">
-            <button
-              type="button"
-              className="hf-icon-btn"
-              aria-label="Notifications"
-              onClick={onNotify}
-            >
-              <Bell className="size-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="hf-avatar-btn"
-              aria-label={guest ? "Sign in" : "Profile"}
-              onClick={onProfile}
-            >
-              {!guest && avatar ? (
-                <img src={avatar} alt="" className="hf-avatar-img" />
-              ) : (
-                <UserRound className="size-4" aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </header>
-
         {status === "loading" ? (
           <div className="hf-state" aria-busy="true">
             <div className="hf-skeleton" />
@@ -373,6 +317,7 @@ export function HomeFeedScreen({
                   active={active && item.id === activeId}
                   onLike={() => toggleLike(item.id)}
                   onBuy={() => onBuyPack(toPurchasePack(item))}
+                  onOpenCreator={onOpenCreator}
                   videoRef={(node) => {
                     if (node) videoRefs.current.set(item.id, node);
                     else videoRefs.current.delete(item.id);

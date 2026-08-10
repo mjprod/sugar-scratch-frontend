@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@import "./src/v8/theme.css";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Cormorant Garamond", Georgia, serif;
+}

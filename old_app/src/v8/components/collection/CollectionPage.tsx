@@ -7,15 +7,12 @@ import {
 } from "../../flow/collection";
 import type { PurchaseFlowPack } from "../../flow/purchase";
 import { CardLibraryPreview } from "./CardLibraryPreview";
-import { CollectionHeader } from "./CollectionHeader";
 import { CollectionPlaceholder } from "./CollectionPlaceholder";
 import { CollectionSnapshot } from "./CollectionSnapshot";
 import { ContinueCollectingSection } from "./ContinueCollectingSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
 type HubOverlay =
-  | { kind: "search" }
-  | { kind: "filter" }
   | { kind: "library"; filter: CollectionLibraryFilter }
   | { kind: "creators" }
   | { kind: "card"; card: LibraryPreviewCard }
@@ -29,10 +26,14 @@ export function CollectionPage({
   onOpenCreator,
   onOpenPack,
   onExplorePacks,
+  onScratchGroup,
+  inventoryRevision = 0,
 }: {
   onOpenCreator: (creatorId: string) => void;
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onExplorePacks: () => void;
+  onScratchGroup?: (group: ScratchReadyGroup) => void;
+  inventoryRevision?: number;
 }) {
   const [overlay, setOverlay] = useState<HubOverlay>(null);
 
@@ -47,6 +48,14 @@ export function CollectionPage({
     });
   }
 
+  function openScratch(group: ScratchReadyGroup) {
+    if (onScratchGroup) {
+      onScratchGroup(group);
+      return;
+    }
+    setOverlay({ kind: "scratch", group });
+  }
+
   return (
     <section
       data-page-scroll
@@ -59,11 +68,6 @@ export function CollectionPage({
       }
     >
       <div className="collection-page-content">
-        <CollectionHeader
-          onSearch={() => setOverlay({ kind: "search" })}
-          onFilter={() => setOverlay({ kind: "filter" })}
-        />
-
         <CollectionSnapshot
           onOpenLibrary={(filter) => setOverlay({ kind: "library", filter })}
           onOpenCreators={() => setOverlay({ kind: "creators" })}
@@ -71,8 +75,9 @@ export function CollectionPage({
 
         <ReadyToReveal
           onOpenPack={openPack}
-          onScratch={(group) => setOverlay({ kind: "scratch", group })}
+          onScratch={openScratch}
           onExplorePacks={onExplorePacks}
+          inventoryRevision={inventoryRevision}
         />
 
         <ContinueCollectingSection
@@ -99,10 +104,6 @@ export function CollectionPage({
 
 function overlayTitle(overlay: Exclude<HubOverlay, null>): string {
   switch (overlay.kind) {
-    case "search":
-      return "Collection Search Overlay";
-    case "filter":
-      return "Collection Filter Sheet";
     case "library":
       return "Full Card Library";
     case "creators":

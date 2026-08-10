@@ -1,3 +1,5 @@
+import { diamondCostForPackId } from "./homepage";
+
 export type PackQuantity = 1 | 5;
 
 /** Pack handed to the purchase / opening flow. */
@@ -6,10 +8,18 @@ export type PurchaseFlowPack = {
   packName: string;
   price: string;
   creator: string;
-  /** "open" enters the opening flow for packs the user already owns. */
-  entry?: "purchase" | "open";
+  /**
+   * purchase — buy then open
+   * open — open an owned sealed pack
+   * scratch — resume Ready-to-Scratch (never replays pack opening)
+   */
+  entry?: "purchase" | "open" | "scratch";
   /** Remaining unopened packs — drives the "No Remaining Packs" state. */
   unopenedPacks?: number;
+  /** Specific owned pack instance when resuming Open Pack. */
+  instanceId?: string;
+  /** Purchase transaction id — used for multi-pack continuation. */
+  purchaseId?: string;
 };
 
 export type OpeningCard = {
@@ -26,20 +36,29 @@ export type OpeningSession = {
 
 export const PACK_OPTIONS: {
   quantity: PackQuantity;
-  diamondCost: number;
   label: string;
   detail: string;
 }[] = [
-  { quantity: 1, diamondCost: 1, label: "Play 1 Pack", detail: "3 scratch cards" },
-  { quantity: 5, diamondCost: 3, label: "Play 5 Packs", detail: "Bundle preview" },
+  { quantity: 1, label: "Play 1 Pack", detail: "3 scratch cards" },
+  { quantity: 5, label: "Play 5 Packs", detail: "Bundle preview" },
 ];
 
-export function packCost(quantity: PackQuantity) {
-  return PACK_OPTIONS.find((option) => option.quantity === quantity)?.diamondCost ?? 0;
+/** Same unit Diamond cost shown on ranking / pack surfaces. */
+export function packUnitCost(packId = "pack") {
+  return diamondCostForPackId(packId);
 }
 
-export function buildOpeningSession(quantity: PackQuantity): OpeningSession {
-  const diamondCost = packCost(quantity);
+export function packCost(quantity: PackQuantity, packId = "pack") {
+  const unit = packUnitCost(packId);
+  // ponytail: 5-pack keeps the old 3× demo bundle ratio until real pricing exists.
+  return quantity === 1 ? unit : unit * 3;
+}
+
+export function buildOpeningSession(
+  quantity: PackQuantity,
+  packId = "pack",
+): OpeningSession {
+  const diamondCost = packCost(quantity, packId);
   // ponytail: the prototype caps the five-pack preview at five cards; replace with
   // the backend opening-session payload when pack composition is implemented.
   const cardCount = quantity === 1 ? 3 : 5;
@@ -49,7 +68,7 @@ export function buildOpeningSession(quantity: PackQuantity): OpeningSession {
     quantity,
     diamondCost,
     cards: Array.from({ length: cardCount }, (_, index) => ({
-      id: `card-${quantity}-${index + 1}`,
+      id: `card-${packId}-${quantity}-${index + 1}`,
       rarity: rarities[index],
       reward: index === cardCount - 1 ? 50 : 10 + index * 5,
     })),
@@ -88,13 +107,14 @@ function wait(ms: number) {
 export async function submitPurchase(
   quantity: PackQuantity,
   balance: number,
+  packId = "pack",
 ): Promise<OpeningSession> {
-  if (packCost(quantity) > balance) throw new PurchaseError("insufficient");
+  if (packCost(quantity, packId) > balance) throw new PurchaseError("insufficient");
   await wait(650);
   if (failureMode() === "purchase") {
     throw new PurchaseError("failed", "Purchase could not be completed.");
   }
-  return buildOpeningSession(quantity);
+  return buildOpeningSession(quantity, packId);
 }
 
 export async function loadOpeningAssets(): Promise<void> {
@@ -114,6 +134,7 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 6;
 export type OpeningStage =
   | "ready"
   | "reveal"
+  | "cards-ready"
   | "preview"
   | "grid"
   | "scratch"

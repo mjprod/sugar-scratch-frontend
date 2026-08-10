@@ -33,7 +33,7 @@ export function UserDashboardScreen({
   }
 
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
+    <section className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[calc(52px+env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
       <div className="mx-auto w-full max-w-5xl">
         <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.3),transparent_42%),#151515] p-6 sm:p-8">
           <div className="flex items-center gap-4">
@@ -65,19 +65,6 @@ export function UserDashboardScreen({
           <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
           <Stat icon={<Gem className="size-4" />} label="Diamonds" value={diamonds.toString()} />
           <Stat icon={<CreditCard className="size-4" />} label="Sugar Coins" value={coins.toString()} />
-        </div>
-
-        <div className="mt-4 rounded-[24px] border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37]">
-              <Trophy className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/45">Next progression reward</p>
-              <p className="mt-1 text-[15px] font-semibold">Exclusive Gold Foil Pack</p>
-            </div>
-            <span className="text-[12px] font-semibold text-[#D4AF37]">660 XP</span>
-          </div>
         </div>
 
         <div className="mt-7 grid gap-5 lg:grid-cols-2">

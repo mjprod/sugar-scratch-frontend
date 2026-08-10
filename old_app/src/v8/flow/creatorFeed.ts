@@ -7,10 +7,14 @@ export type HomeFeedCreator = {
   id: string;
   creatorId: string;
   creatorName: string;
+  /** @deprecated Prefer packName + tags for feed overlay. */
   collectionName: string;
+  /** @deprecated Prefer tags for feed overlay. */
   description: string;
   packId: string;
   packName: string;
+  /** Up to 3 shown on the feed card — theme / style / availability. */
+  tags: string[];
   mediaType: "video" | "image";
   posterUrl: string;
   videoUrl?: string;
@@ -69,6 +73,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Rooftop Collection",
     packId: "ep1",
     packName: "Golden Hour Pack",
+    tags: ["Rooftop", "Summer", "Limited"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[0].poster,
     videoUrl: PORTRAIT_CLIPS[0].video,
@@ -82,6 +87,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Soft morning light and quiet routines.",
     packId: "nl1",
     packName: "Daily Drop Foil Pack",
+    tags: ["Morning", "Soft", "Lifestyle"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[1].poster,
     videoUrl: PORTRAIT_CLIPS[1].video,
@@ -95,6 +101,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "City nights, chrome edges, electric pink.",
     packId: "aa1",
     packName: "Neon Muse Pack",
+    tags: ["Cyber", "Night", "Neon"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[2].poster,
     videoUrl: PORTRAIT_CLIPS[2].video,
@@ -108,6 +115,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Warm beach haze and foil motion cards.",
     packId: "eb1",
     packName: "Sunset Glow Pack",
+    tags: ["Beach", "Sunset", "Warm"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[3].poster,
     videoUrl: PORTRAIT_CLIPS[3].video,
@@ -121,6 +129,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Fast cuts, street energy, limited drops.",
     packId: "sw1",
     packName: "Bonus Rush Pack",
+    tags: ["Street", "Energy", "Limited"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[4].poster,
     videoUrl: PORTRAIT_CLIPS[4].video,
@@ -134,6 +143,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Evening glass, gold foil, exclusive themes.",
     packId: "np1",
     packName: "Champagne Foil Pack",
+    tags: ["Evening", "Gold", "Exclusive"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[5].poster,
     videoUrl: PORTRAIT_CLIPS[5].video,
@@ -147,6 +157,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Limited rooftop set after dark.",
     packId: "ep1",
     packName: "After Class Foil Pack",
+    tags: ["Rooftop", "Night", "Limited"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[6].poster,
     videoUrl: PORTRAIT_CLIPS[6].video,
@@ -160,6 +171,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
     description: "Motion previews from the studio floor.",
     packId: "aa1",
     packName: "Neon Muse Pack",
+    tags: ["Studio", "Motion", "Neon"],
     mediaType: "video",
     posterUrl: PORTRAIT_CLIPS[7].poster,
     videoUrl: PORTRAIT_CLIPS[7].video,
@@ -168,7 +180,18 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
 ];
 
 const PAGE_SIZE = 4;
-const FEED_CACHE_VERSION = 2;
+const FEED_CACHE_VERSION = 3;
+
+/** Display-only: drop trailing " Pack" from pack titles on the feed. */
+export function feedPackLabel(packName: string) {
+  return packName.replace(/\s+Pack$/i, "");
+}
+
+/** Cap visible feed tags at 3. */
+export function feedVisibleTags(tags: string[] | undefined) {
+  if (!tags?.length) return [];
+  return tags.slice(0, 3);
+}
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

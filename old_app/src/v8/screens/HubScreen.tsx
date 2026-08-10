@@ -13,8 +13,8 @@ const HUB_ITEMS: HubItem[] = [
   { id: "daily", label: "Daily Reward", detail: "Ready to claim", icon: Gift, accent: "#D4AF37" },
   {
     id: "store",
-    label: "Store",
-    detail: "Buy Diamonds and exclusive packs.",
+    label: "Reward Store",
+    detail: "Purchase Diamonds · View Store",
     icon: ShoppingBag,
     accent: "#60A5FA",
   },
@@ -30,7 +30,7 @@ const HUB_ITEMS: HubItem[] = [
 
 export function HubScreen({ onOpenStore }: { onOpenStore?: () => void }) {
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
+    <section className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[calc(52px+env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
       <div className="mx-auto w-full max-w-5xl">
         <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_80%_0%,rgba(139,92,246,.28),transparent_45%),#151515] p-6 sm:p-8">
           <div className="flex items-center gap-2 text-[#D4AF37]">
