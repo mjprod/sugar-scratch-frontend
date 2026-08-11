@@ -145,13 +145,10 @@ export function PurchaseFlow({
 
   const noPacksLeft =
     pack.entry === "open" && !openResume && countUnopened() === 0;
+  const buying = pack.entry !== "open";
 
   const restored = useRef(
     noPacksLeft || bagResume || openResume
-  const noPacksLeft = pack.entry === "open" && (pack.unopenedPacks ?? 0) <= 0;
-  const buying = pack.entry !== "open";
-  const restored = useRef(
-    noPacksLeft || buying
       ? ({ status: "none" } as const)
       : restoreOpening(pack.packId),
   ).current;
@@ -186,9 +183,6 @@ export function PurchaseFlow({
   const [model, setModel] = useState<ModelProfile | null>(null);
   const [pendingFoil, setPendingFoil] = useState<FoilPack | null>(null);
   const lastFoilRef = useRef<FoilPack | null>(null);
-  const [session, setSession] = useState<OpeningSession | null>(
-    resumed?.session ?? null,
-  );
   const [selectedCard, setSelectedCard] = useState(
     resumeIndex ?? resumed?.cardIndex ?? 0,
   );
@@ -210,8 +204,6 @@ export function PurchaseFlow({
   );
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
-  const packImage = PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
-  const cardImages = useMemo(() => Object.values(PACK_PHOTOS).slice(0, 8), []);
   const trackedDecision = useRef(false);
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
@@ -302,8 +294,7 @@ export function PurchaseFlow({
 
   async function purchase(quantity: PackQuantity, foil?: FoilPack) {
     if (submitting) return;
-    if (packCost(quantity, pack.packId) > diamonds) {
-    const cost = packCost(quantity);
+    const cost = packCost(quantity, pack.packId);
     if (cost > diamonds) {
       setModal("insufficient");
       return;
@@ -332,16 +323,15 @@ export function PurchaseFlow({
       noteCreatorStarted(first.creatorId, pack.creator);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
-      setSession(null);
-      const next = foil
-        ? {
-            ...buildFoilOpeningSession([foil], cost),
-            foilFaceUrl: foil.videoUrl,
-            foilLabel: foil.label,
-          }
-        : await submitPurchase(quantity, diamonds);
-      onSpend(next.diamondCost);
-      setSession(next);
+      setSession(
+        foil
+          ? {
+              ...buildFoilOpeningSession([foil], cost),
+              foilFaceUrl: foil.videoUrl,
+              foilLabel: foil.label,
+            }
+          : null,
+      );
       setScratched([]);
       setSelectedCard(0);
       awardedIds.current = new Set();
@@ -366,8 +356,13 @@ export function PurchaseFlow({
     setRetrying(true);
     try {
       await loadOpeningAssets();
-      setStage(instanceId || session ? "ready" : "select");
-      setStage(session ? "ready" : model?.packs.length ? "choose" : "select");
+      setStage(
+        instanceId || session
+          ? "ready"
+          : model?.packs.length
+            ? "choose"
+            : "select",
+      );
     } catch {
       setStage("load-failed");
     } finally {
@@ -392,7 +387,9 @@ export function PurchaseFlow({
       setStage("opening-interrupted");
       return;
     }
-    const next = buildOpeningSession(1, currentId);
+    const next = session?.foilFaceUrl
+      ? session
+      : buildOpeningSession(1, currentId);
     setInstanceId(currentId);
     setPurchaseId(opened.purchaseId);
     setSession(next);
@@ -700,7 +697,7 @@ export function PurchaseFlow({
             />
           ) : null}
 
-          {stage === "ready" ? (
+          {stage === "ready" && session ? (
             <ReadyStage
               packName={packDisplayName}
               packImage={packImage}
@@ -709,16 +706,10 @@ export function PurchaseFlow({
               quantity={session.quantity}
               designed={Boolean(session.foilFaceUrl)}
               collection={model?.collectionLabel}
-              onOpened={() => setStage("reveal")}
             />
           ) : null}
 
           {stage === "reveal" && session ? (
-            <RevealStage
-              cardCount={session.cards.length}
-              packImage={packImage}
-              cardImages={cardImages}
-              onContinue={() => setStage("cards-ready")}
             <MotionRevealStage
               modelId={model?.id ?? pack.packId}
               girlName={model?.name ?? pack.creator}
@@ -744,22 +735,17 @@ export function PurchaseFlow({
                     : current,
                 );
               }}
-              onContinue={() => setStage("preview")}
+              onContinue={() => setStage("cards-ready")}
             />
           ) : null}
 
           {stage === "cards-ready" && session ? (
             <CardsReadyStage
               session={session}
-              packName={pack.packName}
+              packName={packDisplayName}
               saving={savingLater}
               onScratchNow={startScratchNow}
               onLater={() => scratchLater("decision")}
-              index={selectedCard}
-              packName={packDisplayName}
-              onSelect={setSelectedCard}
-              onPlay={() => setStage("scratch")}
-              onSkip={() => setStage("grid")}
             />
           ) : null}
 
@@ -934,44 +920,7 @@ export function PurchaseFlow({
             />
           )}
         </ModalShell>
-      <AnimatePresence>
-        {modal === "insufficient" ? (
-          <FlowModal
-            key="insufficient"
-            icon={<Gem className="size-6 text-sky-300" />}
-            title="Insufficient Diamonds"
-            body="You don’t have enough Diamonds for this pack. Nothing was charged."
-            primary={{
-              label: "Get More Diamonds",
-              onClick: () => {
-                setModal(null);
-                if (onGetDiamonds) exit(onGetDiamonds);
-              },
-            }}
-            secondary={{ label: "Cancel", onClick: () => setModal(null) }}
-            onDismiss={() => setModal(null)}
-          />
-        ) : null}
-
-        {modal === "failed" ? (
-          <FlowModal
-            key="failed"
-            icon={<AlertTriangle className="size-6 text-[#F87171]" />}
-            title="Purchase Failed"
-            body="We couldn’t complete the purchase. No Diamonds were deducted."
-            primary={{
-              label: "Try Again",
-              onClick: () => {
-                const quantity = pending ?? PACK_OPTIONS[0].quantity;
-                setModal(null);
-                void purchase(quantity, lastFoilRef.current ?? pendingFoil ?? undefined);
-              },
-            }}
-            secondary={{ label: "Cancel", onClick: () => setModal(null) }}
-            onDismiss={() => setModal(null)}
-          />
-        ) : null}
-      </AnimatePresence>
+      ) : null}
     </section>
   );
 }
@@ -991,7 +940,7 @@ function StateScreen({
   secondary,
 }: {
   icon: ReactNode;
-  tone: "success" | "danger" | "neutral";
+  tone: "success" | "danger" | "neutral" | "warn";
   title: string;
   body: string;
   primary: CtaConfig;
@@ -1002,7 +951,9 @@ function StateScreen({
       ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
       : tone === "danger"
         ? "border-[#F87171]/30 bg-[#F87171]/10 text-[#F87171]"
-        : "border-white/12 bg-white/[0.06] text-white/70";
+        : tone === "warn"
+          ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+          : "border-white/12 bg-white/[0.06] text-white/70";
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
@@ -1032,7 +983,7 @@ function StateScreen({
           {secondary.label}
         </button>
       ) : null}
-    </section>
+    </div>
   );
 }
 
@@ -1591,64 +1542,6 @@ function ScratchStage({
       ) : (
         <p className="mt-5 text-[13px] text-white/45">Drag across the card or tap three times.</p>
       )}
-    </div>
-  );
-}
-
-type CtaConfig = { label: string; onClick: () => void; busy?: boolean };
-
-function StateScreen({
-  icon,
-  tone,
-  title,
-  body,
-  primary,
-  secondary,
-}: {
-  icon: ReactNode;
-  tone: "success" | "danger" | "neutral" | "warn";
-  title: string;
-  body: string;
-  primary: CtaConfig;
-  secondary?: CtaConfig;
-}) {
-  const toneClass =
-    tone === "success"
-      ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-      : tone === "danger"
-        ? "border-[#F87171]/30 bg-[#F87171]/10 text-[#F87171]"
-        : tone === "warn"
-          ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
-          : "border-white/12 bg-white/[0.06] text-white/70";
-
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
-      <span
-        className={["grid size-16 place-items-center rounded-full border", toneClass].join(" ")}
-        aria-hidden="true"
-      >
-        {icon}
-      </span>
-      <h1 className="mt-5 text-[24px] font-bold tracking-[-0.02em]">{title}</h1>
-      <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-white/55">{body}</p>
-      <button
-        type="button"
-        onClick={primary.onClick}
-        disabled={primary.busy}
-        className="mt-7 inline-flex h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-[#8B5CF6] text-[15px] font-semibold disabled:opacity-60"
-      >
-        {primary.busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-        {primary.label}
-      </button>
-      {secondary ? (
-        <button
-          type="button"
-          onClick={secondary.onClick}
-          className="mt-3 h-11 px-6 text-[13px] font-medium text-white/55 hover:text-white/80"
-        >
-          {secondary.label}
-        </button>
-      ) : null}
     </div>
   );
 }

@@ -64,6 +64,22 @@ export function buildOpeningSession(
   packId = "pack",
 ): OpeningSession {
   const diamondCost = packCost(quantity, packId);
+  // ponytail: the prototype caps the five-pack preview at five cards; replace with
+  // the backend opening-session payload when pack composition is implemented.
+  const cardCount = quantity === 1 ? 3 : 5;
+  const rarities: OpeningCard["rarity"][] = ["Rare", "Rare", "Super Rare", "Rare", "Ultra Rare"];
+
+  return {
+    quantity,
+    diamondCost,
+    cards: Array.from({ length: cardCount }, (_, index) => ({
+      id: `card-${packId}-${quantity}-${index + 1}`,
+      rarity: rarities[index],
+      reward: index === cardCount - 1 ? 50 : 10 + index * 5,
+    })),
+  };
+}
+
 export function buildFoilOpeningSession(
   foils: { id: string; label: string; videoUrl: string }[],
   diamondCost = packCost(1),
@@ -77,24 +93,6 @@ export function buildFoilOpeningSession(
       rarity: rarities[index] ?? "Rare",
       reward: index === 0 ? 25 : 50,
       faceUrl: foil.videoUrl,
-    })),
-  };
-}
-
-export function buildOpeningSession(quantity: PackQuantity): OpeningSession {
-  const diamondCost = packCost(quantity);
-  // ponytail: the prototype caps the five-pack preview at five cards; replace with
-  // the backend opening-session payload when pack composition is implemented.
-  const cardCount = quantity === 1 ? 3 : 5;
-  const rarities: OpeningCard["rarity"][] = ["Rare", "Rare", "Super Rare", "Rare", "Ultra Rare"];
-
-  return {
-    quantity,
-    diamondCost,
-    cards: Array.from({ length: cardCount }, (_, index) => ({
-      id: `card-${packId}-${quantity}-${index + 1}`,
-      rarity: rarities[index],
-      reward: index === cardCount - 1 ? 50 : 10 + index * 5,
     })),
   };
 }

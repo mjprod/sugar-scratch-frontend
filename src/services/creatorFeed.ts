@@ -76,6 +76,7 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     description: profile.collectionLabel,
     packId: profile.id,
     packName: profile.collectionLabel,
+    tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
     mediaType: profile.swipeVideoUrl ? "video" : "image",
     posterUrl: profile.swipeVideoUrl ? "" : PORTRAIT_CLIPS[0].poster,
     videoUrl: profile.swipeVideoUrl ?? undefined,
@@ -199,7 +200,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
 ];
 
 const PAGE_SIZE = 4;
-const FEED_CACHE_VERSION = 3;
+const FEED_CACHE_VERSION = 4;
 
 /** Display-only: drop trailing " Pack" from pack titles on the feed. */
 export function feedPackLabel(packName: string) {
@@ -211,7 +212,6 @@ export function feedVisibleTags(tags: string[] | undefined) {
   if (!tags?.length) return [];
   return tags.slice(0, 3);
 }
-const FEED_CACHE_VERSION = 4;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
