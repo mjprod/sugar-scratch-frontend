@@ -11,8 +11,6 @@ import {
 import {
   useMemo,
   useState,
-  type KeyboardEvent,
-  type MouseEvent,
   type ReactNode,
 } from "react";
 import { EmptyState } from "@/components/EmptyState";
@@ -216,21 +214,12 @@ function MessageItem({
   onPress: (message: InboxMessage) => void;
   onCta: (message: InboxMessage) => void;
 }) {
-  function onKey(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onPress(message);
-    }
-  }
-
   return (
-    <li>
-      <div
+    <li className="inbox-item-row">
+      <button
+        type="button"
         className="inbox-item"
-        role="button"
-        tabIndex={0}
         onClick={() => onPress(message)}
-        onKeyDown={onKey}
       >
         <span
           className={[
@@ -248,25 +237,22 @@ function MessageItem({
           <span className="inbox-item-time">
             {relativeTime(message.timestamp)}
           </span>
-          {message.cta ? (
-            <button
-              type="button"
-              className="inbox-item-cta"
-              onClick={(event: MouseEvent) => {
-                event.stopPropagation();
-                onCta(message);
-              }}
-            >
-              {message.cta.label}
-            </button>
-          ) : null}
         </span>
         <ChevronRight
           className="inbox-item-chevron"
           aria-hidden="true"
           strokeWidth={1.8}
         />
-      </div>
+      </button>
+      {message.cta ? (
+        <button
+          type="button"
+          className="inbox-item-cta"
+          onClick={() => onCta(message)}
+        >
+          {message.cta.label}
+        </button>
+      ) : null}
     </li>
   );
 }
