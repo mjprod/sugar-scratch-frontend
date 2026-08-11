@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useState } from "react";
 import {
   Compass,
   Gift,
@@ -70,138 +70,8 @@ const CUTOUT_STYLE = {
   )}%`,
 };
 
-type RimId = "a" | "c" | "brA" | "brC";
-
-type RimLayerDebug = {
-  x: number;
-  y: number;
-  /** Layer height in px (overrides shared base height when set) */
-  height: number;
-  scale: number;
-  opacity: number;
-};
-
-type RimBaseDebug = {
-  left: number;
-  right: number;
-  bottom: number;
-  height: number;
-};
-
-type RimDebugState = {
-  base: RimBaseDebug;
-  layers: Record<RimId, RimLayerDebug>;
-};
-
-const RIM_META: { id: RimId; label: string; className: string }[] = [
-  { id: "a", label: "Left soft (rim-a)", className: "nav-test-dock-rim-a" },
-  { id: "c", label: "Left crisp (rim-c)", className: "nav-test-dock-rim-c" },
-  { id: "brA", label: "BR soft (rim-br-a)", className: "nav-test-dock-rim-br-a" },
-  { id: "brC", label: "BR crisp (rim-br-c)", className: "nav-test-dock-rim-br-c" },
-];
-
-/** Locked rim layout from debug panel. */
-const DEFAULT_RIM_DEBUG: RimDebugState = {
-  base: { left: -3, right: -3, bottom: 13, height: 87 },
-  layers: {
-    a: { x: 60.5, y: -11, height: 60, scale: 1.4, opacity: 0.68 },
-    c: { x: 0.5, y: 5, height: 94, scale: 1, opacity: 0.9 },
-    brA: { x: -34, y: 2.5, height: 91, scale: 1, opacity: 0.64 },
-    brC: { x: -36, y: 4, height: 91.5, scale: 1, opacity: 0.9 },
-  },
-};
-
-function rimLayerStyle(layer: RimLayerDebug): CSSProperties {
-  return {
-    ["--rim-x" as string]: `${layer.x}px`,
-    ["--rim-y" as string]: `${layer.y}px`,
-    ["--rim-layer-height" as string]: `${layer.height}px`,
-    ["--rim-scale" as string]: String(layer.scale),
-    ["--rim-opacity" as string]: String(layer.opacity),
-  };
-}
-
-function rimBaseStyle(base: RimBaseDebug): CSSProperties {
-  return {
-    ["--rim-left" as string]: `${base.left}px`,
-    ["--rim-right" as string]: `${base.right}px`,
-    ["--rim-bottom" as string]: `${base.bottom}px`,
-    ["--rim-height" as string]: `${base.height}px`,
-  };
-}
-
-function buildRimExport(state: RimDebugState) {
-  const cssLines = [
-    "/* Shared rim box */",
-    `.nav-test-dock-rim {`,
-    `  left: ${state.base.left}px;`,
-    `  right: ${state.base.right}px;`,
-    `  bottom: ${state.base.bottom}px;`,
-    `  height: ${state.base.height}px;`,
-    `}`,
-    "",
-  ];
-
-  for (const meta of RIM_META) {
-    const layer = state.layers[meta.id];
-    cssLines.push(
-      `.${meta.className} {`,
-      `  height: ${layer.height}px;`,
-      `  transform: translate(${layer.x}px, ${layer.y}px) scale(${layer.scale});`,
-      `  opacity: ${layer.opacity};`,
-      `}`,
-      "",
-    );
-  }
-
-  return {
-    json: state,
-    css: cssLines.join("\n"),
-  };
-}
-
 export function NavTestPage() {
   const [active, setActive] = useState<NavTestTab>("home");
-  const [rimDebug, setRimDebug] = useState<RimDebugState>(DEFAULT_RIM_DEBUG);
-  const [activeRim, setActiveRim] = useState<RimId>("a");
-  const [copyMsg, setCopyMsg] = useState("");
-  const [panelOpen, setPanelOpen] = useState(true);
-
-  const rimExport = useMemo(() => buildRimExport(rimDebug), [rimDebug]);
-  const baseStyle = rimBaseStyle(rimDebug.base);
-
-  async function copyText(label: string, text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyMsg(`Copied ${label}`);
-    } catch {
-      setCopyMsg("Copy failed — select text manually");
-    }
-    window.setTimeout(() => setCopyMsg(""), 1600);
-  }
-
-  function setBase<K extends keyof RimBaseDebug>(key: K, value: number) {
-    setRimDebug((prev) => ({
-      ...prev,
-      base: { ...prev.base, [key]: value },
-    }));
-  }
-
-  function setLayer<K extends keyof RimLayerDebug>(
-    id: RimId,
-    key: K,
-    value: number,
-  ) {
-    setRimDebug((prev) => ({
-      ...prev,
-      layers: {
-        ...prev.layers,
-        [id]: { ...prev.layers[id], [key]: value },
-      },
-    }));
-  }
-
-  const layer = rimDebug.layers[activeRim];
 
   return (
     <section className="nav-test">
@@ -214,200 +84,7 @@ export function NavTestPage() {
         aria-label={`${active} cover background`}
       />
 
-      {panelOpen ? (
-        <aside className="nav-test-rim-debug" aria-label="Rim light debug controls">
-          <header className="nav-test-rim-debug-header">
-            <div>
-              <strong>Rim lights</strong>
-              <span>scale · transform · position</span>
-            </div>
-            <button
-              type="button"
-              className="nav-test-rim-debug-hide"
-              onClick={() => setPanelOpen(false)}
-            >
-              Hide
-            </button>
-          </header>
-
-          <p className="nav-test-rim-debug-section">Shared box</p>
-          <label className="nav-test-rim-debug-row">
-            <span>Left px</span>
-            <input
-              type="range"
-              min={-20}
-              max={20}
-              step={0.5}
-              value={rimDebug.base.left}
-              onChange={(e) => setBase("left", Number(e.target.value))}
-            />
-            <em>{rimDebug.base.left}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Right px</span>
-            <input
-              type="range"
-              min={-20}
-              max={20}
-              step={0.5}
-              value={rimDebug.base.right}
-              onChange={(e) => setBase("right", Number(e.target.value))}
-            />
-            <em>{rimDebug.base.right}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Bottom px</span>
-            <input
-              type="range"
-              min={-10}
-              max={40}
-              step={0.5}
-              value={rimDebug.base.bottom}
-              onChange={(e) => setBase("bottom", Number(e.target.value))}
-            />
-            <em>{rimDebug.base.bottom}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Height px</span>
-            <input
-              type="range"
-              min={60}
-              max={120}
-              step={0.5}
-              value={rimDebug.base.height}
-              onChange={(e) => setBase("height", Number(e.target.value))}
-            />
-            <em>{rimDebug.base.height}</em>
-          </label>
-
-          <p className="nav-test-rim-debug-section">Layer</p>
-          <div className="nav-test-rim-debug-tabs">
-            {RIM_META.map((meta) => (
-              <button
-                key={meta.id}
-                type="button"
-                className={activeRim === meta.id ? "is-active" : ""}
-                onClick={() => setActiveRim(meta.id)}
-              >
-                {meta.id}
-              </button>
-            ))}
-          </div>
-          <p className="nav-test-rim-debug-layer-name">
-            {RIM_META.find((m) => m.id === activeRim)?.label}
-          </p>
-
-          <label className="nav-test-rim-debug-row">
-            <span>X px</span>
-            <input
-              type="range"
-              min={-120}
-              max={120}
-              step={0.5}
-              value={layer.x}
-              onChange={(e) => setLayer(activeRim, "x", Number(e.target.value))}
-            />
-            <em>{layer.x}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Y px</span>
-            <input
-              type="range"
-              min={-120}
-              max={120}
-              step={0.5}
-              value={layer.y}
-              onChange={(e) => setLayer(activeRim, "y", Number(e.target.value))}
-            />
-            <em>{layer.y}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Height px</span>
-            <input
-              type="range"
-              min={60}
-              max={120}
-              step={0.5}
-              value={layer.height}
-              onChange={(e) =>
-                setLayer(activeRim, "height", Number(e.target.value))
-              }
-            />
-            <em>{layer.height}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Scale</span>
-            <input
-              type="range"
-              min={0.7}
-              max={3}
-              step={0.01}
-              value={layer.scale}
-              onChange={(e) =>
-                setLayer(activeRim, "scale", Number(e.target.value))
-              }
-            />
-            <em>{layer.scale.toFixed(2)}</em>
-          </label>
-          <label className="nav-test-rim-debug-row">
-            <span>Opacity</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={layer.opacity}
-              onChange={(e) =>
-                setLayer(activeRim, "opacity", Number(e.target.value))
-              }
-            />
-            <em>{layer.opacity.toFixed(2)}</em>
-          </label>
-
-          <div className="nav-test-rim-debug-actions">
-            <button
-              type="button"
-              onClick={() =>
-                copyText("JSON", JSON.stringify(rimExport.json, null, 2))
-              }
-            >
-              Copy JSON
-            </button>
-            <button
-              type="button"
-              onClick={() => copyText("CSS", rimExport.css)}
-            >
-              Copy CSS
-            </button>
-            <button
-              type="button"
-              onClick={() => setRimDebug(DEFAULT_RIM_DEBUG)}
-            >
-              Reset
-            </button>
-          </div>
-
-          {copyMsg ? <p className="nav-test-rim-debug-msg">{copyMsg}</p> : null}
-
-          <pre className="nav-test-rim-debug-pre">
-            {JSON.stringify(rimExport.json, null, 2)}
-          </pre>
-        </aside>
-      ) : (
-        <button
-          type="button"
-          className="nav-test-rim-debug-show"
-          onClick={() => setPanelOpen(true)}
-        >
-          Rim debug
-        </button>
-      )}
-
-      <nav
-        className="nav-test-dock"
-        style={baseStyle}
-        aria-label="Experimental bottom navigation"
-      >
+      <nav className="nav-test-dock" aria-label="Experimental bottom navigation">
         {/*
           Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
           (not clip-path) so backdrop-filter is shaped.
@@ -421,80 +98,23 @@ export function NavTestPage() {
           aria-hidden="true"
         />
 
-        {/*
-          White stroke rims — same path as the mask.
-          Transforms driven by debug CSS vars.
-        */}
-        <svg
-          className="nav-test-dock-rim nav-test-dock-rim-a"
-          viewBox={DOCK_VIEWBOX}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={rimLayerStyle(rimDebug.layers.a)}
-        >
-          <path
-            d={DOCK_PATH}
-            fill="none"
-            stroke="#fff"
-            strokeWidth="1.25"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        <svg
-          className="nav-test-dock-rim nav-test-dock-rim-c"
-          viewBox={DOCK_VIEWBOX}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={rimLayerStyle(rimDebug.layers.c)}
-        >
-          <path
-            d={DOCK_PATH}
-            fill="none"
-            stroke="#fff"
-            strokeWidth="1.25"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
+        {/* Rim light sets — narrow 2px stroke strips at left / center / right */}
+        <div className="nav-test-dock-rims" aria-hidden="true">
+          <div className="top-left-rim-light">
+            <div className="rim-left-a" />
+            <div className="rim-left-a-b" />
+          </div>
 
-        {/* Bottom-right rim light — soft + crisp, masked to BR corner */}
-        <svg
-          className="nav-test-dock-rim nav-test-dock-rim-br-a"
-          viewBox={DOCK_VIEWBOX}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={rimLayerStyle(rimDebug.layers.brA)}
-        >
-          <path
-            d={DOCK_PATH}
-            fill="none"
-            stroke="#fff"
-            strokeWidth="1.25"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        <svg
-          className="nav-test-dock-rim nav-test-dock-rim-br-c"
-          viewBox={DOCK_VIEWBOX}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={rimLayerStyle(rimDebug.layers.brC)}
-        >
-          <path
-            d={DOCK_PATH}
-            fill="none"
-            stroke="#fff"
-            strokeWidth="1.25"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
+          <div className="middle-right-rim-light">
+            <div className="rim-center-a" />
+            <div className="rim-center-a-b" />
+          </div>
+
+          <div className="bottom-right-rim-light">
+            <div className="rim-right-a" />
+            <div className="rim-right-a-b" />
+          </div>
+        </div>
 
         <div className="nav-test-dock-items">
           {TABS.map((tab) => {
@@ -635,60 +255,88 @@ const NAV_TEST_CSS = `
   overflow: visible;
 }
 
-/*
- * White path stroke — shared rim base.
- * Position/size driven by debug vars on .nav-test-dock:
- *   --rim-left --rim-right --rim-bottom --rim-height
- * Per-layer transform/size/opacity via:
- *   --rim-x --rim-y --rim-layer-height --rim-scale --rim-opacity
- */
-.nav-test-dock-rim {
+/* ── Rim light sets (left / center / right strips) ──────────────── */
+.nav-test-dock-rims {
   position: absolute;
-  left: var(--rim-left, -3px);
-  right: var(--rim-right, -3px);
-  bottom: var(--rim-bottom, 13px);
+  inset: 0;
   z-index: 1;
-  /* Per-layer height wins; falls back to shared base height */
-  height: var(--rim-layer-height, var(--rim-height, 87px));
-  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.top-left-rim-light,
+.middle-right-rim-light,
+.bottom-right-rim-light {
+  position: relative;
+  flex: 0 0 auto;
+  width: 10dvw;
+  height: 96px;
   overflow: visible;
   pointer-events: none;
-  opacity: var(--rim-opacity, 1);
-  transform: translate(var(--rim-x, 0px), var(--rim-y, 0px))
-    scale(var(--rim-scale, 1));
-  transform-origin: center center;
-  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 22%, transparent 58%);
-  mask-image: linear-gradient(149deg, #000 8%, transparent 21%);
 }
 
-.nav-test-dock-rim path {
-  fill: none;
-  stroke: #fff;
-  paint-order: stroke fill;
+.top-left-rim-light {
+  transform-origin: top left;
+  height: 75%;
 }
 
-/* Soft outer glow layer */
-.nav-test-dock-rim-a {
-  filter: blur(1.5px);
-  -webkit-mask-image: linear-gradient(166deg, #000 8%, transparent 41%);
-  mask-image: linear-gradient(166deg, #000 8%, transparent 41%);
+.middle-right-rim-light {
+  transform-origin: top center;
+  width: 65px;
+  height: 66px;
+  align-self: flex-start;
+  transform: translate(0%, -8%);
 }
 
-/* Crisp left edge (transform/height via debug vars / DEFAULT_RIM_DEBUG) */
-.nav-test-dock-rim-c {
+.bottom-right-rim-light {
+  transform-origin: top right;
+  height: 75%;
 }
 
-/* Bottom-right soft glow */
-.nav-test-dock-rim-br-a {
-  filter: blur(1.5px);
-  -webkit-mask-image: linear-gradient(304deg, #000 0%, #000 4%, transparent 20%);
-  mask-image: linear-gradient(304deg, #000 0%, #000 4%, transparent 20%);
+.rim-left-a,
+.rim-left-a-b,
+.rim-center-a,
+.rim-center-a-b,
+.rim-right-a,
+.rim-right-a-b {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 10dvw;
+  height: 96px;
+  border: 2px solid #fff;
+  background: transparent;
+  pointer-events: none;
 }
 
-/* Bottom-right crisp edge */
-.nav-test-dock-rim-br-c {
-  -webkit-mask-image: linear-gradient(355deg, #000 0%, #000 2%, transparent 12%);
-  mask-image: linear-gradient(355deg, #000 0%, #000 2%, transparent 12%);
+.rim-left-a,
+.rim-left-a-b {
+  transform-origin: top left;
+  border-radius: 20rem 0 0 20rem;
+  width: 30dvw;
+  height: 100%;
+}
+
+.rim-center-a,
+.rim-center-a-b {
+  transform-origin: top center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid #fff;
+}
+
+.rim-right-a,
+.rim-right-a-b {
+  transform-origin: top right;
+  border-radius: 0 20rem 20rem 0;
+  width: 30dvw;
+  height: 100%;
+  right: 0;
+  left: auto;
 }
 
 .nav-test-dock-items {
@@ -946,202 +594,5 @@ const NAV_TEST_CSS = `
 
 .nav-test-dock-primary.is-active .nav-test-dock-primary-label {
   color: #ff8fb1;
-}
-
-/* ── Rim light debug panel ───────────────────────────────────── */
-.nav-test-rim-debug {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 80;
-  width: min(360px, calc(100vw - 20px));
-  max-height: calc(100dvh - 20px);
-  overflow: auto;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 16px;
-  background: rgba(8, 8, 10, 0.92);
-  color: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
-  font-size: 13px;
-}
-
-.nav-test-rim-debug-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.nav-test-rim-debug-header strong {
-  display: block;
-  font-size: 14px;
-  letter-spacing: 0.02em;
-}
-
-.nav-test-rim-debug-header span {
-  display: block;
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
-}
-
-.nav-test-rim-debug-hide,
-.nav-test-rim-debug-show,
-.nav-test-rim-debug-actions button {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  padding: 8px 12px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.nav-test-rim-debug-show {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 80;
-}
-
-.nav-test-rim-debug-section {
-  margin: 14px 0 8px;
-  color: rgba(255, 143, 177, 0.9);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.nav-test-rim-debug-row {
-  display: grid;
-  grid-template-columns: 72px 1fr 48px;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.nav-test-rim-debug-row span {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
-}
-
-.nav-test-rim-debug-row em {
-  font-style: normal;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: #ffb0c8;
-  font-size: 12px;
-}
-
-/* Big slider track + thumb for touch / precision */
-.nav-test-rim-debug-row input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 18px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.nav-test-rim-debug-row input[type="range"]::-webkit-slider-runnable-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.nav-test-rim-debug-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  margin-top: -9px;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  background: #ff8fb1;
-  box-shadow: 0 2px 10px rgba(255, 80, 145, 0.45);
-}
-
-.nav-test-rim-debug-row input[type="range"]::-moz-range-track {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.nav-test-rim-debug-row input[type="range"]::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  background: #ff8fb1;
-  box-shadow: 0 2px 10px rgba(255, 80, 145, 0.45);
-}
-
-.nav-test-rim-debug-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.nav-test-rim-debug-tabs button {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
-  padding: 10px 6px;
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.nav-test-rim-debug-tabs button.is-active {
-  border-color: rgba(255, 143, 177, 0.55);
-  background: rgba(255, 143, 177, 0.18);
-  color: #fff;
-}
-
-.nav-test-rim-debug-layer-name {
-  margin: 0 0 10px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
-}
-
-.nav-test-rim-debug-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0 8px;
-}
-
-.nav-test-rim-debug-actions button:hover,
-.nav-test-rim-debug-hide:hover,
-.nav-test-rim-debug-show:hover {
-  background: rgba(255, 143, 177, 0.2);
-  border-color: rgba(255, 143, 177, 0.45);
-}
-
-.nav-test-rim-debug-msg {
-  margin: 0 0 8px;
-  color: #9dffc0;
-  font-size: 12px;
-}
-
-.nav-test-rim-debug-pre {
-  margin: 0;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.35);
-  color: rgba(255, 220, 235, 0.9);
-  font-size: 10px;
-  line-height: 1.4;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 180px;
 }
 `;
