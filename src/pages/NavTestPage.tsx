@@ -751,14 +751,7 @@ export function NavTestPage() {
             ]
               .filter(Boolean)
               .join(" ")}
-            role="slider"
-            aria-label="Drag top navigation indicator"
-            aria-valuetext={
-              topDragHoverTab
-                ? TABS.find((t) => t.id === topDragHoverTab)?.label
-                : TABS.find((t) => t.id === active)?.label
-            }
-            aria-hidden={topBubble.visible ? undefined : true}
+            aria-hidden="true"
             onPointerDown={handleTopBubblePointerDown}
             onPointerMove={handleTopBubblePointerMove}
             onPointerUp={endTopBubbleDrag}
