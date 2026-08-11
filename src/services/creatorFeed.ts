@@ -72,8 +72,8 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     description: profile.collectionLabel,
     packId: profile.id,
     packName: profile.collectionLabel,
-    mediaType: "video",
-    posterUrl: "",
+    mediaType: profile.swipeVideoUrl ? "video" : "image",
+    posterUrl: profile.swipeVideoUrl ? "" : PORTRAIT_CLIPS[0].poster,
     videoUrl: profile.swipeVideoUrl ?? undefined,
     diamondCost: 10,
   };
