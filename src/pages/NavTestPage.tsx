@@ -88,8 +88,7 @@ const DOCK_MASK = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${DOCK_VIEWBOX}" preserveAspectRatio="none"><path fill="white" d="${DOCK_PATH}"/></svg>`,
 )}")`;
 
-const COVER_IMAGE =
-  "https://fastly.picsum.photos/id/1043/200/200.jpg?hmac=i7xbST4bM6KMg5XsUaVYvDgwvsZ3VskoXKRqGf1BjcU";
+const COVER_IMAGE = "linear-gradient(180deg, #0c0c0e 0%, #15151c 100%)";
 
 /** Exactly 3 mesh colors for Collection BorderGlow rim */
 const COLLECTION_GLOW_COLORS = ["#ff8fb1", "#f472b6", "#c084fc"] as const;
