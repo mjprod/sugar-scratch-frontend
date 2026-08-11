@@ -9,7 +9,7 @@ const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "feed", label: "Browse" },
   { id: "bag", label: "Collection" },
-  { id: "hub", label: "Rewards" },
+  { id: "hub", label: "Hub" },
   { id: "profile", label: "Profile" },
 ];
 
