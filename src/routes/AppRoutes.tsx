@@ -10,6 +10,7 @@ import { CollectionPage } from "@/pages/CollectionPage";
 import { CreatorPage } from "@/pages/CreatorPage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
 import { LoadingPage } from "@/pages/LoadingPage";
+import { NavTestPage } from "@/pages/NavTestPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
@@ -78,6 +79,7 @@ export function AppRoutes() {
             </AuthShell>
           }
         />
+        <Route path={Paths.navTest} element={<NavTestPage />} />
         <Route
           path={Paths.recommend}
           element={
