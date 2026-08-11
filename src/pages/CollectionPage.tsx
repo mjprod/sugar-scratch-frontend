@@ -41,7 +41,7 @@ export function CollectionPage() {
     <CollectionScreen
       onOpenCreator={openCreator}
       onOpenPack={(pack) => openPurchase(pack, "open-pack")}
-      onExplorePacks={() => requestTab("home")}
+      onExplorePacks={() => requestTab("feed")}
       inventoryRevision={inventoryRevision}
       onScratchGroup={(group: ScratchReadyGroup) => {
         trackScratchEvent("Ready To Scratch Opened", {

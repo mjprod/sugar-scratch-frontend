@@ -41,6 +41,7 @@ export function TopNav({
         coins={coins}
         balance={diamonds}
         onOpenStore={onOpenStore}
+        mode="diamonds"
         visible={showMobileDiamond && showBalances && activeTab !== "profile"}
       />
 

@@ -37,7 +37,6 @@ export function CardLibraryPreview({
           <h2 id="library-heading" className="collection-section-title">
             Your Card Library
           </h2>
-          <p className="collection-section-copy">Browse all your collected cards.</p>
         </div>
         <button type="button" className="collection-text-link" onClick={onViewAll}>
           View all cards →

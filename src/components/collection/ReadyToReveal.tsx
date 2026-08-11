@@ -5,6 +5,7 @@ import {
   listReadyToScratch,
   trackScratchEvent,
 } from "@/services/readyToScratch";
+import { RevealInventoryTile } from "./RevealInventoryTile";
 
 type ReadySegment = "packs" | "scratch";
 
@@ -102,30 +103,25 @@ export function ReadyToReveal({
       <div className="collection-h-row" key={segment}>
         {segment === "scratch" ? (
           scratchCount > 0 ? (
-            scratches.map((group) => (
-              <article key={group.id} className="ready-scratch-card">
-                <div className="ready-scratch-art">
-                  <img src={group.coverUrl} alt="" className="size-full object-cover" />
-                </div>
-                <div className="ready-pack-body">
-                  <h3 className="ready-card-title">
-                    {group.creatorName} · {themeLabel(group.collectionName)}
-                  </h3>
-                  <p className="ready-card-qty">
-                    {group.count} {group.count === 1 ? "card ready" : "cards ready"}
-                  </p>
-                  <button
-                    type="button"
-                    className="collection-cta collection-cta--secondary ready-card-cta"
-                    onClick={() => onScratch(group)}
-                  >
-                    Scratch Now
-                  </button>
-                </div>
-              </article>
-            ))
+            scratches.map((group) => {
+              const title = themeLabel(group.collectionName);
+              const qtyLabel = `${group.count} ${
+                group.count === 1 ? "Card Ready" : "Cards Ready"
+              }`;
+              return (
+                <RevealInventoryTile
+                  key={group.id}
+                  coverUrl={group.coverUrl}
+                  title={title}
+                  creator={group.creatorName}
+                  quantityLabel={qtyLabel}
+                  ariaLabel={`Scratch ${title}, ${qtyLabel}`}
+                  onClick={() => onScratch(group)}
+                />
+              );
+            })
           ) : (
-            <article className="collection-empty-panel ready-scratch-card">
+            <article className="collection-empty-panel ready-reveal-empty">
               <h3 className="collection-empty-title">No unscratched cards</h3>
               <p className="collection-empty-copy">
                 Open a pack to add cards here.
@@ -133,29 +129,23 @@ export function ReadyToReveal({
             </article>
           )
         ) : packCount > 0 ? (
-          packs.map((pack) => (
-            <article key={pack.id} className="ready-pack-card">
-              <div className="ready-pack-art">
-                <img src={pack.coverUrl} alt="" className="size-full object-cover" />
-              </div>
-              <div className="ready-pack-body">
-                <h3 className="ready-card-title">{themeLabel(pack.name)}</h3>
-                <p className="ready-card-meta">by {pack.creator}</p>
-                <p className="ready-card-qty">
-                  {pack.count} {pack.count === 1 ? "Pack" : "Packs"}
-                </p>
-                <button
-                  type="button"
-                  className="collection-cta ready-card-cta"
-                  onClick={() => onOpenPack(pack)}
-                >
-                  Open Pack
-                </button>
-              </div>
-            </article>
-          ))
+          packs.map((pack) => {
+            const title = themeLabel(pack.name);
+            const qtyLabel = `${pack.count} ${pack.count === 1 ? "Pack" : "Packs"}`;
+            return (
+              <RevealInventoryTile
+                key={pack.id}
+                coverUrl={pack.coverUrl}
+                title={title}
+                creator={pack.creator}
+                quantityLabel={qtyLabel}
+                ariaLabel={`Open ${title}, ${qtyLabel}`}
+                onClick={() => onOpenPack(pack)}
+              />
+            );
+          })
         ) : (
-          <article className="collection-empty-panel ready-pack-card">
+          <article className="collection-empty-panel ready-reveal-empty">
             <h3 className="collection-empty-title">No unopened packs</h3>
             <p className="collection-empty-copy">
               Purchase packs from Browse to fill this shelf.

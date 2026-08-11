@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ChevronRight, Image, Play, Users } from "lucide-react";
+import { ChevronRight, Image, Layers, Play, Users } from "lucide-react";
 import { type CollectionLibraryFilter } from "@/services/collection";
 
 export function CollectionSnapshot({
@@ -19,10 +19,14 @@ export function CollectionSnapshot({
   return (
     <section className="collection-snapshot" aria-label="Collection summary">
       <div className="collection-snapshot-top">
-        <p className="collection-snapshot-total">
-          <strong className="collection-snapshot-value">{summary.uniqueCards}</strong>
-          <span className="collection-snapshot-primary-label">Collected</span>
-        </p>
+        <h2 className="collection-snapshot-heading">
+          <Layers
+            className="collection-snapshot-heading-icon"
+            aria-hidden="true"
+            strokeWidth={1.8}
+          />
+          Collection Summary
+        </h2>
         <button
           type="button"
           className="collection-snapshot-link"

@@ -43,6 +43,11 @@ export function CollectionPage({
     [inventoryRevision],
   );
 
+  const continueCreators = useMemo(
+    () => state.continueCreators.filter((creator) => creator.collected > 0),
+    [state.continueCreators],
+  );
+
   function openPack(pack: UnopenedPack) {
     onOpenPack({
       packId: pack.id,
@@ -78,15 +83,17 @@ export function CollectionPage({
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
         ) : (
           <>
-            {state.hasCollectedCards ? (
-              <CollectionSnapshot
-                summary={state.summary}
-                onOpenLibrary={(filter) =>
-                  setOverlay({ kind: "library", filter })
-                }
-                onOpenCreators={() => setOverlay({ kind: "creators" })}
-              />
-            ) : null}
+            <header className="collection-page-intro">
+              <h1 className="collection-page-title">Your Collection</h1>
+            </header>
+
+            <CollectionSnapshot
+              summary={state.summary}
+              onOpenLibrary={(filter) =>
+                setOverlay({ kind: "library", filter })
+              }
+              onOpenCreators={() => setOverlay({ kind: "creators" })}
+            />
 
             {state.hasPendingReveal ? (
               <ReadyToReveal
@@ -97,10 +104,9 @@ export function CollectionPage({
               />
             ) : null}
 
-            {state.hasStartedCollection &&
-            state.continueCreators.length > 0 ? (
+            {state.hasStartedCollection && continueCreators.length > 0 ? (
               <ContinueCollectingSection
-                creators={state.continueCreators}
+                creators={continueCreators}
                 onOpenCreator={onOpenCreator}
                 onViewAll={() => setOverlay({ kind: "creators" })}
               />
@@ -130,25 +136,25 @@ export function CollectionPage({
 function overlayTitle(overlay: Exclude<HubOverlay, null>): string {
   switch (overlay.kind) {
     case "library":
-      return "Full Card Library";
+      return "Card Library";
     case "creators":
-      return "Creator Collections List";
+      return "Creators";
     case "card":
-      return "Card Detail Viewer";
+      return overlay.card.name;
     case "scratch":
-      return "Scratch Flow";
+      return "Scratch";
   }
 }
 
 function overlayDetail(overlay: Exclude<HubOverlay, null>): string {
   switch (overlay.kind) {
     case "library":
-      return `Filter: ${overlay.filter === "all" ? "All collected cards" : overlay.filter}`;
+      return `Filter: ${overlay.filter}`;
+    case "creators":
+      return "Browse creators you’ve started collecting.";
     case "card":
-      return `${overlay.card.name} · ${overlay.card.rarity}`;
+      return overlay.card.rarity;
     case "scratch":
-      return `${overlay.group.creatorName} · ${overlay.group.collectionName} · ${overlay.group.count} ready`;
-    default:
-      return "This destination is wired for the interactive prototype.";
+      return `${overlay.group.creatorName} · ${overlay.group.collectionName}`;
   }
 }
