@@ -15,7 +15,7 @@ const EMPTY_SHARED: SharedMedia = {
   flagEmoji: "",
   flagSvgUrl: "",
   overlayBackgroundColor: "#5fd0e0",
-  overlayBackgroundColorEnd: "#5fd0e0",
+  overlayBackgroundColorEnd: "#0b1c24",
 };
 
 export function useCatalog() {
