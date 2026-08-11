@@ -86,15 +86,33 @@ function animateValue({
   onUpdate: (v: number) => void;
   onEnd?: () => void;
 }) {
+  let cancelled = false;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let rafId = 0;
   const t0 = performance.now() + delay;
+
   function tick() {
+    if (cancelled) return;
     const elapsed = performance.now() - t0;
     const t = Math.min(elapsed / duration, 1);
     onUpdate(start + (end - start) * ease(t));
-    if (t < 1) requestAnimationFrame(tick);
-    else if (onEnd) onEnd();
+    if (t < 1) {
+      rafId = requestAnimationFrame(tick);
+    } else if (onEnd) {
+      onEnd();
+    }
   }
-  setTimeout(() => requestAnimationFrame(tick), delay);
+
+  timeoutId = setTimeout(() => {
+    if (cancelled) return;
+    rafId = requestAnimationFrame(tick);
+  }, delay);
+
+  return () => {
+    cancelled = true;
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+    if (rafId) cancelAnimationFrame(rafId);
+  };
 }
 
 export type BorderGlowProps = {
@@ -196,11 +214,11 @@ export function BorderGlow({
     card.classList.add("sweep-active");
     card.style.setProperty("--cursor-angle", `${angleStart}deg`);
 
-    animateValue({
+    const cancelProximityIn = animateValue({
       duration: 500,
       onUpdate: (v) => card.style.setProperty("--edge-proximity", String(v)),
     });
-    animateValue({
+    const cancelAngleIn = animateValue({
       ease: easeInCubic,
       duration: 1500,
       end: 50,
@@ -211,7 +229,7 @@ export function BorderGlow({
         );
       },
     });
-    animateValue({
+    const cancelAngleOut = animateValue({
       ease: easeOutCubic,
       delay: 1500,
       duration: 2250,
@@ -224,7 +242,7 @@ export function BorderGlow({
         );
       },
     });
-    animateValue({
+    const cancelProximityOut = animateValue({
       ease: easeInCubic,
       delay: 2500,
       duration: 1500,
@@ -233,6 +251,14 @@ export function BorderGlow({
       onUpdate: (v) => card.style.setProperty("--edge-proximity", String(v)),
       onEnd: () => card.classList.remove("sweep-active"),
     });
+
+    return () => {
+      cancelProximityIn();
+      cancelAngleIn();
+      cancelAngleOut();
+      cancelProximityOut();
+      card.classList.remove("sweep-active");
+    };
   }, [animated, orbit]);
 
   // Continuous soft orbit — keeps rim lit and rotates the glow cone forever.
