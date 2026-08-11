@@ -6,13 +6,19 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
+function readProxyTarget(
+  env: Record<string, string>,
+  key: "VITE_API_PROXY" | "VITE_MEDIA_PROXY",
+) {
+  return (env[key] || process.env[key] || "").trim().replace(/\/+$/, "");
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, "");
-  const apiProxy = (env.VITE_API_PROXY || process.env.VITE_API_PROXY || "")
-    .trim()
-    .replace(/\/+$/, "");
-  const apiTarget = apiProxy || "http://127.0.0.1:8090";
-  const mediaTarget = apiProxy || "https://localhost:5080";
+  const apiTarget =
+    readProxyTarget(env, "VITE_API_PROXY") || "http://127.0.0.1:8090";
+  const mediaTarget =
+    readProxyTarget(env, "VITE_MEDIA_PROXY") || "https://localhost:5080";
 
   function proxyTo(target: string) {
     const isHttps = target.startsWith("https://");

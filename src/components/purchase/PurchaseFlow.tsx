@@ -176,7 +176,8 @@ export function PurchaseFlow({
 
   async function purchase(quantity: PackQuantity, foil?: FoilPack) {
     if (submitting) return;
-    if (packCost(quantity) > diamonds) {
+    const cost = packCost(quantity);
+    if (cost > diamonds) {
       setModal("insufficient");
       return;
     }
@@ -189,7 +190,7 @@ export function PurchaseFlow({
     try {
       const next = foil
         ? {
-            ...buildFoilOpeningSession(model?.packs ?? [foil]),
+            ...buildFoilOpeningSession([foil], cost),
             foilFaceUrl: foil.videoUrl,
             foilLabel: foil.label,
           }
@@ -326,7 +327,7 @@ export function PurchaseFlow({
               modelId={model?.id ?? pack.packId}
               girlName={model?.name ?? pack.creator}
               submitting={submitting}
-              diamondCost={10}
+              diamondCost={packCost(1)}
               onOpen={(foil) => void purchase(1, foil)}
             />
           ) : null}

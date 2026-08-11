@@ -45,11 +45,12 @@ export function packCost(quantity: PackQuantity) {
 
 export function buildFoilOpeningSession(
   foils: { id: string; label: string; videoUrl: string }[],
+  diamondCost = packCost(1),
 ): OpeningSession {
   const rarities: OpeningCard["rarity"][] = ["Super Rare", "Ultra Rare"];
   return {
     quantity: 1,
-    diamondCost: packCost(1),
+    diamondCost,
     cards: foils.slice(0, 2).map((foil, index) => ({
       id: foil.id,
       rarity: rarities[index] ?? "Rare",

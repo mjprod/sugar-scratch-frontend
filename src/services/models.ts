@@ -55,7 +55,7 @@ export function formatCollectionLabel(name: string) {
 }
 
 export function isVideoSrc(src: string) {
-  return /\.(mp4|webm|mov)(\?|$)/i.test(src) || /\/models\//i.test(src);
+  return /\.(mp4|webm|mov)(\?|#|$)/i.test(src);
 }
 
 function optionalString(value: unknown): string | null {
@@ -155,7 +155,7 @@ export function matchModel(
 export function foilsFromModel(model: BackendModel): FoilPack[] {
   const id = modelId(model);
   const face1 = optionalMedia(model.packFaceVideoUrl);
-  const face2 = optionalMedia(model.packFaceVideoUrl2) ?? face1;
+  const face2 = optionalMedia(model.packFaceVideoUrl2);
   const packs: FoilPack[] = [];
   if (face1) {
     packs.push({

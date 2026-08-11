@@ -128,8 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!action) return;
       if (action.type === "buy") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
+        const isBuyPack = action.kind !== "open-pack";
+        if (isBuyPack) clearOpening();
         navigate(Paths.purchase(action.pack.packId), {
-          state: { pack: action.pack },
+          state: {
+            pack: isBuyPack
+              ? { ...action.pack, entry: "purchase" as const }
+              : action.pack,
+          },
         });
         return;
       }
@@ -242,16 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openPurchase = useCallback(
     (pack: PurchaseFlowPack, kind: "buy-pack" | "open-pack" = "buy-pack") => {
       if (pack.creator) noteCreatorEngagement(pack.creator);
-      if (kind === "open-pack") {
-        requireAuth({ type: "buy", pack, kind });
-        return;
-      }
-      clearOpening();
-      navigate(Paths.purchase(pack.packId), {
-        state: { pack: { ...pack, entry: "purchase" as const } },
-      });
+      requireAuth({ type: "buy", pack, kind });
     },
-    [navigate, requireAuth],
+    [requireAuth],
   );
 
   const openSettings = useCallback(() => {
