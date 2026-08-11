@@ -1,3 +1,4 @@
+import { diamondCostForPackId } from "./homepage.ts";
 import {
   buildFoilOpeningSession,
   buildOpeningSession,
@@ -12,12 +13,13 @@ function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
-const single = buildOpeningSession(1);
-const bundle = buildOpeningSession(5);
+const single = buildOpeningSession(1, "ep1");
+const bundle = buildOpeningSession(5, "ep1");
+const unit = diamondCostForPackId("ep1");
 
-assert(single.diamondCost === 1, "single-pack cost");
+assert(single.diamondCost === unit, "single-pack cost matches ranking");
 assert(single.cards.length === 3, "single-pack card count");
-assert(bundle.diamondCost === 3, "bundle cost");
+assert(bundle.diamondCost === unit * 3, "bundle cost");
 assert(bundle.cards.length === 5, "bundle card count");
 assert(bundle.cards.at(-1)?.rarity === "Ultra Rare", "bundle rarity order");
 

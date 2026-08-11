@@ -11,6 +11,7 @@ export const Paths = {
   profile: "/profile",
   store: "/store",
   settings: "/settings",
+  inbox: "/inbox",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
   recommend: "/recommend",
@@ -44,7 +45,11 @@ export function tabFromPathname(pathname: string): AppTab {
     return "feed";
   }
   if (pathname.startsWith("/collection")) return "bag";
-  if (pathname.startsWith("/rewards") || pathname.startsWith("/store")) {
+  if (
+    pathname.startsWith("/rewards") ||
+    pathname.startsWith("/store") ||
+    pathname.startsWith("/inbox")
+  ) {
     return "hub";
   }
   if (pathname.startsWith("/profile") || pathname.startsWith("/settings")) {

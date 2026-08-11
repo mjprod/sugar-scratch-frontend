@@ -1,19 +1,17 @@
-import { useNavigate } from "react-router-dom";
-import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
+import { countUnread, INBOX_FIXTURES } from "@/services/inbox";
 
 export function StorePage() {
-  const navigate = useNavigate();
-  const { profile, requestTab } = useAuth();
-  const { coins, diamonds, addCoins, addDiamonds } = useWallet();
+  const { closeSecondary, openInbox, guest } = useAuth();
+  const { diamonds, addCoins, addDiamonds } = useWallet();
   return (
     <StoreScreen
-      coins={coins}
       diamonds={diamonds}
-      avatar={profile.avatar}
-      onBack={() => navigate(-1)}
-      onProfile={() => requestTab("profile")}
+      onBack={() => closeSecondary("store")}
+      onOpenInbox={openInbox}
+      inboxUnreadCount={guest ? 0 : countUnread(INBOX_FIXTURES)}
       onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
         addDiamonds(gained);
         addCoins(gainedCoins);

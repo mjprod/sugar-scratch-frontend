@@ -7,6 +7,8 @@ export type UnopenedPack = {
   creatorId: string;
   count: number;
   coverUrl: string;
+  /** Product / catalog id used when resuming Open Pack. */
+  catalogPackId?: string;
 };
 
 export type ContinueCollecting = {

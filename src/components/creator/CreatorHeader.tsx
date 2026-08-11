@@ -16,7 +16,7 @@ export function CreatorHeader({
         <div className="cpv2-header-shade" />
         <button
           type="button"
-          aria-label="Back"
+          aria-label="Back to Browse"
           onClick={onBack}
           className="cpv2-back"
         >

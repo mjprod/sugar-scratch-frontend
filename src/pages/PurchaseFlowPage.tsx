@@ -18,6 +18,7 @@ export function PurchaseFlowPage() {
     applyRecommendationDecision,
     setPurchasedPacks,
     requestTab,
+    bumpInventoryRevision,
   } = useAuth();
   const { diamonds, spendDiamonds, addCoins } = useWallet();
   const pack = (location.state as { pack?: PurchaseFlowPack } | null)?.pack;
@@ -41,14 +42,17 @@ export function PurchaseFlowPage() {
         addCoins(rewardCoins);
         setPurchasedPacks((count) => count + cards);
         notePackPurchaseSeed(pack.creator);
+        bumpInventoryRevision();
       }}
       onGetDiamonds={() => {
         if (!guest) openStore();
-        else requireAuth({ type: "tab", tab: "hub" });
+        else requireAuth({ type: "store" });
       }}
       onGoHome={() => navigate(Paths.home)}
       onViewCollection={() => requestTab("bag")}
       onGoMyBag={() => requestTab("bag")}
+      onReturnContext={() => requestTab("bag")}
+      onInventoryChange={bumpInventoryRevision}
     />
   );
 }

@@ -20,6 +20,7 @@ import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { RewardsPage } from "@/pages/RewardsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
+import { InboxPage } from "@/pages/InboxPage";
 
 const BOOT_KEY = "sugar.v8.bootShown";
 
@@ -83,7 +84,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommend}
           element={
-            <OnboardShell badge="Recommend · Intro">
+            <OnboardShell badge="Recommend · Intro" intro>
               <RecIntroPage />
             </OnboardShell>
           }
@@ -142,7 +143,7 @@ export function AppRoutes() {
           <Route
             path="store"
             element={
-              <SoftGate tab="hub">
+              <SoftGate tab="hub" action={{ type: "store" }}>
                 <StorePage />
               </SoftGate>
             }
@@ -152,6 +153,14 @@ export function AppRoutes() {
             element={
               <SoftGate tab="profile">
                 <SettingsPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="inbox"
+            element={
+              <SoftGate tab="hub" action={{ type: "inbox" }}>
+                <InboxPage />
               </SoftGate>
             }
           />

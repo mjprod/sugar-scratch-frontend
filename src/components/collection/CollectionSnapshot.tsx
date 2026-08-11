@@ -1,62 +1,64 @@
 import type { LucideIcon } from "lucide-react";
-import { ChevronRight, Image, Play, Users } from "lucide-react";
-import {
-  COLLECTION_SNAPSHOT,
-  type CollectionLibraryFilter,
-} from "@/services/collection";
+import { ChevronRight, Image, Layers, Play, Users } from "lucide-react";
+import { type CollectionLibraryFilter } from "@/services/collection";
 
 export function CollectionSnapshot({
+  summary,
   onOpenLibrary,
   onOpenCreators,
 }: {
+  summary: {
+    uniqueCards: number;
+    motionCards: number;
+    photoCards: number;
+    creators: number;
+  };
   onOpenLibrary: (filter: CollectionLibraryFilter) => void;
   onOpenCreators: () => void;
 }) {
-  const data = COLLECTION_SNAPSHOT;
-
   return (
-    <section className="collection-snapshot" aria-label="Collection snapshot">
-      <button
-        type="button"
-        className="collection-snapshot-primary"
-        onClick={() => onOpenLibrary("all")}
-      >
-        <strong className="collection-snapshot-value">{data.uniqueCards}</strong>
-        <span className="collection-snapshot-primary-label">
-          Unique Cards Collected
-        </span>
-        <span className="collection-snapshot-link">
-          View all collected cards
+    <section className="collection-snapshot" aria-label="Collection summary">
+      <div className="collection-snapshot-top">
+        <h2 className="collection-snapshot-heading">
+          <Layers
+            className="collection-snapshot-heading-icon"
+            aria-hidden="true"
+            strokeWidth={1.8}
+          />
+          Collection Summary
+        </h2>
+        <button
+          type="button"
+          className="collection-snapshot-link"
+          onClick={() => onOpenLibrary("all")}
+        >
+          View All
           <ChevronRight className="size-4" aria-hidden="true" />
-        </span>
-      </button>
+        </button>
+      </div>
 
-      <div className="collection-snapshot-divider" aria-hidden="true" />
-
-      <SnapshotStat
-        icon={Play}
-        value={data.motionCards}
-        label="Motion Cards"
-        onClick={() => onOpenLibrary("motion")}
-      />
-
-      <div className="collection-snapshot-divider" aria-hidden="true" />
-
-      <SnapshotStat
-        icon={Image}
-        value={data.photoCards}
-        label="Photo Cards"
-        onClick={() => onOpenLibrary("photo")}
-      />
-
-      <div className="collection-snapshot-divider" aria-hidden="true" />
-
-      <SnapshotStat
-        icon={Users}
-        value={data.creators}
-        label="Creators"
-        onClick={onOpenCreators}
-      />
+      <div className="collection-snapshot-stats" role="group" aria-label="Collection breakdown">
+        <SnapshotStat
+          icon={Play}
+          value={summary.motionCards}
+          label="Motion Cards"
+          onClick={() => onOpenLibrary("motion")}
+        />
+        <div className="collection-snapshot-divider" aria-hidden="true" />
+        <SnapshotStat
+          icon={Image}
+          value={summary.photoCards}
+          label="Photo Cards"
+          onClick={() => onOpenLibrary("photo")}
+        />
+        <div className="collection-snapshot-divider" aria-hidden="true" />
+        <SnapshotStat
+          icon={Users}
+          value={summary.creators}
+          label="Creators"
+          onClick={onOpenCreators}
+        />
+      </div>
     </section>
   );
 }

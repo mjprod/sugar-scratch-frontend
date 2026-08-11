@@ -116,7 +116,10 @@ export type LeaderboardRow = {
   themeName: string;
   thumbnailUrl: string;
   purchaseCount: number;
+  /** @deprecated Prefer diamondCost for purchase surfaces. */
   price: Price;
+  /** Pack Diamond cost — same currency used by Purchase / Featured. */
+  diamondCost: number;
   category: Exclude<LeaderboardCategory, "all">;
 };
 
@@ -308,6 +311,54 @@ const CONTINUE: ContinueCollectingItem[] = [
   },
 ];
 
+const PACK_DIAMOND_COSTS: Record<string, number> = {
+  ep1: 50,
+  ep2: 70,
+  ep3: 40,
+  en1: 50,
+  en2: 60,
+  em1: 45,
+  eb1: 60,
+  eb2: 50,
+  al1: 80,
+  sw1: 30,
+  nl1: 40,
+};
+
+/** Shared Diamond cost for ranking / featured / purchase display. */
+export function diamondCostForPackId(packId: string, fallbackUsd?: number) {
+  const featured = FEATURED.find((pack) => pack.id === packId);
+  if (featured) return featured.diamondCost;
+  if (PACK_DIAMOND_COSTS[packId] != null) return PACK_DIAMOND_COSTS[packId];
+  if (fallbackUsd != null) return Math.max(1, Math.round(fallbackUsd * 10));
+  return 10;
+}
+
+function row(
+  rank: number,
+  packId: string,
+  packName: string,
+  creatorName: string,
+  themeName: string,
+  category: Exclude<LeaderboardCategory, "all">,
+  purchaseCount: number,
+  amount: number,
+): LeaderboardRow {
+  const diamondCost = diamondCostForPackId(packId, amount);
+  return {
+    rank,
+    packId,
+    packName,
+    creatorName,
+    themeName,
+    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
+    purchaseCount,
+    price: { amount: diamondCost, currency: "SC" },
+    diamondCost,
+    category,
+  };
+}
+
 const LEADERBOARD: LeaderboardRow[] = [
   row(1, "ep1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
   row(2, "ep2", "Teacher Deluxe Pack", "Luna", "Teacher", "teacher", 9102, 6.99),
@@ -321,29 +372,6 @@ const LEADERBOARD: LeaderboardRow[] = [
   row(1, "sw1", "Bonus Rush Pack", "Sam Chen", "Student", "student", 4300, 2.99),
   row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Student", "student", 6200, 3.99),
 ];
-
-function row(
-  rank: number,
-  packId: string,
-  packName: string,
-  creatorName: string,
-  themeName: string,
-  category: Exclude<LeaderboardCategory, "all">,
-  purchaseCount: number,
-  amount: number,
-): LeaderboardRow {
-  return {
-    rank,
-    packId,
-    packName,
-    creatorName,
-    themeName,
-    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
-    purchaseCount,
-    price: { amount, currency: "USD" },
-    category,
-  };
-}
 
 function wait(ms = 420) {
   return new Promise((r) => setTimeout(r, ms));

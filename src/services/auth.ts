@@ -19,6 +19,7 @@ export type ProtectedActionType =
   | "view-collection"
   | "view-rewards"
   | "view-profile"
+  | "open-store"
   | "redeem-code"
   | "claim-reward"
   | "session-expired";
@@ -27,7 +28,9 @@ export type ProtectedAction =
   | { type: "buy"; pack: PurchaseFlowPack; kind?: "buy-pack" | "open-pack" }
   | { type: "like"; feedItemId: string }
   | { type: "tab"; tab: AppTab }
-  | { type: "scratch" };
+  | { type: "scratch"; pack: PurchaseFlowPack }
+  | { type: "store" }
+  | { type: "inbox" };
 
 export type AuthenticationSheetMode =
   | "login"
@@ -150,6 +153,8 @@ export function triggerFromAction(
   if (!action) return undefined;
   if (action.type === "like") return "like-creator";
   if (action.type === "scratch") return "scratch-card";
+  if (action.type === "store") return "open-store";
+  if (action.type === "inbox") return "view-rewards";
   if (action.type === "buy") {
     return action.kind === "open-pack" || action.pack.entry === "open"
       ? "open-pack"
@@ -179,6 +184,8 @@ export function supportingCopyForTrigger(
     case "claim-reward":
     case "redeem-code":
       return "Log in to view and claim your rewards.";
+    case "open-store":
+      return "Log in to buy Diamonds and open the Store.";
     case "scratch-card":
       return "Log in to save the cards you reveal.";
     case "view-profile":

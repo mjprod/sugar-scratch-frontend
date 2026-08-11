@@ -33,7 +33,13 @@ import { clearHomeFeedCache } from "@/services/creatorFeed";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import type { AppTab, OnboardingData } from "@/types/app";
-import { Paths, pathForTab, PUBLIC_TABS } from "@/routes/Paths";
+import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
+import {
+  resolveSecondaryBack,
+  SECONDARY_SURFACES,
+} from "@/lib/navigation";
+
+type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
 
 const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
   email: "",
@@ -52,13 +58,16 @@ const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
 
 function actionNeedsVerifiedEmail(action: ProtectedAction) {
   if (action.type === "buy") return true;
+  if (action.type === "store") return true;
   if (action.type === "tab" && action.tab === "hub") return true;
   return false;
 }
 
 function isHighIntentForDefer(action: ProtectedAction) {
   return (
-    action.type === "buy" || (action.type === "tab" && action.tab === "hub")
+    action.type === "buy" ||
+    action.type === "store" ||
+    (action.type === "tab" && action.tab === "hub")
   );
 }
 
@@ -80,9 +89,13 @@ type AuthContextValue = {
   requireAuth: (action: ProtectedAction) => boolean;
   requestTab: (tab: AppTab) => void;
   openStore: () => void;
+  openInbox: () => void;
   openCreator: (id: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
+  closeSecondary: (surface: SecondarySurfaceId) => void;
+  inventoryRevision: number;
+  bumpInventoryRevision: () => void;
   completeAuth: (result: AuthSuccessResult) => void;
   dismissAuth: () => void;
   onVerified: () => void;
@@ -120,13 +133,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useState<ProtectedAction | null>(null);
   const [navNotice, setNavNotice] = useState("");
   const [purchasedPacks, setPurchasedPacks] = useState(0);
+  const [secondaryReturnTab, setSecondaryReturnTab] = useState<AppTab | null>(
+    null,
+  );
+  const [inventoryRevision, setInventoryRevision] = useState(0);
+
+  const bumpInventoryRevision = useCallback(() => {
+    setInventoryRevision((n) => n + 1);
+  }, []);
+
+  const captureSecondaryReturn = useCallback(() => {
+    setSecondaryReturnTab(tabFromPathname(window.location.pathname));
+  }, []);
 
   const guest = !authed;
 
   const resumePending = useCallback(
     (action: ProtectedAction | null) => {
       if (!action) return;
-      if (action.type === "buy") {
+      if (action.type === "buy" || action.type === "scratch") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
         const isBuyPack = action.kind !== "open-pack";
         if (isBuyPack) clearOpening();
@@ -144,16 +169,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate(Paths.home);
         return;
       }
-      if (action.type === "scratch") return;
+      if (action.type === "store") {
+        captureSecondaryReturn();
+        navigate(Paths.store);
+        return;
+      }
+      if (action.type === "inbox") {
+        captureSecondaryReturn();
+        navigate(Paths.inbox);
+        return;
+      }
       if (action.type === "tab") {
-        if (action.tab === "hub") {
-          navigate(Paths.store);
-          return;
-        }
         navigate(pathForTab(action.tab));
       }
     },
-    [navigate],
+    [captureSecondaryReturn, navigate],
   );
 
   const applyRecommendationDecision = useCallback(
@@ -233,9 +263,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const openStore = useCallback(() => {
-    if (!requireAuth({ type: "tab", tab: "hub" })) return;
-    navigate(Paths.store);
-  }, [navigate, requireAuth]);
+    if (!requireAuth({ type: "store" })) return;
+  }, [requireAuth]);
+
+  const openInbox = useCallback(() => {
+    if (!requireAuth({ type: "inbox" })) return;
+  }, [requireAuth]);
 
   const openCreator = useCallback(
     (id: string) => {
@@ -258,8 +291,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireAuth({ type: "tab", tab: "profile" });
       return;
     }
+    captureSecondaryReturn();
     navigate(Paths.settings);
-  }, [guest, navigate, requireAuth]);
+  }, [captureSecondaryReturn, guest, navigate, requireAuth]);
+
+  const closeSecondary = useCallback(
+    (surface: SecondarySurfaceId) => {
+      const next = resolveSecondaryBack(secondaryReturnTab, surface);
+      setSecondaryReturnTab(null);
+      navigate(pathForTab(next));
+    },
+    [navigate, secondaryReturnTab],
+  );
 
   const completeAuth = useCallback(
     (result: AuthSuccessResult) => {
@@ -383,9 +426,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireAuth,
       requestTab,
       openStore,
+      openInbox,
       openCreator,
       openPurchase,
       openSettings,
+      closeSecondary,
+      inventoryRevision,
+      bumpInventoryRevision,
       completeAuth,
       dismissAuth,
       onVerified,
@@ -417,7 +464,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onEmailChanged,
       onVerified,
       onVerifyLater,
+      bumpInventoryRevision,
+      closeSecondary,
+      inventoryRevision,
       openCreator,
+      openInbox,
       openPurchase,
       openSettings,
       openStore,
