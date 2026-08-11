@@ -30,19 +30,47 @@ export function AppShell({
 export function OnboardShell({
   children,
   badge,
+  intro = false,
 }: {
   children: ReactNode;
   badge: string;
+  /** Recommendation intro — compact card layout */
+  intro?: boolean;
 }) {
+  const header = (
+    <header className="auth7-onboard-header">
+      <span className="auth2-logo">Sugar</span>
+      <span className="auth7-onboard-badge">{badge}</span>
+    </header>
+  );
+  const main = (
+    <div className="auth7-onboard-main">
+      <Stage>{children}</Stage>
+    </div>
+  );
+
   return (
-    <div className="auth7-onboard-shell" aria-label="Personalization">
-      <header className="auth7-onboard-header">
-        <span className="auth2-logo">Sugar</span>
-        <span className="auth7-onboard-badge">{badge}</span>
-      </header>
-      <div className="auth7-onboard-main">
-        <Stage>{children}</Stage>
-      </div>
+    <div
+      className={[
+        "auth7-onboard-shell",
+        intro ? "auth7-onboard-shell--intro" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-step={intro ? "recommend-intro" : undefined}
+      aria-label="Personalization"
+    >
+      {intro ? (
+        <div className="auth7-intro-card">
+          {header}
+          {main}
+        </div>
+      ) : (
+        <>
+          {header}
+          {main}
+        </>
+      )}
     </div>
   );
 }

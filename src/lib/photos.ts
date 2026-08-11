@@ -3,22 +3,21 @@
  * Spec 8 holographic pack art (local) for carousel / collection / splash.
  */
 
-/** Spec 8 holographic / revealed pack covers (gradient placeholders until real art lands) */
-const V = "?v=2";
+/** Spec 8 holographic / revealed pack covers */
 export const HOLO_PACKS = {
-  cyberHolo: `/images/packs/cyber-holo.svg${V}`,
-  cyberRevealed: `/images/packs/cyber-revealed.svg${V}`,
-  kimonoHolo: `/images/packs/kimono-holo.svg${V}`,
-  kimonoRevealed: `/images/packs/kimono-revealed.svg${V}`,
-  idolHolo: `/images/packs/idol-holo.svg${V}`,
-  idolRevealed: `/images/packs/idol-revealed.svg${V}`,
-  nurseHolo: `/images/packs/nurse-holo.svg${V}`,
-  studentHolo: `/images/packs/student-holo.svg${V}`,
-  mageHolo: `/images/packs/mage-holo.svg${V}`,
-  cafeHolo: `/images/packs/cafe-holo.svg${V}`,
-  racingHolo: `/images/packs/racing-holo.svg${V}`,
-  samuraiHolo: `/images/packs/samurai-holo.svg${V}`,
-  winterHolo: `/images/packs/winter-holo.svg${V}`,
+  cyberHolo: "/images/packs/cyber-holo.webp",
+  cyberRevealed: "/images/packs/cyber-revealed.webp",
+  kimonoHolo: "/images/packs/kimono-holo.webp",
+  kimonoRevealed: "/images/packs/kimono-revealed.webp",
+  idolHolo: "/images/packs/idol-holo.webp",
+  idolRevealed: "/images/packs/idol-revealed.webp",
+  nurseHolo: "/images/packs/nurse-holo.webp",
+  studentHolo: "/images/packs/student-holo.webp",
+  mageHolo: "/images/packs/mage-holo.webp",
+  cafeHolo: "/images/packs/cafe-holo.webp",
+  racingHolo: "/images/packs/racing-holo.webp",
+  samuraiHolo: "/images/packs/samurai-holo.webp",
+  winterHolo: "/images/packs/winter-holo.webp",
 } as const;
 
 export const CREATOR_PHOTOS = {
@@ -65,8 +64,13 @@ export const SPLASH_PHOTOS = [
   HOLO_PACKS.racingHolo,
 ] as const;
 
+/** Full creator card art (photo + chrome) from FigJam reference */
+export const CREATOR_CARD_PHOTOS = {
+  juliana: "/images/cards/juliana-card.png",
+} as const;
+
 export const PREFERENCE_PHOTOS = [
-  HOLO_PACKS.cyberHolo,
+  CREATOR_CARD_PHOTOS.juliana,
   HOLO_PACKS.kimonoHolo,
   HOLO_PACKS.idolHolo,
   HOLO_PACKS.nurseHolo,

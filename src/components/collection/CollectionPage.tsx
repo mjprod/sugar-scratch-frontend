@@ -1,21 +1,20 @@
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   type CollectionLibraryFilter,
   type LibraryPreviewCard,
   type ScratchReadyGroup,
   type UnopenedPack,
 } from "@/services/collection";
+import { getCollectionPageState } from "@/services/collectionState";
 import type { PurchaseFlowPack } from "@/services/purchase";
 import { CardLibraryPreview } from "./CardLibraryPreview";
-import { CollectionHeader } from "./CollectionHeader";
+import { CollectionEmptyState } from "./CollectionEmptyState";
 import { CollectionPlaceholder } from "./CollectionPlaceholder";
 import { CollectionSnapshot } from "./CollectionSnapshot";
 import { ContinueCollectingSection } from "./ContinueCollectingSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
 type HubOverlay =
-  | { kind: "search" }
-  | { kind: "filter" }
   | { kind: "library"; filter: CollectionLibraryFilter }
   | { kind: "creators" }
   | { kind: "card"; card: LibraryPreviewCard }
@@ -23,18 +22,26 @@ type HubOverlay =
   | null;
 
 /**
- * Collection hub — achievement → ready-to-reveal → creator progress → library.
+ * Collection hub — modules appear only when inventory makes them relevant.
  */
 export function CollectionPage({
   onOpenCreator,
   onOpenPack,
   onExplorePacks,
+  onScratchGroup,
+  inventoryRevision = 0,
 }: {
   onOpenCreator: (creatorId: string) => void;
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onExplorePacks: () => void;
+  onScratchGroup?: (group: ScratchReadyGroup) => void;
+  inventoryRevision?: number;
 }) {
   const [overlay, setOverlay] = useState<HubOverlay>(null);
+  const state = useMemo(
+    () => getCollectionPageState(),
+    [inventoryRevision],
+  );
 
   function openPack(pack: UnopenedPack) {
     onOpenPack({
@@ -45,6 +52,14 @@ export function CollectionPage({
       entry: "open",
       unopenedPacks: pack.count,
     });
+  }
+
+  function openScratch(group: ScratchReadyGroup) {
+    if (onScratchGroup) {
+      onScratchGroup(group);
+      return;
+    }
+    setOverlay({ kind: "scratch", group });
   }
 
   return (
@@ -59,31 +74,46 @@ export function CollectionPage({
       }
     >
       <div className="collection-page-content">
-        <CollectionHeader
-          onSearch={() => setOverlay({ kind: "search" })}
-          onFilter={() => setOverlay({ kind: "filter" })}
-        />
+        {state.isTrueEmpty ? (
+          <CollectionEmptyState onExplorePacks={onExplorePacks} />
+        ) : (
+          <>
+            {state.hasCollectedCards ? (
+              <CollectionSnapshot
+                summary={state.summary}
+                onOpenLibrary={(filter) =>
+                  setOverlay({ kind: "library", filter })
+                }
+                onOpenCreators={() => setOverlay({ kind: "creators" })}
+              />
+            ) : null}
 
-        <CollectionSnapshot
-          onOpenLibrary={(filter) => setOverlay({ kind: "library", filter })}
-          onOpenCreators={() => setOverlay({ kind: "creators" })}
-        />
+            {state.hasPendingReveal ? (
+              <ReadyToReveal
+                onOpenPack={openPack}
+                onScratch={openScratch}
+                onExplorePacks={onExplorePacks}
+                inventoryRevision={inventoryRevision}
+              />
+            ) : null}
 
-        <ReadyToReveal
-          onOpenPack={openPack}
-          onScratch={(group) => setOverlay({ kind: "scratch", group })}
-          onExplorePacks={onExplorePacks}
-        />
+            {state.hasStartedCollection &&
+            state.continueCreators.length > 0 ? (
+              <ContinueCollectingSection
+                creators={state.continueCreators}
+                onOpenCreator={onOpenCreator}
+                onViewAll={() => setOverlay({ kind: "creators" })}
+              />
+            ) : null}
 
-        <ContinueCollectingSection
-          onOpenCreator={onOpenCreator}
-          onViewAll={() => setOverlay({ kind: "creators" })}
-        />
-
-        <CardLibraryPreview
-          onViewAll={() => setOverlay({ kind: "library", filter: "all" })}
-          onOpenCard={(card) => setOverlay({ kind: "card", card })}
-        />
+            {state.hasCollectedCards ? (
+              <CardLibraryPreview
+                onViewAll={() => setOverlay({ kind: "library", filter: "all" })}
+                onOpenCard={(card) => setOverlay({ kind: "card", card })}
+              />
+            ) : null}
+          </>
+        )}
       </div>
 
       {overlay ? (
@@ -99,10 +129,6 @@ export function CollectionPage({
 
 function overlayTitle(overlay: Exclude<HubOverlay, null>): string {
   switch (overlay.kind) {
-    case "search":
-      return "Collection Search Overlay";
-    case "filter":
-      return "Collection Filter Sheet";
     case "library":
       return "Full Card Library";
     case "creators":

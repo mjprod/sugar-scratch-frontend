@@ -1,6 +1,5 @@
-import { ChevronRight, Play, Trophy } from "lucide-react";
+import { ChevronRight, Gem, Play, Trophy } from "lucide-react";
 import {
-  formatPrice,
   LEADERBOARD_CATEGORIES,
   type LeaderboardCategory,
   type LeaderboardRow,
@@ -123,8 +122,12 @@ export function CategoryLeaderboard({
                 </p>
               </button>
               <div className="category-leaderboard-actions">
-                <span className="category-leaderboard-price">
-                  {formatPrice(row.price)}
+                <span
+                  className="category-leaderboard-price"
+                  aria-label={`${row.diamondCost} Diamonds`}
+                >
+                  <Gem className="size-3.5 shrink-0 text-sky-300" aria-hidden="true" />
+                  <span className="tabular-nums">{row.diamondCost}</span>
                 </span>
                 <button
                   type="button"

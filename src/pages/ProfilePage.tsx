@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserDashboardScreen } from "@/components/profile/ProfileScreen";
 
 export function ProfilePage() {
-  const { profile, openSettings } = useAuth();
+  const { profile, openSettings, logout } = useAuth();
   const { coins, diamonds } = useWallet();
   return (
     <UserDashboardScreen
@@ -12,6 +12,7 @@ export function ProfilePage() {
       coins={coins}
       diamonds={diamonds}
       onSettings={openSettings}
+      onLogout={logout}
     />
   );
 }
