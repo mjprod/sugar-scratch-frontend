@@ -62,6 +62,8 @@
 
 /* Soft rounded rect (default / squircle template). */
 .cta-button--squircle {
+  border-radius: var(--cta-r);
+  overflow: hidden;
   clip-path: shape(
     from var(--cta-r) 0,
     hline to calc(100% - var(--cta-r)),
