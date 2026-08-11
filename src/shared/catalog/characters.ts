@@ -132,7 +132,7 @@ export function parsePackId(packId: string): {
   characterId: CharacterId | null;
   slot: PackFaceSlot;
 } | null {
-  const match = /^pack-([a-z0-9]+)(?:-(2))?$/i.exec(packId.trim());
+  const match = /^pack-([a-z0-9][a-z0-9_-]*)(?:-(2))?$/i.exec(packId.trim());
   if (!match) return null;
   const ownerId = match[1]!.toLowerCase();
   return {
