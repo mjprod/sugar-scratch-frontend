@@ -6421,6 +6421,28 @@ body[data-theme="v8"] .inbox-unread-dot--badge {
   right: 8px;
 }
 
+body[data-theme="v8"] .inbox-utility-btn:focus-visible {
+  outline: 2px solid #ff5fa2;
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .inbox-utility-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff4f8b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  letter-spacing: 0;
+}
+
 body[data-theme="v8"] .inbox-page-content {
   width: calc(100% - (var(--app-gutter, 20px) * 2));
   max-width: min(640px, var(--app-content-max, 64rem));

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { UserRound } from "lucide-react";
 import type { AppTab } from "@/types/app";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
+import { InboxButton } from "@/components/InboxButton";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 
 const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
@@ -12,7 +13,7 @@ const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "profile", label: "Profile" },
 ];
 
-/** Top Navigation — mobile Diamond utility + desktop global header. */
+/** Top Navigation — mobile Diamond + Inbox utility + desktop global header. */
 export function TopNav({
   coins,
   diamonds,
@@ -20,8 +21,11 @@ export function TopNav({
   onTabChange,
   onProfile,
   onOpenStore,
+  onOpenInbox,
+  inboxUnreadCount = 0,
   showBalances = true,
   showMobileDiamond = true,
+  showInbox = true,
 }: {
   coins: number | null;
   diamonds: number | null;
@@ -31,10 +35,19 @@ export function TopNav({
   onSettings?: () => void;
   onSearch?: () => void;
   onOpenStore?: () => void;
+  onOpenInbox?: () => void;
+  inboxUnreadCount?: number;
   showBalances?: boolean;
   /** Immersive / guest flows set false via App shell. */
   showMobileDiamond?: boolean;
+  /** Hide on Inbox route to avoid redundant self-nav. */
+  showInbox?: boolean;
 }) {
+  const inbox =
+    showInbox && onOpenInbox ? (
+      <InboxButton unreadCount={inboxUnreadCount} onOpen={onOpenInbox} />
+    ) : null;
+
   return (
     <>
       <MobileDiamondUtility
@@ -42,7 +55,8 @@ export function TopNav({
         balance={diamonds}
         onOpenStore={onOpenStore}
         mode="diamonds"
-        visible={showMobileDiamond && showBalances && activeTab !== "profile"}
+        visible={showMobileDiamond && showBalances}
+        trailing={inbox}
       />
 
       <header className="sticky top-0 z-30 hidden h-[72px] border-b border-white/[0.08] bg-[#090909]/88 backdrop-blur-xl lg:block">
@@ -89,6 +103,7 @@ export function TopNav({
                 onOpenStore={onOpenStore}
               />
             ) : null}
+            {inbox}
             <button
               type="button"
               aria-label="Open Profile"

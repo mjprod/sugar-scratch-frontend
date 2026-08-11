@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
+import { countUnread, INBOX_FIXTURES } from "@/services/inbox";
 
 /** Main product chrome: top nav + outlet + footer + auth/verify overlays. */
 export function AppLayout() {
@@ -20,6 +21,7 @@ export function AppLayout() {
     navNotice,
     purchasedPacks,
     openStore,
+    openInbox,
     completeAuth,
     dismissAuth,
     onVerified,
@@ -34,17 +36,21 @@ export function AppLayout() {
     location.pathname.startsWith("/purchase") ||
     location.pathname.startsWith("/recommend");
 
+  const onInbox = location.pathname.startsWith("/inbox");
+
   const showTopNav =
     !hideChrome &&
     !location.pathname.startsWith("/settings") &&
     !location.pathname.startsWith("/store") &&
-    !location.pathname.startsWith("/inbox") &&
+    !onInbox &&
     !location.pathname.startsWith("/creator");
 
   const showFooter =
     !hideChrome &&
     !location.pathname.startsWith("/settings") &&
-    !location.pathname.startsWith("/inbox");
+    !onInbox;
+
+  const inboxUnread = guest ? 0 : countUnread(INBOX_FIXTURES);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -56,6 +62,8 @@ export function AppLayout() {
           onTabChange={requestTab}
           onProfile={() => requestTab("profile")}
           onOpenStore={openStore}
+          onOpenInbox={openInbox}
+          inboxUnreadCount={inboxUnread}
         />
       ) : null}
 

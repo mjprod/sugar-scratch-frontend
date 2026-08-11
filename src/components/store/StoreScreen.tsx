@@ -24,6 +24,7 @@ import {
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
+import { InboxButton } from "@/components/InboxButton";
 import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 
@@ -58,10 +59,14 @@ export function StoreScreen({
   diamonds,
   onBack,
   onPurchaseSuccess,
+  onOpenInbox,
+  inboxUnreadCount = 0,
 }: {
   diamonds: number | null;
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
+  onOpenInbox?: () => void;
+  inboxUnreadCount?: number;
 }) {
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
@@ -287,7 +292,17 @@ export function StoreScreen({
       <SubpageHeader
         onBack={onBack}
         backLabel="Back"
-        trailing={<MobileDiamondBalance balance={diamonds} standalone />}
+        trailing={
+          <div className="flex items-center gap-2">
+            <MobileDiamondBalance balance={diamonds} standalone />
+            {onOpenInbox ? (
+              <InboxButton
+                unreadCount={inboxUnreadCount}
+                onOpen={onOpenInbox}
+              />
+            ) : null}
+          </div>
+        }
       />
 
       <header className="mt-4">

@@ -7,6 +7,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { InboxButton } from "@/components/InboxButton";
+import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
 
@@ -42,9 +44,15 @@ const ROWS: {
 export function SettingsScreen({
   onBack,
   onReplayTutorials,
+  diamonds,
+  onOpenInbox,
+  inboxUnreadCount = 0,
 }: {
   onBack: () => void;
   onReplayTutorials: () => void;
+  diamonds?: number | null;
+  onOpenInbox?: () => void;
+  inboxUnreadCount?: number;
 }) {
   const meta = SECONDARY_SURFACES.settings;
 
@@ -54,6 +62,19 @@ export function SettingsScreen({
         title={meta.title}
         onBack={onBack}
         backLabel={meta.backLabel}
+        trailing={
+          <div className="flex items-center gap-2">
+            {diamonds !== undefined ? (
+              <MobileDiamondBalance balance={diamonds} standalone />
+            ) : null}
+            {onOpenInbox ? (
+              <InboxButton
+                unreadCount={inboxUnreadCount}
+                onOpen={onOpenInbox}
+              />
+            ) : null}
+          </div>
+        }
       />
 
       <div className="mt-6 rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.28),transparent_42%),#151515] p-6 sm:p-8">

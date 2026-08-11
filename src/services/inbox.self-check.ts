@@ -3,6 +3,7 @@
  * Run: npx tsx src/services/inbox.self-check.ts
  */
 import {
+  countUnread,
   hasUnread,
   INBOX_FIXTURES,
   INBOX_NEW_WINDOW_MS,
@@ -57,6 +58,8 @@ const sample: InboxMessage[] = [
 }
 
 assert(hasUnread(INBOX_FIXTURES), "fixtures include unread");
+assert(countUnread(sample) === 2, "sample unread count");
+assert(countUnread(INBOX_FIXTURES) > 0, "fixtures unread count");
 assert(
   relativeTime(new Date(now - 2 * 60_000).toISOString(), now) === "2m ago",
   "2m ago",

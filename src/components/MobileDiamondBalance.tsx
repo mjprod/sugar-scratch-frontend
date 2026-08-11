@@ -1,4 +1,5 @@
 import { Gem, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
 import { formatBalance } from "@/components/CurrencyBalances";
 
 /**
@@ -56,13 +57,14 @@ export function MobileDiamondBalance({
   );
 }
 
-/** Absolute top-right shell — Diamonds (or coins+diamonds). lg:hidden. */
+/** Absolute top-right shell — Diamonds (+ optional Inbox). lg:hidden. */
 export function MobileDiamondUtility({
   coins,
   balance,
   onOpenStore,
   visible = true,
   mode = "diamonds",
+  trailing,
 }: {
   coins?: number | null;
   balance: number | null;
@@ -70,6 +72,8 @@ export function MobileDiamondUtility({
   visible?: boolean;
   /** Primary pages use diamonds-only; dual kept for rare chrome needs. */
   mode?: "diamonds" | "both";
+  /** e.g. InboxButton — sits beside diamond balance. */
+  trailing?: ReactNode;
 }) {
   if (!visible) return null;
 
@@ -78,32 +82,33 @@ export function MobileDiamondUtility({
       className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-end px-4 pt-[max(12px,env(safe-area-inset-top))] lg:hidden"
       aria-hidden={false}
     >
-      {mode === "diamonds" ? (
-        <div className="pointer-events-auto">
+      <div className="pointer-events-auto flex items-center gap-2">
+        {mode === "diamonds" ? (
           <MobileDiamondBalance
             balance={balance}
             onOpenStore={onOpenStore}
             standalone
           />
-        </div>
-      ) : (
-        <div
-          className="pointer-events-auto inline-flex min-h-9 items-center gap-2 rounded-full border border-white/[0.1] bg-[#151515]/90 px-2.5 py-1 shadow-soft backdrop-blur-md"
-          aria-live="polite"
-        >
-          <span
-            className="inline-flex items-center gap-1.5 px-1"
-            aria-label={`${formatBalance(coins ?? null)} Sugar Coins`}
+        ) : (
+          <div
+            className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/[0.1] bg-[#151515]/90 px-2.5 py-1 shadow-soft backdrop-blur-md"
+            aria-live="polite"
           >
-            <Sparkles className="size-3.5 shrink-0 text-champagne" aria-hidden />
-            <span className="text-[13px] font-semibold tabular-nums text-white">
-              {formatBalance(coins ?? null)}
+            <span
+              className="inline-flex items-center gap-1.5 px-1"
+              aria-label={`${formatBalance(coins ?? null)} Sugar Coins`}
+            >
+              <Sparkles className="size-3.5 shrink-0 text-champagne" aria-hidden />
+              <span className="text-[13px] font-semibold tabular-nums text-white">
+                {formatBalance(coins ?? null)}
+              </span>
             </span>
-          </span>
-          <span className="h-3 w-px bg-white/20" aria-hidden />
-          <MobileDiamondBalance balance={balance} onOpenStore={onOpenStore} />
-        </div>
-      )}
+            <span className="h-3 w-px bg-white/20" aria-hidden />
+            <MobileDiamondBalance balance={balance} onOpenStore={onOpenStore} />
+          </div>
+        )}
+        {trailing}
+      </div>
     </div>
   );
 }

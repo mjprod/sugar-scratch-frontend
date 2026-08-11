@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
 import type { InboxMessage } from "@/services/inbox";
 
@@ -8,7 +9,9 @@ export function InboxPage() {
     openStore,
     openCreator,
     requestTab,
+    guest,
   } = useAuth();
+  const { diamonds } = useWallet();
 
   function handleInboxAction(message: InboxMessage, source: "row" | "cta") {
     const cta = message.cta;
@@ -43,6 +46,7 @@ export function InboxPage() {
     <InboxScreen
       onBack={() => closeSecondary("inbox")}
       onMessageAction={handleInboxAction}
+      diamonds={guest ? null : diamonds}
     />
   );
 }

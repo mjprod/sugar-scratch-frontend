@@ -16,6 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import { EmptyState } from "@/components/EmptyState";
+import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   INBOX_FIXTURES,
@@ -31,9 +32,11 @@ import { SECONDARY_SURFACES } from "@/lib/navigation";
 export function InboxScreen({
   onBack,
   onMessageAction,
+  diamonds,
 }: {
   onBack: () => void;
   onMessageAction: (message: InboxMessage, source: "row" | "cta") => void;
+  diamonds?: number | null;
 }) {
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
@@ -74,6 +77,11 @@ export function InboxScreen({
           title={meta.title}
           onBack={onBack}
           backLabel={meta.backLabel}
+          trailing={
+            diamonds !== undefined ? (
+              <MobileDiamondBalance balance={diamonds} standalone />
+            ) : undefined
+          }
         />
         <p className="inbox-subtitle inbox-subtitle--page">
           Updates, packs, and important activity

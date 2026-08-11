@@ -36,7 +36,7 @@ const TABS: NavItemConfig[] = [
     appTab: "bag",
     primary: true,
   },
-  { id: "rewards", label: "Rewards", icon: Gift, appTab: "hub" },
+  { id: "rewards", label: "Hub", icon: Gift, appTab: "hub" },
   { id: "profile", label: "Profile", icon: User, appTab: "profile" },
 ];
 

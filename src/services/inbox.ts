@@ -83,6 +83,10 @@ export function hasUnread(messages: InboxMessage[]) {
   return messages.some((m) => !m.isRead);
 }
 
+export function countUnread(messages: InboxMessage[]) {
+  return messages.reduce((n, m) => n + (m.isRead ? 0 : 1), 0);
+}
+
 function hoursAgo(hours: number) {
   return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }

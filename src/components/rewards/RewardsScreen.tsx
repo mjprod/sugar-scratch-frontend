@@ -1,4 +1,4 @@
-import { Bell, Gift, Mail, ShoppingBag, Sparkles, Ticket } from "lucide-react";
+import { Bell, Gift, ShoppingBag, Sparkles, Ticket } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppPageShell } from "@/components/AppPageShell";
 
@@ -19,7 +19,6 @@ const HUB_ITEMS: HubItem[] = [
     icon: ShoppingBag,
     accent: "#60A5FA",
   },
-  { id: "inbox", label: "Inbox", detail: "2 new messages", icon: Mail, accent: "#EC4899" },
   {
     id: "redeem",
     label: "Redeem Code",
@@ -31,10 +30,8 @@ const HUB_ITEMS: HubItem[] = [
 
 export function HubScreen({
   onOpenStore,
-  onOpenInbox,
 }: {
   onOpenStore?: () => void;
-  onOpenInbox?: () => void;
 }) {
   return (
     <AppPageShell aria-label="Rewards">
@@ -45,7 +42,7 @@ export function HubScreen({
         </div>
         <h1 className="mt-3 text-[32px] font-bold tracking-[-0.03em]">Rewards</h1>
         <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-white/55">
-          Claim daily gifts, check inbox, and unlock creator rewards.
+          Claim daily gifts and unlock creator rewards.
         </p>
         <button
           type="button"
@@ -58,12 +55,7 @@ export function HubScreen({
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {HUB_ITEMS.map((item) => {
           const Icon = item.icon;
-          const onClick =
-            item.id === "store"
-              ? onOpenStore
-              : item.id === "inbox"
-                ? onOpenInbox
-                : undefined;
+          const onClick = item.id === "store" ? onOpenStore : undefined;
           return (
             <button
               key={item.id}
