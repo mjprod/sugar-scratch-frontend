@@ -228,7 +228,7 @@ export async function fetchHomeFeedPage(
   }
 
   const nextStart = safeStart + PAGE_SIZE;
-  const hasMore = nextStart < CATALOG.length * 6;
+  const hasMore = nextStart < catalog.length * 6;
 
   return {
     items,
