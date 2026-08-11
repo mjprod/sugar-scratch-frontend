@@ -701,7 +701,7 @@ export function PurchaseFlow({
             <ReadyStage
               packName={packDisplayName}
               packImage={packImage}
-              remainingUnopened={Math.max(1, unopenedRemaining)}
+              remainingUnopened={pack.unopenedPacks ?? Math.max(1, unopenedRemaining)}
               onOpened={completeTear}
               quantity={session.quantity}
               designed={Boolean(session.foilFaceUrl)}
