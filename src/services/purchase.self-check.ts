@@ -1,7 +1,9 @@
 import {
+  buildFoilOpeningSession,
   buildOpeningSession,
   clearOpening,
   nextUnscratchedIndex,
+  packCost,
   restoreOpening,
   saveOpening,
 } from "./purchase.ts";
@@ -21,6 +23,20 @@ assert(single.cards.length === 3, "single-pack card count");
 assert(bundle.diamondCost === unit * 3, "bundle cost");
 assert(bundle.cards.length === 5, "bundle card count");
 assert(bundle.cards.at(-1)?.rarity === "Ultra Rare", "bundle rarity order");
+
+const foil = buildFoilOpeningSession(
+  [{ id: "foil-1", label: "Foil", videoUrl: "https://example.com/foil.mp4" }],
+);
+assert(foil.diamondCost === packCost(1), "foil session cost matches single-pack CTA");
+assert(foil.cards.length === 1, "selected foil session includes only that pack");
+assert(foil.cards[0].id === "foil-1", "selected foil session uses the chosen pack id");
+assert(
+  buildFoilOpeningSession(
+    [{ id: "foil-1", label: "Foil", videoUrl: "https://example.com/foil.mp4" }],
+    packCost(1),
+  ).diamondCost === packCost(1),
+  "foil session honors the charged cost",
+);
 
 /* Resume never replays a card that was already scratched. */
 assert(nextUnscratchedIndex(single, []) === 0, "fresh session starts at first card");

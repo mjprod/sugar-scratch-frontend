@@ -26,12 +26,17 @@ export type OpeningCard = {
   id: string;
   rarity: "Rare" | "Super Rare" | "Ultra Rare";
   reward: number;
+  /** Optional designed face (foil video / image from the model API). */
+  faceUrl?: string;
 };
 
 export type OpeningSession = {
   quantity: PackQuantity;
   diamondCost: number;
   cards: OpeningCard[];
+  /** Foil face used on Pack Ready after the user picks a pack. */
+  foilFaceUrl?: string;
+  foilLabel?: string;
 };
 
 export const PACK_OPTIONS: {
@@ -59,6 +64,25 @@ export function buildOpeningSession(
   packId = "pack",
 ): OpeningSession {
   const diamondCost = packCost(quantity, packId);
+export function buildFoilOpeningSession(
+  foils: { id: string; label: string; videoUrl: string }[],
+  diamondCost = packCost(1),
+): OpeningSession {
+  const rarities: OpeningCard["rarity"][] = ["Super Rare", "Ultra Rare"];
+  return {
+    quantity: 1,
+    diamondCost,
+    cards: foils.slice(0, 2).map((foil, index) => ({
+      id: foil.id,
+      rarity: rarities[index] ?? "Rare",
+      reward: index === 0 ? 25 : 50,
+      faceUrl: foil.videoUrl,
+    })),
+  };
+}
+
+export function buildOpeningSession(quantity: PackQuantity): OpeningSession {
+  const diamondCost = packCost(quantity);
   // ponytail: the prototype caps the five-pack preview at five cards; replace with
   // the backend opening-session payload when pack composition is implemented.
   const cardCount = quantity === 1 ? 3 : 5;

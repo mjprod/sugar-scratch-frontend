@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, type PointerEvent, type ReactNode } from "react";
+import { isVideoSrc } from "@/services/models";
 
 export function HolographicPackCard({
   src,
@@ -48,7 +49,18 @@ export function HolographicPackCard({
       }}
     >
       <div className="relative size-full overflow-hidden rounded-[21px] bg-[#0d0d12]">
-        <img src={src} alt={name} className="absolute inset-0 size-full object-cover" />
+        {isVideoSrc(src) ? (
+          <video
+            src={src}
+            muted
+            loop
+            playsInline
+            autoPlay
+            className="pointer-events-none absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <img src={src} alt={name} className="absolute inset-0 size-full object-cover" />
+        )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/15" />
         <div
           className="pointer-events-none absolute inset-0 opacity-40 mix-blend-color-dodge transition-opacity group-hover:opacity-65"

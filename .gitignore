@@ -27,3 +27,7 @@ dist-ssr
 
 # TypeScript
 *.tsbuildinfo
+
+# Local drop-in of another project (not part of this repo)
+_incoming/
+.zcode/

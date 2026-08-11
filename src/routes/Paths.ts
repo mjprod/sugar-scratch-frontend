@@ -18,6 +18,7 @@ export const Paths = {
   recommendSwipe: "/recommend/swipe",
   recommendDone: "/recommend/done",
   resetPassword: "/reset-password",
+  navTest: "/nav-test",
 } as const;
 
 export const PUBLIC_TABS: AppTab[] = ["home", "feed"];

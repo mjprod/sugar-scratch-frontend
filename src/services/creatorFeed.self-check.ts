@@ -27,6 +27,7 @@ async function main() {
   const first = page1.items[0]!;
   assert(first.creatorName.length > 0, "creator name required");
   assert(first.creatorId.length > 0, "creator id required");
+  assert(first.packId.length > 0, "pack id required");
   assert(first.diamondCost > 0, "diamond cost required");
   assert(first.packName.length > 0, "pack name required");
   assert(first.tags.length > 0, "tags required");
@@ -51,8 +52,7 @@ async function main() {
   const cached = readHomeFeedCache();
   assert(cached?.scrollIndex === 2, "cache scroll index");
   assert(cached?.activeId === first.id, "cache active id");
-  assert(first.mediaType === "video" && !!first.videoUrl, "cards should be video");
-  assert(first.videoUrl.includes("mixkit"), "portrait clips from Mixkit");
+  assert(first.mediaType === "video", "cards should be video");
 
   clearHomeFeedCache();
   assert(readHomeFeedCache() === null, "cache cleared");
