@@ -83,6 +83,14 @@
   --cta-tip controls tip depth (default 0.27 × height). Tips stay sharp.
 */
 .cta-button--hex {
+  clip-path: polygon(
+    0 50%,
+    var(--cta-tip) 0,
+    calc(100% - var(--cta-tip)) 0,
+    100% 50%,
+    calc(100% - var(--cta-tip)) 100%,
+    var(--cta-tip) 100%
+  );
   clip-path: shape(
     from 0 50%,
     line to var(--cta-tip) 0,
@@ -168,6 +176,14 @@
 }
 
 .cta-button--hex > .cta-button__inner {
+  clip-path: polygon(
+    0 50%,
+    var(--cta-inner-tip) 0,
+    calc(100% - var(--cta-inner-tip)) 0,
+    100% 50%,
+    calc(100% - var(--cta-inner-tip)) 100%,
+    var(--cta-inner-tip) 100%
+  );
   clip-path: shape(
     from 0 50%,
     line to var(--cta-inner-tip) 0,
