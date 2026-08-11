@@ -13,7 +13,31 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
+import { FoilPackFace } from "@/components/purchase/FoilPackFace";
+import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
+import { packItemToIteration } from "@/features/packs/types";
+import "@/features/packs/packs.css";
+import { CardFan } from "@/features/reveal/components/CardFan";
+import { useRevealSequence } from "@/features/reveal/hooks/useRevealSequence";
+import {
+  createMixedCategoryPackCards,
+  type RevealCard,
+} from "@/features/reveal/lib/cards";
+import { loadFanDrag } from "@/features/reveal/lib/fanDrag";
+import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
+import "@/features/reveal/reveal.css";
+import { PACK_MODEL_URL } from "@/lib/pack3d";
 import { PACK_PHOTOS } from "@/lib/photos";
+import {
+  isVideoSrc,
+  loadModelProfile,
+  type FoilPack,
+  type ModelProfile,
+} from "@/services/models";
+import {
+  fetchPackFanCatalog,
+  type BackendFanCatalog,
+} from "@/shared/backend/collection";
 import {
   PACK_OPTIONS,
   PurchaseError,
@@ -23,6 +47,7 @@ import {
   packCost,
   restoreOpening,
   saveOpening,
+  buildFoilOpeningSession,
   submitPurchase,
   type OpeningSession,
   type OpeningStage,
@@ -31,6 +56,7 @@ import {
 } from "@/services/purchase";
 
 type Stage =
+  | "choose"
   | "select"
   | "ready"
   | "reveal"
@@ -75,8 +101,11 @@ export function PurchaseFlow({
   onGoMyBag?: () => void;
 }) {
   const noPacksLeft = pack.entry === "open" && (pack.unopenedPacks ?? 0) <= 0;
+  const buying = pack.entry !== "open";
   const restored = useRef(
-    noPacksLeft ? ({ status: "none" } as const) : restoreOpening(pack.packId),
+    noPacksLeft || buying
+      ? ({ status: "none" } as const)
+      : restoreOpening(pack.packId),
   ).current;
 
   const resumed = restored.status === "resume" ? restored.data : null;
@@ -86,10 +115,14 @@ export function PurchaseFlow({
 
   const [stage, setStage] = useState<Stage>(() => {
     if (noPacksLeft) return "no-packs";
+    if (buying) return "choose";
     if (restored.status === "expired") return "expired";
     if (resumed) return resumeIndex === null ? "complete" : resumed.stage;
     return "select";
   });
+  const [model, setModel] = useState<ModelProfile | null>(null);
+  const [pendingFoil, setPendingFoil] = useState<FoilPack | null>(null);
+  const lastFoilRef = useRef<FoilPack | null>(null);
   const [session, setSession] = useState<OpeningSession | null>(
     resumed?.session ?? null,
   );
@@ -104,8 +137,24 @@ export function PurchaseFlow({
   const [retrying, setRetrying] = useState(false);
 
   const awarded = useRef(Boolean(resumed && resumeIndex === null));
-  const packImage = PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
-  const cardImages = useMemo(() => Object.values(PACK_PHOTOS).slice(0, 8), []);
+  const packImage =
+    session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
+  const packDisplayName = session?.foilLabel ?? pack.packName;
+  const cardImages = useMemo(() => {
+    const faces = session?.cards
+      .map((card) => card.faceUrl)
+      .filter((url): url is string => Boolean(url));
+    if (faces?.length) return faces;
+    return Object.values(PACK_PHOTOS).slice(0, 8);
+  }, [session]);
+
+  useEffect(() => {
+    if (!buying) return;
+    void loadModelProfile(pack.packId, pack.creator).then((profile) => {
+      setModel(profile);
+      if (!profile?.packs.length) setStage((current) => (current === "choose" ? "select" : current));
+    });
+  }, [buying, pack.creator, pack.packId]);
 
   // A session we cannot restore is not worth keeping around.
   useEffect(() => {
@@ -125,7 +174,7 @@ export function PurchaseFlow({
     });
   }, [stage, session, selectedCard, scratched, pack.packId]);
 
-  async function purchase(quantity: PackQuantity) {
+  async function purchase(quantity: PackQuantity, foil?: FoilPack) {
     if (submitting) return;
     if (packCost(quantity) > diamonds) {
       setModal("insufficient");
@@ -133,8 +182,18 @@ export function PurchaseFlow({
     }
     setSubmitting(true);
     setPending(quantity);
+    if (foil) {
+      lastFoilRef.current = foil;
+      setPendingFoil(foil);
+    }
     try {
-      const next = await submitPurchase(quantity, diamonds);
+      const next = foil
+        ? {
+            ...buildFoilOpeningSession(model?.packs ?? [foil]),
+            foilFaceUrl: foil.videoUrl,
+            foilLabel: foil.label,
+          }
+        : await submitPurchase(quantity, diamonds);
       onSpend(next.diamondCost);
       setSession(next);
       setScratched([]);
@@ -150,6 +209,7 @@ export function PurchaseFlow({
     } finally {
       setSubmitting(false);
       setPending(null);
+      setPendingFoil(null);
     }
   }
 
@@ -158,7 +218,7 @@ export function PurchaseFlow({
     setRetrying(true);
     try {
       await loadOpeningAssets();
-      setStage(session ? "ready" : "select");
+      setStage(session ? "ready" : model?.packs.length ? "choose" : "select");
     } catch {
       setStage("load-failed");
     } finally {
@@ -216,7 +276,14 @@ export function PurchaseFlow({
       aria-label="Pack purchase and opening"
       className="absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden bg-[#090909]"
     >
-      <header className="relative z-20 flex h-16 shrink-0 items-center border-b border-white/[0.08] px-4">
+      <header
+        className={[
+          "relative z-20 flex h-16 shrink-0 items-center px-4",
+          stage === "choose" || stage === "reveal"
+            ? "absolute inset-x-0 top-0 border-transparent bg-transparent"
+            : "border-b border-white/[0.08]",
+        ].join(" ")}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -225,12 +292,14 @@ export function PurchaseFlow({
         >
           <ChevronLeft className="size-5" />
         </button>
-        <div className="absolute left-1/2 -translate-x-1/2 text-center">
-          <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
-          {terminal ? null : (
-            <p className="text-[10px] text-white/40">{stageStep(stage)} of 4</p>
-          )}
-        </div>
+        {stage === "choose" || stage === "reveal" ? null : (
+          <div className="absolute left-1/2 -translate-x-1/2 text-center">
+            <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
+            {terminal ? null : (
+              <p className="text-[10px] text-white/40">{stageStep(stage)} of 4</p>
+            )}
+          </div>
+        )}
         <div className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5">
           <Gem className="size-3.5 text-sky-300" />
           <span className="text-[12px] font-semibold tabular-nums">{diamonds}</span>
@@ -244,8 +313,24 @@ export function PurchaseFlow({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+          className={[
+            "flex min-h-0 flex-1 flex-col",
+            stage === "choose" || stage === "reveal"
+              ? "overflow-hidden"
+              : "overflow-y-auto",
+          ].join(" ")}
         >
+          {stage === "choose" ? (
+            <ChoosePackStage
+              packs={model?.packs ?? []}
+              modelId={model?.id ?? pack.packId}
+              girlName={model?.name ?? pack.creator}
+              submitting={submitting}
+              diamondCost={10}
+              onOpen={(foil) => void purchase(1, foil)}
+            />
+          ) : null}
+
           {stage === "select" ? (
             <SelectStage
               pack={pack}
@@ -253,24 +338,47 @@ export function PurchaseFlow({
               diamonds={diamonds}
               submitting={submitting}
               pending={pending}
-              onPurchase={purchase}
+              onPurchase={(quantity) => void purchase(quantity)}
             />
           ) : null}
 
           {stage === "ready" && session ? (
             <ReadyStage
-              packName={pack.packName}
+              packName={packDisplayName}
               packImage={packImage}
               quantity={session.quantity}
+              designed={Boolean(session.foilFaceUrl)}
+              collection={model?.collectionLabel}
               onOpened={() => setStage("reveal")}
             />
           ) : null}
 
           {stage === "reveal" && session ? (
-            <RevealStage
-              cardCount={session.cards.length}
-              packImage={packImage}
-              cardImages={cardImages}
+            <MotionRevealStage
+              modelId={model?.id ?? pack.packId}
+              girlName={model?.name ?? pack.creator}
+              city={model?.city ?? null}
+              country={model?.country ?? null}
+              flagEmoji={model?.flagEmoji ?? null}
+              flagSvgUrl={model?.flagSvgUrl ?? null}
+              overlayColorStart={model?.overlayColorStart ?? null}
+              overlayColorEnd={model?.overlayColorEnd ?? null}
+              onCards={(cards) => {
+                setSession((current) =>
+                  current
+                    ? {
+                        ...current,
+                        cards: cards.map((card, index) => ({
+                          id: card.id,
+                          rarity:
+                            index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
+                          reward: 10 + index * 5,
+                          faceUrl: card.mediaUrl,
+                        })),
+                      }
+                    : current,
+                );
+              }}
               onContinue={() => setStage("preview")}
             />
           ) : null}
@@ -279,7 +387,7 @@ export function PurchaseFlow({
             <PreviewStage
               session={session}
               index={selectedCard}
-              packName={pack.packName}
+              packName={packDisplayName}
               onSelect={setSelectedCard}
               onPlay={() => setStage("scratch")}
               onSkip={() => setStage("grid")}
@@ -406,7 +514,7 @@ export function PurchaseFlow({
               onClick: () => {
                 const quantity = pending ?? PACK_OPTIONS[0].quantity;
                 setModal(null);
-                void purchase(quantity);
+                void purchase(quantity, lastFoilRef.current ?? pendingFoil ?? undefined);
               },
             }}
             secondary={{ label: "Cancel", onClick: () => setModal(null) }}
@@ -550,6 +658,74 @@ function FlowModal({
  * Stages
  * ----------------------------------------------------------------------- */
 
+function ChoosePackStage({
+  packs,
+  modelId,
+  girlName,
+  submitting,
+  diamondCost,
+  onOpen,
+}: {
+  packs: readonly FoilPack[];
+  modelId: string;
+  girlName: string;
+  submitting: boolean;
+  diamondCost: number;
+  onOpen: (foil: FoilPack) => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(packs[0]?.id ?? null);
+  const items = useMemo(
+    () =>
+      packs.map((foil) =>
+        packItemToIteration({
+          id: foil.id,
+          characterId: modelId,
+          name: girlName,
+          modelUrl: PACK_MODEL_URL,
+          modelName: "card2.glb",
+          videoUrl: foil.videoUrl,
+          price: diamondCost,
+          girlName,
+          packNumber: foil.slot === 1 ? 101 : 102,
+          packName: foil.label,
+          flagEmoji: "",
+          backgroundColor: "#5fd0e0",
+        }),
+      ),
+    [diamondCost, girlName, modelId, packs],
+  );
+
+  useEffect(() => {
+    if (!selectedId && packs[0]) setSelectedId(packs[0].id);
+  }, [packs, selectedId]);
+
+  if (!items.length) return null;
+
+  return (
+    <div
+      className="stage-packs"
+      style={{ ["--overlay-gradient-color-end" as string]: "#5fd0e0" }}
+    >
+      <div className="packs-glow-stack packs-glow-stack--base" aria-hidden="true">
+        <div className="packs-circle packs-circle--bloom" />
+        <div className="packs-circle packs-circle--core" />
+      </div>
+      <CoverFlowCarousel
+        items={items}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        onDeselect={() => setSelectedId(null)}
+        formatPrice={() => String(diamondCost)}
+        onBuy={(item) => {
+          if (submitting) return;
+          const foil = packs.find((pack) => pack.id === item.id);
+          if (foil) onOpen(foil);
+        }}
+      />
+    </div>
+  );
+}
+
 function SelectStage({
   pack,
   packImage,
@@ -629,11 +805,15 @@ function ReadyStage({
   packName,
   packImage,
   quantity,
+  designed = false,
+  collection,
   onOpened,
 }: {
   packName: string;
   packImage: string;
   quantity: PackQuantity;
+  designed?: boolean;
+  collection?: string;
   onOpened: () => void;
 }) {
   const rotate = useMotionValue(0);
@@ -656,79 +836,143 @@ function ReadyStage({
         style={{ x: rotate, rotateY }}
         className="relative mt-8 cursor-grab touch-none active:cursor-grabbing"
       >
-        <HolographicPackCard src={packImage} name={packName} badge="Sealed" interactive={false} />
-        <motion.button
-          type="button"
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          onDragEnd={tear}
-          onClick={onOpened}
-          className="absolute inset-x-3 top-[48%] flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
-        >
-          <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
-            ← Drag to tear →
-          </motion.span>
-        </motion.button>
+        {designed ? (
+          <FoilPackFace src={packImage} collection={collection} packLabel={packName} sealed>
+            <motion.button
+              type="button"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={tear}
+              onClick={onOpened}
+              className="absolute inset-x-3 top-[48%] z-10 flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
+            >
+              <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
+                ← Drag to tear →
+              </motion.span>
+            </motion.button>
+          </FoilPackFace>
+        ) : (
+          <>
+            <HolographicPackCard src={packImage} name={packName} badge="Sealed" interactive={false} />
+            <motion.button
+              type="button"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={tear}
+              onClick={onOpened}
+              className="absolute inset-x-3 top-[48%] flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
+            >
+              <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
+                ← Drag to tear →
+              </motion.span>
+            </motion.button>
+          </>
+        )}
       </motion.div>
     </div>
   );
 }
 
-function RevealStage({
-  cardCount,
-  packImage,
-  cardImages,
+function MotionRevealStage({
+  modelId,
+  girlName,
+  city,
+  country,
+  flagEmoji,
+  flagSvgUrl,
+  overlayColorStart,
+  overlayColorEnd,
+  onCards,
   onContinue,
 }: {
-  cardCount: number;
-  packImage: string;
-  cardImages: string[];
+  modelId: string;
+  girlName: string;
+  city: string | null;
+  country: string | null;
+  flagEmoji: string | null;
+  flagSvgUrl: string | null;
+  overlayColorStart: string | null;
+  overlayColorEnd: string | null;
+  onCards: (cards: RevealCard[]) => void;
   onContinue: () => void;
 }) {
+  const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null);
+  const [ready, setReady] = useState(false);
+  const [fanLayout] = useState(() => loadFanLayout());
+  const [fanDrag] = useState(() => loadFanDrag());
+  const onCardsRef = useRef(onCards);
+  onCardsRef.current = onCards;
+  const sequence = useRevealSequence({
+    autoStart: ready,
+    autoStartKey: modelId,
+    autoStartDelayMs: 80,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPackFanCatalog(modelId).then(async (result) => {
+      if (cancelled) return;
+      const fan =
+        result && result.cards.length > 0 ? result : await fetchPackFanCatalog();
+      if (cancelled) return;
+      setBackendFan(fan);
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [modelId]);
+
+  const cards = useMemo(() => {
+    if (!ready) return [];
+    return createMixedCategoryPackCards({
+      backendFan,
+      seed: `${modelId}:${sequence.runId}`,
+      girlName,
+      overlay: {
+        name: girlName,
+        city: city ?? "",
+        country: country ?? "",
+        flagEmoji: flagEmoji ?? "",
+        flagSvgUrl: flagSvgUrl ?? "",
+        gradientColor: overlayColorStart ?? "#5fd0e0",
+        gradientColorEnd: overlayColorEnd ?? "#5fd0e0",
+      },
+    });
+  }, [
+    backendFan,
+    city,
+    country,
+    flagEmoji,
+    flagSvgUrl,
+    girlName,
+    modelId,
+    overlayColorEnd,
+    overlayColorStart,
+    ready,
+    sequence.runId,
+  ]);
+
+  useEffect(() => {
+    if (cards.length) onCardsRef.current(cards);
+  }, [cards]);
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center overflow-hidden px-5 py-8 text-center">
-      <motion.img
-        src={packImage}
-        alt=""
-        initial={{ scale: 1, opacity: 1 }}
-        animate={{ scale: 1.2, opacity: 0.15, y: -70 }}
-        transition={{ duration: 0.6 }}
-        className="absolute h-72 w-52 rounded-[24px] object-cover"
-      />
-      <div className="relative h-72 w-60">
-        {Array.from({ length: Math.min(cardCount, 5) }, (_, index) => (
-          <motion.div
-            key={index}
-            initial={{ y: 100, opacity: 0, rotate: 0 }}
-            animate={{
-              y: index * 4,
-              x: (index - Math.min(cardCount, 5) / 2) * 18,
-              rotate: (index - 2) * 5,
-              opacity: 1,
-            }}
-            transition={{ delay: 0.15 + index * 0.08, duration: 0.4, ease: "easeOut" }}
-            className="absolute inset-0 overflow-hidden rounded-[20px] border border-white/20 bg-[#151515] shadow-2xl"
-          >
-            <img src={cardImages[index % cardImages.length]} alt="" className="size-full object-cover opacity-35" />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(139,92,246,.65),transparent,rgba(212,175,55,.45))] mix-blend-color-dodge" />
-            <div className="absolute inset-3 rounded-[14px] border border-white/30" />
-            <p className="absolute inset-x-0 bottom-5 text-[11px] font-bold tracking-[0.16em] uppercase">
-              Scratch to reveal
-            </p>
-          </motion.div>
-        ))}
+    <div className="motion-reveal">
+      <div className="reveal-stage__fan">
+        <CardFan
+          cards={cards}
+          active={sequence.fanActive}
+          layout={fanLayout}
+          dragConfig={fanDrag}
+          onComplete={sequence.handleFanComplete}
+        />
       </div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}>
-        <h1 className="mt-5 text-[28px] font-bold">{cardCount} cards discovered</h1>
-        <p className="mt-2 text-[14px] text-white/50">Their artwork is still hidden.</p>
-        <button
-          type="button"
-          onClick={onContinue}
-          className="mt-6 h-14 rounded-full bg-[#8B5CF6] px-8 text-[15px] font-semibold"
-        >
+      {sequence.showPlay ? (
+        <button type="button" className="motion-reveal__continue" onClick={onContinue}>
           Continue
         </button>
-      </motion.div>
+      ) : null}
     </div>
   );
 }
@@ -873,7 +1117,18 @@ function ScratchStage({
         {revealed ? "Card revealed" : "Scratch to reveal"}
       </h1>
       <div className="relative mt-7 aspect-[3/4] w-[240px] overflow-hidden rounded-[24px] border border-white/20 bg-[#151515] shadow-2xl">
-        <img src={image} alt="Revealed collectible" className="absolute inset-0 size-full object-cover" />
+        {isVideoSrc(card.faceUrl ?? image) ? (
+          <video
+            src={card.faceUrl ?? image}
+            muted
+            loop
+            playsInline
+            autoPlay
+            className="absolute inset-0 size-full object-cover"
+          />
+        ) : (
+          <img src={card.faceUrl ?? image} alt="Revealed collectible" className="absolute inset-0 size-full object-cover" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-5 z-10">
           <p className="text-[20px] font-bold">{card.rarity}</p>
@@ -916,6 +1171,7 @@ function ScratchStage({
 }
 
 function stageTitle(stage: Stage) {
+  if (stage === "choose") return "Choose Pack";
   if (stage === "select") return "Purchase Pack";
   if (stage === "ready") return "Pack Ready";
   if (stage === "reveal") return "Opening Reveal";
@@ -928,7 +1184,7 @@ function stageTitle(stage: Stage) {
 }
 
 function stageStep(stage: Stage) {
-  if (stage === "select") return 1;
+  if (stage === "choose" || stage === "select") return 1;
   if (stage === "ready") return 2;
   if (stage === "reveal") return 3;
   return 4;

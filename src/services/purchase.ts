@@ -16,12 +16,17 @@ export type OpeningCard = {
   id: string;
   rarity: "Rare" | "Super Rare" | "Ultra Rare";
   reward: number;
+  /** Optional designed face (foil video / image from the model API). */
+  faceUrl?: string;
 };
 
 export type OpeningSession = {
   quantity: PackQuantity;
   diamondCost: number;
   cards: OpeningCard[];
+  /** Foil face used on Pack Ready after the user picks a pack. */
+  foilFaceUrl?: string;
+  foilLabel?: string;
 };
 
 export const PACK_OPTIONS: {
@@ -36,6 +41,22 @@ export const PACK_OPTIONS: {
 
 export function packCost(quantity: PackQuantity) {
   return PACK_OPTIONS.find((option) => option.quantity === quantity)?.diamondCost ?? 0;
+}
+
+export function buildFoilOpeningSession(
+  foils: { id: string; label: string; videoUrl: string }[],
+): OpeningSession {
+  const rarities: OpeningCard["rarity"][] = ["Super Rare", "Ultra Rare"];
+  return {
+    quantity: 1,
+    diamondCost: packCost(1),
+    cards: foils.slice(0, 2).map((foil, index) => ({
+      id: foil.id,
+      rarity: rarities[index] ?? "Rare",
+      reward: index === 0 ? 25 : 50,
+      faceUrl: foil.videoUrl,
+    })),
+  };
 }
 
 export function buildOpeningSession(quantity: PackQuantity): OpeningSession {

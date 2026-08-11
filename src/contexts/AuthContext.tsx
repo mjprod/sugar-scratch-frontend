@@ -30,7 +30,7 @@ import {
   setRecommendationSeedCreator,
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
-import type { PurchaseFlowPack } from "@/services/purchase";
+import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS } from "@/routes/Paths";
@@ -242,9 +242,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openPurchase = useCallback(
     (pack: PurchaseFlowPack, kind: "buy-pack" | "open-pack" = "buy-pack") => {
       if (pack.creator) noteCreatorEngagement(pack.creator);
-      requireAuth({ type: "buy", pack, kind });
+      if (kind === "open-pack") {
+        requireAuth({ type: "buy", pack, kind });
+        return;
+      }
+      clearOpening();
+      navigate(Paths.purchase(pack.packId), {
+        state: { pack: { ...pack, entry: "purchase" as const } },
+      });
     },
-    [requireAuth],
+    [navigate, requireAuth],
   );
 
   const openSettings = useCallback(() => {

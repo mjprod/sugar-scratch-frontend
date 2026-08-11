@@ -3,6 +3,8 @@
  * Active cards use portrait video clips so creators appear to move.
  */
 
+import { loadModels, profileFromModel, type BackendModel } from "./models";
+
 export type HomeFeedCreator = {
   id: string;
   creatorId: string;
@@ -59,6 +61,23 @@ const PORTRAIT_CLIPS = [
     poster: "https://assets.mixkit.co/videos/48534/48534-thumb-720-0.jpg",
   },
 ] as const;
+
+function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> {
+  const profile = profileFromModel(model);
+  return {
+    id: `hf-${profile.id}`,
+    creatorId: profile.id,
+    creatorName: profile.name,
+    collectionName: profile.city ?? "Collection",
+    description: profile.collectionLabel,
+    packId: profile.id,
+    packName: profile.collectionLabel,
+    mediaType: "video",
+    posterUrl: "",
+    videoUrl: profile.swipeVideoUrl ?? undefined,
+    diamondCost: 10,
+  };
+}
 
 const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
   {
@@ -168,7 +187,7 @@ const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
 ];
 
 const PAGE_SIZE = 4;
-const FEED_CACHE_VERSION = 2;
+const FEED_CACHE_VERSION = 4;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -183,20 +202,24 @@ export function __homeFeedForceFailNext() {
 export async function fetchHomeFeedPage(
   cursor: string | null = null,
 ): Promise<HomeFeedPage> {
-  await wait(cursor ? 380 : 520);
+  const [, models] = await Promise.all([
+    wait(cursor ? 380 : 520),
+    loadModels(),
+  ]);
   if (forceFailNext) {
     forceFailNext = false;
     throw new Error("Unable to load creators.");
   }
 
+  const catalog = [...models.map(feedItemFromModel), ...CATALOG];
   const start = cursor ? Number.parseInt(cursor, 10) : 0;
   const safeStart = Number.isFinite(start) && start >= 0 ? start : 0;
   const items: HomeFeedCreator[] = [];
 
   for (let i = 0; i < PAGE_SIZE; i++) {
-    const catalogIndex = (safeStart + i) % CATALOG.length;
+    const catalogIndex = (safeStart + i) % catalog.length;
     const pageIndex = safeStart + i;
-    const seed = CATALOG[catalogIndex]!;
+    const seed = catalog[catalogIndex]!;
     items.push({
       ...seed,
       id: `${seed.id}__${pageIndex}`,
