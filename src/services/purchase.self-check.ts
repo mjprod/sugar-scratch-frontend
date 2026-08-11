@@ -1,3 +1,4 @@
+import { diamondCostForPackId } from "./homepage.ts";
 import {
   buildFoilOpeningSession,
   buildOpeningSession,
@@ -11,8 +12,6 @@ import {
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
-
-import { diamondCostForPackId } from "./homepage.ts";
 
 const single = buildOpeningSession(1, "ep1");
 const bundle = buildOpeningSession(5, "ep1");
