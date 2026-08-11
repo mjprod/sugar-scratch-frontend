@@ -1,6 +1,20 @@
 @import "tailwindcss";
 @import "./theme.css";
 
+@font-face {
+  font-family: "CardOverlay";
+  src:
+    url("/font/cardOverlay.woff2") format("woff2"),
+    url("/font/cardOverlay.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-card-overlay: "CardOverlay", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+}
+
 @theme {
   --font-display: "Inter", system-ui, sans-serif;
 

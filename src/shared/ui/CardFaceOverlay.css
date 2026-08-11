@@ -1,0 +1,266 @@
+/* Shared card-face identity overlay (collection coverflow + reveal/pack fan).
+   Lives inside .card__front so it flips/tilts with the face.
+
+   Structure:
+     .card-face-overlay
+       .innerBorder
+       .innerCardContent          (gradient strip; width via --overlay-strip-max-width)
+         .cardNumber
+         .influencerNameAndLocationRow
+           .influencerNameAndLocationRow__text
+             .influencerName
+             .influencerLocation
+         .influencerFlag
+
+   Sizing tokens live on .card-face-overlay so contexts (fan cards, etc.)
+   can override without fighting base card stack rules. */
+
+.card-face-overlay {
+  /* Default = collection / large card scale */
+  --overlay-strip-max-width: 5rem;
+  --overlay-pad-top: 1.15rem;
+  --overlay-pad-bottom: 1.6rem;
+  --overlay-gap: 0.5rem;
+  --overlay-number-size: 2rem;
+  --overlay-number-font: clamp(1.25rem, 3.4cqi, 1.5rem);
+  --overlay-number-tracking: -1px;
+  --overlay-name-font: clamp(1.35rem, 7cqi, 2.25rem);
+  --overlay-name-tracking: -2px;
+  --overlay-location-font: clamp(0.48rem, 3.2cqi, 1.3rem);
+  --overlay-location-tracking: -0.75px;
+  --overlay-flag-w: 1.65rem;
+  --overlay-flag-h: 1.1rem;
+  --overlay-flag-font: clamp(0.7rem, 4.2cqi, 0.95rem);
+  --overlay-border-width: 91%;
+  --overlay-border-height: 96.4%;
+  --overlay-border-radius: 13px;
+  --overlay-border-stroke: 2px solid rgb(255, 255, 255);
+  --overlay-number-border: 2px solid #111;
+  --overlay-text-gap: 0.55em;
+
+  position: relative;
+  z-index: 5;
+  display: grid;
+  box-sizing: border-box;
+  isolation: isolate;
+  /* cqi font scales relative to the card face width */
+  container-type: inline-size;
+  container-name: card-face;
+  transform: translateZ(2px);
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  /* grid cell placement comes from base.css `.card__front > .card-face-overlay` */
+  grid-template: 1fr / 1fr;
+  align-self: stretch;
+  justify-self: stretch;
+  min-height: 100%;
+  max-width: none;
+  max-height: none;
+}
+
+/* Highest z-index within the overlay — inset face frame */
+.card-face-overlay > .innerBorder {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  width: var(--overlay-border-width);
+  height: var(--overlay-border-height);
+  margin: auto;
+  border-radius: var(--overlay-border-radius);
+  border: var(--overlay-border-stroke);
+  background: transparent;
+  pointer-events: none;
+}
+
+/* Content strip — lower z than border */
+.card-face-overlay > .innerCardContent {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  align-self: stretch;
+  justify-self: start;
+  gap: var(--overlay-gap);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--overlay-strip-max-width);
+  height: 100%;
+  min-height: 100%;
+  padding: var(--overlay-pad-top) 0 var(--overlay-pad-bottom);
+  border-radius: var(--card-radius) 0 0 var(--card-radius);
+  color: #111;
+  text-shadow: none;
+  background: linear-gradient(
+    180deg,
+    var(--overlay-gradient-color, #5fd0e0) 0%,
+    var(--overlay-gradient-color-end, #0b1c24) 100%
+  );
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.card-face-overlay .cardNumber {
+  flex: 0 0 auto;
+  display: flex;
+  box-sizing: border-box;
+  width: var(--overlay-number-size);
+  height: var(--overlay-number-size);
+  align-items: center;
+  justify-content: center;
+  border: var(--overlay-number-border);
+  border-radius: 0.12rem;
+  color: #111;
+  font-family: var(--font-card-overlay, 'CardOverlay', sans-serif);
+  font-size: var(--overlay-number-font);
+  font-weight: 400;
+  letter-spacing: var(--overlay-number-tracking);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/*
+  Vertical text slot:
+  - Outer box fills remaining column space between number and flag.
+  - sideways-lr: Latin text progresses bottom → top.
+  - DOM order name → location ⇒ name near flag, location above it.
+*/
+.card-face-overlay .influencerNameAndLocationRow {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.card-face-overlay .influencerNameAndLocationRow__text {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: var(--overlay-text-gap);
+  box-sizing: border-box;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  color: #111;
+  white-space: nowrap;
+  writing-mode: sideways-lr;
+  text-orientation: mixed;
+  pointer-events: none;
+}
+
+.card-face-overlay .influencerName {
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  color: #111;
+  font-family: var(--font-card-overlay, 'CardOverlay', sans-serif);
+  font-size: var(--overlay-name-font);
+  font-weight: 900;
+  letter-spacing: var(--overlay-name-tracking);
+  line-height: 1;
+  text-transform: uppercase;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.card-face-overlay .influencerLocation {
+  display: block;
+  flex: 0 1 auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  max-height: 100%;
+  color: #111;
+  font-family: var(--font-card-overlay, 'CardOverlay', sans-serif);
+  font-size: var(--overlay-location-font);
+  font-weight: 700;
+  letter-spacing: var(--overlay-location-tracking);
+  line-height: 1;
+  text-transform: uppercase;
+  opacity: 0.92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  translate: -2px 0;
+}
+
+.card-face-overlay .influencerFlag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--overlay-flag-w);
+  height: var(--overlay-flag-h);
+  min-height: 0;
+  border-radius: 0.12rem;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.35);
+  font-size: var(--overlay-flag-font);
+  line-height: 1;
+}
+
+.card-face-overlay .influencerFlag img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-face-overlay .influencerFlag__emoji {
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+/* -------------------------------------------------------------------------
+   Pack / reveal fan cards (~118×223) — tighter strip so gradient doesn't
+   dominate the small face. Tokens only; structure unchanged.
+   ------------------------------------------------------------------------- */
+.fan-card .card-face-overlay {
+  --overlay-strip-max-width: 2.15rem;
+  --overlay-pad-top: 0.55rem;
+  --overlay-pad-bottom: 0.72rem;
+  --overlay-gap: 0.22rem;
+  --overlay-number-size: 0.92rem;
+  --overlay-number-font: clamp(0.38rem, 9cqi, 0.52rem);
+  --overlay-number-tracking: -0.4px;
+  --overlay-number-border: 1px solid #111;
+  --overlay-name-font: clamp(0.72rem, 16cqi, 0.98rem);
+  --overlay-name-tracking: -0.9px;
+  --overlay-location-font: clamp(0.3rem, 7.5cqi, 0.42rem);
+  --overlay-location-tracking: -0.35px;
+  --overlay-flag-w: 0.82rem;
+  --overlay-flag-h: 0.55rem;
+  --overlay-flag-font: clamp(0.4rem, 8cqi, 0.55rem);
+  --overlay-border-radius: 6px;
+  --overlay-border-stroke: 1px solid rgb(255, 255, 255);
+  --overlay-text-gap: 0.35em;
+}
+
+@media (max-width: 520px) {
+  .fan-card .card-face-overlay {
+    --overlay-strip-max-width: 1.85rem;
+    --overlay-pad-top: 0.45rem;
+    --overlay-pad-bottom: 0.6rem;
+    --overlay-number-size: 0.8rem;
+    --overlay-flag-w: 0.72rem;
+    --overlay-flag-h: 0.48rem;
+  }
+}

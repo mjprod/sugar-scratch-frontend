@@ -30,7 +30,7 @@ import {
   setRecommendationSeedCreator,
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
-import type { PurchaseFlowPack } from "@/services/purchase";
+import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS } from "@/routes/Paths";
@@ -128,8 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!action) return;
       if (action.type === "buy") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
+        const isBuyPack = action.kind !== "open-pack";
+        if (isBuyPack) clearOpening();
         navigate(Paths.purchase(action.pack.packId), {
-          state: { pack: action.pack },
+          state: {
+            pack: isBuyPack
+              ? { ...action.pack, entry: "purchase" as const }
+              : action.pack,
+          },
         });
         return;
       }
