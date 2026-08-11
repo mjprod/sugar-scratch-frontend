@@ -1,16 +1,12 @@
 import {
   Check,
-  ChevronLeft,
   Clock,
   Gem,
   Loader2,
   Lock,
   Play,
   RefreshCw,
-  ShieldCheck,
-  Store as StoreIcon,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -27,8 +23,9 @@ import {
   type StoreBadge,
   type StoreProduct,
 } from "@/services/store";
-import { CurrencyBalances } from "@/components/CurrencyBalances";
+import { AppPageShell } from "@/components/AppPageShell";
 import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
+import { SubpageHeader } from "@/components/SubpageHeader";
 
 type LoadState =
   | { status: "loading" }
@@ -58,18 +55,12 @@ type Flow =
  * Sugar never collects card details; payment runs on a simulated gateway.
  */
 export function StoreScreen({
-  coins,
   diamonds,
-  avatar,
   onBack,
-  onProfile,
   onPurchaseSuccess,
 }: {
-  coins: number | null;
   diamonds: number | null;
-  avatar?: string | null;
   onBack: () => void;
-  onProfile?: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
 }) {
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
@@ -288,67 +279,53 @@ export function StoreScreen({
         : undefined;
 
   return (
-    <section
-      data-page-scroll
-      className="store-page relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#090909] pb-[calc(112px+env(safe-area-inset-bottom))]"
+    <AppPageShell
+      variant="secondary"
+      aria-label="Store"
+      className="!pb-[calc(112px+env(safe-area-inset-bottom,0px))]"
     >
-      <div className="mx-auto w-full max-w-[480px] px-4 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-3xl lg:px-6 lg:pt-6">
-        <StoreTopNav
-          coins={coins}
-          diamonds={diamonds}
-          avatar={avatar}
-          onBack={onBack}
-          onProfile={onProfile}
+      <SubpageHeader
+        onBack={onBack}
+        backLabel="Back"
+        trailing={<MobileDiamondBalance balance={diamonds} standalone />}
+      />
+
+      <header className="mt-4">
+        <h1 className="text-[28px] font-bold tracking-[-0.03em] leading-tight md:text-[32px]">
+          Store
+        </h1>
+        <p className="mt-1.5 text-[14px] text-white/55">
+          Get Diamonds to unlock packs and more.
+        </p>
+      </header>
+
+      {load.status === "loading" ? <StoreSkeleton /> : null}
+
+      {load.status === "empty" ? (
+        <StateBlock
+          title="No products are currently available."
+          primary={{ label: "Refresh", onClick: () => void reload() }}
         />
+      ) : null}
 
-        <header className="mt-5 px-1 lg:mt-4">
-          <h1 className="hidden text-[32px] font-bold tracking-[-0.03em] lg:block">Store</h1>
-          <p className="mt-1.5 text-[14px] text-white/55">
-            Buy Diamonds and exclusive packs.
-          </p>
-        </header>
+      {load.status === "error" ? (
+        <StateBlock
+          title={load.message || "Unable to load store items."}
+          primary={{ label: "Retry", onClick: () => void reload() }}
+          secondary={{ label: "Back", onClick: onBack }}
+        />
+      ) : null}
 
-        {load.status === "loading" ? <StoreSkeleton /> : null}
-
-        {load.status === "empty" ? (
-          <StateBlock
-            title="No products are currently available."
-            primary={{ label: "Refresh", onClick: () => void reload() }}
-          />
-        ) : null}
-
-        {load.status === "error" ? (
-          <StateBlock
-            title={load.message || "Unable to load store items."}
-            primary={{ label: "Retry", onClick: () => void reload() }}
-            secondary={{ label: "Back", onClick: onBack }}
-          />
-        ) : null}
-
-        {load.status === "ok" ? (
-          <>
-            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
-              {load.products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  claimed={claimedAds.includes(product.id)}
-                  processing={
-                    busy &&
-                    activeProductId === product.id &&
-                    (flow.step === "creating" ||
-                      flow.step === "verifying" ||
-                      flow.step === "ad-processing")
-                  }
-                  disabled={busy}
-                  onSelect={() => onSelect(product)}
-                />
-              ))}
-            </div>
-            <StoreInfo />
-          </>
-        ) : null}
-      </div>
+      {load.status === "ok" ? (
+        <StoreCatalog
+          products={load.products}
+          claimedAds={claimedAds}
+          busy={busy}
+          activeProductId={activeProductId}
+          flowStep={flow.step}
+          onSelect={onSelect}
+        />
+      ) : null}
 
       {flow.step === "confirm" ? (
         <ConfirmModal
@@ -412,80 +389,79 @@ export function StoreScreen({
           retryLabel={flow.kind === "pending" ? "Check status" : "Try again"}
         />
       ) : null}
-    </section>
+    </AppPageShell>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-function StoreTopNav({
-  coins,
-  diamonds,
-  avatar,
-  onBack,
-  onProfile,
+function StoreCatalog({
+  products,
+  claimedAds,
+  busy,
+  activeProductId,
+  flowStep,
+  onSelect,
 }: {
-  coins: number | null;
-  diamonds: number | null;
-  avatar?: string | null;
-  onBack: () => void;
-  onProfile?: () => void;
+  products: StoreProduct[];
+  claimedAds: string[];
+  busy: boolean;
+  activeProductId?: string;
+  flowStep: Flow["step"];
+  onSelect: (product: StoreProduct) => void;
 }) {
+  const ads = products.filter((p) => p.kind === "rewarded-ad");
+  const packs = products.filter((p) => p.kind === "diamonds");
+
+  function isProcessing(productId: string) {
+    return (
+      busy &&
+      activeProductId === productId &&
+      (flowStep === "creating" ||
+        flowStep === "verifying" ||
+        flowStep === "ad-processing")
+    );
+  }
+
   return (
-    <>
-      <header className="flex items-center gap-2 lg:hidden">
-        <button
-          type="button"
-          onClick={onBack}
-          className="subpage-back"
-          aria-label="Back"
-        >
-          <ChevronLeft className="size-5" />
-        </button>
+    <div className="mt-6 flex flex-col gap-7">
+      {ads.map((product) => (
+        <WatchAdCard
+          key={product.id}
+          product={product}
+          claimed={claimedAds.includes(product.id)}
+          processing={isProcessing(product.id)}
+          disabled={busy}
+          onSelect={() => onSelect(product)}
+        />
+      ))}
 
-        <span className="min-w-0 flex-1 truncate text-[18px] font-bold">Store</span>
-
-        <MobileDiamondBalance balance={diamonds} standalone />
-
-        <button
-          type="button"
-          onClick={onProfile}
-          className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[16px] transition active:scale-95 hover:bg-white/10"
-          aria-label="Open Profile"
+      <section aria-labelledby="buy-diamonds-heading">
+        <h2
+          id="buy-diamonds-heading"
+          className="text-[18px] font-bold tracking-[-0.02em]"
         >
-          {avatar || "✨"}
-        </button>
-      </header>
-
-      <header className="mb-1 hidden items-center gap-3 lg:flex">
-        <button
-          type="button"
-          onClick={onBack}
-          className="subpage-back"
-          aria-label="Back"
-        >
-          <ChevronLeft className="size-5" />
-        </button>
-        <div
-          className="flex min-h-11 items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.05] px-3.5"
-          aria-live="polite"
-        >
-          <CurrencyBalances coins={coins} diamonds={diamonds} />
+          Buy Diamonds
+        </h2>
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-3.5">
+          {packs.map((product) => (
+            <PackageCard
+              key={product.id}
+              product={product}
+              processing={isProcessing(product.id)}
+              disabled={busy}
+              onSelect={() => onSelect(product)}
+            />
+          ))}
         </div>
-        <button
-          type="button"
-          onClick={onProfile}
-          className="ml-auto grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[16px] transition hover:bg-white/10"
-          aria-label="Open Profile"
-        >
-          {avatar || "✨"}
-        </button>
-      </header>
-    </>
+      </section>
+
+      <StoreInfo />
+    </div>
   );
 }
 
-function ProductCard({
+function WatchAdCard({
   product,
   claimed,
   processing,
@@ -498,71 +474,97 @@ function ProductCard({
   disabled: boolean;
   onSelect: () => void;
 }) {
-  const unavailable = claimed && product.kind === "rewarded-ad";
+  const unavailable = claimed;
 
   return (
-    <article className="store-product relative flex flex-col overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#141318]">
-      {product.badge && !unavailable ? <BadgeMark badge={product.badge} /> : null}
-      {unavailable ? <BadgeMark badge="FREE" muted label="Claimed" /> : null}
-
-      <div
-        className={[
-          "relative aspect-[4/5] w-full",
-          product.kind === "rewarded-ad" ? "store-art-ad" : "store-art-gems",
-        ].join(" ")}
-        style={
-          product.artworkUrl
-            ? { backgroundImage: `url(${product.artworkUrl})`, backgroundSize: "cover" }
-            : undefined
-        }
-        aria-hidden="true"
-      >
-        {!product.artworkUrl ? (
-          <div className="absolute inset-0 grid place-items-center">
-            {product.kind === "rewarded-ad" ? (
-              <Play className="size-10 text-white/80" strokeWidth={1.5} />
-            ) : (
-              <Gem className="size-12 text-sky-200/90" strokeWidth={1.4} />
-            )}
-          </div>
-        ) : null}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#141318] to-transparent" />
-      </div>
-
-      <div className="relative -mt-8 flex flex-1 flex-col px-3 pb-3 pt-1">
-        <h2 className="line-clamp-2 min-h-[2.5rem] text-[14px] leading-tight font-semibold tracking-[-0.01em]">
-          {product.title}
-        </h2>
-        {product.subtitle ? (
-          <p className="mt-0.5 line-clamp-1 text-[11px] text-white/45">{product.subtitle}</p>
+    <button
+      type="button"
+      disabled={disabled || unavailable}
+      aria-busy={processing}
+      onClick={onSelect}
+      className={[
+        "store-watch-ad flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-3.5 text-left transition",
+        unavailable
+          ? "cursor-not-allowed border-white/[0.06] bg-white/[0.03] opacity-60"
+          : "border-[#ff5fa2]/25 bg-gradient-to-r from-[#ff5fa2]/12 to-[#9b3dff]/12 hover:border-[#ff5fa2]/40 active:scale-[0.99]",
+        "disabled:cursor-not-allowed",
+      ].join(" ")}
+    >
+      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#ff5fa2]/18 text-white">
+        {processing ? (
+          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
         ) : (
-          <p className="mt-0.5 text-[11px] text-white/35">
-            {product.diamonds.toLocaleString()} ◆
-          </p>
+          <Play className="size-5" strokeWidth={1.75} aria-hidden="true" />
         )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold tracking-[-0.01em]">
+          {product.title}
+        </span>
+        <span className="mt-0.5 block text-[13px] text-white/55">
+          {product.subtitle ?? `Earn ${product.diamonds} Diamonds`}
+        </span>
+      </span>
+      <span
+        className={[
+          "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-[0.06em] uppercase",
+          unavailable
+            ? "border-white/10 text-white/40"
+            : "border-emerald-400/35 bg-emerald-400/15 text-emerald-300",
+        ].join(" ")}
+      >
+        {unavailable ? "Claimed" : processing ? "…" : "FREE"}
+      </span>
+    </button>
+  );
+}
 
-        <button
-          type="button"
-          disabled={disabled || unavailable}
-          aria-busy={processing}
-          onClick={onSelect}
-          className={[
-            "mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition active:scale-[0.98]",
-            unavailable
-              ? "cursor-not-allowed bg-white/[0.06] text-white/35"
-              : product.kind === "rewarded-ad"
-                ? "bg-gradient-to-r from-[#FF6FA5] to-[#9B3DFF] text-white"
-                : "bg-white text-[#0a0a0f] hover:bg-white/90",
-            "disabled:cursor-not-allowed disabled:opacity-55",
-          ].join(" ")}
-        >
-          {processing ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : null}
-          {unavailable ? "Claimed" : processing ? "Processing…" : product.priceLabel}
-        </button>
-      </div>
-    </article>
+function PackageCard({
+  product,
+  processing,
+  disabled,
+  onSelect,
+}: {
+  product: StoreProduct;
+  processing: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  const featured = product.badge === "Best Value";
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-busy={processing}
+      onClick={onSelect}
+      className={[
+        "store-package relative flex flex-col items-center rounded-[18px] border px-3 pb-3.5 pt-3 text-center transition",
+        featured
+          ? "border-[#ff5fa2]/40 bg-[#18141c] shadow-[0_0_24px_rgba(255,95,162,0.12)]"
+          : "border-white/[0.08] bg-[#141318] hover:border-white/[0.16]",
+        "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55",
+      ].join(" ")}
+    >
+      {product.badge ? <BadgeMark badge={product.badge} /> : null}
+
+      <span className="mt-5 grid size-11 place-items-center rounded-full bg-sky-300/10">
+        {processing ? (
+          <Loader2 className="size-5 animate-spin text-sky-200" aria-hidden="true" />
+        ) : (
+          <Gem className="size-6 text-sky-200/90" strokeWidth={1.5} aria-hidden="true" />
+        )}
+      </span>
+
+      <span className="mt-3 text-[26px] font-bold tabular-nums tracking-[-0.03em] leading-none">
+        {product.diamonds.toLocaleString()}
+      </span>
+      <span className="mt-1 text-[12px] font-medium text-white/50">Diamonds</span>
+
+      <span className="mt-3 text-[14px] font-semibold tabular-nums text-white/90">
+        {processing ? "Processing…" : product.priceLabel}
+      </span>
+    </button>
   );
 }
 
@@ -580,7 +582,7 @@ function BadgeMark({
     : badge === "FREE"
       ? "border-emerald-400/35 bg-emerald-400/15 text-emerald-300"
       : badge === "Best Value"
-        ? "border-[#D4AF37]/40 bg-[#D4AF37]/15 text-[#F5D78E]"
+        ? "border-[#ff5fa2]/45 bg-[#ff5fa2]/15 text-[#ff9dc8]"
         : badge === "Popular"
           ? "border-sky-400/40 bg-sky-400/15 text-sky-300"
           : badge === "Limited Time"
@@ -602,67 +604,36 @@ function BadgeMark({
 }
 
 function StoreInfo() {
-  const items = [
-    {
-      icon: Zap,
-      title: "Instant Delivery",
-      body: "Purchases are delivered immediately after successful payment.",
-    },
-    {
-      icon: ShieldCheck,
-      title: "Secure Checkout",
-      body: "All payments are securely processed through the platform.",
-    },
-    {
-      icon: StoreIcon,
-      title: "Official Store",
-      body: "Purchase Diamonds, packs, and exclusive offers.",
-    },
-  ] as const;
-
   return (
-    <section className="mt-10 mb-4 px-1" aria-label="Store information">
-      <h2 className="text-[12px] font-semibold tracking-[0.14em] text-white/40 uppercase">
-        Store information
-      </h2>
-      <ul className="mt-3 space-y-3">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <li
-              key={item.title}
-              className="flex gap-3 rounded-[18px] border border-white/[0.06] bg-white/[0.03] px-3.5 py-3"
-            >
-              <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-white/55">
-                <Icon className="size-4" aria-hidden="true" />
-              </span>
-              <span>
-                <span className="block text-[13px] font-semibold">{item.title}</span>
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-white/45">
-                  {item.body}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <p
+      className="pb-2 text-center text-[12px] leading-relaxed text-white/40"
+      aria-label="Store information"
+    >
+      Secure payment
+      <span className="mx-1.5 text-white/20" aria-hidden="true">
+        ·
+      </span>
+      Instant delivery
+      <span className="mx-1.5 text-white/20" aria-hidden="true">
+        ·
+      </span>
+      Trusted checkout
+    </p>
   );
 }
 
 function StoreSkeleton() {
   return (
-    <div
-      className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3"
-      aria-busy="true"
-      aria-label="Loading store"
-    >
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="aspect-[3/4] animate-pulse rounded-[22px] bg-white/[0.06]"
-        />
-      ))}
+    <div className="mt-6 flex flex-col gap-7" aria-busy="true" aria-label="Loading store">
+      <div className="h-[72px] animate-pulse rounded-[18px] bg-white/[0.06]" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[148px] animate-pulse rounded-[18px] bg-white/[0.06]"
+          />
+        ))}
+      </div>
     </div>
   );
 }

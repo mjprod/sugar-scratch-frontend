@@ -1549,19 +1549,11 @@ body[data-theme="v8"] .category-leaderboard-play:focus-visible {
   outline-offset: 2px;
 }
 
-/* Store — product card artwork fallbacks */
-body[data-theme="v8"] .store-art-gems {
-  background:
-    radial-gradient(circle at 50% 35%, rgba(125, 211, 252, 0.45), transparent 42%),
-    radial-gradient(circle at 30% 70%, rgba(56, 189, 248, 0.2), transparent 50%),
-    linear-gradient(160deg, #1a2840 0%, #0d1524 55%, #152036 100%);
-}
-
-body[data-theme="v8"] .store-art-ad {
-  background:
-    radial-gradient(circle at 50% 40%, rgba(255, 111, 165, 0.35), transparent 45%),
-    radial-gradient(circle at 70% 70%, rgba(155, 61, 255, 0.28), transparent 50%),
-    linear-gradient(160deg, #2a1830 0%, #140f1c 55%, #221428 100%);
+/* Store — compact package / watch-ad surfaces (Tailwind owns layout) */
+body[data-theme="v8"] .store-package:focus-visible,
+body[data-theme="v8"] .store-watch-ad:focus-visible {
+  outline: 2px solid #ff5fa2;
+  outline-offset: 2px;
 }
 
 /* --------------------------------------------------------------------------
