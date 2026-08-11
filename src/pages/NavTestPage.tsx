@@ -242,8 +242,8 @@ const NAV_TEST_CSS = `
   left: -3px;
   height: 93px;
   pointer-events: none;
-  background: rgb(0 0 0 / 70%);
-  backdrop-filter: blur(3px) brightness(1.8);
+  background: rgb(0 0 0 / 75%);
+  backdrop-filter: blur(4px) brightness(1.8);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
@@ -265,6 +265,7 @@ const NAV_TEST_CSS = `
   justify-content: space-between;
   pointer-events: none;
   overflow: visible;
+  transform: translate(0, 2px);
 }
 
 .top-left-rim-light,
@@ -280,20 +281,24 @@ const NAV_TEST_CSS = `
 
 .top-left-rim-light {
   transform-origin: top left;
-  height: 75%;
+  height: 71.3%;
+  transform: translate(-0.6vw, 0vw) scaleY(102.3%) scaleX(101.6%);
+  opacity: 0.7;
 }
 
 .middle-right-rim-light {
   transform-origin: top center;
-  width: 65px;
-  height: 66px;
+  width: 67px;
+  height: 67px;
   align-self: flex-start;
-  transform: translate(0%, -8%);
+  transform: translate(0%, -10%);
 }
 
 .bottom-right-rim-light {
   transform-origin: top right;
-  height: 75%;
+  height: 71.3%;
+  transform: translate(0%, -0.7%) scaleY(101.6%) scaleX(73.4%);
+  opacity: 0.7;
 }
 
 .rim-left-a,
@@ -304,7 +309,7 @@ const NAV_TEST_CSS = `
 .rim-right-a-b {
   position: absolute;
   inset: 0;
-  box-sizing: border-box;
+  box-sizing: content-box;
   width: 10dvw;
   height: 96px;
   border: 2px solid #fff;
@@ -312,31 +317,85 @@ const NAV_TEST_CSS = `
   pointer-events: none;
 }
 
-.rim-left-a,
-.rim-left-a-b {
+.rim-left-a {
   transform-origin: top left;
-  border-radius: 20rem 0 0 20rem;
-  width: 30dvw;
+  border-radius: 2.5rem 0 0 2.5rem;
+  width: 34dvw;
   height: 100%;
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 0;
+  border-bottom: 0;
+  -webkit-mask-image: linear-gradient(147deg, black, transparent 50%);
+  mask-image: linear-gradient(147deg, black, transparent 50%);
 }
 
-.rim-center-a,
+.rim-left-a-b {
+  transform-origin: top left;
+  border-radius: 2.5rem 0 0 2.5rem;
+  width: 32dvw;
+  height: 100%;
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 0;
+  border-bottom: 0;
+  filter: blur(3px);
+  transform: translate(0%, 2%);
+  -webkit-mask-image: linear-gradient(90deg, black 80%, transparent);
+  mask-image: linear-gradient(90deg, black 80%, transparent);
+}
+
+.rim-center-a {
+  transform-origin: top center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  -webkit-mask-image: linear-gradient(0deg, #00000073, transparent 15%);
+  mask-image: linear-gradient(0deg, #00000073, transparent 15%);
+}
+
 .rim-center-a-b {
   transform-origin: top center;
   width: 100%;
   height: 100%;
   border-radius: 50%;
   border: 1px solid #fff;
+  filter: blur(1px);
+  -webkit-mask-image: linear-gradient(0deg, black, transparent 30%);
+  mask-image: linear-gradient(0deg, black, transparent 30%);
 }
 
-.rim-right-a,
-.rim-right-a-b {
+.rim-right-a {
   transform-origin: top right;
-  border-radius: 0 20rem 20rem 0;
-  width: 30dvw;
+  border-radius: 0 2.5rem 2.5rem 0;
+  width: 70dvw;
   height: 100%;
   right: 0;
   left: auto;
+  border-bottom: 1px solid #fff;
+  border-right: 1px solid #fff;
+  border-left: 0;
+  border-top: 0;
+  -webkit-mask-image: linear-gradient(48deg, transparent 20%, black, transparent 80%);
+  mask-image: linear-gradient(48deg, transparent 20%, black, transparent 80%);
+}
+
+.rim-right-a-b {
+  transform-origin: top right;
+  border-radius: 0 2.5rem 2.5rem 0;
+  width: 80dvw;
+  height: 100%;
+  right: 0;
+  left: auto;
+  border-bottom: 1px solid #fff;
+  border-right: 1px solid #fff;
+  border-left: 0;
+  border-top: 0;
+  filter: blur(3px);
+  transform: translate(-0.3%, -1%);
+  -webkit-mask-image: linear-gradient(9deg, transparent 20%, black, transparent 80%);
+  mask-image: linear-gradient(9deg, transparent 20%, black, transparent 80%);
 }
 
 .nav-test-dock-items {
