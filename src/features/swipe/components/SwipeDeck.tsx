@@ -427,11 +427,14 @@ export function SwipeDeck({
       lagLastTsRef.current = ts
       const dt = Math.min(48, Math.max(0, ts - last))
 
-      const target = dragXRef.current
-      const current = laggedDragXRef.current
-      // Side lag from the finger direction (or last finish side if centered).
-      const activeSide = target > 0.5 ? feedback.like : target < -0.5 ? feedback.nope : feedback.nope
-      const lagMs = Math.max(0, activeSide.dragLagMs || 0)
+      const activeSide =
+        target > 0.5
+          ? feedback.like
+          : target < -0.5
+            ? feedback.nope
+            : current >= 0
+              ? feedback.like
+              : feedback.nope
 
       // dragLagMs 0 = glued to finger (no trail).
       let value = target
