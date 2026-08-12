@@ -47,8 +47,7 @@ export function ChangePasswordScreen({
   const [success, setSuccess] = useState(false);
 
   const newOk = isValidAuthPassword(newPassword);
-  const canSubmit = currentPassword.length > 0 && newOk && !submitting;
-
+  const canSubmit = currentPassword.trim().length > 0 && newOk && !submitting;
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setCurrentError("");
