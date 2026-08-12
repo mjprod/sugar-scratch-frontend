@@ -324,8 +324,9 @@ export function continueCollectingFromModels(
     const percent =
       total > 0 ? Math.round((collected / total) * 100) : 0;
     const avatarRaw = model.avatar?.trim() ?? "";
-    const avatarUrl = avatarRaw ? normalizeMediaUrl(avatarRaw) : "";
-
+    const avatarUrl = avatarRaw
+      ? normalizeMediaUrl(avatarRaw)
+      : CREATOR_PHOTOS.emma.avatar;
     return {
       creatorId: id,
       creatorName: name,
