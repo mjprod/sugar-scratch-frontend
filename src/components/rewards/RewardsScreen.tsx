@@ -36,6 +36,7 @@ export function HubScreen({
 }) {
   return (
     <AppPageShell aria-label="Hub" className="hub-page">
+      <h1 className="sr-only">Hub</h1>
       <section className="hub-module hub-module--today" aria-labelledby="hub-today-heading">
         <h2 id="hub-today-heading" className="hub-section-label hub-section-label--today">
           <Sparkles className="size-3.5" aria-hidden="true" />
