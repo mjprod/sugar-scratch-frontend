@@ -1,9 +1,26 @@
 /**
  * Homepage Spec 3.0 (Sugar Specification 7) — demo data service.
  * Featured carousel · Continue Collecting · Category Leaderboard
+ *
+ * Featured + leaderboard stay local mocks; Continue Collecting is live
+ * from GET /api/models (+ card counts, local ledger progress).
  */
 
 import { CREATOR_PHOTOS, HOLO_PACKS, PACK_PHOTOS } from "../lib/photos";
+import { getCollectionPageState } from "./collectionState";
+import {
+  loadModels,
+  modelDisplayName,
+  modelId,
+  normalizeMediaUrl,
+  type BackendModel,
+} from "./models";
+import {
+  fetchCards,
+  type BackendCard,
+} from "@/shared/backend/collection";
+
+const NEW_MODEL_WINDOW_SEC = 14 * 24 * 60 * 60;
 
 export type Price = {
   amount: number;
@@ -266,50 +283,77 @@ const FEATURED: FeaturedPack[] = [
   },
 ];
 
-const CONTINUE: ContinueCollectingItem[] = [
-  {
-    creatorId: "sophia",
-    creatorName: "Ashley",
-    avatarUrl: CREATOR_PHOTOS.nancy.avatar,
-    collected: 63,
-    total: 100,
-    percent: 63,
-    rank: 9,
-  },
-  {
-    creatorId: "emily",
-    creatorName: "Emily",
-    avatarUrl: CREATOR_PHOTOS.emma.avatar,
-    collected: 52,
-    total: 100,
-    percent: 52,
-    isNew: true,
-  },
-  {
-    creatorId: "melisa",
-    creatorName: "Yuna",
-    avatarUrl: CREATOR_PHOTOS.sam.avatar,
-    collected: 41,
-    total: 100,
-    percent: 41,
-  },
-  {
-    creatorId: "lucy",
-    creatorName: "Mia",
-    avatarUrl: CREATOR_PHOTOS.alex.avatar,
-    collected: 28,
-    total: 100,
-    percent: 28,
-  },
-  {
-    creatorId: "emma",
-    creatorName: "Lisa",
-    avatarUrl: CREATOR_PHOTOS.emma.portrait,
-    collected: 17,
-    total: 100,
-    percent: 17,
-  },
-];
+function cardCountsByModel(cards: BackendCard[] | null): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const card of cards ?? []) {
+    const mid = card.model_id?.trim();
+    if (!mid) continue;
+    counts.set(mid, (counts.get(mid) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function isNewModel(model: BackendModel, nowSec: number): boolean {
+  const created = model.created_at;
+  if (typeof created !== "number" || !Number.isFinite(created)) return false;
+  return nowSec - created <= NEW_MODEL_WINDOW_SEC && nowSec >= created;
+}
+
+/** Map CMS models → Continue Collecting strip items. */
+export function continueCollectingFromModels(
+  models: BackendModel[],
+  cards: BackendCard[] | null,
+): ContinueCollectingItem[] {
+  if (!models.length) return [];
+
+  const counts = cardCountsByModel(cards);
+  const ledgerById = new Map(
+    getCollectionPageState().continueCreators.map((c) => [c.id, c]),
+  );
+  const nowSec = Date.now() / 1000;
+
+  const items = models.map((model, index) => {
+    const id = modelId(model, index);
+    const name = modelDisplayName(model);
+    const total = counts.get(id) ?? 0;
+    const ledger = ledgerById.get(id);
+    const collected =
+      total > 0
+        ? Math.min(total, Math.max(0, ledger?.collected ?? 0))
+        : 0;
+    const percent =
+      total > 0 ? Math.round((collected / total) * 100) : 0;
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const avatarUrl = avatarRaw ? normalizeMediaUrl(avatarRaw) : "";
+
+    return {
+      creatorId: id,
+      creatorName: name,
+      avatarUrl,
+      collected,
+      total,
+      percent,
+      isNew: isNewModel(model, nowSec),
+    } satisfies ContinueCollectingItem;
+  });
+
+  return items.sort((a, b) => {
+    if (b.percent !== a.percent) return b.percent - a.percent;
+    return a.creatorName.localeCompare(b.creatorName);
+  });
+}
+
+async function loadContinueCollecting(): Promise<ContinueCollectingItem[]> {
+  try {
+    const [models, cards] = await Promise.all([
+      loadModels().catch(() => [] as BackendModel[]),
+      fetchCards().catch(() => null),
+    ]);
+    return continueCollectingFromModels(models, cards);
+  } catch {
+    return [];
+  }
+}
 
 const PACK_DIAMOND_COSTS: Record<string, number> = {
   ep1: 50,
@@ -378,10 +422,10 @@ function wait(ms = 420) {
 }
 
 export async function fetchHomepage(): Promise<HomepageData> {
-  await wait();
+  const continueCollecting = await loadContinueCollecting();
   return {
     featured: FEATURED,
-    continueCollecting: [...CONTINUE].sort((a, b) => b.percent - a.percent),
+    continueCollecting,
     leaderboard: LEADERBOARD,
   };
 }

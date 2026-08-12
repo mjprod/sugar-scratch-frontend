@@ -1,3 +1,8 @@
+import { apiFetch } from '@/lib/api'
+import {
+  fetchModels as fetchServiceModels,
+  type BackendModel as ServiceBackendModel,
+} from '@/services/models'
 import {
   CHARACTER_IDS,
   formatCharacterDisplayName,
@@ -290,34 +295,49 @@ export function resolveCollectionGroupThemeName(input: {
   return 'Motion'
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
-  try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 6_000)
-    const response = await fetch(url, {
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-    clearTimeout(timer)
-    if (!response.ok) return null
-    return (await response.json()) as T
-  } catch {
-    return null
+function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
+  const id = model.id?.trim()
+  if (!id) return null
+  return {
+    id,
+    label: model.label?.trim() || id,
+    avatar: model.avatar ?? null,
+    created_at: model.created_at,
+    influencerName: model.influencerName,
+    influencerCity: model.influencerCity,
+    influencerCountry: model.influencerCountry,
+    influencerFlag: model.influencerFlag,
+    influencerFlagSvg: model.influencerFlagSvg,
+    cardOverlayColorStart: model.cardOverlayColorStart,
+    cardOverlayColorEnd: model.cardOverlayColorEnd,
+    cardLightColor1: model.cardLightColor1,
+    cardLightColor2: model.cardLightColor2,
+    cardPackName: model.cardPackName,
+    cardPackName2: model.cardPackName2,
+    packFaceVideoUrl: model.packFaceVideoUrl,
+    packFaceVideoUrl2: model.packFaceVideoUrl2,
+    swipeVideoUrl: model.swipeVideoUrl,
+    theme_avatars: model.theme_avatars,
   }
 }
 
+/** Single network path: services/models → apiFetch('/api/models'). */
 export async function fetchModels(): Promise<BackendModel[] | null> {
-  const data = await fetchJson<{ models?: BackendModel[] }>('/api/models')
-  return data && Array.isArray(data.models) ? data.models : null
+  const models = await fetchServiceModels()
+  if (!models.length) return null
+  const catalog = models
+    .map(toCatalogModel)
+    .filter((model): model is BackendModel => Boolean(model))
+  return catalog.length ? catalog : null
 }
 
 export async function fetchCards(): Promise<BackendCard[] | null> {
-  const data = await fetchJson<{ cards?: BackendCard[] }>('/api/cards')
+  const data = await apiFetch<{ cards?: BackendCard[] }>('/api/cards')
   return data && Array.isArray(data.cards) ? data.cards : null
 }
 
 export async function fetchVideoFlowThemes(): Promise<Map<string, string>> {
-  const data = await fetchJson<{ flows?: VideoFlow[] }>('/api/video-flow')
+  const data = await apiFetch<{ flows?: VideoFlow[] }>('/api/video-flow')
   const themes = new Map<string, string>()
   if (!data || !Array.isArray(data.flows)) return themes
 
@@ -336,7 +356,7 @@ async function fetchPhotoScratchSlots(
   const params = theme.trim()
     ? `?theme=${encodeURIComponent(theme.trim())}`
     : ''
-  const data = await fetchJson<{ slots?: BackendPhotoScratchSlot[] }>(
+  const data = await apiFetch<{ slots?: BackendPhotoScratchSlot[] }>(
     `/api/cards/${encodeURIComponent(cardId)}/photo-scratch${params}`,
   )
   return data && Array.isArray(data.slots) ? data.slots : []
@@ -372,7 +392,7 @@ function photoUrlsFromSlots(slots: BackendPhotoScratchSlot[]): string[] {
 }
 
 /**
- * Media paths that Vite proxies to VITE_API_PROXY (see vite.config.ts).
+ * Media paths that Vite proxies to VITE_MEDIA_PROXY (see vite.config.ts).
  * Absolute URLs under these prefixes are rewritten to same-origin paths so
  * Three.js video textures / <img> loads go through the dev proxy (CORS-safe).
  */
@@ -759,7 +779,7 @@ async function fetchCollectionCatalogFromApi(
   if (modelId) params.set('model', modelId)
   if (themeId) params.set('theme', themeId)
   const qs = params.toString()
-  const data = await fetchJson<{
+  const data = await apiFetch<{
     groups?: BackendCollectionGroup[]
     themes?: BackendCollectionTheme[]
   }>(`/api/collection${qs ? `?${qs}` : ''}`)
