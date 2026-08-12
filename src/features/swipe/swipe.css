@@ -659,7 +659,7 @@
 }
 
 @media (max-width: 380px) {
-  :root {
+  .stage-swipe {
     --card-w: min(72vw, 294px);
   }
 
