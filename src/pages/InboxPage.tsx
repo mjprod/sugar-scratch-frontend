@@ -11,7 +11,7 @@ export function InboxPage() {
     requestTab,
     guest,
   } = useAuth();
-  const { diamonds } = useWallet();
+  const { coins, diamonds } = useWallet();
 
   function handleInboxAction(message: InboxMessage, source: "row" | "cta") {
     const cta = message.cta;
@@ -46,6 +46,7 @@ export function InboxPage() {
     <InboxScreen
       onBack={() => closeSecondary("inbox")}
       onMessageAction={handleInboxAction}
+      coins={guest ? null : coins}
       diamonds={guest ? null : diamonds}
     />
   );

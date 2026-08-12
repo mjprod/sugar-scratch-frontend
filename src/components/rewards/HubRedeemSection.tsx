@@ -13,7 +13,7 @@ type HubRedeemState =
   | { status: "success"; reward: RedeemReward }
   | { status: "error"; errorType: RedeemErrorType };
 
-/** Secondary Hub utility — discoverable, low visual priority. */
+/** Inline Hub utility — code entry visible without expand/navigation. */
 export function HubRedeemSection({
   onDiamondReward,
   onPackReward,
@@ -68,21 +68,22 @@ export function HubRedeemSection({
   }
 
   return (
-    <section className="hub-redeem" aria-labelledby="hub-redeem-heading">
-      <h2 id="hub-redeem-heading" className="hub-section-label hub-section-label--redeem">
+    <section
+      className="hub-module hub-redeem"
+      aria-labelledby="hub-redeem-heading"
+    >
+      <h2
+        id="hub-redeem-heading"
+        className="hub-section-label hub-section-label--redeem"
+      >
         <Ticket className="size-3.5" aria-hidden="true" />
-        Redeem a code
+        Redeem a Code
       </h2>
 
       <div className="hub-redeem-card">
-        <div className="hub-redeem-intro">
-          <span className="hub-redeem-motif" aria-hidden="true">
-            <Ticket className="size-5" />
-          </span>
-          <p className="hub-redeem-lead">
-            Have a code? Redeem it for your reward.
-          </p>
-        </div>
+        <p className="hub-redeem-lead">
+          Have a code? Redeem it for your reward.
+        </p>
 
         <form
           className="hub-redeem-form"

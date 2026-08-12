@@ -3,19 +3,15 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export function AppShell({
   children,
-  label = "Sugar Scratch",
 }: {
   children: ReactNode;
+  /** @deprecated Dev-only label removed from production chrome. */
   label?: string;
 }) {
   return (
-    <div className="relative flex h-dvh min-h-0 w-full flex-col overflow-hidden">
-      <div className="pointer-events-none absolute right-4 top-2 z-40 sm:right-6 sm:top-3 lg:right-10">
-        <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-medium tracking-[0.04em] text-white/40 backdrop-blur-md">
-          {label} · v8
-        </span>
-      </div>
-      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-6 lg:px-10">
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* Full-bleed app shell — page content owns horizontal padding / max-width. */}
+      <div className="flex min-h-0 w-full flex-1 flex-col">
         <div
           className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none"
           aria-label="Sugar Scratch"

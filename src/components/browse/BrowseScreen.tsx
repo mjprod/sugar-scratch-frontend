@@ -117,7 +117,7 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pt-[calc(52px+env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12"
+        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:px-8 lg:pb-12"
       >
         <div className="mx-auto h-[480px] w-[300px] animate-pulse rounded-[28px] bg-white/10 [clip-path:polygon(4%_1.5%,96%_1.5%,99%_6%,100%_48%,99%_94%,96%_98.5%,4%_98.5%,1%_94%,0%_52%,1%_6%)]" />
         <div className="mx-auto flex gap-3">
@@ -135,7 +135,7 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 pt-[calc(52px+env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12"
+        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:px-8 lg:pb-12"
       >
         <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
         <p className="max-w-xs text-center text-[13px] text-white/45">
@@ -155,7 +155,7 @@ export function HomeScreen({
   return (
     <section
       data-page-scroll
-      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[calc(52px+env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12"
+      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:px-8 lg:pb-12"
     >
       {showTutorial ? (
         <button

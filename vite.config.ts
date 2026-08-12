@@ -48,6 +48,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
+      allowedHosts: [".trycloudflare.com"],
       proxy: {
         "/api": proxyTo(apiTarget),
         ...Object.fromEntries(

@@ -12,7 +12,7 @@ import type { RedeemReward } from "@/services/redeem";
 
 /**
  * Hub — engagement / reward center.
- * Active Rewards omitted: no corresponding product feature yet (Store alone).
+ * Mobile: Claim → Act → Anticipate. Desktop composition preserved via CSS.
  */
 export function HubScreen({
   onClaimDaily,
@@ -36,14 +36,8 @@ export function HubScreen({
 }) {
   return (
     <AppPageShell aria-label="Hub" className="hub-page">
-      <header className="hub-page-intro">
-        <h1 className="hub-page-title">Hub</h1>
-        <p className="hub-page-sub">
-          Rewards, progress and things worth coming back for.
-        </p>
-      </header>
-
-      <section className="hub-module" aria-labelledby="hub-today-heading">
+      <h1 className="sr-only">Hub</h1>
+      <section className="hub-module hub-module--today" aria-labelledby="hub-today-heading">
         <h2 id="hub-today-heading" className="hub-section-label hub-section-label--today">
           <Sparkles className="size-3.5" aria-hidden="true" />
           Today
@@ -59,12 +53,12 @@ export function HubScreen({
         <div className="hub-active-grid hub-active-grid--solo">
           <button type="button" className="hub-feature-tile" onClick={onOpenStore}>
             <span className="hub-feature-tile-icon is-store" aria-hidden="true">
-              <ShoppingBag className="size-6" strokeWidth={1.6} />
+              <ShoppingBag className="size-5" strokeWidth={1.6} />
             </span>
             <span className="hub-feature-tile-copy">
               <span className="hub-feature-tile-title">Store</span>
               <span className="hub-feature-tile-detail">
-                Get Diamonds and exclusive packs.
+                Get Diamonds & packs
               </span>
             </span>
             <ChevronRight className="hub-feature-tile-chevron" aria-hidden="true" />
@@ -72,19 +66,19 @@ export function HubScreen({
         </div>
       </section>
 
-      <div className="hub-module">
-        <HubRedeemSection
-          onDiamondReward={onDiamondReward}
-          onPackReward={onPackReward}
-          onOpenPack={onOpenPack}
-        />
-      </div>
+      <HubRedeemSection
+        onDiamondReward={onDiamondReward}
+        onPackReward={onPackReward}
+        onOpenPack={onOpenPack}
+      />
 
       <section className="hub-module" aria-labelledby="hub-upcoming-heading">
-        <h2 id="hub-upcoming-heading" className="hub-section-label">
-          <CalendarDays className="size-3.5" aria-hidden="true" />
-          Upcoming
-        </h2>
+        <div className="hub-section-row">
+          <h2 id="hub-upcoming-heading" className="hub-section-label hub-section-label--upcoming">
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+            Upcoming
+          </h2>
+        </div>
         <div className="hub-upcoming-empty">
           <span className="hub-upcoming-empty-icon" aria-hidden="true">
             <CalendarDays className="size-5" />

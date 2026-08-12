@@ -1,6 +1,6 @@
 import { Gem, Sparkles } from "lucide-react";
 
-/** Shared coins + diamonds cluster — same source for desktop TopNav and mobile header. */
+/** Inline coin + diamond HUD counters (TopNav, mobile HUD, and subpage headers). */
 export function CurrencyBalances({
   coins,
   diamonds,
@@ -14,42 +14,44 @@ export function CurrencyBalances({
   const coinLabel = formatBalance(coins);
   const diamondLabel = formatBalance(diamonds);
 
+  const diamondInner = (
+    <>
+      <Gem className="top-nav-resource-icon top-nav-resource-icon--diamond size-3.5 shrink-0" aria-hidden />
+      <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
+        {diamondLabel}
+      </span>
+    </>
+  );
+
   return (
     <div
-      className="flex min-w-0 shrink-0 items-center justify-center gap-3"
+      className="top-nav-resources flex min-w-0 shrink-0 items-center gap-4"
       aria-live="polite"
     >
       <div
-        className="flex items-center gap-1.5"
+        className="top-nav-resource inline-flex items-center gap-1.5"
         aria-label={`${coinLabel} Sugar Coins`}
       >
-        <Sparkles className="size-3.5 shrink-0 text-champagne" aria-hidden />
-        <span className="text-[13px] font-semibold tabular-nums text-white">
+        <Sparkles className="top-nav-resource-icon top-nav-resource-icon--coin size-3.5 shrink-0" aria-hidden />
+        <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
           {coinLabel}
         </span>
       </div>
-      <span className="h-3 w-px bg-white/20" aria-hidden />
       {onOpenStore ? (
         <button
           type="button"
           onClick={onOpenStore}
           aria-label={`${diamondLabel} Diamonds, open Store`}
-          className="flex min-h-11 min-w-11 items-center gap-1.5 rounded-full px-2 transition active:scale-95 hover:bg-white/10"
+          className="top-nav-resource top-nav-resource--action inline-flex min-h-9 min-w-9 items-center gap-1.5 rounded-md px-1.5 transition active:scale-95"
         >
-          <Gem className="size-3.5 shrink-0 text-sky-300" aria-hidden />
-          <span className="text-[13px] font-semibold tabular-nums text-white">
-            {diamondLabel}
-          </span>
+          {diamondInner}
         </button>
       ) : (
         <span
-          className="flex min-h-11 items-center gap-1.5 px-2"
+          className="top-nav-resource inline-flex min-h-9 items-center gap-1.5 px-1.5"
           aria-label={`${diamondLabel} Diamonds`}
         >
-          <Gem className="size-3.5 shrink-0 text-sky-300" aria-hidden />
-          <span className="text-[13px] font-semibold tabular-nums text-white">
-            {diamondLabel}
-          </span>
+          {diamondInner}
         </span>
       )}
     </div>

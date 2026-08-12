@@ -1617,7 +1617,7 @@ body[data-theme="v8"] .hub-page-intro {
 body[data-theme="v8"] .hub-page-title {
   margin: 0;
   color: #fff;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -1631,26 +1631,59 @@ body[data-theme="v8"] .hub-page-sub {
   color: rgba(255, 255, 255, 0.55);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   body[data-theme="v8"] .hub-page-title {
     font-size: 32px;
   }
 }
 
 body[data-theme="v8"] .hub-module {
-  margin-top: 36px;
+  margin-top: 24px;
+}
+
+body[data-theme="v8"] .hub-module--today {
+  margin-top: 0;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-module {
+    margin-top: 36px;
+  }
+
+  body[data-theme="v8"] .hub-module--today {
+    margin-top: 0;
+  }
+}
+
+body[data-theme="v8"] .hub-section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+body[data-theme="v8"] .hub-section-row .hub-section-label {
+  margin: 0;
 }
 
 body[data-theme="v8"] .hub-section-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 14px;
-  font-size: 12px;
+  margin: 0 0 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.4);
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-section-label {
+    margin-bottom: 14px;
+    font-size: 12px;
+  }
 }
 
 body[data-theme="v8"] .hub-section-label--today {
@@ -1661,44 +1694,39 @@ body[data-theme="v8"] .hub-section-label--active {
   color: #c4b5fd;
 }
 
+body[data-theme="v8"] .hub-section-label--upcoming {
+  color: rgba(212, 175, 55, 0.72);
+}
+
 body[data-theme="v8"] .hub-section-label--redeem {
-  color: rgba(255, 255, 255, 0.4);
+  color: #c4b5fd;
 }
 
 /* -------- Level 1: Daily Reward stage -------- */
 body[data-theme="v8"] .hub-daily-hero {
   position: relative;
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   overflow: hidden;
-  border-radius: 28px;
+  border-radius: 24px;
   border: 1px solid rgba(196, 181, 253, 0.18);
   background:
-    radial-gradient(ellipse at 88% 35%, rgba(168, 85, 247, 0.28), transparent 52%),
-    radial-gradient(ellipse at 12% 85%, rgba(88, 28, 135, 0.22), transparent 48%),
+    radial-gradient(ellipse at 50% 42%, rgba(168, 85, 247, 0.26), transparent 55%),
+    radial-gradient(ellipse at 12% 90%, rgba(88, 28, 135, 0.18), transparent 48%),
     linear-gradient(160deg, #1a1424 0%, #0d0b12 48%, #14101c 100%);
-  padding: 22px 20px 20px;
+  padding: 16px 16px 14px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 24px 48px rgba(0, 0, 0, 0.35);
+    0 18px 36px rgba(0, 0, 0, 0.32);
 }
 
 body[data-theme="v8"] .hub-daily-hero.is-claimed {
   border-color: rgba(255, 255, 255, 0.08);
   background:
-    radial-gradient(ellipse at 85% 40%, rgba(139, 92, 246, 0.1), transparent 50%),
+    radial-gradient(ellipse at 50% 40%, rgba(139, 92, 246, 0.1), transparent 52%),
     linear-gradient(160deg, #15131a 0%, #0c0b10 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-@media (min-width: 768px) {
-  body[data-theme="v8"] .hub-daily-hero {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    align-items: center;
-    gap: 12px;
-    min-height: 260px;
-    padding: 28px 28px 26px;
-  }
 }
 
 body[data-theme="v8"] .hub-daily-hero-body {
@@ -1710,26 +1738,51 @@ body[data-theme="v8"] .hub-daily-hero-body {
   align-items: flex-start;
 }
 
+body[data-theme="v8"] .hub-daily-hero-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 body[data-theme="v8"] .hub-daily-hero-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #fff;
 }
 
-@media (min-width: 768px) {
-  body[data-theme="v8"] .hub-daily-hero-title {
-    font-size: 28px;
-  }
+body[data-theme="v8"] .hub-daily-ready-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(236, 72, 153, 0.28);
+  background: rgba(236, 72, 153, 0.12);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 214, 232, 0.92);
+}
+
+body[data-theme="v8"] .hub-daily-ready-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ec4899;
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.65);
 }
 
 body[data-theme="v8"] .hub-daily-hero-copy {
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   max-width: 18rem;
-  font-size: 15px;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.68);
 }
 
 body[data-theme="v8"] .hub-daily-hero-copy--claimed {
@@ -1739,18 +1792,29 @@ body[data-theme="v8"] .hub-daily-hero-copy--claimed {
   color: #c4b5fd;
 }
 
+body[data-theme="v8"] .hub-daily-hero-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
 body[data-theme="v8"] .hub-daily-hero-sub {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.45);
+  text-align: center;
 }
 
 body[data-theme="v8"] .hub-daily-hero-cta {
   display: inline-flex;
+  width: 100%;
+  max-width: 100%;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 20px;
   min-height: 48px;
   border-radius: 999px;
   border: none;
@@ -1784,35 +1848,31 @@ body[data-theme="v8"] .hub-daily-hero-cta:focus-visible {
 body[data-theme="v8"] .hub-daily-hero-reset {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin: 16px 0 0;
+  margin: 10px 0 0;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.42);
 }
 
-/* Reward presentation stage */
+body[data-theme="v8"] .hub-daily-hero.is-claimed .hub-daily-hero-reset {
+  margin-top: 8px;
+}
+
+/* Reward presentation stage — mobile: compact, between copy and CTA */
 body[data-theme="v8"] .hub-daily-stage {
   position: relative;
   z-index: 1;
   display: grid;
   place-items: center;
-  order: -1;
-  min-height: 168px;
-  margin: 0 0 4px;
-}
-
-@media (min-width: 768px) {
-  body[data-theme="v8"] .hub-daily-stage {
-    order: 0;
-    min-height: 220px;
-    margin: 0;
-  }
+  min-height: 112px;
+  margin: 0;
 }
 
 body[data-theme="v8"] .hub-daily-stage-bloom {
   position: absolute;
-  width: 200px;
-  height: 200px;
+  width: 150px;
+  height: 150px;
   border-radius: 999px;
   background: radial-gradient(
     circle,
@@ -1830,9 +1890,9 @@ body[data-theme="v8"] .hub-daily-hero.is-claimed .hub-daily-stage-bloom {
 
 body[data-theme="v8"] .hub-daily-stage-platform {
   position: absolute;
-  bottom: 18px;
-  width: 120px;
-  height: 18px;
+  bottom: 8px;
+  width: 96px;
+  height: 14px;
   border-radius: 999px;
   background: radial-gradient(
     ellipse,
@@ -1847,15 +1907,15 @@ body[data-theme="v8"] .hub-daily-stage-object {
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 118px;
-  height: 118px;
-  border-radius: 32px;
+  width: 88px;
+  height: 88px;
+  border-radius: 26px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background:
     linear-gradient(155deg, rgba(255, 255, 255, 0.16), transparent 50%),
     linear-gradient(200deg, #2a1f3a, #15101f 70%);
   box-shadow:
-    0 22px 40px rgba(0, 0, 0, 0.4),
+    0 16px 28px rgba(0, 0, 0, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
@@ -1879,9 +1939,88 @@ body[data-theme="v8"] .hub-daily-hero.is-claimed .hub-daily-stage-object {
 }
 
 body[data-theme="v8"] .hub-daily-stage-gift {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   color: #edd9ff;
+}
+
+/* Desktop: preserve approved side-by-side Daily Reward composition */
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-daily-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    grid-template-areas:
+      "body stage"
+      "actions stage";
+    align-items: center;
+    gap: 12px 16px;
+    min-height: 260px;
+    border-radius: 28px;
+    padding: 28px 28px 26px;
+    background:
+      radial-gradient(ellipse at 88% 35%, rgba(168, 85, 247, 0.28), transparent 52%),
+      radial-gradient(ellipse at 12% 85%, rgba(88, 28, 135, 0.22), transparent 48%),
+      linear-gradient(160deg, #1a1424 0%, #0d0b12 48%, #14101c 100%);
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-body {
+    grid-area: body;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-actions {
+    grid-area: actions;
+    align-items: flex-start;
+  }
+
+  body[data-theme="v8"] .hub-daily-stage {
+    grid-area: stage;
+    min-height: 220px;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-title {
+    font-size: 28px;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-copy {
+    margin-top: 10px;
+    font-size: 15px;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-cta {
+    width: auto;
+    margin-top: 4px;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-reset {
+    justify-content: flex-start;
+    margin-top: 14px;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-sub {
+    text-align: left;
+  }
+
+  body[data-theme="v8"] .hub-daily-stage-bloom {
+    width: 200px;
+    height: 200px;
+  }
+
+  body[data-theme="v8"] .hub-daily-stage-platform {
+    bottom: 18px;
+    width: 120px;
+    height: 18px;
+  }
+
+  body[data-theme="v8"] .hub-daily-stage-object {
+    width: 118px;
+    height: 118px;
+    border-radius: 32px;
+  }
+
+  body[data-theme="v8"] .hub-daily-stage-gift {
+    width: 52px;
+    height: 52px;
+  }
 }
 
 body[data-theme="v8"] .hub-daily-stage-particle {
@@ -1949,26 +2088,29 @@ body[data-theme="v8"] .hub-daily-stage-particle.is-d {
 /* -------- Level 2: Active feature tiles -------- */
 body[data-theme="v8"] .hub-active-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
-@media (min-width: 640px) {
+body[data-theme="v8"] .hub-active-grid--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
   body[data-theme="v8"] .hub-active-grid:not(.hub-active-grid--solo) {
+    gap: 12px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 body[data-theme="v8"] .hub-feature-tile {
   display: flex;
-  min-height: 118px;
-  align-items: flex-start;
-  gap: 14px;
-  border-radius: 24px;
+  min-height: 72px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  background:
-    radial-gradient(ellipse at 0% 0%, rgba(96, 165, 250, 0.1), transparent 55%),
-    rgba(255, 255, 255, 0.04);
-  padding: 18px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px 14px;
   text-align: left;
   transition:
     background 0.15s ease,
@@ -1978,9 +2120,7 @@ body[data-theme="v8"] .hub-feature-tile {
 
 body[data-theme="v8"] .hub-feature-tile:hover {
   border-color: rgba(255, 255, 255, 0.14);
-  background:
-    radial-gradient(ellipse at 0% 0%, rgba(96, 165, 250, 0.14), transparent 55%),
-    rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 body[data-theme="v8"] .hub-feature-tile:active {
@@ -1994,19 +2134,19 @@ body[data-theme="v8"] .hub-feature-tile:focus-visible {
 
 body[data-theme="v8"] .hub-feature-tile-icon {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
   place-items: center;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
 }
 
 body[data-theme="v8"] .hub-feature-tile-icon.is-store {
-  color: #60a5fa;
-  background: rgba(96, 165, 250, 0.12);
-  border-color: rgba(96, 165, 250, 0.22);
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.2);
 }
 
 body[data-theme="v8"] .hub-feature-tile-copy {
@@ -2014,20 +2154,19 @@ body[data-theme="v8"] .hub-feature-tile-copy {
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
-  padding-top: 2px;
+  gap: 2px;
 }
 
 body[data-theme="v8"] .hub-feature-tile-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: #fff;
 }
 
 body[data-theme="v8"] .hub-feature-tile-detail {
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.35;
   color: rgba(255, 255, 255, 0.48);
 }
 
@@ -2035,8 +2174,30 @@ body[data-theme="v8"] .hub-feature-tile-chevron {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  margin-top: 4px;
   color: rgba(255, 255, 255, 0.32);
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-feature-tile {
+    min-height: 88px;
+    border-radius: 22px;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  body[data-theme="v8"] .hub-feature-tile-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  body[data-theme="v8"] .hub-feature-tile-title {
+    font-size: 16px;
+  }
+
+  body[data-theme="v8"] .hub-feature-tile-detail {
+    font-size: 13px;
+  }
 }
 
 /* -------- Level 3: Redeem utility -------- */
@@ -2045,34 +2206,14 @@ body[data-theme="v8"] .hub-redeem {
 }
 
 body[data-theme="v8"] .hub-redeem-card {
-  border-radius: 22px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.03);
-  padding: 16px;
-}
-
-body[data-theme="v8"] .hub-redeem-intro {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-body[data-theme="v8"] .hub-redeem-motif {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 12px;
-  border: 1px solid rgba(139, 92, 246, 0.22);
-  background: rgba(139, 92, 246, 0.1);
-  color: #c4b5fd;
+  padding: 14px;
 }
 
 body[data-theme="v8"] .hub-redeem-lead {
-  margin: 0;
-  padding-top: 8px;
+  margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.55);
@@ -2161,7 +2302,9 @@ body[data-theme="v8"] .hub-redeem-input:focus-visible {
   outline-offset: 2px;
 }
 
-@media (max-width: 359px) {
+/* Narrow mobile: stack input + Redeem full width */
+@media (max-width: 419px) {
+  body[data-theme="v8"] .hub-redeem-input,
   body[data-theme="v8"] .hub-redeem-submit {
     flex: 1 1 100%;
   }
@@ -2686,8 +2829,8 @@ body[data-theme="v8"] .collection-page-content {
   width: calc(100% - 24px);
   max-width: 480px;
   margin-inline: auto;
-  /* Room for absolute MobileDiamondUtility (lg:hidden). */
-  padding-top: var(--app-diamond-offset, calc(52px + env(safe-area-inset-top, 0px)));
+  /* Gap below sticky TopNav (in-flow). */
+  padding-top: var(--app-diamond-offset, 12px);
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   display: flex;
   flex-direction: column;
@@ -4862,6 +5005,9 @@ body[data-theme="v8"] .hf-page {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
+  /* Footer is portaled fixed — keep feed above it. */
+  padding-bottom: var(--hf-bottom-clearance);
+  box-sizing: border-box;
   background:
     radial-gradient(circle at 50% 30%, rgba(155, 92, 255, 0.12), transparent 42%),
     #060608;
@@ -4886,9 +5032,9 @@ body[data-theme="v8"] .hf-frame {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-page {
-    /* Website chrome: top nav only */
+    /* Website chrome: top nav overlays — height comes from flex fill */
     --hf-bottom-clearance: 24px;
-    --hf-top-clearance: 72px;
+    --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
 
   body[data-theme="v8"] .hf-frame {
@@ -4898,7 +5044,9 @@ body[data-theme="v8"] .hf-frame {
   }
 
   body[data-theme="v8"] .hf-viewport {
-    height: calc(100dvh - var(--hf-top-clearance) - var(--hf-bottom-clearance) - 24px);
+    height: auto;
+    flex: 1 1 0;
+    min-height: 0;
   }
 
   /* Top nav already has Sugar + tabs — quiet the in-feed logo */
@@ -5069,8 +5217,10 @@ body[data-theme="v8"] .hf-avatar-img {
 body[data-theme="v8"] .hf-viewport {
   position: relative;
   width: 100%;
-  height: calc(100dvh - var(--hf-bottom-clearance));
-  max-height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
   overflow-x: hidden;
   overflow-y: auto;
   touch-action: pan-y;
@@ -5300,7 +5450,7 @@ body[data-theme="v8"] .hf-state {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: calc(100dvh - var(--hf-bottom-clearance));
+  min-height: 100%;
   padding: 24px;
   text-align: center;
 }
@@ -5382,7 +5532,9 @@ body[data-theme="v8"] .hf-loading-more {
 body[data-theme="v8"] .auth2-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
   background:
     radial-gradient(circle at 12% 18%, rgba(155, 92, 255, 0.14), transparent 40%),
     radial-gradient(circle at 88% 82%, rgba(255, 77, 158, 0.1), transparent 38%),
@@ -6347,7 +6499,9 @@ body[data-theme="v8"] .auth7-verify-later {
 body[data-theme="v8"] .auth7-onboard-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -7209,8 +7363,8 @@ body[data-theme="v8"] .inbox-page-content {
   width: calc(100% - (var(--app-gutter, 20px) * 2));
   max-width: min(640px, var(--app-content-max, 64rem));
   margin: 0 auto;
-  /* Match Home / Rewards / Collection: clear shared MobileDiamondUtility */
-  padding-top: var(--app-diamond-offset, calc(56px + env(safe-area-inset-top, 0px)));
+  /* TopNav hidden on inbox — only safe-area / small gap for SubpageHeader. */
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   display: flex;
   flex-direction: column;
@@ -7491,11 +7645,18 @@ body[data-theme="v8"] .inbox-empty-copy {
  * ----------------------------------------------------------------------- */
 
 body[data-theme="v8"] .subpage-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
   width: 100%;
+  padding-block: 8px;
+  background: rgba(7, 7, 9, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 body[data-theme="v8"] .subpage-back {
@@ -7555,8 +7716,190 @@ body[data-theme="v8"] .subpage-trailing {
 body[data-theme="v8"] {
   --app-gutter: 20px;
   --app-content-max: 64rem;
-  --app-diamond-offset: calc(72px + env(safe-area-inset-top, 0px));
+  /* Shared sticky top chrome heights (desktop bar / mobile utility). */
+  --app-top-nav-height: 56px;
+  --app-top-nav-z-index: 30;
+  /* Visible mobile HUD row (44) + bottom pad (8) + top pad/safe-area. */
+  --mobile-top-hud-height: calc(
+    44px + 8px + max(8px, env(safe-area-inset-top, 0px))
+  );
+  --app-mobile-utility-height: var(--mobile-top-hud-height);
+  --app-page-top-gap: 12px;
+  /* Content safe offset — pages set padding-top to this; backgrounds may still underlap. */
+  --app-diamond-offset: 12px;
   --app-footer-offset: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Shared HUD resource / ghost inbox styling (mobile + desktop). */
+body[data-theme="v8"] .top-nav-resource-value {
+  color: rgba(245, 245, 247, 0.9);
+}
+
+body[data-theme="v8"] .top-nav-resource-icon--coin {
+  color: color-mix(in oklab, var(--color-champagne) 78%, transparent);
+}
+
+body[data-theme="v8"] .top-nav-resource-icon--diamond {
+  color: color-mix(in oklab, #7dd3fc 72%, transparent);
+}
+
+body[data-theme="v8"] .top-nav-resource--action:hover,
+body[data-theme="v8"] .top-nav-resource--action:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  font-size: 8px;
+  line-height: 14px;
+  background: var(--color-rose, #ec4899);
+}
+
+/* Mobile / tablet — compact translucent utility HUD (background underlaps; content safe). */
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .app-layout--hud {
+    /* Content begins below HUD + comfortable gap; shell background still paints under HUD. */
+    --app-diamond-offset: calc(
+      var(--mobile-top-hud-height) + var(--app-page-top-gap, 12px)
+    );
+  }
+
+  body[data-theme="v8"] .top-nav-mobile {
+    --top-nav-surface: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 62%,
+      transparent
+    );
+    --top-nav-surface-scrolled: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 74%,
+      transparent
+    );
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--app-top-nav-z-index, 30);
+    width: 100%;
+    height: var(--mobile-top-hud-height);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--top-nav-surface);
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  }
+
+  body[data-theme="v8"] .top-nav-mobile::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 10, 0.28) 0%,
+      transparent 72%
+    );
+  }
+
+  body[data-theme="v8"] .top-nav-mobile-inner {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 100%;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: 8px;
+    padding-inline: 16px;
+  }
+
+  /* Ambient/glow may start at top so it shows through the HUD. */
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.hub-page::before,
+  body[data-theme="v8"] .app-layout--hud .hub-page::before {
+    top: 0;
+  }
+
+  /* Profile primary still uses HUD safe offset (not notch-only). */
+  body[data-theme="v8"] .app-layout--hud .app-page-shell--profile {
+    padding-top: var(--app-diamond-offset);
+  }
+
+  body[data-theme="v8"] .app-layout--hud .hf-page {
+    /* Home media underlaps fixed mobile HUD; overlays handle their own safe UI. */
+    padding-top: 0;
+  }
+}
+
+/* Desktop TopNav — true translucent HUD overlay (content underlaps). */
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-layout--hud {
+    /* Safe offset for interactive content; backgrounds underlap via fixed HUD. */
+    --app-diamond-offset: var(--app-top-nav-height, 56px);
+  }
+
+  body[data-theme="v8"] .top-nav-desktop {
+    --top-nav-surface: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 62%,
+      transparent
+    );
+    --top-nav-surface-scrolled: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 74%,
+      transparent
+    );
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--app-top-nav-z-index, 30);
+    width: 100%;
+    height: var(--app-top-nav-height, 56px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--top-nav-surface);
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+    transition: background-color 160ms ease, border-color 160ms ease;
+  }
+
+  body[data-theme="v8"] .top-nav-desktop::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 10, 0.28) 0%,
+      transparent 72%
+    );
+  }
+
+  body[data-theme="v8"] .top-nav-desktop-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  body[data-theme="v8"] .top-nav-desktop.is-scrolled {
+    background: var(--top-nav-surface-scrolled);
+    border-bottom-color: color-mix(in oklab, var(--color-line) 70%, transparent);
+  }
+
+  /* Home: media fills under the fixed HUD (no top chrome gap). */
+  body[data-theme="v8"] .app-layout--hud .hf-frame {
+    margin-top: 0;
+    margin-bottom: 12px;
+    border-radius: 0 0 28px 28px;
+  }
+
+  body[data-theme="v8"] .app-layout--hud .hf-page {
+    --hf-top-clearance: 0px;
+  }
 }
 
 body[data-theme="v8"] .app-page-shell {
@@ -7584,8 +7927,12 @@ body[data-theme="v8"] .app-page-shell-inner {
 }
 
 @media (min-width: 1024px) {
+  body[data-theme="v8"] {
+    --app-diamond-offset: 32px;
+  }
+
   body[data-theme="v8"] .app-page-shell--primary {
-    padding-top: 32px;
+    padding-top: var(--app-diamond-offset);
     padding-inline: 32px;
   }
 

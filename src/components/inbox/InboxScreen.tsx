@@ -14,7 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { EmptyState } from "@/components/EmptyState";
-import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   INBOX_FIXTURES,
@@ -30,10 +30,12 @@ import { SECONDARY_SURFACES } from "@/lib/navigation";
 export function InboxScreen({
   onBack,
   onMessageAction,
+  coins,
   diamonds,
 }: {
   onBack: () => void;
   onMessageAction: (message: InboxMessage, source: "row" | "cta") => void;
+  coins?: number | null;
   diamonds?: number | null;
 }) {
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
@@ -63,6 +65,7 @@ export function InboxScreen({
   }
 
   const meta = SECONDARY_SURFACES.inbox;
+  const showBalances = diamonds !== undefined || coins !== undefined;
 
   return (
     <section
@@ -76,8 +79,11 @@ export function InboxScreen({
           onBack={onBack}
           backLabel={meta.backLabel}
           trailing={
-            diamonds !== undefined ? (
-              <MobileDiamondBalance balance={diamonds} standalone />
+            showBalances ? (
+              <CurrencyBalances
+                coins={coins ?? null}
+                diamonds={diamonds ?? null}
+              />
             ) : undefined
           }
         />
