@@ -12,8 +12,7 @@ export function InboxButton({
   unreadCount?: number;
   onOpen: () => void;
   className?: string;
-  /** surface = bordered circle (mobile); ghost = compact HUD (desktop). */
-  variant?: "surface" | "ghost";
+  /** surface = bordered circle (subpage headers); ghost = compact HUD (TopNav). */
 }) {
   const hasUnread = unreadCount > 0;
   const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
