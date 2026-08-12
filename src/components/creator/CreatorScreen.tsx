@@ -186,6 +186,7 @@ function CreatorScreenInner({
     (model ? modelDisplayName(model) : "") ||
     titleCaseSlug(creatorId) ||
     page.creator.name;
+  const purchaseCreatorId = creatorId || page.creator.id;
   const stats = liveCreatorStats(page, collection, usingLiveThemes);
 
   useEffect(() => {
@@ -281,7 +282,7 @@ function CreatorScreenInner({
 
   function openOwnedPack() {
     onOpenPack({
-      packId: `${page.creator.id}-${theme?.id ?? "theme"}-owned`,
+      packId: `${purchaseCreatorId}-${theme?.id ?? "theme"}-owned`,
       packName: theme?.name ?? "Pack",
       price: "Free",
       creator: creatorName,
@@ -296,7 +297,7 @@ function CreatorScreenInner({
       return;
     }
     onBuyPack({
-      packId: `${page.creator.id}-${theme?.id ?? "theme"}-buy`,
+      packId: `${purchaseCreatorId}-${theme?.id ?? "theme"}-buy`,
       packName: theme?.name ?? "Pack",
       price: "10 ◆",
       creator: creatorName,

@@ -299,6 +299,59 @@ function isNewModel(model: BackendModel, nowSec: number): boolean {
   return nowSec - created <= NEW_MODEL_WINDOW_SEC && nowSec >= created;
 }
 
+/** Same key purchases / reveals persist (`pack.creator` → slug). */
+function slugCreatorId(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
+}
+
+function normalizeCreatorKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+type LedgerProgress = { id: string; name: string; collected: number };
+
+/** Index ledger rows by id, display-name slug, and collapsed alphanumeric keys. */
+function indexLedgerProgress(creators: LedgerProgress[]) {
+  const index = new Map<string, LedgerProgress>();
+  const add = (raw: string, entry: LedgerProgress) => {
+    const key = raw.trim();
+    if (key && !index.has(key)) index.set(key, entry);
+    const normalized = normalizeCreatorKey(key);
+    if (normalized && !index.has(normalized)) index.set(normalized, entry);
+  };
+  for (const creator of creators) {
+    add(creator.id, creator);
+    add(creator.name, creator);
+    add(slugCreatorId(creator.name), creator);
+  }
+  return index;
+}
+
+function ledgerForModel(
+  ledgerByKey: Map<string, LedgerProgress>,
+  model: BackendModel,
+  id: string,
+  name: string,
+) {
+  const candidates = [
+    id,
+    slugCreatorId(name),
+    name,
+    model.label ?? "",
+    model.influencerName ?? "",
+  ];
+  for (const candidate of candidates) {
+    const exact = ledgerByKey.get(candidate.trim());
+    if (exact) return exact;
+    const normalized = normalizeCreatorKey(candidate);
+    if (normalized) {
+      const hit = ledgerByKey.get(normalized);
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
 /** Map CMS models → Continue Collecting strip items. */
 export function continueCollectingFromModels(
   models: BackendModel[],
@@ -307,8 +360,8 @@ export function continueCollectingFromModels(
   if (!models.length) return [];
 
   const counts = cardCountsByModel(cards);
-  const ledgerById = new Map(
-    getCollectionPageState().continueCreators.map((c) => [c.id, c]),
+  const ledgerByKey = indexLedgerProgress(
+    getCollectionPageState().continueCreators,
   );
   const nowSec = Date.now() / 1000;
 
@@ -316,7 +369,7 @@ export function continueCollectingFromModels(
     const id = modelId(model, index);
     const name = modelDisplayName(model);
     const total = counts.get(id) ?? 0;
-    const ledger = ledgerById.get(id);
+    const ledger = ledgerForModel(ledgerByKey, model, id, name);
     const collected =
       total > 0
         ? Math.min(total, Math.max(0, ledger?.collected ?? 0))
