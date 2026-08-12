@@ -14,7 +14,15 @@ import {
   type ViewMode,
 } from "@/components/creator/ViewModeToggle";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
-import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
+import {
+  normalizeMediaUrl,
+  type BackendModel,
+} from "@/shared/backend/collection";
+import { modelDisplayName } from "@/shared/backend/modelProfile";
+import {
+  useCreatorCollection,
+  type CreatorCollectionState,
+} from "@/features/collection/useCreatorCollection";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
 import {
   getCreatorPage,
@@ -23,6 +31,7 @@ import {
   resolveThemeDetail,
   countMatchingUnopened,
   countMatchingScratchReady,
+  type CreatorPageData,
   type MotionCardSlot,
   type ThemeCardData,
 } from "@/services/collection";
@@ -48,30 +57,75 @@ export function CreatorScreen({
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
-  const [preferredModelId, setPreferredModelId] = useState<string | null>(null);
+  const [resolvedModel, setResolvedModel] = useState<BackendModel | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
-    void resolveModelIdForCreator(creatorId).then(({ modelId }) => {
-      if (!cancelled) setPreferredModelId(modelId);
+    void resolveModelIdForCreator(creatorId).then(({ model }) => {
+      if (!cancelled) setResolvedModel(model);
     });
     return () => {
       cancelled = true;
     };
   }, [creatorId]);
 
+  const preferredModelId = resolvedModel?.id ?? null;
+
   return (
     <CatalogProvider preferredModelId={preferredModelId}>
       <CreatorScreenInner
         creatorId={creatorId}
         diamonds={diamonds}
-        modelId={preferredModelId}
+        model={resolvedModel}
         onBack={onBack}
         onOpenPack={onOpenPack}
         onBuyPack={onBuyPack}
       />
     </CatalogProvider>
   );
+}
+
+function titleCaseSlug(value: string): string {
+  const slug = value.trim();
+  if (!slug || !/^[a-z][a-z0-9_-]{0,63}$/i.test(slug)) return "";
+  return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function liveCreatorStats(
+  page: CreatorPageData,
+  collection: CreatorCollectionState,
+  usingLiveThemes: boolean,
+): CreatorPageData["creator"]["stats"] {
+  if (!usingLiveThemes) return page.creator.stats;
+
+  const motionTotal = collection.cards.length;
+  const motionUnlocked = collection.cards.filter(
+    (card) => (card.videoCardCount ?? 0) > 0 || Boolean(card.mediaUrl),
+  ).length;
+  const photoUnlocked = collection.themes.reduce(
+    (sum, theme) => sum + theme.collected,
+    0,
+  );
+  const photoTotal = collection.themes.reduce(
+    (sum, theme) => sum + theme.total,
+    0,
+  );
+  const themesCompleted = collection.themes.filter(
+    (theme) => theme.total > 0 && theme.collected >= theme.total,
+  ).length;
+
+  return {
+    collected: photoUnlocked,
+    totalCollectible: Math.max(photoTotal, 1),
+    motionCardsUnlocked: motionUnlocked,
+    motionCardsTotal: motionTotal,
+    photoCardsUnlocked: photoUnlocked,
+    photoCardsTotal: photoTotal,
+    themesCompleted,
+    themeCount: collection.themes.length,
+  };
 }
 
 function motionSlotsFromCards(cards: CardConfig[]): MotionCardSlot[] {
@@ -86,19 +140,20 @@ function motionSlotsFromCards(cards: CardConfig[]): MotionCardSlot[] {
 function CreatorScreenInner({
   creatorId,
   diamonds,
-  modelId,
+  model,
   onBack,
   onOpenPack,
   onBuyPack,
 }: {
   creatorId: string;
   diamonds: number;
-  modelId: string | null;
+  model: BackendModel | null;
   onBack: () => void;
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
+  const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,6 +182,12 @@ function CreatorScreenInner({
 
   const themes = apiThemes.length > 0 ? apiThemes : page.themes;
   const usingLiveThemes = apiThemes.length > 0;
+  const creatorName =
+    (model ? modelDisplayName(model) : "") ||
+    titleCaseSlug(creatorId) ||
+    page.creator.name;
+  const purchaseCreatorId = creatorId || page.creator.id;
+  const stats = liveCreatorStats(page, collection, usingLiveThemes);
 
   useEffect(() => {
     if (!usingLiveThemes) return;
@@ -182,6 +243,10 @@ function CreatorScreenInner({
 
   const theme =
     themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
+  const coverUrl =
+    (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
+    (usingLiveThemes ? (theme?.thumbnailUrl ?? "") : "") ||
+    page.creator.coverUrl;
   const motionCards = collection.cardsByThemeId[theme?.id ?? ""] ?? [];
   const liveInventory = usingLiveThemes
     ? {
@@ -217,10 +282,10 @@ function CreatorScreenInner({
 
   function openOwnedPack() {
     onOpenPack({
-      packId: `${page.creator.id}-${theme?.id ?? "theme"}-owned`,
+      packId: `${purchaseCreatorId}-${theme?.id ?? "theme"}-owned`,
       packName: theme?.name ?? "Pack",
       price: "Free",
-      creator: page.creator.name,
+      creator: creatorName,
       entry: "open",
       unopenedPacks: detail.unopenedPacks,
     });
@@ -232,21 +297,21 @@ function CreatorScreenInner({
       return;
     }
     onBuyPack({
-      packId: `${page.creator.id}-${theme?.id ?? "theme"}-buy`,
+      packId: `${purchaseCreatorId}-${theme?.id ?? "theme"}-buy`,
       packName: theme?.name ?? "Pack",
       price: "10 ◆",
-      creator: page.creator.name,
+      creator: creatorName,
       entry: "purchase",
     });
   }
 
   function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
     const card = cardId.trim();
-    const model = playModelId.trim();
-    if (!card || !model) return;
+    const playModel = playModelId.trim();
+    if (!card || !playModel) return;
     syncCardParam(card, selectedThemeId);
     navigate(
-      Paths.gamePlay(model, card, {
+      Paths.gamePlay(playModel, card, {
         creatorId,
         themeId: selectedThemeId,
       }),
@@ -270,11 +335,11 @@ function CreatorScreenInner({
     >
       <div className="cpv2-shell">
         <CreatorHeader
-          name={page.creator.name}
-          coverUrl={page.creator.coverUrl}
+          name={creatorName}
+          coverUrl={coverUrl}
           onBack={onBack}
         />
-        <StatsBar stats={page.creator.stats} />
+        <StatsBar stats={stats} />
 
         <div className="cpv2-choose-row" id="cpv2-choose-theme">
           <h2 className="cpv2-choose-title">Choose a Theme</h2>

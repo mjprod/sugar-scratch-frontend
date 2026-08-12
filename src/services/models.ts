@@ -1,8 +1,11 @@
 /** Creator models and foil packs from `/api/models`. */
 
+import { apiFetch } from "@/lib/api";
+
 export type BackendModel = {
   id?: string | null;
   label?: string | null;
+  avatar?: string | null;
   created_at?: number | null;
   influencerName?: string | null;
   influencerCity?: string | null;
@@ -11,11 +14,14 @@ export type BackendModel = {
   influencerFlagSvg?: string | null;
   cardOverlayColorStart?: string | null;
   cardOverlayColorEnd?: string | null;
+  cardLightColor1?: string | null;
+  cardLightColor2?: string | null;
   cardPackName?: string | null;
   cardPackName2?: string | null;
   packFaceVideoUrl?: string | null;
   packFaceVideoUrl2?: string | null;
   swipeVideoUrl?: string | null;
+  theme_avatars?: Record<string, string> | null;
 };
 
 export type FoilSlot = 1 | 2;
@@ -211,14 +217,8 @@ function sortModels(models: BackendModel[]) {
 let modelsPromise: Promise<BackendModel[]> | null = null;
 
 export async function fetchModels(): Promise<BackendModel[]> {
-  try {
-    const response = await fetch("/api/models", { cache: "no-store" });
-    if (!response.ok) return [];
-    const data = (await response.json()) as { models?: BackendModel[] };
-    return Array.isArray(data.models) ? sortModels(data.models) : [];
-  } catch {
-    return [];
-  }
+  const data = await apiFetch<{ models?: BackendModel[] }>("/api/models");
+  return data && Array.isArray(data.models) ? sortModels(data.models) : [];
 }
 
 export function loadModels() {
