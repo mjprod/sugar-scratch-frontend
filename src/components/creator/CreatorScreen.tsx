@@ -1,17 +1,39 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Paths } from "@/routes/Paths";
 import { CollectionPlaceholder } from "@/components/collection/CollectionPlaceholder";
+import { CreatorCollectionBrowse } from "@/components/creator/CreatorCollectionBrowse";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
-import { SelectedThemeDetail } from "@/components/creator/SelectedThemeDetail";
+import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
 import { StatsBar } from "@/components/creator/StatsBar";
 import { StickyFooterCTA } from "@/components/creator/StickyFooterCTA";
-import { ThemeHeroCarousel } from "@/components/creator/ThemeHeroCarousel";
+import { ThemeMotionDetail } from "@/components/creator/ThemeMotionDetail";
 import { ThemeSelector } from "@/components/creator/ThemeSelector";
-import { ViewModeToggle, type ViewMode } from "@/components/creator/ViewModeToggle";
-import { getCreatorPage, getStickyCtaMode } from "@/services/collection";
+import {
+  ViewModeToggle,
+  type ViewMode,
+} from "@/components/creator/ViewModeToggle";
+import { CatalogProvider } from "@/shared/catalog/CatalogContext";
+import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
+import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
+import {
+  getCreatorPage,
+  getStickyCtaMode,
+  matchLiveThemeId,
+  resolveThemeDetail,
+  countMatchingUnopened,
+  countMatchingScratchReady,
+  type MotionCardSlot,
+  type ThemeCardData,
+} from "@/services/collection";
+import { listUnopenedInstances } from "@/services/packInventory";
+import { listReadyToScratch } from "@/services/readyToScratch";
 import type { PurchaseFlowPack } from "@/services/purchase";
+import type { CardConfig } from "@/features/collection/lib/cards";
+import "./creator-collection.css";
 
 /**
- * Creator Page V2 — {Creator}'s Scratches with Grid / Carousel theme modes.
+ * Creator Page V2 — {Creator}'s Scratches with Grid / Collection browse modes.
  */
 export function CreatorScreen({
   creatorId,
@@ -26,27 +48,158 @@ export function CreatorScreen({
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
+  const [preferredModelId, setPreferredModelId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveModelIdForCreator(creatorId).then(({ modelId }) => {
+      if (!cancelled) setPreferredModelId(modelId);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorId]);
+
+  return (
+    <CatalogProvider preferredModelId={preferredModelId}>
+      <CreatorScreenInner
+        creatorId={creatorId}
+        diamonds={diamonds}
+        modelId={preferredModelId}
+        onBack={onBack}
+        onOpenPack={onOpenPack}
+        onBuyPack={onBuyPack}
+      />
+    </CatalogProvider>
+  );
+}
+
+function motionSlotsFromCards(cards: CardConfig[]): MotionCardSlot[] {
+  return cards.map((card, index) => ({
+    index: index + 1,
+    label: card.name,
+    isUnlocked: Boolean(card.mediaUrl) || (card.videoCardCount ?? 0) > 0,
+    thumbnailUrl: card.mediaUrl || undefined,
+  }));
+}
+
+function CreatorScreenInner({
+  creatorId,
+  diamonds,
+  modelId,
+  onBack,
+  onOpenPack,
+  onBuyPack,
+}: {
+  creatorId: string;
+  diamonds: number;
+  modelId: string | null;
+  onBack: () => void;
+  onOpenPack: (pack: PurchaseFlowPack) => void;
+  onBuyPack: (pack: PurchaseFlowPack) => void;
+}) {
   const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
+  const collection = useCreatorCollection(modelId);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [selectedThemeId, setSelectedThemeId] = useState(page.themes[0]?.id ?? "summer");
-  const [activeThemeIndex, setActiveThemeIndex] = useState(0);
-  const [isThemeDetailRevealed, setIsThemeDetailRevealed] = useState(false);
+  const [selectedThemeId, setSelectedThemeId] = useState(
+    () => searchParams.get("theme") || page.themes[0]?.id || "summer",
+  );
+  const [featuredCardId, setFeaturedCardId] = useState<string | null>(
+    () => searchParams.get("card"),
+  );
   const [toast, setToast] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
 
-  const focusedThemeId =
-    viewMode === "grid"
-      ? selectedThemeId
-      : (page.themes[activeThemeIndex]?.id ?? selectedThemeId);
+  const apiThemes: ThemeCardData[] = useMemo(
+    () =>
+      collection.themes.map((theme) => ({
+        id: theme.id,
+        name: theme.name,
+        thumbnailUrl: theme.coverUrl,
+        collected: theme.collected,
+        total: theme.total,
+        progressColor: "pink" as const,
+      })),
+    [collection.themes],
+  );
+
+  const themes = apiThemes.length > 0 ? apiThemes : page.themes;
+  const usingLiveThemes = apiThemes.length > 0;
+
+  useEffect(() => {
+    if (!usingLiveThemes) return;
+
+    const urlTheme = searchParams.get("theme");
+    const urlCard = searchParams.get("card");
+    const wantedId = urlTheme || selectedThemeId;
+
+    const themeFromCard = urlCard
+      ? apiThemes.find((entry) =>
+          (collection.cardsByThemeId[entry.id] ?? []).some(
+            (card) => card.id === urlCard,
+          ),
+        )
+      : undefined;
+
+    const nextThemeId =
+      themeFromCard?.id ??
+      matchLiveThemeId(wantedId, apiThemes, page.themes) ??
+      apiThemes[0]!.id;
+
+    const nextCardId =
+      urlCard &&
+      (collection.cardsByThemeId[nextThemeId] ?? []).some(
+        (card) => card.id === urlCard,
+      )
+        ? urlCard
+        : null;
+
+    if (nextThemeId !== selectedThemeId) {
+      setSelectedThemeId(nextThemeId);
+    }
+    if (nextCardId !== featuredCardId) {
+      setFeaturedCardId(nextCardId);
+    }
+    if (urlTheme !== nextThemeId || (urlCard ?? null) !== nextCardId) {
+      const next = new URLSearchParams(searchParams);
+      if (nextCardId) next.set("card", nextCardId);
+      else next.delete("card");
+      next.set("theme", nextThemeId);
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    apiThemes,
+    usingLiveThemes,
+    selectedThemeId,
+    featuredCardId,
+    searchParams,
+    setSearchParams,
+    collection.cardsByThemeId,
+    page.themes,
+  ]);
 
   const theme =
-    page.themes.find((entry) => entry.id === focusedThemeId) ?? page.themes[0];
-  const detail = page.themeDetails[theme.id];
+    themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
+  const motionCards = collection.cardsByThemeId[theme?.id ?? ""] ?? [];
+  const liveInventory = usingLiveThemes
+    ? {
+        unopenedPacks: countMatchingUnopened(theme, listUnopenedInstances()),
+        scratchReady: countMatchingScratchReady(theme, listReadyToScratch()),
+        motionCards: motionSlotsFromCards(motionCards),
+      }
+    : null;
+  const detail = resolveThemeDetail(
+    theme,
+    page.themeDetails,
+    liveInventory,
+  );
   const ctaMode = getStickyCtaMode({
     detail,
-    theme,
-    collected: theme.collected,
-    total: theme.total,
+    theme: theme ?? page.themes[0]!,
+    collected: theme?.collected ?? 0,
+    total: theme?.total ?? 1,
   });
 
   function notice(message: string) {
@@ -54,10 +207,18 @@ export function CreatorScreen({
     window.setTimeout(() => setToast(null), 1800);
   }
 
+  function syncCardParam(cardId: string | null, themeId?: string) {
+    const next = new URLSearchParams(searchParams);
+    if (cardId) next.set("card", cardId);
+    else next.delete("card");
+    if (themeId) next.set("theme", themeId);
+    setSearchParams(next, { replace: true });
+  }
+
   function openOwnedPack() {
     onOpenPack({
-      packId: `${page.creator.id}-${theme.id}-owned`,
-      packName: theme.name,
+      packId: `${page.creator.id}-${theme?.id ?? "theme"}-owned`,
+      packName: theme?.name ?? "Pack",
       price: "Free",
       creator: page.creator.name,
       entry: "open",
@@ -71,27 +232,31 @@ export function CreatorScreen({
       return;
     }
     onBuyPack({
-      packId: `${page.creator.id}-${theme.id}-buy`,
-      packName: theme.name,
+      packId: `${page.creator.id}-${theme?.id ?? "theme"}-buy`,
+      packName: theme?.name ?? "Pack",
       price: "10 ◆",
       creator: page.creator.name,
       entry: "purchase",
     });
   }
 
+  function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
+    const card = cardId.trim();
+    const model = playModelId.trim();
+    if (!card || !model) return;
+    syncCardParam(card, selectedThemeId);
+    navigate(
+      Paths.gamePlay(model, card, {
+        creatorId,
+        themeId: selectedThemeId,
+      }),
+    );
+  }
+
   function switchMode(mode: ViewMode) {
     if (mode === viewMode) return;
-    if (mode === "carousel") {
-      const index = Math.max(
-        0,
-        page.themes.findIndex((entry) => entry.id === selectedThemeId),
-      );
-      setActiveThemeIndex(index);
-      setIsThemeDetailRevealed(false);
-    } else {
-      const id = page.themes[activeThemeIndex]?.id ?? selectedThemeId;
-      setSelectedThemeId(id);
-    }
+    setFeaturedCardId(null);
+    syncCardParam(null, selectedThemeId);
     setViewMode(mode);
   }
 
@@ -120,47 +285,37 @@ export function CreatorScreen({
           {viewMode === "grid" ? (
             <>
               <ThemeSelector
-                themes={page.themes}
-                selectedThemeId={selectedThemeId}
-                onSelect={setSelectedThemeId}
+                themes={themes}
+                selectedThemeId={theme?.id ?? selectedThemeId}
+                onSelect={(id) => {
+                  setSelectedThemeId(id);
+                  syncCardParam(null, id);
+                }}
               />
-              <SelectedThemeDetail
-                detail={detail}
-                collected={theme.collected}
-                total={theme.total}
-                onOpenPackShortcut={openOwnedPack}
-                onToast={notice}
+              <ThemeMotionDetail
+                themeName={theme?.name ?? "Theme"}
+                cards={motionCards}
+                loading={collection.loading}
+                onSelectCard={(card) => {
+                  setFeaturedCardId(card.id);
+                  syncCardParam(card.id, theme?.id);
+                }}
               />
             </>
           ) : (
-            <>
-              <ThemeHeroCarousel
-                themes={page.themes}
-                activeIndex={activeThemeIndex}
-                onActiveIndexChange={setActiveThemeIndex}
-                onActivateFocused={() => setIsThemeDetailRevealed(true)}
-              />
-              {isThemeDetailRevealed ? (
-                <SelectedThemeDetail
-                  detail={detail}
-                  collected={theme.collected}
-                  total={theme.total}
-                  onOpenPackShortcut={openOwnedPack}
-                  onToast={notice}
-                />
-              ) : (
-                <p className="cpv2-reveal-hint">
-                  Tap the theme above to see its cards
-                </p>
-              )}
-            </>
+            <CreatorCollectionBrowse
+              modelId={collection.modelId}
+              focusCardId={searchParams.get("card")}
+              onPlayGame={handlePlayGame}
+              onViewCard={(name) => notice(`View ${name}`)}
+            />
           )}
         </div>
       </div>
 
       <StickyFooterCTA
         mode={ctaMode}
-        theme={theme}
+        theme={theme ?? page.themes[0]!}
         detail={detail}
         diamonds={diamonds}
         onScratch={() => setOverlay("Scratch Flow")}
@@ -175,8 +330,23 @@ export function CreatorScreen({
       {overlay ? (
         <CollectionPlaceholder
           title={overlay}
-          detail={theme.name}
+          detail={theme?.name}
           onClose={() => setOverlay(null)}
+        />
+      ) : null}
+
+      {viewMode === "grid" &&
+      featuredCardId &&
+      collection.modelId ? (
+        <FeaturedCardOverlay
+          modelId={collection.modelId}
+          cardId={featuredCardId}
+          onClose={() => {
+            setFeaturedCardId(null);
+            syncCardParam(null, selectedThemeId);
+          }}
+          onPlayGame={handlePlayGame}
+          onViewCard={(name) => notice(`View ${name}`)}
         />
       ) : null}
     </section>

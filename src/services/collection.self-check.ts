@@ -3,9 +3,14 @@
  * Run: npx tsx src/v8/flow/collection.self-check.ts
  */
 import {
+  countMatchingScratchReady,
+  countMatchingUnopened,
+  findThemeDetail,
   getCreatorPage,
   getStickyCtaMode,
+  matchLiveThemeId,
   progressTone,
+  resolveThemeDetail,
   scratchReadyCount,
 } from "./collection";
 
@@ -89,5 +94,75 @@ assert(
 );
 
 assert(getStickyCtaMode({ detail: null, collected: 0, total: 0 }) === null, "null detail hides CTA");
+
+const liveThemes = [
+  { id: "cop", name: "Police" },
+  { id: "nurse", name: "Nurse" },
+];
+assert(
+  matchLiveThemeId("police", liveThemes, emily.themes) === "cop",
+  "static police remaps onto live cop id",
+);
+assert(
+  matchLiveThemeId("Nurse Pack", liveThemes) === "nurse",
+  "name + pack suffix remaps onto live nurse",
+);
+assert(
+  matchLiveThemeId("summer", liveThemes, emily.themes) == null,
+  "unmatched static id does not invent a live theme",
+);
+
+const nurseChip = { id: "nurse", name: "Nurse", thumbnailUrl: "", collected: 2, total: 13, progressColor: "pink" as const };
+assert(findThemeDetail(nurseChip, emily.themeDetails) == null, "nurse has no static detail key");
+
+const remappedPolice = findThemeDetail(
+  { id: "cop", name: "Police" },
+  emily.themeDetails,
+);
+assert(remappedPolice?.themeId === "police", "cop/Police resolves static police detail");
+
+const liveNurse = resolveThemeDetail(nurseChip, emily.themeDetails, {
+  unopenedPacks: 2,
+  scratchReady: 1,
+});
+assert(liveNurse.unopenedPacks === 2, "live unopened packs survive missing static keys");
+assert(scratchReadyCount(liveNurse) === 1, "live scratch-ready survives missing static keys");
+assert(
+  getStickyCtaMode({
+    detail: liveNurse,
+    collected: nurseChip.collected,
+    total: nurseChip.total,
+  }) === "scratch",
+  "live nurse with scratch-ready is not forced to buy",
+);
+
+const emptyLive = resolveThemeDetail(
+  { id: "gym", name: "Gym", thumbnailUrl: "", collected: 13, total: 13, progressColor: "green" },
+  emily.themeDetails,
+  { unopenedPacks: 0, scratchReady: 0 },
+);
+assert(
+  getStickyCtaMode({
+    detail: emptyLive,
+    collected: 13,
+    total: 13,
+  }) === "view",
+  "complete live theme without static keys uses view, not buy",
+);
+
+assert(
+  countMatchingUnopened(nurseChip, [
+    { themeName: "Nurse Pack", packName: "Nurse Pack" },
+    { themeName: "Police", packName: "Police Pack" },
+  ]) === 1,
+  "unopened packs match by theme name",
+);
+assert(
+  countMatchingScratchReady(nurseChip, [
+    { collectionName: "Nurse", count: 3 },
+    { collectionName: "Police Collection", count: 2 },
+  ]) === 3,
+  "scratch-ready groups match by theme name",
+);
 
 console.log("collection.self-check: ok");

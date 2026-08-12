@@ -1,0 +1,4460 @@
+
+.stage-collection {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.collection-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  color: rgba(230, 237, 243, 0.72);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.collection-empty p {
+  margin: 0;
+}
+
+.stage-collection .prototype-app {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  box-sizing: border-box;
+}
+
+.stage-collection .prototype-preview {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+
+.stage-collection .prototype-controls-fab {
+  display: none !important;
+}
+
+:root {
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --card-scale: 1;
+  --card-opacity: 0;
+  --translate-x: 0px;
+  --translate-y: 0px;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --background-x: var(--pointer-x);
+  --background-y: var(--pointer-y);
+  --pointer-from-center: 0;
+  --pointer-from-top: var(--pointer-from-center);
+  --pointer-from-left: var(--pointer-from-center);
+  /* Custom pack ratio 251:475 ≈ 0.53 (override base Pokemon 0.718). */
+  --card-aspect: 0.528421;
+  --card-width: 251px;
+}
+
+.prototype-app {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Standalone collection fills the viewport. Embedded (creator browse /
+   featured overlay) must fill its host instead of locking html/body/#root. */
+.prototype-app:not(.collection-app--embedded) {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.collection-app--embedded {
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+}
+
+.prototype-app.is-controls-open {
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+}
+
+.prototype-controls {
+  position: relative;
+  z-index: 2000;
+  /* above carousel cards / active chrome */
+  isolation: isolate;
+  padding: 1.5rem;
+  border-right: 1px solid #30363d;
+  background: #161b22;
+  overflow-y: auto;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+.prototype-controls__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.prototype-controls__close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prototype-controls__close:hover {
+  background: #30363d;
+}
+
+.prototype-controls-fab {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  left: auto;
+  bottom: auto;
+  z-index: 3000;
+  width: 56px;
+  height: 56px;
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  background: #21262d;
+  color: #e6edf3;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.prototype-controls-fab:hover {
+  background: #30363d;
+}
+
+.prototype-controls-fab.is-open {
+  background: #238636;
+  border-color: #238636;
+}
+
+/* Hide the sidebar control while a motion card is active. */
+.prototype-controls-fab.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.92);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.prototype-controls-fab:not(.is-hidden) {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.prototype-controls input,
+.prototype-controls button,
+.prototype-controls select,
+.prototype-controls textarea,
+.prototype-controls label {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.prototype-controls__header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.prototype-controls__header p {
+  margin: 0.5rem 0 1.5rem;
+  color: #8b949e;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.prototype-controls__section {
+  margin-bottom: 1.5rem;
+}
+
+.prototype-controls__section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b949e;
+}
+
+.prototype-controls__toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.prototype-controls__toggle button,
+.prototype-controls__nav button,
+.prototype-controls__reset,
+.prototype-controls__advanced-toggle,
+.prototype-controls__add,
+.prototype-controls__delete {
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.prototype-controls__toggle button.active {
+  background: #238636;
+  border-color: #238636;
+}
+
+.prototype-controls__toggle button:hover,
+.prototype-controls__nav button:hover,
+.prototype-controls__reset:hover,
+.prototype-controls__advanced-toggle:hover,
+.prototype-controls__add:hover,
+.prototype-controls__delete:hover:not(:disabled) {
+  background: #30363d;
+}
+
+.prototype-controls__deck-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prototype-controls__add {
+  background: #238636;
+  border-color: #238636;
+  font-weight: 600;
+}
+
+.prototype-controls__add:hover {
+  background: #2ea043;
+}
+
+.prototype-controls__delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.prototype-controls__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.prototype-controls__speed {
+  border: 1px solid #30363d;
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 0.7rem 0.75rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.prototype-controls__speed.is-live {
+  border-color: #238636;
+  box-shadow: 0 0 0 1px rgba(35, 134, 54, 0.25);
+}
+
+.prototype-controls__speed-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.prototype-controls__speed-row strong {
+  color: #e6edf3;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.prototype-controls__speed-row em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  color: #8b949e;
+  font-size: 0.72rem;
+}
+
+.prototype-controls__speed-meter {
+  position: relative;
+  height: 8px;
+  margin: 0.25rem 0 0.15rem;
+  border-radius: 999px;
+  background: #21262d;
+  overflow: hidden;
+}
+
+.prototype-controls__speed-meter-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #238636, #3fb950 55%, #f0883e);
+  transition: width 0.08s linear;
+}
+
+.prototype-controls__speed-meter-peak {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  opacity: 0.85;
+  transform: translateX(-1px);
+}
+
+.prototype-controls__field input,
+.prototype-controls__field select,
+.prototype-controls__nav select {
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+}
+
+.prototype-controls__group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prototype-controls__group-item {
+  border: 1px solid #30363d;
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 0.65rem 0.7rem 0.55rem;
+}
+
+.prototype-controls__group-item .prototype-controls__field {
+  margin-bottom: 0.5rem;
+}
+
+.prototype-controls__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.prototype-controls__slot {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #8b949e;
+}
+
+.prototype-controls__slot span {
+  font-variant-numeric: tabular-nums;
+}
+
+.prototype-controls__slot select {
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.prototype-controls__effect-name {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.prototype-controls__nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.prototype-controls__advanced {
+  margin-top: 0.75rem;
+}
+
+.prototype-controls__hint-inline {
+  margin: 0 0 0.85rem;
+  color: #8b949e;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.prototype-controls__slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.82rem;
+  color: #c9d1d9;
+}
+
+.prototype-controls__slider span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.prototype-controls__slider strong {
+  color: #e6edf3;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.prototype-controls__slider input[type='range'] {
+  width: 100%;
+  accent-color: #238636;
+  cursor: pointer;
+}
+
+.prototype-controls__snippet {
+  border: 1px solid #30363d;
+  background: #0d1117;
+  color: #8b949e;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  font: 0.72rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  resize: vertical;
+  min-height: 7rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.prototype-controls__subhead {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b949e;
+}
+
+.prototype-controls__toggles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.prototype-controls__toggles button {
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0.45rem 0.4rem;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.prototype-controls__toggles button.active {
+  background: #238636;
+  border-color: #238636;
+}
+
+.prototype-controls__toggles button:hover {
+  background: #30363d;
+}
+
+.prototype-controls__toggles button.active:hover {
+  background: #2ea043;
+}
+
+.prototype-controls__clip-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.prototype-controls__clip-presets button {
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0.4rem 0.35rem;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.prototype-controls__clip-presets button:hover {
+  background: #30363d;
+}
+
+.prototype-controls__hint-inline code {
+  color: #79c0ff;
+  font-size: 0.72rem;
+}
+
+.prototype-controls__checkbox {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-top: 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.prototype-controls__checkbox input {
+  margin-top: 0.2rem;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: #238636;
+}
+
+.prototype-controls__checkbox span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.prototype-controls__checkbox small {
+  color: #8b949e;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.prototype-controls__back-holo {
+  display: block;
+  width: 100%;
+  margin-top: 0.85rem;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prototype-controls__back-holo:hover {
+  background: #30363d;
+}
+
+.prototype-controls__back-holo.active {
+  background: #238636;
+  border-color: #238636;
+}
+
+.prototype-controls__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #8b949e;
+  line-height: 1.4;
+}
+
+.prototype-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  background:
+    radial-gradient(circle at 50% 0%, #1f2937 0%, transparent 55%),
+    #0d1117;
+}
+
+.prototype-app:not(.collection-app--embedded) .prototype-preview {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.prototype-preview:has(.coverflow.is-expanded) {
+  overflow: visible;
+}
+
+.coverflow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 1rem 0.5rem 1.25rem;
+  box-sizing: border-box;
+  overflow: visible;
+  /* Shift the whole stage (cards + stroke-relative nav dots) down. */
+  transform: translateY(4dvh);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.coverflow * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.coverflow *::selection {
+  background: transparent;
+}
+
+.coverflow__frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  /* Let stroke-relative nav dots paint below the stage without clipping. */
+  overflow: visible;
+  /* 3× the original 2.5rem chevrons. */
+  --chevron-size: 7.5rem;
+  --chevron-gutter: 0.75rem;
+  /* Keep group stroke height in sync with the live card width. */
+  --rendered-card-width: min(var(--card-width, 251px), 42vw);
+  /* Match idle .card-group pad so stroke-bottom math stays in sync. */
+  --group-pad-y: 64px;
+  --group-stroke-height: calc(var(--rendered-card-width) / var(--card-aspect, 0.528421) + (var(--group-pad-y) * 2));
+  /* Horizontal gap between cards (desktop default matches JS CARD_GAP). */
+  --card-gap: 28px;
+  /*
+   * Left safe zone ≈ one card wide so the focused (leftmost) card
+   * never sits under the left chevron.
+   */
+  --stage-left-safe: min(var(--card-width, 251px), 28vw);
+  --stage-right-safe: min(var(--card-width, 251px), 28vw);
+}
+
+.coverflow__viewport {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  /* Own horizontal drag for continuous scrub. */
+  touch-action: none;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.coverflow.is-dragging .coverflow__viewport,
+.coverflow__viewport:active {
+  cursor: default;
+}
+
+.coverflow.is-expanded .coverflow__viewport {
+  overflow: visible;
+  z-index: 20;
+}
+
+.coverflow.is-expanded .coverflow__frame {
+  overflow: visible;
+}
+
+.coverflow.is-expanded .coverflow__item.is-focused {
+  z-index: 1000 !important;
+}
+
+.coverflow.is-expanded .coverflow__item.is-focused .card.active {
+  z-index: 1000;
+}
+
+/* Active selection dims non-hero cards (3dpack side dim). */
+.coverflow.is-expanded .coverflow__item.is-dimmed {
+  pointer-events: none;
+}
+
+/* Hard lock: only the open hero receives hits while expanded. */
+.coverflow.is-expanded .coverflow__item:not(.is-active-item) {
+  pointer-events: none !important;
+}
+
+.coverflow.is-expanded .coverflow__item:not(.is-active-item) .card,
+.coverflow.is-expanded .coverflow__item:not(.is-active-item) .card__rotator,
+.coverflow.is-expanded .coverflow__item:not(.is-active-item) .card__translater {
+  pointer-events: none !important;
+}
+
+.coverflow.is-expanded .coverflow__item.is-dimmed .coverflow__caption {
+  opacity: 0.25;
+}
+
+.coverflow__caption.is-active-hidden {
+  opacity: 0 !important;
+  transform: translateY(-12px);
+  filter: blur(4px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.25s ease,
+    filter 0.25s ease;
+}
+
+/* ---- Actions directly under the active card (inside card transform) ---- */
+.card__translater {
+  position: relative;
+}
+
+/* Live tilt debug HUD — remove once the max-tilt holo texture bug is fixed.
+   Lives inside preserve-3d, so z-index alone loses to card faces (translateZ).
+   Push far forward on Z + max stacking so it stays in front while tilting. */
+.card__tilt-debug {
+  position: absolute;
+  left: 0.4rem;
+  /* Sit lower so flip / motion buttons don't cover the HUD. */
+  top: 60%;
+  z-index: 2147483647;
+  min-width: 7.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 12, 18, 0.92);
+  color: #7ee787;
+  font: 600 0.68rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  /* Above card face layers (shine/glare use ~1–1.5px Z). */
+  -webkit-transform: translate3d(0, -50%, 120px);
+  transform: translate3d(0, -50%, 120px);
+  -webkit-transform-style: flat;
+  transform-style: flat;
+  isolation: isolate;
+}
+
+/* Temporary overlay: show the horizontal swipe-to-flip touch zone.
+   MUST stay fully non-interactive — descendants default to pointer-events:auto
+   and would otherwise steal touches from .card__rotator on WebKit. */
+.card__swipe-zone,
+.card__swipe-zone *,
+.card__swipe-zone *::before,
+.card__swipe-zone *::after {
+  pointer-events: none !important;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.card__swipe-zone {
+  position: absolute;
+  inset: 0;
+  /* Below flip/motion chrome, above faces only for paint — never hit-tests. */
+  z-index: 20;
+  border-radius: inherit;
+  overflow: visible;
+  -webkit-transform: translate3d(0, 0, 40px);
+  transform: translate3d(0, 0, 40px);
+  /* Default side-band width (each side). */
+  --swipe-band-width: 28%;
+}
+
+/*
+ * Phone motion tilts the card in 3D, so the projected hit area grows.
+ * Whole card is the flip swipe zone (no separate tilt/drag bands).
+ */
+.card__swipe-zone.is-motion-on {
+  --swipe-band-width: 50%;
+  inset: -6% -14%;
+  background: rgba(88, 166, 255, 0.08);
+  border: 1px dashed rgba(88, 166, 255, 0.45);
+  border-radius: 14px;
+}
+
+.card__swipe-zone.is-flip-only .card__swipe-zone-full {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(8, 12, 18, 0.78);
+  border: 1px solid rgba(88, 166, 255, 0.4);
+  color: #79c0ff;
+  font: 700 0.72rem/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.card__swipe-zone-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--swipe-band-width, 28%);
+  background: linear-gradient(90deg,
+      rgba(88, 166, 255, 0.28),
+      rgba(88, 166, 255, 0.08));
+  border: 1px dashed rgba(88, 166, 255, 0.55);
+  box-sizing: border-box;
+}
+
+.card__swipe-zone-band--left {
+  left: 0;
+  border-right: none;
+  background: linear-gradient(90deg,
+      rgba(88, 166, 255, 0.3),
+      rgba(88, 166, 255, 0.05));
+}
+
+.card__swipe-zone-band--right {
+  right: 0;
+  border-left: none;
+  background: linear-gradient(270deg,
+      rgba(88, 166, 255, 0.3),
+      rgba(88, 166, 255, 0.05));
+}
+
+.card__swipe-zone-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(8, 12, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(230, 237, 243, 0.85);
+  font: 600 0.68rem/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.card__swipe-zone-label {
+  position: absolute;
+  left: 50%;
+  top: 0.55rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(8, 12, 18, 0.78);
+  border: 1px solid rgba(88, 166, 255, 0.35);
+  color: #79c0ff;
+  font: 700 0.68rem/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.card__swipe-zone-label span {
+  font-weight: 600;
+  font-size: 0.62rem;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(230, 237, 243, 0.78);
+}
+
+/* All browsers: hide foil layers entirely until holo is restabilized. */
+.card.holo-disabled .card__shine,
+.card.holo-disabled .card__glare,
+.card.holo-disabled .card__shine::before,
+.card.holo-disabled .card__shine::after,
+.card .card__shine,
+.card .card__glare,
+.card .card__shine::before,
+.card .card__shine::after {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Phone-tilt toggle — mobile/touch only (hidden on desktop fine-pointer). */
+.card__motion-btn {
+  position: absolute;
+  left: 10dvw;
+  top: -1rem;
+  z-index: 120;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(22, 27, 34, 0.92);
+  color: #e6edf3;
+  display: none;
+  place-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+  opacity: 0.92;
+  /* Keep a modest Z lift so the hit-pad can't steal taps. */
+  -webkit-transform: translate3d(0, 0, 80px);
+  transform: translate3d(0, 0, 80px);
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  animation: card-flip-btn-in 0.28s ease both;
+}
+
+@media (hover: none),
+(pointer: coarse) {
+  .card__motion-btn {
+    display: grid;
+  }
+}
+
+@media (max-width: 800px) {
+  .card__motion-btn {
+    display: grid;
+  }
+}
+
+.card__motion-btn.is-active {
+  border-color: rgba(95, 208, 224, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(95, 208, 224, 0.25),
+    0 4px 12px rgba(0, 0, 0, 0.35);
+  color: #dff8ff;
+  background: rgba(20, 42, 48, 0.96);
+}
+
+.card__motion-btn.is-disabled-look {
+  opacity: 0.55;
+}
+
+.card__motion-btn:hover {
+  background: rgba(33, 38, 45, 0.98);
+  border-color: rgba(255, 255, 255, 0.32);
+  opacity: 1;
+}
+
+.card__motion-icon {
+  display: block;
+  pointer-events: none;
+}
+
+/*
+ * Flat hit pad over the active card.
+ *
+ * Why: active scale lives on .card__translater (preserve-3d). On iOS/WebKit the
+ * hit-test box of 3D-transformed children often stays near the *unscaled* layout
+ * size, so the visual active card is bigger than the real swipe target.
+ * This pad is transform-style: flat, oversized, and sits above the 3D face so
+ * the swipe zone matches what you see.
+ */
+.card__hit-pad {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* Local unscaled coords; parent --card-scale still enlarges the visual pad. */
+  width: 128%;
+  height: 118%;
+  transform: translate(-50%, -50%);
+  -webkit-transform: translate(-50%, -50%);
+  transform-style: flat;
+  -webkit-transform-style: flat;
+  z-index: 45;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Transparent hit surface. */
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+/* Motion-on: even larger — 3D yaw shrinks projected face width. */
+.card__hit-pad.is-motion-on {
+  width: 158%;
+  height: 128%;
+}
+
+/*
+ * Mobile: the photo grid sits only ~1rem to the right of the hero. The default
+ * oversized hit-pad (128%/158%) spills into that column and steals taps from
+ * the lower slots (9–10). Keep the pad near the visual face — don't raise the
+ * photo panel above the card (that would break fly-under entrance).
+ */
+@media (max-width: 800px),
+(hover: none),
+(pointer: coarse) {
+  .card__hit-pad {
+    /* ~2% side overflow stays inside the 1rem grid gap on typical phones. */
+    width: 104%;
+    height: 106%;
+  }
+
+  .card__hit-pad.is-motion-on {
+    /* A bit more for 3D yaw, still short of the photo-grid column. */
+    width: 108%;
+    height: 108%;
+  }
+}
+
+.card.active .card__rotator {
+  position: relative;
+  z-index: 30;
+}
+
+/* Faces don't need their own hits while the flat pad is active. */
+.card.active .card__rotator>* {
+  pointer-events: none;
+}
+
+/* Icon-only circular flip control — original placement restored. */
+.card__flip-btn {
+  position: absolute;
+  left: 50%;
+  top: -1rem;
+  z-index: 130;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(22, 27, 34, 0.92);
+  color: #e6edf3;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+  opacity: 0.92;
+  /* Original centering; keep a light Z lift so the hit-pad can't cover it. */
+  -webkit-transform: translate3d(-50%, 0, 80px);
+  transform: translate3d(-50%, 0, 80px);
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: card-flip-btn-in 0.28s ease both;
+}
+
+.card__flip-btn:hover {
+  background: rgba(33, 38, 45, 0.98);
+  border-color: rgba(255, 255, 255, 0.32);
+  opacity: 1;
+}
+
+.card__flip-btn:active {
+  -webkit-transform: translate3d(-50%, 0, 80px) scale(0.94);
+  transform: translate3d(-50%, 0, 80px) scale(0.94);
+  background: rgba(13, 17, 23, 0.98);
+}
+
+.card__flip-btn svg {
+  display: block;
+  width: 0.9rem;
+  height: 0.9rem;
+  pointer-events: none;
+}
+
+@keyframes card-flip-btn-in {
+  from {
+    opacity: 0;
+    -webkit-transform: translate3d(-50%, 6px, 80px) scale(0.9);
+    transform: translate3d(-50%, 6px, 80px) scale(0.9);
+  }
+
+  to {
+    opacity: 0.92;
+    -webkit-transform: translate3d(-50%, 0, 80px) scale(1);
+    transform: translate3d(-50%, 0, 80px) scale(1);
+  }
+}
+
+.active-card-actions {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 0.65rem);
+  /* Hidden state: faded, blurred, slightly below final resting position. */
+  transform: translateX(-50%) translateY(0.85rem) scale(0.96);
+  /*
+   * Wider than the card face so the 3-up Play/View/Gift row has room.
+   * Centered under the card; mobile clamps to 97vw below.
+   */
+  width: max(100%, 18.5rem);
+  min-width: min(22rem, 97vw);
+  max-width: min(24rem, 97vw);
+  box-sizing: border-box;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  filter: blur(8px);
+  pointer-events: none;
+  transition:
+    opacity 0.34s ease,
+    transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.34s ease;
+  will-change: opacity, transform, filter;
+}
+
+.active-card-actions.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  filter: blur(0);
+  transform: translateX(-50%) translateY(0) scale(1);
+  /* Bounce ease + blur-in when the node mounts with the card. */
+  animation: active-card-actions-in 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.active-card-actions.is-exiting {
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(8px);
+  transform: translateX(-50%) translateY(0.85rem) scale(0.96);
+  animation: active-card-actions-out 0.32s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes active-card-actions-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateX(-50%) translateY(0.85rem) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes active-card-actions-out {
+  from {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateX(-50%) translateY(0.85rem) scale(0.96);
+  }
+}
+
+.active-card-actions__label {
+  margin: 0;
+  color: #e6edf3;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-card-actions__row {
+  display: grid;
+  /* Play wider, View wider than gift; gift is a fixed circle. */
+  grid-template-columns: 2.2fr 1.35fr;
+  gap: 0.45rem;
+  width: 100%;
+  height: 3rem;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+/* Play | View | Gift when the photo set is complete. */
+.active-card-actions__row.has-gift {
+  grid-template-columns: 2.2fr 1.45fr 3rem;
+}
+
+.active-card-actions__row .btn-180,
+.active-card-actions__row .active-card-panel__btn {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0 !important;
+  box-sizing: border-box;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Icon-only gift cell — nearly circular (1/1) in the actions row. */
+.active-card-actions__gift {
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  justify-self: end;
+}
+
+/*
+ * Dedicated yellow-gold gift button — mirrored from btn-180 chrome,
+ * but its own component/class so pink styles never bleed through.
+ */
+.btn-gift {
+  border: 1px solid #f0c400;
+  padding: 0;
+  font-size: 14px;
+  text-transform: none;
+  border-radius: 999px;
+  outline: none;
+  transform: translateY(0px);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    inset 0 30px 30px -15px rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    inset 0 1px 20px rgba(0, 0, 0, 0),
+    0 3px 0 #c48a00,
+    0 3px 2px rgba(0, 0, 0, 0.2),
+    0 5px 10px rgba(0, 0, 0, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, #ffe566 0%, #ffd000 42%, #f5b800 100%);
+  color: #3a2700;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: 250ms all;
+  font-family: Arial, Helvetica, sans-serif;
+  cursor: default;
+  text-decoration: none;
+  user-select: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  font-weight: 700;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+}
+
+.btn-gift__icon {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Light sweep — same motion as pink btn, gold-tinted highlight. */
+.btn-gift::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 95%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(110deg,
+      transparent 0%,
+      transparent 18%,
+      rgba(255, 255, 255, 0.08) 36%,
+      rgba(255, 255, 255, 0.55) 50%,
+      rgba(255, 255, 255, 0.08) 64%,
+      transparent 82%,
+      transparent 100%);
+  transform: translateX(-160%) skewX(-18deg);
+  animation: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.active-card-actions.is-visible .btn-gift::before,
+.active-card-panel.is-visible .btn-gift::before {
+  animation: btn-180-sweep 4300ms linear infinite;
+}
+
+.btn-gift:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 16px 2px -15px rgba(0, 0, 0, 0),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+    inset 0 1px 20px rgba(0, 0, 0, 0.1),
+    0 0 0 #ffe066,
+    0 0 0 2px #ffe066,
+    0 0 0 rgba(0, 0, 0, 0),
+    0 0 0 rgba(0, 0, 0, 0);
+}
+
+.btn-gift:active::before {
+  animation-play-state: paused;
+}
+
+/*
+ * Photo cards panel — anchored to the RIGHT of the active card item.
+ * Same height as the card face; inner content is vertically centered.
+ */
+.active-card-panel {
+  --photo-panel-gap: clamp(0.75rem, 2vw, 1.5rem);
+  --photo-panel-width: min(33rem,
+      max(16rem, calc(100vw - var(--stage-left-safe, 251px) - var(--card-width, 251px) - 6rem)));
+  /* Match active card face height from its width + aspect ratio. */
+  --photo-panel-height: calc(min(var(--card-width, 251px), 42vw) / var(--card-aspect, 0.528421));
+  /* Lift the whole grid chrome (title, count, X, slots) ~50px, responsively. */
+  --photo-panel-nudge-y: clamp(-36px, -4.2vw, -50px);
+
+  position: absolute;
+  left: calc(100% + var(--photo-panel-gap));
+  top: var(--photo-panel-nudge-y);
+  width: var(--photo-panel-width);
+  height: var(--photo-panel-height);
+  padding-left: 2rem;
+  padding-right: 2rem;
+  box-sizing: border-box;
+  /* Stay under the active card face so fly-in/out passes behind it. */
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* vertically center inner content */
+  transition: opacity 0.28s ease 120ms;
+}
+
+.active-card-panel.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.active-card-panel.is-exiting {
+  opacity: 1;
+  /* stay visible while slots reverse-stagger out */
+  pointer-events: none;
+}
+
+.active-card-panel--grid {
+  box-sizing: border-box;
+}
+
+.active-card-panel__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.active-card-panel__label {
+  margin: 0;
+  color: #e6edf3;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.active-card-panel__actions {
+  display: grid;
+  grid-template-columns: 2.2fr 1.35fr;
+  gap: 0.6rem;
+  width: 100%;
+  height: 3rem;
+  align-items: stretch;
+}
+
+.active-card-panel__actions.has-gift {
+  grid-template-columns: 2.2fr 1.45fr 3rem;
+}
+
+.active-card-panel__actions .btn-180,
+.active-card-panel__actions .active-card-panel__btn {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  box-sizing: border-box;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.active-card-panel__actions .btn-gift {
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  aspect-ratio: 1 / 1;
+  justify-self: end;
+}
+
+/* Active / focused item needs room for under-card actions + exit fly-under. */
+.coverflow__item.is-active-item,
+.coverflow__item.is-focused {
+  overflow: visible;
+}
+
+.coverflow.is-expanded .coverflow__item.is-active-item,
+.coverflow__item.is-focused {
+  z-index: 1000 !important;
+}
+
+/*
+ * Card face stays above the photo-grid panel (z:2) for BOTH entrance and exit.
+ * Use is-focused (not only is-active-item) so when the card deactivates the
+ * reverse stagger still tucks under the still-focused hero face.
+ */
+.coverflow__item.is-focused .coverflow__card,
+.coverflow__item.is-active-item .coverflow__card {
+  position: relative;
+  z-index: 30;
+}
+
+.coverflow__item.is-focused .card,
+.coverflow__item.is-active-item .card {
+  position: relative;
+  z-index: 31;
+}
+
+.active-card-panel__btn {
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  padding: 0.65rem 1.15rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: default;
+  min-width: 7.5rem;
+}
+
+/* Ported from sugar-scracth3dpack Buy Pack (btn-180) — used for Play Game. */
+.btn-180 {
+  border: 1px solid #d00042;
+  padding: 8px 20px;
+  font-size: 14px;
+  text-transform: none;
+  border-radius: 60px;
+  outline: none;
+  transform: translateY(0px);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    inset 0 30px 30px -15px rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 1px 20px rgba(0, 0, 0, 0),
+    0 3px 0 rgb(161, 0, 48),
+    0 3px 2px rgba(0, 0, 0, 0.2),
+    0 5px 10px rgba(0, 0, 0, 0.1),
+    0 10px 20px rgba(0, 0, 0, 0.1);
+  background: #d00042;
+  color: white;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  transition: 250ms all;
+  font-family: Arial, Helvetica, sans-serif;
+  cursor: default;
+  text-decoration: none;
+  user-select: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  min-width: 7.5rem;
+}
+
+.btn-180-label,
+.btn-180-price,
+.btn-180-price-new,
+.btn-180-price-old {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-180-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.btn-180-price-old {
+  opacity: 0.78;
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.btn-180-price-new {
+  font-weight: 800;
+}
+
+/* Light sweep clipped to the pill — starts when under-card actions are visible. */
+.btn-180::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 95%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(110deg,
+      transparent 0%,
+      transparent 18%,
+      rgba(255, 255, 255, 0.05) 36%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0.05) 64%,
+      transparent 82%,
+      transparent 100%);
+  transform: translateX(-160%) skewX(-18deg);
+  animation: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.active-card-actions.is-visible .btn-180::before,
+.active-card-panel.is-visible .btn-180::before {
+  animation: btn-180-sweep 4300ms linear infinite;
+}
+
+.btn-180>* {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes btn-180-sweep {
+  0% {
+    transform: translateX(-160%) skewX(-18deg);
+  }
+
+  /* ~1.8s of travel within the 4.3s cycle, then 2.5s pause */
+  41.8% {
+    transform: translateX(280%) skewX(-18deg);
+  }
+
+  41.9%,
+  100% {
+    transform: translateX(280%) skewX(-18deg);
+  }
+}
+
+.btn-180:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 16px 2px -15px rgba(0, 0, 0, 0),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 1px 20px rgba(0, 0, 0, 0.1),
+    0 0 0 #ff135e,
+    0 0 0 2px #ff135e,
+    0 0 0 rgba(0, 0, 0, 0),
+    0 0 0 rgba(0, 0, 0, 0);
+}
+
+.btn-180:active::before {
+  animation-play-state: paused;
+}
+
+.btn-180:disabled {
+  pointer-events: none;
+  opacity: 0.65;
+  color: #7e7e7e;
+  background: #dcdcdc;
+  box-shadow: none;
+  text-shadow: none;
+  border: none;
+}
+
+.btn-180:disabled::before {
+  display: none;
+}
+
+.active-card-panel__btn--secondary {
+  background: #21262d;
+  color: #e6edf3;
+}
+
+.active-card-panel__btn--secondary:hover {
+  background: #30363d;
+}
+
+.photo-cards {
+  width: 100%;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.photo-cards__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Shared under-card fly origin for header chrome + slots. */
+.photo-cards__title,
+.photo-cards__close,
+.photo-cards__count {
+  opacity: 0;
+  transform: translate3d(calc(-1 * (var(--photo-panel-gap, 1.5rem) + 130% + 2.5rem)),
+      8px,
+      0) scale(0.72) rotate(-8deg);
+  will-change: transform, opacity, filter;
+}
+
+/* Close X sits in its own row above the title/count + grid. */
+.photo-cards__close-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  /* Lift above the grid title row (desktop). */
+  margin-bottom: 0.35rem;
+  transform: translateY(-2rem);
+}
+
+.photo-cards__header-left {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Left: Photo Cards (desktop text; mobile swaps to icon). */
+.photo-cards__title {
+  margin: 0;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b949e;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.photo-cards__title-icon {
+  display: none;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.photo-cards__title-text {
+  display: inline;
+}
+
+.photo-cards__close {
+  position: relative;
+  z-index: 80;
+  width: 3.4rem;
+  height: 3.4rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(22, 27, 34, 0.92);
+  color: #e6edf3;
+  display: grid;
+  place-items: center;
+  cursor: default;
+  pointer-events: auto;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease,
+    opacity 0.2s ease;
+  opacity: 0.92;
+}
+
+.photo-cards__close:hover {
+  background: rgba(33, 38, 45, 0.98);
+  border-color: rgba(255, 255, 255, 0.3);
+  opacity: 1;
+}
+
+.photo-cards__close:active {
+  transform: scale(0.94);
+}
+
+.photo-cards__close svg {
+  display: block;
+  pointer-events: none;
+}
+
+.photo-cards__count {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #8b949e;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.photo-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(0.3rem, 0.8vw, 0.5rem);
+  width: 100%;
+  /* Let slots size within the panel height instead of overflowing. */
+  align-content: center;
+}
+
+.photo-cards__slot {
+  --slot-i: 0;
+  position: relative;
+  aspect-ratio: 0.528421;
+  /*
+   * Start stacked under the active card (panel is to the right of the card,
+   * so "under card" is a large negative X toward the left).
+   * Push farther left so they clearly emerge from behind the card face.
+   */
+  opacity: 0;
+  transform: translate3d(calc(-1 * (var(--photo-panel-gap, 1.5rem) + 130% + 2.5rem)),
+      8px,
+      0) scale(0.72) rotate(-8deg);
+  will-change: transform, opacity, filter;
+  /*
+   * Keep every slot above 0. `5 - slot-i` put slots 6–9 (UI 7–10) at negative
+   * z-index, so they fell behind the grid/panel stacking context and ignored
+   * click/tap/hover. Still stagger earlier slots above later ones during fly-in.
+   */
+  z-index: calc(20 - var(--slot-i));
+  pointer-events: auto;
+}
+
+/* Visual face — hover grow eases here so it never fights entrance keyframes. */
+.photo-cards__slot-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1.5px dashed #30363d;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 19, 94, 0.06), transparent 65%),
+    rgba(22, 27, 34, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  transform: scale(1);
+  transform-origin: center center;
+  overflow: hidden;
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    background 0.28s ease,
+    box-shadow 0.28s ease;
+  will-change: transform;
+}
+
+.photo-cards__slot-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  text-align: center;
+  font-size: clamp(0.85rem, 1.6vw, 1.15rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e6edf3;
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Filled slots: desaturated by default, full color + lift on hover. */
+.photo-cards__slot.is-filled .photo-cards__slot-face {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #0d1117;
+}
+
+.photo-cards__slot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+  filter: saturate(0.15) brightness(0.92);
+  transition:
+    filter 0.32s ease,
+    transform 0.28s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+.photo-cards__slot.is-filled:hover .photo-cards__slot-face,
+.photo-cards__slot.is-filled.is-play-revealed .photo-cards__slot-face,
+.photo-cards__slot.is-filled.is-kb-selected .photo-cards__slot-face {
+  border-color: rgba(255, 19, 94, 0.7);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 19, 94, 0.16),
+    0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.photo-cards__slot.is-filled:hover .photo-cards__slot-img,
+.photo-cards__slot.is-filled.is-play-revealed .photo-cards__slot-img,
+.photo-cards__slot.is-filled.is-kb-selected .photo-cards__slot-img {
+  filter: saturate(1.05) brightness(1.02);
+  transform: scale(1.03);
+}
+
+/* Play control — hidden until hover / sticky tap reveal / focus. */
+.photo-cards__play {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: auto;
+  /* Large enough to read on narrow mobile 2-col slots. */
+  width: clamp(2.6rem, 42%, 3.25rem);
+  height: clamp(2.6rem, 42%, 3.25rem);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(13, 17, 23, 0.72);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.88);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.photo-cards__play-icon {
+  display: block;
+  width: clamp(1.15rem, 18%, 1.45rem);
+  height: clamp(1.15rem, 18%, 1.45rem);
+  /* Nudge triangle optical center. */
+  margin-left: 0.12rem;
+  pointer-events: none;
+}
+
+.photo-cards__slot.is-filled:hover .photo-cards__play,
+.photo-cards__slot.is-filled.is-play-revealed .photo-cards__play,
+.photo-cards__slot.is-filled.is-kb-selected .photo-cards__play,
+.photo-cards__slot.is-filled:focus-within .photo-cards__play {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.photo-cards__play:hover {
+  background: rgba(255, 19, 94, 0.92);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.photo-cards__play:active {
+  transform: scale(0.94);
+}
+
+/* Stub popup when a filled static photo card is played. */
+.static-card-playing {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(1, 4, 9, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.static-card-playing__dialog {
+  width: min(20rem, 100%);
+  padding: 1.25rem 1.2rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(22, 27, 34, 0.98);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  text-align: center;
+}
+
+.static-card-playing__dialog.has-video {
+  width: min(28rem, 100%);
+}
+
+.static-card-playing__dialog.is-gift-card {
+  width: auto;
+  max-width: min(100%, 22rem);
+  padding: 0.85rem 0.85rem 1rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  gap: 0.85rem;
+}
+
+.static-card-playing.is-gift-card {
+  background: rgba(1, 4, 9, 0.72);
+  transition:
+    background-color 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    backdrop-filter 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    -webkit-backdrop-filter 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.static-card-playing__video {
+  width: 100%;
+  max-height: min(60vh, 28rem);
+  border-radius: 10px;
+  background: #000;
+  object-fit: contain;
+}
+
+/* Gift postcard — same proportions as motion cards (--card-aspect). */
+.static-card-playing.is-gift-card.has-gift-debug {
+  justify-items: start;
+  padding-right: min(22rem, 42vw);
+}
+
+.static-card-playing.is-gift-card.has-gift-debug .static-card-playing__dialog {
+  margin-left: max(1rem, calc((100% - min(22rem, 42vw) - 18rem) / 2));
+}
+
+.gift-postcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  /* Room for the outside top-right close control. */
+  padding-top: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+.gift-postcard__frame {
+  position: relative;
+  width: min(24.5rem, 68vw, calc(78vh * var(--card-aspect, 0.528421)));
+  aspect-ratio: var(--card-aspect, 0.528421);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0a0a10;
+  box-shadow:
+    0 22px 56px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  /* Entrance: rise + scale + fade + deblur with gentle ease */
+  opacity: 0;
+  filter: blur(14px);
+  transform: translateY(2.25rem) scale(0.88);
+  transform-origin: 50% 50%;
+  will-change: opacity, transform, filter;
+  transition:
+    opacity 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 820ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 820ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gift-postcard__frame.is-entered {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0) scale(1);
+  transition-delay: 0ms;
+}
+
+/* Keep frame invisible while the first video frame loads. */
+.gift-postcard__frame.is-loading {
+  opacity: 0;
+  filter: blur(14px);
+  transform: translateY(2.25rem) scale(0.88);
+  pointer-events: none;
+}
+
+.static-card-playing.is-gift-loading .gift-postcard__toolbar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Exit: hold card briefly while text staggers out, then reverse card motion. */
+.gift-postcard__frame.is-exiting {
+  opacity: 0;
+  filter: blur(14px);
+  transform: translateY(2.25rem) scale(0.88);
+  transition-delay: 280ms;
+}
+
+.static-card-playing.is-gift-exiting {
+  pointer-events: none;
+  background: rgba(1, 4, 9, 0);
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+  /* Start fading the overlay with the card exit (after text begins leaving). */
+  transition-delay: 280ms;
+}
+
+.static-card-playing.is-gift-exiting .gift-postcard__toolbar {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.gift-postcard__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+.gift-postcard__scrim {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      rgba(255, 255, 255, 0.04) 18%,
+      transparent 36%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.03) 16%,
+      transparent 34%
+    );
+  z-index: 1;
+}
+
+.gift-postcard__layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding-inline: 0.35rem;
+  color: #f7f7f7;
+  font-family: var(--font-maytra, 'Maytra', cursive);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  will-change: transform;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18em;
+}
+
+/* Nested motion shells so entrance Y/fade doesn't fight debug transform.
+   Lead + name animate as separate elements with staggered delays. */
+.gift-postcard__layer-motion {
+  display: block;
+  width: max-content;
+  max-width: max-content;
+  opacity: 0;
+  will-change: opacity, transform;
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Top text drops down from above (stronger travel). */
+.gift-postcard__dear .gift-postcard__layer-motion {
+  transform: translateY(-1.85rem);
+  transition-delay: 0ms;
+}
+
+/* Bottom text rises up from below (stronger travel). */
+.gift-postcard__love .gift-postcard__layer-motion {
+  transform: translateY(1.85rem);
+  transition-delay: 0ms;
+}
+
+.gift-postcard__frame.is-entered .gift-postcard__dear .gift-postcard__layer-motion--lead {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 420ms;
+}
+
+.gift-postcard__frame.is-entered .gift-postcard__dear .gift-postcard__layer-motion--name {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 480ms;
+}
+
+.gift-postcard__frame.is-entered .gift-postcard__love .gift-postcard__layer-motion--lead {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 560ms;
+}
+
+.gift-postcard__frame.is-entered .gift-postcard__love .gift-postcard__layer-motion--name {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 620ms;
+}
+
+/* Exit stagger (reverse of entrance): bottom name → bottom lead → top name → top lead → card. */
+.gift-postcard__frame.is-exiting .gift-postcard__love .gift-postcard__layer-motion--name {
+  opacity: 0;
+  transform: translateY(1.85rem);
+  transition-delay: 0ms;
+}
+
+.gift-postcard__frame.is-exiting .gift-postcard__love .gift-postcard__layer-motion--lead {
+  opacity: 0;
+  transform: translateY(1.85rem);
+  transition-delay: 60ms;
+}
+
+.gift-postcard__frame.is-exiting .gift-postcard__dear .gift-postcard__layer-motion--name {
+  opacity: 0;
+  transform: translateY(-1.85rem);
+  transition-delay: 120ms;
+}
+
+.gift-postcard__frame.is-exiting .gift-postcard__dear .gift-postcard__layer-motion--lead {
+  opacity: 0;
+  transform: translateY(-1.85rem);
+  transition-delay: 180ms;
+}
+
+.gift-postcard__chip {
+  display: block;
+  width: max-content;
+  max-width: max-content;
+  box-sizing: border-box;
+  padding: 0.12em 0.38em 0.18em;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.34);
+  color: #f7f7f7;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  white-space: pre-wrap;
+  text-align: inherit;
+}
+
+/* Font sizes come from debug/runtime styles (lead vs name independent). */
+.gift-postcard__chip--lead,
+.gift-postcard__chip--name {
+  font-size: inherit;
+}
+
+.gift-postcard__toolbar {
+  display: none;
+}
+
+/* Same circular X as collection photo panel, parked outside top-right. */
+.gift-postcard__close.photo-cards__close {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  z-index: 6;
+  /* Override panel entrance transforms so gift open/close owns visibility. */
+  opacity: 0;
+  transform: none;
+  pointer-events: none;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease,
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gift-postcard__close.photo-cards__close.is-visible {
+  opacity: 0.92;
+  pointer-events: auto;
+}
+
+.gift-postcard__close.photo-cards__close.is-visible:hover {
+  opacity: 1;
+}
+
+.gift-postcard__close.photo-cards__close:disabled {
+  pointer-events: none;
+}
+
+.static-card-playing.is-gift-exiting .gift-postcard__close,
+.static-card-playing.is-gift-loading .gift-postcard__close {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.gift-postcard__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.static-card-playing__dialog.is-gift-card .static-card-playing__dismiss {
+  align-self: center;
+  min-width: 8.5rem;
+}
+
+/* Right-side gift text debug drawer */
+.gift-text-debug {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10001;
+  width: min(22rem, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding:
+    calc(0.85rem + env(safe-area-inset-top, 0px))
+    calc(0.85rem + env(safe-area-inset-right, 0px))
+    calc(0.85rem + env(safe-area-inset-bottom, 0px))
+    0.85rem;
+  background: rgba(14, 16, 22, 0.97);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -18px 0 48px rgba(0, 0, 0, 0.45);
+  color: #e8edf5;
+  transform: translateX(104%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+.gift-text-debug.is-open {
+  transform: translateX(0);
+}
+
+.gift-text-debug__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.gift-text-debug__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 200, 120, 0.9);
+}
+
+.gift-text-debug__title {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.gift-text-debug__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.gift-text-debug__btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(33, 38, 45, 0.95);
+  color: #e6edf3;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.42rem 0.7rem;
+  cursor: pointer;
+}
+
+.gift-text-debug__btn:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(48, 54, 61, 0.98);
+}
+
+.gift-text-debug__btn--close {
+  border-color: rgba(255, 120, 120, 0.35);
+  background: rgba(70, 28, 32, 0.95);
+}
+
+.gift-text-debug__btn--close:hover {
+  border-color: rgba(255, 150, 150, 0.55);
+  background: rgba(96, 36, 42, 0.98);
+}
+
+@media (max-width: 720px) {
+  .gift-text-debug {
+    width: min(100vw, 100%);
+  }
+
+  .gift-text-debug__head {
+    flex-wrap: wrap;
+  }
+
+  .gift-text-debug__head-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+.gift-text-debug__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: rgba(230, 237, 243, 0.62);
+}
+
+.gift-text-debug__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding-right: 0.15rem;
+}
+
+.gift-text-debug__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gift-text-debug__section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.gift-text-debug__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  font-size: 0.78rem;
+  color: rgba(230, 237, 243, 0.78);
+}
+
+.gift-text-debug__field span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 650;
+}
+
+.gift-text-debug__field em {
+  font-style: normal;
+  color: rgba(255, 210, 140, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+
+.gift-text-debug__field input[type='text'],
+.gift-text-debug__field textarea,
+.gift-text-debug__field select {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 10, 14, 0.9);
+  color: #f5f7fb;
+  font: inherit;
+  font-size: 0.86rem;
+  padding: 0.55rem 0.65rem;
+  resize: vertical;
+}
+
+.gift-text-debug__field input[type='text'] {
+  font-family: var(--font-maytra, 'Maytra', cursive);
+  font-size: 1.05rem;
+  color: #111;
+  background: #f4f1ea;
+}
+
+.gift-text-debug__field textarea {
+  min-height: 4.2rem;
+  line-height: 1.3;
+  font-family: var(--font-maytra, 'Maytra', cursive);
+  font-size: 1.05rem;
+  color: #111;
+  background: #f4f1ea;
+}
+
+.gift-text-debug__field input[type='range'] {
+  width: 100%;
+  accent-color: #ffb45a;
+}
+
+@media (max-width: 720px) {
+  .static-card-playing.is-gift-card.has-gift-debug {
+    padding-right: 0;
+    align-content: start;
+  }
+
+  .static-card-playing.is-gift-card.has-gift-debug .static-card-playing__dialog {
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+
+  .gift-text-debug {
+    top: auto;
+    height: min(48vh, 26rem);
+    width: 100%;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateY(104%);
+    box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .gift-text-debug.is-open {
+    transform: translateY(0);
+  }
+}
+
+.static-card-playing__message {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e6edf3;
+}
+
+.static-card-playing__dismiss {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(33, 38, 45, 0.95);
+  color: #e6edf3;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.12s ease;
+}
+
+.static-card-playing__dismiss:hover {
+  background: rgba(48, 54, 61, 0.98);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.static-card-playing__dismiss:active {
+  transform: scale(0.97);
+}
+
+/*
+ * Entrance: fly out from under the active card, left → right stagger.
+ *   title → close → count → slots 0..9
+ * Exit: reverse back under the card, right → left stagger.
+ *   slots 9..0 → count → close → title
+ * Bounce overshoot ease on both.
+ */
+/*
+ * Entrance only while is-visible. Do NOT animate on the closed pre-enter
+ * frame (no phase class) or is-exiting will run reverse stagger first and
+ * make open look like a double play on mobile.
+ */
+.active-card-panel.is-visible .photo-cards__title,
+.active-card-panel.is-visible .photo-cards__close,
+.active-card-panel.is-visible .photo-cards__count,
+.active-card-panel.is-visible .photo-cards__slot {
+  animation: photo-slot-fly-in 0.32s cubic-bezier(0.22, 1.45, 0.36, 1) both;
+}
+
+.active-card-panel.is-visible .photo-cards__title {
+  animation-delay: 30ms;
+  /* first — left */
+}
+
+.active-card-panel.is-visible .photo-cards__close {
+  animation-delay: calc(1 * 28ms + 30ms);
+}
+
+.active-card-panel.is-visible .photo-cards__count {
+  animation-delay: calc(2 * 28ms + 30ms);
+}
+
+.active-card-panel.is-visible .photo-cards__slot {
+  /* Slots follow the header chrome. */
+  animation-delay: calc((var(--slot-i) + 3) * 28ms + 30ms);
+}
+
+.active-card-panel.is-exiting .photo-cards__title,
+.active-card-panel.is-exiting .photo-cards__close,
+.active-card-panel.is-exiting .photo-cards__count,
+.active-card-panel.is-exiting .photo-cards__slot {
+  /* Faster exit now that header chrome is in the stagger too. */
+  animation: photo-slot-fly-out 0.12s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  /* Keep under the card face (panel z:2, card z:30+). */
+  z-index: 0;
+}
+
+.active-card-panel.is-exiting .photo-cards__slot {
+  /* Right → left: higher indices leave first. */
+  animation-delay: calc((9 - var(--slot-i)) * 8ms);
+}
+
+.active-card-panel.is-exiting .photo-cards__count {
+  animation-delay: calc(10 * 8ms);
+}
+
+.active-card-panel.is-exiting .photo-cards__close {
+  animation-delay: calc(11 * 8ms);
+}
+
+.active-card-panel.is-exiting .photo-cards__title {
+  animation-delay: calc(12 * 8ms);
+  /* last — left tucks under last */
+}
+
+@keyframes photo-slot-fly-in {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translate3d(calc(-1 * (var(--photo-panel-gap, 1.5rem) + 130% + 2.5rem)),
+        10px,
+        0) scale(0.7) rotate(-10deg);
+  }
+
+  72% {
+    opacity: 1;
+    filter: blur(0);
+    /* Overshoot past rest, then settle. */
+    transform: translate3d(8px, -4px, 0) scale(1.06) rotate(1.2deg);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes photo-slot-fly-out {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+
+  55% {
+    opacity: 0.85;
+    filter: blur(2px);
+    /* Small bounce toward the card before tucking under. */
+    transform: translate3d(-10%, -2px, 0) scale(0.94) rotate(-2deg);
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translate3d(calc(-1 * (var(--photo-panel-gap, 1.5rem) + 130% + 2.5rem)),
+        12px,
+        0) scale(0.72) rotate(-8deg);
+  }
+}
+
+.photo-cards__slot:hover,
+.photo-cards__slot.is-play-revealed,
+.photo-cards__slot.is-kb-selected {
+  /* Lift above sibling slots (resting range is 20..11 for slots 0..9). */
+  z-index: 30;
+}
+
+.photo-cards__slot:not(.is-filled):hover .photo-cards__slot-face,
+.photo-cards__slot:not(.is-filled).is-kb-selected .photo-cards__slot-face {
+  transform: scale(1.07);
+  border-color: #ff135e;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 19, 94, 0.14), transparent 65%),
+    rgba(33, 38, 45, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 19, 94, 0.16),
+    0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.photo-cards__slot.is-filled:hover .photo-cards__slot-face,
+.photo-cards__slot.is-filled.is-play-revealed .photo-cards__slot-face,
+.photo-cards__slot.is-filled.is-kb-selected .photo-cards__slot-face {
+  transform: scale(1.07);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .photo-cards__slot,
+  .photo-cards__title,
+  .photo-cards__close,
+  .photo-cards__count,
+  .active-card-panel.is-visible .photo-cards__slot,
+  .active-card-panel.is-visible .photo-cards__title,
+  .active-card-panel.is-visible .photo-cards__close,
+  .active-card-panel.is-visible .photo-cards__count,
+  .active-card-panel.is-exiting .photo-cards__slot,
+  .active-card-panel.is-exiting .photo-cards__title,
+  .active-card-panel.is-exiting .photo-cards__close,
+  .active-card-panel.is-exiting .photo-cards__count {
+    opacity: 1;
+    transform: none;
+    animation: none;
+    transition: none;
+  }
+
+  .photo-cards__slot-face {
+    transition: none;
+  }
+
+  .photo-cards__slot:hover .photo-cards__slot-face,
+  .photo-cards__slot.is-play-revealed .photo-cards__slot-face {
+    transform: none;
+  }
+
+  .photo-cards__play {
+    transition: none;
+  }
+
+  .active-card-panel.is-exiting .photo-cards__slot {
+    opacity: 0;
+  }
+}
+
+/*
+ * Phones / tight widths: keep the photo grid to the RIGHT of the hero
+ * (matches the active-card screenshot layout) and size it to fill the
+ * remaining stage band so gift-button right edge can match slot right edge.
+ */
+@media (max-width: 1100px) {
+  .active-card-panel {
+    /*
+     * Tablet placement: lift the grid above card mid-line and sit just
+     * off the card edge. Values mirror ~top:-9rem / left:1rem, but scale.
+     * Keep absolute so it still anchors to the active card box.
+     */
+    --photo-panel-gap: clamp(0.65rem, 1.4vw, 1.15rem);
+    --photo-panel-right-inset: 1rem;
+    --photo-panel-nudge-y: clamp(-10.5rem, -12vw, -6.5rem);
+    position: absolute;
+    left: calc(100% + var(--photo-panel-gap));
+    right: auto;
+    top: var(--photo-panel-nudge-y);
+    /*
+     * Wider than the old fill-remaining (min 5.75rem) layout:
+     * claim more of the right stage instead of the full stage-right-safe.
+     */
+    width: max(
+      14rem,
+      min(
+        24rem,
+        calc(
+          100vw
+            - var(--stage-left-safe, 1rem)
+            - var(--rendered-card-width, var(--card-width, 251px))
+            - var(--photo-panel-gap)
+            - var(--photo-panel-right-inset)
+        )
+      )
+    );
+    height: auto;
+    min-height: 0;
+    padding-left: 0;
+    padding-right: 0;
+    --photo-panel-width: max(
+      14rem,
+      min(
+        24rem,
+        calc(
+          100vw
+            - var(--stage-left-safe, 1rem)
+            - var(--rendered-card-width, var(--card-width, 251px))
+            - var(--photo-panel-gap)
+            - var(--photo-panel-right-inset)
+        )
+      )
+    );
+    --photo-panel-height: auto;
+    /* Match hero face height on phones when possible. */
+    max-height: calc(
+      var(--rendered-card-width, var(--card-width, 251px))
+        / var(--card-aspect, 0.528421)
+    );
+    justify-content: flex-start;
+  }
+
+  .photo-cards__header {
+    justify-content: space-between;
+  }
+
+  .photo-cards__title {
+    text-align: left;
+  }
+
+  .photo-cards__count {
+    text-align: right;
+  }
+
+  /* Tablet (below desktop, above mobile 2-col): 4 across. */
+  .photo-cards__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .photo-cards__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+
+  .active-card-panel {
+    top: 0;
+    height: auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .active-card-panel__btn {
+    min-width: 0;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.82rem;
+  }
+}
+
+.coverflow__hit-area {
+  position: absolute;
+  left: var(--stage-left-safe, 251px);
+  top: 0;
+  bottom: 0;
+  width: var(--stack-width, 251px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.coverflow__viewport.is-stack-hover {
+  cursor: default;
+}
+
+.coverflow.is-dragging .coverflow__viewport {
+  cursor: default;
+  user-select: none;
+}
+
+.coverflow__viewport.is-dragging {
+  cursor: default;
+  user-select: none;
+}
+
+.coverflow__track {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Animatable padding / blur so the group stroke can ease open. */
+@property --group-pad-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 48px;
+}
+
+@property --group-pad-x {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 22px;
+}
+
+@property --group-blur {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --item-blur {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* Hover dim/blur — rAF samples these so effects ease (not snappy !important). */
+@property --hover-bright {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --hover-fade {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --hover-scale {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --hover-lift {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* Themed group frame (stroke + theme label on the stroke line).
+   Position/width are driven by the same rAF spring as cards — no CSS ease.
+   Pad eases larger when the group holds the active card.
+   Always use blur(var) so blur animates 0px → 10px (not none ↔ blur). */
+.card-group {
+  --group-pad-y: 64px;
+  /* idle: room for the theme label / avatar above the cards */
+  --group-pad-x: 22px;
+  /* idle side inset; rAF samples this for width/x */
+  --group-blur: 0px;
+  position: absolute;
+  left: var(--stage-left-safe, 251px);
+  top: 50%;
+  height: calc(var(--rendered-card-width, min(var(--card-width, 251px), 42vw)) / var(--card-aspect, 0.528421) + (var(--group-pad-y) * 2));
+  transform: translate3d(0, -50%, 0);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 5;
+  visibility: hidden;
+  background: transparent;
+  opacity: 1;
+  filter: blur(var(--group-blur));
+  will-change: transform, width, filter, opacity, --group-pad-y, --group-pad-x,
+    --group-blur;
+  transition:
+    --group-pad-y 0.45s ease,
+    --group-pad-x 0.45s ease,
+    --group-blur 0.45s ease,
+    /* Fade out/in with the active-card open state. */
+    opacity 0.28s ease;
+}
+
+/* Active hero in this group → grow the frame, then fade stroke + label away. */
+.card-group.is-active-group {
+  --group-pad-y: 7rem;
+  --group-pad-x: 3.5rem;
+  --group-blur: 0px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition:
+    --group-pad-y 0.45s ease,
+    --group-pad-x 0.45s ease,
+    --group-blur 0.45s ease,
+    opacity 0.28s ease;
+}
+
+/* Other groups fully fade (border + avatar + theme) while a card is open. */
+.card-group.is-inactive-group {
+  --group-blur: 10px;
+  opacity: 0;
+  transition:
+    --group-pad-y 0.45s ease,
+    --group-pad-x 0.45s ease,
+    --group-blur 0.45s ease,
+    opacity 0.28s ease;
+}
+
+/* Avatar + theme title sit centered on the top stroke edge. */
+.card-group__label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  /* Lift above the stroke so the avatar clears the card top. */
+  transform: translate(-50%, calc(-50% - 10px));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: calc(100% - 2rem);
+  padding: 0 0.55rem;
+  background: #0d111700;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.card-group__avatar {
+  width: 49px;
+  height: 49px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 49px;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #1a1f26;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.coverflow__caption.is-loading .coverflow__label,
+.coverflow__caption.is-loading .coverflow__meta-text {
+  letter-spacing: 0.08em;
+  opacity: 0.72;
+}
+
+.card-group__theme {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  min-width: 0;
+}
+
+/* Empty reserved slot inside a group (keeps the stroke full-width). */
+.coverflow__item--placeholder {
+  pointer-events: none;
+}
+
+.coverflow__placeholder {
+  width: 100%;
+  aspect-ratio: var(--card-aspect, 0.528421);
+  border-radius: 12px;
+  border: 1.5px dashed rgba(255, 19, 94, 0.55);
+  background:
+    linear-gradient(180deg,
+      rgba(255, 19, 94, 0.08),
+      rgba(13, 17, 23, 0.35));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: rgba(255, 255, 255, 0.55);
+  user-select: none;
+}
+
+.coverflow__placeholder-plus {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 19, 94, 0.55);
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #ff7aa5;
+}
+
+.coverflow__placeholder-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.coverflow__item {
+  position: absolute;
+  /*
+   * Focused card sits after a one-card left safe zone (clear of the chevron).
+   * Older cards extend right from that origin.
+   * Motion is 100% the 3dpack spring (120/16) via rAF — never CSS transition.
+   */
+  left: var(--stage-left-safe, 251px);
+  top: 50%;
+  width: var(--rendered-card-width, min(var(--card-width, 251px), 42vw));
+  max-width: var(--card-width, 251px);
+  pointer-events: auto;
+  --item-blur: 0px;
+  /* rAF samples this into filter so blur eases, not snaps */
+  --hover-bright: 1;
+  /* rAF multiplies brightness by this for hover dim */
+  --hover-fade: 1;
+  /* rAF multiplies opacity by this for hover dim */
+  --hover-scale: 1;
+  /* rAF multiplies spring scale by this for hover grow/shrink */
+  --hover-lift: 0px;
+  /* rAF adds this Y offset (negative = up) */
+  will-change: transform, opacity, --item-blur, --hover-bright, --hover-fade,
+    --hover-scale, --hover-lift;
+  transform: translate3d(0, -50%, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Isolate paint so holo filters don't dirty sibling layers every frame. */
+  contain: layout style;
+  transform-style: flat;
+  transition:
+    --item-blur 0.45s ease,
+    --hover-bright 0.4s ease,
+    --hover-fade 0.4s ease,
+    --hover-scale 0.4s ease,
+    /* Faster settle on unhover with a slight overshoot bounce. */
+    --hover-lift 0.34s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.coverflow__item.is-focused {
+  z-index: 200 !important;
+}
+
+/*
+ * When a card is open, every non-active card/placeholder blurs out —
+ * left, right, same group, background strip. No special bright left card.
+ * Animate --item-blur (0px → 10px); rAF also forces blur while inactive.
+ */
+.coverflow.is-expanded .coverflow__item.is-inactive-group-item,
+.coverflow.is-expanded .coverflow__item.is-dimmed,
+.coverflow.is-expanded .coverflow__item.is-background {
+  --item-blur: 10px;
+}
+
+.coverflow.is-expanded .coverflow__item.is-active-item {
+  --item-blur: 0px;
+}
+
+/* Don't let the expanded "non-focused" fade fight the shared inactive dim. */
+.coverflow.is-expanded .coverflow__item.is-background,
+.coverflow.is-expanded .coverflow__item.is-dimmed,
+.coverflow.is-expanded .coverflow__item.is-inactive-group-item {
+  /* opacity/filter are owned by the rAF loop */
+}
+
+/*
+	 * Hover one card → lift it (desktop/fine pointer only).
+	 * Never while scrubbing (.is-dragging), while a pack is open (.is-expanded),
+	 * or right after deactivate (.is-hover-suppressed) until pointer leaves stage.
+	 * Also supports synthetic post-wheel hover via .is-wheel-hover
+	 * (native :hover goes stale while the deck is moving).
+	 * Animate multipliers; rAF samples them into the live transform each frame.
+	 */
+	@media (hover: hover) and (pointer: fine) {
+
+.coverflow:not(.is-expanded):not(.is-dragging):not(.is-hover-suppressed) .coverflow__track:has(.coverflow__item:hover) .coverflow__item:hover,
+		  .coverflow:not(.is-expanded):not(.is-dragging):not(.is-hover-suppressed) .coverflow__track:has(.card.is-pulling) .coverflow__item:has(.card.is-pulling),
+		  .coverflow.has-wheel-hover:not(.is-expanded):not(.is-dragging):not(.is-hover-suppressed) .coverflow__item.is-wheel-hover,
+		  /* Keyboard focus uses the same lift as pointer hover. */
+		  .coverflow:not(.is-expanded):not(.is-dragging):not(.is-hover-suppressed) .coverflow__item.is-focused {
+		    --hover-bright: 1;
+		    --hover-fade: 1;
+		    --hover-scale: 1;
+		    --hover-lift: -10px;
+		    /* Rise a touch slower than the unhover settle. */
+		    transition:
+		      --item-blur 0.45s ease,
+		      --hover-bright 0.4s ease,
+		      --hover-fade 0.4s ease,
+		      --hover-scale 0.4s ease,
+		      --hover-lift 0.34s ease;
+		    z-index: 260 !important;
+		  }
+
+	  /* Explicitly kill hover lift for scrub + post-deactivate / wheel suppress. */
+	  .coverflow.is-dragging .coverflow__item,
+	  .coverflow.is-hover-suppressed .coverflow__item {
+	    --hover-bright: 1;
+	    --hover-fade: 1;
+	    --hover-scale: 1;
+	    --hover-lift: 0px;
+	  }
+	}
+
+/* Card being physically pulled up (any slot) sits above neighbors. */
+.coverflow__card .card.is-pulling {
+  z-index: 400 !important;
+  position: relative;
+}
+
+.coverflow__item:has(.card.is-pulling) {
+  z-index: 400 !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Previous cards that slide left stay mounted (dim/blur handled when active). */
+.coverflow__item.is-background {
+  pointer-events: none;
+}
+
+.coverflow__item.is-background .coverflow__caption {
+  opacity: 0.55;
+}
+
+.coverflow.is-expanded .coverflow__item.is-background .coverflow__caption,
+.coverflow.is-expanded .coverflow__item.is-dimmed .coverflow__caption {
+  opacity: 0.25;
+}
+
+.coverflow__item .card,
+.coverflow__item .card__translater,
+.coverflow__item .card__rotator {
+  /* Keep card internals from adding their own transition lag on transform. */
+  transition: box-shadow 0.4s ease, opacity 0.33s ease-out !important;
+}
+
+.coverflow__card {
+  position: relative;
+  width: 100%;
+}
+
+/*
+ * Plain card silhouettes behind each motion card.
+ * Count matches group size via N sibling divs; --stack-i is 1..N (rearmost
+ * highest). Same footprint as the motion card; peeks upward. No pointer
+ * events — purely decorative. Hidden while that card is active.
+ */
+.coverflow__stack-back {
+  --stack-i: 1;
+  /* Front layer ~0.95; each rear layer shrinks a bit more for depth. */
+  --stack-scale: calc(0.999 - (var(--stack-i) * 0.02));
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  aspect-ratio: var(--card-aspect, 0.528421);
+  border-radius: var(--card-radius, 4.55% / 3.5%);
+  background: #ffffff17;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  /* Peek above the motion card; each rear layer steps up another 7px. */
+  transform: translate3d(0, calc(var(--stack-i) * -7px), 0) scale(var(--stack-scale));
+  transform-origin: center top;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.coverflow__stack-back.is-hidden {
+  opacity: 0;
+  transform: translate3d(0, calc(var(--stack-i) * -3px), 0) scale(var(--stack-scale));
+}
+
+.coverflow__card .card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  aspect-ratio: var(--card-aspect, 0.528421);
+  pointer-events: auto;
+  /* Override base.css pointer-events:none on .card */
+}
+
+/*
+ * Holo is fully hidden in the carousel until a card is active AND tilting.
+ * Click-hold horizontal scrub on the active card adds .is-tilting.
+ */
+.coverflow__card .card__shine,
+.coverflow__card .card__glare {
+  pointer-events: none !important;
+}
+
+/* Carousel / non-active: hard-hide holo stack completely. */
+.coverflow__card .card:not(.active) .card__shine,
+.coverflow__card .card:not(.active) .card__glare,
+.coverflow__card .card:not(.active) .card__shine::before,
+.coverflow__card .card:not(.active) .card__shine::after {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+/* Active but not tilt-scrubbing / force-pinned: layers exist, but fully off. */
+.coverflow__card .card.active:not(.is-tilting):not(.holo-pinned) .card__shine,
+.coverflow__card .card.active:not(.is-tilting):not(.holo-pinned) .card__glare {
+  display: grid !important;
+  opacity: 0 !important;
+  transition: opacity 0.16s ease;
+}
+
+/*
+ * Show shine/glare only when:
+ *  - active + tilt scrub (click-hold horizontal)
+ *  - force-on via Holo debug pin
+ * Hover alone must NOT light the holo.
+ */
+.coverflow__card .card.active.is-tilting .card__front .card__shine,
+.coverflow__card .card.active.is-tilting .card__front .card__glare,
+.coverflow__card .card.active.is-tilting .card__back .card__shine,
+.coverflow__card .card.active.is-tilting .card__back .card__glare,
+.coverflow__card .card.holo-pinned .card__shine,
+.coverflow__card .card.holo-pinned .card__glare {
+  display: grid !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transition: opacity 0.1s ease;
+}
+
+.coverflow__card .card.active.is-tilting .card__front .card__shine::before,
+.coverflow__card .card.active.is-tilting .card__front .card__shine::after,
+.coverflow__card .card.active.is-tilting .card__back .card__shine::before,
+.coverflow__card .card.active.is-tilting .card__back .card__shine::after,
+.coverflow__card .card.holo-pinned .card__shine::before,
+.coverflow__card .card.holo-pinned .card__shine::after {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+/* Keep back-face holo stacked on the rotated back media. */
+.coverflow__card .card__back .card__shine,
+.coverflow__card .card__back .card__glare {
+  grid-area: 1 / 1;
+  border-radius: inherit;
+}
+
+.coverflow__card .card,
+.coverflow__card .card__rotator,
+.coverflow__card .card__front,
+.coverflow__card .card__back {
+  aspect-ratio: var(--card-aspect, 0.528421);
+}
+
+/*
+ * Holo lab + diagnostics.
+ * Lab Mode rebuilds the V/VStar shine stack from CSS vars so every parameter
+ * is slider-driven.
+ */
+.coverflow__card .card {
+  --clip: inset(0% 0% 0% 0%);
+  --clip-stage: inset(0% 0% 0% 0%);
+  --clip-trainer: inset(0% 0% 0% 0%);
+  --clip-borders: inset(0% 0% 0% 0%);
+  --lab-space: 5%;
+  --lab-angle: 133deg;
+  --lab-foil-size-x: 100%;
+  --lab-foil-size-y: 100%;
+  --lab-foil-pos-x: 50%;
+  --lab-foil-pos-y: 50%;
+  --lab-sun-size-x: 200%;
+  --lab-sun-size-y: 700%;
+  --lab-sun-pos-x: 0%;
+  --lab-sun-pos-y: 50%;
+  --lab-sun-opacity: 1;
+  --lab-bar-size-x: 300%;
+  --lab-bar-size-y: 100%;
+  --lab-bar-pos-x: 50%;
+  --lab-bar-pos-y: 50%;
+  --lab-bar-opacity: 1;
+  --lab-bar-d: 3.8%;
+  --lab-bar-l: 4.5%;
+  --lab-bar-g: 12%;
+  --lab-after-bar-size-x: 195%;
+  --lab-after-bar-size-y: 100%;
+  --lab-shine-brightness: 1;
+  --lab-shine-contrast: 2;
+  --lab-shine-saturate: 1.25;
+  --lab-after-brightness: 1;
+  --lab-after-contrast: 1.5;
+  --lab-after-saturate: 1.5;
+  --lab-glare-brightness: 0.7;
+  --lab-glare-contrast: 2;
+  --lab-glare-opacity: 1;
+  --lab-before-opacity: 0.8;
+}
+
+/* Pinned preview: force foil layers fully visible without hover. */
+.coverflow__card .card.holo-pinned .card__shine,
+.coverflow__card .card.holo-pinned .card__glare {
+  opacity: 1 !important;
+}
+
+/* Hard-kill every clip-path on the shine stack. */
+.coverflow__card .card.holo-no-clip .card__shine,
+.coverflow__card .card.holo-no-clip .card__shine::before,
+.coverflow__card .card.holo-no-clip .card__shine::after,
+.coverflow__card .card.holo-no-clip .card__glare,
+.coverflow__card .card.holo-no-clip .card__glare::after {
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+}
+
+/* Layer isolation */
+.coverflow__card .card.holo-hide-shine .card__shine {
+  display: none !important;
+}
+
+.coverflow__card .card.holo-hide-shine-before .card__shine::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  opacity: 0 !important;
+}
+
+.coverflow__card .card.holo-hide-shine-after .card__shine::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  opacity: 0 !important;
+}
+
+.coverflow__card .card.holo-hide-glare .card__glare {
+  display: none !important;
+}
+
+.coverflow__card .card.holo-hide-media .card__front>img,
+.coverflow__card .card.holo-hide-media .card__front>video,
+.coverflow__card .card.holo-hide-media .card__front>.card__media,
+.coverflow__card .card.holo-hide-media .card__back>img,
+.coverflow__card .card.holo-hide-media .card__back>video,
+.coverflow__card .card.holo-hide-media .card__back>.card__media {
+  opacity: 0 !important;
+}
+
+/*
+ * LAB MODE — rebuild V/VStar shine stack from sliders.
+ * Layer order: foil → sunpillar → metallic bars → vignette
+ */
+.coverflow__card .card.holo-lab .card__shine,
+.coverflow__card .card.holo-lab .card__shine::after {
+  --space: var(--lab-space) !important;
+  --angle: var(--lab-angle) !important;
+  --imgsize: var(--lab-foil-size-x) var(--lab-foil-size-y) !important;
+
+  background-image:
+    var(--foil, none),
+    repeating-linear-gradient(0deg,
+      var(--sunpillar-clr-1) calc(var(--lab-space) * 1),
+      var(--sunpillar-clr-2) calc(var(--lab-space) * 2),
+      var(--sunpillar-clr-3) calc(var(--lab-space) * 3),
+      var(--sunpillar-clr-4) calc(var(--lab-space) * 4),
+      var(--sunpillar-clr-5) calc(var(--lab-space) * 5),
+      var(--sunpillar-clr-6) calc(var(--lab-space) * 6),
+      var(--sunpillar-clr-1) calc(var(--lab-space) * 7)),
+    repeating-linear-gradient(var(--lab-angle),
+      #0e152e 0%,
+      hsl(180, 10%, 60%) var(--lab-bar-d),
+      hsl(180, 29%, 66%) var(--lab-bar-l),
+      hsl(180, 10%, 60%) calc(var(--lab-bar-d) + 1.4%),
+      #0e152e calc(var(--lab-bar-g) - 2%),
+      #0e152e var(--lab-bar-g)),
+    radial-gradient(farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%) !important;
+
+  background-size:
+    var(--lab-foil-size-x) var(--lab-foil-size-y),
+    var(--lab-sun-size-x) var(--lab-sun-size-y),
+    var(--lab-bar-size-x) var(--lab-bar-size-y),
+    200% 100% !important;
+
+  background-position:
+    var(--lab-foil-pos-x) var(--lab-foil-pos-y),
+    var(--lab-sun-pos-x) var(--lab-sun-pos-y),
+    var(--lab-bar-pos-x) var(--lab-bar-pos-y),
+    var(--background-x) var(--background-y) !important;
+
+  background-blend-mode: soft-light, hue, hard-light, normal !important;
+  filter: brightness(var(--lab-shine-brightness)) contrast(var(--lab-shine-contrast)) saturate(var(--lab-shine-saturate)) !important;
+  mix-blend-mode: color-dodge !important;
+}
+
+.coverflow__card .card.holo-lab .card__shine::after {
+  content: '' !important;
+  background-size:
+    var(--lab-foil-size-x) var(--lab-foil-size-y),
+    var(--lab-sun-size-x) calc(var(--lab-sun-size-y) * 0.57),
+    var(--lab-after-bar-size-x) var(--lab-after-bar-size-y),
+    200% 100% !important;
+  background-position:
+    var(--lab-foil-pos-x) var(--lab-foil-pos-y),
+    var(--lab-sun-pos-x) var(--lab-sun-pos-y),
+    calc(100% - var(--lab-bar-pos-x)) calc(100% - var(--lab-bar-pos-y)),
+    var(--background-x) var(--background-y) !important;
+  filter: brightness(var(--lab-after-brightness)) contrast(var(--lab-after-contrast)) saturate(var(--lab-after-saturate)) !important;
+  mix-blend-mode: exclusion !important;
+  opacity: var(--lab-bar-opacity) !important;
+}
+
+.coverflow__card .card.holo-lab .card__shine::before {
+  content: '' !important;
+  background-image: radial-gradient(farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(190, 7%, 80%, 0.75) 0%,
+      hsla(260, 7%, 50%, 0.25) 45%,
+      hsl(310, 7%, 50%) 120%) !important;
+  background-size: cover !important;
+  mix-blend-mode: hard-light !important;
+  opacity: var(--lab-before-opacity) !important;
+  filter: none !important;
+}
+
+.coverflow__card .card.holo-lab .card__glare {
+  filter: brightness(var(--lab-glare-brightness)) contrast(var(--lab-glare-contrast)) !important;
+  opacity: calc(var(--card-opacity) * var(--lab-glare-opacity)) !important;
+}
+
+/* When lab is off, keep the SELECTED effect CSS. Map shared vars so debug
+   sliders can still nudge brightness / saturate / angle without rebuilding
+   the whole shine stack. */
+.coverflow__card .card:not(.holo-lab) .card__shine,
+.coverflow__card .card:not(.holo-lab) .card__shine::before,
+.coverflow__card .card:not(.holo-lab) .card__shine::after {
+  --space: var(--lab-space);
+  --angle: var(--lab-angle);
+  --imgsize: var(--lab-foil-size-x) var(--lab-foil-size-y);
+}
+
+/* Soft filter overrides for debug (works with or without full lab mode). */
+.coverflow__card .card.active.is-tilting .card__shine,
+.coverflow__card .card.holo-pinned .card__shine {
+  filter: brightness(calc((var(--pointer-from-center) * 0.75 + 0.25) * var(--lab-shine-brightness))) contrast(var(--lab-shine-contrast)) saturate(var(--lab-shine-saturate)) !important;
+}
+
+.coverflow__card .card.active.is-tilting .card__glare,
+.coverflow__card .card.holo-pinned .card__glare {
+  filter: brightness(var(--lab-glare-brightness)) contrast(var(--lab-glare-contrast)) !important;
+  opacity: calc(var(--card-opacity, 1) * var(--lab-glare-opacity)) !important;
+}
+
+.coverflow__card .card:not(.holo-lab):not(.holo-no-clip) .card__shine {
+  clip-path: var(--clip);
+}
+
+.coverflow__card .card.interactive {
+  pointer-events: auto;
+}
+
+.coverflow__card .card .card__rotator {
+  cursor: default;
+  /* Own vertical + horizontal drags (select up / flip sideways). */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Flip only — no hover tilt. */
+  /* flip-y = face flip; rotate-x = degree-locked scrub yaw (3dpack MAX_HOVER_YAW).
+     No transform transition — live scrub must never ease/snap through 0°. */
+  -webkit-transform: rotateY(calc(var(--flip-y, 0deg) + var(--rotate-x, 0deg))) rotateX(var(--rotate-y, 0deg));
+  transform: rotateY(calc(var(--flip-y, 0deg) + var(--rotate-x, 0deg))) rotateX(var(--rotate-y, 0deg));
+  transition: box-shadow 0.4s ease;
+  /* Drop the colored type glow from base.css; keep a soft drop shadow. */
+  box-shadow:
+    0 10px 20px -5px black,
+    0 2px 15px -5px black !important;
+}
+
+/*
+ * While finger-flipping, ONLY --flip-y may drive rotateY.
+ * Phone-motion --rotate-x was canceling one swipe direction because CSS is
+ *   rotateY(flip-y + rotate-x)
+ * (e.g. positive flip-y + negative residual yaw ≈ no visible rotation).
+ */
+.coverflow__card .card.is-flipping-scrub,
+.coverflow__card .card.is-flipping-scrub .card__rotator,
+.coverflow__card .card .card__rotator.is-flipping-scrub,
+.coverflow__card .card .card__rotator.flipping {
+  --rotate-x: 0deg !important;
+  --rotate-y: 0deg !important;
+}
+
+.coverflow__card .card.is-flipping-scrub .card__rotator,
+.coverflow__card .card .card__rotator.is-flipping-scrub,
+.coverflow__card .card .card__rotator.flipping {
+  -webkit-transform: rotateY(var(--flip-y, 0deg)) !important;
+  transform: rotateY(var(--flip-y, 0deg)) !important;
+}
+
+.coverflow__card .card.active .card__rotator,
+.coverflow__card .card .card__rotator:focus {
+  box-shadow:
+    0 10px 20px -5px black,
+    0 2px 15px -5px black !important;
+}
+
+.coverflow__item.is-focused .card.active .card__rotator.flipping {
+  touch-action: none;
+  cursor: default;
+  /* Keep only box-shadow transitions while flipping — never transform. */
+  transition: box-shadow 0.4s ease !important;
+}
+
+.coverflow__card .card.is-tilting .card__rotator,
+.coverflow__item.is-focused .card.active.is-tilting .card__rotator {
+  touch-action: none;
+  cursor: default;
+}
+
+.card.active .card__rotator.flipping .card__front,
+.card.active .card__rotator.flipping .card__shine,
+.card.active .card__rotator.flipping .card__glare {
+  transition: none !important;
+}
+
+.card.active .card__rotator.flipping .card__shine,
+.card.active .card__rotator.flipping .card__glare {
+  opacity: 0.85 !important;
+}
+
+.coverflow__item.is-focused .card .card__rotator {
+  cursor: default;
+}
+
+.coverflow__item.is-focused .card.active .card__rotator {
+  touch-action: none;
+  cursor: default;
+}
+
+.coverflow__item.is-focused .card.active .card__rotator.flipping {
+  cursor: default;
+}
+
+.coverflow__caption {
+  margin: 0.75rem 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.25s ease,
+    filter 0.25s ease;
+}
+
+.coverflow__label {
+  margin: 0;
+  max-width: 100%;
+  text-align: center;
+  font-size: 1rem;
+  color: #8b949e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coverflow__meta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: #8b949e;
+  line-height: 1;
+  user-select: none;
+}
+
+.coverflow__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.coverflow__meta-icon {
+  width: auto;
+  height: 17px;
+  opacity: 0.5;
+  flex: 0 0 auto;
+  display: block;
+  color: currentColor;
+}
+
+.coverflow__meta-icon--play {
+  width: 23px;
+  height: 17px;
+}
+
+.coverflow__meta-icon--photo {
+  width: 17px;
+  height: 17px;
+}
+
+.coverflow__meta-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: currentColor;
+  white-space: nowrap;
+}
+
+.coverflow__meta-divider {
+  width: 1px;
+  height: 0.85rem;
+  background: rgba(139, 148, 158, 0.55);
+  flex: 0 0 auto;
+}
+
+.coverflow__item.is-focused .coverflow__label,
+.coverflow__item.is-focused .coverflow__meta {
+  color: #e6edf3;
+}
+
+.coverflow__item.is-focused .coverflow__label {
+  font-weight: 600;
+}
+
+.coverflow__chevron {
+  position: absolute;
+  top: 50%;
+  width: var(--chevron-size, 7.5rem);
+  height: var(--chevron-size, 7.5rem);
+  margin-top: calc(var(--chevron-size, 7.5rem) / -2);
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  border-radius: 999px;
+  font-size: calc(var(--chevron-size, 7.5rem) * 0.7);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .coverflow__chevron:hover:not(:disabled) {
+    background: #30363d;
+  }
+}
+
+.coverflow__chevron:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Pin chevrons to the stage edges — independent of card-stack width. */
+.coverflow__chevron--left {
+  left: var(--chevron-gutter, 0.75rem);
+  right: auto;
+}
+
+.coverflow__chevron--right {
+  left: auto;
+  right: var(--chevron-gutter, 0.75rem);
+}
+
+/*
+ * Outer shell stays fixed to the viewport bottom. Horizontal pan lives on
+ * the inner scroller so the container itself never feels like it moves.
+ * Rest marks are circles; only the active indicator is pill-shaped.
+ *
+ * Bottom offset uses safe-area + dvh-friendly spacing so iOS home-indicator
+ * / dynamic island layouts keep the strip clear of system chrome.
+ */
+.coverflow__dots {
+  --dot-size: 0.78rem;
+  --dot-rest-w: var(--dot-size);
+  --dot-rest-h: var(--dot-size);
+  --dot-gap: 0.72rem;
+  /* Active indicator: taller stadium pill over the rest circles. */
+  --dot-pill-w: calc(var(--dot-size) * 2.15);
+  --dot-pill-h: calc(var(--dot-size) + 3px);
+  /* Extra air on either side of the active pill so neighbors don't crowd it.
+     Desktop uses a tighter pad; mobile can override this. */
+  --dot-active-side-gap: calc((var(--dot-pill-w) - var(--dot-size)) / 2 + 0.08rem);
+  /* Desktop gap below the group-stroke bottom edge. */
+  --dots-under-stroke: 5dvh;
+
+  /*
+   * Desktop: park under the group stroke (same vertical center as cards).
+   * Mobile overrides to fixed bottom in the max-width: 800px query.
+   */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + (var(--group-stroke-height) / 2) + var(--dots-under-stroke));
+  bottom: auto;
+  z-index: 12;
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0.55rem 0 0.25rem;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  /* Shell never scrolls — only the inner scroller does. */
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.coverflow__dots-scroller {
+  display: flex;
+  justify-content: safe center;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  /* Swipe pans the strip; pill hold-scrub takes over once active. */
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.coverflow__dots-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.coverflow__dots-track {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--dot-gap);
+  flex: 0 0 auto;
+  min-width: 100%;
+  min-height: calc(var(--dot-size) + 0.9rem);
+  padding: 0.25rem 0.15rem;
+  box-sizing: content-box;
+}
+
+/* While scrubbing/holding: rest-dots keep distance falloff; pill stays full. */
+.coverflow.is-dot-scrubbing .coverflow__dots {
+  cursor: ew-resize;
+}
+
+.coverflow.is-dot-scrubbing .coverflow__dots-scroller {
+  /* Lock strip pan so the pill scrub owns the gesture. */
+  touch-action: none;
+  overflow-x: hidden;
+  scroll-snap-type: none;
+}
+
+.coverflow.is-dot-scrubbing .coverflow__dot {
+  /* Faster opacity / margin chase while the pill is moving under the finger. */
+  transition:
+    background-color 0.18s ease,
+    opacity 0.28s cubic-bezier(0.33, 0.1, 0.25, 1),
+    margin 0.18s ease;
+}
+
+.coverflow.is-dot-scrubbing .coverflow__dot-pill {
+  filter: none;
+  opacity: 1;
+  cursor: grabbing;
+}
+
+.coverflow__dot {
+  position: relative;
+  z-index: 1;
+  /* Circular rest marks (equal width/height). */
+  width: var(--dot-size);
+  height: var(--dot-size);
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 50%;
+  /* Filled slot: white at half opacity (JS multiplies scrub falloff on top). */
+  background: #ffffff;
+  box-shadow: none;
+  padding: 0;
+  margin-inline: 0;
+  cursor: pointer;
+  opacity: 0.5;
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  /*
+   * Distance falloff is written as inline opacity.
+   * Filled base = 0.5 (white half-opacity); empty base = 1 (styled inset look).
+   * Slow floaty ease when focus settles after scrub / swipe.
+   * Active side gap eases open so the pill has room on either side.
+   */
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    margin 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.coverflow__dot.is-empty {
+  /* Empty slot: recessed gray chip (opacity owned by JS, base 1). */
+  background: #373737;
+  box-shadow: 0px 1px 0px #ffffff42, inset 0px 3px 1px #0000003b;
+  opacity: 1;
+}
+
+.coverflow__dot.active {
+  /* Active fill lives on the sliding pill; hide the rest under it. */
+  background: transparent;
+  box-shadow: none;
+  /* Breathing room on either side of the wider stadium pill. */
+  margin-inline: var(--dot-active-side-gap);
+}
+
+/* Sliding active indicator — pill-shaped, position driven by carousel scrub. */
+.coverflow__dot-pill {
+  --dot-pill-hit-y: 0.55rem;
+  --dot-pill-hit-x: 0.55rem;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Above rest-dots so the active pill is never masked by neighbors. */
+  z-index: 2;
+  width: 0;
+  height: var(--dot-pill-h);
+  border-radius: 999px;
+  /* Fill lives on .coverflow__dot-pill-face so scale can animate independently. */
+  background: transparent;
+  transform: translate3d(0, 0, 0);
+  opacity: 0;
+  /* Hold/drag the pill to scrub; strip swipe only pans. */
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  /*
+   * Enlarge the grab target without changing the painted pill.
+   * The face sits in the content box; padding expands the hit area only.
+   */
+  box-sizing: content-box;
+  padding: var(--dot-pill-hit-y) var(--dot-pill-hit-x);
+  margin: calc(var(--dot-pill-hit-y) * -1) calc(var(--dot-pill-hit-x) * -1);
+  will-change: transform, width, height;
+  /*
+   * Geometry transitions are owned by JS (none while live, bounce on settle).
+   * Opacity fade while a card is active is owned by the parent .coverflow__dots.
+   */
+  transition: none;
+}
+
+/* Painted pink body — can grow under a finger without fighting JS translate. */
+.coverflow__dot-pill-face {
+  position: absolute;
+  top: var(--dot-pill-hit-y);
+  right: var(--dot-pill-hit-x);
+  bottom: var(--dot-pill-hit-y);
+  left: var(--dot-pill-hit-x);
+  border-radius: inherit;
+  background: #ff135e;
+  pointer-events: none;
+  transform: scale(1);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* Inner rim layer — matches the painted face, not the padded hit target. */
+.coverflow__dot-pill-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: none;
+  transition: box-shadow 0.18s ease;
+}
+
+.coverflow__dot-pill.is-ready {
+  opacity: 1;
+}
+
+/*
+ * White inset rim while the pill is moving:
+ * - carousel progressive drag (.is-dragging)
+ * - nav-dot pill scrub (.is-dot-scrubbing)
+ * Drawn on the face ::after so it sits inside the visible pink fill.
+ */
+.coverflow.is-dragging .coverflow__dot-pill-face::after,
+.coverflow.is-dot-scrubbing .coverflow__dot-pill-face::after {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.coverflow.is-expanded .coverflow__item:not(.is-focused) {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* Desktop: keep chrome dimmed but visible while a pack is open. */
+.coverflow.is-expanded .coverflow__chevron,
+.coverflow.is-expanded .coverflow__dots {
+  z-index: 1;
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.collection-app .card__rotator video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+  /* Nudge art right so it sits clear of the identity strip. */
+  -webkit-transform: translate3d(1.3rem, 0px, 0.01px);
+  transform: translate3d(1.3rem, 0px, 0.01px);
+  translate: 1.2rem 0px;
+}
+
+/* Back face as a container (mirrors .card__front) so shine/glare can sit on top */
+.card__back {
+  display: grid;
+  opacity: 1;
+  background-color: var(--card-back, hsl(205, 100%, 25%));
+  -webkit-transform: rotateY(180deg) translateZ(1px);
+  transform: rotateY(180deg) translateZ(1px);
+  backface-visibility: hidden;
+}
+
+.card__back>img,
+.card__back>video,
+.card__back>.card__media,
+.card__front>img,
+.card__front>video,
+.card__front>.card__media {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+/* CSS-background card face — no <img>, so iOS can't long-press "Save Image". */
+.card__media--image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Branded underlay until the face video has a decoded frame. */
+.card__media--placeholder {
+  z-index: 0;
+}
+
+.card__front > video.is-media-loading {
+  opacity: 0;
+}
+
+.card__front > video.is-media-ready {
+  opacity: 1;
+  transition: opacity 0.18s ease;
+}
+
+/*
+ * base.css hides the whole front while .loading (opacity: 0), which also hides
+ * the placeholder underlay. Keep the face visible and only gate the video.
+ */
+.coverflow__card .card.loading .card__front {
+  opacity: 1;
+}
+
+.card__back .card__shine,
+.card__back .card__glare {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+}
+
+.loading .card__back {
+  -webkit-transform: rotateY(0deg);
+  transform: rotateY(0deg);
+}
+
+@media (max-width: 800px) {
+  .prototype-app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  .prototype-app:not(.collection-app--embedded) {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .prototype-app.is-controls-open {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+
+  .prototype-controls {
+    order: 2;
+    border-right: none;
+    border-bottom: none;
+    border-top: 1px solid #30363d;
+    max-height: 45vh;
+  }
+
+  .prototype-preview {
+    order: 1;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .coverflow__frame {
+    /* No chevrons on mobile — keep a small side inset only. */
+    --chevron-size: 0px;
+    --chevron-gutter: 0px;
+    --stage-left-safe: 1rem;
+    --stage-right-safe: 1rem;
+    /* ~90% of the previous mobile card size, with a 1.5rem inter-card gap. */
+    --rendered-card-width: min(252px, 70.2vw);
+    --card-gap: 1.5rem;
+    /* Shared with .card-group so dots can sit under the stroke. */
+    --group-pad-y: calc(2.8rem + 16px);
+    --group-stroke-height: calc(var(--rendered-card-width) / var(--card-aspect, 0.528421) + (var(--group-pad-y) * 2));
+  }
+
+  .coverflow__chevron {
+    display: none;
+  }
+
+  .card-group {
+    --group-pad-y: calc(2.8rem + 16px);
+  }
+
+  .card-group__label {
+    left: 0.85rem;
+    right: auto;
+    /* Lift avatar + title above the stroke so it clears the card top. */
+    transform: translateY(calc(-50% - 10px));
+    max-width: calc(100% - 1.5rem);
+  }
+
+  .coverflow__item {
+    width: var(--rendered-card-width, min(252px, 70.2vw));
+    max-width: none;
+  }
+
+  /*
+   * Under the active card (not fixed to the screen bottom).
+   * Full-bleed under the hero. Side insets live as inner padding on the
+   * row (matching stage left/right safe) so:
+   *   - Play left edge lines up with the motion card
+   *   - Gift right edge lines up with the photo-slot column
+   */
+  .card__translater {
+    overflow: visible;
+  }
+
+  .active-card-actions {
+    /* Left lines up with the motion card. */
+    --actions-pad-left: max(
+      var(--stage-left-safe, 1rem),
+      env(safe-area-inset-left, 0px)
+    );
+    /*
+     * Right lines up with the photo-slot COLUMN edge (not the outer stage
+     * / panel container). Extra inset pulls the gift circle inward so its
+     * right edge sits on the filled slot column rather than the panel edge.
+     */
+    --actions-pad-right: max(
+      calc(var(--stage-right-safe, 1rem) + 0.85rem),
+      calc(env(safe-area-inset-right, 0px) + 0.85rem)
+    );
+    position: absolute;
+    left: calc(-1 * var(--stage-left-safe, 1rem));
+    right: auto;
+    top: calc(100% + 0.65rem);
+    bottom: auto;
+    width: 100vw;
+    min-width: 0;
+    max-width: 100vw;
+    /* Keep under-card placement; animate Y, scale, opacity, and blur. */
+    transform: translateY(0.85rem) scale(0.96);
+    box-sizing: border-box;
+    padding-left: 0;
+    padding-right: 0;
+    z-index: 120;
+  }
+
+  .active-card-actions.is-visible {
+    transform: translateY(0) scale(1);
+    animation-name: active-card-actions-in-mobile;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .active-card-actions.is-exiting {
+    transform: translateY(0.85rem) scale(0.96);
+    animation-name: active-card-actions-out-mobile;
+    animation-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+
+  @keyframes active-card-actions-in-mobile {
+    from {
+      opacity: 0;
+      filter: blur(8px);
+      transform: translateY(0.85rem) scale(0.96);
+    }
+
+    to {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes active-card-actions-out-mobile {
+    from {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0) scale(1);
+    }
+
+    to {
+      opacity: 0;
+      filter: blur(8px);
+      transform: translateY(0.85rem) scale(0.96);
+    }
+  }
+
+  .active-card-actions__row {
+    display: grid;
+    grid-template-columns: 2.2fr 1.35fr;
+    gap: 0.55rem;
+    width: 100%;
+    height: 3rem;
+    /* Left = card edge; right = photo-slot column edge (extra inset). */
+    padding-left: var(--actions-pad-left);
+    padding-right: var(--actions-pad-right);
+    box-sizing: border-box;
+  }
+
+  .active-card-actions__row.has-gift {
+    grid-template-columns: 2.2fr 1.45fr 3rem;
+  }
+
+  .active-card-actions .btn-180,
+  .active-card-actions .active-card-panel__btn {
+    width: 100%;
+    height: 100%;
+    min-width: 0 !important;
+    justify-content: center;
+  }
+
+  .active-card-actions .btn-gift {
+    width: 3rem;
+    height: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+    aspect-ratio: 1 / 1;
+    justify-self: end;
+  }
+
+  .active-card-actions__label {
+    max-width: 100%;
+    padding-left: var(--actions-pad-left);
+    padding-right: var(--actions-pad-right);
+    box-sizing: border-box;
+  }
+
+  /*
+   * Keep nav dots fixed to the bottom of the viewport on mobile.
+   * bottom uses safe-area + a small gap so the strip clears the iOS
+   * home indicator without relying on visualViewport hacks.
+   */
+  .coverflow__dots {
+    --dot-size: 0.95rem;
+    --dot-gap: 0.3rem;
+    --dot-pill-w: calc(var(--dot-size) * 2.2);
+    --dot-pill-h: calc(var(--dot-size) + 3px);
+    /* Mobile stays fixed to the viewport bottom (not stroke-relative). */
+    --dots-bottom-gap: 3dvh;
+
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: calc(var(--dots-bottom-gap) + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    width: 100dvw;
+    max-width: 100dvw;
+    margin: 0;
+    /* Larger vertical hit pad so hold+scrub is easy without precise aim. */
+    padding: 1.1rem 0 0.85rem;
+    z-index: 12;
+    opacity: 1;
+    overflow: hidden;
+    /* Mobile: long ease in when the card closes so dots return gently. */
+    transition: opacity 1.44s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .coverflow__dots-scroller {
+    padding: 0 1rem;
+  }
+
+  .coverflow__dots-track {
+    min-height: 2rem;
+  }
+
+  /* Card active on mobile: slow fade for nav dots + pill. */
+  .coverflow.is-expanded .coverflow__dots {
+    opacity: 0;
+    pointer-events: none;
+    /* Slightly quicker out than in, still stretched. */
+    transition: opacity 1.16s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .coverflow__dot-pill {
+    --dot-pill-hit-y: 0.7rem;
+    --dot-pill-hit-x: 0.65rem;
+  }
+
+  /*
+   * Under-finger grow: expand ~3× on touch so the scrubber is visible under
+   * the fingertip, fade to 0.2 while enlarged, then restore scale + opacity
+   * when contact ends (.is-held is JS-owned).
+   */
+  .coverflow__dot-pill-face {
+    opacity: 1;
+    transition:
+      transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.22s ease;
+  }
+
+  .coverflow__dot-pill.is-held {
+    z-index: 20;
+  }
+
+  .coverflow__dot-pill.is-held .coverflow__dot-pill-face {
+    transform: scale(3);
+    opacity: 0.2;
+    transition:
+      transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.15),
+      opacity 0.18s ease;
+  }
+
+  /* Don't clip the enlarged pill while held / scrubbing. */
+  .coverflow__dots:has(.coverflow__dot-pill.is-held),
+  .coverflow.is-dot-scrubbing .coverflow__dots {
+    overflow: visible;
+  }
+
+  .coverflow__dots:has(.coverflow__dot-pill.is-held) .coverflow__dots-scroller,
+  .coverflow.is-dot-scrubbing .coverflow__dots-scroller {
+    overflow: visible;
+  }
+
+  /* Mobile inherits the shared scrub-dim opacity transition above. */
+
+  /*
+   * Photo grid sits 1rem to the right of the active card as a 2×5 slot matrix.
+   * Overrides the tighter "stack under card" layout from the 1100/520 queries.
+   */
+  .active-card-panel {
+    left: calc(100% + 1rem);
+    right: auto;
+    top: 22dvh;
+    transform: translateY(-50%);
+    /* Narrower panel → smaller slot height while keeping card aspect ratio. */
+    width: min(7.75rem,
+        calc(100vw - var(--rendered-card-width, 70.2vw) - var(--stage-left-safe, 1rem) - 2.5rem));
+    height: auto;
+    min-height: 0;
+    padding-left: 0;
+    padding-right: 0;
+    --photo-panel-gap: 1rem;
+    --photo-panel-width: min(7.75rem,
+        calc(100vw - var(--rendered-card-width, 70.2vw) - var(--stage-left-safe, 1rem) - 2.5rem));
+    --photo-panel-height: auto;
+    --photo-panel-nudge-y: 0px;
+    justify-content: center;
+    /* Anchor for the close X so it can line up with the flip button. */
+    overflow: visible;
+  }
+
+  .active-card-panel.is-visible,
+  .active-card-panel.is-exiting {
+    transform: translateY(-52%);
+  }
+
+  .photo-cards {
+    gap: 0.35rem;
+  }
+
+  .photo-cards__close-row {
+    position: relative;
+
+    justify-content: flex-end;
+    margin-bottom: 0;
+    transform: none;
+  }
+
+  .photo-cards__header {
+    align-items: center;
+    min-height: 0;
+  }
+
+  .photo-cards__header-left {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.4rem;
+    width: auto;
+  }
+
+  .photo-cards__title {
+    line-height: 0;
+  }
+
+  .photo-cards__title-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .photo-cards__title-icon {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  /* Count sits beside the photo SVG on mobile. */
+  .photo-cards__header-left>.photo-cards__count {
+    display: inline;
+    text-align: left;
+  }
+
+  .active-card-panel .photo-cards__close {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 4rem;
+    height: 4rem;
+    z-index: 90;
+  }
+
+  .photo-cards__close svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .photo-cards__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(4, auto);
+    gap: 0.3rem;
+    /* 70% of previous slot size; aspect ratio is preserved via slot CSS. */
+    width: 100%;
+    justify-self: start;
+  }
+
+  .photo-cards__slot {
+    aspect-ratio: 0.69;
+    width: 100%;
+  }
+}

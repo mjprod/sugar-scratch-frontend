@@ -364,6 +364,184 @@ export function scratchReadyCount(detail: ThemeDetailData | null | undefined): n
   return detail.photoCards.filter((card) => card.isUnlocked && card.readyToScratch).length;
 }
 
+/** Strip pack/collection suffixes so "Police Pack" matches "police". */
+export function normalizeThemeKey(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/(pack|collection|theme)$/g, "");
+}
+
+const THEME_ALIASES: Record<string, string> = {
+  police: "police",
+  cop: "police",
+  policewoman: "police",
+  policewomen: "police",
+  summer: "summer",
+  sumnights: "summer",
+  summernights: "summer",
+  cyber: "cyber",
+  cybernights: "cyber",
+  midnight: "midnight",
+  midnightroom: "midnight",
+  office: "office",
+  officehours: "office",
+  nurse: "nurse",
+  teacher: "teacher",
+  gym: "gym",
+  firefighter: "fire",
+  firegirl: "fire",
+  fire: "fire",
+};
+
+export function canonicalThemeKey(value: string | null | undefined): string {
+  const key = normalizeThemeKey(value);
+  return THEME_ALIASES[key] ?? key;
+}
+
+export function themesMatch(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const left = canonicalThemeKey(a);
+  const right = canonicalThemeKey(b);
+  return Boolean(left && right && left === right);
+}
+
+export function themeRefMatches(
+  value: string | null | undefined,
+  theme: Pick<ThemeCardData, "id" | "name">,
+): boolean {
+  return themesMatch(value, theme.id) || themesMatch(value, theme.name);
+}
+
+/** Map a static / URL theme id onto a live API theme id (name + alias aware). */
+export function matchLiveThemeId(
+  selectedThemeId: string,
+  liveThemes: Array<Pick<ThemeCardData, "id" | "name">>,
+  staticThemes: Array<Pick<ThemeCardData, "id" | "name">> = [],
+): string | undefined {
+  if (liveThemes.some((theme) => theme.id === selectedThemeId)) {
+    return selectedThemeId;
+  }
+  const selected = staticThemes.find((theme) => theme.id === selectedThemeId);
+  const wanted = [
+    canonicalThemeKey(selectedThemeId),
+    canonicalThemeKey(selected?.id),
+    canonicalThemeKey(selected?.name),
+  ].filter(Boolean);
+  const match = liveThemes.find((theme) => {
+    const keys = [canonicalThemeKey(theme.id), canonicalThemeKey(theme.name)];
+    return keys.some((key) => wanted.includes(key));
+  });
+  return match?.id;
+}
+
+export function findThemeDetail(
+  theme: Pick<ThemeCardData, "id" | "name"> | undefined,
+  themeDetails: Record<string, ThemeDetailData>,
+): ThemeDetailData | undefined {
+  if (!theme) return undefined;
+  const exact = themeDetails[theme.id];
+  if (exact) return exact;
+  const wanted = canonicalThemeKey(theme.id) || canonicalThemeKey(theme.name);
+  if (!wanted) return undefined;
+  return Object.values(themeDetails).find(
+    (detail) =>
+      canonicalThemeKey(detail.themeId) === wanted ||
+      canonicalThemeKey(detail.themeName) === wanted,
+  );
+}
+
+export function emptyThemeDetail(
+  theme: Pick<ThemeCardData, "id" | "name">,
+  seriesLabel = "Series",
+): ThemeDetailData {
+  return {
+    themeId: theme.id,
+    themeName: theme.name,
+    seriesLabel,
+    packName: `${theme.name} Pack`,
+    unopenedPacks: 0,
+    photoCards: [],
+    motionCards: [],
+  };
+}
+
+function withScratchReadySlots(
+  photoCards: PhotoCardSlot[],
+  scratchReady: number,
+): PhotoCardSlot[] {
+  if (scratchReady <= 0) {
+    return photoCards.map((card) => ({ ...card, readyToScratch: false }));
+  }
+  const ready: PhotoCardSlot[] = Array.from({ length: scratchReady }, (_, i) => ({
+    index: i + 1,
+    isUnlocked: true,
+    readyToScratch: true,
+  }));
+  const rest = photoCards
+    .filter((card) => !card.readyToScratch)
+    .map((card, i) => ({ ...card, index: scratchReady + i + 1, readyToScratch: false }));
+  return [...ready, ...rest];
+}
+
+/**
+ * Resolve CTA detail for a theme. Live inventory (when provided) overrides
+ * static mock packs / scratch-ready so API theme ids cannot collapse to buy.
+ */
+export function resolveThemeDetail(
+  theme: ThemeCardData | undefined,
+  themeDetails: Record<string, ThemeDetailData>,
+  live?: {
+    unopenedPacks: number;
+    scratchReady: number;
+    motionCards?: MotionCardSlot[];
+  } | null,
+): ThemeDetailData {
+  const fallback = emptyThemeDetail(
+    theme ?? { id: "", name: "Theme" },
+    "Series",
+  );
+  const base = findThemeDetail(theme, themeDetails) ?? fallback;
+  if (!live) return base;
+  return {
+    ...base,
+    themeId: theme?.id ?? base.themeId,
+    themeName: theme?.name ?? base.themeName,
+    packName: theme ? `${theme.name} Pack` : base.packName,
+    unopenedPacks: live.unopenedPacks,
+    photoCards: withScratchReadySlots(base.photoCards, live.scratchReady),
+    motionCards:
+      live.motionCards && live.motionCards.length > 0
+        ? live.motionCards
+        : base.motionCards,
+  };
+}
+
+export function countMatchingUnopened(
+  theme: Pick<ThemeCardData, "id" | "name"> | undefined,
+  packs: Array<{ themeName?: string; packName?: string }>,
+): number {
+  if (!theme) return 0;
+  return packs.filter(
+    (pack) =>
+      themeRefMatches(pack.themeName, theme) ||
+      themeRefMatches(pack.packName, theme),
+  ).length;
+}
+
+export function countMatchingScratchReady(
+  theme: Pick<ThemeCardData, "id" | "name"> | undefined,
+  groups: Array<{ collectionName?: string; count: number }>,
+): number {
+  if (!theme) return 0;
+  return groups
+    .filter((group) => themeRefMatches(group.collectionName, theme))
+    .reduce((sum, group) => sum + group.count, 0);
+}
+
 /**
  * Sticky CTA priority (one primary):
  * 1 scratch → 2 open-pack → 3 buy → 4 view → 5 claim
