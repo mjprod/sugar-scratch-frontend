@@ -14,6 +14,20 @@ export const Paths = {
   inbox: "/inbox",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
+  game: "/game",
+  /** Motion scratch — same query HoloCard uses by default. */
+  gamePlay: (
+    modelId: string,
+    cardId: string,
+    extra?: { creatorId?: string; themeId?: string },
+  ) => {
+    const params = new URLSearchParams();
+    params.set("model", modelId);
+    params.set("card", cardId);
+    if (extra?.creatorId) params.set("creator", extra.creatorId);
+    if (extra?.themeId) params.set("theme", extra.themeId);
+    return `/game?${params.toString()}`;
+  },
   recommend: "/recommend",
   recommendSwipe: "/recommend/swipe",
   recommendDone: "/recommend/done",

@@ -9,7 +9,16 @@
 
 .creator-collection-browse .collection-app--embedded,
 .creator-featured-stage .collection-app--embedded {
+  height: 100%;
   min-height: min(72vh, 640px);
+  overflow: hidden;
+}
+
+.creator-collection-browse .collection-app--embedded .prototype-preview,
+.creator-featured-stage .collection-app--embedded .prototype-preview {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .creator-featured-overlay {

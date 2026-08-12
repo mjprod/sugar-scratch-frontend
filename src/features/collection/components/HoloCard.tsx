@@ -969,9 +969,10 @@ export default function HoloCard({
       if (event.metaKey || event.ctrlKey || event.altKey) return
       if (isEditableTarget(event.target)) return
       // Nested overlays own their own keys.
+      // Exclude the parent FeaturedCardOverlay dialog so flip (\) still works.
       if (
         document.querySelector(
-          '.static-card-playing, [role="dialog"][aria-modal="true"]',
+          '.static-card-playing, [role="dialog"][aria-modal="true"]:not(.creator-featured-overlay)',
         )
       ) {
         return

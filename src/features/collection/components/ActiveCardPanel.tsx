@@ -1097,9 +1097,10 @@ export default function ActiveCardPanel({
       if (event.metaKey || event.ctrlKey || event.altKey) return
       if (isEditableTarget(event.target)) return
       // Nested playing/gift popup owns its own keys (Escape etc.).
+      // Exclude the parent FeaturedCardOverlay dialog so photo-slot keys still work.
       if (
         document.querySelector(
-          '.static-card-playing, [role="dialog"][aria-modal="true"]',
+          '.static-card-playing, [role="dialog"][aria-modal="true"]:not(.creator-featured-overlay)',
         )
       ) {
         return

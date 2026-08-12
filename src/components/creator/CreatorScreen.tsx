@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Paths } from "@/routes/Paths";
 import { CollectionPlaceholder } from "@/components/collection/CollectionPlaceholder";
 import { CreatorCollectionBrowse } from "@/components/creator/CreatorCollectionBrowse";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
@@ -18,9 +19,17 @@ import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreat
 import {
   getCreatorPage,
   getStickyCtaMode,
+  matchLiveThemeId,
+  resolveThemeDetail,
+  countMatchingUnopened,
+  countMatchingScratchReady,
+  type MotionCardSlot,
   type ThemeCardData,
 } from "@/services/collection";
+import { listUnopenedInstances } from "@/services/packInventory";
+import { listReadyToScratch } from "@/services/readyToScratch";
 import type { PurchaseFlowPack } from "@/services/purchase";
+import type { CardConfig } from "@/features/collection/lib/cards";
 import "./creator-collection.css";
 
 /**
@@ -65,6 +74,15 @@ export function CreatorScreen({
   );
 }
 
+function motionSlotsFromCards(cards: CardConfig[]): MotionCardSlot[] {
+  return cards.map((card, index) => ({
+    index: index + 1,
+    label: card.name,
+    isUnlocked: Boolean(card.mediaUrl) || (card.videoCardCount ?? 0) > 0,
+    thumbnailUrl: card.mediaUrl || undefined,
+  }));
+}
+
 function CreatorScreenInner({
   creatorId,
   diamonds,
@@ -82,6 +100,7 @@ function CreatorScreenInner({
 }) {
   const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
   const collection = useCreatorCollection(modelId);
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedThemeId, setSelectedThemeId] = useState(
@@ -107,26 +126,75 @@ function CreatorScreenInner({
   );
 
   const themes = apiThemes.length > 0 ? apiThemes : page.themes;
+  const usingLiveThemes = apiThemes.length > 0;
 
   useEffect(() => {
-    if (apiThemes.length === 0) return;
-    if (!apiThemes.some((theme) => theme.id === selectedThemeId)) {
-      setSelectedThemeId(apiThemes[0]!.id);
+    if (!usingLiveThemes) return;
+
+    const urlTheme = searchParams.get("theme");
+    const urlCard = searchParams.get("card");
+    const wantedId = urlTheme || selectedThemeId;
+
+    const themeFromCard = urlCard
+      ? apiThemes.find((entry) =>
+          (collection.cardsByThemeId[entry.id] ?? []).some(
+            (card) => card.id === urlCard,
+          ),
+        )
+      : undefined;
+
+    const nextThemeId =
+      themeFromCard?.id ??
+      matchLiveThemeId(wantedId, apiThemes, page.themes) ??
+      apiThemes[0]!.id;
+
+    const nextCardId =
+      urlCard &&
+      (collection.cardsByThemeId[nextThemeId] ?? []).some(
+        (card) => card.id === urlCard,
+      )
+        ? urlCard
+        : null;
+
+    if (nextThemeId !== selectedThemeId) {
+      setSelectedThemeId(nextThemeId);
     }
-  }, [apiThemes, selectedThemeId]);
+    if (nextCardId !== featuredCardId) {
+      setFeaturedCardId(nextCardId);
+    }
+    if (urlTheme !== nextThemeId || (urlCard ?? null) !== nextCardId) {
+      const next = new URLSearchParams(searchParams);
+      if (nextCardId) next.set("card", nextCardId);
+      else next.delete("card");
+      next.set("theme", nextThemeId);
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    apiThemes,
+    usingLiveThemes,
+    selectedThemeId,
+    featuredCardId,
+    searchParams,
+    setSearchParams,
+    collection.cardsByThemeId,
+    page.themes,
+  ]);
 
   const theme =
     themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
-  const detail = page.themeDetails[theme?.id ?? ""] ?? {
-    themeId: theme?.id ?? "",
-    themeName: theme?.name ?? "Theme",
-    seriesLabel: "Series",
-    packName: theme?.name ?? "Pack",
-    unopenedPacks: 0,
-    photoCards: [],
-    motionCards: [],
-  };
   const motionCards = collection.cardsByThemeId[theme?.id ?? ""] ?? [];
+  const liveInventory = usingLiveThemes
+    ? {
+        unopenedPacks: countMatchingUnopened(theme, listUnopenedInstances()),
+        scratchReady: countMatchingScratchReady(theme, listReadyToScratch()),
+        motionCards: motionSlotsFromCards(motionCards),
+      }
+    : null;
+  const detail = resolveThemeDetail(
+    theme,
+    page.themeDetails,
+    liveInventory,
+  );
   const ctaMode = getStickyCtaMode({
     detail,
     theme: theme ?? page.themes[0]!,
@@ -172,15 +240,17 @@ function CreatorScreenInner({
     });
   }
 
-  function handlePlayGame(modelId: string, cardId: string, cardName: string) {
-    syncCardParam(cardId, selectedThemeId);
-    onOpenPack({
-      packId: `${modelId}:${cardId}`,
-      packName: cardName,
-      price: "",
-      creator: page.creator.name,
-      entry: "scratch",
-    });
+  function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
+    const card = cardId.trim();
+    const model = playModelId.trim();
+    if (!card || !model) return;
+    syncCardParam(card, selectedThemeId);
+    navigate(
+      Paths.gamePlay(model, card, {
+        creatorId,
+        themeId: selectedThemeId,
+      }),
+    );
   }
 
   function switchMode(mode: ViewMode) {

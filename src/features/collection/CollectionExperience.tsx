@@ -259,9 +259,10 @@ function AppInner({
       if (event.metaKey || event.ctrlKey || event.altKey) return
       if (isEditableTarget(event.target)) return
       // Nested overlays (gift / playing popup) own Escape themselves.
+      // Exclude the parent FeaturedCardOverlay dialog so embedded coverflow keys still work.
       if (
         document.querySelector(
-          '.static-card-playing, [role="dialog"][aria-modal="true"]',
+          '.static-card-playing, [role="dialog"][aria-modal="true"]:not(.creator-featured-overlay)',
         )
       ) {
         return

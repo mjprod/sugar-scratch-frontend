@@ -73,30 +73,25 @@
   --card-width: 251px;
 }
 
-html,
-body {
-  margin: 0;
-  height: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #0d1117;
-  color: #e6edf3;
-  font-family: Roboto, system-ui, sans-serif;
-}
-
-#root {
-  height: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
 .prototype-app {
   display: grid;
   grid-template-columns: 1fr;
   height: 100%;
+  overflow: hidden;
+}
+
+/* Standalone collection fills the viewport. Embedded (creator browse /
+   featured overlay) must fill its host instead of locking html/body/#root. */
+.prototype-app:not(.collection-app--embedded) {
   min-height: 100vh;
   min-height: 100dvh;
-  overflow: hidden;
+}
+
+.collection-app--embedded {
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
 }
 
 .prototype-app.is-controls-open {
@@ -626,8 +621,6 @@ body {
   width: 100%;
   max-width: none;
   height: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -636,6 +629,11 @@ body {
   background:
     radial-gradient(circle at 50% 0%, #1f2937 0%, transparent 55%),
     #0d1117;
+}
+
+.prototype-app:not(.collection-app--embedded) .prototype-preview {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .prototype-preview:has(.coverflow.is-expanded) {
@@ -4076,6 +4074,9 @@ body {
   .prototype-app {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
+  }
+
+  .prototype-app:not(.collection-app--embedded) {
     height: 100vh;
     height: 100dvh;
   }
