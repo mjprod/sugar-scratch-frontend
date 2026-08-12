@@ -126,9 +126,11 @@ export function clearEmailVerified() {
   }
 }
 
-/** Prototype rule: at least 12 characters. */
+/** Prototype rule: at least this many characters. */
+export const AUTH_PASSWORD_MIN_LENGTH = 12;
+
 export function isValidAuthPassword(pw: string) {
-  return pw.length >= 12;
+  return pw.length >= AUTH_PASSWORD_MIN_LENGTH;
 }
 
 export function authFailureMessage() {
