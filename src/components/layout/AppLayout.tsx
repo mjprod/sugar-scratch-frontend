@@ -67,7 +67,9 @@ export function AppLayout() {
         />
       ) : null}
 
-      <Outlet />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Outlet />
+      </div>
 
       {showFooter ? (
         <FooterNav

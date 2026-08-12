@@ -57,6 +57,12 @@ body {
     radial-gradient(120% 80% at 50% 18%, rgba(255, 70, 120, 0.16), transparent 55%),
     radial-gradient(90% 60% at 50% 100%, rgba(80, 40, 120, 0.22), transparent 50%),
     #07070b;
+}
+
+/* Lock page scroll only while a reveal stage is mounted — this file is
+   imported by PurchaseFlow and would otherwise freeze Browse / Collection. */
+body:has(.stage-reveal),
+body:has(.reveal-app) {
   overflow: hidden;
 }
 

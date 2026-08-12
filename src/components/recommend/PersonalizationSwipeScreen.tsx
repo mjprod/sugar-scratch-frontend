@@ -1,174 +1,132 @@
+import { animated, useSpring } from "@react-spring/web";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SwipeCircle } from "@/features/swipe/components/SwipeCircle";
+import { SwipeDeck } from "@/features/swipe/components/SwipeDeck";
+import { VideoPreloader } from "@/features/swipe/components/VideoPreloader";
 import {
-  AnimatePresence,
-  motion,
-  useMotionValue,
-  useTransform,
-  type PanInfo,
-} from "framer-motion";
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui";
+  STACK_DISSOLVE_SCALE,
+  STACK_DISSOLVE_SPRING,
+  type SwipeCardData,
+} from "@/features/swipe/constants/cards";
+import { NopeTintDebugProvider } from "@/features/swipe/context/NopeTintDebugContext";
+import { StackBacksDebugProvider } from "@/features/swipe/context/StackBacksDebugContext";
+import { SwipeCircleDebugProvider } from "@/features/swipe/context/SwipeCircleDebugContext";
+import { fetchModels } from "@/shared/backend/collection";
 import {
-  MIN_PERSONALIZATION_CARDS,
-  orderedRecommendationCards,
-} from "@/services/recommendation";
-import { PREFERENCE_PHOTOS } from "@/lib/photos";
+  createFallbackSwipeDeck,
+  createSwipeDeckFromModels,
+} from "@/shared/backend/modelProfile";
+import "@/features/swipe/swipe.css";
+
+export type PersonalizationSwipeResult = {
+  liked: string[];
+  passed: string[];
+};
 
 /**
- * Tinder-style Creator × Theme Recommendation Initialization.
- * Skip is always available; Continue after a short configurable sequence.
+ * Incoming home swipe deck, used as Recommendation Initialization.
+ * Continue when the stack is empty.
  */
 export function PersonalizationSwipeScreen({
   onContinue,
-  onSkip,
 }: {
-  onContinue: (result: { liked: string[]; passed: string[] }) => void;
-  onSkip: (result: { liked: string[]; passed: string[] }) => void;
+  onContinue: (result: PersonalizationSwipeResult) => void;
 }) {
-  const deck = useMemo(() => orderedRecommendationCards(), []);
-  const [index, setIndex] = useState(0);
+  const [deck, setDeck] = useState<SwipeCardData[]>([]);
+  const [productReady, setProductReady] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
   const [liked, setLiked] = useState<string[]>([]);
   const [passed, setPassed] = useState<string[]>([]);
-  const decisions = liked.length + passed.length;
-  const canContinue = decisions >= MIN_PERSONALIZATION_CARDS;
+  const likedRef = useRef(liked);
+  const passedRef = useRef(passed);
+  likedRef.current = liked;
+  passedRef.current = passed;
 
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-160, 160], [-12, 12]);
-  const likeOpacity = useTransform(x, [40, 120], [0, 1]);
-  const passOpacity = useTransform(x, [-120, -40], [1, 0]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchModels()
+      .then((models) => {
+        if (cancelled) return;
+        const fromModels = createSwipeDeckFromModels(models ?? []);
+        setDeck(
+          fromModels.length > 0 ? fromModels : createFallbackSwipeDeck(),
+        );
+        setProductReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDeck(createFallbackSwipeDeck());
+        setProductReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const card = deck[index];
-  const exhausted = index >= deck.length;
+  const deckSignature = useMemo(
+    () => deck.map((card) => `${card.id}:${card.mediaUrl}`).join("|"),
+    [deck],
+  );
 
-  function decide(kind: "like" | "pass") {
-    const current = deck[index];
-    if (!current) return;
-    const nextLiked = kind === "like" ? [...liked, current.id] : liked;
-    const nextPassed = kind === "pass" ? [...passed, current.id] : passed;
-    setLiked(nextLiked);
-    setPassed(nextPassed);
-    setIndex((i) => i + 1);
-    x.set(0);
-  }
+  useEffect(() => {
+    setMediaReady(false);
+  }, [deckSignature]);
 
-  function onDragEnd(_: unknown, info: PanInfo) {
-    if (info.offset.x > 100) decide("like");
-    else if (info.offset.x < -100) decide("pass");
-  }
+  const handleMediaReady = useCallback(() => setMediaReady(true), []);
+
+  const snapshot = useCallback(
+    (): PersonalizationSwipeResult => ({
+      liked: likedRef.current,
+      passed: passedRef.current,
+    }),
+    [],
+  );
+
+  const handleSwipe = useCallback((card: SwipeCardData, dir: 1 | -1) => {
+    const id = card.modelId?.trim() || card.id;
+    if (dir === 1) setLiked((prev) => [...prev, id]);
+    else setPassed((prev) => [...prev, id]);
+  }, []);
+
+  const stageStyle = useSpring({
+    opacity: mediaReady ? 1 : 0,
+    scale: mediaReady ? 1 : STACK_DISSOLVE_SCALE,
+    config: STACK_DISSOLVE_SPRING,
+  });
+
+  if (!productReady) return null;
 
   return (
-    <div className="auth7-swipe">
-      <div className="auth7-swipe-top">
-        <button
-          type="button"
-          className="auth7-swipe-back"
-          onClick={() => onSkip({ liked, passed })}
-        >
-          Skip
-        </button>
-        <p className="auth7-swipe-progress" aria-live="polite">
-          {Math.min(decisions, MIN_PERSONALIZATION_CARDS)} /{" "}
-          {MIN_PERSONALIZATION_CARDS}
-        </p>
-      </div>
-
-      <div className="auth7-swipe-bar" aria-hidden="true">
-        <div
-          className="auth7-swipe-bar-fill"
-          style={{
-            transform: `scaleX(${Math.min(1, decisions / MIN_PERSONALIZATION_CARDS)})`,
-          }}
-        />
-      </div>
-
-      <div className="auth7-swipe-stage">
-        <AnimatePresence mode="wait">
-          {card && !exhausted ? (
-            <motion.div
-              key={card.id}
-              style={{ x, rotate }}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              onDragEnd={onDragEnd}
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              className="auth7-swipe-card"
-            >
-              <img
-                src={PREFERENCE_PHOTOS[index % PREFERENCE_PHOTOS.length]}
-                alt=""
-                className="auth7-swipe-media"
-                draggable={false}
-              />
-              <div className="auth7-swipe-shade" aria-hidden="true" />
-              <motion.span
-                style={{ opacity: likeOpacity }}
-                className="auth7-swipe-stamp is-like"
+    <StackBacksDebugProvider>
+      <SwipeCircleDebugProvider>
+        <NopeTintDebugProvider>
+          <div className="stage-swipe auth7-rec-swipe">
+            <SwipeCircle />
+            <div className="home">
+              <VideoPreloader cards={deck} onReady={handleMediaReady} />
+              <animated.div
+                className="home__stage"
+                style={{
+                  opacity: stageStyle.opacity,
+                  transform: stageStyle.scale.to(
+                    (s) => `translate3d(0, 0, 0) scale3d(${s}, ${s}, 1)`,
+                  ),
+                  pointerEvents: mediaReady ? "auto" : "none",
+                }}
               >
-                Interested
-              </motion.span>
-              <motion.span
-                style={{ opacity: passOpacity }}
-                className="auth7-swipe-stamp is-pass"
-              >
-                Not For Me
-              </motion.span>
-              <div className="auth7-swipe-meta">
-                <p className="auth7-swipe-theme">{card.theme}</p>
-                <h2 className="auth7-swipe-name">{card.name}</h2>
-                <p className="auth7-swipe-tagline">{card.tagline}</p>
-              </div>
-            </motion.div>
-          ) : (
-            <p className="auth7-swipe-empty">
-              Nice picks. Continue when you&apos;re ready.
-            </p>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="auth7-swipe-controls">
-        <div className="auth7-swipe-control">
-          <button
-            type="button"
-            className="auth7-swipe-btn is-pass"
-            aria-label="Not for me"
-            disabled={!card}
-            onClick={() => decide("pass")}
-          >
-            ✕
-          </button>
-          <span className="auth7-swipe-control-label">Not For Me</span>
-        </div>
-        <div className="auth7-swipe-control">
-          <button
-            type="button"
-            className="auth7-swipe-btn is-like"
-            aria-label="Interested"
-            disabled={!card}
-            onClick={() => decide("like")}
-          >
-            ♥
-          </button>
-          <span className="auth7-swipe-control-label">Interested</span>
-        </div>
-      </div>
-
-      {canContinue || exhausted ? (
-        <Button
-          full
-          variant="auth"
-          type="button"
-          className="auth2-primary"
-          onClick={() => onContinue({ liked, passed })}
-        >
-          Continue
-        </Button>
-      ) : (
-        <p className="auth7-swipe-hint">
-          Keep swiping — or Skip anytime
-        </p>
-      )}
-    </div>
+                <SwipeDeck
+                  key={deckSignature}
+                  initialCards={deck}
+                  playSwipeHint={mediaReady}
+                  onSwipe={handleSwipe}
+                  onContinue={() => onContinue(snapshot())}
+                  continueLabel="Continue"
+                />
+              </animated.div>
+            </div>
+          </div>
+        </NopeTintDebugProvider>
+      </SwipeCircleDebugProvider>
+    </StackBacksDebugProvider>
   );
 }
