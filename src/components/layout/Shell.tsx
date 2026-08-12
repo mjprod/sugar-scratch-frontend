@@ -9,15 +9,15 @@ export function AppShell({
   label?: string;
 }) {
   return (
-    <div className="min-h-full w-full">
-      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10">
-        <div className="pointer-events-none sticky top-0 z-40 -mb-2 flex justify-end pt-2 sm:pt-3">
-          <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-medium tracking-[0.04em] text-white/40 backdrop-blur-md">
-            {label} · v8
-          </span>
-        </div>
+    <div className="relative flex h-dvh min-h-0 w-full flex-col overflow-hidden">
+      <div className="pointer-events-none absolute right-4 top-2 z-40 sm:right-6 sm:top-3 lg:right-10">
+        <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-medium tracking-[0.04em] text-white/40 backdrop-blur-md">
+          {label} · v8
+        </span>
+      </div>
+      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-6 lg:px-10">
         <div
-          className="relative flex min-h-[calc(100dvh-24px)] min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none lg:min-h-[calc(100dvh-40px)]"
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none"
           aria-label="Sugar Scratch"
         >
           <Stage>{children}</Stage>
@@ -31,11 +31,14 @@ export function OnboardShell({
   children,
   badge,
   intro = false,
+  swipe = false,
 }: {
   children: ReactNode;
   badge: string;
   /** Recommendation intro — compact card layout */
   intro?: boolean;
+  /** Full-bleed incoming swipe stage */
+  swipe?: boolean;
 }) {
   const header = (
     <header className="auth7-onboard-header">
@@ -45,7 +48,7 @@ export function OnboardShell({
   );
   const main = (
     <div className="auth7-onboard-main">
-      <Stage>{children}</Stage>
+      {swipe ? children : <Stage>{children}</Stage>}
     </div>
   );
 
@@ -54,10 +57,13 @@ export function OnboardShell({
       className={[
         "auth7-onboard-shell",
         intro ? "auth7-onboard-shell--intro" : "",
+        swipe ? "auth7-onboard-shell--swipe" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      data-step={intro ? "recommend-intro" : undefined}
+      data-step={
+        intro ? "recommend-intro" : swipe ? "personalize-swipe" : undefined
+      }
       aria-label="Personalization"
     >
       {intro ? (

@@ -27,6 +27,8 @@ export type Character = {
 };
 
 export const CARD_BACK_URL = "/img/SugarScratch.png";
+/** Local fallback when `/api/models` has no swipe video. */
+export const DEFAULT_SWIPE_VIDEO_URL = "/assets/juliana/swipe.mp4";
 export const PHOTO_SLOT_COUNT = 10;
 export const MOTION_VIDEO_COUNT = 3;
 export const ROLE_PHOTO_SLOT_COUNT = MOTION_VIDEO_COUNT * PHOTO_SLOT_COUNT;
@@ -52,6 +54,23 @@ export const DEFAULT_SHARED_MEDIA: SharedMedia = {
   overlayBackgroundColor: DEFAULT_OVERLAY_BACKGROUND_COLOR,
   overlayBackgroundColorEnd: DEFAULT_OVERLAY_BACKGROUND_COLOR_END,
 };
+
+/** Normalize a social handle for display (ensures a leading @ when non-empty). */
+export function formatSocialHandle(raw?: string | null): string {
+  const value = (raw ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("@")) return value;
+  try {
+    if (/^https?:\/\//i.test(value)) {
+      const url = new URL(value);
+      const seg = url.pathname.split("/").filter(Boolean).pop() || "";
+      if (seg) return `@${seg.replace(/^@/, "")}`;
+    }
+  } catch {
+    // fall through
+  }
+  return `@${value.replace(/^@+/, "")}`;
+}
 
 export function emptyMotionPhotoUrls(): MotionPhotoUrls {
   return [[], [], []];
