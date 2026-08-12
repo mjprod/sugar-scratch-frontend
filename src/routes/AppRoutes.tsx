@@ -92,7 +92,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommendSwipe}
           element={
-            <OnboardShell badge="Recommend · Swipe">
+            <OnboardShell badge="Recommend · Swipe" swipe>
               <RecSwipePage />
             </OnboardShell>
           }

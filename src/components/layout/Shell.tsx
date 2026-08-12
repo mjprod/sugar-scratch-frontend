@@ -27,11 +27,14 @@ export function OnboardShell({
   children,
   badge,
   intro = false,
+  swipe = false,
 }: {
   children: ReactNode;
   badge: string;
   /** Recommendation intro — compact card layout */
   intro?: boolean;
+  /** Full-bleed incoming swipe stage */
+  swipe?: boolean;
 }) {
   const header = (
     <header className="auth7-onboard-header">
@@ -41,7 +44,7 @@ export function OnboardShell({
   );
   const main = (
     <div className="auth7-onboard-main">
-      <Stage>{children}</Stage>
+      {swipe ? children : <Stage>{children}</Stage>}
     </div>
   );
 
@@ -50,10 +53,13 @@ export function OnboardShell({
       className={[
         "auth7-onboard-shell",
         intro ? "auth7-onboard-shell--intro" : "",
+        swipe ? "auth7-onboard-shell--swipe" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      data-step={intro ? "recommend-intro" : undefined}
+      data-step={
+        intro ? "recommend-intro" : swipe ? "personalize-swipe" : undefined
+      }
       aria-label="Personalization"
     >
       {intro ? (
