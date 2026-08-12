@@ -1,63 +1,139 @@
 import {
   Bell,
   ChevronRight,
-  Gift,
+  FileText,
+  Lock,
   PlayCircle,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
+import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { InboxButton } from "@/components/InboxButton";
 import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
 
-const ROWS: {
-  label: string;
-  hint: string;
-  icon: LucideIcon;
-  action?: "replay";
-}[] = [
-  {
-    label: "Replay tutorials",
-    hint: "Home · Scratch · My Bag",
-    icon: PlayCircle,
-    action: "replay",
-  },
-  {
-    label: "Redeem referral code",
-    hint: "Optional creator rewards",
-    icon: Gift,
-  },
-  {
-    label: "Notifications",
-    hint: "Coming soon",
-    icon: Bell,
-  },
-  {
-    label: "Privacy & terms",
-    hint: "Legal",
-    icon: ShieldCheck,
-  },
-];
+type SettingsView = "main" | "legal-terms" | "legal-privacy";
 
+type SettingsRow = {
+  label: string;
+  icon: LucideIcon;
+  iconTone: "security" | "pref" | "notify" | "legal";
+  action: "password" | "replay" | "notifications" | "privacy" | "terms";
+  interactive: boolean;
+};
+
+/**
+ * Settings — compact grouped utility surface (Sugar v8).
+ */
 export function SettingsScreen({
   onBack,
   onReplayTutorials,
+  onOpenChangePassword,
   diamonds,
   onOpenInbox,
   inboxUnreadCount = 0,
 }: {
   onBack: () => void;
   onReplayTutorials: () => void;
+  onOpenChangePassword: () => void;
   diamonds?: number | null;
   onOpenInbox?: () => void;
   inboxUnreadCount?: number;
 }) {
   const meta = SECONDARY_SURFACES.settings;
+  const legalTitleId = useId();
+  const [view, setView] = useState<SettingsView>("main");
+
+  const accountRows: SettingsRow[] = [
+    {
+      label: "Change Password",
+      icon: Lock,
+      iconTone: "security",
+      action: "password",
+      interactive: true,
+    },
+  ];
+
+  const preferenceRows: SettingsRow[] = [
+    {
+      label: "Replay tutorials",
+      icon: PlayCircle,
+      iconTone: "pref",
+      action: "replay",
+      interactive: true,
+    },
+    {
+      label: "Notifications",
+      icon: Bell,
+      iconTone: "notify",
+      action: "notifications",
+      interactive: false,
+    },
+  ];
+
+  const legalRows: SettingsRow[] = [
+    {
+      label: "Privacy Policy",
+      icon: ShieldCheck,
+      iconTone: "legal",
+      action: "privacy",
+      interactive: true,
+    },
+    {
+      label: "Terms and Conditions",
+      icon: FileText,
+      iconTone: "legal",
+      action: "terms",
+      interactive: true,
+    },
+  ];
+
+  function handleRow(row: SettingsRow) {
+    if (!row.interactive) return;
+    if (row.action === "replay") {
+      onReplayTutorials();
+      return;
+    }
+    if (row.action === "password") {
+      onOpenChangePassword();
+      return;
+    }
+    if (row.action === "privacy") {
+      setView("legal-privacy");
+      return;
+    }
+    if (row.action === "terms") {
+      setView("legal-terms");
+    }
+  }
+
+  if (view === "legal-terms" || view === "legal-privacy") {
+    return (
+      <AppPageShell
+        variant="secondary"
+        aria-label="Settings"
+        className="settings-page"
+      >
+        <div className="settings-legal-panel">
+          <LegalDocPanel
+            kind={view === "legal-terms" ? "terms" : "privacy"}
+            titleId={legalTitleId}
+            onBack={() => setView("main")}
+          />
+        </div>
+      </AppPageShell>
+    );
+  }
 
   return (
-    <AppPageShell variant="secondary" aria-label="Settings">
+    <AppPageShell
+      variant="secondary"
+      aria-label="Settings"
+      className="settings-page"
+    >
       <SubpageHeader
         title={meta.title}
         onBack={onBack}
@@ -77,56 +153,89 @@ export function SettingsScreen({
         }
       />
 
-      <div className="mt-6 rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.28),transparent_42%),#151515] p-6 sm:p-8">
-        <p className="text-[12px] font-semibold tracking-[0.14em] text-white/45 uppercase">
-          Account
-        </p>
-        <h2 className="mt-2 text-[28px] font-bold tracking-[-0.03em]">Settings</h2>
-        <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-white/55">
-          Account preferences and support.
-        </p>
+      <div className="settings-stack">
+        <SettingsGroup
+          id="settings-account"
+          label="Account"
+          rows={accountRows}
+          onSelect={handleRow}
+        />
+        <SettingsGroup
+          id="settings-preferences"
+          label="Preferences"
+          rows={preferenceRows}
+          onSelect={handleRow}
+        />
+        <SettingsGroup
+          id="settings-legal"
+          label="Legal"
+          rows={legalRows}
+          onSelect={handleRow}
+        />
+        <p className="settings-app-version">Sugar · v8</p>
       </div>
-
-      <div className="mt-6">
-        <h3 className="mb-2 text-[12px] font-semibold tracking-[0.12em] text-white/40 uppercase">
-          Preferences & Support
-        </h3>
-        <div className="overflow-hidden rounded-[24px] border border-white/[0.08] bg-white/[0.03]">
-          {ROWS.map((row, index) => {
-            const Icon = row.icon;
-            return (
-              <button
-                key={row.label}
-                type="button"
-                onClick={
-                  row.action === "replay" ? onReplayTutorials : undefined
-                }
-                className={[
-                  "flex min-h-14 w-full items-center gap-3 px-4 text-left transition hover:bg-white/[0.05]",
-                  index ? "border-t border-white/[0.06]" : "",
-                ].join(" ")}
-              >
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-white/55">
-                  <Icon className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-medium text-white">
-                    {row.label}
-                  </span>
-                  <span className="mt-0.5 block text-[12px] text-white/40">
-                    {row.hint}
-                  </span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-white/30" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <p className="mt-10 text-center text-[12px] font-medium text-white/35">
-        App · v8
-      </p>
     </AppPageShell>
+  );
+}
+
+function SettingsGroup({
+  id,
+  label,
+  rows,
+  onSelect,
+}: {
+  id: string;
+  label: string;
+  rows: SettingsRow[];
+  onSelect: (row: SettingsRow) => void;
+}) {
+  return (
+    <section className="settings-section" aria-labelledby={id}>
+      <h2 id={id} className="settings-section-label">
+        {label}
+      </h2>
+      <div className="settings-group-card">
+        {rows.map((row) => (
+          <SettingsRowButton key={row.label} row={row} onSelect={onSelect} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SettingsRowButton({
+  row,
+  onSelect,
+}: {
+  row: SettingsRow;
+  onSelect: (row: SettingsRow) => void;
+}) {
+  const Icon = row.icon;
+  const className = [
+    "settings-row",
+    row.interactive ? "" : "is-static",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (!row.interactive) {
+    return (
+      <div className={className} aria-disabled="true">
+        <span className={`settings-row-icon is-${row.iconTone}`} aria-hidden="true">
+          <Icon className="size-4" />
+        </span>
+        <span className="settings-row-title">{row.label}</span>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" className={className} onClick={() => onSelect(row)}>
+      <span className={`settings-row-icon is-${row.iconTone}`} aria-hidden="true">
+        <Icon className="size-4" />
+      </span>
+      <span className="settings-row-title">{row.label}</span>
+      <ChevronRight className="settings-row-chevron" aria-hidden="true" />
+    </button>
   );
 }

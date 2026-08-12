@@ -16,6 +16,8 @@ export function AppLayout() {
     guest,
     profile,
     authOpen,
+    authSheetMode,
+    authSheetEmail,
     pending,
     verifyOpen,
     navNotice,
@@ -96,6 +98,8 @@ export function AppLayout() {
       <AuthenticationSheet
         open={authOpen}
         trigger={triggerFromAction(pending)}
+        initialMode={authSheetMode}
+        initialEmail={authSheetEmail}
         onDismiss={dismissAuth}
         onSuccess={completeAuth}
       />

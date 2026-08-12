@@ -19,6 +19,7 @@ import {
   type ProtectedActionType,
 } from "@/services/auth";
 import { isValidEmail } from "@/types/app";
+import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 
 /**
  * Spec-revised Authentication Sheet — Google, Apple, and email in one surface.
@@ -29,11 +30,16 @@ export function AuthenticationSheet({
   trigger,
   onDismiss,
   onSuccess,
+  initialMode = "login",
+  initialEmail = "",
 }: {
   open: boolean;
   trigger?: ProtectedActionType;
   onDismiss: () => void;
   onSuccess: (result: AuthSuccessResult) => void;
+  /** When opening for password management, start on forgot-password. */
+  initialMode?: AuthenticationSheetMode;
+  initialEmail?: string;
 }) {
   const reduce = useReducedMotion();
   const titleId = useId();
@@ -59,8 +65,8 @@ export function AuthenticationSheet({
 
   useEffect(() => {
     if (!open) return;
-    setMode("login");
-    setEmail("");
+    setMode(initialMode);
+    setEmail(initialEmail);
     setPassword("");
     setError("");
     setSubmitting(null);
@@ -76,7 +82,7 @@ export function AuthenticationSheet({
         ?.focus();
     }, 40);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, [open, initialMode, initialEmail]);
 
   useEffect(() => {
     if (!open) return;
@@ -247,16 +253,19 @@ export function AuthenticationSheet({
                 ) : (
                   <>
                     <header className="auth7-sheet-head">
-                      {mode === "forgot-password" || mode === "reset-sent" ? (
-                        <button
-                          type="button"
-                          className="auth7-sheet-back"
-                          disabled={busy}
-                          onClick={() => switchMode("login")}
-                        >
-                          Back
-                        </button>
-                      ) : null}
+                  {mode === "forgot-password" || mode === "reset-sent" ? (
+                    <button
+                      type="button"
+                      className="auth7-sheet-back"
+                      disabled={busy}
+                      onClick={() => {
+                        if (initialMode === "forgot-password") onDismiss();
+                        else switchMode("login");
+                      }}
+                    >
+                      Back
+                    </button>
+                  ) : null}
                       <h2 id={titleId} className="auth7-sheet-title">
                         {title}
                       </h2>
@@ -267,9 +276,14 @@ export function AuthenticationSheet({
                       <button
                         type="button"
                         className="auth7-sheet-primary"
-                        onClick={() => switchMode("login")}
+                        onClick={() => {
+                          if (initialMode === "forgot-password") onDismiss();
+                          else switchMode("login");
+                        }}
                       >
-                        Back to Log In
+                        {initialMode === "forgot-password"
+                          ? "Done"
+                          : "Back to Log In"}
                       </button>
                     ) : mode === "forgot-password" ? (
                       <form
@@ -598,34 +612,6 @@ export function AuthenticationSheet({
         </div>
       ) : null}
     </AnimatePresence>
-  );
-}
-
-function LegalDocPanel({
-  kind,
-  titleId,
-  onBack,
-}: {
-  kind: "terms" | "privacy";
-  titleId: string;
-  onBack: () => void;
-}) {
-  const title = kind === "terms" ? "Terms of Service" : "Privacy Policy";
-
-  return (
-    <div className="auth7-legal-doc">
-      <button type="button" className="auth7-sheet-back" onClick={onBack}>
-        Back
-      </button>
-      <h2 id={titleId} className="auth7-sheet-title">
-        {title}
-      </h2>
-      <p className="auth7-sheet-copy">
-        {kind === "terms"
-          ? "Review Sugar’s Terms of Service. Your account details stay saved when you return."
-          : "Review Sugar’s Privacy Policy. Your account details stay saved when you return."}
-      </p>
-    </div>
   );
 }
 

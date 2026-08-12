@@ -6615,11 +6615,343 @@ body[data-theme="v8"] .settings-logout-btn:disabled {
 }
 
 body[data-theme="v8"] .settings-app-version {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.35);
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.28);
   font-size: 12px;
   font-weight: 500;
-  text-align: center;
+  text-align: left;
+}
+
+body[data-theme="v8"] .app-page-shell.settings-page > .app-page-shell-inner {
+  max-width: min(1100px, 100%);
+}
+
+body[data-theme="v8"] .settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .settings-section-label {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body[data-theme="v8"] .settings-group-card {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+body[data-theme="v8"] .settings-row {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+body[data-theme="v8"] .settings-row:first-child {
+  border-top: 0;
+}
+
+body[data-theme="v8"] .settings-row:hover:not(.is-static) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="v8"] .settings-row:hover:not(.is-static) .settings-row-chevron {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+body[data-theme="v8"] .settings-row:active:not(.is-static) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+body[data-theme="v8"] .settings-row:focus-visible {
+  outline: 2px solid #ff5fa2;
+  outline-offset: -2px;
+}
+
+body[data-theme="v8"] .settings-row.is-static {
+  cursor: default;
+  opacity: 0.72;
+}
+
+body[data-theme="v8"] .settings-row-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="v8"] .settings-row-icon.is-security {
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.22);
+}
+
+body[data-theme="v8"] .settings-row-icon.is-pref {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+body[data-theme="v8"] .settings-row-icon.is-notify {
+  color: #f9a8d4;
+  background: rgba(236, 72, 153, 0.1);
+  border-color: rgba(236, 72, 153, 0.2);
+}
+
+body[data-theme="v8"] .settings-row-icon.is-legal {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+body[data-theme="v8"] .settings-row-title {
+  min-width: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+body[data-theme="v8"] .settings-row.is-static .settings-row-title {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+body[data-theme="v8"] .settings-row-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.3);
+  transition: color 0.15s ease;
+}
+
+body[data-theme="v8"] .settings-info-card {
+  margin-top: 8px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 18px 16px;
+}
+
+body[data-theme="v8"] .settings-info-title {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+body[data-theme="v8"] .settings-info-body {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body[data-theme="v8"] .settings-legal-panel {
+  margin-top: 8px;
+}
+
+body[data-theme="v8"] .settings-utility-card {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 16px;
+}
+
+body[data-theme="v8"] .change-password-stack {
+  /* Share Settings utility page width — no narrower auth-modal max-width. */
+  margin-top: 20px;
+  width: 100%;
+  max-width: none;
+}
+
+body[data-theme="v8"] .change-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: none;
+}
+
+body[data-theme="v8"] .change-password-form .auth7-field {
+  gap: 6px;
+}
+
+body[data-theme="v8"] .change-password-form .auth7-pw-req {
+  margin-top: 2px;
+}
+
+body[data-theme="v8"] .change-password-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  width: 100%;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4d9e, #9b5cff);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .change-password-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .change-password-cta:focus-visible {
+  outline: 2px solid #ff5fa2;
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .change-password-forgot {
+  align-self: flex-start;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ff7eb8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .change-password-forgot:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .change-password-forgot:focus-visible {
+  outline: 2px solid #ff5fa2;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+body[data-theme="v8"] .change-password-provider {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+body[data-theme="v8"] .change-password-provider-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+body[data-theme="v8"] .change-password-provider-title {
+  margin: 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+body[data-theme="v8"] .change-password-provider-body {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+body[data-theme="v8"] .change-password-success {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+body[data-theme="v8"] .change-password-success-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  border: 1px solid rgba(110, 231, 183, 0.28);
+  background: rgba(16, 185, 129, 0.12);
+  color: rgba(167, 243, 208, 0.95);
+}
+
+body[data-theme="v8"] .change-password-success-title {
+  margin: 2px 0 0;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+body[data-theme="v8"] .change-password-success-body {
+  margin: 0 0 4px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+body[data-theme="v8"] .change-password-success .change-password-cta {
+  width: auto;
+  min-width: 11rem;
+  margin-top: 4px;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .settings-stack {
+    gap: 24px;
+  }
+
+  body[data-theme="v8"] .settings-row {
+    min-height: 58px;
+    padding: 12px 16px;
+  }
+
+  body[data-theme="v8"] .settings-utility-card {
+    padding: 18px;
+  }
+
+  body[data-theme="v8"] .change-password-form .change-password-cta {
+    width: auto;
+    min-width: 17.5rem;
+    max-width: 22.5rem;
+  }
 }
 
 /* Required onboarding + verify banner */
