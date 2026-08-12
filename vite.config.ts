@@ -25,12 +25,20 @@ export default defineConfig(({ mode }) => {
     const isDevOrigin =
       /localhost|127\.0\.0\.1/i.test(target) ||
       /https?:\/\/(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[0-1])\.)/i.test(target);
+    // Free ngrok serves an HTML interstitial to browser UAs unless this header is set.
+    const isNgrok = /\.ngrok(?:-free)?\.(?:dev|app|io)\b/i.test(target);
     return {
       target,
       changeOrigin: true,
       secure: isHttps ? !isDevOrigin : true,
+      ...(isNgrok
+        ? { headers: { "ngrok-skip-browser-warning": "true" } }
+        : {}),
     };
   }
+
+  console.info(`[vite] proxy /api → ${apiTarget}`);
+  console.info(`[vite] proxy media → ${mediaTarget}`);
 
   return {
     plugins: [react(), tailwindcss()],

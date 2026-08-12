@@ -5,18 +5,31 @@ export type CharacterId =
   | "gym"
   | "firefighter";
 
+export type GroupId = "group-1" | "group-2" | "group-3" | "group-4" | "group-5";
+
 export type PackFaceSlot = 1 | 2;
+
+export type MotionVideos = [string, string, string];
+export type MotionPhotoUrls = [string[], string[], string[]];
 
 export type Character = {
   id: CharacterId;
   name: string;
+  groupId: GroupId;
   videoUrl: string;
   backUrl: string;
-  motionVideos: [string, string, string];
+  motionVideos: MotionVideos;
+  motionPhotoUrls: MotionPhotoUrls;
+  giftVideoUrl: string;
+  photoUrls?: string[];
+  /** Optional role avatar for group strokes / effects. */
+  avatarUrl?: string;
 };
 
 export const CARD_BACK_URL = "/img/SugarScratch.png";
+export const PHOTO_SLOT_COUNT = 10;
 export const MOTION_VIDEO_COUNT = 3;
+export const ROLE_PHOTO_SLOT_COUNT = MOTION_VIDEO_COUNT * PHOTO_SLOT_COUNT;
 export const DEFAULT_OVERLAY_BACKGROUND_COLOR = "#5fd0e0";
 export const DEFAULT_OVERLAY_BACKGROUND_COLOR_END = "#0b1c24";
 
@@ -30,41 +43,89 @@ export type SharedMedia = {
   overlayBackgroundColorEnd: string;
 };
 
+export const DEFAULT_SHARED_MEDIA: SharedMedia = {
+  girlName: "",
+  influencerCity: "",
+  influencerCountry: "",
+  flagEmoji: "",
+  flagSvgUrl: "",
+  overlayBackgroundColor: DEFAULT_OVERLAY_BACKGROUND_COLOR,
+  overlayBackgroundColorEnd: DEFAULT_OVERLAY_BACKGROUND_COLOR_END,
+};
+
+export function emptyMotionPhotoUrls(): MotionPhotoUrls {
+  return [[], [], []];
+}
+
+export function padPhotoUrls(
+  urls: readonly string[] | undefined | null,
+): string[] {
+  const next = Array.from({ length: PHOTO_SLOT_COUNT }, () => "");
+  if (!urls) return next;
+  for (let i = 0; i < PHOTO_SLOT_COUNT; i += 1) {
+    next[i] = (urls[i] ?? "").trim();
+  }
+  return next;
+}
+
+export function padMotionPhotoUrls(
+  motion: MotionPhotoUrls | undefined | null,
+  legacy?: readonly string[] | null,
+): MotionPhotoUrls {
+  const first = padPhotoUrls(motion?.[0] ?? legacy);
+  return [first, padPhotoUrls(motion?.[1]), padPhotoUrls(motion?.[2])];
+}
+
 const ROLES: Character[] = [
   {
     id: "policewoman",
     name: "Police Woman",
+    groupId: "group-1",
     videoUrl: "",
     backUrl: CARD_BACK_URL,
     motionVideos: ["", "", ""],
+    motionPhotoUrls: emptyMotionPhotoUrls(),
+    giftVideoUrl: "",
   },
   {
     id: "nurse",
     name: "Nurse",
+    groupId: "group-2",
     videoUrl: "",
     backUrl: CARD_BACK_URL,
     motionVideos: ["", "", ""],
+    motionPhotoUrls: emptyMotionPhotoUrls(),
+    giftVideoUrl: "",
   },
   {
     id: "teacher",
     name: "Teacher",
+    groupId: "group-3",
     videoUrl: "",
     backUrl: CARD_BACK_URL,
     motionVideos: ["", "", ""],
+    motionPhotoUrls: emptyMotionPhotoUrls(),
+    giftVideoUrl: "",
   },
   {
     id: "gym",
     name: "Gym",
+    groupId: "group-4",
     videoUrl: "",
     backUrl: CARD_BACK_URL,
     motionVideos: ["", "", ""],
+    motionPhotoUrls: emptyMotionPhotoUrls(),
+    giftVideoUrl: "",
   },
   {
     id: "firefighter",
     name: "Firefighter",
+    groupId: "group-5",
     videoUrl: "",
     backUrl: CARD_BACK_URL,
     motionVideos: ["", "", ""],
+    motionPhotoUrls: emptyMotionPhotoUrls(),
+    giftVideoUrl: "",
   },
 ];
 
@@ -78,10 +139,28 @@ export const CHARACTER_BY_ID: Record<CharacterId, Character> = ROLES.reduce(
   {} as Record<CharacterId, Character>,
 );
 
+export const CHARACTER_BY_GROUP_ID: Record<GroupId, Character> = ROLES.reduce(
+  (acc, role) => {
+    acc[role.groupId] = role;
+    return acc;
+  },
+  {} as Record<GroupId, Character>,
+);
+
 export function isCharacterId(
   value: string | null | undefined,
 ): value is CharacterId {
   return !!value && value in CHARACTER_BY_ID;
+}
+
+export function isGroupId(value: string | null | undefined): value is GroupId {
+  return (
+    value === "group-1" ||
+    value === "group-2" ||
+    value === "group-3" ||
+    value === "group-4" ||
+    value === "group-5"
+  );
 }
 
 export function formatCharacterDisplayName(
@@ -95,6 +174,63 @@ export function formatCharacterDisplayName(
   if (role.toLowerCase() === girl.toLowerCase()) return girl;
   if (role.toLowerCase().startsWith(`${girl.toLowerCase()} `)) return role;
   return `${girl} ${role}`;
+}
+
+export function getMotionVideoList(character: Character): string[] {
+  const list = character.motionVideos.map((url) => url.trim()).filter(Boolean);
+  if (list.length > 0) return list;
+  const swipe = character.videoUrl.trim();
+  return swipe ? [swipe] : [];
+}
+
+export function getFilledPhotoUrls(
+  character: Character,
+  motionSlot?: number,
+): string[] {
+  const groups = padMotionPhotoUrls(
+    character.motionPhotoUrls,
+    character.photoUrls,
+  );
+  if (
+    typeof motionSlot === "number" &&
+    motionSlot >= 0 &&
+    motionSlot < MOTION_VIDEO_COUNT
+  ) {
+    return groups[motionSlot]!.filter(Boolean);
+  }
+  return groups.flatMap((group) => group.filter(Boolean));
+}
+
+export function getRolePhotoFilledCount(character: Character): number {
+  return getFilledPhotoUrls(character).length;
+}
+
+export function getGiftVideoUrl(character: Character): string {
+  return (character.giftVideoUrl ?? "").trim();
+}
+
+export function indexCharactersById(
+  characters: Character[],
+): Record<CharacterId, Character> {
+  return characters.reduce(
+    (acc, character) => {
+      acc[character.id] = character;
+      return acc;
+    },
+    {} as Record<CharacterId, Character>,
+  );
+}
+
+export function indexCharactersByGroupId(
+  characters: Character[],
+): Record<GroupId, Character> {
+  return characters.reduce(
+    (acc, character) => {
+      acc[character.groupId] = character;
+      return acc;
+    },
+    {} as Record<GroupId, Character>,
+  );
 }
 
 export function revealCardId(characterId: CharacterId, slot: number): string {

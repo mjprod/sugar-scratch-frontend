@@ -40,7 +40,6 @@
 
   position: relative;
   z-index: 5;
-  display: grid;
   box-sizing: border-box;
   isolation: isolate;
   /* cqi font scales relative to the card face width */
