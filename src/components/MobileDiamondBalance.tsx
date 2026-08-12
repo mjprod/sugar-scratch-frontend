@@ -1,9 +1,10 @@
-import { Gem, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
-import { formatBalance } from "@/components/CurrencyBalances";
+import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
+import { Gem } from "lucide-react";
 
 /**
- * Compact diamond pill — Store shortcut (or display-only).
+ * Compact diamond control — used on secondary subpage trailings (Store/Settings).
+ * Mobile TopNav uses CurrencyBalances instead.
  */
 export function MobileDiamondBalance({
   balance,
@@ -57,58 +58,61 @@ export function MobileDiamondBalance({
   );
 }
 
-/** Absolute top-right shell — Diamonds (+ optional Inbox). lg:hidden. */
+/** Compact mobile utility HUD — brand + inline resources + inbox. lg:hidden. */
 export function MobileDiamondUtility({
   coins,
   balance,
   onOpenStore,
+  onOpenHome,
   visible = true,
-  mode = "diamonds",
   trailing,
+  showBrand = true,
 }: {
   coins?: number | null;
   balance: number | null;
   onOpenStore?: () => void;
+  onOpenHome?: () => void;
   visible?: boolean;
-  /** Primary pages use diamonds-only; dual kept for rare chrome needs. */
-  mode?: "diamonds" | "both";
-  /** e.g. InboxButton — sits beside diamond balance. */
+  /** e.g. InboxButton (ghost) — sits beside balances. */
   trailing?: ReactNode;
+  showBrand?: boolean;
 }) {
   if (!visible) return null;
 
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 flex justify-end px-4 pt-[max(12px,env(safe-area-inset-top))] lg:hidden"
-      aria-hidden={false}
+    <header
+      className={[
+        "top-nav-mobile fixed inset-x-0 top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden",
+      ].join(" ")}
+      aria-label="Utilities"
     >
-      <div className="pointer-events-auto flex items-center gap-2">
-        {mode === "diamonds" ? (
-          <MobileDiamondBalance
-            balance={balance}
-            onOpenStore={onOpenStore}
-            standalone
-          />
-        ) : (
-          <div
-            className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/[0.1] bg-[#151515]/90 px-2.5 py-1 shadow-soft backdrop-blur-md"
-            aria-live="polite"
-          >
-            <span
-              className="inline-flex items-center gap-1.5 px-1"
-              aria-label={`${formatBalance(coins ?? null)} Sugar Coins`}
+      <div className="top-nav-mobile-inner flex min-h-[44px] items-center gap-3 px-4 pb-2 pt-[max(8px,env(safe-area-inset-top,0px))]">
+        {showBrand ? (
+          onOpenHome ? (
+            <button
+              type="button"
+              onClick={onOpenHome}
+              className="top-nav-brand shrink-0 text-[17px] font-bold tracking-[-0.03em] text-white/90"
             >
-              <Sparkles className="size-3.5 shrink-0 text-champagne" aria-hidden />
-              <span className="text-[13px] font-semibold tabular-nums text-white">
-                {formatBalance(coins ?? null)}
-              </span>
+              Sugar
+            </button>
+          ) : (
+            <span className="top-nav-brand shrink-0 text-[17px] font-bold tracking-[-0.03em] text-white/90">
+              Sugar
             </span>
-            <span className="h-3 w-px bg-white/20" aria-hidden />
-            <MobileDiamondBalance balance={balance} onOpenStore={onOpenStore} />
-          </div>
+          )
+        ) : (
+          <span className="flex-1" aria-hidden />
         )}
-        {trailing}
+        <div className="ml-auto flex items-center gap-2.5">
+          <CurrencyBalances
+            coins={coins ?? null}
+            diamonds={balance}
+            onOpenStore={onOpenStore}
+          />
+          {trailing}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

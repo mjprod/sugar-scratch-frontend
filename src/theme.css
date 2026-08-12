@@ -2686,8 +2686,8 @@ body[data-theme="v8"] .collection-page-content {
   width: calc(100% - 24px);
   max-width: 480px;
   margin-inline: auto;
-  /* Room for absolute MobileDiamondUtility (lg:hidden). */
-  padding-top: var(--app-diamond-offset, calc(52px + env(safe-area-inset-top, 0px)));
+  /* Gap below sticky TopNav (in-flow). */
+  padding-top: var(--app-diamond-offset, 12px);
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   display: flex;
   flex-direction: column;
@@ -4862,6 +4862,9 @@ body[data-theme="v8"] .hf-page {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
+  /* Footer is portaled fixed — keep feed above it. */
+  padding-bottom: var(--hf-bottom-clearance);
+  box-sizing: border-box;
   background:
     radial-gradient(circle at 50% 30%, rgba(155, 92, 255, 0.12), transparent 42%),
     #060608;
@@ -4886,9 +4889,9 @@ body[data-theme="v8"] .hf-frame {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-page {
-    /* Website chrome: top nav only */
+    /* Website chrome: top nav overlays — height comes from flex fill */
     --hf-bottom-clearance: 24px;
-    --hf-top-clearance: 72px;
+    --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
 
   body[data-theme="v8"] .hf-frame {
@@ -4898,7 +4901,9 @@ body[data-theme="v8"] .hf-frame {
   }
 
   body[data-theme="v8"] .hf-viewport {
-    height: calc(100dvh - var(--hf-top-clearance) - var(--hf-bottom-clearance) - 24px);
+    height: auto;
+    flex: 1 1 0;
+    min-height: 0;
   }
 
   /* Top nav already has Sugar + tabs — quiet the in-feed logo */
@@ -5069,8 +5074,10 @@ body[data-theme="v8"] .hf-avatar-img {
 body[data-theme="v8"] .hf-viewport {
   position: relative;
   width: 100%;
-  height: calc(100dvh - var(--hf-bottom-clearance));
-  max-height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
   overflow-x: hidden;
   overflow-y: auto;
   touch-action: pan-y;
@@ -5300,7 +5307,7 @@ body[data-theme="v8"] .hf-state {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: calc(100dvh - var(--hf-bottom-clearance));
+  min-height: 100%;
   padding: 24px;
   text-align: center;
 }
@@ -5382,7 +5389,9 @@ body[data-theme="v8"] .hf-loading-more {
 body[data-theme="v8"] .auth2-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
   background:
     radial-gradient(circle at 12% 18%, rgba(155, 92, 255, 0.14), transparent 40%),
     radial-gradient(circle at 88% 82%, rgba(255, 77, 158, 0.1), transparent 38%),
@@ -6347,7 +6356,9 @@ body[data-theme="v8"] .auth7-verify-later {
 body[data-theme="v8"] .auth7-onboard-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -7172,8 +7183,8 @@ body[data-theme="v8"] .inbox-page-content {
   width: calc(100% - (var(--app-gutter, 20px) * 2));
   max-width: min(640px, var(--app-content-max, 64rem));
   margin: 0 auto;
-  /* Match Home / Rewards / Collection: clear shared MobileDiamondUtility */
-  padding-top: var(--app-diamond-offset, calc(56px + env(safe-area-inset-top, 0px)));
+  /* TopNav hidden on inbox — only safe-area / small gap for SubpageHeader. */
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   display: flex;
   flex-direction: column;
@@ -7454,11 +7465,18 @@ body[data-theme="v8"] .inbox-empty-copy {
  * ----------------------------------------------------------------------- */
 
 body[data-theme="v8"] .subpage-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
   width: 100%;
+  padding-block: 8px;
+  background: rgba(7, 7, 9, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 body[data-theme="v8"] .subpage-back {
@@ -7518,8 +7536,162 @@ body[data-theme="v8"] .subpage-trailing {
 body[data-theme="v8"] {
   --app-gutter: 20px;
   --app-content-max: 64rem;
-  --app-diamond-offset: calc(72px + env(safe-area-inset-top, 0px));
+  /* Shared sticky top chrome heights (desktop bar / mobile utility). */
+  --app-top-nav-height: 56px;
+  --app-top-nav-z-index: 30;
+  --app-mobile-utility-height: calc(44px + 8px + env(safe-area-inset-top, 0px));
+  /* Gap below HUD — pages underlap fixed chrome via this safe offset. */
+  --app-diamond-offset: 12px;
   --app-footer-offset: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Shared HUD resource / ghost inbox styling (mobile + desktop). */
+body[data-theme="v8"] .top-nav-resource-value {
+  color: rgba(245, 245, 247, 0.9);
+}
+
+body[data-theme="v8"] .top-nav-resource-icon--coin {
+  color: color-mix(in oklab, var(--color-champagne) 78%, transparent);
+}
+
+body[data-theme="v8"] .top-nav-resource-icon--diamond {
+  color: color-mix(in oklab, #7dd3fc 72%, transparent);
+}
+
+body[data-theme="v8"] .top-nav-resource--action:hover,
+body[data-theme="v8"] .top-nav-resource--action:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  font-size: 8px;
+  line-height: 14px;
+  background: var(--color-rose, #ec4899);
+}
+
+/* Mobile / tablet — compact translucent utility HUD (content underlaps). */
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .app-layout--hud {
+    --app-diamond-offset: var(--app-mobile-utility-height);
+  }
+
+  body[data-theme="v8"] .top-nav-mobile {
+    --top-nav-surface: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 62%,
+      transparent
+    );
+    --top-nav-surface-scrolled: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 74%,
+      transparent
+    );
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--app-top-nav-z-index, 30);
+    width: 100%;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--top-nav-surface);
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  }
+
+  body[data-theme="v8"] .top-nav-mobile::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 10, 0.28) 0%,
+      transparent 72%
+    );
+  }
+
+  body[data-theme="v8"] .top-nav-mobile-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  body[data-theme="v8"] .app-layout--hud .hf-page {
+    /* Media underlaps fixed mobile HUD */
+    padding-top: 0;
+  }
+}
+
+/* Desktop TopNav — true translucent HUD overlay (content underlaps). */
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-layout--hud {
+    /* Safe offset for interactive content; backgrounds underlap via fixed HUD. */
+    --app-diamond-offset: var(--app-top-nav-height, 56px);
+  }
+
+  body[data-theme="v8"] .top-nav-desktop {
+    --top-nav-surface: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 62%,
+      transparent
+    );
+    --top-nav-surface-scrolled: color-mix(
+      in oklab,
+      color-mix(in oklab, var(--color-canvas) 82%, var(--color-brand) 18%) 74%,
+      transparent
+    );
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--app-top-nav-z-index, 30);
+    width: 100%;
+    height: var(--app-top-nav-height, 56px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--top-nav-surface);
+    backdrop-filter: blur(18px) saturate(1.1);
+    -webkit-backdrop-filter: blur(18px) saturate(1.1);
+    transition: background-color 160ms ease, border-color 160ms ease;
+  }
+
+  body[data-theme="v8"] .top-nav-desktop::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 10, 0.28) 0%,
+      transparent 72%
+    );
+  }
+
+  body[data-theme="v8"] .top-nav-desktop-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  body[data-theme="v8"] .top-nav-desktop.is-scrolled {
+    background: var(--top-nav-surface-scrolled);
+    border-bottom-color: color-mix(in oklab, var(--color-line) 70%, transparent);
+  }
+
+  /* Home: media fills under the fixed HUD (no top chrome gap). */
+  body[data-theme="v8"] .app-layout--hud .hf-frame {
+    margin-top: 0;
+    margin-bottom: 12px;
+    border-radius: 0 0 28px 28px;
+  }
+
+  body[data-theme="v8"] .app-layout--hud .hf-page {
+    --hf-top-clearance: 0px;
+  }
 }
 
 body[data-theme="v8"] .app-page-shell {
@@ -7547,8 +7719,12 @@ body[data-theme="v8"] .app-page-shell-inner {
 }
 
 @media (min-width: 1024px) {
+  body[data-theme="v8"] {
+    --app-diamond-offset: 32px;
+  }
+
   body[data-theme="v8"] .app-page-shell--primary {
-    padding-top: 32px;
+    padding-top: var(--app-diamond-offset);
     padding-inline: 32px;
   }
 

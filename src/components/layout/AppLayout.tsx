@@ -53,7 +53,14 @@ export function AppLayout() {
   const inboxUnread = guest ? 0 : countUnread(INBOX_FIXTURES);
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
+    <div
+      className={[
+        "relative flex min-h-0 flex-1 flex-col",
+        showTopNav ? "app-layout--hud" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {showTopNav ? (
         <TopNav
           coins={guest ? null : coins}
@@ -67,7 +74,9 @@ export function AppLayout() {
         />
       ) : null}
 
-      <Outlet />
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Outlet />
+      </div>
 
       {showFooter ? (
         <FooterNav

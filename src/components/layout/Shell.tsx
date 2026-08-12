@@ -3,21 +3,16 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export function AppShell({
   children,
-  label = "Sugar Scratch",
 }: {
   children: ReactNode;
+  /** @deprecated Dev-only label removed from production chrome. */
   label?: string;
 }) {
   return (
-    <div className="min-h-full w-full">
-      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10">
-        <div className="pointer-events-none sticky top-0 z-40 -mb-2 flex justify-end pt-2 sm:pt-3">
-          <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-medium tracking-[0.04em] text-white/40 backdrop-blur-md">
-            {label} · v8
-          </span>
-        </div>
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-6 lg:max-w-none lg:px-0">
         <div
-          className="relative flex min-h-[calc(100dvh-24px)] min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none lg:min-h-[calc(100dvh-40px)]"
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none"
           aria-label="Sugar Scratch"
         >
           <Stage>{children}</Stage>
