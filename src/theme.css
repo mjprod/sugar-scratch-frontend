@@ -4994,6 +4994,8 @@ body[data-theme="v8"] .cpv2-toast {
  * ======================================================================== */
 
 body[data-theme="v8"] .hf-page {
+  /* Feed fills the usable content viewport, not the raw browser viewport. */
+  --hf-top-clearance: 0px;
   --hf-bottom-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
   --hf-frame-width: min(100%, 428px);
 
@@ -5005,7 +5007,8 @@ body[data-theme="v8"] .hf-page {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
-  /* Footer is portaled fixed — keep feed above it. */
+  /* Fixed TopNav / Footer — reserve chrome so media never underlaps. */
+  padding-top: var(--hf-top-clearance);
   padding-bottom: var(--hf-bottom-clearance);
   box-sizing: border-box;
   background:
@@ -5032,9 +5035,7 @@ body[data-theme="v8"] .hf-frame {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-page {
-    /* Website chrome: top nav overlays — height comes from flex fill */
     --hf-bottom-clearance: 24px;
-    --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
 
   body[data-theme="v8"] .hf-frame {
@@ -5307,7 +5308,8 @@ body[data-theme="v8"] .hf-overlay {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  /* Bottom safe-area lives in --hf-bottom-clearance — don't double-count. */
+  padding: 24px 18px 18px;
   opacity: 0.88;
   transform: translateY(6px);
   transition:
@@ -8414,9 +8416,9 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
     padding-top: var(--app-diamond-offset);
   }
 
+  /* Immersive feed: media starts below mobile HUD (shared height token). */
   body[data-theme="v8"] .app-layout--hud .hf-page {
-    /* Home media underlaps fixed mobile HUD; overlays handle their own safe UI. */
-    padding-top: 0;
+    --hf-top-clearance: var(--mobile-top-hud-height);
   }
 }
 
@@ -8475,15 +8477,9 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
     border-bottom-color: color-mix(in oklab, var(--color-line) 70%, transparent);
   }
 
-  /* Home: media fills under the fixed HUD (no top chrome gap). */
-  body[data-theme="v8"] .app-layout--hud .hf-frame {
-    margin-top: 0;
-    margin-bottom: 12px;
-    border-radius: 0 0 28px 28px;
-  }
-
+  /* Immersive feed: media starts below desktop TopNav (shared height token). */
   body[data-theme="v8"] .app-layout--hud .hf-page {
-    --hf-top-clearance: 0px;
+    --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
 }
 
