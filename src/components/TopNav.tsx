@@ -49,17 +49,15 @@ export function TopNav({
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll(SCROLL_SELECTOR)).filter(
+      (node): node is HTMLElement => node instanceof HTMLElement,
+    );
+
     const readScrolled = () => {
-      const nodes = document.querySelectorAll(SCROLL_SELECTOR);
-      let next = false;
-      nodes.forEach((node) => {
-        if (node instanceof HTMLElement && node.scrollTop > 8) next = true;
-      });
-      setScrolled(next);
+      setScrolled(nodes.some((node) => node.scrollTop > 8));
     };
 
     readScrolled();
-    const nodes = Array.from(document.querySelectorAll(SCROLL_SELECTOR));
     nodes.forEach((node) => {
       node.addEventListener("scroll", readScrolled, { passive: true });
     });
