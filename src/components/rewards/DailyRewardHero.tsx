@@ -53,43 +53,25 @@ export function DailyRewardHero({
       aria-labelledby="hub-daily-title"
     >
       <div className="hub-daily-hero-body">
-        <h3 id="hub-daily-title" className="hub-daily-hero-title">
-          Daily Reward
-        </h3>
+        <div className="hub-daily-hero-head">
+          <h3 id="hub-daily-title" className="hub-daily-hero-title">
+            Daily Reward
+          </h3>
+          {!claimed ? (
+            <span className="hub-daily-ready-chip">
+              <span className="hub-daily-ready-dot" aria-hidden="true" />
+              Ready
+            </span>
+          ) : null}
+        </div>
 
         {claimed ? (
-          <>
-            <p className="hub-daily-hero-copy hub-daily-hero-copy--claimed">
-              <Check className="size-4 shrink-0" aria-hidden="true" />
-              Claimed for today
-            </p>
-            <p className="hub-daily-hero-sub">Come back tomorrow.</p>
-            <p className="hub-daily-hero-reset">
-              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-              Next reward in{" "}
-              <span className="tabular-nums">{countdown}</span>
-            </p>
-          </>
+          <p className="hub-daily-hero-copy hub-daily-hero-copy--claimed">
+            <Check className="size-4 shrink-0" aria-hidden="true" />
+            Claimed for today
+          </p>
         ) : (
-          <>
-            <p className="hub-daily-hero-copy">Your reward is ready!</p>
-            <button
-              type="button"
-              className="hub-daily-hero-cta"
-              onClick={handleClaim}
-              disabled={claiming}
-              aria-busy={claiming}
-            >
-              {claiming ? "Claiming…" : "Claim Reward"}
-              {!claiming ? (
-                <ArrowRight className="size-4" aria-hidden="true" />
-              ) : null}
-            </button>
-            <p className="hub-daily-hero-reset">
-              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-              Resets in <span className="tabular-nums">{countdown}</span>
-            </p>
-          </>
+          <p className="hub-daily-hero-copy">Your reward is ready!</p>
         )}
       </div>
 
@@ -111,6 +93,38 @@ export function DailyRewardHero({
           <Gift className="hub-daily-stage-gift" strokeWidth={1.35} />
         </div>
         <span className="hub-daily-stage-platform" />
+      </div>
+
+      <div className="hub-daily-hero-actions">
+        {claimed ? (
+          <>
+            <p className="hub-daily-hero-sub">Come back tomorrow.</p>
+            <p className="hub-daily-hero-reset">
+              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+              Next reward in{" "}
+              <span className="tabular-nums">{countdown}</span>
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="hub-daily-hero-cta"
+              onClick={handleClaim}
+              disabled={claiming}
+              aria-busy={claiming}
+            >
+              {claiming ? "Claiming…" : "Claim Reward"}
+              {!claiming ? (
+                <ArrowRight className="size-4" aria-hidden="true" />
+              ) : null}
+            </button>
+            <p className="hub-daily-hero-reset">
+              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+              Resets in <span className="tabular-nums">{countdown}</span>
+            </p>
+          </>
+        )}
       </div>
     </article>
   );

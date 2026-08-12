@@ -81,12 +81,10 @@ export function MobileDiamondUtility({
 
   return (
     <header
-      className={[
-        "top-nav-mobile fixed inset-x-0 top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden",
-      ].join(" ")}
+      className="top-nav-mobile fixed inset-x-0 top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden"
       aria-label="Utilities"
     >
-      <div className="top-nav-mobile-inner flex min-h-[44px] items-center gap-3 px-4 pb-2 pt-[max(8px,env(safe-area-inset-top,0px))]">
+      <div className="top-nav-mobile-inner">
         {showBrand ? (
           onOpenHome ? (
             <button

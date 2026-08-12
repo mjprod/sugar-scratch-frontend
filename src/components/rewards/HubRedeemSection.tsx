@@ -18,6 +18,7 @@ export function HubRedeemSection({
   onDiamondReward,
   onPackReward,
   onOpenPack,
+  hideHeading = false,
 }: {
   onDiamondReward: (amount: number) => void;
   onPackReward: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
@@ -29,6 +30,8 @@ export function HubRedeemSection({
     creator: string;
     instanceId?: string;
   }) => void;
+  /** When true, omit section eyebrow (e.g. opened from ACTIVE tile). */
+  hideHeading?: boolean;
 }) {
   const [code, setCode] = useState("");
   const [state, setState] = useState<HubRedeemState>({ status: "idle" });
@@ -68,11 +71,17 @@ export function HubRedeemSection({
   }
 
   return (
-    <section className="hub-redeem" aria-labelledby="hub-redeem-heading">
-      <h2 id="hub-redeem-heading" className="hub-section-label hub-section-label--redeem">
-        <Ticket className="size-3.5" aria-hidden="true" />
-        Redeem a code
-      </h2>
+    <section
+      className={["hub-redeem", hideHeading ? "hub-redeem--panel" : ""].filter(Boolean).join(" ")}
+      aria-labelledby={hideHeading ? undefined : "hub-redeem-heading"}
+      aria-label={hideHeading ? "Redeem a code" : undefined}
+    >
+      {hideHeading ? null : (
+        <h2 id="hub-redeem-heading" className="hub-section-label hub-section-label--redeem">
+          <Ticket className="size-3.5" aria-hidden="true" />
+          Redeem a code
+        </h2>
+      )}
 
       <div className="hub-redeem-card">
         <div className="hub-redeem-intro">

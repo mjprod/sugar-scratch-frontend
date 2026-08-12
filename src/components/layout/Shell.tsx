@@ -10,7 +10,8 @@ export function AppShell({
 }) {
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col px-4 sm:px-6 lg:max-w-none lg:px-0">
+      {/* Full-bleed app shell — page content owns horizontal padding / max-width. */}
+      <div className="flex min-h-0 w-full flex-1 flex-col">
         <div
           className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none"
           aria-label="Sugar Scratch"

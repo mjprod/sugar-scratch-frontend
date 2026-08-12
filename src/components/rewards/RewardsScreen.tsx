@@ -3,8 +3,10 @@ import {
   ChevronRight,
   ShoppingBag,
   Sparkles,
+  Ticket,
   Zap,
 } from "lucide-react";
+import { useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
@@ -12,7 +14,7 @@ import type { RedeemReward } from "@/services/redeem";
 
 /**
  * Hub — engagement / reward center.
- * Active Rewards omitted: no corresponding product feature yet (Store alone).
+ * Mobile: Claim → Act → Anticipate. Desktop composition preserved via CSS.
  */
 export function HubScreen({
   onClaimDaily,
@@ -34,6 +36,8 @@ export function HubScreen({
     instanceId?: string;
   }) => void;
 }) {
+  const [redeemOpen, setRedeemOpen] = useState(false);
+
   return (
     <AppPageShell aria-label="Hub" className="hub-page">
       <header className="hub-page-intro">
@@ -43,7 +47,7 @@ export function HubScreen({
         </p>
       </header>
 
-      <section className="hub-module" aria-labelledby="hub-today-heading">
+      <section className="hub-module hub-module--today" aria-labelledby="hub-today-heading">
         <h2 id="hub-today-heading" className="hub-section-label hub-section-label--today">
           <Sparkles className="size-3.5" aria-hidden="true" />
           Today
@@ -56,35 +60,64 @@ export function HubScreen({
           <Zap className="size-3.5" aria-hidden="true" />
           Active
         </h2>
-        <div className="hub-active-grid hub-active-grid--solo">
+        <div className="hub-active-grid">
           <button type="button" className="hub-feature-tile" onClick={onOpenStore}>
             <span className="hub-feature-tile-icon is-store" aria-hidden="true">
-              <ShoppingBag className="size-6" strokeWidth={1.6} />
+              <ShoppingBag className="size-5" strokeWidth={1.6} />
             </span>
             <span className="hub-feature-tile-copy">
               <span className="hub-feature-tile-title">Store</span>
               <span className="hub-feature-tile-detail">
-                Get Diamonds and exclusive packs.
+                Get Diamonds & packs
               </span>
             </span>
             <ChevronRight className="hub-feature-tile-chevron" aria-hidden="true" />
           </button>
+
+          <button
+            type="button"
+            className={[
+              "hub-feature-tile",
+              redeemOpen ? "is-expanded" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            onClick={() => setRedeemOpen((open) => !open)}
+            aria-expanded={redeemOpen}
+            aria-controls="hub-redeem-panel"
+          >
+            <span className="hub-feature-tile-icon is-redeem" aria-hidden="true">
+              <Ticket className="size-5" strokeWidth={1.6} />
+            </span>
+            <span className="hub-feature-tile-copy">
+              <span className="hub-feature-tile-title">Redeem a Code</span>
+              <span className="hub-feature-tile-detail">
+                Unlock special rewards
+              </span>
+            </span>
+            <ChevronRight className="hub-feature-tile-chevron" aria-hidden="true" />
+          </button>
+
+          {redeemOpen ? (
+            <div id="hub-redeem-panel" className="hub-redeem-panel">
+              <HubRedeemSection
+                hideHeading
+                onDiamondReward={onDiamondReward}
+                onPackReward={onPackReward}
+                onOpenPack={onOpenPack}
+              />
+            </div>
+          ) : null}
         </div>
       </section>
 
-      <div className="hub-module">
-        <HubRedeemSection
-          onDiamondReward={onDiamondReward}
-          onPackReward={onPackReward}
-          onOpenPack={onOpenPack}
-        />
-      </div>
-
       <section className="hub-module" aria-labelledby="hub-upcoming-heading">
-        <h2 id="hub-upcoming-heading" className="hub-section-label">
-          <CalendarDays className="size-3.5" aria-hidden="true" />
-          Upcoming
-        </h2>
+        <div className="hub-section-row">
+          <h2 id="hub-upcoming-heading" className="hub-section-label hub-section-label--upcoming">
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+            Upcoming
+          </h2>
+        </div>
         <div className="hub-upcoming-empty">
           <span className="hub-upcoming-empty-icon" aria-hidden="true">
             <CalendarDays className="size-5" />
