@@ -13,12 +13,11 @@ type HubRedeemState =
   | { status: "success"; reward: RedeemReward }
   | { status: "error"; errorType: RedeemErrorType };
 
-/** Secondary Hub utility — discoverable, low visual priority. */
+/** Inline Hub utility — code entry visible without expand/navigation. */
 export function HubRedeemSection({
   onDiamondReward,
   onPackReward,
   onOpenPack,
-  hideHeading = false,
 }: {
   onDiamondReward: (amount: number) => void;
   onPackReward: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
@@ -30,8 +29,6 @@ export function HubRedeemSection({
     creator: string;
     instanceId?: string;
   }) => void;
-  /** When true, omit section eyebrow (e.g. opened from ACTIVE tile). */
-  hideHeading?: boolean;
 }) {
   const [code, setCode] = useState("");
   const [state, setState] = useState<HubRedeemState>({ status: "idle" });
@@ -72,26 +69,21 @@ export function HubRedeemSection({
 
   return (
     <section
-      className={["hub-redeem", hideHeading ? "hub-redeem--panel" : ""].filter(Boolean).join(" ")}
-      aria-labelledby={hideHeading ? undefined : "hub-redeem-heading"}
-      aria-label={hideHeading ? "Redeem a code" : undefined}
+      className="hub-module hub-redeem"
+      aria-labelledby="hub-redeem-heading"
     >
-      {hideHeading ? null : (
-        <h2 id="hub-redeem-heading" className="hub-section-label hub-section-label--redeem">
-          <Ticket className="size-3.5" aria-hidden="true" />
-          Redeem a code
-        </h2>
-      )}
+      <h2
+        id="hub-redeem-heading"
+        className="hub-section-label hub-section-label--redeem"
+      >
+        <Ticket className="size-3.5" aria-hidden="true" />
+        Redeem a Code
+      </h2>
 
       <div className="hub-redeem-card">
-        <div className="hub-redeem-intro">
-          <span className="hub-redeem-motif" aria-hidden="true">
-            <Ticket className="size-5" />
-          </span>
-          <p className="hub-redeem-lead">
-            Have a code? Redeem it for your reward.
-          </p>
-        </div>
+        <p className="hub-redeem-lead">
+          Have a code? Redeem it for your reward.
+        </p>
 
         <form
           className="hub-redeem-form"

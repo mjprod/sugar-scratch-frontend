@@ -1642,7 +1642,7 @@ body[data-theme="v8"] .hub-module {
 }
 
 body[data-theme="v8"] .hub-module--today {
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 @media (min-width: 1024px) {
@@ -1651,7 +1651,7 @@ body[data-theme="v8"] .hub-module--today {
   }
 
   body[data-theme="v8"] .hub-module--today {
-    margin-top: 28px;
+    margin-top: 0;
   }
 }
 
@@ -1699,7 +1699,7 @@ body[data-theme="v8"] .hub-section-label--upcoming {
 }
 
 body[data-theme="v8"] .hub-section-label--redeem {
-  color: rgba(255, 255, 255, 0.4);
+  color: #c4b5fd;
 }
 
 /* -------- Level 1: Daily Reward stage -------- */
@@ -2091,8 +2091,12 @@ body[data-theme="v8"] .hub-active-grid {
   gap: 10px;
 }
 
+body[data-theme="v8"] .hub-active-grid--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (min-width: 1024px) {
-  body[data-theme="v8"] .hub-active-grid {
+  body[data-theme="v8"] .hub-active-grid:not(.hub-active-grid--solo) {
     gap: 12px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2128,16 +2132,6 @@ body[data-theme="v8"] .hub-feature-tile:focus-visible {
   outline-offset: 2px;
 }
 
-body[data-theme="v8"] .hub-feature-tile.is-expanded {
-  border-color: rgba(196, 181, 253, 0.22);
-  background: rgba(139, 92, 246, 0.08);
-}
-
-body[data-theme="v8"] .hub-feature-tile.is-expanded .hub-feature-tile-chevron {
-  transform: rotate(90deg);
-  color: rgba(255, 255, 255, 0.55);
-}
-
 body[data-theme="v8"] .hub-feature-tile-icon {
   display: grid;
   width: 42px;
@@ -2153,12 +2147,6 @@ body[data-theme="v8"] .hub-feature-tile-icon.is-store {
   color: #7dd3fc;
   background: rgba(56, 189, 248, 0.1);
   border-color: rgba(56, 189, 248, 0.2);
-}
-
-body[data-theme="v8"] .hub-feature-tile-icon.is-redeem {
-  color: #e9d5ff;
-  background: rgba(168, 85, 247, 0.12);
-  border-color: rgba(168, 85, 247, 0.22);
 }
 
 body[data-theme="v8"] .hub-feature-tile-copy {
@@ -2187,19 +2175,6 @@ body[data-theme="v8"] .hub-feature-tile-chevron {
   height: 18px;
   flex-shrink: 0;
   color: rgba(255, 255, 255, 0.32);
-  transition: transform 0.15s ease, color 0.15s ease;
-}
-
-body[data-theme="v8"] .hub-redeem-panel {
-  min-width: 0;
-}
-
-body[data-theme="v8"] .hub-redeem--panel {
-  width: 100%;
-}
-
-body[data-theme="v8"] .hub-redeem--panel .hub-redeem-intro {
-  margin-bottom: 12px;
 }
 
 @media (min-width: 1024px) {
@@ -2223,10 +2198,6 @@ body[data-theme="v8"] .hub-redeem--panel .hub-redeem-intro {
   body[data-theme="v8"] .hub-feature-tile-detail {
     font-size: 13px;
   }
-
-  body[data-theme="v8"] .hub-redeem-panel {
-    grid-column: 1 / -1;
-  }
 }
 
 /* -------- Level 3: Redeem utility -------- */
@@ -2235,34 +2206,14 @@ body[data-theme="v8"] .hub-redeem {
 }
 
 body[data-theme="v8"] .hub-redeem-card {
-  border-radius: 22px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.03);
-  padding: 16px;
-}
-
-body[data-theme="v8"] .hub-redeem-intro {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-body[data-theme="v8"] .hub-redeem-motif {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 12px;
-  border: 1px solid rgba(139, 92, 246, 0.22);
-  background: rgba(139, 92, 246, 0.1);
-  color: #c4b5fd;
+  padding: 14px;
 }
 
 body[data-theme="v8"] .hub-redeem-lead {
-  margin: 0;
-  padding-top: 8px;
+  margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.55);
@@ -2351,7 +2302,9 @@ body[data-theme="v8"] .hub-redeem-input:focus-visible {
   outline-offset: 2px;
 }
 
-@media (max-width: 359px) {
+/* Narrow mobile: stack input + Redeem full width */
+@media (max-width: 419px) {
+  body[data-theme="v8"] .hub-redeem-input,
   body[data-theme="v8"] .hub-redeem-submit {
     flex: 1 1 100%;
   }

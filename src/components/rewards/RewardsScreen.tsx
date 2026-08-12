@@ -3,10 +3,8 @@ import {
   ChevronRight,
   ShoppingBag,
   Sparkles,
-  Ticket,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
@@ -36,17 +34,8 @@ export function HubScreen({
     instanceId?: string;
   }) => void;
 }) {
-  const [redeemOpen, setRedeemOpen] = useState(false);
-
   return (
     <AppPageShell aria-label="Hub" className="hub-page">
-      <header className="hub-page-intro">
-        <h1 className="hub-page-title">Hub</h1>
-        <p className="hub-page-sub">
-          Rewards, progress and things worth coming back for.
-        </p>
-      </header>
-
       <section className="hub-module hub-module--today" aria-labelledby="hub-today-heading">
         <h2 id="hub-today-heading" className="hub-section-label hub-section-label--today">
           <Sparkles className="size-3.5" aria-hidden="true" />
@@ -60,7 +49,7 @@ export function HubScreen({
           <Zap className="size-3.5" aria-hidden="true" />
           Active
         </h2>
-        <div className="hub-active-grid">
+        <div className="hub-active-grid hub-active-grid--solo">
           <button type="button" className="hub-feature-tile" onClick={onOpenStore}>
             <span className="hub-feature-tile-icon is-store" aria-hidden="true">
               <ShoppingBag className="size-5" strokeWidth={1.6} />
@@ -73,43 +62,14 @@ export function HubScreen({
             </span>
             <ChevronRight className="hub-feature-tile-chevron" aria-hidden="true" />
           </button>
-
-          <button
-            type="button"
-            className={[
-              "hub-feature-tile",
-              redeemOpen ? "is-expanded" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            onClick={() => setRedeemOpen((open) => !open)}
-            aria-expanded={redeemOpen}
-            aria-controls="hub-redeem-panel"
-          >
-            <span className="hub-feature-tile-icon is-redeem" aria-hidden="true">
-              <Ticket className="size-5" strokeWidth={1.6} />
-            </span>
-            <span className="hub-feature-tile-copy">
-              <span className="hub-feature-tile-title">Redeem a Code</span>
-              <span className="hub-feature-tile-detail">
-                Unlock special rewards
-              </span>
-            </span>
-            <ChevronRight className="hub-feature-tile-chevron" aria-hidden="true" />
-          </button>
-
-          {redeemOpen ? (
-            <div id="hub-redeem-panel" className="hub-redeem-panel">
-              <HubRedeemSection
-                hideHeading
-                onDiamondReward={onDiamondReward}
-                onPackReward={onPackReward}
-                onOpenPack={onOpenPack}
-              />
-            </div>
-          ) : null}
         </div>
       </section>
+
+      <HubRedeemSection
+        onDiamondReward={onDiamondReward}
+        onPackReward={onPackReward}
+        onOpenPack={onOpenPack}
+      />
 
       <section className="hub-module" aria-labelledby="hub-upcoming-heading">
         <div className="hub-section-row">
