@@ -1,6 +1,6 @@
 import { Gem, Sparkles } from "lucide-react";
 
-/** Inline coin + diamond HUD counters for desktop TopNav. */
+/** Inline coin + diamond HUD counters (TopNav, mobile HUD, and subpage headers). */
 export function CurrencyBalances({
   coins,
   diamonds,
