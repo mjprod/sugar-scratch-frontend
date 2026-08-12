@@ -126,9 +126,11 @@ export function clearEmailVerified() {
   }
 }
 
-/** Prototype rule: at least 12 characters. */
+/** Prototype rule: at least this many characters. */
+export const AUTH_PASSWORD_MIN_LENGTH = 12;
+
 export function isValidAuthPassword(pw: string) {
-  return pw.length >= 12;
+  return pw.length >= AUTH_PASSWORD_MIN_LENGTH;
 }
 
 export function authFailureMessage() {
@@ -145,6 +147,46 @@ export function duplicateEmailMessage() {
 
 export function forgotPasswordSuccessMessage() {
   return "If an account exists for this email, password-reset instructions have been sent.";
+}
+
+export type ChangePasswordError =
+  | "incorrect_current"
+  | "invalid_new"
+  | "generic";
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; error: ChangePasswordError };
+
+/**
+ * Authenticated password update — prototype.
+ * Demo incorrect current: enter `wrong` as the current password.
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResult> {
+  await new Promise((r) => setTimeout(r, 700));
+  if (!currentPassword.trim()) {
+    return { ok: false, error: "incorrect_current" };
+  }
+  if (currentPassword.trim().toLowerCase() === "wrong") {
+    return { ok: false, error: "incorrect_current" };
+  }
+  if (!isValidAuthPassword(newPassword)) {
+    return { ok: false, error: "invalid_new" };
+  }
+  return { ok: true };
+}
+
+export function changePasswordErrorMessage(error: ChangePasswordError) {
+  if (error === "incorrect_current") {
+    return "Current password is incorrect.";
+  }
+  if (error === "invalid_new") {
+    return `Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`;
+  }
+  return "We couldn't change your password. Please try again.";
 }
 
 export function triggerFromAction(

@@ -18,6 +18,7 @@ import { RecIntroPage } from "@/pages/RecIntroPage";
 import { RecSwipePage } from "@/pages/RecSwipePage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { RewardsPage } from "@/pages/RewardsPage";
+import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
 import { InboxPage } from "@/pages/InboxPage";
@@ -153,6 +154,14 @@ export function AppRoutes() {
             element={
               <SoftGate tab="profile">
                 <SettingsPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="settings/change-password"
+            element={
+              <SoftGate tab="profile">
+                <ChangePasswordPage />
               </SoftGate>
             }
           />

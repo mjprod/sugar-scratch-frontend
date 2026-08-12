@@ -37,6 +37,7 @@ export const SURFACE_KIND: Record<string, NavSurfaceKind> = {
   inbox: "secondary",
   store: "secondary",
   settings: "secondary",
+  "change-password": "secondary",
   creator: "secondary",
   "purchase-flow": "immersive",
   "recommend-intro": "immersive",

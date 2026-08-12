@@ -18,6 +18,7 @@ import {
   isEmailVerified,
   markEmailVerified,
   needsEmailVerification,
+  type AuthenticationSheetMode,
   type AuthSuccessResult,
   type ProtectedAction,
 } from "@/services/auth";
@@ -79,6 +80,8 @@ type AuthContextValue = {
     SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
   >;
   authOpen: boolean;
+  authSheetMode: AuthenticationSheetMode;
+  authSheetEmail: string;
   pending: ProtectedAction | null;
   emailVerified: boolean;
   verifyOpen: boolean;
@@ -93,6 +96,7 @@ type AuthContextValue = {
   openCreator: (id: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
+  openPasswordReset: () => void;
   closeSecondary: (surface: SecondarySurfaceId) => void;
   inventoryRevision: number;
   bumpInventoryRevision: () => void;
@@ -122,6 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(() => isAuthenticated());
   const [profile, setProfile] = useState(initialProfile);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authSheetMode, setAuthSheetMode] =
+    useState<AuthenticationSheetMode>("login");
+  const [authSheetEmail, setAuthSheetEmail] = useState("");
   const [pending, setPending] = useState<ProtectedAction | null>(null);
   const [resumeLikeId, setResumeLikeId] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(() => isEmailVerified());
@@ -241,6 +248,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       setPending(action);
+      setAuthSheetMode("login");
+      setAuthSheetEmail("");
       setAuthOpen(true);
       return false;
     },
@@ -295,6 +304,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate(Paths.settings);
   }, [captureSecondaryReturn, guest, navigate, requireAuth]);
 
+  const openPasswordReset = useCallback(() => {
+    setPending(null);
+    setAuthSheetMode("forgot-password");
+    setAuthSheetEmail(getAuthEmail());
+    setAuthOpen(true);
+  }, []);
+
   const closeSecondary = useCallback(
     (surface: SecondarySurfaceId) => {
       const next = resolveSecondaryBack(secondaryReturnTab, surface);
@@ -313,6 +329,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       markEntered();
       markOnboardingDone();
       setAuthOpen(false);
+      setAuthSheetMode("login");
+      setAuthSheetEmail("");
       setAuthed(true);
       setEmailVerified(isEmailVerified());
 
@@ -341,6 +359,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const dismissAuth = useCallback(() => {
     setAuthOpen(false);
     setPending(null);
+    setAuthSheetMode("login");
+    setAuthSheetEmail("");
   }, []);
 
   const onVerified = useCallback(() => {
@@ -416,6 +436,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       setProfile,
       authOpen,
+      authSheetMode,
+      authSheetEmail,
       pending,
       emailVerified,
       verifyOpen,
@@ -430,6 +452,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openCreator,
       openPurchase,
       openSettings,
+      openPasswordReset,
       closeSecondary,
       inventoryRevision,
       bumpInventoryRevision,
@@ -451,6 +474,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       applyRecommendationDecision,
       authOpen,
+      authSheetEmail,
+      authSheetMode,
       authed,
       completeAuth,
       consumeResumeLike,
@@ -469,6 +494,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inventoryRevision,
       openCreator,
       openInbox,
+      openPasswordReset,
       openPurchase,
       openSettings,
       openStore,
