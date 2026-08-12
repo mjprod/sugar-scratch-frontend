@@ -1,10 +1,12 @@
-import { Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
 import { FooterNav } from "@/components/FooterNav";
 import { TopNav } from "@/components/TopNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
+import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, INBOX_FIXTURES } from "@/services/inbox";
@@ -12,6 +14,7 @@ import { countUnread, INBOX_FIXTURES } from "@/services/inbox";
 /** Main product chrome: top nav + outlet + footer + auth/verify overlays. */
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     guest,
     profile,
@@ -34,9 +37,18 @@ export function AppLayout() {
   const { coins, diamonds } = useWallet();
   const { activeTab: tab, requestTab } = useTabNav();
 
+  useEffect(() => {
+    bindGameNavigate((to) => {
+      navigate(to);
+    });
+    return () => bindGameNavigate(null);
+  }, [navigate]);
+
   const hideChrome =
     location.pathname.startsWith("/purchase") ||
-    location.pathname.startsWith("/recommend");
+    location.pathname.startsWith("/recommend") ||
+    location.pathname.startsWith("/game") ||
+    location.pathname.startsWith("/photo-scratch");
 
   const onInbox = location.pathname.startsWith("/inbox");
 

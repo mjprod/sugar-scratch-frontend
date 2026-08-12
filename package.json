@@ -8,6 +8,7 @@
     "predev": "node scripts/copy-dotlottie-wasm.mjs",
     "prebuild": "node scripts/copy-dotlottie-wasm.mjs",
     "dev": "vite",
+    "fix:5173": "bash scripts/fix-5173.sh",
     "dev:v8": "vite --config vite.old-app.config.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

@@ -16,6 +16,7 @@ export const Paths = {
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
   game: "/game",
+  photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
   gamePlay: (
     modelId: string,
