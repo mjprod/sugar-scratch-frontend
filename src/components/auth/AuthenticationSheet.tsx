@@ -465,6 +465,7 @@ export function AuthenticationSheet({
                                   .filter(Boolean)
                                   .join(" ")}
                                 onClick={(e) => {
+                                  if (busy) return;
                                   if (
                                     (e.target as HTMLElement).closest(
                                       "[data-legal-link]",
