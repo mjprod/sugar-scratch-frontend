@@ -45,7 +45,9 @@ function isGameSession(value: unknown): value is GameSession {
     typeof v.photoPrizeTotal === "number" &&
     Array.isArray(v.wonPhotoIds) &&
     Array.isArray(v.completedPhotoIds) &&
-    typeof v.diamondTotal === "number"
+    typeof v.diamondTotal === "number" &&
+    // Older sessions omit the field; reject corrupted non-booleans.
+    (v.walletCredited === undefined || typeof v.walletCredited === "boolean")
   );
 }
 
