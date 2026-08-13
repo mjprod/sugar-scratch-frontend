@@ -42,6 +42,8 @@ type ActiveCardPanelProps = {
   /** When true, only render the photo cards grid. */
   gridOnly?: boolean
   onPlayGame?: () => void
+  /** Play a filled PHOTO CARDS slot (0–9) → photo-scratch. */
+  onPlayPhotoCard?: (slotIndex: number) => void
   onViewCard?: () => void
   /** Claim gift when role photo set is complete (30/30). */
   onGiftUnlocked?: () => void
@@ -927,6 +929,7 @@ export default function ActiveCardPanel({
   actionsOnly = false,
   gridOnly = false,
   onPlayGame,
+  onPlayPhotoCard,
   onViewCard,
   onGiftUnlocked,
   onClose,
@@ -1057,9 +1060,16 @@ export default function ActiveCardPanel({
     setKbSelectedSlot(index)
   }, [])
 
-  const handlePlayStaticCard = useCallback((_index: number) => {
-    setPlayingMessage('Static card playing')
-  }, [])
+  const handlePlayStaticCard = useCallback(
+    (index: number) => {
+      if (onPlayPhotoCard) {
+        onPlayPhotoCard(index)
+        return
+      }
+      setPlayingMessage('Static card playing')
+    },
+    [onPlayPhotoCard],
+  )
 
   const handlePlayMotionGame = useCallback(() => {
     if (canPlayGame) {

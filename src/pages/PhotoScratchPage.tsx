@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
+import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
+import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { usePageReady } from "@/shared/ui/PageTransition";
 import { Paths } from "@/routes/Paths";
 import "@/features/game/game.css";
@@ -38,6 +40,7 @@ export function PhotoScratchPage() {
   }, [markReady]);
 
   const card = searchParams.get("card")?.trim();
+  const model = searchParams.get("model")?.trim() || "";
   const gameMode = searchParams.get("game") === "1";
 
   return (
@@ -47,7 +50,16 @@ export function PhotoScratchPage() {
           type="button"
           className="stage-game__exit"
           aria-label={gameMode ? "Back to game" : "Back to collection"}
-          onClick={() => navigate(gameMode ? Paths.game : Paths.collection)}
+          onClick={() => {
+            if (gameMode) {
+              navigate(Paths.game);
+              return;
+            }
+            const motionCardId = card
+              ? motionCardIdFromPhotoScratchId(card)
+              : "";
+            navigate(collectionReturnHref(model, motionCardId));
+          }}
         >
           ‹
         </button>
