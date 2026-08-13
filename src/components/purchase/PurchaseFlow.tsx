@@ -72,6 +72,16 @@ import {
   trackScratchEvent,
   upsertReadyToScratch,
 } from "@/services/readyToScratch";
+import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
+import {
+  motionPlayHref,
+  navigateTo,
+  startMotionSession,
+} from "@/features/game/modules/gameSession";
+import {
+  loadGameCatalog,
+  resolveMotionHandFromIds,
+} from "@/features/game/modules/session";
 
 type Stage =
   | "choose"
@@ -537,18 +547,54 @@ export function PurchaseFlow({
     return markCurrentRevealed();
   }
 
-  function startScratchNow() {
-    if (!session) return;
+  async function startScratchNow() {
+    if (!session || savingLater) return;
+    setSavingLater(true);
     trackScratchEvent("Scratch Now Selected", {
       packId: instanceId ?? pack.packId,
     });
     trackScratchEvent("Scratch Session Started", {
       packId: instanceId ?? pack.packId,
     });
-    const next = nextUnscratchedIndex(session, scratched) ?? 0;
-    setSelectedCard(next);
-    setScratchProgress(0);
-    setStage("scratch");
+    try {
+      const catalog = await loadGameCatalog();
+      const modelId = model?.id ?? pack.packId;
+      const hand = resolveMotionHandFromIds(
+        session.cards.map((card) => card.id),
+        catalog.motion,
+        { modelId },
+      );
+      if (hand.length === 0) {
+        setModal("failed");
+        return;
+      }
+      unlockCountdownSound();
+      const created = startMotionSession(hand);
+      const allIds = session.cards.map((card) => card.id);
+      const readyId = instanceId ?? pack.packId;
+      // Mark every fan card revealed so this pack leaves Ready-to-Scratch.
+      upsertReadyToScratch({
+        packId: readyId,
+        packName: pack.packName,
+        creator: pack.creator,
+        session,
+        revealed: allIds,
+        coverUrl: packImage,
+        themeName: pack.packName,
+      });
+      recordRevealedCards({
+        count: allIds.length,
+        creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+        creatorName: pack.creator,
+      });
+      clearOpening();
+      bumpInventory();
+      navigateTo(motionPlayHref(created));
+    } catch {
+      setModal("failed");
+    } finally {
+      setSavingLater(false);
+    }
   }
 
   function leaveSaved(destination?: () => void) {
@@ -718,6 +764,7 @@ export function PurchaseFlow({
               flagSvgUrl={model?.flagSvgUrl ?? null}
               overlayColorStart={model?.overlayColorStart ?? null}
               overlayColorEnd={model?.overlayColorEnd ?? null}
+              launching={savingLater}
               onCards={(cards) => {
                 setSession((current) =>
                   current
@@ -734,7 +781,7 @@ export function PurchaseFlow({
                     : current,
                 );
               }}
-              onContinue={() => setStage("cards-ready")}
+              onContinue={() => void startScratchNow()}
             />
           ) : null}
 
@@ -743,7 +790,7 @@ export function PurchaseFlow({
               session={session}
               packName={packDisplayName}
               saving={savingLater}
-              onScratchNow={startScratchNow}
+              onScratchNow={() => void startScratchNow()}
               onLater={() => scratchLater("decision")}
             />
           ) : null}
@@ -1219,6 +1266,7 @@ function MotionRevealStage({
   flagSvgUrl,
   overlayColorStart,
   overlayColorEnd,
+  launching = false,
   onCards,
   onContinue,
 }: {
@@ -1230,6 +1278,7 @@ function MotionRevealStage({
   flagSvgUrl: string | null;
   overlayColorStart: string | null;
   overlayColorEnd: string | null;
+  launching?: boolean;
   onCards: (cards: RevealCard[]) => void;
   onContinue: () => void;
 }) {
@@ -1306,8 +1355,13 @@ function MotionRevealStage({
         />
       </div>
       {sequence.showPlay ? (
-        <button type="button" className="motion-reveal__continue" onClick={onContinue}>
-          Continue
+        <button
+          type="button"
+          className="motion-reveal__continue"
+          onClick={onContinue}
+          disabled={launching}
+        >
+          {launching ? "Starting…" : "Play now"}
         </button>
       ) : null}
     </div>
@@ -1335,7 +1389,9 @@ function CardsReadyStage({
         {packName}
       </p>
       <h1 className="mt-2 text-[28px] font-bold">Your Cards Are Ready</h1>
-      <p className="mt-2 text-[14px] text-white/50">Ready to see what you got?</p>
+      <p className="mt-2 text-[14px] text-white/50">
+        Play to scratch — win photocards, then diamonds.
+      </p>
       <motion.div
         className="relative mt-8 h-80 w-56"
         initial={{ scale: 0.96, opacity: 0.85 }}
@@ -1371,13 +1427,13 @@ function CardsReadyStage({
         disabled={saving}
         className="mt-5 h-14 w-full max-w-sm rounded-full bg-[#8B5CF6] text-[15px] font-semibold disabled:opacity-60"
       >
-        Scratch Now
+        {saving ? "Starting…" : "Play now"}
       </button>
       <button
         type="button"
         onClick={onLater}
         disabled={saving}
-        aria-label="Scratch Later"
+        aria-label="Play later"
         className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70 disabled:opacity-60"
       >
         {saving ? "Saving…" : "Later"}

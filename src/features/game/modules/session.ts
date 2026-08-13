@@ -54,6 +54,46 @@ export function buildDealtRound(
   return { cards };
 }
 
+/** Fan reveal ids are `reveal-api-{cardId}`; strip that wrapper for catalog lookup. */
+export function catalogMotionIdFromRevealId(cardId: string): string {
+  const trimmed = cardId.trim();
+  return trimmed.startsWith("reveal-api-")
+    ? trimmed.slice("reveal-api-".length)
+    : trimmed;
+}
+
+/**
+ * Resolve pack-fan card ids into a playable motion hand (catalog order preserved).
+ * Drops unknown / unplayable ids; falls back to a dealt round if none resolve.
+ */
+export function resolveMotionHandFromIds(
+  cardIds: string[],
+  motionPool: ThemedMotionCard[],
+  options?: { modelId?: string },
+): ThemedMotionCard[] {
+  const byId = new Map(motionPool.map((card) => [card.id, card]));
+  const resolved: ThemedMotionCard[] = [];
+  const seen = new Set<string>();
+  for (const rawId of cardIds) {
+    const id = catalogMotionIdFromRevealId(rawId);
+    if (!id || seen.has(id)) continue;
+    const card = byId.get(id);
+    if (!card) continue;
+    seen.add(id);
+    resolved.push(card);
+  }
+  if (resolved.length > 0) return resolved;
+
+  const modelId = options?.modelId?.trim();
+  const pool = modelId
+    ? motionPool.filter(
+        (card) => (card.model_id?.trim() || "") === modelId,
+      )
+    : motionPool;
+  const fallback = buildDealtRound(pool.length > 0 ? pool : motionPool);
+  return fallback?.cards ?? [];
+}
+
 type CardsIndexResponse = {
   cards?: Array<{
     id: string;

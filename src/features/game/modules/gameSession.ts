@@ -28,6 +28,8 @@ export type GameSession = {
   completedPhotoIds: string[];
   /** Accumulated diamonds from photo match games. */
   diamondTotal: number;
+  /** True after diamondTotal has been applied to the app wallet. */
+  walletCredited: boolean;
 };
 
 function isGameSession(value: unknown): value is GameSession {
@@ -47,13 +49,20 @@ function isGameSession(value: unknown): value is GameSession {
   );
 }
 
+function normalizeGameSession(session: GameSession): GameSession {
+  return {
+    ...session,
+    walletCredited: session.walletCredited === true,
+  };
+}
+
 export function loadGameSession(): GameSession | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(GAME_SESSION_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isGameSession(parsed) ? parsed : null;
+    return isGameSession(parsed) ? normalizeGameSession(parsed) : null;
   } catch {
     return null;
   }
@@ -94,9 +103,20 @@ export function startMotionSession(hand: ThemedMotionCard[]): GameSession {
     wonPhotoIds: [],
     completedPhotoIds: [],
     diamondTotal: 0,
+    walletCredited: false,
   };
   saveGameSession(session);
   return session;
+}
+
+/** Mark diamondTotal as applied to the wallet (idempotent). */
+export function markWalletCredited(): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  if (session.walletCredited) return session;
+  const next: GameSession = { ...session, walletCredited: true };
+  saveGameSession(next);
+  return next;
 }
 
 /** First motion card in deal order that has not been scratched yet. */
