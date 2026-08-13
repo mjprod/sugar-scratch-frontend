@@ -1,3 +1,4 @@
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   LIBRARY_PREVIEW_CARDS,
   type LibraryPreviewCard,
@@ -23,9 +24,16 @@ export function CardLibraryPreview({
             Your revealed cards will appear here.
           </p>
         </div>
-        <button type="button" className="collection-cta" onClick={onViewAll}>
-          View Library
-        </button>
+        <div className="collection-cta">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            label="View Library"
+            costAmount={null}
+            fontSize={14}
+            onClick={onViewAll}
+          />
+        </div>
       </section>
     );
   }

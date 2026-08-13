@@ -1,10 +1,18 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
+
+// Local mkcert pair — lets phones on the same Wi‑Fi load the dev server over
+// HTTPS (needed for secure-context APIs like DeviceOrientation on iOS Safari).
+const certDir = path.resolve(rootDir, "certs");
+const certFile = path.join(certDir, "dev-cert.pem");
+const keyFile = path.join(certDir, "dev-key.pem");
+const hasLocalCerts = fs.existsSync(certFile) && fs.existsSync(keyFile);
 
 function readProxyTarget(
   env: Record<string, string>,
@@ -39,6 +47,20 @@ export default defineConfig(({ mode }) => {
 
   console.info(`[vite] proxy /api → ${apiTarget}`);
   console.info(`[vite] proxy media → ${mediaTarget}`);
+  if (hasLocalCerts) {
+    console.info(`[vite] HTTPS enabled (certs/dev-*.pem) — open via LAN IP on phone`);
+  } else {
+    console.info(
+      `[vite] HTTP only — run \`npm run certs\` for HTTPS (recommended for iOS)`,
+    );
+  }
+
+  const https = hasLocalCerts
+    ? {
+        cert: fs.readFileSync(certFile),
+        key: fs.readFileSync(keyFile),
+      }
+    : undefined;
 
   return {
     plugins: [react(), tailwindcss()],
@@ -48,8 +70,13 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      // Bind 0.0.0.0 so phones on the same Wi‑Fi can reach this machine.
+      host: true,
+      port: 5173,
+      strictPort: false,
+      https,
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
-      allowedHosts: [".trycloudflare.com"],
+      allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
         "/api": proxyTo(apiTarget),
         ...Object.fromEntries(
@@ -67,6 +94,11 @@ export default defineConfig(({ mode }) => {
           ].map((route) => [route, proxyTo(mediaTarget)]),
         ),
       },
+    },
+    preview: {
+      host: true,
+      port: 4173,
+      https,
     },
   };
 });

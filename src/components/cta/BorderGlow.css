@@ -84,6 +84,14 @@
 
   opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
 
+  /* iOS Safari needs the -webkit- prefix or the cone mask is ignored. */
+  -webkit-mask-image: conic-gradient(
+    from var(--cursor-angle) at center,
+    black calc(var(--cone-spread) * 1%),
+    transparent calc((var(--cone-spread) + 15) * 1%),
+    transparent calc((100 - var(--cone-spread) - 15) * 1%),
+    black calc((100 - var(--cone-spread)) * 1%)
+  );
   mask-image: conic-gradient(
     from var(--cursor-angle) at center,
     black calc(var(--cone-spread) * 1%),

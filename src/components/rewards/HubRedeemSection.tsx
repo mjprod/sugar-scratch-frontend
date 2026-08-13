@@ -1,5 +1,6 @@
-import { Check, Gem, Gift, Info, Loader2, Ticket } from "lucide-react";
+import { Check, Gift, Info, Loader2, Ticket } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   REDEEM_ERROR_COPY,
   redeemCode,
@@ -183,7 +184,7 @@ function HubRedeemSuccess({
           Code redeemed
         </p>
         <p className="hub-redeem-success-amount">
-          <Gem className="size-5 text-sky-300" aria-hidden="true" />
+          <DiamondLottie size={20} aria-hidden />
           +{reward.amount}
         </p>
         <p className="hub-redeem-success-body">Added to your balance.</p>

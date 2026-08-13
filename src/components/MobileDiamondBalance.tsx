@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
-import { Gem } from "lucide-react";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 /**
  * Compact diamond control — used on secondary subpage trailings (Store/Settings).
@@ -31,7 +31,7 @@ export function MobileDiamondBalance({
 
   const inner = (
     <>
-      <Gem className="size-3.5 shrink-0 text-sky-300" aria-hidden />
+      <DiamondLottie className="shrink-0" size={14} aria-hidden />
       <span className="min-w-[1.25ch] text-[13px] font-semibold tabular-nums text-white">
         {label}
       </span>

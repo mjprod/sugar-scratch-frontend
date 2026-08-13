@@ -960,52 +960,38 @@ body[data-theme="v8"] .physical-pack-reward {
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* Slot for parent-filled squircle CTA (Open Pack). */
 body[data-theme="v8"] .open-pack-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  position: relative;
+  z-index: 2;
   width: calc(100% - 48px);
   max-width: 280px;
   height: 54px;
+  min-height: 54px;
   margin-top: 16px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #ff4f8b, #a24bff);
-  box-shadow: 0 6px 20px rgba(162, 75, 255, 0.45);
-  cursor: pointer;
-  transition:
-    transform 150ms ease-out,
-    box-shadow 150ms ease-out;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .open-pack-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(162, 75, 255, 0.6);
+body[data-theme="v8"] .open-pack-btn .cta-button-glow,
+body[data-theme="v8"] .open-pack-btn .cta-button-glow--fill,
+body[data-theme="v8"] .open-pack-btn .cta-button,
+body[data-theme="v8"] .open-pack-btn .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
-body[data-theme="v8"] .open-pack-btn:active:not(:disabled) {
-  transform: scale(0.97);
-  transition: transform 100ms ease-out;
+body[data-theme="v8"] .open-pack-btn .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
 }
 
-body[data-theme="v8"] .open-pack-btn:disabled {
-  background: #3a3a42;
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-body[data-theme="v8"] .open-pack-btn:focus-visible {
-  outline: 2px solid #c4b5fd;
-  outline-offset: 3px;
-}
-
-body[data-theme="v8"] .open-pack-btn-label {
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.3px;
+body[data-theme="v8"] .open-pack-btn .cta-button__label {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.55em;
+  white-space: nowrap;
 }
 
 body[data-theme="v8"] .open-pack-price-pill {
@@ -1509,44 +1495,56 @@ body[data-theme="v8"] .category-leaderboard-actions {
 }
 
 body[data-theme="v8"] .category-leaderboard-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: rgba(255, 255, 255, 0.85);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
+body[data-theme="v8"] .category-leaderboard-price-diamond {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+body[data-theme="v8"] .category-leaderboard-price-diamond canvas,
+body[data-theme="v8"] .category-leaderboard-price-diamond svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* Slot for parent-filled squircle CTA (leaderboard Play). */
 body[data-theme="v8"] .category-leaderboard-play {
-  display: inline-flex;
+  position: relative;
+  z-index: 1;
+  width: 72px;
+  min-width: 72px;
+  height: 32px;
   min-height: 32px;
-  align-items: center;
-  gap: 4px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ff4f8b, #a24bff);
-  box-shadow: 0 4px 12px rgba(162, 75, 255, 0.35);
-  color: #ffffff;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition:
-    transform 150ms ease-out,
-    box-shadow 150ms ease-out;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .category-leaderboard-play:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(162, 75, 255, 0.5);
+body[data-theme="v8"] .category-leaderboard-play .cta-button-glow,
+body[data-theme="v8"] .category-leaderboard-play .cta-button-glow--fill,
+body[data-theme="v8"] .category-leaderboard-play .cta-button,
+body[data-theme="v8"] .category-leaderboard-play .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
-body[data-theme="v8"] .category-leaderboard-play:active {
-  transform: scale(0.97);
+body[data-theme="v8"] .category-leaderboard-play .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
 }
 
-body[data-theme="v8"] .category-leaderboard-play:focus-visible {
-  outline: 2px solid #ff3d7f;
-  outline-offset: 2px;
+body[data-theme="v8"] .category-leaderboard-play .cta-button__title {
+  letter-spacing: 0.06em;
 }
 
 /* Store — compact package / watch-ad surfaces (Tailwind owns layout) */
@@ -1808,41 +1806,30 @@ body[data-theme="v8"] .hub-daily-hero-sub {
   text-align: center;
 }
 
+/* Slot for parent-filled squircle CTA (daily claim). */
 body[data-theme="v8"] .hub-daily-hero-cta {
-  display: inline-flex;
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  height: 48px;
   min-height: 48px;
-  border-radius: 999px;
-  border: none;
-  background: linear-gradient(90deg, #a855f7, #ec4899);
-  padding: 0 22px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  box-shadow: 0 10px 28px rgba(168, 85, 247, 0.28);
-  transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .hub-daily-hero-cta:hover:not(:disabled) {
-  filter: brightness(1.06);
+body[data-theme="v8"] .hub-daily-hero-cta .cta-button-glow,
+body[data-theme="v8"] .hub-daily-hero-cta .cta-button-glow--fill,
+body[data-theme="v8"] .hub-daily-hero-cta .cta-button,
+body[data-theme="v8"] .hub-daily-hero-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
-body[data-theme="v8"] .hub-daily-hero-cta:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-body[data-theme="v8"] .hub-daily-hero-cta:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-body[data-theme="v8"] .hub-daily-hero-cta:focus-visible {
-  outline: 2px solid #ff5fa2;
-  outline-offset: 2px;
+body[data-theme="v8"] .hub-daily-hero-cta .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
 }
 
 body[data-theme="v8"] .hub-daily-hero-reset {
@@ -2901,6 +2888,7 @@ body[data-theme="v8"] .collection-true-empty-copy {
 
 body[data-theme="v8"] .collection-true-empty-cta {
   margin-top: 16px;
+  width: min(100%, 220px);
   min-width: 180px;
 }
 
@@ -3546,33 +3534,34 @@ body[data-theme="v8"] .ready-explore-card {
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* CTAs — primary = purple → pink gradient */
+/* Slot for parent-filled squircle CTA (collection primary actions). */
 body[data-theme="v8"] .collection-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 240px);
+  height: 44px;
   min-height: 44px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #9b3dff, #ff2d78);
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: filter 160ms ease, transform 160ms ease, opacity 160ms ease;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .collection-cta:hover {
-  filter: brightness(1.06);
+body[data-theme="v8"] .collection-cta .cta-button-glow,
+body[data-theme="v8"] .collection-cta .cta-button-glow--fill,
+body[data-theme="v8"] .collection-cta .cta-button,
+body[data-theme="v8"] .collection-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
-body[data-theme="v8"] .collection-cta:active {
-  transform: scale(0.98);
+body[data-theme="v8"] .collection-cta .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
 }
 
 body[data-theme="v8"] .collection-cta--secondary {
-  background: linear-gradient(135deg, #9b3dff, #ff2d78);
+  /* kept for any residual class usage */
 }
 
 body[data-theme="v8"] .collection-cta-ghost {
@@ -4937,11 +4926,28 @@ body[data-theme="v8"] .cpv2-cta-primary {
 
 body[data-theme="v8"] .cpv2-cta-secondary {
   flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28em;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: transparent;
   color: rgba(255, 255, 255, 0.62);
   font-weight: 500;
   font-size: 13px;
+}
+
+body[data-theme="v8"] .cpv2-cta-diamond {
+  width: 1.3em;
+  height: 1.3em;
+  flex: 0 0 auto;
+}
+
+body[data-theme="v8"] .cpv2-cta-diamond canvas,
+body[data-theme="v8"] .cpv2-cta-diamond svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 body[data-theme="v8"] .cpv2-cta-secondary:hover {
@@ -5341,45 +5347,71 @@ body[data-theme="v8"] .hf-description {
 }
 
 body[data-theme="v8"] .hf-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  overflow: visible;
 }
 
+/* Slot for parent-filled squircle CTA. */
 body[data-theme="v8"] .hf-buy {
-  display: inline-flex;
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  /* With align-items:center, % height needs a floor so the CTA doesn't collapse. */
+  min-height: 48px;
+  /* Let lite outer bloom radiate a bit past the slot. */
+  overflow: visible;
+}
+
+body[data-theme="v8"] .hf-buy .cta-button-glow,
+body[data-theme="v8"] .hf-buy .cta-button-glow.cta-button-glow--squircle,
+body[data-theme="v8"] .hf-buy .cta-button-glow--fill {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .hf-buy .cta-button-glow > .border-glow-inner,
+body[data-theme="v8"] .hf-buy .cta-button-glow--fill > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .hf-buy .cta-button,
+body[data-theme="v8"] .hf-buy .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .hf-buy .cta-button__label {
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 48px;
-  min-width: 160px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ff4d9e, #9b5cff);
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 160ms ease,
-    opacity 160ms ease;
+  gap: 0.55em;
+  padding: 0 14px;
+  white-space: nowrap;
 }
 
-body[data-theme="v8"] .hf-buy:hover {
-  transform: scale(1.03);
+body[data-theme="v8"] .hf-buy .cta-button__title {
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
-body[data-theme="v8"] .hf-buy:active {
-  transform: scale(0.97);
-  opacity: 0.92;
-}
-
-body[data-theme="v8"] .hf-buy-price {
-  display: inline-flex;
-  align-items: center;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.95;
+body[data-theme="v8"] .hf-buy .cta-button__cost {
+  font-size: 1em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 body[data-theme="v8"] .hf-like {
@@ -5513,7 +5545,6 @@ body[data-theme="v8"] .hf-loading-more {
   }
 
   body[data-theme="v8"] .hf-overlay,
-  body[data-theme="v8"] .hf-buy,
   body[data-theme="v8"] .hf-like.is-burst .hf-like-icon,
   body[data-theme="v8"] .hf-like-burst,
   body[data-theme="v8"] .hf-skeleton,
@@ -8325,7 +8356,17 @@ body[data-theme="v8"] .top-nav-resource-icon--coin {
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--diamond {
-  color: color-mix(in oklab, #7dd3fc 72%, transparent);
+  /* Lottie mark — keep HUD size stable; internal 1.3× scale still applies. */
+  width: 14px;
+  height: 14px;
+  color: transparent;
+}
+
+body[data-theme="v8"] .top-nav-resource-icon--diamond canvas,
+body[data-theme="v8"] .top-nav-resource-icon--diamond svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 body[data-theme="v8"] .top-nav-resource--action:hover,

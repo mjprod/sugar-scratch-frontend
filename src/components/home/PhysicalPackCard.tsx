@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Gem } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { formatCountdown, type FeaturedPack } from "@/services/homepage";
 
 /**
@@ -128,28 +128,25 @@ export function PhysicalPackCard({
               {pack.creatorName} · {pack.themeName}
             </p>
 
-            <button
-              type="button"
-              className="open-pack-btn"
-              disabled={!canOpen}
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }}
-              aria-label={
-                canOpen
-                  ? `Open pack for ${pack.diamondCost} diamonds`
-                  : "Pack unavailable"
-              }
-            >
-              <span className="open-pack-btn-label">Open Pack</span>
-              <span className="open-pack-price-pill">
-                <Gem className="open-pack-diamond-icon" aria-hidden="true" />
-                <span className="open-pack-price-value tabular-nums">
-                  {pack.diamondCost}
-                </span>
-              </span>
-            </button>
+            <div className="open-pack-btn">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                label="Open Pack"
+                costAmount={pack.diamondCost}
+                fontSize={15}
+                disabled={!canOpen}
+                aria-label={
+                  canOpen
+                    ? `Open pack for ${pack.diamondCost} diamonds`
+                    : "Pack unavailable"
+                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen();
+                }}
+              />
+            </div>
           </div>
         ) : null}
       </div>

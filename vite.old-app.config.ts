@@ -12,6 +12,7 @@ export default defineConfig({
   root: rootDir,
   publicDir: path.resolve(rootDir, "public"),
   server: {
+    host: true,
     port: 5188,
     strictPort: true,
     open: "/old-app.html",

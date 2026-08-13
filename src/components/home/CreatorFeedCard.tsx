@@ -1,6 +1,10 @@
 import { Heart } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  CtaButton,
+  ctaButtonPropsFromTemplate,
+} from "@/components/cta";
+import {
   feedPackLabel,
   feedVisibleTags,
   type HomeFeedCreator,
@@ -93,18 +97,25 @@ export function CreatorFeedCard({
         </div>
 
         <div className="hf-actions">
-          <button
-            type="button"
-            className="hf-buy"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuy();
-            }}
-            aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
-          >
-            <span>Buy Pack</span>
-            <span className="hf-buy-price">💎{item.diamondCost}</span>
-          </button>
+          <div className="hf-buy">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label="Buy Pack"
+              costAmount={item.diamondCost}
+              fontSize={15}
+              /* Hairline on-button ring (iOS-safe stroke layer). */
+              strokeWidth={1}
+              /* Keep a cheap always-on outer bloom on phones. */
+              glowOuterBloom="lite"
+              glowAlwaysOn
+              aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuy();
+              }}
+            />
+          </div>
 
           <button
             type="button"

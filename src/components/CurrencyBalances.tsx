@@ -1,4 +1,5 @@
-import { Gem, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 /** Inline coin + diamond HUD counters (TopNav, mobile HUD, and subpage headers). */
 export function CurrencyBalances({
@@ -16,7 +17,11 @@ export function CurrencyBalances({
 
   const diamondInner = (
     <>
-      <Gem className="top-nav-resource-icon top-nav-resource-icon--diamond size-3.5 shrink-0" aria-hidden />
+      <DiamondLottie
+        className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
+        size={14}
+        aria-hidden
+      />
       <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
         {diamondLabel}
       </span>

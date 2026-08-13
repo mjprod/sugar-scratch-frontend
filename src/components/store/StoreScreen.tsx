@@ -1,7 +1,6 @@
 import {
   Check,
   Clock,
-  Gem,
   Loader2,
   Lock,
   Play,
@@ -27,6 +26,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { InboxButton } from "@/components/InboxButton";
 import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 type LoadState =
   | { status: "loading" }
@@ -567,7 +567,11 @@ function PackageCard({
         {processing ? (
           <Loader2 className="size-5 animate-spin text-sky-200" aria-hidden="true" />
         ) : (
-          <Gem className="size-6 text-sky-200/90" strokeWidth={1.5} aria-hidden="true" />
+          <DiamondLottie
+            className="store-package-diamond"
+            size={24}
+            aria-hidden
+          />
         )}
       </span>
 

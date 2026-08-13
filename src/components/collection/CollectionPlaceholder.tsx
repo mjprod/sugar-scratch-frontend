@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 
 export function CollectionPlaceholder({
   title,
@@ -22,9 +23,16 @@ export function CollectionPlaceholder({
         </button>
         <h2 className="collection-placeholder-title">{title}</h2>
         {detail ? <p className="collection-placeholder-copy">{detail}</p> : null}
-        <button type="button" className="collection-cta" onClick={onClose}>
-          Back to Collection
-        </button>
+        <div className="collection-cta">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            label="Back to Collection"
+            costAmount={null}
+            fontSize={14}
+            onClick={onClose}
+          />
+        </div>
       </div>
     </div>
   );

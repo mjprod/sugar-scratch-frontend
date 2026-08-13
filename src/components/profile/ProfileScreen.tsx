@@ -2,7 +2,6 @@ import {
   Bell,
   ChevronRight,
   CreditCard,
-  Gem,
   Globe2,
   HelpCircle,
   LogOut,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 export function UserDashboardScreen({
   name,
@@ -79,7 +79,7 @@ export function UserDashboardScreen({
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat icon={<Trophy className="size-4" />} label="Collection" value="128 / 240" />
         <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
-        <Stat icon={<Gem className="size-4" />} label="Diamonds" value={diamonds.toString()} />
+        <Stat icon={<DiamondLottie size={16} aria-hidden />} label="Diamonds" value={diamonds.toString()} />
         <Stat icon={<Sparkles className="size-4" />} label="Sugar Coins" value={coins.toString()} />
       </div>
 

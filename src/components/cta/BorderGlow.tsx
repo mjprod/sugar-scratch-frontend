@@ -43,7 +43,9 @@ function buildGradientVars(colors: string[]): CSSProperties {
   const vars: Record<string, string> = {};
   for (let i = 0; i < 7; i++) {
     const c = colors[Math.min(COLOR_MAP[i], colors.length - 1)] ?? colors[0] ?? "#ffffff";
-    vars[GRADIENT_KEYS[i]] = `radial-gradient(at ${GRADIENT_POSITIONS[i]}, ${c} 0px, transparent 50%)`;
+    // Reference falloff: soft radial stops (harder stops read oversaturated).
+    vars[GRADIENT_KEYS[i]] =
+      `radial-gradient(at ${GRADIENT_POSITIONS[i]}, ${c} 0px, transparent 50%)`;
   }
   vars["--gradient-base"] = `linear-gradient(${colors[0] ?? "#c299ff"} 0 100%)`;
   return vars as CSSProperties;
