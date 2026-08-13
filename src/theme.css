@@ -494,6 +494,7 @@ body[data-theme="v8"] .footer-navigation {
 
 /* Featured Pack Carousel — Premium Physical Pack Effect Spec 1.0 */
 body[data-theme="v8"] .featured-pack-carousel {
+  position: relative;
   outline: none;
 }
 
@@ -514,16 +515,27 @@ body[data-theme="v8"] .featured-pack-track {
 body[data-theme="v8"] .featured-pack-slide {
   flex: 0 0 auto;
   cursor: grab;
+  touch-action: pan-y;
 }
 
 body[data-theme="v8"] .featured-pack-slide:active {
   cursor: grabbing;
 }
 
+body[data-theme="v8"] .featured-pack-slide.is-active {
+  /* Avoid CSS filter on slides — filters force soft GPU rasterization. */
+  filter: none;
+}
+
 body[data-theme="v8"] .featured-pack-slide.is-preview {
   width: 36px;
   max-width: 11vw;
   overflow: hidden;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .featured-pack-slide.is-preview:hover {
+  opacity: 0.85 !important;
 }
 
 @media (min-width: 640px) {
@@ -536,6 +548,76 @@ body[data-theme="v8"] .featured-pack-slide.is-preview {
 @media (min-width: 1024px) {
   body[data-theme="v8"] .featured-pack-slide.is-preview {
     width: 120px;
+  }
+}
+
+/* Desktop secondary arrows — never disabled (infinite loop). */
+body[data-theme="v8"] .featured-pack-arrow {
+  display: none;
+  position: absolute;
+  top: 42%;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(246, 213, 138, 0.28);
+  background: rgba(12, 10, 16, 0.72);
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+body[data-theme="v8"] .featured-pack-arrow svg {
+  width: 20px;
+  height: 20px;
+}
+
+body[data-theme="v8"] .featured-pack-arrow.is-prev {
+  left: 4px;
+}
+
+body[data-theme="v8"] .featured-pack-arrow.is-next {
+  right: 4px;
+}
+
+body[data-theme="v8"] .featured-pack-arrow:hover {
+  background: rgba(236, 72, 153, 0.18);
+  border-color: rgba(246, 213, 138, 0.5);
+  color: #fff;
+}
+
+body[data-theme="v8"] .featured-pack-arrow:focus-visible {
+  outline: 2px solid #f6d58a;
+  outline-offset: 3px;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .featured-pack-arrow {
+    display: inline-flex;
+  }
+
+  body[data-theme="v8"] .featured-pack-arrow.is-prev {
+    left: 8px;
+  }
+
+  body[data-theme="v8"] .featured-pack-arrow.is-next {
+    right: 8px;
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .featured-pack-arrow.is-prev {
+    left: 16px;
+  }
+
+  body[data-theme="v8"] .featured-pack-arrow.is-next {
+    right: 16px;
   }
 }
 

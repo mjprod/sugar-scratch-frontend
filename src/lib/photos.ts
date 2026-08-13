@@ -69,6 +69,15 @@ export const CREATOR_CARD_PHOTOS = {
   juliana: "/images/cards/juliana-card.png",
 } as const;
 
+/** Theme pack covers only (no personal/main avatars). */
+export const MODEL_PACK_PHOTOS = {
+  julianaFiregirl: "/images/cards/themes/juliana-firegirl.jpg",
+  julianaGym: "/images/cards/themes/juliana-gym.jpg",
+  julianaNurse: "/images/cards/themes/juliana-nurse.jpg",
+  julianaPolice: "/images/cards/themes/juliana-police.jpg",
+  julianaTeacher: "/images/cards/themes/juliana-teacher.jpg",
+} as const;
+
 export const PREFERENCE_PHOTOS = [
   CREATOR_CARD_PHOTOS.juliana,
   HOLO_PACKS.kimonoHolo,
