@@ -13,6 +13,8 @@ import {
 export function CreatorFeedCard({
   item,
   active,
+  /** Eager-buffer neighbor cards (next peek / previous) so they aren't black. */
+  warm = false,
   onLike,
   onBuy,
   onOpenCreator,
@@ -20,6 +22,7 @@ export function CreatorFeedCard({
 }: {
   item: HomeFeedCreator;
   active: boolean;
+  warm?: boolean;
   onLike: () => void;
   onBuy: () => void;
   onOpenCreator?: (creatorId: string) => void;
@@ -30,6 +33,7 @@ export function CreatorFeedCard({
   const tags = feedVisibleTags(item.tags);
   const packLabel = feedPackLabel(item.packName);
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
+  const shouldBuffer = active || warm;
 
   function like() {
     onLike();
@@ -54,7 +58,8 @@ export function CreatorFeedCard({
             muted
             loop
             autoPlay={active}
-            preload={active ? "auto" : "metadata"}
+            /* Active + next/prev peek: full buffer so the strip isn't empty black */
+            preload={shouldBuffer ? "auto" : "metadata"}
             className="hf-media-el hf-media-video"
           />
         ) : (

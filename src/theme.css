@@ -4973,7 +4973,10 @@ body[data-theme="v8"] .cpv2-toast {
  * ======================================================================== */
 
 body[data-theme="v8"] .hf-page {
-  --hf-bottom-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
+  /* No black footer pad — feed fills the screen; dock overlays glass. */
+  --hf-bottom-clearance: 0px;
+  /* Peek of the next snap card under the active one (mobile). */
+  --hf-next-peek: calc(28px + env(safe-area-inset-bottom, 0px));
   --hf-frame-width: min(100%, 428px);
 
   position: relative;
@@ -4984,8 +4987,7 @@ body[data-theme="v8"] .hf-page {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
-  /* Footer is portaled fixed — keep feed above it. */
-  padding-bottom: var(--hf-bottom-clearance);
+  padding-bottom: 0;
   box-sizing: border-box;
   background:
     radial-gradient(circle at 50% 30%, rgba(155, 92, 255, 0.12), transparent 42%),
@@ -5013,7 +5015,9 @@ body[data-theme="v8"] .hf-frame {
   body[data-theme="v8"] .hf-page {
     /* Website chrome: top nav overlays — height comes from flex fill */
     --hf-bottom-clearance: 24px;
+    --hf-next-peek: 0px;
     --hf-top-clearance: var(--app-top-nav-height, 56px);
+    padding-bottom: var(--hf-bottom-clearance);
   }
 
   body[data-theme="v8"] .hf-frame {
@@ -5217,8 +5221,9 @@ body[data-theme="v8"] .hf-viewport::-webkit-scrollbar {
 body[data-theme="v8"] .hf-slide {
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
-  min-height: 100%;
+  /* Leave a strip so the next video peeks under the active card. */
+  height: calc(100% - var(--hf-next-peek, 0px));
+  min-height: calc(100% - var(--hf-next-peek, 0px));
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
@@ -5285,7 +5290,7 @@ body[data-theme="v8"] .hf-overlay {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding: 24px 18px calc(11dvh + env(safe-area-inset-bottom, 0px));
   opacity: 0.88;
   transform: translateY(6px);
   transition:

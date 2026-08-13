@@ -144,15 +144,56 @@ export function HomeFeedScreen({
   }, [status, items]);
 
   useEffect(() => {
+    const activeIndex = items.findIndex((item) => item.id === activeId);
+    const warmIds = new Set<string>();
+    if (activeIndex >= 0) {
+      // Next card is visible in the bottom peek — always warm it.
+      const nextItem = items[activeIndex + 1];
+      const prevItem = items[activeIndex - 1];
+      if (nextItem) warmIds.add(nextItem.id);
+      if (prevItem) warmIds.add(prevItem.id);
+    } else if (items[1]) {
+      // Before activeId settles, still warm the second slide for initial peek.
+      warmIds.add(items[1].id);
+    }
+
     videoRefs.current.forEach((video, id) => {
-      if (!active || id !== activeId) {
+      if (!active) {
         video.pause();
         return;
       }
-      video.muted = true;
-      void video.play().catch(() => {
-        /* poster still shows */
-      });
+
+      if (id === activeId) {
+        video.muted = true;
+        void video.play().catch(() => {
+          /* poster still shows */
+        });
+        return;
+      }
+
+      video.pause();
+
+      // Eager-buffer neighbors so the next-video peek isn't black frames.
+      if (warmIds.has(id)) {
+        try {
+          if (video.preload !== "auto") video.preload = "auto";
+          // Kick the network pipeline without playing (iOS-friendly).
+          if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+            void video.play().then(() => {
+              video.pause();
+              try {
+                video.currentTime = 0;
+              } catch {
+                /* ignore seek errors */
+              }
+            }).catch(() => {
+              /* poster still shows */
+            });
+          }
+        } catch {
+          /* ignore media errors on warm path */
+        }
+      }
     });
   }, [active, activeId, items, videoRefs]);
 
@@ -310,21 +351,35 @@ export function HomeFeedScreen({
                   } as CSSProperties)
             }
           >
-            {items.map((item) => (
-              <div key={item.id} className="hf-slide">
-                <CreatorFeedCard
-                  item={item}
-                  active={active && item.id === activeId}
-                  onLike={() => toggleLike(item.id)}
-                  onBuy={() => onBuyPack(toPurchasePack(item))}
-                  onOpenCreator={onOpenCreator}
-                  videoRef={(node) => {
-                    if (node) videoRefs.current.set(item.id, node);
-                    else videoRefs.current.delete(item.id);
-                  }}
-                />
-              </div>
-            ))}
+            {(() => {
+              const activeIndex = items.findIndex((it) => it.id === activeId);
+              const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
+
+              return items.map((item, index) => {
+                const warm =
+                  index === resolvedActiveIndex + 1 ||
+                  index === resolvedActiveIndex - 1 ||
+                  // Always warm slide 1 on first paint so the bottom peek has pixels.
+                  (resolvedActiveIndex === 0 && index === 1);
+
+                return (
+                  <div key={item.id} className="hf-slide">
+                    <CreatorFeedCard
+                      item={item}
+                      active={active && item.id === activeId}
+                      warm={warm}
+                      onLike={() => toggleLike(item.id)}
+                      onBuy={() => onBuyPack(toPurchasePack(item))}
+                      onOpenCreator={onOpenCreator}
+                      videoRef={(node) => {
+                        if (node) videoRefs.current.set(item.id, node);
+                        else videoRefs.current.delete(item.id);
+                      }}
+                    />
+                  </div>
+                );
+              });
+            })()}
             {loadingMore ? (
               <div className="hf-loading-more" aria-live="polite">
                 Loading more…

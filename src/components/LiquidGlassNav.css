@@ -7,6 +7,100 @@
   background: #0c0c0e;
 }
 
+/* Product chrome: transparent overlay host (children are fixed) */
+.liquid-glass-nav.nav-test {
+  position: fixed;
+  inset: 0;
+  z-index: var(--app-top-nav-z-index, 30);
+  min-height: 0;
+  width: auto;
+  background: transparent;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.liquid-glass-nav.is-chrome-hidden .nav-test-top,
+.liquid-glass-nav.is-chrome-hidden .nav-test-dock {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden;
+}
+
+/* Sit above page content / mobile utility HUD */
+.liquid-glass-nav .nav-test-top {
+  z-index: var(--app-top-nav-z-index, 30);
+}
+
+.liquid-glass-nav .nav-test-dock {
+  z-index: 1000;
+}
+
+/* Playground shell for /nav-test */
+.nav-test.is-playground {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  background: #0c0c0e;
+}
+
+.nav-test-playground-label {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+/*
+ * App chrome pairing:
+ *  - <441px: bottom dock + mobile diamond utility
+ *  - ≥441px: top liquid nav + desktop balances/inbox strip
+ */
+@media (min-width: 441px) {
+  body[data-theme="v8"] .app-layout--hud .top-nav-mobile {
+    display: none !important;
+  }
+
+  body[data-theme="v8"] .app-layout--hud {
+    /* Floating top glass bar clearance */
+    --app-diamond-offset: calc(
+      max(12px, env(safe-area-inset-top, 0px)) + 56px + var(--app-page-top-gap, 12px)
+    );
+  }
+}
+
+.liquid-glass-desktop-utils {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: calc(var(--app-top-nav-z-index, 30) + 1);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 4px;
+  pointer-events: auto;
+}
+
+@media (min-width: 441px) {
+  .liquid-glass-desktop-utils {
+    display: flex;
+  }
+}
+
+/* When the centered top nav is wide, keep utils from colliding on mid widths */
+@media (min-width: 441px) and (max-width: 900px) {
+  .liquid-glass-desktop-utils {
+    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 64px);
+    height: auto;
+  }
+}
+
 /* ── Top glass nav (wide screens) ──────────────────────────────── */
 .nav-test-top {
   position: fixed;
@@ -932,7 +1026,7 @@
   top: 0;
   left: 0;
   width: var(--dock-bubble-w, 0px);
-  height: var(--dock-bubble-h, 0px);
+  height: var(--dock-bubble-h, 3.3rem);
   border-radius: var(--dock-bubble-radius, 0.5rem);
   pointer-events: none;
   touch-action: none;
@@ -1032,7 +1126,7 @@
   z-index: 2;
   display: grid;
   justify-items: center;
-  align-content: end;
+  align-content: center;
   gap: 5px;
   min-width: 0;
   height: 100%;
@@ -1124,18 +1218,34 @@
   position: absolute;
   top: -14px;
   left: 50%;
+  right: auto;
   z-index: 9;
   width: 60px;
   height: 60px;
+  margin: 0;
   border: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
-  transform: translate(-50%, -6px);
+  /* Center on slot, then nudge left so rim/icon optically sits on the notch */
+  transform: translate3d(calc(-50% - 6px), -6px, 0.01px);
   transition: transform 160ms ease;
 }
 
-.nav-test-dock-primary-glow.border-glow-card {
+/* Win over .border-glow-card { transform: translate3d(0,0,0.01px) } */
+.nav-test-dock-primary-glow.border-glow-card,
+.nav-test-dock-primary-glow.border-glow-card.border-glow-always-on,
+.nav-test-dock-primary-glow.border-glow-card.border-glow-orbiting {
+  left: 50%;
+  right: auto;
+  margin-left: 0;
+  margin-right: 0;
   background: transparent !important;
+  transform: translate3d(calc(-50% - 6px), -6px, 0.01px);
+}
+
+.nav-test-dock-primary-glow .border-glow-inner {
+  justify-self: center;
+  align-self: center;
 }
 
 .nav-test-dock-primary-glow .border-glow-inner {
@@ -1165,7 +1275,7 @@
       #000 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
@@ -1180,7 +1290,7 @@
       #000 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
@@ -1203,7 +1313,7 @@
       transparent 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
@@ -1217,7 +1327,7 @@
       transparent 100%
     ),
     radial-gradient(
-      circle at var(--cutout-x, 50.5%) var(--cutout-y, 52%),
+      circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
       #000 var(--cutout-feather, 72%) 100%
     );
@@ -1260,8 +1370,9 @@
   color: #ffb0c8;
 }
 
-.nav-test-dock-primary-glow:active {
-  transform: translate(-50%, -6px) scale(0.97);
+.nav-test-dock-primary-glow:active,
+.nav-test-dock-primary-glow.border-glow-card:active {
+  transform: translate3d(calc(-50% - 6px), -6px, 0.01px) scale(0.97);
 }
 
 .nav-test-dock-primary-btn:focus-visible {

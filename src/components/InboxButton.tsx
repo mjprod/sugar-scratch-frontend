@@ -13,6 +13,7 @@ export function InboxButton({
   onOpen: () => void;
   className?: string;
   /** surface = bordered circle (subpage headers); ghost = compact HUD (TopNav). */
+  variant?: "surface" | "ghost";
 }) {
   const hasUnread = unreadCount > 0;
   const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
