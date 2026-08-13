@@ -242,6 +242,22 @@ export function HomeFeedScreen({
     });
   }
 
+  /** One-way Like for double-tap — never unlikes; idempotent when already liked. */
+  function ensureLike(id: string): boolean {
+    const already = items.some((item) => item.id === id && item.liked);
+    if (already) return true;
+    if (onLikeAttempt && !onLikeAttempt(id)) return false;
+    setItems((prev) => {
+      if (prev.some((item) => item.id === id && item.liked)) return prev;
+      const next = prev.map((item) =>
+        item.id === id ? { ...item, liked: true } : item,
+      );
+      persist({ items: next });
+      return next;
+    });
+    return true;
+  }
+
   useEffect(() => {
     if (!resumeLikeId) return;
     setItems((prev) => {
@@ -316,6 +332,7 @@ export function HomeFeedScreen({
                   item={item}
                   active={active && item.id === activeId}
                   onLike={() => toggleLike(item.id)}
+                  onEnsureLike={() => ensureLike(item.id)}
                   onBuy={() => onBuyPack(toPurchasePack(item))}
                   onOpenCreator={onOpenCreator}
                   videoRef={(node) => {

@@ -4994,6 +4994,8 @@ body[data-theme="v8"] .cpv2-toast {
  * ======================================================================== */
 
 body[data-theme="v8"] .hf-page {
+  /* Feed fills the usable content viewport, not the raw browser viewport. */
+  --hf-top-clearance: 0px;
   --hf-bottom-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
   --hf-frame-width: min(100%, 428px);
 
@@ -5005,7 +5007,8 @@ body[data-theme="v8"] .hf-page {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
-  /* Footer is portaled fixed — keep feed above it. */
+  /* Fixed TopNav / Footer — reserve chrome so media never underlaps. */
+  padding-top: var(--hf-top-clearance);
   padding-bottom: var(--hf-bottom-clearance);
   box-sizing: border-box;
   background:
@@ -5032,9 +5035,7 @@ body[data-theme="v8"] .hf-frame {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-page {
-    /* Website chrome: top nav overlays — height comes from flex fill */
     --hf-bottom-clearance: 24px;
-    --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
 
   body[data-theme="v8"] .hf-frame {
@@ -5307,7 +5308,8 @@ body[data-theme="v8"] .hf-overlay {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  /* Bottom safe-area lives in --hf-bottom-clearance — don't double-count. */
+  padding: 24px 18px 18px;
   opacity: 0.88;
   transform: translateY(6px);
   transition:
@@ -5342,12 +5344,15 @@ body[data-theme="v8"] .hf-description {
 
 body[data-theme="v8"] .hf-actions {
   display: flex;
+  width: 100%;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 
 body[data-theme="v8"] .hf-buy {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -5385,6 +5390,7 @@ body[data-theme="v8"] .hf-buy-price {
 body[data-theme="v8"] .hf-like {
   position: relative;
   display: grid;
+  flex: 0 0 auto;
   width: 48px;
   height: 48px;
   place-items: center;
@@ -5439,6 +5445,145 @@ body[data-theme="v8"] .hf-like-burst {
   }
   100% {
     transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+body[data-theme="v8"] .hf-heart-burst {
+  position: absolute;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .hf-heart-burst-piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+
+body[data-theme="v8"] .hf-candy-heart {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Soft contact shadow + pink glow — premium candy depth */
+body[data-theme="v8"] .hf-heart-burst-piece.is-depth-fg .hf-candy-heart {
+  filter:
+    drop-shadow(0 14px 18px rgba(0, 0, 0, 0.38))
+    drop-shadow(0 0 22px rgba(255, 77, 158, 0.34));
+}
+
+body[data-theme="v8"] .hf-heart-burst-piece.is-depth-mid .hf-candy-heart {
+  filter:
+    drop-shadow(0 10px 14px rgba(0, 0, 0, 0.3))
+    drop-shadow(0 0 14px rgba(255, 77, 158, 0.24));
+}
+
+body[data-theme="v8"] .hf-heart-burst-piece.is-depth-bg .hf-candy-heart {
+  filter:
+    blur(1.1px)
+    drop-shadow(0 6px 10px rgba(0, 0, 0, 0.22))
+    drop-shadow(0 0 10px rgba(236, 72, 153, 0.18));
+}
+
+body[data-theme="v8"] .hf-heart-burst-piece.is-primary {
+  animation: hf-burst-primary 820ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+body[data-theme="v8"] .hf-heart-burst-piece.is-secondary {
+  opacity: var(--hf-ho, 0.7);
+  width: var(--hf-hsz, 48px);
+  height: var(--hf-hsz, 48px);
+  animation: hf-burst-secondary 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: var(--hf-hd, 0ms);
+}
+
+/* Moderate primary — impact comes from spread, not centre size */
+body[data-theme="v8"] .hf-heart-burst--media .hf-heart-burst-piece.is-primary {
+  width: clamp(100px, calc(var(--hf-card-w, 390px) * 0.32), 150px);
+  height: clamp(100px, calc(var(--hf-card-w, 390px) * 0.32), 150px);
+}
+
+body[data-theme="v8"] .hf-heart-burst--button .hf-heart-burst-piece.is-primary {
+  width: clamp(60px, calc(var(--hf-card-w, 390px) * 0.18), 90px);
+  height: clamp(60px, calc(var(--hf-card-w, 390px) * 0.18), 90px);
+  animation-duration: 700ms;
+}
+
+body[data-theme="v8"] .hf-heart-burst--button .hf-heart-burst-piece.is-secondary {
+  animation-duration: 850ms;
+}
+
+body[data-theme="v8"] .hf-heart-burst.is-reduced .hf-heart-burst-piece.is-primary {
+  animation: hf-burst-fade 420ms ease-out forwards;
+}
+
+body[data-theme="v8"] .hf-heart-burst.is-reduced .hf-heart-burst-piece.is-secondary {
+  animation: hf-burst-fade 420ms ease-out forwards;
+  animation-delay: var(--hf-hd, 0ms);
+  transform: translate(-50%, -50%)
+    translate(calc(var(--hf-hx, 0px) * 0.22), calc(var(--hf-hy, 0px) * 0.22));
+}
+
+@keyframes hf-burst-primary {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0) scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-16px) scale(0.98);
+  }
+}
+
+@keyframes hf-burst-secondary {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.72);
+  }
+  12% {
+    opacity: var(--hf-ho, 0.7);
+    transform: translate(-50%, -50%)
+      translate(calc(var(--hf-hx, 0px) * 0.22), calc(var(--hf-hy, 0px) * 0.22))
+      scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%)
+      translate(var(--hf-hx, 0px), calc(var(--hf-hy, 0px) - 18px))
+      scale(0.94);
+  }
+}
+
+@keyframes hf-burst-fade {
+  0% {
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
     opacity: 0;
   }
 }
@@ -5522,6 +5667,17 @@ body[data-theme="v8"] .hf-loading-more {
     animation: none;
     transition: none;
     transform: none;
+  }
+
+  body[data-theme="v8"] .hf-heart-burst:not(.is-reduced) .hf-heart-burst-piece.is-primary {
+    animation: hf-burst-fade 420ms ease-out forwards;
+  }
+
+  body[data-theme="v8"] .hf-heart-burst:not(.is-reduced) .hf-heart-burst-piece.is-secondary {
+    animation: hf-burst-fade 420ms ease-out forwards;
+    animation-delay: var(--hf-hd, 0ms);
+    transform: translate(-50%, -50%)
+      translate(calc(var(--hf-hx, 0px) * 0.22), calc(var(--hf-hy, 0px) * 0.22));
   }
 }
 
@@ -8414,9 +8570,9 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
     padding-top: var(--app-diamond-offset);
   }
 
+  /* Immersive feed: media starts below mobile HUD (shared height token). */
   body[data-theme="v8"] .app-layout--hud .hf-page {
-    /* Home media underlaps fixed mobile HUD; overlays handle their own safe UI. */
-    padding-top: 0;
+    --hf-top-clearance: var(--mobile-top-hud-height);
   }
 }
 
@@ -8475,15 +8631,9 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
     border-bottom-color: color-mix(in oklab, var(--color-line) 70%, transparent);
   }
 
-  /* Home: media fills under the fixed HUD (no top chrome gap). */
-  body[data-theme="v8"] .app-layout--hud .hf-frame {
-    margin-top: 0;
-    margin-bottom: 12px;
-    border-radius: 0 0 28px 28px;
-  }
-
+  /* Immersive feed: media starts below desktop TopNav (shared height token). */
   body[data-theme="v8"] .app-layout--hud .hf-page {
-    --hf-top-clearance: 0px;
+    --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
 }
 
