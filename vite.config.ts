@@ -67,7 +67,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: env.VITE_DEV_HOST || "localhost",
+      // Default 0.0.0.0 so phones can hit https://<lan-ip>:5173 (mkcert workflow).
+      // Override with VITE_DEV_HOST=localhost to bind loopback only.
+      host: env.VITE_DEV_HOST || "0.0.0.0",
       port: 5173,
       https: localHttps ?? true,
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
@@ -91,7 +93,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: {
-      host: env.VITE_DEV_HOST || "localhost",
+      host: env.VITE_DEV_HOST || "0.0.0.0",
       port: 5173,
       https: localHttps ?? true,
     },
