@@ -1,0 +1,530 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BuyButton } from '@/features/reveal/components/BuyButton'
+import { CardFan } from '@/features/reveal/components/CardFan'
+import {
+  DEFAULT_BACK_URL,
+  type RevealCard,
+} from '@/features/reveal/lib/cards'
+import { HOLO_EFFECTS } from '@/features/reveal/lib/effects'
+import { loadFanDrag } from '@/features/reveal/lib/fanDrag'
+import { loadFanLayout } from '@/features/reveal/lib/fanLayout'
+import { useCatalog } from '@/shared/catalog/CatalogContext'
+import { usePageReady } from '@/shared/ui/PageTransition'
+import { unlockCountdownSound } from './modules/InitialCountdown'
+import {
+  beginPhotoPhase,
+  clearGameSession,
+  firstMissingMotionCardId,
+  loadGameSession,
+  motionPlayHref,
+  navigateTo,
+  photoPlayHref,
+  startMotionSession,
+  type GameSession,
+} from './modules/gameSession'
+import {
+  buildDealtRound,
+  loadGameCatalog,
+  type PhotoCard,
+  type ThemedMotionCard,
+} from './modules/session'
+import '@/features/reveal/reveal.css'
+import './gameHub.css'
+
+type Phase =
+  | 'loading'
+  | 'idle'
+  | 'dealing'
+  | 'ready'
+  | 'photo_reveal'
+  | 'done'
+
+const PRIZE_REVEAL_MS = 420
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+function themeAccent(theme: string): string {
+  const key = theme.toLowerCase()
+  if (key.includes('police') || key.includes('cop')) return '#3b6ea8'
+  if (key.includes('teacher')) return '#8b5a2b'
+  if (key.includes('nurse')) return '#c45c7a'
+  if (key.includes('fire')) return '#d4552a'
+  if (key.includes('gym')) return '#2f7d5a'
+  return '#a86b3b'
+}
+
+function PhotoLayers({ photo }: { photo: PhotoCard }) {
+  return (
+    <div className="game-hub-pack__photo-layers">
+      <img alt="" src={photo.background} />
+      <img alt="" src={photo.bikini} />
+      <img alt="" src={photo.clothes} />
+    </div>
+  )
+}
+
+function motionHandToRevealCards(
+  hand: ThemedMotionCard[],
+  overlay: {
+    name: string
+    city?: string
+    country?: string
+    flagEmoji?: string
+    flagSvgUrl?: string
+    gradientColor?: string
+    gradientColorEnd?: string
+  },
+): RevealCard[] {
+  return hand.map((card, index) => {
+    const effect = HOLO_EFFECTS[index % HOLO_EFFECTS.length]!
+    return {
+      id: card.id,
+      name: card.label,
+      mediaType: 'video' as const,
+      // Card face = front (clothed) clip; bottom is the under-scratch background.
+      mediaUrl: card.foreground || card.bottom,
+      backUrl: DEFAULT_BACK_URL,
+      effect,
+      overlay: {
+        ...overlay,
+        name: overlay.name || card.label,
+        cardNumber: String(index + 1).padStart(2, '0'),
+      },
+    }
+  })
+}
+
+export function GameHub() {
+  const catalog = useCatalog()
+  const { markReady } = usePageReady()
+  const [phase, setPhase] = useState<Phase>('loading')
+  const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
+  const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
+  const [hand, setHand] = useState<ThemedMotionCard[]>([])
+  const [session, setSession] = useState<GameSession | null>(null)
+  const [wonPhotos, setWonPhotos] = useState<PhotoCard[]>([])
+  const [prizeRevealed, setPrizeRevealed] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [fanActive, setFanActive] = useState(false)
+  const [showPlay, setShowPlay] = useState(false)
+  const [fanRunId, setFanRunId] = useState(0)
+  const runIdRef = useRef(0)
+  const resumedRef = useRef(false)
+  const [fanLayout] = useState(() => loadFanLayout())
+  const [fanDrag] = useState(() => loadFanDrag())
+
+  const shared = catalog.productSharedMedia
+  const overlay = useMemo(
+    () => ({
+      name: shared.girlName.trim() || 'Juliana',
+      city: shared.influencerCity,
+      country: shared.influencerCountry,
+      flagEmoji: shared.flagEmoji,
+      flagSvgUrl: shared.flagSvgUrl,
+      gradientColor: shared.overlayBackgroundColor,
+      gradientColorEnd: shared.overlayBackgroundColorEnd,
+    }),
+    [shared],
+  )
+
+  const revealCards = useMemo(
+    () => motionHandToRevealCards(hand, overlay),
+    [hand, overlay],
+  )
+
+  useEffect(() => {
+    const warm = () => unlockCountdownSound()
+    window.addEventListener('pointerdown', warm, { capture: true, once: true })
+    return () => window.removeEventListener('pointerdown', warm, true)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const loaded = await loadGameCatalog()
+        if (cancelled) return
+        setMotionPool(loaded.motion)
+        setPhotoPool(loaded.photos)
+
+        const existing = loadGameSession()
+        if (existing?.phase === 'photo_reveal' || existing?.phase === 'done') {
+          setSession(existing)
+          const photos = existing.wonPhotoIds
+            .map((id) => loaded.photos.find((photo) => photo.id === id))
+            .filter((photo): photo is PhotoCard => Boolean(photo))
+          setWonPhotos(photos)
+          const dealt = existing.motionCardIds
+            .map((id) => loaded.motion.find((card) => card.id === id))
+            .filter((card): card is ThemedMotionCard => Boolean(card))
+          setHand(dealt)
+          setFanActive(false)
+          setShowPlay(false)
+          setPhase(existing.phase === 'done' ? 'done' : 'photo_reveal')
+          return
+        }
+
+        if (existing?.phase === 'motion' || existing?.phase === 'photo') {
+          setSession(existing)
+          const dealt = existing.motionCardIds
+            .map((id) => loaded.motion.find((card) => card.id === id))
+            .filter((card): card is ThemedMotionCard => Boolean(card))
+          setHand(dealt)
+          setFanActive(true)
+          setShowPlay(true)
+          setFanRunId((n) => n + 1)
+          setPhase('ready')
+          return
+        }
+
+        setPhase('idle')
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Failed to load cards')
+        setPhase('idle')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (phase === 'loading') return
+    const raf = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => markReady())
+    })
+    return () => window.cancelAnimationFrame(raf)
+  }, [phase, markReady])
+
+  useEffect(() => {
+    if (phase !== 'photo_reveal' || resumedRef.current || wonPhotos.length === 0) {
+      return
+    }
+    resumedRef.current = true
+    let cancelled = false
+    void (async () => {
+      setPrizeRevealed(0)
+      for (let i = 0; i < wonPhotos.length; i += 1) {
+        if (cancelled) return
+        await wait(PRIZE_REVEAL_MS)
+        if (cancelled) return
+        setPrizeRevealed(i + 1)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [phase, wonPhotos])
+
+  const handLocked =
+    Boolean(session) &&
+    (session!.phase === 'motion' || session!.phase === 'photo')
+  const canDeal =
+    !busy &&
+    (phase === 'idle' ||
+      phase === 'done' ||
+      phase === 'photo_reveal' ||
+      (phase === 'ready' && !handLocked))
+  const showFan =
+    hand.length > 0 && (phase === 'dealing' || phase === 'ready')
+  const playLabel =
+    session?.phase === 'photo'
+      ? 'Continue'
+      : session?.phase === 'motion' && session.completedMotionIds.length > 0
+        ? 'Continue'
+        : 'Play now'
+  const statusLabel =
+    phase === 'loading'
+      ? 'Loading cards…'
+      : phase === 'dealing'
+        ? 'Opening pack…'
+        : handLocked
+          ? session!.phase === 'photo'
+            ? `Game in progress · ${session!.completedPhotoIds.length}/${session!.wonPhotoIds.length} photos`
+            : `Game in progress · ${session!.completedMotionIds.length}/${session!.motionCardIds.length} cards`
+          : null
+
+  async function startNewGame() {
+    if (!canDeal) return
+    if (motionPool.length === 0) {
+      setError('No motion cards available.')
+      return
+    }
+    const next = buildDealtRound(motionPool, photoPool)
+    if (!next) {
+      setError('Need motion cards with distinct themes to deal a hand.')
+      return
+    }
+    clearGameSession()
+    const runId = runIdRef.current + 1
+    runIdRef.current = runId
+    setBusy(true)
+    setError(null)
+    setSession(null)
+    setWonPhotos([])
+    setPrizeRevealed(0)
+    resumedRef.current = false
+    setShowPlay(false)
+    setFanActive(false)
+    setHand(next.cards)
+    setPhase('dealing')
+    setFanRunId((n) => n + 1)
+
+    // Let CardFan remount closed, then kick the open animation.
+    await wait(40)
+    if (runIdRef.current !== runId) return
+    setFanActive(true)
+  }
+
+  function handleFanComplete() {
+    if (phase !== 'dealing' && phase !== 'ready') return
+    setPhase('ready')
+    setShowPlay(true)
+    setBusy(false)
+  }
+
+  function playMotionHand() {
+    if (busy || hand.length === 0) return
+    unlockCountdownSound()
+    const existing = loadGameSession()
+    if (existing?.phase === 'motion' || existing?.phase === 'photo') {
+      if (existing.phase === 'photo') {
+        const started = beginPhotoPhase() ?? existing
+        navigateTo(photoPlayHref(started))
+        return
+      }
+      navigateTo(motionPlayHref(existing, firstMissingMotionCardId(existing)))
+      return
+    }
+    const created = startMotionSession(hand)
+    setSession(created)
+    navigateTo(motionPlayHref(created))
+  }
+
+  function playPhotoHand() {
+    const current = loadGameSession()
+    if (!current || current.wonPhotoIds.length === 0) {
+      setError('No photo scratches won this round.')
+      return
+    }
+    unlockCountdownSound()
+    const started = beginPhotoPhase() ?? current
+    setSession(started)
+    navigateTo(photoPlayHref(started))
+  }
+
+  function deleteGame() {
+    if (busy) return
+    const hasProgress =
+      Boolean(session) ||
+      hand.length > 0 ||
+      phase === 'photo_reveal' ||
+      phase === 'done'
+    if (!hasProgress) return
+    if (
+      !window.confirm(
+        'Delete this game? Your hand and any scratch progress will be lost.',
+      )
+    ) {
+      return
+    }
+    runIdRef.current += 1
+    clearGameSession()
+    setSession(null)
+    setHand([])
+    setWonPhotos([])
+    setPrizeRevealed(0)
+    resumedRef.current = false
+    setError(null)
+    setBusy(false)
+    setFanActive(false)
+    setShowPlay(false)
+    setPhase('idle')
+  }
+
+  const canDelete =
+    !busy &&
+    phase !== 'loading' &&
+    phase !== 'dealing' &&
+    (Boolean(session) || hand.length > 0)
+
+  return (
+    <div className="stage-game-hub">
+      <div className="packs-circle packs-circle--bloom" aria-hidden="true" />
+      <div className="packs-circle packs-circle--core" aria-hidden="true" />
+
+      <div className={`game-hub-pack game-hub-pack--${phase}`}>
+        {statusLabel ? (
+          <p className="game-hub-pack__status" aria-live="polite">
+            {statusLabel}
+          </p>
+        ) : null}
+        {error ? <p className="game-hub-pack__error">{error}</p> : null}
+
+        <section className="game-hub-pack__stage" aria-live="polite">
+          {phase === 'idle' ? (
+            <div className="game-hub-pack__idle">
+              <div className="game-hub-pack__idle-stack" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className={`game-hub-pack__idle-card game-hub-pack__idle-card--${i}`}
+                  />
+                ))}
+              </div>
+              <p>New Game deals five themed cards — then Play to scratch</p>
+            </div>
+          ) : null}
+
+          {showFan ? (
+            <div className="game-hub-pack__fan reveal-stage__fan">
+              <CardFan
+                key={`hub-fan-${fanRunId}`}
+                cards={revealCards}
+                active={fanActive}
+                layout={fanLayout}
+                dragConfig={fanDrag}
+                liveEdit={false}
+                onComplete={handleFanComplete}
+              />
+            </div>
+          ) : null}
+
+          {phase === 'photo_reveal' && session ? (
+            <div className="game-hub-pack__prizes">
+              <div className="game-hub-pack__strip">
+                {hand.map((card) => (
+                  <span key={card.id} className="game-hub-pack__chip">
+                    <i style={{ background: themeAccent(card.theme) }} />
+                    {card.theme}
+                  </span>
+                ))}
+              </div>
+              <h2>
+                {session.photoPrizeTotal > 0
+                  ? `You won ${session.photoPrizeTotal} photocard${
+                      session.photoPrizeTotal === 1 ? '' : 's'
+                    }!`
+                  : 'No photocards this round'}
+              </h2>
+              <p>
+                {session.photoPrizeTotal > 0
+                  ? 'Scratch them next for diamonds.'
+                  : 'Deal again for another shot.'}
+              </p>
+              {wonPhotos.length > 0 ? (
+                <div className="game-hub-pack__prize-grid">
+                  {wonPhotos.map((photo, index) => (
+                    <article
+                      key={photo.id}
+                      className={`game-hub-pack__prize${
+                        index < prizeRevealed ? ' is-shown' : ''
+                      }`}
+                    >
+                      <div className="game-hub-pack__prize-inner">
+                        <PhotoLayers photo={photo} />
+                        <span>{photo.label}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {phase === 'done' && session ? (
+            <div className="game-hub-pack__tally" role="status">
+              <p className="game-hub-pack__tally-label">Diamonds won</p>
+              <p className="game-hub-pack__tally-value">{session.diamondTotal}</p>
+              <p>
+                From {session.wonPhotoIds.length} photo scratch
+                {session.wonPhotoIds.length === 1 ? '' : 'es'}
+              </p>
+            </div>
+          ) : null}
+        </section>
+
+        <div className="game-hub-pack__cta">
+          {phase === 'idle' || phase === 'done' ? (
+            <BuyButton
+              label="New Game"
+              onClick={() => void startNewGame()}
+              disabled={!canDeal}
+              visible
+            />
+          ) : null}
+
+          {phase === 'photo_reveal' &&
+          session &&
+          session.photoPrizeTotal > 0 ? (
+            <BuyButton
+              label="Scratch photos for diamonds"
+              onClick={playPhotoHand}
+              visible
+            />
+          ) : null}
+
+          {phase === 'photo_reveal' &&
+          (!session || session.photoPrizeTotal <= 0) ? (
+            <BuyButton
+              label="New Game"
+              onClick={() => void startNewGame()}
+              disabled={!canDeal}
+              visible
+            />
+          ) : null}
+
+          {phase === 'ready' && showPlay ? (
+            <BuyButton
+              label={playLabel}
+              onClick={playMotionHand}
+              disabled={busy || hand.length === 0}
+              visible
+            />
+          ) : null}
+
+          <div className="game-hub-pack__secondary">
+            {phase === 'ready' && showPlay && canDeal ? (
+              <button
+                type="button"
+                className="game-hub-pack__link reveal-replay"
+                disabled={!canDeal}
+                onClick={() => void startNewGame()}
+              >
+                Replay open
+              </button>
+            ) : null}
+            {phase === 'photo_reveal' &&
+            session &&
+            session.photoPrizeTotal > 0 &&
+            canDeal ? (
+              <button
+                type="button"
+                className="game-hub-pack__link reveal-replay"
+                disabled={!canDeal}
+                onClick={() => void startNewGame()}
+              >
+                New Game
+              </button>
+            ) : null}
+            {canDelete ? (
+              <button
+                type="button"
+                className="game-hub-pack__link game-hub-pack__link--danger"
+                onClick={deleteGame}
+              >
+                Delete game
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

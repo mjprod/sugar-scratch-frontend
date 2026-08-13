@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      port: 5173,
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
       allowedHosts: [".trycloudflare.com"],
       proxy: {
