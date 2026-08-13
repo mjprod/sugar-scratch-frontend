@@ -582,11 +582,9 @@ export function PurchaseFlow({
         coverUrl: packImage,
         themeName: pack.packName,
       });
-      recordRevealedCards({
-        count: allIds.length,
-        creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
-        creatorName: pack.creator,
-      });
+      // Awards coins / purchased-pack count / purchase seed via parent onComplete,
+      // and records collection (deduped by awardedIds) — same path as in-flow scratch.
+      settleRevealed(allIds);
       clearOpening();
       bumpInventory();
       navigateTo(motionPlayHref(created));
