@@ -70,8 +70,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      // Bind 0.0.0.0 so phones on the same Wi‑Fi can reach this machine.
-      host: true,
+      // Default is localhost only. Use `npm run dev:host` (vite --host) to
+      // bind 0.0.0.0 for phones on the same Wi‑Fi.
       port: 5173,
       strictPort: false,
       https,
@@ -96,7 +96,6 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: {
-      host: true,
       port: 4173,
       https,
     },
