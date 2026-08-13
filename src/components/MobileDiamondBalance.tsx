@@ -90,13 +90,24 @@ export function MobileDiamondUtility({
             <button
               type="button"
               onClick={onOpenHome}
-              className="top-nav-brand shrink-0 text-[17px] font-bold tracking-[-0.03em] text-white/90"
+              aria-label="Sugar Scratch Home"
+              className="top-nav-brand shrink-0 transition hover:opacity-90"
             >
-              Sugar
+              <img
+                src="/svg/logoSugarScratch.svg"
+                alt="Sugar Scratch"
+                className="top-nav-brand-logo h-9 w-auto"
+                draggable={false}
+              />
             </button>
           ) : (
-            <span className="top-nav-brand shrink-0 text-[17px] font-bold tracking-[-0.03em] text-white/90">
-              Sugar
+            <span className="top-nav-brand shrink-0">
+              <img
+                src="/svg/logoSugarScratch.svg"
+                alt="Sugar Scratch"
+                className="top-nav-brand-logo h-9 w-auto"
+                draggable={false}
+              />
             </span>
           )
         ) : (
