@@ -63,8 +63,8 @@ export function catalogMotionIdFromRevealId(cardId: string): string {
 }
 
 /**
- * Resolve pack-fan card ids into a playable motion hand (catalog order preserved).
- * Drops unknown / unplayable ids; falls back to a dealt round if none resolve.
+ * Resolve pack-fan card ids into a playable motion hand (input order preserved).
+ * Drops unknown ids; falls back to a dealt round if none resolve.
  */
 export function resolveMotionHandFromIds(
   cardIds: string[],
