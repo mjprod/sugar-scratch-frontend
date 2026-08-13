@@ -13,7 +13,8 @@ export function photoScratchIdForSlot(
   slotIndex: number,
 ): string {
   const motion = motionCardId.trim()
-  const n = Math.max(0, Math.min(PHOTO_SLOTS - 1, Math.floor(slotIndex))) + 1
+  const idx = Number.isFinite(slotIndex) ? Math.floor(slotIndex) : 0
+  const n = Math.max(0, Math.min(PHOTO_SLOTS - 1, idx)) + 1
   return `${motion}_slot_${String(n).padStart(2, '0')}`
 }
 
