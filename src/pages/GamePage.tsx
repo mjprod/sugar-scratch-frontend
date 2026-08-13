@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
@@ -15,12 +15,12 @@ function ScratchGameEmbed() {
   const [searchParams] = useSearchParams();
 
   // Mark embed before ScratchPrototype mounts so zoom stays off on first paint.
-  if (
-    typeof document !== "undefined" &&
-    document.documentElement.dataset.scratchGame !== "1"
-  ) {
-    document.documentElement.dataset.scratchGame = "1";
-  }
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    if (document.documentElement.dataset.scratchGame !== "1") {
+      document.documentElement.dataset.scratchGame = "1";
+    }
+  }, []);
 
   useEffect(() => {
     const style = document.createElement("style");
