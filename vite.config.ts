@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: "0.0.0.0",
+      host: env.VITE_DEV_HOST || "localhost",
       port: 5173,
       https: localHttps ?? true,
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
