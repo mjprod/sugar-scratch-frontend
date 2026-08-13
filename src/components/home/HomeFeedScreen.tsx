@@ -23,22 +23,32 @@ const SNAP_MS = 220;
 const OVERLAY_PARALLAX = 0.28;
 /** Max overlay drift in px (keeps CTAs readable). */
 const OVERLAY_PARALLAX_MAX_PX = 56;
-/** Overlay settle ease — higher = snappier arrival after scroll. */
-const OVERLAY_PARALLAX_EASE = 0.32;
-/** Media zoom ease — keep a bit softer than overlay. */
-const MEDIA_SCALE_EASE = 0.16;
-/** Resting media scale inside overflow-hidden frame. */
-const MEDIA_SCALE_BASE = 1.02;
+/**
+ * Overlay settle half-life in ms (time-based damping).
+ * Higher = silkier / less stutter; lower = snappier.
+ */
+const OVERLAY_PARALLAX_HALFLIFE_MS = 90;
+/** Snap when within this many px of target. */
+const OVERLAY_PARALLAX_SETTLE_EPS = 0.08;
+/**
+ * Media zoom ease — lower = softer settle (less jitter when snapping home).
+ * Applied every rAF toward the scroll target.
+ */
+const MEDIA_SCALE_EASE = 0.08;
+/** Resting media scale inside overflow-hidden frame (keep near 1 so first frame isn't cropped). */
+const MEDIA_SCALE_BASE = 1.04;
 /** Extra scale added at full slide travel (more scroll → more zoom). */
-const MEDIA_SCALE_GAIN = 0.14;
+const MEDIA_SCALE_GAIN = 0.1;
 /** Hard ceiling so zoom stays tasteful. */
-const MEDIA_SCALE_MAX = 1.18;
+const MEDIA_SCALE_MAX = 1.16;
 /** Max scroll-driven media blur (px). */
 const MEDIA_BLUR_MAX_PX = 5;
 /** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
 const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
-/** Blur settle ease — snappier than scale so soft-focus leads the zoom. */
-const MEDIA_BLUR_EASE = 0.28;
+/** Blur settle ease — slightly softer than before so it doesn't chatter with zoom. */
+const MEDIA_BLUR_EASE = 0.14;
+/** How close scale must get before we snap to target (smaller = smoother end). */
+const MEDIA_SCALE_SETTLE_EPS = 0.00015;
 
 export function HomeFeedScreen({
   active,
@@ -89,6 +99,7 @@ export function HomeFeedScreen({
   const blurTargetRef = useRef(new Map<string, number>());
   const blurCurrentRef = useRef(new Map<string, number>());
   const scrollFxRafRef = useRef(0);
+  const scrollFxLastTsRef = useRef(0);
 
   const persist = useCallback(
     (patch: Partial<{
@@ -172,7 +183,7 @@ export function HomeFeedScreen({
           overlay.style.setProperty("--hf-parallax-y", "0px");
         });
         medias.forEach((media) => {
-          media.style.setProperty("--hf-media-scale", "1");
+          media.style.setProperty("--hf-media-scale", String(MEDIA_SCALE_BASE));
           media.style.setProperty("--hf-media-blur", "0px");
         });
         parallaxTargetRef.current.clear();
@@ -185,6 +196,7 @@ export function HomeFeedScreen({
           cancelAnimationFrame(scrollFxRafRef.current);
           scrollFxRafRef.current = 0;
         }
+        scrollFxLastTsRef.current = 0;
         return;
       }
 
@@ -227,15 +239,15 @@ export function HomeFeedScreen({
           blurCurrentRef.current.set(key, blurTarget);
           overlays[index]?.style.setProperty(
             "--hf-parallax-y",
-            `${overlayTarget.toFixed(2)}px`,
+            `${overlayTarget.toFixed(3)}px`,
           );
           medias[index]?.style.setProperty(
             "--hf-media-scale",
-            scaleTarget.toFixed(4),
+            scaleTarget.toFixed(5),
           );
           medias[index]?.style.setProperty(
             "--hf-media-blur",
-            `${blurTarget.toFixed(2)}px`,
+            `${blurTarget.toFixed(3)}px`,
           );
         }
       }
@@ -243,12 +255,22 @@ export function HomeFeedScreen({
       if (immediate) return;
       if (scrollFxRafRef.current) return;
 
-      const tick = () => {
+      const tick = (ts: number) => {
         const node = scrollerRef.current;
         if (!node) {
           scrollFxRafRef.current = 0;
+          scrollFxLastTsRef.current = 0;
           return;
         }
+
+        const last = scrollFxLastTsRef.current || ts;
+        const dtMs = Math.min(48, Math.max(0, ts - last));
+        scrollFxLastTsRef.current = ts;
+        // Frame-rate independent exponential smoothing.
+        const overlayAlpha =
+          1 - Math.exp((-Math.LN2 * dtMs) / OVERLAY_PARALLAX_HALFLIFE_MS);
+        // Keep media a touch softer than overlay so UI leads slightly.
+        const mediaAlpha = 1 - Math.exp((-Math.LN2 * dtMs) / 120);
 
         const liveOverlays = node.querySelectorAll<HTMLElement>(".hf-overlay");
         const liveMedias = node.querySelectorAll<HTMLElement>(".hf-media");
@@ -260,38 +282,38 @@ export function HomeFeedScreen({
 
           const oTarget = parallaxTargetRef.current.get(key) ?? 0;
           const oCurrent = parallaxCurrentRef.current.get(key) ?? 0;
-          const oNext = oCurrent + (oTarget - oCurrent) * OVERLAY_PARALLAX_EASE;
-          const oSettled = Math.abs(oTarget - oNext) < 0.2;
+          const oNext = oCurrent + (oTarget - oCurrent) * overlayAlpha;
+          const oSettled = Math.abs(oTarget - oNext) < OVERLAY_PARALLAX_SETTLE_EPS;
           const oValue = oSettled ? oTarget : oNext;
           parallaxCurrentRef.current.set(key, oValue);
           liveOverlays[index]?.style.setProperty(
             "--hf-parallax-y",
-            `${oValue.toFixed(2)}px`,
+            `${oValue.toFixed(3)}px`,
           );
           if (!oSettled) drifting = true;
 
           const sTarget = scaleTargetRef.current.get(key) ?? MEDIA_SCALE_BASE;
           const sCurrent =
             scaleCurrentRef.current.get(key) ?? MEDIA_SCALE_BASE;
-          const sNext = sCurrent + (sTarget - sCurrent) * MEDIA_SCALE_EASE;
-          const sSettled = Math.abs(sTarget - sNext) < 0.001;
+          const sNext = sCurrent + (sTarget - sCurrent) * mediaAlpha;
+          const sSettled = Math.abs(sTarget - sNext) < MEDIA_SCALE_SETTLE_EPS;
           const sValue = sSettled ? sTarget : sNext;
           scaleCurrentRef.current.set(key, sValue);
           liveMedias[index]?.style.setProperty(
             "--hf-media-scale",
-            sValue.toFixed(4),
+            sValue.toFixed(5),
           );
           if (!sSettled) drifting = true;
 
           const bTarget = blurTargetRef.current.get(key) ?? 0;
           const bCurrent = blurCurrentRef.current.get(key) ?? 0;
-          const bNext = bCurrent + (bTarget - bCurrent) * MEDIA_BLUR_EASE;
-          const bSettled = Math.abs(bTarget - bNext) < 0.02;
+          const bNext = bCurrent + (bTarget - bCurrent) * mediaAlpha;
+          const bSettled = Math.abs(bTarget - bNext) < 0.01;
           const bValue = bSettled ? bTarget : bNext;
           blurCurrentRef.current.set(key, bValue);
           liveMedias[index]?.style.setProperty(
             "--hf-media-blur",
-            `${bValue.toFixed(2)}px`,
+            `${bValue.toFixed(3)}px`,
           );
           if (!bSettled) drifting = true;
         }
@@ -300,9 +322,11 @@ export function HomeFeedScreen({
           scrollFxRafRef.current = requestAnimationFrame(tick);
         } else {
           scrollFxRafRef.current = 0;
+          scrollFxLastTsRef.current = 0;
         }
       };
 
+      scrollFxLastTsRef.current = 0;
       scrollFxRafRef.current = requestAnimationFrame(tick);
     },
     [getSlideMetrics, items, reducedMotion],
@@ -494,8 +518,6 @@ export function HomeFeedScreen({
       aria-hidden={!active}
       {...(!active ? { inert: true } : {})}
     >
-      {/* Fixed bottom vignette under the liquid-glass nav (not per-card) */}
-      <div className="hf-bottom-veil" aria-hidden="true" />
       {personalizationPrompt}
       <div className="hf-frame">
         {status === "loading" ? (

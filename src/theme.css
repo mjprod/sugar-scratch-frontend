@@ -4998,26 +4998,6 @@ body[data-theme="v8"] .hf-page.is-inactive {
   pointer-events: none;
 }
 
-/*
- * Bottom visual hint under the liquid-glass nav stack.
- * Fixed to the viewport — videos scroll underneath.
- * z under dock (1000) / top nav; pointer-events none.
- */
-body[data-theme="v8"] .hf-bottom-veil {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 25;
-  height: 9dvh;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgb(0 0 0 / 0%) 0%, rgb(0 0 0) 60%);
-}
-
-body[data-theme="v8"] .hf-page.is-inactive .hf-bottom-veil {
-  opacity: 0;
-}
-
 body[data-theme="v8"] .hf-frame {
   position: relative;
   display: flex;
@@ -5257,7 +5237,7 @@ body[data-theme="v8"] .hf-card {
 }
 
 body[data-theme="v8"] .hf-media {
-  --hf-media-scale: 1.02;
+  --hf-media-scale: 1.04;
   --hf-media-blur: 0px;
 
   position: absolute;
@@ -5300,11 +5280,12 @@ body[data-theme="v8"] .hf-media-shade {
 
 @keyframes hf-kenburns {
   from {
-    transform: scale(var(--hf-media-scale, 1.02)) translate3d(0, 0, 0);
+    transform: scale(var(--hf-media-scale, 1.04));
   }
 
   to {
-    transform: scale(calc(var(--hf-media-scale, 1.02) * 1.06)) translate3d(0, -2%, 0);
+    transform: scale(calc(var(--hf-media-scale, 1.04) * 1.06))
+      translate3d(0, -2%, 0);
   }
 }
 
@@ -5321,9 +5302,16 @@ body[data-theme="v8"] .hf-overlay {
   padding: 24px 18px calc(11dvh + env(safe-area-inset-bottom, 0px));
   opacity: 0.88;
   /* Enter offset + scroll-driven lag (JS sets --hf-parallax-y). */
-  transform: translate3d(0, calc(var(--hf-parallax-y) + var(--hf-overlay-enter)), 0);
-  will-change: transform;
-  transition: opacity 220ms ease;
+  transform: translate3d(
+    0,
+    calc(var(--hf-parallax-y) + var(--hf-overlay-enter)),
+    0
+  );
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, opacity;
+  /* Opacity only — transform is rAF-driven (CSS transition would fight it). */
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body[data-theme="v8"] .hf-overlay.is-visible {
