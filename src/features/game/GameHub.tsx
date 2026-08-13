@@ -211,11 +211,7 @@ export function GameHub() {
     if (session.walletCredited || walletCreditRef.current) return
     walletCreditRef.current = true
     if (session.diamondTotal > 0) {
-      addDiamonds(session.diamondTotal)
-    }
-    const marked = markWalletCredited()
-    if (marked) setSession(marked)
-  }, [phase, session, addDiamonds])
+  }, [phase, session, addDiamonds, markWalletCredited])
 
   useEffect(() => {
     if (phase !== 'photo_reveal' || resumedRef.current || wonPhotos.length === 0) {
