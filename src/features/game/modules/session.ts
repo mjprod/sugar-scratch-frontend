@@ -62,9 +62,66 @@ export function catalogMotionIdFromRevealId(cardId: string): string {
     : trimmed;
 }
 
+/** Local fan ids are `reveal-{role}-{slot}` (see revealCardId). */
+const REVEAL_LOCAL_ID_RE =
+  /^reveal-(policewoman|nurse|teacher|gym|firefighter)-(\d+)$/i;
+
+const REVEAL_ROLE_THEME: Record<string, string> = {
+  policewoman: "Police",
+  nurse: "Nurse",
+  teacher: "Teacher",
+  gym: "Gym",
+  firefighter: "Firegirl",
+};
+
+/** Theme hint for a local pack-fan id; null for API / catalog ids. */
+export function themeHintFromRevealId(cardId: string): string | null {
+  const trimmed = cardId.trim();
+  if (trimmed.startsWith("reveal-api-")) return null;
+  const match = REVEAL_LOCAL_ID_RE.exec(trimmed);
+  if (!match) return null;
+  const role = match[1]!.toLowerCase();
+  return REVEAL_ROLE_THEME[role] ?? null;
+}
+
+function pickUnusedThemeMatch(
+  motionPool: ThemedMotionCard[],
+  themeHint: string,
+  seen: Set<string>,
+): ThemedMotionCard | null {
+  const key = costumeThemeBucket(themeKey(themeHint));
+  const matches = motionPool.filter(
+    (card) =>
+      !seen.has(card.id) &&
+      costumeThemeBucket(themeKey(card.theme)) === key,
+  );
+  if (matches.length === 0) return null;
+  return matches[Math.floor(Math.random() * matches.length)]!;
+}
+
+function fillMotionHand(
+  hand: ThemedMotionCard[],
+  motionPool: ThemedMotionCard[],
+  seen: Set<string>,
+): ThemedMotionCard[] {
+  if (hand.length >= GAME_HAND_SIZE) return hand.slice(0, GAME_HAND_SIZE);
+  const fill = buildDealtRound(
+    motionPool.filter((card) => !seen.has(card.id)),
+  );
+  if (!fill) return hand;
+  for (const card of fill.cards) {
+    if (hand.length >= GAME_HAND_SIZE) break;
+    if (seen.has(card.id)) continue;
+    seen.add(card.id);
+    hand.push(card);
+  }
+  return hand;
+}
+
 /**
- * Resolve pack-fan card ids into a playable motion hand (input order preserved).
- * Drops unknown ids; falls back to a dealt round if none resolve.
+ * Resolve pack-fan card ids into a playable motion hand (fan order preserved).
+ * Matches `reveal-api-{id}` to catalog ids, `reveal-{role}-{slot}` by theme,
+ * theme-fills any gaps, and only then falls back to a dealt round.
  */
 export function resolveMotionHandFromIds(
   cardIds: string[],
@@ -74,15 +131,31 @@ export function resolveMotionHandFromIds(
   const byId = new Map(motionPool.map((card) => [card.id, card]));
   const resolved: ThemedMotionCard[] = [];
   const seen = new Set<string>();
+
   for (const rawId of cardIds) {
-    const id = catalogMotionIdFromRevealId(rawId);
-    if (!id || seen.has(id)) continue;
-    const card = byId.get(id);
-    if (!card) continue;
-    seen.add(id);
-    resolved.push(card);
+    if (resolved.length >= GAME_HAND_SIZE) break;
+
+    const catalogId = catalogMotionIdFromRevealId(rawId);
+    if (catalogId && !seen.has(catalogId)) {
+      const direct = byId.get(catalogId);
+      if (direct) {
+        seen.add(direct.id);
+        resolved.push(direct);
+        continue;
+      }
+    }
+
+    const themeHint = themeHintFromRevealId(rawId);
+    if (!themeHint) continue;
+    const match = pickUnusedThemeMatch(motionPool, themeHint, seen);
+    if (!match) continue;
+    seen.add(match.id);
+    resolved.push(match);
   }
-  if (resolved.length > 0) return resolved;
+
+  if (resolved.length > 0) {
+    return fillMotionHand(resolved, motionPool, seen);
+  }
 
   const modelId = options?.modelId?.trim();
   const pool = modelId
