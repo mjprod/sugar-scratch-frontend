@@ -38,6 +38,7 @@ export function PhotoScratchPage() {
   }, [markReady]);
 
   const card = searchParams.get("card")?.trim();
+  const gameMode = searchParams.get("game") === "1";
 
   return (
     <div className="app-shell app-shell--game">
@@ -45,8 +46,8 @@ export function PhotoScratchPage() {
         <button
           type="button"
           className="stage-game__exit"
-          aria-label="Back to collection"
-          onClick={() => navigate(Paths.collection)}
+          aria-label={gameMode ? "Back to game" : "Back to collection"}
+          onClick={() => navigate(gameMode ? Paths.game : Paths.collection)}
         >
           ‹
         </button>
