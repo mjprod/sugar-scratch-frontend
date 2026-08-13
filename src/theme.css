@@ -5004,8 +5004,9 @@ body[data-theme="v8"] .hf-frame {
   width: var(--hf-frame-width);
   max-width: 480px;
   min-height: 0;
-  flex: 1 1 0;
   flex-direction: column;
+  /* Taller phone frame on mobile */
+  aspect-ratio: 9 / 20;
   overflow: hidden;
   background: #08080b;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -5023,6 +5024,7 @@ body[data-theme="v8"] .hf-frame {
   body[data-theme="v8"] .hf-frame {
     margin-block: 12px;
     border-radius: 28px;
+    aspect-ratio: 9 / 16;
     overflow: hidden;
   }
 
@@ -8585,11 +8587,11 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
     }
   }
 
-  /* Home: media fills under the fixed HUD (no top chrome gap). */
+  /* Home frame under HUD chrome */
   body[data-theme="v8"] .app-layout--hud .hf-frame {
-    margin-top: 0;
+    margin-top: 7rem;
     margin-bottom: 12px;
-    border-radius: 0 0 28px 28px;
+    border-radius: 1.75rem;
   }
 
   body[data-theme="v8"] .app-layout--hud .hf-page {
