@@ -48,7 +48,12 @@ const MEDIA_SCALE_SETTLE_EPS = 0.0002;
 /** Desktop drag: ignore tiny pointer jitter before treating as a swipe. */
 const DESKTOP_DRAG_THRESHOLD_PX = 6;
 /** Desktop drag: velocity (px/ms) needed to advance a slide on release. */
-const DESKTOP_DRAG_FLICK_VX = 0.55;
+const DESKTOP_DRAG_FLICK_VX = 0.45;
+/**
+ * Fraction of slide height the pointer must travel (or cross) to commit to
+ * the next/prev card. Keeps one-card-at-a-time behavior like mobile.
+ */
+const DESKTOP_DRAG_COMMIT_RATIO = 0.22;
 
 export function HomeFeedScreen({
   active,
@@ -470,27 +475,35 @@ export function HomeFeedScreen({
     [getSlideMetrics, items.length, reducedMotion],
   );
 
-  const snapToNearest = useCallback(
-    (velocityY = 0) => {
+  /**
+   * Snap after a desktop drag. Always relative to the drag *start* index and
+   * limited to ±1 slide — never jump from drag progress + an extra flick step.
+   *
+   * velocityY > 0  → pointer moved down → previous card
+   * velocityY < 0  → pointer moved up   → next card
+   */
+  const snapAfterDesktopDrag = useCallback(
+    (startScrollTop: number, velocityY = 0) => {
       const root = scrollerRef.current;
       if (!root || !items.length) return;
       const { slideHeight } = getSlideMetrics(root);
       if (slideHeight <= 0) return;
 
-      const current = root.scrollTop / slideHeight;
-      let target = Math.round(current);
-      // Flick intent: if moving fast enough, advance in the swipe direction.
-      // velocityY > 0 means pointer moved down → content should go up (prev).
-      if (Math.abs(velocityY) >= DESKTOP_DRAG_FLICK_VX) {
-        target = velocityY > 0 ? Math.floor(current) : Math.ceil(current);
-        if (velocityY > 0) target = Math.min(target, Math.floor(current));
-        else target = Math.max(target, Math.ceil(current));
-        // Prefer one step from the starting-ish index when flicking.
-        const from = Math.round(
-          (desktopDragRef.current?.startScrollTop ?? root.scrollTop) /
-            slideHeight,
-        );
-        target = velocityY > 0 ? from - 1 : from + 1;
+      const startIndex = Math.round(startScrollTop / slideHeight);
+      const deltaPx = root.scrollTop - startScrollTop;
+      const deltaSlides = deltaPx / slideHeight;
+      const commit = DESKTOP_DRAG_COMMIT_RATIO;
+      const flicked = Math.abs(velocityY) >= DESKTOP_DRAG_FLICK_VX;
+
+      let target = startIndex;
+      // Dragged far enough toward next, or flicked up.
+      if (deltaSlides >= commit || (flicked && velocityY < 0 && deltaSlides > 0.02)) {
+        target = startIndex + 1;
+      } else if (
+        deltaSlides <= -commit ||
+        (flicked && velocityY > 0 && deltaSlides < -0.02)
+      ) {
+        target = startIndex - 1;
       }
 
       const clamped = Math.max(0, Math.min(items.length - 1, target));
@@ -578,6 +591,11 @@ export function HomeFeedScreen({
       const root = scrollerRef.current;
       if (!drag || event.pointerId !== drag.pointerId) return;
 
+      // Capture fields before clearing the ref.
+      const startScrollTop = drag.startScrollTop;
+      const velocityY = drag.velocityY;
+      const moved = drag.moved;
+
       desktopDragRef.current = null;
       setIsDesktopDragging(false);
 
@@ -589,13 +607,27 @@ export function HomeFeedScreen({
 
       if (!root) return;
 
-      root.style.scrollSnapType = "";
+      // Keep snap off during our programmatic settle, then restore after the
+      // smooth scroll finishes so CSS snap doesn't fight / double-step.
+      root.style.scrollSnapType = "none";
       root.style.scrollBehavior = "";
 
-      if (!drag.moved) return;
-      snapToNearest(drag.velocityY);
+      if (!moved) {
+        root.style.scrollSnapType = "";
+        return;
+      }
+
+      snapAfterDesktopDrag(startScrollTop, velocityY);
+
+      window.setTimeout(() => {
+        if (!scrollerRef.current) return;
+        // Only restore if a new drag hasn't started.
+        if (!desktopDragRef.current) {
+          scrollerRef.current.style.scrollSnapType = "";
+        }
+      }, reducedMotion ? 0 : SNAP_MS + 80);
     },
-    [snapToNearest],
+    [reducedMotion, snapAfterDesktopDrag],
   );
 
   useEffect(() => {
@@ -613,17 +645,18 @@ export function HomeFeedScreen({
         return;
       }
 
+      // Keyboard only inverted: Up/PageUp/k → next; Down/PageDown/j → previous.
       if (
-        event.key === "ArrowDown" ||
-        event.key === "PageDown" ||
-        event.key === "j"
+        event.key === "ArrowUp" ||
+        event.key === "PageUp" ||
+        event.key === "k"
       ) {
         event.preventDefault();
         go(1);
       } else if (
-        event.key === "ArrowUp" ||
-        event.key === "PageUp" ||
-        event.key === "k"
+        event.key === "ArrowDown" ||
+        event.key === "PageDown" ||
+        event.key === "j"
       ) {
         event.preventDefault();
         go(-1);
