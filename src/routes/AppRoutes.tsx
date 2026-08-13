@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -8,9 +8,11 @@ import { Paths } from "@/routes/Paths";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { CollectionPage } from "@/pages/CollectionPage";
 import { CreatorPage } from "@/pages/CreatorPage";
+import { GamePage } from "@/pages/GamePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
 import { LoadingPage } from "@/pages/LoadingPage";
 import { NavTestPage } from "@/pages/NavTestPage";
+import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
@@ -22,6 +24,11 @@ import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
 import { InboxPage } from "@/pages/InboxPage";
+import { CatalogProvider } from "@/shared/catalog/CatalogContext";
+
+function GameCatalogRoute({ children }: { children: ReactNode }) {
+  return <CatalogProvider>{children}</CatalogProvider>;
+}
 
 const BOOT_KEY = "sugar.v8.bootShown";
 
@@ -174,6 +181,22 @@ export function AppRoutes() {
             }
           />
           <Route path="purchase/:packId" element={<PurchaseFlowPage />} />
+          <Route
+            path="game"
+            element={
+              <GameCatalogRoute>
+                <GamePage />
+              </GameCatalogRoute>
+            }
+          />
+          <Route
+            path="photo-scratch"
+            element={
+              <GameCatalogRoute>
+                <PhotoScratchPage />
+              </GameCatalogRoute>
+            }
+          />
         </Route>
 
         <Route path="*" element={<Navigate to={Paths.home} replace />} />

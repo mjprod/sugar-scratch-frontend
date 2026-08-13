@@ -181,7 +181,7 @@ export function PurchaseFlow({
   });
   const [session, setSession] = useState<OpeningSession | null>(initialSession);
   const [model, setModel] = useState<ModelProfile | null>(null);
-  const [pendingFoil, setPendingFoil] = useState<FoilPack | null>(null);
+  const [, setPendingFoil] = useState<FoilPack | null>(null);
   const lastFoilRef = useRef<FoilPack | null>(null);
   const [selectedCard, setSelectedCard] = useState(
     resumeIndex ?? resumed?.cardIndex ?? 0,
@@ -207,7 +207,6 @@ export function PurchaseFlow({
   const trackedDecision = useRef(false);
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
-  const awarded = useRef(Boolean(resumed && resumeIndex === null));
   const packImage =
     session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
   const packDisplayName = session?.foilLabel ?? pack.packName;
@@ -1139,7 +1138,7 @@ function ReadyStage({
   packName,
   packImage,
   remainingUnopened,
-  quantity,
+  quantity: _quantity,
   designed = false,
   collection,
   onOpened,

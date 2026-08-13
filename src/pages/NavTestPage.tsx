@@ -155,7 +155,7 @@ function measureBubbleForTab(
 function measureTopBubbleForTab(
   parent: HTMLElement,
   target: HTMLElement,
-  tabId: NavTestTab,
+  _tabId: NavTestTab,
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
@@ -220,21 +220,25 @@ export function NavTestPage() {
       clientX: number,
       tabRefs: Array<HTMLElement | null>,
       opts?: { ignorePrimary?: boolean },
-    ) => {
+    ): {
+      id: NavTestTab;
+      index: number;
+      el: HTMLElement;
+      dist: number;
+    } | null => {
       // Horizontal-only targeting.
-      let best:
-        | {
-            id: NavTestTab;
-            index: number;
-            el: HTMLElement;
-            dist: number;
-          }
-        | null = null;
+      let best: {
+        id: NavTestTab;
+        index: number;
+        el: HTMLElement;
+        dist: number;
+      } | null = null;
 
-      TABS.forEach((tab, index) => {
-        if (opts?.ignorePrimary && tab.primary) return;
+      for (let index = 0; index < TABS.length; index += 1) {
+        const tab = TABS[index]!;
+        if (opts?.ignorePrimary && tab.primary) continue;
         const el = tabRefs[index];
-        if (!el) return;
+        if (!el) continue;
 
         const rect = el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
@@ -247,7 +251,7 @@ export function NavTestPage() {
         if (!best || score < best.dist) {
           best = { id: tab.id, index, el, dist: score };
         }
-      });
+      }
 
       return best;
     },

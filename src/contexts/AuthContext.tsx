@@ -160,7 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!action) return;
       if (action.type === "buy" || action.type === "scratch") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
-        const isBuyPack = action.kind !== "open-pack";
+        const isBuyPack =
+          action.type === "buy" ? action.kind !== "open-pack" : true;
         if (isBuyPack) clearOpening();
         navigate(Paths.purchase(action.pack.packId), {
           state: {
