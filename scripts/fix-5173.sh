@@ -18,5 +18,5 @@ if lsof -nP -iTCP:5173 -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Starting Vite on https://localhost:5173 …"
+echo "Starting Vite on https://localhost:5173 (and https://<lan-ip>:5173) …"
 exec npx vite --port 5173 --strictPort --host 0.0.0.0
