@@ -5345,6 +5345,7 @@ body[data-theme="v8"] .hf-actions {
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-height: 59px;
   overflow: visible;
 }
 
