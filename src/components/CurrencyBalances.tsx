@@ -5,11 +5,14 @@ export function CurrencyBalances({
   coins,
   diamonds,
   onOpenStore,
+  storeActive = false,
 }: {
   coins: number | null;
   diamonds: number | null;
   /** Diamond tap → Store. Omit when already on Store. */
   onOpenStore?: () => void;
+  /** Subtle contextual highlight while Store is open. */
+  storeActive?: boolean;
 }) {
   const coinLabel = formatBalance(coins);
   const diamondLabel = formatBalance(diamonds);
@@ -22,6 +25,14 @@ export function CurrencyBalances({
       </span>
     </>
   );
+
+  const diamondClass = [
+    "top-nav-resource inline-flex min-h-9 items-center gap-1.5 rounded-md px-1.5",
+    storeActive ? "top-nav-resource--store-active" : "",
+    onOpenStore ? "top-nav-resource--action transition active:scale-95" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
@@ -42,14 +53,15 @@ export function CurrencyBalances({
           type="button"
           onClick={onOpenStore}
           aria-label={`${diamondLabel} Diamonds, open Store`}
-          className="top-nav-resource top-nav-resource--action inline-flex min-h-9 min-w-9 items-center gap-1.5 rounded-md px-1.5 transition active:scale-95"
+          className={diamondClass}
         >
           {diamondInner}
         </button>
       ) : (
         <span
-          className="top-nav-resource inline-flex min-h-9 items-center gap-1.5 px-1.5"
+          className={diamondClass}
           aria-label={`${diamondLabel} Diamonds`}
+          aria-current={storeActive ? "page" : undefined}
         >
           {diamondInner}
         </span>

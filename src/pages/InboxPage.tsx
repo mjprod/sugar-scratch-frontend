@@ -1,21 +1,13 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useWallet } from "@/contexts/WalletContext";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
 import type { InboxMessage } from "@/services/inbox";
 
 export function InboxPage() {
-  const {
-    closeSecondary,
-    openStore,
-    openCreator,
-    requestTab,
-    guest,
-  } = useAuth();
-  const { coins, diamonds } = useWallet();
+  const { closeSecondary, openStore, openCreator, requestTab } = useAuth();
 
-  function handleInboxAction(message: InboxMessage, source: "row" | "cta") {
+  function handleInboxAction(message: InboxMessage) {
     const cta = message.cta;
-    if (source === "cta" && cta) {
+    if (cta) {
       if (cta.action === "navigate" && cta.targetId === "store") {
         openStore();
         return;
@@ -46,8 +38,6 @@ export function InboxPage() {
     <InboxScreen
       onBack={() => closeSecondary("inbox")}
       onMessageAction={handleInboxAction}
-      coins={guest ? null : coins}
-      diamonds={guest ? null : diamonds}
     />
   );
 }

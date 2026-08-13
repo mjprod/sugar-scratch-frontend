@@ -39,18 +39,17 @@ export function AppLayout() {
     location.pathname.startsWith("/recommend");
 
   const onInbox = location.pathname.startsWith("/inbox");
+  const onStore = location.pathname.startsWith("/store");
+  const secondaryUtility = onInbox || onStore;
 
   const showTopNav =
     !hideChrome &&
     !location.pathname.startsWith("/settings") &&
-    !location.pathname.startsWith("/store") &&
-    !onInbox &&
     !location.pathname.startsWith("/creator");
 
   const showFooter =
     !hideChrome &&
-    !location.pathname.startsWith("/settings") &&
-    !onInbox;
+    !location.pathname.startsWith("/settings");
 
   const inboxUnread = guest ? 0 : countUnread(INBOX_FIXTURES);
 
@@ -73,6 +72,9 @@ export function AppLayout() {
           onOpenStore={openStore}
           onOpenInbox={openInbox}
           inboxUnreadCount={inboxUnread}
+          inboxActive={onInbox}
+          storeActive={onStore}
+          showMobileDiamond={!secondaryUtility}
         />
       ) : null}
 
@@ -82,12 +84,13 @@ export function AppLayout() {
 
       {showFooter ? (
         <FooterNav
-          active={tab}
+          active={secondaryUtility ? null : tab}
           visible
           onChange={requestTab}
           bagBadge={
             !guest &&
             (profile.welcomeClaimed || purchasedPacks > 0) &&
+            !secondaryUtility &&
             tab !== "bag"
               ? { type: "dot" as const }
               : undefined

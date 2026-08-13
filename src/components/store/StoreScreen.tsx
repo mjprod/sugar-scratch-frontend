@@ -24,8 +24,6 @@ import {
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
-import { InboxButton } from "@/components/InboxButton";
-import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 
 type LoadState =
@@ -56,17 +54,11 @@ type Flow =
  * Sugar never collects card details; payment runs on a simulated gateway.
  */
 export function StoreScreen({
-  diamonds,
   onBack,
   onPurchaseSuccess,
-  onOpenInbox,
-  inboxUnreadCount = 0,
 }: {
-  diamonds: number | null;
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
-  onOpenInbox?: () => void;
-  inboxUnreadCount?: number;
 }) {
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
@@ -287,32 +279,13 @@ export function StoreScreen({
     <AppPageShell
       variant="secondary"
       aria-label="Store"
-      className="!pb-[calc(112px+env(safe-area-inset-bottom,0px))]"
+      className="store-page"
     >
       <SubpageHeader
+        title="Store"
         onBack={onBack}
         backLabel="Back"
-        trailing={
-          <div className="flex items-center gap-2">
-            <MobileDiamondBalance balance={diamonds} standalone />
-            {onOpenInbox ? (
-              <InboxButton
-                unreadCount={inboxUnreadCount}
-                onOpen={onOpenInbox}
-              />
-            ) : null}
-          </div>
-        }
       />
-
-      <header className="mt-4">
-        <h1 className="text-[28px] font-bold tracking-[-0.03em] leading-tight md:text-[32px]">
-          Store
-        </h1>
-        <p className="mt-1.5 text-[14px] text-white/55">
-          Get Diamonds to unlock packs and more.
-        </p>
-      </header>
 
       {load.status === "loading" ? <StoreSkeleton /> : null}
 
@@ -458,7 +431,7 @@ function StoreCatalog({
         >
           Buy Diamonds
         </h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-3.5">
+        <div className="store-packages mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-3.5 xl:grid-cols-5">
           {packs.map((product) => (
             <PackageCard
               key={product.id}
@@ -641,7 +614,7 @@ function StoreSkeleton() {
   return (
     <div className="mt-6 flex flex-col gap-7" aria-busy="true" aria-label="Loading store">
       <div className="h-[72px] animate-pulse rounded-[18px] bg-white/[0.06]" />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="store-packages grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-3.5 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}

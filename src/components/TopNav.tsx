@@ -25,6 +25,8 @@ export function TopNav({
   onOpenStore,
   onOpenInbox,
   inboxUnreadCount = 0,
+  inboxActive = false,
+  storeActive = false,
   showBalances = true,
   showMobileDiamond = true,
   showInbox = true,
@@ -39,6 +41,10 @@ export function TopNav({
   onOpenStore?: () => void;
   onOpenInbox?: () => void;
   inboxUnreadCount?: number;
+  /** Bell active while Inbox route is open — primary tabs stay neutral. */
+  inboxActive?: boolean;
+  /** Subtle diamond utility active while Store is open. */
+  storeActive?: boolean;
   showBalances?: boolean;
   /** Immersive / guest flows set false via App shell. */
   showMobileDiamond?: boolean;
@@ -46,6 +52,7 @@ export function TopNav({
   showInbox?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
+  const primaryActive = inboxActive || storeActive ? null : activeTab;
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll(SCROLL_SELECTOR)).filter(
@@ -73,6 +80,7 @@ export function TopNav({
         unreadCount={inboxUnreadCount}
         onOpen={onOpenInbox}
         variant="ghost"
+        active={inboxActive}
       />
     ) : null;
 
@@ -82,6 +90,7 @@ export function TopNav({
         unreadCount={inboxUnreadCount}
         onOpen={onOpenInbox}
         variant="ghost"
+        active={inboxActive}
       />
     ) : null;
 
@@ -114,7 +123,7 @@ export function TopNav({
           </button>
           <nav aria-label="Primary" className="top-nav-primary flex items-center gap-0.5">
             {DESKTOP_DESTINATIONS.map((destination) => {
-              const active = destination.id === activeTab;
+              const active = destination.id === primaryActive;
               return (
                 <button
                   key={destination.id}
@@ -144,7 +153,8 @@ export function TopNav({
               <CurrencyBalances
                 coins={coins}
                 diamonds={diamonds}
-                onOpenStore={onOpenStore}
+                onOpenStore={storeActive ? undefined : onOpenStore}
+                storeActive={storeActive}
               />
             ) : null}
             {desktopInbox}
