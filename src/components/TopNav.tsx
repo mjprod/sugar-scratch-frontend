@@ -11,7 +11,6 @@ const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "feed", label: "Browse" },
   { id: "bag", label: "Collection" },
   { id: "hub", label: "Hub" },
-  { id: "profile", label: "Profile" },
 ];
 
 const SCROLL_SELECTOR = "[data-page-scroll], .hf-viewport, .app-page-shell, .inbox-page";
@@ -151,12 +150,17 @@ export function TopNav({
             {desktopInbox}
             <button
               type="button"
-              aria-label="Open Profile"
+              aria-label="Profile"
               aria-current={activeTab === "profile" ? "page" : undefined}
               onClick={onProfile}
-              className="top-nav-profile grid min-h-10 min-w-10 place-items-center rounded-md text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95"
+              className={[
+                "top-nav-profile grid min-h-10 min-w-10 place-items-center rounded-md transition active:scale-95",
+                activeTab === "profile"
+                  ? "top-nav-profile--active"
+                  : "text-white/55 hover:bg-white/[0.06] hover:text-white/85",
+              ].join(" ")}
             >
-              <UserRound className="size-[18px]" />
+              <UserRound className="size-[18px]" aria-hidden="true" />
             </button>
           </div>
         </div>

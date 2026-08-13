@@ -8500,6 +8500,43 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
   background: var(--color-rose, #ec4899);
 }
 
+/* Desktop utility Profile — sole Profile entry (no text tab). */
+body[data-theme="v8"] .top-nav-profile {
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+body[data-theme="v8"] .top-nav-profile:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+body[data-theme="v8"] .top-nav-profile:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-brand) 70%, white);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .top-nav-profile--active {
+  border-color: color-mix(in oklab, var(--color-brand) 45%, var(--color-rose) 35%);
+  background: color-mix(
+    in oklab,
+    color-mix(in oklab, var(--color-brand) 28%, var(--color-rose) 18%) 42%,
+    transparent
+  );
+  color: rgba(255, 255, 255, 0.94);
+}
+
+body[data-theme="v8"] .top-nav-profile--active:hover {
+  border-color: color-mix(in oklab, var(--color-brand) 55%, var(--color-rose) 40%);
+  background: color-mix(
+    in oklab,
+    color-mix(in oklab, var(--color-brand) 32%, var(--color-rose) 22%) 48%,
+    transparent
+  );
+  color: #ffffff;
+}
+
 /* Mobile / tablet — compact translucent utility HUD (background underlaps; content safe). */
 @media (max-width: 1023px) {
   body[data-theme="v8"] .app-layout--hud {
