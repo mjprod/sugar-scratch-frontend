@@ -81,7 +81,7 @@ export function MobileDiamondUtility({
 
   return (
     <header
-      className="top-nav-mobile fixed inset-x-0 top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden"
+      className="top-nav-mobile glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface fixed top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden"
       aria-label="Utilities"
     >
       <div className="top-nav-mobile-inner">
