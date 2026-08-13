@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import {
@@ -20,28 +21,34 @@ import {
 
 const SNAP_MS = 220;
 /** Overlay lag vs video (0 = locked, 1 = fully detached). */
-const OVERLAY_PARALLAX = 0.28;
+const OVERLAY_PARALLAX = 0.22;
 /** Max overlay drift in px (keeps CTAs readable). */
-const OVERLAY_PARALLAX_MAX_PX = 56;
+const OVERLAY_PARALLAX_MAX_PX = 44;
 /**
  * Overlay settle half-life in ms (time-based damping).
  * Higher = silkier / less stutter; lower = snappier.
  */
-const OVERLAY_PARALLAX_HALFLIFE_MS = 90;
+const OVERLAY_PARALLAX_HALFLIFE_MS = 150;
+/** Media scale settle half-life — keep slightly softer than overlay. */
+const MEDIA_SCALE_HALFLIFE_MS = 175;
 /** Snap when within this many px of target. */
-const OVERLAY_PARALLAX_SETTLE_EPS = 0.08;
+const OVERLAY_PARALLAX_SETTLE_EPS = 0.12;
 /** Resting media scale inside overflow-hidden frame (keep near 1 so first frame isn't cropped). */
-  const MEDIA_SCALE_BASE = 1.04;
-  /** Extra scale added at full slide travel (more scroll → more zoom). */
-  const MEDIA_SCALE_GAIN = 0.1;
-  /** Hard ceiling so zoom stays tasteful. */
-  const MEDIA_SCALE_MAX = 1.16;
-  /** Max scroll-driven media blur (px). Desktop only — mobile skips filter blur. */
-  const MEDIA_BLUR_MAX_PX = 5;
-  /** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
-  const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
-  /** How close scale must get before we snap to target (smaller = smoother end). */
-  const MEDIA_SCALE_SETTLE_EPS = 0.00015;
+const MEDIA_SCALE_BASE = 1.04;
+/** Extra scale added at full slide travel (more scroll → more zoom). */
+const MEDIA_SCALE_GAIN = 0.1;
+/** Hard ceiling so zoom stays tasteful. */
+const MEDIA_SCALE_MAX = 1.16;
+/** Max scroll-driven media blur (px). Desktop only — mobile skips filter blur. */
+const MEDIA_BLUR_MAX_PX = 5;
+/** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
+const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
+/** How close scale must get before we snap to target (smaller = smoother end). */
+const MEDIA_SCALE_SETTLE_EPS = 0.0002;
+/** Desktop drag: ignore tiny pointer jitter before treating as a swipe. */
+const DESKTOP_DRAG_THRESHOLD_PX = 6;
+/** Desktop drag: velocity (px/ms) needed to advance a slide on release. */
+const DESKTOP_DRAG_FLICK_VX = 0.55;
 
 export function HomeFeedScreen({
   active,
@@ -94,6 +101,16 @@ export function HomeFeedScreen({
   const blurCurrentRef = useRef(new Map<string, number>());
   const scrollFxRafRef = useRef(0);
   const scrollFxLastTsRef = useRef(0);
+  const [isDesktopDragging, setIsDesktopDragging] = useState(false);
+  const desktopDragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    startScrollTop: number;
+    lastY: number;
+    lastTs: number;
+    velocityY: number;
+    moved: boolean;
+  } | null>(null);
 
   const persist = useCallback(
     (patch: Partial<{
@@ -288,7 +305,8 @@ export function HomeFeedScreen({
         const overlayAlpha =
           1 - Math.exp((-Math.LN2 * dtMs) / OVERLAY_PARALLAX_HALFLIFE_MS);
         // Keep media a touch softer than overlay so UI leads slightly.
-        const mediaAlpha = 1 - Math.exp((-Math.LN2 * dtMs) / 120);
+        const mediaAlpha =
+          1 - Math.exp((-Math.LN2 * dtMs) / MEDIA_SCALE_HALFLIFE_MS);
 
         const liveSlides = node.querySelectorAll<HTMLElement>(".hf-slide");
         const liveSlideHeight = getSlideMetrics(node).slideHeight;
@@ -441,6 +459,7 @@ export function HomeFeedScreen({
       const root = scrollerRef.current;
       if (!root || !items.length) return;
       const { slideHeight } = getSlideMetrics(root);
+      if (slideHeight <= 0) return;
       const next = Math.round(root.scrollTop / slideHeight) + delta;
       const clamped = Math.max(0, Math.min(items.length - 1, next));
       root.scrollTo({
@@ -451,20 +470,184 @@ export function HomeFeedScreen({
     [getSlideMetrics, items.length, reducedMotion],
   );
 
+  const snapToNearest = useCallback(
+    (velocityY = 0) => {
+      const root = scrollerRef.current;
+      if (!root || !items.length) return;
+      const { slideHeight } = getSlideMetrics(root);
+      if (slideHeight <= 0) return;
+
+      const current = root.scrollTop / slideHeight;
+      let target = Math.round(current);
+      // Flick intent: if moving fast enough, advance in the swipe direction.
+      // velocityY > 0 means pointer moved down → content should go up (prev).
+      if (Math.abs(velocityY) >= DESKTOP_DRAG_FLICK_VX) {
+        target = velocityY > 0 ? Math.floor(current) : Math.ceil(current);
+        if (velocityY > 0) target = Math.min(target, Math.floor(current));
+        else target = Math.max(target, Math.ceil(current));
+        // Prefer one step from the starting-ish index when flicking.
+        const from = Math.round(
+          (desktopDragRef.current?.startScrollTop ?? root.scrollTop) /
+            slideHeight,
+        );
+        target = velocityY > 0 ? from - 1 : from + 1;
+      }
+
+      const clamped = Math.max(0, Math.min(items.length - 1, target));
+      root.scrollTo({
+        top: clamped * slideHeight,
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+    },
+    [getSlideMetrics, items.length, reducedMotion],
+  );
+
+  const isDragFromInteractive = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(
+      target.closest(
+        "button, a, input, textarea, select, label, [role='button'], [data-no-feed-drag]",
+      ),
+    );
+  }, []);
+
+  const onDesktopPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!active) return;
+      // Touch already has native pan-y scrolling; this is for mouse/pen drag.
+      if (event.pointerType === "touch") return;
+      if (event.button !== 0) return;
+      if (isDragFromInteractive(event.target)) return;
+
+      const root = scrollerRef.current;
+      if (!root) return;
+
+      desktopDragRef.current = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        startScrollTop: root.scrollTop,
+        lastY: event.clientY,
+        lastTs: event.timeStamp,
+        velocityY: 0,
+        moved: false,
+      };
+
+      // Capture so drag continues even if the cursor leaves the frame.
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [active, isDragFromInteractive],
+  );
+
+  const onDesktopPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = desktopDragRef.current;
+      const root = scrollerRef.current;
+      if (!drag || !root || event.pointerId !== drag.pointerId) return;
+
+      const dy = event.clientY - drag.startY;
+      if (!drag.moved && Math.abs(dy) < DESKTOP_DRAG_THRESHOLD_PX) return;
+
+      if (!drag.moved) {
+        drag.moved = true;
+        setIsDesktopDragging(true);
+        // Disable snap while dragging so the frame follows the pointer 1:1.
+        root.style.scrollSnapType = "none";
+        root.style.scrollBehavior = "auto";
+      }
+
+      const now = event.timeStamp;
+      const dt = Math.max(1, now - drag.lastTs);
+      const frameDy = event.clientY - drag.lastY;
+      // EMA velocity for flick detection on release.
+      const instant = frameDy / dt;
+      drag.velocityY = drag.velocityY * 0.7 + instant * 0.3;
+      drag.lastY = event.clientY;
+      drag.lastTs = now;
+
+      // Drag down → previous (scroll up): invert delta like native touch.
+      root.scrollTop = drag.startScrollTop - dy;
+      applyScrollFx(root);
+      event.preventDefault();
+    },
+    [applyScrollFx],
+  );
+
+  const endDesktopPointerDrag = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = desktopDragRef.current;
+      const root = scrollerRef.current;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+
+      desktopDragRef.current = null;
+      setIsDesktopDragging(false);
+
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        /* already released */
+      }
+
+      if (!root) return;
+
+      root.style.scrollSnapType = "";
+      root.style.scrollBehavior = "";
+
+      if (!drag.moved) return;
+      snapToNearest(drag.velocityY);
+    },
+    [snapToNearest],
+  );
+
   useEffect(() => {
     if (!active) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "ArrowDown" || event.key === "PageDown") {
+      // Don't steal keys while typing in inputs / contenteditable.
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT")
+      ) {
+        return;
+      }
+
+      if (
+        event.key === "ArrowDown" ||
+        event.key === "PageDown" ||
+        event.key === "j"
+      ) {
         event.preventDefault();
         go(1);
-      } else if (event.key === "ArrowUp" || event.key === "PageUp") {
+      } else if (
+        event.key === "ArrowUp" ||
+        event.key === "PageUp" ||
+        event.key === "k"
+      ) {
         event.preventDefault();
         go(-1);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        const root = scrollerRef.current;
+        root?.scrollTo({
+          top: 0,
+          behavior: reducedMotion ? "auto" : "smooth",
+        });
+      } else if (event.key === "End") {
+        event.preventDefault();
+        const root = scrollerRef.current;
+        if (!root || !items.length) return;
+        const { slideHeight } = getSlideMetrics(root);
+        root.scrollTo({
+          top: Math.max(0, items.length - 1) * slideHeight,
+          behavior: reducedMotion ? "auto" : "smooth",
+        });
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, go]);
+  }, [active, getSlideMetrics, go, items.length, reducedMotion]);
 
   async function loadMore() {
     if (!hasMore || loadingMoreRef.current || !cursor) return;
@@ -581,8 +764,17 @@ export function HomeFeedScreen({
         {status === "loaded" ? (
           <div
             ref={scrollerRef}
-            className="hf-viewport"
+            className={[
+              "hf-viewport",
+              isDesktopDragging ? "is-desktop-dragging" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             onScroll={onScroll}
+            onPointerDown={onDesktopPointerDown}
+            onPointerMove={onDesktopPointerMove}
+            onPointerUp={endDesktopPointerDrag}
+            onPointerCancel={endDesktopPointerDrag}
             style={
               reducedMotion
                 ? undefined

@@ -5064,6 +5064,9 @@ body[data-theme="v8"] .hf-creator {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body[data-theme="v8"] .hf-creator--link {
@@ -5102,6 +5105,9 @@ body[data-theme="v8"] .hf-pack {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body[data-theme="v8"] .hf-tags {
@@ -5113,6 +5119,9 @@ body[data-theme="v8"] .hf-tags {
   list-style: none;
   max-width: 100%;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body[data-theme="v8"] .hf-tag {
@@ -5214,6 +5223,23 @@ body[data-theme="v8"] .hf-viewport {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  /* Desktop: drag-to-swipe affordance (touch still uses native pan-y). */
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body[data-theme="v8"] .hf-viewport.is-desktop-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+}
+
+/* Keep buttons / links feeling clickable inside the grab surface. */
+body[data-theme="v8"] .hf-viewport button,
+body[data-theme="v8"] .hf-viewport a,
+body[data-theme="v8"] .hf-viewport [role="button"] {
+  cursor: pointer;
 }
 
 body[data-theme="v8"] .hf-viewport::-webkit-scrollbar {
@@ -5321,6 +5347,17 @@ body[data-theme="v8"] .hf-overlay.is-visible {
   opacity: 1;
 }
 
+/*
+  Desktop: pull overlay closer to the video edges.
+  Mobile keeps the larger bottom pad so content clears the dock / safe-area.
+*/
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hf-overlay,
+  body[data-theme="v8"] .hf-overlay.is-visible {
+    padding: 20px 16px 18px;
+  }
+}
+
 body[data-theme="v8"] .hf-collection {
   margin: 4px 0 0;
   color: #ffffff;
@@ -5349,6 +5386,9 @@ body[data-theme="v8"] .hf-actions {
   width: 100%;
   min-height: 59px;
   overflow: visible;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Slot for parent-filled squircle CTA. */
