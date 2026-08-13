@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -8,6 +7,30 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+
+function subscribeReducedMotion(onStoreChange: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return () => {};
+  }
+  const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+  media.addEventListener("change", onStoreChange);
+  return () => media.removeEventListener("change", onStoreChange);
+}
+
+function getReducedMotionSnapshot() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    () => false,
+  );
+}
 
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
@@ -20,13 +43,30 @@ function isDiamondIconMarker(icon: ReactNode): boolean {
   return icon == null || icon === "" || icon === "💎";
 }
 
-function renderCostIcon(icon: ReactNode): ReactNode {
+function renderCostIcon(
+  icon: ReactNode,
+  opts?: { animate?: boolean },
+): ReactNode {
   if (icon === false) return null;
   if (isDiamondIconMarker(icon)) {
+    const animate = opts?.animate !== false;
+    // Offscreen / frozen CTAs: skip wasm Lottie entirely (static glyph).
+    if (!animate) {
+      return (
+        <span
+          className="cta-button__cost-lottie cta-button__cost-lottie--static"
+          aria-hidden
+        >
+          💎
+        </span>
+      );
+    }
     return (
       <DiamondLottie
         className="cta-button__cost-lottie"
         size="1.1em"
+        autoplay
+        loop
         aria-hidden
       />
     );
@@ -136,6 +176,11 @@ export type CtaButtonProps = {
    * Useful on low-power / mobile paths without greying out the button.
    */
   auroraPaused?: boolean;
+  /**
+   * When false, keep a static diamond mark (no Lottie rAF/wasm loop).
+   * Defaults to true whenever the diamond marker is used.
+   */
+  costIconAnimated?: boolean;
   labelColor?: string;
   fontSize?: number;
   forceHover?: boolean;
@@ -203,6 +248,7 @@ export function CtaButton({
   particleColor = "#fb4b97",
   particleTwinkle = 0.51,
   auroraPaused = false,
+  costIconAnimated = true,
   labelColor = "#ffe0e8",
   fontSize = 18,
   forceHover = false,
@@ -226,13 +272,13 @@ export function CtaButton({
   ...buttonProps
 }: CtaButtonProps) {
   const isMobileViewport = useIsMobileViewport();
+  const reducedMotion = usePrefersReducedMotion();
   const resolvedOuterBloom = resolveGlowOuterBloom(
     glowOuterBloom,
     isMobileViewport,
   );
 
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const strokeRef = useRef<HTMLSpanElement>(null);
   const [measured, setMeasured] = useState({
     width: widthProp ?? DEFAULT_WIDTH,
     height: heightProp ?? DEFAULT_HEIGHT,
@@ -276,42 +322,19 @@ export function CtaButton({
     return () => ro.disconnect();
   }, [fillParent, widthProp, heightProp]);
 
-  /*
-    Match BorderGlow always-on orbit: keep mesh plate FIXED and only advance
-    the cone mask angle via rAF (--cta-cursor-angle). CSS rotate() spun the
-    whole gradient and looked choppier / different from the reference.
-  */
-  useEffect(() => {
-    const reducedMotion =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    const el = strokeRef.current;
-    if (!el) return;
-
-    if (!glowEnabled || !glowAlwaysOn || disabled || reducedMotion) {
-      el.style.setProperty("--cta-cursor-angle", "45deg");
-      return;
-    }
-
-    let raf = 0;
-    const t0 = performance.now();
-    const speed = Math.max(0, glowOrbitSpeed);
-
-    const tick = (now: number) => {
-      const elapsedSec = (now - t0) / 1000;
-      const deg = (elapsedSec * speed) % 360;
-      el.style.setProperty("--cta-cursor-angle", `${deg.toFixed(3)}deg`);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-
-    return () => cancelAnimationFrame(raf);
-  }, [glowEnabled, glowAlwaysOn, disabled, glowOrbitSpeed]);
-
   const width = fillParent ? measured.width : (widthProp ?? DEFAULT_WIDTH);
   const height = fillParent ? measured.height : (heightProp ?? DEFAULT_HEIGHT);
+
+  const strokeOrbitActive =
+    glowEnabled && glowAlwaysOn && !disabled && !reducedMotion && glowOrbitSpeed > 0;
+  const orbitDurationSec =
+    glowOrbitSpeed > 0 ? 360 / Math.max(glowOrbitSpeed, 0.001) : 0;
+  // Skip WebGL entirely while paused — CSS fallback keeps the look.
+  const auroraLive = !disabled && !auroraPaused;
+  // Mobile feed can mount many CTAs; keep particles lighter when animating.
+  const liveParticleCount = isMobileViewport
+    ? Math.min(particleCount, 8)
+    : particleCount;
 
   const stroke = Math.max(0, strokeWidth);
   const radius = Math.max(0, Math.min(cornerRadius, Math.min(width, height) / 2));
@@ -355,6 +378,10 @@ export function CtaButton({
     "--cta-stroke-c": strokeC,
     "--cta-cone-spread": String(Math.max(8, Math.min(48, glowConeSpread))),
     "--cta-cursor-angle": "45deg",
+    "--cta-cursor-angle-start": "45deg",
+    "--cta-orbit-duration": strokeOrbitActive
+      ? `${orbitDurationSec}s`
+      : "0s",
     "--cta-aurora-base": auroraBaseColor,
     "--cta-label-color": labelColor,
     "--cta-font-size": `${fontSize}px`,
@@ -365,7 +392,7 @@ export function CtaButton({
     `cta-button--${shape}`,
     fillParent ? "cta-button--fill" : "",
     glowEnabled ? "is-glow-on" : "is-glow-off",
-    glowEnabled && glowAlwaysOn && !disabled ? "is-stroke-orbit" : "",
+    strokeOrbitActive ? "is-stroke-orbit" : "",
     forceHover ? "is-force-hover" : "",
     forcePressed ? "is-force-pressed" : "",
     disabled ? "is-disabled" : "",
@@ -389,27 +416,31 @@ export function CtaButton({
       }}
     >
       {/*
-        On-button stroke ring (iOS-safe). Fixed mesh + rAF cone angle —
+        On-button stroke ring (iOS-safe). Fixed mesh + CSS @property cone angle —
         same model as BorderGlow always-on, without underlay stacking issues.
       */}
-      <span ref={strokeRef} className="cta-button__stroke" aria-hidden="true" />
+      <span className="cta-button__stroke" aria-hidden="true" />
       <span className="cta-button__inner">
         <span className="cta-button__aurora" aria-hidden="true">
-          <Aurora
-            colorStops={auroraColorStops}
-            speed={disabled || auroraPaused ? 0 : auroraSpeed}
-            blend={auroraBlend}
-            amplitude={auroraAmplitude}
-            bandHeight={auroraBandHeight}
-            rotation={auroraRotation}
-            particleCount={disabled || auroraPaused ? 0 : particleCount}
-            particleSize={particleSize}
-            particleSpeed={disabled || auroraPaused ? 0 : particleSpeed}
-            particleOpacity={particleOpacity}
-            particleColor={particleColor}
-            particleTwinkle={disabled || auroraPaused ? 0 : particleTwinkle}
-            paused={disabled || auroraPaused}
-          />
+          {auroraLive ? (
+            <Aurora
+              colorStops={auroraColorStops}
+              speed={auroraSpeed}
+              blend={auroraBlend}
+              amplitude={auroraAmplitude}
+              bandHeight={auroraBandHeight}
+              rotation={auroraRotation}
+              particleCount={liveParticleCount}
+              particleSize={particleSize}
+              particleSpeed={particleSpeed}
+              particleOpacity={particleOpacity}
+              particleColor={particleColor}
+              particleTwinkle={particleTwinkle}
+              paused={false}
+            />
+          ) : (
+            <span className="cta-button__aurora-fallback" />
+          )}
         </span>
         <span className="cta-button__face" aria-hidden="true" />
         <span className="cta-button__label">
@@ -418,7 +449,9 @@ export function CtaButton({
             <span className="cta-button__cost">
               <span className="cta-button__cost-amount">{costText}</span>
               {(() => {
-                const icon = renderCostIcon(costIcon);
+                const icon = renderCostIcon(costIcon, {
+                  animate: costIconAnimated && !disabled && !reducedMotion,
+                });
                 if (icon == null || icon === false) return null;
                 return (
                   <span className="cta-button__cost-icon" aria-hidden="true">

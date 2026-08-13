@@ -291,29 +291,31 @@ export default function BorderGlow({
     };
   }, [animated, alwaysOn, disabled]);
 
-  // Continuous orbit — no hover needed.
+  // Continuous orbit via CSS @property animation (no rAF style thrash).
   useEffect(() => {
     if (!alwaysOn || disabled || !cardRef.current) return;
     const card = cardRef.current;
     card.classList.add("always-on");
     card.style.setProperty("--edge-proximity", String(alwaysOnProximity));
 
-    let raf = 0;
-    const t0 = performance.now();
+    const reduce =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const speed = Math.max(0, orbitSpeed);
+    const canOrbit = !reduce && speed > 0;
 
-    const tick = (now: number) => {
-      const elapsedSec = (now - t0) / 1000;
-      const deg = (elapsedSec * speed) % 360;
-      card.style.setProperty("--cursor-angle", `${deg.toFixed(3)}deg`);
-      card.style.setProperty("--edge-proximity", String(alwaysOnProximity));
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
+    if (canOrbit) {
+      card.style.setProperty("--orbit-duration", `${360 / speed}s`);
+      card.classList.add("is-css-orbit");
+    } else {
+      card.classList.remove("is-css-orbit");
+      // Keep a stable cone angle when frozen / reduced-motion.
+      card.style.setProperty("--cursor-angle", "45deg");
+    }
 
     return () => {
-      cancelAnimationFrame(raf);
-      card.classList.remove("always-on");
+      card.classList.remove("always-on", "is-css-orbit");
     };
   }, [alwaysOn, disabled, orbitSpeed, alwaysOnProximity]);
 
@@ -321,7 +323,7 @@ export default function BorderGlow({
   useEffect(() => {
     if (!disabled || !cardRef.current) return;
     const card = cardRef.current;
-    card.classList.remove("always-on", "sweep-active");
+    card.classList.remove("always-on", "is-css-orbit", "sweep-active");
     card.style.setProperty("--edge-proximity", "0");
   }, [disabled]);
 
@@ -329,10 +331,13 @@ export default function BorderGlow({
   const tipRatio = Math.max(0.12, Math.min(0.55, hexTip));
   const tipPx = shapeHeight != null ? shapeHeight * tipRatio : 0;
 
+  const cssOrbit =
+    alwaysOn && !disabled && orbitSpeed > 0;
   const classes = [
     "border-glow-card",
     bare ? "is-bare" : "",
     alwaysOn && !disabled ? "always-on" : "",
+    cssOrbit ? "is-css-orbit" : "",
     disabled ? "is-disabled" : "",
     outerBloomMode === "off"
       ? "is-no-outer-bloom"
@@ -355,6 +360,15 @@ export default function BorderGlow({
     (shapeVars as Record<string, string>)["--shape-tip"] = `${tipPx}px`;
   }
   (shapeVars as Record<string, string>)["--shape-r"] = `${Math.max(0, borderRadius)}px`;
+  if (cssOrbit) {
+    (shapeVars as Record<string, string>)["--orbit-duration"] =
+      `${360 / Math.max(orbitSpeed, 0.001)}s`;
+    (shapeVars as Record<string, string>)["--cursor-angle-start"] = "45deg";
+  }
+  if (alwaysOn && !disabled) {
+    (shapeVars as Record<string, string | number>)["--edge-proximity"] =
+      alwaysOnProximity;
+  }
 
   return (
     <div

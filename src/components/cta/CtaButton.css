@@ -1,5 +1,18 @@
 /* --- CtaButton layers (ported from sugar_scratchie button-test) --- */
 
+/* Animatable stroke cone angle — CSS orbit replaces rAF setProperty. */
+@property --cta-cursor-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 45deg;
+}
+
+@keyframes cta-stroke-orbit-angle {
+  to {
+    --cta-cursor-angle: calc(var(--cta-cursor-angle-start, 45deg) + 360deg);
+  }
+}
+
 .cta-button-glow {
   display: inline-grid;
   width: max-content;
@@ -112,13 +125,15 @@
 /*
   On-button orbiting stroke — same motion model as BorderGlow:
   - mesh plate stays FIXED (radial stops don't spin)
-  - only the conic mask angle (--cta-cursor-angle) advances via rAF
+  - only the conic mask angle (--cta-cursor-angle) advances via CSS @property
   Softened vs raw hex: mesh is color-mixed with the frost base so the ring
   doesn't read harsher/more saturated than the reference underlay path.
 */
 .cta-button__stroke {
   --cta-cone: var(--cta-cone-spread, 28);
   --cta-cursor-angle: 45deg;
+  --cta-cursor-angle-start: 45deg;
+  --cta-orbit-duration: 5.14s;
   --cta-mesh-mix: 58%;
   position: absolute;
   inset: 0;
@@ -167,12 +182,34 @@
       #000 calc((100 - var(--cta-cone)) * 1%));
 }
 
+/* CSS orbit: animate the registered angle on the stroke node. */
+.cta-button.is-stroke-orbit > .cta-button__stroke {
+  animation: cta-stroke-orbit-angle var(--cta-orbit-duration, 5.14s) linear infinite;
+}
+
+/* Static diamond glyph when Lottie is suppressed offscreen. */
+.cta-button__cost-lottie--static {
+  display: inline-grid;
+  place-items: center;
+  width: 1.43em;
+  height: 1.43em;
+  font-size: 1.05em;
+  line-height: 1;
+}
+
 /* Static frost still shows when orbit is off / reduced-motion. */
-.cta-button:not(.is-stroke-orbit)>.cta-button__stroke {
+.cta-button:not(.is-stroke-orbit) > .cta-button__stroke {
   opacity: 0.45;
   -webkit-mask-image: none;
   mask-image: none;
   background-image: none;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-button.is-stroke-orbit > .cta-button__stroke {
+    animation: none;
+  }
 }
 
 /*
@@ -246,6 +283,34 @@
      Also the color seen through transparent aurora pixels. */
   background: var(--cta-aurora-base);
   border-radius: var(--cta-inner-r);
+}
+
+/*
+  Static aurora stand-in for offscreen / paused CTAs.
+  Avoids mounting a WebGL canvas on every feed card.
+*/
+.cta-button__aurora-fallback {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 90% at 18% 110%,
+      color-mix(in srgb, var(--cta-stroke-b, #e00083) 55%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      100% 80% at 82% -10%,
+      color-mix(in srgb, var(--cta-stroke-a, #aa085f) 48%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      105deg,
+      color-mix(in srgb, var(--cta-stroke-a, #aa085f) 35%, transparent) 0%,
+      color-mix(in srgb, var(--cta-stroke-b, #e00083) 42%, transparent) 46%,
+      color-mix(in srgb, var(--cta-stroke-c, #eb6a00) 28%, transparent) 100%
+    );
+  opacity: 0.92;
 }
 
 .cta-button--squircle>.cta-button__inner {

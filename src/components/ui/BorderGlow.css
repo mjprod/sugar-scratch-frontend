@@ -1,6 +1,21 @@
+/* Animatable cone angle — shared with CTA glow path. */
+@property --cursor-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 45deg;
+}
+
+@keyframes border-glow-orbit-angle {
+  to {
+    --cursor-angle: calc(var(--cursor-angle-start, 45deg) + 360deg);
+  }
+}
+
 .border-glow-card {
   --edge-proximity: 0;
   --cursor-angle: 45deg;
+  --cursor-angle-start: 45deg;
+  --orbit-duration: 6s;
   --edge-sensitivity: 30;
   --color-sensitivity: calc(var(--edge-sensitivity) + 20);
   --border-radius: 28px;
@@ -70,6 +85,17 @@
 
 .border-glow-card.border-glow-always-on > .edge-light {
   opacity: 1 !important;
+}
+
+/* CSS-driven orbit angle (replaces rAF setProperty). */
+.border-glow-card.border-glow-orbiting.is-css-orbit {
+  animation: border-glow-orbit-angle var(--orbit-duration, 6s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .border-glow-card.border-glow-orbiting.is-css-orbit {
+    animation: none;
+  }
 }
 
 /* Soft continuous orbit — wider feathered cone, no fade */

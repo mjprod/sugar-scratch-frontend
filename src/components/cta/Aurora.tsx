@@ -327,6 +327,8 @@ export default function Aurora(props: AuroraProps) {
     let hasFrozenTime = false;
     let timeOriginMs = performance.now();
     let pausedElapsedSec = 0;
+    let lastParticleColorHex = particleColor;
+    let lastStopsKey = colorStops.join("|");
 
     const applyUniforms = (nowMs: number) => {
       if (!program) return;
@@ -368,12 +370,21 @@ export default function Aurora(props: AuroraProps) {
         ? 0
         : (current.particleSpeed ?? particleSpeed);
       program.uniforms.uParticleOpacity.value = current.particleOpacity ?? particleOpacity;
-      program.uniforms.uParticleColor.value = hexToRgb(current.particleColor ?? particleColor);
+      // Colors rarely change — only rebuild RGB arrays when the hex inputs change.
+      const nextParticleColor = current.particleColor ?? particleColor;
+      if (nextParticleColor !== lastParticleColorHex) {
+        lastParticleColorHex = nextParticleColor;
+        program.uniforms.uParticleColor.value = hexToRgb(nextParticleColor);
+      }
       program.uniforms.uParticleTwinkle.value = isPaused
         ? 0
         : (current.particleTwinkle ?? particleTwinkle);
       const stops = current.colorStops ?? colorStops;
-      program.uniforms.uColorStops.value = stops.map(hexToRgb);
+      const stopsKey = stops.join("|");
+      if (stopsKey !== lastStopsKey) {
+        lastStopsKey = stopsKey;
+        program.uniforms.uColorStops.value = stops.map(hexToRgb);
+      }
       renderer.render({ scene: mesh });
     };
 

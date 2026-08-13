@@ -30,25 +30,18 @@ const OVERLAY_PARALLAX_MAX_PX = 56;
 const OVERLAY_PARALLAX_HALFLIFE_MS = 90;
 /** Snap when within this many px of target. */
 const OVERLAY_PARALLAX_SETTLE_EPS = 0.08;
-/**
- * Media zoom ease — lower = softer settle (less jitter when snapping home).
- * Applied every rAF toward the scroll target.
- */
-const MEDIA_SCALE_EASE = 0.08;
 /** Resting media scale inside overflow-hidden frame (keep near 1 so first frame isn't cropped). */
-const MEDIA_SCALE_BASE = 1.04;
-/** Extra scale added at full slide travel (more scroll → more zoom). */
-const MEDIA_SCALE_GAIN = 0.1;
-/** Hard ceiling so zoom stays tasteful. */
-const MEDIA_SCALE_MAX = 1.16;
-/** Max scroll-driven media blur (px). */
-const MEDIA_BLUR_MAX_PX = 5;
-/** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
-const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
-/** Blur settle ease — slightly softer than before so it doesn't chatter with zoom. */
-const MEDIA_BLUR_EASE = 0.14;
-/** How close scale must get before we snap to target (smaller = smoother end). */
-const MEDIA_SCALE_SETTLE_EPS = 0.00015;
+  const MEDIA_SCALE_BASE = 1.04;
+  /** Extra scale added at full slide travel (more scroll → more zoom). */
+  const MEDIA_SCALE_GAIN = 0.1;
+  /** Hard ceiling so zoom stays tasteful. */
+  const MEDIA_SCALE_MAX = 1.16;
+  /** Max scroll-driven media blur (px). Desktop only — mobile skips filter blur. */
+  const MEDIA_BLUR_MAX_PX = 5;
+  /** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
+  const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
+  /** How close scale must get before we snap to target (smaller = smoother end). */
+  const MEDIA_SCALE_SETTLE_EPS = 0.00015;
 
 export function HomeFeedScreen({
   active,
@@ -92,6 +85,7 @@ export function HomeFeedScreen({
   const scrollIndexRef = useRef(cached?.scrollIndex ?? 0);
   const restoredRef = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
+  const allowMediaBlur = useAllowMediaBlur();
   const parallaxTargetRef = useRef(new Map<string, number>());
   const parallaxCurrentRef = useRef(new Map<string, number>());
   const scaleTargetRef = useRef(new Map<string, number>());
@@ -174,18 +168,26 @@ export function HomeFeedScreen({
 
   const applyScrollFx = useCallback(
     (root: HTMLElement, immediate = false) => {
-      const overlays = root.querySelectorAll<HTMLElement>(".hf-overlay");
-      const medias = root.querySelectorAll<HTMLElement>(".hf-media");
-      if (!overlays.length && !medias.length) return;
+      const slides = root.querySelectorAll<HTMLElement>(".hf-slide");
+      if (!slides.length) return;
+
+      const { slideHeight } = getSlideMetrics(root);
+      const scrollTop = root.scrollTop;
+      const approxIndex = Math.round(scrollTop / Math.max(1, slideHeight));
+      // Only animate the active slide and its immediate neighbors.
+      const start = Math.max(0, approxIndex - 1);
+      const end = Math.min(slides.length - 1, approxIndex + 1);
+
+      const resetSlideFx = (slide: HTMLElement) => {
+        const overlay = slide.querySelector<HTMLElement>(".hf-overlay");
+        const media = slide.querySelector<HTMLElement>(".hf-media");
+        overlay?.style.setProperty("--hf-parallax-y", "0px");
+        media?.style.setProperty("--hf-media-scale", String(MEDIA_SCALE_BASE));
+        media?.style.setProperty("--hf-media-blur", "0px");
+      };
 
       if (reducedMotion) {
-        overlays.forEach((overlay) => {
-          overlay.style.setProperty("--hf-parallax-y", "0px");
-        });
-        medias.forEach((media) => {
-          media.style.setProperty("--hf-media-scale", String(MEDIA_SCALE_BASE));
-          media.style.setProperty("--hf-media-blur", "0px");
-        });
+        slides.forEach((slide) => resetSlideFx(slide));
         parallaxTargetRef.current.clear();
         parallaxCurrentRef.current.clear();
         scaleTargetRef.current.clear();
@@ -200,11 +202,21 @@ export function HomeFeedScreen({
         return;
       }
 
-      const { slideHeight } = getSlideMetrics(root);
-      const scrollTop = root.scrollTop;
-      const count = Math.max(overlays.length, medias.length);
+      // Clear stale targets outside the active window so they don't keep ticking.
+      for (const key of [...parallaxTargetRef.current.keys()]) {
+        const idx = items.findIndex((item) => item.id === key);
+        if (idx < start || idx > end) {
+          parallaxTargetRef.current.delete(key);
+          parallaxCurrentRef.current.delete(key);
+          scaleTargetRef.current.delete(key);
+          scaleCurrentRef.current.delete(key);
+          blurTargetRef.current.delete(key);
+          blurCurrentRef.current.delete(key);
+          if (idx >= 0 && slides[idx]) resetSlideFx(slides[idx]);
+        }
+      }
 
-      for (let index = 0; index < count; index += 1) {
+      for (let index = start; index <= end; index += 1) {
         const key = items[index]?.id ?? String(index);
         const slideTop = index * slideHeight;
         const progress = (scrollTop - slideTop) / slideHeight;
@@ -226,26 +238,32 @@ export function HomeFeedScreen({
         scaleTargetRef.current.set(key, scaleTarget);
 
         // Blur only on exit (leaving upward). Incoming/next peek stays sharp.
+        // Mobile: skip expensive filter blur; keep scale + parallax.
         const exitProgress = Math.max(0, progress);
-        const blurTarget = Math.min(
-          MEDIA_BLUR_MAX_PX,
-          exitProgress * MEDIA_BLUR_PROGRESS_GAIN * MEDIA_BLUR_MAX_PX,
-        );
+        const blurTarget = allowMediaBlur
+          ? Math.min(
+              MEDIA_BLUR_MAX_PX,
+              exitProgress * MEDIA_BLUR_PROGRESS_GAIN * MEDIA_BLUR_MAX_PX,
+            )
+          : 0;
         blurTargetRef.current.set(key, blurTarget);
 
         if (immediate) {
+          const slide = slides[index];
+          const overlay = slide?.querySelector<HTMLElement>(".hf-overlay");
+          const media = slide?.querySelector<HTMLElement>(".hf-media");
           parallaxCurrentRef.current.set(key, overlayTarget);
           scaleCurrentRef.current.set(key, scaleTarget);
           blurCurrentRef.current.set(key, blurTarget);
-          overlays[index]?.style.setProperty(
+          overlay?.style.setProperty(
             "--hf-parallax-y",
             `${overlayTarget.toFixed(3)}px`,
           );
-          medias[index]?.style.setProperty(
+          media?.style.setProperty(
             "--hf-media-scale",
             scaleTarget.toFixed(5),
           );
-          medias[index]?.style.setProperty(
+          media?.style.setProperty(
             "--hf-media-blur",
             `${blurTarget.toFixed(3)}px`,
           );
@@ -272,13 +290,20 @@ export function HomeFeedScreen({
         // Keep media a touch softer than overlay so UI leads slightly.
         const mediaAlpha = 1 - Math.exp((-Math.LN2 * dtMs) / 120);
 
-        const liveOverlays = node.querySelectorAll<HTMLElement>(".hf-overlay");
-        const liveMedias = node.querySelectorAll<HTMLElement>(".hf-media");
-        const liveCount = Math.max(liveOverlays.length, liveMedias.length);
+        const liveSlides = node.querySelectorAll<HTMLElement>(".hf-slide");
+        const liveSlideHeight = getSlideMetrics(node).slideHeight;
+        const liveIndex = Math.round(
+          node.scrollTop / Math.max(1, liveSlideHeight),
+        );
+        const liveStart = Math.max(0, liveIndex - 1);
+        const liveEnd = Math.min(liveSlides.length - 1, liveIndex + 1);
         let drifting = false;
 
-        for (let index = 0; index < liveCount; index += 1) {
+        for (let index = liveStart; index <= liveEnd; index += 1) {
           const key = items[index]?.id ?? String(index);
+          const slide = liveSlides[index];
+          const overlay = slide?.querySelector<HTMLElement>(".hf-overlay");
+          const media = slide?.querySelector<HTMLElement>(".hf-media");
 
           const oTarget = parallaxTargetRef.current.get(key) ?? 0;
           const oCurrent = parallaxCurrentRef.current.get(key) ?? 0;
@@ -286,7 +311,7 @@ export function HomeFeedScreen({
           const oSettled = Math.abs(oTarget - oNext) < OVERLAY_PARALLAX_SETTLE_EPS;
           const oValue = oSettled ? oTarget : oNext;
           parallaxCurrentRef.current.set(key, oValue);
-          liveOverlays[index]?.style.setProperty(
+          overlay?.style.setProperty(
             "--hf-parallax-y",
             `${oValue.toFixed(3)}px`,
           );
@@ -299,7 +324,7 @@ export function HomeFeedScreen({
           const sSettled = Math.abs(sTarget - sNext) < MEDIA_SCALE_SETTLE_EPS;
           const sValue = sSettled ? sTarget : sNext;
           scaleCurrentRef.current.set(key, sValue);
-          liveMedias[index]?.style.setProperty(
+          media?.style.setProperty(
             "--hf-media-scale",
             sValue.toFixed(5),
           );
@@ -311,7 +336,7 @@ export function HomeFeedScreen({
           const bSettled = Math.abs(bTarget - bNext) < 0.01;
           const bValue = bSettled ? bTarget : bNext;
           blurCurrentRef.current.set(key, bValue);
-          liveMedias[index]?.style.setProperty(
+          media?.style.setProperty(
             "--hf-media-blur",
             `${bValue.toFixed(3)}px`,
           );
@@ -329,7 +354,7 @@ export function HomeFeedScreen({
       scrollFxLastTsRef.current = 0;
       scrollFxRafRef.current = requestAnimationFrame(tick);
     },
-    [getSlideMetrics, items, reducedMotion],
+    [allowMediaBlur, getSlideMetrics, items, reducedMotion],
   );
 
   useEffect(() => {
@@ -618,4 +643,17 @@ function usePrefersReducedMotion() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
   return reduced;
+}
+
+/** Desktop-only media blur — filter:blur on video is too expensive on phones. */
+function useAllowMediaBlur() {
+  const [allow, setAllow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 981px)");
+    const apply = () => setAllow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return allow;
 }

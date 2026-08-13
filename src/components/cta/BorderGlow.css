@@ -1,6 +1,21 @@
+/* Animatable cone angle — avoids per-frame style.setProperty thrash. */
+@property --cursor-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 45deg;
+}
+
+@keyframes border-glow-orbit-angle {
+  to {
+    --cursor-angle: calc(var(--cursor-angle-start, 45deg) + 360deg);
+  }
+}
+
 .border-glow-card {
   --edge-proximity: 0;
   --cursor-angle: 45deg;
+  --cursor-angle-start: 45deg;
+  --orbit-duration: 5.14s;
   --edge-sensitivity: 30;
   --color-sensitivity: calc(var(--edge-sensitivity) + 20);
   --border-radius: 28px;
@@ -220,11 +235,22 @@
   z-index: 1;
 }
 
-/* Always-on: keep layers visible; angle is driven by JS. */
+/* Always-on: keep layers visible; angle is driven by CSS animation. */
 .border-glow-card.always-on::before,
 .border-glow-card.always-on::after,
 .border-glow-card.always-on > .edge-light {
   transition: none;
+}
+
+.border-glow-card.always-on.is-css-orbit {
+  animation: border-glow-orbit-angle var(--orbit-duration, 5.14s) linear infinite;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .border-glow-card.always-on.is-css-orbit {
+    animation: none;
+  }
 }
 
 /*

@@ -111,9 +111,16 @@ export function CreatorFeedCard({
               fontSize={15}
               /* Hairline on-button ring (iOS-safe stroke layer). */
               strokeWidth={1}
-              /* Keep a cheap always-on outer bloom on phones. */
-              glowOuterBloom="lite"
-              glowAlwaysOn
+              /*
+                Viewport-scoped motion:
+                - active card: full aurora + CSS orbit + Lottie
+                - warm peek: static glow frame (no rAF/WebGL clock)
+                - far slides: static CTA only
+              */
+              glowOuterBloom={active ? "lite" : "off"}
+              glowAlwaysOn={active && !reducedMotion}
+              auroraPaused={!active || reducedMotion}
+              costIconAnimated={active && !reducedMotion}
               aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
               onClick={(e) => {
                 e.stopPropagation();
