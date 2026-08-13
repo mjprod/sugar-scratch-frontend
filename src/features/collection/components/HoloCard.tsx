@@ -36,6 +36,8 @@ import {
 } from '../lib/cards'
 import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
 import { useCollectionActions } from '../CollectionActionsContext'
+import { photoScratchIdForSlot } from '../lib/photoSlots'
+import { Paths } from '@/routes/Paths'
 
 const INTERACT_CONFIG = { tension: 200, friction: 22 }
 /** Hero select spring — quick but controlled (lift + 10% scale). */
@@ -2318,6 +2320,22 @@ export default function HoloCard({
             }
             navigate(
               `/game?model=${encodeURIComponent(model)}&card=${encodeURIComponent(card)}`,
+            )
+          }}
+          onPlayPhotoCard={(slotIndex) => {
+            const motion = cardId.trim()
+            if (!motion) return
+            const photoId = photoScratchIdForSlot(motion, slotIndex)
+            const model = (modelId || '').trim()
+            unlockCountdownSound()
+            if (actions.onPlayPhotoCard) {
+              actions.onPlayPhotoCard(model, photoId, slotIndex)
+              return
+            }
+            navigate(
+              Paths.photoScratchPlay(photoId, {
+                modelId: model || undefined,
+              }),
             )
           }}
           onViewCard={() => {

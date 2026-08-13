@@ -2,6 +2,12 @@ import { createContext, useContext, type ReactNode } from "react";
 
 export type CollectionActions = {
   onPlayGame?: (modelId: string, cardId: string, cardName: string) => void;
+  /** Play a published photo-scratch card from a PHOTO CARDS slot. */
+  onPlayPhotoCard?: (
+    modelId: string,
+    photoCardId: string,
+    slotIndex: number,
+  ) => void;
   onViewCard?: (cardName: string) => void;
 };
 

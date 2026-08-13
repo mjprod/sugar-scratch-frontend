@@ -4,6 +4,26 @@ export const PHOTO_SLOTS = 10
 /** Filled photo slots use the Sugar Scratch card back art when no catalog URL is set. */
 export const PHOTO_SLOT_IMAGE = '/img/SugarScratch.png'
 
+/**
+ * Published photo-scratch id for a motion card slot.
+ * Grid index 0 → `{motionId}_slot_01` (matches public/photo-scratch/index.json).
+ */
+export function photoScratchIdForSlot(
+  motionCardId: string,
+  slotIndex: number,
+): string {
+  const motion = motionCardId.trim()
+  const idx = Number.isFinite(slotIndex) ? Math.floor(slotIndex) : 0
+  const n = Math.max(0, Math.min(PHOTO_SLOTS - 1, idx)) + 1
+  return `${motion}_slot_${String(n).padStart(2, '0')}`
+}
+
+/** Strip `_slot_XX` suffix so collection return can reopen the motion card. */
+export function motionCardIdFromPhotoScratchId(photoCardId: string): string {
+  const id = photoCardId.trim()
+  return id.replace(/_slot_\d{2}$/, '') || id
+}
+
 export type PhotoSlotFill = {
   src: string | null
 }

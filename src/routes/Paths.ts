@@ -30,6 +30,17 @@ export const Paths = {
     if (extra?.themeId) params.set("theme", extra.themeId);
     return `/game?${params.toString()}`;
   },
+  /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection). */
+  photoScratchPlay: (
+    photoCardId: string,
+    extra?: { modelId?: string },
+  ) => {
+    const params = new URLSearchParams();
+    params.set("card", photoCardId);
+    const model = extra?.modelId?.trim();
+    if (model) params.set("model", model);
+    return `/photo-scratch?${params.toString()}`;
+  },
   recommend: "/recommend",
   recommendSwipe: "/recommend/swipe",
   recommendDone: "/recommend/done",
