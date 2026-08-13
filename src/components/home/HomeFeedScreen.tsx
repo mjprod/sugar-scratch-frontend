@@ -19,6 +19,26 @@ import {
 } from "@/services/creatorFeed";
 
 const SNAP_MS = 220;
+/** Overlay lag vs video (0 = locked, 1 = fully detached). */
+const OVERLAY_PARALLAX = 0.28;
+/** Max overlay drift in px (keeps CTAs readable). */
+const OVERLAY_PARALLAX_MAX_PX = 56;
+/** Overlay settle ease — higher = snappier arrival after scroll. */
+const OVERLAY_PARALLAX_EASE = 0.32;
+/** Media zoom ease — keep a bit softer than overlay. */
+const MEDIA_SCALE_EASE = 0.16;
+/** Resting media scale inside overflow-hidden frame. */
+const MEDIA_SCALE_BASE = 1.02;
+/** Extra scale added at full slide travel (more scroll → more zoom). */
+const MEDIA_SCALE_GAIN = 0.14;
+/** Hard ceiling so zoom stays tasteful. */
+const MEDIA_SCALE_MAX = 1.18;
+/** Max scroll-driven media blur (px). */
+const MEDIA_BLUR_MAX_PX = 5;
+/** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
+const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
+/** Blur settle ease — snappier than scale so soft-focus leads the zoom. */
+const MEDIA_BLUR_EASE = 0.28;
 
 export function HomeFeedScreen({
   active,
@@ -62,6 +82,13 @@ export function HomeFeedScreen({
   const scrollIndexRef = useRef(cached?.scrollIndex ?? 0);
   const restoredRef = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
+  const parallaxTargetRef = useRef(new Map<string, number>());
+  const parallaxCurrentRef = useRef(new Map<string, number>());
+  const scaleTargetRef = useRef(new Map<string, number>());
+  const scaleCurrentRef = useRef(new Map<string, number>());
+  const blurTargetRef = useRef(new Map<string, number>());
+  const blurCurrentRef = useRef(new Map<string, number>());
+  const scrollFxRafRef = useRef(0);
 
   const persist = useCallback(
     (patch: Partial<{
@@ -128,20 +155,183 @@ export function HomeFeedScreen({
     void loadInitial();
   }, [cached?.items.length, loadInitial]);
 
+  const getSlideMetrics = useCallback((root: HTMLElement) => {
+    const slide = root.querySelector<HTMLElement>(".hf-slide");
+    const slideHeight = slide?.offsetHeight || root.clientHeight || 1;
+    return { slideHeight };
+  }, []);
+
+  const applyScrollFx = useCallback(
+    (root: HTMLElement, immediate = false) => {
+      const overlays = root.querySelectorAll<HTMLElement>(".hf-overlay");
+      const medias = root.querySelectorAll<HTMLElement>(".hf-media");
+      if (!overlays.length && !medias.length) return;
+
+      if (reducedMotion) {
+        overlays.forEach((overlay) => {
+          overlay.style.setProperty("--hf-parallax-y", "0px");
+        });
+        medias.forEach((media) => {
+          media.style.setProperty("--hf-media-scale", "1");
+          media.style.setProperty("--hf-media-blur", "0px");
+        });
+        parallaxTargetRef.current.clear();
+        parallaxCurrentRef.current.clear();
+        scaleTargetRef.current.clear();
+        scaleCurrentRef.current.clear();
+        blurTargetRef.current.clear();
+        blurCurrentRef.current.clear();
+        if (scrollFxRafRef.current) {
+          cancelAnimationFrame(scrollFxRafRef.current);
+          scrollFxRafRef.current = 0;
+        }
+        return;
+      }
+
+      const { slideHeight } = getSlideMetrics(root);
+      const scrollTop = root.scrollTop;
+      const count = Math.max(overlays.length, medias.length);
+
+      for (let index = 0; index < count; index += 1) {
+        const key = items[index]?.id ?? String(index);
+        const slideTop = index * slideHeight;
+        const progress = (scrollTop - slideTop) / slideHeight;
+        const absProgress = Math.min(1, Math.abs(progress));
+
+        // Overlay lags the video (signed travel).
+        const overlayRaw = -progress * slideHeight * OVERLAY_PARALLAX;
+        const overlayTarget = Math.max(
+          -OVERLAY_PARALLAX_MAX_PX,
+          Math.min(OVERLAY_PARALLAX_MAX_PX, overlayRaw),
+        );
+        parallaxTargetRef.current.set(key, overlayTarget);
+
+        // More scroll away from rest → more zoom inside overflow:hidden.
+        const scaleTarget = Math.min(
+          MEDIA_SCALE_MAX,
+          MEDIA_SCALE_BASE + absProgress * MEDIA_SCALE_GAIN,
+        );
+        scaleTargetRef.current.set(key, scaleTarget);
+
+        // Blur only on exit (leaving upward). Incoming/next peek stays sharp.
+        const exitProgress = Math.max(0, progress);
+        const blurTarget = Math.min(
+          MEDIA_BLUR_MAX_PX,
+          exitProgress * MEDIA_BLUR_PROGRESS_GAIN * MEDIA_BLUR_MAX_PX,
+        );
+        blurTargetRef.current.set(key, blurTarget);
+
+        if (immediate) {
+          parallaxCurrentRef.current.set(key, overlayTarget);
+          scaleCurrentRef.current.set(key, scaleTarget);
+          blurCurrentRef.current.set(key, blurTarget);
+          overlays[index]?.style.setProperty(
+            "--hf-parallax-y",
+            `${overlayTarget.toFixed(2)}px`,
+          );
+          medias[index]?.style.setProperty(
+            "--hf-media-scale",
+            scaleTarget.toFixed(4),
+          );
+          medias[index]?.style.setProperty(
+            "--hf-media-blur",
+            `${blurTarget.toFixed(2)}px`,
+          );
+        }
+      }
+
+      if (immediate) return;
+      if (scrollFxRafRef.current) return;
+
+      const tick = () => {
+        const node = scrollerRef.current;
+        if (!node) {
+          scrollFxRafRef.current = 0;
+          return;
+        }
+
+        const liveOverlays = node.querySelectorAll<HTMLElement>(".hf-overlay");
+        const liveMedias = node.querySelectorAll<HTMLElement>(".hf-media");
+        const liveCount = Math.max(liveOverlays.length, liveMedias.length);
+        let drifting = false;
+
+        for (let index = 0; index < liveCount; index += 1) {
+          const key = items[index]?.id ?? String(index);
+
+          const oTarget = parallaxTargetRef.current.get(key) ?? 0;
+          const oCurrent = parallaxCurrentRef.current.get(key) ?? 0;
+          const oNext = oCurrent + (oTarget - oCurrent) * OVERLAY_PARALLAX_EASE;
+          const oSettled = Math.abs(oTarget - oNext) < 0.2;
+          const oValue = oSettled ? oTarget : oNext;
+          parallaxCurrentRef.current.set(key, oValue);
+          liveOverlays[index]?.style.setProperty(
+            "--hf-parallax-y",
+            `${oValue.toFixed(2)}px`,
+          );
+          if (!oSettled) drifting = true;
+
+          const sTarget = scaleTargetRef.current.get(key) ?? MEDIA_SCALE_BASE;
+          const sCurrent =
+            scaleCurrentRef.current.get(key) ?? MEDIA_SCALE_BASE;
+          const sNext = sCurrent + (sTarget - sCurrent) * MEDIA_SCALE_EASE;
+          const sSettled = Math.abs(sTarget - sNext) < 0.001;
+          const sValue = sSettled ? sTarget : sNext;
+          scaleCurrentRef.current.set(key, sValue);
+          liveMedias[index]?.style.setProperty(
+            "--hf-media-scale",
+            sValue.toFixed(4),
+          );
+          if (!sSettled) drifting = true;
+
+          const bTarget = blurTargetRef.current.get(key) ?? 0;
+          const bCurrent = blurCurrentRef.current.get(key) ?? 0;
+          const bNext = bCurrent + (bTarget - bCurrent) * MEDIA_BLUR_EASE;
+          const bSettled = Math.abs(bTarget - bNext) < 0.02;
+          const bValue = bSettled ? bTarget : bNext;
+          blurCurrentRef.current.set(key, bValue);
+          liveMedias[index]?.style.setProperty(
+            "--hf-media-blur",
+            `${bValue.toFixed(2)}px`,
+          );
+          if (!bSettled) drifting = true;
+        }
+
+        if (drifting) {
+          scrollFxRafRef.current = requestAnimationFrame(tick);
+        } else {
+          scrollFxRafRef.current = 0;
+        }
+      };
+
+      scrollFxRafRef.current = requestAnimationFrame(tick);
+    },
+    [getSlideMetrics, items, reducedMotion],
+  );
+
   useEffect(() => {
     if (status !== "loaded" || restoredRef.current) return;
     const root = scrollerRef.current;
     if (!root || !items.length) return;
     restoredRef.current = true;
-    const height = root.clientHeight || 1;
+    const { slideHeight } = getSlideMetrics(root);
     const index = Math.min(
       scrollIndexRef.current,
       Math.max(0, items.length - 1),
     );
-    root.scrollTo({ top: index * height });
+    root.scrollTo({ top: index * slideHeight });
     const next = items[index];
     if (next) setActiveId(next.id);
-  }, [status, items]);
+    applyScrollFx(root, true);
+  }, [status, items, getSlideMetrics, applyScrollFx]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollFxRafRef.current) {
+        cancelAnimationFrame(scrollFxRafRef.current);
+        scrollFxRafRef.current = 0;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const activeIndex = items.findIndex((item) => item.id === activeId);
@@ -201,15 +391,15 @@ export function HomeFeedScreen({
     (delta: number) => {
       const root = scrollerRef.current;
       if (!root || !items.length) return;
-      const height = root.clientHeight;
-      const next = Math.round(root.scrollTop / height) + delta;
+      const { slideHeight } = getSlideMetrics(root);
+      const next = Math.round(root.scrollTop / slideHeight) + delta;
       const clamped = Math.max(0, Math.min(items.length - 1, next));
       root.scrollTo({
-        top: clamped * height,
+        top: clamped * slideHeight,
         behavior: reducedMotion ? "auto" : "smooth",
       });
     },
-    [items.length, reducedMotion],
+    [getSlideMetrics, items.length, reducedMotion],
   );
 
   useEffect(() => {
@@ -257,8 +447,8 @@ export function HomeFeedScreen({
   function onScroll() {
     const root = scrollerRef.current;
     if (!root || !items.length) return;
-    const height = root.clientHeight || 1;
-    const index = Math.round(root.scrollTop / height);
+    const { slideHeight } = getSlideMetrics(root);
+    const index = Math.round(root.scrollTop / slideHeight);
     scrollIndexRef.current = index;
     const next = items[Math.max(0, Math.min(items.length - 1, index))];
     if (next && next.id !== activeId) {
@@ -267,6 +457,8 @@ export function HomeFeedScreen({
     } else {
       persist({ scrollIndex: index });
     }
+
+    applyScrollFx(root);
 
     const remaining = items.length - 1 - index;
     if (remaining <= 2) void loadMore();
@@ -302,6 +494,8 @@ export function HomeFeedScreen({
       aria-hidden={!active}
       {...(!active ? { inert: true } : {})}
     >
+      {/* Fixed bottom vignette under the liquid-glass nav (not per-card) */}
+      <div className="hf-bottom-veil" aria-hidden="true" />
       {personalizationPrompt}
       <div className="hf-frame">
         {status === "loading" ? (
