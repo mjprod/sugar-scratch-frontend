@@ -43,9 +43,9 @@ type UseDeviceParallaxOptions = {
    */
   fingerMovesGroup?: boolean;
   /** Expose live state for the rAF render loop. */
-  stateOutRef?: RefObject<ParallaxState | null> | { current: ParallaxState | null };
+  stateOutRef?: import("react").MutableRefObject<ParallaxState | null>;
   /** Legacy single-offset out ref (clip-space callers). */
-  cameraOutRef?: RefObject<ParallaxOffset | null> | { current: ParallaxOffset | null };
+  cameraOutRef?: import("react").MutableRefObject<ParallaxOffset | null>;
   /** Desktop mouse-move fallback strength (0 disables). */
   mouseGain?: number;
 };
