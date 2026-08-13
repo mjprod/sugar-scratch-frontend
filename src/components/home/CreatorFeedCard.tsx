@@ -151,7 +151,12 @@ export function CreatorFeedCard({
       window.setTimeout(() => setBurst(false), 480);
     }
 
-    const ttl = reducedMotion ? 420 : mode === "button" ? 780 : 1080;
+    const maxDelay = secondaries.reduce(
+      (m, piece) => Math.max(m, piece.delayMs),
+      0,
+    );
+    const baseDurationMs = reducedMotion ? 420 : mode === "button" ? 850 : 1000;
+    const ttl = baseDurationMs + maxDelay + 80;
     window.setTimeout(() => {
       setHeartBurst((prev) => (prev?.id === id ? null : prev));
     }, ttl);
