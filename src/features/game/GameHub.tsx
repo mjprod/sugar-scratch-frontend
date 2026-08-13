@@ -11,11 +11,13 @@ import { loadFanLayout } from '@/features/reveal/lib/fanLayout'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { usePageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
+import { useWallet } from '@/contexts/WalletContext'
 import {
   beginPhotoPhase,
   clearGameSession,
   firstMissingMotionCardId,
   loadGameSession,
+  markWalletCredited,
   motionPlayHref,
   navigateTo,
   photoPlayHref,
@@ -101,6 +103,7 @@ function motionHandToRevealCards(
 export function GameHub() {
   const catalog = useCatalog()
   const { markReady } = usePageReady()
+  const { addDiamonds } = useWallet()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
   const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
@@ -115,6 +118,7 @@ export function GameHub() {
   const [fanRunId, setFanRunId] = useState(0)
   const runIdRef = useRef(0)
   const resumedRef = useRef(false)
+  const walletCreditRef = useRef(false)
   const [fanLayout] = useState(() => loadFanLayout())
   const [fanDrag] = useState(() => loadFanDrag())
 
@@ -203,6 +207,17 @@ export function GameHub() {
   }, [phase, markReady])
 
   useEffect(() => {
+    if (phase !== 'done' || !session) return
+    if (session.walletCredited || walletCreditRef.current) return
+    walletCreditRef.current = true
+    if (session.diamondTotal > 0) {
+      addDiamonds(session.diamondTotal)
+    }
+    const marked = markWalletCredited()
+    if (marked) setSession(marked)
+  }, [phase, session, addDiamonds])
+
+  useEffect(() => {
     if (phase !== 'photo_reveal' || resumedRef.current || wonPhotos.length === 0) {
       return
     }
@@ -270,6 +285,7 @@ export function GameHub() {
     setWonPhotos([])
     setPrizeRevealed(0)
     resumedRef.current = false
+    walletCreditRef.current = false
     setShowPlay(false)
     setFanActive(false)
     setHand(next.cards)
@@ -341,6 +357,7 @@ export function GameHub() {
     setWonPhotos([])
     setPrizeRevealed(0)
     resumedRef.current = false
+    walletCreditRef.current = false
     setError(null)
     setBusy(false)
     setFanActive(false)
@@ -446,6 +463,9 @@ export function GameHub() {
                 From {session.wonPhotoIds.length} photo scratch
                 {session.wonPhotoIds.length === 1 ? '' : 'es'}
               </p>
+              {session.walletCredited && session.diamondTotal > 0 ? (
+                <p className="game-hub-pack__tally-note">Added to your balance</p>
+              ) : null}
             </div>
           ) : null}
         </section>
