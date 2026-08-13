@@ -690,18 +690,41 @@ export function LiquidGlassNav({
     const mq = window.matchMedia(DESKTOP_MQ);
     let settleTimer = 0;
 
+    /** Publish mode so mobile HUD / desktop utils can share handoff timing. */
+    const publishChromeMode = (
+      matches: boolean,
+      phase: NavHandoff,
+    ) => {
+      const mode =
+        phase === "to-desktop"
+          ? "to-desktop"
+          : phase === "to-mobile"
+            ? "to-mobile"
+            : matches
+              ? "desktop"
+              : "mobile";
+      document.body.dataset.liquidNav = mode;
+    };
+
     const apply = (matches: boolean, animate: boolean) => {
       setIsDesktop(matches);
       window.clearTimeout(settleTimer);
 
       if (!animate) {
         setHandoff("none");
+        publishChromeMode(matches, "none");
         return;
       }
 
       // Keep handoff class until the longest enter/exit sequence finishes.
-      setHandoff(matches ? "to-desktop" : "to-mobile");
-      settleTimer = window.setTimeout(() => setHandoff("none"), 1100);
+      const phase: NavHandoff = matches ? "to-desktop" : "to-mobile";
+      setHandoff(phase);
+      publishChromeMode(matches, phase);
+      // Dock/top sequences peak ~1s; hold chrome mode until both settle.
+      settleTimer = window.setTimeout(() => {
+        setHandoff("none");
+        publishChromeMode(matches, "none");
+      }, 1100);
     };
 
     apply(mq.matches, false);
@@ -711,6 +734,7 @@ export function LiquidGlassNav({
     return () => {
       window.clearTimeout(settleTimer);
       mq.removeEventListener("change", onChange);
+      delete document.body.dataset.liquidNav;
     };
   }, []);
 
@@ -769,9 +793,16 @@ export function LiquidGlassNav({
 
   return (
     <div className={rootClass} aria-hidden={hidden || undefined}>
-      {/* Desktop / wide: black glass top nav (enters as bottom dock exits) */}
-      <nav className="nav-test-top" aria-label="Primary">
-        <div className="nav-test-top-surface" aria-hidden="true" />
+      {/*
+        Desktop / wide top nav.
+        Glass + displacement MUST live on this same node as the centered
+        transform (like .top-nav-mobile). A child with backdrop-filter under a
+        transformed parent often samples nothing — no visible distortion.
+      */}
+      <nav
+        className="nav-test-top glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+        aria-label="Primary"
+      >
         <div
           className="nav-test-top-items"
           ref={topItemsRef}
