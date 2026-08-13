@@ -214,9 +214,10 @@ export function PurchaseFlow({
   );
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
-  const trackedDecision = useRef(false);
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
+  /** Skip Cards Ready UI — launch motion game once (resume or stray stage). */
+  const autoLaunchScratchRef = useRef(false);
   const packImage =
     session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
   const packDisplayName = session?.foilLabel ?? pack.packName;
@@ -247,13 +248,6 @@ export function PurchaseFlow({
       trackScratchEvent("Scratch Session Started", { packId: pack.packId });
     }
   }, [pack.entry, pack.packId, session]);
-
-  useEffect(() => {
-    if (stage === "cards-ready" && !trackedDecision.current) {
-      trackedDecision.current = true;
-      trackScratchEvent("Scratch Decision Shown", { packId: pack.packId });
-    }
-  }, [stage, pack.packId]);
 
   useEffect(() => {
     if (!session) return;
@@ -462,7 +456,6 @@ export function PurchaseFlow({
       setScratchProgress(0);
       awardedIds.current = new Set();
       tearLocked.current = false;
-      trackedDecision.current = false;
       bumpInventory();
       setStage("ready");
       return;
@@ -565,6 +558,8 @@ export function PurchaseFlow({
         { modelId },
       );
       if (hand.length === 0) {
+        autoLaunchScratchRef.current = false;
+        if (stage === "cards-ready") setStage("reveal");
         setModal("failed");
         return;
       }
@@ -589,11 +584,24 @@ export function PurchaseFlow({
       bumpInventory();
       navigateTo(motionPlayHref(created));
     } catch {
+      autoLaunchScratchRef.current = false;
+      if (stage === "cards-ready") setStage("reveal");
       setModal("failed");
     } finally {
       setSavingLater(false);
     }
   }
+
+  // Legacy openings saved on Cards Ready — skip that screen and launch the game.
+  useEffect(() => {
+    if (stage !== "cards-ready" || !session || autoLaunchScratchRef.current) {
+      return;
+    }
+    autoLaunchScratchRef.current = true;
+    void startScratchNow();
+    // Intentionally once per mount/resume into cards-ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startScratchNow closes over latest session
+  }, [stage, session]);
 
   function leaveSaved(destination?: () => void) {
     bumpInventory();
@@ -671,7 +679,7 @@ export function PurchaseFlow({
       <header
         className={[
           "relative z-20 flex h-16 shrink-0 items-center px-4",
-          stage === "choose" || stage === "reveal"
+          stage === "choose" || stage === "reveal" || stage === "cards-ready"
             ? "absolute inset-x-0 top-0 border-transparent bg-transparent"
             : "border-b border-white/[0.08]",
         ].join(" ")}
@@ -690,7 +698,7 @@ export function PurchaseFlow({
         >
           <ChevronLeft className="size-5" />
         </button>
-        {stage === "choose" || stage === "reveal" ? null : (
+        {stage === "choose" || stage === "reveal" || stage === "cards-ready" ? null : (
           <div className="absolute left-1/2 -translate-x-1/2 text-center">
             <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
             {terminal ? null : (
@@ -713,7 +721,7 @@ export function PurchaseFlow({
           transition={{ duration: 0.25, ease: "easeOut" }}
           className={[
             "flex min-h-0 flex-1 flex-col",
-            stage === "choose" || stage === "reveal"
+            stage === "choose" || stage === "reveal" || stage === "cards-ready"
               ? "overflow-hidden"
               : "overflow-y-auto",
           ].join(" ")}
@@ -784,13 +792,10 @@ export function PurchaseFlow({
           ) : null}
 
           {stage === "cards-ready" && session ? (
-            <CardsReadyStage
-              session={session}
-              packName={packDisplayName}
-              saving={savingLater}
-              onScratchNow={() => void startScratchNow()}
-              onLater={() => scratchLater("decision")}
-            />
+            <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
+              <Loader2 className="size-8 animate-spin text-white/50" />
+              <p className="mt-4 text-[14px] text-white/50">Starting…</p>
+            </div>
           ) : null}
 
           {stage === "grid" && session ? (
@@ -1359,83 +1364,9 @@ function MotionRevealStage({
           onClick={onContinue}
           disabled={launching}
         >
-          {launching ? "Starting…" : "Play now"}
+          {launching ? "Starting…" : "Continue"}
         </button>
       ) : null}
-    </div>
-  );
-}
-
-function CardsReadyStage({
-  session,
-  packName,
-  saving,
-  onScratchNow,
-  onLater,
-}: {
-  session: OpeningSession;
-  packName: string;
-  saving: boolean;
-  onScratchNow: () => void;
-  onLater: () => void;
-}) {
-  const stack = session.cards.slice(0, Math.min(session.cards.length, 3));
-
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-      <p className="text-[12px] font-semibold tracking-[0.14em] text-white/45 uppercase">
-        {packName}
-      </p>
-      <h1 className="mt-2 text-[28px] font-bold">Your Cards Are Ready</h1>
-      <p className="mt-2 text-[14px] text-white/50">
-        Play to scratch — win photocards, then diamonds.
-      </p>
-      <motion.div
-        className="relative mt-8 h-80 w-56"
-        initial={{ scale: 0.96, opacity: 0.85 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-      >
-        {stack
-          .map((card, cardIndex) => ({ card, cardIndex }))
-          .reverse()
-          .map(({ card, cardIndex }, stackIndex) => (
-            <div
-              key={card.id}
-              aria-hidden="true"
-              className="absolute inset-0 rounded-[24px] border border-white/20 bg-[radial-gradient(circle_at_30%_20%,rgba(168,85,247,.8),#151515_55%)] shadow-2xl"
-              style={{
-                transform: `translate(${stackIndex * 5}px, ${stackIndex * -10}px) rotate(${stackIndex * 2}deg)`,
-              }}
-            >
-              <div className="absolute inset-4 rounded-[18px] border border-white/25" />
-              <Sparkles className="absolute top-1/2 left-1/2 size-12 -translate-x-1/2 -translate-y-1/2 text-white/45" />
-              <span className="absolute inset-x-0 bottom-7 text-[11px] font-semibold tracking-[0.16em] uppercase">
-                Card {cardIndex + 1}
-              </span>
-            </div>
-          ))}
-      </motion.div>
-      <p className="mt-6 text-[13px] text-white/45">
-        {session.cards.length} {session.cards.length === 1 ? "card" : "cards"} waiting
-      </p>
-      <button
-        type="button"
-        onClick={onScratchNow}
-        disabled={saving}
-        className="mt-5 h-14 w-full max-w-sm rounded-full bg-[#8B5CF6] text-[15px] font-semibold disabled:opacity-60"
-      >
-        {saving ? "Starting…" : "Play now"}
-      </button>
-      <button
-        type="button"
-        onClick={onLater}
-        disabled={saving}
-        aria-label="Play later"
-        className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70 disabled:opacity-60"
-      >
-        {saving ? "Saving…" : "Later"}
-      </button>
     </div>
   );
 }
@@ -1628,7 +1559,8 @@ function stageTitle(stage: Stage) {
   if (stage === "select") return "Purchase Pack";
   if (stage === "ready") return "Pack Ready";
   if (stage === "reveal") return "Opening Reveal";
-  if (stage === "preview" || stage === "grid" || stage === "cards-ready") return "Cards Ready";
+  if (stage === "preview" || stage === "grid") return "Choose Card";
+  if (stage === "cards-ready") return "Starting";
   if (stage === "complete") return "Session Complete";
   if (stage === "saved" || stage === "saved-unopened") return "Saved";
   if (stage === "load-failed") return "Loading Failed";
