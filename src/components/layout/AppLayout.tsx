@@ -87,6 +87,7 @@ export function AppLayout() {
           settingsActive={onSettings}
           profileActive={location.pathname.startsWith("/profile")}
           showMobileDiamond={!secondaryUtility}
+          routeKey={location.pathname}
         />
       ) : null}
 

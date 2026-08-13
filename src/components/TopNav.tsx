@@ -32,6 +32,7 @@ export function TopNav({
   showBalances = true,
   showMobileDiamond = true,
   showInbox = true,
+  routeKey,
 }: {
   coins: number | null;
   diamonds: number | null;
@@ -56,6 +57,7 @@ export function TopNav({
   showMobileDiamond?: boolean;
   /** Hide on Inbox route to avoid redundant self-nav. */
   showInbox?: boolean;
+  routeKey?: string;
 }) {
   const [scrolled, setScrolled] = useState(false);
   const primaryActive =
@@ -79,7 +81,7 @@ export function TopNav({
         node.removeEventListener("scroll", readScrolled);
       });
     };
-  }, [activeTab]);
+  }, [activeTab, routeKey]);
 
   const mobileInbox =
     showInbox && onOpenInbox ? (
