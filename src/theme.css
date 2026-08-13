@@ -6831,13 +6831,32 @@ body[data-theme="v8"] .settings-app-version {
 
 body[data-theme="v8"] .app-page-shell.settings-page > .app-page-shell-inner {
   max-width: min(1100px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+    padding-top: calc(var(--app-top-nav-height, 56px) + 20px);
+    padding-bottom: 48px;
+  }
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .app-page-shell.settings-page {
+    padding-bottom: var(
+      --app-footer-offset,
+      calc(112px + env(safe-area-inset-bottom, 0px))
+    );
+  }
 }
 
 body[data-theme="v8"] .settings-stack {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  margin-top: 20px;
+  margin-top: 4px;
   width: 100%;
 }
 

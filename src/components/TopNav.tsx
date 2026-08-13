@@ -27,6 +27,8 @@ export function TopNav({
   inboxUnreadCount = 0,
   inboxActive = false,
   storeActive = false,
+  profileActive = false,
+  settingsActive = false,
   showBalances = true,
   showMobileDiamond = true,
   showInbox = true,
@@ -45,6 +47,10 @@ export function TopNav({
   inboxActive?: boolean;
   /** Subtle diamond utility active while Store is open. */
   storeActive?: boolean;
+  /** Profile utility active on Profile page only (not Settings). */
+  profileActive?: boolean;
+  /** Settings / account utility pages — primary tabs stay neutral. */
+  settingsActive?: boolean;
   showBalances?: boolean;
   /** Immersive / guest flows set false via App shell. */
   showMobileDiamond?: boolean;
@@ -52,7 +58,8 @@ export function TopNav({
   showInbox?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
-  const primaryActive = inboxActive || storeActive ? null : activeTab;
+  const primaryActive =
+    inboxActive || storeActive || settingsActive ? null : activeTab;
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll(SCROLL_SELECTOR)).filter(
@@ -161,11 +168,11 @@ export function TopNav({
             <button
               type="button"
               aria-label="Profile"
-              aria-current={activeTab === "profile" ? "page" : undefined}
+              aria-current={profileActive ? "page" : undefined}
               onClick={onProfile}
               className={[
                 "top-nav-profile grid min-h-10 min-w-10 place-items-center rounded-md transition active:scale-95",
-                activeTab === "profile"
+                profileActive
                   ? "top-nav-profile--active"
                   : "text-white/55 hover:bg-white/[0.06] hover:text-white/85",
               ].join(" ")}
