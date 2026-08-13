@@ -12,7 +12,7 @@ export default defineConfig({
   root: rootDir,
   publicDir: path.resolve(rootDir, "public"),
   server: {
-    host: true,
+    // Default is localhost only. Use `npm run dev:v8:host` to bind 0.0.0.0.
     port: 5188,
     strictPort: true,
     open: "/old-app.html",
