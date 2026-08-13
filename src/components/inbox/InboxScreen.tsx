@@ -8,13 +8,9 @@ import {
   Gift,
   TriangleAlert,
 } from "lucide-react";
-import {
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
-import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   INBOX_FIXTURES,
@@ -26,17 +22,13 @@ import {
 } from "@/services/inbox";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
 
-/** Inbox list — secondary surface; Back via SubpageHeader. */
+/** Inbox — secondary surface; desktop keeps Global TopNav, mobile uses compact header. */
 export function InboxScreen({
   onBack,
   onMessageAction,
-  coins,
-  diamonds,
 }: {
   onBack: () => void;
-  onMessageAction: (message: InboxMessage, source: "row" | "cta") => void;
-  coins?: number | null;
-  diamonds?: number | null;
+  onMessageAction: (message: InboxMessage) => void;
 }) {
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
@@ -47,6 +39,7 @@ export function InboxScreen({
   );
   const emptyFiltered =
     filterUnreadOnly && newer.length === 0 && earlier.length === 0;
+  const emptyAll = !filterUnreadOnly && newer.length === 0 && earlier.length === 0;
 
   function markRead(id: string) {
     setMessages((list) =>
@@ -56,108 +49,86 @@ export function InboxScreen({
 
   function handleRow(message: InboxMessage) {
     markRead(message.id);
-    onMessageAction(message, "row");
-  }
-
-  function handleCta(message: InboxMessage) {
-    markRead(message.id);
-    onMessageAction(message, "cta");
+    onMessageAction(message);
   }
 
   const meta = SECONDARY_SURFACES.inbox;
-  const showBalances = diamonds !== undefined || coins !== undefined;
+  const filterControl = (
+    <UnreadFilter
+      active={filterUnreadOnly}
+      onToggle={() => setFilterUnreadOnly((v) => !v)}
+    />
+  );
 
   return (
-    <section
-      data-page-scroll
-      className="inbox-page flex min-h-0 flex-1 flex-col overflow-y-auto"
+    <AppPageShell
+      variant="secondary"
       aria-label="Inbox"
+      className="inbox-page"
     >
-      <div className="inbox-page-content">
-        <SubpageHeader
-          title={meta.title}
-          onBack={onBack}
-          backLabel={meta.backLabel}
-          trailing={
-            showBalances ? (
-              <CurrencyBalances
-                coins={coins ?? null}
-                diamonds={diamonds ?? null}
-              />
-            ) : undefined
-          }
-        />
-        <p className="inbox-subtitle inbox-subtitle--page">
-          Updates, packs, and important activity
-        </p>
+      <SubpageHeader
+        title={meta.title}
+        onBack={onBack}
+        backLabel={meta.backLabel}
+        trailing={
+          <span className="inbox-header-filter lg:hidden">{filterControl}</span>
+        }
+      />
 
-        {emptyFiltered ? (
-          <div className="inbox-empty-wrap">
-            <div className="inbox-section-head">
-              <span className="inbox-section-label">New</span>
-              <UnreadFilter
-                active={filterUnreadOnly}
-                onToggle={() => setFilterUnreadOnly((v) => !v)}
-              />
-            </div>
-            <EmptyState
-              icon={CheckCheck}
-              title="You're all caught up"
-              titleId="inbox-empty-title"
-              copy="No unread messages right now."
-            />
+      {emptyAll || emptyFiltered ? (
+        <div className="inbox-empty-wrap">
+          <div className="inbox-section-head">
+            <span className="inbox-section-label">New</span>
+            <span className="hidden lg:inline-flex">{filterControl}</span>
           </div>
-        ) : (
-          <>
-            {newer.length > 0 ? (
-              <MessageListSection
-                label="New"
-                showDot={newer.some((m) => !m.isRead)}
-                trailing={
-                  <UnreadFilter
-                    active={filterUnreadOnly}
-                    onToggle={() => setFilterUnreadOnly((v) => !v)}
-                  />
-                }
-              >
-                {newer.map((message) => (
+          <EmptyState
+            icon={emptyFiltered ? CheckCheck : Bell}
+            title="You're all caught up"
+            titleId="inbox-empty-title"
+            copy={
+              emptyFiltered
+                ? "No unread messages right now."
+                : "New packs, rewards and activity will appear here."
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <MessageListSection
+            label="New"
+            showDot={newer.some((m) => !m.isRead)}
+            trailing={
+              <span className="hidden lg:inline-flex">{filterControl}</span>
+            }
+          >
+            {newer.length > 0
+              ? newer.map((message) => (
                   <MessageItem
                     key={message.id}
                     message={message}
                     onPress={handleRow}
-                    onCta={handleCta}
                   />
-                ))}
-              </MessageListSection>
-            ) : null}
+                ))
+              : null}
+          </MessageListSection>
 
-            {earlier.length > 0 ? (
-              <MessageListSection
-                label="Earlier"
-                showDot={earlier.some((m) => !m.isRead)}
-                trailing={
-                  newer.length === 0 ? (
-                    <UnreadFilter
-                      active={filterUnreadOnly}
-                      onToggle={() => setFilterUnreadOnly((v) => !v)}
-                    />
-                  ) : null
-                }
-              >
-                {earlier.map((message) => (
-                  <MessageItem
-                    key={message.id}
-                    message={message}
-                    onPress={handleRow}
-                    onCta={handleCta}
-                  />
-                ))}
-              </MessageListSection>
-            ) : null}
-          </>
-        )}
-      </div>
-    </section>
+          {earlier.length > 0 ? (
+            <MessageListSection
+              label="Earlier"
+              showDot={earlier.some((m) => !m.isRead)}
+            >
+              {earlier.map((message) => (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  onPress={handleRow}
+                />
+              ))}
+            </MessageListSection>
+          ) : null}
+        </>
+      )}
+    </AppPageShell>
   );
 }
 
@@ -173,10 +144,11 @@ function UnreadFilter({
       type="button"
       className={["inbox-filter", active ? "is-active" : ""].join(" ")}
       aria-pressed={active}
+      aria-label="Unread only"
       onClick={onToggle}
     >
       <Filter className="size-3.5" strokeWidth={2} aria-hidden />
-      Unread only
+      <span className="inbox-filter-label">Unread only</span>
     </button>
   );
 }
@@ -206,7 +178,7 @@ function MessageListSection({
         </h2>
         {trailing}
       </div>
-      <ul className="inbox-list">{children}</ul>
+      {children ? <ul className="inbox-list">{children}</ul> : null}
     </section>
   );
 }
@@ -214,11 +186,9 @@ function MessageListSection({
 function MessageItem({
   message,
   onPress,
-  onCta,
 }: {
   message: InboxMessage;
   onPress: (message: InboxMessage) => void;
-  onCta: (message: InboxMessage) => void;
 }) {
   return (
     <li className="inbox-item-row">
@@ -239,10 +209,8 @@ function MessageItem({
           <span className="inbox-item-title">{message.title}</span>
           <span className="inbox-item-subtitle">{message.subtitle}</span>
         </span>
-        <span className="inbox-item-meta">
-          <span className="inbox-item-time">
-            {relativeTime(message.timestamp)}
-          </span>
+        <span className="inbox-item-time">
+          {relativeTime(message.timestamp)}
         </span>
         <ChevronRight
           className="inbox-item-chevron"
@@ -250,15 +218,6 @@ function MessageItem({
           strokeWidth={1.8}
         />
       </button>
-      {message.cta ? (
-        <button
-          type="button"
-          className="inbox-item-cta"
-          onClick={() => onCta(message)}
-        >
-          {message.cta.label}
-        </button>
-      ) : null}
     </li>
   );
 }

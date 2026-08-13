@@ -2,6 +2,65 @@ import type { CSSProperties } from "react";
 import { Gem } from "lucide-react";
 import { formatCountdown, type FeaturedPack } from "@/services/homepage";
 
+/** Single highest-priority merchandising badge (spec §§24–27). */
+function FeaturedPackBadge({
+  pack,
+  countdown,
+}: {
+  pack: FeaturedPack;
+  countdown: string | null;
+}) {
+  if (pack.isLimited) {
+    const endingSoon =
+      pack.expiresAt &&
+      countdown &&
+      countdown !== "ENDED" &&
+      new Date(pack.expiresAt).getTime() - Date.now() <= 48 * 60 * 60 * 1000;
+    if (endingSoon) {
+      return (
+        <div className="physical-pack-badges">
+          <div className="physical-pack-badge-limited">
+            <span>ENDING SOON</span>
+            <span className="physical-pack-countdown">{countdown}</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="physical-pack-badges">
+        <div className="physical-pack-badge-limited">
+          <span>LIMITED</span>
+          {countdown && countdown !== "ENDED" ? (
+            <span className="physical-pack-countdown">{countdown}</span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+  if (pack.isNew) {
+    return (
+      <div className="physical-pack-badges">
+        <span className="physical-pack-badge-new">NEW</span>
+      </div>
+    );
+  }
+  if (pack.isHot) {
+    return (
+      <div className="physical-pack-badges">
+        <span className="physical-pack-badge-hot">HOT</span>
+      </div>
+    );
+  }
+  if (pack.isTrending) {
+    return (
+      <div className="physical-pack-badges">
+        <span className="physical-pack-badge-trend">TRENDING</span>
+      </div>
+    );
+  }
+  return null;
+}
+
 /**
  * Featured Pack Carousel — physical foil wrapper (Spec 1.0)
  * + Homepage 3.0 rarity / badge treatments.
@@ -96,25 +155,7 @@ export function PhysicalPackCard({
         <div className="physical-pack-edge-light" aria-hidden="true" />
         <div className="physical-pack-shimmer" aria-hidden="true" />
 
-        {active ? (
-          <div className="physical-pack-badges">
-            {pack.isNew ? <span className="physical-pack-badge-new">NEW</span> : null}
-            {pack.isHot && !pack.isNew ? (
-              <span className="physical-pack-badge-hot">HOT</span>
-            ) : null}
-            {pack.isTrending && !pack.isLimited ? (
-              <span className="physical-pack-badge-trend">TRENDING</span>
-            ) : null}
-            {pack.isLimited ? (
-              <div className="physical-pack-badge-limited">
-                <span>LIMITED</span>
-                {countdown ? (
-                  <span className="physical-pack-countdown">{countdown}</span>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {active ? <FeaturedPackBadge pack={pack} countdown={countdown} /> : null}
 
         {active ? (
           <div className="physical-pack-content">

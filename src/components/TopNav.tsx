@@ -11,7 +11,6 @@ const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "feed", label: "Browse" },
   { id: "bag", label: "Collection" },
   { id: "hub", label: "Hub" },
-  { id: "profile", label: "Profile" },
 ];
 
 const SCROLL_SELECTOR = "[data-page-scroll], .hf-viewport, .app-page-shell, .inbox-page";
@@ -26,9 +25,14 @@ export function TopNav({
   onOpenStore,
   onOpenInbox,
   inboxUnreadCount = 0,
+  inboxActive = false,
+  storeActive = false,
+  profileActive = false,
+  settingsActive = false,
   showBalances = true,
   showMobileDiamond = true,
   showInbox = true,
+  routeKey,
 }: {
   coins: number | null;
   diamonds: number | null;
@@ -40,13 +44,24 @@ export function TopNav({
   onOpenStore?: () => void;
   onOpenInbox?: () => void;
   inboxUnreadCount?: number;
+  /** Bell active while Inbox route is open — primary tabs stay neutral. */
+  inboxActive?: boolean;
+  /** Subtle diamond utility active while Store is open. */
+  storeActive?: boolean;
+  /** Profile utility active on Profile page only (not Settings). */
+  profileActive?: boolean;
+  /** Settings / account utility pages — primary tabs stay neutral. */
+  settingsActive?: boolean;
   showBalances?: boolean;
   /** Immersive / guest flows set false via App shell. */
   showMobileDiamond?: boolean;
   /** Hide on Inbox route to avoid redundant self-nav. */
   showInbox?: boolean;
+  routeKey?: string;
 }) {
   const [scrolled, setScrolled] = useState(false);
+  const primaryActive =
+    inboxActive || storeActive || settingsActive ? null : activeTab;
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll(SCROLL_SELECTOR)).filter(
@@ -66,7 +81,7 @@ export function TopNav({
         node.removeEventListener("scroll", readScrolled);
       });
     };
-  }, [activeTab]);
+  }, [activeTab, routeKey]);
 
   const mobileInbox =
     showInbox && onOpenInbox ? (
@@ -74,6 +89,7 @@ export function TopNav({
         unreadCount={inboxUnreadCount}
         onOpen={onOpenInbox}
         variant="ghost"
+        active={inboxActive}
       />
     ) : null;
 
@@ -83,6 +99,7 @@ export function TopNav({
         unreadCount={inboxUnreadCount}
         onOpen={onOpenInbox}
         variant="ghost"
+        active={inboxActive}
       />
     ) : null;
 
@@ -115,7 +132,7 @@ export function TopNav({
           </button>
           <nav aria-label="Primary" className="top-nav-primary flex items-center gap-0.5">
             {DESKTOP_DESTINATIONS.map((destination) => {
-              const active = destination.id === activeTab;
+              const active = destination.id === primaryActive;
               return (
                 <button
                   key={destination.id}
@@ -145,18 +162,24 @@ export function TopNav({
               <CurrencyBalances
                 coins={coins}
                 diamonds={diamonds}
-                onOpenStore={onOpenStore}
+                onOpenStore={storeActive ? undefined : onOpenStore}
+                storeActive={storeActive}
               />
             ) : null}
             {desktopInbox}
             <button
               type="button"
-              aria-label="Open Profile"
-              aria-current={activeTab === "profile" ? "page" : undefined}
+              aria-label="Profile"
+              aria-current={profileActive ? "page" : undefined}
               onClick={onProfile}
-              className="top-nav-profile grid min-h-10 min-w-10 place-items-center rounded-md text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95"
+              className={[
+                "top-nav-profile grid min-h-10 min-w-10 place-items-center rounded-md transition active:scale-95",
+                profileActive
+                  ? "top-nav-profile--active"
+                  : "text-white/55 hover:bg-white/[0.06] hover:text-white/85",
+              ].join(" ")}
             >
-              <UserRound className="size-[18px]" />
+              <UserRound className="size-[18px]" aria-hidden="true" />
             </button>
           </div>
         </div>

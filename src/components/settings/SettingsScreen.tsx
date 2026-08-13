@@ -10,8 +10,6 @@ import {
 import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
-import { InboxButton } from "@/components/InboxButton";
-import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
 
@@ -32,16 +30,10 @@ export function SettingsScreen({
   onBack,
   onReplayTutorials,
   onOpenChangePassword,
-  diamonds,
-  onOpenInbox,
-  inboxUnreadCount = 0,
 }: {
   onBack: () => void;
   onReplayTutorials: () => void;
   onOpenChangePassword: () => void;
-  diamonds?: number | null;
-  onOpenInbox?: () => void;
-  inboxUnreadCount?: number;
 }) {
   const meta = SECONDARY_SURFACES.settings;
   const legalTitleId = useId();
@@ -138,19 +130,6 @@ export function SettingsScreen({
         title={meta.title}
         onBack={onBack}
         backLabel={meta.backLabel}
-        trailing={
-          <div className="flex items-center gap-2">
-            {diamonds !== undefined ? (
-              <MobileDiamondBalance balance={diamonds} standalone />
-            ) : null}
-            {onOpenInbox ? (
-              <InboxButton
-                unreadCount={inboxUnreadCount}
-                onOpen={onOpenInbox}
-              />
-            ) : null}
-          </div>
-        }
       />
 
       <div className="settings-stack">
@@ -211,10 +190,7 @@ function SettingsRowButton({
   onSelect: (row: SettingsRow) => void;
 }) {
   const Icon = row.icon;
-  const className = [
-    "settings-row",
-    row.interactive ? "" : "is-static",
-  ]
+  const className = ["settings-row", row.interactive ? "" : "is-static"]
     .filter(Boolean)
     .join(" ");
 

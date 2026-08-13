@@ -3,7 +3,12 @@
  * Featured carousel · Continue Collecting · Category Leaderboard
  */
 
-import { CREATOR_PHOTOS, HOLO_PACKS, PACK_PHOTOS } from "./photos";
+import {
+  CREATOR_PHOTOS,
+  HOLO_PACKS,
+  MODEL_PACK_PHOTOS,
+  PACK_PHOTOS,
+} from "./photos";
 
 export type Price = {
   amount: number;
@@ -145,6 +150,52 @@ export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[
 ];
 
 const FEATURED: FeaturedPack[] = [
+  {
+    id: "juliana-police",
+    name: "Juliana Police Pack",
+    packTitle: "POLICE\nLINEUP",
+    creatorId: "julianaval",
+    creatorName: "Juliana",
+    collectionName: "JULIANA COLLECTION",
+    themeName: "Police",
+    coverImageUrl: MODEL_PACK_PHOTOS.julianaPolice,
+    price: { amount: 5.99, currency: "USD" },
+    diamondCost: 12,
+    collected: 4,
+    collectionTotal: 15,
+    isHot: true,
+    rarity: "ultra-rare",
+    accentColors: {
+      primary: "#60A5FA",
+      secondary: "#750029",
+      glow: "rgba(96, 165, 250, 0.28)",
+    },
+    rewardHint: "Complete theme for Replay Mode",
+    isAvailable: true,
+  },
+  {
+    id: "juliana-firegirl",
+    name: "Juliana Firegirl Pack",
+    packTitle: "FIRE\nGIRL",
+    creatorId: "julianaval",
+    creatorName: "Juliana",
+    collectionName: "JULIANA COLLECTION",
+    themeName: "Firegirl",
+    coverImageUrl: MODEL_PACK_PHOTOS.julianaFiregirl,
+    price: { amount: 5.99, currency: "USD" },
+    diamondCost: 12,
+    collected: 3,
+    collectionTotal: 15,
+    isNew: true,
+    rarity: "super-rare",
+    accentColors: {
+      primary: "#F87171",
+      secondary: "#FBBF24",
+      glow: "rgba(248, 113, 113, 0.28)",
+    },
+    rewardHint: "Unlock Photo Scratch rewards",
+    isAvailable: true,
+  },
   {
     id: "cyber-holo",
     name: "Cyber Girl Pack",
