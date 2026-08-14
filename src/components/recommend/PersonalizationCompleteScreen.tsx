@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 
 /**
  * Recommendation Initialization complete — return to Home Feed.
@@ -15,15 +15,17 @@ export function PersonalizationCompleteScreen({
         We&apos;ll continue learning what you like.
       </p>
       <div className="auth7-onboard-spacer" />
-      <Button
-        full
-        variant="auth"
-        type="button"
-        className="auth2-primary"
-        onClick={onStart}
-      >
-        Explore
-      </Button>
+      <div className="auth2-primary-cta">
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          label="Explore"
+          costAmount={null}
+          fontSize={15}
+          strokeWidth={1}
+          onClick={onStart}
+        />
+      </div>
     </div>
   );
 }

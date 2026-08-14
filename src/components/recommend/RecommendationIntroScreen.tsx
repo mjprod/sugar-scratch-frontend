@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, Heart, X } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { PREFERENCE_PHOTOS } from "@/lib/photos";
 
 /**
@@ -92,13 +93,17 @@ export function RecommendationIntroScreen({
       </div>
 
       <div className="auth7-intro-actions">
-        <button
-          type="button"
-          className="auth2-primary auth7-intro-start"
-          onClick={onStart}
-        >
-          Start
-        </button>
+        <div className="auth2-primary-cta auth7-intro-start">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            label="Start"
+            costAmount={null}
+            fontSize={15}
+            strokeWidth={1}
+            onClick={onStart}
+          />
+        </div>
         <button type="button" className="auth7-intro-skip" onClick={onSkip}>
           Skip
         </button>

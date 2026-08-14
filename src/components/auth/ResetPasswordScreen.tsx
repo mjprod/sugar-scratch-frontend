@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { isValidAuthPassword } from "@/services/auth";
 
 /**
@@ -57,9 +57,17 @@ export function ResetPasswordScreen({
         <p className="auth2-error" role="alert">
           This reset link has expired. Request a new reset link.
         </p>
-        <Button full variant="auth" type="button" className="auth2-primary" onClick={onBack}>
-          Request a new reset link
-        </Button>
+        <div className="auth2-primary-cta">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            label="Request a new reset link"
+            costAmount={null}
+            fontSize={15}
+            strokeWidth={1}
+            onClick={onBack}
+          />
+        </div>
       </div>
     );
   }
@@ -138,16 +146,20 @@ export function ResetPasswordScreen({
         </p>
       ) : null}
 
-      <Button
-        full
-        variant="auth"
-        type="submit"
-        loading={loading}
-        disabled={!password || !confirm || loading}
-        className="auth2-primary"
-      >
-        Save password
-      </Button>
+      <div className="auth2-primary-cta">
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          type="submit"
+          label={loading ? "Saving…" : "Save password"}
+          costAmount={null}
+          fontSize={15}
+          strokeWidth={1}
+          disabled={!password || !confirm || loading}
+          auroraPaused={loading}
+          costIconAnimated={false}
+        />
+      </div>
 
       <p className="auth2-switch">
         <button type="button" className="auth2-text-link is-strong" onClick={onBack}>

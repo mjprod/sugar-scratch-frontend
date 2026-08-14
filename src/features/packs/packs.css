@@ -356,8 +356,8 @@
   --shadow:
     0 24px 60px rgba(20, 43, 65, 0.16),
     0 6px 18px rgba(20, 43, 65, 0.08);
-  --font-display: 'Avenir Next', 'Trebuchet MS', 'Segoe UI', sans-serif;
-  --font-body: 'Optima', 'Segoe UI', 'Gill Sans', sans-serif;
+  --font-display: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Consolas', 'Menlo', monospace;
 
   font-synthesis: none;

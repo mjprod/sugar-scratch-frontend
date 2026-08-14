@@ -943,7 +943,7 @@ body[data-theme="v8"] .physical-pack-title {
   display: flex;
   flex-direction: column;
   margin: 0;
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: "Outfit", Inter, system-ui, sans-serif;
   font-size: clamp(34px, 9vw, 46px);
   font-weight: 500;
   line-height: 0.95;
@@ -5204,7 +5204,6 @@ body[data-theme="v8"] .hf-creator {
 body[data-theme="v8"] .hf-creator--link {
   cursor: pointer;
   align-self: flex-start;
-  min-height: 44px;
   display: inline-flex;
   align-items: center;
   max-width: 100%;
@@ -6300,6 +6299,58 @@ body[data-theme="v8"] .auth2-agree .text-ink-secondary {
 
 body[data-theme="v8"] .auth2-primary {
   margin-top: 4px;
+}
+
+/* Full-width slot for hf-buy-style CtaButton on auth / onboard screens. */
+body[data-theme="v8"] .auth2-primary-cta {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  height: 52px;
+  margin-top: 4px;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .auth2-primary-cta .cta-button-glow,
+body[data-theme="v8"] .auth2-primary-cta .cta-button-glow.cta-button-glow--squircle,
+body[data-theme="v8"] .auth2-primary-cta .cta-button-glow--fill {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .auth2-primary-cta .cta-button-glow > .border-glow-inner,
+body[data-theme="v8"] .auth2-primary-cta .cta-button-glow--fill > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .auth2-primary-cta .cta-button,
+body[data-theme="v8"] .auth2-primary-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .auth2-primary-cta .cta-button__label {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .auth2-primary-cta .cta-button__title {
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 body[data-theme="v8"] .auth2-switch {
@@ -8079,21 +8130,12 @@ body[data-theme="v8"] .auth7-intro-actions {
   gap: 4px;
 }
 
-body[data-theme="v8"] .auth7-intro-start {
+/* Intro start CTA reuses the shared auth CtaButton slot (hf-buy look). */
+body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
   width: 100%;
-  min-height: 48px;
-  border: 0;
-  border-radius: 14px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  color: #fff;
-  background: linear-gradient(135deg, #ff4d9e, #9b5cff);
-  box-shadow: 0 12px 28px rgba(155, 92, 255, 0.28);
-}
-
-body[data-theme="v8"] .auth7-intro-start:hover {
-  filter: brightness(1.06);
+  min-height: 52px;
+  height: 52px;
+  margin-top: 0;
 }
 
 body[data-theme="v8"] .auth7-intro-skip {
@@ -8112,8 +8154,12 @@ body[data-theme="v8"] .auth7-intro-skip:hover {
   color: rgba(255, 255, 255, 0.78);
 }
 
-body[data-theme="v8"] .auth7-intro-skip:focus-visible,
-body[data-theme="v8"] .auth7-intro-start:focus-visible {
+body[data-theme="v8"] .auth7-intro-skip:focus-visible {
+  outline: 2px solid rgba(255, 95, 162, 0.7);
+  outline-offset: 3px;
+}
+
+body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
   outline: 2px solid rgba(255, 95, 162, 0.7);
   outline-offset: 3px;
 }

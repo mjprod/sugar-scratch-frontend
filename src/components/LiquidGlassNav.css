@@ -1329,7 +1329,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   pointer-events: none;
 }
 
-.nav-test-dock-item.is-drag-target {
+/* Indicator hover: pink the icon only — label stays at the base muted white. */
+.nav-test-dock-item.is-drag-target .nav-test-dock-icon {
   color: #ff8fb1;
 }
 
@@ -1346,7 +1347,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0;
   border-radius: 0.5rem;
   background: transparent;
-  color: rgba(255, 255, 255, 0.42);
+  color: oklch(1 0 0 / 0.5);
   cursor: pointer;
   transition: color 180ms ease;
   -webkit-user-select: none;
@@ -1357,9 +1358,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-item.is-active {
-  color: #ff8fb1;
+  color: oklch(1 0 0 / 0.6);
   background: transparent;
   box-shadow: none;
+}
+
+.nav-test-dock-item.is-active .nav-test-dock-icon {
+  color: #ff8fb1;
 }
 
 .nav-test-dock-item .nav-test-dock-icon,
@@ -1595,7 +1600,10 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-dock-primary-icon {
   width: 28px;
   height: 28px;
-  filter: drop-shadow(0 0 7px rgba(255, 86, 157, 0.35));
+  filter: drop-shadow(0 0 3px #ff0068);
+  color: #ff0068;
+  -webkit-mask-image: linear-gradient(180deg, #000000, #00000069 100%);
+  mask-image: linear-gradient(180deg, #000000, #00000069 100%);
 }
 
 .nav-test-dock-primary-label {
