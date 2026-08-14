@@ -88,25 +88,30 @@ export function CatalogProvider({
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([fetchModels(), fetchThemes()])
-      .then(([models, themes]) => {
+    fetchModels()
+      .then((models) => {
         if (cancelled) return;
         const nextModels: Record<string, BackendModel> = {};
         for (const model of models ?? []) {
           if (model?.id) nextModels[model.id] = model;
         }
-        const nextThemes: Record<string, ThemeInfo> = {};
-        for (const theme of themes ?? []) {
-          if (theme?.id) nextThemes[theme.id] = theme;
-        }
         setModelsById(nextModels);
-        setThemesById(nextThemes);
         setProductReady(true);
       })
       .catch(() => {
         if (cancelled) return;
         setProductReady(true);
       });
+    fetchThemes()
+      .then((themes) => {
+        if (cancelled) return;
+        const nextThemes: Record<string, ThemeInfo> = {};
+        for (const theme of themes ?? []) {
+          if (theme?.id) nextThemes[theme.id] = theme;
+        }
+        setThemesById(nextThemes);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
