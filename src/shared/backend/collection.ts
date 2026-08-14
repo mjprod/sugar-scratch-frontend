@@ -324,6 +324,7 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
     packFaceVideoUrl2: model.packFaceVideoUrl2,
     swipeVideoUrl: model.swipeVideoUrl,
     theme_avatars: model.theme_avatars,
+    tags: model.tags,
   }
 }
 
