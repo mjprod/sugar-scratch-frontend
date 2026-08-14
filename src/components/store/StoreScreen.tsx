@@ -23,6 +23,9 @@ import {
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
+import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
+import { useAuth } from "@/contexts/AuthContext";
+import type { RedeemReward } from "@/services/redeem";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
@@ -56,10 +59,24 @@ type Flow =
 export function StoreScreen({
   onBack,
   onPurchaseSuccess,
+  onDiamondReward,
+  onPackReward,
+  onOpenPack,
 }: {
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
+  onDiamondReward?: (amount: number) => void;
+  onPackReward?: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
+    instanceId?: string;
+  };
+  onOpenPack?: (input: {
+    packId: string;
+    packName: string;
+    creator: string;
+    instanceId?: string;
+  }) => void;
 }) {
+  const { requireAuth } = useAuth();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [claimedAds, setClaimedAds] = useState<string[]>([]);
@@ -254,6 +271,8 @@ export function StoreScreen({
       void runRewardedAd(product);
       return;
     }
+    // Guests can browse Store; diamond checkout requires auth.
+    if (!requireAuth({ type: "store" })) return;
     setFlow({ step: "confirm", product });
   }
 
@@ -312,6 +331,9 @@ export function StoreScreen({
           activeProductId={activeProductId}
           flowStep={flow.step}
           onSelect={onSelect}
+          onDiamondReward={onDiamondReward}
+          onPackReward={onPackReward}
+          onOpenPack={onOpenPack}
         />
       ) : null}
 
@@ -390,6 +412,9 @@ function StoreCatalog({
   activeProductId,
   flowStep,
   onSelect,
+  onDiamondReward,
+  onPackReward,
+  onOpenPack,
 }: {
   products: StoreProduct[];
   claimedAds: string[];
@@ -397,6 +422,16 @@ function StoreCatalog({
   activeProductId?: string;
   flowStep: Flow["step"];
   onSelect: (product: StoreProduct) => void;
+  onDiamondReward?: (amount: number) => void;
+  onPackReward?: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
+    instanceId?: string;
+  };
+  onOpenPack?: (input: {
+    packId: string;
+    packName: string;
+    creator: string;
+    instanceId?: string;
+  }) => void;
 }) {
   const ads = products.filter((p) => p.kind === "rewarded-ad");
   const packs = products.filter((p) => p.kind === "diamonds");
@@ -443,6 +478,14 @@ function StoreCatalog({
           ))}
         </div>
       </section>
+
+      {onDiamondReward && onPackReward && onOpenPack ? (
+        <HubRedeemSection
+          onDiamondReward={onDiamondReward}
+          onPackReward={onPackReward}
+          onOpenPack={onOpenPack}
+        />
+      ) : null}
 
       <StoreInfo />
     </div>

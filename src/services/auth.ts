@@ -227,7 +227,7 @@ export function supportingCopyForTrigger(
     case "redeem-code":
       return "Log in to view and claim your rewards.";
     case "open-store":
-      return "Log in to buy Diamonds and open the Store.";
+      return "Log in to buy Diamonds.";
     case "scratch-card":
       return "Log in to save the cards you reveal.";
     case "view-profile":

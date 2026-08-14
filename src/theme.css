@@ -6527,10 +6527,14 @@ body[data-theme="v8"] .auth7-sheet-panel {
 @media (min-width: 768px) {
   body[data-theme="v8"] .auth7-sheet-panel {
     width: min(480px, calc(100vw - 48px));
-    max-height: calc(100dvh - 48px);
+    max-height: none;
     border-radius: 24px;
     padding: 28px 28px 24px;
     box-shadow: 0 28px 72px oklch(0 0 0 / 0.55);
+    /* Desktop modal fits content — no internal scroll chrome */
+    overflow: visible;
+    overscroll-behavior: auto;
+    -webkit-overflow-scrolling: auto;
   }
 
   body[data-theme="v8"] .auth7-sheet-handle {
@@ -6629,6 +6633,14 @@ body[data-theme="v8"] .auth7-social-btn {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-social-icon {
+  display: block;
+  width: 1.35em;
+  height: 1.35em;
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 
 /* Google continues as filled CTA slot (label-only aurora button). */

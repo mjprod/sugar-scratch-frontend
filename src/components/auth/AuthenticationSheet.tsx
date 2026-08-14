@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Apple, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -21,6 +21,7 @@ import {
 import { isValidEmail } from "@/types/app";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import iconApple from "@/assets/auth/iconApple.svg";
 import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
 
 /**
@@ -374,7 +375,13 @@ export function AuthenticationSheet({
                                 aria-hidden
                               />
                             ) : (
-                              <Apple className="size-4" aria-hidden="true" />
+                              <img
+                                src={iconApple}
+                                alt=""
+                                className="auth7-social-icon"
+                                draggable={false}
+                                aria-hidden="true"
+                              />
                             )}
                             Continue with Apple
                           </button>

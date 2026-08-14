@@ -2,8 +2,14 @@ import type { AppTab } from "@/types/app";
 
 export const Paths = {
   loading: "/loading",
+  /**
+   * Home nav tab (pack browse) lives at root.
+   * Discover nav tab (home feed) lives at /discover.
+   */
   home: "/",
-  browse: "/browse",
+  discover: "/discover",
+  /** @deprecated Use Paths.home — kept for older imports / redirects. */
+  browse: "/",
   creator: (id: string) => `/creator/${id}`,
   creatorPattern: "/creator/:id",
   collection: "/collection",
@@ -48,18 +54,21 @@ export const Paths = {
   navTest: "/nav-test",
 } as const;
 
-export const PUBLIC_TABS: AppTab[] = ["home", "feed"];
+/** Tabs guests can open without auth (Store is browseable; purchase still gates). */
+export const PUBLIC_TABS: AppTab[] = ["home", "feed", "hub"];
 
 export function pathForTab(tab: AppTab): string {
   switch (tab) {
     case "home":
-      return Paths.home;
+      // Discover nav item
+      return Paths.discover;
     case "feed":
-      return Paths.browse;
+      // Home nav item (pack browse)
+      return Paths.home;
     case "bag":
       return Paths.collection;
     case "hub":
-      return Paths.rewards;
+      return Paths.store;
     case "profile":
       return Paths.profile;
     default:
@@ -68,7 +77,14 @@ export function pathForTab(tab: AppTab): string {
 }
 
 export function tabFromPathname(pathname: string): AppTab {
-  if (pathname.startsWith("/browse") || pathname.startsWith("/creator")) {
+  // Discover feed
+  if (pathname.startsWith("/discover")) return "home";
+  // Home browse + creator pages
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/browse") ||
+    pathname.startsWith("/creator")
+  ) {
     return "feed";
   }
   if (pathname.startsWith("/collection")) return "bag";
@@ -82,5 +98,5 @@ export function tabFromPathname(pathname: string): AppTab {
   if (pathname.startsWith("/profile") || pathname.startsWith("/settings")) {
     return "profile";
   }
-  return "home";
+  return "feed";
 }

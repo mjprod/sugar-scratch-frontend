@@ -37,6 +37,7 @@ type DockBubble = {
 };
 
 const BUBBLE_RADIUS = {
+  /** Left end-cap (Discover tab is first). */
   home: "1.5rem 0.2rem 0.2rem 1.5rem",
   profile: "0.2rem 1.5rem 1.5rem 0.2rem",
   default: "0.5rem",
@@ -66,12 +67,24 @@ type TabConfig = {
   primary?: boolean;
 };
 
+/** Mobile dock order. */
 const TABS: TabConfig[] = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "feed", label: "Discover", icon: Compass },
+  { id: "home", label: "Discover", icon: Compass },
+  { id: "feed", label: "Home", icon: Home },
   { id: "bag", label: "My Collection", icon: Layers3, primary: true },
   { id: "hub", label: "Store", icon: Gift },
   { id: "profile", label: "Profile", icon: User },
+];
+
+/**
+ * Desktop top bar primary tabs.
+ * Profile is icon-only in the right utility cluster (not in this list).
+ */
+const DESKTOP_TABS: TabConfig[] = [
+  { id: "feed", label: "Home", icon: Home },
+  { id: "home", label: "Discover", icon: Compass },
+  { id: "hub", label: "Store", icon: Gift },
+  { id: "bag", label: "My Collection", icon: Layers3, primary: true },
 ];
 
 /**
@@ -119,8 +132,10 @@ const CUTOUT_STYLE = {
   )}%`,
 };
 
-/** Fixed dock bubble height — keep in sync with --dock-bubble-h in CSS. */
+/** Fixed dock bubble size — keep in sync with --dock-bubble-* in CSS. */
 const DOCK_BUBBLE_H_REM = 3.3;
+/** After dock-items gap, keep indicator at a compact fixed width. */
+const DOCK_BUBBLE_W_REM = 3.8;
 
 function remToPx(rem: number) {
   if (typeof document === "undefined") return rem * 16;
@@ -137,26 +152,22 @@ function measureBubbleForTab(
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
-  const insetX = 2;
   const bubbleH = remToPx(DOCK_BUBBLE_H_REM);
+  const bubbleW = remToPx(DOCK_BUBBLE_W_REM);
   // Vertically center the fixed-height bubble, then nudge up ~5px
   // so the indicator sits with the icon/label cluster.
   const bubbleY =
     rect.top - parentRect.top + (rect.height - bubbleH) / 2 - 5;
 
-  // Side-pad compensation for end caps (Home / Profile)
-  const baseX = rect.left - parentRect.left + insetX;
-  const baseW = Math.max(0, rect.width - insetX * 2);
+  // Center the fixed-width bubble on the tab cell (works with dock-items gap).
+  let bubbleX =
+    rect.left - parentRect.left + (rect.width - bubbleW) / 2;
 
-  let bubbleX = baseX;
-  let bubbleW = baseW;
-
+  // Side-pad compensation for end caps (Discover / Profile)
   if (tabId === "home") {
-    bubbleX = baseX - 5;
-    bubbleW = baseW + 8;
+    bubbleX -= 2;
   } else if (tabId === "profile") {
-    bubbleX = baseX + 3;
-    bubbleW = baseW + 5;
+    bubbleX += 2;
   }
 
   return {
@@ -176,15 +187,16 @@ function measureTopBubbleForTab(
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
-  const insetX = 2;
+  // Slight outer pad so the pill reads roomier than the label (esp. My Collection).
+  const padX = 6;
   const insetY = 4;
   const fullH = Math.max(0, rect.height - insetY * 2);
   const bubbleH = fullH * 1.2;
   const bubbleY = rect.top - parentRect.top + insetY + (fullH - bubbleH) / 2;
 
   // Top nav has uniform corners — no Home/Profile end-cap compensation
-  const bubbleX = rect.left - parentRect.left + insetX;
-  const bubbleW = Math.max(0, rect.width - insetX * 2);
+  const bubbleX = rect.left - parentRect.left - padX;
+  const bubbleW = Math.max(0, rect.width + padX * 2);
 
   return {
     x: bubbleX,
@@ -261,6 +273,7 @@ export function LiquidGlassNav({
     (
       clientX: number,
       tabRefs: Array<HTMLElement | null>,
+      tabs: TabConfig[],
       opts?: { ignorePrimary?: boolean },
     ): {
       id: AppTab;
@@ -277,8 +290,8 @@ export function LiquidGlassNav({
       };
       let best: Nearest | null = null;
 
-      for (let index = 0; index < TABS.length; index += 1) {
-        const tab = TABS[index];
+      for (let index = 0; index < tabs.length; index += 1) {
+        const tab = tabs[index];
         if (opts?.ignorePrimary && tab.primary) continue;
         const el = tabRefs[index];
         if (!el) continue;
@@ -303,12 +316,15 @@ export function LiquidGlassNav({
 
   const findNearestDraggableTab = useCallback(
     (clientX: number) =>
-      findNearestTab(clientX, dockTabRefs.current, { ignorePrimary: true }),
+      findNearestTab(clientX, dockTabRefs.current, TABS, {
+        ignorePrimary: true,
+      }),
     [findNearestTab],
   );
 
   const findNearestTopTab = useCallback(
-    (clientX: number) => findNearestTab(clientX, topTabRefs.current),
+    (clientX: number) =>
+      findNearestTab(clientX, topTabRefs.current, DESKTOP_TABS),
     [findNearestTab],
   );
 
@@ -370,8 +386,8 @@ export function LiquidGlassNav({
     if (topBubbleDragRef.current) return;
 
     const parent = topItemsRef.current;
-    const activeIndex = TABS.findIndex((tab) => tab.id === active);
-    const activeTabConfig = TABS[activeIndex];
+    const activeIndex = DESKTOP_TABS.findIndex((tab) => tab.id === active);
+    const activeTabConfig = DESKTOP_TABS[activeIndex];
     const target = topTabRefs.current[activeIndex];
 
     if (!parent || !target || !activeTabConfig) {
@@ -829,9 +845,13 @@ export function LiquidGlassNav({
   const bubbleVisualScale = 1 - under * 0.28;
 
   const dockBubbleStyle = {
-    ["--dock-bubble-x" as string]: `${bubble.x}px`,
+    ["--dock-bubble-x" as string]: bubble.ready
+      ? `${bubble.x}px`
+      : "4.7rem",
     ["--dock-bubble-y" as string]: `${bubble.y}px`,
-    ["--dock-bubble-w" as string]: `${bubble.w}px`,
+    ["--dock-bubble-w" as string]: bubble.ready
+      ? `${bubble.w}px`
+      : `${DOCK_BUBBLE_W_REM}rem`,
     ["--dock-bubble-h" as string]: `${DOCK_BUBBLE_H_REM}rem`,
     ["--dock-bubble-radius" as string]: bubble.radius,
     ["--dock-bubble-opacity" as string]: String(bubbleVisualOpacity),
@@ -871,7 +891,7 @@ export function LiquidGlassNav({
           className="nav-test-top-brand"
           aria-label="Sugar Scratch Home"
           tabIndex={hidden ? -1 : undefined}
-          onClick={() => selectTab("home")}
+          onClick={() => selectTab("feed")}
         >
           <img
             src="/svg/logoSugarScratch.svg"
@@ -912,7 +932,7 @@ export function LiquidGlassNav({
             onPointerCancel={endTopBubbleDrag}
           />
 
-          {TABS.map((tab, index) => {
+          {DESKTOP_TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
             const isDragTarget =
@@ -958,6 +978,21 @@ export function LiquidGlassNav({
             diamonds={diamonds}
             onOpenStore={onOpenStore}
           />
+          <button
+            type="button"
+            className={[
+              "nav-test-top-profile",
+              active === "profile" ? "is-active" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label="Profile"
+            aria-current={active === "profile" ? "page" : undefined}
+            tabIndex={hidden ? -1 : undefined}
+            onClick={() => selectTab("profile")}
+          >
+            <User className="nav-test-top-profile-icon" aria-hidden="true" />
+          </button>
           {onOpenInbox ? (
             <InboxButton
               unreadCount={inboxUnreadCount}
