@@ -89,7 +89,11 @@ const DOCK_MASK = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${DOCK_VIEWBOX}" preserveAspectRatio="none"><path fill="white" d="${DOCK_PATH}"/></svg>`,
 )}")`;
 
-/** Exactly 3 mesh colors for Collection BorderGlow rim */
+/**
+ * Exactly 3 mesh colors for Collection BorderGlow rim.
+ * Keep hex — BorderGlow gradient mesh consumes these as CSS color stops and
+ * some engines/pipelines still resolve hex more reliably than oklch here.
+ */
 const COLLECTION_GLOW_COLORS = ["#ff8fb1", "#f472b6", "#c084fc"] as const;
 
 /** Locked Collection glow center cutout */

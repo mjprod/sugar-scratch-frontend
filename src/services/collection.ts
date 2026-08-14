@@ -707,7 +707,7 @@ export function getCreatorPage(creatorId: string): CreatorPageData {
 }
 
 export function progressTone(pct: number) {
-  if (pct >= 100) return "bg-[#34D399]";
-  if (pct < 30) return "bg-[#F59E0B]";
-  return "bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]";
+  if (pct >= 100) return "bg-[oklch(0.773_0.153_163.22)]";
+  if (pct < 30) return "bg-[oklch(0.769_0.165_70.08)]";
+  return "bg-gradient-to-r from-[oklch(0.606_0.219_292.72)] to-[oklch(0.656_0.212_354.31)]";
 }

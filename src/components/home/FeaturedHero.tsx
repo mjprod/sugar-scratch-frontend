@@ -39,7 +39,7 @@ export function FeaturedHero({
         animate={{ opacity: updating ? 0.72 : 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-[#101010] shadow-float"
+        className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-[oklch(0.173_0_0)] shadow-float"
       >
         {/* Full-bleed photo atmosphere */}
         <img
@@ -48,7 +48,7 @@ export function FeaturedHero({
           aria-hidden
           className="absolute inset-0 size-full scale-110 object-cover opacity-35 blur-2xl"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#090909] via-[#090909]/75 to-[#090909]/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.14_0_0)] via-[oklch(0.14_0_0)]/75 to-[oklch(0.14_0_0)]/35" />
 
         <div className="relative flex min-h-[420px] flex-col gap-6 p-5 sm:min-h-[480px] lg:min-h-[680px] lg:flex-row lg:items-end lg:gap-10 lg:p-10">
           <motion.button
@@ -70,7 +70,7 @@ export function FeaturedHero({
           <div className="relative flex min-w-0 flex-1 flex-col justify-end">
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {pack.badge ? (
-                <span className="rounded-full border border-[#D4AF37]/40 bg-black/40 px-3 py-1 text-[11px] font-semibold text-[#D4AF37]">
+                <span className="rounded-full border border-[oklch(0.767_0.139_91.06)]/40 bg-black/40 px-3 py-1 text-[11px] font-semibold text-[oklch(0.767_0.139_91.06)]">
                   {pack.badge}
                 </span>
               ) : null}
@@ -96,7 +96,7 @@ export function FeaturedHero({
                 className={[
                   "ml-auto grid size-11 place-items-center rounded-full border backdrop-blur-xl transition-colors",
                   pack.isFavourite
-                    ? "border-[#EC4899]/50 bg-[#EC4899]/20 text-[#EC4899]"
+                    ? "border-[oklch(0.656_0.212_354.31)]/50 bg-[oklch(0.656_0.212_354.31)]/20 text-[oklch(0.656_0.212_354.31)]"
                     : "border-white/10 bg-white/[0.08] text-white/80",
                 ].join(" ")}
               >

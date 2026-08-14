@@ -428,19 +428,19 @@ function CandyHeart({
     >
       <defs>
         <linearGradient id={fillId} x1="14%" y1="6%" x2="86%" y2="94%">
-          <stop offset="0%" stopColor={soft ? "#ffb3d4" : "#ffc2dc"} />
-          <stop offset="38%" stopColor="#ff4d9e" />
-          <stop offset="72%" stopColor="#ec4899" />
-          <stop offset="100%" stopColor="#b01f6a" />
+          <stop offset="0%" stopColor={soft ? "oklch(0.848 0.097 351.66)" : "oklch(0.876 0.077 351.45)"} />
+          <stop offset="38%" stopColor="oklch(0.692 0.223 356.89)" />
+          <stop offset="72%" stopColor="oklch(0.656 0.212 354.31)" />
+          <stop offset="100%" stopColor="oklch(0.508 0.188 355.38)" />
         </linearGradient>
         <radialGradient id={shineId} cx="34%" cy="26%" r="42%">
-          <stop offset="0%" stopColor="rgba(255, 255, 255, 0.58)" />
-          <stop offset="45%" stopColor="rgba(255, 255, 255, 0.12)" />
-          <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
+          <stop offset="0%" stopColor="oklch(1 0 0 / 0.58)" />
+          <stop offset="45%" stopColor="oklch(1 0 0 / 0.12)" />
+          <stop offset="100%" stopColor="oklch(1 0 0 / 0)" />
         </radialGradient>
         <linearGradient id={edgeId} x1="20%" y1="0%" x2="80%" y2="100%">
-          <stop offset="0%" stopColor="rgba(255, 190, 220, 0.55)" />
-          <stop offset="100%" stopColor="rgba(176, 31, 106, 0.15)" />
+          <stop offset="0%" stopColor="oklch(0.869 0.083 349.64 / 0.55)" />
+          <stop offset="100%" stopColor="oklch(0.508 0.188 355.38 / 0.15)" />
         </linearGradient>
       </defs>
       <path

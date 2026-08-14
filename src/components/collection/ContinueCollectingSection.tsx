@@ -56,7 +56,7 @@ function CreatorProgressCard({
             cy="18"
             r="15.5"
             fill="none"
-            stroke="rgba(255,255,255,0.14)"
+            stroke="oklch(1 0 0 / 0.14)"
             strokeWidth="2.4"
             pathLength="100"
           />
@@ -65,7 +65,7 @@ function CreatorProgressCard({
             cy="18"
             r="15.5"
             fill="none"
-            stroke="#ff5fa2"
+            stroke="oklch(0.711 0.203 357.66)"
             strokeWidth="2.4"
             strokeLinecap="round"
             pathLength="100"

@@ -66,7 +66,7 @@ export function TopSellingSection({
                       {pack.purchaseCount.toLocaleString()} buys
                     </span>
                   </span>
-                  <span className="shrink-0 text-[14px] font-semibold tabular-nums text-[#D4AF37]">
+                  <span className="shrink-0 text-[14px] font-semibold tabular-nums text-[oklch(0.767_0.139_91.06)]">
                     {formatPrice(pack.price)}
                   </span>
                 </button>

@@ -39,12 +39,40 @@ const FLAKE_SCALE_MAX = 1;
 const FLAKE_BASE_SIZE_CSS = 5;
 const FLAKE_GRAVITY = 980;
 const FLAKE_FALLBACK_COLORS = [
-  "#d4d0cb",
-  "#b5b0aa",
-  "#9a9590",
-  "#847f7a",
-  "#6a6662",
+  "oklch(0.859 0.008 73.73)",
+  "oklch(0.76 0.01 72.63)",
+  "oklch(0.673 0.009 67.67)",
+  "oklch(0.599 0.01 67.64)",
+  "oklch(0.513 0.008 67.65)",
 ];
+
+function srgbChannelToLinear(c: number) {
+  const x = c / 255;
+  return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+}
+
+/** Canvas-safe OKLCH string from 8-bit sRGB channels. */
+function rgbBytesToOklch(r: number, g: number, b: number) {
+  const lr = srgbChannelToLinear(r);
+  const lg = srgbChannelToLinear(g);
+  const lb = srgbChannelToLinear(b);
+  const l_ = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+  const m_ = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+  const s_ = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+  const l = Math.cbrt(l_);
+  const m = Math.cbrt(m_);
+  const s = Math.cbrt(s_);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  const C = Math.hypot(A, B);
+  let H = (Math.atan2(B, A) * 180) / Math.PI;
+  if (H < 0) H += 360;
+  const lS = Math.min(1, Math.max(0, L)).toFixed(3);
+  const cS = (C < 1e-5 ? 0 : C).toFixed(3);
+  const hS = (C < 1e-5 ? 0 : H).toFixed(2);
+  return `oklch(${lS} ${cS} ${hS})`;
+}
 
 export type TopBarPhase = "center" | "docked" | "showcase";
 
@@ -127,7 +155,7 @@ function sampleScratchTextureColor(
       1,
       1,
     ).data;
-    return `rgb(${r}, ${g}, ${b})`;
+    return rgbBytesToOklch(r, g, b);
   } catch {
     return FLAKE_FALLBACK_COLORS[
       Math.floor(Math.random() * FLAKE_FALLBACK_COLORS.length)
@@ -172,7 +200,7 @@ function paintBarCoating(canvas: CoatingCanvas): boolean {
   ctx.clearRect(0, 0, w, h);
 
   // Fully opaque base — continuous foil across the whole pill.
-  ctx.fillStyle = "#9a9590";
+  ctx.fillStyle = "oklch(0.673 0.009 67.67)";
   ctx.fillRect(0, 0, w, h);
 
   const tex = scratchTexture;
@@ -195,9 +223,9 @@ function paintBarCoating(canvas: CoatingCanvas): boolean {
     }
   } else {
     const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#d4d0cb");
-    g.addColorStop(0.5, "#9a9590");
-    g.addColorStop(1, "#6a6662");
+    g.addColorStop(0, "oklch(0.859 0.008 73.73)");
+    g.addColorStop(0.5, "oklch(0.673 0.009 67.67)");
+    g.addColorStop(1, "oklch(0.513 0.008 67.65)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     whenScratchTextureReady(() => {
@@ -206,8 +234,8 @@ function paintBarCoating(canvas: CoatingCanvas): boolean {
   }
 
   const hi = ctx.createLinearGradient(0, 0, 0, h * 0.4);
-  hi.addColorStop(0, "rgba(255,255,255,0.2)");
-  hi.addColorStop(1, "rgba(255,255,255,0)");
+  hi.addColorStop(0, "oklch(1 0 0 / 0.2)");
+  hi.addColorStop(1, "oklch(1 0 0 / 0)");
   ctx.fillStyle = hi;
   ctx.fillRect(0, 0, w, h);
   return true;
@@ -708,7 +736,7 @@ export function TopSymbolBar({
       changed = true;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "#000";
+      ctx.fillStyle = "oklch(0 0 0)";
       ctx.beginPath();
       ctx.arc(slot.cx, slot.cy, slot.r + 1.5, 0, Math.PI * 2);
       ctx.fill();
@@ -746,7 +774,7 @@ export function TopSymbolBar({
       // circle in checkReveals, independent of where the brush actually landed.
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "#000";
+      ctx.fillStyle = "oklch(0 0 0)";
       const last = lastPtRef.current;
       if (last) stampStroke(ctx, last.x, last.y, x, y, brush);
       else stampBrush(ctx, x, y, brush);

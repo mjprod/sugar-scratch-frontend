@@ -7,9 +7,9 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #000;
+  background: oklch(0 0 0);
   box-sizing: border-box;
-  --overlay-gradient-color-end: #c2185b;
+  --overlay-gradient-color-end: oklch(0.531 0.202 5.62);
 }
 
 .stage-game-hub .packs-circle {
@@ -40,8 +40,8 @@
   margin: 0;
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(12, 12, 16, 0.72);
-  color: rgba(255, 255, 255, 0.78);
+  background: oklch(0.156 0.008 285.38 / 0.72);
+  color: oklch(1 0 0 / 0.78);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -59,8 +59,8 @@
   max-width: min(90vw, 360px);
   padding: 8px 12px;
   border-radius: 10px;
-  background: rgba(120, 20, 40, 0.85);
-  color: #ffe8ee;
+  background: oklch(0.376 0.133 16.11 / 0.85);
+  color: oklch(0.951 0.026 359.93);
   font-size: 13px;
   text-align: center;
 }
@@ -94,10 +94,10 @@
   position: absolute;
   inset: 0;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid oklch(1 0 0 / 0.35);
   background:
-    linear-gradient(160deg, rgba(255, 70, 120, 0.35), rgba(20, 20, 28, 0.9));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    linear-gradient(160deg, oklch(0.675 0.221 9.68 / 0.35), oklch(0.195 0.016 284.82 / 0.9));
+  box-shadow: 0 12px 40px oklch(0 0 0 / 0.45);
 }
 
 .game-hub-pack__idle-card--0 {
@@ -117,7 +117,7 @@
 
 .game-hub-pack__idle p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.65);
+  color: oklch(1 0 0 / 0.65);
   font-size: 14px;
   line-height: 1.4;
 }
@@ -162,7 +162,7 @@
 .game-hub-pack__prizes h2,
 .game-hub-pack__tally-value {
   margin: 0;
-  color: #fff;
+  color: oklch(1 0 0);
   font-size: clamp(22px, 5vw, 32px);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -172,13 +172,13 @@
 .game-hub-pack__tally-label,
 .game-hub-pack__tally .game-hub-pack__idle p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.65);
+  color: oklch(1 0 0 / 0.65);
   font-size: 14px;
 }
 
 .game-hub-pack__tally-value {
   font-size: clamp(48px, 12vw, 72px);
-  background: linear-gradient(180deg, #fff 20%, #ff4d8d);
+  background: linear-gradient(180deg, oklch(1 0 0) 20%, oklch(0.686 0.218 3.07));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -197,8 +197,8 @@
   aspect-ratio: 0.528;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: #1a1a22;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  background: oklch(0.221 0.016 285.06);
   opacity: 0;
   transform: scale(0.86);
   transition:
@@ -236,8 +236,8 @@
   right: 0;
   bottom: 0;
   padding: 4px 6px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
-  color: #fff;
+  background: linear-gradient(transparent, oklch(0 0 0 / 0.75));
+  color: oklch(1 0 0);
   font-size: 9px;
   font-weight: 600;
   line-height: 1.2;
@@ -256,9 +256,9 @@
   gap: 6px;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(20, 20, 28, 0.8);
-  color: #fff;
+  border: 1px solid oklch(1 0 0 / 0.2);
+  background: oklch(0.195 0.016 284.82 / 0.8);
+  color: oklch(1 0 0);
   font-size: 11px;
   font-weight: 600;
 }
@@ -297,7 +297,7 @@
 .game-hub-pack__link {
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  color: oklch(1 0 0 / 0.7);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -313,7 +313,7 @@
 }
 
 .game-hub-pack__link--danger {
-  color: rgba(255, 140, 160, 0.85);
+  color: oklch(0.77 0.14 9.82 / 0.85);
 }
 
 @media (max-width: 700px) {

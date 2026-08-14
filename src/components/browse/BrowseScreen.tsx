@@ -144,7 +144,7 @@ export function HomeScreen({
         <button
           type="button"
           onClick={() => void load()}
-          className="mt-2 min-h-11 rounded-full bg-[#8B5CF6] px-5 py-2.5 text-[14px] font-semibold"
+          className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-[14px] font-semibold"
         >
           Retry
         </button>
@@ -170,7 +170,7 @@ export function HomeScreen({
         className={[
           "relative",
           showTutorial
-            ? "z-30 rounded-[28px] ring-2 ring-[#EC4899] ring-offset-4 ring-offset-transparent [animation:tutorial-pulse_1.8s_ease-in-out_infinite]"
+            ? "z-30 rounded-[28px] ring-2 ring-[oklch(0.656_0.212_354.31)] ring-offset-4 ring-offset-transparent [animation:tutorial-pulse_1.8s_ease-in-out_infinite]"
             : "",
         ].join(" ")}
       >
@@ -183,17 +183,17 @@ export function HomeScreen({
 
       {showTutorial ? (
         <div className="pointer-events-none relative z-40 mt-4 flex justify-center">
-          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[#EC4899]/40 bg-[#1a1018]/95 px-4 py-3 text-center shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-md">
-            <p className="text-[14px] font-medium text-[#F9A8D4]">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[oklch(0.656_0.212_354.31)]/40 bg-[oklch(0.19_0.022_333.66)]/95 px-4 py-3 text-center shadow-[0_16px_40px_oklch(0_0_0_/_0.45)] backdrop-blur-md">
+            <p className="text-[14px] font-medium text-[oklch(0.823_0.11_346.02)]">
               Swipe the carousel to discover featured packs.
             </p>
             <div className="mt-2 flex justify-center gap-4 text-[13px]">
-              <button type="button" className="text-[#F9A8D4]/70" onClick={onSkipTutorial}>
+              <button type="button" className="text-[oklch(0.823_0.11_346.02)]/70" onClick={onSkipTutorial}>
                 Skip tutorial
               </button>
               <button
                 type="button"
-                className="min-h-11 rounded-full bg-[#8B5CF6] px-4 font-semibold text-white"
+                className="min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-4 font-semibold text-white"
                 onClick={onTutorialDone}
               >
                 Got it
@@ -207,7 +207,7 @@ export function HomeScreen({
         <button
           type="button"
           onClick={() => setLibraryOpen(true)}
-          className="min-h-11 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B5CF6]"
+          className="min-h-11 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
         >
           View All Packs
         </button>

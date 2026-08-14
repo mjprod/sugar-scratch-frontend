@@ -674,7 +674,7 @@ export function PurchaseFlow({
       role="dialog"
       aria-modal="true"
       aria-label="Pack purchase and opening"
-      className="absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden bg-[#090909]"
+      className="absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
     >
       <header
         className={[
@@ -999,7 +999,7 @@ function StateScreen({
     tone === "success"
       ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
       : tone === "danger"
-        ? "border-[#F87171]/30 bg-[#F87171]/10 text-[#F87171]"
+        ? "border-[oklch(0.711_0.166_22.22)]/30 bg-[oklch(0.711_0.166_22.22)]/10 text-[oklch(0.711_0.166_22.22)]"
         : tone === "warn"
           ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
           : "border-white/12 bg-white/[0.06] text-white/70";
@@ -1018,7 +1018,7 @@ function StateScreen({
         type="button"
         onClick={primary.onClick}
         disabled={primary.busy}
-        className="mt-7 inline-flex h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-[#8B5CF6] text-[15px] font-semibold disabled:opacity-60"
+        className="mt-7 inline-flex h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] text-[15px] font-semibold disabled:opacity-60"
       >
         {primary.busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
         {primary.label}
@@ -1071,7 +1071,7 @@ function ChoosePackStage({
           packNumber: foil.slot === 1 ? 101 : 102,
           packName: foil.label,
           flagEmoji: "",
-          backgroundColor: "#5fd0e0",
+          backgroundColor: "oklch(0.798 0.104 207.84)",
         }),
       ),
     [diamondCost, girlName, modelId, packs],
@@ -1086,7 +1086,7 @@ function ChoosePackStage({
   return (
     <div
       className="stage-packs"
-      style={{ ["--overlay-gradient-color-end" as string]: "#5fd0e0" }}
+      style={{ ["--overlay-gradient-color-end" as string]: "oklch(0.798 0.104 207.84)" }}
     >
       <div className="packs-glow-stack packs-glow-stack--base" aria-hidden="true">
         <div className="packs-circle packs-circle--bloom" />
@@ -1148,9 +1148,9 @@ function SelectStage({
                 disabled={submitting}
                 aria-busy={busy}
                 onClick={() => onPurchase(option.quantity)}
-                className="group flex min-h-24 items-center rounded-[24px] border border-white/10 bg-white/[0.05] p-4 text-left transition hover:-translate-y-1 hover:border-[#8B5CF6]/50 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:hover:translate-y-0 aria-busy:border-[#8B5CF6]/60"
+                className="group flex min-h-24 items-center rounded-[24px] border border-white/10 bg-white/[0.05] p-4 text-left transition hover:-translate-y-1 hover:border-[oklch(0.606_0.219_292.72)]/50 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:hover:translate-y-0 aria-busy:border-[oklch(0.606_0.219_292.72)]/60"
               >
-                <span className="grid size-12 place-items-center rounded-2xl bg-[#8B5CF6]/20 text-[#C4B5FD]">
+                <span className="grid size-12 place-items-center rounded-2xl bg-[oklch(0.606_0.219_292.72)]/20 text-[oklch(0.811_0.101_293.57)]">
                   {busy ? (
                     <Loader2 className="size-5 animate-spin" />
                   ) : (
@@ -1210,7 +1210,7 @@ function ReadyStage({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-      <p className="text-[12px] font-semibold tracking-[0.16em] text-[#D4AF37] uppercase">
+      <p className="text-[12px] font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
         {remainingUnopened <= 1
           ? "Pack ready"
           : `${remainingUnopened} packs ready to open`}
@@ -1324,8 +1324,8 @@ function MotionRevealStage({
         country: country ?? "",
         flagEmoji: flagEmoji ?? "",
         flagSvgUrl: flagSvgUrl ?? "",
-        gradientColor: overlayColorStart ?? "#5fd0e0",
-        gradientColorEnd: overlayColorEnd ?? "#5fd0e0",
+        gradientColor: overlayColorStart ?? "oklch(0.798 0.104 207.84)",
+        gradientColorEnd: overlayColorEnd ?? "oklch(0.798 0.104 207.84)",
       },
     });
   }, [
@@ -1400,11 +1400,11 @@ function GridStage({
               disabled={done}
               onClick={() => onSelect(index)}
               className={[
-                "aspect-[3/4] rounded-[20px] border bg-[radial-gradient(circle_at_30%_20%,rgba(168,85,247,.7),#151515_58%)] p-3 text-left transition",
+                "aspect-[3/4] rounded-[20px] border bg-[radial-gradient(circle_at_30%_20%,oklch(0.627_0.233_303.9_/_0.7),#151515_58%)] p-3 text-left transition",
                 done
                   ? "cursor-not-allowed border-white/10 opacity-45"
                   : "hover:-translate-y-1",
-                selected === index && !done ? "border-[#8B5CF6]" : "border-white/15",
+                selected === index && !done ? "border-[oklch(0.606_0.219_292.72)]" : "border-white/15",
               ].join(" ")}
             >
               <div className="flex size-full flex-col justify-between rounded-[14px] border border-white/20 p-3">
@@ -1451,7 +1451,7 @@ function ScratchStage({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-      <p className="text-[12px] font-semibold tracking-[0.15em] text-[#D4AF37] uppercase">
+      <p className="text-[12px] font-semibold tracking-[0.15em] text-[oklch(0.767_0.139_91.06)] uppercase">
         {revealed ? card.rarity : `${Math.round(progress)}% scratched`}
       </p>
       <h1 className="mt-2 text-[28px] font-bold">
@@ -1463,7 +1463,7 @@ function ScratchStage({
           {remainingAfterReveal === 1 ? "Card Remaining" : "Cards Remaining"}
         </p>
       ) : null}
-      <div className="relative mt-7 aspect-[3/4] w-[240px] overflow-hidden rounded-[24px] border border-white/20 bg-[#151515] shadow-2xl">
+      <div className="relative mt-7 aspect-[3/4] w-[240px] overflow-hidden rounded-[24px] border border-white/20 bg-[oklch(0.196_0_0)] shadow-2xl">
         {isVideoSrc(card.faceUrl ?? image) ? (
           <video
             src={card.faceUrl ?? image}
@@ -1479,7 +1479,7 @@ function ScratchStage({
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-5 z-10">
           <p className="text-[20px] font-bold">{card.rarity}</p>
-          <p className="text-[13px] text-[#D4AF37]">+{card.reward} Sugar Coins</p>
+          <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Sugar Coins</p>
         </div>
         <motion.button
           type="button"
@@ -1489,7 +1489,7 @@ function ScratchStage({
           onDragEnd={drag}
           onClick={() => onScratch()}
           animate={{ opacity: Math.max(0, 1 - progress / 100) }}
-          className="absolute inset-0 z-20 cursor-ew-resize touch-none bg-[linear-gradient(135deg,#6d5aa8,#171421_45%,#d4af37_100%)]"
+          className="absolute inset-0 z-20 cursor-ew-resize touch-none bg-[linear-gradient(135deg,oklch(0.522_0.12_292.97),#171421_45%,#d4af37_100%)]"
           style={{ pointerEvents: revealed ? "none" : "auto" }}
         >
           <div className="absolute inset-4 rounded-[18px] border border-white/35" />
@@ -1508,7 +1508,7 @@ function ScratchStage({
           <button
             type="button"
             onClick={onScratchNext}
-            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#8B5CF6] px-8 text-[15px] font-semibold"
+            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] px-8 text-[15px] font-semibold"
           >
             <Check className="size-4" />
             {hasMore ? "Scratch Next" : "Finish"}
@@ -1547,7 +1547,7 @@ function ModalShell({
 
   return (
     <div className="absolute inset-0 z-40 grid place-items-center bg-black/70 px-6 backdrop-blur-sm">
-      <div className="w-full max-w-sm overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#151318] shadow-[0_24px_60px_rgba(0,0,0,0.55)]">
+      <div className="w-full max-w-sm overflow-hidden rounded-[28px] border border-white/[0.1] bg-[oklch(0.191_0.01_303.57)] shadow-[0_24px_60px_oklch(0_0_0_/_0.55)]">
         {children}
       </div>
     </div>

@@ -129,25 +129,25 @@ export function PhysicalPackCard({
             <path
               d="M2 12 C6 40, 1 70, 5 95 S2 140, 4 152"
               fill="none"
-              stroke="rgba(255,180,220,0.35)"
+              stroke="oklch(0.852 0.1 346.2 / 0.35)"
               strokeWidth="1.2"
             />
             <path
               d="M7 18 C3 50, 9 80, 4 110 S8 145, 6 155"
               fill="none"
-              stroke="rgba(255,220,170,0.22)"
+              stroke="oklch(0.912 0.075 76.4 / 0.22)"
               strokeWidth="0.8"
             />
             <path
               d="M98 14 C94 42, 99 72, 95 98 S98 138, 96 150"
               fill="none"
-              stroke="rgba(255,200,120,0.32)"
+              stroke="oklch(0.865 0.116 75.55 / 0.32)"
               strokeWidth="1.2"
             />
             <path
               d="M93 20 C97 52, 91 82, 96 112 S92 142, 94 154"
               fill="none"
-              stroke="rgba(255,230,190,0.2)"
+              stroke="oklch(0.935 0.059 79.49 / 0.2)"
               strokeWidth="0.8"
             />
           </svg>

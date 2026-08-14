@@ -45,7 +45,7 @@ export function PackLibrary({
 
   return (
     <div
-      className="absolute inset-0 z-40 flex flex-col bg-[#090909]/95 backdrop-blur-md"
+      className="absolute inset-0 z-40 flex flex-col bg-[oklch(0.14_0_0)]/95 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label="Pack library"
@@ -55,7 +55,7 @@ export function PackLibrary({
         <button
           type="button"
           onClick={onClose}
-          className="grid size-11 place-items-center rounded-full border border-white/15 text-white/70 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B5CF6]"
+          className="grid size-11 place-items-center rounded-full border border-white/15 text-white/70 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
           aria-label="Close pack library"
         >
           <X className="size-5" />
@@ -67,7 +67,7 @@ export function PackLibrary({
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search packs, creators, themes"
           aria-label="Search packs"
-          className="h-12 w-full rounded-full border border-white/10 bg-white/[0.06] px-4 text-[14px] text-white placeholder:text-white/40 outline-none focus:border-[#8B5CF6]/50"
+          className="h-12 w-full rounded-full border border-white/10 bg-white/[0.06] px-4 text-[14px] text-white placeholder:text-white/40 outline-none focus:border-[oklch(0.606_0.219_292.72)]/50"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
@@ -91,7 +91,7 @@ export function PackLibrary({
               <button
                 type="button"
                 onClick={() => setQ("")}
-                className="mt-4 min-h-11 rounded-full bg-[#8B5CF6] px-5 text-[13px] font-semibold"
+                className="mt-4 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 text-[13px] font-semibold"
               >
                 Clear search
               </button>
@@ -104,7 +104,7 @@ export function PackLibrary({
                 key={p.id}
                 type="button"
                 onClick={() => onPlay(p)}
-                className="rounded-2xl text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B5CF6]"
+                className="rounded-2xl text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
               >
                 <PackArt src={p.coverImageUrl} alt={p.name} size="thumb" className="!w-full" />
                 <p className="mt-2 truncate px-0.5 text-[13px] font-semibold">{p.name}</p>

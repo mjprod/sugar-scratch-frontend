@@ -4,7 +4,7 @@
   width: 100%;
   /* visible so dock rims / mask bleed aren't clipped at the page edge */
   overflow: visible;
-  background: #0c0c0e;
+  background: oklch(0.155 0.004 285.9);
 }
 
 /* Product chrome: transparent overlay host (children are fixed) */
@@ -42,7 +42,7 @@
   display: grid;
   place-items: center;
   min-height: 100dvh;
-  background: #0c0c0e;
+  background: oklch(0.155 0.004 285.9);
 }
 
 .nav-test-playground-label {
@@ -51,7 +51,7 @@
   left: 50%;
   z-index: 1;
   transform: translate(-50%, -50%);
-  color: rgba(255, 255, 255, 0.45);
+  color: oklch(1 0 0 / 0.45);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -238,17 +238,17 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top {
   --top-nav-surface: linear-gradient(
     180deg,
-    #620020 0%,
-    #ff005329 10%,
-    #0000005c 20%,
-    #a9003757 100%
+    oklch(0.316 0.126 12.15) 0%,
+    oklch(0.635 0.254 16.01 / 0.161) 10%,
+    oklch(0 0 0 / 0.361) 20%,
+    oklch(0.467 0.187 14.78 / 0.341) 100%
   );
   --top-nav-surface-scrolled: linear-gradient(
     180deg,
-    #620020 0%,
-    #ff005329 10%,
-    #0000005c 20%,
-    #a9003757 100%
+    oklch(0.316 0.126 12.15) 0%,
+    oklch(0.635 0.254 16.01 / 0.161) 10%,
+    oklch(0 0 0 / 0.361) 20%,
+    oklch(0.467 0.187 14.78 / 0.341) 100%
   );
   /* Dark frost plate — overrides tw-glass white glass-surface fill. */
   --glass-bg-opacity: 0;
@@ -266,14 +266,14 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   transform: translate3d(-50%, calc(-100% - 28px), 0);
   /* Off-screen only — never leave a non-none filter while visible (kills glass). */
   filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid oklch(1 0 0 / 0.1);
   border-radius: 16px;
   overflow: hidden;
   background: var(--top-nav-surface);
   /* Match mobile HUD rim; tw-glass supplies backdrop-filter + displacement. */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
   /*
     Avoid permanent will-change on the glass node — promoting it to its own
     layer can prevent backdrop-filter / displacement from sampling the page
@@ -293,10 +293,10 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top.glass.glass-surface {
   --glass-bg-opacity: 0;
   background: var(--top-nav-surface);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid oklch(1 0 0 / 0.1);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
 }
 
 /* Legacy hook — surface node removed; keep selector harmless. */
@@ -322,9 +322,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   .nav-test-top.glass.glass-surface {
     background: linear-gradient(
       180deg,
-      #620020 0%,
-      #4a0018 45%,
-      #1a0008 100%
+      oklch(0.316 0.126 12.15) 0%,
+      oklch(0.261 0.104 10.45) 45%,
+      oklch(0.141 0.057 0.87) 100%
     );
   }
 }
@@ -376,22 +376,22 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top-bubble {
   z-index: 0;
   opacity: var(--top-bubble-opacity, 0);
-  background: linear-gradient(180deg, #0000002e, transparent);
+  background: linear-gradient(180deg, oklch(0 0 0 / 0.18), transparent);
   box-shadow:
-    inset 3px 4px 1px -4px rgb(255 255 255 / 58%),
-    inset 9px 10px 7px -8px rgba(255, 255, 255, 0.18),
-    inset -7px -6px 1px -6.7px rgb(255 255 255 / 35%),
-    inset -8px -9px 4px -3px rgb(255 255 255 / 5%);
+    inset 3px 4px 1px -4px oklch(1 0 0 / 0.58),
+    inset 9px 10px 7px -8px oklch(1 0 0 / 0.18),
+    inset -7px -6px 1px -6.7px oklch(1 0 0 / 0.35),
+    inset -8px -9px 4px -3px oklch(1 0 0 / 0.05);
 }
 
 .nav-test-top-bubble-active-glow {
   z-index: 0;
-  background: linear-gradient(0deg, #ff004e00 7%, #ff004ead, #ff004e, #ff004e00);
+  background: linear-gradient(0deg, oklch(0.634 0.254 17.36 / 0) 7%, oklch(0.634 0.254 17.36 / 0.678), oklch(0.634 0.254 17.36), oklch(0.634 0.254 17.36 / 0));
   opacity: calc(var(--top-bubble-opacity, 0) * 0.5);
   background-position: center 27px;
   background-repeat: no-repeat;
   background-size: 130%;
-  box-shadow: inset 4px 5px 0px -3px #ff0096;
+  box-shadow: inset 4px 5px 0px -3px oklch(0.652 0.267 355.66);
   /* Slow fade-in after the indicator settles */
   transition:
     transform var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
@@ -436,7 +436,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-top-item.is-drag-target {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-top-item.is-drag-target .nav-test-top-icon,
@@ -469,7 +469,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: oklch(1 0 0 / 0.5);
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
@@ -488,7 +488,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top-item:visited {
   background: transparent;
   background-color: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: oklch(1 0 0 / 0.5);
   opacity: 1;
 }
 
@@ -505,11 +505,11 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 .nav-test-top-item.is-active,
 .nav-test-top-item.is-drag-target {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-top-item.is-primary.is-active {
-  color: #ffb0c8;
+  color: oklch(0.839 0.097 359.58);
 }
 
 .nav-test-top-item .nav-test-top-icon,
@@ -527,7 +527,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-top-item:focus-visible {
-  outline: 2px solid rgba(255, 143, 177, 0.9);
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 2px;
 }
 
@@ -924,9 +924,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   overflow: visible;
   background: linear-gradient(
     180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.55) 42%,
-    rgba(0, 0, 0, 0.92) 100%
+    oklch(0 0 0 / 0) 0%,
+    oklch(0 0 0 / 0.55) 42%,
+    oklch(0 0 0 / 0.92) 100%
   );
   will-change: transform;
   /* Do NOT use isolation:isolate here — it can kill backdrop-filter sampling */
@@ -1054,7 +1054,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   left: -3px;
   height: 93px;
   pointer-events: none;
-  background: rgb(0 0 0 / 75%);
+  background: oklch(0 0 0 / 0.75);
   backdrop-filter: blur(6px) saturate(160%) brightness(1.15);
   -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(1.15);
   -webkit-mask-size: 100% 100%;
@@ -1124,7 +1124,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   box-sizing: content-box;
   width: 10dvw;
   height: 96px;
-  border: 2px solid #fff;
+  border: 2px solid oklch(1 0 0);
   background: transparent;
   pointer-events: none;
 }
@@ -1134,8 +1134,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border-radius: 2.5rem 0 0 2.5rem;
   width: 34dvw;
   height: 100%;
-  border-top: 1px solid #fff;
-  border-left: 1px solid #fff;
+  border-top: 1px solid oklch(1 0 0);
+  border-left: 1px solid oklch(1 0 0);
   border-right: 0;
   border-bottom: 0;
   -webkit-mask-image: linear-gradient(147deg, black, transparent 50%);
@@ -1147,8 +1147,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border-radius: 2.5rem 0 0 2.5rem;
   width: 32dvw;
   height: 100%;
-  border-top: 1px solid #fff;
-  border-left: 1px solid #fff;
+  border-top: 1px solid oklch(1 0 0);
+  border-left: 1px solid oklch(1 0 0);
   border-right: 0;
   border-bottom: 0;
   filter: blur(3px);
@@ -1162,9 +1162,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 1px solid #fff;
-  -webkit-mask-image: linear-gradient(0deg, #000000d9, transparent 5%);
-  mask-image: linear-gradient(0deg, #000000d9, transparent 5%);
+  border: 1px solid oklch(1 0 0);
+  -webkit-mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.851), transparent 5%);
+  mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.851), transparent 5%);
 }
 
 .rim-center-a-b {
@@ -1172,10 +1172,10 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 1px solid #fff;
+  border: 1px solid oklch(1 0 0);
   filter: blur(1px);
-  -webkit-mask-image: linear-gradient(0deg, #00000082, transparent 84% 20%);
-  mask-image: linear-gradient(0deg, #00000082, transparent 84% 20%);
+  -webkit-mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.51), transparent 84% 20%);
+  mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.51), transparent 84% 20%);
 }
 
 .rim-right-a {
@@ -1185,8 +1185,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   height: 100%;
   right: 0;
   left: auto;
-  border-bottom: 1px solid #fff;
-  border-right: 1px solid #fff;
+  border-bottom: 1px solid oklch(1 0 0);
+  border-right: 1px solid oklch(1 0 0);
   border-left: 0;
   border-top: 0;
   -webkit-mask-image: linear-gradient(48deg, transparent 20%, black, transparent 80%);
@@ -1200,8 +1200,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   height: 100%;
   right: 0;
   left: auto;
-  border-bottom: 1px solid #fff;
-  border-right: 1px solid #fff;
+  border-bottom: 1px solid oklch(1 0 0);
+  border-right: 1px solid oklch(1 0 0);
   border-left: 0;
   border-top: 0;
   filter: blur(3px);
@@ -1263,12 +1263,12 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 .nav-test-dock-bubble,
 .nav-test-dock-bubble-active-glow {
-  background: linear-gradient(180deg, #0000002e, transparent);
+  background: linear-gradient(180deg, oklch(0 0 0 / 0.18), transparent);
   box-shadow:
-    inset 3px 4px 1px -4px rgb(255 255 255 / 58%),
-    inset 9px 10px 7px -8px rgba(255, 255, 255, 0.18),
-    inset -7px -6px 1px -6.7px rgb(255 255 255 / 35%),
-    inset -8px -9px 4px -3px rgb(255 255 255 / 5%);
+    inset 3px 4px 1px -4px oklch(1 0 0 / 0.58),
+    inset 9px 10px 7px -8px oklch(1 0 0 / 0.18),
+    inset -7px -6px 1px -6.7px oklch(1 0 0 / 0.35),
+    inset -8px -9px 4px -3px oklch(1 0 0 / 0.05);
   /* Fade + blur when sliding under Collection */
   opacity: var(--dock-bubble-opacity, 0);
   filter: blur(var(--dock-bubble-blur, 0px));
@@ -1277,12 +1277,12 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-dock-bubble-active-glow {
   /* Under Collection hero + regular tab content */
   z-index: 0;
-  background: linear-gradient(0deg, #ff004e, #ff004e00);
+  background: linear-gradient(0deg, oklch(0.634 0.254 17.36), oklch(0.634 0.254 17.36 / 0));
   opacity: var(--dock-bubble-glow-opacity, 0.5);
   background-position: center 30px;
   background-repeat: no-repeat;
   background-size: 60px;
-  box-shadow: inset 4px 5px 0px -3px #ff0096;
+  box-shadow: inset 4px 5px 0px -3px oklch(0.652 0.267 355.66);
 }
 
 .nav-test-dock-bubble {
@@ -1331,7 +1331,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 /* Indicator hover: pink the icon only — label stays at the base muted white. */
 .nav-test-dock-item.is-drag-target .nav-test-dock-icon {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-dock-item {
@@ -1364,7 +1364,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-item.is-active .nav-test-dock-icon {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-dock-item .nav-test-dock-icon,
@@ -1395,7 +1395,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-item:focus-visible {
-  outline: 2px solid rgba(255, 143, 177, 0.9);
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 2px;
 }
 
@@ -1484,32 +1484,32 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   -webkit-mask-image:
     conic-gradient(
       from var(--cursor-angle) at center,
-      #000 0%,
-      #000 18%,
+      oklch(0 0 0) 0%,
+      oklch(0 0 0) 18%,
       transparent 42%,
       transparent 58%,
-      #000 82%,
-      #000 100%
+      oklch(0 0 0) 82%,
+      oklch(0 0 0) 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   mask-image:
     conic-gradient(
       from var(--cursor-angle) at center,
-      #000 0%,
-      #000 18%,
+      oklch(0 0 0) 0%,
+      oklch(0 0 0) 18%,
       transparent 42%,
       transparent 58%,
-      #000 82%,
-      #000 100%
+      oklch(0 0 0) 82%,
+      oklch(0 0 0) 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
@@ -1524,29 +1524,29 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     conic-gradient(
       from var(--cursor-angle) at center,
       transparent 0%,
-      #000 10%,
-      #000 30%,
+      oklch(0 0 0) 10%,
+      oklch(0 0 0) 30%,
       transparent 48%,
       transparent 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   mask-image:
     conic-gradient(
       from var(--cursor-angle) at center,
       transparent 0%,
-      #000 10%,
-      #000 30%,
+      oklch(0 0 0) 10%,
+      oklch(0 0 0) 30%,
       transparent 48%,
       transparent 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
@@ -1578,13 +1578,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
   cursor: pointer;
   transition: transform 160ms ease, color 180ms ease;
 }
 
 .nav-test-dock-primary.is-active .nav-test-dock-primary-btn {
-  color: #ffb0c8;
+  color: oklch(0.839 0.097 359.58);
 }
 
 .nav-test-dock-primary-glow:active,
@@ -1593,13 +1593,14 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-primary-btn:focus-visible {
-  outline: 2px solid rgba(255, 143, 177, 0.9);
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 3px;
 }
 
 .nav-test-dock-primary-icon {
   width: 28px;
   height: 28px;
+  /* Hex keeps drop-shadow bloom reliable across WebKit mask + filter combos. */
   filter: drop-shadow(0 0 3px #ff0068);
   color: #ff0068;
   -webkit-mask-image: linear-gradient(180deg, #000000, #00000069 100%);
@@ -1607,7 +1608,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-primary-label {
-  color: rgba(255, 255, 255, 0.5);
+  color: oklch(1 0 0 / 0.5);
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
@@ -1619,5 +1620,5 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-primary.is-active .nav-test-dock-primary-label {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }

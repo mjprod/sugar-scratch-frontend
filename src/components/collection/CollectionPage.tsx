@@ -73,8 +73,8 @@ export function CollectionPage({
       className="collection-page flex min-h-0 flex-1 flex-col overflow-y-auto"
       style={
         {
-          "--bg-primary": "#070709",
-          "--accent-pink": "#ff5fa2",
+          "--bg-primary": "oklch(0.13 0.005 285.67)",
+          "--accent-pink": "oklch(0.711 0.203 357.66)",
         } as CSSProperties
       }
     >

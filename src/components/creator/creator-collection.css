@@ -27,7 +27,7 @@
   z-index: 80;
   display: flex;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.92);
+  background: oklch(0 0 0 / 0.92);
   padding: max(12px, env(safe-area-inset-top)) 0
     max(12px, env(safe-area-inset-bottom));
 }
@@ -43,9 +43,9 @@
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(20, 20, 20, 0.9);
-  color: #fff;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.191 0 0 / 0.9);
+  color: oklch(1 0 0);
 }
 
 .creator-featured-stage {
@@ -68,10 +68,10 @@ body[data-theme="v8"] .cpv2-motion-cell {
   aspect-ratio: 3 / 4;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #151515;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0.196 0 0);
   scroll-snap-align: start;
-  color: #fff;
+  color: oklch(1 0 0);
 }
 
 body[data-theme="v8"] .cpv2-motion-thumb,
@@ -84,7 +84,7 @@ body[data-theme="v8"] .cpv2-motion-placeholder {
 }
 
 body[data-theme="v8"] .cpv2-motion-placeholder {
-  background: linear-gradient(160deg, #2a2a2a, #111);
+  background: linear-gradient(160deg, oklch(0.285 0 0), oklch(0.178 0 0));
 }
 
 body[data-theme="v8"] .cpv2-motion-label {
@@ -94,7 +94,7 @@ body[data-theme="v8"] .cpv2-motion-label {
   bottom: 8px;
   font-size: 11px;
   font-weight: 600;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 4px oklch(0 0 0 / 0.8);
   text-align: left;
 }
 
@@ -108,5 +108,5 @@ body[data-theme="v8"] .cpv2-motion-icon {
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
+  background: oklch(0 0 0 / 0.55);
 }

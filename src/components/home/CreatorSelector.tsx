@@ -38,7 +38,7 @@ export function CreatorSelector({
               className={[
                 "flex w-[80px] shrink-0 flex-col items-center gap-2 rounded-2xl p-2 transition-colors",
                 selected ? "bg-white/10" : "hover:bg-white/5",
-                highlightFirst && i === 0 ? "ring-2 ring-[#8B5CF6] shadow-glow" : "",
+                highlightFirst && i === 0 ? "ring-2 ring-[oklch(0.606_0.219_292.72)] shadow-glow" : "",
               ].join(" ")}
             >
               <CreatorAvatar
