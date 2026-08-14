@@ -7,6 +7,7 @@ export type ModelInfo = {
   created_at?: number | null
   /** theme_id → public URL for model×theme collection avatar. */
   theme_avatars?: Record<string, string>
+  tags?: string[]
 }
 
 /** Models list for the scratch game playlist picker. */

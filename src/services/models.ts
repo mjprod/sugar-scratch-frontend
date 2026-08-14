@@ -22,6 +22,7 @@ export type BackendModel = {
   packFaceVideoUrl2?: string | null;
   swipeVideoUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
+  tags?: string[];
 };
 
 export type FoilSlot = 1 | 2;
