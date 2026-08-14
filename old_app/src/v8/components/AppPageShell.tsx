@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PageContainer } from "./PageContainer";
 
 /**
  * Shared content shell for standard Primary / Secondary app pages.
@@ -27,7 +28,7 @@ export function AppPageShell({
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="app-page-shell-inner">{children}</div>
+      <PageContainer className="app-page-shell-inner">{children}</PageContainer>
     </section>
   );
 }

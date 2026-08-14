@@ -2923,10 +2923,7 @@ body[data-theme="v8"] .collection-page {
 }
 
 body[data-theme="v8"] .collection-page-content {
-  width: calc(100% - 24px);
-  max-width: 480px;
-  margin-inline: auto;
-  /* Gap below sticky TopNav (in-flow). */
+  /* Gap below sticky TopNav — width/gutters from shared .page-container */
   padding-top: var(--app-diamond-offset, 12px);
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   box-sizing: border-box;
@@ -2938,7 +2935,7 @@ body[data-theme="v8"] .collection-page-content {
   gap: 28px;
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) {
   body[data-theme="v8"] .collection-page-content {
     width: min(calc(100% - 40px), var(--app-content-max));
     max-width: none;
@@ -8974,6 +8971,27 @@ body[data-theme="v8"] {
   --app-cta-label: oklch(0.934 0.036 0.4);
 }
 
+/* Shared page content width — use via PageContainer / .page-container */
+body[data-theme="v8"] .page-container {
+  width: 100%;
+  max-width: var(--app-content-max, 1320px);
+  margin-inline: auto;
+  padding-inline: var(--app-gutter, 16px);
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] {
+    --app-gutter: 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  body[data-theme="v8"] {
+    --app-gutter: 32px;
+  }
+}
+
 /* Shared HUD resource / ghost inbox styling (mobile + desktop). */
 body[data-theme="v8"] .top-nav-resource-value {
   color: oklch(0.971 0.003 286.35 / 0.9);
@@ -9142,7 +9160,7 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
   }
 }
 
-/* Desktop TopNav — true translucent HUD overlay (content underlaps). */
+/* Desktop TopNav — fixed overlay; content clears via --app-diamond-offset. */
 @media (min-width: 1024px) {
   body[data-theme="v8"] .app-layout--hud {
     /* Safe offset for floating 95dvw bar: top inset + bar + gap. */
@@ -9241,7 +9259,7 @@ body[data-theme="v8"] .app-page-shell {
   width: 100%;
   background: oklch(0.13 0.005 285.67);
   padding-top: var(--app-diamond-offset);
-  padding-inline: var(--app-gutter);
+  padding-inline: 0;
   padding-bottom: var(--app-footer-offset);
 }
 
@@ -9250,25 +9268,23 @@ body[data-theme="v8"] .app-page-shell--secondary {
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
+/* Inner uses shared .page-container (max-width + gutters). */
+body[data-theme="v8"] .app-page-shell-inner.page-container,
 body[data-theme="v8"] .app-page-shell-inner {
   width: 100%;
-  max-width: var(--app-content-max);
+  max-width: var(--app-content-max, 1320px);
   margin-inline: auto;
 }
 
 @media (min-width: 1024px) {
-  body[data-theme="v8"] {
-    --app-diamond-offset: 32px;
-  }
-
   body[data-theme="v8"] .app-page-shell--primary {
     padding-top: var(--app-diamond-offset);
-    padding-inline: 32px;
+    padding-inline: 0;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary {
-    padding-top: 32px;
-    padding-inline: 32px;
+    padding-top: var(--app-diamond-offset);
+    padding-inline: 0;
     padding-bottom: 48px;
   }
 }

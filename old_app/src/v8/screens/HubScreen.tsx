@@ -37,13 +37,13 @@ export function HubScreen({
   onOpenInbox?: () => void;
 }) {
   return (
-    <AppPageShell aria-label="Rewards">
+    <AppPageShell aria-label="Store">
       <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_80%_0%,rgba(139,92,246,.28),transparent_45%),#151515] p-6 sm:p-8">
         <div className="flex items-center gap-2 text-[#D4AF37]">
           <Sparkles className="size-4" />
           <p className="text-[12px] font-semibold tracking-[0.14em] uppercase">Today</p>
         </div>
-        <h1 className="mt-3 text-[32px] font-bold tracking-[-0.03em]">Rewards</h1>
+        <h1 className="mt-3 text-[32px] font-bold tracking-[-0.03em]">Store</h1>
         <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-white/55">
           Claim daily gifts, check inbox, and unlock creator rewards.
         </p>
