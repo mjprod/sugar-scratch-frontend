@@ -661,7 +661,7 @@ export default function V8App() {
                 onSearch={() => {
                   setNavNotice(
                     tab === "feed"
-                      ? "Browse search is ready"
+                      ? "Discover search is ready"
                       : "Collection search is ready",
                   );
                   window.setTimeout(() => setNavNotice(""), 1800);

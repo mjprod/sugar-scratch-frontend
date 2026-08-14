@@ -8,9 +8,9 @@ import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 
 const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "home", label: "Home" },
-  { id: "feed", label: "Browse" },
+  { id: "feed", label: "Discover" },
   { id: "bag", label: "Collection" },
-  { id: "hub", label: "Hub" },
+  { id: "hub", label: "Store" },
 ];
 
 const SCROLL_SELECTOR = "[data-page-scroll], .hf-viewport, .app-page-shell, .inbox-page";
@@ -122,7 +122,7 @@ export function TopNav({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className="top-nav-desktop-inner mx-auto flex h-full w-full items-center gap-6">
+        <div className="top-nav-desktop-inner page-container flex h-full items-center gap-6">
           <button
             type="button"
             onClick={() => onTabChange("home")}

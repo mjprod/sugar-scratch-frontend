@@ -6,9 +6,9 @@ import { MobileDiamondUtility } from "./MobileDiamondBalance";
 
 const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "home", label: "Home" },
-  { id: "feed", label: "Browse" },
+  { id: "feed", label: "Discover" },
   { id: "bag", label: "Collection" },
-  { id: "hub", label: "Rewards" },
+  { id: "hub", label: "Store" },
   { id: "profile", label: "Profile" },
 ];
 

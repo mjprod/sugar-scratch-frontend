@@ -3,6 +3,7 @@ import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { FeaturedCarousel } from "@/components/home/FeaturedCarousel";
 import { PackLibrary } from "@/components/home/PackLibrary";
+import { PageContainer } from "@/components/PageContainer";
 import {
   fetchHomepage,
   fetchLeaderboard,
@@ -117,16 +118,18 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:px-8 lg:pb-12"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
-        <div className="mx-auto h-[480px] w-[300px] animate-pulse rounded-[28px] bg-white/10 [clip-path:polygon(4%_1.5%,96%_1.5%,99%_6%,100%_48%,99%_94%,96%_98.5%,4%_98.5%,1%_94%,0%_52%,1%_6%)]" />
-        <div className="mx-auto flex gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="size-2 animate-pulse rounded-full bg-white/15" />
-          ))}
-        </div>
-        <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
-        <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
+        <PageContainer className="flex flex-col gap-6">
+          <div className="mx-auto h-[480px] w-[300px] animate-pulse rounded-[28px] bg-white/10 [clip-path:polygon(4%_1.5%,96%_1.5%,99%_6%,100%_48%,99%_94%,96%_98.5%,4%_98.5%,1%_94%,0%_52%,1%_6%)]" />
+          <div className="mx-auto flex gap-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="size-2 animate-pulse rounded-full bg-white/15" />
+            ))}
+          </div>
+          <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
+          <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
+        </PageContainer>
       </section>
     );
   }
@@ -135,19 +138,21 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:px-8 lg:pb-12"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
-        <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
-        <p className="max-w-xs text-center text-[13px] text-white/45">
-          Check your connection, then try again.
-        </p>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="mt-2 min-h-11 rounded-full bg-[#8B5CF6] px-5 py-2.5 text-[14px] font-semibold"
-        >
-          Retry
-        </button>
+        <PageContainer className="flex flex-1 flex-col items-center justify-center gap-3">
+          <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
+          <p className="max-w-xs text-center text-[13px] text-white/45">
+            Check your connection, then try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-2 min-h-11 rounded-full bg-[#8B5CF6] px-5 py-2.5 text-[14px] font-semibold"
+          >
+            Retry
+          </button>
+        </PageContainer>
       </section>
     );
   }
@@ -155,8 +160,9 @@ export function HomeScreen({
   return (
     <section
       data-page-scroll
-      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:px-8 lg:pb-12"
+      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
     >
+      <PageContainer>
       {showTutorial ? (
         <button
           type="button"
@@ -240,6 +246,7 @@ export function HomeScreen({
       >
         Restart prototype (clears first-visit flags)
       </button>
+      </PageContainer>
 
       {toast ? (
         <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[13px] text-white/85 backdrop-blur-md">

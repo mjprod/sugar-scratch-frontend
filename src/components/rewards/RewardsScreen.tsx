@@ -11,7 +11,7 @@ import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import type { RedeemReward } from "@/services/redeem";
 
 /**
- * Hub — engagement / reward center.
+ * Store (rewards hub) — engagement / reward center.
  * Mobile: Claim → Act → Anticipate. Desktop composition preserved via CSS.
  */
 export function HubScreen({
@@ -35,8 +35,8 @@ export function HubScreen({
   }) => void;
 }) {
   return (
-    <AppPageShell aria-label="Hub" className="hub-page">
-      <h1 className="sr-only">Hub</h1>
+    <AppPageShell aria-label="Store" className="hub-page">
+      <h1 className="sr-only">Store</h1>
       <section className="hub-module hub-module--today" aria-labelledby="hub-today-heading">
         <h2 id="hub-today-heading" className="hub-section-label hub-section-label--today">
           <Sparkles className="size-3.5" aria-hidden="true" />
