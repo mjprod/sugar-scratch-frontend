@@ -2959,10 +2959,7 @@ body[data-theme="v8"] .collection-page {
 }
 
 body[data-theme="v8"] .collection-page-content {
-  width: calc(100% - 24px);
-  max-width: 480px;
-  margin-inline: auto;
-  /* Gap below sticky TopNav (in-flow). */
+  /* Gap below sticky TopNav — width/gutters from shared .page-container */
   padding-top: var(--app-diamond-offset, 12px);
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   display: flex;
@@ -2970,20 +2967,16 @@ body[data-theme="v8"] .collection-page-content {
   gap: 28px;
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) {
   body[data-theme="v8"] .collection-page-content {
-    width: min(calc(100% - 40px), 920px);
-    max-width: none;
-    padding-top: var(--app-diamond-offset);
     gap: 32px;
   }
 }
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .collection-page-content {
-    width: min(calc(100% - 64px), 1280px);
-    max-width: none;
-    padding-top: 32px;
+    /* Keep TopNav clearance from --app-diamond-offset (do not hardcode 32px). */
+    padding-top: var(--app-diamond-offset);
     padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
     gap: 36px;
   }
@@ -8599,8 +8592,8 @@ body[data-theme="v8"] .subpage-trailing {
  * ----------------------------------------------------------------------- */
 
 body[data-theme="v8"] {
-  --app-gutter: 20px;
-  --app-content-max: 64rem;
+  --app-gutter: 16px;
+  --app-content-max: 1320px;
   /* Shared sticky top chrome heights (desktop bar / mobile utility). */
   --app-top-nav-height: 56px;
   --app-top-nav-z-index: 30;
@@ -8613,6 +8606,35 @@ body[data-theme="v8"] {
   /* Content safe offset — pages set padding-top to this; backgrounds may still underlap. */
   --app-diamond-offset: 12px;
   --app-footer-offset: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Shared page content width — use via PageContainer / .page-container */
+body[data-theme="v8"] .page-container {
+  width: 100%;
+  max-width: var(--app-content-max, 1320px);
+  margin-inline: auto;
+  padding-inline: 16px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] {
+    --app-gutter: 24px;
+  }
+
+  body[data-theme="v8"] .page-container {
+    padding-inline: 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  body[data-theme="v8"] {
+    --app-gutter: 32px;
+  }
+
+  body[data-theme="v8"] .page-container {
+    padding-inline: 32px;
+  }
 }
 
 /* Shared HUD resource / ghost inbox styling (mobile + desktop). */
@@ -8757,11 +8779,13 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
   }
 }
 
-/* Desktop TopNav — true translucent HUD overlay (content underlaps). */
+/* Desktop TopNav — fixed overlay; content clears via --app-diamond-offset. */
 @media (min-width: 1024px) {
   body[data-theme="v8"] .app-layout--hud {
-    /* Safe offset for interactive content; backgrounds underlap via fixed HUD. */
-    --app-diamond-offset: var(--app-top-nav-height, 56px);
+    /* TopNav height + intentional page gap so titles never sit under the bar. */
+    --app-diamond-offset: calc(
+      var(--app-top-nav-height, 56px) + var(--app-page-top-gap, 16px)
+    );
   }
 
   body[data-theme="v8"] .top-nav-desktop {
@@ -8827,7 +8851,7 @@ body[data-theme="v8"] .app-page-shell {
   width: 100%;
   background: #070709;
   padding-top: var(--app-diamond-offset);
-  padding-inline: var(--app-gutter);
+  padding-inline: 0;
   padding-bottom: var(--app-footer-offset);
 }
 
@@ -8836,25 +8860,28 @@ body[data-theme="v8"] .app-page-shell--secondary {
   padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 
+/* Inner uses shared .page-container (max-width + gutters). */
+body[data-theme="v8"] .app-page-shell-inner.page-container,
 body[data-theme="v8"] .app-page-shell-inner {
   width: 100%;
-  max-width: var(--app-content-max);
+  max-width: var(--app-content-max, 1320px);
   margin-inline: auto;
 }
 
 @media (min-width: 1024px) {
-  body[data-theme="v8"] {
+  /* Gap-only fallback when layout is not HUD-overlay; HUD pages inherit from .app-layout--hud. */
+  body[data-theme="v8"]:not(:has(.app-layout--hud)) {
     --app-diamond-offset: 32px;
   }
 
   body[data-theme="v8"] .app-page-shell--primary {
     padding-top: var(--app-diamond-offset);
-    padding-inline: 32px;
+    padding-inline: 0;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary {
-    padding-top: 32px;
-    padding-inline: 32px;
+    padding-top: var(--app-diamond-offset);
+    padding-inline: 0;
     padding-bottom: 48px;
   }
 }

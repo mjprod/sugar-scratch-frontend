@@ -78,7 +78,7 @@ export function CollectionPage({
         } as CSSProperties
       }
     >
-      <div className="collection-page-content">
+      <div className="collection-page-content page-container">
         {state.isTrueEmpty ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
         ) : (

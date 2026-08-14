@@ -120,7 +120,7 @@ export function TopNav({
           .filter(Boolean)
           .join(" ")}
       >
-        <div className="top-nav-desktop-inner mx-auto flex h-full max-w-[1280px] items-center gap-6 px-4 lg:px-8">
+        <div className="top-nav-desktop-inner page-container flex h-full items-center gap-6">
           <button
             type="button"
             onClick={() => onTabChange("home")}

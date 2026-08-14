@@ -23,7 +23,7 @@ type WalletContextValue = {
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 const INITIAL_COINS = 120;
-const INITIAL_DIAMONDS = 3;
+const INITIAL_DIAMONDS = 50;
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [coins, setCoins] = useState(INITIAL_COINS);
