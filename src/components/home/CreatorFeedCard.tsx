@@ -103,6 +103,13 @@ export function CreatorFeedCard({
   const packLabel = feedPackLabel(item.packName);
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
   const shouldBuffer = active || warm;
+  /**
+   * Keep CTA shader motion alive across the mid-scroll handoff.
+   * `active` flips at ~50% slide travel (Math.round), so gating aurora on
+   * active-only makes the leaving card drop WebGL particles/aurora too early.
+   * Warm neighbors stay in view during that transition — keep them live too.
+   */
+  const ctaMotionLive = (active || warm) && !reducedMotion;
 
   function playHeartBurst(mode: BurstMode, clientX?: number, clientY?: number) {
     const root = cardRef.current;
@@ -351,13 +358,14 @@ export function CreatorFeedCard({
               strokeWidth={1}
               /*
                 Viewport-scoped motion:
-                - active card: full aurora + CSS orbit + Lottie
-                - warm peek: static glow frame (no rAF/WebGL clock)
+                - active + warm neighbors: aurora / particles / orbit
+                  (warm covers the ~50–100% scroll handoff on desktop)
                 - far slides: static CTA only
+                - diamond Lottie stays active-only (heavier wasm loop)
               */
-              glowOuterBloom={active ? "lite" : "off"}
-              glowAlwaysOn={active && !reducedMotion}
-              auroraPaused={!active || reducedMotion}
+              glowOuterBloom={ctaMotionLive ? "lite" : "off"}
+              glowAlwaysOn={ctaMotionLive}
+              auroraPaused={!ctaMotionLive}
               costIconAnimated={active && !reducedMotion}
               aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
               onClick={(e) => {
@@ -420,19 +428,19 @@ function CandyHeart({
     >
       <defs>
         <linearGradient id={fillId} x1="14%" y1="6%" x2="86%" y2="94%">
-          <stop offset="0%" stopColor={soft ? "#ffb3d4" : "#ffc2dc"} />
-          <stop offset="38%" stopColor="#ff4d9e" />
-          <stop offset="72%" stopColor="#ec4899" />
-          <stop offset="100%" stopColor="#b01f6a" />
+          <stop offset="0%" stopColor={soft ? "oklch(0.848 0.097 351.66)" : "oklch(0.876 0.077 351.45)"} />
+          <stop offset="38%" stopColor="oklch(0.692 0.223 356.89)" />
+          <stop offset="72%" stopColor="oklch(0.656 0.212 354.31)" />
+          <stop offset="100%" stopColor="oklch(0.508 0.188 355.38)" />
         </linearGradient>
         <radialGradient id={shineId} cx="34%" cy="26%" r="42%">
-          <stop offset="0%" stopColor="rgba(255, 255, 255, 0.58)" />
-          <stop offset="45%" stopColor="rgba(255, 255, 255, 0.12)" />
-          <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
+          <stop offset="0%" stopColor="oklch(1 0 0 / 0.58)" />
+          <stop offset="45%" stopColor="oklch(1 0 0 / 0.12)" />
+          <stop offset="100%" stopColor="oklch(1 0 0 / 0)" />
         </radialGradient>
         <linearGradient id={edgeId} x1="20%" y1="0%" x2="80%" y2="100%">
-          <stop offset="0%" stopColor="rgba(255, 190, 220, 0.55)" />
-          <stop offset="100%" stopColor="rgba(176, 31, 106, 0.15)" />
+          <stop offset="0%" stopColor="oklch(0.869 0.083 349.64 / 0.55)" />
+          <stop offset="100%" stopColor="oklch(0.508 0.188 355.38 / 0.15)" />
         </linearGradient>
       </defs>
       <path

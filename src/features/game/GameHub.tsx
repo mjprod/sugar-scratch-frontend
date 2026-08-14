@@ -51,12 +51,12 @@ function wait(ms: number) {
 
 function themeAccent(theme: string): string {
   const key = theme.toLowerCase()
-  if (key.includes('police') || key.includes('cop')) return '#3b6ea8'
-  if (key.includes('teacher')) return '#8b5a2b'
-  if (key.includes('nurse')) return '#c45c7a'
-  if (key.includes('fire')) return '#d4552a'
-  if (key.includes('gym')) return '#2f7d5a'
-  return '#a86b3b'
+  if (key.includes('police') || key.includes('cop')) return 'oklch(0.53 0.107 253.09)'
+  if (key.includes('teacher')) return 'oklch(0.512 0.09 62.2)'
+  if (key.includes('nurse')) return 'oklch(0.61 0.136 3.78)'
+  if (key.includes('fire')) return 'oklch(0.609 0.17 38.24)'
+  if (key.includes('gym')) return 'oklch(0.532 0.095 160.99)'
+  return 'oklch(0.584 0.101 57.25)'
 }
 
 function PhotoLayers({ photo }: { photo: PhotoCard }) {

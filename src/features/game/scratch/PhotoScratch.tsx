@@ -2100,7 +2100,7 @@ export function PhotoScratch() {
             </p>
             {isGameModeUrl() ? (
               <p>
-                <a href="/collection">Back to Collection</a>
+                <a href="/collection">Back to My Collection</a>
               </p>
             ) : null}
           </header>

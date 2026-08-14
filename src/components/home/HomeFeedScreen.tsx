@@ -11,6 +11,7 @@ import {
   CreatorFeedCard,
   useVideoRegistry,
 } from "@/components/home/CreatorFeedCard";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   fetchHomeFeedPage,
   readHomeFeedCache,
@@ -35,10 +36,16 @@ const MEDIA_SCALE_HALFLIFE_MS = 175;
 const OVERLAY_PARALLAX_SETTLE_EPS = 0.12;
 /** Resting media scale inside overflow-hidden frame (keep near 1 so first frame isn't cropped). */
 const MEDIA_SCALE_BASE = 1.04;
-/** Extra scale added at full slide travel (more scroll → more zoom). */
-const MEDIA_SCALE_GAIN = 0.1;
-/** Hard ceiling so zoom stays tasteful. */
-const MEDIA_SCALE_MAX = 1.16;
+/** Mobile: extra scale added at full slide travel. */
+const MEDIA_SCALE_GAIN_MOBILE = 0.1;
+/** Mobile ceiling — keep light for phones. */
+const MEDIA_SCALE_MAX_MOBILE = 1.16;
+/**
+ * Desktop scrub zoom uses the performance headroom: scale toward 1.5× at full
+ * slide travel (gain = max - base so progress 1 lands on the ceiling).
+ */
+const MEDIA_SCALE_MAX_DESKTOP = 1.5;
+const MEDIA_SCALE_GAIN_DESKTOP = MEDIA_SCALE_MAX_DESKTOP - MEDIA_SCALE_BASE;
 /** Max scroll-driven media blur (px). Desktop only — mobile skips filter blur. */
 const MEDIA_BLUR_MAX_PX = 5;
 /** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
@@ -54,6 +61,18 @@ const DESKTOP_DRAG_FLICK_VX = 0.45;
  * the next/prev card. Keeps one-card-at-a-time behavior like mobile.
  */
 const DESKTOP_DRAG_COMMIT_RATIO = 0.22;
+/** Delay before the first-land scroll-nudge affordance. */
+const SCROLL_NUDGE_FIRST_DELAY_MS = 900;
+/** Replay the scroll-nudge after this much feed inactivity. */
+const SCROLL_NUDGE_IDLE_MS = 30_000;
+/** Peak travel of the nudge as a fraction of slide height. */
+const SCROLL_NUDGE_TRAVEL_RATIO = 0.085;
+/** Hard cap so tall desktop slides still get a subtle peek. */
+const SCROLL_NUDGE_TRAVEL_MAX_PX = 72;
+/** Outbound (down) leg duration. */
+const SCROLL_NUDGE_OUT_MS = 520;
+/** Return (ease back) leg duration. */
+const SCROLL_NUDGE_BACK_MS = 680;
 
 export function HomeFeedScreen({
   active,
@@ -97,7 +116,15 @@ export function HomeFeedScreen({
   const scrollIndexRef = useRef(cached?.scrollIndex ?? 0);
   const restoredRef = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
-  const allowMediaBlur = useAllowMediaBlur();
+  /** Desktop (≥981px): blur + aggressive scrub zoom. Mobile keeps the light path. */
+  const isDesktopFeed = useIsDesktopFeed();
+  const allowMediaBlur = isDesktopFeed;
+  const mediaScaleGain = isDesktopFeed
+    ? MEDIA_SCALE_GAIN_DESKTOP
+    : MEDIA_SCALE_GAIN_MOBILE;
+  const mediaScaleMax = isDesktopFeed
+    ? MEDIA_SCALE_MAX_DESKTOP
+    : MEDIA_SCALE_MAX_MOBILE;
   const parallaxTargetRef = useRef(new Map<string, number>());
   const parallaxCurrentRef = useRef(new Map<string, number>());
   const scaleTargetRef = useRef(new Map<string, number>());
@@ -116,6 +143,15 @@ export function HomeFeedScreen({
     velocityY: number;
     moved: boolean;
   } | null>(null);
+  /** True while the programmatic scroll-nudge rAF is driving the viewport. */
+  const nudgeAnimatingRef = useRef(false);
+  const nudgeRafRef = useRef(0);
+  const nudgeIdleTimerRef = useRef(0);
+  const nudgeFirstTimerRef = useRef(0);
+  const nudgeFirstPlayedRef = useRef(false);
+  /** Any real feed interaction — suppresses a pending first-land nudge. */
+  const nudgeUserTouchedRef = useRef(false);
+  const markFeedActivityRef = useRef<() => void>(() => {});
 
   const persist = useCallback(
     (patch: Partial<{
@@ -253,9 +289,10 @@ export function HomeFeedScreen({
         parallaxTargetRef.current.set(key, overlayTarget);
 
         // More scroll away from rest → more zoom inside overflow:hidden.
+        // Desktop ramps to 1.5×; mobile stays near the original subtle zoom.
         const scaleTarget = Math.min(
-          MEDIA_SCALE_MAX,
-          MEDIA_SCALE_BASE + absProgress * MEDIA_SCALE_GAIN,
+          mediaScaleMax,
+          MEDIA_SCALE_BASE + absProgress * mediaScaleGain,
         );
         scaleTargetRef.current.set(key, scaleTarget);
 
@@ -377,7 +414,14 @@ export function HomeFeedScreen({
       scrollFxLastTsRef.current = 0;
       scrollFxRafRef.current = requestAnimationFrame(tick);
     },
-    [allowMediaBlur, getSlideMetrics, items, reducedMotion],
+    [
+      allowMediaBlur,
+      getSlideMetrics,
+      items,
+      mediaScaleGain,
+      mediaScaleMax,
+      reducedMotion,
+    ],
   );
 
   useEffect(() => {
@@ -396,11 +440,202 @@ export function HomeFeedScreen({
     applyScrollFx(root, true);
   }, [status, items, getSlideMetrics, applyScrollFx]);
 
+  const stopScrollNudge = useCallback(() => {
+    if (nudgeRafRef.current) {
+      cancelAnimationFrame(nudgeRafRef.current);
+      nudgeRafRef.current = 0;
+    }
+    if (!nudgeAnimatingRef.current) return;
+    nudgeAnimatingRef.current = false;
+    const root = scrollerRef.current;
+    if (!root) return;
+    // Leave scrollTop where the user interrupted; restore snap so CSS can settle.
+    root.style.scrollSnapType = "";
+    root.style.scrollBehavior = "";
+  }, []);
+
+  const playScrollNudge = useCallback(() => {
+    if (reducedMotion || !active || status !== "loaded") return;
+    if (nudgeAnimatingRef.current || desktopDragRef.current) return;
+    if (gestureLayerBlocksNudge()) return;
+
+    const root = scrollerRef.current;
+    if (!root || items.length < 2) return;
+
+    const { slideHeight } = getSlideMetrics(root);
+    if (slideHeight <= 0) return;
+
+    // Only nudge when parked on a slide — mid-scroll means the user is already moving.
+    const restTop = root.scrollTop;
+    const index = Math.round(restTop / slideHeight);
+    if (Math.abs(restTop - index * slideHeight) > 2) return;
+    // Last card has nowhere to peek; skip.
+    if (index >= items.length - 1) return;
+
+    const travel = Math.min(
+      SCROLL_NUDGE_TRAVEL_MAX_PX,
+      Math.max(28, slideHeight * SCROLL_NUDGE_TRAVEL_RATIO),
+    );
+    const peakTop = restTop + travel;
+    const totalMs = SCROLL_NUDGE_OUT_MS + SCROLL_NUDGE_BACK_MS;
+
+    nudgeAnimatingRef.current = true;
+    // Disable snap so the peek doesn't get sucked to the next card.
+    root.style.scrollSnapType = "none";
+    root.style.scrollBehavior = "auto";
+
+    const easeInOutCubic = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    const startedAt = performance.now();
+
+    const tick = (now: number) => {
+      if (!nudgeAnimatingRef.current) return;
+      const node = scrollerRef.current;
+      if (!node) {
+        stopScrollNudge();
+        return;
+      }
+
+      const elapsed = now - startedAt;
+      if (elapsed >= totalMs) {
+        node.scrollTop = restTop;
+        applyScrollFx(node, true);
+        stopScrollNudge();
+        return;
+      }
+
+      let y: number;
+      if (elapsed <= SCROLL_NUDGE_OUT_MS) {
+        const t = easeInOutCubic(elapsed / SCROLL_NUDGE_OUT_MS);
+        y = restTop + (peakTop - restTop) * t;
+      } else {
+        const t = easeInOutCubic(
+          (elapsed - SCROLL_NUDGE_OUT_MS) / SCROLL_NUDGE_BACK_MS,
+        );
+        y = peakTop + (restTop - peakTop) * t;
+      }
+
+      node.scrollTop = y;
+      applyScrollFx(node);
+      nudgeRafRef.current = requestAnimationFrame(tick);
+    };
+
+    nudgeRafRef.current = requestAnimationFrame(tick);
+  }, [
+    active,
+    applyScrollFx,
+    getSlideMetrics,
+    items.length,
+    reducedMotion,
+    status,
+    stopScrollNudge,
+  ]);
+
+  const armScrollNudgeIdle = useCallback(() => {
+    if (nudgeIdleTimerRef.current) {
+      window.clearTimeout(nudgeIdleTimerRef.current);
+      nudgeIdleTimerRef.current = 0;
+    }
+    if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
+      return;
+    }
+    nudgeIdleTimerRef.current = window.setTimeout(() => {
+      nudgeIdleTimerRef.current = 0;
+      playScrollNudge();
+      // After an idle nudge, keep the 30s loop armed.
+      armScrollNudgeIdle();
+    }, SCROLL_NUDGE_IDLE_MS);
+  }, [active, items.length, playScrollNudge, reducedMotion, status]);
+
+  const markFeedActivity = useCallback(() => {
+    nudgeUserTouchedRef.current = true;
+    if (nudgeFirstTimerRef.current) {
+      window.clearTimeout(nudgeFirstTimerRef.current);
+      nudgeFirstTimerRef.current = 0;
+      nudgeFirstPlayedRef.current = true;
+    }
+    // User engagement cancels an in-flight affordance and restarts the idle clock.
+    // Keep current scrollTop so wheel/touch take over without a yank-back.
+    stopScrollNudge();
+    armScrollNudgeIdle();
+  }, [armScrollNudgeIdle, stopScrollNudge]);
+
+  markFeedActivityRef.current = markFeedActivity;
+
+  // First-land nudge + 30s idle loop while the home feed is the active tab.
+  useEffect(() => {
+    if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
+      stopScrollNudge();
+      if (nudgeFirstTimerRef.current) {
+        window.clearTimeout(nudgeFirstTimerRef.current);
+        nudgeFirstTimerRef.current = 0;
+      }
+      if (nudgeIdleTimerRef.current) {
+        window.clearTimeout(nudgeIdleTimerRef.current);
+        nudgeIdleTimerRef.current = 0;
+      }
+      return;
+    }
+
+    if (!nudgeFirstPlayedRef.current && !nudgeUserTouchedRef.current) {
+      if (nudgeFirstTimerRef.current) {
+        window.clearTimeout(nudgeFirstTimerRef.current);
+      }
+      nudgeFirstTimerRef.current = window.setTimeout(() => {
+        nudgeFirstTimerRef.current = 0;
+        if (nudgeUserTouchedRef.current) {
+          nudgeFirstPlayedRef.current = true;
+          armScrollNudgeIdle();
+          return;
+        }
+        nudgeFirstPlayedRef.current = true;
+        playScrollNudge();
+        armScrollNudgeIdle();
+      }, SCROLL_NUDGE_FIRST_DELAY_MS);
+    } else {
+      nudgeFirstPlayedRef.current = true;
+      armScrollNudgeIdle();
+    }
+
+    return () => {
+      if (nudgeFirstTimerRef.current) {
+        window.clearTimeout(nudgeFirstTimerRef.current);
+        nudgeFirstTimerRef.current = 0;
+      }
+      if (nudgeIdleTimerRef.current) {
+        window.clearTimeout(nudgeIdleTimerRef.current);
+        nudgeIdleTimerRef.current = 0;
+      }
+      stopScrollNudge();
+    };
+  }, [
+    active,
+    armScrollNudgeIdle,
+    items.length,
+    playScrollNudge,
+    reducedMotion,
+    status,
+    stopScrollNudge,
+  ]);
+
   useEffect(() => {
     return () => {
       if (scrollFxRafRef.current) {
         cancelAnimationFrame(scrollFxRafRef.current);
         scrollFxRafRef.current = 0;
+      }
+      if (nudgeRafRef.current) {
+        cancelAnimationFrame(nudgeRafRef.current);
+        nudgeRafRef.current = 0;
+      }
+      if (nudgeFirstTimerRef.current) {
+        window.clearTimeout(nudgeFirstTimerRef.current);
+        nudgeFirstTimerRef.current = 0;
+      }
+      if (nudgeIdleTimerRef.current) {
+        window.clearTimeout(nudgeIdleTimerRef.current);
+        nudgeIdleTimerRef.current = 0;
       }
     };
   }, []);
@@ -527,6 +762,7 @@ export function HomeFeedScreen({
   const onDesktopPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!active) return;
+      markFeedActivityRef.current();
       // Touch already has native pan-y scrolling; this is for mouse/pen drag.
       if (event.pointerType === "touch") return;
       if (event.button !== 0) return;
@@ -652,6 +888,7 @@ export function HomeFeedScreen({
         event.key === "k"
       ) {
         event.preventDefault();
+        markFeedActivityRef.current();
         go(1);
       } else if (
         event.key === "ArrowDown" ||
@@ -659,9 +896,11 @@ export function HomeFeedScreen({
         event.key === "j"
       ) {
         event.preventDefault();
+        markFeedActivityRef.current();
         go(-1);
       } else if (event.key === "Home") {
         event.preventDefault();
+        markFeedActivityRef.current();
         const root = scrollerRef.current;
         root?.scrollTo({
           top: 0,
@@ -669,6 +908,7 @@ export function HomeFeedScreen({
         });
       } else if (event.key === "End") {
         event.preventDefault();
+        markFeedActivityRef.current();
         const root = scrollerRef.current;
         if (!root || !items.length) return;
         const { slideHeight } = getSlideMetrics(root);
@@ -712,6 +952,10 @@ export function HomeFeedScreen({
   function onScroll() {
     const root = scrollerRef.current;
     if (!root || !items.length) return;
+    // Programmatic nudge drives scrollTop itself — don't treat that as user activity.
+    if (!nudgeAnimatingRef.current) {
+      markFeedActivityRef.current();
+    }
     const { slideHeight } = getSlideMetrics(root);
     const index = Math.round(root.scrollTop / slideHeight);
     scrollIndexRef.current = index;
@@ -786,13 +1030,18 @@ export function HomeFeedScreen({
         {status === "error" ? (
           <div className="hf-state" role="alert">
             <p className="hf-state-title">Unable to load creators.</p>
-            <button
-              type="button"
-              className="hf-state-cta"
-              onClick={() => void loadInitial()}
-            >
-              Retry
-            </button>
+            <div className="hf-state-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                type="button"
+                label="Retry"
+                costAmount={null}
+                fontSize={15}
+                strokeWidth={1}
+                onClick={() => void loadInitial()}
+              />
+            </div>
           </div>
         ) : null}
 
@@ -800,13 +1049,18 @@ export function HomeFeedScreen({
           <div className="hf-state">
             <p className="hf-state-title">No creators available.</p>
             <p className="hf-state-copy">Please check back later.</p>
-            <button
-              type="button"
-              className="hf-state-cta"
-              onClick={() => void loadInitial()}
-            >
-              Refresh
-            </button>
+            <div className="hf-state-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                type="button"
+                label="Refresh"
+                costAmount={null}
+                fontSize={15}
+                strokeWidth={1}
+                onClick={() => void loadInitial()}
+              />
+            </div>
           </div>
         ) : null}
 
@@ -887,15 +1141,27 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-/** Desktop-only media blur — filter:blur on video is too expensive on phones. */
-function useAllowMediaBlur() {
-  const [allow, setAllow] = useState(false);
+/** Skip the scroll-nudge while a modal/dialog owns the screen. */
+function gestureLayerBlocksNudge() {
+  return Boolean(
+    document.querySelector(
+      '[aria-modal="true"], [role="dialog"][aria-modal="true"]',
+    ),
+  );
+}
+
+/**
+ * Desktop feed breakpoint — matches CTA / pack mobile MQ (≤980 = mobile).
+ * Used for blur + larger scrub zoom where there's GPU headroom.
+ */
+function useIsDesktopFeed() {
+  const [desktop, setDesktop] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 981px)");
-    const apply = () => setAllow(mq.matches);
+    const apply = () => setDesktop(mq.matches);
     apply();
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, []);
-  return allow;
+  return desktop;
 }

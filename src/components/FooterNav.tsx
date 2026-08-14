@@ -27,11 +27,11 @@ type NavItemConfig = {
 };
 
 const TABS: NavItemConfig[] = [
-  { id: "home", label: "Home", icon: Home, appTab: "home" },
-  { id: "explore", label: "Discover", icon: Compass, appTab: "feed" },
+  { id: "home", label: "Discover", icon: Compass, appTab: "home" },
+  { id: "explore", label: "Home", icon: Home, appTab: "feed" },
   {
     id: "collection",
-    label: "Collection",
+    label: "My Collection",
     icon: Layers3,
     appTab: "bag",
     primary: true,

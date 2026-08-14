@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
-import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { InboxButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
@@ -81,32 +80,14 @@ export function AppLayout() {
         .join(" ")}
     >
       {showTopUtility ? (
-        <>
-          <MobileDiamondUtility
-            coins={guest ? null : coins}
-            balance={guest ? null : diamonds}
-            onOpenStore={openStore}
-            onOpenHome={() => requestTab("home")}
-            visible
-            trailing={mobileInbox}
-          />
-
-          {/* Wide-viewport resource / inbox strip — liquid glass owns primary tabs */}
-          <div className="liquid-glass-desktop-utils">
-            <CurrencyBalances
-              coins={guest ? null : coins}
-              diamonds={guest ? null : diamonds}
-              onOpenStore={openStore}
-            />
-            {openInbox ? (
-              <InboxButton
-                unreadCount={inboxUnread}
-                onOpen={openInbox}
-                variant="ghost"
-              />
-            ) : null}
-          </div>
-        </>
+        <MobileDiamondUtility
+          coins={guest ? null : coins}
+          balance={guest ? null : diamonds}
+          onOpenStore={openStore}
+          onOpenHome={() => requestTab("home")}
+          visible
+          trailing={mobileInbox}
+        />
       ) : null}
 
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -114,7 +95,15 @@ export function AppLayout() {
       </div>
 
       {showNav ? (
-        <LiquidGlassNav activeTab={tab} onTabChange={requestTab} />
+        <LiquidGlassNav
+          activeTab={tab}
+          onTabChange={requestTab}
+          coins={guest ? null : coins}
+          diamonds={guest ? null : diamonds}
+          onOpenStore={showTopUtility ? openStore : undefined}
+          onOpenInbox={showTopUtility ? openInbox : undefined}
+          inboxUnreadCount={inboxUnread}
+        />
       ) : null}
 
       <AuthenticationSheet

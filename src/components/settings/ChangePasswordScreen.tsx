@@ -1,6 +1,7 @@
-import { Apple, Check, Loader2 } from "lucide-react";
+import { Apple, Check } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
@@ -127,13 +128,18 @@ export function ChangePasswordScreen({
           <p className="change-password-success-body">
             Your password has been updated.
           </p>
-          <button
-            type="button"
-            className="change-password-cta"
-            onClick={onBack}
-          >
-            Back to Settings
-          </button>
+          <div className="change-password-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="button"
+              label="Back to Settings"
+              costAmount={null}
+              fontSize={15}
+              strokeWidth={1}
+              onClick={onBack}
+            />
+          </div>
         </div>
       </ChangePasswordShell>
     );
@@ -246,20 +252,18 @@ export function ChangePasswordScreen({
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          className="change-password-cta"
-          disabled={!canSubmit}
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Changing…
-            </>
-          ) : (
-            "Change Password"
-          )}
-        </button>
+        <div className="change-password-cta">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            type="submit"
+            label={submitting ? "Changing…" : "Change Password"}
+            costAmount={null}
+            fontSize={15}
+            strokeWidth={1}
+            disabled={!canSubmit}
+          />
+        </div>
 
         <button
           type="button"
@@ -319,19 +323,19 @@ function GoogleMark() {
   return (
     <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
       <path
-        fill="#EA4335"
+        fill="oklch(0.626 0.206 29.08)"
         d="M9 7.2v3.6h5.1c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.8 0-.7-.1-1.3-.2-1.9H9z"
       />
       <path
-        fill="#34A853"
+        fill="oklch(0.648 0.16 148.5)"
         d="M4 10.7l-.7.5-2.3 1.8C2.5 15.7 5.5 18 9 18c2.4 0 4.4-.8 5.9-2.1l-3-2.3c-.8.6-1.9.9-2.9.9-2.3 0-4.2-1.5-4.9-3.6z"
       />
       <path
-        fill="#4A90E2"
+        fill="oklch(0.646 0.142 253.92)"
         d="M1 5c-.6 1.2-1 2.5-1 4s.4 2.8 1 4l3.1-2.4C3.8 9.8 3.7 9.4 3.7 9c0-.4.1-.8.2-1.2z"
       />
       <path
-        fill="#FBBC05"
+        fill="oklch(0.83 0.17 83.99)"
         d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.6C13.4.9 11.4 0 9 0 5.5 0 2.5 2.3 1 5.6L4.1 8C4.8 5.9 6.7 3.6 9 3.6z"
       />
     </svg>

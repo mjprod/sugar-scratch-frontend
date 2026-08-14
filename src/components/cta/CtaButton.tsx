@@ -118,6 +118,8 @@ function resolveGlowOuterBloom(
 
 export type CtaButtonProps = {
   label?: string;
+  /** Optional mark rendered left of the title (e.g. Google icon). */
+  leadingIcon?: ReactNode;
   /** Optional secondary cost row under the title. Empty / null hides the row. */
   costAmount?: string | number | null;
   /**
@@ -222,6 +224,7 @@ const DEFAULT_HEIGHT = 64;
 
 export function CtaButton({
   label = "Start Playing",
+  leadingIcon,
   costAmount = null,
   costIcon,
   shape = "squircle",
@@ -442,7 +445,14 @@ export function CtaButton({
         </span>
         <span className="cta-button__face" aria-hidden="true" />
         <span className="cta-button__label">
-          <span className="cta-button__title">{label}</span>
+          <span className="cta-button__title-row">
+            {leadingIcon ? (
+              <span className="cta-button__leading-icon" aria-hidden="true">
+                {leadingIcon}
+              </span>
+            ) : null}
+            <span className="cta-button__title">{label}</span>
+          </span>
           {showCost ? (
             <span className="cta-button__cost">
               <span className="cta-button__cost-amount">{costText}</span>

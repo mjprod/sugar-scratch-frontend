@@ -49,13 +49,13 @@ export function UserDashboardScreen({
 
   return (
     <AppPageShell aria-label="Profile" className="app-page-shell--profile">
-      <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.3),transparent_42%),#151515] p-6 sm:p-8">
+      <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,oklch(0.606_0.219_292.72_/_0.3),transparent_42%),oklch(0.196_0_0)] p-6 sm:p-8">
         <div className="flex items-center gap-4">
-          <div className="grid size-20 place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[#A855F7] to-[#312E81] text-[30px] shadow-glow">
+          <div className="grid size-20 place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[oklch(0.627_0.233_303.9)] to-[oklch(0.359_0.135_278.7)] text-[30px] shadow-glow">
             {avatar || "✨"}
           </div>
           <div className="min-w-0 flex-1">
-            <span className="inline-flex rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-[#D4AF37] uppercase">
+            <span className="inline-flex rounded-full border border-[oklch(0.767_0.139_91.06)]/35 bg-[oklch(0.767_0.139_91.06)]/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-[oklch(0.767_0.139_91.06)] uppercase">
               Gold Member
             </span>
             <h1 className="mt-2 truncate text-[30px] font-bold tracking-[-0.03em]">
@@ -77,7 +77,7 @@ export function UserDashboardScreen({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat icon={<Trophy className="size-4" />} label="Collection" value="128 / 240" />
+        <Stat icon={<Trophy className="size-4" />} label="My Collection" value="128 / 240" />
         <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
         <Stat icon={<DiamondLottie size={16} aria-hidden />} label="Diamonds" value={diamonds.toString()} />
         <Stat icon={<Sparkles className="size-4" />} label="Sugar Coins" value={coins.toString()} />
@@ -138,7 +138,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.04] p-4">
-      <div className="flex items-center gap-2 text-[#A78BFA]">
+      <div className="flex items-center gap-2 text-[oklch(0.709_0.159_293.54)]">
         {icon}
         <p className="text-[11px] text-white/45">{label}</p>
       </div>

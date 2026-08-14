@@ -70,7 +70,7 @@ export const SWIPE_NOPE_GRAYSCALE = 1;
  * Overlay color/opacity/blend live on .swipe-deck__slot-face::after.
  * Tunable live via the NOPE tint debug panel.
  */
-export const SWIPE_NOPE_TINT_COLOR = '#e10600';
+export const SWIPE_NOPE_TINT_COLOR = 'oklch(0.573 0.233 29.48)';
 /** Peak overlay opacity at full left / NOPE progress (0–1). */
 export const SWIPE_NOPE_TINT_OPACITY = 1;
 /** CSS mix-blend-mode for the NOPE color overlay. */

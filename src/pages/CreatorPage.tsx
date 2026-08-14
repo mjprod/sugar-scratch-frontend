@@ -14,7 +14,7 @@ export function CreatorPage() {
     <CreatorScreen
       creatorId={id}
       diamonds={diamonds}
-      onBack={() => navigate(Paths.browse)}
+      onBack={() => navigate(Paths.home)}
       onOpenPack={(pack) => openPurchase(pack, "open-pack")}
       onBuyPack={(pack) => openPurchase(pack, "buy-pack")}
     />

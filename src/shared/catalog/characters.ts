@@ -32,8 +32,8 @@ export const DEFAULT_SWIPE_VIDEO_URL = "/assets/juliana/swipe.mp4";
 export const PHOTO_SLOT_COUNT = 10;
 export const MOTION_VIDEO_COUNT = 3;
 export const ROLE_PHOTO_SLOT_COUNT = MOTION_VIDEO_COUNT * PHOTO_SLOT_COUNT;
-export const DEFAULT_OVERLAY_BACKGROUND_COLOR = "#5fd0e0";
-export const DEFAULT_OVERLAY_BACKGROUND_COLOR_END = "#0b1c24";
+export const DEFAULT_OVERLAY_BACKGROUND_COLOR = "oklch(0.798 0.104 207.84)";
+export const DEFAULT_OVERLAY_BACKGROUND_COLOR_END = "oklch(0.216 0.028 230.24)";
 
 export type SharedMedia = {
   girlName: string;

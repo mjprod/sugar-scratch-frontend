@@ -121,8 +121,11 @@ export function AppRoutes() {
             </AppShell>
           }
         >
-          <Route index element={<HomeFeedPage />} />
-          <Route path="browse" element={<BrowsePage />} />
+          {/* Home nav → pack browse at root; Discover nav → home feed */}
+          <Route index element={<BrowsePage />} />
+          <Route path="discover" element={<HomeFeedPage />} />
+          {/* Legacy /browse → root Home */}
+          <Route path="browse" element={<Navigate to={Paths.home} replace />} />
           <Route path="creator/:id" element={<CreatorPage />} />
           <Route
             path="collection"
@@ -148,14 +151,7 @@ export function AppRoutes() {
               </SoftGate>
             }
           />
-          <Route
-            path="store"
-            element={
-              <SoftGate tab="hub" action={{ type: "store" }}>
-                <StorePage />
-              </SoftGate>
-            }
-          />
+          <Route path="store" element={<StorePage />} />
           <Route
             path="settings"
             element={

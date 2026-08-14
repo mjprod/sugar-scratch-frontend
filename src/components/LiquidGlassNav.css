@@ -4,7 +4,7 @@
   width: 100%;
   /* visible so dock rims / mask bleed aren't clipped at the page edge */
   overflow: visible;
-  background: #0c0c0e;
+  background: oklch(0.155 0.004 285.9);
 }
 
 /* Product chrome: transparent overlay host (children are fixed) */
@@ -21,7 +21,7 @@
 }
 
 .liquid-glass-nav.is-chrome-hidden .nav-test-top,
-.liquid-glass-nav.is-chrome-hidden .nav-test-dock {
+.liquid-glass-nav.is-chrome-hidden .nav-test-dock-wrap {
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden;
@@ -32,7 +32,7 @@
   z-index: 5010;
 }
 
-.liquid-glass-nav .nav-test-dock {
+.liquid-glass-nav .nav-test-dock-wrap {
   /* Highest chrome layer — above feed, veil remnants, sheets underlay, etc. */
   z-index: 5100;
 }
@@ -42,7 +42,7 @@
   display: grid;
   place-items: center;
   min-height: 100dvh;
-  background: #0c0c0e;
+  background: oklch(0.155 0.004 285.9);
 }
 
 .nav-test-playground-label {
@@ -51,7 +51,7 @@
   left: 50%;
   z-index: 1;
   transform: translate(-50%, -50%);
-  color: rgba(255, 255, 255, 0.45);
+  color: oklch(1 0 0 / 0.45);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -61,10 +61,10 @@
 /*
  * App chrome pairing (driven by body[data-liquid-nav] from LiquidGlassNav):
  *  - mobile: bottom dock + mobile diamond utility
- *  - desktop: top liquid nav + desktop balances/inbox strip
+ *  - desktop: top liquid nav [logo | tabs | balances/inbox]
  *  - to-desktop / to-mobile: staged so HUDs don't overlap mid-handoff
  *
- * Fallback without JS attribute still uses the 441px MQ.
+ * Fallback without JS attribute still uses the 496px MQ.
  *
  * NOTE: .top-nav-mobile already uses transform: translateX(-50%) for centering.
  * Handoff motion only animates opacity/filter/visibility so we don't fight that.
@@ -125,7 +125,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Fallback when data-liquid-nav isn't set yet (SSR / first paint) */
-@media (min-width: 441px) {
+@media (min-width: 496px) {
   body[data-theme="v8"]:not([data-liquid-nav]) .app-layout--hud .top-nav-mobile {
     display: none !important;
   }
@@ -137,83 +137,78 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   }
 }
 
-.liquid-glass-desktop-utils {
-  position: fixed;
-  top: max(12px, env(safe-area-inset-top, 0px));
-  right: max(16px, env(safe-area-inset-right, 0px));
-  z-index: calc(var(--app-top-nav-z-index, 30) + 1);
+/* Desktop utils live inside .nav-test-top (logo | tabs | utils). */
+.liquid-glass-desktop-utils,
+.nav-test-top-utils {
+  position: relative;
+  z-index: 2;
+  top: auto;
+  right: auto;
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-  height: 56px;
-  padding: 0 4px;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: translate3d(0, -8px, 0);
-  transition:
-    opacity 200ms ease,
-    transform 220ms ease,
-    visibility 0ms linear 200ms;
-}
-
-/* Resting desktop — utils visible with the liquid top bar */
-body[data-liquid-nav="desktop"] .liquid-glass-desktop-utils {
+  min-width: 0;
+  height: 100%;
+  padding: 0 2px 0 4px;
+  pointer-events: auto;
   opacity: 1;
   visibility: visible;
+  transform: none;
+}
+
+/* Icon-only Profile — sits between Diamonds and Inbox bell. */
+.nav-test-top-profile {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: oklch(1 0 0 / 0.55);
+  cursor: pointer;
   pointer-events: auto;
-  transform: translate3d(0, 0, 0);
-}
-
-/* Mobile → desktop: utils arrive with liquid top enter (delay ~320ms) */
-body[data-liquid-nav="to-desktop"] .liquid-glass-desktop-utils {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translate3d(0, 0, 0);
+  -webkit-tap-highlight-color: transparent;
   transition:
-    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1) 320ms,
-    transform 360ms cubic-bezier(0.22, 1, 0.36, 1) 320ms,
-    visibility 0ms linear 320ms;
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 140ms ease;
 }
 
-/* Desktop → mobile / mobile resting: utils out immediately */
-body[data-liquid-nav="to-mobile"] .liquid-glass-desktop-utils,
-body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translate3d(0, -8px, 0);
-  transition:
-    opacity 140ms ease,
-    transform 160ms ease,
-    visibility 0ms linear 140ms;
+.nav-test-top-profile:hover {
+  border-color: oklch(1 0 0 / 0.12);
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.88);
 }
 
-/* Fallback without data attr */
-@media (min-width: 441px) {
-  body:not([data-liquid-nav]) .liquid-glass-desktop-utils {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: none;
-  }
+.nav-test-top-profile:active {
+  transform: scale(0.96);
 }
 
-/* When the centered top nav is wide, keep utils from colliding on mid widths */
-@media (max-width: 900px) {
-  body[data-liquid-nav="desktop"] .liquid-glass-desktop-utils,
-  body[data-liquid-nav="to-desktop"] .liquid-glass-desktop-utils {
-    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 64px);
-    height: auto;
-  }
+.nav-test-top-profile:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
 }
 
-@media (min-width: 441px) and (max-width: 900px) {
-  body:not([data-liquid-nav]) .liquid-glass-desktop-utils {
-    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 64px);
-    height: auto;
-  }
+.nav-test-top-profile.is-active {
+  border-color: color-mix(in oklab, oklch(0.711 0.203 357.66) 45%, oklch(0.656 0.212 354.31) 35%);
+  background: color-mix(
+    in oklab,
+    color-mix(in oklab, oklch(0.711 0.203 357.66) 28%, oklch(0.656 0.212 354.31) 18%) 42%,
+    transparent
+  );
+  color: oklch(1 0 0 / 0.94);
+}
+
+.nav-test-top-profile-icon {
+  width: 18px;
+  height: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -222,10 +217,6 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     opacity: 1;
     visibility: visible;
     filter: none;
-  }
-
-  .liquid-glass-desktop-utils {
-    transition: none !important;
   }
 }
 
@@ -238,17 +229,17 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top {
   --top-nav-surface: linear-gradient(
     180deg,
-    #620020 0%,
-    #ff005329 10%,
-    #0000005c 20%,
-    #a9003757 100%
+    oklch(0.316 0.126 12.15) 0%,
+    oklch(0.635 0.254 16.01 / 0.161) 10%,
+    oklch(0 0 0 / 0.361) 20%,
+    oklch(0.467 0.187 14.78 / 0.341) 100%
   );
   --top-nav-surface-scrolled: linear-gradient(
     180deg,
-    #620020 0%,
-    #ff005329 10%,
-    #0000005c 20%,
-    #a9003757 100%
+    oklch(0.316 0.126 12.15) 0%,
+    oklch(0.635 0.254 16.01 / 0.161) 10%,
+    oklch(0 0 0 / 0.361) 20%,
+    oklch(0.467 0.187 14.78 / 0.341) 100%
   );
   /* Dark frost plate — overrides tw-glass white glass-surface fill. */
   --glass-bg-opacity: 0;
@@ -258,22 +249,28 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   left: 50%;
   /* Above page content / bottom dock */
   z-index: 20;
-  width: min(720px, calc(100% - 32px));
-  max-width: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(var(--app-content-max, 80rem), calc(100% - 32px));
+  max-width: min(var(--app-content-max, 80rem), calc(100% - 32px));
   height: 56px;
+  padding-inline: 14px 12px;
+  box-sizing: border-box;
   pointer-events: none;
   opacity: 0;
   transform: translate3d(-50%, calc(-100% - 28px), 0);
   /* Off-screen only — never leave a non-none filter while visible (kills glass). */
   filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid oklch(1 0 0 / 0.1);
   border-radius: 16px;
   overflow: hidden;
   background: var(--top-nav-surface);
   /* Match mobile HUD rim; tw-glass supplies backdrop-filter + displacement. */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
   /*
     Avoid permanent will-change on the glass node — promoting it to its own
     layer can prevent backdrop-filter / displacement from sampling the page
@@ -286,6 +283,46 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     border-color 160ms ease;
 }
 
+/* Logo from mobile top nav — left rail of [logo | tabs | utils]. */
+.nav-test-top-brand {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px 0 2px;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 160ms ease;
+}
+
+.nav-test-top-brand:hover {
+  opacity: 0.9;
+}
+
+.nav-test-top-brand:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.nav-test-top-brand-logo {
+  display: block;
+  height: 2.25rem; /* match mobile top-nav-brand-logo h-9 */
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 /*
   Beat tw-glass .glass-surface utility specificity so the rose plate + rim win.
   Leave backdrop-filter alone — displacement comes from .glass classes.
@@ -293,10 +330,10 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top.glass.glass-surface {
   --glass-bg-opacity: 0;
   background: var(--top-nav-surface);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid oklch(1 0 0 / 0.1);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
 }
 
 /* Legacy hook — surface node removed; keep selector harmless. */
@@ -322,9 +359,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   .nav-test-top.glass.glass-surface {
     background: linear-gradient(
       180deg,
-      #620020 0%,
-      #4a0018 45%,
-      #1a0008 100%
+      oklch(0.316 0.126 12.15) 0%,
+      oklch(0.261 0.104 10.45) 45%,
+      oklch(0.141 0.057 0.87) 100%
     );
   }
 }
@@ -333,16 +370,21 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   position: relative;
   z-index: 1;
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 4px;
+  min-width: 0;
+  max-width: min(40rem, 100%);
   height: 100%;
-  padding: 0 10px;
+  margin-inline: auto;
+  padding: 0;
   pointer-events: none;
   transition:
     gap 280ms cubic-bezier(0.22, 1, 0.36, 1),
     padding 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    justify-content 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    justify-content 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Top-nav sliding active indicator (mirrors bottom dock bubble) */
@@ -376,22 +418,22 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top-bubble {
   z-index: 0;
   opacity: var(--top-bubble-opacity, 0);
-  background: linear-gradient(180deg, #0000002e, transparent);
+  background: linear-gradient(180deg, oklch(0 0 0 / 0.18), transparent);
   box-shadow:
-    inset 3px 4px 1px -4px rgb(255 255 255 / 58%),
-    inset 9px 10px 7px -8px rgba(255, 255, 255, 0.18),
-    inset -7px -6px 1px -6.7px rgb(255 255 255 / 35%),
-    inset -8px -9px 4px -3px rgb(255 255 255 / 5%);
+    inset 3px 4px 1px -4px oklch(1 0 0 / 0.58),
+    inset 9px 10px 7px -8px oklch(1 0 0 / 0.18),
+    inset -7px -6px 1px -6.7px oklch(1 0 0 / 0.35),
+    inset -8px -9px 4px -3px oklch(1 0 0 / 0.05);
 }
 
 .nav-test-top-bubble-active-glow {
   z-index: 0;
-  background: linear-gradient(0deg, #ff004e00 7%, #ff004ead, #ff004e, #ff004e00);
+  background: linear-gradient(0deg, oklch(0.634 0.254 17.36 / 0) 7%, oklch(0.634 0.254 17.36 / 0.678), oklch(0.634 0.254 17.36), oklch(0.634 0.254 17.36 / 0));
   opacity: calc(var(--top-bubble-opacity, 0) * 0.5);
   background-position: center 27px;
   background-repeat: no-repeat;
   background-size: 130%;
-  box-shadow: inset 4px 5px 0px -3px #ff0096;
+  box-shadow: inset 4px 5px 0px -3px oklch(0.652 0.267 355.66);
   /* Slow fade-in after the indicator settles */
   transition:
     transform var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
@@ -436,7 +478,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-top-item.is-drag-target {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-top-item.is-drag-target .nav-test-top-icon,
@@ -451,8 +493,14 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   transition: flex 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-test-top-slot:has(.nav-test-top-item.is-primary) {
+  /* Give "My Collection" room so the label never ellipsizes */
+  flex: 1.35 1 auto;
+  min-width: max-content;
 }
 
 .nav-test-top-item {
@@ -463,13 +511,15 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   justify-content: center;
   gap: 8px;
   min-width: 0;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: 40px;
-  padding: 0 8px;
+  /* Extra horizontal padding so longer labels (My Collection) breathe in the pill */
+  padding: 0 16px;
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: oklch(1 0 0 / 0.5);
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
@@ -481,6 +531,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     width 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.nav-test-top-item.is-primary {
+  /* Primary tab label is longer — size to content, don't clip */
+  width: auto;
+  min-width: max-content;
+  padding-inline: 18px;
+}
+
 /* No hover/visited/active fill or brightness change — indicator owns chrome */
 .nav-test-top-item:hover,
 .nav-test-top-item:focus,
@@ -488,7 +545,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top-item:visited {
   background: transparent;
   background-color: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: oklch(1 0 0 / 0.5);
   opacity: 1;
 }
 
@@ -505,11 +562,11 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 .nav-test-top-item.is-active,
 .nav-test-top-item.is-drag-target {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-top-item.is-primary.is-active {
-  color: #ffb0c8;
+  color: oklch(0.839 0.097 359.58);
 }
 
 .nav-test-top-item .nav-test-top-icon,
@@ -527,7 +584,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-top-item:focus-visible {
-  outline: 2px solid rgba(255, 143, 177, 0.9);
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 2px;
 }
 
@@ -541,9 +598,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-top-label {
   display: inline-block;
   min-width: 0;
-  max-width: 7.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
   font-size: 12px;
   font-weight: 550;
@@ -563,29 +620,34 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 /*
- * Compact top nav: icon-only, centered.
- * Also force this during desktop→mobile handoff so labels don't flash
- * when the viewport crosses below 441px mid-exit animation.
+ * Compact top nav densifies only after the chrome swap (496px).
+ * Below 496px stays bottom dock + mobile HUD — no top-nav label band.
  */
-@media (min-width: 441px) and (max-width: 620px) {
+@media (min-width: 496px) and (max-width: 720px) {
   .nav-test-top {
-    width: min(360px, calc(100% - 28px));
-    max-width: 360px;
+    gap: 8px;
+    padding-inline: 10px 8px;
   }
 
   .nav-test-top-items {
     justify-content: space-around;
     gap: 2px;
-    padding: 0 8px;
+    max-width: none;
   }
 
-  .nav-test-top-slot {
+  /* Equal icon-only slots — reset label-driven stretch from desktop mode */
+  .nav-test-top-slot,
+  .nav-test-top-slot:has(.nav-test-top-item.is-primary) {
     flex: 0 0 auto;
+    min-width: 0;
   }
 
-  .nav-test-top-item {
+  .nav-test-top-item,
+  .nav-test-top-item.is-primary {
     gap: 0;
     width: 44px;
+    min-width: 44px;
+    max-width: 44px;
     padding: 0;
   }
 
@@ -594,11 +656,28 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   }
 
   .nav-test-top-label {
-    max-width: 0;
+    max-width: 0 !important;
     opacity: 0;
     margin: 0;
+    overflow: hidden;
     transform: translateX(-4px);
     pointer-events: none;
+  }
+
+  /* Keep balances readable; collapse gap a bit on narrow desktop */
+  .nav-test-top-utils .top-nav-resources {
+    gap: 0.65rem;
+  }
+}
+
+/* Very narrow desktop: smaller logo / balance type after the swap */
+@media (min-width: 496px) and (max-width: 560px) {
+  .nav-test-top-brand-logo {
+    height: 1.85rem;
+  }
+
+  .nav-test-top-utils .top-nav-resource-value {
+    font-size: 12px;
   }
 }
 
@@ -615,13 +694,18 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   padding: 0 8px;
 }
 
-.nav-test.is-handoff-to-mobile .nav-test-top-slot {
+.nav-test.is-handoff-to-mobile .nav-test-top-slot,
+.nav-test.is-handoff-to-mobile .nav-test-top-slot:has(.nav-test-top-item.is-primary) {
   flex: 0 0 auto;
+  min-width: 0;
 }
 
-.nav-test.is-handoff-to-mobile .nav-test-top-item {
+.nav-test.is-handoff-to-mobile .nav-test-top-item,
+.nav-test.is-handoff-to-mobile .nav-test-top-item.is-primary {
   gap: 0;
   width: 44px;
+  min-width: 44px;
+  max-width: 44px;
   padding: 0;
 }
 
@@ -723,11 +807,11 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 /* Bottom dock enter — no overshoot, ease straight into place */
 @keyframes nav-test-dock-enter {
   0% {
-    transform: translate3d(-50%, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0) scale(0.98);
+    transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0) scale(0.98);
     filter: blur(10px);
   }
   100% {
-    transform: translate3d(-50%, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
     filter: blur(0);
   }
 }
@@ -781,8 +865,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   pointer-events: auto;
 }
 
-.nav-test.is-desktop .nav-test-dock {
-  transform: translate3d(-50%, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0);
+.nav-test.is-desktop .nav-test-dock-wrap {
+  transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0);
   filter: blur(10px);
   pointer-events: none;
 }
@@ -802,7 +886,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
  * Mobile → desktop: bottom dock exits first, top enters after.
  * Keep top hidden until dock exit has a head start so bars don't stack.
  */
-.nav-test.is-handoff-to-desktop .nav-test-dock {
+.nav-test.is-handoff-to-desktop .nav-test-dock-wrap {
   animation: nav-test-dock-exit 820ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
   pointer-events: none;
 }
@@ -870,7 +954,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 /* Bottom dock waits for top exit to lead, then animates in */
-.nav-test.is-handoff-to-mobile .nav-test-dock {
+.nav-test.is-handoff-to-mobile .nav-test-dock-wrap {
   animation: nav-test-dock-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
   pointer-events: none;
 }
@@ -902,15 +986,39 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 /* ── Experimental dock ─────────────────────────────────────────── */
-.nav-test-dock {
+/*
+ * Full-bleed host: owns fixed bottom placement, horizontal centering, and
+ * the black → transparent veil under/around the glass dock.
+ */
+.nav-test-dock-wrap {
   position: fixed;
-  /* Centered horizontally; side inset keeps caps off the viewport edge */
-  left: 50%;
-  right: auto;
-  /* Default / desktop: slight lift off bottom edge */
-  bottom: calc(2.5dvh + env(safe-area-inset-bottom, 0px));
-  /* Highest interactive chrome; product host bumps this further */
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 5100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  width: 100vw;
+  max-width: 100vw;
+  /* Tall enough for the dock + soft fade into the page above */
+  padding: 2.75rem 0 calc(2.5dvh + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  pointer-events: none;
+  overflow: visible;
+  background: linear-gradient(
+    180deg,
+    oklch(0 0 0 / 0) 0%,
+    oklch(0 0 0 / 0.55) 72%,
+    oklch(0 0 0 / 0.92) 100%
+  );
+  will-change: transform;
+  /* Do NOT use isolation:isolate here — it can kill backdrop-filter sampling */
+}
+
+.nav-test-dock {
+  position: relative;
+  /* Side inset keeps caps off the viewport edge */
   width: min(
     400px,
     calc(100% - 2 * max(18px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)))
@@ -919,17 +1027,14 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   height: 96px;
   overflow: visible;
   pointer-events: none;
-  transform: translate3d(-50%, 0, 0);
-  will-change: transform;
-  /* Do NOT use isolation:isolate here — it can kill backdrop-filter sampling */
+  flex: 0 0 auto;
 }
 
 /* Mobile: sit lower and stay fixed (dvh + safe-area) */
 @media (max-width: 440px) {
-  .nav-test-dock {
-    position: fixed;
+  .nav-test-dock-wrap {
     /* Between original 2.5dvh lift and the too-low inset-only position */
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.1dvh);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.1dvh);
   }
 }
 
@@ -939,16 +1044,16 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
  */
 @keyframes nav-test-dock-exit {
   0% {
-    transform: translate3d(-50%, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
     filter: blur(0);
   }
   /* Anticipation — crouch/lift opposite the exit */
   18% {
-    transform: translate3d(-50%, -14px, 0) scale(1.025);
+    transform: translate3d(0, -14px, 0) scale(1.025);
     filter: blur(0);
   }
   100% {
-    transform: translate3d(-50%, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0) scale(0.98);
+    transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0) scale(0.98);
     filter: blur(10px);
   }
 }
@@ -1003,6 +1108,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .nav-test-dock-wrap,
   .nav-test-dock,
   .nav-test-dock-surface,
   .nav-test-dock-rims,
@@ -1032,9 +1138,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   left: -3px;
   height: 93px;
   pointer-events: none;
-  background: rgb(0 0 0 / 75%);
-  backdrop-filter: blur(6px) saturate(160%) brightness(1.15);
-  -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(1.15);
+  background: oklch(0 0 0 / 0.65);
+  backdrop-filter: blur(5px) saturate(200%) brightness(2.0);
+  -webkit-backdrop-filter: blur(5px) saturate(200%) brightness(2.0);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
@@ -1102,7 +1208,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   box-sizing: content-box;
   width: 10dvw;
   height: 96px;
-  border: 2px solid #fff;
+  border: 2px solid oklch(1 0 0);
   background: transparent;
   pointer-events: none;
 }
@@ -1112,8 +1218,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border-radius: 2.5rem 0 0 2.5rem;
   width: 34dvw;
   height: 100%;
-  border-top: 1px solid #fff;
-  border-left: 1px solid #fff;
+  border-top: 1px solid oklch(1 0 0);
+  border-left: 1px solid oklch(1 0 0);
   border-right: 0;
   border-bottom: 0;
   -webkit-mask-image: linear-gradient(147deg, black, transparent 50%);
@@ -1125,8 +1231,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border-radius: 2.5rem 0 0 2.5rem;
   width: 32dvw;
   height: 100%;
-  border-top: 1px solid #fff;
-  border-left: 1px solid #fff;
+  border-top: 1px solid oklch(1 0 0);
+  border-left: 1px solid oklch(1 0 0);
   border-right: 0;
   border-bottom: 0;
   filter: blur(3px);
@@ -1140,9 +1246,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 1px solid #fff;
-  -webkit-mask-image: linear-gradient(0deg, #000000d9, transparent 5%);
-  mask-image: linear-gradient(0deg, #000000d9, transparent 5%);
+  border: 1px solid oklch(1 0 0);
+  -webkit-mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.851), transparent 5%);
+  mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.851), transparent 5%);
 }
 
 .rim-center-a-b {
@@ -1150,10 +1256,10 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 1px solid #fff;
+  border: 1px solid oklch(1 0 0);
   filter: blur(1px);
-  -webkit-mask-image: linear-gradient(0deg, #00000082, transparent 84% 20%);
-  mask-image: linear-gradient(0deg, #00000082, transparent 84% 20%);
+  -webkit-mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.51), transparent 84% 20%);
+  mask-image: linear-gradient(0deg, oklch(0 0 0 / 0.51), transparent 84% 20%);
 }
 
 .rim-right-a {
@@ -1163,8 +1269,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   height: 100%;
   right: 0;
   left: auto;
-  border-bottom: 1px solid #fff;
-  border-right: 1px solid #fff;
+  border-bottom: 1px solid oklch(1 0 0);
+  border-right: 1px solid oklch(1 0 0);
   border-left: 0;
   border-top: 0;
   -webkit-mask-image: linear-gradient(48deg, transparent 20%, black, transparent 80%);
@@ -1178,8 +1284,8 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   height: 100%;
   right: 0;
   left: auto;
-  border-bottom: 1px solid #fff;
-  border-right: 1px solid #fff;
+  border-bottom: 1px solid oklch(1 0 0);
+  border-right: 1px solid oklch(1 0 0);
   border-left: 0;
   border-top: 0;
   filter: blur(3px);
@@ -1195,10 +1301,11 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   left: 0;
   z-index: 3;
   display: grid;
+  gap: 3.5dvw;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: end;
   height: 78px;
-  padding: 0px 10px 18px;
+  padding: 0px 10px 4px;
   pointer-events: auto;
   touch-action: manipulation;
   /* Prevent iOS long-press text selection / callouts on dock labels */
@@ -1215,7 +1322,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   position: absolute;
   top: 0;
   left: 0;
-  width: var(--dock-bubble-w, 0px);
+  width: var(--dock-bubble-w, 3.8rem);
   height: var(--dock-bubble-h, 3.3rem);
   border-radius: var(--dock-bubble-radius, 0.5rem);
   pointer-events: none;
@@ -1223,7 +1330,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   user-select: none;
   -webkit-user-select: none;
   transform: translate3d(
-      var(--dock-bubble-x, 0px),
+      var(--dock-bubble-x, 4.7rem),
       var(--dock-bubble-y, 0px),
       0
     )
@@ -1241,12 +1348,12 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 .nav-test-dock-bubble,
 .nav-test-dock-bubble-active-glow {
-  background: linear-gradient(180deg, #0000002e, transparent);
+  background: linear-gradient(180deg, oklch(0 0 0 / 0.18), transparent);
   box-shadow:
-    inset 3px 4px 1px -4px rgb(255 255 255 / 58%),
-    inset 9px 10px 7px -8px rgba(255, 255, 255, 0.18),
-    inset -7px -6px 1px -6.7px rgb(255 255 255 / 35%),
-    inset -8px -9px 4px -3px rgb(255 255 255 / 5%);
+    inset 3px 4px 1px -4px oklch(1 0 0 / 0.58),
+    inset 9px 10px 7px -8px oklch(1 0 0 / 0.18),
+    inset -7px -6px 1px -6.7px oklch(1 0 0 / 0.35),
+    inset -8px -9px 4px -3px oklch(1 0 0 / 0.05);
   /* Fade + blur when sliding under Collection */
   opacity: var(--dock-bubble-opacity, 0);
   filter: blur(var(--dock-bubble-blur, 0px));
@@ -1255,12 +1362,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-dock-bubble-active-glow {
   /* Under Collection hero + regular tab content */
   z-index: 0;
-  background: linear-gradient(0deg, #ff004e, #ff004e00);
+  background: linear-gradient(0deg, oklch(0.634 0.254 17.36), oklch(0.634 0.254 17.36 / 0));
   opacity: var(--dock-bubble-glow-opacity, 0.5);
+  /* Keep glow fill aligned with the indicator bubble */
   background-position: center 30px;
   background-repeat: no-repeat;
-  background-size: 60px;
-  box-shadow: inset 4px 5px 0px -3px #ff0096;
+  background-size: 100%;
+  box-shadow: inset 4px 5px 0px -3px oklch(0.652 0.267 355.66);
 }
 
 .nav-test-dock-bubble {
@@ -1307,8 +1415,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   pointer-events: none;
 }
 
-.nav-test-dock-item.is-drag-target {
-  color: #ff8fb1;
+/* Indicator hover: pink the icon only — label stays at the base muted white. */
+.nav-test-dock-item.is-drag-target .nav-test-dock-icon {
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-dock-item {
@@ -1324,7 +1433,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0;
   border-radius: 0.5rem;
   background: transparent;
-  color: rgba(255, 255, 255, 0.42);
+  color: oklch(1 0 0 / 0.5);
   cursor: pointer;
   transition: color 180ms ease;
   -webkit-user-select: none;
@@ -1335,9 +1444,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-item.is-active {
-  color: #ff8fb1;
+  color: oklch(1 0 0 / 0.6);
   background: transparent;
   box-shadow: none;
+}
+
+.nav-test-dock-item.is-active .nav-test-dock-icon {
+  color: oklch(0.779 0.139 1.41);
 }
 
 .nav-test-dock-item .nav-test-dock-icon,
@@ -1357,7 +1470,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-dock-item.is-active .nav-test-dock-label,
 .nav-test-dock-item.is-drag-target .nav-test-dock-icon,
 .nav-test-dock-item.is-drag-target .nav-test-dock-label {
-  transform: translate3d(0, 1px, 0) scale(1.2);
+  transform: translate3d(0, 1px, 0) scale(1.1);
 }
 
 @media (max-width: 440px) {
@@ -1368,7 +1481,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-item:focus-visible {
-  outline: 2px solid rgba(255, 143, 177, 0.9);
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 2px;
 }
 
@@ -1378,9 +1491,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -1405,6 +1522,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 /* Hero button — Collection icon + cutout glow (~10% larger) */
 .nav-test-dock-primary-glow,
 .nav-test-hero-btn {
+  /* Dock-notch optical nudge; overridden below 390px via the same var. */
+  --dock-primary-nudge-x: 1.5dvw;
+
   position: absolute;
   top: -14px;
   left: 50%;
@@ -1416,8 +1536,15 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
-  /* Center on slot, then nudge left so rim/icon optically sits on the notch */
-  transform: translate3d(calc(-50% - 6px), -6px, 0.01px);
+  /*
+   * Center on the Collection slot, then shift left so the rim sits on the
+   * dock notch. Nudge is viewport-relative (dvw) and breakpoint-driven.
+   */
+  transform: translate3d(
+    calc(-37% - var(--dock-primary-nudge-x, 1.5dvw)),
+    -6px,
+    0.01px
+  );
   transition: transform 160ms ease;
 }
 
@@ -1430,7 +1557,11 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   margin-left: 0;
   margin-right: 0;
   background: transparent !important;
-  transform: translate3d(calc(-50% - 6px), -6px, 0.01px);
+  transform: translate3d(
+    calc(-37% - var(--dock-primary-nudge-x, 1.5dvw)),
+    -6px,
+    0.01px
+  );
 }
 
 .nav-test-dock-primary-glow .border-glow-inner {
@@ -1457,32 +1588,32 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   -webkit-mask-image:
     conic-gradient(
       from var(--cursor-angle) at center,
-      #000 0%,
-      #000 18%,
+      oklch(0 0 0) 0%,
+      oklch(0 0 0) 18%,
       transparent 42%,
       transparent 58%,
-      #000 82%,
-      #000 100%
+      oklch(0 0 0) 82%,
+      oklch(0 0 0) 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   mask-image:
     conic-gradient(
       from var(--cursor-angle) at center,
-      #000 0%,
-      #000 18%,
+      oklch(0 0 0) 0%,
+      oklch(0 0 0) 18%,
       transparent 42%,
       transparent 58%,
-      #000 82%,
-      #000 100%
+      oklch(0 0 0) 82%,
+      oklch(0 0 0) 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
@@ -1497,29 +1628,29 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     conic-gradient(
       from var(--cursor-angle) at center,
       transparent 0%,
-      #000 10%,
-      #000 30%,
+      oklch(0 0 0) 10%,
+      oklch(0 0 0) 30%,
       transparent 48%,
       transparent 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   mask-image:
     conic-gradient(
       from var(--cursor-angle) at center,
       transparent 0%,
-      #000 10%,
-      #000 30%,
+      oklch(0 0 0) 10%,
+      oklch(0 0 0) 30%,
       transparent 48%,
       transparent 100%
     ),
     radial-gradient(
       circle at var(--cutout-x, 50%) var(--cutout-y, 52%),
       transparent 0 var(--cutout-size, 62%),
-      #000 var(--cutout-feather, 72%) 100%
+      oklch(0 0 0) var(--cutout-feather, 72%) 100%
     );
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
@@ -1551,36 +1682,61 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
   cursor: pointer;
   transition: transform 160ms ease, color 180ms ease;
 }
 
 .nav-test-dock-primary.is-active .nav-test-dock-primary-btn {
-  color: #ffb0c8;
+  color: oklch(0.839 0.097 359.58);
 }
 
 .nav-test-dock-primary-glow:active,
 .nav-test-dock-primary-glow.border-glow-card:active {
-  transform: translate3d(calc(-50% - 6px), -6px, 0.01px) scale(0.97);
+  transform: translate3d(
+      calc(-37% - var(--dock-primary-nudge-x, 1.5dvw)),
+      -6px,
+      0.01px
+    )
+    scale(0.97);
+}
+
+/*
+ * Narrow phones (includes iPhone 12/13 mini CSS width 375 and 12 Pro at 390):
+ * lighter left nudge for the tighter dock notch.
+ * Use max-width: 390px — max-width: 389px never matched 390-wide devices.
+ */
+@media (max-width: 390px) {
+  .nav-test-dock-primary-glow,
+  .nav-test-hero-btn {
+    --dock-primary-nudge-x: 1.9dvw;
+  }
 }
 
 .nav-test-dock-primary-btn:focus-visible {
-  outline: 2px solid rgba(255, 143, 177, 0.9);
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 3px;
 }
 
 .nav-test-dock-primary-icon {
   width: 28px;
   height: 28px;
-  filter: drop-shadow(0 0 7px rgba(255, 86, 157, 0.35));
+  /* Hex keeps drop-shadow bloom reliable across WebKit mask + filter combos. */
+  filter: drop-shadow(0 0 3px #ff0068);
+  color: #ff0068;
+  -webkit-mask-image: linear-gradient(180deg, #000000, #00000069 100%);
+  mask-image: linear-gradient(180deg, #000000, #00000069 100%);
 }
 
 .nav-test-dock-primary-label {
-  color: rgba(255, 255, 255, 0.5);
+  color: oklch(1 0 0 / 0.5);
+  max-width: none;
+  padding-inline: 0;
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   transform: translateY(-8px);
   -webkit-user-select: none;
   user-select: none;
@@ -1588,6 +1744,14 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   pointer-events: none;
 }
 
+/* iPhone-class widths: keep "My Collection" on one line */
+@media (max-width: 430px) {
+  .nav-test-dock-primary-label {
+    font-size: 9px;
+    letter-spacing: -0.02em;
+  }
+}
+
 .nav-test-dock-primary.is-active .nav-test-dock-primary-label {
-  color: #ff8fb1;
+  color: oklch(0.779 0.139 1.41);
 }

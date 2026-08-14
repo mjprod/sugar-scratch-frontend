@@ -26,9 +26,9 @@ export function Button({
 }: ButtonProps) {
   const styles = {
     primary:
-      "bg-[#8B5CF6] text-white shadow-[0_12px_28px_rgba(139,92,246,0.35)] hover:bg-[#A855F7] disabled:bg-white/20 disabled:text-white/40 disabled:shadow-none",
+      "bg-[oklch(0.606_0.219_292.72)] text-white shadow-[0_12px_28px_oklch(0.606_0.219_292.72_/_0.35)] hover:bg-[oklch(0.627_0.233_303.9)] disabled:bg-white/20 disabled:text-white/40 disabled:shadow-none",
     glow:
-      "bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white shadow-[0_0_40px_rgba(139,92,246,0.35)] disabled:opacity-40 disabled:shadow-none",
+      "bg-gradient-to-r from-[oklch(0.606_0.219_292.72)] to-[oklch(0.656_0.212_354.31)] text-white shadow-[0_0_40px_oklch(0.606_0.219_292.72_/_0.35)] disabled:opacity-40 disabled:shadow-none",
     secondary:
       "bg-white/[0.08] text-white border border-white/[0.08] backdrop-blur-xl disabled:opacity-40",
     ghost:
@@ -36,7 +36,7 @@ export function Button({
     soft:
       "bg-white/[0.08] text-white shadow-soft border border-white/[0.08] disabled:opacity-40",
     auth:
-      "bg-white text-[#090909] font-semibold disabled:opacity-45",
+      "bg-white text-[oklch(0.14_0_0)] font-semibold disabled:opacity-45",
   }[variant];
 
   return (
@@ -93,10 +93,10 @@ export function Field({
             "h-[56px] w-full rounded-[14px] border bg-surface-raised px-4 text-[15px] text-ink placeholder:text-ink-tertiary transition-[border-color,box-shadow]",
             passwordToggle ? "pr-20" : "pr-12",
             error
-              ? "border-danger shadow-[0_0_0_3px_rgba(255,59,48,0.12)]"
+              ? "border-danger shadow-[0_0_0_3px_oklch(0.654_0.232_28.66_/_0.12)]"
               : success
-                ? "border-success shadow-[0_0_0_3px_rgba(52,199,89,0.12)]"
-                : "border-line focus:border-brand focus:shadow-[0_0_0_3px_rgba(244,63,94,0.12)]",
+                ? "border-success shadow-[0_0_0_3px_oklch(0.73_0.194_147.44_/_0.12)]"
+                : "border-line focus:border-brand focus:shadow-[0_0_0_3px_oklch(0.645_0.215_16.44_/_0.12)]",
             className,
           ].join(" ")}
           aria-invalid={Boolean(error)}
@@ -146,7 +146,7 @@ export function SelectRow({
       className={[
         "flex h-[64px] w-full items-center justify-between rounded-2xl px-5 text-left text-[16px] font-medium tracking-[-0.01em] transition-all",
         selected
-          ? "bg-gradient-to-r from-berry to-brand text-ink-inverse shadow-[0_12px_28px_rgba(244,63,94,0.35)]"
+          ? "bg-gradient-to-r from-berry to-brand text-ink-inverse shadow-[0_12px_28px_oklch(0.645_0.215_16.44_/_0.35)]"
           : "bg-surface-muted text-ink",
       ].join(" ")}
     >
@@ -172,7 +172,7 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
           className={[
             "h-[3px] flex-1 rounded-full transition-colors",
             i < step
-              ? "bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]"
+              ? "bg-gradient-to-r from-[oklch(0.606_0.219_292.72)] to-[oklch(0.656_0.212_354.31)]"
               : "bg-white/10",
           ].join(" ")}
         />
@@ -196,8 +196,8 @@ export function LogoMark({
         "rounded-full",
         dim,
         tone === "white"
-          ? "bg-white shadow-[0_8px_24px_rgba(255,255,255,0.25)]"
-          : "bg-[radial-gradient(circle_at_30%_28%,#A855F7,#8B5CF6_50%,#5B21B6)] shadow-glow",
+          ? "bg-white shadow-[0_8px_24px_oklch(1_0_0_/_0.25)]"
+          : "bg-[radial-gradient(circle_at_30%_28%,oklch(0.627_0.233_303.9),oklch(0.606_0.219_292.72)_50%,oklch(0.432_0.211_292.76))] shadow-glow",
       ].join(" ")}
     />
   );
@@ -252,7 +252,7 @@ export function Checkbox({
         className={[
           "mt-0.5 grid size-5 shrink-0 place-items-center rounded-[6px] border text-[11px] transition-colors",
           error
-            ? "border-danger bg-[rgba(255,59,48,0.08)]"
+            ? "border-danger bg-[oklch(0.654_0.232_28.66_/_0.08)]"
             : checked
               ? "border-brand bg-brand text-white"
               : "border-line-strong bg-surface-raised",

@@ -22,11 +22,11 @@ export type ContinueCollectingSectionProps = {
 };
 
 function progressColor(percent: number): string {
-  if (percent >= 60) return "#FF3D7F";
-  if (percent >= 45) return "#E0559C";
-  if (percent >= 35) return "#E8B84B";
-  if (percent >= 20) return "#E08A3C";
-  return "#8A8A8A";
+  if (percent >= 60) return "oklch(0.669 0.23 6.08)";
+  if (percent >= 45) return "oklch(0.652 0.187 351.84)";
+  if (percent >= 35) return "oklch(0.806 0.136 84.74)";
+  if (percent >= 20) return "oklch(0.71 0.139 59.4)";
+  return "oklch(0.633 0 0)";
 }
 
 function toCard(item: ContinueCollectingItem): CollectionCardData {
@@ -154,7 +154,7 @@ function CollectionCard({
         <span className="continue-collecting-name">{card.creatorName}</span>
         <span
           className="continue-collecting-pct"
-          style={{ color: percent >= 60 ? "#FF3D7F" : "rgba(255,255,255,0.92)" }}
+          style={{ color: percent >= 60 ? "oklch(0.669 0.23 6.08)" : "oklch(1 0 0 / 0.92)" }}
         >
           {percent}%
         </span>
@@ -204,7 +204,7 @@ function ProgressRing({
           cy="60"
           r={r}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="oklch(1 0 0 / 0.08)"
           strokeWidth="4"
         />
         <circle

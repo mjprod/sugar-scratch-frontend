@@ -15,11 +15,13 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
+import { InboxButton } from "@/components/InboxButton";
 import { BorderGlow } from "@/components/ui/BorderGlow";
 import type { AppTab } from "@/types/app";
 import "./LiquidGlassNav.css";
 
-const DESKTOP_MQ = "(min-width: 441px)";
+const DESKTOP_MQ = "(min-width: 496px)";
 type NavHandoff = "none" | "to-desktop" | "to-mobile";
 
 type DockBubble = {
@@ -35,6 +37,7 @@ type DockBubble = {
 };
 
 const BUBBLE_RADIUS = {
+  /** Left end-cap (Discover tab is first). */
   home: "1.5rem 0.2rem 0.2rem 1.5rem",
   profile: "0.2rem 1.5rem 1.5rem 0.2rem",
   default: "0.5rem",
@@ -64,12 +67,24 @@ type TabConfig = {
   primary?: boolean;
 };
 
+/** Mobile dock order. */
 const TABS: TabConfig[] = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "feed", label: "Browse", icon: Compass },
-  { id: "bag", label: "Collection", icon: Layers3, primary: true },
-  { id: "hub", label: "Hub", icon: Gift },
+  { id: "home", label: "Discover", icon: Compass },
+  { id: "feed", label: "Home", icon: Home },
+  { id: "bag", label: "My Collection", icon: Layers3, primary: true },
+  { id: "hub", label: "Store", icon: Gift },
   { id: "profile", label: "Profile", icon: User },
+];
+
+/**
+ * Desktop top bar primary tabs.
+ * Profile is icon-only in the right utility cluster (not in this list).
+ */
+const DESKTOP_TABS: TabConfig[] = [
+  { id: "feed", label: "Home", icon: Home },
+  { id: "home", label: "Discover", icon: Compass },
+  { id: "hub", label: "Store", icon: Gift },
+  { id: "bag", label: "My Collection", icon: Layers3, primary: true },
 ];
 
 /**
@@ -89,7 +104,11 @@ const DOCK_MASK = `url("data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${DOCK_VIEWBOX}" preserveAspectRatio="none"><path fill="white" d="${DOCK_PATH}"/></svg>`,
 )}")`;
 
-/** Exactly 3 mesh colors for Collection BorderGlow rim */
+/**
+ * Exactly 3 mesh colors for Collection BorderGlow rim.
+ * Keep hex — BorderGlow gradient mesh consumes these as CSS color stops and
+ * some engines/pipelines still resolve hex more reliably than oklch here.
+ */
 const COLLECTION_GLOW_COLORS = ["#ff8fb1", "#f472b6", "#c084fc"] as const;
 
 /** Locked Collection glow center cutout */
@@ -113,8 +132,10 @@ const CUTOUT_STYLE = {
   )}%`,
 };
 
-/** Fixed dock bubble height — keep in sync with --dock-bubble-h in CSS. */
+/** Fixed dock bubble size — keep in sync with --dock-bubble-* in CSS. */
 const DOCK_BUBBLE_H_REM = 3.3;
+/** After dock-items gap, keep indicator at a compact fixed width. */
+const DOCK_BUBBLE_W_REM = 3.8;
 
 function remToPx(rem: number) {
   if (typeof document === "undefined") return rem * 16;
@@ -131,25 +152,22 @@ function measureBubbleForTab(
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
-  const insetX = 2;
   const bubbleH = remToPx(DOCK_BUBBLE_H_REM);
+  const bubbleW = remToPx(DOCK_BUBBLE_W_REM);
   // Vertically center the fixed-height bubble, then nudge up ~5px
+  // so the indicator sits with the icon/label cluster.
   const bubbleY =
     rect.top - parentRect.top + (rect.height - bubbleH) / 2 - 5;
 
-  // Side-pad compensation for end caps (Home / Profile)
-  const baseX = rect.left - parentRect.left + insetX;
-  const baseW = Math.max(0, rect.width - insetX * 2);
+  // Center the fixed-width bubble on the tab cell (works with dock-items gap).
+  let bubbleX =
+    rect.left - parentRect.left + (rect.width - bubbleW) / 2;
 
-  let bubbleX = baseX;
-  let bubbleW = baseW;
-
+  // Side-pad compensation for end caps (Discover / Profile)
   if (tabId === "home") {
-    bubbleX = baseX - 5;
-    bubbleW = baseW + 8;
+    bubbleX -= 2;
   } else if (tabId === "profile") {
-    bubbleX = baseX + 3;
-    bubbleW = baseW + 5;
+    bubbleX += 2;
   }
 
   return {
@@ -169,15 +187,16 @@ function measureTopBubbleForTab(
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
-  const insetX = 2;
+  // Slight outer pad so the pill reads roomier than the label (esp. My Collection).
+  const padX = 6;
   const insetY = 4;
   const fullH = Math.max(0, rect.height - insetY * 2);
   const bubbleH = fullH * 1.2;
   const bubbleY = rect.top - parentRect.top + insetY + (fullH - bubbleH) / 2;
 
   // Top nav has uniform corners — no Home/Profile end-cap compensation
-  const bubbleX = rect.left - parentRect.left + insetX;
-  const bubbleW = Math.max(0, rect.width - insetX * 2);
+  const bubbleX = rect.left - parentRect.left - padX;
+  const bubbleW = Math.max(0, rect.width + padX * 2);
 
   return {
     x: bubbleX,
@@ -193,6 +212,12 @@ export type LiquidGlassNavProps = {
   onTabChange: (tab: AppTab) => void;
   onReselect?: (tab: AppTab) => void;
   hidden?: boolean;
+  /** Desktop top-bar balances (optional — omitted on playground). */
+  coins?: number | null;
+  diamonds?: number | null;
+  onOpenStore?: () => void;
+  onOpenInbox?: () => void;
+  inboxUnreadCount?: number;
 };
 
 /**
@@ -204,6 +229,11 @@ export function LiquidGlassNav({
   onTabChange,
   onReselect,
   hidden = false,
+  coins = null,
+  diamonds = null,
+  onOpenStore,
+  onOpenInbox,
+  inboxUnreadCount = 0,
 }: LiquidGlassNavProps) {
   const active = activeTab;
   const [isDesktop, setIsDesktop] = useState(false);
@@ -243,6 +273,7 @@ export function LiquidGlassNav({
     (
       clientX: number,
       tabRefs: Array<HTMLElement | null>,
+      tabs: TabConfig[],
       opts?: { ignorePrimary?: boolean },
     ): {
       id: AppTab;
@@ -259,8 +290,8 @@ export function LiquidGlassNav({
       };
       let best: Nearest | null = null;
 
-      for (let index = 0; index < TABS.length; index += 1) {
-        const tab = TABS[index];
+      for (let index = 0; index < tabs.length; index += 1) {
+        const tab = tabs[index];
         if (opts?.ignorePrimary && tab.primary) continue;
         const el = tabRefs[index];
         if (!el) continue;
@@ -285,12 +316,15 @@ export function LiquidGlassNav({
 
   const findNearestDraggableTab = useCallback(
     (clientX: number) =>
-      findNearestTab(clientX, dockTabRefs.current, { ignorePrimary: true }),
+      findNearestTab(clientX, dockTabRefs.current, TABS, {
+        ignorePrimary: true,
+      }),
     [findNearestTab],
   );
 
   const findNearestTopTab = useCallback(
-    (clientX: number) => findNearestTab(clientX, topTabRefs.current),
+    (clientX: number) =>
+      findNearestTab(clientX, topTabRefs.current, DESKTOP_TABS),
     [findNearestTab],
   );
 
@@ -331,26 +365,29 @@ export function LiquidGlassNav({
         ...prev,
         underCollection: 0,
         visible: false,
+        // Keep ready so a later tab change can still animate from last geometry.
         ready: prev.ready,
       }));
       return;
     }
 
     const measured = measureBubbleForTab(parent, target, activeTabConfig.id);
-    setBubble({
+    setBubble((prev) => ({
       ...measured,
       underCollection: measureUnderCollection(measured.x, measured.w),
       visible: true,
-      ready: true,
-    });
+      // First placement must stay duration:0 until after paint, otherwise the
+      // bubble slides up from the default (0,0) origin on load.
+      ready: prev.ready,
+    }));
   }, [active, measureUnderCollection]);
 
   const updateTopBubble = useCallback(() => {
     if (topBubbleDragRef.current) return;
 
     const parent = topItemsRef.current;
-    const activeIndex = TABS.findIndex((tab) => tab.id === active);
-    const activeTabConfig = TABS[activeIndex];
+    const activeIndex = DESKTOP_TABS.findIndex((tab) => tab.id === active);
+    const activeTabConfig = DESKTOP_TABS[activeIndex];
     const target = topTabRefs.current[activeIndex];
 
     if (!parent || !target || !activeTabConfig) {
@@ -363,18 +400,60 @@ export function LiquidGlassNav({
     }
 
     const measured = measureTopBubbleForTab(parent, target, activeTabConfig.id);
-    setTopBubble({
+    setTopBubble((prev) => ({
       ...measured,
       underCollection: 0,
       visible: true,
-      ready: true,
-    });
+      // Same first-paint snap as the dock bubble.
+      ready: prev.ready,
+    }));
   }, [active]);
 
   useLayoutEffect(() => {
     updateDockBubble();
     updateTopBubble();
   }, [updateDockBubble, updateTopBubble, handoff, isDesktop]);
+
+  // After the first measured geometry has painted with duration:0, arm
+  // transitions so later tab/drag moves ease instead of sliding from (0,0).
+  useEffect(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+    const needsDockArm = bubble.visible && !bubble.ready && bubble.w > 0;
+    const needsTopArm = topBubble.visible && !topBubble.ready && topBubble.w > 0;
+    if (!needsDockArm && !needsTopArm) return;
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (needsDockArm) {
+          setBubble((prev) =>
+            prev.visible && !prev.ready && prev.w > 0
+              ? { ...prev, ready: true }
+              : prev,
+          );
+        }
+        if (needsTopArm) {
+          setTopBubble((prev) =>
+            prev.visible && !prev.ready && prev.w > 0
+              ? { ...prev, ready: true }
+              : prev,
+          );
+        }
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [
+    bubble.ready,
+    bubble.visible,
+    bubble.w,
+    topBubble.ready,
+    topBubble.visible,
+    topBubble.w,
+  ]);
 
   useEffect(() => {
     const dockParent = dockItemsRef.current;
@@ -766,9 +845,13 @@ export function LiquidGlassNav({
   const bubbleVisualScale = 1 - under * 0.28;
 
   const dockBubbleStyle = {
-    ["--dock-bubble-x" as string]: `${bubble.x}px`,
+    ["--dock-bubble-x" as string]: bubble.ready
+      ? `${bubble.x}px`
+      : "4.7rem",
     ["--dock-bubble-y" as string]: `${bubble.y}px`,
-    ["--dock-bubble-w" as string]: `${bubble.w}px`,
+    ["--dock-bubble-w" as string]: bubble.ready
+      ? `${bubble.w}px`
+      : `${DOCK_BUBBLE_W_REM}rem`,
     ["--dock-bubble-h" as string]: `${DOCK_BUBBLE_H_REM}rem`,
     ["--dock-bubble-radius" as string]: bubble.radius,
     ["--dock-bubble-opacity" as string]: String(bubbleVisualOpacity),
@@ -803,6 +886,21 @@ export function LiquidGlassNav({
         className="nav-test-top glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
         aria-label="Primary"
       >
+        <button
+          type="button"
+          className="nav-test-top-brand"
+          aria-label="Sugar Scratch Home"
+          tabIndex={hidden ? -1 : undefined}
+          onClick={() => selectTab("feed")}
+        >
+          <img
+            src="/svg/logoSugarScratch.svg"
+            alt="Sugar Scratch"
+            className="nav-test-top-brand-logo"
+            draggable={false}
+          />
+        </button>
+
         <div
           className="nav-test-top-items"
           ref={topItemsRef}
@@ -834,7 +932,7 @@ export function LiquidGlassNav({
             onPointerCancel={endTopBubbleDrag}
           />
 
-          {TABS.map((tab, index) => {
+          {DESKTOP_TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
             const isDragTarget =
@@ -873,171 +971,203 @@ export function LiquidGlassNav({
             );
           })}
         </div>
+
+        <div className="liquid-glass-desktop-utils nav-test-top-utils">
+          <CurrencyBalances
+            coins={coins}
+            diamonds={diamonds}
+            onOpenStore={onOpenStore}
+          />
+          <button
+            type="button"
+            className={[
+              "nav-test-top-profile",
+              active === "profile" ? "is-active" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label="Profile"
+            aria-current={active === "profile" ? "page" : undefined}
+            tabIndex={hidden ? -1 : undefined}
+            onClick={() => selectTab("profile")}
+          >
+            <User className="nav-test-top-profile-icon" aria-hidden="true" />
+          </button>
+          {onOpenInbox ? (
+            <InboxButton
+              unreadCount={inboxUnreadCount}
+              onOpen={onOpenInbox}
+              variant="ghost"
+            />
+          ) : null}
+        </div>
       </nav>
 
-      <nav className="nav-test-dock" aria-label="Primary">
-        {/*
-          Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
-          (not clip-path) so backdrop-filter is shaped.
-        */}
-        <div
-          className="nav-test-dock-surface"
-          style={{
-            maskImage: DOCK_MASK,
-            WebkitMaskImage: DOCK_MASK,
-          }}
-          aria-hidden="true"
-        />
-
-        {/* Rim light sets — narrow 2px stroke strips at left / center / right */}
-        <div className="nav-test-dock-rims" aria-hidden="true">
-          <div className="top-left-rim-light">
-            <div className="rim-left-a" />
-            <div className="rim-left-a-b" />
-          </div>
-
-          <div className="middle-right-rim-light">
-            <div className="rim-center-a" />
-            <div className="rim-center-a-b" />
-          </div>
-
-          <div className="bottom-right-rim-light">
-            <div className="rim-right-a" />
-            <div className="rim-right-a-b" />
-          </div>
-        </div>
-
-        <div
-          className="nav-test-dock-items"
-          ref={dockItemsRef}
-          style={dockBubbleStyle}
-        >
-          {/* Sliding active bubble + glow twin — drag to a nearby tab (not Collection) */}
-          <div className="nav-test-dock-bubble-active-glow" aria-hidden="true" />
-          <div
-            className={[
-              "nav-test-dock-bubble",
-              isDraggingBubble ? "is-dragging" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-hidden="true"
-          />
+      <div className="nav-test-dock-wrap" aria-hidden={hidden ? true : undefined}>
+        <nav className="nav-test-dock" aria-label="Primary">
           {/*
-            Transparent hit target above tabs so the bubble can be grabbed.
-            Visual bubble stays under Collection; this handle receives the drag.
+            Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
+            (not clip-path) so backdrop-filter is shaped.
           */}
           <div
-            className={[
-              "nav-test-dock-bubble-handle",
-              bubble.visible ? "is-interactive" : "",
-              isDraggingBubble ? "is-dragging" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            role="slider"
-            aria-label="Drag navigation indicator"
-            aria-valuetext={
-              dragHoverTab
-                ? TABS.find((t) => t.id === dragHoverTab)?.label
-                : TABS.find((t) => t.id === active)?.label
-            }
-            aria-hidden={bubble.visible ? undefined : true}
-            onPointerDown={handleBubblePointerDown}
-            onPointerMove={handleBubblePointerMove}
-            onPointerUp={endBubbleDrag}
-            onPointerCancel={endBubbleDrag}
+            className="nav-test-dock-surface"
+            style={{
+              maskImage: DOCK_MASK,
+              WebkitMaskImage: DOCK_MASK,
+            }}
+            aria-hidden="true"
           />
 
-          {TABS.map((tab, index) => {
-            const Icon = tab.icon;
-            const isActive = active === tab.id;
-            const isDragTarget =
-              isDraggingBubble && dragHoverTab === tab.id && !tab.primary;
+          {/* Rim light sets — narrow 2px stroke strips at left / center / right */}
+          <div className="nav-test-dock-rims" aria-hidden="true">
+            <div className="top-left-rim-light">
+              <div className="rim-left-a" />
+              <div className="rim-left-a-b" />
+            </div>
 
-            if (tab.primary) {
+            <div className="middle-right-rim-light">
+              <div className="rim-center-a" />
+              <div className="rim-center-a-b" />
+            </div>
+
+            <div className="bottom-right-rim-light">
+              <div className="rim-right-a" />
+              <div className="rim-right-a-b" />
+            </div>
+          </div>
+
+          <div
+            className="nav-test-dock-items"
+            ref={dockItemsRef}
+            style={dockBubbleStyle}
+          >
+            {/* Sliding active bubble + glow twin — drag to a nearby tab (not Collection) */}
+            <div className="nav-test-dock-bubble-active-glow" aria-hidden="true" />
+            <div
+              className={[
+                "nav-test-dock-bubble",
+                isDraggingBubble ? "is-dragging" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-hidden="true"
+            />
+            {/*
+              Transparent hit target above tabs so the bubble can be grabbed.
+              Visual bubble stays under Collection; this handle receives the drag.
+            */}
+            <div
+              className={[
+                "nav-test-dock-bubble-handle",
+                bubble.visible ? "is-interactive" : "",
+                isDraggingBubble ? "is-dragging" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              role="slider"
+              aria-label="Drag navigation indicator"
+              aria-valuetext={
+                dragHoverTab
+                  ? TABS.find((t) => t.id === dragHoverTab)?.label
+                  : TABS.find((t) => t.id === active)?.label
+              }
+              aria-hidden={bubble.visible ? undefined : true}
+              onPointerDown={handleBubblePointerDown}
+              onPointerMove={handleBubblePointerMove}
+              onPointerUp={endBubbleDrag}
+              onPointerCancel={endBubbleDrag}
+            />
+
+            {TABS.map((tab, index) => {
+              const Icon = tab.icon;
+              const isActive = active === tab.id;
+              const isDragTarget =
+                isDraggingBubble && dragHoverTab === tab.id && !tab.primary;
+
+              if (tab.primary) {
+                return (
+                  <div
+                    key={tab.id}
+                    ref={(node) => {
+                      dockTabRefs.current[index] = node;
+                    }}
+                    className={[
+                      "nav-test-dock-primary",
+                      isActive ? "is-active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <BorderGlow
+                      className="nav-test-dock-primary-glow nav-test-hero-btn border-glow-always-on"
+                      borderRadius={999}
+                      backgroundColor="transparent"
+                      glowColor="330 90 78"
+                      glowRadius={21}
+                      glowIntensity={1.05}
+                      coneSpread={28}
+                      edgeSensitivity={0}
+                      fillOpacity={0.2}
+                      animated={false}
+                      orbit
+                      orbitDuration={7}
+                      colors={[...COLLECTION_GLOW_COLORS]}
+                      style={CUTOUT_STYLE}
+                    >
+                      <button
+                        type="button"
+                        className="nav-test-dock-primary-btn"
+                        aria-current={isActive ? "page" : undefined}
+                        aria-label={tab.label}
+                        tabIndex={hidden ? -1 : undefined}
+                        onClick={() => selectTab(tab.id)}
+                      >
+                        <Icon
+                          className="nav-test-dock-primary-icon"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </BorderGlow>
+                    <span className="nav-test-dock-primary-label" aria-hidden="true">
+                      {tab.label}
+                    </span>
+                  </div>
+                );
+              }
+
               return (
-                <div
+                <button
                   key={tab.id}
                   ref={(node) => {
                     dockTabRefs.current[index] = node;
                   }}
+                  type="button"
                   className={[
-                    "nav-test-dock-primary",
+                    "nav-test-dock-item",
                     isActive ? "is-active" : "",
+                    isDragTarget ? "is-drag-target" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={tab.label}
+                  tabIndex={hidden ? -1 : undefined}
+                  onClick={() => selectTab(tab.id)}
                 >
-                  <BorderGlow
-                    className="nav-test-dock-primary-glow nav-test-hero-btn border-glow-always-on"
-                    borderRadius={999}
-                    backgroundColor="transparent"
-                    glowColor="330 90 78"
-                    glowRadius={21}
-                    glowIntensity={1.05}
-                    coneSpread={28}
-                    edgeSensitivity={0}
-                    fillOpacity={0.2}
-                    animated={false}
-                    orbit
-                    orbitDuration={7}
-                    colors={[...COLLECTION_GLOW_COLORS]}
-                    style={CUTOUT_STYLE}
-                  >
-                    <button
-                      type="button"
-                      className="nav-test-dock-primary-btn"
-                      aria-current={isActive ? "page" : undefined}
-                      aria-label={tab.label}
-                      tabIndex={hidden ? -1 : undefined}
-                      onClick={() => selectTab(tab.id)}
-                    >
-                      <Icon
-                        className="nav-test-dock-primary-icon"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </BorderGlow>
-                  <span className="nav-test-dock-primary-label" aria-hidden="true">
-                    {tab.label}
-                  </span>
-                </div>
+                  <Icon
+                    className="nav-test-dock-icon"
+                    strokeWidth={isActive || isDragTarget ? 2.1 : 1.8}
+                    fill={isActive || isDragTarget ? "currentColor" : "none"}
+                    fillOpacity={isActive || isDragTarget ? 0.2 : 0}
+                    aria-hidden="true"
+                  />
+                  <span className="nav-test-dock-label">{tab.label}</span>
+                </button>
               );
-            }
-
-            return (
-              <button
-                key={tab.id}
-                ref={(node) => {
-                  dockTabRefs.current[index] = node;
-                }}
-                type="button"
-                className={[
-                  "nav-test-dock-item",
-                  isActive ? "is-active" : "",
-                  isDragTarget ? "is-drag-target" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={tab.label}
-                tabIndex={hidden ? -1 : undefined}
-                onClick={() => selectTab(tab.id)}
-              >
-                <Icon
-                  className="nav-test-dock-icon"
-                  strokeWidth={isActive || isDragTarget ? 2.1 : 1.8}
-                  fill={isActive || isDragTarget ? "currentColor" : "none"}
-                  fillOpacity={isActive || isDragTarget ? 0.2 : 0}
-                  aria-hidden="true"
-                />
-                <span className="nav-test-dock-label">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+            })}
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

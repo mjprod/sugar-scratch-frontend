@@ -215,7 +215,7 @@ function HubRedeemSuccess({
         <button
           type="button"
           onClick={onOpenNow}
-          className="mt-4 h-11 w-full rounded-full bg-white text-[13px] font-semibold text-[#0a0a0f] transition active:scale-[0.98] sm:w-auto sm:px-5"
+          className="mt-4 h-11 w-full rounded-full bg-white text-[13px] font-semibold text-[oklch(0.147_0.011_285.01)] transition active:scale-[0.98] sm:w-auto sm:px-5"
         >
           Open Now
         </button>

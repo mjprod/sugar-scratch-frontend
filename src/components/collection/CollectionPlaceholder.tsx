@@ -27,7 +27,7 @@ export function CollectionPlaceholder({
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
             fillParent
-            label="Back to Collection"
+            label="Back to My Collection"
             costAmount={null}
             fontSize={14}
             onClick={onClose}

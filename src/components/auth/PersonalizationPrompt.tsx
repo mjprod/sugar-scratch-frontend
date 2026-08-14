@@ -2,6 +2,8 @@
  * Cold-start Preference entry — only when behaviour has not already answered.
  * Never inserted between Authentication and a pending purchase.
  */
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+
 export function PersonalizationPrompt({
   onStart,
   onLater,
@@ -25,13 +27,18 @@ export function PersonalizationPrompt({
         </p>
       </div>
       <div className="auth7-persona-prompt-actions">
-        <button
-          type="button"
-          className="auth7-persona-prompt-start"
-          onClick={onStart}
-        >
-          Start
-        </button>
+        <div className="auth7-persona-prompt-start">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            type="button"
+            label="Start"
+            costAmount={null}
+            fontSize={15}
+            strokeWidth={1}
+            onClick={onStart}
+          />
+        </div>
         <button
           type="button"
           className="auth7-persona-prompt-later"

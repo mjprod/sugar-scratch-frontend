@@ -208,10 +208,10 @@ function composeSwipeShadow(dx: number, depth: number) {
   const ambientAlpha = 0.38 * (1 - t * 0.2) * depthMul
 
   return [
-    `${ox.toFixed(2)}px ${oy.toFixed(2)}px ${blur.toFixed(2)}px rgba(0, 0, 0, ${alpha.toFixed(3)})`,
-    `0 ${ambientY.toFixed(2)}px ${ambientBlur.toFixed(2)}px rgba(0, 0, 0, ${ambientAlpha.toFixed(3)})`,
-    '0 2px 0 rgba(255, 255, 255, 0.06) inset',
-  ].join(', ')
+    `${ox.toFixed(2)}px ${oy.toFixed(2)}px ${blur.toFixed(2)}px oklch(0 0 0 / ${alpha.toFixed(3)})`,
+    `0 ${ambientY.toFixed(2)}px ${ambientBlur.toFixed(2)}px oklch(0 0 0 / ${ambientAlpha.toFixed(3)})`,
+    "0 2px 0 oklch(1 0 0 / 0.06) inset",
+  ].join(", ");
 }
 
 /**
@@ -302,7 +302,7 @@ export function StackSlot({
 
   // Front / leave: progressive NOPE from drag/leave x (base brightness ~1).
   // t=0 identity → t=1 baked peaks (contrast 1.16, grayscale, brightness,
-  // overlay opacity 1 @ #e10600 multiply). Color/blend/contrast peaks fixed.
+  // overlay opacity 1 @ oklch(0.573 0.233 29.48) multiply). Color/blend/contrast peaks fixed.
   // Depth 1: progressive brighten from LIVE finger X only (never leave.x).
   // forceFull only latches the interactive front — not the departing flyer.
   const frontForceFull = isFront && nopeForceFull

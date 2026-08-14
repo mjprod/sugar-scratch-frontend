@@ -16,7 +16,7 @@
   margin: 12px auto 0;
   border: 0;
   background: transparent;
-  color: rgba(255,255,255,0.7);
+  color: oklch(1 0 0 / 0.7);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -33,8 +33,8 @@
 :root {
   color-scheme: dark;
   font-family: Roboto, Arial, Helvetica, sans-serif;
-  background: #07070b;
-  color: #f5f5f7;
+  background: oklch(0.131 0.01 285);
+  color: oklch(0.971 0.003 286.35);
 }
 
 *,
@@ -54,9 +54,9 @@ body,
 body {
   min-height: 100dvh;
   background:
-    radial-gradient(120% 80% at 50% 18%, rgba(255, 70, 120, 0.16), transparent 55%),
-    radial-gradient(90% 60% at 50% 100%, rgba(80, 40, 120, 0.22), transparent 50%),
-    #07070b;
+    radial-gradient(120% 80% at 50% 18%, oklch(0.675 0.221 9.68 / 0.16), transparent 55%),
+    radial-gradient(90% 60% at 50% 100%, oklch(0.373 0.132 303.6 / 0.22), transparent 50%),
+    oklch(0.131 0.01 285);
 }
 
 /* Lock page scroll only while a reveal stage is mounted — this file is
@@ -107,8 +107,8 @@ button {
   /* Instant layer swap only — never delay z-index. */
   transition: none;
   /* Fade the bottom of the 3D stage out (opaque top → transparent bottom). */
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, oklch(0 0 0) 0%, oklch(0 0 0) 62%, transparent 100%);
+  mask-image: linear-gradient(180deg, oklch(0 0 0) 0%, oklch(0 0 0) 62%, transparent 100%);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
@@ -197,7 +197,7 @@ button {
 
 /* Ported from sugar-scratch-holo / sugar-scracth3dpack Buy Pack (btn-180). */
 .btn-180 {
-  border: 1px solid #d00042;
+  border: 1px solid oklch(0.545 0.218 16.03);
   padding: 10px 24px;
   font-size: 15px;
   text-transform: none;
@@ -208,16 +208,16 @@ button {
   overflow: hidden;
   isolation: isolate;
   box-shadow:
-    inset 0 30px 30px -15px rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
-    inset 0 1px 20px rgba(0, 0, 0, 0),
-    0 3px 0 rgb(161, 0, 48),
-    0 3px 2px rgba(0, 0, 0, 0.2),
-    0 5px 10px rgba(0, 0, 0, 0.1),
-    0 10px 20px rgba(0, 0, 0, 0.1);
-  background: #d00042;
+    inset 0 30px 30px -15px oklch(1 0 0 / 0.1),
+    inset 0 0 0 1px oklch(1 0 0 / 0.3),
+    inset 0 1px 20px oklch(0 0 0 / 0),
+    0 3px 0 oklch(0.45 0.18 16.47),
+    0 3px 2px oklch(0 0 0 / 0.2),
+    0 5px 10px oklch(0 0 0 / 0.1),
+    0 10px 20px oklch(0 0 0 / 0.1);
+  background: oklch(0.545 0.218 16.03);
   color: white;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 0 oklch(0 0 0 / 0.3);
   transition: 250ms all;
   font-family: Arial, Helvetica, sans-serif;
   cursor: pointer;
@@ -268,9 +268,9 @@ button {
     110deg,
     transparent 0%,
     transparent 18%,
-    rgba(255, 255, 255, 0.05) 36%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.05) 64%,
+    oklch(1 0 0 / 0.05) 36%,
+    oklch(1 0 0 / 0.2) 50%,
+    oklch(1 0 0 / 0.05) 64%,
     transparent 82%,
     transparent 100%
   );
@@ -307,13 +307,13 @@ button {
 .btn-180:active {
   transform: translateY(3px);
   box-shadow:
-    inset 0 16px 2px -15px rgba(0, 0, 0, 0),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
-    inset 0 1px 20px rgba(0, 0, 0, 0.1),
-    0 0 0 #ff135e,
-    0 0 0 2px #ff135e,
-    0 0 0 rgba(0, 0, 0, 0),
-    0 0 0 rgba(0, 0, 0, 0);
+    inset 0 16px 2px -15px oklch(0 0 0 / 0),
+    inset 0 0 0 1px oklch(1 0 0 / 0.15),
+    inset 0 1px 20px oklch(0 0 0 / 0.1),
+    0 0 0 oklch(0.641 0.25 13.45),
+    0 0 0 2px oklch(0.641 0.25 13.45),
+    0 0 0 oklch(0 0 0 / 0),
+    0 0 0 oklch(0 0 0 / 0);
 }
 
 .btn-180:active::before {
@@ -323,8 +323,8 @@ button {
 .btn-180:disabled {
   pointer-events: none;
   opacity: 0.65;
-  color: #7e7e7e;
-  background: #dcdcdc;
+  color: oklch(0.593 0 0);
+  background: oklch(0.894 0 0);
   box-shadow: none;
   text-shadow: none;
   border: none;
@@ -473,9 +473,9 @@ button {
   top: max(0.85rem, env(safe-area-inset-top));
   right: max(0.85rem, env(safe-area-inset-right));
   z-index: 40;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(20, 20, 28, 0.78);
-  color: #f5f5f7;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  background: oklch(0.195 0.016 284.82 / 0.78);
+  color: oklch(0.971 0.003 286.35);
   border-radius: 999px;
   padding: 0.45rem 0.85rem;
   font-size: 0.8rem;
@@ -487,7 +487,7 @@ button {
 }
 
 .debug-fab:hover {
-  background: rgba(40, 40, 55, 0.9);
+  background: oklch(0.284 0.027 284.52 / 0.9);
 }
 
 .debug-modal {
@@ -504,7 +504,7 @@ button {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: oklch(0 0 0 / 0.35);
   cursor: pointer;
 }
 
@@ -515,11 +515,11 @@ button {
   max-height: min(78dvh, 720px);
   overflow: auto;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(16, 16, 22, 0.96);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0.176 0.012 285.06 / 0.96);
+  box-shadow: 0 20px 60px oklch(0 0 0 / 0.45);
   padding: 1rem 1rem 0.85rem;
-  color: #f5f5f7;
+  color: oklch(0.971 0.003 286.35);
 }
 
 .debug-modal__header {
@@ -545,7 +545,7 @@ button {
 
 .debug-modal__icon-btn {
   border: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: oklch(1 0 0 / 0.08);
   color: inherit;
   width: 2rem;
   height: 2rem;
@@ -574,8 +574,8 @@ button {
 
 .debug-modal__number {
   width: 5.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(1 0 0 / 0.05);
   color: inherit;
   border-radius: 8px;
   padding: 0.2rem 0.35rem;
@@ -585,7 +585,7 @@ button {
 
 .debug-modal__field input[type='range'] {
   width: 100%;
-  accent-color: #d00042;
+  accent-color: oklch(0.545 0.218 16.03);
 }
 
 .debug-modal__footer {
@@ -596,8 +596,8 @@ button {
 }
 
 .debug-modal__btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(1 0 0 / 0.06);
   color: inherit;
   border-radius: 999px;
   padding: 0.45rem 0.8rem;
@@ -607,16 +607,16 @@ button {
 }
 
 .debug-modal__btn--primary {
-  background: #d00042;
-  border-color: #d00042;
+  background: oklch(0.545 0.218 16.03);
+  border-color: oklch(0.545 0.218 16.03);
 }
 
 .debug-modal__code {
   margin: 0.85rem 0 0;
   padding: 0.65rem 0.7rem;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: oklch(0 0 0 / 0.35);
+  border: 1px solid oklch(1 0 0 / 0.08);
   font-size: 0.68rem;
   line-height: 1.4;
   overflow: auto;
@@ -651,10 +651,10 @@ button {
   display: flex;
   flex-direction: column;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(16, 16, 22, 0.97);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-  color: #f5f5f7;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.176 0.012 285.06 / 0.97);
+  box-shadow: 0 18px 50px oklch(0 0 0 / 0.45);
+  color: oklch(0.971 0.003 286.35);
   pointer-events: auto;
   overflow: hidden;
   touch-action: none;
@@ -666,8 +666,8 @@ button {
   justify-content: space-between;
   gap: 0.65rem;
   padding: 0.7rem 0.8rem 0.55rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent);
+  border-bottom: 1px solid oklch(1 0 0 / 0.08);
+  background: linear-gradient(180deg, oklch(1 0 0 / 0.05), transparent);
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -725,8 +725,8 @@ button {
 }
 
 .pack-timeline__key {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(1 0 0 / 0.04);
   color: inherit;
   border-radius: 12px;
   padding: 0.55rem 0.45rem;
@@ -738,17 +738,17 @@ button {
 }
 
 .pack-timeline__key:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: oklch(1 0 0 / 0.08);
 }
 
 .pack-timeline__key.is-selected {
-  border-color: #d00042;
-  background: rgba(208, 0, 66, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(208, 0, 66, 0.35);
+  border-color: oklch(0.545 0.218 16.03);
+  background: oklch(0.545 0.218 16.03 / 0.16);
+  box-shadow: inset 0 0 0 1px oklch(0.545 0.218 16.03 / 0.35);
 }
 
 .pack-timeline__key.is-active:not(.is-selected) {
-  border-color: rgba(255, 180, 70, 0.7);
+  border-color: oklch(0.823 0.149 72.9 / 0.7);
 }
 
 .pack-timeline__key.is-past {
@@ -756,15 +756,15 @@ button {
 }
 
 .pack-timeline__key.is-active {
-  border-color: rgba(255, 180, 70, 0.85);
-  box-shadow: 0 0 0 1px rgba(255, 180, 70, 0.25);
+  border-color: oklch(0.823 0.149 72.9 / 0.85);
+  box-shadow: 0 0 0 1px oklch(0.823 0.149 72.9 / 0.25);
 }
 
 .pack-timeline__key.is-selected.is-active {
-  border-color: #d00042;
+  border-color: oklch(0.545 0.218 16.03);
   box-shadow:
-    inset 0 0 0 1px rgba(208, 0, 66, 0.35),
-    0 0 0 1px rgba(255, 180, 70, 0.35);
+    inset 0 0 0 1px oklch(0.545 0.218 16.03 / 0.35),
+    0 0 0 1px oklch(0.823 0.149 72.9 / 0.35);
 }
 
 .pack-timeline__key:disabled {
@@ -824,8 +824,8 @@ button {
 /* Drag details editor (replaces duck-in panel FAB) */
 .debug-fab--drag {
   right: 5.75rem;
-  background: rgba(28, 36, 48, 0.92);
-  border-color: rgba(125, 211, 252, 0.45);
+  background: oklch(0.258 0.025 258.34 / 0.92);
+  border-color: oklch(0.828 0.101 230.32 / 0.45);
 }
 
 .drag-details {
@@ -853,7 +853,7 @@ button {
 
 .duck-timeline__scrub-value {
   font-variant-numeric: tabular-nums;
-  color: #fbbf24;
+  color: oklch(0.837 0.164 84.43);
 }
 
 .duck-timeline__scrub-meta {
@@ -872,12 +872,12 @@ button {
 }
 
 .duck-timeline__live-item {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid oklch(1 0 0 / 0.08);
   border-radius: 10px;
   padding: 0.35rem 0.4rem;
   display: grid;
   gap: 0.1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: oklch(1 0 0 / 0.03);
 }
 
 .duck-timeline__live-item span {
@@ -900,11 +900,11 @@ button {
 
 .duck-timeline__copy-status {
   font-size: 0.72rem;
-  color: #86efac;
+  color: oklch(0.871 0.136 154.45);
 }
 
 .duck-timeline__copy-status.is-muted {
-  color: rgba(245, 245, 247, 0.55);
+  color: oklch(0.971 0.003 286.35 / 0.55);
 }
 
 .debug-modal__btn:disabled {
@@ -948,8 +948,8 @@ button {
   border-radius: 10px;
   touch-action: none;
   cursor: crosshair;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: oklch(0 0 0 / 0.25);
+  border: 1px solid oklch(1 0 0 / 0.08);
 }
 
 .duck-graph__bg {
@@ -957,7 +957,7 @@ button {
 }
 
 .duck-graph__grid {
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke: oklch(1 0 0 / 0.08);
   stroke-width: 1;
 }
 
@@ -969,19 +969,19 @@ button {
 }
 
 .duck-graph__playhead {
-  stroke: rgba(251, 191, 36, 0.9);
+  stroke: oklch(0.837 0.164 84.43 / 0.9);
   stroke-width: 1.25;
   stroke-dasharray: 3 3;
 }
 
 .duck-graph__key {
-  stroke: rgba(0, 0, 0, 0.65);
+  stroke: oklch(0 0 0 / 0.65);
   stroke-width: 1;
   cursor: grab;
 }
 
 .duck-graph__key.is-selected {
-  stroke: #fff;
+  stroke: oklch(1 0 0);
   stroke-width: 1.5;
 }
 
@@ -1005,7 +1005,7 @@ button {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: #000;
+  background: oklch(0 0 0);
 }
 
 .motion-reveal__continue {
@@ -1017,8 +1017,8 @@ button {
   padding: 0 2rem;
   border: 0;
   border-radius: 999px;
-  background: #8b5cf6;
-  color: #fff;
+  background: oklch(0.606 0.219 292.72);
+  color: oklch(1 0 0);
   font-size: 0.95rem;
   font-weight: 600;
   transform: translateX(-50%);

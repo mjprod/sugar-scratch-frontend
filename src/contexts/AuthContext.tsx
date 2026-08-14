@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "like") {
         setResumeLikeId(action.feedItemId);
-        navigate(Paths.home);
+        navigate(Paths.discover);
         return;
       }
       if (action.type === "store") {
@@ -260,10 +260,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestTab = useCallback(
     (next: AppTab) => {
       if (PUBLIC_TABS.includes(next) || authed) {
-        if (next === "hub" && authed) {
-          requireAuth({ type: "tab", tab: "hub" });
-          return;
-        }
         navigate(pathForTab(next));
         return;
       }
@@ -273,8 +269,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const openStore = useCallback(() => {
-    if (!requireAuth({ type: "store" })) return;
-  }, [requireAuth]);
+    captureSecondaryReturn();
+    navigate(Paths.store);
+  }, [captureSecondaryReturn, navigate]);
 
   const openInbox = useCallback(() => {
     if (!requireAuth({ type: "inbox" })) return;

@@ -34,8 +34,8 @@
   --overlay-border-width: 91%;
   --overlay-border-height: 96.4%;
   --overlay-border-radius: 13px;
-  --overlay-border-stroke: 2px solid rgb(255, 255, 255);
-  --overlay-number-border: 2px solid #111;
+  --overlay-border-stroke: 2px solid oklch(1 0 0);
+  --overlay-number-border: 2px solid oklch(0.178 0 0);
   --overlay-text-gap: 0.55em;
 
   position: relative;
@@ -92,12 +92,12 @@
   min-height: 100%;
   padding: var(--overlay-pad-top) 0 var(--overlay-pad-bottom);
   border-radius: var(--card-radius) 0 0 var(--card-radius);
-  color: #111;
+  color: oklch(0.178 0 0);
   text-shadow: none;
   background: linear-gradient(
     180deg,
-    var(--overlay-gradient-color, #5fd0e0) 0%,
-    var(--overlay-gradient-color-end, #0b1c24) 100%
+    var(--overlay-gradient-color, oklch(0.798 0.104 207.84)) 0%,
+    var(--overlay-gradient-color-end, oklch(0.216 0.028 230.24)) 100%
   );
   pointer-events: none;
   overflow: hidden;
@@ -113,7 +113,7 @@
   justify-content: center;
   border: var(--overlay-number-border);
   border-radius: 0.12rem;
-  color: #111;
+  color: oklch(0.178 0 0);
   font-family: var(--font-card-overlay, 'CardOverlay', sans-serif);
   font-size: var(--overlay-number-font);
   font-weight: 400;
@@ -155,7 +155,7 @@
   width: auto;
   height: auto;
   min-height: 0;
-  color: #111;
+  color: oklch(0.178 0 0);
   white-space: nowrap;
   writing-mode: sideways-lr;
   text-orientation: mixed;
@@ -168,7 +168,7 @@
   width: auto;
   height: auto;
   min-width: 0;
-  color: #111;
+  color: oklch(0.178 0 0);
   font-family: var(--font-card-overlay, 'CardOverlay', sans-serif);
   font-size: var(--overlay-name-font);
   font-weight: 900;
@@ -186,7 +186,7 @@
   height: auto;
   min-width: 0;
   max-height: 100%;
-  color: #111;
+  color: oklch(0.178 0 0);
   font-family: var(--font-card-overlay, 'CardOverlay', sans-serif);
   font-size: var(--overlay-location-font);
   font-weight: 700;
@@ -210,8 +210,8 @@
   min-height: 0;
   border-radius: 0.12rem;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.25);
+  background: oklch(1 0 0 / 0.35);
   font-size: var(--overlay-flag-font);
   line-height: 1;
 }
@@ -240,7 +240,7 @@
   --overlay-number-size: 0.92rem;
   --overlay-number-font: clamp(0.38rem, 9cqi, 0.52rem);
   --overlay-number-tracking: -0.4px;
-  --overlay-number-border: 1px solid #111;
+  --overlay-number-border: 1px solid oklch(0.178 0 0);
   --overlay-name-font: clamp(0.72rem, 16cqi, 0.98rem);
   --overlay-name-tracking: -0.9px;
   --overlay-location-font: clamp(0.3rem, 7.5cqi, 0.42rem);
@@ -249,7 +249,7 @@
   --overlay-flag-h: 0.55rem;
   --overlay-flag-font: clamp(0.4rem, 8cqi, 0.55rem);
   --overlay-border-radius: 6px;
-  --overlay-border-stroke: 1px solid rgb(255, 255, 255);
+  --overlay-border-stroke: 1px solid oklch(1 0 0);
   --overlay-text-gap: 0.35em;
 }
 

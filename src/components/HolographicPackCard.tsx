@@ -38,9 +38,9 @@ export function HolographicPackCard({
         "group relative aspect-[3/4] overflow-hidden rounded-[24px] p-[3px]",
         compact ? "w-36 sm:w-44" : "w-[220px] sm:w-[260px] lg:w-[300px]",
         badge === "Limited"
-          ? "bg-[linear-gradient(135deg,#f7e7a9,#8a6a16,#fff4b8,#59420a)]"
-          : "bg-[linear-gradient(135deg,#f5f3ff,#6d5aa8,#d8b4fe,#28223f,#c4b5fd)]",
-        "shadow-[0_24px_70px_rgba(0,0,0,.55)]",
+          ? "bg-[linear-gradient(135deg,oklch(0.926_0.081_95.37),oklch(0.542_0.103_85.83),oklch(0.962_0.077_98.92),oklch(0.394_0.075_84.08))]"
+          : "bg-[linear-gradient(135deg,oklch(0.969_0.016_293.76),oklch(0.522_0.12_292.97),oklch(0.827_0.108_306.38),oklch(0.274_0.053_292.03),oklch(0.811_0.101_293.57))]",
+        "shadow-[0_24px_70px_oklch(0_0_0_/_0.55)]",
       ].join(" ")}
       style={{
         transform: interactive
@@ -48,7 +48,7 @@ export function HolographicPackCard({
           : undefined,
       }}
     >
-      <div className="relative size-full overflow-hidden rounded-[21px] bg-[#0d0d12]">
+      <div className="relative size-full overflow-hidden rounded-[21px] bg-[oklch(0.162_0.01_285.17)]">
         {isVideoSrc(src) ? (
           <video
             src={src}
@@ -65,10 +65,10 @@ export function HolographicPackCard({
         <div
           className="pointer-events-none absolute inset-0 opacity-40 mix-blend-color-dodge transition-opacity group-hover:opacity-65"
           style={{
-            background: `radial-gradient(circle at ${light.x}% ${light.y}%, rgba(255,255,255,.8), transparent 18%), conic-gradient(from 210deg at ${light.x}% ${light.y}%, rgba(139,92,246,.18), rgba(236,72,153,.2), rgba(52,211,153,.12), rgba(212,175,55,.18), rgba(139,92,246,.18))`,
+            background: `radial-gradient(circle at ${light.x}% ${light.y}%, oklch(1 0 0 / 0.8), transparent 18%), conic-gradient(from 210deg at ${light.x}% ${light.y}%, oklch(0.606 0.219 292.72 / 0.18), oklch(0.656 0.212 354.31 / 0.2), oklch(0.773 0.153 163.22 / 0.12), oklch(0.767 0.139 91.06 / 0.18), oklch(0.606 0.219 292.72 / 0.18))`,
           }}
         />
-        <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(115deg,transparent_0,transparent_8px,rgba(255,255,255,.18)_9px,transparent_10px)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(115deg,transparent_0,transparent_8px,oklch(1_0_0_/_0.18)_9px,transparent_10px)]" />
         <motion.div
           className="pointer-events-none absolute -inset-y-12 w-1/3 -skew-x-12 bg-white/18 blur-xl"
           animate={{ x: ["-180%", "500%"] }}

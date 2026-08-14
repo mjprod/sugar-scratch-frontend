@@ -427,7 +427,7 @@ export function drawMeshLines(
   sample: TrackedMeshSample,
 ) {
   const { cols, rows, verts, vis } = sample;
-  ctx.strokeStyle = "rgba(120, 255, 180, 0.55)";
+  ctx.strokeStyle = "oklch(0.9 0.15 160 / 0.55)";
   ctx.lineWidth = 1;
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {

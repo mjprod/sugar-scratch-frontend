@@ -23,7 +23,7 @@ export function MobileDiamondBalance({
   const classes = [
     "inline-flex min-h-9 items-center gap-1.5 rounded-full px-1.5 py-1 transition active:scale-95",
     standalone
-      ? "border border-white/[0.1] bg-[#151515]/90 px-3 py-1.5 shadow-soft backdrop-blur-md"
+      ? "border border-white/[0.1] bg-[oklch(0.196_0_0)]/90 px-3 py-1.5 shadow-soft backdrop-blur-md"
       : "",
     onOpenStore ? "hover:bg-white/10" : "",
     className,

@@ -386,7 +386,7 @@ function CreatorScreenInner({
         onScratch={() => setOverlay("Scratch Flow")}
         onOpenPack={openOwnedPack}
         onBuy={buyThemePack}
-        onView={() => setOverlay("View Collection")}
+        onView={() => setOverlay("View My Collection")}
         onClaim={() => setOverlay("Claim Reward")}
       />
 

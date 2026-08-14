@@ -23,6 +23,9 @@ import {
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
+import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
+import { useAuth } from "@/contexts/AuthContext";
+import type { RedeemReward } from "@/services/redeem";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
@@ -56,10 +59,24 @@ type Flow =
 export function StoreScreen({
   onBack,
   onPurchaseSuccess,
+  onDiamondReward,
+  onPackReward,
+  onOpenPack,
 }: {
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
+  onDiamondReward?: (amount: number) => void;
+  onPackReward?: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
+    instanceId?: string;
+  };
+  onOpenPack?: (input: {
+    packId: string;
+    packName: string;
+    creator: string;
+    instanceId?: string;
+  }) => void;
 }) {
+  const { requireAuth } = useAuth();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [claimedAds, setClaimedAds] = useState<string[]>([]);
@@ -254,6 +271,8 @@ export function StoreScreen({
       void runRewardedAd(product);
       return;
     }
+    // Guests can browse Store; diamond checkout requires auth.
+    if (!requireAuth({ type: "store" })) return;
     setFlow({ step: "confirm", product });
   }
 
@@ -312,6 +331,9 @@ export function StoreScreen({
           activeProductId={activeProductId}
           flowStep={flow.step}
           onSelect={onSelect}
+          onDiamondReward={onDiamondReward}
+          onPackReward={onPackReward}
+          onOpenPack={onOpenPack}
         />
       ) : null}
 
@@ -390,6 +412,9 @@ function StoreCatalog({
   activeProductId,
   flowStep,
   onSelect,
+  onDiamondReward,
+  onPackReward,
+  onOpenPack,
 }: {
   products: StoreProduct[];
   claimedAds: string[];
@@ -397,6 +422,16 @@ function StoreCatalog({
   activeProductId?: string;
   flowStep: Flow["step"];
   onSelect: (product: StoreProduct) => void;
+  onDiamondReward?: (amount: number) => void;
+  onPackReward?: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
+    instanceId?: string;
+  };
+  onOpenPack?: (input: {
+    packId: string;
+    packName: string;
+    creator: string;
+    instanceId?: string;
+  }) => void;
 }) {
   const ads = products.filter((p) => p.kind === "rewarded-ad");
   const packs = products.filter((p) => p.kind === "diamonds");
@@ -444,6 +479,14 @@ function StoreCatalog({
         </div>
       </section>
 
+      {onDiamondReward && onPackReward && onOpenPack ? (
+        <HubRedeemSection
+          onDiamondReward={onDiamondReward}
+          onPackReward={onPackReward}
+          onOpenPack={onOpenPack}
+        />
+      ) : null}
+
       <StoreInfo />
     </div>
   );
@@ -474,11 +517,11 @@ function WatchAdCard({
         "store-watch-ad flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-3.5 text-left transition",
         unavailable
           ? "cursor-not-allowed border-white/[0.06] bg-white/[0.03] opacity-60"
-          : "border-[#ff5fa2]/25 bg-gradient-to-r from-[#ff5fa2]/12 to-[#9b3dff]/12 hover:border-[#ff5fa2]/40 active:scale-[0.99]",
+          : "border-[oklch(0.711_0.203_357.66)]/25 bg-gradient-to-r from-[oklch(0.711_0.203_357.66)]/12 to-[oklch(0.593_0.265_300.18)]/12 hover:border-[oklch(0.711_0.203_357.66)]/40 active:scale-[0.99]",
         "disabled:cursor-not-allowed",
       ].join(" ")}
     >
-      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#ff5fa2]/18 text-white">
+      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[oklch(0.711_0.203_357.66)]/18 text-white">
         {processing ? (
           <Loader2 className="size-5 animate-spin" aria-hidden="true" />
         ) : (
@@ -529,8 +572,8 @@ function PackageCard({
       className={[
         "store-package relative flex flex-col items-center rounded-[18px] border px-3 pb-3.5 pt-3 text-center transition",
         featured
-          ? "border-[#ff5fa2]/40 bg-[#18141c] shadow-[0_0_24px_rgba(255,95,162,0.12)]"
-          : "border-white/[0.08] bg-[#141318] hover:border-white/[0.16]",
+          ? "border-[oklch(0.711_0.203_357.66)]/40 bg-[oklch(0.2_0.017_307.52)] shadow-[0_0_24px_oklch(0.711_0.203_357.66_/_0.12)]"
+          : "border-white/[0.08] bg-[oklch(0.19_0.01_294.59)] hover:border-white/[0.16]",
         "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55",
       ].join(" ")}
     >
@@ -574,13 +617,13 @@ function BadgeMark({
     : badge === "FREE"
       ? "border-emerald-400/35 bg-emerald-400/15 text-emerald-300"
       : badge === "Best Value"
-        ? "border-[#ff5fa2]/45 bg-[#ff5fa2]/15 text-[#ff9dc8]"
+        ? "border-[oklch(0.711_0.203_357.66)]/45 bg-[oklch(0.711_0.203_357.66)]/15 text-[oklch(0.808_0.127_352.48)]"
         : badge === "Popular"
           ? "border-sky-400/40 bg-sky-400/15 text-sky-300"
           : badge === "Limited Time"
-            ? "border-[#F87171]/40 bg-[#F87171]/15 text-[#FCA5A5]"
+            ? "border-[oklch(0.711_0.166_22.22)]/40 bg-[oklch(0.711_0.166_22.22)]/15 text-[oklch(0.808_0.103_19.57)]"
             : badge === "Bonus"
-              ? "border-[#C4B5FD]/40 bg-[#8B5CF6]/20 text-[#C4B5FD]"
+              ? "border-[oklch(0.811_0.101_293.57)]/40 bg-[oklch(0.606_0.219_292.72)]/20 text-[oklch(0.811_0.101_293.57)]"
               : "border-white/20 bg-white/10 text-white";
 
   return (
@@ -648,7 +691,7 @@ function StateBlock({
       <button
         type="button"
         onClick={primary.onClick}
-        className="mt-6 h-12 min-w-[160px] rounded-full bg-[#8B5CF6] px-6 text-[14px] font-semibold transition active:scale-[0.98]"
+        className="mt-6 h-12 min-w-[160px] rounded-full bg-[oklch(0.606_0.219_292.72)] px-6 text-[14px] font-semibold transition active:scale-[0.98]"
       >
         {primary.label}
       </button>
@@ -688,7 +731,7 @@ function ConfirmModal({
       <button
         type="button"
         onClick={onConfirm}
-        className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[14px] font-semibold text-[#0a0a0f] transition active:scale-[0.98]"
+        className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[14px] font-semibold text-[oklch(0.147_0.011_285.01)] transition active:scale-[0.98]"
       >
         Continue to payment
       </button>
@@ -779,7 +822,7 @@ function PaymentGateway({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1100] flex flex-col overflow-y-auto bg-[#f4f6f8] text-[#0f172a]"
+      className="fixed inset-0 z-[1100] flex flex-col overflow-y-auto bg-[oklch(0.972_0.003_247.86)] text-[oklch(0.208_0.04_265.75)]"
       role="dialog"
       aria-modal="true"
       aria-label="Payment gateway"
@@ -910,7 +953,7 @@ function PaymentGateway({
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0f172a] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-55"
+            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[oklch(0.208_0.04_265.75)] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-55"
           >
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {submitting ? "Authorizing…" : `Pay ${session.priceLabel}`}
@@ -938,8 +981,8 @@ function StatusOverlay({ title, body }: { title: string; body: string }) {
       role="status"
       aria-live="polite"
     >
-      <div className="flex flex-col items-center rounded-[24px] border border-white/10 bg-[#151318] px-8 py-7 text-center shadow-2xl">
-        <Loader2 className="size-8 animate-spin text-[#C4B5FD]" aria-hidden="true" />
+      <div className="flex flex-col items-center rounded-[24px] border border-white/10 bg-[oklch(0.191_0.01_303.57)] px-8 py-7 text-center shadow-2xl">
+        <Loader2 className="size-8 animate-spin text-[oklch(0.811_0.101_293.57)]" aria-hidden="true" />
         <p className="mt-4 text-[15px] font-semibold">{title}</p>
         <p className="mt-1 max-w-[240px] text-[12px] text-white/45">{body}</p>
       </div>
@@ -976,7 +1019,7 @@ function ResultModal({
       ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
       : kind === "pending"
         ? "border-sky-400/30 bg-sky-400/10 text-sky-300"
-        : "border-[#F87171]/30 bg-[#F87171]/10 text-[#F87171]";
+        : "border-[oklch(0.711_0.166_22.22)]/30 bg-[oklch(0.711_0.166_22.22)]/10 text-[oklch(0.711_0.166_22.22)]";
 
   return (
     <ModalShell onDismiss={onContinue}>
@@ -994,7 +1037,7 @@ function ResultModal({
         <button
           type="button"
           onClick={onContinue}
-          className="mt-6 h-12 w-full rounded-full bg-[#8B5CF6] text-[14px] font-semibold transition active:scale-[0.98]"
+          className="mt-6 h-12 w-full rounded-full bg-[oklch(0.606_0.219_292.72)] text-[14px] font-semibold transition active:scale-[0.98]"
         >
           Back to Store
         </button>
@@ -1004,7 +1047,7 @@ function ResultModal({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-6 h-12 w-full rounded-full bg-[#8B5CF6] text-[14px] font-semibold transition active:scale-[0.98]"
+              className="mt-6 h-12 w-full rounded-full bg-[oklch(0.606_0.219_292.72)] text-[14px] font-semibold transition active:scale-[0.98]"
             >
               {retryLabel}
             </button>
@@ -1042,7 +1085,7 @@ function ModalShell({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-[28px] border border-white/[0.1] bg-[#151318] p-6 text-center shadow-[0_24px_60px_rgba(0,0,0,0.55)]"
+        className="w-full max-w-sm rounded-[28px] border border-white/[0.1] bg-[oklch(0.191_0.01_303.57)] p-6 text-center shadow-[0_24px_60px_oklch(0_0_0_/_0.55)]"
       >
         {children}
       </div>

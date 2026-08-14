@@ -65,14 +65,14 @@
   --cta-h: 64px;
   --cta-r: 999px;
   --cta-stroke: 1px;
-  --cta-stroke-color: rgba(251, 66, 165, 0.883);
-  --cta-stroke-a: #aa085f;
-  --cta-stroke-b: #e00083;
-  --cta-stroke-c: #eb6a00;
+  --cta-stroke-color: oklch(0.678 0.235 352.66 / 0.883);
+  --cta-stroke-a: oklch(0.483 0.193 357.41);
+  --cta-stroke-b: oklch(0.591 0.242 355.7);
+  --cta-stroke-c: oklch(0.671 0.182 48.12);
   --cta-cone-spread: 28;
   --cta-cursor-angle: 45deg;
-  --cta-aurora-base: #42001b;
-  --cta-label-color: #ffe0e8;
+  --cta-aurora-base: oklch(0.244 0.098 3.75);
+  --cta-label-color: oklch(0.934 0.036 0.4);
   --cta-font-size: 18px;
   /* Pointed-hex tip depth (fraction of height; default 0.27). */
   --cta-tip: calc(var(--cta-h) * 0.27);
@@ -142,7 +142,7 @@
   border-radius: inherit;
   transform: translateZ(0);
   /* Soft plate under the cone (reference-like frosted ring). */
-  background-color: var(--cta-stroke-color, rgba(252, 14, 141, 1));
+  background-color: var(--cta-stroke-color, oklch(0.646 0.259 358.14));
   background-image:
     radial-gradient(at 80% 55%,
       color-mix(in srgb, var(--cta-stroke-b) var(--cta-mesh-mix), transparent) 0px,
@@ -171,15 +171,15 @@
     black head → soft fade → clear opposite side → soft tail.
   */
   -webkit-mask-image: conic-gradient(from var(--cta-cursor-angle) at center,
-      #000 calc(var(--cta-cone) * 1%),
+      oklch(0 0 0) calc(var(--cta-cone) * 1%),
       transparent calc((var(--cta-cone) + 15) * 1%),
       transparent calc((100 - var(--cta-cone) - 15) * 1%),
-      #000 calc((100 - var(--cta-cone)) * 1%));
+      oklch(0 0 0) calc((100 - var(--cta-cone)) * 1%));
   mask-image: conic-gradient(from var(--cta-cursor-angle) at center,
-      #000 calc(var(--cta-cone) * 1%),
+      oklch(0 0 0) calc(var(--cta-cone) * 1%),
       transparent calc((var(--cta-cone) + 15) * 1%),
       transparent calc((100 - var(--cta-cone) - 15) * 1%),
-      #000 calc((100 - var(--cta-cone)) * 1%));
+      oklch(0 0 0) calc((100 - var(--cta-cone)) * 1%));
 }
 
 /* CSS orbit: animate the registered angle on the stroke node. */
@@ -227,7 +227,7 @@
 }
 
 .cta-button:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid oklch(1 0 0);
   outline-offset: 3px;
 }
 
@@ -296,19 +296,19 @@
   background:
     radial-gradient(
       120% 90% at 18% 110%,
-      color-mix(in srgb, var(--cta-stroke-b, #e00083) 55%, transparent) 0%,
+      color-mix(in srgb, var(--cta-stroke-b, oklch(0.591 0.242 355.7)) 55%, transparent) 0%,
       transparent 58%
     ),
     radial-gradient(
       100% 80% at 82% -10%,
-      color-mix(in srgb, var(--cta-stroke-a, #aa085f) 48%, transparent) 0%,
+      color-mix(in srgb, var(--cta-stroke-a, oklch(0.483 0.193 357.41)) 48%, transparent) 0%,
       transparent 55%
     ),
     linear-gradient(
       105deg,
-      color-mix(in srgb, var(--cta-stroke-a, #aa085f) 35%, transparent) 0%,
-      color-mix(in srgb, var(--cta-stroke-b, #e00083) 42%, transparent) 46%,
-      color-mix(in srgb, var(--cta-stroke-c, #eb6a00) 28%, transparent) 100%
+      color-mix(in srgb, var(--cta-stroke-a, oklch(0.483 0.193 357.41)) 35%, transparent) 0%,
+      color-mix(in srgb, var(--cta-stroke-b, oklch(0.591 0.242 355.7)) 42%, transparent) 46%,
+      color-mix(in srgb, var(--cta-stroke-c, oklch(0.671 0.182 48.12)) 28%, transparent) 100%
     );
   opacity: 0.92;
 }
@@ -375,7 +375,7 @@
   font-weight: 400;
   letter-spacing: 0.02em;
   line-height: 1;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.6);
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -388,13 +388,37 @@
   gap: 0.22em;
 }
 
+.cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  min-width: 0;
+}
+
+.cta-button__leading-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.35em;
+  height: 1.35em;
+  line-height: 0;
+}
+
+.cta-button__leading-icon img,
+.cta-button__leading-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .cta-button__title {
   display: block;
   font-size: 1em;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 500;
   line-height: 1;
-  text-transform: uppercase;
   text-align: center;
   white-space: nowrap;
 }
@@ -421,7 +445,7 @@
   justify-content: center;
   font-size: 0.95em;
   line-height: 1;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 1px 1px oklch(0 0 0 / 0.35));
 }
 
 .cta-button__cost-icon .cta-button__cost-lottie,

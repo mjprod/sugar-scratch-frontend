@@ -262,8 +262,8 @@ function DebugHud() {
         left: 6,
         zIndex: 50,
         padding: "6px 8px",
-        background: "rgba(0,0,0,0.72)",
-        color: "#7CFC00",
+        background: "oklch(0 0 0 / 0.72)",
+        color: "oklch(0.868 0.294 142.5)",
         font: "11px/1.35 ui-monospace, Menlo, monospace",
         whiteSpace: "pre",
         borderRadius: 6,
@@ -4094,11 +4094,11 @@ export function ScratchPrototype() {
           {playableModels.length === 0 ? (
             <p className="home-picker-empty">
               No models with motion cards yet.{" "}
-              <a href="/collection">Back to Collection</a>
+              <a href="/collection">Back to My Collection</a>
             </p>
           ) : null}
           <div className="home-picker-links">
-            <a href="/collection">Collection</a>
+            <a href="/collection">My Collection</a>
           </div>
         </section>
       </main>

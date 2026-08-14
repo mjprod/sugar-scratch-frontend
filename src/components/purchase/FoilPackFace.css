@@ -1,7 +1,7 @@
 /* Incoming pack designer plate: designed foil video + HUD labels. */
 .foil-pack {
   --card-aspect: 0.528421;
-  --overlay-gradient-color-end: #75efff;
+  --overlay-gradient-color-end: oklch(0.888 0.111 206.81);
   width: 220px;
 }
 
@@ -14,9 +14,9 @@
   aspect-ratio: var(--card-aspect);
   overflow: hidden;
   border-radius: 18px;
-  background: #05080c;
+  background: oklch(0.132 0.011 250.2);
   box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.55),
+    0 18px 50px oklch(0 0 0 / 0.55),
     0 0 28px color-mix(in oklab, var(--overlay-gradient-color-end) 22%, transparent);
 }
 
@@ -37,14 +37,14 @@
   top: 10px;
   left: 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid oklch(1 0 0 / 0.25);
+  background: oklch(0 0 0 / 0.55);
   padding: 4px 10px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #fff;
+  color: oklch(1 0 0);
 }
 
 .foil-pack__hud {
@@ -63,23 +63,23 @@
 
 .foil-pack__collection {
   margin: 0 auto 0.15rem;
-  color: #fff;
+  color: oklch(1 0 0);
   font-size: 0.85rem;
   font-weight: 400;
   line-height: 1.25;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
 }
 
 .foil-pack__number {
   margin: 0;
-  color: #fff;
+  color: oklch(1 0 0);
   font-size: 0.78rem;
   font-weight: 400;
   line-height: 1.25;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
 }
 
 /* Incoming packs coverflow stage */
@@ -90,7 +90,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: #000;
+  background: oklch(0 0 0);
 }
 
 .pack-coverflow__glow,
@@ -110,8 +110,8 @@
   bottom: -4dvw;
   background: radial-gradient(
     ellipse at center,
-    color-mix(in oklab, #5fd0e0 95%, transparent) 0%,
-    color-mix(in oklab, #5fd0e0 35%, transparent) 42%,
+    color-mix(in oklab, oklch(0.798 0.104 207.84) 95%, transparent) 0%,
+    color-mix(in oklab, oklch(0.798 0.104 207.84) 35%, transparent) 42%,
     transparent 72%
   );
   filter: blur(22px);
@@ -122,7 +122,7 @@
   width: 30dvw;
   height: 36dvw;
   bottom: -7dvw;
-  background: radial-gradient(ellipse at center, #5fd0e0 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, oklch(0.798 0.104 207.84) 0%, transparent 70%);
   filter: blur(36px) hue-rotate(304deg);
   opacity: 0.6;
   mix-blend-mode: color-dodge;
@@ -169,19 +169,19 @@
 
 .pack3d__collection {
   margin: 0 0 0.15rem;
-  color: #fff;
+  color: oklch(1 0 0);
   font-size: 0.85rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
   white-space: nowrap;
 }
 
 .pack3d__label {
   margin: 0;
-  color: #fff;
+  color: oklch(1 0 0);
   font-size: 0.78rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
 }
 
 .pack-coverflow__deck {
@@ -209,10 +209,10 @@
   width: 4.5rem;
   height: 4.5rem;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid oklch(1 0 0 / 0.16);
   border-radius: 999px;
-  background: rgba(16, 20, 25, 0.42);
-  color: #f3f7fb;
+  background: oklch(0.189 0.012 254.12 / 0.42);
+  color: oklch(0.974 0.007 247.89);
   transform: translateY(-50%);
 }
 
@@ -225,8 +225,8 @@
 }
 
 .pack-coverflow__chevron:hover:not(:disabled) {
-  border-color: rgba(95, 208, 224, 0.45);
-  background: rgba(16, 20, 25, 0.62);
+  border-color: oklch(0.798 0.104 207.84 / 0.45);
+  background: oklch(0.189 0.012 254.12 / 0.62);
 }
 
 .pack-coverflow__chevron:disabled {
@@ -250,10 +250,10 @@
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid oklch(1 0 0 / 0.14);
   border-radius: 999px;
-  background: rgba(16, 20, 25, 0.4);
-  color: rgba(255, 255, 255, 0.72);
+  background: oklch(0.189 0.012 254.12 / 0.4);
+  color: oklch(1 0 0 / 0.72);
   transform: translateX(-50%);
 }
 

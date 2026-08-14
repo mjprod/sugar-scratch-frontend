@@ -67,7 +67,7 @@ function ThemeChip({
       className={[
         "shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors",
         selected
-          ? "bg-[#8B5CF6] text-white shadow-[0_8px_20px_rgba(139,92,246,0.35)]"
+          ? "bg-[oklch(0.606_0.219_292.72)] text-white shadow-[0_8px_20px_oklch(0.606_0.219_292.72_/_0.35)]"
           : "border border-white/[0.08] bg-white/[0.05] text-white/65 hover:bg-white/10",
         disabled ? "opacity-40" : "",
       ].join(" ")}

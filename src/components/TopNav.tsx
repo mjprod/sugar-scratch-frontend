@@ -7,10 +7,10 @@ import { InboxButton } from "@/components/InboxButton";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 
 const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
-  { id: "home", label: "Home" },
-  { id: "feed", label: "Discover" },
-  { id: "bag", label: "Collection" },
+  { id: "feed", label: "Home" },
+  { id: "home", label: "Discover" },
   { id: "hub", label: "Store" },
+  { id: "bag", label: "My Collection" },
 ];
 
 const SCROLL_SELECTOR = "[data-page-scroll], .hf-viewport, .app-page-shell, .inbox-page";
@@ -172,7 +172,6 @@ export function TopNav({
                 storeActive={storeActive}
               />
             ) : null}
-            {desktopInbox}
             <button
               type="button"
               aria-label="Profile"
@@ -187,6 +186,7 @@ export function TopNav({
             >
               <UserRound className="size-[18px]" aria-hidden="true" />
             </button>
+            {desktopInbox}
           </div>
         </div>
       </header>

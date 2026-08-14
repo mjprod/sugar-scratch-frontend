@@ -47,12 +47,12 @@ export const DUCK_IN_CHANNEL_RANGES: Record<
   DuckInChannel,
   { min: number; max: number; step: number; color: string }
 > = {
-  rotZ: { min: -90, max: 90, step: 0.5, color: '#ff6b9d' },
-  rotY: { min: 0, max: 360, step: 0.5, color: '#7dd3fc' },
-  rotX: { min: -90, max: 90, step: 0.5, color: '#fbbf24' },
-  x: { min: -4, max: 4, step: 0.01, color: '#a78bfa' },
-  y: { min: -8, max: 4, step: 0.01, color: '#34d399' },
-  z: { min: -4, max: 5, step: 0.01, color: '#fb923c' },
+  rotZ: { min: -90, max: 90, step: 0.5, color: 'oklch(0.723 0.185 1.78)' },
+  rotY: { min: 0, max: 360, step: 0.5, color: 'oklch(0.828 0.101 230.32)' },
+  rotX: { min: -90, max: 90, step: 0.5, color: 'oklch(0.837 0.164 84.43)' },
+  x: { min: -4, max: 4, step: 0.01, color: 'oklch(0.709 0.159 293.54)' },
+  y: { min: -8, max: 4, step: 0.01, color: 'oklch(0.773 0.153 163.22)' },
+  z: { min: -4, max: 5, step: 0.01, color: 'oklch(0.758 0.159 55.93)' },
 }
 
 /**

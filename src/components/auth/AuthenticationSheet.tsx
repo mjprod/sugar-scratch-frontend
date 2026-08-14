@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Apple, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -20,6 +20,9 @@ import {
 } from "@/services/auth";
 import { isValidEmail } from "@/types/app";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import iconApple from "@/assets/auth/iconApple.svg";
+import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
 
 /**
  * Spec-revised Authentication Sheet — Google, Apple, and email in one surface.
@@ -273,18 +276,25 @@ export function AuthenticationSheet({
                     </header>
 
                     {mode === "reset-sent" ? (
-                      <button
-                        type="button"
-                        className="auth7-sheet-primary"
-                        onClick={() => {
-                          if (initialMode === "forgot-password") onDismiss();
-                          else switchMode("login");
-                        }}
-                      >
-                        {initialMode === "forgot-password"
-                          ? "Done"
-                          : "Back to Log In"}
-                      </button>
+                      <div className="auth7-sheet-primary">
+                        <CtaButton
+                          {...ctaButtonPropsFromTemplate("squircleCTA")}
+                          fillParent
+                          type="button"
+                          label={
+                            initialMode === "forgot-password"
+                              ? "Done"
+                              : "Back to Log In"
+                          }
+                          costAmount={null}
+                          fontSize={15}
+                          strokeWidth={1}
+                          onClick={() => {
+                            if (initialMode === "forgot-password") onDismiss();
+                            else switchMode("login");
+                          }}
+                        />
+                      </div>
                     ) : mode === "forgot-password" ? (
                       <form
                         className="auth7-sheet-form"
@@ -309,40 +319,50 @@ export function AuthenticationSheet({
                             {error}
                           </p>
                         ) : null}
-                        <button
-                          type="submit"
-                          className="auth7-sheet-primary"
-                          disabled={busy || !email}
-                        >
-                          {submitting === "email" ? (
-                            <Loader2
-                              className="size-4 animate-spin"
-                              aria-hidden
-                            />
-                          ) : (
-                            "Send Reset Link"
-                          )}
-                        </button>
+                        <div className="auth7-sheet-primary">
+                          <CtaButton
+                            {...ctaButtonPropsFromTemplate("squircleCTA")}
+                            fillParent
+                            type="submit"
+                            label={
+                              submitting === "email"
+                                ? "Sending…"
+                                : "Send Reset Link"
+                            }
+                            costAmount={null}
+                            fontSize={15}
+                            strokeWidth={1}
+                            disabled={busy || !email}
+                          />
+                        </div>
                       </form>
                     ) : (
                       <>
                         <div className="auth7-sheet-social">
-                          <button
-                            type="button"
-                            className="auth7-social-btn is-google"
-                            disabled={busy}
-                            onClick={() => void finishSocial("Google")}
-                          >
-                            {submitting === "google" ? (
-                              <Loader2
-                                className="size-4 animate-spin"
-                                aria-hidden
-                              />
-                            ) : (
-                              <GoogleMark />
-                            )}
-                            Continue with Google
-                          </button>
+                          <div className="auth7-social-btn is-google">
+                            <CtaButton
+                              {...ctaButtonPropsFromTemplate("squircleCTA")}
+                              fillParent
+                              type="button"
+                              label={
+                                submitting === "google"
+                                  ? "Connecting…"
+                                  : "Continue with Google"
+                              }
+                              leadingIcon={
+                                <img
+                                  src={iconGoogleNeutral}
+                                  alt=""
+                                  draggable={false}
+                                />
+                              }
+                              costAmount={null}
+                              fontSize={15}
+                              strokeWidth={1}
+                              disabled={busy}
+                              onClick={() => void finishSocial("Google")}
+                            />
+                          </div>
                           <button
                             type="button"
                             className="auth7-social-btn"
@@ -355,7 +375,13 @@ export function AuthenticationSheet({
                                 aria-hidden
                               />
                             ) : (
-                              <Apple className="size-4" aria-hidden="true" />
+                              <img
+                                src={iconApple}
+                                alt=""
+                                className="auth7-social-icon"
+                                draggable={false}
+                                aria-hidden="true"
+                              />
                             )}
                             Continue with Apple
                           </button>
@@ -555,25 +581,27 @@ export function AuthenticationSheet({
                             </p>
                           ) : null}
 
-                          <button
-                            type="submit"
-                            className="auth7-sheet-primary"
-                            disabled={
-                              busy ||
-                              (mode === "create-account" && !canCreateAccount)
-                            }
-                          >
-                            {submitting === "email" ? (
-                              <Loader2
-                                className="size-4 animate-spin"
-                                aria-hidden
-                              />
-                            ) : mode === "create-account" ? (
-                              "Create Account"
-                            ) : (
-                              "Continue"
-                            )}
-                          </button>
+                          <div className="auth7-sheet-primary">
+                            <CtaButton
+                              {...ctaButtonPropsFromTemplate("squircleCTA")}
+                              fillParent
+                              type="submit"
+                              label={
+                                submitting === "email"
+                                  ? "Working…"
+                                  : mode === "create-account"
+                                    ? "Create Account"
+                                    : "Continue"
+                              }
+                              costAmount={null}
+                              fontSize={15}
+                              strokeWidth={1}
+                              disabled={
+                                busy ||
+                                (mode === "create-account" && !canCreateAccount)
+                              }
+                            />
+                          </div>
                         </form>
 
                         <p className="auth7-switch">
@@ -616,28 +644,6 @@ export function AuthenticationSheet({
   );
 }
 
-function GoogleMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M9 7.2v3.6h5.1c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.8 0-.7-.1-1.3-.2-1.9H9z"
-      />
-      <path
-        fill="#34A853"
-        d="M4 10.7l-.7.5-2.3 1.8C2.5 15.7 5.5 18 9 18c2.4 0 4.4-.8 5.9-2.1l-3-2.3c-.8.6-1.9.9-2.9.9-2.3 0-4.2-1.5-4.9-3.6z"
-      />
-      <path
-        fill="#4A90E2"
-        d="M1 5c-.6 1.2-1 2.5-1 4s.4 2.8 1 4l3.1-2.4C3.8 9.8 3.7 9.4 3.7 9c0-.4.1-.8.2-1.2z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.6C13.4.9 11.4 0 9 0 5.5 0 2.5 2.3 1 5.6L4.1 8C4.8 5.9 6.7 3.6 9 3.6z"
-      />
-    </svg>
-  );
-}
 
 function wait(ms: number) {
   return new Promise((r) => setTimeout(r, ms));

@@ -97,7 +97,7 @@ export function SiteShell({
 
   return (
     <div className="min-h-full w-full">
-      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10">
+      <div className="mx-auto w-full max-w-[80rem] px-4 sm:px-6 lg:px-10">
         <div className="pointer-events-none sticky top-0 z-40 -mb-2 flex justify-end pt-2 sm:pt-3">
           <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-medium tracking-[0.04em] text-white/40 backdrop-blur-md">
             {STEP_LABEL[step]} · v8
