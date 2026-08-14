@@ -156,7 +156,10 @@ export function useCreatorCollection(
             overlay,
             overlayForGroup: (group) =>
               cardFaceOverlayFromShared(
-                catalogCtx.resolveProductSharedMedia(group.modelId),
+                catalogCtx.resolveProductSharedMedia(
+                  group.modelId,
+                  group.themeId,
+                ),
               ),
           })
         : { cards: [] as CardConfig[], groups: [] as DeckGroup[] };

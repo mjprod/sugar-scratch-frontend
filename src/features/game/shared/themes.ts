@@ -7,6 +7,10 @@ export type ThemeInfo = {
   created_at?: number | null
   /** One-time in-game intro clip shared by every motion card in this theme. */
   intro?: string | null
+  cardOverlayColorStart?: string | null
+  cardOverlayColorEnd?: string | null
+  cardLightColor1?: string | null
+  cardLightColor2?: string | null
 }
 
 /** Themes list for motion intro clips (read-only). */
