@@ -17,7 +17,20 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (usually `http://localhost:5173`).
+Open the URL Vite prints (usually `https://localhost:5173`). HTTPS is required for DeviceOrientation / compass.
+
+### Trusted HTTPS (mkcert) — recommended for phones
+
+```bash
+brew install mkcert          # once
+mkcert -install              # once — trust CA on this Mac (needs sudo)
+npm run certs                # writes .certs/dev-*.pem for localhost + LAN IPs
+npm run dev
+```
+
+Vite loads `.certs/dev-cert.pem` + `.certs/dev-key.pem` when present; otherwise it falls back to `@vitejs/plugin-basic-ssl` (browser warning).
+
+**Phone (one-time CA install):** AirDrop / copy `.certs/rootCA.pem` to the device, install the profile, then enable full trust (iOS: Settings → General → About → Certificate Trust Settings). Re-run `npm run certs` if your Wi‑Fi IP changes. Phone URL: `https://<lan-ip>:5173`.
 
 ## API + media proxies
 
@@ -43,7 +56,8 @@ Live catalog HTTP goes through `src/lib/api.ts` (`apiFetch`).
 
 | Script | Purpose |
 |--------|---------|
-| `npm run dev` | Vite dev server |
+| `npm run dev` | Vite dev server (HTTPS) |
+| `npm run certs` | Regenerate `.certs/` with mkcert (localhost + LAN IPs) |
 | `npm run build` | Typecheck + production build |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run self-check` | Auth + recommendation invariant checks |

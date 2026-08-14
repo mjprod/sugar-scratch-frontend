@@ -62,6 +62,8 @@ export type BackendModel = {
   swipeVideoUrl?: string | null
   /** theme_id → public URL for model×theme collection avatar. */
   theme_avatars?: Record<string, string> | null
+  /** Freeform labels for dashboard filtering. */
+  tags?: string[]
 }
 
 export type BackendCard = {
@@ -134,6 +136,10 @@ export type BackendCollectionGroup = {
   themeName?: string | null
   themeId?: string | null
   avatarUrl?: string | null
+  cardOverlayColorStart?: string | null
+  cardOverlayColorEnd?: string | null
+  cardLightColor1?: string | null
+  cardLightColor2?: string | null
   cards: BackendCollectionCard[]
 }
 
@@ -318,6 +324,7 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
     packFaceVideoUrl2: model.packFaceVideoUrl2,
     swipeVideoUrl: model.swipeVideoUrl,
     theme_avatars: model.theme_avatars,
+    tags: model.tags,
   }
 }
 
@@ -598,6 +605,10 @@ function normalizeCollectionGroup(
     avatarUrl: group.avatarUrl
       ? normalizeMediaUrl(group.avatarUrl)
       : null,
+    cardOverlayColorStart: group.cardOverlayColorStart ?? null,
+    cardOverlayColorEnd: group.cardOverlayColorEnd ?? null,
+    cardLightColor1: group.cardLightColor1 ?? null,
+    cardLightColor2: group.cardLightColor2 ?? null,
     cards: (group.cards ?? []).map((card) => {
       const photoUrls = Array.isArray(card.photoUrls)
         ? card.photoUrls.map((url) => normalizeMediaUrl(url || ''))

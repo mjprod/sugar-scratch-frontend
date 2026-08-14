@@ -11,6 +11,7 @@ import {
   fetchModels,
   type BackendModel,
 } from "@/shared/backend/collection";
+import { fetchThemes, type ThemeInfo } from "@/features/game/shared/themes";
 import {
   CHARACTER_BY_GROUP_ID,
   CHARACTER_BY_ID,
@@ -27,7 +28,10 @@ import {
 type CatalogContextValue = {
   productReady: boolean;
   productSharedMedia: SharedMedia;
-  resolveProductSharedMedia: (modelId?: string | null) => SharedMedia;
+  resolveProductSharedMedia: (
+    modelId?: string | null,
+    themeId?: string | null,
+  ) => SharedMedia;
   characters: Character[];
   byId: Record<CharacterId, Character>;
   byGroupId: Record<GroupId, Character>;
@@ -35,6 +39,20 @@ type CatalogContextValue = {
 };
 
 const CatalogContext = createContext<CatalogContextValue | null>(null);
+
+function applyThemeOverlay(
+  shared: SharedMedia,
+  theme?: ThemeInfo | null,
+): SharedMedia {
+  if (!theme) return shared;
+  const start = (theme.cardOverlayColorStart ?? "").trim();
+  const end = (theme.cardOverlayColorEnd ?? "").trim();
+  return {
+    ...shared,
+    overlayBackgroundColor: start || shared.overlayBackgroundColor,
+    overlayBackgroundColorEnd: end || shared.overlayBackgroundColorEnd,
+  };
+}
 
 function sharedFromModel(model: BackendModel | null | undefined): SharedMedia {
   if (!model) return { ...DEFAULT_SHARED_MEDIA };
@@ -65,37 +83,54 @@ export function CatalogProvider({
   const [modelsById, setModelsById] = useState<Record<string, BackendModel>>(
     {},
   );
+  const [themesById, setThemesById] = useState<Record<string, ThemeInfo>>({});
   const [productReady, setProductReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchModels()
+    fetchModels()
       .then((models) => {
         if (cancelled) return;
-        const next: Record<string, BackendModel> = {};
+        const nextModels: Record<string, BackendModel> = {};
         for (const model of models ?? []) {
-          if (model?.id) next[model.id] = model;
+          if (model?.id) nextModels[model.id] = model;
         }
-        setModelsById(next);
+        setModelsById(nextModels);
         setProductReady(true);
       })
       .catch(() => {
         if (cancelled) return;
         setProductReady(true);
       });
+    fetchThemes()
+      .then((themes) => {
+        if (cancelled) return;
+        const nextThemes: Record<string, ThemeInfo> = {};
+        for (const theme of themes ?? []) {
+          if (theme?.id) nextThemes[theme.id] = theme;
+        }
+        setThemesById(nextThemes);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
 
   const resolveProductSharedMedia = useCallback(
-    (modelId?: string | null) => {
+    (modelId?: string | null, themeId?: string | null) => {
       const key = (modelId ?? preferredModelId ?? "").trim();
-      if (key && modelsById[key]) return sharedFromModel(modelsById[key]);
-      const first = Object.values(modelsById)[0];
-      return sharedFromModel(first);
+      const fromModel =
+        key && modelsById[key]
+          ? sharedFromModel(modelsById[key])
+          : sharedFromModel(Object.values(modelsById)[0]);
+      const themeKey = (themeId ?? "").trim();
+      return applyThemeOverlay(
+        fromModel,
+        themeKey ? themesById[themeKey] : null,
+      );
     },
-    [modelsById, preferredModelId],
+    [modelsById, preferredModelId, themesById],
   );
 
   const productSharedMedia = useMemo(

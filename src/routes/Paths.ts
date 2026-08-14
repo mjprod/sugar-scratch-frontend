@@ -16,6 +16,7 @@ export const Paths = {
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
   game: "/game",
+  photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
   gamePlay: (
     modelId: string,
@@ -28,6 +29,17 @@ export const Paths = {
     if (extra?.creatorId) params.set("creator", extra.creatorId);
     if (extra?.themeId) params.set("theme", extra.themeId);
     return `/game?${params.toString()}`;
+  },
+  /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection). */
+  photoScratchPlay: (
+    photoCardId: string,
+    extra?: { modelId?: string },
+  ) => {
+    const params = new URLSearchParams();
+    params.set("card", photoCardId);
+    const model = extra?.modelId?.trim();
+    if (model) params.set("model", model);
+    return `/photo-scratch?${params.toString()}`;
   },
   recommend: "/recommend",
   recommendSwipe: "/recommend/swipe",

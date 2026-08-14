@@ -327,20 +327,25 @@ export default function Aurora(props: AuroraProps) {
     let hasFrozenTime = false;
     let timeOriginMs = performance.now();
     let pausedElapsedSec = 0;
+    let lastParticleColorHex = particleColor;
+    let lastStopsKey = colorStops.join("|");
 
     const applyUniforms = (nowMs: number) => {
       if (!program) return;
       const current = propsRef.current;
       const isPaused = Boolean(current.paused);
       const speed = current.speed ?? 1.0;
+      // React Bits Aurora feeds rAF ms as `t * 0.01`, then `uTime = time * speed * 0.1`.
+      // That simplifies to elapsedSeconds * speed. The previous path applied both
+      // 0.01 and 0.1 on seconds, which froze particles (~1000× too slow).
+      const elapsedSec = (nowMs - timeOriginMs) / 1000;
+      const timeFromClock = (seconds: number) =>
+        current.time != null ? current.time * speed * 0.1 : seconds * speed;
 
       if (isPaused) {
         if (!hasFrozenTime) {
-          pausedElapsedSec = (nowMs - timeOriginMs) / 1000;
-          frozenTime =
-            current.time != null
-              ? current.time * speed * 0.1
-              : pausedElapsedSec * 0.01 * speed * 0.1;
+          pausedElapsedSec = elapsedSec;
+          frozenTime = timeFromClock(pausedElapsedSec);
           hasFrozenTime = true;
         }
       } else if (hasFrozenTime) {
@@ -349,10 +354,7 @@ export default function Aurora(props: AuroraProps) {
         hasFrozenTime = false;
       }
 
-      const liveTime =
-        current.time != null
-          ? current.time * speed * 0.1
-          : ((nowMs - timeOriginMs) / 1000) * 0.01 * speed * 0.1;
+      const liveTime = timeFromClock(elapsedSec);
 
       program.uniforms.uTime.value = isPaused ? frozenTime : liveTime;
       program.uniforms.uAmplitude.value = current.amplitude ?? 1.0;
@@ -368,12 +370,21 @@ export default function Aurora(props: AuroraProps) {
         ? 0
         : (current.particleSpeed ?? particleSpeed);
       program.uniforms.uParticleOpacity.value = current.particleOpacity ?? particleOpacity;
-      program.uniforms.uParticleColor.value = hexToRgb(current.particleColor ?? particleColor);
+      // Colors rarely change — only rebuild RGB arrays when the hex inputs change.
+      const nextParticleColor = current.particleColor ?? particleColor;
+      if (nextParticleColor !== lastParticleColorHex) {
+        lastParticleColorHex = nextParticleColor;
+        program.uniforms.uParticleColor.value = hexToRgb(nextParticleColor);
+      }
       program.uniforms.uParticleTwinkle.value = isPaused
         ? 0
         : (current.particleTwinkle ?? particleTwinkle);
       const stops = current.colorStops ?? colorStops;
-      program.uniforms.uColorStops.value = stops.map(hexToRgb);
+      const stopsKey = stops.join("|");
+      if (stopsKey !== lastStopsKey) {
+        lastStopsKey = stopsKey;
+        program.uniforms.uColorStops.value = stops.map(hexToRgb);
+      }
       renderer.render({ scene: mesh });
     };
 

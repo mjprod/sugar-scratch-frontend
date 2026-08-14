@@ -34,7 +34,12 @@ import {
   getPhotoFilledCount,
   getVideoCardCount,
   PHOTO_SLOTS,
+  photoScratchIdForSlot,
 } from '../lib/photoSlots'
+import { useNavigate } from 'react-router-dom'
+import { Paths } from '@/routes/Paths'
+import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
+import { useCollectionActions } from '../CollectionActionsContext'
 import {
   DESKTOP_LAYOUT,
   getLoadedIndexRange,
@@ -188,6 +193,8 @@ const DeckItem = memo(function DeckItem({
   registerNode,
   onFaceMediaReady,
 }: DeckItemProps) {
+  const navigate = useNavigate()
+  const actions = useCollectionActions()
   // Keep a neutral effect object so HoloCard props stay stable while holos are off.
   const effect =
     HOLO_EFFECTS[clampEffectIndex(card.effectIndex)] ??
@@ -204,6 +211,26 @@ const DeckItem = memo(function DeckItem({
       onFaceMediaReady?.(card.id, ready)
     },
     [card.id, onFaceMediaReady],
+  )
+
+  const handlePlayPhotoCard = useCallback(
+    (slotIndex: number) => {
+      const motion = card.id.trim()
+      if (!motion) return
+      const photoId = photoScratchIdForSlot(motion, slotIndex)
+      const model = (card.modelId || '').trim()
+      unlockCountdownSound()
+      if (actions.onPlayPhotoCard) {
+        actions.onPlayPhotoCard(model, photoId, slotIndex)
+        return
+      }
+      navigate(
+        Paths.photoScratchPlay(photoId, {
+          modelId: model || undefined,
+        }),
+      )
+    },
+    [actions, card.id, card.modelId, navigate],
   )
 
   // One source of truth for the play meta "Nx" and the stack-back layers.
@@ -308,6 +335,7 @@ const DeckItem = memo(function DeckItem({
           visible
           gridOnly
           onClose={onCloseActive}
+          onPlayPhotoCard={handlePlayPhotoCard}
         />
       )}
       <div

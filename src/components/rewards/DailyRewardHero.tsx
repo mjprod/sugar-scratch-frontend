@@ -1,5 +1,7 @@
-import { ArrowRight, Check, Clock, Gem, Gift, Sparkles } from "lucide-react";
+import { Check, Clock, Gift, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   claimDailyReward,
   formatCountdown,
@@ -81,13 +83,13 @@ export function DailyRewardHero({
           <Sparkles className="size-3" />
         </span>
         <span className="hub-daily-stage-particle is-b">
-          <Gem className="size-3" />
+          <DiamondLottie size={12} aria-hidden />
         </span>
         <span className="hub-daily-stage-particle is-c">
           <Sparkles className="size-2.5" />
         </span>
         <span className="hub-daily-stage-particle is-d">
-          <Gem className="size-2.5" />
+          <DiamondLottie size={10} aria-hidden />
         </span>
         <div className="hub-daily-stage-object">
           <Gift className="hub-daily-stage-gift" strokeWidth={1.35} />
@@ -107,18 +109,18 @@ export function DailyRewardHero({
           </>
         ) : (
           <>
-            <button
-              type="button"
-              className="hub-daily-hero-cta"
-              onClick={handleClaim}
-              disabled={claiming}
-              aria-busy={claiming}
-            >
-              {claiming ? "Claiming…" : "Claim Reward"}
-              {!claiming ? (
-                <ArrowRight className="size-4" aria-hidden="true" />
-              ) : null}
-            </button>
+            <div className="hub-daily-hero-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                label={claiming ? "Claiming…" : "Claim Reward"}
+                costAmount={null}
+                fontSize={14}
+                disabled={claiming}
+                aria-busy={claiming}
+                onClick={handleClaim}
+              />
+            </div>
             <p className="hub-daily-hero-reset">
               <Clock className="size-3.5 shrink-0" aria-hidden="true" />
               Resets in <span className="tabular-nums">{countdown}</span>

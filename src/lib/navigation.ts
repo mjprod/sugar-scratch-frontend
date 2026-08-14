@@ -40,6 +40,8 @@ export const SURFACE_KIND: Record<string, NavSurfaceKind> = {
   "change-password": "secondary",
   creator: "secondary",
   "purchase-flow": "immersive",
+  game: "immersive",
+  "photo-scratch": "immersive",
   "recommend-intro": "immersive",
   "personalize-swipe": "immersive",
   "personalize-complete": "immersive",

@@ -32,6 +32,7 @@ export function TopNav({
   showBalances = true,
   showMobileDiamond = true,
   showInbox = true,
+  routeKey,
 }: {
   coins: number | null;
   diamonds: number | null;
@@ -56,6 +57,7 @@ export function TopNav({
   showMobileDiamond?: boolean;
   /** Hide on Inbox route to avoid redundant self-nav. */
   showInbox?: boolean;
+  routeKey?: string;
 }) {
   const [scrolled, setScrolled] = useState(false);
   const primaryActive =
@@ -79,7 +81,7 @@ export function TopNav({
         node.removeEventListener("scroll", readScrolled);
       });
     };
-  }, [activeTab]);
+  }, [activeTab, routeKey]);
 
   const mobileInbox =
     showInbox && onOpenInbox ? (
@@ -114,7 +116,7 @@ export function TopNav({
 
       <header
         className={[
-          "top-nav-desktop fixed inset-x-0 top-0 z-[var(--app-top-nav-z-index,30)] hidden h-[var(--app-top-nav-height,56px)] lg:block",
+          "top-nav-desktop glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface fixed top-0 z-[var(--app-top-nav-z-index,30)] hidden h-[var(--app-top-nav-height,56px)] lg:block",
           scrolled ? "is-scrolled" : "",
         ]
           .filter(Boolean)
@@ -124,9 +126,15 @@ export function TopNav({
           <button
             type="button"
             onClick={() => onTabChange("home")}
-            className="top-nav-brand shrink-0 text-[18px] font-bold tracking-[-0.03em] text-white/90 transition hover:text-white"
+            aria-label="Sugar Scratch Home"
+            className="top-nav-brand shrink-0 transition hover:opacity-90"
           >
-            Sugar
+            <img
+              src="/svg/logoSugarScratch.svg"
+              alt="Sugar Scratch"
+              className="top-nav-brand-logo h-10 w-auto"
+              draggable={false}
+            />
           </button>
           <nav aria-label="Primary" className="top-nav-primary flex items-center gap-0.5">
             {DESKTOP_DESTINATIONS.map((destination) => {

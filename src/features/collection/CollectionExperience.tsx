@@ -443,9 +443,9 @@ export function CollectionExperience(props: CollectionExperienceProps) {
     if (backendGroups.length > 0) {
       const seed = createBackendDeck(createCard, backendGroups, {
         overlay,
-        overlayForGroup: (group: { modelId: string }) =>
+        overlayForGroup: (group: { modelId: string; themeId?: string | null }) =>
           cardFaceOverlayFromShared(
-            catalog.resolveProductSharedMedia(group.modelId),
+            catalog.resolveProductSharedMedia(group.modelId, group.themeId),
           ),
       })
       const activeId =
