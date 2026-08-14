@@ -103,6 +103,13 @@ export function CreatorFeedCard({
   const packLabel = feedPackLabel(item.packName);
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
   const shouldBuffer = active || warm;
+  /**
+   * Keep CTA shader motion alive across the mid-scroll handoff.
+   * `active` flips at ~50% slide travel (Math.round), so gating aurora on
+   * active-only makes the leaving card drop WebGL particles/aurora too early.
+   * Warm neighbors stay in view during that transition — keep them live too.
+   */
+  const ctaMotionLive = (active || warm) && !reducedMotion;
 
   function playHeartBurst(mode: BurstMode, clientX?: number, clientY?: number) {
     const root = cardRef.current;
@@ -351,13 +358,14 @@ export function CreatorFeedCard({
               strokeWidth={1}
               /*
                 Viewport-scoped motion:
-                - active card: full aurora + CSS orbit + Lottie
-                - warm peek: static glow frame (no rAF/WebGL clock)
+                - active + warm neighbors: aurora / particles / orbit
+                  (warm covers the ~50–100% scroll handoff on desktop)
                 - far slides: static CTA only
+                - diamond Lottie stays active-only (heavier wasm loop)
               */
-              glowOuterBloom={active ? "lite" : "off"}
-              glowAlwaysOn={active && !reducedMotion}
-              auroraPaused={!active || reducedMotion}
+              glowOuterBloom={ctaMotionLive ? "lite" : "off"}
+              glowAlwaysOn={ctaMotionLive}
+              auroraPaused={!ctaMotionLive}
               costIconAnimated={active && !reducedMotion}
               aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
               onClick={(e) => {

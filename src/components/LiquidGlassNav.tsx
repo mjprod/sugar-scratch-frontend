@@ -331,18 +331,21 @@ export function LiquidGlassNav({
         ...prev,
         underCollection: 0,
         visible: false,
+        // Keep ready so a later tab change can still animate from last geometry.
         ready: prev.ready,
       }));
       return;
     }
 
     const measured = measureBubbleForTab(parent, target, activeTabConfig.id);
-    setBubble({
+    setBubble((prev) => ({
       ...measured,
       underCollection: measureUnderCollection(measured.x, measured.w),
       visible: true,
-      ready: true,
-    });
+      // First placement must stay duration:0 until after paint, otherwise the
+      // bubble slides up from the default (0,0) origin on load.
+      ready: prev.ready,
+    }));
   }, [active, measureUnderCollection]);
 
   const updateTopBubble = useCallback(() => {
@@ -363,18 +366,60 @@ export function LiquidGlassNav({
     }
 
     const measured = measureTopBubbleForTab(parent, target, activeTabConfig.id);
-    setTopBubble({
+    setTopBubble((prev) => ({
       ...measured,
       underCollection: 0,
       visible: true,
-      ready: true,
-    });
+      // Same first-paint snap as the dock bubble.
+      ready: prev.ready,
+    }));
   }, [active]);
 
   useLayoutEffect(() => {
     updateDockBubble();
     updateTopBubble();
   }, [updateDockBubble, updateTopBubble, handoff, isDesktop]);
+
+  // After the first measured geometry has painted with duration:0, arm
+  // transitions so later tab/drag moves ease instead of sliding from (0,0).
+  useEffect(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+    const needsDockArm = bubble.visible && !bubble.ready && bubble.w > 0;
+    const needsTopArm = topBubble.visible && !topBubble.ready && topBubble.w > 0;
+    if (!needsDockArm && !needsTopArm) return;
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (needsDockArm) {
+          setBubble((prev) =>
+            prev.visible && !prev.ready && prev.w > 0
+              ? { ...prev, ready: true }
+              : prev,
+          );
+        }
+        if (needsTopArm) {
+          setTopBubble((prev) =>
+            prev.visible && !prev.ready && prev.w > 0
+              ? { ...prev, ready: true }
+              : prev,
+          );
+        }
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [
+    bubble.ready,
+    bubble.visible,
+    bubble.w,
+    topBubble.ready,
+    topBubble.visible,
+    topBubble.w,
+  ]);
 
   useEffect(() => {
     const dockParent = dockItemsRef.current;
@@ -875,169 +920,171 @@ export function LiquidGlassNav({
         </div>
       </nav>
 
-      <nav className="nav-test-dock" aria-label="Primary">
-        {/*
-          Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
-          (not clip-path) so backdrop-filter is shaped.
-        */}
-        <div
-          className="nav-test-dock-surface"
-          style={{
-            maskImage: DOCK_MASK,
-            WebkitMaskImage: DOCK_MASK,
-          }}
-          aria-hidden="true"
-        />
-
-        {/* Rim light sets — narrow 2px stroke strips at left / center / right */}
-        <div className="nav-test-dock-rims" aria-hidden="true">
-          <div className="top-left-rim-light">
-            <div className="rim-left-a" />
-            <div className="rim-left-a-b" />
-          </div>
-
-          <div className="middle-right-rim-light">
-            <div className="rim-center-a" />
-            <div className="rim-center-a-b" />
-          </div>
-
-          <div className="bottom-right-rim-light">
-            <div className="rim-right-a" />
-            <div className="rim-right-a-b" />
-          </div>
-        </div>
-
-        <div
-          className="nav-test-dock-items"
-          ref={dockItemsRef}
-          style={dockBubbleStyle}
-        >
-          {/* Sliding active bubble + glow twin — drag to a nearby tab (not Collection) */}
-          <div className="nav-test-dock-bubble-active-glow" aria-hidden="true" />
-          <div
-            className={[
-              "nav-test-dock-bubble",
-              isDraggingBubble ? "is-dragging" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-hidden="true"
-          />
+      <div className="nav-test-dock-wrap" aria-hidden={hidden ? true : undefined}>
+        <nav className="nav-test-dock" aria-label="Primary">
           {/*
-            Transparent hit target above tabs so the bubble can be grabbed.
-            Visual bubble stays under Collection; this handle receives the drag.
+            Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
+            (not clip-path) so backdrop-filter is shaped.
           */}
           <div
-            className={[
-              "nav-test-dock-bubble-handle",
-              bubble.visible ? "is-interactive" : "",
-              isDraggingBubble ? "is-dragging" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            role="slider"
-            aria-label="Drag navigation indicator"
-            aria-valuetext={
-              dragHoverTab
-                ? TABS.find((t) => t.id === dragHoverTab)?.label
-                : TABS.find((t) => t.id === active)?.label
-            }
-            aria-hidden={bubble.visible ? undefined : true}
-            onPointerDown={handleBubblePointerDown}
-            onPointerMove={handleBubblePointerMove}
-            onPointerUp={endBubbleDrag}
-            onPointerCancel={endBubbleDrag}
+            className="nav-test-dock-surface"
+            style={{
+              maskImage: DOCK_MASK,
+              WebkitMaskImage: DOCK_MASK,
+            }}
+            aria-hidden="true"
           />
 
-          {TABS.map((tab, index) => {
-            const Icon = tab.icon;
-            const isActive = active === tab.id;
-            const isDragTarget =
-              isDraggingBubble && dragHoverTab === tab.id && !tab.primary;
+          {/* Rim light sets — narrow 2px stroke strips at left / center / right */}
+          <div className="nav-test-dock-rims" aria-hidden="true">
+            <div className="top-left-rim-light">
+              <div className="rim-left-a" />
+              <div className="rim-left-a-b" />
+            </div>
 
-            if (tab.primary) {
+            <div className="middle-right-rim-light">
+              <div className="rim-center-a" />
+              <div className="rim-center-a-b" />
+            </div>
+
+            <div className="bottom-right-rim-light">
+              <div className="rim-right-a" />
+              <div className="rim-right-a-b" />
+            </div>
+          </div>
+
+          <div
+            className="nav-test-dock-items"
+            ref={dockItemsRef}
+            style={dockBubbleStyle}
+          >
+            {/* Sliding active bubble + glow twin — drag to a nearby tab (not Collection) */}
+            <div className="nav-test-dock-bubble-active-glow" aria-hidden="true" />
+            <div
+              className={[
+                "nav-test-dock-bubble",
+                isDraggingBubble ? "is-dragging" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-hidden="true"
+            />
+            {/*
+              Transparent hit target above tabs so the bubble can be grabbed.
+              Visual bubble stays under Collection; this handle receives the drag.
+            */}
+            <div
+              className={[
+                "nav-test-dock-bubble-handle",
+                bubble.visible ? "is-interactive" : "",
+                isDraggingBubble ? "is-dragging" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              role="slider"
+              aria-label="Drag navigation indicator"
+              aria-valuetext={
+                dragHoverTab
+                  ? TABS.find((t) => t.id === dragHoverTab)?.label
+                  : TABS.find((t) => t.id === active)?.label
+              }
+              aria-hidden={bubble.visible ? undefined : true}
+              onPointerDown={handleBubblePointerDown}
+              onPointerMove={handleBubblePointerMove}
+              onPointerUp={endBubbleDrag}
+              onPointerCancel={endBubbleDrag}
+            />
+
+            {TABS.map((tab, index) => {
+              const Icon = tab.icon;
+              const isActive = active === tab.id;
+              const isDragTarget =
+                isDraggingBubble && dragHoverTab === tab.id && !tab.primary;
+
+              if (tab.primary) {
+                return (
+                  <div
+                    key={tab.id}
+                    ref={(node) => {
+                      dockTabRefs.current[index] = node;
+                    }}
+                    className={[
+                      "nav-test-dock-primary",
+                      isActive ? "is-active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <BorderGlow
+                      className="nav-test-dock-primary-glow nav-test-hero-btn border-glow-always-on"
+                      borderRadius={999}
+                      backgroundColor="transparent"
+                      glowColor="330 90 78"
+                      glowRadius={21}
+                      glowIntensity={1.05}
+                      coneSpread={28}
+                      edgeSensitivity={0}
+                      fillOpacity={0.2}
+                      animated={false}
+                      orbit
+                      orbitDuration={7}
+                      colors={[...COLLECTION_GLOW_COLORS]}
+                      style={CUTOUT_STYLE}
+                    >
+                      <button
+                        type="button"
+                        className="nav-test-dock-primary-btn"
+                        aria-current={isActive ? "page" : undefined}
+                        aria-label={tab.label}
+                        tabIndex={hidden ? -1 : undefined}
+                        onClick={() => selectTab(tab.id)}
+                      >
+                        <Icon
+                          className="nav-test-dock-primary-icon"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </BorderGlow>
+                    <span className="nav-test-dock-primary-label" aria-hidden="true">
+                      {tab.label}
+                    </span>
+                  </div>
+                );
+              }
+
               return (
-                <div
+                <button
                   key={tab.id}
                   ref={(node) => {
                     dockTabRefs.current[index] = node;
                   }}
+                  type="button"
                   className={[
-                    "nav-test-dock-primary",
+                    "nav-test-dock-item",
                     isActive ? "is-active" : "",
+                    isDragTarget ? "is-drag-target" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={tab.label}
+                  tabIndex={hidden ? -1 : undefined}
+                  onClick={() => selectTab(tab.id)}
                 >
-                  <BorderGlow
-                    className="nav-test-dock-primary-glow nav-test-hero-btn border-glow-always-on"
-                    borderRadius={999}
-                    backgroundColor="transparent"
-                    glowColor="330 90 78"
-                    glowRadius={21}
-                    glowIntensity={1.05}
-                    coneSpread={28}
-                    edgeSensitivity={0}
-                    fillOpacity={0.2}
-                    animated={false}
-                    orbit
-                    orbitDuration={7}
-                    colors={[...COLLECTION_GLOW_COLORS]}
-                    style={CUTOUT_STYLE}
-                  >
-                    <button
-                      type="button"
-                      className="nav-test-dock-primary-btn"
-                      aria-current={isActive ? "page" : undefined}
-                      aria-label={tab.label}
-                      tabIndex={hidden ? -1 : undefined}
-                      onClick={() => selectTab(tab.id)}
-                    >
-                      <Icon
-                        className="nav-test-dock-primary-icon"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </BorderGlow>
-                  <span className="nav-test-dock-primary-label" aria-hidden="true">
-                    {tab.label}
-                  </span>
-                </div>
+                  <Icon
+                    className="nav-test-dock-icon"
+                    strokeWidth={isActive || isDragTarget ? 2.1 : 1.8}
+                    fill={isActive || isDragTarget ? "currentColor" : "none"}
+                    fillOpacity={isActive || isDragTarget ? 0.2 : 0}
+                    aria-hidden="true"
+                  />
+                  <span className="nav-test-dock-label">{tab.label}</span>
+                </button>
               );
-            }
-
-            return (
-              <button
-                key={tab.id}
-                ref={(node) => {
-                  dockTabRefs.current[index] = node;
-                }}
-                type="button"
-                className={[
-                  "nav-test-dock-item",
-                  isActive ? "is-active" : "",
-                  isDragTarget ? "is-drag-target" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={tab.label}
-                tabIndex={hidden ? -1 : undefined}
-                onClick={() => selectTab(tab.id)}
-              >
-                <Icon
-                  className="nav-test-dock-icon"
-                  strokeWidth={isActive || isDragTarget ? 2.1 : 1.8}
-                  fill={isActive || isDragTarget ? "currentColor" : "none"}
-                  fillOpacity={isActive || isDragTarget ? 0.2 : 0}
-                  aria-hidden="true"
-                />
-                <span className="nav-test-dock-label">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+            })}
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }
