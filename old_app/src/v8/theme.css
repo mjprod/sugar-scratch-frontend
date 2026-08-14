@@ -2123,7 +2123,8 @@ body[data-theme="v8"] .collection-true-empty-cta {
   body[data-theme="v8"] .collection-page-content {
     width: min(calc(100% - 64px), 1280px);
     max-width: none;
-    padding-top: 32px;
+    /* Keep TopNav clearance from --app-diamond-offset (do not hardcode 32px). */
+    padding-top: var(--app-diamond-offset);
     padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
     gap: 36px;
   }

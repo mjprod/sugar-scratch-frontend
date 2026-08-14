@@ -74,7 +74,7 @@ export const SPLASH_SLIDES = [
   },
   {
     title: "Your collection awaits",
-    hook: "Browse, streak daily rewards, and chase the cards you want most.",
+    hook: "Discover, streak daily rewards, and chase the cards you want most.",
     cta: "Get started",
   },
 ] as const;

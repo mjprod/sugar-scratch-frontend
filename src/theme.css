@@ -8869,11 +8869,6 @@ body[data-theme="v8"] .app-page-shell-inner {
 }
 
 @media (min-width: 1024px) {
-  /* Gap-only fallback when layout is not HUD-overlay; HUD pages inherit from .app-layout--hud. */
-  body[data-theme="v8"]:not(:has(.app-layout--hud)) {
-    --app-diamond-offset: 32px;
-  }
-
   body[data-theme="v8"] .app-page-shell--primary {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;

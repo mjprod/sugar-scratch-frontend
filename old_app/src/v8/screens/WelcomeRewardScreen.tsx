@@ -87,7 +87,7 @@ export function WelcomeRewardScreen({
         <div className="mt-6 rounded-[20px] border border-line bg-surface-raised p-4">
           <p className="text-[14px] font-semibold">Have a creator referral code?</p>
           <p className="mt-1 text-[12px] text-ink-tertiary">
-            Optional — you can redeem later in Settings or Rewards.
+            Optional — you can redeem later in Settings or Store.
           </p>
           <div className="mt-3 flex gap-2">
             <input
