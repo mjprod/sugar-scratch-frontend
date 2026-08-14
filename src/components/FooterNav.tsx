@@ -64,7 +64,7 @@ export function BottomNav({
   hidden = false,
   badges,
 }: {
-  tab: AppTab;
+  tab: AppTab | null;
   onChange: (tab: AppTab) => void;
   onReselect?: (tab: AppTab) => void;
   hidden?: boolean;
@@ -91,7 +91,7 @@ export function BottomNav({
 
   if (typeof document === "undefined") return null;
 
-  const activeId = appTabToBottom(tab);
+  const activeId = tab ? appTabToBottom(tab) : null;
   const ActiveIcon =
     TABS.find((t) => t.id === activeId)?.icon ?? Menu;
   const barHidden = hidden || collapsed;
@@ -242,7 +242,7 @@ export function FooterNav({
   bagBadge,
   hidden,
 }: {
-  active: AppTab;
+  active: AppTab | null;
   onChange: (tab: AppTab) => void;
   visible?: boolean;
   bagBadge?: NavBadge | boolean;

@@ -740,6 +740,22 @@ export function HomeFeedScreen({
     });
   }
 
+  /** One-way Like for double-tap — never unlikes; idempotent when already liked. */
+  function ensureLike(id: string): boolean {
+    const already = items.some((item) => item.id === id && item.liked);
+    if (already) return true;
+    if (onLikeAttempt && !onLikeAttempt(id)) return false;
+    setItems((prev) => {
+      if (prev.some((item) => item.id === id && item.liked)) return prev;
+      const next = prev.map((item) =>
+        item.id === id ? { ...item, liked: true } : item,
+      );
+      persist({ items: next });
+      return next;
+    });
+    return true;
+  }
+
   useEffect(() => {
     if (!resumeLikeId) return;
     setItems((prev) => {
@@ -817,6 +833,7 @@ export function HomeFeedScreen({
                   } as CSSProperties)
             }
           >
+<<<<<<< HEAD
             {(() => {
               const activeIndex = items.findIndex((it) => it.id === activeId);
               const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
@@ -846,6 +863,24 @@ export function HomeFeedScreen({
                 );
               });
             })()}
+=======
+            {items.map((item) => (
+              <div key={item.id} className="hf-slide">
+                <CreatorFeedCard
+                  item={item}
+                  active={active && item.id === activeId}
+                  onLike={() => toggleLike(item.id)}
+                  onEnsureLike={() => ensureLike(item.id)}
+                  onBuy={() => onBuyPack(toPurchasePack(item))}
+                  onOpenCreator={onOpenCreator}
+                  videoRef={(node) => {
+                    if (node) videoRefs.current.set(item.id, node);
+                    else videoRefs.current.delete(item.id);
+                  }}
+                />
+              </div>
+            ))}
+>>>>>>> origin/dev
             {loadingMore ? (
               <div className="hf-loading-more" aria-live="polite">
                 Loading more…

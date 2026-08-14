@@ -1,8 +1,6 @@
 import { Apple, Check, Loader2 } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
-import { InboxButton } from "@/components/InboxButton";
-import { MobileDiamondBalance } from "@/components/MobileDiamondBalance";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
@@ -20,16 +18,10 @@ import {
 export function ChangePasswordScreen({
   onBack,
   onForgotPassword,
-  diamonds,
-  onOpenInbox,
-  inboxUnreadCount = 0,
   authProvider = getAuthProvider(),
 }: {
   onBack: () => void;
   onForgotPassword: () => void;
-  diamonds?: number | null;
-  onOpenInbox?: () => void;
-  inboxUnreadCount?: number;
   authProvider?: AuthProvider;
 }) {
   const currentId = useId();
@@ -84,22 +76,10 @@ export function ChangePasswordScreen({
     }
   }
 
-  const trailing = (
-    <div className="flex items-center gap-2">
-      {diamonds !== undefined ? (
-        <MobileDiamondBalance balance={diamonds} standalone />
-      ) : null}
-      {onOpenInbox ? (
-        <InboxButton unreadCount={inboxUnreadCount} onOpen={onOpenInbox} />
-      ) : null}
-    </div>
-  );
-
   if (isOAuth) {
     const isApple = authProvider === "apple";
     return (
       <ChangePasswordShell
-        trailing={trailing}
         onBack={onBack}
         sectionId="change-password-signin"
         sectionLabel="Sign-in Method"
@@ -134,7 +114,6 @@ export function ChangePasswordScreen({
   if (success) {
     return (
       <ChangePasswordShell
-        trailing={trailing}
         onBack={onBack}
         sectionId="change-password-security"
         sectionLabel="Security"
@@ -162,7 +141,6 @@ export function ChangePasswordScreen({
 
   return (
     <ChangePasswordShell
-      trailing={trailing}
       onBack={onBack}
       sectionId="change-password-security"
       sectionLabel="Security"
@@ -298,14 +276,12 @@ export function ChangePasswordScreen({
 
 function ChangePasswordShell({
   onBack,
-  trailing,
   sectionId,
   sectionLabel,
   carded = false,
   children,
 }: {
   onBack: () => void;
-  trailing: ReactNode;
   sectionId: string;
   sectionLabel: string;
   /** Compact confirmation / provider cards only — not the password form. */
@@ -322,7 +298,6 @@ function ChangePasswordShell({
         title="Change Password"
         onBack={onBack}
         backLabel="Back to Settings"
-        trailing={trailing}
       />
       <div className="settings-stack change-password-stack">
         <section className="settings-section" aria-labelledby={sectionId}>
