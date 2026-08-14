@@ -8,9 +8,9 @@ import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 
 const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
   { id: "home", label: "Home" },
-  { id: "feed", label: "Browse" },
-  { id: "bag", label: "Collection" },
-  { id: "hub", label: "Hub" },
+  { id: "feed", label: "Discover" },
+  { id: "bag", label: "My Collection" },
+  { id: "hub", label: "Store" },
 ];
 
 const SCROLL_SELECTOR = "[data-page-scroll], .hf-viewport, .app-page-shell, .inbox-page";

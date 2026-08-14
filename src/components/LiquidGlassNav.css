@@ -61,10 +61,10 @@
 /*
  * App chrome pairing (driven by body[data-liquid-nav] from LiquidGlassNav):
  *  - mobile: bottom dock + mobile diamond utility
- *  - desktop: top liquid nav + desktop balances/inbox strip
+ *  - desktop: top liquid nav [logo | tabs | balances/inbox]
  *  - to-desktop / to-mobile: staged so HUDs don't overlap mid-handoff
  *
- * Fallback without JS attribute still uses the 441px MQ.
+ * Fallback without JS attribute still uses the 496px MQ.
  *
  * NOTE: .top-nav-mobile already uses transform: translateX(-50%) for centering.
  * Handoff motion only animates opacity/filter/visibility so we don't fight that.
@@ -125,7 +125,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Fallback when data-liquid-nav isn't set yet (SSR / first paint) */
-@media (min-width: 441px) {
+@media (min-width: 496px) {
   body[data-theme="v8"]:not([data-liquid-nav]) .app-layout--hud .top-nav-mobile {
     display: none !important;
   }
@@ -137,83 +137,25 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   }
 }
 
-.liquid-glass-desktop-utils {
-  position: fixed;
-  top: max(12px, env(safe-area-inset-top, 0px));
-  right: max(16px, env(safe-area-inset-right, 0px));
-  z-index: calc(var(--app-top-nav-z-index, 30) + 1);
+/* Desktop utils live inside .nav-test-top (logo | tabs | utils). */
+.liquid-glass-desktop-utils,
+.nav-test-top-utils {
+  position: relative;
+  z-index: 2;
+  top: auto;
+  right: auto;
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-  height: 56px;
-  padding: 0 4px;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: translate3d(0, -8px, 0);
-  transition:
-    opacity 200ms ease,
-    transform 220ms ease,
-    visibility 0ms linear 200ms;
-}
-
-/* Resting desktop — utils visible with the liquid top bar */
-body[data-liquid-nav="desktop"] .liquid-glass-desktop-utils {
+  min-width: 0;
+  height: 100%;
+  padding: 0 2px 0 4px;
+  pointer-events: auto;
   opacity: 1;
   visibility: visible;
-  pointer-events: auto;
-  transform: translate3d(0, 0, 0);
-}
-
-/* Mobile → desktop: utils arrive with liquid top enter (delay ~320ms) */
-body[data-liquid-nav="to-desktop"] .liquid-glass-desktop-utils {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translate3d(0, 0, 0);
-  transition:
-    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1) 320ms,
-    transform 360ms cubic-bezier(0.22, 1, 0.36, 1) 320ms,
-    visibility 0ms linear 320ms;
-}
-
-/* Desktop → mobile / mobile resting: utils out immediately */
-body[data-liquid-nav="to-mobile"] .liquid-glass-desktop-utils,
-body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translate3d(0, -8px, 0);
-  transition:
-    opacity 140ms ease,
-    transform 160ms ease,
-    visibility 0ms linear 140ms;
-}
-
-/* Fallback without data attr */
-@media (min-width: 441px) {
-  body:not([data-liquid-nav]) .liquid-glass-desktop-utils {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: none;
-  }
-}
-
-/* When the centered top nav is wide, keep utils from colliding on mid widths */
-@media (max-width: 900px) {
-  body[data-liquid-nav="desktop"] .liquid-glass-desktop-utils,
-  body[data-liquid-nav="to-desktop"] .liquid-glass-desktop-utils {
-    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 64px);
-    height: auto;
-  }
-}
-
-@media (min-width: 441px) and (max-width: 900px) {
-  body:not([data-liquid-nav]) .liquid-glass-desktop-utils {
-    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 64px);
-    height: auto;
-  }
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -222,10 +164,6 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     opacity: 1;
     visibility: visible;
     filter: none;
-  }
-
-  .liquid-glass-desktop-utils {
-    transition: none !important;
   }
 }
 
@@ -258,9 +196,15 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   left: 50%;
   /* Above page content / bottom dock */
   z-index: 20;
-  width: min(720px, calc(100% - 32px));
-  max-width: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(var(--app-content-max, 80rem), calc(100% - 32px));
+  max-width: min(var(--app-content-max, 80rem), calc(100% - 32px));
   height: 56px;
+  padding-inline: 14px 12px;
+  box-sizing: border-box;
   pointer-events: none;
   opacity: 0;
   transform: translate3d(-50%, calc(-100% - 28px), 0);
@@ -284,6 +228,46 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     max-width 320ms cubic-bezier(0.22, 1, 0.36, 1),
     background 160ms ease,
     border-color 160ms ease;
+}
+
+/* Logo from mobile top nav — left rail of [logo | tabs | utils]. */
+.nav-test-top-brand {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px 0 2px;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 160ms ease;
+}
+
+.nav-test-top-brand:hover {
+  opacity: 0.9;
+}
+
+.nav-test-top-brand:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.nav-test-top-brand-logo {
+  display: block;
+  height: 2.25rem; /* match mobile top-nav-brand-logo h-9 */
+  width: auto;
+  object-fit: contain;
+  object-position: left center;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 /*
@@ -333,16 +317,21 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   position: relative;
   z-index: 1;
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 4px;
+  min-width: 0;
+  max-width: min(40rem, 100%);
   height: 100%;
-  padding: 0 10px;
+  margin-inline: auto;
+  padding: 0;
   pointer-events: none;
   transition:
     gap 280ms cubic-bezier(0.22, 1, 0.36, 1),
     padding 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    justify-content 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    justify-content 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Top-nav sliding active indicator (mirrors bottom dock bubble) */
@@ -563,20 +552,19 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 /*
- * Compact top nav: icon-only, centered.
- * Also force this during desktop→mobile handoff so labels don't flash
- * when the viewport crosses below 441px mid-exit animation.
+ * Compact top nav densifies only after the chrome swap (496px).
+ * Below 496px stays bottom dock + mobile HUD — no top-nav label band.
  */
-@media (min-width: 441px) and (max-width: 620px) {
+@media (min-width: 496px) and (max-width: 720px) {
   .nav-test-top {
-    width: min(360px, calc(100% - 28px));
-    max-width: 360px;
+    gap: 8px;
+    padding-inline: 10px 8px;
   }
 
   .nav-test-top-items {
     justify-content: space-around;
     gap: 2px;
-    padding: 0 8px;
+    max-width: none;
   }
 
   .nav-test-top-slot {
@@ -599,6 +587,22 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
     margin: 0;
     transform: translateX(-4px);
     pointer-events: none;
+  }
+
+  /* Keep balances readable; collapse gap a bit on narrow desktop */
+  .nav-test-top-utils .top-nav-resources {
+    gap: 0.65rem;
+  }
+}
+
+/* Very narrow desktop: smaller logo / balance type after the swap */
+@media (min-width: 496px) and (max-width: 560px) {
+  .nav-test-top-brand-logo {
+    height: 1.85rem;
+  }
+
+  .nav-test-top-utils .top-nav-resource-value {
+    font-size: 12px;
   }
 }
 
@@ -925,7 +929,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   background: linear-gradient(
     180deg,
     oklch(0 0 0 / 0) 0%,
-    oklch(0 0 0 / 0.55) 42%,
+    oklch(0 0 0 / 0.55) 72%,
     oklch(0 0 0 / 0.92) 100%
   );
   will-change: transform;
@@ -1054,9 +1058,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   left: -3px;
   height: 93px;
   pointer-events: none;
-  background: oklch(0 0 0 / 0.75);
-  backdrop-filter: blur(6px) saturate(160%) brightness(1.15);
-  -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(1.15);
+  background: oklch(0 0 0 / 0.65);
+  backdrop-filter: blur(5px) saturate(200%) brightness(2.0);
+  -webkit-backdrop-filter: blur(5px) saturate(200%) brightness(2.0);
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
@@ -1220,7 +1224,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: end;
   height: 78px;
-  padding: 0px 10px 18px;
+  padding: 0px 10px 4px;
   pointer-events: auto;
   touch-action: manipulation;
   /* Prevent iOS long-press text selection / callouts on dock labels */
@@ -1279,9 +1283,10 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   z-index: 0;
   background: linear-gradient(0deg, oklch(0.634 0.254 17.36), oklch(0.634 0.254 17.36 / 0));
   opacity: var(--dock-bubble-glow-opacity, 0.5);
+  /* Keep glow fill aligned with the indicator bubble */
   background-position: center 30px;
   background-repeat: no-repeat;
-  background-size: 60px;
+  background-size: 100%;
   box-shadow: inset 4px 5px 0px -3px oklch(0.652 0.267 355.66);
 }
 
@@ -1384,7 +1389,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-dock-item.is-active .nav-test-dock-label,
 .nav-test-dock-item.is-drag-target .nav-test-dock-icon,
 .nav-test-dock-item.is-drag-target .nav-test-dock-label {
-  transform: translate3d(0, 1px, 0) scale(1.2);
+  transform: translate3d(0, 1px, 0) scale(1.1);
 }
 
 @media (max-width: 440px) {
@@ -1405,9 +1410,13 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 }
 
 .nav-test-dock-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
+  white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -1451,7 +1460,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
    * dock notch. Nudge is viewport-relative (dvw) and breakpoint-driven.
    */
   transform: translate3d(
-    calc(-50% - var(--dock-primary-nudge-x, 1.5dvw)),
+    calc(-37% - var(--dock-primary-nudge-x, 1.5dvw)),
     -6px,
     0.01px
   );
@@ -1468,7 +1477,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   margin-right: 0;
   background: transparent !important;
   transform: translate3d(
-    calc(-50% - var(--dock-primary-nudge-x, 1.5dvw)),
+    calc(-37% - var(--dock-primary-nudge-x, 1.5dvw)),
     -6px,
     0.01px
   );
@@ -1604,7 +1613,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 .nav-test-dock-primary-glow:active,
 .nav-test-dock-primary-glow.border-glow-card:active {
   transform: translate3d(
-      calc(-50% - var(--dock-primary-nudge-x, 1.5dvw)),
+      calc(-37% - var(--dock-primary-nudge-x, 1.5dvw)),
       -6px,
       0.01px
     )
@@ -1619,7 +1628,7 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 @media (max-width: 390px) {
   .nav-test-dock-primary-glow,
   .nav-test-hero-btn {
-    --dock-primary-nudge-x: 0.6dvw;
+    --dock-primary-nudge-x: 1.9dvw;
   }
 }
 
@@ -1640,14 +1649,26 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 .nav-test-dock-primary-label {
   color: oklch(1 0 0 / 0.5);
+  max-width: none;
+  padding-inline: 0;
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   transform: translateY(-8px);
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   pointer-events: none;
+}
+
+/* iPhone-class widths: keep "My Collection" on one line */
+@media (max-width: 430px) {
+  .nav-test-dock-primary-label {
+    font-size: 9px;
+    letter-spacing: -0.02em;
+  }
 }
 
 .nav-test-dock-primary.is-active .nav-test-dock-primary-label {

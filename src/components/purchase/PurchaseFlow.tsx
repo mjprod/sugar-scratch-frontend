@@ -876,7 +876,7 @@ export function PurchaseFlow({
                 onClick: () => exit(onGoHome),
               }}
               secondary={{
-                label: "View Collection",
+                label: "View My Collection",
                 onClick: () => exit(onViewCollection),
               }}
             />

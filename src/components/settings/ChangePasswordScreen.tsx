@@ -1,6 +1,7 @@
-import { Apple, Check, Loader2 } from "lucide-react";
+import { Apple, Check } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
@@ -127,13 +128,18 @@ export function ChangePasswordScreen({
           <p className="change-password-success-body">
             Your password has been updated.
           </p>
-          <button
-            type="button"
-            className="change-password-cta"
-            onClick={onBack}
-          >
-            Back to Settings
-          </button>
+          <div className="change-password-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="button"
+              label="Back to Settings"
+              costAmount={null}
+              fontSize={15}
+              strokeWidth={1}
+              onClick={onBack}
+            />
+          </div>
         </div>
       </ChangePasswordShell>
     );
@@ -246,20 +252,18 @@ export function ChangePasswordScreen({
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          className="change-password-cta"
-          disabled={!canSubmit}
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Changing…
-            </>
-          ) : (
-            "Change Password"
-          )}
-        </button>
+        <div className="change-password-cta">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            type="submit"
+            label={submitting ? "Changing…" : "Change Password"}
+            costAmount={null}
+            fontSize={15}
+            strokeWidth={1}
+            disabled={!canSubmit}
+          />
+        </div>
 
         <button
           type="button"

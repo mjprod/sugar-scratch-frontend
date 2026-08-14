@@ -6781,7 +6781,6 @@ body[data-theme="v8"] .app-empty-title {
 
 body[data-theme="v8"] .app-empty-copy {
   margin: 0;
-  max-width: 260px;
   color: rgba(247, 242, 248, 0.62);
   font-size: 0.95rem;
   line-height: 1.45;

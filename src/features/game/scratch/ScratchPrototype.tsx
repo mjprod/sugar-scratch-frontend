@@ -4094,11 +4094,11 @@ export function ScratchPrototype() {
           {playableModels.length === 0 ? (
             <p className="home-picker-empty">
               No models with motion cards yet.{" "}
-              <a href="/collection">Back to Collection</a>
+              <a href="/collection">Back to My Collection</a>
             </p>
           ) : null}
           <div className="home-picker-links">
-            <a href="/collection">Collection</a>
+            <a href="/collection">My Collection</a>
           </div>
         </section>
       </main>

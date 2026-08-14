@@ -388,13 +388,37 @@
   gap: 0.22em;
 }
 
+.cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  min-width: 0;
+}
+
+.cta-button__leading-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.35em;
+  height: 1.35em;
+  line-height: 0;
+}
+
+.cta-button__leading-icon img,
+.cta-button__leading-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .cta-button__title {
   display: block;
   font-size: 1em;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 500;
   line-height: 1;
-  text-transform: uppercase;
   text-align: center;
   white-space: nowrap;
 }

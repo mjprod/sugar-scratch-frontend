@@ -1,6 +1,34 @@
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import type { StickyCtaMode, ThemeCardData, ThemeDetailData } from "@/services/collection";
 import { scratchReadyCount } from "@/services/collection";
+
+function PrimaryCta({
+  label,
+  onClick,
+  costAmount = null,
+  full = true,
+}: {
+  label: string;
+  onClick: () => void;
+  costAmount?: string | number | null;
+  full?: boolean;
+}) {
+  return (
+    <div className={full ? "cpv2-cta-primary cpv2-cta-full" : "cpv2-cta-primary"}>
+      <CtaButton
+        {...ctaButtonPropsFromTemplate("squircleCTA")}
+        fillParent
+        type="button"
+        label={label}
+        costAmount={costAmount}
+        fontSize={14}
+        strokeWidth={1}
+        onClick={onClick}
+      />
+    </div>
+  );
+}
 
 export function StickyFooterCTA({
   mode,
@@ -42,9 +70,7 @@ export function StickyFooterCTA({
             <p className="cpv2-sticky-meta">Reveal your collected cards</p>
           </div>
         </div>
-        <button type="button" className="cpv2-cta-primary cpv2-cta-full" onClick={onScratch}>
-          Scratch Now
-        </button>
+        <PrimaryCta label="Scratch Now" onClick={onScratch} />
       </div>
     );
   }
@@ -65,9 +91,7 @@ export function StickyFooterCTA({
           </div>
         </div>
         <div className="cpv2-sticky-actions">
-          <button type="button" className="cpv2-cta-primary" onClick={onOpenPack}>
-            Open Pack
-          </button>
+          <PrimaryCta label="Open Pack" onClick={onOpenPack} full={false} />
           <button type="button" className="cpv2-cta-secondary" onClick={onBuy}>
             Buy another for{" "}
             <DiamondLottie size="1em" className="cpv2-cta-diamond" />
@@ -90,9 +114,11 @@ export function StickyFooterCTA({
             <p className="cpv2-sticky-meta">{diamonds} ◆ available</p>
           </div>
         </div>
-        <button type="button" className="cpv2-cta-primary cpv2-cta-full" onClick={onBuy}>
-          Buy Theme Pack ◆{buyCost}
-        </button>
+        <PrimaryCta
+          label="Buy Theme Pack"
+          costAmount={buyCost}
+          onClick={onBuy}
+        />
       </div>
     );
   }
@@ -109,9 +135,7 @@ export function StickyFooterCTA({
             <p className="cpv2-sticky-meta">{theme.name} is complete</p>
           </div>
         </div>
-        <button type="button" className="cpv2-cta-primary cpv2-cta-full" onClick={onClaim}>
-          Claim Reward
-        </button>
+        <PrimaryCta label="Claim Reward" onClick={onClaim} />
       </div>
     );
   }
@@ -127,9 +151,7 @@ export function StickyFooterCTA({
           <p className="cpv2-sticky-meta">{theme.name}</p>
         </div>
       </div>
-      <button type="button" className="cpv2-cta-primary cpv2-cta-full" onClick={onView}>
-        View Collection
-      </button>
+      <PrimaryCta label="View My Collection" onClick={onView} />
     </div>
   );
 }

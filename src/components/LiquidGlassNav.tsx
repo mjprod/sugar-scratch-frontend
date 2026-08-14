@@ -15,11 +15,13 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
+import { InboxButton } from "@/components/InboxButton";
 import { BorderGlow } from "@/components/ui/BorderGlow";
 import type { AppTab } from "@/types/app";
 import "./LiquidGlassNav.css";
 
-const DESKTOP_MQ = "(min-width: 441px)";
+const DESKTOP_MQ = "(min-width: 496px)";
 type NavHandoff = "none" | "to-desktop" | "to-mobile";
 
 type DockBubble = {
@@ -66,9 +68,9 @@ type TabConfig = {
 
 const TABS: TabConfig[] = [
   { id: "home", label: "Home", icon: Home },
-  { id: "feed", label: "Browse", icon: Compass },
-  { id: "bag", label: "Collection", icon: Layers3, primary: true },
-  { id: "hub", label: "Hub", icon: Gift },
+  { id: "feed", label: "Discover", icon: Compass },
+  { id: "bag", label: "My Collection", icon: Layers3, primary: true },
+  { id: "hub", label: "Store", icon: Gift },
   { id: "profile", label: "Profile", icon: User },
 ];
 
@@ -138,6 +140,7 @@ function measureBubbleForTab(
   const insetX = 2;
   const bubbleH = remToPx(DOCK_BUBBLE_H_REM);
   // Vertically center the fixed-height bubble, then nudge up ~5px
+  // so the indicator sits with the icon/label cluster.
   const bubbleY =
     rect.top - parentRect.top + (rect.height - bubbleH) / 2 - 5;
 
@@ -197,6 +200,12 @@ export type LiquidGlassNavProps = {
   onTabChange: (tab: AppTab) => void;
   onReselect?: (tab: AppTab) => void;
   hidden?: boolean;
+  /** Desktop top-bar balances (optional — omitted on playground). */
+  coins?: number | null;
+  diamonds?: number | null;
+  onOpenStore?: () => void;
+  onOpenInbox?: () => void;
+  inboxUnreadCount?: number;
 };
 
 /**
@@ -208,6 +217,11 @@ export function LiquidGlassNav({
   onTabChange,
   onReselect,
   hidden = false,
+  coins = null,
+  diamonds = null,
+  onOpenStore,
+  onOpenInbox,
+  inboxUnreadCount = 0,
 }: LiquidGlassNavProps) {
   const active = activeTab;
   const [isDesktop, setIsDesktop] = useState(false);
@@ -852,6 +866,21 @@ export function LiquidGlassNav({
         className="nav-test-top glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
         aria-label="Primary"
       >
+        <button
+          type="button"
+          className="nav-test-top-brand"
+          aria-label="Sugar Scratch Home"
+          tabIndex={hidden ? -1 : undefined}
+          onClick={() => selectTab("home")}
+        >
+          <img
+            src="/svg/logoSugarScratch.svg"
+            alt="Sugar Scratch"
+            className="nav-test-top-brand-logo"
+            draggable={false}
+          />
+        </button>
+
         <div
           className="nav-test-top-items"
           ref={topItemsRef}
@@ -921,6 +950,21 @@ export function LiquidGlassNav({
               </div>
             );
           })}
+        </div>
+
+        <div className="liquid-glass-desktop-utils nav-test-top-utils">
+          <CurrencyBalances
+            coins={coins}
+            diamonds={diamonds}
+            onOpenStore={onOpenStore}
+          />
+          {onOpenInbox ? (
+            <InboxButton
+              unreadCount={inboxUnreadCount}
+              onOpen={onOpenInbox}
+              variant="ghost"
+            />
+          ) : null}
         </div>
       </nav>
 

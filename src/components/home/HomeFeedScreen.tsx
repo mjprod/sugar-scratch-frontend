@@ -11,6 +11,7 @@ import {
   CreatorFeedCard,
   useVideoRegistry,
 } from "@/components/home/CreatorFeedCard";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   fetchHomeFeedPage,
   readHomeFeedCache,
@@ -1029,13 +1030,18 @@ export function HomeFeedScreen({
         {status === "error" ? (
           <div className="hf-state" role="alert">
             <p className="hf-state-title">Unable to load creators.</p>
-            <button
-              type="button"
-              className="hf-state-cta"
-              onClick={() => void loadInitial()}
-            >
-              Retry
-            </button>
+            <div className="hf-state-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                type="button"
+                label="Retry"
+                costAmount={null}
+                fontSize={15}
+                strokeWidth={1}
+                onClick={() => void loadInitial()}
+              />
+            </div>
           </div>
         ) : null}
 
@@ -1043,13 +1049,18 @@ export function HomeFeedScreen({
           <div className="hf-state">
             <p className="hf-state-title">No creators available.</p>
             <p className="hf-state-copy">Please check back later.</p>
-            <button
-              type="button"
-              className="hf-state-cta"
-              onClick={() => void loadInitial()}
-            >
-              Refresh
-            </button>
+            <div className="hf-state-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                type="button"
+                label="Refresh"
+                costAmount={null}
+                fontSize={15}
+                strokeWidth={1}
+                onClick={() => void loadInitial()}
+              />
+            </div>
           </div>
         ) : null}
 

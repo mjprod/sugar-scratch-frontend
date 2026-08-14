@@ -2917,6 +2917,7 @@ body[data-theme="v8"] .explore-like-burst {
 body[data-theme="v8"] .collection-page {
   width: 100%;
   min-height: 0;
+  height: 100%;
   background: oklch(0.13 0.005 285.67);
   position: relative;
 }
@@ -2928,14 +2929,18 @@ body[data-theme="v8"] .collection-page-content {
   /* Gap below sticky TopNav (in-flow). */
   padding-top: var(--app-diamond-offset, 12px);
   padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
+  box-sizing: border-box;
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
+  justify-content: safe center;
+  min-height: 100%;
   gap: 28px;
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
   body[data-theme="v8"] .collection-page-content {
-    width: min(calc(100% - 40px), 920px);
+    width: min(calc(100% - 40px), var(--app-content-max));
     max-width: none;
     padding-top: var(--app-diamond-offset);
     gap: 32px;
@@ -2944,7 +2949,7 @@ body[data-theme="v8"] .collection-page-content {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .collection-page-content {
-    width: min(calc(100% - 64px), 1280px);
+    width: min(calc(100% - 64px), var(--app-content-max));
     max-width: none;
     padding-top: 32px;
     padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
@@ -4064,13 +4069,13 @@ body[data-theme="v8"] .cpv2-shell {
 
 @media (min-width: 768px) and (max-width: 1023px) {
   body[data-theme="v8"] .cpv2-shell {
-    width: min(calc(100% - 40px), 920px);
+    width: min(calc(100% - 40px), var(--app-content-max));
   }
 }
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .cpv2-shell {
-    width: min(calc(100% - 64px), 1280px);
+    width: min(calc(100% - 64px), var(--app-content-max));
     padding-top: 28px;
   }
 }
@@ -4950,7 +4955,7 @@ body[data-theme="v8"] .cpv2-sticky-cta {
 
 @media (min-width: 768px) {
   body[data-theme="v8"] .cpv2-sticky-cta {
-    width: min(calc(100% - 40px), 920px);
+    width: min(calc(100% - 40px), var(--app-content-max));
   }
 }
 
@@ -4962,7 +4967,7 @@ body[data-theme="v8"] .cpv2-sticky-cta {
     left: auto;
     bottom: auto;
     transform: none;
-    width: min(calc(100% - 64px), 1280px);
+    width: min(calc(100% - 64px), var(--app-content-max));
     margin-inline: auto;
     margin-bottom: 28px;
     border-radius: 20px;
@@ -5013,7 +5018,6 @@ body[data-theme="v8"] .cpv2-sticky-actions {
   margin-top: 12px;
 }
 
-body[data-theme="v8"] .cpv2-cta-primary,
 body[data-theme="v8"] .cpv2-cta-secondary {
   min-height: 44px;
   border-radius: 999px;
@@ -5022,11 +5026,37 @@ body[data-theme="v8"] .cpv2-cta-secondary {
   cursor: pointer;
 }
 
-body[data-theme="v8"] .cpv2-cta-primary {
+/* Slot for parent-filled squircle CTA (creator sticky primary). */
+body[data-theme="v8"] .cpv2-cta-primary,
+body[data-theme="v8"] .cpv2-cta-primary.cpv2-cta-full {
+  position: relative;
+  z-index: 1;
+  display: block;
   flex: 1.35 1 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  height: 48px;
+  overflow: visible;
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
+  background: transparent;
+  padding: 0;
+}
+
+body[data-theme="v8"] .cpv2-cta-primary .cta-button-glow,
+body[data-theme="v8"] .cpv2-cta-primary .cta-button-glow--fill,
+body[data-theme="v8"] .cpv2-cta-primary .cta-button,
+body[data-theme="v8"] .cpv2-cta-primary .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .cpv2-cta-primary .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .cpv2-cta-secondary {
@@ -5811,17 +5841,33 @@ body[data-theme="v8"] .hf-state-copy {
   font-size: 14px;
 }
 
+/* Slot for parent-filled squircle CTA (home feed empty/error). */
 body[data-theme="v8"] .hf-state-cta {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 220px);
+  min-width: 0;
+  min-height: 48px;
+  height: 48px;
   margin-top: 8px;
-  min-height: 44px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .hf-state-cta .cta-button-glow,
+body[data-theme="v8"] .hf-state-cta .cta-button-glow--fill,
+body[data-theme="v8"] .hf-state-cta .cta-button,
+body[data-theme="v8"] .hf-state-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .hf-state-cta .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .hf-skeleton {
@@ -6430,8 +6476,8 @@ body[data-theme="v8"] .auth2-card [data-home-indicator] {
 body[data-theme="v8"] .auth7-sheet-root {
   position: fixed;
   inset: 0;
-  /* Above bottom-nav (1000) so sheet copy isn’t covered */
-  z-index: 1100;
+  /* Above liquid-glass dock (5100) so sheet isn’t covered by bottom chrome */
+  z-index: 5200;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -6585,9 +6631,35 @@ body[data-theme="v8"] .auth7-social-btn {
   cursor: pointer;
 }
 
+/* Google continues as filled CTA slot (label-only aurora button). */
 body[data-theme="v8"] .auth7-social-btn.is-google {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  height: 52px;
+  padding: 0;
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
+  background: transparent;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow--fill,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .auth7-social-btn:disabled {
@@ -6758,26 +6830,33 @@ body[data-theme="v8"] .auth7-error {
   line-height: 1.4;
 }
 
+/* Slot for parent-filled squircle CTA (auth sheet primary). */
 body[data-theme="v8"] .auth7-sheet-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 50px;
+  position: relative;
+  z-index: 1;
+  display: block;
   width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  height: 52px;
   margin-top: 4px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .auth7-sheet-primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+body[data-theme="v8"] .auth7-sheet-primary .cta-button-glow,
+body[data-theme="v8"] .auth7-sheet-primary .cta-button-glow--fill,
+body[data-theme="v8"] .auth7-sheet-primary .cta-button,
+body[data-theme="v8"] .auth7-sheet-primary .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .auth7-sheet-primary .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .auth7-switch {
@@ -7270,26 +7349,33 @@ body[data-theme="v8"] .change-password-form .auth7-pw-req {
   margin-top: 2px;
 }
 
+/* Slot for parent-filled squircle CTA (settings change password). */
 body[data-theme="v8"] .change-password-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;
+  position: relative;
+  z-index: 1;
+  display: block;
   width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  height: 52px;
   margin-top: 4px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .change-password-cta:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+body[data-theme="v8"] .change-password-cta .cta-button-glow,
+body[data-theme="v8"] .change-password-cta .cta-button-glow--fill,
+body[data-theme="v8"] .change-password-cta .cta-button,
+body[data-theme="v8"] .change-password-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .change-password-cta .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .change-password-cta:focus-visible {
@@ -7387,6 +7473,7 @@ body[data-theme="v8"] .change-password-success-body {
 body[data-theme="v8"] .change-password-success .change-password-cta {
   width: auto;
   min-width: 11rem;
+  height: 52px;
   margin-top: 4px;
 }
 
@@ -7408,6 +7495,7 @@ body[data-theme="v8"] .change-password-success .change-password-cta {
     width: auto;
     min-width: 17.5rem;
     max-width: 22.5rem;
+    height: 52px;
   }
 }
 
@@ -7525,9 +7613,26 @@ body[data-theme="v8"] .auth7-verify-later {
 }
 
 body[data-theme="v8"] .auth7-verify-primary {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  height: 48px;
+  overflow: visible;
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
+  background: transparent;
+}
+
+body[data-theme="v8"] .auth7-verify-primary .cta-button-glow,
+body[data-theme="v8"] .auth7-verify-primary .cta-button-glow--fill,
+body[data-theme="v8"] .auth7-verify-primary .cta-button,
+body[data-theme="v8"] .auth7-verify-primary .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
 body[data-theme="v8"] .auth7-verify-later {
@@ -7848,7 +7953,8 @@ body[data-theme="v8"] .auth7-swipe-btn {
 
 body[data-theme="v8"] .auth7-swipe-btn.is-like {
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
+  background: var(--app-cta-face);
+  color: var(--app-cta-label);
 }
 
 body[data-theme="v8"] .auth7-swipe-btn:disabled {
@@ -7907,7 +8013,6 @@ body[data-theme="v8"] .auth7-persona-prompt-actions {
   gap: 8px;
 }
 
-body[data-theme="v8"] .auth7-persona-prompt-start,
 body[data-theme="v8"] .auth7-persona-prompt-later {
   min-height: 40px;
   padding: 0 14px;
@@ -7917,16 +8022,51 @@ body[data-theme="v8"] .auth7-persona-prompt-later {
   cursor: pointer;
 }
 
+/* Slot for parent-filled squircle CTA (personalization start). */
 body[data-theme="v8"] .auth7-persona-prompt-start {
+  position: relative;
+  z-index: 1;
+  display: block;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 7.5rem;
+  min-height: 44px;
+  height: 44px;
+  overflow: visible;
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
+  background: transparent;
+  padding: 0;
+}
+
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button-glow,
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button-glow--fill,
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button,
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .auth7-persona-prompt-later {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
   background: transparent;
   color: oklch(1 0 0 / 0.65);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 body[data-theme="v8"] .auth7-swipe-control {
@@ -8095,10 +8235,10 @@ body[data-theme="v8"] .auth7-intro-demo-badge.is-pass {
 }
 
 body[data-theme="v8"] .auth7-intro-demo-badge.is-like {
-  color: oklch(1 0 0);
+  color: var(--app-cta-label);
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  box-shadow: 0 8px 18px oklch(0.692 0.223 356.89 / 0.28);
+  background: var(--app-cta-face);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-cta-face-b) 28%, transparent);
 }
 
 body[data-theme="v8"] .auth7-intro-dir-text {
@@ -8306,7 +8446,6 @@ body[data-theme="v8"] .auth7-persona-prompt-actions {
   gap: 8px;
 }
 
-body[data-theme="v8"] .auth7-persona-prompt-start,
 body[data-theme="v8"] .auth7-persona-prompt-later {
   min-height: 40px;
   padding: 0 14px;
@@ -8316,16 +8455,51 @@ body[data-theme="v8"] .auth7-persona-prompt-later {
   cursor: pointer;
 }
 
+/* Slot for parent-filled squircle CTA (personalization start). */
 body[data-theme="v8"] .auth7-persona-prompt-start {
+  position: relative;
+  z-index: 1;
+  display: block;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 7.5rem;
+  min-height: 44px;
+  height: 44px;
+  overflow: visible;
   border: 0;
-  background: linear-gradient(135deg, oklch(0.692 0.223 356.89), oklch(0.628 0.23 297.02));
-  color: oklch(1 0 0);
+  background: transparent;
+  padding: 0;
+}
+
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button-glow,
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button-glow--fill,
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button,
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .auth7-persona-prompt-start .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .auth7-persona-prompt-later {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
   background: transparent;
   color: oklch(1 0 0 / 0.65);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 body[data-theme="v8"] .auth7-swipe-control {
@@ -8744,7 +8918,7 @@ body[data-theme="v8"] .subpage-trailing {
 
 body[data-theme="v8"] {
   --app-gutter: 20px;
-  --app-content-max: 64rem;
+  --app-content-max: 80rem;
   /* Shared sticky top chrome heights (desktop bar / mobile utility). */
   --app-top-nav-height: 56px;
   --app-top-nav-z-index: 30;
@@ -8758,6 +8932,34 @@ body[data-theme="v8"] {
   /* Content safe offset — pages set padding-top to this; backgrounds may still underlap. */
   --app-diamond-offset: 12px;
   --app-footer-offset: calc(112px + env(safe-area-inset-bottom, 0px));
+  /*
+   * Primary CTA face — matches hf-buy / squircleCTA static aurora fallback
+   * (deep rose base + magenta/pink/amber mesh). Use on plain buttons that
+   * can't mount the live CtaButton WebGL aurora.
+   */
+  --app-cta-face-base: oklch(0.244 0.098 3.75);
+  --app-cta-face-a: oklch(0.483 0.193 357.41);
+  --app-cta-face-b: oklch(0.591 0.242 355.7);
+  --app-cta-face-c: oklch(0.671 0.182 48.12);
+  --app-cta-face:
+    radial-gradient(
+      120% 90% at 18% 110%,
+      color-mix(in srgb, var(--app-cta-face-b) 55%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      100% 80% at 82% -10%,
+      color-mix(in srgb, var(--app-cta-face-a) 48%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      105deg,
+      color-mix(in srgb, var(--app-cta-face-a) 35%, transparent) 0%,
+      color-mix(in srgb, var(--app-cta-face-b) 42%, transparent) 46%,
+      color-mix(in srgb, var(--app-cta-face-c) 28%, transparent) 100%
+    ),
+    var(--app-cta-face-base);
+  --app-cta-label: oklch(0.934 0.036 0.4);
 }
 
 /* Shared HUD resource / ghost inbox styling (mobile + desktop). */
@@ -8961,8 +9163,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     left: 50%;
     right: auto;
     z-index: var(--app-top-nav-z-index, 30);
-    width: 95dvw;
-    max-width: 95dvw;
+    width: min(95dvw, var(--app-content-max));
+    max-width: min(95dvw, var(--app-content-max));
     height: var(--app-top-nav-height, 56px);
     transform: translateX(-50%);
     border: 1px solid oklch(1 0 0 / 0.1);
@@ -9094,7 +9296,7 @@ body[data-theme="v8"] .app-empty-title {
 
 body[data-theme="v8"] .app-empty-copy {
   margin: 0;
-  max-width: 260px;
+
   color: oklch(0.967 0.01 320.55 / 0.62);
   font-size: 0.95rem;
   line-height: 1.45;

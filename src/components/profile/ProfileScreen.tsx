@@ -77,7 +77,7 @@ export function UserDashboardScreen({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat icon={<Trophy className="size-4" />} label="Collection" value="128 / 240" />
+        <Stat icon={<Trophy className="size-4" />} label="My Collection" value="128 / 240" />
         <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
         <Stat icon={<DiamondLottie size={16} aria-hidden />} label="Diamonds" value={diamonds.toString()} />
         <Stat icon={<Sparkles className="size-4" />} label="Sugar Coins" value={coins.toString()} />

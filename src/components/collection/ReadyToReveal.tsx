@@ -148,7 +148,7 @@ export function ReadyToReveal({
           <article className="collection-empty-panel ready-reveal-empty">
             <h3 className="collection-empty-title">No unopened packs</h3>
             <p className="collection-empty-copy">
-              Purchase packs from Browse to fill this shelf.
+              Purchase packs from Discover to fill this shelf.
             </p>
           </article>
         )}
