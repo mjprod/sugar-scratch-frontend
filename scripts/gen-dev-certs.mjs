@@ -14,9 +14,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const certDir = path.join(rootDir, "certs");
+const certDir = path.join(rootDir, ".certs");
 const certFile = path.join(certDir, "dev-cert.pem");
 const keyFile = path.join(certDir, "dev-key.pem");
+const caFile = path.join(certDir, "rootCA.pem");
 
 function which(bin) {
   try {
