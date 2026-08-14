@@ -8,9 +8,15 @@
     "predev": "node scripts/copy-dotlottie-wasm.mjs",
     "prebuild": "node scripts/copy-dotlottie-wasm.mjs",
     "dev": "vite",
+<<<<<<< HEAD
+    "dev:host": "vite --host",
+=======
     "certs": "bash scripts/gen-dev-certs.sh",
     "fix:5173": "bash scripts/fix-5173.sh",
+>>>>>>> origin/dev
     "dev:v8": "vite --config vite.old-app.config.ts",
+    "dev:v8:host": "vite --config vite.old-app.config.ts --host",
+    "certs": "node scripts/gen-dev-certs.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -31,7 +37,8 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.0",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "tw-glass": "^0.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

@@ -261,34 +261,24 @@ export function BorderGlow({
     };
   }, [animated, orbit]);
 
-  // Continuous soft orbit — keeps rim lit and rotates the glow cone forever.
+  // Continuous soft orbit via CSS @property (no rAF style thrash).
   useEffect(() => {
     if (!orbit || !cardRef.current) return;
     const card = cardRef.current;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     card.classList.add("border-glow-orbiting");
     card.style.setProperty("--edge-proximity", "100");
-    card.style.setProperty("--cursor-angle", "0deg");
+    card.style.setProperty("--cursor-angle", reduce ? "210deg" : "0deg");
+    card.style.setProperty("--cursor-angle-start", reduce ? "210deg" : "0deg");
 
     if (reduce) {
-      card.style.setProperty("--cursor-angle", "210deg");
-      return () => card.classList.remove("border-glow-orbiting");
+      card.classList.remove("is-css-orbit");
+      return () => card.classList.remove("border-glow-orbiting", "is-css-orbit");
     }
 
-    const durationMs = Math.max(orbitDuration, 0.5) * 1000;
-    let raf = 0;
-    const t0 = performance.now();
-
-    const tick = (now: number) => {
-      const t = ((now - t0) % durationMs) / durationMs;
-      card.style.setProperty("--cursor-angle", `${(t * 360).toFixed(3)}deg`);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-
+    card.classList.add("is-css-orbit");
     return () => {
-      cancelAnimationFrame(raf);
-      card.classList.remove("border-glow-orbiting");
+      card.classList.remove("border-glow-orbiting", "is-css-orbit");
     };
   }, [orbit, orbitDuration]);
 
@@ -302,7 +292,7 @@ export function BorderGlow({
       onPointerMove={orbit ? undefined : handlePointerMove}
       className={[
         "border-glow-card",
-        orbit ? "border-glow-always-on border-glow-orbiting" : "",
+        orbit ? "border-glow-always-on border-glow-orbiting is-css-orbit" : "",
         className,
       ]
         .filter(Boolean)
@@ -314,7 +304,8 @@ export function BorderGlow({
         "--glow-padding": `${glowRadius}px`,
         "--cone-spread": coneSpread,
         "--fill-opacity": fillOpacity,
-        "--orbit-duration": `${orbitDuration}s`,
+        "--orbit-duration": `${Math.max(orbitDuration, 0.5)}s`,
+        "--cursor-angle-start": "0deg",
         ...glowVars,
         ...buildGradientVars(palette),
         ...style,

@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Crown,
   Filter,
-  Gem,
   Gift,
   TriangleAlert,
 } from "lucide-react";
@@ -12,6 +11,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { SubpageHeader } from "@/components/SubpageHeader";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   INBOX_FIXTURES,
   relativeTime,
@@ -261,7 +261,7 @@ function ThumbIcon({ icon }: { icon: AccountSystemIcon }) {
     case "gift":
       return <Gift className="size-5" strokeWidth={1.8} />;
     case "diamond":
-      return <Gem className="size-5" strokeWidth={1.8} />;
+      return <DiamondLottie size={20} aria-hidden />;
     case "vip_crown":
       return <Crown className="size-5" strokeWidth={1.8} />;
     case "warning":

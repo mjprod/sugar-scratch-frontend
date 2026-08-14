@@ -38,7 +38,14 @@ export function OnboardShell({
 }) {
   const header = (
     <header className="auth7-onboard-header">
-      <span className="auth2-logo">Sugar</span>
+      <span className="auth2-logo">
+        <img
+          src="/svg/logoSugarScratch.svg"
+          alt="Sugar Scratch"
+          className="auth2-logo-img h-7 w-auto"
+          draggable={false}
+        />
+      </span>
       <span className="auth7-onboard-badge">{badge}</span>
     </header>
   );

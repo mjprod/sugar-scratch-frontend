@@ -1,3 +1,4 @@
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import type { StickyCtaMode, ThemeCardData, ThemeDetailData } from "@/services/collection";
 import { scratchReadyCount } from "@/services/collection";
 
@@ -68,7 +69,9 @@ export function StickyFooterCTA({
             Open Pack
           </button>
           <button type="button" className="cpv2-cta-secondary" onClick={onBuy}>
-            Buy another for 💎{buyCost}
+            Buy another for{" "}
+            <DiamondLottie size="1em" className="cpv2-cta-diamond" />
+            {buyCost}
           </button>
         </div>
       </div>

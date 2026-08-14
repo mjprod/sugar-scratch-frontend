@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
-import { Gem } from "lucide-react";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 /**
  * Compact diamond control — used on secondary subpage trailings (Store/Settings).
@@ -31,7 +31,7 @@ export function MobileDiamondBalance({
 
   const inner = (
     <>
-      <Gem className="size-3.5 shrink-0 text-sky-300" aria-hidden />
+      <DiamondLottie className="shrink-0" size={14} aria-hidden />
       <span className="min-w-[1.25ch] text-[13px] font-semibold tabular-nums text-white">
         {label}
       </span>
@@ -81,7 +81,7 @@ export function MobileDiamondUtility({
 
   return (
     <header
-      className="top-nav-mobile fixed inset-x-0 top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden"
+      className="top-nav-mobile glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface fixed top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden"
       aria-label="Utilities"
     >
       <div className="top-nav-mobile-inner">
@@ -90,13 +90,24 @@ export function MobileDiamondUtility({
             <button
               type="button"
               onClick={onOpenHome}
-              className="top-nav-brand shrink-0 text-[17px] font-bold tracking-[-0.03em] text-white/90"
+              aria-label="Sugar Scratch Home"
+              className="top-nav-brand shrink-0 transition hover:opacity-90"
             >
-              Sugar
+              <img
+                src="/svg/logoSugarScratch.svg"
+                alt="Sugar Scratch"
+                className="top-nav-brand-logo h-9 w-auto"
+                draggable={false}
+              />
             </button>
           ) : (
-            <span className="top-nav-brand shrink-0 text-[17px] font-bold tracking-[-0.03em] text-white/90">
-              Sugar
+            <span className="top-nav-brand shrink-0">
+              <img
+                src="/svg/logoSugarScratch.svg"
+                alt="Sugar Scratch"
+                className="top-nav-brand-logo h-9 w-auto"
+                draggable={false}
+              />
             </span>
           )
         ) : (

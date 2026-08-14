@@ -4,7 +4,6 @@ import {
   Check,
   ChevronLeft,
   CloudOff,
-  Gem,
   Layers3,
   Loader2,
   PackageOpen,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FoilPackFace } from "@/components/purchase/FoilPackFace";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration } from "@/features/packs/types";
@@ -707,7 +707,7 @@ export function PurchaseFlow({
           </div>
         )}
         <div className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5">
-          <Gem className="size-3.5 text-sky-300" />
+          <DiamondLottie size={14} aria-hidden />
           <span className="text-[12px] font-semibold tabular-nums">{diamonds}</span>
         </div>
       </header>
@@ -946,7 +946,7 @@ export function PurchaseFlow({
         <ModalShell onClose={() => setModal(null)}>
           {modal === "insufficient" ? (
             <StateScreen
-              icon={<Gem className="size-7" />}
+              icon={<DiamondLottie size={28} aria-hidden />}
               tone="warn"
               title="Not enough diamonds"
               body="Top up diamonds to continue this purchase. Your balance was not charged."
@@ -1166,7 +1166,7 @@ function SelectStage({
                   </span>
                 </span>
                 <span className="flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-[13px] font-semibold">
-                  <Gem className="size-3.5 text-sky-300" />
+                  <DiamondLottie size={14} aria-hidden />
                   {cost}
                 </span>
               </button>

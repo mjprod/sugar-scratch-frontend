@@ -1540,7 +1540,6 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                glowOuterBloom={isMobile ? 'lite' : 'full'}
 	                label="Buy Pack"
 	                costAmount={formatPrice(item.price ?? 4.99)}
-	                costIcon="💎"
 	                className="coverflow-buy-pack-cta__button"
 	                tabIndex={0}
 	                onClick={(event) => {

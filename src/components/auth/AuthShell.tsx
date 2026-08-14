@@ -31,7 +31,14 @@ export function AuthShell({
   return (
     <div className="auth2-shell" aria-label="Authentication">
       <header className="auth2-header">
-        <span className="auth2-logo">Sugar</span>
+        <span className="auth2-logo">
+          <img
+            src="/svg/logoSugarScratch.svg"
+            alt="Sugar Scratch"
+            className="auth2-logo-img h-7 w-auto"
+            draggable={false}
+          />
+        </span>
         {headerAction?.onClick ? (
           <button
             type="button"

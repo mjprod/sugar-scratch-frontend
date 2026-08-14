@@ -8,6 +8,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+  CtaButton,
+  ctaButtonPropsFromTemplate,
+} from "@/components/cta";
+import {
   feedPackLabel,
   feedVisibleTags,
   type HomeFeedCreator,
@@ -69,6 +73,8 @@ const BUTTON_SECONDARIES: SecondaryHeart[] = [
 export function CreatorFeedCard({
   item,
   active,
+  /** Eager-buffer neighbor cards (next peek / previous) so they aren't black. */
+  warm = false,
   onLike,
   onEnsureLike,
   onBuy,
@@ -77,6 +83,7 @@ export function CreatorFeedCard({
 }: {
   item: HomeFeedCreator;
   active: boolean;
+  warm?: boolean;
   onLike: () => void;
   /** One-way Like for media double-tap. Return false when auth/modal blocks. */
   onEnsureLike: () => boolean;
@@ -95,6 +102,7 @@ export function CreatorFeedCard({
   const tags = feedVisibleTags(item.tags);
   const packLabel = feedPackLabel(item.packName);
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
+  const shouldBuffer = active || warm;
 
   function playHeartBurst(mode: BurstMode, clientX?: number, clientY?: number) {
     const root = cardRef.current;
@@ -247,7 +255,8 @@ export function CreatorFeedCard({
             muted
             loop
             autoPlay={active}
-            preload={active ? "auto" : "metadata"}
+            /* Active + next/prev peek: full buffer so the strip isn't empty black */
+            preload={shouldBuffer ? "auto" : "metadata"}
             className="hf-media-el hf-media-video"
           />
         ) : (
@@ -331,18 +340,32 @@ export function CreatorFeedCard({
         </div>
 
         <div className="hf-actions">
-          <button
-            type="button"
-            className="hf-buy"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuy();
-            }}
-            aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
-          >
-            <span>Buy Pack</span>
-            <span className="hf-buy-price">💎{item.diamondCost}</span>
-          </button>
+          <div className="hf-buy">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label="Buy Pack"
+              costAmount={item.diamondCost}
+              fontSize={15}
+              /* Hairline on-button ring (iOS-safe stroke layer). */
+              strokeWidth={1}
+              /*
+                Viewport-scoped motion:
+                - active card: full aurora + CSS orbit + Lottie
+                - warm peek: static glow frame (no rAF/WebGL clock)
+                - far slides: static CTA only
+              */
+              glowOuterBloom={active ? "lite" : "off"}
+              glowAlwaysOn={active && !reducedMotion}
+              auroraPaused={!active || reducedMotion}
+              costIconAnimated={active && !reducedMotion}
+              aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuy();
+              }}
+            />
+          </div>
 
           <button
             ref={likeBtnRef}
