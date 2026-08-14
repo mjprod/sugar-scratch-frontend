@@ -1432,6 +1432,9 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 /* Hero button — Collection icon + cutout glow (~10% larger) */
 .nav-test-dock-primary-glow,
 .nav-test-hero-btn {
+  /* Dock-notch optical nudge; overridden below 390px via the same var. */
+  --dock-primary-nudge-x: 1.5dvw;
+
   position: absolute;
   top: -14px;
   left: 50%;
@@ -1443,8 +1446,15 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   border: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
-  /* Center on slot, then nudge left so rim/icon optically sits on the notch */
-  transform: translate3d(calc(-50% - 6px), -6px, 0.01px);
+  /*
+   * Center on the Collection slot, then shift left so the rim sits on the
+   * dock notch. Nudge is viewport-relative (dvw) and breakpoint-driven.
+   */
+  transform: translate3d(
+    calc(-50% - var(--dock-primary-nudge-x, 1.5dvw)),
+    -6px,
+    0.01px
+  );
   transition: transform 160ms ease;
 }
 
@@ -1457,7 +1467,11 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
   margin-left: 0;
   margin-right: 0;
   background: transparent !important;
-  transform: translate3d(calc(-50% - 6px), -6px, 0.01px);
+  transform: translate3d(
+    calc(-50% - var(--dock-primary-nudge-x, 1.5dvw)),
+    -6px,
+    0.01px
+  );
 }
 
 .nav-test-dock-primary-glow .border-glow-inner {
@@ -1589,7 +1603,24 @@ body[data-liquid-nav="mobile"] .liquid-glass-desktop-utils {
 
 .nav-test-dock-primary-glow:active,
 .nav-test-dock-primary-glow.border-glow-card:active {
-  transform: translate3d(calc(-50% - 6px), -6px, 0.01px) scale(0.97);
+  transform: translate3d(
+      calc(-50% - var(--dock-primary-nudge-x, 1.5dvw)),
+      -6px,
+      0.01px
+    )
+    scale(0.97);
+}
+
+/*
+ * Narrow phones (includes iPhone 12/13 mini CSS width 375 and 12 Pro at 390):
+ * lighter left nudge for the tighter dock notch.
+ * Use max-width: 390px — max-width: 389px never matched 390-wide devices.
+ */
+@media (max-width: 390px) {
+  .nav-test-dock-primary-glow,
+  .nav-test-hero-btn {
+    --dock-primary-nudge-x: 0.6dvw;
+  }
 }
 
 .nav-test-dock-primary-btn:focus-visible {
