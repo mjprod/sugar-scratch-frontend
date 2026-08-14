@@ -8,6 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import Aurora from "./Aurora";
+import BorderGlow from "./BorderGlow";
+import "./CtaButton.css";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -32,12 +35,6 @@ function usePrefersReducedMotion() {
     () => false,
   );
 }
-
-import { DiamondLottie } from "@/components/ui/DiamondLottie";
-
-import Aurora from "./Aurora";
-import BorderGlow from "./BorderGlow";
-import "./CtaButton.css";
 
 /** True for empty / diamond-emoji markers that should render the Lottie mark. */
 function isDiamondIconMarker(icon: ReactNode): boolean {
