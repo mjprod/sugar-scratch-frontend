@@ -15,11 +15,8 @@ export function InboxButton({
   className?: string;
   /** surface = bordered circle (subpage headers); ghost = compact HUD (TopNav). */
   variant?: "surface" | "ghost";
-<<<<<<< HEAD
-=======
   /** Active while the Inbox route is open. */
   active?: boolean;
->>>>>>> origin/dev
 }) {
   const hasUnread = unreadCount > 0;
   const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);

@@ -833,7 +833,6 @@ export function HomeFeedScreen({
                   } as CSSProperties)
             }
           >
-<<<<<<< HEAD
             {(() => {
               const activeIndex = items.findIndex((it) => it.id === activeId);
               const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
@@ -852,6 +851,7 @@ export function HomeFeedScreen({
                       active={active && item.id === activeId}
                       warm={warm}
                       onLike={() => toggleLike(item.id)}
+                      onEnsureLike={() => ensureLike(item.id)}
                       onBuy={() => onBuyPack(toPurchasePack(item))}
                       onOpenCreator={onOpenCreator}
                       videoRef={(node) => {
@@ -863,24 +863,6 @@ export function HomeFeedScreen({
                 );
               });
             })()}
-=======
-            {items.map((item) => (
-              <div key={item.id} className="hf-slide">
-                <CreatorFeedCard
-                  item={item}
-                  active={active && item.id === activeId}
-                  onLike={() => toggleLike(item.id)}
-                  onEnsureLike={() => ensureLike(item.id)}
-                  onBuy={() => onBuyPack(toPurchasePack(item))}
-                  onOpenCreator={onOpenCreator}
-                  videoRef={(node) => {
-                    if (node) videoRefs.current.set(item.id, node);
-                    else videoRefs.current.delete(item.id);
-                  }}
-                />
-              </div>
-            ))}
->>>>>>> origin/dev
             {loadingMore ? (
               <div className="hf-loading-more" aria-live="polite">
                 Loading more…

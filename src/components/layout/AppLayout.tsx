@@ -51,22 +51,15 @@ export function AppLayout() {
     location.pathname.startsWith("/photo-scratch");
 
   const onInbox = location.pathname.startsWith("/inbox");
-  const onStore = location.pathname.startsWith("/store");
-  const onSettings = location.pathname.startsWith("/settings");
-  const secondaryUtility = onInbox || onStore || onSettings;
 
   const showTopUtility =
     !hideChrome &&
     !location.pathname.startsWith("/creator");
 
-<<<<<<< HEAD
   const showNav =
     !hideChrome &&
     !location.pathname.startsWith("/settings") &&
     !onInbox;
-=======
-  const showFooter = !hideChrome;
->>>>>>> origin/dev
 
   const inboxUnread = guest ? 0 : countUnread(INBOX_FIXTURES);
 
@@ -87,7 +80,6 @@ export function AppLayout() {
         .filter(Boolean)
         .join(" ")}
     >
-<<<<<<< HEAD
       {showTopUtility ? (
         <>
           <MobileDiamondUtility
@@ -115,50 +107,14 @@ export function AppLayout() {
             ) : null}
           </div>
         </>
-=======
-      {showTopNav ? (
-        <TopNav
-          coins={guest ? null : coins}
-          diamonds={guest ? null : diamonds}
-          activeTab={tab}
-          onTabChange={requestTab}
-          onProfile={() => requestTab("profile")}
-          onOpenStore={openStore}
-          onOpenInbox={openInbox}
-          inboxUnreadCount={inboxUnread}
-          inboxActive={onInbox}
-          storeActive={onStore}
-          settingsActive={onSettings}
-          profileActive={location.pathname.startsWith("/profile")}
-          showMobileDiamond={!secondaryUtility}
-          routeKey={location.pathname}
-        />
->>>>>>> origin/dev
       ) : null}
 
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <Outlet />
       </div>
 
-<<<<<<< HEAD
       {showNav ? (
         <LiquidGlassNav activeTab={tab} onTabChange={requestTab} />
-=======
-      {showFooter ? (
-        <FooterNav
-          active={secondaryUtility ? null : tab}
-          visible
-          onChange={requestTab}
-          bagBadge={
-            !guest &&
-            (profile.welcomeClaimed || purchasedPacks > 0) &&
-            !secondaryUtility &&
-            tab !== "bag"
-              ? { type: "dot" as const }
-              : undefined
-          }
-        />
->>>>>>> origin/dev
       ) : null}
 
       <AuthenticationSheet

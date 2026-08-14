@@ -5106,16 +5106,10 @@ body[data-theme="v8"] .cpv2-toast {
  * ======================================================================== */
 
 body[data-theme="v8"] .hf-page {
-<<<<<<< HEAD
   /* No black footer pad — feed fills the screen; dock overlays glass. */
   --hf-bottom-clearance: 0px;
   /* Peek of the next snap card under the active one (mobile). */
   --hf-next-peek: calc(28px + env(safe-area-inset-bottom, 0px));
-=======
-  /* Feed fills the usable content viewport, not the raw browser viewport. */
-  --hf-top-clearance: 0px;
-  --hf-bottom-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
->>>>>>> origin/dev
   --hf-frame-width: min(100%, 428px);
 
   position: relative;
@@ -5126,13 +5120,7 @@ body[data-theme="v8"] .hf-page {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
-<<<<<<< HEAD
   padding-bottom: 0;
-=======
-  /* Fixed TopNav / Footer — reserve chrome so media never underlaps. */
-  padding-top: var(--hf-top-clearance);
-  padding-bottom: var(--hf-bottom-clearance);
->>>>>>> origin/dev
   box-sizing: border-box;
   background:
     radial-gradient(circle at 50% 30%, rgba(155, 92, 255, 0.12), transparent 42%),
@@ -5160,12 +5148,9 @@ body[data-theme="v8"] .hf-frame {
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-page {
     --hf-bottom-clearance: 24px;
-<<<<<<< HEAD
     --hf-next-peek: 0px;
     --hf-top-clearance: var(--app-top-nav-height, 56px);
     padding-bottom: var(--hf-bottom-clearance);
-=======
->>>>>>> origin/dev
   }
 
   body[data-theme="v8"] .hf-frame {
@@ -5474,12 +5459,7 @@ body[data-theme="v8"] .hf-overlay {
   display: flex;
   flex-direction: column;
   gap: 16px;
-<<<<<<< HEAD
   padding: 24px 18px calc(11dvh + env(safe-area-inset-bottom, 0px));
-=======
-  /* Bottom safe-area lives in --hf-bottom-clearance — don't double-count. */
-  padding: 24px 18px 18px;
->>>>>>> origin/dev
   opacity: 0.88;
   /* Enter offset + scroll-driven lag (JS sets --hf-parallax-y). */
   transform: translate3d(
@@ -5531,13 +5511,8 @@ body[data-theme="v8"] .hf-description {
 }
 
 body[data-theme="v8"] .hf-actions {
-<<<<<<< HEAD
   display: grid;
   grid-template-columns: 2fr 1fr;
-=======
-  display: flex;
-  width: 100%;
->>>>>>> origin/dev
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -5551,7 +5526,6 @@ body[data-theme="v8"] .hf-actions {
 
 /* Slot for parent-filled squircle CTA. */
 body[data-theme="v8"] .hf-buy {
-<<<<<<< HEAD
   position: relative;
   z-index: 3;
   width: 100%;
@@ -5591,10 +5565,6 @@ body[data-theme="v8"] .hf-buy .cta-button--fill {
 body[data-theme="v8"] .hf-buy .cta-button__label {
   flex-direction: row;
   flex-wrap: nowrap;
-=======
-  display: inline-flex;
-  flex: 0 0 auto;
->>>>>>> origin/dev
   align-items: center;
   justify-content: center;
   gap: 0.55em;
@@ -8975,7 +8945,6 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     background: var(--top-nav-surface-scrolled);
   }
 
-<<<<<<< HEAD
   /*
    * iOS Safari (desktop mode / iPad): strip SVG displacement from tw-glass.
    * Keep plain frosted blur so the header never loses backdrop entirely.
@@ -8997,9 +8966,7 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     border-radius: 1.75rem;
   }
 
-=======
-  /* Immersive feed: media starts below desktop TopNav (shared height token). */
->>>>>>> origin/dev
+
   body[data-theme="v8"] .app-layout--hud .hf-page {
     --hf-top-clearance: var(--app-top-nav-height, 56px);
   }
@@ -9100,7 +9067,6 @@ body[data-theme="v8"] .app-page-shell--profile {
     padding-top: 32px;
   }
 }
-<<<<<<< HEAD
 
 body[data-theme="v8"] .inbox-empty-wrap {
   display: flex;
@@ -9111,5 +9077,3 @@ body[data-theme="v8"] .inbox-empty-wrap {
 body[data-theme="v8"] .inbox-empty-wrap .inbox-section-head {
   margin-bottom: 0;
 }
-=======
->>>>>>> origin/dev

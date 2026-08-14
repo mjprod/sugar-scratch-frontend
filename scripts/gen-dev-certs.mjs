@@ -14,9 +14,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const certDir = path.join(rootDir, "certs");
+const certDir = path.join(rootDir, ".certs");
 const certFile = path.join(certDir, "dev-cert.pem");
 const keyFile = path.join(certDir, "dev-key.pem");
+const caFile = path.join(certDir, "rootCA.pem");
 
 function which(bin) {
   try {
@@ -75,10 +76,21 @@ execFileSync(
   { stdio: "inherit" },
 );
 
+try {
+  const caroot = execFileSync(mkcert, ["-CAROOT"], { encoding: "utf8" }).trim();
+  const rootCa = path.join(caroot, "rootCA.pem");
+  if (fs.existsSync(rootCa)) {
+    fs.copyFileSync(rootCa, caFile);
+  }
+} catch (err) {
+  console.warn("[certs] could not copy rootCA.pem:", err?.message || err);
+}
+
 console.info(`
 [certs] wrote:
   ${path.relative(rootDir, certFile)}
   ${path.relative(rootDir, keyFile)}
+  ${path.relative(rootDir, caFile)}   ← install this CA on your phone once
 
 Start the app with:  npm run dev
 On your phone (same Wi‑Fi), open:
