@@ -36,7 +36,14 @@ export function InboxScreen({
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   useEffect(() => {
-    void fetchInboxMessages().then(setMessages);
+    let cancelled = false;
+    void fetchInboxMessages().then((next) => {
+      if (cancelled) return;
+      setMessages(next);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const { newer, earlier } = useMemo(
