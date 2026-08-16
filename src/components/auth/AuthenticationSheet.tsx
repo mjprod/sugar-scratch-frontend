@@ -175,11 +175,7 @@ export function AuthenticationSheet({
       onSuccess({ email: email.trim(), provider: "email" });
     } catch (error) {
       setSubmitting(null);
-      setError(
-        error instanceof ApiError
-          ? createAccountFailureMessage()
-          : createAccountFailureMessage(),
-      );
+      setError(createAccountFailureMessage());
     }
   }
 
