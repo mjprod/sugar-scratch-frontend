@@ -156,7 +156,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void fetchAuthSession().then((session) => {
-      if (cancelled || !session.authenticated || !session.user) return;
+      if (cancelled) return;
+      if (!session.authenticated || !session.user) {
+        destroySession();
+        clearEmailVerified();
+        setAuthed(false);
+        setEmailVerified(false);
+        return;
+      }
       createSession(session.user.email, session.user.provider);
       if (session.user.emailVerified) markEmailVerified();
       else clearEmailVerified();
@@ -164,14 +171,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEmailVerified(session.user.emailVerified);
       setProfile((prev) => ({
         ...prev,
-        email: session.user!.email,
-        username: session.user!.username ?? prev.username,
-        displayName: session.user!.displayName ?? prev.displayName,
-        avatar: session.user!.avatarUrl,
-        genderInterest: session.user!.genderInterest,
-        referralCode: session.user!.referralCode || prev.referralCode,
-        welcomeClaimed: session.user!.welcomeClaimed,
-        homeTutorialDone: session.user!.homeTutorialDone,
+        email: session.user.email,
+        username: session.user.username ?? prev.username,
+        displayName: session.user.displayName ?? prev.displayName,
+        avatar: session.user.avatarUrl,
+        genderInterest: session.user.genderInterest,
+        referralCode: session.user.referralCode || prev.referralCode,
+        welcomeClaimed: session.user.welcomeClaimed,
+        homeTutorialDone: session.user.homeTutorialDone,
       }));
     });
     return () => {
