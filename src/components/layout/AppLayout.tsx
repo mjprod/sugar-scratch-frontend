@@ -65,13 +65,20 @@ export function AppLayout() {
   );
 
   useEffect(() => {
+    let cancelled = false;
     if (guest) {
       setInboxUnread(0);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
     void fetchInboxMessages().then((messages) => {
+      if (cancelled) return;
       setInboxUnread(countUnread(messages));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [guest]);
 
   const mobileInbox = openInbox ? (
