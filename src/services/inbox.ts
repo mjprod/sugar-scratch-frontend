@@ -237,7 +237,7 @@ export const INBOX_FIXTURES: InboxMessage[] = [
 
 export async function fetchInboxMessages(): Promise<InboxMessage[]> {
   const data = await apiFetch<{ messages: InboxMessage[] }>("/api/inbox");
-  return data?.messages?.length ? data.messages : INBOX_FIXTURES;
+  return data?.messages ?? INBOX_FIXTURES;
 }
 
 export async function markInboxRead(id: string) {
