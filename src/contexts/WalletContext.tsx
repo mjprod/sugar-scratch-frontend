@@ -2,12 +2,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { apiFetch } from "@/lib/api";
 
 type WalletContextValue = {
   coins: number;
@@ -18,6 +20,7 @@ type WalletContextValue = {
   addDiamonds: (n: number) => void;
   spendDiamonds: (n: number) => void;
   resetWallet: () => void;
+  refreshWallet: () => Promise<void>;
 };
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -28,6 +31,19 @@ const INITIAL_DIAMONDS = 3;
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [coins, setCoins] = useState(INITIAL_COINS);
   const [diamonds, setDiamonds] = useState(INITIAL_DIAMONDS);
+
+  const refreshWallet = useCallback(async () => {
+    const data = await apiFetch<{ diamonds: number; coins: number }>(
+      "/api/me/wallet",
+    );
+    if (!data) return;
+    setDiamonds(data.diamonds);
+    setCoins(data.coins);
+  }, []);
+
+  useEffect(() => {
+    void refreshWallet();
+  }, [refreshWallet]);
 
   const addCoins = useCallback((n: number) => {
     setCoins((c) => c + n);
@@ -44,7 +60,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const resetWallet = useCallback(() => {
     setCoins(INITIAL_COINS);
     setDiamonds(INITIAL_DIAMONDS);
-  }, []);
+    void refreshWallet();
+  }, [refreshWallet]);
 
   const value = useMemo(
     () => ({
@@ -56,8 +73,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       addDiamonds,
       spendDiamonds,
       resetWallet,
+      refreshWallet,
     }),
-    [addCoins, addDiamonds, coins, diamonds, resetWallet, spendDiamonds],
+    [addCoins, addDiamonds, coins, diamonds, refreshWallet, resetWallet, spendDiamonds],
   );
 
   return (

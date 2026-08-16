@@ -1,3 +1,7 @@
 /** Public env — optional absolute API origin for production builds. */
-export const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+const viteEnv =
+  typeof import.meta !== "undefined"
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+
+export const API_BASE_URL = viteEnv?.VITE_API_BASE_URL ?? "";

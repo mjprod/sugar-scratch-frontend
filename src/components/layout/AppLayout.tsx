@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
@@ -10,7 +10,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
-import { countUnread, INBOX_FIXTURES } from "@/services/inbox";
+import { countUnread, fetchInboxMessages, INBOX_FIXTURES } from "@/services/inbox";
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -60,7 +60,19 @@ export function AppLayout() {
     !location.pathname.startsWith("/settings") &&
     !onInbox;
 
-  const inboxUnread = guest ? 0 : countUnread(INBOX_FIXTURES);
+  const [inboxUnread, setInboxUnread] = useState(
+    guest ? 0 : countUnread(INBOX_FIXTURES),
+  );
+
+  useEffect(() => {
+    if (guest) {
+      setInboxUnread(0);
+      return;
+    }
+    void fetchInboxMessages().then((messages) => {
+      setInboxUnread(countUnread(messages));
+    });
+  }, [guest]);
 
   const mobileInbox = openInbox ? (
     <InboxButton

@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -13,10 +14,13 @@ import {
   clearEmailVerified,
   createSession,
   destroySession,
+  fetchAuthSession,
   getAuthEmail,
   isAuthenticated,
   isEmailVerified,
+  logoutRemote,
   markEmailVerified,
+  markEmailVerifiedRemote,
   needsEmailVerification,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
@@ -147,6 +151,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const bumpInventoryRevision = useCallback(() => {
     setInventoryRevision((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAuthSession().then((session) => {
+      if (cancelled || !session.authenticated || !session.user) return;
+      createSession(session.user.email, session.user.provider);
+      if (session.user.emailVerified) markEmailVerified();
+      else clearEmailVerified();
+      setAuthed(true);
+      setEmailVerified(session.user.emailVerified);
+      setProfile((prev) => ({
+        ...prev,
+        email: session.user!.email,
+        username: session.user!.username ?? prev.username,
+        displayName: session.user!.displayName ?? prev.displayName,
+        avatar: session.user!.avatarUrl,
+        genderInterest: session.user!.genderInterest,
+        referralCode: session.user!.referralCode || prev.referralCode,
+        welcomeClaimed: session.user!.welcomeClaimed,
+        homeTutorialDone: session.user!.homeTutorialDone,
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const captureSecondaryReturn = useCallback(() => {
@@ -363,6 +393,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const onVerified = useCallback(() => {
     markEmailVerified();
+    void markEmailVerifiedRemote();
     setEmailVerified(true);
     setVerifyOpen(false);
     const action = verifyPending;
@@ -395,6 +426,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    void logoutRemote();
     destroySession();
     setAuthed(false);
     setPending(null);
@@ -408,6 +440,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   const restart = useCallback(() => {
+    void logoutRemote();
     clearV8Session();
     clearRecommendationState();
     clearEmailVerified();

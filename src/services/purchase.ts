@@ -1,3 +1,4 @@
+import { apiMutate } from "../lib/api";
 import { diamondCostForPackId } from "./homepage";
 
 export type PackQuantity = 1 | 5;
@@ -132,9 +133,20 @@ export async function submitPurchase(
   packId = "pack",
 ): Promise<OpeningSession> {
   if (packCost(quantity, packId) > balance) throw new PurchaseError("insufficient");
-  await wait(650);
   if (failureMode() === "purchase") {
     throw new PurchaseError("failed", "Purchase could not be completed.");
+  }
+  try {
+    const key = `pack-buy:${packId}:${quantity}:${Date.now()}`;
+    await apiMutate(`/api/packs/${packId}/purchase`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ quantity }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "insufficient") throw new PurchaseError("insufficient");
+    /* keep local opening session if API is down */
   }
   return buildOpeningSession(quantity, packId);
 }

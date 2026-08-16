@@ -7,13 +7,15 @@ import {
   Gift,
   TriangleAlert,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   INBOX_FIXTURES,
+  fetchInboxMessages,
+  markInboxRead,
   relativeTime,
   splitInboxSections,
   type AccountSystemIcon,
@@ -33,6 +35,10 @@ export function InboxScreen({
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
+  useEffect(() => {
+    void fetchInboxMessages().then(setMessages);
+  }, []);
+
   const { newer, earlier } = useMemo(
     () => splitInboxSections(messages, filterUnreadOnly),
     [messages, filterUnreadOnly],
@@ -42,6 +48,7 @@ export function InboxScreen({
   const emptyAll = !filterUnreadOnly && newer.length === 0 && earlier.length === 0;
 
   function markRead(id: string) {
+    void markInboxRead(id);
     setMessages((list) =>
       list.map((m) => (m.id === id ? { ...m, isRead: true } : m)),
     );
