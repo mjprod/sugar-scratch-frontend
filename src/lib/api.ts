@@ -27,18 +27,21 @@ async function request(path: string, init: RequestInit = {}, timeoutMs = DEFAULT
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const { signal: userSignal, headers, ...rest } = init;
+    const { signal: userSignal, headers: userHeaders, ...rest } = init;
     if (userSignal) {
       if (userSignal.aborted) controller.abort();
       else userSignal.addEventListener("abort", () => controller.abort(), { once: true });
     }
+
+    const headers = new Headers(userHeaders);
+    if (!headers.has("Content-Type") && typeof rest.body === "string") {
+      headers.set("Content-Type", "application/json");
+    }
+
     return await fetch(resolveUrl(path), {
       cache: "no-store",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(headers as Record<string, string> | undefined),
-      },
+      headers,
       ...rest,
       signal: controller.signal,
     });
