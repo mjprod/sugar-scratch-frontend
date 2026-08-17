@@ -5,7 +5,7 @@ import { Paths } from "@/routes/Paths";
 import type { ProtectedAction } from "@/services/auth";
 import type { AppTab } from "@/types/app";
 
-/** Soft-gate: guests see auth sheet and bounce home; authed users pass through. */
+/** Soft-gate: guests see auth sheet and bounce to Discover; authed users pass through. */
 export function SoftGate({
   tab,
   action,
@@ -22,11 +22,11 @@ export function SoftGate({
     if (!authed) {
       requireAuth(action ?? { type: "tab", tab });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- gate once on auth flip
-  }, [authed, requireAuth, tab, action?.type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gate once on mount
+  }, []);
 
   if (!authed) {
-    return <Navigate to={Paths.home} replace />;
+    return <Navigate to={Paths.discover} replace />;
   }
 
   return <>{children}</>;

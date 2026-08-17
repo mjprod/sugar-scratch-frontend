@@ -18,7 +18,7 @@ export function SubpageHeader({
   trailing?: ReactNode;
 }) {
   return (
-    <header className="subpage-header">
+    <header className="subpage-header glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface">
       <button
         type="button"
         className="subpage-back"

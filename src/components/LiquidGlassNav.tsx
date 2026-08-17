@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -18,10 +19,19 @@ import {
 import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { InboxButton } from "@/components/InboxButton";
 import { BorderGlow } from "@/components/ui/BorderGlow";
+import { useAuth } from "@/contexts/AuthContext";
 import type { AppTab } from "@/types/app";
 import "./LiquidGlassNav.css";
 
-const DESKTOP_MQ = "(min-width: 496px)";
+const DESKTOP_MIN_PX = 507;
+const DESKTOP_MQ = `(min-width: ${DESKTOP_MIN_PX}px)`;
+
+function isDesktopViewport() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia(DESKTOP_MQ).matches && window.innerWidth >= DESKTOP_MIN_PX
+  );
+}
 type NavHandoff = "none" | "to-desktop" | "to-mobile";
 
 type DockBubble = {
@@ -235,8 +245,13 @@ export function LiquidGlassNav({
   onOpenInbox,
   inboxUnreadCount = 0,
 }: LiquidGlassNavProps) {
+  const { authed } = useAuth();
+  const desktopTabs = useMemo(
+    () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
+    [authed],
+  );
   const active = activeTab;
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [handoff, setHandoff] = useState<NavHandoff>("none");
   const [bubble, setBubble] = useState<DockBubble>(HIDDEN_BUBBLE);
   const [topBubble, setTopBubble] = useState<DockBubble>(HIDDEN_BUBBLE);
@@ -324,8 +339,8 @@ export function LiquidGlassNav({
 
   const findNearestTopTab = useCallback(
     (clientX: number) =>
-      findNearestTab(clientX, topTabRefs.current, DESKTOP_TABS),
-    [findNearestTab],
+      findNearestTab(clientX, topTabRefs.current, desktopTabs),
+    [desktopTabs, findNearestTab],
   );
 
   /** 0–1 how centered the bubble is under Collection (smooth falloff). */
@@ -386,8 +401,8 @@ export function LiquidGlassNav({
     if (topBubbleDragRef.current) return;
 
     const parent = topItemsRef.current;
-    const activeIndex = DESKTOP_TABS.findIndex((tab) => tab.id === active);
-    const activeTabConfig = DESKTOP_TABS[activeIndex];
+    const activeIndex = desktopTabs.findIndex((tab) => tab.id === active);
+    const activeTabConfig = desktopTabs[activeIndex];
     const target = topTabRefs.current[activeIndex];
 
     if (!parent || !target || !activeTabConfig) {
@@ -407,7 +422,7 @@ export function LiquidGlassNav({
       // Same first-paint snap as the dock bubble.
       ready: prev.ready,
     }));
-  }, [active]);
+  }, [active, desktopTabs]);
 
   useLayoutEffect(() => {
     updateDockBubble();
@@ -806,13 +821,19 @@ export function LiquidGlassNav({
       }, 1100);
     };
 
-    apply(mq.matches, false);
+    const sync = (animate: boolean) => apply(isDesktopViewport(), animate);
 
-    const onChange = (event: MediaQueryListEvent) => apply(event.matches, true);
+    sync(false);
+
+    const onChange = () => sync(true);
     mq.addEventListener("change", onChange);
+    window.addEventListener("resize", onChange);
+    window.visualViewport?.addEventListener("resize", onChange);
     return () => {
       window.clearTimeout(settleTimer);
       mq.removeEventListener("change", onChange);
+      window.removeEventListener("resize", onChange);
+      window.visualViewport?.removeEventListener("resize", onChange);
       delete document.body.dataset.liquidNav;
     };
   }, []);
@@ -932,7 +953,7 @@ export function LiquidGlassNav({
             onPointerCancel={endTopBubbleDrag}
           />
 
-          {DESKTOP_TABS.map((tab, index) => {
+          {desktopTabs.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
             const isDragTarget =
@@ -943,6 +964,7 @@ export function LiquidGlassNav({
                 <button
                   ref={(node) => {
                     topTabRefs.current[index] = node;
+                    topTabRefs.current.length = desktopTabs.length;
                   }}
                   type="button"
                   className={[
@@ -1094,6 +1116,7 @@ export function LiquidGlassNav({
                     className={[
                       "nav-test-dock-primary",
                       isActive ? "is-active" : "",
+                      !authed ? "is-guest-disabled" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}

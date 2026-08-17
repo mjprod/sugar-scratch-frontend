@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Compact diamond control — used on secondary subpage trailings (Store/Settings).
@@ -77,11 +79,79 @@ export function MobileDiamondUtility({
   trailing?: ReactNode;
   showBrand?: boolean;
 }) {
+  const { guest } = useAuth();
+  const { pathname } = useLocation();
+  const [loginReveal, setLoginReveal] = useState(false);
+  const [logoutReveal, setLogoutReveal] = useState(false);
+  const wasAuthedRef = useRef(!guest);
+  const pendingLogoutRef = useRef(false);
+
+  useEffect(() => {
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const wasAuthed = wasAuthedRef.current;
+    wasAuthedRef.current = !guest;
+
+    if (!guest) {
+      pendingLogoutRef.current = false;
+      setLogoutReveal(false);
+      if (reduce) {
+        setLoginReveal(false);
+        return;
+      }
+      setLoginReveal(true);
+      const timer = window.setTimeout(() => setLoginReveal(false), 1550);
+      return () => window.clearTimeout(timer);
+    }
+
+    setLoginReveal(false);
+    if (!wasAuthed || reduce) {
+      pendingLogoutRef.current = false;
+      setLogoutReveal(false);
+      return;
+    }
+
+    pendingLogoutRef.current = true;
+  }, [guest]);
+
+  useEffect(() => {
+    if (!pendingLogoutRef.current || !guest) return;
+
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      pendingLogoutRef.current = false;
+      setLogoutReveal(false);
+      return;
+    }
+
+    let startTimer = 0;
+    let endTimer = 0;
+    startTimer = window.setTimeout(() => {
+      pendingLogoutRef.current = false;
+      setLogoutReveal(true);
+      endTimer = window.setTimeout(() => setLogoutReveal(false), 1100);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(startTimer);
+      window.clearTimeout(endTimer);
+    };
+  }, [guest, pathname]);
+
   if (!visible) return null;
 
   return (
     <header
-      className="top-nav-mobile glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface fixed top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden"
+      className={[
+        "top-nav-mobile glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface fixed top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden",
+        loginReveal ? "is-login-reveal" : "",
+        logoutReveal ? "is-logout-reveal" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-label="Utilities"
     >
       <div className="top-nav-mobile-inner">

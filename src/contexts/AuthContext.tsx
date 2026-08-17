@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -154,6 +155,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const guest = !authed;
+
+  useEffect(() => {
+    if (guest) {
+      document.body.dataset.guest = "";
+    } else {
+      delete document.body.dataset.guest;
+    }
+    return () => {
+      delete document.body.dataset.guest;
+    };
+  }, [guest]);
 
   const resumePending = useCallback(
     (action: ProtectedAction | null) => {
@@ -402,7 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVerifyOpen(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
-    navigate(Paths.home);
+    navigate(Paths.discover);
     setNavNotice("Signed out — browsing as guest");
     window.setTimeout(() => setNavNotice(""), 1800);
   }, [navigate]);
