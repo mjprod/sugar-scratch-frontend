@@ -12,8 +12,10 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   INBOX_FIXTURES,
+  countUnread,
   fetchInboxMessages,
   markInboxRead,
   relativeTime,
@@ -32,19 +34,21 @@ export function InboxScreen({
   onBack: () => void;
   onMessageAction: (message: InboxMessage) => void;
 }) {
+  const { setInboxUnread } = useAuth();
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchInboxMessages().then((next) => {
+    void fetchInboxMessages().then((list) => {
       if (cancelled) return;
-      setMessages(next);
+      setMessages(list);
+      setInboxUnread(countUnread(list));
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setInboxUnread]);
 
   const { newer, earlier } = useMemo(
     () => splitInboxSections(messages, filterUnreadOnly),
@@ -56,9 +60,13 @@ export function InboxScreen({
 
   function markRead(id: string) {
     void markInboxRead(id);
-    setMessages((list) =>
-      list.map((m) => (m.id === id ? { ...m, isRead: true } : m)),
-    );
+    setMessages((list) => {
+      const next = list.map((m) =>
+        m.id === id ? { ...m, isRead: true } : m,
+      );
+      setInboxUnread(countUnread(next));
+      return next;
+    });
   }
 
   function handleRow(message: InboxMessage) {

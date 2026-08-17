@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
@@ -10,7 +10,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
-import { countUnread, fetchInboxMessages, INBOX_FIXTURES } from "@/services/inbox";
+import { countUnread, fetchInboxMessages } from "@/services/inbox";
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -32,6 +32,8 @@ export function AppLayout() {
     onVerifyLater,
     onEmailChanged,
     verifyEmail,
+    inboxUnread,
+    setInboxUnread,
   } = useAuth();
   const { coins, diamonds } = useWallet();
   const { activeTab: tab, requestTab } = useTabNav();
@@ -60,26 +62,15 @@ export function AppLayout() {
     !location.pathname.startsWith("/settings") &&
     !onInbox;
 
-  const [inboxUnread, setInboxUnread] = useState(
-    guest ? 0 : countUnread(INBOX_FIXTURES),
-  );
-
   useEffect(() => {
-    let cancelled = false;
     if (guest) {
       setInboxUnread(0);
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
     void fetchInboxMessages().then((messages) => {
-      if (cancelled) return;
       setInboxUnread(countUnread(messages));
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [guest]);
+  }, [guest, setInboxUnread]);
 
   const mobileInbox = openInbox ? (
     <InboxButton
