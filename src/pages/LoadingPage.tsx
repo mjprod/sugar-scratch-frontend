@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { LogoMark } from "@/components/ui";
+import { CardFallLoader } from "@/components/CardFallLoader";
 import { Paths } from "@/routes/Paths";
-import { motion } from "framer-motion";
 import { useEffect } from "react";
 
 const BOOT_KEY = "sugar.v8.bootShown";
@@ -29,20 +28,10 @@ export function LoadingPage() {
         }}
         aria-hidden
       />
-      <motion.div
-        className="relative z-10"
-        initial={{ scale: 0.86, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <motion.div
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <LogoMark size="lg" />
-        </motion.div>
-        <p className="mt-6 text-[15px] text-white/55">Loading Sugar Scratch…</p>
-      </motion.div>
+      <div className="relative z-10 flex flex-col items-center">
+        <CardFallLoader label="Loading Sugar Scratch" />
+        <p className="mt-8 text-[15px] text-white/55">Loading Sugar Scratch…</p>
+      </div>
     </section>
   );
 }
