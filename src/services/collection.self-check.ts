@@ -18,9 +18,9 @@ function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
 }
 
-assert(progressTone(100).includes("34D399"), "100% should be green");
-assert(progressTone(20).includes("F59E0B"), "<30% should be orange");
-assert(progressTone(52).includes("8B5CF6"), "mid should be brand purple gradient");
+assert(progressTone(100).includes("163.22"), "100% should be green");
+assert(progressTone(20).includes("70.08"), "<30% should be orange");
+assert(progressTone(52).includes("292.72"), "mid should be brand purple gradient");
 
 const emily = getCreatorPage("emily");
 assert(emily.themes.length === 5, "each creator has 5 themes");

@@ -23,7 +23,7 @@ import {
 import {
   fetchCards,
   type BackendCard,
-} from "@/shared/backend/collection";
+} from "../shared/backend/collection";
 
 const NEW_MODEL_WINDOW_SEC = 14 * 24 * 60 * 60;
 

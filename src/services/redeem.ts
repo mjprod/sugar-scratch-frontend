@@ -1,7 +1,8 @@
 /**
  * Redeem Code — promo codes → Diamonds or free Pack.
- * Mock catalog + local history for Hub inline redeem.
  */
+
+import { apiMutate } from "../lib/api";
 
 export type RedeemReward =
   | { type: "diamonds"; amount: number }
@@ -57,10 +58,6 @@ const DEMO_CODES: Record<
   LIMITED50: { kind: "error", errorType: "unavailable" },
 };
 
-function delay(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 function normalizeCode(raw: string) {
   return raw.trim().toUpperCase();
 }
@@ -92,7 +89,6 @@ function markRedeemed(code: string) {
 
 /** Redeem a promo code. Case-insensitive; trims whitespace. */
 export async function redeemCode(raw: string): Promise<RedeemCodeResponse> {
-  await delay(650);
   const code = normalizeCode(raw);
   if (!code) return { success: false, errorType: "invalid_code" };
 
@@ -102,6 +98,17 @@ export async function redeemCode(raw: string): Promise<RedeemCodeResponse> {
     }
   } catch {
     /* ignore */
+  }
+
+  try {
+    const remote = await apiMutate<RedeemCodeResponse>("/api/rewards/redeem", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    if (remote.success) markRedeemed(code);
+    return remote;
+  } catch {
+    /* fall through to local demo catalog */
   }
 
   if (readHistoryCodes().includes(code)) {
