@@ -3,8 +3,24 @@
  * Recommendation lives in ./recommendation.ts (independent system).
  */
 
+import { apiFetch, apiMutate, ApiError } from "../lib/api";
 import type { AppTab } from "@/types/app";
 import type { PurchaseFlowPack } from "./purchase";
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  provider: AuthProvider;
+  emailVerified: boolean;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  genderInterest: "male" | "female" | "both" | null;
+  referralCode: string;
+  welcomeClaimed: boolean;
+  homeTutorialDone: boolean;
+  recommendationStatus: string | null;
+};
 
 const AUTH_KEY = "sugar.v8.authenticated";
 const EMAIL_KEY = "sugar.v8.authEmail";
@@ -45,6 +61,8 @@ export type AuthProvider = "google" | "apple" | "email";
 export type AuthSuccessResult = {
   email: string;
   provider: AuthProvider;
+  /** Server user from login/register/oauth when available. */
+  user?: AuthUser;
 };
 
 export function isAuthenticated() {
@@ -95,6 +113,66 @@ export function clearHasLoggedIn() {
   try {
     document.cookie = `${HAS_LOGGED_IN_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
     localStorage.removeItem(HAS_LOGGED_IN_COOKIE);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Returns null when the request fails soft (network/timeout/non-OK). */
+export async function fetchAuthSession(): Promise<{
+  authenticated: boolean;
+  user: AuthUser | null;
+} | null> {
+  return apiFetch<{ authenticated: boolean; user: AuthUser | null }>(
+    "/api/auth/session",
+  );
+}
+
+export async function loginWithEmail(email: string, password: string) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function registerWithEmail(email: string, password: string) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function loginWithOAuth(
+  provider: "google" | "apple",
+  email: string,
+) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>(
+    `/api/auth/oauth/${provider}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+  );
+}
+
+export async function logoutRemote() {
+  try {
+    await apiMutate("/api/auth/logout", { method: "POST" });
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function requestPasswordReset(email: string) {
+  await apiMutate("/api/auth/password/forgot", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function markEmailVerifiedRemote() {
+  try {
+    await apiMutate("/api/auth/verify-email/mark", { method: "POST" });
   } catch {
     /* ignore */
   }
@@ -206,17 +284,27 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<ChangePasswordResult> {
-  await new Promise((r) => setTimeout(r, 700));
   if (!currentPassword.trim()) {
-    return { ok: false, error: "incorrect_current" };
-  }
-  if (currentPassword.trim().toLowerCase() === "wrong") {
     return { ok: false, error: "incorrect_current" };
   }
   if (!isValidAuthPassword(newPassword)) {
     return { ok: false, error: "invalid_new" };
   }
-  return { ok: true };
+  try {
+    await apiMutate("/api/auth/password/change", {
+      method: "POST",
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiError && error.message === "incorrect_current") {
+      return { ok: false, error: "incorrect_current" };
+    }
+    return { ok: false, error: "generic" };
+  }
 }
 
 export function changePasswordErrorMessage(error: ChangePasswordError) {

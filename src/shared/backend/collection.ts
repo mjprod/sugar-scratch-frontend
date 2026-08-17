@@ -1,13 +1,13 @@
-import { apiFetch } from '@/lib/api'
+import { apiFetch } from '../../lib/api'
 import {
   fetchModels as fetchServiceModels,
   type BackendModel as ServiceBackendModel,
-} from '@/services/models'
+} from '../../services/models'
 import {
   CHARACTER_IDS,
   formatCharacterDisplayName,
   type CharacterId,
-} from '@/shared/catalog/characters'
+} from '../catalog/characters'
 
 const CARDS_PER_GROUP = 3
 

@@ -1,6 +1,6 @@
 /** Creator models and foil packs from `/api/models`. */
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch } from "../lib/api";
 
 export type BackendModel = {
   id?: string | null;

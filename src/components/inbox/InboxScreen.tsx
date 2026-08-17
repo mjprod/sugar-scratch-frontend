@@ -7,13 +7,17 @@ import {
   Gift,
   TriangleAlert,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   INBOX_FIXTURES,
+  countUnread,
+  fetchInboxMessages,
+  markInboxRead,
   relativeTime,
   splitInboxSections,
   type AccountSystemIcon,
@@ -30,8 +34,22 @@ export function InboxScreen({
   onBack: () => void;
   onMessageAction: (message: InboxMessage) => void;
 }) {
+  const { guest, setInboxUnread } = useAuth();
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
+
+  useEffect(() => {
+    if (guest) return;
+    let cancelled = false;
+    void fetchInboxMessages().then((list) => {
+      if (cancelled) return;
+      setMessages(list);
+      setInboxUnread(countUnread(list));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [guest, setInboxUnread]);
 
   const { newer, earlier } = useMemo(
     () => splitInboxSections(messages, filterUnreadOnly),
@@ -42,9 +60,14 @@ export function InboxScreen({
   const emptyAll = !filterUnreadOnly && newer.length === 0 && earlier.length === 0;
 
   function markRead(id: string) {
-    setMessages((list) =>
-      list.map((m) => (m.id === id ? { ...m, isRead: true } : m)),
-    );
+    void markInboxRead(id);
+    setMessages((list) => {
+      const next = list.map((m) =>
+        m.id === id ? { ...m, isRead: true } : m,
+      );
+      if (!guest) setInboxUnread(countUnread(next));
+      return next;
+    });
   }
 
   function handleRow(message: InboxMessage) {

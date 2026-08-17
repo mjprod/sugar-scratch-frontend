@@ -43,6 +43,7 @@ import {
   PurchaseError,
   buildOpeningSession,
   clearOpening,
+  commitPurchaseIdempotencyKey,
   loadOpeningAssets,
   nextUnscratchedIndex,
   packCost,
@@ -323,6 +324,7 @@ export function PurchaseFlow({
       });
       const first = owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
+      commitPurchaseIdempotencyKey(pack.packId, quantity);
       noteCreatorStarted(first.creatorId, pack.creator);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);

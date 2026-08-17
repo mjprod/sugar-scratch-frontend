@@ -3,6 +3,7 @@
  * New vs Earlier is chronological (24h window), not read-state.
  */
 import { CREATOR_PHOTOS, HOLO_PACKS } from "../lib/photos";
+import { apiFetch, apiMutate } from "../lib/api";
 
 export type InboxMessageType =
   | "creator_drop"
@@ -233,3 +234,24 @@ export const INBOX_FIXTURES: InboxMessage[] = [
     creatorId: "yuna",
   },
 ];
+
+export async function fetchInboxMessages(): Promise<InboxMessage[]> {
+  const data = await apiFetch<{ messages: InboxMessage[] }>("/api/inbox");
+  return data?.messages ?? INBOX_FIXTURES;
+}
+
+export async function markInboxRead(id: string) {
+  try {
+    await apiMutate(`/api/inbox/${id}/read`, { method: "POST" });
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function markInboxReadAll() {
+  try {
+    await apiMutate("/api/inbox/read-all", { method: "POST" });
+  } catch {
+    /* ignore */
+  }
+}

@@ -1,3 +1,4 @@
+import { apiMutate } from "@/lib/api";
 import {
   loadGameCatalog,
   pickWonPhotocards,
@@ -77,6 +78,10 @@ export function saveGameSession(session: GameSession): void {
   } catch {
     // Ignore quota / private mode.
   }
+  void apiMutate("/api/me/game-session", {
+    method: "PUT",
+    body: JSON.stringify(session),
+  }).catch(() => undefined);
 }
 
 export function clearGameSession(): void {
