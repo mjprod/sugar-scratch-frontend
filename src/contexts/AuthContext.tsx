@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -24,6 +25,7 @@ import {
   needsEmailVerification,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
+  type AuthUser,
   type ProtectedAction,
 } from "@/services/auth";
 import {
@@ -76,6 +78,34 @@ function isHighIntentForDefer(action: ProtectedAction) {
   );
 }
 
+function applyRemoteUser(
+  user: AuthUser,
+  setters: {
+    setAuthed: Dispatch<SetStateAction<boolean>>;
+    setEmailVerified: Dispatch<SetStateAction<boolean>>;
+    setProfile: Dispatch<
+      SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
+    >;
+  },
+) {
+  createSession(user.email, user.provider);
+  if (user.emailVerified) markEmailVerified();
+  else clearEmailVerified();
+  setters.setAuthed(true);
+  setters.setEmailVerified(user.emailVerified);
+  setters.setProfile((prev) => ({
+    ...prev,
+    email: user.email,
+    username: user.username ?? prev.username,
+    displayName: user.displayName ?? prev.displayName,
+    avatar: user.avatarUrl,
+    genderInterest: user.genderInterest,
+    referralCode: user.referralCode || prev.referralCode,
+    welcomeClaimed: user.welcomeClaimed,
+    homeTutorialDone: user.homeTutorialDone,
+  }));
+}
+
 type AuthContextValue = {
   authed: boolean;
   guest: boolean;
@@ -104,6 +134,8 @@ type AuthContextValue = {
   closeSecondary: (surface: SecondarySurfaceId) => void;
   inventoryRevision: number;
   bumpInventoryRevision: () => void;
+  inboxUnread: number;
+  setInboxUnread: Dispatch<SetStateAction<number>>;
   completeAuth: (result: AuthSuccessResult) => void;
   dismissAuth: () => void;
   onVerified: () => void;
@@ -148,38 +180,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     null,
   );
   const [inventoryRevision, setInventoryRevision] = useState(0);
+  const [inboxUnread, setInboxUnread] = useState(0);
 
   const bumpInventoryRevision = useCallback(() => {
     setInventoryRevision((n) => n + 1);
   }, []);
 
+  // Bumped on login/logout so a stale in-flight session probe cannot wipe a fresh session.
+  const sessionSyncEpochRef = useRef(0);
+
   useEffect(() => {
     let cancelled = false;
+    const epoch = sessionSyncEpochRef.current;
     void fetchAuthSession().then((session) => {
       if (cancelled) return;
-      if (!session.authenticated || !session.user) {
-        destroySession();
-        clearEmailVerified();
+      // Ignore results from a probe that started before a local auth transition.
+      if (epoch !== sessionSyncEpochRef.current) return;
+      // Network/timeout/non-OK: leave local session alone.
+      if (!session) return;
+
+      if (session.authenticated && session.user) {
+        applyRemoteUser(session.user, {
+          setAuthed,
+          setEmailVerified,
+          setProfile,
+        });
+        return;
+      }
+
+      // Definitive logged-out response — clear only stale local keys.
+      if (!isAuthenticated()) {
         setAuthed(false);
         setEmailVerified(false);
         return;
       }
-      createSession(session.user.email, session.user.provider);
-      if (session.user.emailVerified) markEmailVerified();
-      else clearEmailVerified();
-      setAuthed(true);
-      setEmailVerified(session.user.emailVerified);
-      setProfile((prev) => ({
-        ...prev,
-        email: session.user.email,
-        username: session.user.username ?? prev.username,
-        displayName: session.user.displayName ?? prev.displayName,
-        avatar: session.user.avatarUrl,
-        genderInterest: session.user.genderInterest,
-        referralCode: session.user.referralCode || prev.referralCode,
-        welcomeClaimed: session.user.welcomeClaimed,
-        homeTutorialDone: session.user.homeTutorialDone,
-      }));
+      destroySession();
+      clearEmailVerified();
+      setAuthed(false);
+      setEmailVerified(false);
     });
     return () => {
       cancelled = true;
@@ -357,23 +395,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completeAuth = useCallback(
     (result: AuthSuccessResult) => {
-      const wasUnresolved = !isRecommendationInitialized();
       const action = pending;
-      createSession(result.email, result.provider);
-      applyUserFromEmail(result.email);
+      sessionSyncEpochRef.current += 1;
+
+      if (result.user) {
+        applyRemoteUser(result.user, {
+          setAuthed,
+          setEmailVerified,
+          setProfile,
+        });
+      } else {
+        createSession(result.email, result.provider);
+        applyUserFromEmail(result.email);
+        setAuthed(true);
+        setEmailVerified(isEmailVerified());
+        if (result.provider === "email" && !isRecommendationInitialized()) {
+          clearEmailVerified();
+          setEmailVerified(false);
+        }
+      }
+
       markEntered();
       markOnboardingDone();
       setAuthOpen(false);
       setAuthSheetMode("login");
       setAuthSheetEmail("");
-      setAuthed(true);
-      setEmailVerified(isEmailVerified());
-
-      if (result.provider === "email" && wasUnresolved) {
-        clearEmailVerified();
-        setEmailVerified(false);
-      }
-
       setPending(null);
       window.setTimeout(() => {
         if (
@@ -433,6 +479,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
     void logoutRemote();
     destroySession();
     setAuthed(false);
@@ -447,6 +494,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate]);
 
   const restart = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
     void logoutRemote();
     clearV8Session();
     clearRecommendationState();
@@ -494,6 +542,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeSecondary,
       inventoryRevision,
       bumpInventoryRevision,
+      inboxUnread,
+      setInboxUnread,
       completeAuth,
       dismissAuth,
       onVerified,
@@ -529,6 +579,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onVerifyLater,
       bumpInventoryRevision,
       closeSecondary,
+      inboxUnread,
       inventoryRevision,
       openCreator,
       openInbox,

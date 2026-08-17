@@ -127,26 +127,78 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function newIdempotencyToken() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+}
+
+function purchaseIdempotencyStorageKey(packId: string, quantity: PackQuantity) {
+  return `sugar.v8.packBuyIdempotency:${packId}:${quantity}`;
+}
+
+/** Stable across retries of the same in-flight buy; cleared after the client commits. */
+function getPurchaseIdempotencyKey(
+  packId: string,
+  quantity: PackQuantity,
+  explicit?: string,
+): string {
+  if (explicit) return explicit;
+  const storageKey = purchaseIdempotencyStorageKey(packId, quantity);
+  try {
+    const existing = sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const key = `pack-buy:${packId}:${quantity}:${newIdempotencyToken()}`;
+    sessionStorage.setItem(storageKey, key);
+    return key;
+  } catch {
+    return `pack-buy:${packId}:${quantity}:${newIdempotencyToken()}`;
+  }
+}
+
+function clearPurchaseIdempotencyKey(packId: string, quantity: PackQuantity) {
+  try {
+    sessionStorage.removeItem(purchaseIdempotencyStorageKey(packId, quantity));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Drop the in-flight key after the client has fully committed the purchase. */
+export function commitPurchaseIdempotencyKey(
+  packId: string,
+  quantity: PackQuantity,
+) {
+  clearPurchaseIdempotencyKey(packId, quantity);
+}
+
 export async function submitPurchase(
   quantity: PackQuantity,
   balance: number,
   packId = "pack",
+  idempotencyKey?: string,
 ): Promise<OpeningSession> {
   if (packCost(quantity, packId) > balance) throw new PurchaseError("insufficient");
   if (failureMode() === "purchase") {
     throw new PurchaseError("failed", "Purchase could not be completed.");
   }
+  const key = getPurchaseIdempotencyKey(packId, quantity, idempotencyKey);
   try {
-    const key = `pack-buy:${packId}:${quantity}:${Date.now()}`;
     await apiMutate(`/api/packs/${packId}/purchase`, {
       method: "POST",
       headers: { "Idempotency-Key": key },
       body: JSON.stringify({ quantity }),
     });
+    /* keep key until the client fully commits — retries after a lost response
+       or a post-charge failure must reuse it */
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === "insufficient") throw new PurchaseError("insufficient");
-    /* keep local opening session if API is down */
+    if (message === "insufficient") {
+      clearPurchaseIdempotencyKey(packId, quantity);
+      throw new PurchaseError("insufficient");
+    }
+    /* keep key so a retry after a lost response reuses it; local opening still proceeds */
   }
   return buildOpeningSession(quantity, packId);
 }

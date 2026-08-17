@@ -59,6 +59,8 @@ export type AuthProvider = "google" | "apple" | "email";
 export type AuthSuccessResult = {
   email: string;
   provider: AuthProvider;
+  /** Server user from login/register/oauth when available. */
+  user?: AuthUser;
 };
 
 export function isAuthenticated() {
@@ -77,15 +79,14 @@ export function getAuthEmail() {
   }
 }
 
+/** Returns null when the request fails soft (network/timeout/non-OK). */
 export async function fetchAuthSession(): Promise<{
   authenticated: boolean;
   user: AuthUser | null;
-}> {
-  const data = await apiFetch<{ authenticated: boolean; user: AuthUser | null }>(
+} | null> {
+  return apiFetch<{ authenticated: boolean; user: AuthUser | null }>(
     "/api/auth/session",
   );
-  if (!data) return { authenticated: false, user: null };
-  return data;
 }
 
 export async function loginWithEmail(email: string, password: string) {

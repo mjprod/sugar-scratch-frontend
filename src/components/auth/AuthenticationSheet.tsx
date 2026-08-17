@@ -22,7 +22,6 @@ import {
   type AuthSuccessResult,
   type ProtectedActionType,
 } from "@/services/auth";
-import { ApiError } from "@/lib/api";
 import { isValidEmail } from "@/types/app";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
@@ -123,8 +122,8 @@ export function AuthenticationSheet({
     try {
       const kind = provider === "Google" ? "google" : "apple";
       const emailAddr = `${kind}@sugar.app`;
-      await loginWithOAuth(kind, emailAddr);
-      onSuccess({ email: emailAddr, provider: kind });
+      const { user } = await loginWithOAuth(kind, emailAddr);
+      onSuccess({ email: user.email, provider: user.provider, user });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -144,8 +143,8 @@ export function AuthenticationSheet({
     setSubmitting("email");
     setError("");
     try {
-      await loginWithEmail(email.trim(), password);
-      onSuccess({ email: email.trim(), provider: "email" });
+      const { user } = await loginWithEmail(email.trim(), password);
+      onSuccess({ email: user.email, provider: user.provider, user });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -171,8 +170,8 @@ export function AuthenticationSheet({
     setError("");
     setConsentError(false);
     try {
-      await registerWithEmail(email.trim(), password);
-      onSuccess({ email: email.trim(), provider: "email" });
+      const { user } = await registerWithEmail(email.trim(), password);
+      onSuccess({ email: user.email, provider: user.provider, user });
     } catch (error) {
       setSubmitting(null);
       setError(createAccountFailureMessage());

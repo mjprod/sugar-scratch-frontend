@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 
 type WalletContextValue = {
@@ -29,6 +30,7 @@ const INITIAL_COINS = 120;
 const INITIAL_DIAMONDS = 3;
 
 export function WalletProvider({ children }: { children: ReactNode }) {
+  const { authed } = useAuth();
   const [coins, setCoins] = useState(INITIAL_COINS);
   const [diamonds, setDiamonds] = useState(INITIAL_DIAMONDS);
 
@@ -42,8 +44,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!authed) {
+      setCoins(INITIAL_COINS);
+      setDiamonds(INITIAL_DIAMONDS);
+      return;
+    }
     void refreshWallet();
-  }, [refreshWallet]);
+  }, [authed, refreshWallet]);
 
   const addCoins = useCallback((n: number) => {
     setCoins((c) => c + n);
@@ -60,8 +67,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const resetWallet = useCallback(() => {
     setCoins(INITIAL_COINS);
     setDiamonds(INITIAL_DIAMONDS);
-    void refreshWallet();
-  }, [refreshWallet]);
+    if (authed) void refreshWallet();
+  }, [authed, refreshWallet]);
 
   const value = useMemo(
     () => ({

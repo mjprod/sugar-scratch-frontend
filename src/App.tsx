@@ -6,11 +6,11 @@ import { AppRoutes } from "@/routes/AppRoutes";
 export default function App() {
   return (
     <BrowserRouter>
-      <WalletProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <WalletProvider>
           <AppRoutes />
-        </AuthProvider>
-      </WalletProvider>
+        </WalletProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
