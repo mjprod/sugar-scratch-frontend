@@ -5159,7 +5159,7 @@ body[data-theme="v8"] .hf-page.is-inactive {
   pointer-events: none;
 }
 
-body[data-theme="v8"] .hf-frame {
+body[data-theme="v8"] .hf-stage {
   position: relative;
   display: flex;
   width: var(--hf-frame-width);
@@ -5168,9 +5168,107 @@ body[data-theme="v8"] .hf-frame {
   flex-direction: column;
   /* Taller phone frame on mobile */
   aspect-ratio: 9 / 20;
+}
+
+body[data-theme="v8"] .hf-frame {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
   overflow: hidden;
   background: oklch(0.136 0.007 285.45);
   box-shadow: 0 0 0 1px oklch(1 0 0 / 0.04);
+}
+
+body[data-theme="v8"] .hf-stepper {
+  --hf-stepper-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  --glass-bg-opacity: 0;
+  display: none;
+  position: relative;
+  z-index: 8;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-left: 0;
+}
+
+body[data-theme="v8"] .hf-stepper-btn {
+  display: grid;
+  place-items: center;
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.05);
+  border-radius: 999px;
+  background: var(--hf-stepper-surface);
+  color: oklch(1 0 0 / 0.88);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+body[data-theme="v8"] .hf-stepper-btn.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  background: var(--hf-stepper-surface);
+  border: 1px solid oklch(1 0 0 / 0.05);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+@supports (-webkit-touch-callout: none) {
+  body[data-theme="v8"] .hf-stepper-btn.glass {
+    --tw-glass-filter: ;
+    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
+    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+  }
+}
+
+body[data-theme="v8"] .hf-stepper-btn:hover:not(:disabled) {
+  border-color: oklch(1 0 0 / 0.1);
+  background: linear-gradient(
+    180deg,
+    oklch(0.26 0 0 / 0.18) 0%,
+    oklch(0 0 0 / 0.1) 42%,
+    oklch(0.16 0 0 / 0.16) 100%
+  );
+  color: oklch(1 0 0);
+}
+
+body[data-theme="v8"] .hf-stepper-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .hf-stepper-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+body[data-theme="v8"] .hf-stepper-icon {
+  position: relative;
+  z-index: 1;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 @media (min-width: 507px) {
@@ -5181,14 +5279,28 @@ body[data-theme="v8"] .hf-frame {
     padding-bottom: var(--hf-bottom-clearance);
   }
 
-  body[data-theme="v8"] .hf-frame {
+  body[data-theme="v8"] .hf-stage {
+    flex-direction: row;
+    align-items: center;
     margin-block: 12px;
-    border-radius: 28px;
     height: 90dvh;
-    width: calc(90dvh * 9 / 16);
+    width: auto;
     max-width: none;
+    aspect-ratio: auto;
+  }
+
+  body[data-theme="v8"] .hf-frame {
+    z-index: 1;
+    flex: 0 0 auto;
+    width: calc(90dvh * 9 / 16);
+    height: 100%;
     aspect-ratio: 9 / 16;
+    border-radius: 28px;
     overflow: hidden;
+  }
+
+  body[data-theme="v8"] .hf-stepper {
+    display: none;
   }
 
   body[data-theme="v8"] .hf-viewport {
@@ -5200,6 +5312,15 @@ body[data-theme="v8"] .hf-frame {
   /* Top nav already has Sugar + tabs — quiet the in-feed logo */
   body[data-theme="v8"] .hf-logo {
     visibility: hidden;
+  }
+}
+
+@media (min-width: 981px) {
+  body[data-theme="v8"] .hf-stepper {
+    display: flex;
+    align-self: center;
+    z-index: 8;
+    margin-left: -2.5rem;
   }
 }
 
@@ -9474,9 +9595,12 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
   }
 
   /* Home frame under HUD chrome */
-  body[data-theme="v8"] .app-layout--hud .hf-frame {
+  body[data-theme="v8"] .app-layout--hud .hf-stage {
     margin-top: 7rem;
     margin-bottom: 12px;
+  }
+
+  body[data-theme="v8"] .app-layout--hud .hf-frame {
     border-radius: 1.75rem;
   }
 
