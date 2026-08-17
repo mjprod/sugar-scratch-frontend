@@ -67,9 +67,14 @@ export function AppLayout() {
       setInboxUnread(0);
       return;
     }
+    let cancelled = false;
     void fetchInboxMessages().then((messages) => {
+      if (cancelled) return;
       setInboxUnread(countUnread(messages));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [guest, setInboxUnread]);
 
   const mobileInbox = openInbox ? (

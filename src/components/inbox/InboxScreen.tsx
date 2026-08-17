@@ -34,11 +34,12 @@ export function InboxScreen({
   onBack: () => void;
   onMessageAction: (message: InboxMessage) => void;
 }) {
-  const { setInboxUnread } = useAuth();
+  const { guest, setInboxUnread } = useAuth();
   const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   useEffect(() => {
+    if (guest) return;
     let cancelled = false;
     void fetchInboxMessages().then((list) => {
       if (cancelled) return;
@@ -48,7 +49,7 @@ export function InboxScreen({
     return () => {
       cancelled = true;
     };
-  }, [setInboxUnread]);
+  }, [guest, setInboxUnread]);
 
   const { newer, earlier } = useMemo(
     () => splitInboxSections(messages, filterUnreadOnly),
@@ -64,7 +65,7 @@ export function InboxScreen({
       const next = list.map((m) =>
         m.id === id ? { ...m, isRead: true } : m,
       );
-      setInboxUnread(countUnread(next));
+      if (!guest) setInboxUnread(countUnread(next));
       return next;
     });
   }

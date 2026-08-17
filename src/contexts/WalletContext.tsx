@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -33,17 +34,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const { authed } = useAuth();
   const [coins, setCoins] = useState(INITIAL_COINS);
   const [diamonds, setDiamonds] = useState(INITIAL_DIAMONDS);
+  const authedRef = useRef(authed);
+  const walletEpochRef = useRef(0);
+  authedRef.current = authed;
 
   const refreshWallet = useCallback(async () => {
+    const epoch = walletEpochRef.current;
     const data = await apiFetch<{ diamonds: number; coins: number }>(
       "/api/me/wallet",
     );
-    if (!data) return;
+    // Ignore responses that finished after logout / a newer refresh.
+    if (!data || epoch !== walletEpochRef.current || !authedRef.current) {
+      return;
+    }
     setDiamonds(data.diamonds);
     setCoins(data.coins);
   }, []);
 
   useEffect(() => {
+    // Invalidate any in-flight fetch from the previous auth state.
+    walletEpochRef.current += 1;
     if (!authed) {
       setCoins(INITIAL_COINS);
       setDiamonds(INITIAL_DIAMONDS);
@@ -65,10 +75,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetWallet = useCallback(() => {
+    walletEpochRef.current += 1;
     setCoins(INITIAL_COINS);
     setDiamonds(INITIAL_DIAMONDS);
-    if (authed) void refreshWallet();
-  }, [authed, refreshWallet]);
+    if (authedRef.current) void refreshWallet();
+  }, [refreshWallet]);
 
   const value = useMemo(
     () => ({
