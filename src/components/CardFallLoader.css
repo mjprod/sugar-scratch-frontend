@@ -1,0 +1,156 @@
+.card-fall-loader {
+  --card-duration: 4.8s;
+  position: relative;
+  width: min(176px, 52vw);
+  aspect-ratio: 5 / 7;
+  perspective: 900px;
+}
+
+.card-fall-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  width: 58%;
+  height: 10%;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(0 0 0 / 0.45), transparent 70%);
+  animation: card-fall-shadow var(--card-duration) linear infinite;
+  pointer-events: none;
+}
+
+.card-fall-layer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  animation: card-fall-cycle var(--card-duration) linear infinite;
+}
+
+.card-fall-layer--b {
+  animation-delay: calc(var(--card-duration) / -2);
+}
+
+.card-fall-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.card-fall-outline {
+  stroke: oklch(0.639 0.256 9.90);
+}
+
+.card-fall-mark {
+  fill: oklch(0.639 0.256 9.90);
+  overflow: visible;
+}
+
+.card-fall-layer .card-fall-outline {
+  animation: card-fall-stroke var(--card-duration) linear infinite;
+}
+
+.card-fall-layer .card-fall-mark {
+  animation: card-fall-fill var(--card-duration) linear infinite;
+}
+
+.card-fall-layer--b .card-fall-outline,
+.card-fall-layer--b .card-fall-mark {
+  animation-delay: calc(var(--card-duration) / -2);
+}
+
+@keyframes card-fall-cycle {
+  0%,
+  18% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateZ(0deg) scale(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  36% {
+    transform: translate3d(18px, 132px, 0) rotateX(28deg) rotateZ(26deg) scale(0.82);
+    opacity: 0;
+    animation-timing-function: linear;
+  }
+
+  37%,
+  50% {
+    transform: translate3d(0, 18px, 0) rotateX(0deg) rotateZ(0deg) scale(0.52);
+    opacity: 0;
+    animation-timing-function: ease-out;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateZ(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes card-fall-stroke {
+  0%,
+  36% {
+    stroke: oklch(0.639 0.256 9.90);
+  }
+
+  37%,
+  50% {
+    stroke: oklch(0.28 0 0);
+  }
+
+  100% {
+    stroke: oklch(0.639 0.256 9.90);
+  }
+}
+
+@keyframes card-fall-fill {
+  0%,
+  36% {
+    fill: oklch(0.639 0.256 9.90);
+  }
+
+  37%,
+  50% {
+    fill: oklch(0.28 0 0);
+  }
+
+  100% {
+    fill: oklch(0.639 0.256 9.90);
+  }
+}
+
+@keyframes card-fall-shadow {
+  0%,
+  18%,
+  50%,
+  68% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  36%,
+  40%,
+  86%,
+  90% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+
+  45%,
+  95% {
+    transform: scale(0.75);
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-fall-layer,
+  .card-fall-layer .card-fall-outline,
+  .card-fall-layer .card-fall-mark,
+  .card-fall-shadow {
+    animation: none;
+  }
+
+  .card-fall-layer--b {
+    display: none;
+  }
+}

@@ -2,6 +2,7 @@ import type { AppTab } from "@/types/app";
 
 export const Paths = {
   loading: "/loading",
+  preLoader: "/pre-loader",
   /**
    * Home nav tab (pack browse) lives at root.
    * Discover nav tab (home feed) lives at /discover.

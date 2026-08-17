@@ -12,6 +12,7 @@ import { GamePage } from "@/pages/GamePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
 import { LoadingPage } from "@/pages/LoadingPage";
 import { NavTestPage } from "@/pages/NavTestPage";
+import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
@@ -77,6 +78,14 @@ export function AppRoutes() {
           element={
             <AppShell label="Loading">
               <LoadingPage />
+            </AppShell>
+          }
+        />
+        <Route
+          path={Paths.preLoader}
+          element={
+            <AppShell label="Pre-loader">
+              <PreLoaderPage />
             </AppShell>
           }
         />
