@@ -1,7 +1,7 @@
 .card-fall-loader {
-  --card-duration: 7.2s;
+  --card-duration: 5.4s;
   --card-pink: oklch(0.639 0.256 9.90);
-  --card-gray: oklch(0.28 0 0);
+  --card-gray: oklch(1 0 0 / 0.1);
   position: relative;
   width: min(320px, 86vw);
   height: min(230px, 68vw);
@@ -15,8 +15,9 @@
   width: 38%;
   aspect-ratio: 5 / 7;
   transform-style: preserve-3d;
+  will-change: transform;
   animation:
-    card-carousel-move var(--card-duration) ease-in-out infinite,
+    card-carousel-move var(--card-duration) linear infinite,
     card-carousel-stack var(--card-duration) linear infinite;
 }
 
@@ -39,50 +40,49 @@
   stroke: var(--card-pink);
 }
 
-.card-fall-mark {
+.card-fall-mark,
+.card-fall-stripes {
   fill: var(--card-pink);
   overflow: visible;
 }
 
 .card-fall-layer .card-fall-outline {
-  animation: card-carousel-stroke var(--card-duration) ease-in-out infinite;
+  animation: card-carousel-stroke var(--card-duration) linear infinite;
 }
 
-.card-fall-layer .card-fall-mark {
-  animation: card-carousel-fill var(--card-duration) ease-in-out infinite;
+.card-fall-layer .card-fall-mark,
+.card-fall-layer .card-fall-stripes {
+  animation: card-carousel-fill var(--card-duration) linear infinite;
 }
 
 .card-fall-layer--b .card-fall-outline,
-.card-fall-layer--b .card-fall-mark {
+.card-fall-layer--b .card-fall-mark,
+.card-fall-layer--b .card-fall-stripes {
   animation-delay: calc(var(--card-duration) / -3);
 }
 
 .card-fall-layer--c .card-fall-outline,
-.card-fall-layer--c .card-fall-mark {
+.card-fall-layer--c .card-fall-mark,
+.card-fall-layer--c .card-fall-stripes {
   animation-delay: calc(var(--card-duration) * -2 / 3);
 }
 
 @keyframes card-carousel-move {
   0%,
-  8% {
+  22% {
     transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1);
   }
 
-  25%,
-  41% {
-    transform: translate(-50%, -50%) translateX(108%) rotateY(-22deg) scale(0.7);
+  33.333%,
+  55.333% {
+    transform: translate(-50%, -50%) translateX(76%) rotateY(-22deg) scale(0.7);
   }
 
-  50% {
-    transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(0.52);
+  66.666%,
+  88.666% {
+    transform: translate(-50%, -50%) translateX(-76%) rotateY(22deg) scale(0.7);
   }
 
-  59%,
-  75% {
-    transform: translate(-50%, -50%) translateX(-108%) rotateY(22deg) scale(0.7);
-  }
-
-  92%,
   100% {
     transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1);
   }
@@ -90,26 +90,21 @@
 
 @keyframes card-carousel-stack {
   0%,
-  16% {
+  27.7% {
     z-index: 3;
   }
 
-  17%,
-  49% {
+  27.8%,
+  61% {
     z-index: 2;
   }
 
-  50%,
-  54% {
+  61.1%,
+  94.3% {
     z-index: 1;
   }
 
-  55%,
-  83% {
-    z-index: 2;
-  }
-
-  84%,
+  94.4%,
   100% {
     z-index: 3;
   }
@@ -117,16 +112,15 @@
 
 @keyframes card-carousel-stroke {
   0%,
-  10% {
+  24% {
     stroke: var(--card-pink);
   }
 
-  25%,
-  75% {
+  30%,
+  92% {
     stroke: var(--card-gray);
   }
 
-  90%,
   100% {
     stroke: var(--card-pink);
   }
@@ -134,16 +128,15 @@
 
 @keyframes card-carousel-fill {
   0%,
-  10% {
+  24% {
     fill: var(--card-pink);
   }
 
-  25%,
-  75% {
+  30%,
+  92% {
     fill: var(--card-gray);
   }
 
-  90%,
   100% {
     fill: var(--card-pink);
   }
@@ -152,7 +145,8 @@
 @media (prefers-reduced-motion: reduce) {
   .card-fall-layer,
   .card-fall-layer .card-fall-outline,
-  .card-fall-layer .card-fall-mark {
+  .card-fall-layer .card-fall-mark,
+  .card-fall-layer .card-fall-stripes {
     animation: none;
   }
 
@@ -162,12 +156,12 @@
   }
 
   .card-fall-layer--b {
-    transform: translate(-50%, -50%) translateX(108%) rotateY(-22deg) scale(0.7);
+    transform: translate(-50%, -50%) translateX(76%) rotateY(-22deg) scale(0.7);
     z-index: 2;
   }
 
   .card-fall-layer--c {
-    transform: translate(-50%, -50%) translateX(-108%) rotateY(22deg) scale(0.7);
+    transform: translate(-50%, -50%) translateX(-76%) rotateY(22deg) scale(0.7);
     z-index: 2;
   }
 
@@ -177,7 +171,9 @@
   }
 
   .card-fall-layer--b .card-fall-mark,
-  .card-fall-layer--c .card-fall-mark {
+  .card-fall-layer--c .card-fall-mark,
+  .card-fall-layer--b .card-fall-stripes,
+  .card-fall-layer--c .card-fall-stripes {
     fill: var(--card-gray);
   }
 }

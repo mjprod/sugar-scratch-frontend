@@ -24,7 +24,7 @@ export function LoadingPage() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 40%, oklch(0.606 0.219 292.72 / 0.28), transparent 45%), linear-gradient(180deg, oklch(0.196 0 0), oklch(0.14 0 0))",
+            "radial-gradient(circle at 50% 40%, oklch(0.639 0.256 9.90 / 0.28), transparent 45%), linear-gradient(180deg, oklch(0.196 0 0), oklch(0.14 0 0))",
         }}
         aria-hidden
       />

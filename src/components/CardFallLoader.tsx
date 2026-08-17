@@ -1,6 +1,9 @@
+import { useId } from "react";
 import "./CardFallLoader.css";
 
 function OutlineCard() {
+  const clipId = `card-face-${useId().replace(/:/g, "")}`;
+
   return (
     <svg
       className="card-fall-svg"
@@ -9,6 +12,11 @@ function OutlineCard() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
+      <defs>
+        <clipPath id={clipId}>
+          <rect x="26" y="22" width="148" height="236" rx="10" />
+        </clipPath>
+      </defs>
       <rect
         className="card-fall-outline"
         x="18"
@@ -19,9 +27,17 @@ function OutlineCard() {
         fill="none"
         strokeWidth="3.5"
       />
+      <g className="card-fall-stripes" clipPath={`url(#${clipId})`}>
+        <g transform="translate(174 22) scale(0.75) translate(-174 -22)">
+          <path d="M122 22H174V74Z" />
+        </g>
+        <g transform="translate(26 258) scale(0.5) translate(-26 -258)">
+          <path d="M26 220V258H64Z" />
+          <path d="M26 188V146L132 258H90Z" />
+        </g>
+      </g>
       <svg
         className="card-fall-mark"
-        id="Layer_1"
         xmlns="http://www.w3.org/2000/svg"
         version="1.1"
         viewBox="0 0 20 20"
