@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
@@ -16,6 +17,114 @@ import {
 } from "@/services/homepage";
 
 type PageStatus = "loading" | "loaded" | "error";
+
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3;
+}
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+function waitForNextPaint() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
+function destinationScrollTop(scroller: HTMLElement, target: HTMLElement) {
+  const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+  return (
+    scroller.scrollTop +
+    (target.getBoundingClientRect().top - scroller.getBoundingClientRect().top) -
+    margin
+  );
+}
+
+function scrollToDailyReward(target: HTMLElement, reduce: boolean) {
+  const scroller = target.closest<HTMLElement>("[data-page-scroll]");
+  if (!scroller) {
+    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    return () => { };
+  }
+
+  const stage =
+    scroller.querySelector<HTMLElement>(".home-page-inner") ?? scroller;
+  const dest = destinationScrollTop(scroller, target);
+  const start = scroller.scrollTop;
+  const pullPx = Math.min(40, Math.max(22, Math.abs(dest - start) * 0.08));
+
+  if (reduce || Math.abs(dest - start) < 2) {
+    scroller.scrollTop = dest;
+    return () => { };
+  }
+
+  let raf = 0;
+  let cancelled = false;
+  const previousTransform = stage.style.transform;
+  const previousWillChange = stage.style.willChange;
+
+  const clearStage = () => {
+    stage.style.transform = previousTransform;
+    stage.style.willChange = previousWillChange;
+  };
+
+  const runFrom = (now: number, duration: number, ease: (t: number) => number, apply: (u: number) => void) =>
+    new Promise<void>((resolve) => {
+      const tick = (frame: number) => {
+        if (cancelled) {
+          resolve();
+          return;
+        }
+        const u = Math.min(1, (frame - now) / duration);
+        apply(ease(u));
+        if (u < 1) {
+          raf = window.requestAnimationFrame(tick);
+          return;
+        }
+        resolve();
+      };
+      raf = window.requestAnimationFrame(tick);
+    });
+
+  stage.style.willChange = "transform";
+
+  void (async () => {
+    // Pull the page up first — real scroll if we can, overscroll transform if we're already at the top.
+    const canScrollUp = start > 1;
+    await runFrom(performance.now(), 320, easeInOutCubic, (u) => {
+      if (canScrollUp) {
+        scroller.scrollTop = start - pullPx * u;
+        return;
+      }
+      stage.style.transform = `translateY(${pullPx * u}px)`;
+    });
+    if (cancelled) return;
+    await new Promise((resolve) => window.setTimeout(resolve, 90));
+    if (cancelled) return;
+
+    const travelStart = scroller.scrollTop;
+    const travelDest = destinationScrollTop(scroller, target);
+    const startLift = canScrollUp ? 0 : pullPx;
+
+    await runFrom(performance.now(), 900, easeOutCubic, (u) => {
+      if (startLift) {
+        stage.style.transform = `translateY(${startLift * (1 - u)}px)`;
+      }
+      scroller.scrollTop = travelStart + (travelDest - travelStart) * u;
+    });
+
+    if (!cancelled) clearStage();
+  })();
+
+  return () => {
+    cancelled = true;
+    window.cancelAnimationFrame(raf);
+    clearStage();
+  };
+}
 
 /**
  * Homepage Spec 3.0 — holographic carousel · progression · leaderboard
@@ -42,6 +151,8 @@ export function HomeScreen({
   onOpenCreator?: (creatorId: string) => void;
   onClaimDaily?: (diamonds: number) => void;
 }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
   const [category, setCategory] = useState<LeaderboardCategory>("all");
@@ -65,6 +176,42 @@ export function HomeScreen({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const state = location.state as { scrollToDailyReward?: boolean } | null;
+    if (!state?.scrollToDailyReward || status !== "loaded") return;
+
+    // Desktop stays at the top of Home; mobile docks to the daily reward.
+    if (window.matchMedia("(min-width: 507px)").matches) {
+      navigate(location.pathname, { replace: true, state: {} });
+      return;
+    }
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let cancelled = false;
+    let cancelScroll = () => { };
+    let started = false;
+
+    void (async () => {
+      await waitForNextPaint();
+      const target = document.getElementById("daily-reward");
+      if (cancelled || !target || target.getBoundingClientRect().height < 2) return;
+
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      if (cancelled) return;
+
+      started = true;
+      cancelScroll = scrollToDailyReward(target, reduce);
+      navigate(location.pathname, { replace: true, state: {} });
+    })();
+
+    return () => {
+      cancelled = true;
+      // Clearing the route flag remounts this effect — don't abort a scroll
+      // that already started.
+      if (!started) cancelScroll();
+    };
+  }, [location.pathname, location.state, navigate, status]);
 
   async function changeCategory(next: LeaderboardCategory) {
     setCategory(next);
@@ -229,11 +376,11 @@ export function HomeScreen({
         {onClaimDaily ? (
           <section
             className="hub-module hub-module--today mt-8"
-            aria-labelledby="browse-daily-heading"
+            aria-labelledby="daily-reward"
           >
             <h2
-              id="browse-daily-heading"
-              className="hub-section-label hub-section-label--today"
+              id="daily-reward"
+              className="hub-section-label hub-section-label--today scroll-mt-[calc(var(--app-diamond-offset)+3rem)]"
             >
               Today
             </h2>

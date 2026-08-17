@@ -12,9 +12,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
   clearEmailVerified,
+  clearHasLoggedIn,
   createSession,
   destroySession,
   getAuthEmail,
+  hasLoggedInBefore,
   isAuthenticated,
   isEmailVerified,
   markEmailVerified,
@@ -73,9 +75,21 @@ function isHighIntentForDefer(action: ProtectedAction) {
   );
 }
 
+/** Mid-flow actions that should resume after login instead of going Home. */
+function shouldResumeAfterAuth(action: ProtectedAction | null) {
+  if (!action) return false;
+  return (
+    action.type === "buy" ||
+    action.type === "scratch" ||
+    action.type === "store"
+  );
+}
+
 type AuthContextValue = {
   authed: boolean;
   guest: boolean;
+  hasLoggedInBefore: boolean;
+  guestAuthLabel: "Log in" | "Sign up";
   profile: Omit<OnboardingData, "coins" | "diamonds">;
   setProfile: Dispatch<
     SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
@@ -125,6 +139,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [returningUser, setReturningUser] = useState(() => hasLoggedInBefore());
   const [profile, setProfile] = useState(initialProfile);
   const [authOpen, setAuthOpen] = useState(false);
   const [authSheetMode, setAuthSheetMode] =
@@ -155,6 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const guest = !authed;
+  const guestAuthLabel = returningUser ? "Log in" : "Sign up";
+  const guestAuthMode: AuthenticationSheetMode = returningUser
+    ? "login"
+    : "create-account";
 
   useEffect(() => {
     if (guest) {
@@ -220,7 +239,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      resumePending(pendingAction);
+      if (shouldResumeAfterAuth(pendingAction)) {
+        resumePending(pendingAction);
+        return;
+      }
+
+      navigate(Paths.home, { state: { scrollToDailyReward: true } });
     },
     [navigate, resumePending],
   );
@@ -228,7 +252,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const finishRecommendationAndResume = useCallback(() => {
     const deferred = pendingAfterRec;
     setPendingAfterRec(null);
-    navigate(Paths.home);
+    navigate(Paths.home, {
+      state: deferred ? undefined : { scrollToDailyReward: true },
+    });
     if (deferred) {
       window.setTimeout(() => resumePending(deferred), 0);
     }
@@ -261,12 +287,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       setPending(action);
-      setAuthSheetMode("login");
+      setAuthSheetMode(guestAuthMode);
       setAuthSheetEmail("");
       setAuthOpen(true);
       return false;
     },
-    [authed, resumePending],
+    [authed, guestAuthMode, resumePending],
   );
 
   const requestTab = useCallback(
@@ -335,6 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const wasUnresolved = !isRecommendationInitialized();
       const action = pending;
       createSession(result.email, result.provider);
+      setReturningUser(true);
       applyUserFromEmail(result.email);
       markEntered();
       markOnboardingDone();
@@ -415,18 +442,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVerifyPending(null);
     setPendingAfterRec(null);
     navigate(Paths.discover);
-    setNavNotice("Signed out — browsing as guest");
-    window.setTimeout(() => setNavNotice(""), 1800);
   }, [navigate]);
 
   const restart = useCallback(() => {
     clearV8Session();
     clearRecommendationState();
     clearEmailVerified();
+    clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
     setProfile(initialProfile);
     setAuthed(false);
+    setReturningUser(false);
     setEmailVerified(false);
     setVerifyOpen(false);
     setVerifyPending(null);
@@ -443,6 +470,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       authed,
       guest,
+      hasLoggedInBefore: returningUser,
+      guestAuthLabel,
       profile,
       setProfile,
       authOpen,
@@ -493,6 +522,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       emailVerified,
       finishRecommendationAndResume,
       guest,
+      guestAuthLabel,
       logout,
       navNotice,
       notePackPurchaseSeed,
@@ -513,6 +543,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       purchasedPacks,
       requireAuth,
       requestTab,
+      returningUser,
       restart,
       resumeLikeId,
       setPendingAfterRecFromSwipe,

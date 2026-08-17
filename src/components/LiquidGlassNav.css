@@ -158,7 +158,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   transform: none;
 }
 
-/* Icon-only Profile — sits between Diamonds and Inbox bell. */
+/* Icon-only Profile — sits after Inbox. Guest mode adds a Log in label. */
 .nav-test-top-profile {
   display: grid;
   flex: 0 0 auto;
@@ -179,6 +179,15 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
     background 160ms ease,
     border-color 160ms ease,
     transform 140ms ease;
+}
+
+.nav-test-top-profile.is-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  padding: 0 10px 0 8px;
 }
 
 .nav-test-top-profile:hover {
@@ -209,6 +218,20 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test-top-profile-icon {
   width: 18px;
   height: 18px;
+}
+
+.nav-test-top-profile-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.nav-test-top-profile .nav-login-icon,
+.nav-test-top-profile:hover .nav-login-icon,
+.nav-test-top-profile.is-active .nav-login-icon {
+  color: oklch(0.639 0.256 9.90);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1548,6 +1571,12 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test-dock-icon {
   width: 21px;
   height: 21px;
+}
+
+.nav-test-dock-item .nav-login-icon,
+.nav-test-dock-item.is-active .nav-login-icon,
+.nav-test-dock-item.is-drag-target .nav-login-icon {
+  color: oklch(0.639 0.256 9.90);
 }
 
 .nav-test-dock-label {

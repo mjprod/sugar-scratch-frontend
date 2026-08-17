@@ -10,6 +10,8 @@ const AUTH_KEY = "sugar.v8.authenticated";
 const EMAIL_KEY = "sugar.v8.authEmail";
 const EMAIL_VERIFIED_KEY = "sugar.v8.emailVerified";
 const PROVIDER_KEY = "sugar.v8.authProvider";
+const HAS_LOGGED_IN_COOKIE = "sugar.v8.hasLoggedIn";
+const HAS_LOGGED_IN_MAX_AGE = 60 * 60 * 24 * 365;
 
 export type ProtectedActionType =
   | "like-creator"
@@ -61,6 +63,43 @@ export function getAuthEmail() {
   }
 }
 
+function readCookie(name: string) {
+  if (typeof document === "undefined") return "";
+  const prefix = `${name}=`;
+  for (const part of document.cookie.split(";")) {
+    const value = part.trim();
+    if (value.startsWith(prefix)) return decodeURIComponent(value.slice(prefix.length));
+  }
+  return "";
+}
+
+export function hasLoggedInBefore() {
+  try {
+    if (readCookie(HAS_LOGGED_IN_COOKIE) === "1") return true;
+    return localStorage.getItem(HAS_LOGGED_IN_COOKIE) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markHasLoggedIn() {
+  try {
+    document.cookie = `${HAS_LOGGED_IN_COOKIE}=1; path=/; max-age=${HAS_LOGGED_IN_MAX_AGE}; SameSite=Lax`;
+    localStorage.setItem(HAS_LOGGED_IN_COOKIE, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearHasLoggedIn() {
+  try {
+    document.cookie = `${HAS_LOGGED_IN_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+    localStorage.removeItem(HAS_LOGGED_IN_COOKIE);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function createSession(email: string, provider: AuthProvider = "email") {
   const normalized = email.trim().toLowerCase();
   try {
@@ -71,6 +110,7 @@ export function createSession(email: string, provider: AuthProvider = "email") {
   } catch {
     /* ignore */
   }
+  markHasLoggedIn();
   if (provider === "google" || provider === "apple") {
     markEmailVerified();
   }

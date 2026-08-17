@@ -70,12 +70,41 @@ function bubbleRadiusForTab(id: AppTab) {
   return BUBBLE_RADIUS.default;
 }
 
+type NavIcon = LucideIcon | typeof LoginIcon;
+
 type TabConfig = {
   id: AppTab;
   label: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   primary?: boolean;
 };
+
+function LoginIcon({
+  className,
+  strokeWidth = 2,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  fill?: string;
+  fillOpacity?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={["nav-login-icon", className].filter(Boolean).join(" ")}
+      aria-hidden="true"
+    >
+      <path
+        d="M17,12l-4,4M13,8l4,4M3,12h14M8,8v-1c0-1.7,1.3-3,3-3h7c1.7,0,3,1.3,3,3v10c0,1.7-1.3,3-3,3h-7c-1.7,0-3-1.3-3-3v-1"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 /** Mobile dock order. */
 const TABS: TabConfig[] = [
@@ -245,10 +274,19 @@ export function LiquidGlassNav({
   onOpenInbox,
   inboxUnreadCount = 0,
 }: LiquidGlassNavProps) {
-  const { authed } = useAuth();
+  const { authed, guestAuthLabel } = useAuth();
   const desktopTabs = useMemo(
     () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
     [authed],
+  );
+  const dockTabs = useMemo(
+    () =>
+      TABS.map((tab) =>
+        tab.id === "profile" && !authed
+          ? { ...tab, label: guestAuthLabel, icon: LoginIcon }
+          : tab,
+      ),
+    [authed, guestAuthLabel],
   );
   const active = activeTab;
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
@@ -995,33 +1033,43 @@ export function LiquidGlassNav({
         </div>
 
         <div className="liquid-glass-desktop-utils nav-test-top-utils">
-          <CurrencyBalances
-            coins={coins}
-            diamonds={diamonds}
-            onOpenStore={onOpenStore}
-          />
-          <button
-            type="button"
-            className={[
-              "nav-test-top-profile",
-              active === "profile" ? "is-active" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-label="Profile"
-            aria-current={active === "profile" ? "page" : undefined}
-            tabIndex={hidden ? -1 : undefined}
-            onClick={() => selectTab("profile")}
-          >
-            <User className="nav-test-top-profile-icon" aria-hidden="true" />
-          </button>
-          {onOpenInbox ? (
+          {authed ? (
+            <CurrencyBalances
+              coins={coins}
+              diamonds={diamonds}
+              onOpenStore={onOpenStore}
+            />
+          ) : null}
+          {authed && onOpenInbox ? (
             <InboxButton
               unreadCount={inboxUnreadCount}
               onOpen={onOpenInbox}
               variant="ghost"
             />
           ) : null}
+          <button
+            type="button"
+            className={[
+              "nav-test-top-profile",
+              authed ? "" : "is-login",
+              active === "profile" ? "is-active" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label={authed ? "Profile" : guestAuthLabel}
+            aria-current={active === "profile" ? "page" : undefined}
+            tabIndex={hidden ? -1 : undefined}
+            onClick={() => selectTab("profile")}
+          >
+            {authed ? (
+              <User className="nav-test-top-profile-icon" aria-hidden="true" />
+            ) : (
+              <>
+                <LoginIcon className="nav-test-top-profile-icon" />
+                <span className="nav-test-top-profile-label">{guestAuthLabel}</span>
+              </>
+            )}
+          </button>
         </div>
       </nav>
 
@@ -1090,8 +1138,8 @@ export function LiquidGlassNav({
               aria-label="Drag navigation indicator"
               aria-valuetext={
                 dragHoverTab
-                  ? TABS.find((t) => t.id === dragHoverTab)?.label
-                  : TABS.find((t) => t.id === active)?.label
+                  ? dockTabs.find((t) => t.id === dragHoverTab)?.label
+                  : dockTabs.find((t) => t.id === active)?.label
               }
               aria-hidden={bubble.visible ? undefined : true}
               onPointerDown={handleBubblePointerDown}
@@ -1100,7 +1148,7 @@ export function LiquidGlassNav({
               onPointerCancel={endBubbleDrag}
             />
 
-            {TABS.map((tab, index) => {
+            {dockTabs.map((tab, index) => {
               const Icon = tab.icon;
               const isActive = active === tab.id;
               const isDragTarget =
