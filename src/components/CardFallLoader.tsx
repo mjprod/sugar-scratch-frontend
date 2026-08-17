@@ -45,11 +45,13 @@ export function CardFallLoader({
 }) {
   return (
     <div className="card-fall-loader" role="status" aria-label={label}>
-      <div className="card-fall-shadow" />
-      <div className="card-fall-layer">
+      <div className="card-fall-layer card-fall-layer--a">
         <OutlineCard />
       </div>
       <div className="card-fall-layer card-fall-layer--b">
+        <OutlineCard />
+      </div>
+      <div className="card-fall-layer card-fall-layer--c">
         <OutlineCard />
       </div>
       <span className="sr-only">{label}</span>
