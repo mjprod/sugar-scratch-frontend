@@ -2,37 +2,56 @@ import {
   Bell,
   ChevronRight,
   CreditCard,
+  FileText,
   Globe2,
   HelpCircle,
+  Lock,
   LogOut,
-  Settings,
   ShieldCheck,
   Sparkles,
   Trophy,
+  type LucideIcon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+
+type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
 export function UserDashboardScreen({
   name,
   avatar,
   coins,
   diamonds,
-  onSettings,
   onLogout,
+  onOpenChangePassword,
 }: {
   name: string;
   avatar?: string | null;
   coins: number;
   diamonds: number;
-  onSettings: () => void;
   onLogout: () => void;
+  onOpenChangePassword: () => void;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
+  const [view, setView] = useState<ProfileView>("main");
+  const legalTitleId = useId();
 
   function open(label: string) {
+    if (label === "Change Password") {
+      onOpenChangePassword();
+      return;
+    }
+    if (label === "Privacy Policy") {
+      setView("legal-privacy");
+      return;
+    }
+    if (label === "Terms and Conditions") {
+      setView("legal-terms");
+      return;
+    }
     setNotice(`${label} opened in prototype`);
     window.setTimeout(() => setNotice(""), 1800);
   }
@@ -45,6 +64,20 @@ export function UserDashboardScreen({
     } catch {
       setLoggingOut(false);
     }
+  }
+
+  if (view === "legal-terms" || view === "legal-privacy") {
+    return (
+      <AppPageShell aria-label="Profile" className="app-page-shell--profile">
+        <div className="settings-legal-panel">
+          <LegalDocPanel
+            kind={view === "legal-terms" ? "terms" : "privacy"}
+            titleId={legalTitleId}
+            onBack={() => setView("main")}
+          />
+        </div>
+      </AppPageShell>
+    );
   }
 
   return (
@@ -67,11 +100,13 @@ export function UserDashboardScreen({
           </div>
           <button
             type="button"
-            aria-label="Open Settings"
-            onClick={onSettings}
-            className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65"
+            aria-label={loggingOut ? "Logging out" : "Log out"}
+            onClick={handleLogout}
+            disabled={loggingOut}
+            aria-busy={loggingOut}
+            className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 disabled:opacity-50"
           >
-            <Settings className="size-5" />
+            <LogOut className="size-5 text-[oklch(0.711_0.166_22.22)]" />
           </button>
         </div>
       </div>
@@ -90,6 +125,7 @@ export function UserDashboardScreen({
             { label: "Purchase History", icon: CreditCard },
             { label: "Saved Packs", icon: Sparkles },
             { label: "Notifications", icon: Bell },
+            { label: "Change Password", icon: Lock },
           ]}
           onOpen={open}
         />
@@ -98,23 +134,14 @@ export function UserDashboardScreen({
           items={[
             { label: "Language", icon: Globe2 },
             { label: "Help Centre", icon: HelpCircle },
-            { label: "Privacy & Legal", icon: ShieldCheck },
+            { label: "Privacy Policy", icon: ShieldCheck },
+            { label: "Terms and Conditions", icon: FileText },
           ]}
           onOpen={open}
         />
       </div>
 
       <div className="mt-10 flex flex-col gap-4">
-        <button
-          type="button"
-          className="settings-logout-btn"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          aria-busy={loggingOut}
-        >
-          <LogOut className="size-4 shrink-0" aria-hidden="true" strokeWidth={2} />
-          {loggingOut ? "Logging Out..." : "Log Out"}
-        </button>
         <p className="settings-app-version">App · v8</p>
       </div>
 
@@ -153,7 +180,7 @@ function MenuGroup({
   onOpen,
 }: {
   title: string;
-  items: { label: string; icon: typeof Settings }[];
+  items: { label: string; icon: LucideIcon }[];
   onOpen: (label: string) => void;
 }) {
   return (

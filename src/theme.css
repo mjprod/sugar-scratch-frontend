@@ -495,6 +495,54 @@ body[data-theme="v8"] .footer-navigation {
   display: none;
 }
 
+/* Homepage hero — Three.js cover-flow (same stage as purchase choose-pack). */
+body[data-theme="v8"] .home-featured-coverflow {
+  position: relative;
+  width: 100%;
+  height: min(54dvh, 512px);
+  min-height: 336px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 68%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(180deg, #000 0%, #000 68%, transparent 100%);
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .home-featured-coverflow {
+    margin-top: calc(-1 * var(--app-diamond-offset));
+    height: calc(min(65dvh, 619px) + var(--app-diamond-offset));
+    min-height: calc(407px + var(--app-diamond-offset));
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 74%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
+  }
+
+  body[data-theme="v8"] .home-view-all-packs {
+    margin-top: -2.5rem;
+  }
+}
+
+body[data-theme="v8"] .home-featured-coverflow.is-loading {
+  background: oklch(1 0 0 / 0.06);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .home-featured-coverflow .stage-packs {
+  background: transparent;
+}
+
+body[data-theme="v8"] .home-featured-coverflow .coverflow-tools-bar {
+  display: none;
+}
+
 /* Featured Pack Carousel — Premium Physical Pack Effect Spec 1.0 */
 body[data-theme="v8"] .featured-pack-carousel {
   position: relative;

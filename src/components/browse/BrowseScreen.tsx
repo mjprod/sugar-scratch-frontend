@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
-import { FeaturedCarousel } from "@/components/home/FeaturedCarousel";
+import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { PackLibrary } from "@/components/home/PackLibrary";
 import {
   fetchHomepage,
@@ -270,13 +270,8 @@ export function HomeScreen({
         data-page-scroll
         className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
+        <div className="home-featured-coverflow is-loading" aria-hidden="true" />
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-6 px-5 lg:px-8">
-          <div className="mx-auto h-[480px] w-[300px] animate-pulse rounded-[28px] bg-white/10 [clip-path:polygon(4%_1.5%,96%_1.5%,99%_6%,100%_48%,99%_94%,96%_98.5%,4%_98.5%,1%_94%,0%_52%,1%_6%)]" />
-          <div className="mx-auto flex gap-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="size-2 animate-pulse rounded-full bg-white/15" />
-            ))}
-          </div>
           <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
           <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
         </div>
@@ -321,49 +316,45 @@ export function HomeScreen({
         />
       ) : null}
 
+      <div
+        className={[
+          "relative",
+          showTutorial
+            ? "z-30 ring-2 ring-[oklch(0.656_0.212_354.31)] ring-offset-4 ring-offset-transparent [animation:tutorial-pulse_1.8s_ease-in-out_infinite]"
+            : "",
+        ].join(" ")}
+      >
+        <FeaturedCoverFlow featured={home.featured} onPlay={playPack} />
+      </div>
+
+      {showTutorial ? (
+        <div className="pointer-events-none relative z-40 mt-4 flex justify-center px-5 lg:px-8">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[oklch(0.656_0.212_354.31)]/40 bg-[oklch(0.19_0.022_333.66)]/95 px-4 py-3 text-center shadow-[0_16px_40px_oklch(0_0_0_/_0.45)] backdrop-blur-md">
+            <p className="text-[14px] font-medium text-[oklch(0.823_0.11_346.02)]">
+              Swipe the carousel to discover featured packs.
+            </p>
+            <div className="mt-2 flex justify-center gap-4 text-[13px]">
+              <button type="button" className="text-[oklch(0.823_0.11_346.02)]/70" onClick={onSkipTutorial}>
+                Skip tutorial
+              </button>
+              <button
+                type="button"
+                className="min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-4 font-semibold text-white"
+                onClick={onTutorialDone}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/*
         Full-width scroll shell keeps the scrollbar on the viewport edge.
         Content width is constrained by the inner wrapper (same as other pages).
       */}
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
-        <div
-          className={[
-            "relative",
-            showTutorial
-              ? "z-30 rounded-[28px] ring-2 ring-[oklch(0.656_0.212_354.31)] ring-offset-4 ring-offset-transparent [animation:tutorial-pulse_1.8s_ease-in-out_infinite]"
-              : "",
-          ].join(" ")}
-        >
-          <FeaturedCarousel
-            packs={home.featured}
-            onPlay={playFeatured}
-            onOpenDetail={playFeatured}
-          />
-        </div>
-
-        {showTutorial ? (
-          <div className="pointer-events-none relative z-40 mt-4 flex justify-center">
-            <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[oklch(0.656_0.212_354.31)]/40 bg-[oklch(0.19_0.022_333.66)]/95 px-4 py-3 text-center shadow-[0_16px_40px_oklch(0_0_0_/_0.45)] backdrop-blur-md">
-              <p className="text-[14px] font-medium text-[oklch(0.823_0.11_346.02)]">
-                Swipe the carousel to discover featured packs.
-              </p>
-              <div className="mt-2 flex justify-center gap-4 text-[13px]">
-                <button type="button" className="text-[oklch(0.823_0.11_346.02)]/70" onClick={onSkipTutorial}>
-                  Skip tutorial
-                </button>
-                <button
-                  type="button"
-                  className="min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-4 font-semibold text-white"
-                  onClick={onTutorialDone}
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-6 flex justify-center">
+        <div className="home-view-all-packs mt-6 flex justify-center">
           <button
             type="button"
             onClick={() => setLibraryOpen(true)}

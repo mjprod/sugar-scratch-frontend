@@ -10,7 +10,7 @@ export function ChangePasswordPage() {
 
   return (
     <ChangePasswordScreen
-      onBack={() => navigate(Paths.settings)}
+      onBack={() => navigate(Paths.profile)}
       onForgotPassword={openPasswordReset}
       authProvider={getAuthProvider()}
     />
