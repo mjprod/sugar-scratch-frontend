@@ -26,7 +26,6 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { useAuth } from "@/contexts/AuthContext";
 import type { RedeemReward } from "@/services/redeem";
-import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 type LoadState =
@@ -300,12 +299,6 @@ export function StoreScreen({
       aria-label="Store"
       className="store-page"
     >
-      <SubpageHeader
-        title="Store"
-        onBack={onBack}
-        backLabel="Back"
-      />
-
       {load.status === "loading" ? <StoreSkeleton /> : null}
 
       {load.status === "empty" ? (

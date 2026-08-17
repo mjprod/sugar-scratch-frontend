@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   CreatorFeedCard,
   useVideoRegistry,
@@ -61,6 +62,11 @@ const DESKTOP_DRAG_FLICK_VX = 0.45;
  * the next/prev card. Keeps one-card-at-a-time behavior like mobile.
  */
 const DESKTOP_DRAG_COMMIT_RATIO = 0.22;
+/** Ignore extra wheel ticks until the snap has settled. */
+const WHEEL_SNAP_LOCK_MS = 520;
+/** Ignore tiny trackpad jitter before treating it as a slide change. */
+const WHEEL_SNAP_THRESHOLD = 8;
+
 /** Delay before the first-land scroll-nudge affordance. */
 const SCROLL_NUDGE_FIRST_DELAY_MS = 900;
 /** Replay the scroll-nudge after this much feed inactivity. */
@@ -152,6 +158,8 @@ export function HomeFeedScreen({
   /** Any real feed interaction — suppresses a pending first-land nudge. */
   const nudgeUserTouchedRef = useRef(false);
   const markFeedActivityRef = useRef<() => void>(() => {});
+  const wheelLockUntilRef = useRef(0);
+  const goRef = useRef<(delta: number) => void>(() => {});
 
   const persist = useCallback(
     (patch: Partial<{
@@ -710,6 +718,8 @@ export function HomeFeedScreen({
     [getSlideMetrics, items.length, reducedMotion],
   );
 
+  goRef.current = go;
+
   /**
    * Snap after a desktop drag. Always relative to the drag *start* index and
    * limited to ±1 slide — never jump from drag progress + an extra flick step.
@@ -881,7 +891,6 @@ export function HomeFeedScreen({
         return;
       }
 
-      // Keyboard only inverted: Up/PageUp/k → next; Down/PageDown/j → previous.
       if (
         event.key === "ArrowUp" ||
         event.key === "PageUp" ||
@@ -889,7 +898,7 @@ export function HomeFeedScreen({
       ) {
         event.preventDefault();
         markFeedActivityRef.current();
-        go(1);
+        go(-1);
       } else if (
         event.key === "ArrowDown" ||
         event.key === "PageDown" ||
@@ -897,7 +906,7 @@ export function HomeFeedScreen({
       ) {
         event.preventDefault();
         markFeedActivityRef.current();
-        go(-1);
+        go(1);
       } else if (event.key === "Home") {
         event.preventDefault();
         markFeedActivityRef.current();
@@ -921,6 +930,32 @@ export function HomeFeedScreen({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [active, getSlideMetrics, go, items.length, reducedMotion]);
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root || !active || status !== "loaded") return;
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) return;
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (desktopDragRef.current || nudgeAnimatingRef.current) return;
+      if (Math.abs(event.deltaY) < WHEEL_SNAP_THRESHOLD) return;
+
+      const now = performance.now();
+      if (now < wheelLockUntilRef.current) return;
+
+      wheelLockUntilRef.current = now + WHEEL_SNAP_LOCK_MS;
+      markFeedActivityRef.current();
+      goRef.current(event.deltaY > 0 ? 1 : -1);
+    };
+
+    root.addEventListener("wheel", onWheel, { passive: false });
+    return () => root.removeEventListener("wheel", onWheel);
+  }, [active, status, items.length]);
 
   async function loadMore() {
     if (!hasMore || loadingMoreRef.current || !cursor) return;
@@ -1020,8 +1055,9 @@ export function HomeFeedScreen({
       {...(!active ? { inert: true } : {})}
     >
       {personalizationPrompt}
-      <div className="hf-frame">
-        {status === "loading" ? (
+      <div className="hf-stage">
+        <div className="hf-frame">
+          {status === "loading" ? (
           <div className="hf-state" aria-busy="true">
             <div className="hf-skeleton" />
           </div>
@@ -1064,8 +1100,8 @@ export function HomeFeedScreen({
           </div>
         ) : null}
 
-        {status === "loaded" ? (
-          <div
+          {status === "loaded" ? (
+            <div
             ref={scrollerRef}
             className={[
               "hf-viewport",
@@ -1122,8 +1158,44 @@ export function HomeFeedScreen({
                 Loading more…
               </div>
             ) : null}
-          </div>
-        ) : null}
+            </div>
+          ) : null}
+        </div>
+        {isDesktopFeed && status === "loaded" && items.length > 1 ? (
+        <div className="hf-stepper" aria-label="Feed navigation">
+          <button
+            type="button"
+            className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+            aria-label="Previous creator"
+            data-no-feed-drag
+            disabled={
+              items.findIndex((item) => item.id === activeId) <= 0
+            }
+            onClick={() => {
+              markFeedActivityRef.current();
+              go(-1);
+            }}
+          >
+            <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+            aria-label="Next creator"
+            data-no-feed-drag
+            disabled={
+              items.findIndex((item) => item.id === activeId) >=
+              items.length - 1
+            }
+            onClick={() => {
+              markFeedActivityRef.current();
+              go(1);
+            }}
+          >
+            <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
       </div>
     </section>
   );
