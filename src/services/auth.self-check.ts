@@ -16,7 +16,8 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 assert(!isValidAuthPassword("short"), "reject short");
-assert(isValidAuthPassword("twelvechars!"), "accept 12+");
+assert(!isValidAuthPassword("sevench"), "reject 7");
+assert(isValidAuthPassword("eightchr"), "accept 8+");
 assert(
   authFailureMessage() === "Incorrect email or password.",
   "neutral login failure",
