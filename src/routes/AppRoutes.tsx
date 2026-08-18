@@ -10,8 +10,8 @@ import { CollectionPage } from "@/pages/CollectionPage";
 import { CreatorPage } from "@/pages/CreatorPage";
 import { GamePage } from "@/pages/GamePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
-import { LoadingPage } from "@/pages/LoadingPage";
 import { NavTestPage } from "@/pages/NavTestPage";
+import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
@@ -30,8 +30,6 @@ function GameCatalogRoute({ children }: { children: ReactNode }) {
   return <CatalogProvider>{children}</CatalogProvider>;
 }
 
-const BOOT_KEY = "sugar.v8.bootShown";
-
 function ResetQueryRedirect() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -49,34 +47,20 @@ function ResetQueryRedirect() {
   return null;
 }
 
-function BootRedirect() {
-  const location = useLocation();
-  try {
-    const shown = sessionStorage.getItem(BOOT_KEY) === "1";
-    if (
-      !shown &&
-      location.pathname === Paths.home &&
-      !new URLSearchParams(location.search).has("reset")
-    ) {
-      return <Navigate to={Paths.loading} replace />;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 export function AppRoutes() {
   return (
     <>
       <ResetQueryRedirect />
-      <BootRedirect />
       <Routes>
         <Route
           path={Paths.loading}
+          element={<Navigate to={Paths.home} replace />}
+        />
+        <Route
+          path={Paths.preLoader}
           element={
-            <AppShell label="Loading">
-              <LoadingPage />
+            <AppShell label="Pre-loader">
+              <PreLoaderPage />
             </AppShell>
           }
         />

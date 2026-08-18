@@ -17,6 +17,7 @@ import {
   createSwipeDeckFromModels,
 } from "@/shared/backend/modelProfile";
 import "@/features/swipe/swipe.css";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 export type PersonalizationSwipeResult = {
   liked: string[];
@@ -35,6 +36,7 @@ export function PersonalizationSwipeScreen({
   const [deck, setDeck] = useState<SwipeCardData[]>([]);
   const [productReady, setProductReady] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
+  useMarkPageReady(productReady && mediaReady);
   const [liked, setLiked] = useState<string[]>([]);
   const [passed, setPassed] = useState<string[]>([]);
   const likedRef = useRef(liked);

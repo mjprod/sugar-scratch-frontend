@@ -20,6 +20,7 @@ import {
   writeHomeFeedCache,
   type HomeFeedCreator,
 } from "@/services/creatorFeed";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const SNAP_MS = 220;
 /** Overlay lag vs video (0 = locked, 1 = fully detached). */
@@ -110,6 +111,7 @@ export function HomeFeedScreen({
   const [status, setStatus] = useState<"loading" | "loaded" | "error" | "empty">(
     cached?.items.length ? "loaded" : "loading",
   );
+  useMarkPageReady(status !== "loading");
   const [activeId, setActiveId] = useState<string | null>(
     cached?.activeId ?? null,
   );

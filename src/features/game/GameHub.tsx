@@ -9,7 +9,7 @@ import { HOLO_EFFECTS } from '@/features/reveal/lib/effects'
 import { loadFanDrag } from '@/features/reveal/lib/fanDrag'
 import { loadFanLayout } from '@/features/reveal/lib/fanLayout'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
-import { usePageReady } from '@/shared/ui/PageTransition'
+import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
 import { useWallet } from '@/contexts/WalletContext'
 import {
@@ -102,7 +102,6 @@ function motionHandToRevealCards(
 
 export function GameHub() {
   const catalog = useCatalog()
-  const { markReady } = usePageReady()
   const { addDiamonds } = useWallet()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
@@ -198,13 +197,7 @@ export function GameHub() {
     }
   }, [])
 
-  useEffect(() => {
-    if (phase === 'loading') return
-    const raf = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => markReady())
-    })
-    return () => window.cancelAnimationFrame(raf)
-  }, [phase, markReady])
+  useMarkPageReady(phase !== 'loading')
 
   useEffect(() => {
     if (phase !== 'done' || !session) return

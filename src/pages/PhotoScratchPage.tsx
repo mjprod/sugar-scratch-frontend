@@ -4,12 +4,10 @@ import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { usePageReady } from "@/shared/ui/PageTransition";
 import { Paths } from "@/routes/Paths";
 import "@/features/game/game.css";
 
 export function PhotoScratchPage() {
-  const { markReady } = usePageReady();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -31,13 +29,6 @@ export function PhotoScratchPage() {
       delete document.documentElement.dataset.scratchGame;
     };
   }, [scratchCss]);
-
-  useEffect(() => {
-    const raf = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => markReady());
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [markReady]);
 
   const card = searchParams.get("card")?.trim();
   const model = searchParams.get("model")?.trim() || "";

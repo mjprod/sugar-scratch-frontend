@@ -1,5 +1,6 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   GarmentGLRenderer,
   MAX_PIXEL_RATIO,
@@ -794,6 +795,7 @@ export function PhotoScratch() {
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  useMarkPageReady(ready || loadError != null);
   const [showMesh, setShowMesh] = useState(false);
   const [scratchCount, setScratchCount] = useState(0);
   const [isScratching, setIsScratching] = useState(false);

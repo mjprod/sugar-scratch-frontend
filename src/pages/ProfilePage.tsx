@@ -1,9 +1,12 @@
+import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserDashboardScreen } from "@/components/profile/ProfileScreen";
+import { Paths } from "@/routes/Paths";
 
 export function ProfilePage() {
-  const { profile, openSettings, logout } = useAuth();
+  const navigate = useNavigate();
+  const { profile, logout } = useAuth();
   const { coins, diamonds } = useWallet();
   return (
     <UserDashboardScreen
@@ -11,8 +14,8 @@ export function ProfilePage() {
       avatar={profile.avatar}
       coins={coins}
       diamonds={diamonds}
-      onSettings={openSettings}
       onLogout={logout}
+      onOpenChangePassword={() => navigate(Paths.changePassword)}
     />
   );
 }

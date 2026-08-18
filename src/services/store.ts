@@ -175,6 +175,22 @@ export function findStoreProduct(productId: string): StoreProduct | undefined {
   return CATALOG.find((product) => product.id === productId && product.available);
 }
 
+/** Sync snapshot for initial UI paint (local catalog / demo flags). */
+function loadStoreCatalog(): StoreLoadResult {
+  const mode = queryFlag("store");
+  if (mode === "error") {
+    return { status: "error", message: "Unable to load store items." };
+  }
+  if (mode === "empty") return { status: "empty" };
+  const products = listAvailableProducts();
+  if (!products.length) return { status: "empty" };
+  return { status: "ok", products };
+}
+
+export function peekStoreProducts(): StoreLoadResult {
+  return loadStoreCatalog();
+}
+
 export async function fetchStoreProducts(): Promise<StoreLoadResult> {
   const mode = queryFlag("store");
   if (mode === "error") {

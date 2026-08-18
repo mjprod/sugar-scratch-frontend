@@ -27,6 +27,7 @@ import { loadFanDrag } from "@/features/reveal/lib/fanDrag";
 import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { PACK_PHOTOS } from "@/lib/photos";
 import {
   isVideoSrc,
@@ -213,6 +214,7 @@ export function PurchaseFlow({
   const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
     countUnopened(),
   );
+  useMarkPageReady(!buying || model !== null || stage !== "choose");
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
   const trackedResume = useRef(false);

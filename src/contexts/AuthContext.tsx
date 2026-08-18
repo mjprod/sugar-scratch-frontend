@@ -41,6 +41,7 @@ import {
 import { clearHomeFeedCache } from "@/services/creatorFeed";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
+import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
 import {
@@ -535,6 +536,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     void logoutRemote();
     clearV8Session();
+    resetPageReady();
     clearRecommendationState();
     clearEmailVerified();
     clearHasLoggedIn();
@@ -550,7 +552,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPurchasedPacks(0);
     setPending(null);
     setAuthOpen(false);
-    navigate(Paths.loading);
+    navigate(Paths.home);
   }, [navigate]);
 
   const consumeResumeLike = useCallback(() => setResumeLikeId(null), []);

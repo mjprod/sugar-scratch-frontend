@@ -259,23 +259,23 @@ export interface CoverFlowCameraSettings {
 export const DEFAULT_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   cameraX: 0.11,
   cameraY: 0.27,
-  cameraZ: 6.85,
+  cameraZ: 6.7,
   fov: 36,
-  lookAtY: 0,
+  lookAtY: 0.1,
   packsX: -0.01,
   packsY: -0.94,
-  modelY: 0,
+  modelY: -0.02,
 }
 
 export const MOBILE_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   cameraX: 0.11,
   cameraY: 0.27,
-  cameraZ: 5.3,
+  cameraZ: 6.45,
   fov: 36,
   lookAtY: 0,
   packsX: -0.01,
   packsY: -0.94,
-  modelY: 0,
+  modelY: -0.3,
 }
 
 export interface CoverFlowLightingSettings {
@@ -353,6 +353,12 @@ interface CoverFlowCarouselProps {
   revealingPackId?: string | null
   onPlayNow?: (characterId: CharacterId, revealCards: RevealCard[]) => void
   onRevealCancel?: () => void
+  /** Override the built-in desktop/mobile camera (homepage debug, etc). */
+  cameraSettings?: CoverFlowCameraSettings
+  /** Override the built-in desktop/mobile cover-flow spacing. */
+  layout?: CoverFlowLayoutSettings
+  /** Homepage: ignore swipe-down deactivate so the page can keep scrolling. */
+  disableSwipeDownDeactivate?: boolean
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1755,6 +1761,9 @@ export function CoverFlowCarousel({
   revealingCharacterId = null,
   revealingPackId: revealingPackIdProp = null,
   onPlayNow,
+  cameraSettings: cameraSettingsProp,
+  layout: layoutProp,
+  disableSwipeDownDeactivate = false,
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -1883,6 +1892,7 @@ const selectedIdRef = useRef(selectedId)
   const onPlayNowRef = useRef(onPlayNow)
   const revealCardsRef = useRef(revealCards)
   const revealModeRef = useRef(revealMode)
+  const disableSwipeDownDeactivateRef = useRef(disableSwipeDownDeactivate)
   const revealShowPlayRef = useRef(false)
   const revealingCharacterIdRef = useRef(revealingCharacterId)
   const focusIndexRef = useRef(0)
@@ -1923,9 +1933,12 @@ const selectedIdRef = useRef(selectedId)
     onDeselect()
   }, [onDeselect])
 
-  const cameraSettings = isMobileViewportActive
-    ? MOBILE_COVERFLOW_CAMERA
-    : DEFAULT_COVERFLOW_CAMERA
+  const cameraSettings =
+    cameraSettingsProp ??
+    (isMobileViewportActive
+      ? MOBILE_COVERFLOW_CAMERA
+      : DEFAULT_COVERFLOW_CAMERA)
+  const resolvedLayout = layoutProp ?? layout
 
 useEffect(() => {
 		    if (typeof window === 'undefined') {
@@ -1959,6 +1972,10 @@ useEffect(() => {
   useEffect(() => {
     revealModeRef.current = revealMode
   }, [revealMode])
+
+  useEffect(() => {
+    disableSwipeDownDeactivateRef.current = disableSwipeDownDeactivate
+  }, [disableSwipeDownDeactivate])
 
   useEffect(() => {
     revealShowPlayRef.current = sequence.showPlay
@@ -2620,8 +2637,14 @@ useEffect(() => {
       }
 
       // Ignore downward page-scroll when nothing is active.
-      // When a pack is active, keep the gesture so swipe-down can deactivate.
-      if (!horizontal && absY > 18 && my > 0 && !selectedIdRef.current) {
+      // When a pack is active, keep the gesture so swipe-down can deactivate
+      // unless the homepage asked to leave that to page scroll.
+      if (
+        !horizontal &&
+        absY > 18 &&
+        my > 0 &&
+        (!selectedIdRef.current || disableSwipeDownDeactivateRef.current)
+      ) {
         if (!motionTiltEnabled) {
           setCenterTiltYaw(0)
         }
@@ -2715,7 +2738,7 @@ useEffect(() => {
         (swipeY > 0 ||
           verticalSpeed >= DEACTIVATE_DOWN_VELOCITY ||
           absY >= DEACTIVATE_DOWN_DISTANCE_PX * 1.35)
-      if (isDownwardDeactivate) {
+      if (isDownwardDeactivate && !disableSwipeDownDeactivateRef.current) {
         commitDeactivate()
         event?.preventDefault?.()
         return
@@ -2850,7 +2873,7 @@ useEffect(() => {
                 focusIndex={focusIndex}
                 selectedId={selectedId}
                 cameraSettings={cameraSettings}
-                layout={layout}
+                layout={resolvedLayout}
                 textureTransform={textureTransform}
                 centerTiltYaw={centerTiltYaw}
                 centerTiltPitch={centerTiltPitch}

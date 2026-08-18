@@ -495,6 +495,54 @@ body[data-theme="v8"] .footer-navigation {
   display: none;
 }
 
+/* Homepage hero — Three.js cover-flow (same stage as purchase choose-pack). */
+body[data-theme="v8"] .home-featured-coverflow {
+  position: relative;
+  width: 100%;
+  height: min(54dvh, 512px);
+  min-height: 336px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 68%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(180deg, #000 0%, #000 68%, transparent 100%);
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .home-featured-coverflow {
+    margin-top: calc(-1 * var(--app-diamond-offset));
+    height: calc(min(65dvh, 619px) + var(--app-diamond-offset));
+    min-height: calc(407px + var(--app-diamond-offset));
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 74%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
+  }
+
+  body[data-theme="v8"] .home-view-all-packs {
+    margin-top: -2.5rem;
+  }
+}
+
+body[data-theme="v8"] .home-featured-coverflow.is-loading {
+  background: oklch(1 0 0 / 0.06);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .home-featured-coverflow .stage-packs {
+  background: transparent;
+}
+
+body[data-theme="v8"] .home-featured-coverflow .coverflow-tools-bar {
+  display: none;
+}
+
 /* Featured Pack Carousel — Premium Physical Pack Effect Spec 1.0 */
 body[data-theme="v8"] .featured-pack-carousel {
   position: relative;
@@ -1825,11 +1873,11 @@ body[data-theme="v8"] .hub-daily-hero {
   gap: 12px;
   overflow: hidden;
   border-radius: 24px;
-  border: 1px solid oklch(0.811 0.101 293.57 / 0.18);
+  border: 1px solid oklch(0.656 0.212 354.31 / 0.22);
   background:
-    radial-gradient(ellipse at 50% 42%, oklch(0.627 0.233 303.9 / 0.26), transparent 55%),
-    radial-gradient(ellipse at 12% 90%, oklch(0.381 0.166 304.99 / 0.18), transparent 48%),
-    linear-gradient(160deg, oklch(0.207 0.032 300.87) 0%, oklch(0.156 0.015 297.73) 48%, oklch(0.184 0.025 299.27) 100%);
+    radial-gradient(ellipse at 50% 42%, oklch(0.656 0.212 354.31 / 0.26), transparent 55%),
+    radial-gradient(ellipse at 12% 90%, oklch(0.639 0.256 9.90 / 0.16), transparent 48%),
+    linear-gradient(160deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
   padding: 16px 16px 14px;
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.06),
@@ -1979,8 +2027,8 @@ body[data-theme="v8"] .hub-daily-stage-bloom {
   height: 150px;
   border-radius: 999px;
   background: radial-gradient(circle,
-      oklch(0.627 0.233 303.9 / 0.42) 0%,
-      oklch(0.656 0.212 354.31 / 0.14) 40%,
+      oklch(0.656 0.212 354.31 / 0.42) 0%,
+      oklch(0.639 0.256 9.90 / 0.16) 40%,
       transparent 68%);
   filter: blur(4px);
 }
@@ -1997,7 +2045,7 @@ body[data-theme="v8"] .hub-daily-stage-platform {
   height: 14px;
   border-radius: 999px;
   background: radial-gradient(ellipse,
-      oklch(0.627 0.233 303.9 / 0.45),
+      oklch(0.656 0.212 354.31 / 0.45),
       transparent 70%);
   filter: blur(6px);
 }
@@ -2013,7 +2061,7 @@ body[data-theme="v8"] .hub-daily-stage-object {
   border: 1px solid oklch(1 0 0 / 0.16);
   background:
     linear-gradient(155deg, oklch(1 0 0 / 0.16), transparent 50%),
-    linear-gradient(200deg, oklch(0.266 0.051 301.82), oklch(0.187 0.031 298.74) 70%);
+    linear-gradient(200deg, oklch(0.266 0.051 354.31), oklch(0.187 0.031 354.31) 70%);
   box-shadow:
     0 16px 28px oklch(0 0 0 / 0.38),
     inset 0 1px 0 oklch(1 0 0 / 0.12);
@@ -2043,7 +2091,7 @@ body[data-theme="v8"] .hub-daily-hero.is-claimed .hub-daily-stage-object {
 body[data-theme="v8"] .hub-daily-stage-gift {
   width: 42px;
   height: 42px;
-  color: oklch(0.913 0.055 308.9);
+  color: oklch(0.916 0.051 349.9);
 }
 
 /* Desktop: preserve approved side-by-side Daily Reward composition */
@@ -2060,9 +2108,9 @@ body[data-theme="v8"] .hub-daily-stage-gift {
     border-radius: 28px;
     padding: 28px 28px 26px;
     background:
-      radial-gradient(ellipse at 88% 35%, oklch(0.627 0.233 303.9 / 0.28), transparent 52%),
-      radial-gradient(ellipse at 12% 85%, oklch(0.381 0.166 304.99 / 0.22), transparent 48%),
-      linear-gradient(160deg, oklch(0.207 0.032 300.87) 0%, oklch(0.156 0.015 297.73) 48%, oklch(0.184 0.025 299.27) 100%);
+      radial-gradient(ellipse at 88% 35%, oklch(0.656 0.212 354.31 / 0.28), transparent 52%),
+      radial-gradient(ellipse at 12% 85%, oklch(0.639 0.256 9.90 / 0.18), transparent 48%),
+      linear-gradient(160deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
   }
 
   body[data-theme="v8"] .hub-daily-hero-body {
@@ -7221,6 +7269,33 @@ body[data-theme="v8"] .auth7-legal {
 @media (min-width: 1024px) {}
 
 /* Settings — full-width destructive Log Out */
+body[data-theme="v8"] .profile-logout-label {
+  display: none;
+}
+
+@media (min-width: 507px) {
+  body[data-theme="v8"] .profile-logout-btn {
+    display: inline-flex;
+    width: auto;
+    height: 44px;
+    min-width: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 14px 0 12px;
+    border-radius: 999px;
+  }
+
+  body[data-theme="v8"] .profile-logout-label {
+    display: inline;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    color: inherit;
+  }
+}
+
 body[data-theme="v8"] .settings-logout-btn {
   display: inline-flex;
   width: 100%;

@@ -1,25 +1,18 @@
 import {
   Bell,
   ChevronRight,
-  FileText,
-  Lock,
   PlayCircle,
-  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
-import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
-import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
-
-type SettingsView = "main" | "legal-terms" | "legal-privacy";
 
 type SettingsRow = {
   label: string;
   icon: LucideIcon;
-  iconTone: "security" | "pref" | "notify" | "legal";
-  action: "password" | "replay" | "notifications" | "privacy" | "terms";
+  iconTone: "pref" | "notify";
+  action: "replay" | "notifications";
   interactive: boolean;
 };
 
@@ -29,25 +22,11 @@ type SettingsRow = {
 export function SettingsScreen({
   onBack,
   onReplayTutorials,
-  onOpenChangePassword,
 }: {
   onBack: () => void;
   onReplayTutorials: () => void;
-  onOpenChangePassword: () => void;
 }) {
   const meta = SECONDARY_SURFACES.settings;
-  const legalTitleId = useId();
-  const [view, setView] = useState<SettingsView>("main");
-
-  const accountRows: SettingsRow[] = [
-    {
-      label: "Change Password",
-      icon: Lock,
-      iconTone: "security",
-      action: "password",
-      interactive: true,
-    },
-  ];
 
   const preferenceRows: SettingsRow[] = [
     {
@@ -66,58 +45,11 @@ export function SettingsScreen({
     },
   ];
 
-  const legalRows: SettingsRow[] = [
-    {
-      label: "Privacy Policy",
-      icon: ShieldCheck,
-      iconTone: "legal",
-      action: "privacy",
-      interactive: true,
-    },
-    {
-      label: "Terms and Conditions",
-      icon: FileText,
-      iconTone: "legal",
-      action: "terms",
-      interactive: true,
-    },
-  ];
-
   function handleRow(row: SettingsRow) {
     if (!row.interactive) return;
     if (row.action === "replay") {
       onReplayTutorials();
-      return;
     }
-    if (row.action === "password") {
-      onOpenChangePassword();
-      return;
-    }
-    if (row.action === "privacy") {
-      setView("legal-privacy");
-      return;
-    }
-    if (row.action === "terms") {
-      setView("legal-terms");
-    }
-  }
-
-  if (view === "legal-terms" || view === "legal-privacy") {
-    return (
-      <AppPageShell
-        variant="secondary"
-        aria-label="Settings"
-        className="settings-page"
-      >
-        <div className="settings-legal-panel">
-          <LegalDocPanel
-            kind={view === "legal-terms" ? "terms" : "privacy"}
-            titleId={legalTitleId}
-            onBack={() => setView("main")}
-          />
-        </div>
-      </AppPageShell>
-    );
   }
 
   return (
@@ -134,21 +66,9 @@ export function SettingsScreen({
 
       <div className="settings-stack">
         <SettingsGroup
-          id="settings-account"
-          label="Account"
-          rows={accountRows}
-          onSelect={handleRow}
-        />
-        <SettingsGroup
           id="settings-preferences"
           label="Preferences"
           rows={preferenceRows}
-          onSelect={handleRow}
-        />
-        <SettingsGroup
-          id="settings-legal"
-          label="Legal"
-          rows={legalRows}
           onSelect={handleRow}
         />
         <p className="settings-app-version">Sugar · v8</p>
