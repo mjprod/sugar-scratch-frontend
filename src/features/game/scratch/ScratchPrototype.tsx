@@ -2,6 +2,7 @@ import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -1263,6 +1264,13 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
 export function ScratchPrototype() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  // FairyDust must paint in stage space: the product embed wraps play in a
+  // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
+  const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
+  const setStageNode = useCallback((node: HTMLDivElement | null) => {
+    stageRef.current = node;
+    setCursorHost((current) => (current === node ? current : node));
+  }, []);
   const symbolSlotRefs = useRef<(HTMLDivElement | null)[]>([]);
   // Most recent pointer position in viewport coords; used as the origin of the
   // flying-coin animation for manual scratches.
@@ -4151,20 +4159,9 @@ export function ScratchPrototype() {
 
   return (
     <main className="app-shell">
-      {cursorFx.fairyDust ? (
-        <FairyDustCursor
-          particleTypes={cursorFxParticleTypes}
-          particleSize={cursorFx.particleSize}
-          particleCount={cursorFx.particleCount}
-          gravity={cursorFx.gravity}
-          fadeSpeed={cursorFx.fadeSpeed}
-          initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
-          spawnEnabled={cursorFxSpawnActive}
-        />
-      ) : null}
       <section className="prototype">
         <div
-          ref={stageRef}
+          ref={setStageNode}
           className={`stage${gameResult ? " is-game-over" : ""}${
             topBarPhase === "showcase" ? " is-showcase-phase" : ""
           }${
@@ -4178,6 +4175,18 @@ export function ScratchPrototype() {
             introCover ? " is-intro-video-phase" : ""
           }${introLeaving ? " is-intro-revealing" : ""}`}
         >
+          {cursorFx.fairyDust && cursorHost ? (
+            <FairyDustCursor
+              element={cursorHost}
+              particleTypes={cursorFxParticleTypes}
+              particleSize={cursorFx.particleSize}
+              particleCount={cursorFx.particleCount}
+              gravity={cursorFx.gravity}
+              fadeSpeed={cursorFx.fadeSpeed}
+              initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
+              spawnEnabled={cursorFxSpawnActive}
+            />
+          ) : null}
           {glError ? (
             <div
               className="game-result game-result--static"

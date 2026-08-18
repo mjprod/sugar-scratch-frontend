@@ -94,6 +94,17 @@
   background: oklch(0.184 0.005 67.5);
 }
 
+/* Decoder keep-alive videos: behind the opaque canvas, never a 0,0 chip. */
+.stage-game .stage > video.source-video {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0.01 !important;
+  transform: none !important;
+  z-index: 0 !important;
+}
+
 /* Cover only the stage picture — never UI canvases (foil flakes, coating).
    A blanket `.stage > canvas` rule yanked the portaled flake layer to
    cover-center, so flecks spawned at the finger then drew off-screen. */
@@ -125,6 +136,24 @@
   border-radius: 0 !important;
   pointer-events: none !important;
   z-index: 10 !important;
+}
+
+/* Cursor-FX coins live on this overlay. Pin it to the stage box so a parent
+   transform (desktop phone-frame) cannot send position:fixed sparkles off-screen. */
+.stage-game .stage > canvas.fairy-dust-cursor {
+  position: absolute !important;
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  pointer-events: none !important;
+  z-index: 11 !important;
 }
 
 .stage-game .stage .game-stage-canvas-wrap .game-stage-canvas {
