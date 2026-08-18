@@ -245,7 +245,7 @@ export function clearEmailVerified() {
 }
 
 /** Prototype rule: at least this many characters. */
-export const AUTH_PASSWORD_MIN_LENGTH = 12;
+export const AUTH_PASSWORD_MIN_LENGTH = 8;
 
 export function isValidAuthPassword(pw: string) {
   return pw.length >= AUTH_PASSWORD_MIN_LENGTH;

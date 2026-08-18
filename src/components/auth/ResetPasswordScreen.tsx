@@ -1,7 +1,10 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { isValidAuthPassword } from "@/services/auth";
+import {
+  AUTH_PASSWORD_MIN_LENGTH,
+  isValidAuthPassword,
+} from "@/services/auth";
 
 /**
  * Reset Password — Spec 7.
@@ -33,7 +36,7 @@ export function ResetPasswordScreen({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!isValidAuthPassword(password)) {
-      setError("Use at least 12 characters.");
+      setError(`Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
     if (password !== confirm) {
@@ -110,7 +113,9 @@ export function ResetPasswordScreen({
       </label>
 
       {passwordFocused || password.length > 0 ? (
-        <p className="auth2-hint">Use at least 12 characters.</p>
+        <p className="auth2-hint">
+          Use at least {AUTH_PASSWORD_MIN_LENGTH} characters.
+        </p>
       ) : null}
 
       <label className="auth2-field">
