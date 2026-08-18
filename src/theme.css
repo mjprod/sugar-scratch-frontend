@@ -2200,6 +2200,14 @@ body[data-theme="v8"] .hub-daily-stage-gift {
 
   body[data-theme="v8"] .hub-daily-hero-body {
     grid-area: body;
+    position: static;
+  }
+
+  body[data-theme="v8"] .hub-daily-ready-chip {
+    position: absolute;
+    top: 28px;
+    right: 28px;
+    z-index: 3;
   }
 
   body[data-theme="v8"] .hub-daily-hero-actions {
@@ -2222,7 +2230,7 @@ body[data-theme="v8"] .hub-daily-stage-gift {
   }
 
   body[data-theme="v8"] .hub-daily-hero-cta {
-    width: auto;
+    width: min(100%, 240px);
     margin-top: 4px;
   }
 
@@ -8948,16 +8956,31 @@ body[data-theme="v8"] .inbox-page .app-page-shell-inner {
   gap: 20px;
 }
 
-/* Inbox hides the liquid top nav — only clear the subpage header / notch. */
+/* Desktop Inbox sits below the liquid top nav so Back + filter stay visible. */
 @media (min-width: 507px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page {
-    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-top: var(--app-diamond-offset);
     padding-bottom: 48px;
+  }
+
+  body[data-theme="v8"] .inbox-page .subpage-header {
+    position: static;
+  }
+
+  body[data-theme="v8"] .inbox-header-filter .inbox-filter {
+    width: auto;
+    padding: 0 12px;
+    border-radius: 999px;
+    justify-content: flex-start;
+  }
+
+  body[data-theme="v8"] .inbox-header-filter .inbox-filter-label {
+    display: inline;
   }
 }
 
-/* Mobile Inbox keeps Global Bottom Nav — clear the footer chrome. */
-@media (max-width: 1023px) {
+/* Mobile Inbox keeps the liquid bottom dock — clear the footer chrome. */
+@media (max-width: 506px) {
   body[data-theme="v8"] .app-page-shell.inbox-page {
     padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
   }
@@ -9778,7 +9801,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
   }
 
   body[data-theme="v8"] .app-layout--hud .app-page-shell.store-page,
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page {
     padding-top: var(--app-diamond-offset);
   }
 
@@ -9929,14 +9953,13 @@ body[data-theme="v8"] .app-page-shell-inner {
     padding-inline: 0;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page) {
+  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page) {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
     padding-bottom: 48px;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary.settings-page,
-  body[data-theme="v8"] .app-page-shell--secondary.inbox-page {
+  body[data-theme="v8"] .app-page-shell--secondary.settings-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-inline: 0;
     padding-bottom: 48px;

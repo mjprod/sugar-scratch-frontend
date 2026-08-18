@@ -26,7 +26,7 @@ import {
 } from "@/services/inbox";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
 
-/** Inbox — secondary surface; desktop keeps Global TopNav, mobile uses compact header. */
+/** Inbox — secondary surface; desktop keeps liquid top nav, mobile uses compact header. */
 export function InboxScreen({
   onBack,
   onMessageAction,
@@ -94,7 +94,7 @@ export function InboxScreen({
         onBack={onBack}
         backLabel={meta.backLabel}
         trailing={
-          <span className="inbox-header-filter lg:hidden">{filterControl}</span>
+          <span className="inbox-header-filter">{filterControl}</span>
         }
       />
 
@@ -102,7 +102,6 @@ export function InboxScreen({
         <div className="inbox-empty-wrap">
           <div className="inbox-section-head">
             <span className="inbox-section-label">New</span>
-            <span className="hidden lg:inline-flex">{filterControl}</span>
           </div>
           <EmptyState
             icon={emptyFiltered ? CheckCheck : Bell}
@@ -120,9 +119,6 @@ export function InboxScreen({
           <MessageListSection
             label="New"
             showDot={newer.some((m) => !m.isRead)}
-            trailing={
-              <span className="hidden lg:inline-flex">{filterControl}</span>
-            }
           >
             {newer.length > 0
               ? newer.map((message) => (

@@ -59,8 +59,7 @@ export function AppLayout() {
 
   const showNav =
     !hideChrome &&
-    !location.pathname.startsWith("/settings") &&
-    !onInbox;
+    !location.pathname.startsWith("/settings");
 
   useEffect(() => {
     if (guest) {
@@ -82,6 +81,7 @@ export function AppLayout() {
       unreadCount={inboxUnread}
       onOpen={openInbox}
       variant="ghost"
+      active={onInbox}
     />
   ) : null;
 
@@ -118,6 +118,7 @@ export function AppLayout() {
           onOpenStore={showTopUtility ? openStore : undefined}
           onOpenInbox={showTopUtility ? openInbox : undefined}
           inboxUnreadCount={inboxUnread}
+          inboxActive={onInbox}
         />
       ) : null}
 
