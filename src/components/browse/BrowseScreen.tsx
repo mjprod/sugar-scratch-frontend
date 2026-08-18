@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
+import { DiscoverReel } from "@/components/home/DiscoverReel";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { PackLibrary } from "@/components/home/PackLibrary";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
@@ -138,6 +139,9 @@ export function HomeScreen({
   onStartPlaying,
   onOpenCreator,
   onClaimDaily,
+  onLikeAttempt,
+  resumeLikeId = null,
+  onResumeLikeConsumed,
 }: {
   showTutorial?: boolean;
   onTutorialDone?: () => void;
@@ -151,6 +155,9 @@ export function HomeScreen({
   }) => void;
   onOpenCreator?: (creatorId: string) => void;
   onClaimDaily?: (diamonds: number) => void;
+  onLikeAttempt?: (itemId: string) => boolean;
+  resumeLikeId?: string | null;
+  onResumeLikeConsumed?: () => void;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -373,27 +380,36 @@ export function HomeScreen({
           </button>
         </div>
 
-        {onClaimDaily ? (
-          <section
-            className="hub-module hub-module--today mt-8"
-            aria-labelledby="daily-reward"
-          >
-            <h2
-              id="daily-reward"
-              className="hub-section-label hub-section-label--today scroll-mt-[calc(var(--app-diamond-offset)+3rem)]"
-            >
-              Today
-            </h2>
-            <DailyRewardHero onClaimed={onClaimDaily} />
-          </section>
-        ) : null}
+        <div className="hub-today-bento mt-8">
+          <div className="hub-today-bento-stack">
+            {onClaimDaily ? (
+              <section
+                className="hub-module hub-module--today"
+                aria-labelledby="daily-reward"
+              >
+          
+                <DailyRewardHero onClaimed={onClaimDaily} />
+              </section>
+            ) : null}
 
-        <div className="mt-10">
-          <ContinueCollecting
-            items={home.continueCollecting}
-            onOpen={openCollection}
-            onSeeAllClick={() => setLibraryOpen(true)}
-          />
+            <ContinueCollecting
+              items={home.continueCollecting}
+              onOpen={openCollection}
+              onSeeAllClick={() => setLibraryOpen(true)}
+            />
+          </div>
+
+          <aside className="hub-today-bento-reel" aria-label="Discover video reel">
+            <div className="hub-today-bento-reel-frame">
+              <DiscoverReel
+                onBuyPack={(pack) => onStartPlaying?.(pack)}
+                onLikeAttempt={onLikeAttempt}
+                onOpenCreator={onOpenCreator}
+                resumeLikeId={resumeLikeId}
+                onResumeLikeConsumed={onResumeLikeConsumed}
+              />
+            </div>
+          </aside>
         </div>
 
         <div className="mt-10">

@@ -1812,6 +1812,87 @@ body[data-theme="v8"] .hub-module--today {
   margin-top: 0;
 }
 
+body[data-theme="v8"] .hub-today-bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+}
+
+body[data-theme="v8"] .hub-today-bento-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+body[data-theme="v8"] .hub-today-bento-reel {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  body[data-theme="v8"] .hub-today-bento {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+  }
+
+  body[data-theme="v8"] .hub-today-bento-stack {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-column: 1 / -1;
+    gap: 16px 20px;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-today-bento {
+    grid-template-columns: 1.75fr 1fr;
+  }
+
+  body[data-theme="v8"] .hub-today-bento-stack {
+    display: flex;
+    grid-column: auto;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  body[data-theme="v8"] .hub-today-bento-reel {
+    display: block;
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: visible;
+    /* Half the chevron (3.25rem) so its right edge sits on the column. */
+    padding-right: 1.625rem;
+  }
+}
+
+body[data-theme="v8"] .hub-today-bento-reel-frame {
+  position: absolute;
+  inset: 0 1.625rem 0 0;
+  overflow: visible;
+  border-radius: 28px;
+}
+
+body[data-theme="v8"] .hub-today-bento-reel-frame .hf-page--embed {
+  overflow: visible;
+  background: transparent;
+}
+
+body[data-theme="v8"] .hub-today-bento-reel-frame .hf-frame,
+body[data-theme="v8"] .hub-today-bento-reel-frame .hf-viewport,
+body[data-theme="v8"] .hub-today-bento-reel-frame .hf-slide,
+body[data-theme="v8"] .hub-today-bento-reel-frame .hf-card {
+  overflow: hidden;
+  border-radius: 28px;
+}
+
+body[data-theme="v8"] .hub-today-bento-reel-frame .hf-frame {
+  background: oklch(0.136 0.007 285.45);
+  box-shadow: 0 0 0 1px oklch(1 0 0 / 0.06);
+}
+
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hub-module {
     margin-top: 36px;
@@ -5374,6 +5455,117 @@ body[data-theme="v8"] .hf-stepper-icon {
     z-index: 8;
     margin-left: -2.5rem;
   }
+}
+
+/* Compact Discover reel — fills the Home bento cell without page chrome. */
+body[data-theme="v8"] .hf-page--embed,
+body[data-theme="v8"] .app-layout--hud .hf-page--embed {
+  --hf-bottom-clearance: 0px;
+  --hf-next-peek: 0px;
+  --hf-top-clearance: 0px;
+  --hf-frame-width: 100%;
+
+  position: absolute;
+  inset: 0;
+  flex: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-stage,
+body[data-theme="v8"] .app-layout--hud .hf-page--embed .hf-stage {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  overflow: visible;
+  flex-direction: column;
+  align-items: stretch;
+  aspect-ratio: auto;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-frame,
+body[data-theme="v8"] .app-layout--hud .hf-page--embed .hf-frame {
+  z-index: 1;
+  flex: 1 1 0;
+  width: 100% !important;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow: none;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-viewport {
+  height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y mandatory;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-media {
+  --hf-media-scale: 1.08;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-stepper,
+body[data-theme="v8"] .app-layout--hud .hf-page--embed .hf-stepper {
+  display: flex;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: 8;
+  margin: 0;
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-stepper-btn {
+  pointer-events: auto;
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-stepper-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-overlay,
+body[data-theme="v8"] .hf-page--embed .hf-overlay.is-visible {
+  padding: 16px 14px 24px;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-overlay {
+  --hf-overlay-enter: 10px;
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-overlay.is-visible {
+  --hf-overlay-enter: 0px;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-creator {
+  font-size: 18px;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-pack {
+  font-size: 14px;
+}
+
+body[data-theme="v8"] .hf-page--embed .hf-skeleton {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
 }
 
 
@@ -9675,8 +9867,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
 
   /* Home frame under HUD chrome */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
-    margin-top: 7rem;
-    margin-bottom: 12px;
+    margin-top: 2.3rem;
+    margin-bottom: 0;
   }
 
   body[data-theme="v8"] .app-layout--hud .hf-frame {
@@ -9686,6 +9878,22 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
 
   body[data-theme="v8"] .app-layout--hud .hf-page {
     --hf-top-clearance: var(--app-diamond-offset);
+  }
+
+  /* Embedded Home reel must ignore Discover's 9/16 / 90dvh phone frame. */
+  body[data-theme="v8"] .app-layout--hud .hf-page--embed .hf-stage {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  body[data-theme="v8"] .app-layout--hud .hf-page--embed .hf-frame {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    overflow: hidden;
+    border-radius: 28px;
   }
 }
 
