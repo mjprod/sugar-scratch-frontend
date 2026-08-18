@@ -1,4 +1,5 @@
 import { CREATOR_PHOTOS, HOLO_PACKS, PACK_PHOTOS } from "../lib/photos";
+import { apiFetch } from "../lib/api";
 
 export type UnopenedPack = {
   id: string;
@@ -710,4 +711,16 @@ export function progressTone(pct: number) {
   if (pct >= 100) return "bg-[oklch(0.773_0.153_163.22)]";
   if (pct < 30) return "bg-[oklch(0.769_0.165_70.08)]";
   return "bg-gradient-to-r from-[oklch(0.606_0.219_292.72)] to-[oklch(0.656_0.212_354.31)]";
+}
+
+export async function fetchMyCollection() {
+  return apiFetch<{
+    collectedCardCount: number;
+    summary: {
+      uniqueCards: number;
+      motionCards: number;
+      photoCards: number;
+      creators: number;
+    };
+  }>("/api/me/collection");
 }

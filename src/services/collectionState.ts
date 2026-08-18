@@ -10,6 +10,7 @@ import {
 } from "./packInventory";
 import { CREATOR_PHOTOS } from "../lib/photos";
 import { listReadyToScratch } from "./readyToScratch";
+import { apiFetch } from "../lib/api";
 
 type CreatorLedger = {
   id: string;
@@ -258,4 +259,8 @@ export function clearCollectionLedger() {
   } catch {
     /* ignore */
   }
+}
+
+export async function fetchCollectionPageStateRemote() {
+  return apiFetch<CollectionPageState>("/api/me/collection");
 }

@@ -8,14 +8,14 @@ import { PageReadyProvider } from "@/shared/ui/PageTransition";
 export default function App() {
   return (
     <BrowserRouter>
-      <WalletProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <WalletProvider>
           <PageReadyProvider>
             <AppRoutes />
             <SitePreloader />
           </PageReadyProvider>
-        </AuthProvider>
-      </WalletProvider>
+        </WalletProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

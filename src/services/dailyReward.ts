@@ -2,6 +2,8 @@
  * Daily Reward — one claim per local calendar day; resets at next local midnight.
  */
 
+import { apiFetch, apiMutate } from "../lib/api";
+
 const KEY = "sugar.v8.dailyRewardClaimDay";
 
 /** Diamonds granted on claim (prototype). */
@@ -45,7 +47,17 @@ export function claimDailyReward(now = new Date()): {
   } catch {
     /* ignore */
   }
+  void apiMutate("/api/rewards/daily/claim", { method: "POST" }).catch(() => undefined);
   return { ok: true, diamonds: DAILY_REWARD_DIAMONDS };
+}
+
+export async function fetchDailyRewardStatus() {
+  return apiFetch<{
+    claimedToday: boolean;
+    diamonds: number;
+    resetAt: number;
+    claimDate: string;
+  }>("/api/rewards/daily");
 }
 
 export function formatCountdown(ms: number) {

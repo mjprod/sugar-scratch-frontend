@@ -1,3 +1,5 @@
+import { apiFetch, apiMutate } from "../lib/api";
+
 export type StoreBadge =
   | "FREE"
   | "Best Value"
@@ -173,6 +175,7 @@ export function findStoreProduct(productId: string): StoreProduct | undefined {
   return CATALOG.find((product) => product.id === productId && product.available);
 }
 
+/** Sync snapshot for initial UI paint (local catalog / demo flags). */
 function loadStoreCatalog(): StoreLoadResult {
   const mode = queryFlag("store");
   if (mode === "error") {
@@ -189,7 +192,15 @@ export function peekStoreProducts(): StoreLoadResult {
 }
 
 export async function fetchStoreProducts(): Promise<StoreLoadResult> {
-  return loadStoreCatalog();
+  const mode = queryFlag("store");
+  if (mode === "error") {
+    return { status: "error", message: "Unable to load store items." };
+  }
+  if (mode === "empty") return { status: "empty" };
+  const remote = await apiFetch<{ products: StoreProduct[] }>("/api/store/products");
+  const products = listAvailableProducts(remote?.products ?? CATALOG);
+  if (!products.length) return { status: "empty" };
+  return { status: "ok", products };
 }
 
 function newSessionId() {
@@ -203,18 +214,29 @@ export async function createPurchaseSession(
   if (product.kind !== "diamonds") {
     throw new Error("Only paid products create a payment session.");
   }
-  await wait(1800);
-  const session: PurchaseSession = {
-    id: newSessionId(),
-    productId: product.id,
-    productTitle: product.title,
-    priceLabel: product.priceLabel,
-    diamonds: product.diamonds,
-    coins: product.coins ?? 0,
-    createdAt: Date.now(),
-  };
-  savePurchaseSession(session);
-  return session;
+  try {
+    const data = await apiMutate<{ session: PurchaseSession }>(
+      "/api/store/purchases",
+      {
+        method: "POST",
+        body: JSON.stringify({ product_id: product.id }),
+      },
+    );
+    savePurchaseSession(data.session);
+    return data.session;
+  } catch {
+    const session: PurchaseSession = {
+      id: newSessionId(),
+      productId: product.id,
+      productTitle: product.title,
+      priceLabel: product.priceLabel,
+      diamonds: product.diamonds,
+      coins: product.coins ?? 0,
+      createdAt: Date.now(),
+    };
+    savePurchaseSession(session);
+    return session;
+  }
 }
 
 export function savePurchaseSession(session: PurchaseSession) {
@@ -317,6 +339,30 @@ export async function returnFromGateway(
     };
   }
 
+  try {
+    const verified = await apiMutate<{
+      status: VerifiedPaymentStatus | "closed";
+      session: PurchaseSession;
+      diamonds?: number;
+      coins?: number;
+      message?: string;
+    }>(`/api/store/purchases/${session.id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ outcome: resolved }),
+    });
+    if (verified.status === "confirmed") {
+      clearPurchaseSession();
+      return {
+        status: "confirmed",
+        session: { ...verified.session, credited: true },
+        diamonds: verified.diamonds ?? session.diamonds,
+        coins: verified.coins ?? session.coins,
+      };
+    }
+  } catch {
+    /* fall through to local credit */
+  }
+
   const next: PurchaseSession = {
     ...updated,
     verifiedStatus: "confirmed",
@@ -357,16 +403,28 @@ export async function resumePurchaseSession(
 
 /** Rewarded ads never touch the payment gateway. */
 export async function claimRewardedAd(product: StoreProduct): Promise<AdClaimResult> {
-  await wait(900);
   if (queryFlag("store") === "fail") {
     return {
       status: "failed",
       message: "Reward could not be claimed. Please try again.",
     };
   }
-  return {
-    status: "success",
-    diamonds: product.diamonds,
-    coins: product.coins ?? 0,
-  };
+  try {
+    const data = await apiMutate<{
+      status: "success";
+      diamonds: number;
+      coins: number;
+    }>(`/api/store/ads/${product.id}/claim`, { method: "POST" });
+    return {
+      status: "success",
+      diamonds: data.diamonds,
+      coins: data.coins,
+    };
+  } catch {
+    return {
+      status: "success",
+      diamonds: product.diamonds,
+      coins: product.coins ?? 0,
+    };
+  }
 }

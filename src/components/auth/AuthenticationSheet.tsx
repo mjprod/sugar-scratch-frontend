@@ -13,6 +13,10 @@ import {
   createAccountFailureMessage,
   forgotPasswordSuccessMessage,
   isValidAuthPassword,
+  loginWithEmail,
+  loginWithOAuth,
+  registerWithEmail,
+  requestPasswordReset,
   supportingCopyForTrigger,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
@@ -115,11 +119,15 @@ export function AuthenticationSheet({
   async function finishSocial(provider: "Google" | "Apple") {
     setSubmitting(provider === "Google" ? "google" : "apple");
     setError("");
-    await wait(650);
-    onSuccess({
-      email: `${provider.toLowerCase()}@sugar.app`,
-      provider: provider === "Google" ? "google" : "apple",
-    });
+    try {
+      const kind = provider === "Google" ? "google" : "apple";
+      const emailAddr = `${kind}@sugar.app`;
+      const { user } = await loginWithOAuth(kind, emailAddr);
+      onSuccess({ email: user.email, provider: user.provider, user });
+    } catch {
+      setSubmitting(null);
+      setError(authFailureMessage());
+    }
   }
 
   async function submitLogin(e: FormEvent) {
@@ -134,13 +142,13 @@ export function AuthenticationSheet({
     }
     setSubmitting("email");
     setError("");
-    await wait(700);
-    if (email.trim().toLowerCase() === "fail@sugar.app") {
+    try {
+      const { user } = await loginWithEmail(email.trim(), password);
+      onSuccess({ email: user.email, provider: user.provider, user });
+    } catch {
       setSubmitting(null);
       setError(authFailureMessage());
-      return;
     }
-    onSuccess({ email: email.trim(), provider: "email" });
   }
 
   async function submitCreate(e: FormEvent) {
@@ -161,13 +169,13 @@ export function AuthenticationSheet({
     setSubmitting("email");
     setError("");
     setConsentError(false);
-    await wait(700);
-    if (email.trim().toLowerCase() === "taken@sugar.app") {
+    try {
+      const { user } = await registerWithEmail(email.trim(), password);
+      onSuccess({ email: user.email, provider: user.provider, user });
+    } catch (error) {
       setSubmitting(null);
       setError(createAccountFailureMessage());
-      return;
     }
-    onSuccess({ email: email.trim(), provider: "email" });
   }
 
   async function submitForgot(e: FormEvent) {
@@ -178,7 +186,11 @@ export function AuthenticationSheet({
     }
     setSubmitting("email");
     setError("");
-    await wait(700);
+    try {
+      await requestPasswordReset(email.trim());
+    } catch {
+      /* always show the same copy */
+    }
     setSubmitting(null);
     setMode("reset-sent");
   }
@@ -645,6 +657,3 @@ export function AuthenticationSheet({
 }
 
 
-function wait(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
