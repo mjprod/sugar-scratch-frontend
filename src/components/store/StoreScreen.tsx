@@ -27,6 +27,7 @@ import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { useAuth } from "@/contexts/AuthContext";
 import type { RedeemReward } from "@/services/redeem";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 type LoadState =
   | { status: "loading" }
@@ -77,6 +78,7 @@ export function StoreScreen({
 }) {
   const { requireAuth } = useAuth();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
+  useMarkPageReady(load.status !== "loading");
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [claimedAds, setClaimedAds] = useState<string[]>([]);
   const resumed = useRef(false);

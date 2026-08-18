@@ -4,13 +4,11 @@ import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { usePageReady } from "@/shared/ui/PageTransition";
 import { Paths } from "@/routes/Paths";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
 function ScratchGameEmbed() {
-  const { markReady } = usePageReady();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -33,13 +31,6 @@ function ScratchGameEmbed() {
       delete document.documentElement.dataset.scratchGame;
     };
   }, [scratchCss]);
-
-  useEffect(() => {
-    const raf = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => markReady());
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [markReady]);
 
   const gameMode = searchParams.get("game") === "1";
   const playlistMode = searchParams.get("playlist") === "1";

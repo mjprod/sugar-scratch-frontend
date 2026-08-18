@@ -12,8 +12,17 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Maytra";
+  src: url("/font/Maytra.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-card-overlay: "CardOverlay", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  --font-maytra: "Maytra", cursive;
 }
 
 @theme {

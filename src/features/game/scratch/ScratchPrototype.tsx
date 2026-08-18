@@ -1,4 +1,5 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
   useEffect,
@@ -1304,6 +1305,7 @@ export function ScratchPrototype() {
   const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [cardsReady, setCardsReady] = useState(false);
+  useMarkPageReady(cardsReady);
   const [selectedMeshFile, setSelectedMeshFile] = useState(
     DEFAULT_CARDS[1].mesh,
   );

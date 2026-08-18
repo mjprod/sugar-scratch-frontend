@@ -1,0 +1,19 @@
+.site-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  opacity: 1;
+  transition: opacity 250ms ease;
+}
+
+.site-preloader.is-hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-preloader {
+    transition: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CollectionPlaceholder } from "@/components/collection/CollectionPlaceholder";
@@ -155,6 +156,11 @@ function CreatorScreenInner({
   const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
   const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId);
+  useMarkPageReady(
+    !collection.loading ||
+      collection.themes.length > 0 ||
+      collection.cards.length > 0,
+  );
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");

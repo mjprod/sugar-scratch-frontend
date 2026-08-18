@@ -18,7 +18,8 @@
   will-change: transform;
   animation:
     card-carousel-move var(--card-duration) linear infinite,
-    card-carousel-stack var(--card-duration) linear infinite;
+    card-carousel-stack var(--card-duration) linear infinite,
+    card-carousel-focus var(--card-duration) linear infinite;
 }
 
 .card-fall-layer--b {
@@ -88,6 +89,27 @@
   }
 }
 
+@keyframes card-carousel-focus {
+  0%,
+  22% {
+    filter: blur(0);
+  }
+
+  33.333%,
+  55.333% {
+    filter: blur(3px);
+  }
+
+  66.666%,
+  88.666% {
+    filter: blur(3px);
+  }
+
+  100% {
+    filter: blur(0);
+  }
+}
+
 @keyframes card-carousel-stack {
   0%,
   27.7% {
@@ -152,16 +174,19 @@
 
   .card-fall-layer--a {
     transform: translate(-50%, -50%) scale(1);
+    filter: none;
     z-index: 3;
   }
 
   .card-fall-layer--b {
     transform: translate(-50%, -50%) translateX(76%) rotateY(-22deg) scale(0.7);
+    filter: blur(3px);
     z-index: 2;
   }
 
   .card-fall-layer--c {
     transform: translate(-50%, -50%) translateX(-76%) rotateY(22deg) scale(0.7);
+    filter: blur(3px);
     z-index: 2;
   }
 

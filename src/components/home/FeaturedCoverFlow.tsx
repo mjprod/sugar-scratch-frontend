@@ -1,8 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
-import { PACK_MODEL_URL, PACK_VIDEO_URL } from "@/lib/pack3d";
+import {
+  DEFAULT_VIDEO_TEXTURE_TRANSFORM,
+  PACK_MODEL_URL,
+  PACK_TEXTURE_SIZE,
+  PACK_VIDEO_FIT_MODE,
+  PACK_VIDEO_URL,
+  makeVideoTextureCacheKey,
+  preloadVideoTexture,
+  subscribeVideoTextureReady,
+} from "@/lib/pack3d";
 import {
   diamondCostForPackId,
   type FeaturedPack,
@@ -105,13 +114,17 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
 export function FeaturedCoverFlow({
   featured,
   onPlay,
+  onReady,
 }: {
   featured: FeaturedPack[];
   onPlay: (pack: FeaturedCoverFlowPlayTarget) => void;
+  onReady?: () => void;
 }) {
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     let cancelled = false;
@@ -141,6 +154,32 @@ export function FeaturedCoverFlow({
       setGlow(items[0].backgroundColor || DEFAULT_GLOW);
     }
   }, [items, selectedId]);
+
+  useEffect(() => {
+    if (!catalog) return;
+    const first = catalog.items[0];
+    if (!first?.videoUrl) {
+      onReadyRef.current?.();
+      return;
+    }
+    const input = {
+      videoUrl: first.videoUrl,
+      fitMode: first.fitMode || PACK_VIDEO_FIT_MODE,
+      textureTransform: first.textureTransform || DEFAULT_VIDEO_TEXTURE_TRANSFORM,
+      flipY: true,
+      textureSize: PACK_TEXTURE_SIZE,
+    };
+    const release = preloadVideoTexture(input);
+    const unsubscribe = subscribeVideoTextureReady(
+      makeVideoTextureCacheKey(input),
+      () => onReadyRef.current?.(),
+      () => onReadyRef.current?.(),
+    );
+    return () => {
+      unsubscribe();
+      release();
+    };
+  }, [catalog]);
 
   if (!catalog) {
     return (

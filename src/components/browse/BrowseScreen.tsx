@@ -6,6 +6,7 @@ import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { PackLibrary } from "@/components/home/PackLibrary";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
   fetchLeaderboard,
@@ -160,8 +161,12 @@ export function HomeScreen({
   const [boardLoading, setBoardLoading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [heroReady, setHeroReady] = useState(false);
+
+  useMarkPageReady(status === "error" || heroReady);
 
   const load = useCallback(async () => {
+    setHeroReady(false);
     setStatus("loading");
     try {
       const data = await fetchHomepage();
@@ -324,7 +329,11 @@ export function HomeScreen({
             : "",
         ].join(" ")}
       >
-        <FeaturedCoverFlow featured={home.featured} onPlay={playPack} />
+        <FeaturedCoverFlow
+          featured={home.featured}
+          onPlay={playPack}
+          onReady={() => setHeroReady(true)}
+        />
       </div>
 
       {showTutorial ? (
