@@ -11,7 +11,7 @@ import "./SitePreloader.css";
 
 const MIN_MS = 1800;
 const MAX_MS = 4500;
-const FADE_MS = 250;
+const FADE_MS = 420;
 
 function shouldCover(pathname: string, search: string) {
   return routeNeedsWait(pathname) && !isPageWarmed(pathname, search);
@@ -83,7 +83,7 @@ export function SitePreloader() {
     () => () => {
       window.clearTimeout(fadeTimerRef.current);
     },
-    [],
+    [key],
   );
 
   if (!overlay.visible || typeof document === "undefined") return null;

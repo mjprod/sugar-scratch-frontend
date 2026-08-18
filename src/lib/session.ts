@@ -57,6 +57,7 @@ export function clearV8Session() {
     sessionStorage.removeItem("sugar.v8.recSeedCreator");
     sessionStorage.removeItem("sugar.v8.personalizationDeferredSession");
     sessionStorage.removeItem("sugar.v8.recommendationDeferredSession");
+    sessionStorage.removeItem("sugar.v8.bootShown");
     clearHasLoggedIn();
   } catch {
     /* ignore */

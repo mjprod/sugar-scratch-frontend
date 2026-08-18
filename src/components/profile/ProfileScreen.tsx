@@ -104,9 +104,12 @@ export function UserDashboardScreen({
             onClick={handleLogout}
             disabled={loggingOut}
             aria-busy={loggingOut}
-            className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 disabled:opacity-50"
+            className="profile-logout-btn grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 disabled:opacity-50"
           >
-            <LogOut className="size-5 text-[oklch(0.711_0.166_22.22)]" />
+            <LogOut className="size-5 shrink-0 text-[oklch(0.711_0.166_22.22)]" />
+            <span className="profile-logout-label">
+              {loggingOut ? "Logging out" : "Log out"}
+            </span>
           </button>
         </div>
       </div>

@@ -138,6 +138,15 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Desktop utils live inside .nav-test-top (logo | tabs | utils). */
+.nav-test-top-utils-hover {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  gap: 10px;
+  padding-inline: 6px;
+}
+
 .liquid-glass-desktop-utils,
 .nav-test-top-utils {
   position: relative;
@@ -191,8 +200,6 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 .nav-test-top-profile:hover {
-  border-color: oklch(1 0 0 / 0.12);
-  background: oklch(1 0 0 / 0.06);
   color: oklch(1 0 0 / 0.88);
 }
 
@@ -205,19 +212,24 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   outline-offset: 2px;
 }
 
-.nav-test-top-profile.is-active {
-  border-color: color-mix(in oklab, oklch(0.711 0.203 357.66) 45%, oklch(0.656 0.212 354.31) 35%);
-  background: color-mix(
-    in oklab,
-    color-mix(in oklab, oklch(0.711 0.203 357.66) 28%, oklch(0.656 0.212 354.31) 18%) 42%,
-    transparent
-  );
-  color: oklch(1 0 0 / 0.94);
+.nav-test-top-profile.is-active,
+.nav-test-top-profile.is-drag-target {
+  background: transparent;
+  border-color: transparent;
+  color: oklch(0.779 0.139 1.41);
+}
+
+.nav-test-top-profile.is-active .nav-test-top-profile-icon,
+.nav-test-top-profile.is-drag-target .nav-test-top-profile-icon {
+  transform: scale(1.1);
 }
 
 .nav-test-top-profile-icon {
   width: 18px;
   height: 18px;
+  transform: scale(1);
+  transform-origin: center center;
+  transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nav-test-top-profile-label {
@@ -426,21 +438,23 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   user-select: none;
   -webkit-user-select: none;
   transform: translate3d(
-    var(--top-bubble-x, 0px),
-    var(--top-bubble-y, 0px),
-    0
-  );
+      var(--top-bubble-x, 0px),
+      var(--top-bubble-y, 0px),
+      0
+    )
+    scale(var(--top-bubble-scale, 1));
+  transform-origin: center center;
   transition:
     transform var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
     width var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
     height var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
     border-radius var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 180ms ease;
+    opacity var(--top-bubble-opacity-duration, 180ms) ease;
   will-change: transform, width, height, border-radius, opacity;
 }
 
 .nav-test-top-bubble {
-  z-index: 0;
+  z-index: 1;
   opacity: var(--top-bubble-opacity, 0);
   background: linear-gradient(180deg, oklch(0 0 0 / 0.18), transparent);
   box-shadow:
@@ -451,7 +465,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 .nav-test-top-bubble-active-glow {
-  z-index: 0;
+  z-index: 1;
   background: linear-gradient(0deg, oklch(0.634 0.254 17.36 / 0) 7%, oklch(0.634 0.254 17.36 / 0.678), oklch(0.634 0.254 17.36), oklch(0.634 0.254 17.36 / 0));
   opacity: calc(var(--top-bubble-opacity, 0) * 0.5);
   background-position: center 27px;
@@ -464,7 +478,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
     width var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
     height var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
     border-radius var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity var(--top-bubble-opacity-duration, 180ms) ease;
 }
 
 /* Invisible drag handle above items so bubble can be grabbed */

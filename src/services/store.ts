@@ -173,8 +173,7 @@ export function findStoreProduct(productId: string): StoreProduct | undefined {
   return CATALOG.find((product) => product.id === productId && product.available);
 }
 
-export async function fetchStoreProducts(): Promise<StoreLoadResult> {
-  await wait(420);
+function loadStoreCatalog(): StoreLoadResult {
   const mode = queryFlag("store");
   if (mode === "error") {
     return { status: "error", message: "Unable to load store items." };
@@ -183,6 +182,14 @@ export async function fetchStoreProducts(): Promise<StoreLoadResult> {
   const products = listAvailableProducts();
   if (!products.length) return { status: "empty" };
   return { status: "ok", products };
+}
+
+export function peekStoreProducts(): StoreLoadResult {
+  return loadStoreCatalog();
+}
+
+export async function fetchStoreProducts(): Promise<StoreLoadResult> {
+  return loadStoreCatalog();
 }
 
 function newSessionId() {

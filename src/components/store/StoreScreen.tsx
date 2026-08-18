@@ -14,12 +14,14 @@ import {
   clearPurchaseSession,
   createPurchaseSession,
   fetchStoreProducts,
+  peekStoreProducts,
   loadPurchaseSession,
   resumePurchaseSession,
   returnFromGateway,
   type GatewayOutcome,
   type PurchaseSession,
   type StoreBadge,
+  type StoreLoadResult,
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
@@ -27,7 +29,6 @@ import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { useAuth } from "@/contexts/AuthContext";
 import type { RedeemReward } from "@/services/redeem";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 type LoadState =
   | { status: "loading" }
@@ -77,20 +78,21 @@ export function StoreScreen({
   }) => void;
 }) {
   const { requireAuth } = useAuth();
-  const [load, setLoad] = useState<LoadState>({ status: "loading" });
-  useMarkPageReady(load.status !== "loading");
+  const [load, setLoad] = useState<LoadState>(() => peekStoreProducts());
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [claimedAds, setClaimedAds] = useState<string[]>([]);
   const resumed = useRef(false);
   const locking = useRef(false);
 
-  const reload = useCallback(async () => {
-    setLoad({ status: "loading" });
-    const result = await fetchStoreProducts();
+  const applyCatalog = useCallback((result: StoreLoadResult) => {
     if (result.status === "ok") setLoad({ status: "ok", products: result.products });
     else if (result.status === "empty") setLoad({ status: "empty" });
     else setLoad({ status: "error", message: result.message });
   }, []);
+
+  const reload = useCallback(async () => {
+    applyCatalog(await fetchStoreProducts());
+  }, [applyCatalog]);
 
   useEffect(() => {
     void reload();
