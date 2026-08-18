@@ -543,6 +543,10 @@ body[data-theme="v8"] .home-featured-coverflow .coverflow-tools-bar {
   display: none;
 }
 
+body[data-theme="v8"] .home-featured-coverflow .coverflow-nav {
+  max-width: var(--app-content-max, 80rem);
+}
+
 /* Featured Pack Carousel — Premium Physical Pack Effect Spec 1.0 */
 body[data-theme="v8"] .featured-pack-carousel {
   position: relative;

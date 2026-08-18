@@ -438,6 +438,14 @@ button {
   pointer-events: none;
 }
 
+.fan-card video {
+  opacity: 0;
+}
+
+.fan-card video.is-ready {
+  opacity: 1;
+}
+
 .fan-card .card__rotator video {
   /* Nudge art right under the identity strip on small fan faces. */
   -webkit-transform: translate3d(0.5rem, 0px, 0.01px);

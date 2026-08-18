@@ -2,6 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
 	  Suspense,
 	  useCallback,
@@ -359,6 +360,8 @@ interface CoverFlowCarouselProps {
   layout?: CoverFlowLayoutSettings
   /** Homepage: ignore swipe-down deactivate so the page can keep scrolling. */
   disableSwipeDownDeactivate?: boolean
+  /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
+  disableWheelPaging?: boolean
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1728,28 +1731,6 @@ function PhoneIcon() {
   )
 }
 
-function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
-  return (
-    <svg
-      className="coverflow-chevron-icon"
-      viewBox="0 0 24 24"
-      width="44"
-      height="44"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d={direction === 'left' ? 'M14.5 5.5 8 12l6.5 6.5' : 'M9.5 5.5 16 12l-6.5 6.5'}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function CoverFlowCarousel({
   items,
   selectedId: selectedIdProp,
@@ -1764,6 +1745,7 @@ export function CoverFlowCarousel({
   cameraSettings: cameraSettingsProp,
   layout: layoutProp,
   disableSwipeDownDeactivate = false,
+  disableWheelPaging = false,
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -2427,7 +2409,7 @@ useEffect(() => {
   // the pointer is over the coverflow stage and only drive carousel paging.
   useEffect(() => {
     const stage = stageRef.current
-    if (!stage) {
+    if (!stage || disableWheelPaging) {
       return
     }
 
@@ -2468,7 +2450,7 @@ useEffect(() => {
     return () => {
       stage.removeEventListener('wheel', handleWheel)
     }
-  }, [moveFocus])
+  }, [disableWheelPaging, moveFocus])
 
   // Official pmndrs/use-gesture pattern:
   // - state.swipe for carousel paging
@@ -2934,10 +2916,10 @@ isMobile={isMobileViewportActive}
         ) : null}
 
         {!isMobileViewportActive && !revealMode ? (
-          <>
+          <div className="coverflow-nav">
             <button
               type="button"
-              className="coverflow-nav-chevron is-left"
+              className="coverflow-nav-chevron is-left glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Previous pack"
               disabled={!canMovePrev}
               onPointerEnter={(event) => {
@@ -2973,11 +2955,11 @@ isMobile={isMobileViewportActive}
                 event.preventDefault()
               }}
             >
-              <ChevronIcon direction="left" />
+              <ChevronLeft className="coverflow-chevron-icon" aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="coverflow-nav-chevron is-right"
+              className="coverflow-nav-chevron is-right glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Next pack"
               disabled={!canMoveNext}
               onPointerEnter={(event) => {
@@ -3013,9 +2995,9 @@ isMobile={isMobileViewportActive}
                 event.preventDefault()
               }}
             >
-              <ChevronIcon direction="right" />
+              <ChevronRight className="coverflow-chevron-icon" aria-hidden="true" />
             </button>
-          </>
+          </div>
         ) : null}
       </div>
 

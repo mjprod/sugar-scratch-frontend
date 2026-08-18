@@ -13,10 +13,12 @@ import {
   sampleChannelTracks,
   stripTravelStyle,
 } from "./engine";
+import { PRESENT_ZOOM } from "../scratch/glRenderer";
 import { getTemplate } from "./presets";
 import type { StripProps, TransitionTemplateId } from "./types";
 
 const LOAD_TIMEOUT_MS = 1500;
+const SETTLE_BLEND_MS = 280;
 
 export type MirrorSlideTransitionProps = {
   fromSrc: string;
@@ -24,6 +26,10 @@ export type MirrorSlideTransitionProps = {
   templateId: TransitionTemplateId;
   onComplete: () => void;
   onError?: () => void;
+  /** Keep the last B frame up until the next stage is ready to present. */
+  holdUntilReady?: boolean;
+  /** Fade the overlay once the next card is presenting at the same crop. */
+  blendOut?: boolean;
   className?: string;
   style?: CSSProperties;
 };
@@ -65,6 +71,8 @@ export function MirrorSlideTransition({
   templateId,
   onComplete,
   onError,
+  holdUntilReady = false,
+  blendOut = false,
   className,
   style,
 }: MirrorSlideTransitionProps) {
@@ -90,9 +98,28 @@ export function MirrorSlideTransition({
   const [pose, setPose] = useState<StripProps>(() =>
     applyMotionFx(sampleChannelTracks(channels, 0, easing), 0, motionFx),
   );
+  const [mediaReady, setMediaReady] = useState(false);
+  const [settling, setSettling] = useState(false);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [stageWidthPx, setStageWidthPx] = useState(STAGE_WIDTH);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const syncWidth = () => {
+      const width = stage.getBoundingClientRect().width;
+      if (width > 0) setStageWidthPx(width);
+    };
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     finishedRef.current = false;
+    setMediaReady(false);
+    setSettling(false);
     const videoA = videoARef.current;
     const videoB = videoBRef.current;
     if (!videoA || !videoB || !preset) {
@@ -119,6 +146,7 @@ export function MirrorSlideTransition({
           LOAD_TIMEOUT_MS,
         );
         if (cancelled) return;
+        setMediaReady(true);
 
         drawFlippedVideo(mirrorACanvasRef.current, videoA);
         drawFlippedVideo(mirrorBCanvasRef.current, videoB);
@@ -131,6 +159,11 @@ export function MirrorSlideTransition({
           setPose(applyMotionFx(base, t, motionFx));
           if (t >= 1) {
             rafRef.current = null;
+            try {
+              videoA.pause();
+            } catch {
+              // ignore
+            }
             finish(true);
             return;
           }
@@ -153,7 +186,11 @@ export function MirrorSlideTransition({
     };
     // Intentionally keyed on srcs + template only — preset objects are stable per id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromSrc, toSrc, templateId]);
+  }, [fromSrc, toSrc, templateId, holdUntilReady]);
+
+  useEffect(() => {
+    setSettling(Boolean(blendOut));
+  }, [blendOut]);
 
   // Paint flipped mirrors from the two source videos.
   useEffect(() => {
@@ -197,18 +234,30 @@ export function MirrorSlideTransition({
 
   return (
     <div
-      className={["game-card-transition", className].filter(Boolean).join(" ")}
-      style={style}
+      className={[
+        "game-card-transition",
+        mediaReady ? "is-ready" : "is-loading",
+        settling ? "is-settling" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{
+        ...style,
+        ["--transition-present-zoom" as string]: String(PRESENT_ZOOM),
+        ["--transition-settle-ms" as string]: `${SETTLE_BLEND_MS}ms`,
+      }}
       aria-hidden="true"
     >
       <div
+        ref={stageRef}
         className="transition-lab-stage game-card-transition-stage"
         style={{ aspectRatio: `${STAGE_WIDTH} / ${STAGE_HEIGHT}` }}
       >
         <div className="transition-lab-fx-layer" style={fxLayerStyle(pose)}>
           <div
             className="transition-lab-strip"
-            style={stripTravelStyle(pose)}
+            style={stripTravelStyle(pose, stageWidthPx)}
           >
             <div className="transition-lab-tile">
               <video

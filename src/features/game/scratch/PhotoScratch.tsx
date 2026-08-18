@@ -881,10 +881,16 @@ export function PhotoScratch() {
   completedCardIdsRef.current = completedCardIds;
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [introActive, setIntroActive] = useState(false);
+  const [introCover, setIntroCover] = useState(false);
+  const [introLeaving, setIntroLeaving] = useState(false);
   /** Starts muted for autoplay policy; may unmute after playThemeIntro succeeds. */
   const [introMuted, setIntroMuted] = useState(true);
   const introActiveRef = useRef(false);
   introActiveRef.current = introActive;
+  const introCoverRef = useRef(false);
+  introCoverRef.current = introCover;
+  const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const introFadeTimerRef = useRef<number | null>(null);
   // Theme ids whose intro clip has already played this session — one
   // playthrough per theme, even across multiple motion cards / photo slots.
   const introShownForThemeRef = useRef<Set<string>>(new Set());
@@ -955,15 +961,57 @@ export function PhotoScratch() {
       setIntroVideoUrl("");
       setIntroActive(false);
       introActiveRef.current = false;
+      setIntroCover(false);
+      introCoverRef.current = false;
+      setIntroLeaving(false);
       return;
     }
     introShownForThemeRef.current.add(themeId);
     setIntroVideoUrl(url);
     setIntroActive(true);
     introActiveRef.current = true;
+    setIntroCover(true);
+    introCoverRef.current = true;
+    setIntroLeaving(false);
+  }
+
+  function captureIntroFreezeFrame(): boolean {
+    const intro = introVideoElRef.current;
+    const freeze = introFreezeCanvasRef.current;
+    if (!intro || !freeze) return false;
+    if (intro.videoWidth < 2 || intro.videoHeight < 2) return false;
+    freeze.width = intro.videoWidth;
+    freeze.height = intro.videoHeight;
+    const ctx = freeze.getContext("2d");
+    if (!ctx) return false;
+    try {
+      ctx.drawImage(intro, 0, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function finishIntroCover() {
+    if (introFadeTimerRef.current !== null) {
+      window.clearTimeout(introFadeTimerRef.current);
+      introFadeTimerRef.current = null;
+    }
+    const intro = introVideoElRef.current;
+    if (intro) releaseMediaElement(intro);
+    const freeze = introFreezeCanvasRef.current;
+    if (freeze) {
+      freeze.width = 0;
+      freeze.height = 0;
+    }
+    setIntroLeaving(false);
+    setIntroCover(false);
+    introCoverRef.current = false;
+    setIntroVideoUrl("");
   }
 
   function dismissIntro() {
+    if (!introActiveRef.current && !introCoverRef.current) return;
     const intro = introVideoElRef.current;
     if (intro) {
       try {
@@ -971,10 +1019,23 @@ export function PhotoScratch() {
       } catch {
         // ignore
       }
-      releaseMediaElement(intro);
     }
+    const captured = captureIntroFreezeFrame();
+    if (intro) releaseMediaElement(intro);
     setIntroActive(false);
     introActiveRef.current = false;
+    setIntroVideoUrl("");
+    if (!captured) {
+      finishIntroCover();
+      return;
+    }
+    setIntroCover(true);
+    introCoverRef.current = true;
+    setIntroLeaving(true);
+    introFadeTimerRef.current = window.setTimeout(() => {
+      introFadeTimerRef.current = null;
+      finishIntroCover();
+    }, 380);
   }
 
   function resetGameOutcome() {
@@ -1948,6 +2009,10 @@ export function PhotoScratch() {
   useEffect(() => () => {
     clearGameResultTimer();
     clearIntroDockTimer();
+    if (introFadeTimerRef.current !== null) {
+      window.clearTimeout(introFadeTimerRef.current);
+      introFadeTimerRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -2479,18 +2544,29 @@ export function PhotoScratch() {
               <span className="match-audio-gate-label">Tap to play</span>
             </div>
           ) : null}
-          {introActive && introVideoUrl ? (
-            <div className="photo-scratch-intro-video" aria-hidden="true">
-              <video
-                ref={introVideoElRef}
-                autoPlay
-                muted={introMuted}
-                playsInline
-                preload="auto"
-                src={introVideoUrl}
-                onEnded={dismissIntro}
-                onError={dismissIntro}
-              />
+          {introCover || (introActive && introVideoUrl) ? (
+            <div
+              className={`photo-scratch-intro-video${introLeaving ? " is-leaving" : ""}`}
+              aria-hidden="true"
+            >
+              <div className="photo-scratch-intro-media">
+                {introActive && introVideoUrl ? (
+                  <video
+                    ref={introVideoElRef}
+                    autoPlay
+                    muted={introMuted}
+                    playsInline
+                    preload="auto"
+                    src={introVideoUrl}
+                    onEnded={dismissIntro}
+                    onError={dismissIntro}
+                  />
+                ) : null}
+                <canvas
+                  ref={introFreezeCanvasRef}
+                  className={`photo-scratch-intro-freeze${introActive ? "" : " is-visible"}`}
+                />
+              </div>
             </div>
           ) : null}
           {hasBodySymbols ? (

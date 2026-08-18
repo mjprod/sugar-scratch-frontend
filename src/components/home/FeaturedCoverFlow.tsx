@@ -215,6 +215,7 @@ export function FeaturedCoverFlow({
           }}
           formatPrice={(price) => String(price)}
           disableSwipeDownDeactivate
+          disableWheelPaging
           onBuy={(item) => {
             const target = catalog.playById.get(item.id);
             if (target) onPlay(target);
