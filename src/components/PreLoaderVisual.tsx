@@ -1,10 +1,36 @@
+import { useEffect, useRef } from "react";
 import { CardFallLoader } from "@/components/CardFallLoader";
 import { LoadingLabel } from "@/components/LoadingLabel";
 
 /** Branded CardFall splash — same treatment as `/pre-loader`. */
 export function PreLoaderVisual() {
+  const rootRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const onMove = (event: PointerEvent) => {
+      const nx = (event.clientX / window.innerWidth) * 2 - 1;
+      const ny = (event.clientY / window.innerHeight) * 2 - 1;
+      el.style.setProperty("--mx", String(nx));
+      el.style.setProperty("--my", String(ny));
+    };
+
+    el.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      el.removeEventListener("pointermove", onMove);
+      el.style.setProperty("--mx", "0");
+      el.style.setProperty("--my", "0");
+    };
+  }, []);
+
   return (
-    <section className="relative flex h-full w-full flex-1 flex-col items-center justify-center overflow-hidden px-6 text-center">
+    <section
+      ref={rootRef}
+      className="fixed inset-0 flex w-screen flex-col items-center justify-center overflow-hidden px-6 text-center [--mx:0] [--my:0]"
+    >
       <div
         className="pointer-events-none absolute inset-0"
         style={{

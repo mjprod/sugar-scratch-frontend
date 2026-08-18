@@ -52,6 +52,7 @@ import {
   type Vec2,
 } from "./meshGeometry";
 import { playThemeIntro, releaseMediaElement } from "../shared/media";
+import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 
 const BACK_LAYER_SRC = "/photo-scratch/background.jpg";
@@ -779,6 +780,13 @@ export function PhotoScratch() {
     group: { x: 0, y: 0 },
   });
 
+  const {
+    enabled: motionEnabled,
+    permission: motionPermission,
+    subscribe: subscribeMotion,
+  } = useMotion();
+  const motionTiltOn = motionEnabled && motionPermission === "granted";
+
   const parallax = useDeviceParallax({
     stageRef,
     stateOutRef: parallaxStateRef,
@@ -791,6 +799,8 @@ export function PhotoScratch() {
     fingerMax: PARALLAX_FINGER_MAX,
     fingerMovesGroup: false,
     smooth: 0.12,
+    enabled: motionTiltOn,
+    subscribe: subscribeMotion,
   });
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -2072,25 +2082,6 @@ export function PhotoScratch() {
     }
   }, [autoScratch]);
 
-  async function enableMotion() {
-    const ok = await parallax.requestPermission();
-    if (!ok) {
-      if (parallax.isInsecure) {
-        setLoadError(
-          "Open https:// on your phone (not http://) and accept the certificate warning.",
-        );
-      } else if (parallax.isDenied) {
-        setLoadError(
-          "Motion permission denied — allow Motion & Orientation in Safari settings.",
-        );
-      } else {
-        setLoadError("Could not enable motion sensors.");
-      }
-      return;
-    }
-    setLoadError(null);
-  }
-
   function trackFingerParallax(clientX: number, clientY: number) {
     const last = lastPointerRef.current;
     lastPointerRef.current = { x: clientX, y: clientY };
@@ -2180,7 +2171,7 @@ export function PhotoScratch() {
                 <code>?card=</code>.
               </li>
               <li>Click and drag on the canvas to scratch the clothes off.</li>
-              <li>Tap Enable motion for tilt parallax (top bar on phone).</li>
+              <li>Turn on phone tilt in Profile to enable tilt parallax.</li>
             </ol>
           </section>
 
@@ -2401,15 +2392,6 @@ export function PhotoScratch() {
                 GAME {completedCardIds.length + (selectedCardId ? 1 : 0)}/
                 {playlist.length || "?"} · diamonds
               </a>
-            ) : null}
-            {parallax.showEnableButton ? (
-              <button
-                type="button"
-                onClick={() => void enableMotion()}
-                disabled={parallax.isPending}
-              >
-                {parallax.isPending ? "Enabling…" : "Enable motion"}
-              </button>
             ) : null}
             {parallax.isActive ? (
               <button type="button" onClick={() => parallax.recalibrate()}>

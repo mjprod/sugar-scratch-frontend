@@ -34,6 +34,7 @@ import {
   type PackFaceSlot,
 } from '@/shared/catalog/characters'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
+import { useMotion } from '@/features/collection/hooks/useMotion'
 import { BuyButton } from '@/features/reveal/components/BuyButton'
 import {
   CtaButton,
@@ -1696,41 +1697,6 @@ type LiveGestureMode =
   | 'activate'
   | 'deactivate'
 
-type MotionTiltStatus = 'off' | 'on' | 'denied' | 'unsupported'
-
-function PhoneIcon() {
-  return (
-    <svg
-      className="coverflow-motion-icon"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <rect
-        x="7"
-        y="2.5"
-        width="10"
-        height="19"
-        rx="2.2"
-        ry="2.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
-      <circle cx="12" cy="17.8" r="1" fill="currentColor" />
-      <path
-        d="M9.4 5.2h5.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
 export function CoverFlowCarousel({
   items,
   selectedId: selectedIdProp,
@@ -1789,7 +1755,12 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
 	    getPreferredCoverFlowLayout(),
 	  )
   const textureTransform = DEFAULT_VIDEO_TEXTURE_TRANSFORM
-  const [motionTiltStatus, setMotionTiltStatus] = useState<MotionTiltStatus>('off')
+  const {
+    enabled: motionEnabled,
+    permission: motionPermission,
+    subscribe: subscribeMotion,
+  } = useMotion()
+  const motionTiltOn = motionEnabled && motionPermission === 'granted'
   const [revealTimeline] = useState(() => loadPackTimeline())
   const [revealDuckInTimeline] = useState(() => loadDuckInTimeline())
   const [fanLayout] = useState(() => loadFanLayout())
@@ -1886,6 +1857,7 @@ const selectedIdRef = useRef(selectedId)
   const scrubTiltRef = useRef(0)
   const lastScrubXRef = useRef(0)
   const motionTiltEnabledRef = useRef(false)
+  motionTiltEnabledRef.current = motionTiltOn
   const deviceTiltYawRef = useRef(0)
   const deviceTiltPitchRef = useRef(0)
   const lastAppliedDeviceTiltRef = useRef(0)
@@ -2012,15 +1984,15 @@ useEffect(() => {
   }, [gestureMode])
 
   useEffect(() => {
-    motionTiltEnabledRef.current = motionTiltStatus === 'on'
-    if (motionTiltStatus !== 'on') {
+    motionTiltEnabledRef.current = motionTiltOn
+    if (!motionTiltOn) {
       deviceTiltYawRef.current = 0
       deviceTiltPitchRef.current = 0
       lastAppliedDeviceTiltRef.current = 0
       lastAppliedDevicePitchRef.current = 0
       setCenterTiltPitch(0)
     }
-  }, [motionTiltStatus])
+  }, [motionTiltOn])
 
   useEffect(() => {
     if (items.length === 0) {
@@ -2053,26 +2025,27 @@ useEffect(() => {
   // Phone tilt drives the same center-pack yaw used by scrub/hover.
   // Finger scrub/swipe temporarily wins while a gesture is active.
   useEffect(() => {
-    if (motionTiltStatus !== 'on' || typeof window === 'undefined') {
+    if (!motionTiltOn) {
+      deviceTiltYawRef.current = 0
+      deviceTiltPitchRef.current = 0
+      lastAppliedDeviceTiltRef.current = 0
+      lastAppliedDevicePitchRef.current = 0
+      setCenterTiltYaw(0)
+      setCenterTiltPitch(0)
       return
     }
 
-    const handleOrientation = (event: DeviceOrientationEvent) => {
-      const gamma = event.gamma
-      const beta = event.beta
-      if (typeof gamma !== 'number' || Number.isNaN(gamma)) {
-        return
-      }
+    return subscribeMotion((sample) => {
+      if (!sample.hasSample) return
+      const gamma = sample.gamma
+      const beta = sample.beta
 
-      // gamma: left/right phone tilt in degrees.
-      // Inverted so phone-left tilts the pack right, and phone-right tilts left.
       const normalizedYaw = MathUtils.clamp(
         gamma / DEVICE_TILT_GAMMA_RANGE,
         -1,
         1,
       )
       const targetYaw = -normalizedYaw * MAX_HOVER_YAW
-      // Soft follow so device tilt feels slower and less twitchy.
       const nextYaw = MathUtils.lerp(
         deviceTiltYawRef.current,
         targetYaw,
@@ -2080,17 +2053,14 @@ useEffect(() => {
       )
       deviceTiltYawRef.current = nextYaw
 
-      // beta: front/back phone tilt → slight X-axis pitch (not yaw).
       let nextPitch = deviceTiltPitchRef.current
       if (typeof beta === 'number' && !Number.isNaN(beta)) {
-        // Center around a natural handheld upright (~55°) so small tips feel intentional.
         const betaOffset = beta - 55
         const normalizedPitch = MathUtils.clamp(
           betaOffset / DEVICE_TILT_BETA_RANGE,
           -1,
           1,
         )
-        // Invert so tipping the phone toward you pitches the pack face toward you.
         const targetPitch = -normalizedPitch * MAX_DEVICE_PITCH
         nextPitch = MathUtils.lerp(
           deviceTiltPitchRef.current,
@@ -2100,7 +2070,6 @@ useEffect(() => {
         deviceTiltPitchRef.current = nextPitch
       }
 
-      // Don't fight active finger scrub/swipe/tap gestures.
       if (gestureModeRef.current !== 'idle') {
         return
       }
@@ -2121,57 +2090,8 @@ useEffect(() => {
         lastAppliedDevicePitchRef.current = nextPitch
         setCenterTiltPitch(nextPitch)
       }
-    }
-
-    window.addEventListener('deviceorientation', handleOrientation, true)
-    return () => {
-      window.removeEventListener('deviceorientation', handleOrientation, true)
-    }
-  }, [motionTiltStatus])
-
-  const enableMotionTilt = useCallback(async () => {
-    if (typeof window === 'undefined') {
-      setMotionTiltStatus('unsupported')
-      return
-    }
-
-    const DeviceOrientationEventCtor = window.DeviceOrientationEvent as
-      | (typeof DeviceOrientationEvent & {
-        requestPermission?: () => Promise<'granted' | 'denied' | 'default'>
-      })
-      | undefined
-
-    if (!DeviceOrientationEventCtor) {
-      setMotionTiltStatus('unsupported')
-      return
-    }
-
-    try {
-      // iOS 13+ requires a user gesture + explicit permission.
-      if (typeof DeviceOrientationEventCtor.requestPermission === 'function') {
-        const permission = await DeviceOrientationEventCtor.requestPermission()
-        if (permission !== 'granted') {
-          setMotionTiltStatus('denied')
-          return
-        }
-      }
-
-      setMotionTiltStatus('on')
-    } catch {
-      setMotionTiltStatus('denied')
-    }
-  }, [])
-
-  const toggleMotionTilt = useCallback(() => {
-    if (motionTiltStatus === 'on') {
-      setMotionTiltStatus('off')
-      setCenterTiltYaw(0)
-      setCenterTiltPitch(0)
-      return
-    }
-
-    void enableMotionTilt()
-  }, [enableMotionTilt, motionTiltStatus])
+    })
+  }, [motionTiltOn, subscribeMotion])
 
   // Important for Safari smoothness: scrolling only moves focus.
   // Selecting (and reloading the main editor preview) happens on tap/click.
@@ -2999,39 +2919,6 @@ isMobile={isMobileViewportActive}
             </button>
           </div>
         ) : null}
-      </div>
-
-      <div className={`coverflow-tools-bar${revealMode ? ' is-hidden' : ''}`}>
-        <button
-          type="button"
-          className={`reset-button coverflow-motion-toggle ${motionTiltStatus === 'on' ? 'is-active' : ''
-            } ${motionTiltStatus === 'denied' || motionTiltStatus === 'unsupported'
-              ? 'is-disabled-look'
-              : ''
-            }`}
-          onClick={toggleMotionTilt}
-          aria-pressed={motionTiltStatus === 'on'}
-          aria-label={
-            motionTiltStatus === 'denied'
-              ? 'Motion permission denied'
-              : motionTiltStatus === 'unsupported'
-                ? 'Motion not supported'
-                : motionTiltStatus === 'on'
-                  ? 'Disable phone tilt'
-                  : 'Enable phone tilt'
-          }
-          title={
-            motionTiltStatus === 'denied'
-              ? 'Motion permission denied'
-              : motionTiltStatus === 'unsupported'
-                ? 'Motion not supported'
-                : motionTiltStatus === 'on'
-                  ? 'Disable phone tilt'
-                  : 'Enable phone tilt'
-          }
-        >
-          <PhoneIcon />
-        </button>
       </div>
 
     </div>
