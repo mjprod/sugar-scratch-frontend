@@ -48,6 +48,7 @@ export function AppLayout() {
   const hideChrome =
     location.pathname.startsWith("/purchase") ||
     location.pathname.startsWith("/recommend") ||
+    location.pathname.startsWith("/welcome") ||
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/photo-scratch");
 

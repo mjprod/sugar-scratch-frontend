@@ -4165,6 +4165,7 @@ export function ScratchPrototype() {
       <section className="prototype">
         <div
           ref={stageRef}
+          data-tutorial-target="reveal"
           className={`stage${gameResult ? " is-game-over" : ""}${
             topBarPhase === "showcase" ? " is-showcase-phase" : ""
           }${
@@ -4407,6 +4408,7 @@ export function ScratchPrototype() {
           <canvas
             ref={canvasRef}
             className="game-stage-canvas"
+            data-tutorial-target="scratch-card"
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
             style={cardTransition ? { pointerEvents: "none" } : undefined}

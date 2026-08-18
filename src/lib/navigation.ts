@@ -45,6 +45,7 @@ export const SURFACE_KIND: Record<string, NavSurfaceKind> = {
   "recommend-intro": "immersive",
   "personalize-swipe": "immersive",
   "personalize-complete": "immersive",
+  "welcome-reward": "immersive",
   "sign-in": "auth",
   "create-account": "auth",
   "forgot-password": "auth",

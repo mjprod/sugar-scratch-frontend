@@ -5163,12 +5163,17 @@ body[data-theme="v8"] .auth7-sheet-panel {
     width: min(480px, calc(100vw - 48px));
     max-height: calc(100dvh - 48px);
     border-radius: 24px;
-    padding: 28px 28px 24px;
+    padding: 12px 24px 28px;
     box-shadow: 0 28px 72px rgba(0, 0, 0, 0.55);
   }
 
   body[data-theme="v8"] .auth7-sheet-handle {
     display: none;
+  }
+
+  body[data-theme="v8"] .auth7-sheet-close {
+    top: 12px;
+    right: 12px;
   }
 }
 
@@ -5204,25 +5209,27 @@ body[data-theme="v8"] .auth7-sheet-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 body[data-theme="v8"] .auth7-sheet-head {
-  padding-right: 36px;
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-right: 40px;
+  margin-bottom: 20px;
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin: 0 0 4px -6px;
-  padding: 0 6px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center start;
+  margin: 0 0 8px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.55);
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
 }
 
@@ -5236,7 +5243,7 @@ body[data-theme="v8"] .auth7-sheet-title {
 }
 
 body[data-theme="v8"] .auth7-sheet-copy {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: rgba(255, 255, 255, 0.62);
   font-size: 14.5px;
   line-height: 1.45;

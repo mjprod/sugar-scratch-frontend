@@ -14,6 +14,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FoilPackFace } from "@/components/purchase/FoilPackFace";
+import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
+import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
@@ -214,6 +216,8 @@ export function PurchaseFlow({
   const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
     countUnopened(),
   );
+  const [tearTutorialFade, setTearTutorialFade] = useState(false);
+  const tearTutorialWasReady = useRef(false);
   useMarkPageReady(!buying || model !== null || stage !== "choose");
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
@@ -242,6 +246,20 @@ export function PurchaseFlow({
 
   useEffect(() => {
     if (stage === "expired") clearOpening();
+  }, [stage]);
+
+  useEffect(() => {
+    if (isScratchTutorialCompleted()) return;
+    if (stage === "ready") {
+      tearTutorialWasReady.current = true;
+      setTearTutorialFade(false);
+      return;
+    }
+    if (!tearTutorialWasReady.current) return;
+    tearTutorialWasReady.current = false;
+    setTearTutorialFade(true);
+    const id = window.setTimeout(() => setTearTutorialFade(false), 280);
+    return () => window.clearTimeout(id);
   }, [stage]);
 
   useEffect(() => {
@@ -946,6 +964,10 @@ export function PurchaseFlow({
         </motion.div>
       </AnimatePresence>
 
+      {!isScratchTutorialCompleted() && (stage === "ready" || tearTutorialFade) ? (
+        <FirstPlayTutorial scene="tear" fading={tearTutorialFade} />
+      ) : null}
+
       {modal ? (
         <ModalShell onClose={() => setModal(null)}>
           {modal === "insufficient" ? (
@@ -1212,6 +1234,8 @@ function ReadyStage({
     if (Math.abs(info.offset.x) > 100) onOpened();
   }
 
+  const requireTearDrag = !isScratchTutorialCompleted();
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
       <p className="text-[12px] font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
@@ -1231,10 +1255,11 @@ function ReadyStage({
           <FoilPackFace src={packImage} collection={collection} packLabel={packName} sealed>
             <motion.button
               type="button"
+              data-tutorial-target="tear"
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={tear}
-              onClick={onOpened}
+              onClick={requireTearDrag ? undefined : onOpened}
               className="absolute inset-x-3 top-[48%] z-10 flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
             >
               <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
@@ -1247,10 +1272,11 @@ function ReadyStage({
             <HolographicPackCard src={packImage} name={packName} badge="Sealed" interactive={false} />
             <motion.button
               type="button"
+              data-tutorial-target="tear"
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={tear}
-              onClick={onOpened}
+              onClick={requireTearDrag ? undefined : onOpened}
               className="absolute inset-x-3 top-[48%] flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
             >
               <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>

@@ -302,6 +302,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [captureSecondaryReturn, navigate],
   );
 
+  const enterAfterOnboarding = useCallback(
+    (opts?: {
+      deferred?: ProtectedAction | null;
+      scrollToDailyReward?: boolean;
+    }) => {
+      const deferred = opts?.deferred ?? null;
+      if (deferred) {
+        navigate(Paths.home);
+        window.setTimeout(() => resumePending(deferred), 0);
+        return;
+      }
+      navigate(Paths.home, {
+        state: opts?.scrollToDailyReward
+          ? { scrollToDailyReward: true }
+          : undefined,
+      });
+    },
+    [navigate, resumePending],
+  );
+
   const applyRecommendationDecision = useCallback(
     (pendingAction: ProtectedAction | null) => {
       const decision = evaluateRecommendationEligibility({
@@ -321,21 +341,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      navigate(Paths.home, { state: { scrollToDailyReward: true } });
+      enterAfterOnboarding({ scrollToDailyReward: true });
     },
-    [navigate, resumePending],
+    [enterAfterOnboarding, navigate, resumePending],
   );
 
   const finishRecommendationAndResume = useCallback(() => {
     const deferred = pendingAfterRec;
     setPendingAfterRec(null);
-    navigate(Paths.home, {
-      state: deferred ? undefined : { scrollToDailyReward: true },
+    enterAfterOnboarding({
+      deferred,
+      scrollToDailyReward: !deferred,
     });
-    if (deferred) {
-      window.setTimeout(() => resumePending(deferred), 0);
-    }
-  }, [navigate, pendingAfterRec, resumePending]);
+  }, [enterAfterOnboarding, pendingAfterRec]);
 
   function applyUserFromEmail(email: string) {
     const local = email.split("@")[0] || "collector";

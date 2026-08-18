@@ -51,6 +51,7 @@ export const Paths = {
   recommend: "/recommend",
   recommendSwipe: "/recommend/swipe",
   recommendDone: "/recommend/done",
+  welcome: "/welcome",
   resetPassword: "/reset-password",
   navTest: "/nav-test",
 } as const;

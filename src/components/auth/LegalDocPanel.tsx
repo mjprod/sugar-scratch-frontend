@@ -1,3 +1,5 @@
+import { ChevronLeft } from "lucide-react";
+
 type LegalDocKind = "terms" | "privacy";
 
 /** Shared Terms / Privacy surface — Create Account + Settings use the same content. */
@@ -14,8 +16,13 @@ export function LegalDocPanel({
 
   return (
     <div className="auth7-legal-doc">
-      <button type="button" className="auth7-sheet-back" onClick={onBack}>
-        Back
+      <button
+        type="button"
+        className="auth7-sheet-back"
+        aria-label="Back"
+        onClick={onBack}
+      >
+        <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
       </button>
       <h2 id={titleId} className="auth7-sheet-title">
         {title}

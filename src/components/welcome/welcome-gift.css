@@ -1,0 +1,402 @@
+.welcome-gift-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5200;
+  display: grid;
+  place-items: center;
+  padding: 20px 16px;
+  animation: welcome-gift-fade 0.45s ease both;
+}
+
+.welcome-gift-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.62);
+  backdrop-filter: blur(8px) saturate(0.7);
+  -webkit-backdrop-filter: blur(8px) saturate(0.7);
+}
+
+.welcome-gift-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(420px, 100%);
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 28px 28px;
+  border: 1px solid color-mix(in oklab, #b48cff 55%, transparent);
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, rgb(18 10 24 / 0.82), rgb(8 6 12 / 0.92)),
+    rgb(6 4 10 / 0.72);
+  box-shadow:
+    0 0 0 1px rgb(232 196 120 / 0.08) inset,
+    0 0 48px rgb(132 64 220 / 0.28),
+    0 28px 64px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transform-origin: 50% 50%;
+  animation: welcome-gift-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.welcome-gift-panel.is-revealed {
+  box-shadow:
+    0 0 0 1px rgb(232 196 120 / 0.14) inset,
+    0 0 64px rgb(168 88 255 / 0.42),
+    0 28px 64px rgb(0 0 0 / 0.55);
+}
+
+.welcome-gift-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+  color: rgb(255 255 255 / 0.7);
+  cursor: pointer;
+}
+
+.welcome-gift-kicker {
+  margin: 0;
+  color: var(--color-champagne, oklch(0.767 0.139 91.06));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.welcome-gift-headline {
+  margin: 10px 0 0;
+  max-width: 16ch;
+  color: color-mix(in oklab, var(--color-champagne, #e8c478) 88%, white);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  font-size: clamp(1.7rem, 5vw, 2.15rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.welcome-gift-stage {
+  position: relative;
+  width: min(240px, 68vw);
+  margin: 22px 0 18px;
+  aspect-ratio: 1;
+  pointer-events: none;
+  user-select: none;
+  animation: welcome-gift-card 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.welcome-gift-glow {
+  position: absolute;
+  inset: -18%;
+  border-radius: 40%;
+  background: radial-gradient(
+    circle,
+    rgb(168 72 255 / 0.55) 0%,
+    rgb(96 32 180 / 0.18) 42%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: welcome-gift-pulse 2.8s ease-in-out infinite;
+}
+
+.welcome-gift-stage.revealed .welcome-gift-glow {
+  background: radial-gradient(
+    circle,
+    rgb(200 140 255 / 0.7) 0%,
+    rgb(120 56 210 / 0.28) 46%,
+    transparent 72%
+  );
+}
+
+.welcome-gift-card {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+  box-shadow:
+    0 18px 36px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(232 196 120 / 0.16);
+  transform: translateY(-4px);
+}
+
+.welcome-gift-card.is-revealed {
+  transform: translateY(-8px) scale(1.03);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.welcome-gift-portrait,
+.welcome-gift-foil,
+.welcome-gift-shimmer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.welcome-gift-portrait {
+  object-fit: cover;
+  object-position: 50% 18%;
+}
+
+.welcome-gift-foil {
+  touch-action: none;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 20%, rgb(232 196 255 / 0.55), transparent 42%),
+    linear-gradient(145deg, #d4b8ff 0%, #7b3fd4 38%, #3a1468 72%, #c4a4ff 100%);
+  -webkit-mask-image: radial-gradient(
+    ellipse 46% 40% at 50% 36%,
+    transparent 54%,
+    #000 70%
+  );
+  mask-image: radial-gradient(
+    ellipse 46% 40% at 50% 36%,
+    transparent 54%,
+    #000 70%
+  );
+}
+
+.welcome-gift-shimmer {
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgb(255 255 255 / 0.28) 48%,
+    transparent 64%
+  );
+  background-size: 220% 100%;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: welcome-gift-shimmer 2.4s ease-in-out 0.4s 1 both;
+}
+
+.welcome-gift-seal {
+  position: absolute;
+  z-index: 2;
+  bottom: 10px;
+  left: 50%;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1.5px solid #e4c37a;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 40% 32%, #3a2a18, #120c08 70%);
+  box-shadow:
+    0 1px 0 rgb(255 236 180 / 0.35) inset,
+    0 4px 8px rgb(0 0 0 / 0.4);
+  color: #e8c478;
+  font-family: "Iowan Old Style", Palatino, serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.welcome-gift-shard {
+  position: absolute;
+  z-index: 2;
+  background: linear-gradient(135deg, #c084fc, #6b21a8 55%, #ede9fe);
+  box-shadow: 0 0 8px rgb(168 85 247 / 0.55);
+  clip-path: polygon(18% 0, 100% 22%, 72% 100%, 0 68%);
+  opacity: 0.85;
+  pointer-events: none;
+  animation: welcome-gift-float 2.6s ease-in-out infinite;
+}
+
+.welcome-gift-spark {
+  position: absolute;
+  z-index: 2;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #f5e6b8;
+  box-shadow: 0 0 8px #f5e6b8;
+  pointer-events: none;
+  animation: welcome-gift-twinkle 1.8s ease-in-out infinite;
+}
+
+.welcome-gift-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in oklab, var(--color-champagne, #e8c478) 55%, transparent);
+  border-radius: 999px;
+  background: rgb(8 6 12 / 0.55);
+  box-shadow: 0 0 16px rgb(232 196 120 / 0.12);
+  color: var(--color-champagne, #e8c478);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.welcome-gift-pill-icon {
+  width: 14px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background:
+    linear-gradient(135deg, transparent 42%, currentColor 42% 48%, transparent 48%),
+    rgb(255 255 255 / 0.06);
+  opacity: 0.9;
+}
+
+.welcome-gift-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: min(280px, 100%);
+  min-height: 48px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f3de9a 0%, #d4ae5a 48%, #b8892e 100%);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.45) inset,
+    0 8px 22px rgb(212 174 90 / 0.35);
+  color: #1a1206;
+  font-size: 15px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.welcome-gift-hint,
+.welcome-gift-reassure {
+  margin: 14px 0 0;
+  color: color-mix(in oklab, var(--color-champagne, #e8c478) 72%, transparent);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.welcome-gift-hint {
+  min-height: 1.4em;
+  margin-top: 16px;
+  display: grid;
+  place-items: center;
+  color: rgb(255 255 255 / 0.55);
+  letter-spacing: 0.08em;
+}
+
+.welcome-gift-copy {
+  margin: 10px 0 0;
+  max-width: 28ch;
+  color: rgb(255 255 255 / 0.58);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.welcome-gift-cta:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.welcome-gift-error {
+  margin: 10px 0 0;
+  color: #ffb4b4;
+  font-size: 13px;
+  text-align: center;
+}
+
+.welcome-gift-confirm {
+  display: grid;
+  place-items: center;
+  margin-top: 16px;
+  min-height: 48px;
+  text-align: center;
+  animation: welcome-gift-rise 0.35s ease both;
+}
+
+.welcome-gift-confirm strong {
+  color: var(--color-champagne, #e8c478);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.welcome-gift-confirm span {
+  display: block;
+  margin-top: 4px;
+  color: rgb(255 255 255 / 0.62);
+  font-size: 13px;
+}
+
+@keyframes welcome-gift-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes welcome-gift-rise {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes welcome-gift-card {
+  from {
+    opacity: 0.6;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes welcome-gift-shimmer {
+  from {
+    background-position: 120% 0;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    background-position: -20% 0;
+    opacity: 0;
+  }
+}
+
+@keyframes welcome-gift-pulse {
+  50% {
+    opacity: 0.7;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes welcome-gift-float {
+  50% {
+    transform: translateY(-6px) rotate(8deg);
+    opacity: 0.55;
+  }
+}
+
+@keyframes welcome-gift-twinkle {
+  50% {
+    opacity: 0.2;
+    transform: scale(0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-gift-overlay,
+  .welcome-gift-panel,
+  .welcome-gift-stage,
+  .welcome-gift-glow,
+  .welcome-gift-shimmer,
+  .welcome-gift-shard,
+  .welcome-gift-spark {
+    animation: none;
+  }
+}

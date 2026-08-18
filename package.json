@@ -17,7 +17,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:ui": "aura-lint -f --theme src/index.css src/",
-    "self-check": "tsx src/services/auth.self-check.ts && tsx src/services/recommendation.self-check.ts && tsx src/services/collection.self-check.ts && tsx src/services/purchase.self-check.ts && tsx src/services/store.self-check.ts && tsx src/services/creatorFeed.self-check.ts && tsx src/services/inbox.self-check.ts && tsx src/lib/navigation.self-check.ts && tsx src/services/packInventory.self-check.ts && tsx src/services/readyToScratch.self-check.ts && tsx src/services/collectionState.self-check.ts",
+    "self-check": "tsx src/services/auth.self-check.ts && tsx src/services/recommendation.self-check.ts && tsx src/services/collection.self-check.ts && tsx src/services/purchase.self-check.ts && tsx src/services/store.self-check.ts && tsx src/services/creatorFeed.self-check.ts && tsx src/services/inbox.self-check.ts && tsx src/lib/navigation.self-check.ts && tsx src/services/packInventory.self-check.ts && tsx src/services/readyToScratch.self-check.ts && tsx src/services/collectionState.self-check.ts && tsx src/services/welcome.self-check.ts",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {

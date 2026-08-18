@@ -44,6 +44,9 @@ export function clearV8Session() {
     localStorage.removeItem(SEEN_KEY);
     localStorage.removeItem(ONBOARD_KEY);
     localStorage.removeItem("sugar.v8.recommendationStatus");
+    localStorage.removeItem("sugar.v8.welcomeStatus");
+    localStorage.removeItem("sugar.v8.welcomeGiftClaimed");
+    localStorage.removeItem("sugar.v8.scratchTutorialCompleted");
     localStorage.removeItem("sugar.v8.preferenceStatus");
     localStorage.removeItem("sugar.v8.personalizationCompleted");
     localStorage.removeItem("sugar.v8.meaningfulExperience");
@@ -57,6 +60,7 @@ export function clearV8Session() {
     sessionStorage.removeItem("sugar.v8.recSeedCreator");
     sessionStorage.removeItem("sugar.v8.personalizationDeferredSession");
     sessionStorage.removeItem("sugar.v8.recommendationDeferredSession");
+    sessionStorage.removeItem("sugar.v8.welcomeOverlayHidden");
     sessionStorage.removeItem("sugar.v8.bootShown");
     clearHasLoggedIn();
   } catch {

@@ -6699,16 +6699,21 @@ body[data-theme="v8"] .auth7-sheet-panel {
     width: min(480px, calc(100vw - 48px));
     max-height: none;
     border-radius: 24px;
-    padding: 28px 28px 24px;
+    padding: 12px 24px 28px;
     box-shadow: 0 28px 72px oklch(0 0 0 / 0.55);
-    /* Desktop modal fits content — no internal scroll chrome */
-    overflow: visible;
+    /* Clip bloom so it cannot steal hits outside the dialog. */
+    overflow: hidden;
     overscroll-behavior: auto;
     -webkit-overflow-scrolling: auto;
   }
 
   body[data-theme="v8"] .auth7-sheet-handle {
     display: none;
+  }
+
+  body[data-theme="v8"] .auth7-sheet-close {
+    top: 12px;
+    right: 12px;
   }
 }
 
@@ -6724,6 +6729,7 @@ body[data-theme="v8"] .auth7-sheet-close {
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 4;
   display: grid;
   width: 44px;
   height: 44px;
@@ -6744,25 +6750,28 @@ body[data-theme="v8"] .auth7-sheet-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 4px;
+  padding-top: 0;
 }
 
-body[data-theme="v8"] .auth7-sheet-head {
-  padding-right: 36px;
-  margin-bottom: 8px;
+body[data-theme="v8"] .auth7-sheet-head,
+body[data-theme="v8"] .auth7-legal-doc {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-right: 40px;
+  margin-bottom: 20px;
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin: 0 0 4px -6px;
-  padding: 0 6px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center start;
+  margin: 0 0 8px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
 }
 
@@ -6776,17 +6785,20 @@ body[data-theme="v8"] .auth7-sheet-title {
 }
 
 body[data-theme="v8"] .auth7-sheet-copy {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: oklch(1 0 0 / 0.62);
   font-size: 14.5px;
   line-height: 1.45;
 }
 
 body[data-theme="v8"] .auth7-sheet-social {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 16px;
+  pointer-events: auto;
 }
 
 body[data-theme="v8"] .auth7-social-btn {
@@ -6816,7 +6828,7 @@ body[data-theme="v8"] .auth7-social-icon {
 /* Google continues as filled CTA slot (label-only aurora button). */
 body[data-theme="v8"] .auth7-social-btn.is-google {
   position: relative;
-  z-index: 1;
+  z-index: 0;
   display: block;
   width: 100%;
   min-width: 0;
@@ -6825,7 +6837,18 @@ body[data-theme="v8"] .auth7-social-btn.is-google {
   padding: 0;
   border: 0;
   background: transparent;
-  overflow: visible;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow--fill {
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button--fill {
+  pointer-events: auto;
 }
 
 body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow,
@@ -7021,7 +7044,7 @@ body[data-theme="v8"] .auth7-sheet-primary {
   min-width: 0;
   min-height: 52px;
   height: 52px;
-  margin-top: 4px;
+  margin-top: 12px;
   overflow: visible;
 }
 
@@ -7150,12 +7173,6 @@ body[data-theme="v8"] .auth7-consent-error {
   margin: 0;
 }
 
-body[data-theme="v8"] .auth7-legal-doc {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 body[data-theme="v8"] .auth7-legal {
   margin: 16px 0 4px;
   color: oklch(1 0 0 / 0.32);
@@ -7186,7 +7203,7 @@ body[data-theme="v8"] .auth7-legal {
   }
 
   body[data-theme="v8"] .auth7-sheet-head {
-    margin-bottom: 0;
+    margin-bottom: 16px;
     padding-right: 40px;
   }
 
@@ -7253,7 +7270,7 @@ body[data-theme="v8"] .auth7-legal {
 
   body[data-theme="v8"] .auth7-sheet-primary {
     min-height: 52px;
-    margin-top: 4px;
+    margin-top: 12px;
   }
 
   body[data-theme="v8"] .auth7-switch {
@@ -8185,6 +8202,142 @@ body[data-theme="v8"] .auth7-swipe-hint {
 body[data-theme="v8"] .auth7-onboard-spacer {
   flex: 1;
   min-height: 48px;
+}
+
+body[data-theme="v8"] .auth7-welcome {
+  position: relative;
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+body[data-theme="v8"] .auth7-welcome-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.55);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 40px;
+}
+
+body[data-theme="v8"] .auth7-welcome-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.656 0.212 354.31),
+    oklch(0.606 0.219 292.72)
+  );
+  color: #fff;
+}
+
+body[data-theme="v8"] .auth7-welcome-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-theme="v8"] .auth7-welcome-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 16px;
+  background: oklch(1 0 0 / 0.04);
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+body[data-theme="v8"] .auth7-welcome-row span:last-child {
+  color: oklch(0.757 0.168 353.61);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral {
+  margin-top: 20px;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-copy {
+  margin: 4px 0 0;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-row .auth7-input {
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .auth7-welcome-apply {
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-welcome-apply:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .auth7-welcome-ok {
+  margin: 8px 0 0;
+  color: oklch(0.773 0.153 163.22);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .auth7-welcome-skip {
+  margin-top: 12px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 body[data-theme="v8"] .auth7-persona-prompt {
