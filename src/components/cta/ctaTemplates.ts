@@ -5,7 +5,7 @@
 
 import type { CtaButtonProps, CtaShape } from "./CtaButton";
 
-export type CtaTemplateId = "squircleCTA" | "hexGoldCTA";
+export type CtaTemplateId = "squircleCTA" | "hexGoldCTA" | "pillGoldCTA";
 
 export type CtaTemplateValues = {
   label: string;
@@ -164,7 +164,61 @@ export const HEX_GOLD_CTA: CtaTemplate = {
   },
 };
 
-export const CTA_TEMPLATES: readonly CtaTemplate[] = [SQUIRCLE_CTA, HEX_GOLD_CTA];
+/** Soft pill silhouette + gold aurora — Claim Reward style. */
+export const PILL_GOLD_CTA: CtaTemplate = {
+  id: "pillGoldCTA",
+  name: "Pill Gold CTA",
+  description: "Soft pill silhouette with gold aurora fill and warm border glow.",
+  values: {
+    label: "Claim Reward",
+    costAmount: "",
+    costIcon: "💎",
+    shape: "squircle",
+    width: 292,
+    height: 64,
+    cornerRadius: 999,
+    hexTip: 0.27,
+    strokeWidth: 1,
+    strokeColor: "rgba(255, 236, 180, 0.55)",
+    auroraA: "#ffd080",
+    auroraB: "#3d2808",
+    auroraMid: "#3d2808",
+    auroraC: "#ffbc70",
+    auroraSpeed: 0.95,
+    auroraBlend: 0.58,
+    auroraAmplitude: 0.8,
+    auroraBandHeight: 1.4,
+    auroraRotation: 16,
+    auroraBaseColor: "#3d2808",
+    particleCount: 10,
+    particleSize: 0.025,
+    particleSpeed: 2.95,
+    particleOpacity: 0.48,
+    particleColor: "#fff1c2",
+    particleTwinkle: 0.62,
+    labelColor: "#fff8e6",
+    fontSize: 18,
+    glowEnabled: true,
+    glowAlwaysOn: true,
+    glowEdgeSensitivity: 51,
+    glowColor: "42 95 58",
+    glowRadius: 24,
+    glowIntensity: 0.9,
+    glowConeSpread: 28,
+    glowFillOpacity: 0,
+    glowOrbitSpeed: 74,
+    glowAlwaysOnProximity: 92,
+    glowA: "#d37217",
+    glowB: "#ff9c66",
+    glowC: "#ff9f1a",
+  },
+};
+
+export const CTA_TEMPLATES: readonly CtaTemplate[] = [
+  SQUIRCLE_CTA,
+  HEX_GOLD_CTA,
+  PILL_GOLD_CTA,
+];
 
 export const DEFAULT_CTA_TEMPLATE_ID: CtaTemplateId = "squircleCTA";
 

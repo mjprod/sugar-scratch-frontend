@@ -7,6 +7,7 @@ import {
   formatCountdown,
   getDailyRewardResetAt,
   isDailyRewardClaimedToday,
+  resetDailyRewardClaim,
 } from "@/services/dailyReward";
 
 /**
@@ -45,6 +46,12 @@ export function DailyRewardHero({
     }
   }
 
+  function handleResetForTesting() {
+    resetDailyRewardClaim();
+    setClaimed(false);
+    setRemaining(getDailyRewardResetAt() - Date.now());
+  }
+
   const countdown = formatCountdown(remaining);
 
   return (
@@ -68,10 +75,14 @@ export function DailyRewardHero({
         </div>
 
         {claimed ? (
-          <p className="hub-daily-hero-copy hub-daily-hero-copy--claimed">
+          <button
+            type="button"
+            className="hub-daily-hero-copy hub-daily-hero-copy--claimed"
+            onClick={handleResetForTesting}
+          >
             <Check className="size-4 shrink-0" aria-hidden="true" />
             Claimed for today
-          </p>
+          </button>
         ) : (
           <p className="hub-daily-hero-copy">Your reward is ready!</p>
         )}
@@ -111,7 +122,7 @@ export function DailyRewardHero({
           <>
             <div className="hub-daily-hero-cta">
               <CtaButton
-                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                {...ctaButtonPropsFromTemplate("pillGoldCTA")}
                 fillParent
                 label={claiming ? "Claiming…" : "Claim Reward"}
                 costAmount={null}

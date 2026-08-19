@@ -411,8 +411,15 @@ export function HomeScreen({
             </div>
           </aside>
         </div>
+      </div>
 
-        <div className="mt-10">
+      <section
+        className="hub-spotlight-band"
+        aria-hidden="true"
+      />
+
+      <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
+        <div>
           <CategoryLeaderboard
             category={category}
             rows={board}

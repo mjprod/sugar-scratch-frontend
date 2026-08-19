@@ -11,6 +11,7 @@ export {
   CTA_TEMPLATES,
   DEFAULT_CTA_TEMPLATE_ID,
   HEX_GOLD_CTA,
+  PILL_GOLD_CTA,
   SQUIRCLE_CTA,
   cloneTemplateValues,
   ctaButtonPropsFromTemplate,

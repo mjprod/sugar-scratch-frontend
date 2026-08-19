@@ -28,6 +28,15 @@ export function isDailyRewardClaimedToday(now = new Date()) {
   return getClaimedDay() === localDayKey(now);
 }
 
+/** Dev helper — clear today's claim so the hero can be retested. */
+export function resetDailyRewardClaim() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Next local midnight after `now` — when today's claim window ends / next opens. */
 export function getDailyRewardResetAt(now = new Date()) {
   const next = new Date(now);

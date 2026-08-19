@@ -1903,6 +1903,26 @@ body[data-theme="v8"] .hub-today-bento-reel-frame .hf-frame {
   }
 }
 
+body[data-theme="v8"] .hub-spotlight-band {
+  display: block;
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 100vw;
+  max-width: 100vw;
+  min-height: 30rem;
+  height: 30rem;
+  margin-top: 2.5rem;
+  margin-left: calc(50% - 50vw);
+  background: #39ff14;
+}
+
+body[data-theme="v8"] .category-leaderboard {
+  position: relative;
+  z-index: 2;
+  margin-top: -6rem;
+}
+
 body[data-theme="v8"] .hub-section-row {
   display: flex;
   align-items: center;
@@ -2037,7 +2057,13 @@ body[data-theme="v8"] .hub-daily-hero-copy--claimed {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: oklch(0.811 0.101 293.57);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 body[data-theme="v8"] .hub-daily-hero-actions {
