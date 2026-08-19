@@ -17,76 +17,49 @@ export function RecommendationIntroScreen({
 
   return (
     <div className="auth7-intro-panel">
-      <h1 className="auth7-intro-title">
-        Find More Creators
-        <br />
-        You&apos;ll Love
-      </h1>
-      <p className="auth7-intro-copy">
-        Swipe through a few Creator collections. We&apos;ll use your choices to
-        recommend better Packs.
-      </p>
-
-      <div
-        className="auth7-intro-demo"
-        aria-label="Swipe left means Not for me. Swipe right means I like this."
-      >
-        {/* Mobile / narrow: one card + directional labels */}
-        <div className="auth7-intro-demo-mobile" aria-hidden="true">
-          <img
-            src={sample}
-            alt=""
-            className="auth7-intro-demo-card auth7-intro-demo-card--center"
-          />
-          <div className="auth7-intro-demo-row">
-            <SwipeDirection
-              side="left"
-              title="Swipe Left"
-              subtitle="Not for me"
-            />
-            <SwipeDirection
-              side="right"
-              title="Swipe Right"
-              subtitle="I like this"
-            />
-          </div>
+      <div className="auth7-intro-body">
+        <div className="auth7-intro-lead">
+          <h1 className="auth7-intro-title">
+            Find More Creators
+            <br />
+            You&apos;ll Love
+          </h1>
+          <p className="auth7-intro-copy">
+            Swipe to personalise your Pack recommendations.
+          </p>
         </div>
 
-        {/* Desktop: two tilted card states */}
-        <div className="auth7-intro-demo-desktop" aria-hidden="true">
+        <div
+          className="auth7-intro-demo"
+          aria-label="Swipe left means Not for me. Swipe right means I like this."
+        >
           <figure className="auth7-intro-demo-col is-pass">
-            <span className="auth7-intro-demo-arrow" aria-hidden="true">
-              <ArrowLeft className="size-5" strokeWidth={2.4} />
-            </span>
             <img
               src={sample}
               alt=""
               className="auth7-intro-demo-card auth7-intro-demo-card--left"
             />
-            <span className="auth7-intro-demo-badge is-pass">
-              <X className="size-5" strokeWidth={2.6} />
-            </span>
-            <figcaption className="auth7-intro-dir-text">
-              <strong>Swipe Left</strong>
-              <span>Not for me</span>
+            <figcaption className="auth7-intro-dir">
+              <span className="auth7-intro-dir-marks" aria-hidden="true">
+                <ArrowLeft strokeWidth={2.4} />
+                <X strokeWidth={2.6} />
+              </span>
+              <span className="auth7-intro-dir-label">Not for me</span>
             </figcaption>
           </figure>
 
           <figure className="auth7-intro-demo-col is-like">
-            <span className="auth7-intro-demo-arrow" aria-hidden="true">
-              <ArrowRight className="size-5" strokeWidth={2.4} />
-            </span>
             <img
               src={sample}
               alt=""
               className="auth7-intro-demo-card auth7-intro-demo-card--right"
             />
-            <span className="auth7-intro-demo-badge is-like">
-              <Heart className="size-5" fill="currentColor" strokeWidth={0} />
-            </span>
-            <figcaption className="auth7-intro-dir-text">
-              <strong>Swipe Right</strong>
-              <span>I like this</span>
+            <figcaption className="auth7-intro-dir">
+              <span className="auth7-intro-dir-marks" aria-hidden="true">
+                <Heart fill="currentColor" strokeWidth={0} />
+                <ArrowRight strokeWidth={2.4} />
+              </span>
+              <span className="auth7-intro-dir-label">I like this</span>
             </figcaption>
           </figure>
         </div>
@@ -108,40 +81,6 @@ export function RecommendationIntroScreen({
           Skip
         </button>
       </div>
-    </div>
-  );
-}
-
-function SwipeDirection({
-  side,
-  title,
-  subtitle,
-}: {
-  side: "left" | "right";
-  title: string;
-  subtitle: string;
-}) {
-  const isLike = side === "right";
-  return (
-    <div className={`auth7-intro-dir ${isLike ? "is-like" : "is-pass"}`}>
-      <span className="auth7-intro-demo-arrow" aria-hidden="true">
-        {isLike ? (
-          <ArrowRight className="size-4" strokeWidth={2.4} />
-        ) : (
-          <ArrowLeft className="size-4" strokeWidth={2.4} />
-        )}
-      </span>
-      <span className={`auth7-intro-demo-badge ${isLike ? "is-like" : "is-pass"}`}>
-        {isLike ? (
-          <Heart className="size-4" fill="currentColor" strokeWidth={0} />
-        ) : (
-          <X className="size-4" strokeWidth={2.6} />
-        )}
-      </span>
-      <p className="auth7-intro-dir-text">
-        <strong>{title}</strong>
-        <span>{subtitle}</span>
-      </p>
     </div>
   );
 }
