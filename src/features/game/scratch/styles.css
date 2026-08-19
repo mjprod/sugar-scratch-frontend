@@ -149,20 +149,23 @@ textarea:focus-visible {
   width: 100%;
 }
 
-/* The source videos are sampled into the WebGL canvas, never shown as the
-   stage picture. They must stay "visible" to the browser or Safari/Chrome will
-   pause decode and texImage2D uploads solid black — which is the foil-on-black
-   stage bug. A tiny on-screen corner (not opacity:0, not 1×1, not off-document)
-   keeps the decoder alive while the opaque game canvas covers the stage. */
+/* The source videos are sampled into the WebGL canvas, never shown directly.
+   They must NOT be hidden via off-screen positioning / opacity:0 / 1px sizing:
+   Safari treats such videos as "not visible" and refuses to play them (it even
+   re-pauses after a play() call), leaving a frozen first frame. So we keep them
+   on-screen at full size, fully inside the stage, just stacked *behind* the
+   opaque canvas (which paints on top in DOM order) and at a near-zero opacity.
+
+   Do not use position:fixed at 0,0 — the product phone-frame uses a CSS
+   transform, which would pin an 8px decoder chip to the rounded top-left. */
 .source-video {
-  height: 8px;
-  left: 0;
+  height: 100%;
+  inset: 0;
   object-fit: cover;
-  opacity: 1;
+  opacity: 0.01;
   pointer-events: none;
-  position: fixed;
-  top: 0;
-  width: 8px;
+  position: absolute;
+  width: 100%;
   z-index: 0;
 }
 
