@@ -7,6 +7,7 @@ import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { PackLibrary } from "@/components/home/PackLibrary";
+import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
@@ -280,7 +281,7 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
+        className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-featured-coverflow is-loading" aria-hidden="true" />
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-6 px-5 lg:px-8">
@@ -295,7 +296,7 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
+        className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-3 px-5 lg:px-8">
           <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
@@ -317,7 +318,7 @@ export function HomeScreen({
   return (
     <section
       data-page-scroll
-      className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
+      className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
     >
       {showTutorial ? (
         <button
@@ -413,10 +414,7 @@ export function HomeScreen({
         </div>
       </div>
 
-      <section
-        className="hub-spotlight-band"
-        aria-hidden="true"
-      />
+      <SpotlightBanner />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
         <div>
