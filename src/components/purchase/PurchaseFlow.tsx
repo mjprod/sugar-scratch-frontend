@@ -78,13 +78,8 @@ import {
 } from "@/services/readyToScratch";
 import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
 import {
-  beginPhotoPhase,
-  firstMissingMotionCardId,
-  loadGameSession,
   motionPlayHref,
   navigateTo,
-  photoPlayHref,
-  sessionMatchesPack,
   startMotionSession,
 } from "@/features/game/modules/gameSession";
 import {
@@ -109,7 +104,7 @@ type Stage =
   | "expired"
   | "opening-interrupted";
 
-type Modal = null | "insufficient" | "failed" | "launch-failed" | "exit-confirm";
+type Modal = null | "insufficient" | "failed" | "exit-confirm";
 
 const OPENED_STAGES: OpeningStage[] = [
   "reveal",
@@ -593,23 +588,30 @@ export function PurchaseFlow({
       if (hand.length === 0) {
         autoLaunchScratchRef.current = false;
         if (stage === "cards-ready") setStage("reveal");
-        setModal("launch-failed");
+        setModal("failed");
         return;
       }
       unlockCountdownSound();
-      persistOpened(scratched);
-      const created = startMotionSession(hand, {
-        sourcePackId: instanceId ?? pack.packId,
-        sourceCreator: pack.creator,
-        sourcePackName: pack.packName,
+      const created = startMotionSession(hand);
+      const allIds = session.cards.map((card) => card.id);
+      const readyId = instanceId ?? pack.packId;
+      upsertReadyToScratch({
+        packId: readyId,
+        packName: pack.packName,
+        creator: pack.creator,
+        session,
+        revealed: allIds,
+        coverUrl: packImage,
+        themeName: pack.packName,
       });
+      settleRevealed(allIds);
       clearOpening();
       bumpInventory();
       navigateTo(motionPlayHref(created));
     } catch {
       autoLaunchScratchRef.current = false;
       if (stage === "cards-ready") setStage("reveal");
-      setModal("launch-failed");
+      setModal("failed");
     } finally {
       setSavingLater(false);
     }
@@ -631,28 +633,10 @@ export function PurchaseFlow({
       return;
     }
     autoLaunchScratchRef.current = true;
-    const game = loadGameSession();
-    if (sessionMatchesPack(game, pack.packId, instanceId) && game) {
-      const remainingPhotos = game.wonPhotoIds.filter(
-        (id) => !game.completedPhotoIds.includes(id),
-      );
-      if (
-        (game.phase === "photo_reveal" || game.phase === "photo") &&
-        remainingPhotos.length > 0
-      ) {
-        const started = beginPhotoPhase() ?? game;
-        navigateTo(photoPlayHref(started));
-        return;
-      }
-      if (game.phase === "motion" && firstMissingMotionCardId(game)) {
-        navigateTo(motionPlayHref(game));
-        return;
-      }
-    }
     void launchMotionScratch(true);
     // Once per mount when resuming ready-to-scratch from My Collection.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
-  }, [pack.entry, session, instanceId, pack.packId]);
+  }, [pack.entry, session]);
 
   function leaveSaved(destination?: () => void) {
     bumpInventory();
@@ -1046,15 +1030,6 @@ export function PurchaseFlow({
                 label: "Keep Scratching",
                 onClick: () => setModal(null),
               }}
-            />
-          ) : modal === "launch-failed" ? (
-            <StateScreen
-              icon={<AlertTriangle className="size-7" />}
-              tone="danger"
-              title="Couldn't start scratch"
-              body="Your cards are still in Ready to Scratch. Please try again."
-              primary={{ label: "Try Again", onClick: () => setModal(null) }}
-              secondary={{ label: "Close", onClick: () => setModal(null) }}
             />
           ) : (
             <StateScreen

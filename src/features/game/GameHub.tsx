@@ -13,17 +13,16 @@ import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
 import { useWallet } from '@/contexts/WalletContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { recordRevealedCards } from '@/services/collectionState'
 import {
   beginPhotoPhase,
   clearGameSession,
-  completeSourcePack,
   firstMissingMotionCardId,
   loadGameSession,
   markWalletCredited,
   motionPlayHref,
   navigateTo,
   photoPlayHref,
-  saveGameSession,
   startMotionSession,
   type GameSession,
 } from './modules/gameSession'
@@ -106,7 +105,7 @@ function motionHandToRevealCards(
 export function GameHub() {
   const catalog = useCatalog()
   const { addDiamonds } = useWallet()
-  const { requestTab, bumpInventoryRevision } = useAuth()
+  const { requestTab } = useAuth()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
   const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
@@ -333,14 +332,15 @@ export function GameHub() {
   }
 
   function scratchPhotosLater() {
-    const current = session ?? loadGameSession()
-    if (current) saveGameSession(current)
-    requestTab('bag')
-  }
-
-  function viewCollection() {
-    const current = session ?? loadGameSession()
-    if (completeSourcePack(current)) bumpInventoryRevision()
+    const count = wonPhotos.length || session?.photoPrizeTotal || 0
+    if (count > 0) {
+      recordRevealedCards({
+        count,
+        creatorId: overlay.name.trim().toLowerCase().replace(/\s+/g, '-'),
+        creatorName: overlay.name,
+        motionCount: 0,
+      })
+    }
     requestTab('bag')
   }
 
@@ -503,7 +503,8 @@ export function GameHub() {
           (!session || session.photoPrizeTotal <= 0) ? (
             <BuyButton
               label="View Collection"
-              onClick={viewCollection}
+              onClick={() => void startNewGame()}
+              disabled={!canDeal}
               visible
             />
           ) : null}

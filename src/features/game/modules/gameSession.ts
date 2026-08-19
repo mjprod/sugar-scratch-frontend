@@ -1,10 +1,4 @@
 import { apiMutate } from "@/lib/api";
-import { recordRevealedCards } from "@/services/collectionState";
-import {
-  getReadyToScratch,
-  trackScratchEvent,
-  upsertReadyToScratch,
-} from "@/services/readyToScratch";
 import {
   loadGameCatalog,
   pickWonPhotocards,
@@ -18,12 +12,6 @@ export type GameSessionPhase =
   | "photo_reveal"
   | "photo"
   | "done";
-
-export type GameSessionSource = {
-  sourcePackId?: string;
-  sourceCreator?: string;
-  sourcePackName?: string;
-};
 
 export type GameSession = {
   version: 1;
@@ -43,15 +31,7 @@ export type GameSession = {
   diamondTotal: number;
   /** True after diamondTotal has been applied to the app wallet. */
   walletCredited: boolean;
-  /** Ready-to-Scratch pack this run was launched from, if any. */
-  sourcePackId?: string;
-  sourceCreator?: string;
-  sourcePackName?: string;
 };
-
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
-}
 
 function isGameSession(value: unknown): value is GameSession {
   if (!value || typeof value !== "object") return false;
@@ -68,10 +48,7 @@ function isGameSession(value: unknown): value is GameSession {
     Array.isArray(v.completedPhotoIds) &&
     typeof v.diamondTotal === "number" &&
     // Older sessions omit the field; reject corrupted non-booleans.
-    (v.walletCredited === undefined || typeof v.walletCredited === "boolean") &&
-    (v.sourcePackId === undefined || typeof v.sourcePackId === "string") &&
-    (v.sourceCreator === undefined || typeof v.sourceCreator === "string") &&
-    (v.sourcePackName === undefined || typeof v.sourcePackName === "string")
+    (v.walletCredited === undefined || typeof v.walletCredited === "boolean")
   );
 }
 
@@ -79,29 +56,14 @@ function normalizeGameSession(session: GameSession): GameSession {
   return {
     ...session,
     walletCredited: session.walletCredited === true,
-    sourcePackId: optionalString(session.sourcePackId),
-    sourceCreator: optionalString(session.sourceCreator),
-    sourcePackName: optionalString(session.sourcePackName),
   };
 }
 
-function readStoredRaw(): string | null {
+export function loadGameSession(): GameSession | null {
+  if (typeof window === "undefined") return null;
   try {
-    const live = sessionStorage.getItem(GAME_SESSION_KEY);
-    if (live) return live;
-  } catch {
-    /* private mode */
-  }
-  try {
-    return localStorage.getItem(GAME_SESSION_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function parseStoredSession(raw: string | null): GameSession | null {
-  if (!raw) return null;
-  try {
+    const raw = sessionStorage.getItem(GAME_SESSION_KEY);
+    if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     return isGameSession(parsed) ? normalizeGameSession(parsed) : null;
   } catch {
@@ -109,27 +71,16 @@ function parseStoredSession(raw: string | null): GameSession | null {
   }
 }
 
-export function loadGameSession(): GameSession | null {
-  if (typeof window === "undefined") return null;
-  return parseStoredSession(readStoredRaw());
-}
-
 export function saveGameSession(session: GameSession): void {
   if (typeof window === "undefined") return;
-  const raw = JSON.stringify(session);
   try {
-    sessionStorage.setItem(GAME_SESSION_KEY, raw);
-  } catch {
-    // Ignore quota / private mode.
-  }
-  try {
-    localStorage.setItem(GAME_SESSION_KEY, raw);
+    sessionStorage.setItem(GAME_SESSION_KEY, JSON.stringify(session));
   } catch {
     // Ignore quota / private mode.
   }
   void apiMutate("/api/me/game-session", {
     method: "PUT",
-    body: raw,
+    body: JSON.stringify(session),
   }).catch(() => undefined);
 }
 
@@ -140,21 +91,13 @@ export function clearGameSession(): void {
   } catch {
     // ignore
   }
-  try {
-    localStorage.removeItem(GAME_SESSION_KEY);
-  } catch {
-    // ignore
-  }
 }
 
 export function isGameModeUrl(search = window.location.search): boolean {
   return new URLSearchParams(search).get("game") === "1";
 }
 
-export function startMotionSession(
-  hand: ThemedMotionCard[],
-  source?: GameSessionSource,
-): GameSession {
+export function startMotionSession(hand: ThemedMotionCard[]): GameSession {
   const first = hand[0];
   const session: GameSession = {
     version: 1,
@@ -168,56 +111,9 @@ export function startMotionSession(
     completedPhotoIds: [],
     diamondTotal: 0,
     walletCredited: false,
-    sourcePackId: optionalString(source?.sourcePackId),
-    sourceCreator: optionalString(source?.sourceCreator),
-    sourcePackName: optionalString(source?.sourcePackName),
   };
   saveGameSession(session);
   return session;
-}
-
-export function sessionMatchesPack(
-  session: GameSession | null | undefined,
-  packId: string,
-  instanceId?: string | null,
-): boolean {
-  const sourceId = session?.sourcePackId;
-  if (!sourceId) return false;
-  return sourceId === packId || (Boolean(instanceId) && sourceId === instanceId);
-}
-
-/**
- * Mark the Ready-to-Scratch pack this run came from as fully revealed.
- * Idempotent: a missing or already-cleared pack is a no-op.
- */
-export function completeSourcePack(
-  session: GameSession | null | undefined,
-): boolean {
-  const packId = optionalString(session?.sourcePackId);
-  if (!packId) return false;
-  const pack = getReadyToScratch(packId);
-  if (!pack) return false;
-  const allIds = pack.session.cards.map((card) => card.id);
-  const fresh = allIds.filter((id) => !pack.revealed.includes(id));
-  upsertReadyToScratch({
-    packId: pack.packId,
-    packName: pack.packName,
-    creator: pack.creator,
-    creatorId: pack.creatorId,
-    session: pack.session,
-    revealed: allIds,
-    coverUrl: pack.coverUrl,
-    themeName: pack.themeName,
-  });
-  if (fresh.length > 0) {
-    recordRevealedCards({
-      count: fresh.length,
-      creatorId: pack.creatorId,
-      creatorName: pack.creator,
-    });
-  }
-  trackScratchEvent("All Cards Revealed", { packId });
-  return true;
 }
 
 /** Mark diamondTotal as applied to the wallet (idempotent). */

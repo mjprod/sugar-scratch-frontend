@@ -71,7 +71,7 @@ export default defineConfig(({ mode }) => {
       // Override with VITE_DEV_HOST=localhost to bind loopback only.
       host: env.VITE_DEV_HOST || "0.0.0.0",
       port: 5173,
-      https: localHttps ?? undefined,
+      https: localHttps ?? true,
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
       allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
@@ -95,7 +95,7 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: env.VITE_DEV_HOST || "0.0.0.0",
       port: 5173,
-      https: localHttps ?? undefined,
+      https: localHttps ?? true,
     },
   };
 });
