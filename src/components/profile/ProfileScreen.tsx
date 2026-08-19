@@ -8,22 +8,17 @@ import {
   Lock,
   LogOut,
   ShieldCheck,
-  Sparkles,
-  Trophy,
   type LucideIcon,
 } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
-import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
 export function UserDashboardScreen({
   name,
   avatar,
-  coins,
-  diamonds,
   onLogout,
   onOpenChangePassword,
 }: {
@@ -114,13 +109,6 @@ export function UserDashboardScreen({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat icon={<Trophy className="size-4" />} label="My Collection" value="128 / 240" />
-        <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
-        <Stat icon={<DiamondLottie size={16} aria-hidden />} label="Diamonds" value={diamonds.toString()} />
-        <Stat icon={<Sparkles className="size-4" />} label="Sugar Coins" value={coins.toString()} />
-      </div>
-
       <div className="mt-7 grid gap-5 lg:grid-cols-2">
         <MenuGroup
           title="Profile & Account"
@@ -153,26 +141,6 @@ export function UserDashboardScreen({
         </div>
       ) : null}
     </AppPageShell>
-  );
-}
-
-function Stat({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.04] p-4">
-      <div className="flex items-center gap-2 text-[oklch(0.709_0.159_293.54)]">
-        {icon}
-        <p className="text-[11px] text-white/45">{label}</p>
-      </div>
-      <p className="mt-3 text-[19px] font-semibold tabular-nums">{value}</p>
-    </div>
   );
 }
 
