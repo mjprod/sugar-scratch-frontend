@@ -4126,6 +4126,14 @@ body[data-theme="v8"] .cpv2-shell {
   }
 }
 
+/* Creator profile: back button clears floating desktop nav. */
+@media (min-width: 507px) {
+  body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,
+  body[data-theme="v8"][data-liquid-nav="to-desktop"] .cpv2-shell {
+    padding-top: var(--app-diamond-offset);
+  }
+}
+
 body[data-theme="v8"] .cpv2-page.has-sticky-cta .cpv2-shell {
   /* Sticky CTA + gap + footer — keep Motion/Photo clear of fixed chrome */
   padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px));
@@ -5325,6 +5333,11 @@ body[data-theme="v8"] .hf-stepper-icon {
     --hf-next-peek: 0px;
     --hf-top-clearance: var(--app-diamond-offset);
     padding-bottom: var(--hf-bottom-clearance);
+  }
+
+  /* Discover feed: sit the phone frame below the floating desktop nav. */
+  body[data-theme="v8"] .app-layout--hud .hf-stage {
+    margin-top: var(--hf-top-clearance, var(--app-diamond-offset));
   }
 
   body[data-theme="v8"] .hf-stage {
@@ -7373,14 +7386,16 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
 }
 
 @media (min-width: 507px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-bottom: 48px;
   }
 }
 
 @media (max-width: 1023px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: var(--app-diamond-offset);
   }
 
@@ -9874,9 +9889,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     }
   }
 
-  /* Home frame under HUD chrome */
+  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (507px+). */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
-    margin-top: 7rem;
     margin-bottom: 12px;
   }
 
@@ -9922,17 +9936,26 @@ body[data-theme="v8"] .app-page-shell-inner {
     padding-inline: 0;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page) {
+  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page):not(.favourites-page) {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
     padding-bottom: 48px;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary.settings-page,
-  body[data-theme="v8"] .app-page-shell--secondary.inbox-page {
+  body[data-theme="v8"] .app-page-shell--secondary.inbox-page,
+  body[data-theme="v8"] .app-page-shell--secondary.favourites-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-inline: 0;
     padding-bottom: 48px;
+  }
+}
+
+/* Desktop: shell is notch-only — sticky subpage header clears the floating nav. */
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header,
+  body[data-theme="v8"] .app-page-shell.favourites-page .subpage-header {
+    top: var(--app-diamond-offset);
   }
 }
 
