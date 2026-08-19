@@ -125,7 +125,7 @@ type AuthContextValue = {
   authed: boolean;
   guest: boolean;
   hasLoggedInBefore: boolean;
-  guestAuthLabel: "Log in" | "Sign up";
+  guestAuthLabel: "Sign in";
   profile: Omit<OnboardingData, "coins" | "diamonds">;
   setProfile: Dispatch<
     SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
@@ -247,10 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const guest = !authed;
-  const guestAuthLabel = returningUser ? "Log in" : "Sign up";
-  const guestAuthMode: AuthenticationSheetMode = returningUser
-    ? "login"
-    : "create-account";
+  const guestAuthLabel = "Sign in" as const;
 
   useEffect(() => {
     if (guest) {
@@ -382,12 +379,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       setPending(action);
-      setAuthSheetMode(guestAuthMode);
+      setAuthSheetMode("login");
       setAuthSheetEmail("");
       setAuthOpen(true);
       return false;
     },
-    [authed, guestAuthMode, resumePending],
+    [authed, resumePending],
   );
 
   const requestTab = useCallback(

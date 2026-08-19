@@ -104,7 +104,7 @@ type Stage =
   | "expired"
   | "opening-interrupted";
 
-type Modal = null | "insufficient" | "failed";
+type Modal = null | "insufficient" | "failed" | "exit-confirm";
 
 const OPENED_STAGES: OpeningStage[] = [
   "reveal",
@@ -178,15 +178,20 @@ export function PurchaseFlow({
     if (noPacksLeft) return "no-packs";
     if (pack.entry === "scratch") {
       if (!bagResume || resumeIndex === null) return "expired";
-      return "scratch";
+      return "cards-ready";
     }
     if (pack.entry === "open") return openResume ? "ready" : "no-packs";
     if (buying) return "choose";
     if (restored.status === "expired") return "expired";
     if (resumed) {
       if (resumeIndex === null) return "complete";
-      if (resumed.stage === "preview" || resumed.stage === "cards-ready") {
-        return "cards-ready";
+      if (
+        resumed.stage === "preview" ||
+        resumed.stage === "cards-ready" ||
+        resumed.stage === "scratch" ||
+        resumed.stage === "grid"
+      ) {
+        return "reveal";
       }
       if (resumed.stage === "ready") return "ready";
       return resumed.stage as Stage;
@@ -223,7 +228,6 @@ export function PurchaseFlow({
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
-  /** Skip Cards Ready UI — launch motion game once (resume or stray stage). */
   const autoLaunchScratchRef = useRef(false);
   const packImage =
     session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
@@ -562,12 +566,14 @@ export function PurchaseFlow({
     return markCurrentRevealed();
   }
 
-  async function startScratchNow() {
+  async function launchMotionScratch(fromAutoLaunch = false) {
     if (!session || savingLater) return;
     setSavingLater(true);
-    trackScratchEvent("Scratch Now Selected", {
-      packId: instanceId ?? pack.packId,
-    });
+    if (!fromAutoLaunch) {
+      trackScratchEvent("Scratch Now Selected", {
+        packId: instanceId ?? pack.packId,
+      });
+    }
     trackScratchEvent("Scratch Session Started", {
       packId: instanceId ?? pack.packId,
     });
@@ -589,7 +595,6 @@ export function PurchaseFlow({
       const created = startMotionSession(hand);
       const allIds = session.cards.map((card) => card.id);
       const readyId = instanceId ?? pack.packId;
-      // Mark every fan card revealed so this pack leaves Ready-to-Scratch.
       upsertReadyToScratch({
         packId: readyId,
         packName: pack.packName,
@@ -599,8 +604,6 @@ export function PurchaseFlow({
         coverUrl: packImage,
         themeName: pack.packName,
       });
-      // Awards coins / purchased-pack count / purchase seed via parent onComplete,
-      // and records collection (deduped by awardedIds) — same path as in-flow scratch.
       settleRevealed(allIds);
       clearOpening();
       bumpInventory();
@@ -614,16 +617,26 @@ export function PurchaseFlow({
     }
   }
 
-  // Legacy openings saved on Cards Ready — skip that screen and launch the game.
+  function startScratchNow() {
+    void launchMotionScratch();
+  }
+
+  function noteScratchDecisionShown() {
+    trackScratchEvent("Scratch Decision Shown", {
+      packId: instanceId ?? pack.packId,
+      count: session?.cards.length,
+    });
+  }
+
   useEffect(() => {
-    if (stage !== "cards-ready" || !session || autoLaunchScratchRef.current) {
+    if (pack.entry !== "scratch" || !session || autoLaunchScratchRef.current) {
       return;
     }
     autoLaunchScratchRef.current = true;
-    void startScratchNow();
-    // Intentionally once per mount/resume into cards-ready.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- startScratchNow closes over latest session
-  }, [stage, session]);
+    void launchMotionScratch(true);
+    // Once per mount when resuming ready-to-scratch from My Collection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
+  }, [pack.entry, session]);
 
   function leaveSaved(destination?: () => void) {
     bumpInventory();
@@ -647,11 +660,15 @@ export function PurchaseFlow({
       exitUnopened();
       return;
     }
-    if (stage === "cards-ready" || stage === "scratch" || stage === "grid") {
-      scratchLater(stage === "cards-ready" ? "decision" : "exit");
+    if (stage === "scratch" || stage === "grid") {
+      if (session && nextUnscratchedIndex(session, scratched) !== null) {
+        setModal("exit-confirm");
+        return;
+      }
+      scratchLater("exit");
       return;
     }
-    if (stage === "reveal") {
+    if (stage === "cards-ready" || stage === "reveal") {
       if (session) scratchLater("decision");
       else exitUnopened();
       return;
@@ -720,10 +737,14 @@ export function PurchaseFlow({
         >
           <ChevronLeft className="size-5" />
         </button>
-        {stage === "choose" || stage === "reveal" || stage === "cards-ready" ? null : (
+        {stage === "choose" || stage === "reveal" ? null : (
           <div className="absolute left-1/2 -translate-x-1/2 text-center">
-            <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
-            {terminal ? null : (
+            <p className="text-[13px] font-semibold">
+              {stage === "scratch" && session
+                ? `Card ${selectedCard + 1} of ${session.cards.length}`
+                : stageTitle(stage)}
+            </p>
+            {terminal || stage === "scratch" ? null : (
               <p className="text-[10px] text-white/40">{stageStep(stage)} of 4</p>
             )}
           </div>
@@ -792,7 +813,6 @@ export function PurchaseFlow({
               flagSvgUrl={model?.flagSvgUrl ?? null}
               overlayColorStart={model?.overlayColorStart ?? null}
               overlayColorEnd={model?.overlayColorEnd ?? null}
-              launching={savingLater}
               onCards={(cards) => {
                 setSession((current) =>
                   current
@@ -809,7 +829,10 @@ export function PurchaseFlow({
                     : current,
                 );
               }}
-              onContinue={() => void startScratchNow()}
+              onScratchNow={startScratchNow}
+              onSaveForLater={() => scratchLater("decision")}
+              onActionsShown={noteScratchDecisionShown}
+              launching={savingLater}
             />
           ) : null}
 
@@ -838,10 +861,14 @@ export function PurchaseFlow({
               card={session.cards[selectedCard]}
               image={cardImages[selectedCard % cardImages.length]}
               progress={scratchProgress}
+              cardIndex={selectedCard}
+              totalCards={session.cards.length}
               remainingAfterReveal={remainingAfterCurrent}
               onScratch={scratch}
               onScratchNext={scratchNext}
               onFinishLater={() => scratchLater("finish")}
+              onViewCollection={onViewCollection ? () => exit(onViewCollection) : undefined}
+              onDone={() => exit(onGoHome)}
             />
           ) : null}
 
@@ -849,16 +876,22 @@ export function PurchaseFlow({
             <StateScreen
               icon={<PackageOpen className="size-7" />}
               tone="success"
-              title="Saved to My Bag"
-              body="Scratch them whenever you're ready."
+              title="Saved for later"
+              body={`Your Scratch Cards are waiting in My Collection.${
+                session
+                  ? ` ${session.cards.length - scratched.length} card${
+                      session.cards.length - scratched.length === 1 ? "" : "s"
+                    } ready to scratch.`
+                  : ""
+              }`}
               primary={{
-                label: "Continue",
+                label: "Done",
                 onClick: () => leaveSaved(),
               }}
               secondary={
                 onGoMyBag
                   ? {
-                      label: "View My Bag",
+                      label: "View My Collection",
                       onClick: () => leaveSaved(onGoMyBag),
                     }
                   : undefined
@@ -870,16 +903,16 @@ export function PurchaseFlow({
             <StateScreen
               icon={<PackageOpen className="size-7" />}
               tone="success"
-              title="Saved to My Bag"
-              body="Your pack is waiting under Unopened Packs."
+              title="Saved for later"
+              body="Your pack is waiting under Ready to Open in My Collection."
               primary={{
-                label: "Continue",
+                label: "Done",
                 onClick: () => leaveSaved(),
               }}
               secondary={
                 onGoMyBag
                   ? {
-                      label: "View My Bag",
+                      label: "View My Collection",
                       onClick: () => leaveSaved(onGoMyBag),
                     }
                   : undefined
@@ -891,15 +924,15 @@ export function PurchaseFlow({
             <StateScreen
               icon={<Check className="size-7" />}
               tone="success"
-              title="Every card is revealed"
-              body={`You played all ${session.cards.length} scratch cards from this opening. Your rewards are already in your balance.`}
+              title="All cards revealed"
+              body="You scratched every card from this opening. Your Photo Cards are in your Collection."
               primary={{
-                label: "Return to Homepage",
-                onClick: () => exit(onGoHome),
+                label: "View Collection",
+                onClick: () => exit(onViewCollection),
               }}
               secondary={{
-                label: "View My Collection",
-                onClick: () => exit(onViewCollection),
+                label: "Done",
+                onClick: () => exit(onGoHome),
               }}
             />
           ) : null}
@@ -971,27 +1004,41 @@ export function PurchaseFlow({
       {modal ? (
         <ModalShell onClose={() => setModal(null)}>
           {modal === "insufficient" ? (
+            <InsufficientDiamondsModal
+              balance={diamonds}
+              packPrice={packCost(1, pack.packId)}
+              onGetDiamonds={() => {
+                setModal(null);
+                onGetDiamonds?.();
+              }}
+              onClose={() => setModal(null)}
+            />
+          ) : modal === "exit-confirm" ? (
             <StateScreen
-              icon={<DiamondLottie size={28} aria-hidden />}
-              tone="warn"
-              title="Not enough diamonds"
-              body="Top up diamonds to continue this purchase. Your balance was not charged."
+              icon={<PackageOpen className="size-7" />}
+              tone="neutral"
+              title="Finish later?"
+              body="Your progress is saved. You can continue scratching your remaining cards anytime."
               primary={{
-                label: "Get Diamonds",
+                label: "Save & Exit",
                 onClick: () => {
                   setModal(null);
-                  onGetDiamonds?.();
+                  scratchLater("exit");
                 },
               }}
-              secondary={{ label: "Close", onClick: () => setModal(null) }}
+              secondary={{
+                label: "Keep Scratching",
+                onClick: () => setModal(null),
+              }}
             />
           ) : (
             <StateScreen
               icon={<AlertTriangle className="size-7" />}
               tone="danger"
-              title="Purchase failed"
-              body="Something went wrong and you were not charged. Try again."
-              primary={{ label: "Close", onClick: () => setModal(null) }}
+              title="Something went wrong"
+              body="Your Pack couldn't be purchased. Please try again."
+              primary={{ label: "Try Again", onClick: () => setModal(null) }}
+              secondary={{ label: "Close", onClick: () => setModal(null) }}
             />
           )}
         </ModalShell>
@@ -1290,6 +1337,64 @@ function ReadyStage({
   );
 }
 
+function InsufficientDiamondsModal({
+  balance,
+  packPrice,
+  onGetDiamonds,
+  onClose,
+}: {
+  balance: number;
+  packPrice: number;
+  onGetDiamonds: () => void;
+  onClose: () => void;
+}) {
+  const shortfall = Math.max(0, packPrice - balance);
+  return (
+    <div className="px-6 py-8 text-center">
+      <span
+        className="mx-auto grid size-16 place-items-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300"
+        aria-hidden="true"
+      >
+        <DiamondLottie size={28} aria-hidden />
+      </span>
+      <h2 className="mt-5 text-[22px] font-bold tracking-[-0.02em]">
+        Not Enough Diamonds
+      </h2>
+      <p className="mt-2 text-[14px] leading-relaxed text-white/55">
+        You need {packPrice} 💎 to get this Pack.
+      </p>
+      <dl className="mx-auto mt-5 max-w-xs space-y-2 text-left text-[13px]">
+        <div className="flex justify-between gap-4 text-white/55">
+          <dt>Your balance</dt>
+          <dd className="font-semibold tabular-nums text-white/80">{balance} 💎</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-white/55">
+          <dt>Pack price</dt>
+          <dd className="font-semibold tabular-nums text-white/80">{packPrice} 💎</dd>
+        </div>
+        <div className="flex justify-between gap-4 border-t border-white/10 pt-2 text-white/70">
+          <dt>You need</dt>
+          <dd className="font-semibold tabular-nums">{shortfall} 💎 more</dd>
+        </div>
+      </dl>
+      <button
+        type="button"
+        onClick={onGetDiamonds}
+        className="mt-7 inline-flex h-14 w-full max-w-sm items-center justify-center rounded-full bg-[oklch(0.606_0.219_292.72)] text-[15px] font-semibold"
+      >
+        Get Diamonds
+      </button>
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-3 h-11 px-6 text-[13px] font-medium text-white/55 hover:text-white/80"
+      >
+        Not Now
+      </button>
+    </div>
+  );
+}
+
 function MotionRevealStage({
   modelId,
   girlName,
@@ -1301,7 +1406,9 @@ function MotionRevealStage({
   overlayColorEnd,
   launching = false,
   onCards,
-  onContinue,
+  onScratchNow,
+  onSaveForLater,
+  onActionsShown,
 }: {
   modelId: string;
   girlName: string;
@@ -1313,7 +1420,9 @@ function MotionRevealStage({
   overlayColorEnd: string | null;
   launching?: boolean;
   onCards: (cards: RevealCard[]) => void;
-  onContinue: () => void;
+  onScratchNow: () => void;
+  onSaveForLater: () => void;
+  onActionsShown?: () => void;
 }) {
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null);
   const [ready, setReady] = useState(false);
@@ -1376,6 +1485,13 @@ function MotionRevealStage({
     if (cards.length) onCardsRef.current(cards);
   }, [cards]);
 
+  const actionsShownRef = useRef(false);
+  useEffect(() => {
+    if (!sequence.showPlay || actionsShownRef.current) return;
+    actionsShownRef.current = true;
+    onActionsShown?.();
+  }, [sequence.showPlay, onActionsShown]);
+
   return (
     <div className="motion-reveal">
       <div className="reveal-stage__fan">
@@ -1388,14 +1504,24 @@ function MotionRevealStage({
         />
       </div>
       {sequence.showPlay ? (
-        <button
-          type="button"
-          className="motion-reveal__continue"
-          onClick={onContinue}
-          disabled={launching}
-        >
-          {launching ? "Starting…" : "Continue"}
-        </button>
+        <div className="motion-reveal__actions">
+          <button
+            type="button"
+            className="motion-reveal__continue"
+            onClick={onScratchNow}
+            disabled={launching}
+          >
+            {launching ? "Starting…" : "Scratch Now"}
+          </button>
+          <button
+            type="button"
+            className="motion-reveal__later"
+            onClick={onSaveForLater}
+            disabled={launching}
+          >
+            Save for Later
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -1459,18 +1585,26 @@ function ScratchStage({
   card,
   image,
   progress,
+  cardIndex,
+  totalCards,
   remainingAfterReveal,
   onScratch,
   onScratchNext,
   onFinishLater,
+  onViewCollection,
+  onDone,
 }: {
   card: OpeningSession["cards"][number];
   image: string;
   progress: number;
+  cardIndex: number;
+  totalCards: number;
   remainingAfterReveal: number;
   onScratch: (amount?: number) => void;
   onScratchNext: () => void;
   onFinishLater: () => void;
+  onViewCollection?: () => void;
+  onDone?: () => void;
 }) {
   function drag(_: unknown, info: PanInfo) {
     onScratch(Math.max(18, Math.min(45, Math.abs(info.offset.x) / 4)));
@@ -1480,19 +1614,25 @@ function ScratchStage({
   const hasMore = remainingAfterReveal > 0;
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-      <p className="text-[12px] font-semibold tracking-[0.15em] text-[oklch(0.767_0.139_91.06)] uppercase">
-        {revealed ? card.rarity : `${Math.round(progress)}% scratched`}
-      </p>
-      <h1 className="mt-2 text-[28px] font-bold">
-        {revealed ? "Card Revealed" : "Scratch to reveal"}
-      </h1>
-      {revealed && hasMore ? (
-        <p className="mt-2 text-[14px] text-white/50">
-          {remainingAfterReveal}{" "}
-          {remainingAfterReveal === 1 ? "Card Remaining" : "Cards Remaining"}
-        </p>
-      ) : null}
+    <div className="flex flex-1 flex-col items-center px-5 py-8 text-center">
+      {!revealed ? (
+        <>
+          <p className="text-[12px] font-semibold tracking-[0.15em] text-[oklch(0.767_0.139_91.06)] uppercase">
+            {Math.round(progress)}% scratched
+          </p>
+          <h1 className="mt-2 text-[28px] font-bold">Scratch to reveal</h1>
+        </>
+      ) : (
+        <>
+          <p className="text-[12px] font-semibold tracking-[0.15em] text-[oklch(0.767_0.139_91.06)] uppercase">
+            Photo Card Revealed
+          </p>
+          <h1 className="mt-2 text-[28px] font-bold">Added to your Collection</h1>
+          <p className="mt-2 text-[14px] text-white/50">
+            Card {cardIndex + 1} of {totalCards} complete
+          </p>
+        </>
+      )}
       <div className="relative mt-7 aspect-[3/4] w-[240px] overflow-hidden rounded-[24px] border border-white/20 bg-[oklch(0.196_0_0)] shadow-2xl">
         {isVideoSrc(card.faceUrl ?? image) ? (
           <video
@@ -1533,25 +1673,56 @@ function ScratchStage({
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-7 flex w-full max-w-sm flex-col items-center"
+          className="mt-8 flex w-full max-w-sm flex-col items-center"
         >
-          <button
-            type="button"
-            onClick={onScratchNext}
-            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] px-8 text-[15px] font-semibold"
-          >
-            <Check className="size-4" />
-            {hasMore ? "Scratch Next" : "Finish"}
-          </button>
           {hasMore ? (
-            <button
-              type="button"
-              onClick={onFinishLater}
-              className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70"
-            >
-              Finish Later
-            </button>
-          ) : null}
+            <>
+              <button
+                type="button"
+                onClick={onScratchNext}
+                className="inline-flex h-[52px] w-[78%] max-w-[280px] items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] px-8 text-[15px] font-semibold"
+              >
+                <Check className="size-4" />
+                Scratch Next Card
+              </button>
+              <button
+                type="button"
+                onClick={onFinishLater}
+                className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70"
+              >
+                Save Remaining for Later
+              </button>
+            </>
+          ) : (
+            <>
+              {onViewCollection ? (
+                <button
+                  type="button"
+                  onClick={onViewCollection}
+                  className="inline-flex h-[52px] w-[78%] max-w-[280px] items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] px-8 text-[15px] font-semibold"
+                >
+                  View Collection
+                </button>
+              ) : null}
+              {onDone ? (
+                <button
+                  type="button"
+                  onClick={onDone}
+                  className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70"
+                >
+                  Done
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onScratchNext}
+                  className="inline-flex h-[52px] w-[78%] max-w-[280px] items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] px-8 text-[15px] font-semibold"
+                >
+                  Done
+                </button>
+              )}
+            </>
+          )}
         </motion.div>
       ) : (
         <p className="mt-5 text-[13px] text-white/45">Drag across the card or tap three times.</p>
@@ -1590,7 +1761,7 @@ function stageTitle(stage: Stage) {
   if (stage === "ready") return "Pack Ready";
   if (stage === "reveal") return "Opening Reveal";
   if (stage === "preview" || stage === "grid") return "Choose Card";
-  if (stage === "cards-ready") return "Starting";
+  if (stage === "cards-ready") return "Your Cards";
   if (stage === "complete") return "Session Complete";
   if (stage === "saved" || stage === "saved-unopened") return "Saved";
   if (stage === "load-failed") return "Loading Failed";
