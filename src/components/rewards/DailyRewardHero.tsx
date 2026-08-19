@@ -15,8 +15,10 @@ import {
  */
 export function DailyRewardHero({
   onClaimed,
+  onClaimAttempt,
 }: {
   onClaimed: (diamonds: number) => void;
+  onClaimAttempt?: () => boolean;
 }) {
   const [claimed, setClaimed] = useState(() => isDailyRewardClaimedToday());
   const [remaining, setRemaining] = useState(
@@ -37,6 +39,7 @@ export function DailyRewardHero({
 
   function handleClaim() {
     if (claimed || claiming) return;
+    if (onClaimAttempt && !onClaimAttempt()) return;
     setClaiming(true);
     const result = claimDailyReward();
     setClaiming(false);

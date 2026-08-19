@@ -140,6 +140,8 @@ export function HomeScreen({
   onStartPlaying,
   onOpenCreator,
   onClaimDaily,
+  onClaimAttempt,
+  onOpenCollection,
   onLikeAttempt,
   resumeLikeId = null,
   onResumeLikeConsumed,
@@ -156,6 +158,8 @@ export function HomeScreen({
   }) => void;
   onOpenCreator?: (creatorId: string) => void;
   onClaimDaily?: (diamonds: number) => void;
+  onClaimAttempt?: () => boolean;
+  onOpenCollection?: (creatorId: string) => boolean;
   onLikeAttempt?: (itemId: string) => boolean;
   resumeLikeId?: string | null;
   onResumeLikeConsumed?: () => void;
@@ -269,6 +273,7 @@ export function HomeScreen({
   }
 
   function openCollection(item: ContinueCollectingItem) {
+    if (onOpenCollection && !onOpenCollection(item.creatorId)) return;
     if (onOpenCreator) {
       onOpenCreator(item.creatorId);
       return;
@@ -389,7 +394,10 @@ export function HomeScreen({
                 aria-labelledby="daily-reward"
               >
           
-                <DailyRewardHero onClaimed={onClaimDaily} />
+                <DailyRewardHero
+                  onClaimed={onClaimDaily}
+                  onClaimAttempt={onClaimAttempt}
+                />
               </section>
             ) : null}
 
