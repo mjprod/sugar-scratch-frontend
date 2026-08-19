@@ -10,6 +10,12 @@ const OFFSETS = {
   logo: { start: -30, end: -59 },
 } as const;
 
+const MOBILE_OFFSETS = {
+  bg: { start: -95, end: -73.01 },
+  women: { start: 19.01, end: 2.07 },
+  logo: { start: -32, end: -39 },
+} as const;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -75,25 +81,29 @@ export function SpotlightBanner() {
       const viewTop = scroller ? scroller.getBoundingClientRect().top : 0;
       const viewH = scroller ? scroller.clientHeight : window.innerHeight;
       const t = clamp((viewTop + viewH - rect.top) / viewH, 0, 1);
-      const effectT = easeOutCubic(clamp(t / EFFECT_STOP, 0, 1));
-      const bgEffectT = easeOutCubic(clamp(t / BG_EFFECT_STOP, 0, 1));
+      const effectStop = mobile.matches ? 1 : EFFECT_STOP;
+      const bgEffectStop = mobile.matches ? 1 : BG_EFFECT_STOP;
+      const effectT = easeOutCubic(clamp(t / effectStop, 0, 1));
+      const bgEffectT = easeOutCubic(clamp(t / bgEffectStop, 0, 1));
       const key = `${effectT.toFixed(3)}:${bgEffectT.toFixed(3)}:${mobile.matches ? "m" : "d"}`;
       if (key === lastKey) return;
       lastKey = key;
 
-      const bgY = lerp(OFFSETS.bg.start, OFFSETS.bg.end, bgEffectT);
-      const womenY = lerp(OFFSETS.women.start, OFFSETS.women.end, effectT);
-      const logoY = lerp(OFFSETS.logo.start, OFFSETS.logo.end, effectT);
-      const womenScale = mobile.matches ? 1.12 : 1.25;
+      const offsets = mobile.matches ? MOBILE_OFFSETS : OFFSETS;
+      const bgY = lerp(offsets.bg.start, offsets.bg.end, bgEffectT);
+      const womenY = lerp(offsets.women.start, offsets.women.end, effectT);
+      const logoY = lerp(offsets.logo.start, offsets.logo.end, effectT);
+      const womenScale = mobile.matches ? 1.03 : 1.25;
+      const bgScale = mobile.matches ? 3.5 : 1.42;
       const logoScale = lerp(0.7, 0.75, effectT);
 
-      bg.style.transform = `translate3d(0, ${bgY.toFixed(2)}px, 0) scale(1.42)`;
+      bg.style.transform = `translate3d(0, ${bgY}px, 0) scale(${bgScale})`;
       women.style.transform = `translate3d(0, ${womenY.toFixed(2)}px, 0) scale(${womenScale})`;
       logo.style.transform = `translate3d(0, ${logoY.toFixed(2)}px, 0)`;
       brand.style.transform = `scale(${logoScale.toFixed(3)})`;
       women.style.opacity = lerp(0.7, 1, effectT).toFixed(3);
-      blur.style.opacity = effectT.toFixed(3);
-      dim.style.opacity = lerp(0.7, 0, effectT).toFixed(3);
+      blur.style.opacity = mobile.matches ? "0" : effectT.toFixed(3);
+      dim.style.opacity = mobile.matches ? "0" : lerp(0.7, 0, effectT).toFixed(3);
     };
 
     const queue = () => {
