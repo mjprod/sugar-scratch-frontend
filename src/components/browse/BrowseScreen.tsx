@@ -3,14 +3,12 @@ import { CalendarDays } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
-import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { PackLibrary } from "@/components/home/PackLibrary";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
   fetchLeaderboard,
-  type ContinueCollectingItem,
   type FeaturedPack,
   type HomepageData,
   type LeaderboardCategory,
@@ -260,15 +258,6 @@ export function HomeScreen({
     });
   }
 
-  function openCollection(item: ContinueCollectingItem) {
-    if (onOpenCreator) {
-      onOpenCreator(item.creatorId);
-      return;
-    }
-    setToast(`${item.creatorName} collection · ${item.percent}% complete`);
-    window.setTimeout(() => setToast(null), 2200);
-  }
-
   if (status === "loading") {
     return (
       <section
@@ -387,14 +376,6 @@ export function HomeScreen({
             <DailyRewardHero onClaimed={onClaimDaily} />
           </section>
         ) : null}
-
-        <div className="mt-10">
-          <ContinueCollecting
-            items={home.continueCollecting}
-            onOpen={openCollection}
-            onSeeAllClick={() => setLibraryOpen(true)}
-          />
-        </div>
 
         <div className="mt-10">
           <CategoryLeaderboard
