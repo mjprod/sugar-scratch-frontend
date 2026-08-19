@@ -10,6 +10,7 @@ import {
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import {
   beginPhotoPhase,
+  completeSourcePack,
   finishPhotoHand,
   isGameModeUrl,
   loadGameSession,
@@ -1882,7 +1883,8 @@ export function PhotoScratch() {
     if (!nextCard) {
       setSelectedCardId("");
       if (inGame) {
-        finishPhotoHand();
+        const finished = finishPhotoHand();
+        completeSourcePack(finished);
         navigateTo("/game");
       }
       return;
