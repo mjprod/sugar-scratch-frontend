@@ -12,6 +12,8 @@ import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
 import { useWallet } from '@/contexts/WalletContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { recordRevealedCards } from '@/services/collectionState'
 import {
   beginPhotoPhase,
   clearGameSession,
@@ -103,6 +105,7 @@ function motionHandToRevealCards(
 export function GameHub() {
   const catalog = useCatalog()
   const { addDiamonds } = useWallet()
+  const { requestTab } = useAuth()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
   const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
@@ -328,6 +331,19 @@ export function GameHub() {
     navigateTo(photoPlayHref(started))
   }
 
+  function scratchPhotosLater() {
+    const count = wonPhotos.length || session?.photoPrizeTotal || 0
+    if (count > 0) {
+      recordRevealedCards({
+        count,
+        creatorId: overlay.name.trim().toLowerCase().replace(/\s+/g, '-'),
+        creatorName: overlay.name,
+        motionCount: 0,
+      })
+    }
+    requestTab('bag')
+  }
+
   function deleteGame() {
     if (busy) return
     const hasProgress =
@@ -418,14 +434,14 @@ export function GameHub() {
               </div>
               <h2>
                 {session.photoPrizeTotal > 0
-                  ? `You won ${session.photoPrizeTotal} photocard${
+                  ? `${session.photoPrizeTotal} Photo Card${
                       session.photoPrizeTotal === 1 ? '' : 's'
-                    }!`
-                  : 'No photocards this round'}
+                    } Revealed`
+                  : 'No Photo Cards this round'}
               </h2>
               <p>
                 {session.photoPrizeTotal > 0
-                  ? 'Scratch them next for diamonds.'
+                  ? 'Added to your Collection'
                   : 'Deal again for another shot.'}
               </p>
               {wonPhotos.length > 0 ? (
@@ -477,7 +493,7 @@ export function GameHub() {
           session &&
           session.photoPrizeTotal > 0 ? (
             <BuyButton
-              label="Scratch photos for diamonds"
+              label="Scratch Next Card"
               onClick={playPhotoHand}
               visible
             />
@@ -486,7 +502,7 @@ export function GameHub() {
           {phase === 'photo_reveal' &&
           (!session || session.photoPrizeTotal <= 0) ? (
             <BuyButton
-              label="New Game"
+              label="View Collection"
               onClick={() => void startNewGame()}
               disabled={!canDeal}
               visible
@@ -503,6 +519,17 @@ export function GameHub() {
           ) : null}
 
           <div className="game-hub-pack__secondary">
+            {phase === 'photo_reveal' &&
+            session &&
+            session.photoPrizeTotal > 0 ? (
+              <button
+                type="button"
+                className="game-hub-pack__link"
+                onClick={scratchPhotosLater}
+              >
+                Scratch later
+              </button>
+            ) : null}
             {phase === 'ready' && showPlay && canDeal ? (
               <button
                 type="button"
@@ -513,20 +540,7 @@ export function GameHub() {
                 Replay open
               </button>
             ) : null}
-            {phase === 'photo_reveal' &&
-            session &&
-            session.photoPrizeTotal > 0 &&
-            canDeal ? (
-              <button
-                type="button"
-                className="game-hub-pack__link reveal-replay"
-                disabled={!canDeal}
-                onClick={() => void startNewGame()}
-              >
-                New Game
-              </button>
-            ) : null}
-            {canDelete ? (
+            {canDelete && phase !== 'photo_reveal' ? (
               <button
                 type="button"
                 className="game-hub-pack__link game-hub-pack__link--danger"
