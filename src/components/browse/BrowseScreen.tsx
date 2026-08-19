@@ -477,15 +477,14 @@ export function HomeScreen({
         </div>
       ) : null}
 
-      {libraryOpen ? (
-        <PackLibrary
-          onClose={() => setLibraryOpen(false)}
-          onPlay={(pack) => {
-            setLibraryOpen(false);
-            playFeatured(pack);
-          }}
-        />
-      ) : null}
+      <PackLibrary
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onPlay={(pack) => {
+          setLibraryOpen(false);
+          playFeatured(pack);
+        }}
+      />
     </section>
   );
 }

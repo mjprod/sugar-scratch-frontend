@@ -2183,42 +2183,16 @@ body[data-theme="v8"] .hub-spotlight-invite-close {
 }
 
 body[data-theme="v8"] .pack-library-glass {
-  --pack-library-surface: linear-gradient(
-    180deg,
-    oklch(0.22 0 0 / 0.12) 0%,
-    oklch(0 0 0 / 0.06) 42%,
-    oklch(0.12 0 0 / 0.1) 100%
-  );
-  --glass-bg-opacity: 0;
   overflow: hidden;
-  border: 1px solid oklch(1 0 0 / 0.05);
+  border: 1px solid oklch(1 0 0 / 0.08);
   border-radius: 2rem;
   padding-top: 2rem;
-  background: var(--pack-library-surface);
+  background: oklch(0.08 0 0 / 0.82);
   box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.12),
-    0 8px 24px oklch(0 0 0 / 0.28);
-}
-
-body[data-theme="v8"] .pack-library-glass.glass.glass-surface {
-  --glass-bg-opacity: 0;
-  overflow: hidden;
-  background: var(--pack-library-surface);
-  border: 1px solid oklch(1 0 0 / 0.05);
-  border-radius: 2rem;
-  padding-top: 2rem;
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.12),
-    0 8px 24px oklch(0 0 0 / 0.28);
-}
-
-@supports (-webkit-touch-callout: none) {
-  body[data-theme="v8"] .pack-library-glass.glass {
-    --tw-glass-filter: ;
-    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
-    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
-    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
-  }
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    0 8px 24px oklch(0 0 0 / 0.36);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1) brightness(0.72);
+  backdrop-filter: blur(18px) saturate(1.1) brightness(0.72);
 }
 
 body[data-theme="v8"] .category-leaderboard {

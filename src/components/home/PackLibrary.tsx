@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import {
   fetchPackLibrary,
@@ -8,16 +9,23 @@ import {
 } from "@/services/homepage";
 import { PackArt } from "./PackArt";
 
+const ENTER_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const EXIT_EASE: [number, number, number, number] = [0.4, 0, 0.2, 1];
+
 export function PackLibrary({
+  open,
   onClose,
   onPlay,
 }: {
+  open: boolean;
   onClose: () => void;
   onPlay: (pack: FeaturedPack) => void;
 }) {
   const [packs, setPacks] = useState<FeaturedPack[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
+  const [visible, setVisible] = useState(open);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -31,15 +39,43 @@ export function PackLibrary({
     };
   }, []);
 
+  const reduce = useReducedMotion();
+
+  function finishClose() {
+    setVisible(false);
+    setClosing(false);
+    onClose();
+  }
+
+  function requestClose() {
+    if (!visible || closing) return;
+    if (reduce) {
+      finishClose();
+      return;
+    }
+    setClosing(true);
+  }
+
   useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setClosing(false);
+      return;
+    }
+    if (visible && !closing) requestClose();
+  }, [open, reduce]);
+
+  useEffect(() => {
+    if (!visible || closing) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") requestClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [visible, closing]);
 
   useEffect(() => {
+    if (!visible) return;
     const scroller = document.querySelector<HTMLElement>("[data-page-scroll]");
     const previousOverflow = scroller?.style.overflow ?? "";
     const previousBodyOverflow = document.body.style.overflow;
@@ -49,7 +85,7 @@ export function PackLibrary({
       if (scroller) scroller.style.overflow = previousOverflow;
       document.body.style.overflow = previousBodyOverflow;
     };
-  }, []);
+  }, [visible]);
 
   const filtered = packs.filter((p) => {
     const hay = `${p.name} ${p.creatorName} ${p.themeName}`.toLowerCase();
@@ -59,18 +95,41 @@ export function PackLibrary({
   if (typeof document === "undefined") return null;
 
   return createPortal(
+    <AnimatePresence>
+      {visible ? (
     <div
       className="fixed inset-0 z-[1100] flex h-[100dvh] items-start justify-center overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label="Pack library"
     >
-      <div className="pack-library-glass glass glass-strength-10 glass-chromatic-10 glass-blur-3 glass-saturation-60 glass-brightness-35 glass-surface mx-auto mt-[8dvh] flex h-[calc(100dvh-8dvh)] max-h-[84dvh] w-full flex-col lg:h-auto lg:max-w-[60rem]">
+      <motion.div
+        className="pack-library-glass mx-auto mt-[8dvh] flex h-[calc(100dvh-8dvh)] max-h-[84dvh] w-full flex-col lg:h-auto lg:max-w-[60rem]"
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 72 }}
+        animate={
+          reduce
+            ? { opacity: closing ? 0 : 1 }
+            : { opacity: closing ? 0 : 1, y: closing ? 72 : 0 }
+        }
+        transition={
+          reduce
+            ? { duration: 0.16 }
+            : closing
+              ? { duration: 0.32, ease: EXIT_EASE }
+              : {
+                  y: { type: "spring", stiffness: 420, damping: 34, mass: 0.86 },
+                  opacity: { duration: 0.24, ease: ENTER_EASE },
+                }
+        }
+        onAnimationComplete={() => {
+          if (closing) finishClose();
+        }}
+      >
       <div className="flex items-center justify-between px-5 py-3">
         <h2 className="text-[24px] font-bold tracking-[-0.02em]">All Packs</h2>
         <button
           type="button"
-          onClick={onClose}
+          onClick={requestClose}
           className="grid size-11 place-items-center rounded-full border border-white/15 text-white/70 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
           aria-label="Close pack library"
         >
@@ -132,8 +191,10 @@ export function PackLibrary({
           </div>
         )}
       </div>
-      </div>
-    </div>,
+      </motion.div>
+    </div>
+      ) : null}
+    </AnimatePresence>,
     document.body,
   );
 }
