@@ -375,7 +375,7 @@ export function HomeScreen({
         Full-width scroll shell keeps the scrollbar on the viewport edge.
         Content width is constrained by the inner wrapper (same as other pages).
       */}
-      <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
+      <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
         <div className="home-view-all-packs mt-6 flex justify-center">
           <button
             type="button"
@@ -385,6 +385,10 @@ export function HomeScreen({
             View All Packs
           </button>
         </div>
+
+        <section className="home-play-steps" aria-label="Steps to play placeholder">
+          steps to play placeholder
+        </section>
 
         <div className="hub-today-bento mt-8">
           <div className="hub-today-bento-stack">

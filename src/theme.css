@@ -540,6 +540,27 @@ body[data-theme="v8"] .home-featured-coverflow.is-loading {
   animation: pulse 1.6s ease-in-out infinite;
 }
 
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-page-inner--after-hero {
+    margin-top: -4rem;
+  }
+}
+
+body[data-theme="v8"] .home-play-steps {
+  display: grid;
+  place-items: center;
+  height: 20rem;
+  margin-top: 1.5rem;
+  background: #39ff14;
+  color: #081208;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: center;
+  box-shadow: none;
+  filter: none;
+}
+
 body[data-theme="v8"] .home-featured-coverflow .stage-packs {
   background: transparent;
 }
