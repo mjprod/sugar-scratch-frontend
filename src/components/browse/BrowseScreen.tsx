@@ -134,6 +134,7 @@ export function HomeScreen({
   onSkipTutorial,
   onRestart,
   onStartPlaying,
+  onOpenCreator,
   onClaimDaily,
 }: {
   showTutorial?: boolean;
@@ -157,6 +158,7 @@ export function HomeScreen({
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const [boardLoading, setBoardLoading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [heroReady, setHeroReady] = useState(false);
 
   useMarkPageReady(status === "error" || heroReady);
@@ -420,6 +422,12 @@ export function HomeScreen({
           Restart prototype (clears first-visit flags)
         </button>
       </div>
+
+      {toast ? (
+        <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[13px] text-white/85 backdrop-blur-md">
+          {toast}
+        </div>
+      ) : null}
 
       {libraryOpen ? (
         <PackLibrary

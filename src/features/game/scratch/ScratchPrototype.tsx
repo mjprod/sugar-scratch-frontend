@@ -34,7 +34,6 @@ import {
   type TopBarPhase,
 } from "../modules/TopSymbolBar";
 import {
-  completeSourcePack,
   finishMotionHand,
   isGameModeUrl,
   loadGameSession,
@@ -3321,9 +3320,6 @@ export function ScratchPrototype() {
         if (!finished) {
           navigateTo("/game");
           return;
-        }
-        if (finished.photoPrizeTotal <= 0) {
-          completeSourcePack(finished);
         }
         setGameSession(finished);
         // Return to pack-fan hub for photo reveal / New Game.
