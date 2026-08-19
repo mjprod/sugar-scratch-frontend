@@ -179,7 +179,7 @@ export function SpotlightBanner() {
             Invite your favourite influencer to join
           </p>
           <img
-            src="/images/logoSugar.png"
+            src="/svg/logoSugarScratch.svg"
             alt=""
             draggable={false}
             decoding="async"

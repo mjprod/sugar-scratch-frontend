@@ -9,7 +9,7 @@ import {
 } from "@/shared/ui/PageTransition";
 import "./SitePreloader.css";
 
-const MIN_MS = 1800;
+const MIN_MS = 2800;
 const MAX_MS = 4500;
 const FADE_MS = 420;
 

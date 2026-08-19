@@ -2373,6 +2373,13 @@ body[data-theme="v8"] .hub-daily-hero-cta .cta-button-glow>.border-glow-inner {
   height: 100%;
 }
 
+@media (max-width: 640px) {
+  body[data-theme="v8"] .hub-daily-hero-cta {
+    max-width: 50dvw;
+    margin: 0 auto;
+  }
+}
+
 body[data-theme="v8"] .hub-daily-hero-reset {
   display: inline-flex;
   align-items: center;
