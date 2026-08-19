@@ -528,6 +528,11 @@ body[data-theme="v8"] .home-featured-coverflow {
   body[data-theme="v8"] .home-view-all-packs {
     margin-top: -2.5rem;
   }
+
+  /* Let the page scroller keep vertical pans; carousel only takes X. */
+  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
+    touch-action: pan-y;
+  }
 }
 
 body[data-theme="v8"] .home-featured-coverflow.is-loading {
@@ -2099,12 +2104,20 @@ body[data-theme="v8"] .hub-spotlight-invite-close {
 
 @media (max-width: 640px) {
   body[data-theme="v8"] .hub-spotlight-band-logo img {
-    width: min(58vw, 221px);
+    width: min(46vw, 176px);
+  }
+
+  body[data-theme="v8"] .hub-spotlight-band-women {
+    transform: scale(1.12);
   }
 
   body[data-theme="v8"] .hub-spotlight-band-women img {
-    height: 88%;
-    max-width: 100%;
+    height: 80%;
+    max-width: 92%;
+  }
+
+  body[data-theme="v8"] .hub-spotlight-band-bg-blur {
+    filter: blur(1.5px);
   }
 }
 
@@ -2133,6 +2146,12 @@ body[data-theme="v8"] .hub-spotlight-invite-close {
 
   body[data-theme="v8"] .hub-spotlight-band-brand {
     transform: scale(0.75);
+  }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .hub-spotlight-band-women {
+    transform: scale(1.12);
   }
 }
 

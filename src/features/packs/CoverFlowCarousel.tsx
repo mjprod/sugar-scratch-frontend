@@ -19,11 +19,10 @@ import {
   applyPackFaceMaterial,
   cloneSceneWithMaterials,
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
-  PACK_MODEL_URL,
-  PACK_TEXTURE_SIZE,
-  PACK_VIDEO_FIT_MODE,
-  PACK_VIDEO_URL,
-  resolveTargetMaterial,
+	  PACK_MODEL_URL,
+	  PACK_TEXTURE_SIZE,
+	  PACK_VIDEO_FIT_MODE,
+	  resolveTargetMaterial,
   useVideoTexture,
   type VideoTextureTransform,
 } from '@/shared/pack3d'
@@ -912,7 +911,7 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
 	  }, [isActive, revealMode, item.id, invalidate])
   // Hero keeps playing during open; others freeze.
   const { texture } = useVideoTexture(
-    item.videoUrl || PACK_VIDEO_URL,
+    item.videoUrl,
     item.fitMode || PACK_VIDEO_FIT_MODE,
     textureTransform,
     {
@@ -921,7 +920,7 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
         (isCenter && (!hasActiveSelection || isActive)) ||
         (isRevealHero && revealMode),
       textureSize: PACK_TEXTURE_SIZE,
-      enabled: true,
+      enabled: Boolean(item.videoUrl),
       soft: false,
     },
   )
@@ -2538,14 +2537,13 @@ useEffect(() => {
         return
       }
 
-      // Ignore downward page-scroll when nothing is active.
-      // When a pack is active, keep the gesture so swipe-down can deactivate
-      // unless the homepage asked to leave that to page scroll.
+      // Ignore vertical page-scroll when the homepage asked not to steal it,
+      // or downward scroll when nothing is active on other surfaces.
       if (
         !horizontal &&
         absY > 18 &&
-        my > 0 &&
-        (!selectedIdRef.current || disableSwipeDownDeactivateRef.current)
+        (disableSwipeDownDeactivateRef.current ||
+          (my > 0 && !selectedIdRef.current))
       ) {
         if (!motionTiltEnabled) {
           setCenterTiltYaw(0)
@@ -2624,7 +2622,7 @@ useEffect(() => {
         (swipeY < 0 ||
           verticalSpeed >= ACTIVATE_UP_VELOCITY ||
           absY >= ACTIVATE_UP_DISTANCE_PX * 1.35)
-      if (isUpwardActivate) {
+      if (isUpwardActivate && !disableSwipeDownDeactivateRef.current) {
         commitActivate('activate')
         event?.preventDefault?.()
         return
@@ -2685,9 +2683,11 @@ useEffect(() => {
       // pmndrs recommended drag config shape
       filterTaps: true,
       threshold: 3,
+      // Homepage: only take horizontal; let the page scroller keep vertical pans.
+      axis: disableSwipeDownDeactivate ? 'x' : undefined,
       // axisThreshold typing differs across @use-gesture versions
       axisThreshold: { touch: 8, mouse: 8, pen: 8 } as any,
-      pointer: { touch: true, capture: true },
+      pointer: { touch: true, capture: !disableSwipeDownDeactivate },
       eventOptions: { passive: false },
       swipe: {
         distance: [SWIPE_DISTANCE_PX, SWIPE_DISTANCE_PX],

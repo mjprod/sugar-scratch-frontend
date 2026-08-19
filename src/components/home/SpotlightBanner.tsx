@@ -48,6 +48,7 @@ export function SpotlightBanner() {
 
     const scroller = root.closest<HTMLElement>("[data-page-scroll]") ?? null;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobile = window.matchMedia("(max-width: 640px)");
     let raf = 0;
     let visible = true;
     let lastKey = "";
@@ -76,17 +77,18 @@ export function SpotlightBanner() {
       const t = clamp((viewTop + viewH - rect.top) / viewH, 0, 1);
       const effectT = easeOutCubic(clamp(t / EFFECT_STOP, 0, 1));
       const bgEffectT = easeOutCubic(clamp(t / BG_EFFECT_STOP, 0, 1));
-      const key = `${effectT.toFixed(3)}:${bgEffectT.toFixed(3)}`;
+      const key = `${effectT.toFixed(3)}:${bgEffectT.toFixed(3)}:${mobile.matches ? "m" : "d"}`;
       if (key === lastKey) return;
       lastKey = key;
 
       const bgY = lerp(OFFSETS.bg.start, OFFSETS.bg.end, bgEffectT);
       const womenY = lerp(OFFSETS.women.start, OFFSETS.women.end, effectT);
       const logoY = lerp(OFFSETS.logo.start, OFFSETS.logo.end, effectT);
+      const womenScale = mobile.matches ? 1.12 : 1.25;
       const logoScale = lerp(0.7, 0.75, effectT);
 
       bg.style.transform = `translate3d(0, ${bgY.toFixed(2)}px, 0) scale(1.42)`;
-      women.style.transform = `translate3d(0, ${womenY.toFixed(2)}px, 0) scale(1.25)`;
+      women.style.transform = `translate3d(0, ${womenY.toFixed(2)}px, 0) scale(${womenScale})`;
       logo.style.transform = `translate3d(0, ${logoY.toFixed(2)}px, 0)`;
       brand.style.transform = `scale(${logoScale.toFixed(3)})`;
       women.style.opacity = lerp(0.7, 1, effectT).toFixed(3);
@@ -111,6 +113,7 @@ export function SpotlightBanner() {
     target.addEventListener("scroll", queue, { passive: true });
     window.addEventListener("resize", queue, { passive: true });
     reduce.addEventListener("change", queue);
+    mobile.addEventListener("change", queue);
     paint();
 
     return () => {
@@ -118,6 +121,7 @@ export function SpotlightBanner() {
       target.removeEventListener("scroll", queue);
       window.removeEventListener("resize", queue);
       reduce.removeEventListener("change", queue);
+      mobile.removeEventListener("change", queue);
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, []);

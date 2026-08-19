@@ -4,7 +4,6 @@ export {
   PACK_MODEL_URL,
   PACK_TEXTURE_SIZE,
   PACK_VIDEO_FIT_MODE,
-  PACK_VIDEO_URL,
   type ModelRotation,
   type VideoFitMode,
   type VideoTextureTransform,
@@ -16,6 +15,7 @@ export {
   collectStandardMaterials,
   isTexturableMaterial,
   resolveTargetMaterial,
+  stripPackFaceAlbedo,
   type TexturableMaterial,
 } from './materials'
 
