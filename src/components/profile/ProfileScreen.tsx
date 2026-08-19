@@ -126,7 +126,6 @@ export function UserDashboardScreen({
           title="Profile & Account"
           items={[
             { label: "Purchase History", icon: CreditCard },
-            { label: "Saved Packs", icon: Sparkles },
             { label: "Notifications", icon: Bell },
             { label: "Change Password", icon: Lock },
           ]}
