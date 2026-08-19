@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import {
   fetchPackLibrary,
@@ -38,19 +39,34 @@ export function PackLibrary({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>("[data-page-scroll]");
+    const previousOverflow = scroller?.style.overflow ?? "";
+    const previousBodyOverflow = document.body.style.overflow;
+    if (scroller) scroller.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (scroller) scroller.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
+
   const filtered = packs.filter((p) => {
     const hay = `${p.name} ${p.creatorName} ${p.themeName}`.toLowerCase();
     return hay.includes(q.trim().toLowerCase());
   });
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="absolute inset-0 z-40 flex flex-col bg-[oklch(0.14_0_0)]/95 backdrop-blur-md"
+      className="fixed inset-0 z-[1100] flex h-[100dvh] items-start justify-center overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label="Pack library"
     >
-      <div className="flex items-center justify-between px-5 pt-[max(72px,env(safe-area-inset-top)+56px)] pb-3">
+      <div className="pack-library-glass glass glass-strength-10 glass-chromatic-10 glass-blur-3 glass-saturation-60 glass-brightness-35 glass-surface mx-auto mt-[8dvh] flex h-[calc(100dvh-8dvh)] max-h-[84dvh] w-full flex-col lg:h-auto lg:max-w-[60rem]">
+      <div className="flex items-center justify-between px-5 py-3">
         <h2 className="text-[24px] font-bold tracking-[-0.02em]">All Packs</h2>
         <button
           type="button"
@@ -116,6 +132,8 @@ export function PackLibrary({
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
