@@ -17,7 +17,8 @@ const WELCOME_PACK = {
   themeName: "Starter",
 } as const;
 
-export function isWelcomeGiftClaimed() {
+export function isWelcomeGiftClaimed(accountClaimed = false) {
+  if (accountClaimed) return true;
   try {
     if (localStorage.getItem(CLAIMED_KEY) === "1") return true;
     return localStorage.getItem("sugar.v8.welcomeStatus") === "claimed";
@@ -26,8 +27,8 @@ export function isWelcomeGiftClaimed() {
   }
 }
 
-export function isWelcomeGiftEligible() {
-  return !isWelcomeGiftClaimed();
+export function isWelcomeGiftEligible(accountClaimed = false) {
+  return !isWelcomeGiftClaimed(accountClaimed);
 }
 
 function isSessionHidden() {
@@ -39,8 +40,8 @@ function isSessionHidden() {
 }
 
 /** Show overlay when unclaimed and not closed this session. */
-export function shouldShowWelcomeOverlay() {
-  return isWelcomeGiftEligible() && !isSessionHidden();
+export function shouldShowWelcomeOverlay(accountClaimed = false) {
+  return isWelcomeGiftEligible(accountClaimed) && !isSessionHidden();
 }
 
 export function hideWelcomeOverlayForSession() {
@@ -61,8 +62,11 @@ function markWelcomeClaimed() {
 }
 
 /** Grant starter pack once. Duplicate purchaseId is a no-op. */
-export function claimWelcomeRewards(): { granted: boolean; error?: boolean } {
-  if (isWelcomeGiftClaimed()) return { granted: false };
+export function claimWelcomeRewards(accountClaimed = false): {
+  granted: boolean;
+  error?: boolean;
+} {
+  if (isWelcomeGiftClaimed(accountClaimed)) return { granted: false };
   try {
     addUnopenedFromPurchase({ ...WELCOME_PACK });
     markWelcomeClaimed();

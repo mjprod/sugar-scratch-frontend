@@ -24,7 +24,6 @@ const ONBOARD_STEPS = new Set<Step>([
   "recommend-intro",
   "personalize-swipe",
   "personalize-complete",
-  "welcome-reward",
 ]);
 
 function auth2Mode(step: Step): AuthShellMode {

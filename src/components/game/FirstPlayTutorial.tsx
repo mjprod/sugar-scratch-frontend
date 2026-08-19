@@ -16,9 +16,7 @@ type FoilPhase = "explain" | "foil" | "wait" | "creator";
 const PAD = 8;
 
 function findFoil() {
-  return document.querySelector(
-    '.top-symbol-bar.is-phase-center, [data-tutorial-target="foil"]',
-  );
+  return document.querySelector(".top-symbol-bar.is-phase-center");
 }
 
 function findCreator() {

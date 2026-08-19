@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Apple, ChevronLeft, Eye, EyeOff, Loader2, X } from "lucide-react";
+import { Apple, Eye, EyeOff, Loader2, X } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -228,11 +228,10 @@ export function AuthenticationSheet({
                     <button
                       type="button"
                       className="auth7-sheet-back"
-                      aria-label="Back"
                       disabled={busy}
                       onClick={() => switchMode("login")}
                     >
-                      <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
+                      Back
                     </button>
                   ) : null}
                   <h2 id={titleId} className="auth7-sheet-title">

@@ -13,8 +13,13 @@ import "./welcome-gift.css";
 type Phase = "offer" | "claiming" | "confirm";
 
 export function WelcomeGiftOverlay() {
-  const { authed, bumpInventoryRevision, setProfile, setPurchasedPacks } =
-    useAuth();
+  const {
+    authed,
+    profile,
+    bumpInventoryRevision,
+    setProfile,
+    setPurchasedPacks,
+  } = useAuth();
   const location = useLocation();
   const skip =
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
@@ -25,8 +30,12 @@ export function WelcomeGiftOverlay() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!skip && authed && shouldShowWelcomeOverlay()) setOpen(true);
-  }, [authed, skip]);
+    if (!skip && authed && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
+      setOpen(true);
+      return;
+    }
+    if (profile.welcomeClaimed) setOpen(false);
+  }, [authed, skip, profile.welcomeClaimed]);
 
   useEffect(() => {
     if (open) claimRef.current?.focus();
@@ -49,7 +58,7 @@ export function WelcomeGiftOverlay() {
     if (phase !== "offer") return;
     setError(false);
     setPhase("claiming");
-    const result = claimWelcomeRewards();
+    const result = claimWelcomeRewards(profile.welcomeClaimed);
     if (!result.granted) {
       if (result.error) {
         setError(true);

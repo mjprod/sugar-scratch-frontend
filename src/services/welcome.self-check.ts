@@ -37,6 +37,10 @@ assert(isWelcomeGiftEligible(), "close does not claim");
 
 session.clear();
 assert(shouldShowWelcomeOverlay(), "overlay can return next session");
+assert(!isWelcomeGiftEligible(true), "account flag not eligible");
+assert(!shouldShowWelcomeOverlay(true), "account flag hides overlay");
+assert(!claimWelcomeRewards(true).granted, "account flag claim is a no-op");
+assert(shouldShowWelcomeOverlay(), "local still eligible without account flag");
 
 const first = claimWelcomeRewards();
 assert(first.granted, "claim grants");
