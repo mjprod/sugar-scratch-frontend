@@ -1,0 +1,640 @@
+.fp-tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 5400;
+  pointer-events: none;
+}
+
+.fp-tutorial.is-leaving .fp-tutorial-tip,
+.fp-tutorial.is-leaving .fp-tutorial-hole,
+.fp-tutorial.is-leaving .fp-tutorial-dim {
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.fp-tutorial-dim {
+  position: absolute;
+  background: rgb(0 0 0 / 0.68);
+  pointer-events: auto;
+}
+
+.fp-tutorial-dim.is-soft {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.fp-tutorial-hole {
+  position: absolute;
+  border: 1.5px solid rgb(232 196 120 / 0.7);
+  box-shadow: 0 0 24px rgb(168 88 255 / 0.4);
+  pointer-events: none;
+  animation: fp-hole-pulse 1.8s ease-in-out infinite;
+}
+
+.fp-tutorial-hole.is-blocked {
+  pointer-events: auto;
+}
+
+.fp-tutorial-hole.is-pill {
+  border-radius: 999px;
+}
+
+.fp-tutorial-hole.is-creator {
+  border-radius: 28px;
+}
+
+.fp-tutorial-hole.is-strip {
+  border-radius: 14px;
+}
+
+.fp-tutorial-tip {
+  position: absolute;
+  z-index: 2;
+  width: min(280px, calc(100vw - 32px));
+  padding: 14px 16px max(12px, env(safe-area-inset-bottom));
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 16px;
+  background: rgb(12 8 16 / 0.94);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+  color: #fff;
+  pointer-events: auto;
+}
+
+.fp-tutorial-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.fp-tutorial-copy {
+  margin: 6px 0 0;
+  color: rgb(255 255 255 / 0.68);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.fp-tutorial-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fp-tutorial-step {
+  margin-right: auto;
+  color: rgb(255 255 255 / 0.45);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fp-tutorial-nav button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f3de9a 0%, #d4ae5a 48%, #b8892e 100%);
+  color: #1a1206;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.fp-tutorial-tip.is-demo {
+  padding: 10px 14px 12px;
+  background: rgb(12 8 16 / 0.82);
+}
+
+.fp-tutorial-finger,
+.fp-scratch-demo,
+.fp-scratch-demo-foil,
+.fp-scratch-reveal,
+.fp-scratch-nib,
+.fp-scratch-ripple,
+.fp-scratch-finger,
+.fp-scratch-hint {
+  pointer-events: none;
+}
+
+.fp-tutorial-finger {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow:
+    0 0 0 6px rgb(232 196 120 / 0.28),
+    0 0 18px rgb(232 196 120 / 0.65);
+}
+
+.fp-tutorial-finger.is-tear {
+  top: 50%;
+  margin-top: -11px;
+  animation: fp-tear-swipe 2.2s ease-in-out infinite;
+}
+
+.fp-tutorial-hole.is-demo {
+  overflow: visible;
+  box-shadow:
+    0 0 0 1px rgb(245 224 160 / 0.35),
+    0 0 28px rgb(168 88 255 / 0.55);
+}
+
+.fp-scratch-demo {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.fp-scratch-demo-foil {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      145deg,
+      oklch(0.78 0.02 80) 0%,
+      oklch(0.62 0.015 75) 28%,
+      oklch(0.48 0.012 70) 58%,
+      oklch(0.7 0.025 85) 100%
+    );
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.22);
+}
+
+.fp-scratch-reveal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  height: 72%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 40% 35%, oklch(0.32 0.01 70), oklch(0.18 0.008 67) 70%);
+  box-shadow:
+    inset 0 0 10px oklch(0 0 0 / 0.45),
+    0 0 0 1px oklch(1 0 0 / 0.12);
+  opacity: 0;
+  transform: translate(-50%, -50%) scaleX(0.12);
+  animation: fp-scratch-reveal 3.4s ease-in-out infinite;
+}
+
+.fp-scratch-nib {
+  position: absolute;
+  top: 50%;
+  width: 46px;
+  height: 38px;
+  margin-top: -19px;
+  border-radius: 999px;
+  background: radial-gradient(circle, oklch(0.28 0.01 70) 0%, oklch(0.16 0.008 67) 75%);
+  box-shadow: inset 0 0 8px oklch(0 0 0 / 0.35);
+  opacity: 0;
+  animation: fp-scratch-nib 3.4s ease-in-out infinite;
+}
+
+.fp-scratch-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgb(255 255 255 / 0.7);
+  border-radius: 999px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.6);
+  animation: fp-scratch-ripple 3.4s ease-out infinite;
+}
+
+.fp-scratch-finger {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 38% 32%, rgb(255 255 255 / 0.96), rgb(236 236 236 / 0.72) 58%, rgb(210 210 210 / 0.55));
+  box-shadow:
+    0 4px 10px rgb(0 0 0 / 0.35),
+    0 0 0 7px rgb(255 255 255 / 0.16),
+    0 0 22px rgb(232 196 120 / 0.55);
+  opacity: 0;
+  animation: fp-scratch-finger 3.4s ease-in-out infinite;
+}
+
+.fp-scratch-lines {
+  position: absolute;
+  inset: -10px -22px;
+}
+
+.fp-scratch-lines::before,
+.fp-scratch-lines::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.55);
+  opacity: 0;
+  animation: fp-scratch-lines 3.4s ease-in-out infinite;
+}
+
+.fp-scratch-lines::before {
+  left: -6px;
+  box-shadow: -8px 0 0 rgb(255 255 255 / 0.25);
+}
+
+.fp-scratch-lines::after {
+  right: -6px;
+  box-shadow: 8px 0 0 rgb(255 255 255 / 0.25);
+}
+
+.fp-scratch-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  z-index: 2;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.45);
+  color: rgb(245 224 160 / 0.95);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: fp-scratch-hint 3.4s ease both 1;
+}
+
+.fp-creator-guide,
+.fp-creator-trail,
+.fp-creator-label {
+  pointer-events: none;
+}
+
+.fp-creator-guide {
+  position: absolute;
+  left: 10%;
+  top: 78%;
+  width: 92%;
+  height: 2px;
+  transform: rotate(-36deg);
+  transform-origin: 0 50%;
+  background: repeating-linear-gradient(
+    90deg,
+    rgb(245 224 160 / 0.9) 0 8px,
+    transparent 8px 14px
+  );
+  box-shadow: 0 0 10px rgb(232 196 120 / 0.45);
+  opacity: 0.85;
+}
+
+.fp-creator-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: rgb(245 224 160 / 0.92);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.65);
+  transform: translate(-50%, -50%) rotate(-36deg);
+  animation: fp-creator-label 2.8s ease-in-out infinite;
+}
+
+.fp-creator-trail {
+  position: absolute;
+  left: 12%;
+  top: 74%;
+  width: 88%;
+  height: 38px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.05),
+    rgb(255 255 255 / 0.5) 42%,
+    rgb(255 255 255 / 0.12)
+  );
+  box-shadow: 0 0 16px rgb(255 255 255 / 0.25);
+  mix-blend-mode: overlay;
+  transform-origin: 0 50%;
+  transform: rotate(-36deg) scaleX(0.08);
+  opacity: 0;
+  animation: fp-creator-trail 2.8s ease-in-out infinite;
+}
+
+.fp-scratch-finger.is-creator {
+  margin-top: 0;
+  animation: fp-creator-finger 2.8s ease-in-out infinite;
+}
+
+html[data-scratch-tutorial] .stage-coach,
+html[data-scratch-tutorial] .lottie-clipper {
+  visibility: hidden;
+}
+
+@keyframes fp-hole-pulse {
+  50% {
+    box-shadow: 0 0 34px rgb(168 88 255 / 0.62);
+    border-color: rgb(245 224 160 / 0.95);
+  }
+}
+
+@keyframes fp-tear-swipe {
+  0%,
+  12% {
+    left: 10%;
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(90% - 22px);
+    opacity: 0;
+  }
+}
+
+@keyframes fp-scratch-finger {
+  0%,
+  6% {
+    left: 50%;
+    opacity: 0;
+    transform: translateX(-50%) scale(1.22);
+  }
+  12% {
+    left: 50%;
+    opacity: 1;
+    transform: translateX(-50%) scale(1.16);
+  }
+  18% {
+    left: 50%;
+    opacity: 1;
+    transform: translateX(-50%) scale(0.88);
+  }
+  40% {
+    left: 82%;
+    transform: translateX(-50%) scale(0.9);
+  }
+  62% {
+    left: 18%;
+    transform: translateX(-50%) scale(0.9);
+  }
+  80% {
+    left: 82%;
+    transform: translateX(-50%) scale(0.9);
+  }
+  86% {
+    left: 82%;
+    transform: translateX(-50%) scale(0.92);
+  }
+  94%,
+  100% {
+    left: 50%;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes fp-scratch-nib {
+  0%,
+  16% {
+    left: 50%;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.4);
+  }
+  20% {
+    left: 50%;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  40% {
+    left: 82%;
+    opacity: 1;
+  }
+  62% {
+    left: 18%;
+    opacity: 1;
+  }
+  80% {
+    left: 82%;
+    opacity: 1;
+  }
+  88% {
+    left: 82%;
+    opacity: 0.85;
+  }
+  94%,
+  100% {
+    left: 50%;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.4);
+  }
+}
+
+@keyframes fp-scratch-reveal {
+  0%,
+  16% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleX(0.1);
+  }
+  22% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(0.22);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(0.55);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(0.82);
+  }
+  80%,
+  86% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(0.92);
+  }
+  94%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleX(0.16);
+  }
+}
+
+@keyframes fp-scratch-ripple {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+  16% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  26% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.85);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.85);
+  }
+}
+
+@keyframes fp-scratch-lines {
+  0%,
+  18%,
+  86%,
+  100% {
+    opacity: 0;
+  }
+  28%,
+  78% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes fp-scratch-hint {
+  0%,
+  10% {
+    opacity: 0;
+  }
+  18%,
+  72% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.28;
+  }
+}
+
+@keyframes fp-creator-finger {
+  0%,
+  8% {
+    left: 16%;
+    top: 78%;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  14% {
+    left: 16%;
+    top: 78%;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.14);
+  }
+  20% {
+    left: 16%;
+    top: 78%;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.88);
+  }
+  72% {
+    left: 84%;
+    top: 22%;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  80% {
+    left: 84%;
+    top: 22%;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  90%,
+  100% {
+    left: 16%;
+    top: 78%;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes fp-creator-trail {
+  0%,
+  18% {
+    opacity: 0;
+    transform: rotate(-36deg) scaleX(0.08);
+  }
+  26% {
+    opacity: 0.85;
+    transform: rotate(-36deg) scaleX(0.22);
+  }
+  72%,
+  80% {
+    opacity: 0.9;
+    transform: rotate(-36deg) scaleX(1);
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: rotate(-36deg) scaleX(0.1);
+  }
+}
+
+@keyframes fp-creator-label {
+  0%,
+  12% {
+    opacity: 0;
+  }
+  20%,
+  78% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-tutorial-hole,
+  .fp-tutorial-finger,
+  .fp-scratch-finger,
+  .fp-scratch-reveal,
+  .fp-scratch-nib,
+  .fp-scratch-ripple,
+  .fp-scratch-lines::before,
+  .fp-scratch-lines::after,
+  .fp-scratch-hint,
+  .fp-creator-trail,
+  .fp-creator-label,
+  .fp-scratch-finger.is-creator {
+    animation: none;
+  }
+
+  .fp-tutorial-finger.is-tear {
+    left: 50%;
+    opacity: 0.85;
+    transform: translateX(-50%);
+  }
+
+  .fp-scratch-finger {
+    left: 50%;
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+
+  .fp-scratch-reveal {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scaleX(0.55);
+  }
+
+  .fp-scratch-finger.is-creator {
+    left: 50%;
+    top: 50%;
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  .fp-creator-trail {
+    opacity: 0.7;
+    transform: rotate(-36deg) scaleX(0.7);
+  }
+
+  .fp-scratch-hint {
+    opacity: 0.8;
+  }
+}

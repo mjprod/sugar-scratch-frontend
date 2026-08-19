@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
+import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
@@ -40,6 +41,7 @@ export function PhotoScratchPage() {
         <button
           type="button"
           className="stage-game__exit"
+          data-tutorial-target="collection"
           aria-label={gameMode ? "Back to game" : "Back to collection"}
           onClick={() => {
             if (gameMode) {
@@ -55,6 +57,7 @@ export function PhotoScratchPage() {
           ‹
         </button>
         <PhotoScratch key={card || "default"} />
+        <FirstPlayTutorial scene="foil" />
       </div>
     </div>
   );

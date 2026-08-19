@@ -2454,6 +2454,7 @@ export function PhotoScratch() {
 
         <div
           ref={stageRef}
+          data-tutorial-target="reveal"
           className={`stage photo-scratch-stage${ready ? " is-ready" : ""}${isScratching ? " is-finger-dragging is-scratching" : ""}${showLayerBg ? "" : " is-bg-hidden"}${
             gameResult ? " is-game-over" : ""
           }${topBarPhase === "showcase" ? " is-showcase-phase" : ""}${
@@ -2525,6 +2526,7 @@ export function PhotoScratch() {
             <canvas
               ref={fgCanvasRef}
               className="photo-scratch-fg-layer"
+              data-tutorial-target="scratch-card"
               // Drawing-buffer size is set by GarmentGLRenderer from devicePixelRatio;
               // CSS (width/height 100%) keeps the logical 390×672 stage size.
               width={CANVAS_WIDTH}

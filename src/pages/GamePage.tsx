@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
+import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
 import "@/features/game/game.css";
@@ -43,6 +44,7 @@ function ScratchGameEmbed() {
         <button
           type="button"
           className="stage-game__exit"
+          data-tutorial-target="collection"
           aria-label={
             gameMode
               ? "Back to game"
@@ -65,6 +67,7 @@ function ScratchGameEmbed() {
           ‹
         </button>
         <ScratchPrototype />
+        <FirstPlayTutorial scene="foil" />
       </div>
     </div>
   );
