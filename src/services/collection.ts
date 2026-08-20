@@ -144,6 +144,7 @@ export type ScratchReadyGroup = {
   collectionName: string;
   count: number;
   coverUrl: string;
+  kind?: "motion" | "photo";
 };
 
 export const SCRATCH_READY_GROUPS: ScratchReadyGroup[] = [

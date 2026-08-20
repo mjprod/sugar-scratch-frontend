@@ -47,6 +47,10 @@ export function CollectionPage() {
         trackScratchEvent("Ready To Scratch Opened", {
           packId: group.id,
         });
+        if (group.kind === "photo") {
+          requireAuth({ type: "photo-scratch" });
+          return;
+        }
         requireAuth({
           type: "scratch",
           pack: {

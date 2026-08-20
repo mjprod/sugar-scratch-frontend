@@ -383,21 +383,31 @@ export function pickWonPhotocards(
   photos: PhotoCard[],
   count: number,
   preferredThemes: string[],
+  excludeIds: readonly string[] = [],
 ): PhotoCard[] {
   if (count <= 0 || photos.length === 0) return [];
+  const excluded = new Set(excludeIds);
   const preferredKeys = new Set(preferredThemes.map(themeKey));
   const preferred = shuffleInPlace(
-    photos.filter((photo) => preferredKeys.has(themeKey(themeFromPhotoLabel(photo.label)))),
+    photos.filter(
+      (photo) =>
+        !excluded.has(photo.id) &&
+        preferredKeys.has(themeKey(themeFromPhotoLabel(photo.label))),
+    ),
   );
   const rest = shuffleInPlace(
-    photos.filter((photo) => !preferredKeys.has(themeKey(themeFromPhotoLabel(photo.label)))),
+    photos.filter(
+      (photo) =>
+        !excluded.has(photo.id) &&
+        !preferredKeys.has(themeKey(themeFromPhotoLabel(photo.label))),
+    ),
   );
   const pool = [...preferred, ...rest];
   const unique: PhotoCard[] = [];
   const seen = new Set<string>();
   for (const photo of pool) {
     if (unique.length >= count) break;
-    if (seen.has(photo.id)) continue;
+    if (seen.has(photo.id) || excluded.has(photo.id)) continue;
     seen.add(photo.id);
     unique.push(photo);
   }

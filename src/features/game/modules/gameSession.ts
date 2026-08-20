@@ -1,4 +1,5 @@
 import { apiMutate } from "@/lib/api";
+import { upsertReadyToScratch } from "@/services/readyToScratch";
 import type { OpeningSession } from "@/services/purchase";
 import {
   loadGameCatalog,
@@ -47,6 +48,16 @@ export type GameSession = {
   walletCredited: boolean;
   /** Set when motion play continues a pack opening from PurchaseFlow. */
   packScratch?: PackScratchLink;
+  /** Photo Cards awarded by the Motion Card that just completed. */
+  lastMotionWinPhotoIds?: string[];
+  /** Result overlay waiting for Scratch Next / Save Remaining / photo summary. */
+  pendingMotionResult?: {
+    cardId: string;
+    photoIds: string[];
+    prize: number;
+    current: number;
+    total: number;
+  };
 };
 
 function isGameSession(value: unknown): value is GameSession {
@@ -75,10 +86,9 @@ function normalizeGameSession(session: GameSession): GameSession {
   };
 }
 
-export function loadGameSession(): GameSession | null {
-  if (typeof window === "undefined") return null;
+function readStoredSession(storage: Storage): GameSession | null {
   try {
-    const raw = sessionStorage.getItem(GAME_SESSION_KEY);
+    const raw = storage.getItem(GAME_SESSION_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     return isGameSession(parsed) ? normalizeGameSession(parsed) : null;
@@ -87,13 +97,25 @@ export function loadGameSession(): GameSession | null {
   }
 }
 
-export function saveGameSession(session: GameSession): void {
-  if (typeof window === "undefined") return;
+function writeStoredSession(storage: Storage, session: GameSession): void {
   try {
-    sessionStorage.setItem(GAME_SESSION_KEY, JSON.stringify(session));
+    storage.setItem(GAME_SESSION_KEY, JSON.stringify(session));
   } catch {
     // Ignore quota / private mode.
   }
+}
+
+export function loadGameSession(): GameSession | null {
+  if (typeof window === "undefined") return null;
+  const fromSession = readStoredSession(window.sessionStorage);
+  if (fromSession) return fromSession;
+  return readStoredSession(window.localStorage);
+}
+
+export function saveGameSession(session: GameSession): void {
+  if (typeof window === "undefined") return;
+  writeStoredSession(window.sessionStorage, session);
+  writeStoredSession(window.localStorage, session);
   void apiMutate("/api/me/game-session", {
     method: "PUT",
     body: JSON.stringify(session),
@@ -107,6 +129,34 @@ export function clearGameSession(): void {
   } catch {
     // ignore
   }
+  try {
+    localStorage.removeItem(GAME_SESSION_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** Keep opened-pack Ready to Scratch in sync with the live game session. */
+export function persistPackScratchInventory(session: GameSession): void {
+  const link = session.packScratch;
+  if (!link) return;
+  upsertReadyToScratch({
+    packId: link.readyPackId,
+    packName: link.packName,
+    creator: link.creator,
+    session: link.openingSession,
+    revealed: link.settledOpeningIds,
+    coverUrl: link.coverUrl,
+    themeName: link.themeName,
+  });
+}
+
+export function persistGameProgress(): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  saveGameSession(session);
+  persistPackScratchInventory(session);
+  return session;
 }
 
 export function isGameModeUrl(search = window.location.search): boolean {
@@ -124,6 +174,46 @@ export function startMotionSession(
   hand: ThemedMotionCard[],
   options?: StartMotionSessionOptions,
 ): GameSession {
+  const existing = loadGameSession();
+  const readyId = options?.packScratch?.readyPackId;
+  if (
+    existing &&
+    readyId &&
+    existing.packScratch?.readyPackId === readyId &&
+    existing.phase !== "motion"
+  ) {
+    return existing;
+  }
+  if (
+    existing &&
+    readyId &&
+    existing.packScratch?.readyPackId === readyId &&
+    existing.phase === "motion"
+  ) {
+    const completed = [
+      ...new Set([
+        ...existing.completedMotionIds,
+        ...(options?.completedMotionIds ?? []),
+      ]),
+    ];
+    const next: GameSession = {
+      ...existing,
+      completedMotionIds: completed,
+      packScratch: options?.packScratch
+        ? {
+            ...existing.packScratch,
+            ...options.packScratch,
+            settledOpeningIds:
+              options.packScratch.settledOpeningIds ??
+              existing.packScratch.settledOpeningIds,
+          }
+        : existing.packScratch,
+    };
+    saveGameSession(next);
+    persistPackScratchInventory(next);
+    return next;
+  }
+
   const first = hand[0];
   const session: GameSession = {
     version: 1,
@@ -216,24 +306,82 @@ export function recordMotionCardResult(
   return next;
 }
 
-/** After all motion cards: pick random photocards and move to reveal. */
+/** Assign Photo Cards for this Motion Card win and open the result overlay. */
+export async function awardMotionCardPhotos(
+  cardId: string,
+  prize: number,
+): Promise<GameSession | null> {
+  const session = loadGameSession();
+  if (!session) return null;
+  const total = Math.max(1, session.motionCardIds.length);
+  const current = Math.max(1, session.completedMotionIds.indexOf(cardId) + 1);
+  if (prize <= 0) {
+    const next: GameSession = {
+      ...session,
+      lastMotionWinPhotoIds: [],
+      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
+    };
+    saveGameSession(next);
+    persistPackScratchInventory(next);
+    return next;
+  }
+  const catalog = await loadGameCatalog();
+  const theme = themeForMotionCard(session, cardId);
+  const picked = pickWonPhotocards(
+    catalog.photos,
+    prize,
+    theme ? [theme, ...session.themes] : session.themes,
+    session.wonPhotoIds,
+  );
+  const photoIds = picked.map((photo) => photo.id);
+  const next: GameSession = {
+    ...session,
+    wonPhotoIds: [...session.wonPhotoIds, ...photoIds],
+    lastMotionWinPhotoIds: photoIds,
+    pendingMotionResult: { cardId, photoIds, prize, current, total },
+  };
+  saveGameSession(next);
+  persistPackScratchInventory(next);
+  return next;
+}
+
+export function clearPendingMotionResult(): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  if (!session.pendingMotionResult && !session.lastMotionWinPhotoIds?.length) {
+    return session;
+  }
+  const next: GameSession = {
+    ...session,
+    pendingMotionResult: undefined,
+  };
+  saveGameSession(next);
+  return next;
+}
+
+/** After all motion cards: keep awarded photos and move to Photo Card Summary. */
 export async function finishMotionHand(): Promise<GameSession | null> {
   const session = loadGameSession();
   if (!session) return null;
   if (session.phase !== "motion") return session;
 
-  const catalog = await loadGameCatalog();
-  const won = pickWonPhotocards(
-    catalog.photos,
-    session.photoPrizeTotal,
-    session.themes,
-  );
+  let wonPhotoIds = session.wonPhotoIds;
+  if (wonPhotoIds.length === 0 && session.photoPrizeTotal > 0) {
+    const catalog = await loadGameCatalog();
+    wonPhotoIds = pickWonPhotocards(
+      catalog.photos,
+      session.photoPrizeTotal,
+      session.themes,
+    ).map((photo) => photo.id);
+  }
   const next: GameSession = {
     ...session,
     phase: "photo_reveal",
-    wonPhotoIds: won.map((photo) => photo.id),
+    wonPhotoIds,
+    pendingMotionResult: undefined,
   };
   saveGameSession(next);
+  persistPackScratchInventory(next);
   return next;
 }
 

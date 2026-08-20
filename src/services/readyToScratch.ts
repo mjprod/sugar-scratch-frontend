@@ -22,6 +22,8 @@ export type ReadyScratchPack = {
   savedAt: number;
 };
 
+export type ReadyScratchKind = "motion" | "photo";
+
 export type ReadyScratchGroup = {
   id: string;
   creatorId: string;
@@ -29,6 +31,7 @@ export type ReadyScratchGroup = {
   collectionName: string;
   count: number;
   coverUrl: string;
+  kind: ReadyScratchKind;
 };
 
 const KEY = "sugar.v8.readyToScratch";
@@ -124,6 +127,7 @@ export function listReadyToScratch(): ReadyScratchGroup[] {
       collectionName: pack.themeName,
       count: remainingCount(pack),
       coverUrl: pack.coverUrl,
+      kind: "motion" as const,
     }))
     .filter((group) => group.count > 0);
 }

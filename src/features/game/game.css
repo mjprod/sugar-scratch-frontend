@@ -237,3 +237,386 @@
 .game-exit-modal__stay:hover {
   color: oklch(1 0 0 / 0.88);
 }
+
+.motion-win-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  pointer-events: auto;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.motion-win-reveal.is-fading {
+  pointer-events: none;
+  animation: motion-win-fade-out 280ms ease-out forwards;
+}
+
+.motion-win-reveal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: motion-win-dim 220ms ease-out both;
+}
+
+.motion-win-reveal__glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(88%, 320px);
+  height: 240px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    oklch(0.85 0.12 85 / 0.28) 0%,
+    oklch(0.65 0.16 330 / 0.12) 42%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+.motion-win-reveal__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.motion-win-reveal__particles span {
+  --i: 0;
+  position: absolute;
+  left: calc(18% + var(--i) * 7%);
+  top: calc(28% + (var(--i) % 4) * 12%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: oklch(0.92 0.1 90 / 0.7);
+  opacity: 0;
+  animation: motion-win-spark 1.8s ease-in-out calc(var(--i) * 90ms) infinite;
+}
+
+.motion-win-reveal__particles span:nth-child(odd) {
+  background: oklch(0.78 0.16 330 / 0.65);
+}
+
+.motion-win-reveal__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 16px 88px;
+  box-sizing: border-box;
+}
+
+.motion-win-reveal__header {
+  text-align: center;
+  animation: motion-win-header-in 320ms ease-out both;
+}
+
+.motion-win-reveal__won {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+}
+
+.motion-win-reveal__count {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.92);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.motion-win-reveal__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 168px;
+  perspective: 900px;
+  transition:
+    transform 420ms ease-in-out,
+    opacity 320ms ease-out;
+}
+
+.motion-win-reveal__stage.is-minimizing {
+  opacity: 0;
+  transform: translate(42%, -48%) scale(0.22);
+  pointer-events: none;
+}
+
+.motion-win-reveal__card {
+  --card-i: 0;
+  width: 108px;
+  aspect-ratio: 3 / 4;
+  opacity: 0;
+  transform: translateY(14px) scale(0.92);
+  transition:
+    opacity 280ms ease-out,
+    transform 280ms ease-out;
+}
+
+.motion-win-reveal__stage.is-count-1 .motion-win-reveal__card {
+  width: 148px;
+}
+
+.motion-win-reveal__card.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: calc(var(--card-i) * 40ms);
+}
+
+.motion-win-reveal__flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 320ms ease-in-out;
+}
+
+.motion-win-reveal__card.is-flipped .motion-win-reveal__flip {
+  transform: rotateY(180deg);
+}
+
+.motion-win-reveal__card.is-flipped {
+  animation: motion-win-card-pop 360ms ease-out;
+}
+
+.motion-win-reveal__face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  box-shadow:
+    0 10px 28px oklch(0 0 0 / 0.4),
+    0 0 0 1px oklch(0.85 0.1 85 / 0.18);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.motion-win-reveal__face--back {
+  background: oklch(0.18 0.02 285);
+}
+
+.motion-win-reveal__face--back img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.motion-win-reveal__face--front {
+  transform: rotateY(180deg);
+  background: oklch(0.16 0.01 285);
+}
+
+.motion-win-reveal__layers {
+  position: absolute;
+  inset: 0;
+}
+
+.motion-win-reveal__layers img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.motion-win-reveal__extra {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  color: oklch(1 0 0 / 0.7);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.motion-win-reveal__owned {
+  margin: 0;
+  color: oklch(0.87 0.12 145);
+  font-size: 13px;
+  font-weight: 600;
+  animation: motion-win-header-in 280ms ease-out both;
+}
+
+.motion-win-reveal__mini {
+  position: absolute;
+  top: max(56px, calc(12px + env(safe-area-inset-top, 0px)));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(6px) scale(0.9);
+  transition:
+    opacity 220ms ease-out,
+    transform 220ms ease-out;
+  pointer-events: none;
+}
+
+.motion-win-reveal__mini.is-shown {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.motion-win-reveal__mini-stack {
+  position: relative;
+  width: 36px;
+  height: 44px;
+}
+
+.motion-win-reveal__mini-card {
+  --i: 0;
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  transform: translate(calc(var(--i) * 3px), calc(var(--i) * 3px));
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.35);
+}
+
+.motion-win-reveal__mini-new {
+  color: oklch(0.937 0.086 91.56);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.motion-win-reveal.is-reduced .motion-win-reveal__flip {
+  transition: none;
+}
+
+.motion-win-reveal.is-reduced .motion-win-reveal__particles {
+  display: none;
+}
+
+.motion-no-win {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+  animation: motion-win-fade-out 280ms ease-out 1320ms both;
+}
+
+.motion-no-win__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.motion-no-win__card {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 32px, 300px);
+  padding: 22px 18px;
+  border-radius: 18px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0.157 0.013 284.85 / 0.92);
+  text-align: center;
+  animation: motion-win-header-in 360ms ease-out both;
+}
+
+.motion-no-win__title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.motion-no-win__support {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.62);
+  font-size: 13px;
+}
+
+@keyframes motion-win-dim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-win-header-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-win-card-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-win-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
+@keyframes motion-win-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-win-reveal__backdrop,
+  .motion-win-reveal__header,
+  .motion-win-reveal__owned,
+  .motion-win-reveal__card,
+  .motion-win-reveal__flip,
+  .motion-win-reveal__stage,
+  .motion-win-reveal__mini,
+  .motion-no-win,
+  .motion-no-win__card {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+

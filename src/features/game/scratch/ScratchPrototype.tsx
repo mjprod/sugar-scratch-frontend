@@ -1,4 +1,5 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { recordWonPhotoCards } from "@/services/collectionState";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
@@ -34,7 +35,11 @@ import {
   TopSymbolBar,
   type TopBarPhase,
 } from "../modules/TopSymbolBar";
+import { MotionWinReveal } from "../modules/MotionWinReveal";
+import { MotionNoWinFeedback } from "../modules/MotionNoWinFeedback";
 import {
+  awardMotionCardPhotos,
+  clearPendingMotionResult,
   finishMotionHand,
   isGameModeUrl,
   loadGameSession,
@@ -43,6 +48,11 @@ import {
   themeForMotionCard,
   type GameSession,
 } from "../modules/gameSession";
+import {
+  inferThemeFromLabel,
+  loadGameCatalog,
+  type PhotoCard,
+} from "../modules/session";
 import {
   applyBodyFindHits,
   buildBodySymbols,
@@ -56,7 +66,7 @@ import {
   TOP_SYMBOL_COUNT,
   type MatchGameOutcome,
 } from "../modules/matchGame";
-import { inferThemeFromLabel } from "../modules/session";
+import { PackProgress } from "../modules/PackProgress";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   loadVideoSrc,
@@ -1262,61 +1272,6 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
   return sparse;
 }
 
-function PackProgress({
-  current,
-  total,
-}: {
-  current: number;
-  total: number;
-}) {
-  if (total <= 0 || current < 1 || current > total) return null;
-  const remaining = total - current;
-  const isFinal = remaining === 0;
-  const stack = Math.min(remaining, 4);
-
-  return (
-    <div
-      className={["pack-progress", isFinal ? "is-final" : ""]
-        .filter(Boolean)
-        .join(" ")}
-      role="status"
-      aria-label={
-        isFinal
-          ? `Final card, card ${current} of ${total}`
-          : `${remaining} left, card ${current} of ${total}`
-      }
-    >
-      {isFinal ? (
-        <span className="pack-progress__spark" aria-hidden="true">
-          ✦
-        </span>
-      ) : (
-        <span
-          key={remaining}
-          className="pack-progress__stack"
-          aria-hidden="true"
-        >
-          {Array.from({ length: stack }, (_, i) => (
-            <span
-              key={i}
-              className="pack-progress__card"
-              style={{ "--i": i } as CSSProperties}
-            />
-          ))}
-        </span>
-      )}
-      <div className="pack-progress__copy">
-        <p className="pack-progress__remain">
-          {isFinal ? "FINAL CARD" : `${remaining} LEFT`}
-        </p>
-        <p className="pack-progress__pos">
-          CARD {current} OF {total}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function ScratchPrototype() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -1428,6 +1383,15 @@ export function ScratchPrototype() {
     () => modelCards.filter((entry) => !completedCardIds.includes(entry.id)),
     [modelCards, completedCardIds],
   );
+  const [motionResult, setMotionResult] = useState<{
+    win: boolean;
+    photos: PhotoCard[];
+    current: number;
+    total: number;
+    resultId: string;
+  } | null>(null);
+  const motionResultRef = useRef(motionResult);
+  motionResultRef.current = motionResult;
   const activeModel =
     models.find((entry) => entry.id === activeModelId) ?? null;
   // Never fall back to another girl's card — only play cards owned by the active model
@@ -1437,15 +1401,19 @@ export function ScratchPrototype() {
     if (!gameMode && !activeModelId) return null;
     return (
       remainingCards.find((entry) => entry.id === selectedCardId) ??
+      (motionResult
+        ? (modelCards.find((entry) => entry.id === selectedCardId) ?? null)
+        : null) ??
       remainingCards[0] ??
       null
     );
   }, [
     activeModelId,
     gameMode,
-    modelCards.length,
+    modelCards,
     remainingCards,
     selectedCardId,
+    motionResult,
   ]);
   const hasPlayableCard = Boolean(card);
   // Don't flash the girl picker while cards are still loading — that unmounts
@@ -2587,11 +2555,27 @@ export function ScratchPrototype() {
             const remaining = ordered.filter(
               (entry) => !session.completedMotionIds.includes(entry.id),
             );
-            const startId =
-              fromUrl && remaining.some((entry) => entry.id === fromUrl)
+            const pending = session.pendingMotionResult;
+            const startId = pending?.cardId
+              ? pending.cardId
+              : fromUrl && remaining.some((entry) => entry.id === fromUrl)
                 ? fromUrl
                 : (remaining[0]?.id ?? ordered[0]!.id);
             setSelectedCardId(startId);
+            if (pending) {
+              void loadGameCatalog().then((catalog) => {
+                const photos = pending.photoIds
+                  .map((id) => catalog.photos.find((photo) => photo.id === id))
+                  .filter((photo): photo is PhotoCard => Boolean(photo));
+                setMotionResult({
+                  win: pending.prize > 0,
+                  photos,
+                  current: pending.current,
+                  total: pending.total,
+                  resultId: `${pending.cardId}:${pending.photoIds.join(",")}:${pending.current}`,
+                });
+              });
+            }
             return;
           }
         }
@@ -3244,20 +3228,129 @@ export function ScratchPrototype() {
     setGameSession(updated);
   }
 
+  async function presentMotionResult() {
+    const finishedId = selectedCardId;
+    if (!finishedId) return;
+    const match = matchOutcomeRef.current ?? matchOutcome;
+    const result =
+      gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
+    let prize = 0;
+    if (match) {
+      prize = match.prize;
+    } else if (result === "win") {
+      prize = 1;
+    }
+
+    if (gameMode) {
+      commitMotionCardResult(finishedId, prize);
+      const awarded = await awardMotionCardPhotos(finishedId, prize);
+      if (awarded) setGameSession(awarded);
+      const pending = awarded?.pendingMotionResult;
+      const catalog = await loadGameCatalog();
+      const photoIds = pending?.photoIds ?? awarded?.lastMotionWinPhotoIds ?? [];
+      const photos = photoIds
+        .map((id) => catalog.photos.find((photo) => photo.id === id))
+        .filter((photo): photo is PhotoCard => Boolean(photo));
+      if (prize > 0 && photos.length > 0) {
+        const pack = awarded?.packScratch;
+        recordWonPhotoCards({
+          count: photos.length,
+          creatorId: pack?.creator
+            ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
+            : "",
+          creatorName: pack?.creator ?? "",
+        });
+      }
+      const current = pending?.current ?? completedCardIdsRef.current.length + 1;
+      const total = awarded?.motionCardIds.length ?? modelCards.length;
+      if (!completedCardIdsRef.current.includes(finishedId)) {
+        const nextCompleted = [...completedCardIdsRef.current, finishedId];
+        completedCardIdsRef.current = nextCompleted;
+        setCompletedCardIds(nextCompleted);
+      }
+      setMotionResult({
+        win: prize > 0 && photos.length > 0,
+        photos,
+        current,
+        total,
+        resultId: `${finishedId}:${photoIds.join(",")}:${current}`,
+      });
+      return;
+    }
+
+    advanceAfterScratchRef.current();
+  }
+
+  function afterMotionResultPresentation() {
+    const result = motionResultRef.current;
+    setMotionResult(null);
+    clearPendingMotionResult();
+    if (!result) return;
+    if (result.current >= result.total) {
+      void goToPhotoSummary();
+      return;
+    }
+    goToNextMotionCard();
+  }
+
+  async function goToPhotoSummary() {
+    clearPendingMotionResult();
+    setMotionResult(null);
+    const finished = await finishMotionHand();
+    if (!finished) {
+      navigateTo("/game");
+      return;
+    }
+    setGameSession(finished);
+    navigateTo("/game");
+  }
+
+  function goToNextMotionCard() {
+    const finishedId = selectedCardId;
+    if (!finishedId) return;
+    clearPendingMotionResult();
+    setMotionResult(null);
+    const nextCompleted = completedCardIdsRef.current.includes(finishedId)
+      ? completedCardIdsRef.current
+      : [...completedCardIdsRef.current, finishedId];
+    completedCardIdsRef.current = nextCompleted;
+    setCompletedCardIds(nextCompleted);
+    const nextCard = modelCards.find(
+      (entry) => entry.id !== finishedId && !nextCompleted.includes(entry.id),
+    );
+    const finishedCard =
+      modelCards.find((entry) => entry.id === finishedId) ?? card;
+    resetGameOutcome();
+    setClaimed(false);
+    claimedRef.current = false;
+    fgParkedRef.current = false;
+    if (nextCard && finishedCard?.bottom && nextCard.bottom) {
+      const { id: templateId, nextIndex } = nextTemplateId(
+        transitionTemplateIndexRef.current,
+      );
+      transitionTemplateIndexRef.current = nextIndex;
+      cardTransitionActiveRef.current = true;
+      setCardTransition({
+        fromBottom: finishedCard.bottom,
+        toBottom: nextCard.bottom,
+        templateId,
+        nextCardId: nextCard.id,
+        finishedId,
+        prize: 0,
+      });
+      return;
+    }
+    if (nextCard) {
+      setSelectedCardId(nextCard.id);
+      return;
+    }
+    void goToPhotoSummary();
+  }
+
   function finishCardTransition(transition: CardTransitionState) {
     cardTransitionActiveRef.current = false;
     setCardTransition(null);
 
-    if (gameMode) {
-      commitMotionCardResult(transition.finishedId, transition.prize);
-    }
-
-    const nextCompleted = [
-      ...completedCardIdsRef.current,
-      transition.finishedId,
-    ];
-    completedCardIdsRef.current = nextCompleted;
-    setCompletedCardIds(nextCompleted);
     resetGameOutcome();
     setClaimed(false);
     claimedRef.current = false;
@@ -3288,6 +3381,11 @@ export function ScratchPrototype() {
       modelCards.find((entry) => entry.id === finishedId) ?? card;
 
     if (nextCard && finishedCard?.bottom && nextCard.bottom) {
+      if (gameMode) {
+        commitMotionCardResult(finishedId, prize);
+      }
+      completedCardIdsRef.current = nextCompleted;
+      setCompletedCardIds(nextCompleted);
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
       );
@@ -3406,13 +3504,13 @@ export function ScratchPrototype() {
         : Math.max(advanceDelayMs, TOP_BAR_SHOWCASE_MS);
       gameResultTimerRef.current = window.setTimeout(() => {
         gameResultTimerRef.current = null;
-        advanceAfterScratchRef.current();
+        void presentMotionResult();
       }, showcaseMs);
       return;
     }
     gameResultTimerRef.current = window.setTimeout(() => {
       gameResultTimerRef.current = null;
-      advanceAfterScratchRef.current();
+      void presentMotionResult();
     }, advanceDelayMs);
   }
   tryResolveGameRef.current = tryResolveGame;
@@ -4267,6 +4365,21 @@ export function ScratchPrototype() {
               </div>
             </div>
           ) : null}
+          {motionResult?.win && motionResult.photos.length > 0 ? (
+            <MotionWinReveal
+              key={motionResult.resultId}
+              photos={motionResult.photos}
+              resultId={motionResult.resultId}
+              onComplete={afterMotionResultPresentation}
+            />
+          ) : null}
+          {motionResult && !motionResult.win ? (
+            <MotionNoWinFeedback
+              key={motionResult.resultId}
+              resultId={motionResult.resultId}
+              onComplete={afterMotionResultPresentation}
+            />
+          ) : null}
           {typeof window !== "undefined" &&
           new URLSearchParams(window.location.search).has("debug") ? (
             <DebugHud />
@@ -4560,14 +4673,14 @@ export function ScratchPrototype() {
               )}
             </button>
           </div>
-          {gameMode &&
-          modelCards.length > 0 &&
-          completedCardIds.length < modelCards.length ? (
+          {modelCards.length > 1 &&
+          completedCardIds.length < modelCards.length &&
+          hasPlayableCard ? (
             <PackProgress
-              current={Math.min(
-                completedCardIds.length + 1,
-                modelCards.length,
-              )}
+              current={
+                motionResult?.current ??
+                Math.min(completedCardIds.length + 1, modelCards.length)
+              }
               total={modelCards.length}
             />
           ) : null}

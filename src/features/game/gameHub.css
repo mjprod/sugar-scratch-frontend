@@ -159,6 +159,21 @@
   }
 }
 
+.game-hub-pack__kicker {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.game-hub-pack__owned {
+  margin: 0;
+  color: oklch(0.87 0.12 145);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .game-hub-pack__prizes h2,
 .game-hub-pack__tally-value {
   margin: 0;

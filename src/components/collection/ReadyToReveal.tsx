@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { type ScratchReadyGroup, type UnopenedPack } from "@/services/collection";
 import { listUnopenedGroups } from "@/services/packInventory";
 import {
-  listReadyToScratch,
-  trackScratchEvent,
-} from "@/services/readyToScratch";
+  listAllReadyScratch,
+} from "@/services/scratchResume";
+import { trackScratchEvent } from "@/services/readyToScratch";
 import { RevealInventoryTile } from "./RevealInventoryTile";
 
 type ReadySegment = "packs" | "scratch";
@@ -43,7 +43,7 @@ export function ReadyToReveal({
     [unopenedPacks, inventoryRevision],
   );
   const scratches = useMemo(
-    () => scratchGroups ?? listReadyToScratch(),
+    () => scratchGroups ?? listAllReadyScratch(),
     [scratchGroups, inventoryRevision],
   );
   const packCount = packs.reduce((sum, pack) => sum + pack.count, 0);
@@ -105,9 +105,14 @@ export function ReadyToReveal({
           scratchCount > 0 ? (
             scratches.map((group) => {
               const title = themeLabel(group.collectionName);
-              const qtyLabel = `${group.count} ${
-                group.count === 1 ? "Card Ready" : "Cards Ready"
-              }`;
+              const qtyLabel =
+                group.kind === "photo"
+                  ? `${group.count} ${
+                      group.count === 1 ? "Photo Card Ready" : "Photo Cards Ready"
+                    }`
+                  : `${group.count} ${
+                      group.count === 1 ? "Card Ready" : "Cards Ready"
+                    }`;
               return (
                 <RevealInventoryTile
                   key={group.id}

@@ -80,7 +80,9 @@ import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
 import {
   motionPlayHref,
   navigateTo,
+  photoPlayHref,
   startMotionSession,
+  loadGameSession,
 } from "@/features/game/modules/gameSession";
 import {
   loadGameCatalog,
@@ -223,7 +225,7 @@ export function PurchaseFlow({
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
-  /** Skip Cards Ready UI — launch motion game once (resume or stray stage). */
+  /** Skip pack opening when resuming from Collection Ready to Scratch. */
   const autoLaunchScratchRef = useRef(false);
   const packImage =
     session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
@@ -595,6 +597,21 @@ export function PurchaseFlow({
         .map((oid) => openingToMotion.get(oid))
         .filter((id): id is string => Boolean(id));
       const readyId = instanceId ?? pack.packId;
+      const existing = loadGameSession();
+      if (
+        existing?.packScratch?.readyPackId === readyId &&
+        (existing.phase === "photo_reveal" || existing.phase === "done")
+      ) {
+        navigateTo("/game");
+        return;
+      }
+      if (
+        existing?.packScratch?.readyPackId === readyId &&
+        existing.phase === "photo"
+      ) {
+        navigateTo(photoPlayHref(existing));
+        return;
+      }
       upsertReadyToScratch({
         packId: readyId,
         packName: pack.packName,
@@ -638,16 +655,6 @@ export function PurchaseFlow({
     void launchMotionScratch();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
   }, [pack.entry, session]);
-
-  // Legacy openings saved on Cards Ready — skip that screen and launch the game.
-  useEffect(() => {
-    if (stage !== "cards-ready" || !session || autoLaunchScratchRef.current) {
-      return;
-    }
-    autoLaunchScratchRef.current = true;
-    void launchMotionScratch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
-  }, [stage, session]);
 
   function leaveSaved(destination?: () => void) {
     bumpInventory();
@@ -834,13 +841,28 @@ export function PurchaseFlow({
                 );
               }}
               onContinue={() => void launchMotionScratch()}
+              onSaveLater={() => scratchLater("decision")}
             />
           ) : null}
 
           {stage === "cards-ready" && session ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-              <Loader2 className="size-8 animate-spin text-white/50" />
-              <p className="mt-4 text-[14px] text-white/50">Starting…</p>
+            <div className="flex flex-1 flex-col items-center justify-end px-5 pb-10 text-center">
+              <button
+                type="button"
+                className="motion-reveal__continue"
+                onClick={() => void launchMotionScratch()}
+                disabled={savingLater}
+              >
+                {savingLater ? "Starting…" : "Scratch Now"}
+              </button>
+              <button
+                type="button"
+                className="motion-reveal__later"
+                onClick={() => scratchLater("decision")}
+                disabled={savingLater}
+              >
+                Save for Later
+              </button>
             </div>
           ) : null}
 
@@ -1326,6 +1348,7 @@ function MotionRevealStage({
   launching = false,
   onCards,
   onContinue,
+  onSaveLater,
 }: {
   modelId: string;
   girlName: string;
@@ -1338,6 +1361,7 @@ function MotionRevealStage({
   launching?: boolean;
   onCards: (cards: RevealCard[]) => void;
   onContinue: () => void;
+  onSaveLater: () => void;
 }) {
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null);
   const [ready, setReady] = useState(false);
@@ -1365,6 +1389,11 @@ function MotionRevealStage({
       cancelled = true;
     };
   }, [modelId]);
+
+  useEffect(() => {
+    if (!sequence.showPlay) return;
+    trackScratchEvent("Scratch Decision Shown", { packId: modelId });
+  }, [modelId, sequence.showPlay]);
 
   const cards = useMemo(() => {
     if (!ready) return [];
@@ -1412,14 +1441,24 @@ function MotionRevealStage({
         />
       </div>
       {sequence.showPlay ? (
-        <button
-          type="button"
-          className="motion-reveal__continue"
-          onClick={onContinue}
-          disabled={launching}
-        >
-          {launching ? "Starting…" : "Scratch Now"}
-        </button>
+        <div className="motion-reveal__cta">
+          <button
+            type="button"
+            className="motion-reveal__continue"
+            onClick={onContinue}
+            disabled={launching}
+          >
+            {launching ? "Starting…" : "Scratch Now"}
+          </button>
+          <button
+            type="button"
+            className="motion-reveal__later"
+            onClick={onSaveLater}
+            disabled={launching}
+          >
+            Save for Later
+          </button>
+        </div>
       ) : null}
     </div>
   );

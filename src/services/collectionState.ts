@@ -65,6 +65,26 @@ function writeLedger(ledger: CollectionLedger) {
   }
 }
 
+function countReadyPhotoScratch(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw =
+      window.localStorage.getItem("sugar_scratchie_game_v1") ??
+      window.sessionStorage.getItem("sugar_scratchie_game_v1");
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as {
+      phase?: string;
+      wonPhotoIds?: string[];
+      completedPhotoIds?: string[];
+    };
+    if (parsed.phase !== "photo_reveal" && parsed.phase !== "photo") return 0;
+    const won = parsed.wonPhotoIds ?? [];
+    const done = parsed.completedPhotoIds ?? [];
+    return won.filter((id) => !done.includes(id)).length;
+  } catch {
+    return 0;
+  }
+}
 function slugId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
 }
@@ -142,6 +162,21 @@ export function recordRevealedCards(input: {
   writeLedger(ledger);
 }
 
+/** Photo Cards earned from a Motion Card win — owned before the result UI. */
+export function recordWonPhotoCards(input: {
+  count: number;
+  creatorId: string;
+  creatorName: string;
+}) {
+  if (input.count < 1) return;
+  recordRevealedCards({
+    count: input.count,
+    creatorId: input.creatorId,
+    creatorName: input.creatorName,
+    motionCount: 0,
+  });
+}
+
 export type CollectionPageState = {
   totalPurchasedPacks: number;
   unopenedPackCount: number;
@@ -192,10 +227,9 @@ function mergeStartedCreators(
 export function getCollectionPageState(): CollectionPageState {
   const owned = countOwnedPacks();
   const unopenedPackCount = countUnopened();
-  const unscratchedCardCount = listReadyToScratch().reduce(
-    (sum, group) => sum + group.count,
-    0,
-  );
+  const unscratchedCardCount =
+    listReadyToScratch().reduce((sum, group) => sum + group.count, 0) +
+    countReadyPhotoScratch();
   const ledger = readLedger();
   const creators = mergeStartedCreators(ledger);
 

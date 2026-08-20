@@ -21,8 +21,8 @@ import {
   loadGameSession,
   markWalletCredited,
   motionPlayHref,
+  persistGameProgress,
   photoPlayHref,
-  saveGameSession,
   startMotionSession,
   type GameSession,
 } from './modules/gameSession'
@@ -49,16 +49,6 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms)
   })
-}
-
-function themeAccent(theme: string): string {
-  const key = theme.toLowerCase()
-  if (key.includes('police') || key.includes('cop')) return 'oklch(0.53 0.107 253.09)'
-  if (key.includes('teacher')) return 'oklch(0.512 0.09 62.2)'
-  if (key.includes('nurse')) return 'oklch(0.61 0.136 3.78)'
-  if (key.includes('fire')) return 'oklch(0.609 0.17 38.24)'
-  if (key.includes('gym')) return 'oklch(0.532 0.095 160.99)'
-  return 'oklch(0.584 0.101 57.25)'
 }
 
 function PhotoLayers({ photo }: { photo: PhotoCard }) {
@@ -332,9 +322,7 @@ export function GameHub() {
   }
 
   function savePhotoCardsForLater() {
-    const current = loadGameSession()
-    if (!current || current.phase !== 'photo_reveal') return
-    saveGameSession(current)
+    persistGameProgress()
     navigate(Paths.collection)
   }
 
@@ -418,26 +406,16 @@ export function GameHub() {
 
           {phase === 'photo_reveal' && session ? (
             <div className="game-hub-pack__prizes">
-              <div className="game-hub-pack__strip">
-                {hand.map((card) => (
-                  <span key={card.id} className="game-hub-pack__chip">
-                    <i style={{ background: themeAccent(card.theme) }} />
-                    {card.theme}
-                  </span>
-                ))}
-              </div>
+              <p className="game-hub-pack__kicker">PACK COMPLETE</p>
               <h2>
-                {session.photoPrizeTotal > 0
-                  ? `You won ${session.photoPrizeTotal} photocard${
-                      session.photoPrizeTotal === 1 ? '' : 's'
-                    }!`
-                  : 'No photocards this round'}
+                {session.wonPhotoIds.length} Photo Card
+                {session.wonPhotoIds.length === 1 ? '' : 's'} Revealed
               </h2>
-              <p>
-                {session.photoPrizeTotal > 0
-                  ? 'Scratch them next for diamonds.'
-                  : 'Deal again for another shot.'}
-              </p>
+              {session.wonPhotoIds.length > 0 ? (
+                <p className="game-hub-pack__owned">Added to your Collection ✓</p>
+              ) : (
+                <p>No Photo Cards this pack.</p>
+              )}
               {wonPhotos.length > 0 ? (
                 <div className="game-hub-pack__prize-grid">
                   {wonPhotos.map((photo, index) => (
@@ -455,11 +433,15 @@ export function GameHub() {
                   ))}
                 </div>
               ) : null}
+              {session.wonPhotoIds.length > 0 ? (
+                <p>Ready for Photo Scratch</p>
+              ) : null}
             </div>
           ) : null}
 
           {phase === 'done' && session ? (
             <div className="game-hub-pack__tally" role="status">
+              <p className="game-hub-pack__kicker">Complete</p>
               <p className="game-hub-pack__tally-label">Diamonds won</p>
               <p className="game-hub-pack__tally-value">{session.diamondTotal}</p>
               <p>
@@ -474,7 +456,7 @@ export function GameHub() {
         </section>
 
         <div className="game-hub-pack__cta">
-          {phase === 'idle' || phase === 'done' ? (
+          {phase === 'idle' ? (
             <BuyButton
               label="New Game"
               onClick={() => void startNewGame()}
@@ -485,7 +467,7 @@ export function GameHub() {
 
           {phase === 'photo_reveal' &&
           session &&
-          session.photoPrizeTotal > 0 ? (
+          session.wonPhotoIds.length > 0 ? (
             <>
               <BuyButton
                 label="Scratch Photo Cards"
@@ -503,13 +485,51 @@ export function GameHub() {
           ) : null}
 
           {phase === 'photo_reveal' &&
-          (!session || session.photoPrizeTotal <= 0) ? (
-            <BuyButton
-              label="New Game"
-              onClick={() => void startNewGame()}
-              disabled={!canDeal}
-              visible
-            />
+          session &&
+          session.wonPhotoIds.length === 0 ? (
+            <>
+              <BuyButton
+                label="View Collection"
+                onClick={() => {
+                  persistGameProgress()
+                  navigate(Paths.collection)
+                }}
+                visible
+              />
+              <button
+                type="button"
+                className="game-hub-pack__link reveal-replay"
+                onClick={() => {
+                  clearGameSession()
+                  navigate(Paths.home)
+                }}
+              >
+                Done
+              </button>
+            </>
+          ) : null}
+
+          {phase === 'done' ? (
+            <>
+              <BuyButton
+                label="View Collection"
+                onClick={() => {
+                  persistGameProgress()
+                  navigate(Paths.collection)
+                }}
+                visible
+              />
+              <button
+                type="button"
+                className="game-hub-pack__link reveal-replay"
+                onClick={() => {
+                  clearGameSession()
+                  navigate(Paths.home)
+                }}
+              >
+                Done
+              </button>
+            </>
           ) : null}
 
           {phase === 'ready' && showPlay ? (
@@ -522,7 +542,7 @@ export function GameHub() {
           ) : null}
 
           <div className="game-hub-pack__secondary">
-            {phase === 'ready' && showPlay && canDeal ? (
+            {phase === 'ready' && showPlay && canDeal && !session?.packScratch ? (
               <button
                 type="button"
                 className="game-hub-pack__link reveal-replay"
@@ -532,7 +552,10 @@ export function GameHub() {
                 Replay open
               </button>
             ) : null}
-            {canDelete && phase !== 'photo_reveal' ? (
+            {canDelete &&
+            phase !== 'photo_reveal' &&
+            phase !== 'done' &&
+            !session?.packScratch ? (
               <button
                 type="button"
                 className="game-hub-pack__link game-hub-pack__link--danger"

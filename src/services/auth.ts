@@ -48,6 +48,7 @@ export type ProtectedAction =
   | { type: "like"; feedItemId: string }
   | { type: "tab"; tab: AppTab }
   | { type: "scratch"; pack: PurchaseFlowPack }
+  | { type: "photo-scratch" }
   | { type: "store" }
   | { type: "inbox" };
 
@@ -339,7 +340,9 @@ export function triggerFromAction(
 ): ProtectedActionType | undefined {
   if (!action) return undefined;
   if (action.type === "like") return "like-creator";
-  if (action.type === "scratch") return "scratch-card";
+  if (action.type === "scratch" || action.type === "photo-scratch") {
+    return "scratch-card";
+  }
   if (action.type === "store") return "open-store";
   if (action.type === "inbox") return "view-rewards";
   if (action.type === "buy") {

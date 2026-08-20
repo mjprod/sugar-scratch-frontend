@@ -45,6 +45,11 @@ import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
 import {
+  beginPhotoPhase,
+  loadGameSession,
+  photoPlayHref,
+} from "@/features/game/modules/gameSession";
+import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,
 } from "@/lib/navigation";
@@ -87,6 +92,7 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
   return (
     action.type === "buy" ||
     action.type === "scratch" ||
+    action.type === "photo-scratch" ||
     action.type === "store" ||
     action.type === "like" ||
     action.type === "inbox"
@@ -263,7 +269,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resumePending = useCallback(
     (action: ProtectedAction | null) => {
       if (!action) return;
-      if (action.type === "buy" || action.type === "scratch") {
+      if (action.type === "scratch") {
+        navigate(Paths.purchase(action.pack.packId), {
+          state: { pack: { ...action.pack, entry: "scratch" as const } },
+        });
+        return;
+      }
+      if (action.type === "photo-scratch") {
+        const session = loadGameSession();
+        if (session && (session.phase === "photo_reveal" || session.phase === "photo")) {
+          const started = beginPhotoPhase() ?? session;
+          navigate(photoPlayHref(started));
+        } else {
+          navigate(Paths.collection);
+        }
+        return;
+      }
+      if (action.type === "buy") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
         const isBuyPack =
           action.type === "buy" ? action.kind !== "open-pack" : true;
