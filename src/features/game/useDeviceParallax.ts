@@ -48,6 +48,14 @@ type UseDeviceParallaxOptions = {
   cameraOutRef?: import("react").MutableRefObject<ParallaxOffset | null>;
   /** Desktop mouse-move fallback strength (0 disables). */
   mouseGain?: number;
+  /** When false, device tilt is ignored until the global preference is on. */
+  enabled?: boolean;
+  /** Shared orientation stream. When set, this hook does not attach its own listener. */
+  subscribe?: (listener: (sample: {
+    gamma: number;
+    beta: number;
+    hasSample: boolean;
+  }) => void) => () => void;
 };
 
 function clamp(n: number, min: number, max: number) {
@@ -87,6 +95,8 @@ export function useDeviceParallax({
   stateOutRef,
   cameraOutRef,
   mouseGain = 0,
+  enabled = true,
+  subscribe,
 }: UseDeviceParallaxOptions) {
   const [status, setStatus] = useState<MotionStatus>(() => {
     if (typeof window === "undefined") return "idle";
@@ -193,10 +203,23 @@ export function useDeviceParallax({
   );
 
   useEffect(() => {
+    if (!enabled) {
+      calRef.current = null;
+      tiltTargetRef.current = { x: 0, y: 0 };
+      if (status === "active") setStatus("idle");
+      return;
+    }
+    if (subscribe) {
+      return subscribe((sample) => {
+        if (!sample.hasSample) return;
+        setFromTilt(sample.gamma, sample.beta);
+        setStatus((prev) => (prev === "active" ? prev : "active"));
+      });
+    }
     if (status !== "active") return;
     window.addEventListener("deviceorientation", onOrientation);
     return () => window.removeEventListener("deviceorientation", onOrientation);
-  }, [status, onOrientation]);
+  }, [enabled, status, onOrientation, setFromTilt, subscribe]);
 
   // Desktop mouse fallback across the stage (disabled by default for photo-scratch).
   useEffect(() => {
@@ -287,11 +310,5 @@ export function useDeviceParallax({
     isPending: status === "pending",
     isDenied: status === "denied",
     isInsecure: status === "insecure",
-    showEnableButton:
-      status === "idle" ||
-      status === "denied" ||
-      status === "insecure" ||
-      status === "unsupported" ||
-      status === "pending",
   };
 }

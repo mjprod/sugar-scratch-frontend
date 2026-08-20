@@ -2,6 +2,10 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
+  fetchCatalogPhotoCards,
+  type CatalogPhotoCard,
+} from "../shared/catalog";
+import {
   GarmentGLRenderer,
   MAX_PIXEL_RATIO,
   PRESENT_ZOOM,
@@ -52,6 +56,7 @@ import {
   type Vec2,
 } from "./meshGeometry";
 import { playThemeIntro, releaseMediaElement } from "../shared/media";
+import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 
 const BACK_LAYER_SRC = "/photo-scratch/background.jpg";
@@ -59,19 +64,7 @@ const MID_LAYER_SRC = "/photo-scratch/mid.png";
 const FRONT_LAYER_SRC = "/photo-scratch/foreground.png";
 const MESH_SRC = "/photo-scratch/mesh.json";
 
-type PhotoScratchCardEntry = {
-  id: string;
-  label: string;
-  background: string;
-  bikini: string;
-  clothes: string;
-  mesh: string;
-  model_id?: string;
-  /** Catalog theme id — intro clips are shared across cards in the same theme. */
-  theme_id?: string;
-  /** One-time clip played before the player's first scratch on this theme. */
-  intro?: string;
-};
+type PhotoScratchCardEntry = CatalogPhotoCard;
 
 function readCardIdFromLocation(): string {
   if (typeof window === "undefined") return "";
@@ -79,12 +72,7 @@ function readCardIdFromLocation(): string {
 }
 
 async function fetchPhotoScratchIndex(): Promise<PhotoScratchCardEntry[]> {
-  const response = await fetch("/photo-scratch/index.json", {
-    cache: "no-store",
-  });
-  if (!response.ok) return [];
-  const data = (await response.json()) as { cards?: PhotoScratchCardEntry[] };
-  return data.cards ?? [];
+  return fetchCatalogPhotoCards();
 }
 
 const SCRATCH_RADIUS = 0.045;
@@ -779,6 +767,13 @@ export function PhotoScratch() {
     group: { x: 0, y: 0 },
   });
 
+  const {
+    enabled: motionEnabled,
+    permission: motionPermission,
+    subscribe: subscribeMotion,
+  } = useMotion();
+  const motionTiltOn = motionEnabled && motionPermission === "granted";
+
   const parallax = useDeviceParallax({
     stageRef,
     stateOutRef: parallaxStateRef,
@@ -791,6 +786,8 @@ export function PhotoScratch() {
     fingerMax: PARALLAX_FINGER_MAX,
     fingerMovesGroup: false,
     smooth: 0.12,
+    enabled: motionTiltOn,
+    subscribe: subscribeMotion,
   });
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -881,10 +878,16 @@ export function PhotoScratch() {
   completedCardIdsRef.current = completedCardIds;
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [introActive, setIntroActive] = useState(false);
+  const [introCover, setIntroCover] = useState(false);
+  const [introLeaving, setIntroLeaving] = useState(false);
   /** Starts muted for autoplay policy; may unmute after playThemeIntro succeeds. */
   const [introMuted, setIntroMuted] = useState(true);
   const introActiveRef = useRef(false);
   introActiveRef.current = introActive;
+  const introCoverRef = useRef(false);
+  introCoverRef.current = introCover;
+  const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const introFadeTimerRef = useRef<number | null>(null);
   // Theme ids whose intro clip has already played this session — one
   // playthrough per theme, even across multiple motion cards / photo slots.
   const introShownForThemeRef = useRef<Set<string>>(new Set());
@@ -955,15 +958,57 @@ export function PhotoScratch() {
       setIntroVideoUrl("");
       setIntroActive(false);
       introActiveRef.current = false;
+      setIntroCover(false);
+      introCoverRef.current = false;
+      setIntroLeaving(false);
       return;
     }
     introShownForThemeRef.current.add(themeId);
     setIntroVideoUrl(url);
     setIntroActive(true);
     introActiveRef.current = true;
+    setIntroCover(true);
+    introCoverRef.current = true;
+    setIntroLeaving(false);
+  }
+
+  function captureIntroFreezeFrame(): boolean {
+    const intro = introVideoElRef.current;
+    const freeze = introFreezeCanvasRef.current;
+    if (!intro || !freeze) return false;
+    if (intro.videoWidth < 2 || intro.videoHeight < 2) return false;
+    freeze.width = intro.videoWidth;
+    freeze.height = intro.videoHeight;
+    const ctx = freeze.getContext("2d");
+    if (!ctx) return false;
+    try {
+      ctx.drawImage(intro, 0, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function finishIntroCover() {
+    if (introFadeTimerRef.current !== null) {
+      window.clearTimeout(introFadeTimerRef.current);
+      introFadeTimerRef.current = null;
+    }
+    const intro = introVideoElRef.current;
+    if (intro) releaseMediaElement(intro);
+    const freeze = introFreezeCanvasRef.current;
+    if (freeze) {
+      freeze.width = 0;
+      freeze.height = 0;
+    }
+    setIntroLeaving(false);
+    setIntroCover(false);
+    introCoverRef.current = false;
+    setIntroVideoUrl("");
   }
 
   function dismissIntro() {
+    if (!introActiveRef.current && !introCoverRef.current) return;
     const intro = introVideoElRef.current;
     if (intro) {
       try {
@@ -971,10 +1016,23 @@ export function PhotoScratch() {
       } catch {
         // ignore
       }
-      releaseMediaElement(intro);
     }
+    const captured = captureIntroFreezeFrame();
+    if (intro) releaseMediaElement(intro);
     setIntroActive(false);
     introActiveRef.current = false;
+    setIntroVideoUrl("");
+    if (!captured) {
+      finishIntroCover();
+      return;
+    }
+    setIntroCover(true);
+    introCoverRef.current = true;
+    setIntroLeaving(true);
+    introFadeTimerRef.current = window.setTimeout(() => {
+      introFadeTimerRef.current = null;
+      finishIntroCover();
+    }, 380);
   }
 
   function resetGameOutcome() {
@@ -1948,6 +2006,10 @@ export function PhotoScratch() {
   useEffect(() => () => {
     clearGameResultTimer();
     clearIntroDockTimer();
+    if (introFadeTimerRef.current !== null) {
+      window.clearTimeout(introFadeTimerRef.current);
+      introFadeTimerRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -2006,25 +2068,6 @@ export function PhotoScratch() {
       // Ignore storage write failures (e.g. private mode / quota).
     }
   }, [autoScratch]);
-
-  async function enableMotion() {
-    const ok = await parallax.requestPermission();
-    if (!ok) {
-      if (parallax.isInsecure) {
-        setLoadError(
-          "Open https:// on your phone (not http://) and accept the certificate warning.",
-        );
-      } else if (parallax.isDenied) {
-        setLoadError(
-          "Motion permission denied — allow Motion & Orientation in Safari settings.",
-        );
-      } else {
-        setLoadError("Could not enable motion sensors.");
-      }
-      return;
-    }
-    setLoadError(null);
-  }
 
   function trackFingerParallax(clientX: number, clientY: number) {
     const last = lastPointerRef.current;
@@ -2115,7 +2158,7 @@ export function PhotoScratch() {
                 <code>?card=</code>.
               </li>
               <li>Click and drag on the canvas to scratch the clothes off.</li>
-              <li>Tap Enable motion for tilt parallax (top bar on phone).</li>
+              <li>Turn on phone tilt in Profile to enable tilt parallax.</li>
             </ol>
           </section>
 
@@ -2337,15 +2380,6 @@ export function PhotoScratch() {
                 {playlist.length || "?"} · diamonds
               </a>
             ) : null}
-            {parallax.showEnableButton ? (
-              <button
-                type="button"
-                onClick={() => void enableMotion()}
-                disabled={parallax.isPending}
-              >
-                {parallax.isPending ? "Enabling…" : "Enable motion"}
-              </button>
-            ) : null}
             {parallax.isActive ? (
               <button type="button" onClick={() => parallax.recalibrate()}>
                 Recalibrate
@@ -2480,18 +2514,29 @@ export function PhotoScratch() {
               <span className="match-audio-gate-label">Tap to play</span>
             </div>
           ) : null}
-          {introActive && introVideoUrl ? (
-            <div className="photo-scratch-intro-video" aria-hidden="true">
-              <video
-                ref={introVideoElRef}
-                autoPlay
-                muted={introMuted}
-                playsInline
-                preload="auto"
-                src={introVideoUrl}
-                onEnded={dismissIntro}
-                onError={dismissIntro}
-              />
+          {introCover || (introActive && introVideoUrl) ? (
+            <div
+              className={`photo-scratch-intro-video${introLeaving ? " is-leaving" : ""}`}
+              aria-hidden="true"
+            >
+              <div className="photo-scratch-intro-media">
+                {introActive && introVideoUrl ? (
+                  <video
+                    ref={introVideoElRef}
+                    autoPlay
+                    muted={introMuted}
+                    playsInline
+                    preload="auto"
+                    src={introVideoUrl}
+                    onEnded={dismissIntro}
+                    onError={dismissIntro}
+                  />
+                ) : null}
+                <canvas
+                  ref={introFreezeCanvasRef}
+                  className={`photo-scratch-intro-freeze${introActive ? "" : " is-visible"}`}
+                />
+              </div>
             </div>
           ) : null}
           {hasBodySymbols ? (

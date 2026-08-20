@@ -98,7 +98,8 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "photo-scratch" ||
     action.type === "store" ||
     action.type === "like" ||
-    action.type === "inbox"
+    action.type === "inbox" ||
+    action.type === "collection"
   );
 }
 
@@ -326,6 +327,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "inbox") {
         captureSecondaryReturn();
         navigate(Paths.inbox);
+        return;
+      }
+      if (action.type === "collection") {
+        noteCreatorEngagement(action.creatorId);
+        navigate(Paths.creator(action.creatorId));
         return;
       }
       if (action.type === "tab") {

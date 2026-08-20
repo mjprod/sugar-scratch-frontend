@@ -69,6 +69,9 @@ import {
 import { PackProgress } from "../modules/PackProgress";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
+  fetchCatalogMotionCards,
+} from "../shared/catalog";
+import {
   loadVideoSrc,
   playThemeIntro,
   releaseMediaElement,
@@ -334,8 +337,6 @@ type Card = {
   photos?: Array<{ id: string; src: string }>;
 };
 
-const CARDS_INDEX_SRC = "/cards/index.json";
-
 const DEFAULT_CARDS: Card[] = [
   {
     id: "original",
@@ -387,58 +388,6 @@ const DEFAULT_CARDS: Card[] = [
   },
 ];
 
-type CardsIndexResponse = {
-  cards?: Array<{
-    id: string;
-    label: string;
-    bottom: string;
-    foreground: string;
-    mesh: string;
-    chroma_key?: boolean;
-    model_id?: string;
-    theme_id?: string;
-    sort_order?: number;
-    photos?: Array<{ id: string; src: string }>;
-  }>;
-};
-
-function cardUsesChromaKey(
-  id: string,
-  chromaKey: boolean | undefined,
-): boolean {
-  if (typeof chromaKey === "boolean") return chromaKey;
-  return id === "original";
-}
-
-function parseCardsIndex(data: CardsIndexResponse): Card[] | null {
-  if (!Array.isArray(data.cards) || data.cards.length === 0) return null;
-  const cards: Card[] = [];
-  for (const entry of data.cards) {
-    if (
-      typeof entry.id !== "string" ||
-      typeof entry.label !== "string" ||
-      typeof entry.bottom !== "string" ||
-      typeof entry.foreground !== "string" ||
-      typeof entry.mesh !== "string"
-    ) {
-      continue;
-    }
-    cards.push({
-      id: entry.id,
-      label: entry.label,
-      bottom: entry.bottom,
-      foreground: entry.foreground,
-      mesh: entry.mesh,
-      chromaKey: cardUsesChromaKey(entry.id, entry.chroma_key),
-      model_id: entry.model_id,
-      theme_id: entry.theme_id,
-      sort_order: typeof entry.sort_order === "number" ? entry.sort_order : 0,
-      photos: entry.photos,
-    });
-  }
-  return cards.length > 0 ? cards : null;
-}
-
 function playlistCardsForModel(cards: Card[], modelId: string): Card[] {
   return cards
     .filter((entry) => entry.model_id === modelId)
@@ -465,10 +414,8 @@ function playlistCardsForGameSession(
 
 async function loadCards(): Promise<Card[]> {
   try {
-    const response = await fetch(CARDS_INDEX_SRC, { cache: "no-store" });
-    if (!response.ok) return DEFAULT_CARDS;
-    const data = (await response.json()) as CardsIndexResponse;
-    return parseCardsIndex(data) ?? DEFAULT_CARDS;
+    const cards = await fetchCatalogMotionCards();
+    return cards.length > 0 ? cards : DEFAULT_CARDS;
   } catch {
     return DEFAULT_CARDS;
   }
@@ -1431,7 +1378,7 @@ export function ScratchPrototype() {
   const cardTransitionActiveRef = useRef(false);
   type CardTransitionState = {
     fromBottom: string;
-    toBottom: string;
+    toForeground: string;
     templateId: TransitionTemplateId;
     nextCardId: string;
     finishedId: string;
@@ -1439,6 +1386,8 @@ export function ScratchPrototype() {
   };
   const [cardTransition, setCardTransition] =
     useState<CardTransitionState | null>(null);
+  const cardTransitionHandoffRef = useRef(false);
+  const [cardTransitionReady, setCardTransitionReady] = useState(false);
   // Mesh lattice is a dev overlay — start hidden; toggle with "Show mesh".
   const [showMesh, setShowMesh] = useState(false);
   const showMeshRef = useRef(showMesh);
@@ -1760,26 +1709,11 @@ export function ScratchPrototype() {
 
   function kickGameVideos() {
     if (uiStateRef.current.isPaused) return;
+    if (cardTransitionActiveRef.current && !cardTransitionHandoffRef.current) return;
     const bottomVideo = bottomVideoRef.current;
     const foregroundVideo = foregroundVideoRef.current;
     if (!bottomVideo || !foregroundVideo) return;
-    // Safari sometimes keeps readyState high but stops presenting frames after
-    // the theme-intro decoder is torn down — a tiny seek nudges a fresh frame.
-    const videos = fgParkedRef.current
-      ? [bottomVideo]
-      : [bottomVideo, foregroundVideo];
-    for (const video of videos) {
-      try {
-        if (video.readyState >= 2 && !video.seeking) {
-          const t = video.currentTime;
-          if (Number.isFinite(t) && t > 0) {
-            video.currentTime = Math.max(0, t - 0.001);
-          }
-        }
-      } catch {
-        // ignore seek failures
-      }
-    }
+    // Don't seek here — currentTime writes flash a black frame on Safari/Chrome.
     const plays = fgParkedRef.current
       ? [bottomVideo.play()]
       : [bottomVideo.play(), foregroundVideo.play()];
@@ -2135,6 +2069,33 @@ export function ScratchPrototype() {
       finishIntroCover();
     }, INTRO_REVEAL_MS);
   }, [introCover, introActive, introLeaving, gameVideosReady]);
+
+  useEffect(() => {
+    if (!cardTransition) return;
+    const bottomVideo = bottomVideoRef.current;
+    const foregroundVideo = foregroundVideoRef.current;
+    try {
+      bottomVideo?.pause();
+      foregroundVideo?.pause();
+    } catch {
+      // ignore
+    }
+  }, [cardTransition]);
+
+  useEffect(() => {
+    if (!cardTransition || !cardTransitionHandoffRef.current) return;
+    if (gameVideosReady) {
+      setCardTransitionReady(true);
+      const blendId = window.setTimeout(() => {
+        finishCardTransition();
+      }, 280);
+      return () => window.clearTimeout(blendId);
+    }
+    const safetyId = window.setTimeout(() => {
+      finishCardTransition();
+    }, 8_000);
+    return () => window.clearTimeout(safetyId);
+  }, [cardTransition, gameVideosReady]);
 
   useEffect(() => {
     if (introActive) return;
@@ -2769,7 +2730,9 @@ export function ScratchPrototype() {
     marksRef.current = [];
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
-    glRendererRef.current?.resetForeground();
+    if (!cardTransitionActiveRef.current) {
+      glRendererRef.current?.resetForeground();
+    }
     revealSamplesRef.current = [];
     revealedRef.current = [];
     revealedCountRef.current = 0;
@@ -2911,40 +2874,9 @@ export function ScratchPrototype() {
           .catch(() => undefined);
       };
 
-      // Align both clocks, then play together after seeks land (Safari seeks
-      // async — playing mid-seek leaves a 1s+ offset between the layers).
-      const seekBoth = () => {
-        try {
-          bottomVideo.pause();
-          foregroundVideo.pause();
-        } catch {
-          // ignore
-        }
-        let pending = 2;
-        const onSeeked = () => {
-          pending -= 1;
-          if (pending <= 0) startPair();
-        };
-        const arm = (video: HTMLVideoElement) => {
-          if (video.seeking || Math.abs(video.currentTime) > 0.01) {
-            const done = () => {
-              video.removeEventListener("seeked", done);
-              onSeeked();
-            };
-            video.addEventListener("seeked", done);
-            try {
-              video.currentTime = 0;
-            } catch {
-              done();
-            }
-          } else {
-            onSeeked();
-          }
-        };
-        arm(bottomVideo);
-        arm(foregroundVideo);
-      };
-      seekBoth();
+      // Play from the already-decoded first frame. Seeking to 0 after a src
+      // attach fires waiting and flashes a black decoder frame.
+      startPair();
     };
 
     // Reuse the same two <video> elements and swap src (no React key remount).
@@ -2995,6 +2927,7 @@ export function ScratchPrototype() {
       // Don't steal the decoder from the theme intro (causes black stage after
       // 3-2-1 on Safari / Android when three <video>s fight).
       if (introActiveRef.current) return;
+      if (cardTransitionActiveRef.current) return;
       const bottomVideo = bottomVideoRef.current;
       const foregroundVideo = foregroundVideoRef.current;
       if (bottomVideo?.paused) void bottomVideo.play().catch(() => undefined);
@@ -3261,6 +3194,7 @@ export function ScratchPrototype() {
   async function presentMotionResult() {
     const finishedId = selectedCardId;
     if (!finishedId) return;
+    if (completedCardIdsRef.current.includes(finishedId)) return;
     const match = matchOutcomeRef.current ?? matchOutcome;
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
@@ -3356,15 +3290,17 @@ export function ScratchPrototype() {
     setClaimed(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
-    if (nextCard && finishedCard?.bottom && nextCard.bottom) {
+    if (nextCard && finishedCard?.bottom && nextCard.foreground) {
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
       );
       transitionTemplateIndexRef.current = nextIndex;
       cardTransitionActiveRef.current = true;
+      cardTransitionHandoffRef.current = false;
+      setCardTransitionReady(false);
       setCardTransition({
         fromBottom: finishedCard.bottom,
-        toBottom: nextCard.bottom,
+        toForeground: nextCard.foreground,
         templateId,
         nextCardId: nextCard.id,
         finishedId,
@@ -3379,15 +3315,35 @@ export function ScratchPrototype() {
     void goToPhotoSummary();
   }
 
-  function finishCardTransition(transition: CardTransitionState) {
-    cardTransitionActiveRef.current = false;
-    setCardTransition(null);
-
+  function beginCardTransitionHandoff(transition: CardTransitionState) {
+    if (cardTransitionHandoffRef.current) return;
+    cardTransitionHandoffRef.current = true;
+    setCardTransitionReady(false);
+    setGameVideosReady(false);
+    glRendererRef.current?.resetForeground();
+    if (gameMode) {
+      commitMotionCardResult(transition.finishedId, transition.prize);
+    }
+    if (!completedCardIdsRef.current.includes(transition.finishedId)) {
+      const nextCompleted = [
+        ...completedCardIdsRef.current,
+        transition.finishedId,
+      ];
+      completedCardIdsRef.current = nextCompleted;
+      setCompletedCardIds(nextCompleted);
+    }
     resetGameOutcome();
     setClaimed(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     setSelectedCardId(transition.nextCardId);
+  }
+
+  function finishCardTransition() {
+    cardTransitionActiveRef.current = false;
+    cardTransitionHandoffRef.current = false;
+    setCardTransitionReady(false);
+    setCardTransition(null);
   }
 
   function advanceAfterScratch() {
@@ -3412,20 +3368,17 @@ export function ScratchPrototype() {
     const finishedCard =
       modelCards.find((entry) => entry.id === finishedId) ?? card;
 
-    if (nextCard && finishedCard?.bottom && nextCard.bottom) {
-      if (gameMode) {
-        commitMotionCardResult(finishedId, prize);
-      }
-      completedCardIdsRef.current = nextCompleted;
-      setCompletedCardIds(nextCompleted);
+    if (nextCard && finishedCard?.bottom && nextCard.foreground) {
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
       );
       transitionTemplateIndexRef.current = nextIndex;
       cardTransitionActiveRef.current = true;
+      cardTransitionHandoffRef.current = false;
+      setCardTransitionReady(false);
       setCardTransition({
         fromBottom: finishedCard.bottom,
-        toBottom: nextCard.bottom,
+        toForeground: nextCard.foreground,
         templateId,
         nextCardId: nextCard.id,
         finishedId,
@@ -4684,10 +4637,12 @@ export function ScratchPrototype() {
           {cardTransition ? (
             <MirrorSlideTransition
               fromSrc={cardTransition.fromBottom}
-              toSrc={cardTransition.toBottom}
+              toSrc={cardTransition.toForeground}
               templateId={cardTransition.templateId}
-              onComplete={() => finishCardTransition(cardTransition)}
-              onError={() => finishCardTransition(cardTransition)}
+              holdUntilReady
+              blendOut={cardTransitionReady}
+              onComplete={() => beginCardTransitionHandoff(cardTransition)}
+              onError={() => beginCardTransitionHandoff(cardTransition)}
             />
           ) : null}
           <div className="mobile-sound-wrap">

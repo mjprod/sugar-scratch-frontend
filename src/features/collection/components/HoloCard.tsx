@@ -117,39 +117,6 @@ const MAX_DEVICE_PITCH_DEG = (MAX_DEVICE_PITCH_RAD * 180) / Math.PI
 /** Lower = smoother/slower catch-up to phone orientation. */
 const DEVICE_TILT_SMOOTHING = 0.1
 
-function PhoneIcon() {
-  return (
-    <svg
-      className="card__motion-icon"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <rect
-        x="7"
-        y="2.5"
-        width="10"
-        height="19"
-        rx="2.2"
-        ry="2.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
-      <circle cx="12" cy="17.8" r="1" fill="currentColor" />
-      <path
-        d="M9.4 5.2h5.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t
 }
@@ -371,7 +338,6 @@ export default function HoloCard({
     permission: motionPermission,
     supported: motionSupported,
     enabled: motionEnabled,
-    toggleEnabled: toggleMotionEnabled,
     subscribe: subscribeMotion,
   } = useMotion()
   const reactId = useId()
@@ -685,8 +651,8 @@ export default function HoloCard({
   }, [active, api, motionEnabled])
 
   // Consume the single global orientation stream (no per-card window listeners).
-  // Preference is session-wide: once enabled, every active hero follows motion
-  // until the user taps the phone icon off.
+  // Preference is app-wide: once enabled, every active hero follows motion
+  // until the user turns tilt off in Profile.
   // Finger scrub / flip temporarily wins while a gesture is active.
   useEffect(() => {
     if (!active || !motionEnabled || motionPermission !== 'granted') {
@@ -754,28 +720,6 @@ export default function HoloCard({
       })
     })
   }, [active, api, motionEnabled, motionPermission, subscribeMotion])
-
-  const toggleMotionTilt = useCallback(async () => {
-    const wasEnabled = motionEnabledRef.current
-    const nowEnabled = await toggleMotionEnabled()
-    // When turning motion OFF (or if enable failed), ease the card back upright.
-    if (wasEnabled && !nowEnabled) {
-      deviceTiltYawRef.current = 0
-      deviceTiltPitchRef.current = 0
-      setIsTilting(false)
-      cardRef.current?.classList.remove('is-tilting')
-      api.start({
-        tiltYaw: 0,
-        tiltPitch: 0,
-        glareO: pinHolo ? 1 : 0,
-        glareX: 50,
-        glareY: 50,
-        bgX: 50,
-        bgY: 50,
-        config: TILT_RETURN_CONFIG,
-      })
-    }
-  }, [api, pinHolo, toggleMotionEnabled])
 
   useEffect(() => {
     // Don't fight a live rotate scrub or button flip animation.
@@ -1983,49 +1927,6 @@ export default function HoloCard({
       }
     >
       <div className="card__translater">
-        {/* Motion button: show when permission unknown/denied, or when granted so user can toggle local opt-in. */}
-        {active && motionSupported && (
-          <button
-            type="button"
-            className={`card__motion-btn${
-              motionEnabled && motionPermission === 'granted' ? ' is-active' : ''
-            }${
-              motionPermission === 'denied' || !motionSupported
-                ? ' is-disabled-look'
-                : ''
-            }`}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              void toggleMotionTilt()
-            }}
-            onPointerDown={(e) => {
-              // Keep stage/card drag from stealing the motion toggle.
-              e.stopPropagation()
-            }}
-            aria-pressed={motionEnabled && motionPermission === 'granted'}
-            aria-label={
-              motionPermission === 'denied'
-                ? 'Motion permission denied'
-                : !motionSupported
-                  ? 'Motion not supported'
-                  : motionEnabled
-                    ? 'Disable phone tilt'
-                    : 'Enable phone tilt'
-            }
-            title={
-              motionPermission === 'denied'
-                ? 'Motion permission denied — use HTTPS and allow access'
-                : !motionSupported
-                  ? 'Motion not supported on this device/browser'
-                  : motionEnabled
-                    ? 'Disable phone tilt'
-                    : 'Enable phone tilt (HTTPS required on iOS)'
-            }
-          >
-            <PhoneIcon />
-          </button>
-        )}
         {SHOW_TILT_SPEED_DEBUG && (active || isTilting) && (
           <div className="card__tilt-debug" aria-hidden="true">
             <div>

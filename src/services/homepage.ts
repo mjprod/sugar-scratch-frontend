@@ -610,11 +610,21 @@ export type FeedPreview = {
 };
 
 const FEED_VIDEOS = [
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+  "/videos/demo-asianGirl.mp4",
+  "/videos/demo-blondGuy.mp4",
+  "/videos/demo-bikiniYellow.mp4",
+  "/videos/demo-brazilianGuy.mp4",
+  "/videos/demo-blackHat.mp4",
+  "/videos/demo-olderGuy.mp4",
+  "/videos/demo-carGirl.mp4",
+  "/videos/demo-cowgirl.mp4",
+  "/videos/demo-crazyEyes.mp4",
+  "/videos/demo-dancingGirlk.mp4",
+  "/videos/demo-hairGirl.mp4",
+  "/videos/demo-nikki_murci.mp4",
+  "/videos/demo-portugueseGirl.mp4",
+  "/videos/demo-thikkGirl.mp4",
+  "/videos/demo-towelGirl.mp4",
 ];
 
 export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {

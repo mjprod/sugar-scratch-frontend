@@ -11,8 +11,8 @@ import type {
 
 export const STAGE_WIDTH = 390;
 export const STAGE_HEIGHT = 672;
-/** Final strip X so B settles slightly short of a hard -3W lock. */
-export const DEFAULT_END_X = -1163;
+/** Final strip X so tile B lands flush with the stage. */
+export const DEFAULT_END_X = -STAGE_WIDTH * 3;
 export const TILE_COUNT = 4;
 export const STRIP_WIDTH = STAGE_WIDTH * TILE_COUNT;
 export const DEFAULT_DURATION_MS = 500;
@@ -285,9 +285,13 @@ export function fxLayerStyle(strip: StripProps): CSSProperties {
 }
 
 /** Inner strip: horizontal slide only (left-edge anchored). */
-export function stripTravelStyle(strip: StripProps): CSSProperties {
+export function stripTravelStyle(
+  strip: StripProps,
+  stageWidth = STAGE_WIDTH,
+): CSSProperties {
+  const scale = Math.max(stageWidth, 1) / STAGE_WIDTH;
   return {
-    transform: `translate(${strip.x}px, ${strip.y}px)`,
+    transform: `translate(${strip.x * scale}px, ${strip.y * scale}px)`,
   };
 }
 

@@ -50,7 +50,9 @@ export type ProtectedAction =
   | { type: "scratch"; pack: PurchaseFlowPack }
   | { type: "photo-scratch" }
   | { type: "store" }
-  | { type: "inbox" };
+  | { type: "inbox" }
+  | { type: "claim" }
+  | { type: "collection"; creatorId: string };
 
 export type AuthenticationSheetMode =
   | "login"
@@ -345,6 +347,8 @@ export function triggerFromAction(
   }
   if (action.type === "store") return "open-store";
   if (action.type === "inbox") return "view-rewards";
+  if (action.type === "claim") return "claim-reward";
+  if (action.type === "collection") return "view-collection";
   if (action.type === "buy") {
     return action.kind === "open-pack" || action.pack.entry === "open"
       ? "open-pack"

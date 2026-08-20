@@ -3,8 +3,8 @@
   --card-pink: oklch(0.639 0.256 9.90);
   --card-gray: oklch(1 0 0 / 0.1);
   position: relative;
-  width: min(320px, 86vw);
-  height: min(230px, 68vw);
+  width: min(400px, 92vw);
+  height: min(288px, 76vw);
   perspective: 900px;
 }
 
@@ -35,6 +35,21 @@
   width: 100%;
   height: 100%;
   overflow: visible;
+}
+
+.card-fall-layer--a .card-fall-svg {
+  transform: translate3d(0, calc(var(--mx) * -20px), 0);
+  transition: transform 100ms linear;
+}
+
+.card-fall-layer--b .card-fall-svg {
+  transform: translate3d(0, calc(var(--mx) * -38px), 0);
+  transition: transform 220ms linear;
+}
+
+.card-fall-layer--c .card-fall-svg {
+  transform: translate3d(0, calc(var(--mx) * -28px), 0);
+  transition: transform 340ms linear;
 }
 
 .card-fall-outline {
@@ -170,6 +185,13 @@
   .card-fall-layer .card-fall-mark,
   .card-fall-layer .card-fall-stripes {
     animation: none;
+  }
+
+  .card-fall-layer--a .card-fall-svg,
+  .card-fall-layer--b .card-fall-svg,
+  .card-fall-layer--c .card-fall-svg {
+    transform: none;
+    transition: none;
   }
 
   .card-fall-layer--a {

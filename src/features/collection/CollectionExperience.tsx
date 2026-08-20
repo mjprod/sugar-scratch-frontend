@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import CardCarousel from './components/CardCarousel'
 import SlideDeck from './components/SlideDeck'
 import { ActiveCardProvider, useActiveCard } from './context/ActiveCardContext'
-import { MotionProvider } from './context/MotionContext'
 import { createCard, type CardConfig } from './lib/cards'
 import {
   DEFAULT_HOLO_TRANSFORM,
@@ -501,19 +500,17 @@ export function CollectionExperience(props: CollectionExperienceProps) {
   ])
 
   return (
-    <MotionProvider>
-      <ActiveCardProvider initialActiveCardId={boot.activeCardId}>
-        <AppInner
-          key={`${boot.sourceKey}:${boot.activeCardId ?? 'browse'}`}
-          {...props}
-          focusCardId={focusCardId}
-          initialCards={boot.cards}
-          initialGroups={boot.groups}
-          initialFocusIndex={boot.focusIndex}
-          emptyLabel={boot.emptyLabel}
-        />
-      </ActiveCardProvider>
-    </MotionProvider>
+    <ActiveCardProvider initialActiveCardId={boot.activeCardId}>
+      <AppInner
+        key={`${boot.sourceKey}:${boot.activeCardId ?? 'browse'}`}
+        {...props}
+        focusCardId={focusCardId}
+        initialCards={boot.cards}
+        initialGroups={boot.groups}
+        initialFocusIndex={boot.focusIndex}
+        emptyLabel={boot.emptyLabel}
+      />
+    </ActiveCardProvider>
   )
 }
 

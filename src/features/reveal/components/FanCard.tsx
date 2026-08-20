@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { RevealCard } from '../lib/cards'
 import { CardFaceOverlay } from '@/shared/ui/CardFaceOverlay'
 
@@ -13,6 +13,7 @@ type FanCardProps = {
  */
 export function FanCard({ card, playing = false }: FanCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [videoReady, setVideoReady] = useState(false)
   const { effect, overlay } = card
   const types = effect.types ?? 'fire'
   const subtypes = effect.subtypes ?? 'basic'
@@ -20,24 +21,31 @@ export function FanCard({ card, playing = false }: FanCardProps) {
   const rarity = effect.rarity.toLowerCase()
 
   // Keep videos paused while preloading; only play once the fan entrance starts.
+  // Do not seek to 0 — that wipes the current picture and flashes black.
   useEffect(() => {
     const video = videoRef.current
     if (!video || card.mediaType !== 'video') return
 
+    const markReady = () => {
+      if (video.readyState >= 2) setVideoReady(true)
+    }
+    markReady()
+    video.addEventListener('loadeddata', markReady)
+    video.addEventListener('canplay', markReady)
+
     if (playing) {
-      try {
-        video.currentTime = 0
-      } catch {
-        // currentTime can throw if metadata isn't ready yet.
-      }
       void video.play().catch(() => {
         // Muted + playsInline should allow autoplay; ignore rejections.
       })
-      return
+    } else {
+      video.pause()
     }
 
-    video.pause()
-  }, [card.mediaType, playing])
+    return () => {
+      video.removeEventListener('loadeddata', markReady)
+      video.removeEventListener('canplay', markReady)
+    }
+  }, [card.mediaType, card.mediaUrl, playing])
 
   const style = {
     '--pointer-x': '50%',
@@ -85,6 +93,7 @@ export function FanCard({ card, playing = false }: FanCardProps) {
                 <video
                   ref={videoRef}
                   src={card.mediaUrl}
+                  className={videoReady ? 'is-ready' : undefined}
                   muted
                   loop
                   playsInline
