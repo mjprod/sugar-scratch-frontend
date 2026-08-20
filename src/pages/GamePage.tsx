@@ -1,17 +1,23 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
+import { GameExitConfirmModal } from "@/features/game/GameExitConfirmModal";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
+import {
+  loadGameSession,
+  saveGameSession,
+} from "@/features/game/modules/gameSession";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
 function ScratchGameEmbed() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   // Mark embed before ScratchPrototype mounts so zoom stays off on first paint.
   useLayoutEffect(() => {
@@ -38,6 +44,13 @@ function ScratchGameEmbed() {
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
 
+  function leaveGameForCollection() {
+    const session = loadGameSession();
+    if (session) saveGameSession(session);
+    setExitConfirmOpen(false);
+    navigate(Paths.collection);
+  }
+
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
@@ -47,14 +60,14 @@ function ScratchGameEmbed() {
           data-tutorial-target="collection"
           aria-label={
             gameMode
-              ? "Back to game"
+              ? "Leave game"
               : playlistMode
                 ? "Back to home"
                 : "Back to collection"
           }
           onClick={() => {
             if (gameMode) {
-              navigate(Paths.game);
+              setExitConfirmOpen(true);
               return;
             }
             if (playlistMode) {
@@ -68,6 +81,11 @@ function ScratchGameEmbed() {
         </button>
         <ScratchPrototype />
         <FirstPlayTutorial scene="foil" />
+        <GameExitConfirmModal
+          open={exitConfirmOpen}
+          onStay={() => setExitConfirmOpen(false)}
+          onExit={leaveGameForCollection}
+        />
       </div>
     </div>
   );
@@ -80,7 +98,11 @@ export function GamePage() {
 
   // Bare /game → pack-fan hub. model+card → scratch (collection or ?game=1 hand).
   if (model && card) {
-    return <ScratchGameEmbed />;
+    return (
+      <ScratchGameEmbed
+        key={`${model}-${card}-${searchParams.get("game") ?? ""}`}
+      />
+    );
   }
 
   return (

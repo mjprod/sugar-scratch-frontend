@@ -82,7 +82,7 @@ export function ReadyToReveal({
           ].join(" ")}
           onClick={() => setSegment("scratch")}
         >
-          Ready to Scratch
+          Unscratched Cards
           <span className="collection-segment-count">{scratchCount}</span>
         </button>
         <button
@@ -95,7 +95,7 @@ export function ReadyToReveal({
           ].join(" ")}
           onClick={() => setSegment("packs")}
         >
-          Ready to Open
+          Unopened Packs
           <span className="collection-segment-count">{packCount}</span>
         </button>
       </div>
@@ -122,7 +122,7 @@ export function ReadyToReveal({
             })
           ) : (
             <article className="collection-empty-panel ready-reveal-empty">
-              <h3 className="collection-empty-title">No cards ready to scratch</h3>
+              <h3 className="collection-empty-title">No unscratched cards</h3>
               <p className="collection-empty-copy">
                 Open a pack to add cards here.
               </p>
@@ -146,7 +146,7 @@ export function ReadyToReveal({
           })
         ) : (
           <article className="collection-empty-panel ready-reveal-empty">
-            <h3 className="collection-empty-title">No packs ready to open</h3>
+            <h3 className="collection-empty-title">No unopened packs</h3>
             <p className="collection-empty-copy">
               Purchase packs from Discover to fill this shelf.
             </p>

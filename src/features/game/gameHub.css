@@ -143,15 +143,9 @@
   align-items: center;
   gap: 16px;
   width: min(100%, 420px);
-  max-height: calc(100% - 160px);
-  padding: 0 8px 12px;
-  overflow-y: auto;
+  padding: 0 8px;
   text-align: center;
   animation: game-hub-pack-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.game-hub-pack--photo_reveal .game-hub-pack__stage {
-  padding-bottom: 140px;
 }
 
 @keyframes game-hub-pack-in {

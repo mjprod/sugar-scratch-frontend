@@ -11,6 +11,7 @@ import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
+import { PACK_OPENING_REWARD_EVENT } from "@/services/packMotionSettle";
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -34,8 +35,10 @@ export function AppLayout() {
     verifyEmail,
     inboxUnread,
     setInboxUnread,
+    setPurchasedPacks,
+    bumpInventoryRevision,
   } = useAuth();
-  const { coins, diamonds } = useWallet();
+  const { coins, diamonds, addCoins } = useWallet();
   const { activeTab: tab, requestTab } = useTabNav();
 
   useEffect(() => {
@@ -45,9 +48,28 @@ export function AppLayout() {
     return () => bindGameNavigate(null);
   }, [navigate]);
 
+  useEffect(() => {
+    function onPackOpeningReward(event: Event) {
+      const detail = (event as CustomEvent<{ coins?: number; cards?: number }>)
+        .detail;
+      const rewardCoins = detail?.coins ?? 0;
+      const rewardCards = detail?.cards ?? 0;
+      if (rewardCoins > 0) addCoins(rewardCoins);
+      if (rewardCards > 0) {
+        setPurchasedPacks((count) => count + rewardCards);
+      }
+      if (rewardCoins > 0 || rewardCards > 0) bumpInventoryRevision();
+    }
+    window.addEventListener(PACK_OPENING_REWARD_EVENT, onPackOpeningReward);
+    return () => {
+      window.removeEventListener(PACK_OPENING_REWARD_EVENT, onPackOpeningReward);
+    };
+  }, [addCoins, bumpInventoryRevision, setPurchasedPacks]);
+
   const hideChrome =
     location.pathname.startsWith("/purchase") ||
     location.pathname.startsWith("/recommend") ||
+    location.pathname.startsWith("/welcome") ||
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/photo-scratch");
 

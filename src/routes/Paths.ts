@@ -19,6 +19,7 @@ export const Paths = {
   store: "/store",
   settings: "/settings",
   changePassword: "/settings/change-password",
+  favourites: "/profile/favourites",
   inbox: "/inbox",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
@@ -51,6 +52,7 @@ export const Paths = {
   recommend: "/recommend",
   recommendSwipe: "/recommend/swipe",
   recommendDone: "/recommend/done",
+  welcome: "/welcome",
   resetPassword: "/reset-password",
   navTest: "/nav-test",
 } as const;

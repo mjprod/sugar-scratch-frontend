@@ -4126,6 +4126,14 @@ body[data-theme="v8"] .cpv2-shell {
   }
 }
 
+/* Creator profile: back button clears floating desktop nav. */
+@media (min-width: 507px) {
+  body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,
+  body[data-theme="v8"][data-liquid-nav="to-desktop"] .cpv2-shell {
+    padding-top: var(--app-diamond-offset);
+  }
+}
+
 body[data-theme="v8"] .cpv2-page.has-sticky-cta .cpv2-shell {
   /* Sticky CTA + gap + footer — keep Motion/Photo clear of fixed chrome */
   padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px));
@@ -5325,6 +5333,11 @@ body[data-theme="v8"] .hf-stepper-icon {
     --hf-next-peek: 0px;
     --hf-top-clearance: var(--app-diamond-offset);
     padding-bottom: var(--hf-bottom-clearance);
+  }
+
+  /* Discover feed: sit the phone frame below the floating desktop nav. */
+  body[data-theme="v8"] .app-layout--hud .hf-stage {
+    margin-top: var(--hf-top-clearance, var(--app-diamond-offset));
   }
 
   body[data-theme="v8"] .hf-stage {
@@ -7373,14 +7386,16 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
 }
 
 @media (min-width: 507px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-bottom: 48px;
   }
 }
 
 @media (max-width: 1023px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: var(--app-diamond-offset);
   }
 
@@ -8202,6 +8217,142 @@ body[data-theme="v8"] .auth7-swipe-hint {
 body[data-theme="v8"] .auth7-onboard-spacer {
   flex: 1;
   min-height: 48px;
+}
+
+body[data-theme="v8"] .auth7-welcome {
+  position: relative;
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+body[data-theme="v8"] .auth7-welcome-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.55);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-right: 40px;
+}
+
+body[data-theme="v8"] .auth7-welcome-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.656 0.212 354.31),
+    oklch(0.606 0.219 292.72)
+  );
+  color: #fff;
+}
+
+body[data-theme="v8"] .auth7-welcome-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-theme="v8"] .auth7-welcome-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 16px;
+  background: oklch(1 0 0 / 0.04);
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+body[data-theme="v8"] .auth7-welcome-row span:last-child {
+  color: oklch(0.757 0.168 353.61);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral {
+  margin-top: 20px;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-copy {
+  margin: 4px 0 0;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+body[data-theme="v8"] .auth7-welcome-referral-row .auth7-input {
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .auth7-welcome-apply {
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-welcome-apply:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .auth7-welcome-ok {
+  margin: 8px 0 0;
+  color: oklch(0.773 0.153 163.22);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .auth7-welcome-skip {
+  margin-top: 12px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 body[data-theme="v8"] .auth7-persona-prompt {
@@ -9738,9 +9889,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     }
   }
 
-  /* Home frame under HUD chrome */
+  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (507px+). */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
-    margin-top: 7rem;
     margin-bottom: 12px;
   }
 
@@ -9786,17 +9936,26 @@ body[data-theme="v8"] .app-page-shell-inner {
     padding-inline: 0;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page) {
+  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page):not(.favourites-page) {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
     padding-bottom: 48px;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary.settings-page,
-  body[data-theme="v8"] .app-page-shell--secondary.inbox-page {
+  body[data-theme="v8"] .app-page-shell--secondary.inbox-page,
+  body[data-theme="v8"] .app-page-shell--secondary.favourites-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-inline: 0;
     padding-bottom: 48px;
+  }
+}
+
+/* Desktop: shell is notch-only — sticky subpage header clears the floating nav. */
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header,
+  body[data-theme="v8"] .app-page-shell.favourites-page .subpage-header {
+    top: var(--app-diamond-offset);
   }
 }
 

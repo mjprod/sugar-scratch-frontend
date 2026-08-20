@@ -1,4 +1,5 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { settlePackMotionCard } from "@/services/packMotionSettle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
@@ -3235,16 +3236,20 @@ export function ScratchPrototype() {
   }
   resetScratchRef.current = resetScratch;
 
+  function commitMotionCardResult(cardId: string, prize: number) {
+    let updated = recordMotionCardResult(cardId, prize);
+    if (!updated) return;
+    const settled = settlePackMotionCard(cardId);
+    if (settled) updated = settled;
+    setGameSession(updated);
+  }
+
   function finishCardTransition(transition: CardTransitionState) {
     cardTransitionActiveRef.current = false;
     setCardTransition(null);
 
     if (gameMode) {
-      const updated = recordMotionCardResult(
-        transition.finishedId,
-        transition.prize,
-      );
-      if (updated) setGameSession(updated);
+      commitMotionCardResult(transition.finishedId, transition.prize);
     }
 
     const nextCompleted = [
@@ -3300,8 +3305,7 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      const updated = recordMotionCardResult(finishedId, prize);
-      if (updated) setGameSession(updated);
+      commitMotionCardResult(finishedId, prize);
     }
 
     completedCardIdsRef.current = nextCompleted;

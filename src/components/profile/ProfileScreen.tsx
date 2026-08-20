@@ -8,12 +8,12 @@ import {
   Lock,
   LogOut,
   ShieldCheck,
+  Heart,
   type LucideIcon,
 } from "lucide-react";
 import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
-
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
 export function UserDashboardScreen({
@@ -21,13 +21,13 @@ export function UserDashboardScreen({
   avatar,
   onLogout,
   onOpenChangePassword,
+  onOpenFavourites,
 }: {
   name: string;
   avatar?: string | null;
-  coins: number;
-  diamonds: number;
   onLogout: () => void;
   onOpenChangePassword: () => void;
+  onOpenFavourites?: () => void;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -37,6 +37,10 @@ export function UserDashboardScreen({
   function open(label: string) {
     if (label === "Change Password") {
       onOpenChangePassword();
+      return;
+    }
+    if (label === "Favourite") {
+      onOpenFavourites?.();
       return;
     }
     if (label === "Privacy Policy") {
@@ -114,6 +118,7 @@ export function UserDashboardScreen({
           title="Profile & Account"
           items={[
             { label: "Purchase History", icon: CreditCard },
+            { label: "Favourite", icon: Heart },
             { label: "Notifications", icon: Bell },
             { label: "Change Password", icon: Lock },
           ]}

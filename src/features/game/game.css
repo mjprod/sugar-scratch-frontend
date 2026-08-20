@@ -127,24 +127,6 @@
   z-index: 10 !important;
 }
 
-/* Cursor-FX coins live on this overlay. Pin it to the stage box so a parent
-   transform (desktop phone-frame) cannot send position:fixed sparkles off-screen. */
-.stage-game .stage > canvas.fairy-dust-cursor {
-  position: absolute !important;
-  inset: 0 !important;
-  left: 0 !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  max-height: none !important;
-  transform: none !important;
-  pointer-events: none !important;
-  z-index: 11 !important;
-}
-
 .stage-game .stage .game-stage-canvas-wrap .game-stage-canvas {
   height: 100% !important;
   left: auto !important;
@@ -154,114 +136,6 @@
   top: auto !important;
   transform: none !important;
   width: 100% !important;
-}
-
-.pack-progress {
-  position: absolute;
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  right: 12px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.pack-progress__stack {
-  position: relative;
-  width: 22px;
-  height: 24px;
-  flex-shrink: 0;
-  animation: pack-progress-shift 320ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.pack-progress__card {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 13px;
-  height: 17px;
-  border: 1px solid oklch(0.9 0.1 86 / 0.72);
-  border-radius: 2.5px;
-  background: oklch(0.18 0.02 285 / 0.55);
-  box-shadow: 0 0 8px oklch(0.85 0.1 85 / 0.12);
-  transform: translate(calc(var(--i) * 2.5px), calc(var(--i) * -2.5px));
-}
-
-.pack-progress__spark {
-  display: grid;
-  width: 22px;
-  height: 24px;
-  flex-shrink: 0;
-  place-items: center;
-  color: oklch(0.907 0.106 86.69);
-  font-size: 14px;
-  line-height: 1;
-  text-shadow: 0 0 12px oklch(0.907 0.106 86.69 / 0.7);
-  animation: pack-progress-final 520ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.pack-progress__copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-}
-
-.pack-progress__remain {
-  margin: 0;
-  color: oklch(0.907 0.106 86.69);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.15;
-  text-shadow: 0 1px 8px oklch(0 0 0 / 0.55);
-}
-
-.pack-progress.is-final .pack-progress__remain {
-  text-shadow:
-    0 0 12px oklch(0.907 0.106 86.69 / 0.45),
-    0 1px 8px oklch(0 0 0 / 0.55);
-}
-
-.pack-progress__pos {
-  margin: 0;
-  color: oklch(1 0 0 / 0.52);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  line-height: 1.2;
-}
-
-@keyframes pack-progress-shift {
-  0% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-3px);
-  }
-  100% {
-    transform: translateY(0);
-  }
-}
-
-@keyframes pack-progress-final {
-  0% {
-    opacity: 0;
-    transform: scale(0.7) translateY(2px);
-    filter: blur(4px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: none;
-  }
-}
-
-@media (max-width: 360px) {
-  .pack-progress__pos {
-    display: none;
-  }
 }
 
 .stage-game__exit {
@@ -283,4 +157,83 @@
 
 .stage-game__exit:hover {
   background: oklch(0.157 0.013 284.85 / 0.9);
+}
+
+.game-exit-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.game-exit-modal__scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: oklch(0.08 0.01 284 / 0.72);
+  backdrop-filter: blur(6px);
+  cursor: default;
+}
+
+.game-exit-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 320px);
+  padding: 24px 20px 20px;
+  border-radius: 20px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0.157 0.013 284.85 / 0.96);
+  box-shadow: 0 24px 64px oklch(0 0 0 / 0.45);
+  text-align: center;
+}
+
+.game-exit-modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: oklch(1 0 0);
+}
+
+.game-exit-modal__copy {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: oklch(1 0 0 / 0.62);
+}
+
+.game-exit-modal__exit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: oklch(1 0 0);
+  color: oklch(0.147 0.011 285.01);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.game-exit-modal__exit:active {
+  transform: scale(0.98);
+}
+
+.game-exit-modal__stay {
+  width: 100%;
+  height: 44px;
+  margin-top: 6px;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.62);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.game-exit-modal__stay:hover {
+  color: oklch(1 0 0 / 0.88);
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BuyButton } from '@/features/reveal/components/BuyButton'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
@@ -12,8 +13,7 @@ import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
 import { useWallet } from '@/contexts/WalletContext'
-import { useAuth } from '@/contexts/AuthContext'
-import { recordRevealedCards } from '@/services/collectionState'
+import { Paths } from '@/routes/Paths'
 import {
   beginPhotoPhase,
   clearGameSession,
@@ -21,8 +21,8 @@ import {
   loadGameSession,
   markWalletCredited,
   motionPlayHref,
-  navigateTo,
   photoPlayHref,
+  saveGameSession,
   startMotionSession,
   type GameSession,
 } from './modules/gameSession'
@@ -103,9 +103,9 @@ function motionHandToRevealCards(
 }
 
 export function GameHub() {
+  const navigate = useNavigate()
   const catalog = useCatalog()
   const { addDiamonds } = useWallet()
-  const { requestTab } = useAuth()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
   const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
@@ -308,15 +308,15 @@ export function GameHub() {
     if (existing?.phase === 'motion' || existing?.phase === 'photo') {
       if (existing.phase === 'photo') {
         const started = beginPhotoPhase() ?? existing
-        navigateTo(photoPlayHref(started))
+        navigate(photoPlayHref(started))
         return
       }
-      navigateTo(motionPlayHref(existing, firstMissingMotionCardId(existing)))
+      navigate(motionPlayHref(existing, firstMissingMotionCardId(existing)))
       return
     }
     const created = startMotionSession(hand)
     setSession(created)
-    navigateTo(motionPlayHref(created))
+    navigate(motionPlayHref(created))
   }
 
   function playPhotoHand() {
@@ -328,20 +328,14 @@ export function GameHub() {
     unlockCountdownSound()
     const started = beginPhotoPhase() ?? current
     setSession(started)
-    navigateTo(photoPlayHref(started))
+    navigate(photoPlayHref(started))
   }
 
-  function scratchPhotosLater() {
-    const count = wonPhotos.length || session?.photoPrizeTotal || 0
-    if (count > 0) {
-      recordRevealedCards({
-        count,
-        creatorId: overlay.name.trim().toLowerCase().replace(/\s+/g, '-'),
-        creatorName: overlay.name,
-        motionCount: 0,
-      })
-    }
-    requestTab('bag')
+  function savePhotoCardsForLater() {
+    const current = loadGameSession()
+    if (!current || current.phase !== 'photo_reveal') return
+    saveGameSession(current)
+    navigate(Paths.collection)
   }
 
   function deleteGame() {
@@ -434,14 +428,14 @@ export function GameHub() {
               </div>
               <h2>
                 {session.photoPrizeTotal > 0
-                  ? `${session.photoPrizeTotal} Photo Card${
+                  ? `You won ${session.photoPrizeTotal} photocard${
                       session.photoPrizeTotal === 1 ? '' : 's'
-                    } Revealed`
-                  : 'No Photo Cards this round'}
+                    }!`
+                  : 'No photocards this round'}
               </h2>
               <p>
                 {session.photoPrizeTotal > 0
-                  ? 'Added to your Collection'
+                  ? 'Scratch them next for diamonds.'
                   : 'Deal again for another shot.'}
               </p>
               {wonPhotos.length > 0 ? (
@@ -492,17 +486,26 @@ export function GameHub() {
           {phase === 'photo_reveal' &&
           session &&
           session.photoPrizeTotal > 0 ? (
-            <BuyButton
-              label="Scratch Next Card"
-              onClick={playPhotoHand}
-              visible
-            />
+            <>
+              <BuyButton
+                label="Scratch Photo Cards"
+                onClick={playPhotoHand}
+                visible
+              />
+              <button
+                type="button"
+                className="game-hub-pack__link reveal-replay"
+                onClick={savePhotoCardsForLater}
+              >
+                Save for Later
+              </button>
+            </>
           ) : null}
 
           {phase === 'photo_reveal' &&
           (!session || session.photoPrizeTotal <= 0) ? (
             <BuyButton
-              label="View Collection"
+              label="New Game"
               onClick={() => void startNewGame()}
               disabled={!canDeal}
               visible
@@ -519,17 +522,6 @@ export function GameHub() {
           ) : null}
 
           <div className="game-hub-pack__secondary">
-            {phase === 'photo_reveal' &&
-            session &&
-            session.photoPrizeTotal > 0 ? (
-              <button
-                type="button"
-                className="game-hub-pack__link"
-                onClick={scratchPhotosLater}
-              >
-                Scratch later
-              </button>
-            ) : null}
             {phase === 'ready' && showPlay && canDeal ? (
               <button
                 type="button"
