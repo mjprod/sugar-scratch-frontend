@@ -14,6 +14,7 @@ import { NavTestPage } from "@/pages/NavTestPage";
 import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
+import { FavouritesPage } from "@/pages/FavouritesPage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
 import { RecIntroPage } from "@/pages/RecIntroPage";
@@ -132,6 +133,14 @@ export function AppRoutes() {
             element={
               <SoftGate tab="profile">
                 <ProfilePage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/favourites"
+            element={
+              <SoftGate tab="profile">
+                <FavouritesPage />
               </SoftGate>
             }
           />

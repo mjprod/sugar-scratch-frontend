@@ -20,6 +20,11 @@ import {
   writeHomeFeedCache,
   type HomeFeedCreator,
 } from "@/services/creatorFeed";
+import {
+  addFeedFavourite,
+  removeFeedFavourite,
+  withFavouriteLikes,
+} from "@/services/feedFavourites";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const SNAP_MS = 220;
@@ -107,7 +112,9 @@ export function HomeFeedScreen({
   personalizationPrompt?: ReactNode;
 }) {
   const cached = readHomeFeedCache();
-  const [items, setItems] = useState<HomeFeedCreator[]>(cached?.items ?? []);
+  const [items, setItems] = useState<HomeFeedCreator[]>(
+    () => withFavouriteLikes(cached?.items ?? []),
+  );
   const [status, setStatus] = useState<"loading" | "loaded" | "error" | "empty">(
     cached?.items.length ? "loaded" : "loading",
   );
@@ -792,9 +799,6 @@ export function HomeFeedScreen({
         velocityY: 0,
         moved: false,
       };
-
-      // Capture so drag continues even if the cursor leaves the frame.
-      event.currentTarget.setPointerCapture(event.pointerId);
     },
     [active, isDragFromInteractive],
   );
@@ -811,6 +815,7 @@ export function HomeFeedScreen({
       if (!drag.moved) {
         drag.moved = true;
         setIsDesktopDragging(true);
+        event.currentTarget.setPointerCapture(event.pointerId);
         // Disable snap while dragging so the frame follows the pointer 1:1.
         root.style.scrollSnapType = "none";
         root.style.scrollBehavior = "auto";
@@ -1016,6 +1021,9 @@ export function HomeFeedScreen({
       const next = prev.map((item) =>
         item.id === id ? { ...item, liked: !item.liked } : item,
       );
+      const item = next.find((entry) => entry.id === id);
+      if (item?.liked) addFeedFavourite(item);
+      else if (item) removeFeedFavourite(item);
       persist({ items: next });
       return next;
     });
@@ -1031,6 +1039,8 @@ export function HomeFeedScreen({
       const next = prev.map((item) =>
         item.id === id ? { ...item, liked: true } : item,
       );
+      const item = next.find((entry) => entry.id === id);
+      if (item) addFeedFavourite(item);
       persist({ items: next });
       return next;
     });
@@ -1043,6 +1053,8 @@ export function HomeFeedScreen({
       const next = prev.map((item) =>
         item.id === resumeLikeId ? { ...item, liked: true } : item,
       );
+      const item = next.find((entry) => entry.id === resumeLikeId);
+      if (item) addFeedFavourite(item);
       persist({ items: next });
       return next;
     });

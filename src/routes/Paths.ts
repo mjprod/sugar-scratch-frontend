@@ -19,6 +19,7 @@ export const Paths = {
   store: "/store",
   settings: "/settings",
   changePassword: "/settings/change-password",
+  favourites: "/profile/favourites",
   inbox: "/inbox",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",

@@ -4126,6 +4126,14 @@ body[data-theme="v8"] .cpv2-shell {
   }
 }
 
+/* Creator profile: back button clears floating desktop nav. */
+@media (min-width: 507px) {
+  body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,
+  body[data-theme="v8"][data-liquid-nav="to-desktop"] .cpv2-shell {
+    padding-top: var(--app-diamond-offset);
+  }
+}
+
 body[data-theme="v8"] .cpv2-page.has-sticky-cta .cpv2-shell {
   /* Sticky CTA + gap + footer — keep Motion/Photo clear of fixed chrome */
   padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px));
@@ -5325,6 +5333,11 @@ body[data-theme="v8"] .hf-stepper-icon {
     --hf-next-peek: 0px;
     --hf-top-clearance: var(--app-diamond-offset);
     padding-bottom: var(--hf-bottom-clearance);
+  }
+
+  /* Discover feed: sit the phone frame below the floating desktop nav. */
+  body[data-theme="v8"] .app-layout--hud .hf-stage {
+    margin-top: var(--hf-top-clearance, var(--app-diamond-offset));
   }
 
   body[data-theme="v8"] .hf-stage {
@@ -7373,14 +7386,16 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
 }
 
 @media (min-width: 507px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-bottom: 48px;
   }
 }
 
 @media (max-width: 1023px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: var(--app-diamond-offset);
   }
 
@@ -8320,12 +8335,16 @@ body[data-theme="v8"] .auth7-verify-email {
 }
 
 /* --------------------------------------------------------------------------
- * Recommendation Intro — compact cluster (mobile) / onboarding card (desktop)
+ * Recommendation Intro — viewport-fit card (scroll body only as fallback)
  * ----------------------------------------------------------------------- */
 
 body[data-theme="v8"] .auth7-onboard-shell--intro {
   justify-content: center;
-  overflow-y: auto;
+  overflow: hidden;
+  height: 100%;
+  max-height: 100dvh;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
 }
 
 body[data-theme="v8"] .auth7-intro-card {
@@ -8335,187 +8354,190 @@ body[data-theme="v8"] .auth7-intro-card {
   max-width: 420px;
   margin: 0 auto;
   min-height: 0;
+  max-height: calc(
+    100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px
+  );
+  overflow: hidden;
 }
 
 body[data-theme="v8"] .auth7-onboard-shell--intro .auth7-onboard-header {
-  margin-bottom: 0;
   flex-shrink: 0;
+  margin-bottom: 10px;
+  padding: 6px 4px 0;
+}
+
+body[data-theme="v8"] .auth7-onboard-shell--intro .auth2-logo-img {
+  height: 1.5rem;
 }
 
 body[data-theme="v8"] .auth7-onboard-shell--intro .auth7-onboard-main {
-  flex: 0 1 auto;
-  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  justify-content: stretch;
+}
+
+body[data-theme="v8"] .auth7-onboard-shell--intro .auth7-onboard-main > * {
+  min-height: 0;
+  height: 100%;
 }
 
 body[data-theme="v8"] .auth7-intro-panel {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
   max-width: 360px;
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
-  padding: 20px 8px 12px;
+  padding: 4px 8px 18px;
   text-align: center;
+}
+
+body[data-theme="v8"] .auth7-intro-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body[data-theme="v8"] .auth7-intro-lead {
+  flex-shrink: 0;
 }
 
 body[data-theme="v8"] .auth7-intro-title {
   margin: 0;
   color: oklch(1 0 0);
-  font-size: clamp(1.45rem, 5.2vw, 1.75rem);
+  font-size: clamp(1.35rem, 4.8vw, 1.65rem);
   font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 1.18;
+  line-height: 1.1;
 }
 
 body[data-theme="v8"] .auth7-intro-copy {
-  margin: 10px 0 0;
-  max-width: 300px;
+  margin: 8px 0 0;
+  max-width: none;
   color: oklch(1 0 0 / 0.58);
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
-/* Swipe education */
+@media (min-width: 400px) {
+  body[data-theme="v8"] .auth7-intro-copy {
+    white-space: nowrap;
+  }
+}
+
+/* Swipe education — one compact group */
 body[data-theme="v8"] .auth7-intro-demo {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: max-content max-content;
+  align-content: center;
+  justify-content: center;
+  column-gap: 18px;
   width: 100%;
-  margin-top: 22px;
+  min-height: 0;
+  margin-top: 28px;
 }
 
-body[data-theme="v8"] .auth7-intro-demo-mobile {
+body[data-theme="v8"] .auth7-intro-demo-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-}
-
-body[data-theme="v8"] .auth7-intro-demo-desktop {
-  display: none;
+  gap: 10px;
+  margin: 0;
+  min-height: 0;
 }
 
 body[data-theme="v8"] .auth7-intro-demo-card {
   display: block;
-  /* Match FigJam creator card ~164×285 */
-  width: 118px;
-  height: 205px;
+  width: auto;
+  height: clamp(96px, 20dvh, 138px);
+  aspect-ratio: 164 / 285;
   object-fit: cover;
   object-position: center top;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid oklch(1 0 0 / 0.14);
-  box-shadow: 0 14px 32px oklch(0 0 0 / 0.42);
+  box-shadow: 0 10px 24px oklch(0 0 0 / 0.42);
   background: oklch(0.198 0.01 285.46);
 }
 
-body[data-theme="v8"] .auth7-intro-demo-card--center {
-  transform: none;
-}
-
 body[data-theme="v8"] .auth7-intro-demo-card--left {
-  transform: rotate(-8deg) translateX(-4px);
+  transform: rotate(-8deg) translateX(-2px);
 }
 
 body[data-theme="v8"] .auth7-intro-demo-card--right {
-  transform: rotate(8deg) translateX(4px);
-}
-
-body[data-theme="v8"] .auth7-intro-demo-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  width: 100%;
-  max-width: 320px;
+  transform: rotate(8deg) translateX(2px);
 }
 
 body[data-theme="v8"] .auth7-intro-dir {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-}
-
-body[data-theme="v8"] .auth7-intro-demo-arrow {
-  display: grid;
-  place-items: center;
-  color: oklch(1 0 0 / 0.55);
-}
-
-body[data-theme="v8"] .auth7-intro-dir.is-pass .auth7-intro-demo-arrow,
-body[data-theme="v8"] .auth7-intro-demo-col.is-pass .auth7-intro-demo-arrow {
-  color: oklch(0.77 0.14 9.82 / 0.85);
-}
-
-body[data-theme="v8"] .auth7-intro-dir.is-like .auth7-intro-demo-arrow,
-body[data-theme="v8"] .auth7-intro-demo-col.is-like .auth7-intro-demo-arrow {
-  color: oklch(0.757 0.168 353.61);
-}
-
-body[data-theme="v8"] .auth7-intro-demo-badge {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid oklch(1 0 0 / 0.16);
-  background: oklch(1 0 0 / 0.05);
-}
-
-body[data-theme="v8"] .auth7-intro-demo-badge.is-pass {
-  color: oklch(0.77 0.14 9.82);
-  border-color: oklch(0.77 0.14 9.82 / 0.35);
-  background: oklch(0.682 0.21 14.92 / 0.12);
-}
-
-body[data-theme="v8"] .auth7-intro-demo-badge.is-like {
-  color: var(--app-cta-label);
-  border: 0;
-  background: var(--app-cta-face);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--app-cta-face-b) 28%, transparent);
-}
-
-body[data-theme="v8"] .auth7-intro-dir-text {
-  display: flex;
-  flex-direction: column;
   gap: 2px;
   margin: 0;
 }
 
-body[data-theme="v8"] .auth7-intro-dir-text strong {
-  color: oklch(1 0 0);
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+body[data-theme="v8"] .auth7-intro-dir-marks {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-body[data-theme="v8"] .auth7-intro-dir-text span {
-  color: oklch(1 0 0 / 0.5);
-  font-size: 0.8rem;
+body[data-theme="v8"] .auth7-intro-dir-marks svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+body[data-theme="v8"] .auth7-intro-demo-col.is-pass .auth7-intro-dir-marks {
+  color: oklch(0.77 0.14 9.82);
+}
+
+body[data-theme="v8"] .auth7-intro-demo-col.is-like .auth7-intro-dir-marks {
+  color: oklch(0.757 0.168 353.61);
+}
+
+body[data-theme="v8"] .auth7-intro-dir-label {
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.78rem;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 body[data-theme="v8"] .auth7-intro-actions {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   width: 100%;
-  margin-top: 22px;
-  gap: 4px;
+  margin-top: 32px;
+  padding-bottom: 8px;
+  gap: 8px;
 }
 
 /* Intro start CTA reuses the shared auth CtaButton slot (hf-buy look). */
 body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
-  width: 100%;
+  width: 78%;
+  max-width: 280px;
   min-height: 52px;
   height: 52px;
   margin-top: 0;
 }
 
 body[data-theme="v8"] .auth7-intro-skip {
-  width: 100%;
-  min-height: 44px;
-  padding: 8px 12px;
+  position: static;
+  width: auto;
+  min-height: 40px;
+  padding: 8px 16px 4px;
   border: none;
   background: transparent;
   color: oklch(1 0 0 / 0.5);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -8534,22 +8556,9 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
   outline-offset: 3px;
 }
 
-@media (max-height: 700px) {
-  body[data-theme="v8"] .auth7-intro-panel {
-    padding-top: 12px;
-  }
-
-  body[data-theme="v8"] .auth7-intro-demo {
-    margin-top: 14px;
-  }
-
+@media (max-height: 580px) {
   body[data-theme="v8"] .auth7-intro-demo-card {
-    width: 96px;
-    height: 167px;
-  }
-
-  body[data-theme="v8"] .auth7-intro-actions {
-    margin-top: 16px;
+    height: clamp(88px, 18dvh, 120px);
   }
 }
 
@@ -8560,15 +8569,19 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
     min-height: 100dvh;
     align-items: center;
     justify-content: center;
-    padding: 40px 24px calc(40px + env(safe-area-inset-bottom, 0px));
+    padding: max(16px, env(safe-area-inset-top, 0px)) 24px
+      max(16px, env(safe-area-inset-bottom, 0px));
     background:
       radial-gradient(ellipse 55% 45% at 50% 35%, oklch(0.628 0.23 297.02 / 0.14), transparent 70%),
       oklch(0.13 0.005 285.67);
   }
 
   body[data-theme="v8"] .auth7-intro-card {
-    max-width: 560px;
-    padding: 28px 36px 28px;
+    max-width: 480px;
+    max-height: calc(
+      100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px
+    );
+    padding: 18px 32px 24px;
     border-radius: 28px;
     border: 1px solid oklch(1 0 0 / 0.1);
     background:
@@ -8580,60 +8593,114 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
 
   body[data-theme="v8"] .auth7-intro-panel {
     max-width: none;
-    padding: 16px 0 4px;
+    padding: 8px 0 4px;
   }
 
   body[data-theme="v8"] .auth7-intro-title {
-    font-size: 2rem;
+    font-size: clamp(1.5rem, 2.4vw, 1.75rem);
   }
 
   body[data-theme="v8"] .auth7-intro-copy {
-    max-width: 380px;
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
-  body[data-theme="v8"] .auth7-intro-demo-mobile {
-    display: none;
+  body[data-theme="v8"] .auth7-intro-demo {
+    column-gap: 22px;
+    margin-top: 32px;
   }
 
-  body[data-theme="v8"] .auth7-intro-demo-desktop {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 28px;
-    align-items: start;
-    width: 100%;
-    max-width: 460px;
-    margin: 0 auto;
-  }
-
-  body[data-theme="v8"] .auth7-intro-demo-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin: 0;
-  }
-
-  body[data-theme="v8"] .auth7-intro-demo-desktop .auth7-intro-demo-card {
-    width: 132px;
-    height: 229px;
-  }
-
-  body[data-theme="v8"] .auth7-intro-demo-desktop .auth7-intro-demo-badge {
-    width: 40px;
-    height: 40px;
+  body[data-theme="v8"] .auth7-intro-demo-card {
+    height: clamp(110px, 18dvh, 138px);
+    border-radius: 14px;
   }
 
   body[data-theme="v8"] .auth7-intro-actions {
-    margin-top: 26px;
-    max-width: 420px;
+    margin-top: 36px;
+    padding-bottom: 4px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
+    width: 76%;
+    min-height: 54px;
+    height: 54px;
   }
 }
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .auth7-intro-card {
-    max-width: 580px;
-    padding: 32px 40px 30px;
+    max-width: 500px;
+    padding: 20px 36px 28px;
+  }
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-onboard-shell--intro {
+    max-width: none;
+    width: 100%;
+    min-height: 100dvh;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 24px
+      max(16px, env(safe-area-inset-bottom, 0px));
+    background:
+      radial-gradient(ellipse 55% 45% at 50% 35%, oklch(0.628 0.23 297.02 / 0.14), transparent 70%),
+      oklch(0.13 0.005 285.67);
+  }
+
+  body[data-theme="v8"] .auth7-intro-card {
+    max-width: 480px;
+    max-height: calc(
+      100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px
+    );
+    padding: 18px 32px 24px;
+    border-radius: 28px;
+    border: 1px solid oklch(1 0 0 / 0.1);
+    background:
+      linear-gradient(165deg, oklch(0.217 0.036 298.74 / 0.96), oklch(0.153 0.011 294.27 / 0.98));
+    box-shadow:
+      0 24px 64px oklch(0 0 0 / 0.45),
+      0 0 0 1px oklch(0.628 0.23 297.02 / 0.06) inset;
+  }
+
+  body[data-theme="v8"] .auth7-intro-panel {
+    max-width: none;
+    padding: 8px 0 4px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-title {
+    font-size: clamp(1.5rem, 2.4vw, 1.75rem);
+  }
+
+  body[data-theme="v8"] .auth7-intro-copy {
+    font-size: 0.95rem;
+  }
+
+  body[data-theme="v8"] .auth7-intro-demo {
+    column-gap: 22px;
+    margin-top: 32px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-demo-card {
+    height: clamp(110px, 18dvh, 138px);
+    border-radius: 14px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-actions {
+    margin-top: 36px;
+    padding-bottom: 4px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
+    width: 76%;
+    min-height: 54px;
+    height: 54px;
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .auth7-intro-card {
+    max-width: 500px;
+    padding: 20px 36px 28px;
   }
 }
 
@@ -9686,9 +9753,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     }
   }
 
-  /* Home frame under HUD chrome */
+  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (507px+). */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
-    margin-top: 7rem;
     margin-bottom: 12px;
   }
 
@@ -9734,17 +9800,26 @@ body[data-theme="v8"] .app-page-shell-inner {
     padding-inline: 0;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page) {
+  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page):not(.favourites-page) {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
     padding-bottom: 48px;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary.settings-page,
-  body[data-theme="v8"] .app-page-shell--secondary.inbox-page {
+  body[data-theme="v8"] .app-page-shell--secondary.inbox-page,
+  body[data-theme="v8"] .app-page-shell--secondary.favourites-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-inline: 0;
     padding-bottom: 48px;
+  }
+}
+
+/* Desktop: shell is notch-only — sticky subpage header clears the floating nav. */
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header,
+  body[data-theme="v8"] .app-page-shell.favourites-page .subpage-header {
+    top: var(--app-diamond-offset);
   }
 }
 
