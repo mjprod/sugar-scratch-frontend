@@ -257,6 +257,10 @@ export type LiquidGlassNavProps = {
   onOpenStore?: () => void;
   onOpenInbox?: () => void;
   inboxUnreadCount?: number;
+  /** Inbox is a utility route — no primary tab should stay selected. */
+  inboxActive?: boolean;
+  /** Hide the mobile bottom dock (purchase keeps the top bar only). */
+  hideDock?: boolean;
 };
 
 /**
@@ -273,6 +277,8 @@ export function LiquidGlassNav({
   onOpenStore,
   onOpenInbox,
   inboxUnreadCount = 0,
+  inboxActive = false,
+  hideDock = false,
 }: LiquidGlassNavProps) {
   const { authed, guestAuthLabel } = useAuth();
   const desktopTabs = useMemo(
@@ -288,7 +294,7 @@ export function LiquidGlassNav({
       ),
     [authed, guestAuthLabel],
   );
-  const active = activeTab;
+  const active = inboxActive ? null : activeTab;
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [handoff, setHandoff] = useState<NavHandoff>("none");
   const [bubble, setBubble] = useState<DockBubble>(HIDDEN_BUBBLE);
@@ -929,6 +935,7 @@ export function LiquidGlassNav({
     "nav-test",
     "liquid-glass-nav",
     hidden ? "is-chrome-hidden" : "",
+    hideDock ? "is-dock-hidden" : "",
     handoff === "to-desktop"
       ? "is-handoff-to-desktop"
       : handoff === "to-mobile"
@@ -1095,6 +1102,7 @@ export function LiquidGlassNav({
                   unreadCount={inboxUnreadCount}
                   onOpen={onOpenInbox}
                   variant="ghost"
+                  active={inboxActive}
                 />
               ) : null}
             </div>

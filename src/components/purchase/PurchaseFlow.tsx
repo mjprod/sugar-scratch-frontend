@@ -736,15 +736,11 @@ export function PurchaseFlow({
       role="dialog"
       aria-modal="true"
       aria-label="Pack purchase and opening"
-      className="absolute inset-0 z-50 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
+      className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
     >
+      {stage === "choose" || stage === "reveal" || stage === "cards-ready" ? null : (
       <header
-        className={[
-          "relative z-20 flex h-16 shrink-0 items-center px-4",
-          stage === "choose" || stage === "reveal" || stage === "cards-ready"
-            ? "absolute inset-x-0 top-0 border-transparent bg-transparent"
-            : "border-b border-white/[0.08]",
-        ].join(" ")}
+        className="relative z-20 flex h-16 shrink-0 items-center px-4 border-b border-white/[0.08]"
       >
         <button
           type="button"
@@ -753,26 +749,21 @@ export function PurchaseFlow({
           aria-label={
             stage === "ready"
               ? "Save pack and exit"
-              : stage === "cards-ready" || stage === "scratch" || stage === "grid"
+              : stage === "scratch" || stage === "grid"
                 ? "Save and exit scratch session"
                 : "Close purchase flow"
           }
         >
           <ChevronLeft className="size-5" />
         </button>
-        {stage === "choose" || stage === "reveal" || stage === "cards-ready" ? null : (
-          <div className="absolute left-1/2 -translate-x-1/2 text-center">
-            <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
-            {terminal ? null : (
-              <p className="text-[10px] text-white/40">{stageStep(stage)} of 4</p>
-            )}
-          </div>
-        )}
-        <div className="ml-auto flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5">
-          <DiamondLottie size={14} aria-hidden />
-          <span className="text-[12px] font-semibold tabular-nums">{diamonds}</span>
+        <div className="absolute left-1/2 -translate-x-1/2 text-center">
+          <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
+          {terminal ? null : (
+            <p className="text-[10px] text-white/40">{stageStep(stage)} of 4</p>
+          )}
         </div>
       </header>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div

@@ -27,6 +27,10 @@
   visibility: hidden;
 }
 
+.liquid-glass-nav.is-dock-hidden .nav-test-dock-wrap {
+  display: none;
+}
+
 /* Sit above page content / mobile utility HUD */
 .liquid-glass-nav .nav-test-top {
   z-index: 5010;

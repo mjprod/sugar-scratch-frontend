@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  CoverFlowCarousel,
+  DEFAULT_COVERFLOW_CAMERA,
+  MOBILE_COVERFLOW_CAMERA,
+  type CoverFlowCameraSettings,
+} from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import {
@@ -7,7 +13,6 @@ import {
   PACK_MODEL_URL,
   PACK_TEXTURE_SIZE,
   PACK_VIDEO_FIT_MODE,
-  PACK_VIDEO_URL,
   makeVideoTextureCacheKey,
   preloadVideoTexture,
   subscribeVideoTextureReady,
@@ -24,6 +29,83 @@ import {
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const MAX_HOME_PACKS = 10;
+const HERO_DEBUG_STORAGE_KEY = "sugar.homeHeroDebug.v1";
+const COVERFLOW_MOBILE_QUERY = "(max-width: 980px)";
+/** Flip to true to restore the homepage hero placement sliders. */
+const HERO_DEBUG_ENABLED = false;
+
+type HeroDebugState = {
+  headingX: number;
+  headingY: number;
+  packsX: number;
+  packsY: number;
+  modelY: number;
+  cameraX: number;
+  cameraY: number;
+  cameraZ: number;
+  lookAtY: number;
+  fov: number;
+};
+
+function isMobileCoverflowViewport() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
+  );
+}
+
+const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
+  ...DEFAULT_COVERFLOW_CAMERA,
+  packsY: -1.25,
+  cameraZ: 5.9,
+};
+
+function defaultHeroDebug(isMobile: boolean): HeroDebugState {
+  const camera = isMobile ? MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
+  return {
+    headingX: 0,
+    headingY: isMobile ? 5.25 : 7.1,
+    packsX: camera.packsX,
+    packsY: camera.packsY,
+    modelY: camera.modelY,
+    cameraX: camera.cameraX,
+    cameraY: camera.cameraY,
+    cameraZ: camera.cameraZ,
+    lookAtY: camera.lookAtY,
+    fov: camera.fov,
+  };
+}
+
+function mergeHeroDebug(
+  parsed: Partial<HeroDebugState> | null | undefined,
+  fallback: HeroDebugState,
+): HeroDebugState {
+  const next = { ...fallback };
+  if (!parsed) return next;
+  (Object.keys(fallback) as Array<keyof HeroDebugState>).forEach((key) => {
+    const value = parsed[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      next[key] = value;
+    }
+  });
+  return next;
+}
+
+function loadHeroDebug(isMobile: boolean): HeroDebugState {
+  const fallback = defaultHeroDebug(isMobile);
+  if (!HERO_DEBUG_ENABLED || typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(HERO_DEBUG_STORAGE_KEY);
+    if (!raw) return fallback;
+    return mergeHeroDebug(JSON.parse(raw) as Partial<HeroDebugState>, fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+function formatDebugNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
 
 export type FeaturedCoverFlowPlayTarget = {
   id: string;
@@ -88,7 +170,7 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
         name: pack.creatorName,
         modelUrl: PACK_MODEL_URL,
         modelName: "card2.glb",
-        videoUrl: PACK_VIDEO_URL,
+        videoUrl: "",
         price: pack.diamondCost,
         girlName: pack.creatorName,
         packNumber: 101,
@@ -108,6 +190,39 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
   return { items, playById };
 }
 
+function HeroDebugField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="home-hero-debug__field">
+      <span>
+        {label}
+        <em>{formatDebugNumber(value)}</em>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
+  );
+}
+
 /**
  * Homepage hero — same Three.js cover-flow used on purchase choose-pack.
  */
@@ -123,8 +238,30 @@ export function FeaturedCoverFlow({
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    isMobileCoverflowViewport,
+  );
+  const [debug, setDebug] = useState<HeroDebugState>(() =>
+    loadHeroDebug(isMobileCoverflowViewport()),
+  );
+  const [debugOpen, setDebugOpen] = useState(HERO_DEBUG_ENABLED);
+  const [copyLabel, setCopyLabel] = useState("Copy");
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(COVERFLOW_MOBILE_QUERY);
+    const apply = () => setIsMobileViewport(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!HERO_DEBUG_ENABLED || typeof window === "undefined") return;
+    window.localStorage.setItem(HERO_DEBUG_STORAGE_KEY, JSON.stringify(debug));
+  }, [debug]);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,6 +318,51 @@ export function FeaturedCoverFlow({
     };
   }, [catalog]);
 
+  const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
+    const base = isMobileViewport
+      ? MOBILE_COVERFLOW_CAMERA
+      : HOME_COVERFLOW_CAMERA;
+    return {
+      ...base,
+      packsX: debug.packsX,
+      packsY: debug.packsY,
+      modelY: debug.modelY,
+      cameraX: debug.cameraX,
+      cameraY: debug.cameraY,
+      cameraZ: debug.cameraZ,
+      lookAtY: debug.lookAtY,
+      fov: debug.fov,
+    };
+  }, [debug, isMobileViewport]);
+
+  function updateDebug<K extends keyof HeroDebugState>(
+    key: K,
+    value: HeroDebugState[K],
+  ) {
+    setDebug((current) => ({ ...current, [key]: value }));
+  }
+
+  async function copyDebug() {
+    const snippet = [
+      `heading: x ${formatDebugNumber(debug.headingX)}px, y ${formatDebugNumber(debug.headingY)}rem`,
+      `packsX: ${debug.packsX},`,
+      `packsY: ${debug.packsY},`,
+      `modelY: ${debug.modelY},`,
+      `cameraX: ${debug.cameraX},`,
+      `cameraY: ${debug.cameraY},`,
+      `cameraZ: ${debug.cameraZ},`,
+      `lookAtY: ${debug.lookAtY},`,
+      `fov: ${debug.fov},`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopyLabel("Copied");
+    } catch {
+      setCopyLabel("Copy failed");
+    }
+    window.setTimeout(() => setCopyLabel("Copy"), 1600);
+  }
+
   if (!catalog) {
     return (
       <div
@@ -195,7 +377,11 @@ export function FeaturedCoverFlow({
   return (
     <div
       className="home-featured-coverflow"
-      style={{ ["--overlay-gradient-color-end" as string]: glow }}
+      style={{
+        ["--overlay-gradient-color-end" as string]: glow,
+        ["--hero-heading-x" as string]: `${debug.headingX}px`,
+        ["--hero-heading-y" as string]: `${debug.headingY}rem`,
+      }}
     >
       <div className="stage-packs">
         <div
@@ -205,22 +391,157 @@ export function FeaturedCoverFlow({
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
+        <h1 className="home-featured-heading">
+          Collect.
+          <span className="home-featured-heading-reveal">Reveal</span>
+          . Scratch & Match
+        </h1>
         <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
+          cameraSettings={cameraSettings}
           onFocusChange={(item) => {
             setGlow(item?.backgroundColor || DEFAULT_GLOW);
           }}
           formatPrice={(price) => String(price)}
           disableSwipeDownDeactivate
+          disableWheelPaging
           onBuy={(item) => {
             const target = catalog.playById.get(item.id);
             if (target) onPlay(target);
           }}
         />
       </div>
+      {HERO_DEBUG_ENABLED && typeof document !== "undefined"
+        ? createPortal(
+            <aside
+              className={["home-hero-debug", debugOpen ? "" : "is-collapsed"]
+                .filter(Boolean)
+                .join(" ")}
+              aria-label="Hero placement debug"
+            >
+              <div className="home-hero-debug__head">
+                <p className="home-hero-debug__title">Hero debug</p>
+                <div className="home-hero-debug__actions">
+                  <button
+                    type="button"
+                    className="home-hero-debug__btn"
+                    onClick={() => setDebug(defaultHeroDebug(isMobileViewport))}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="home-hero-debug__btn"
+                    onClick={() => void copyDebug()}
+                  >
+                    {copyLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="home-hero-debug__btn"
+                    onClick={() => setDebugOpen((open) => !open)}
+                  >
+                    {debugOpen ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+              <div className="home-hero-debug__body">
+                <div className="home-hero-debug__section">
+                  <p className="home-hero-debug__section-title">
+                    Collect Reveal text
+                  </p>
+                  <HeroDebugField
+                    label="Heading X"
+                    value={debug.headingX}
+                    min={-240}
+                    max={240}
+                    step={1}
+                    onChange={(value) => updateDebug("headingX", value)}
+                  />
+                  <HeroDebugField
+                    label="Heading Y"
+                    value={debug.headingY}
+                    min={-2}
+                    max={16}
+                    step={0.05}
+                    onChange={(value) => updateDebug("headingY", value)}
+                  />
+                </div>
+                <div className="home-hero-debug__section">
+                  <p className="home-hero-debug__section-title">Cards</p>
+                  <HeroDebugField
+                    label="Camera X"
+                    value={debug.cameraX}
+                    min={-2}
+                    max={2}
+                    step={0.01}
+                    onChange={(value) => updateDebug("cameraX", value)}
+                  />
+                  <HeroDebugField
+                    label="Packs X"
+                    value={debug.packsX}
+                    min={-2}
+                    max={2}
+                    step={0.01}
+                    onChange={(value) => updateDebug("packsX", value)}
+                  />
+                  <HeroDebugField
+                    label="Packs Y"
+                    value={debug.packsY}
+                    min={-3}
+                    max={1.5}
+                    step={0.01}
+                    onChange={(value) => updateDebug("packsY", value)}
+                  />
+                  <HeroDebugField
+                    label="Model Y"
+                    value={debug.modelY}
+                    min={-2}
+                    max={1.5}
+                    step={0.01}
+                    onChange={(value) => updateDebug("modelY", value)}
+                  />
+                  <HeroDebugField
+                    label="Camera Y"
+                    value={debug.cameraY}
+                    min={-1.5}
+                    max={2}
+                    step={0.01}
+                    onChange={(value) => updateDebug("cameraY", value)}
+                  />
+                  <HeroDebugField
+                    label="Look at Y"
+                    value={debug.lookAtY}
+                    min={-1.5}
+                    max={1.5}
+                    step={0.01}
+                    onChange={(value) => updateDebug("lookAtY", value)}
+                  />
+                  <HeroDebugField
+                    label="Camera Z"
+                    value={debug.cameraZ}
+                    min={3}
+                    max={10}
+                    step={0.05}
+                    onChange={(value) => updateDebug("cameraZ", value)}
+                  />
+                  <HeroDebugField
+                    label="FOV"
+                    value={debug.fov}
+                    min={18}
+                    max={55}
+                    step={0.5}
+                    onChange={(value) => updateDebug("fov", value)}
+                  />
+                </div>
+              </div>
+            </aside>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
  * Global DeviceOrientation permission + live values.
  *
  * - Permission requested once per browser tab session (sessionStorage)
+ * - User opt-in persisted in localStorage and toggled from Profile
  * - One shared `deviceorientation` listener after grant
  * - Components consume via useMotion() — no per-page listeners
  */
@@ -104,17 +105,26 @@ function writeSessionPermission(permission: MotionPermission) {
   }
 }
 
-function readSessionEnabled(): boolean {
+function readStoredEnabled(): boolean {
   try {
+    const persisted = localStorage.getItem(ENABLED_KEY)
+    if (persisted === '1') return true
+    if (persisted === '0') return false
     return sessionStorage.getItem(ENABLED_KEY) === '1'
   } catch {
     return false
   }
 }
 
-function writeSessionEnabled(enabled: boolean) {
+function writeStoredEnabled(enabled: boolean) {
+  const value = enabled ? '1' : '0'
   try {
-    sessionStorage.setItem(ENABLED_KEY, enabled ? '1' : '0')
+    localStorage.setItem(ENABLED_KEY, value)
+  } catch {
+    // ignore
+  }
+  try {
+    sessionStorage.setItem(ENABLED_KEY, value)
   } catch {
     // ignore
   }
@@ -138,10 +148,10 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     if (!needsOrientationPermission()) return 'granted'
     return readSessionPermission() ?? 'unknown'
   })
-  // User opt-in remembered for the tab session (all active cards share this).
+  // User opt-in remembered across visits (all tilt consumers share this).
   const [enabled, setEnabledState] = useState<boolean>(() => {
     if (!supported) return false
-    return readSessionEnabled()
+    return readStoredEnabled()
   })
   const [values, setValues] = useState<MotionValues>(DEFAULT_VALUES)
 
@@ -280,7 +290,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     async (next: boolean): Promise<boolean> => {
       if (!next) {
         setEnabledState(false)
-        writeSessionEnabled(false)
+        writeStoredEnabled(false)
         // Clear last sample so consumers don't keep a stale pose.
         publish(DEFAULT_VALUES)
         return true
@@ -288,19 +298,19 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 
       if (!supported) {
         setEnabledState(false)
-        writeSessionEnabled(false)
+        writeStoredEnabled(false)
         return false
       }
 
       const granted = await requestPermission()
       if (!granted) {
         setEnabledState(false)
-        writeSessionEnabled(false)
+        writeStoredEnabled(false)
         return false
       }
 
       setEnabledState(true)
-      writeSessionEnabled(true)
+      writeStoredEnabled(true)
       return true
     },
     [publish, requestPermission, supported]

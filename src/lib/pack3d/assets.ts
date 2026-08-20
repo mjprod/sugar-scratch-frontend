@@ -30,7 +30,6 @@ export const DEFAULT_MODEL_ROTATION: ModelRotation = {
 }
 
 export const PACK_MODEL_URL = '/assets/card2.glb'
-export const PACK_VIDEO_URL = '/assets/default.mp4'
 
 export const PACK_VIDEO_FIT_MODE: VideoFitMode = 'contain'
 export const PACK_TEXTURE_SIZE = 1024

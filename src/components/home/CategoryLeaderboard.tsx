@@ -36,7 +36,7 @@ export function CategoryLeaderboard({
             className="continue-collecting-heart"
             aria-hidden="true"
           />
-          <h2 className="continue-collecting-title">CATEGORY LEADERBOARD</h2>
+          <h2 className="continue-collecting-title">Top packs by purchase</h2>
         </div>
         <button
           type="button"

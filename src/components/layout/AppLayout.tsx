@@ -48,6 +48,8 @@ export function AppLayout() {
     return () => bindGameNavigate(null);
   }, [navigate]);
 
+  const isPurchase = location.pathname.startsWith("/purchase");
+
   useEffect(() => {
     function onPackOpeningReward(event: Event) {
       const detail = (event as CustomEvent<{ coins?: number; cards?: number }>)
@@ -67,7 +69,6 @@ export function AppLayout() {
   }, [addCoins, bumpInventoryRevision, setPurchasedPacks]);
 
   const hideChrome =
-    location.pathname.startsWith("/purchase") ||
     location.pathname.startsWith("/recommend") ||
     location.pathname.startsWith("/welcome") ||
     location.pathname.startsWith("/game") ||
@@ -81,8 +82,7 @@ export function AppLayout() {
 
   const showNav =
     !hideChrome &&
-    !location.pathname.startsWith("/settings") &&
-    !onInbox;
+    !location.pathname.startsWith("/settings");
 
   useEffect(() => {
     if (guest) {
@@ -104,6 +104,7 @@ export function AppLayout() {
       unreadCount={inboxUnread}
       onOpen={openInbox}
       variant="ghost"
+      active={onInbox}
     />
   ) : null;
 
@@ -140,6 +141,8 @@ export function AppLayout() {
           onOpenStore={showTopUtility ? openStore : undefined}
           onOpenInbox={showTopUtility ? openInbox : undefined}
           inboxUnreadCount={inboxUnread}
+          inboxActive={onInbox}
+          hideDock={isPurchase}
         />
       ) : null}
 

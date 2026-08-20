@@ -133,24 +133,37 @@ export function releaseMediaElement(el: HTMLMediaElement | null | undefined) {
   }
 }
 
-/** Unload the current clip, then load `src` on the same element. */
+function videoHasFrame(video: HTMLVideoElement): boolean {
+  return video.readyState >= 2 && video.videoWidth > 1;
+}
+
+function currentVideoSrc(video: HTMLVideoElement): string {
+  return video.currentSrc || video.src || "";
+}
+
+function sameVideoSrc(left: string, right: string): boolean {
+  if (!left || !right) return false;
+  if (left === right) return true;
+  try {
+    return new URL(left, window.location.href).href === new URL(right, window.location.href).href;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Attach `src` without wiping a decoded frame first.
+ * Calling load() on an empty src flashes black — reuse the current picture
+ * until the next clip has HAVE_CURRENT_DATA.
+ */
 export function loadVideoSrc(
   video: HTMLVideoElement,
   src: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    try {
-      video.pause();
-    } catch {
-      // ignore
-    }
-    // Drop the previous decoder before attaching the next URL.
-    try {
-      video.removeAttribute("src");
-      video.src = "";
-      video.load();
-    } catch {
-      // ignore
+    if (sameVideoSrc(currentVideoSrc(video), src) && videoHasFrame(video)) {
+      resolve();
+      return;
     }
 
     let settled = false;
@@ -158,18 +171,24 @@ export function loadVideoSrc(
       if (settled) return;
       settled = true;
       video.removeEventListener("loadeddata", onReady);
+      video.removeEventListener("canplay", onReady);
       video.removeEventListener("error", onError);
       if (ok) resolve();
       else reject(new Error(`Failed to load video: ${src}`));
     };
-    const onReady = () => finish(true);
+    const onReady = () => {
+      if (videoHasFrame(video)) finish(true);
+    };
     const onError = () => finish(false);
 
     video.addEventListener("loadeddata", onReady);
+    video.addEventListener("canplay", onReady);
     video.addEventListener("error", onError);
+    video.preload = "auto";
     video.src = src;
-    video.load();
     // Cached / already-ready.
-    if (video.readyState >= 2) finish(true);
+    if (videoHasFrame(video) && sameVideoSrc(currentVideoSrc(video), src)) {
+      finish(true);
+    }
   });
 }
