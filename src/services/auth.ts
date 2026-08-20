@@ -24,6 +24,7 @@ export type AuthUser = {
 
 const AUTH_KEY = "sugar.v8.authenticated";
 const EMAIL_KEY = "sugar.v8.authEmail";
+const USER_ID_KEY = "sugar.v8.authUserId";
 const EMAIL_VERIFIED_KEY = "sugar.v8.emailVerified";
 const PROVIDER_KEY = "sugar.v8.authProvider";
 const HAS_LOGGED_IN_COOKIE = "sugar.v8.hasLoggedIn";
@@ -178,13 +179,19 @@ export async function markEmailVerifiedRemote() {
   }
 }
 
-export function createSession(email: string, provider: AuthProvider = "email") {
+export function createSession(
+  email: string,
+  provider: AuthProvider = "email",
+  userId?: string,
+) {
   const normalized = email.trim().toLowerCase();
   try {
     sessionStorage.setItem(AUTH_KEY, "1");
     sessionStorage.setItem(EMAIL_KEY, normalized);
     sessionStorage.setItem(PROVIDER_KEY, provider);
     localStorage.setItem(PROVIDER_KEY, provider);
+    if (userId) sessionStorage.setItem(USER_ID_KEY, userId);
+    else sessionStorage.removeItem(USER_ID_KEY);
   } catch {
     /* ignore */
   }
@@ -194,10 +201,20 @@ export function createSession(email: string, provider: AuthProvider = "email") {
   }
 }
 
+export function getAuthUserId(): string | null {
+  try {
+    const id = sessionStorage.getItem(USER_ID_KEY);
+    return id?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export function destroySession() {
   try {
     sessionStorage.removeItem(AUTH_KEY);
     sessionStorage.removeItem(EMAIL_KEY);
+    sessionStorage.removeItem(USER_ID_KEY);
     sessionStorage.removeItem(PROVIDER_KEY);
   } catch {
     /* ignore */

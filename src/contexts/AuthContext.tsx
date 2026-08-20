@@ -103,7 +103,7 @@ function applyRemoteUser(
     >;
   },
 ) {
-  createSession(user.email, user.provider);
+  createSession(user.email, user.provider, user.id);
   if (user.emailVerified) markEmailVerified();
   else clearEmailVerified();
   setters.setAuthed(true);

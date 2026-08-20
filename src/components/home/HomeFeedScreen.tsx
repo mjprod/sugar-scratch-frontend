@@ -158,6 +158,7 @@ export function HomeFeedScreen({
     velocityY: number;
     moved: boolean;
   } | null>(null);
+  const desktopDragWindowCleanupRef = useRef<(() => void) | null>(null);
   /** True while the programmatic scroll-nudge rAF is driving the viewport. */
   const nudgeAnimatingRef = useRef(false);
   const nudgeRafRef = useRef(0);
@@ -778,6 +779,61 @@ export function HomeFeedScreen({
     );
   }, []);
 
+  const detachDesktopDragWindowListeners = useCallback(() => {
+    desktopDragWindowCleanupRef.current?.();
+    desktopDragWindowCleanupRef.current = null;
+  }, []);
+
+  const finishDesktopPointerDrag = useCallback(
+    (pointerId: number, captureTarget?: HTMLElement | null) => {
+      const drag = desktopDragRef.current;
+      const root = scrollerRef.current;
+      if (!drag || pointerId !== drag.pointerId) return;
+
+      detachDesktopDragWindowListeners();
+
+      const startScrollTop = drag.startScrollTop;
+      const velocityY = drag.velocityY;
+      const moved = drag.moved;
+
+      desktopDragRef.current = null;
+      setIsDesktopDragging(false);
+
+      if (captureTarget) {
+        try {
+          captureTarget.releasePointerCapture(pointerId);
+        } catch {
+          /* not captured */
+        }
+      }
+
+      if (!root) return;
+
+      root.style.scrollSnapType = "none";
+      root.style.scrollBehavior = "";
+
+      if (!moved) {
+        root.style.scrollSnapType = "";
+        return;
+      }
+
+      snapAfterDesktopDrag(startScrollTop, velocityY);
+
+      window.setTimeout(() => {
+        if (!scrollerRef.current) return;
+        if (!desktopDragRef.current) {
+          scrollerRef.current.style.scrollSnapType = "";
+        }
+      }, reducedMotion ? 0 : SNAP_MS + 80);
+    },
+    [detachDesktopDragWindowListeners, reducedMotion, snapAfterDesktopDrag],
+  );
+
+  useEffect(
+    () => () => detachDesktopDragWindowListeners(),
+    [detachDesktopDragWindowListeners],
+  );
+
   const onDesktopPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!active) return;
@@ -790,8 +846,11 @@ export function HomeFeedScreen({
       const root = scrollerRef.current;
       if (!root) return;
 
+      detachDesktopDragWindowListeners();
+
+      const pointerId = event.pointerId;
       desktopDragRef.current = {
-        pointerId: event.pointerId,
+        pointerId,
         startY: event.clientY,
         startScrollTop: root.scrollTop,
         lastY: event.clientY,
@@ -799,8 +858,23 @@ export function HomeFeedScreen({
         velocityY: 0,
         moved: false,
       };
+
+      const onWindowEnd = (e: PointerEvent) => {
+        finishDesktopPointerDrag(e.pointerId, scrollerRef.current);
+      };
+      window.addEventListener("pointerup", onWindowEnd);
+      window.addEventListener("pointercancel", onWindowEnd);
+      desktopDragWindowCleanupRef.current = () => {
+        window.removeEventListener("pointerup", onWindowEnd);
+        window.removeEventListener("pointercancel", onWindowEnd);
+      };
     },
-    [active, isDragFromInteractive],
+    [
+      active,
+      detachDesktopDragWindowListeners,
+      finishDesktopPointerDrag,
+      isDragFromInteractive,
+    ],
   );
 
   const onDesktopPointerMove = useCallback(
@@ -840,47 +914,9 @@ export function HomeFeedScreen({
 
   const endDesktopPointerDrag = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      const drag = desktopDragRef.current;
-      const root = scrollerRef.current;
-      if (!drag || event.pointerId !== drag.pointerId) return;
-
-      // Capture fields before clearing the ref.
-      const startScrollTop = drag.startScrollTop;
-      const velocityY = drag.velocityY;
-      const moved = drag.moved;
-
-      desktopDragRef.current = null;
-      setIsDesktopDragging(false);
-
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        /* already released */
-      }
-
-      if (!root) return;
-
-      // Keep snap off during our programmatic settle, then restore after the
-      // smooth scroll finishes so CSS snap doesn't fight / double-step.
-      root.style.scrollSnapType = "none";
-      root.style.scrollBehavior = "";
-
-      if (!moved) {
-        root.style.scrollSnapType = "";
-        return;
-      }
-
-      snapAfterDesktopDrag(startScrollTop, velocityY);
-
-      window.setTimeout(() => {
-        if (!scrollerRef.current) return;
-        // Only restore if a new drag hasn't started.
-        if (!desktopDragRef.current) {
-          scrollerRef.current.style.scrollSnapType = "";
-        }
-      }, reducedMotion ? 0 : SNAP_MS + 80);
+      finishDesktopPointerDrag(event.pointerId, event.currentTarget);
     },
-    [reducedMotion, snapAfterDesktopDrag],
+    [finishDesktopPointerDrag],
   );
 
   useEffect(() => {
