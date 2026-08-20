@@ -25,25 +25,6 @@ export function isTexturableMaterial(
   return 'map' in material
 }
 
-/** Deep-clone a GLB scene with independent materials per instance. */
-export function cloneSceneWithMaterials(sourceScene: Group | Object3D): Group {
-  const cloned = sourceScene.clone(true) as Group
-
-  cloned.traverse((object) => {
-    const mesh = object as Mesh
-    if (!mesh.isMesh) return
-
-    if (Array.isArray(mesh.material)) {
-      mesh.material = mesh.material.map((material) => material.clone())
-      return
-    }
-
-    mesh.material = mesh.material.clone()
-  })
-
-  return cloned
-}
-
 /**
  * Prefer the named "body" material (pack face), otherwise first texturable.
  * Matches reveal PackMesh target resolution.
@@ -69,6 +50,37 @@ export function resolveTargetMaterial(
   })
 
   return fallbackMaterial
+}
+
+/** card2.glb ships a baked pack-face albedo that must not be shown. */
+export function stripPackFaceAlbedo(material: TexturableMaterial) {
+  material.map = null
+  material.needsUpdate = true
+  if (material instanceof MeshStandardMaterial) {
+    material.emissiveMap = null
+  }
+}
+
+/** Deep-clone a GLB scene with independent materials per instance. */
+export function cloneSceneWithMaterials(sourceScene: Group | Object3D): Group {
+  const cloned = sourceScene.clone(true) as Group
+
+  cloned.traverse((object) => {
+    const mesh = object as Mesh
+    if (!mesh.isMesh) return
+
+    if (Array.isArray(mesh.material)) {
+      mesh.material = mesh.material.map((material) => material.clone())
+      return
+    }
+
+    mesh.material = mesh.material.clone()
+  })
+
+  const face = resolveTargetMaterial(cloned)
+  if (face) stripPackFaceAlbedo(face)
+
+  return cloned
 }
 
 export function collectStandardMaterials(

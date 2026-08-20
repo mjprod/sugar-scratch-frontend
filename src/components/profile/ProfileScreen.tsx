@@ -7,6 +7,7 @@ import {
   HelpCircle,
   Lock,
   LogOut,
+  Smartphone,
   ShieldCheck,
   Heart,
   type LucideIcon,
@@ -14,6 +15,8 @@ import {
 import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { useMotion } from "@/features/collection/hooks/useMotion";
+
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
 export function UserDashboardScreen({
@@ -33,6 +36,20 @@ export function UserDashboardScreen({
   const [loggingOut, setLoggingOut] = useState(false);
   const [view, setView] = useState<ProfileView>("main");
   const legalTitleId = useId();
+  const {
+    enabled: motionEnabled,
+    permission: motionPermission,
+    supported: motionSupported,
+    toggleEnabled: toggleMotionEnabled,
+  } = useMotion();
+  const tiltActive = motionEnabled && motionPermission === "granted";
+  const tiltLabel = !motionSupported
+    ? "Motion not supported"
+    : motionPermission === "denied"
+      ? "Motion permission denied"
+      : tiltActive
+        ? "Disable phone tilt"
+        : "Enable phone tilt";
 
   function open(label: string) {
     if (label === "Change Password") {
@@ -97,19 +114,42 @@ export function UserDashboardScreen({
               @{(name || "collector").toLowerCase()}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={loggingOut ? "Logging out" : "Log out"}
-            onClick={handleLogout}
-            disabled={loggingOut}
-            aria-busy={loggingOut}
-            className="profile-logout-btn grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 disabled:opacity-50"
-          >
-            <LogOut className="size-5 shrink-0 text-[oklch(0.711_0.166_22.22)]" />
-            <span className="profile-logout-label">
-              {loggingOut ? "Logging out" : "Log out"}
-            </span>
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              aria-label={tiltLabel}
+              title={tiltLabel}
+              aria-pressed={tiltActive}
+              disabled={!motionSupported}
+              onClick={() => {
+                void toggleMotionEnabled();
+              }}
+              className={[
+                "profile-logout-btn grid size-11 place-items-center rounded-full border bg-white/[0.05] disabled:opacity-50",
+                tiltActive
+                  ? "border-[oklch(0.798_0.104_207.84_/_0.55)] text-[oklch(0.963_0.028_216.4)]"
+                  : "border-white/10 text-white/65",
+              ].join(" ")}
+            >
+              <Smartphone className="size-5 shrink-0" />
+              <span className="profile-logout-label">
+                {tiltActive ? "Tilt on" : "Tilt off"}
+              </span>
+            </button>
+            <button
+              type="button"
+              aria-label={loggingOut ? "Logging out" : "Log out"}
+              onClick={handleLogout}
+              disabled={loggingOut}
+              aria-busy={loggingOut}
+              className="profile-logout-btn grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 disabled:opacity-50"
+            >
+              <LogOut className="size-5 shrink-0 text-[oklch(0.711_0.166_22.22)]" />
+              <span className="profile-logout-label">
+                {loggingOut ? "Logging out" : "Log out"}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 

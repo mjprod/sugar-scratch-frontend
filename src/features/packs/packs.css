@@ -641,26 +641,67 @@ h1 {
   height: 100%;
 }
 
+.coverflow-nav {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  pointer-events: none;
+}
+
 .coverflow-nav-chevron {
+  --coverflow-chevron-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  --glass-bg-opacity: 0;
   position: absolute;
   top: 50%;
   z-index: 6;
-  width: 5.5rem;
-  height: 5.5rem;
-  border: 1px solid oklch(1 0 0 / 0.16);
+  display: grid;
+  place-items: center;
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.05);
   border-radius: 999px;
-  background: oklch(0.189 0.012 254.12 / 0.42);
-  color: oklch(0.974 0.007 247.89);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  background: var(--coverflow-chevron-surface);
+  color: oklch(1 0 0 / 0.88);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
   cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
   transform: translateY(-50%);
   transition:
-    background-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease,
     border-color 160ms ease,
-    opacity 160ms ease,
-    transform 160ms ease;
+    opacity 160ms ease;
+}
+
+.coverflow-nav-chevron.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  background: var(--coverflow-chevron-surface);
+  border: 1px solid oklch(1 0 0 / 0.05);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+@supports (-webkit-touch-callout: none) {
+  .coverflow-nav-chevron.glass {
+    --tw-glass-filter: ;
+    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
+    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+  }
 }
 
 .coverflow-nav-chevron.is-left {
@@ -672,18 +713,32 @@ h1 {
 }
 
 .coverflow-nav-chevron:hover:not(:disabled) {
-  background: oklch(0.189 0.012 254.12 / 0.62);
-  border-color: oklch(0.798 0.104 207.84 / 0.45);
-  transform: translateY(calc(-50% - 1px));
+  border-color: oklch(1 0 0 / 0.1);
+  background: linear-gradient(
+    180deg,
+    oklch(0.26 0 0 / 0.18) 0%,
+    oklch(0 0 0 / 0.1) 42%,
+    oklch(0.16 0 0 / 0.16) 100%
+  );
+  color: oklch(1 0 0);
+}
+
+.coverflow-nav-chevron:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
 }
 
 .coverflow-nav-chevron:disabled {
-  opacity: 0.35;
+  opacity: 0.32;
   cursor: default;
 }
 
 .coverflow-chevron-icon {
+  position: relative;
+  z-index: 1;
   display: block;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .coverflow-stage {

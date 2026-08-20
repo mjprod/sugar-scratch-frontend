@@ -2,6 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
 	  Suspense,
 	  useCallback,
@@ -18,11 +19,10 @@ import {
   applyPackFaceMaterial,
   cloneSceneWithMaterials,
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
-  PACK_MODEL_URL,
-  PACK_TEXTURE_SIZE,
-  PACK_VIDEO_FIT_MODE,
-  PACK_VIDEO_URL,
-  resolveTargetMaterial,
+	  PACK_MODEL_URL,
+	  PACK_TEXTURE_SIZE,
+	  PACK_VIDEO_FIT_MODE,
+	  resolveTargetMaterial,
   useVideoTexture,
   type VideoTextureTransform,
 } from '@/shared/pack3d'
@@ -33,6 +33,7 @@ import {
   type PackFaceSlot,
 } from '@/shared/catalog/characters'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
+import { useMotion } from '@/features/collection/hooks/useMotion'
 import { BuyButton } from '@/features/reveal/components/BuyButton'
 import {
   CtaButton,
@@ -359,6 +360,8 @@ interface CoverFlowCarouselProps {
   layout?: CoverFlowLayoutSettings
   /** Homepage: ignore swipe-down deactivate so the page can keep scrolling. */
   disableSwipeDownDeactivate?: boolean
+  /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
+  disableWheelPaging?: boolean
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -908,7 +911,7 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
 	  }, [isActive, revealMode, item.id, invalidate])
   // Hero keeps playing during open; others freeze.
   const { texture } = useVideoTexture(
-    item.videoUrl || PACK_VIDEO_URL,
+    item.videoUrl,
     item.fitMode || PACK_VIDEO_FIT_MODE,
     textureTransform,
     {
@@ -917,7 +920,7 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
         (isCenter && (!hasActiveSelection || isActive)) ||
         (isRevealHero && revealMode),
       textureSize: PACK_TEXTURE_SIZE,
-      enabled: true,
+      enabled: Boolean(item.videoUrl),
       soft: false,
     },
   )
@@ -1693,63 +1696,6 @@ type LiveGestureMode =
   | 'activate'
   | 'deactivate'
 
-type MotionTiltStatus = 'off' | 'on' | 'denied' | 'unsupported'
-
-function PhoneIcon() {
-  return (
-    <svg
-      className="coverflow-motion-icon"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <rect
-        x="7"
-        y="2.5"
-        width="10"
-        height="19"
-        rx="2.2"
-        ry="2.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
-      <circle cx="12" cy="17.8" r="1" fill="currentColor" />
-      <path
-        d="M9.4 5.2h5.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
-  return (
-    <svg
-      className="coverflow-chevron-icon"
-      viewBox="0 0 24 24"
-      width="44"
-      height="44"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d={direction === 'left' ? 'M14.5 5.5 8 12l6.5 6.5' : 'M9.5 5.5 16 12l-6.5 6.5'}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 export function CoverFlowCarousel({
   items,
   selectedId: selectedIdProp,
@@ -1764,6 +1710,7 @@ export function CoverFlowCarousel({
   cameraSettings: cameraSettingsProp,
   layout: layoutProp,
   disableSwipeDownDeactivate = false,
+  disableWheelPaging = false,
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -1807,7 +1754,12 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
 	    getPreferredCoverFlowLayout(),
 	  )
   const textureTransform = DEFAULT_VIDEO_TEXTURE_TRANSFORM
-  const [motionTiltStatus, setMotionTiltStatus] = useState<MotionTiltStatus>('off')
+  const {
+    enabled: motionEnabled,
+    permission: motionPermission,
+    subscribe: subscribeMotion,
+  } = useMotion()
+  const motionTiltOn = motionEnabled && motionPermission === 'granted'
   const [revealTimeline] = useState(() => loadPackTimeline())
   const [revealDuckInTimeline] = useState(() => loadDuckInTimeline())
   const [fanLayout] = useState(() => loadFanLayout())
@@ -1904,6 +1856,7 @@ const selectedIdRef = useRef(selectedId)
   const scrubTiltRef = useRef(0)
   const lastScrubXRef = useRef(0)
   const motionTiltEnabledRef = useRef(false)
+  motionTiltEnabledRef.current = motionTiltOn
   const deviceTiltYawRef = useRef(0)
   const deviceTiltPitchRef = useRef(0)
   const lastAppliedDeviceTiltRef = useRef(0)
@@ -2030,15 +1983,15 @@ useEffect(() => {
   }, [gestureMode])
 
   useEffect(() => {
-    motionTiltEnabledRef.current = motionTiltStatus === 'on'
-    if (motionTiltStatus !== 'on') {
+    motionTiltEnabledRef.current = motionTiltOn
+    if (!motionTiltOn) {
       deviceTiltYawRef.current = 0
       deviceTiltPitchRef.current = 0
       lastAppliedDeviceTiltRef.current = 0
       lastAppliedDevicePitchRef.current = 0
       setCenterTiltPitch(0)
     }
-  }, [motionTiltStatus])
+  }, [motionTiltOn])
 
   useEffect(() => {
     if (items.length === 0) {
@@ -2071,26 +2024,27 @@ useEffect(() => {
   // Phone tilt drives the same center-pack yaw used by scrub/hover.
   // Finger scrub/swipe temporarily wins while a gesture is active.
   useEffect(() => {
-    if (motionTiltStatus !== 'on' || typeof window === 'undefined') {
+    if (!motionTiltOn) {
+      deviceTiltYawRef.current = 0
+      deviceTiltPitchRef.current = 0
+      lastAppliedDeviceTiltRef.current = 0
+      lastAppliedDevicePitchRef.current = 0
+      setCenterTiltYaw(0)
+      setCenterTiltPitch(0)
       return
     }
 
-    const handleOrientation = (event: DeviceOrientationEvent) => {
-      const gamma = event.gamma
-      const beta = event.beta
-      if (typeof gamma !== 'number' || Number.isNaN(gamma)) {
-        return
-      }
+    return subscribeMotion((sample) => {
+      if (!sample.hasSample) return
+      const gamma = sample.gamma
+      const beta = sample.beta
 
-      // gamma: left/right phone tilt in degrees.
-      // Inverted so phone-left tilts the pack right, and phone-right tilts left.
       const normalizedYaw = MathUtils.clamp(
         gamma / DEVICE_TILT_GAMMA_RANGE,
         -1,
         1,
       )
       const targetYaw = -normalizedYaw * MAX_HOVER_YAW
-      // Soft follow so device tilt feels slower and less twitchy.
       const nextYaw = MathUtils.lerp(
         deviceTiltYawRef.current,
         targetYaw,
@@ -2098,17 +2052,14 @@ useEffect(() => {
       )
       deviceTiltYawRef.current = nextYaw
 
-      // beta: front/back phone tilt → slight X-axis pitch (not yaw).
       let nextPitch = deviceTiltPitchRef.current
       if (typeof beta === 'number' && !Number.isNaN(beta)) {
-        // Center around a natural handheld upright (~55°) so small tips feel intentional.
         const betaOffset = beta - 55
         const normalizedPitch = MathUtils.clamp(
           betaOffset / DEVICE_TILT_BETA_RANGE,
           -1,
           1,
         )
-        // Invert so tipping the phone toward you pitches the pack face toward you.
         const targetPitch = -normalizedPitch * MAX_DEVICE_PITCH
         nextPitch = MathUtils.lerp(
           deviceTiltPitchRef.current,
@@ -2118,7 +2069,6 @@ useEffect(() => {
         deviceTiltPitchRef.current = nextPitch
       }
 
-      // Don't fight active finger scrub/swipe/tap gestures.
       if (gestureModeRef.current !== 'idle') {
         return
       }
@@ -2139,57 +2089,8 @@ useEffect(() => {
         lastAppliedDevicePitchRef.current = nextPitch
         setCenterTiltPitch(nextPitch)
       }
-    }
-
-    window.addEventListener('deviceorientation', handleOrientation, true)
-    return () => {
-      window.removeEventListener('deviceorientation', handleOrientation, true)
-    }
-  }, [motionTiltStatus])
-
-  const enableMotionTilt = useCallback(async () => {
-    if (typeof window === 'undefined') {
-      setMotionTiltStatus('unsupported')
-      return
-    }
-
-    const DeviceOrientationEventCtor = window.DeviceOrientationEvent as
-      | (typeof DeviceOrientationEvent & {
-        requestPermission?: () => Promise<'granted' | 'denied' | 'default'>
-      })
-      | undefined
-
-    if (!DeviceOrientationEventCtor) {
-      setMotionTiltStatus('unsupported')
-      return
-    }
-
-    try {
-      // iOS 13+ requires a user gesture + explicit permission.
-      if (typeof DeviceOrientationEventCtor.requestPermission === 'function') {
-        const permission = await DeviceOrientationEventCtor.requestPermission()
-        if (permission !== 'granted') {
-          setMotionTiltStatus('denied')
-          return
-        }
-      }
-
-      setMotionTiltStatus('on')
-    } catch {
-      setMotionTiltStatus('denied')
-    }
-  }, [])
-
-  const toggleMotionTilt = useCallback(() => {
-    if (motionTiltStatus === 'on') {
-      setMotionTiltStatus('off')
-      setCenterTiltYaw(0)
-      setCenterTiltPitch(0)
-      return
-    }
-
-    void enableMotionTilt()
-  }, [enableMotionTilt, motionTiltStatus])
+    })
+  }, [motionTiltOn, subscribeMotion])
 
   // Important for Safari smoothness: scrolling only moves focus.
   // Selecting (and reloading the main editor preview) happens on tap/click.
@@ -2427,7 +2328,7 @@ useEffect(() => {
   // the pointer is over the coverflow stage and only drive carousel paging.
   useEffect(() => {
     const stage = stageRef.current
-    if (!stage) {
+    if (!stage || disableWheelPaging) {
       return
     }
 
@@ -2468,7 +2369,7 @@ useEffect(() => {
     return () => {
       stage.removeEventListener('wheel', handleWheel)
     }
-  }, [moveFocus])
+  }, [disableWheelPaging, moveFocus])
 
   // Official pmndrs/use-gesture pattern:
   // - state.swipe for carousel paging
@@ -2636,14 +2537,13 @@ useEffect(() => {
         return
       }
 
-      // Ignore downward page-scroll when nothing is active.
-      // When a pack is active, keep the gesture so swipe-down can deactivate
-      // unless the homepage asked to leave that to page scroll.
+      // Ignore vertical page-scroll when the homepage asked not to steal it,
+      // or downward scroll when nothing is active on other surfaces.
       if (
         !horizontal &&
         absY > 18 &&
-        my > 0 &&
-        (!selectedIdRef.current || disableSwipeDownDeactivateRef.current)
+        (disableSwipeDownDeactivateRef.current ||
+          (my > 0 && !selectedIdRef.current))
       ) {
         if (!motionTiltEnabled) {
           setCenterTiltYaw(0)
@@ -2722,7 +2622,7 @@ useEffect(() => {
         (swipeY < 0 ||
           verticalSpeed >= ACTIVATE_UP_VELOCITY ||
           absY >= ACTIVATE_UP_DISTANCE_PX * 1.35)
-      if (isUpwardActivate) {
+      if (isUpwardActivate && !disableSwipeDownDeactivateRef.current) {
         commitActivate('activate')
         event?.preventDefault?.()
         return
@@ -2783,9 +2683,11 @@ useEffect(() => {
       // pmndrs recommended drag config shape
       filterTaps: true,
       threshold: 3,
+      // Homepage: only take horizontal; let the page scroller keep vertical pans.
+      axis: disableSwipeDownDeactivate ? 'x' : undefined,
       // axisThreshold typing differs across @use-gesture versions
       axisThreshold: { touch: 8, mouse: 8, pen: 8 } as any,
-      pointer: { touch: true, capture: true },
+      pointer: { touch: true, capture: !disableSwipeDownDeactivate },
       eventOptions: { passive: false },
       swipe: {
         distance: [SWIPE_DISTANCE_PX, SWIPE_DISTANCE_PX],
@@ -2934,10 +2836,10 @@ isMobile={isMobileViewportActive}
         ) : null}
 
         {!isMobileViewportActive && !revealMode ? (
-          <>
+          <div className="coverflow-nav">
             <button
               type="button"
-              className="coverflow-nav-chevron is-left"
+              className="coverflow-nav-chevron is-left glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Previous pack"
               disabled={!canMovePrev}
               onPointerEnter={(event) => {
@@ -2973,11 +2875,11 @@ isMobile={isMobileViewportActive}
                 event.preventDefault()
               }}
             >
-              <ChevronIcon direction="left" />
+              <ChevronLeft className="coverflow-chevron-icon" aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="coverflow-nav-chevron is-right"
+              className="coverflow-nav-chevron is-right glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Next pack"
               disabled={!canMoveNext}
               onPointerEnter={(event) => {
@@ -3013,43 +2915,10 @@ isMobile={isMobileViewportActive}
                 event.preventDefault()
               }}
             >
-              <ChevronIcon direction="right" />
+              <ChevronRight className="coverflow-chevron-icon" aria-hidden="true" />
             </button>
-          </>
+          </div>
         ) : null}
-      </div>
-
-      <div className={`coverflow-tools-bar${revealMode ? ' is-hidden' : ''}`}>
-        <button
-          type="button"
-          className={`reset-button coverflow-motion-toggle ${motionTiltStatus === 'on' ? 'is-active' : ''
-            } ${motionTiltStatus === 'denied' || motionTiltStatus === 'unsupported'
-              ? 'is-disabled-look'
-              : ''
-            }`}
-          onClick={toggleMotionTilt}
-          aria-pressed={motionTiltStatus === 'on'}
-          aria-label={
-            motionTiltStatus === 'denied'
-              ? 'Motion permission denied'
-              : motionTiltStatus === 'unsupported'
-                ? 'Motion not supported'
-                : motionTiltStatus === 'on'
-                  ? 'Disable phone tilt'
-                  : 'Enable phone tilt'
-          }
-          title={
-            motionTiltStatus === 'denied'
-              ? 'Motion permission denied'
-              : motionTiltStatus === 'unsupported'
-                ? 'Motion not supported'
-                : motionTiltStatus === 'on'
-                  ? 'Disable phone tilt'
-                  : 'Enable phone tilt'
-          }
-        >
-          <PhoneIcon />
-        </button>
       </div>
 
     </div>

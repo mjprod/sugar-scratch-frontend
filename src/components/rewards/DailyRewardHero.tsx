@@ -7,6 +7,7 @@ import {
   formatCountdown,
   getDailyRewardResetAt,
   isDailyRewardClaimedToday,
+  resetDailyRewardClaim,
 } from "@/services/dailyReward";
 
 /**
@@ -14,8 +15,10 @@ import {
  */
 export function DailyRewardHero({
   onClaimed,
+  onClaimAttempt,
 }: {
   onClaimed: (diamonds: number) => void;
+  onClaimAttempt?: () => boolean;
 }) {
   const [claimed, setClaimed] = useState(() => isDailyRewardClaimedToday());
   const [remaining, setRemaining] = useState(
@@ -36,6 +39,7 @@ export function DailyRewardHero({
 
   function handleClaim() {
     if (claimed || claiming) return;
+    if (onClaimAttempt && !onClaimAttempt()) return;
     setClaiming(true);
     const result = claimDailyReward();
     setClaiming(false);
@@ -43,6 +47,12 @@ export function DailyRewardHero({
       setClaimed(true);
       onClaimed(result.diamonds);
     }
+  }
+
+  function handleResetForTesting() {
+    resetDailyRewardClaim();
+    setClaimed(false);
+    setRemaining(getDailyRewardResetAt() - Date.now());
   }
 
   const countdown = formatCountdown(remaining);
@@ -54,29 +64,6 @@ export function DailyRewardHero({
       )}
       aria-labelledby="hub-daily-title"
     >
-      <div className="hub-daily-hero-body">
-        <div className="hub-daily-hero-head">
-          <h3 id="hub-daily-title" className="hub-daily-hero-title">
-            Daily Reward
-          </h3>
-          {!claimed ? (
-            <span className="hub-daily-ready-chip">
-              <span className="hub-daily-ready-dot" aria-hidden="true" />
-              Ready
-            </span>
-          ) : null}
-        </div>
-
-        {claimed ? (
-          <p className="hub-daily-hero-copy hub-daily-hero-copy--claimed">
-            <Check className="size-4 shrink-0" aria-hidden="true" />
-            Claimed for today
-          </p>
-        ) : (
-          <p className="hub-daily-hero-copy">Your reward is ready!</p>
-        )}
-      </div>
-
       <div className="hub-daily-stage" aria-hidden="true">
         <span className="hub-daily-stage-bloom" />
         <span className="hub-daily-stage-particle is-a">
@@ -97,21 +84,49 @@ export function DailyRewardHero({
         <span className="hub-daily-stage-platform" />
       </div>
 
+      <div className="hub-daily-hero-body">
+        <div className="hub-daily-hero-head">
+          <h3 id="hub-daily-title" className="hub-daily-hero-title">
+            Daily Reward
+          </h3>
+          {!claimed ? (
+            <span className="hub-daily-ready-chip">
+              <span className="hub-daily-ready-dot" aria-hidden="true" />
+              Ready
+            </span>
+          ) : null}
+        </div>
+
+        {claimed ? (
+          <button
+            type="button"
+            className="hub-daily-hero-copy hub-daily-hero-copy--claimed"
+            onClick={handleResetForTesting}
+          >
+            <Check className="size-4 shrink-0" aria-hidden="true" />
+            Claimed for today
+          </button>
+        ) : (
+          <p className="hub-daily-hero-copy">Your reward is ready!</p>
+        )}
+      </div>
+
       <div className="hub-daily-hero-actions">
         {claimed ? (
-          <>
-            <p className="hub-daily-hero-sub">Come back tomorrow.</p>
-            <p className="hub-daily-hero-reset">
-              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-              Next reward in{" "}
-              <span className="tabular-nums">{countdown}</span>
-            </p>
-          </>
+          <p className="hub-daily-hero-reset">
+            <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+            Next reward in{" "}
+            <span className="tabular-nums">{countdown}</span>
+          </p>
         ) : (
           <>
+            <p className="hub-daily-hero-reset">
+              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+              Resets in <span className="tabular-nums">{countdown}</span>
+            </p>
             <div className="hub-daily-hero-cta">
               <CtaButton
-                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                {...ctaButtonPropsFromTemplate("pillBlackCTA")}
                 fillParent
                 label={claiming ? "Claiming…" : "Claim Reward"}
                 costAmount={null}
@@ -121,10 +136,6 @@ export function DailyRewardHero({
                 onClick={handleClaim}
               />
             </div>
-            <p className="hub-daily-hero-reset">
-              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-              Resets in <span className="tabular-nums">{countdown}</span>
-            </p>
           </>
         )}
       </div>

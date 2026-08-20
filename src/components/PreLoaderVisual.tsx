@@ -4,7 +4,7 @@ import { LoadingLabel } from "@/components/LoadingLabel";
 /** Branded CardFall splash — same treatment as `/pre-loader`. */
 export function PreLoaderVisual() {
   return (
-    <section className="relative flex h-full w-full flex-1 flex-col items-center justify-center overflow-hidden px-6 text-center">
+    <section className="fixed inset-0 flex w-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
