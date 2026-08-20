@@ -11,6 +11,7 @@ import {
   PRESENT_ZOOM,
   type ImageLayerCameras,
 } from "./glRenderer";
+import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
