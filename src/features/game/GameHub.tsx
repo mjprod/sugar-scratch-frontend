@@ -17,6 +17,7 @@ import { Paths } from '@/routes/Paths'
 import {
   beginPhotoPhase,
   clearGameSession,
+  gameSessionStorageKey,
   firstMissingMotionCardId,
   loadGameSession,
   markWalletCredited,
@@ -262,7 +263,7 @@ export function GameHub() {
       setError('Need motion cards with distinct themes to deal a hand.')
       return
     }
-    clearGameSession()
+    clearGameSession("hub")
     const runId = runIdRef.current + 1
     runIdRef.current = runId
     setBusy(true)
@@ -342,7 +343,7 @@ export function GameHub() {
       return
     }
     runIdRef.current += 1
-    clearGameSession()
+    clearGameSession(session ? gameSessionStorageKey(session) : "hub")
     setSession(null)
     setHand([])
     setWonPhotos([])
@@ -500,7 +501,9 @@ export function GameHub() {
                 type="button"
                 className="game-hub-pack__link reveal-replay"
                 onClick={() => {
-                  clearGameSession()
+                  clearGameSession(
+                    session ? gameSessionStorageKey(session) : "hub",
+                  )
                   navigate(Paths.home)
                 }}
               >
@@ -523,7 +526,9 @@ export function GameHub() {
                 type="button"
                 className="game-hub-pack__link reveal-replay"
                 onClick={() => {
-                  clearGameSession()
+                  clearGameSession(
+                    session ? gameSessionStorageKey(session) : "hub",
+                  )
                   navigate(Paths.home)
                 }}
               >

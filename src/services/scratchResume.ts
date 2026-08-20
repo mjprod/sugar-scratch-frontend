@@ -1,8 +1,11 @@
 import {
+  activateGameSessionForPack,
   firstMissingMotionCardId,
+  listStoredGameSessions,
   loadGameSession,
-  photoPlayHref,
+  loadGameSessionForPack,
   motionPlayHref,
+  photoPlayHref,
 } from "@/features/game/modules/gameSession";
 import { resolveInventoryCoverUrl } from "@/lib/photos";
 import {
@@ -16,38 +19,74 @@ import {
 } from "@/services/packInventory";
 import type { UnopenedPack } from "@/services/collection";
 
-/** Unfinished Photo Scratch items for Collection / Ready to Scratch. */
-export function listReadyPhotoScratch(): ReadyScratchGroup[] {
-  const session = loadGameSession();
-  if (!session) return [];
+function photoScratchGroupFromSession(
+  session: NonNullable<ReturnType<typeof loadGameSession>>,
+): ReadyScratchGroup | null {
   if (session.phase !== "photo_reveal" && session.phase !== "photo") {
-    return [];
+    return null;
   }
   const remaining = session.wonPhotoIds.filter(
     (id) => !session.completedPhotoIds.includes(id),
   );
-  if (remaining.length === 0) return [];
+  if (remaining.length === 0) return null;
   const pack = session.packScratch;
-  return [
-    {
-      id: `photo:${pack?.readyPackId ?? "session"}`,
-      creatorId: pack?.creator
-        ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
-        : "photo",
-      creatorName: pack?.creator ?? "Photo Cards",
-      collectionName: pack?.packName
-        ? `${pack.packName} · Photos`
-        : "Photo Cards",
-      count: remaining.length,
-      coverUrl: resolveInventoryCoverUrl({
-        coverUrl: pack?.coverUrl,
-        packId: pack?.readyPackId,
-        themeName: pack?.packName,
-        creator: pack?.creator,
-      }),
-      kind: "photo",
-    },
-  ];
+  const readyPackId = pack?.readyPackId ?? "session";
+  return {
+    id: `photo:${readyPackId}`,
+    creatorId: pack?.creator
+      ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
+      : "photo",
+    creatorName: pack?.creator ?? "Photo Cards",
+    collectionName: pack?.packName
+      ? `${pack.packName} · Photos`
+      : "Photo Cards",
+    count: remaining.length,
+    coverUrl: resolveInventoryCoverUrl({
+      coverUrl: pack?.coverUrl,
+      packId: pack?.readyPackId,
+      themeName: pack?.packName,
+      creator: pack?.creator,
+    }),
+    kind: "photo",
+  };
+}
+
+function motionScratchGroupFromSession(
+  session: NonNullable<ReturnType<typeof loadGameSession>>,
+): ReadyScratchGroup | null {
+  if (session.phase !== "motion") return null;
+  const remaining = session.motionCardIds.filter(
+    (id) => !session.completedMotionIds.includes(id),
+  );
+  if (remaining.length === 0) return null;
+  const pack = session.packScratch;
+  const packId = pack?.readyPackId;
+  if (packId && getReadyToScratch(packId)) return null;
+  return {
+    id: packId ?? `motion:${session.motionCardIds.join(",")}`,
+    creatorId: pack?.creator
+      ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
+      : "motion",
+    creatorName: pack?.creator ?? "Motion Cards",
+    collectionName: pack?.packName
+      ? `${pack.packName} · Motion`
+      : "Motion Cards",
+    count: remaining.length,
+    coverUrl: resolveInventoryCoverUrl({
+      coverUrl: pack?.coverUrl,
+      packId: pack?.readyPackId,
+      themeName: pack?.packName,
+      creator: pack?.creator,
+    }),
+    kind: "motion",
+  };
+}
+
+/** Unfinished Photo Scratch items for Collection / Ready to Scratch. */
+export function listReadyPhotoScratch(): ReadyScratchGroup[] {
+  return listStoredGameSessions()
+    .map((session) => photoScratchGroupFromSession(session))
+    .filter((group): group is ReadyScratchGroup => Boolean(group));
 }
 
 /**
@@ -55,35 +94,9 @@ export function listReadyPhotoScratch(): ReadyScratchGroup[] {
  * Covers mid-session Save & Exit when inventory write lagged.
  */
 function listReadyMotionFromSession(): ReadyScratchGroup[] {
-  const session = loadGameSession();
-  if (!session || session.phase !== "motion") return [];
-  const remaining = session.motionCardIds.filter(
-    (id) => !session.completedMotionIds.includes(id),
-  );
-  if (remaining.length === 0) return [];
-  const pack = session.packScratch;
-  const packId = pack?.readyPackId;
-  if (packId && getReadyToScratch(packId)) return [];
-  return [
-    {
-      id: packId ?? `motion:${session.motionCardIds.join(",")}`,
-      creatorId: pack?.creator
-        ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
-        : "motion",
-      creatorName: pack?.creator ?? "Motion Cards",
-      collectionName: pack?.packName
-        ? `${pack.packName} · Motion`
-        : "Motion Cards",
-      count: remaining.length,
-      coverUrl: resolveInventoryCoverUrl({
-        coverUrl: pack?.coverUrl,
-        packId: pack?.readyPackId,
-        themeName: pack?.packName,
-        creator: pack?.creator,
-      }),
-      kind: "motion",
-    },
-  ];
+  return listStoredGameSessions()
+    .map((session) => motionScratchGroupFromSession(session))
+    .filter((group): group is ReadyScratchGroup => Boolean(group));
 }
 
 /**
@@ -132,11 +145,21 @@ export function resolveUnopenedOpenTarget(pack: UnopenedPack): {
 export function resumeHrefForScratchGroup(
   group: ReadyScratchGroup,
 ): string | null {
-  const session = loadGameSession();
   if (group.kind === "photo") {
+    const packId = group.id.startsWith("photo:")
+      ? group.id.slice("photo:".length)
+      : null;
+    const session =
+      (packId && packId !== "session"
+        ? activateGameSessionForPack(packId)
+        : null) ?? loadGameSession();
     if (!session) return null;
     return photoPlayHref(session);
   }
+  const session =
+    activateGameSessionForPack(group.id) ??
+    loadGameSessionForPack(group.id) ??
+    (loadGameSession()?.phase === "motion" ? loadGameSession() : null);
   if (session?.phase === "motion") {
     return motionPlayHref(session, firstMissingMotionCardId(session));
   }

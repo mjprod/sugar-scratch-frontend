@@ -48,7 +48,7 @@ export type ProtectedAction =
   | { type: "like"; feedItemId: string }
   | { type: "tab"; tab: AppTab }
   | { type: "scratch"; pack: PurchaseFlowPack }
-  | { type: "photo-scratch" }
+  | { type: "photo-scratch"; packId?: string }
   | { type: "store" }
   | { type: "inbox" };
 

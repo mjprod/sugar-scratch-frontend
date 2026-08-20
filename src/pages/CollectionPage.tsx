@@ -48,7 +48,10 @@ export function CollectionPage() {
           packId: group.id,
         });
         if (group.kind === "photo") {
-          requireAuth({ type: "photo-scratch" });
+          const packId = group.id.startsWith("photo:")
+            ? group.id.slice("photo:".length)
+            : undefined;
+          requireAuth({ type: "photo-scratch", packId });
           return;
         }
         requireAuth({

@@ -45,9 +45,11 @@ import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
 import {
+  activateGameSessionForPack,
   beginPhotoPhase,
   firstMissingMotionCardId,
   loadGameSession,
+  loadGameSessionForPack,
   motionPlayHref,
   photoPlayHref,
 } from "@/features/game/modules/gameSession";
@@ -276,10 +278,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Collection / auth resume is a user gesture — unlock 3-2-1 audio so
         // ScratchPrototype can skip Tap-to-play and arm the countdown.
         unlockCountdownSound();
-        const session = loadGameSession();
-        if (session?.phase === "motion") {
+        const readyId = action.pack.instanceId ?? action.pack.packId;
+        const packSession = loadGameSessionForPack(readyId);
+        if (packSession?.phase === "motion") {
+          activateGameSessionForPack(readyId);
           navigate(
-            motionPlayHref(session, firstMissingMotionCardId(session)),
+            motionPlayHref(
+              packSession,
+              firstMissingMotionCardId(packSession),
+            ),
           );
           return;
         }
@@ -290,7 +297,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "photo-scratch") {
         unlockCountdownSound();
-        const session = loadGameSession();
+        const packId = action.packId?.trim();
+        const session =
+          (packId && packId !== "session"
+            ? activateGameSessionForPack(packId)
+            : null) ?? loadGameSession();
         if (session && (session.phase === "photo_reveal" || session.phase === "photo")) {
           const started = beginPhotoPhase() ?? session;
           navigate(photoPlayHref(started));

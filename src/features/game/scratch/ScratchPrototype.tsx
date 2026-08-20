@@ -2593,18 +2593,28 @@ export function ScratchPrototype() {
             }
             setSelectedCardId(startId);
             if (pending) {
-              void loadGameCatalog().then((catalog) => {
-                const photos = pending.photoIds
-                  .map((id) => catalog.photos.find((photo) => photo.id === id))
-                  .filter((photo): photo is PhotoCard => Boolean(photo));
-                setMotionResult({
-                  win: pending.prize > 0,
-                  photos,
-                  current: pending.current,
-                  total: pending.total,
-                  resultId: `${pending.cardId}:${pending.photoIds.join(",")}:${pending.current}`,
+              void loadGameCatalog()
+                .then((catalog) => {
+                  const photos = pending.photoIds
+                    .map((id) => catalog.photos.find((photo) => photo.id === id))
+                    .filter((photo): photo is PhotoCard => Boolean(photo));
+                  setMotionResult({
+                    win: pending.prize > 0 && photos.length > 0,
+                    photos,
+                    current: pending.current,
+                    total: pending.total,
+                    resultId: `${pending.cardId}:${pending.photoIds.join(",")}:${pending.current}`,
+                  });
+                })
+                .catch(() => {
+                  setMotionResult({
+                    win: false,
+                    photos: [],
+                    current: pending.current,
+                    total: pending.total,
+                    resultId: `pending-error:${pending.cardId}`,
+                  });
                 });
-              });
             }
             return;
           }
@@ -4405,7 +4415,7 @@ export function ScratchPrototype() {
               onComplete={afterMotionResultPresentation}
             />
           ) : null}
-          {motionResult && !motionResult.win ? (
+          {motionResult && !(motionResult.win && motionResult.photos.length > 0) ? (
             <MotionNoWinFeedback
               key={motionResult.resultId}
               resultId={motionResult.resultId}

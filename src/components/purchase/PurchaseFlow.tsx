@@ -83,6 +83,8 @@ import {
   photoPlayHref,
   startMotionSession,
   loadGameSession,
+  loadGameSessionForPack,
+  activateGameSessionForPack,
 } from "@/features/game/modules/gameSession";
 import {
   loadGameCatalog,
@@ -602,11 +604,12 @@ export function PurchaseFlow({
         .map((oid) => openingToMotion.get(oid))
         .filter((id): id is string => Boolean(id));
       const readyId = instanceId ?? pack.packId;
-      const existing = loadGameSession();
+      const existing = loadGameSessionForPack(readyId);
       if (
         existing?.packScratch?.readyPackId === readyId &&
         (existing.phase === "photo_reveal" || existing.phase === "done")
       ) {
+        activateGameSessionForPack(readyId);
         navigateTo("/game");
         return;
       }
@@ -614,6 +617,7 @@ export function PurchaseFlow({
         existing?.packScratch?.readyPackId === readyId &&
         existing.phase === "photo"
       ) {
+        activateGameSessionForPack(readyId);
         navigateTo(photoPlayHref(existing));
         return;
       }

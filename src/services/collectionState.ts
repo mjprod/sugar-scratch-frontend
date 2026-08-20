@@ -9,6 +9,7 @@ import {
   listOwnedPacks,
 } from "./packInventory";
 import { CREATOR_PHOTOS } from "../lib/photos";
+import { listStoredGameSessions } from "@/features/game/modules/gameSession";
 import { listReadyToScratch } from "./readyToScratch";
 import { apiFetch } from "../lib/api";
 
@@ -65,50 +66,31 @@ function writeLedger(ledger: CollectionLedger) {
   }
 }
 
-type StoredGameSession = {
-  phase?: string;
-  wonPhotoIds?: string[];
-  completedPhotoIds?: string[];
-  motionCardIds?: string[];
-  completedMotionIds?: string[];
-  packScratch?: { readyPackId?: string };
-};
-
-function readStoredGameSession(): StoredGameSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw =
-      window.localStorage.getItem("sugar_scratchie_game_v1") ??
-      window.sessionStorage.getItem("sugar_scratchie_game_v1");
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredGameSession;
-  } catch {
-    return null;
-  }
-}
 
 function countReadyPhotoScratch(): number {
-  const parsed = readStoredGameSession();
-  if (!parsed) return 0;
-  if (parsed.phase !== "photo_reveal" && parsed.phase !== "photo") return 0;
-  const won = parsed.wonPhotoIds ?? [];
-  const done = parsed.completedPhotoIds ?? [];
-  return won.filter((id) => !done.includes(id)).length;
+  return listStoredGameSessions().reduce((total, session) => {
+    if (session.phase !== "photo_reveal" && session.phase !== "photo") {
+      return total;
+    }
+    const won = session.wonPhotoIds ?? [];
+    const done = session.completedPhotoIds ?? [];
+    return total + won.filter((id) => !done.includes(id)).length;
+  }, 0);
 }
 
 /** Mid-session motion left when readyToScratch inventory hasn't caught up. */
 function countOrphanMotionFromSession(): number {
-  const parsed = readStoredGameSession();
-  if (!parsed || parsed.phase !== "motion") return 0;
-  const remaining = (parsed.motionCardIds ?? []).filter(
-    (id) => !(parsed.completedMotionIds ?? []).includes(id),
-  );
-  if (remaining.length === 0) return 0;
-  const packId = parsed.packScratch?.readyPackId;
-  if (packId && listReadyToScratch().some((group) => group.id === packId)) {
-    return 0;
-  }
-  return remaining.length;
+  const shelfIds = new Set(listReadyToScratch().map((group) => group.id));
+  return listStoredGameSessions().reduce((total, session) => {
+    if (session.phase !== "motion") return total;
+    const remaining = (session.motionCardIds ?? []).filter(
+      (id) => !(session.completedMotionIds ?? []).includes(id),
+    );
+    if (remaining.length === 0) return total;
+    const packId = session.packScratch?.readyPackId;
+    if (packId && shelfIds.has(packId)) return total;
+    return total + remaining.length;
+  }, 0);
 }
 function slugId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
