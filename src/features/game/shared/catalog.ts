@@ -1,3 +1,4 @@
+import { normalizeMediaUrl } from "@/services/models";
 import { api } from "../scratch/api";
 
 export type CatalogPhoto = {
@@ -47,24 +48,29 @@ type ApiMotionCard = {
 type CardsPayload = { cards?: ApiMotionCard[] };
 type PhotoPayload = { cards?: CatalogPhotoCard[] };
 
-/** Convert a workspace path (`public/cards/...`) to a site URL (`/cards/...`). */
+/**
+ * Convert a workspace path (`public/cards/...`) to a site URL (`/cards/...`).
+ * Absolute http(s) host URLs under Vite media prefixes are rewritten to
+ * same-origin paths via normalizeMediaUrl (CORS-safe for WebGL textures).
+ */
 export function toPublicMediaUrl(path: string): string {
   const trimmed = path.trim();
   if (!trimmed) return "";
   if (
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://") ||
+    trimmed.startsWith("//") ||
     trimmed.startsWith("blob:") ||
     trimmed.startsWith("data:") ||
     trimmed.startsWith("/")
   ) {
-    return trimmed;
+    return normalizeMediaUrl(trimmed);
   }
   const withoutPublic = trimmed.startsWith("public/")
     ? trimmed.slice("public/".length)
     : trimmed;
   const parts = withoutPublic.split("/").filter(Boolean);
-  return `/${parts.map(encodeURIComponent).join("/")}`;
+  return normalizeMediaUrl(`/${parts.map(encodeURIComponent).join("/")}`);
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -78,7 +84,7 @@ function parsePhotos(value: unknown): CatalogPhoto[] | undefined {
     if (!entry || typeof entry !== "object") continue;
     const id = optionalString((entry as { id?: unknown }).id);
     const src = optionalString((entry as { src?: unknown }).src);
-    if (id && src) photos.push({ id, src });
+    if (id && src) photos.push({ id, src: toPublicMediaUrl(src) });
   }
   return photos.length > 0 ? photos : undefined;
 }
@@ -128,16 +134,17 @@ function parsePhotoPayload(data: PhotoPayload): CatalogPhotoCard[] {
     ) {
       continue;
     }
+    const introRaw = optionalString(entry.intro);
     cards.push({
       id: entry.id,
       label: entry.label,
-      background: entry.background,
-      bikini: entry.bikini,
-      clothes: entry.clothes,
-      mesh: entry.mesh,
+      background: toPublicMediaUrl(entry.background),
+      bikini: toPublicMediaUrl(entry.bikini),
+      clothes: toPublicMediaUrl(entry.clothes),
+      mesh: toPublicMediaUrl(entry.mesh),
       model_id: optionalString(entry.model_id),
       theme_id: optionalString(entry.theme_id),
-      intro: optionalString(entry.intro),
+      intro: introRaw ? toPublicMediaUrl(introRaw) : undefined,
     });
   }
   return cards;
