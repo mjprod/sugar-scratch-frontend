@@ -46,7 +46,11 @@ export function StageCoachHint({
   if (!label) return null;
 
   return (
-    <p className={`stage-coach stage-coach--${phase}`} aria-live="polite">
+    <p
+      className={`stage-coach stage-coach--${phase}`}
+      data-tutorial-target="progress"
+      aria-live="polite"
+    >
       <span key={`${phase}-${found}`} className="stage-coach-label">
         {label}
       </span>

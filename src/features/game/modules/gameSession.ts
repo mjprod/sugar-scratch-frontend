@@ -1,9 +1,23 @@
 import { apiMutate } from "@/lib/api";
+import type { OpeningSession } from "@/services/purchase";
 import {
   loadGameCatalog,
   pickWonPhotocards,
   type ThemedMotionCard,
 } from "./session";
+
+export type PackScratchLink = {
+  readyPackId: string;
+  packName: string;
+  creator: string;
+  coverUrl?: string;
+  themeName?: string;
+  openingSession: OpeningSession;
+  /** Opening fan card id per motion card (parallel to motionCardIds). */
+  openingCardIds: string[];
+  /** Opening ids already written to collection ledger (fan scratch or motion settle). */
+  settledOpeningIds: string[];
+};
 
 export const GAME_SESSION_KEY = "sugar_scratchie_game_v1";
 
@@ -31,6 +45,8 @@ export type GameSession = {
   diamondTotal: number;
   /** True after diamondTotal has been applied to the app wallet. */
   walletCredited: boolean;
+  /** Set when motion play continues a pack opening from PurchaseFlow. */
+  packScratch?: PackScratchLink;
 };
 
 function isGameSession(value: unknown): value is GameSession {
@@ -97,7 +113,17 @@ export function isGameModeUrl(search = window.location.search): boolean {
   return new URLSearchParams(search).get("game") === "1";
 }
 
-export function startMotionSession(hand: ThemedMotionCard[]): GameSession {
+export type StartMotionSessionOptions = {
+  packScratch?: Omit<PackScratchLink, "settledOpeningIds"> & {
+    settledOpeningIds?: string[];
+  };
+  completedMotionIds?: string[];
+};
+
+export function startMotionSession(
+  hand: ThemedMotionCard[],
+  options?: StartMotionSessionOptions,
+): GameSession {
   const first = hand[0];
   const session: GameSession = {
     version: 1,
@@ -105,12 +131,18 @@ export function startMotionSession(hand: ThemedMotionCard[]): GameSession {
     motionCardIds: hand.map((card) => card.id),
     themes: hand.map((card) => card.theme),
     modelId: first?.model_id?.trim() || "",
-    completedMotionIds: [],
+    completedMotionIds: options?.completedMotionIds ?? [],
     photoPrizeTotal: 0,
     wonPhotoIds: [],
     completedPhotoIds: [],
     diamondTotal: 0,
     walletCredited: false,
+    packScratch: options?.packScratch
+      ? {
+          ...options.packScratch,
+          settledOpeningIds: options.packScratch.settledOpeningIds ?? [],
+        }
+      : undefined,
   };
   saveGameSession(session);
   return session;

@@ -96,13 +96,13 @@ export function applySymbolCatalog(rows: CatalogRow[]): boolean {
 
 let loadPromise: Promise<boolean> | null = null;
 
-/** Fetch `/lotties/index.json` (or API) and update SYMBOL_TYPES. */
+/** Fetch `/api/symbols` (JSON fallback) and update SYMBOL_TYPES. */
 export async function loadSymbolTypes(): Promise<boolean> {
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
     try {
       try {
-        const response = await fetch("/lotties/index.json", { cache: "no-store" });
+        const response = await fetch("/api/symbols", { cache: "no-store" });
         if (response.ok) {
           const data = (await response.json()) as { symbols?: CatalogRow[] };
           if (applySymbolCatalog(Array.isArray(data.symbols) ? data.symbols : [])) {
@@ -110,10 +110,10 @@ export async function loadSymbolTypes(): Promise<boolean> {
           }
         }
       } catch {
-        // fall through to API
+        // fall through to static mirror
       }
       try {
-        const response = await fetch("/api/symbols", { cache: "no-store" });
+        const response = await fetch("/lotties/index.json", { cache: "no-store" });
         if (!response.ok) return false;
         const data = (await response.json()) as { symbols?: CatalogRow[] };
         return applySymbolCatalog(Array.isArray(data.symbols) ? data.symbols : []);

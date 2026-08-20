@@ -845,6 +845,7 @@ export function TopSymbolBar({
   return (
     <div
       ref={barRef}
+      data-tutorial-target="foil"
       className={`symbol-bar top-symbol-bar is-phase-${phase}${
         revealedCount >= TOP_SYMBOL_COUNT ? " is-symbols-complete" : ""
       }${showCoating ? " is-scratchable" : ""}${

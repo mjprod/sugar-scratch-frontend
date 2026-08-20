@@ -1,7 +1,9 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { settlePackMotionCard } from "@/services/packMotionSettle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -56,6 +58,9 @@ import {
 } from "../modules/matchGame";
 import { inferThemeFromLabel } from "../modules/session";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
+import {
+  fetchCatalogMotionCards,
+} from "../shared/catalog";
 import {
   loadVideoSrc,
   playThemeIntro,
@@ -322,8 +327,6 @@ type Card = {
   photos?: Array<{ id: string; src: string }>;
 };
 
-const CARDS_INDEX_SRC = "/cards/index.json";
-
 const DEFAULT_CARDS: Card[] = [
   {
     id: "original",
@@ -375,58 +378,6 @@ const DEFAULT_CARDS: Card[] = [
   },
 ];
 
-type CardsIndexResponse = {
-  cards?: Array<{
-    id: string;
-    label: string;
-    bottom: string;
-    foreground: string;
-    mesh: string;
-    chroma_key?: boolean;
-    model_id?: string;
-    theme_id?: string;
-    sort_order?: number;
-    photos?: Array<{ id: string; src: string }>;
-  }>;
-};
-
-function cardUsesChromaKey(
-  id: string,
-  chromaKey: boolean | undefined,
-): boolean {
-  if (typeof chromaKey === "boolean") return chromaKey;
-  return id === "original";
-}
-
-function parseCardsIndex(data: CardsIndexResponse): Card[] | null {
-  if (!Array.isArray(data.cards) || data.cards.length === 0) return null;
-  const cards: Card[] = [];
-  for (const entry of data.cards) {
-    if (
-      typeof entry.id !== "string" ||
-      typeof entry.label !== "string" ||
-      typeof entry.bottom !== "string" ||
-      typeof entry.foreground !== "string" ||
-      typeof entry.mesh !== "string"
-    ) {
-      continue;
-    }
-    cards.push({
-      id: entry.id,
-      label: entry.label,
-      bottom: entry.bottom,
-      foreground: entry.foreground,
-      mesh: entry.mesh,
-      chromaKey: cardUsesChromaKey(entry.id, entry.chroma_key),
-      model_id: entry.model_id,
-      theme_id: entry.theme_id,
-      sort_order: typeof entry.sort_order === "number" ? entry.sort_order : 0,
-      photos: entry.photos,
-    });
-  }
-  return cards.length > 0 ? cards : null;
-}
-
 function playlistCardsForModel(cards: Card[], modelId: string): Card[] {
   return cards
     .filter((entry) => entry.model_id === modelId)
@@ -453,10 +404,8 @@ function playlistCardsForGameSession(
 
 async function loadCards(): Promise<Card[]> {
   try {
-    const response = await fetch(CARDS_INDEX_SRC, { cache: "no-store" });
-    if (!response.ok) return DEFAULT_CARDS;
-    const data = (await response.json()) as CardsIndexResponse;
-    return parseCardsIndex(data) ?? DEFAULT_CARDS;
+    const cards = await fetchCatalogMotionCards();
+    return cards.length > 0 ? cards : DEFAULT_CARDS;
   } catch {
     return DEFAULT_CARDS;
   }
@@ -1260,9 +1209,71 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
   return sparse;
 }
 
+function PackProgress({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
+  if (total <= 0 || current < 1 || current > total) return null;
+  const remaining = total - current;
+  const isFinal = remaining === 0;
+  const stack = Math.min(remaining, 4);
+
+  return (
+    <div
+      className={["pack-progress", isFinal ? "is-final" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      role="status"
+      aria-label={
+        isFinal
+          ? `Final card, card ${current} of ${total}`
+          : `${remaining} left, card ${current} of ${total}`
+      }
+    >
+      {isFinal ? (
+        <span className="pack-progress__spark" aria-hidden="true">
+          ✦
+        </span>
+      ) : (
+        <span
+          key={remaining}
+          className="pack-progress__stack"
+          aria-hidden="true"
+        >
+          {Array.from({ length: stack }, (_, i) => (
+            <span
+              key={i}
+              className="pack-progress__card"
+              style={{ "--i": i } as CSSProperties}
+            />
+          ))}
+        </span>
+      )}
+      <div className="pack-progress__copy">
+        <p className="pack-progress__remain">
+          {isFinal ? "FINAL CARD" : `${remaining} LEFT`}
+        </p>
+        <p className="pack-progress__pos">
+          CARD {current} OF {total}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ScratchPrototype() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  // FairyDust must paint in stage space: the product embed wraps play in a
+  // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
+  const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
+  const setStageNode = useCallback((node: HTMLDivElement | null) => {
+    stageRef.current = node;
+    setCursorHost((current) => (current === node ? current : node));
+  }, []);
   const symbolSlotRefs = useRef<(HTMLDivElement | null)[]>([]);
   // Most recent pointer position in viewport coords; used as the origin of the
   // flying-coin animation for manual scratches.
@@ -2131,313 +2142,291 @@ export function ScratchPrototype() {
         if (cancelled) return;
         const active = ensureRenderer();
         if (!active) return;
-      const now = performance.now();
-      const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
-      lastFrameTime = now;
-      const time = (now - startedAt) / 1000;
-      const bottomVideo = bottomVideoRef.current;
-      const foregroundVideo = foregroundVideoRef.current;
-      const trackedMeshNow = trackedMeshRef.current;
-      // Sample the mesh on the FOREGROUND clock — the mesh was tracked from the
-      // foreground (performer) clip, so this keeps scratch holes glued to the
-      // body regardless of any residual drift between the two free-running
-      // videos. After claim the FG decoder is parked; fall back to bottom so
-      // chest-follow can keep moving with the remaining clip.
-      const meshTime = fgParkedRef.current
-        ? (bottomVideo?.currentTime ?? time)
-        : (foregroundVideo?.currentTime ?? bottomVideo?.currentTime ?? time);
-      const trackedSample = trackedMeshNow
-        ? sampleTrackedMesh(trackedMeshNow, meshTime)
-        : null;
-      trackedSampleRef.current = trackedSample;
-      const videoTime = bottomVideo?.currentTime ?? time;
-
-      // Subtle chest-follow camera: pan toward keeping the chest anchor at its
-      // target framing point, clamped + smoothed.
-      const camera = cameraRef.current;
-      let targetCamX = 0;
-      let targetCamY = 0;
-      if (trackedSample) {
-        const chest = sampleMeshUvToWorld(
-          trackedSample,
-          CHEST_ANCHOR_UV.x,
-          CHEST_ANCHOR_UV.y,
-        );
-        const targetPx = CANVAS_WIDTH * CHEST_TARGET_UV.x;
-        const targetPy = CANVAS_HEIGHT * CHEST_TARGET_UV.y;
-        const shiftX = (targetPx - chest.x) * CHEST_FOLLOW_STRENGTH;
-        const shiftY = (targetPy - chest.y) * CHEST_FOLLOW_STRENGTH;
-        targetCamX = clampValue(
-          shiftX / (CANVAS_WIDTH / 2),
-          -CHEST_CAM_MAX,
-          CHEST_CAM_MAX,
-        );
-        targetCamY = clampValue(
-          -shiftY / (CANVAS_HEIGHT / 2),
-          -CHEST_CAM_MAX,
-          CHEST_CAM_MAX,
-        );
-      }
-      camera.x += (targetCamX - camera.x) * CHEST_SMOOTH;
-      camera.y += (targetCamY - camera.y) * CHEST_SMOOTH;
-
-      const autoSettings = autoScratchRef.current;
-      // Never auto-finish while body-symbol hunt is still in progress — otherwise a
-      // persisted "enabled" flag (or premature toggle) wipes the dress before the player finds them all.
-      const huntComplete =
-        !useBodySymbolsRef.current ||
-        revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
-      if (
-        autoSettings.enabled &&
-        huntComplete &&
-        !isBodyScratchLocked() &&
-        trackedSample &&
-        gameResultPendingRef.current === null
-      ) {
-        const path = autoPathRef.current;
-        if (path.length > 0 && autoPathIndexRef.current < path.length) {
-          autoPathProgressRef.current += autoSettings.speed * dt;
-          let scratched = 0;
-          while (
-            autoPathProgressRef.current >= 1 &&
-            autoPathIndexRef.current < path.length &&
-            scratched < AUTO_SCRATCH_MAX_PER_FRAME
-          ) {
-            autoPathProgressRef.current -= 1;
-            const pt = path[autoPathIndexRef.current];
-            const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
-            applyScratchAtUvRef.current(
-              pt.x,
-              pt.y,
-              AUTO_SCRATCH_RADIUS,
-              worldPos,
-            );
-            autoPathIndexRef.current += 1;
-            scratched += 1;
-          }
-        }
-
-        const pathDone =
-          path.length === 0 || autoPathIndexRef.current >= path.length;
-        const sampleCount = revealSamplesRef.current.length;
-        const garmentComplete = isGarmentFullyRevealed(
-          progressRef.current,
-          revealedCountRef.current,
-          sampleCount,
-          true,
-        );
-        if (!garmentComplete && sampleCount > 0 && pathDone) {
-          const samples = revealSamplesRef.current;
-          const revealed = revealedRef.current;
-          let filled = 0;
-          for (
-            let i = 0;
-            i < samples.length && filled < AUTO_SCRATCH_FILL_BATCH;
-            i += 1
-          ) {
-            if (revealed[i]) continue;
-            const pt = samples[i];
-            const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
-            applyScratchAtUvRef.current(
-              pt.x,
-              pt.y,
-              AUTO_SCRATCH_RADIUS,
-              worldPos,
-            );
-            filled += 1;
-          }
-        }
-      }
-
-      if (
-        bottomVideo &&
-        foregroundVideo &&
-        !fgParkedRef.current &&
-        bottomVideo.readyState >= 2 &&
-        foregroundVideo.readyState >= 2
-      ) {
-        syncVideoTime(bottomVideo, foregroundVideo);
-      }
-
-      if (bottomVideo) {
         const now = performance.now();
-        const nextDuration =
-          bottomVideo.duration || uiStateRef.current.duration;
-        const nextPaused = bottomVideo.paused;
-        const shouldUpdateUi =
-          now - uiStateRef.current.lastUpdatedAt >=
-            UI_STATE_UPDATE_INTERVAL_MS ||
-          nextPaused !== uiStateRef.current.isPaused ||
-          Math.abs(videoTime - uiStateRef.current.currentTime) > 1;
+        const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+        lastFrameTime = now;
+        const time = (now - startedAt) / 1000;
+        const bottomVideo = bottomVideoRef.current;
+        const foregroundVideo = foregroundVideoRef.current;
+        const trackedMeshNow = trackedMeshRef.current;
+        // Sample the mesh on the FOREGROUND clock — the mesh was tracked from the
+        // foreground (performer) clip, so this keeps scratch holes glued to the
+        // body regardless of any residual drift between the two free-running
+        // videos. After claim the FG decoder is parked; fall back to bottom so
+        // chest-follow can keep moving with the remaining clip.
+        const meshTime = fgParkedRef.current
+          ? (bottomVideo?.currentTime ?? time)
+          : (foregroundVideo?.currentTime ?? bottomVideo?.currentTime ?? time);
+        const trackedSample = trackedMeshNow
+          ? sampleTrackedMesh(trackedMeshNow, meshTime)
+          : null;
+        trackedSampleRef.current = trackedSample;
+        const videoTime = bottomVideo?.currentTime ?? time;
 
-        if (shouldUpdateUi) {
-          uiStateRef.current = {
-            currentTime: videoTime,
-            duration: nextDuration,
-            isPaused: nextPaused,
-            lastUpdatedAt: now,
-          };
-          setCurrentTime(videoTime);
-          setDuration(nextDuration);
-          setIsPaused(nextPaused);
+        // Subtle chest-follow camera: pan toward keeping the chest anchor at its
+        // target framing point, clamped + smoothed.
+        const camera = cameraRef.current;
+        let targetCamX = 0;
+        let targetCamY = 0;
+        if (trackedSample) {
+          const chest = sampleMeshUvToWorld(
+            trackedSample,
+            CHEST_ANCHOR_UV.x,
+            CHEST_ANCHOR_UV.y,
+          );
+          const targetPx = CANVAS_WIDTH * CHEST_TARGET_UV.x;
+          const targetPy = CANVAS_HEIGHT * CHEST_TARGET_UV.y;
+          const shiftX = (targetPx - chest.x) * CHEST_FOLLOW_STRENGTH;
+          const shiftY = (targetPy - chest.y) * CHEST_FOLLOW_STRENGTH;
+          targetCamX = clampValue(
+            shiftX / (CANVAS_WIDTH / 2),
+            -CHEST_CAM_MAX,
+            CHEST_CAM_MAX,
+          );
+          targetCamY = clampValue(
+            -shiftY / (CANVAS_HEIGHT / 2),
+            -CHEST_CAM_MAX,
+            CHEST_CAM_MAX,
+          );
         }
-      }
+        camera.x += (targetCamX - camera.x) * CHEST_SMOOTH;
+        camera.y += (targetCamY - camera.y) * CHEST_SMOOTH;
 
-      const sampleCount = revealSamplesRef.current.length;
-      const autoMode = autoScratchRef.current.enabled;
-      const canClaim =
-        !useBodySymbolsRef.current ||
-        revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
-      const hideForeground =
-        claimedRef.current ||
-        (canClaim &&
-          isGarmentFullyRevealed(
+        const autoSettings = autoScratchRef.current;
+        // Never auto-finish while body-symbol hunt is still in progress — otherwise a
+        // persisted "enabled" flag (or premature toggle) wipes the dress before the player finds them all.
+        const huntComplete =
+          !useBodySymbolsRef.current ||
+          revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        if (
+          autoSettings.enabled &&
+          huntComplete &&
+          !isBodyScratchLocked() &&
+          trackedSample &&
+          gameResultPendingRef.current === null
+        ) {
+          const path = autoPathRef.current;
+          if (path.length > 0 && autoPathIndexRef.current < path.length) {
+            autoPathProgressRef.current += autoSettings.speed * dt;
+            let scratched = 0;
+            while (
+              autoPathProgressRef.current >= 1 &&
+              autoPathIndexRef.current < path.length &&
+              scratched < AUTO_SCRATCH_MAX_PER_FRAME
+            ) {
+              autoPathProgressRef.current -= 1;
+              const pt = path[autoPathIndexRef.current];
+              const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
+              applyScratchAtUvRef.current(
+                pt.x,
+                pt.y,
+                AUTO_SCRATCH_RADIUS,
+                worldPos,
+              );
+              autoPathIndexRef.current += 1;
+              scratched += 1;
+            }
+          }
+
+          const pathDone =
+            path.length === 0 || autoPathIndexRef.current >= path.length;
+          const sampleCount = revealSamplesRef.current.length;
+          const garmentComplete = isGarmentFullyRevealed(
             progressRef.current,
             revealedCountRef.current,
             sampleCount,
-            autoMode,
-          ));
-      if (hideForeground && !claimedRef.current) {
-        claimedRef.current = true;
-        setClaimed(true);
-        tryResolveGameRef.current();
-      }
-      // Stop FG decode + rVFC once the performer layer is off-screen.
-      if (hideForeground) parkForegroundDecoder();
-
-      active.render(
-        bottomVideo,
-        foregroundVideo,
-        trackedSample,
-        showMeshRef.current,
-        camera,
-        hideForeground,
-        chromaKeyRef.current,
-        PRESENT_ZOOM,
-        // Body hunt (docked bar): half-rate bottom uploads; FG stays full rate.
-        useBodySymbolsRef.current && topBarPhaseRef.current === "docked",
-      );
-
-      // Skip body-marker transforms while the intro countdown covers the stage —
-      // markers aren't visible under the overlay, and recomputing 12 DOM styles
-      // every frame stacks on top of video decode + WebGL + the countdown Lottie.
-      const bodyPoints = trackedMeshNow?.symbolPoints;
-      const stage = stageRef.current;
-      const canvas = canvasRef.current;
-      if (
-        !showIntroCountdownRef.current &&
-        bodyPoints &&
-        bodyPoints.length === SYMBOL_SLOT_COUNT &&
-        trackedSample &&
-        stage &&
-        canvas
-      ) {
-        const layout = bodyMarkerLayoutRef.current;
-        if (
-          layout.framesUntilRefresh <= 0 ||
-          !layout.canvasRect ||
-          !layout.stageRect
-        ) {
-          layout.canvasRect = canvas.getBoundingClientRect();
-          layout.stageRect = stage.getBoundingClientRect();
-          layout.framesUntilRefresh = 8;
-        } else {
-          layout.framesUntilRefresh -= 1;
+            true,
+          );
+          if (!garmentComplete && sampleCount > 0 && pathDone) {
+            const samples = revealSamplesRef.current;
+            const revealed = revealedRef.current;
+            let filled = 0;
+            for (
+              let i = 0;
+              i < samples.length && filled < AUTO_SCRATCH_FILL_BATCH;
+              i += 1
+            ) {
+              if (revealed[i]) continue;
+              const pt = samples[i];
+              const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
+              applyScratchAtUvRef.current(
+                pt.x,
+                pt.y,
+                AUTO_SCRATCH_RADIUS,
+                worldPos,
+              );
+              filled += 1;
+            }
+          }
         }
-        const canvasRect = layout.canvasRect;
-        const stageRect = layout.stageRect;
-        const remainingSymbols = SYMBOL_SLOT_COUNT - revealedSymbolsRef.current;
-        const nowMs = performance.now();
-        const idleLongEnough =
-          !drawingRef.current &&
-          nowMs - huntHintActivityAtRef.current >= HINT_IDLE_MS;
-        const pulsarEligible =
-          useBodySymbolsRef.current &&
-          topBarPhaseRef.current === "docked" &&
-          !claimedRef.current &&
-          !isBodyScratchLocked() &&
-          remainingSymbols > 0 &&
-          remainingSymbols <= HINT_REMAINING_MAX &&
-          idleLongEnough;
-        const cycle = huntHintCycleRef.current;
-        if (!pulsarEligible) {
-          cycle.index = -1;
-          cycle.shownAt = 0;
-          cycle.phase = "show";
-        } else {
-          const revealed = revealedPointsRef.current;
-          if (cycle.phase === "gap") {
-            if (nowMs - cycle.shownAt >= HINT_PULSE_GAP_MS) {
-              cycle.index = pickNextUnfoundSymbol(revealed, cycle.index);
+
+        if (
+          bottomVideo &&
+          foregroundVideo &&
+          !fgParkedRef.current &&
+          bottomVideo.readyState >= 2 &&
+          foregroundVideo.readyState >= 2
+        ) {
+          syncVideoTime(bottomVideo, foregroundVideo);
+        }
+
+        if (bottomVideo) {
+          const now = performance.now();
+          const nextDuration =
+            bottomVideo.duration || uiStateRef.current.duration;
+          const nextPaused = bottomVideo.paused;
+          const shouldUpdateUi =
+            now - uiStateRef.current.lastUpdatedAt >=
+              UI_STATE_UPDATE_INTERVAL_MS ||
+            nextPaused !== uiStateRef.current.isPaused ||
+            Math.abs(videoTime - uiStateRef.current.currentTime) > 1;
+
+          if (shouldUpdateUi) {
+            uiStateRef.current = {
+              currentTime: videoTime,
+              duration: nextDuration,
+              isPaused: nextPaused,
+              lastUpdatedAt: now,
+            };
+            setCurrentTime(videoTime);
+            setDuration(nextDuration);
+            setIsPaused(nextPaused);
+          }
+        }
+
+        const sampleCount = revealSamplesRef.current.length;
+        const autoMode = autoScratchRef.current.enabled;
+        const canClaim =
+          !useBodySymbolsRef.current ||
+          revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        const hideForeground =
+          claimedRef.current ||
+          (canClaim &&
+            isGarmentFullyRevealed(
+              progressRef.current,
+              revealedCountRef.current,
+              sampleCount,
+              autoMode,
+            ));
+        if (hideForeground && !claimedRef.current) {
+          claimedRef.current = true;
+          setClaimed(true);
+          tryResolveGameRef.current();
+        }
+        // Stop FG decode + rVFC once the performer layer is off-screen.
+        if (hideForeground) parkForegroundDecoder();
+
+        active.render(
+          bottomVideo,
+          foregroundVideo,
+          trackedSample,
+          showMeshRef.current,
+          camera,
+          hideForeground,
+          chromaKeyRef.current,
+          PRESENT_ZOOM,
+          // Body hunt (docked bar): half-rate bottom uploads; FG stays full rate.
+          useBodySymbolsRef.current && topBarPhaseRef.current === "docked",
+        );
+
+        // Skip body-marker transforms while the intro countdown covers the stage —
+        // markers aren't visible under the overlay, and recomputing 12 DOM styles
+        // every frame stacks on top of video decode + WebGL + the countdown Lottie.
+        const bodyPoints = trackedMeshNow?.symbolPoints;
+        const stage = stageRef.current;
+        const canvas = canvasRef.current;
+        if (
+          !showIntroCountdownRef.current &&
+          bodyPoints &&
+          bodyPoints.length === SYMBOL_SLOT_COUNT &&
+          trackedSample &&
+          stage &&
+          canvas
+        ) {
+          const layout = bodyMarkerLayoutRef.current;
+          if (
+            layout.framesUntilRefresh <= 0 ||
+            !layout.canvasRect ||
+            !layout.stageRect
+          ) {
+            layout.canvasRect = canvas.getBoundingClientRect();
+            layout.stageRect = stage.getBoundingClientRect();
+            layout.framesUntilRefresh = 8;
+          } else {
+            layout.framesUntilRefresh -= 1;
+          }
+          const canvasRect = layout.canvasRect;
+          const stageRect = layout.stageRect;
+          const remainingSymbols =
+            SYMBOL_SLOT_COUNT - revealedSymbolsRef.current;
+          const nowMs = performance.now();
+          const idleLongEnough =
+            !drawingRef.current &&
+            nowMs - huntHintActivityAtRef.current >= HINT_IDLE_MS;
+          const pulsarEligible =
+            useBodySymbolsRef.current &&
+            topBarPhaseRef.current === "docked" &&
+            !claimedRef.current &&
+            !isBodyScratchLocked() &&
+            remainingSymbols > 0 &&
+            remainingSymbols <= HINT_REMAINING_MAX &&
+            idleLongEnough;
+          const cycle = huntHintCycleRef.current;
+          if (!pulsarEligible) {
+            cycle.index = -1;
+            cycle.shownAt = 0;
+            cycle.phase = "show";
+          } else {
+            const revealed = revealedPointsRef.current;
+            if (cycle.phase === "gap") {
+              if (nowMs - cycle.shownAt >= HINT_PULSE_GAP_MS) {
+                cycle.index = pickNextUnfoundSymbol(revealed, cycle.index);
+                cycle.shownAt = nowMs;
+                cycle.phase = "show";
+              }
+            } else if (cycle.index < 0) {
+              cycle.index = pickNextUnfoundSymbol(revealed, -1);
               cycle.shownAt = nowMs;
               cycle.phase = "show";
+            } else if (revealed[cycle.index]) {
+              // Found while showing — clear, then gap before the next mark.
+              cycle.phase = "gap";
+              cycle.shownAt = nowMs;
+            } else if (nowMs - cycle.shownAt >= HINT_PULSE_DWELL_MS) {
+              cycle.phase = "gap";
+              cycle.shownAt = nowMs;
             }
-          } else if (cycle.index < 0) {
-            cycle.index = pickNextUnfoundSymbol(revealed, -1);
-            cycle.shownAt = nowMs;
-            cycle.phase = "show";
-          } else if (revealed[cycle.index]) {
-            // Found while showing — clear, then gap before the next mark.
-            cycle.phase = "gap";
-            cycle.shownAt = nowMs;
-          } else if (nowMs - cycle.shownAt >= HINT_PULSE_DWELL_MS) {
-            cycle.phase = "gap";
-            cycle.shownAt = nowMs;
           }
-        }
-        const activePulsarIndex =
-          pulsarEligible && cycle.phase === "show" ? cycle.index : -1;
-        for (let index = 0; index < SYMBOL_SLOT_COUNT; index += 1) {
-          const marker = bodyMarkerRefs.current[index];
-          const revealed = revealedPointsRef.current[index];
-          // Matches leave the body (fly to the top bar) — only misses stay mounted.
-          const visible = revealed && !bodyFindHitsRef.current[index];
-          if (!marker) continue;
-          // Writing an unchanged style value still dirties style for that
-          // element. Blindly re-assigning display + transform on all six markers
-          // cost ~1440 style recalcs/second even with nothing revealed, so track
-          // what was last written. Keyed on the element so a remount (new card,
-          // new session symbols) re-applies instead of trusting a stale cache.
-          let applied = bodyMarkerStyleRef.current[index];
-          if (!applied || applied.el !== marker) {
-            applied = { el: marker, transform: "", revealed: null };
-            bodyMarkerStyleRef.current[index] = applied;
-          }
-          if (applied.revealed !== visible) {
-            marker.style.display = visible ? "flex" : "none";
-            marker.classList.toggle("is-revealed", visible);
-            applied.revealed = visible;
-          }
-          // A hidden marker has no box — positioning it is invisible work.
-          if (!visible) continue;
-          const world = sampleMeshUvToWorld(
-            trackedSample,
-            bodyPoints[index].u,
-            bodyPoints[index].v,
-          );
-          const stagePos = worldPointToStageWithRects(
-            world,
-            canvasRect,
-            stageRect,
-            camera,
-          );
-          const transform = `translate(${stagePos.x}px, ${stagePos.y}px)`;
-          if (applied.transform !== transform) {
-            marker.style.transform = transform;
-            applied.transform = transform;
-          }
-        }
-
-        // One shared pulsar node — never more than one hint on screen.
-        const pulsar = huntPulsarRef.current;
-        const pulsarApplied = huntPulsarStyleRef.current;
-        const showPulsar =
-          activePulsarIndex >= 0 &&
-          !revealedPointsRef.current[activePulsarIndex];
-        if (pulsar) {
-          if (showPulsar) {
-            const pt = bodyPoints[activePulsarIndex];
-            const world = sampleMeshUvToWorld(trackedSample, pt.u, pt.v);
+          const activePulsarIndex =
+            pulsarEligible && cycle.phase === "show" ? cycle.index : -1;
+          for (let index = 0; index < SYMBOL_SLOT_COUNT; index += 1) {
+            const marker = bodyMarkerRefs.current[index];
+            const revealed = revealedPointsRef.current[index];
+            // Matches leave the body (fly to the top bar) — only misses stay mounted.
+            const visible = revealed && !bodyFindHitsRef.current[index];
+            if (!marker) continue;
+            // Writing an unchanged style value still dirties style for that
+            // element. Blindly re-assigning display + transform on all six markers
+            // cost ~1440 style recalcs/second even with nothing revealed, so track
+            // what was last written. Keyed on the element so a remount (new card,
+            // new session symbols) re-applies instead of trusting a stale cache.
+            let applied = bodyMarkerStyleRef.current[index];
+            if (!applied || applied.el !== marker) {
+              applied = { el: marker, transform: "", revealed: null };
+              bodyMarkerStyleRef.current[index] = applied;
+            }
+            if (applied.revealed !== visible) {
+              marker.style.display = visible ? "flex" : "none";
+              marker.classList.toggle("is-revealed", visible);
+              applied.revealed = visible;
+            }
+            // A hidden marker has no box — positioning it is invisible work.
+            if (!visible) continue;
+            const world = sampleMeshUvToWorld(
+              trackedSample,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+            );
             const stagePos = worldPointToStageWithRects(
               world,
               canvasRect,
@@ -2445,20 +2434,54 @@ export function ScratchPrototype() {
               camera,
             );
             const transform = `translate(${stagePos.x}px, ${stagePos.y}px)`;
-            if (
-              !pulsarApplied.active ||
-              pulsarApplied.index !== activePulsarIndex
-            ) {
-              pulsar.style.display = "flex";
-              pulsar.classList.add("is-active");
-              pulsarApplied.active = true;
-              pulsarApplied.index = activePulsarIndex;
+            if (applied.transform !== transform) {
+              marker.style.transform = transform;
+              applied.transform = transform;
             }
-            if (pulsarApplied.transform !== transform) {
-              pulsar.style.transform = transform;
-              pulsarApplied.transform = transform;
+          }
+
+          // One shared pulsar node — never more than one hint on screen.
+          const pulsar = huntPulsarRef.current;
+          const pulsarApplied = huntPulsarStyleRef.current;
+          const showPulsar =
+            activePulsarIndex >= 0 &&
+            !revealedPointsRef.current[activePulsarIndex];
+          if (pulsar) {
+            if (showPulsar) {
+              const pt = bodyPoints[activePulsarIndex];
+              const world = sampleMeshUvToWorld(trackedSample, pt.u, pt.v);
+              const stagePos = worldPointToStageWithRects(
+                world,
+                canvasRect,
+                stageRect,
+                camera,
+              );
+              const transform = `translate(${stagePos.x}px, ${stagePos.y}px)`;
+              if (
+                !pulsarApplied.active ||
+                pulsarApplied.index !== activePulsarIndex
+              ) {
+                pulsar.style.display = "flex";
+                pulsar.classList.add("is-active");
+                pulsarApplied.active = true;
+                pulsarApplied.index = activePulsarIndex;
+              }
+              if (pulsarApplied.transform !== transform) {
+                pulsar.style.transform = transform;
+                pulsarApplied.transform = transform;
+              }
+            } else if (pulsarApplied.active) {
+              pulsar.style.display = "none";
+              pulsar.classList.remove("is-active");
+              pulsarApplied.active = false;
+              pulsarApplied.index = -1;
+              pulsarApplied.transform = "";
             }
-          } else if (pulsarApplied.active) {
+          }
+        } else {
+          const pulsar = huntPulsarRef.current;
+          const pulsarApplied = huntPulsarStyleRef.current;
+          if (pulsar && pulsarApplied.active) {
             pulsar.style.display = "none";
             pulsar.classList.remove("is-active");
             pulsarApplied.active = false;
@@ -2466,17 +2489,6 @@ export function ScratchPrototype() {
             pulsarApplied.transform = "";
           }
         }
-      } else {
-        const pulsar = huntPulsarRef.current;
-        const pulsarApplied = huntPulsarStyleRef.current;
-        if (pulsar && pulsarApplied.active) {
-          pulsar.style.display = "none";
-          pulsar.classList.remove("is-active");
-          pulsarApplied.active = false;
-          pulsarApplied.index = -1;
-          pulsarApplied.transform = "";
-        }
-      }
       } catch (error) {
         console.error("Scratch render loop error", error);
       } finally {
@@ -3157,6 +3169,14 @@ export function ScratchPrototype() {
   }
   resetScratchRef.current = resetScratch;
 
+  function commitMotionCardResult(cardId: string, prize: number) {
+    let updated = recordMotionCardResult(cardId, prize);
+    if (!updated) return;
+    const settled = settlePackMotionCard(cardId);
+    if (settled) updated = settled;
+    setGameSession(updated);
+  }
+
   function beginCardTransitionHandoff(transition: CardTransitionState) {
     if (cardTransitionHandoffRef.current) return;
     cardTransitionHandoffRef.current = true;
@@ -3164,11 +3184,7 @@ export function ScratchPrototype() {
     setGameVideosReady(false);
     glRendererRef.current?.resetForeground();
     if (gameMode) {
-      const updated = recordMotionCardResult(
-        transition.finishedId,
-        transition.prize,
-      );
-      if (updated) setGameSession(updated);
+      commitMotionCardResult(transition.finishedId, transition.prize);
     }
 
     const nextCompleted = [
@@ -3233,8 +3249,7 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      const updated = recordMotionCardResult(finishedId, prize);
-      if (updated) setGameSession(updated);
+      commitMotionCardResult(finishedId, prize);
     }
 
     completedCardIdsRef.current = nextCompleted;
@@ -4148,20 +4163,9 @@ export function ScratchPrototype() {
 
   return (
     <main className="app-shell">
-      {cursorFx.fairyDust ? (
-        <FairyDustCursor
-          particleTypes={cursorFxParticleTypes}
-          particleSize={cursorFx.particleSize}
-          particleCount={cursorFx.particleCount}
-          gravity={cursorFx.gravity}
-          fadeSpeed={cursorFx.fadeSpeed}
-          initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
-          spawnEnabled={cursorFxSpawnActive}
-        />
-      ) : null}
       <section className="prototype">
         <div
-          ref={stageRef}
+          ref={setStageNode}
           className={`stage${gameResult ? " is-game-over" : ""}${
             topBarPhase === "showcase" ? " is-showcase-phase" : ""
           }${
@@ -4175,6 +4179,18 @@ export function ScratchPrototype() {
             introCover ? " is-intro-video-phase" : ""
           }${introLeaving ? " is-intro-revealing" : ""}`}
         >
+          {cursorFx.fairyDust && cursorHost ? (
+            <FairyDustCursor
+              element={cursorHost}
+              particleTypes={cursorFxParticleTypes}
+              particleSize={cursorFx.particleSize}
+              particleCount={cursorFx.particleCount}
+              gravity={cursorFx.gravity}
+              fadeSpeed={cursorFx.fadeSpeed}
+              initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
+              spawnEnabled={cursorFxSpawnActive}
+            />
+          ) : null}
           {glError ? (
             <div
               className="game-result game-result--static"
@@ -4490,12 +4506,16 @@ export function ScratchPrototype() {
               )}
             </button>
           </div>
-          {gameMode ? (
-            <a className="mobile-game-badge" href="/collection">
-              GAME {completedCardIds.length + (card ? 1 : 0)}/
-              {modelCards.length}
-              {gameSession ? ` · ${gameSession.photoPrizeTotal} photos` : ""}
-            </a>
+          {gameMode &&
+          modelCards.length > 0 &&
+          completedCardIds.length < modelCards.length ? (
+            <PackProgress
+              current={Math.min(
+                completedCardIds.length + 1,
+                modelCards.length,
+              )}
+              total={modelCards.length}
+            />
           ) : null}
           {/* Phones hide the dev panel, so surface compact controls on the stage
               itself. Hidden on desktop where the panel is used. */}

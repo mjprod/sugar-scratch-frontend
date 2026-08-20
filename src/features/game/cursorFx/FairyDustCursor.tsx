@@ -516,6 +516,7 @@ function FairyDustCursorImpl({
   return (
     <canvas
       ref={canvasRef}
+      className="fairy-dust-cursor"
       width={canvasSize.width}
       height={canvasSize.height}
       style={{

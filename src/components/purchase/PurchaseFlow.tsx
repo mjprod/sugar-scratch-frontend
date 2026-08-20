@@ -14,6 +14,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FoilPackFace } from "@/components/purchase/FoilPackFace";
+import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
+import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
@@ -214,6 +216,8 @@ export function PurchaseFlow({
   const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
     countUnopened(),
   );
+  const [tearTutorialFade, setTearTutorialFade] = useState(false);
+  const tearTutorialWasReady = useRef(false);
   useMarkPageReady(!buying || model !== null || stage !== "choose");
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
@@ -242,6 +246,20 @@ export function PurchaseFlow({
 
   useEffect(() => {
     if (stage === "expired") clearOpening();
+  }, [stage]);
+
+  useEffect(() => {
+    if (isScratchTutorialCompleted()) return;
+    if (stage === "ready") {
+      tearTutorialWasReady.current = true;
+      setTearTutorialFade(false);
+      return;
+    }
+    if (!tearTutorialWasReady.current) return;
+    tearTutorialWasReady.current = false;
+    setTearTutorialFade(true);
+    const id = window.setTimeout(() => setTearTutorialFade(false), 280);
+    return () => window.clearTimeout(id);
   }, [stage]);
 
   useEffect(() => {
@@ -544,7 +562,7 @@ export function PurchaseFlow({
     return markCurrentRevealed();
   }
 
-  async function startScratchNow() {
+  async function launchMotionScratch() {
     if (!session || savingLater) return;
     setSavingLater(true);
     trackScratchEvent("Scratch Now Selected", {
@@ -556,8 +574,9 @@ export function PurchaseFlow({
     try {
       const catalog = await loadGameCatalog();
       const modelId = model?.id ?? pack.packId;
+      const openingIds = session.cards.map((card) => card.id);
       const hand = resolveMotionHandFromIds(
-        session.cards.map((card) => card.id),
+        openingIds,
         catalog.motion,
         { modelId },
       );
@@ -568,22 +587,36 @@ export function PurchaseFlow({
         return;
       }
       unlockCountdownSound();
-      const created = startMotionSession(hand);
-      const allIds = session.cards.map((card) => card.id);
+      const openingCardIds = openingIds.slice(0, hand.length);
+      const openingToMotion = new Map(
+        openingCardIds.map((oid, index) => [oid, hand[index]!.id]),
+      );
+      const completedMotionIds = scratched
+        .map((oid) => openingToMotion.get(oid))
+        .filter((id): id is string => Boolean(id));
       const readyId = instanceId ?? pack.packId;
-      // Mark every fan card revealed so this pack leaves Ready-to-Scratch.
       upsertReadyToScratch({
         packId: readyId,
         packName: pack.packName,
         creator: pack.creator,
         session,
-        revealed: allIds,
+        revealed: scratched,
         coverUrl: packImage,
         themeName: pack.packName,
       });
-      // Awards coins / purchased-pack count / purchase seed via parent onComplete,
-      // and records collection (deduped by awardedIds) — same path as in-flow scratch.
-      settleRevealed(allIds);
+      const created = startMotionSession(hand, {
+        packScratch: {
+          readyPackId: readyId,
+          packName: pack.packName,
+          creator: pack.creator,
+          coverUrl: packImage,
+          themeName: pack.packName,
+          openingSession: session,
+          openingCardIds,
+          settledOpeningIds: [...scratched],
+        },
+        completedMotionIds,
+      });
       clearOpening();
       bumpInventory();
       navigateTo(motionPlayHref(created));
@@ -596,15 +629,24 @@ export function PurchaseFlow({
     }
   }
 
+  // Resume from My Collection — launch motion without replaying pack opening.
+  useEffect(() => {
+    if (pack.entry !== "scratch" || !session || autoLaunchScratchRef.current) {
+      return;
+    }
+    autoLaunchScratchRef.current = true;
+    void launchMotionScratch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
+  }, [pack.entry, session]);
+
   // Legacy openings saved on Cards Ready — skip that screen and launch the game.
   useEffect(() => {
     if (stage !== "cards-ready" || !session || autoLaunchScratchRef.current) {
       return;
     }
     autoLaunchScratchRef.current = true;
-    void startScratchNow();
-    // Intentionally once per mount/resume into cards-ready.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- startScratchNow closes over latest session
+    void launchMotionScratch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
   }, [stage, session]);
 
   function leaveSaved(destination?: () => void) {
@@ -782,7 +824,7 @@ export function PurchaseFlow({
                     : current,
                 );
               }}
-              onContinue={() => void startScratchNow()}
+              onContinue={() => void launchMotionScratch()}
             />
           ) : null}
 
@@ -936,6 +978,10 @@ export function PurchaseFlow({
           ) : null}
         </motion.div>
       </AnimatePresence>
+
+      {!isScratchTutorialCompleted() && (stage === "ready" || tearTutorialFade) ? (
+        <FirstPlayTutorial scene="tear" fading={tearTutorialFade} />
+      ) : null}
 
       {modal ? (
         <ModalShell onClose={() => setModal(null)}>
@@ -1203,6 +1249,8 @@ function ReadyStage({
     if (Math.abs(info.offset.x) > 100) onOpened();
   }
 
+  const requireTearDrag = !isScratchTutorialCompleted();
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
       <p className="text-[12px] font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
@@ -1222,10 +1270,11 @@ function ReadyStage({
           <FoilPackFace src={packImage} collection={collection} packLabel={packName} sealed>
             <motion.button
               type="button"
+              data-tutorial-target="tear"
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={tear}
-              onClick={onOpened}
+              onClick={requireTearDrag ? undefined : onOpened}
               className="absolute inset-x-3 top-[48%] z-10 flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
             >
               <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
@@ -1238,10 +1287,11 @@ function ReadyStage({
             <HolographicPackCard src={packImage} name={packName} badge="Sealed" interactive={false} />
             <motion.button
               type="button"
+              data-tutorial-target="tear"
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={tear}
-              onClick={onOpened}
+              onClick={requireTearDrag ? undefined : onOpened}
               className="absolute inset-x-3 top-[48%] flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
             >
               <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
@@ -1359,7 +1409,7 @@ function MotionRevealStage({
           onClick={onContinue}
           disabled={launching}
         >
-          {launching ? "Starting…" : "Continue"}
+          {launching ? "Starting…" : "Scratch Now"}
         </button>
       ) : null}
     </div>

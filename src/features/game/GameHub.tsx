@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BuyButton } from '@/features/reveal/components/BuyButton'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
@@ -12,6 +13,7 @@ import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
 import { useWallet } from '@/contexts/WalletContext'
+import { Paths } from '@/routes/Paths'
 import {
   beginPhotoPhase,
   clearGameSession,
@@ -19,8 +21,8 @@ import {
   loadGameSession,
   markWalletCredited,
   motionPlayHref,
-  navigateTo,
   photoPlayHref,
+  saveGameSession,
   startMotionSession,
   type GameSession,
 } from './modules/gameSession'
@@ -101,6 +103,7 @@ function motionHandToRevealCards(
 }
 
 export function GameHub() {
+  const navigate = useNavigate()
   const catalog = useCatalog()
   const { addDiamonds } = useWallet()
   const [phase, setPhase] = useState<Phase>('loading')
@@ -305,15 +308,15 @@ export function GameHub() {
     if (existing?.phase === 'motion' || existing?.phase === 'photo') {
       if (existing.phase === 'photo') {
         const started = beginPhotoPhase() ?? existing
-        navigateTo(photoPlayHref(started))
+        navigate(photoPlayHref(started))
         return
       }
-      navigateTo(motionPlayHref(existing, firstMissingMotionCardId(existing)))
+      navigate(motionPlayHref(existing, firstMissingMotionCardId(existing)))
       return
     }
     const created = startMotionSession(hand)
     setSession(created)
-    navigateTo(motionPlayHref(created))
+    navigate(motionPlayHref(created))
   }
 
   function playPhotoHand() {
@@ -325,7 +328,14 @@ export function GameHub() {
     unlockCountdownSound()
     const started = beginPhotoPhase() ?? current
     setSession(started)
-    navigateTo(photoPlayHref(started))
+    navigate(photoPlayHref(started))
+  }
+
+  function savePhotoCardsForLater() {
+    const current = loadGameSession()
+    if (!current || current.phase !== 'photo_reveal') return
+    saveGameSession(current)
+    navigate(Paths.collection)
   }
 
   function deleteGame() {
@@ -476,11 +486,20 @@ export function GameHub() {
           {phase === 'photo_reveal' &&
           session &&
           session.photoPrizeTotal > 0 ? (
-            <BuyButton
-              label="Scratch photos for diamonds"
-              onClick={playPhotoHand}
-              visible
-            />
+            <>
+              <BuyButton
+                label="Scratch Photo Cards"
+                onClick={playPhotoHand}
+                visible
+              />
+              <button
+                type="button"
+                className="game-hub-pack__link reveal-replay"
+                onClick={savePhotoCardsForLater}
+              >
+                Save for Later
+              </button>
+            </>
           ) : null}
 
           {phase === 'photo_reveal' &&
@@ -513,20 +532,7 @@ export function GameHub() {
                 Replay open
               </button>
             ) : null}
-            {phase === 'photo_reveal' &&
-            session &&
-            session.photoPrizeTotal > 0 &&
-            canDeal ? (
-              <button
-                type="button"
-                className="game-hub-pack__link reveal-replay"
-                disabled={!canDeal}
-                onClick={() => void startNewGame()}
-              >
-                New Game
-              </button>
-            ) : null}
-            {canDelete ? (
+            {canDelete && phase !== 'photo_reveal' ? (
               <button
                 type="button"
                 className="game-hub-pack__link game-hub-pack__link--danger"

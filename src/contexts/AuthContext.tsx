@@ -104,7 +104,7 @@ function applyRemoteUser(
     >;
   },
 ) {
-  createSession(user.email, user.provider);
+  createSession(user.email, user.provider, user.id);
   if (user.emailVerified) markEmailVerified();
   else clearEmailVerified();
   setters.setAuthed(true);
@@ -126,7 +126,7 @@ type AuthContextValue = {
   authed: boolean;
   guest: boolean;
   hasLoggedInBefore: boolean;
-  guestAuthLabel: "Log in" | "Sign up";
+  guestAuthLabel: "Sign in";
   profile: Omit<OnboardingData, "coins" | "diamonds">;
   setProfile: Dispatch<
     SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
@@ -248,10 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const guest = !authed;
-  const guestAuthLabel = returningUser ? "Log in" : "Sign up";
-  const guestAuthMode: AuthenticationSheetMode = returningUser
-    ? "login"
-    : "create-account";
+  const guestAuthLabel = "Sign in" as const;
 
   useEffect(() => {
     if (guest) {
@@ -308,6 +305,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [captureSecondaryReturn, navigate],
   );
 
+  const enterAfterOnboarding = useCallback(
+    (opts?: {
+      deferred?: ProtectedAction | null;
+      scrollToDailyReward?: boolean;
+    }) => {
+      const deferred = opts?.deferred ?? null;
+      if (deferred) {
+        navigate(Paths.home);
+        window.setTimeout(() => resumePending(deferred), 0);
+        return;
+      }
+      navigate(Paths.home, {
+        state: opts?.scrollToDailyReward
+          ? { scrollToDailyReward: true }
+          : undefined,
+      });
+    },
+    [navigate, resumePending],
+  );
+
   const applyRecommendationDecision = useCallback(
     (pendingAction: ProtectedAction | null) => {
       const decision = evaluateRecommendationEligibility({
@@ -327,21 +344,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      navigate(Paths.home, { state: { scrollToDailyReward: true } });
+      enterAfterOnboarding({ scrollToDailyReward: true });
     },
-    [navigate, resumePending],
+    [enterAfterOnboarding, navigate, resumePending],
   );
 
   const finishRecommendationAndResume = useCallback(() => {
     const deferred = pendingAfterRec;
     setPendingAfterRec(null);
-    navigate(Paths.home, {
-      state: deferred ? undefined : { scrollToDailyReward: true },
+    enterAfterOnboarding({
+      deferred,
+      scrollToDailyReward: !deferred,
     });
-    if (deferred) {
-      window.setTimeout(() => resumePending(deferred), 0);
-    }
-  }, [navigate, pendingAfterRec, resumePending]);
+  }, [enterAfterOnboarding, pendingAfterRec]);
 
   function applyUserFromEmail(email: string) {
     const local = email.split("@")[0] || "collector";
@@ -370,12 +385,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       setPending(action);
-      setAuthSheetMode(guestAuthMode);
+      setAuthSheetMode("login");
       setAuthSheetEmail("");
       setAuthOpen(true);
       return false;
     },
-    [authed, guestAuthMode, resumePending],
+    [authed, resumePending],
   );
 
   const requestTab = useCallback(
