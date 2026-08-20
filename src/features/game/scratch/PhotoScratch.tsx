@@ -2,6 +2,10 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
+  fetchCatalogPhotoCards,
+  type CatalogPhotoCard,
+} from "../shared/catalog";
+import {
   GarmentGLRenderer,
   MAX_PIXEL_RATIO,
   PRESENT_ZOOM,
@@ -59,19 +63,7 @@ const MID_LAYER_SRC = "/photo-scratch/mid.png";
 const FRONT_LAYER_SRC = "/photo-scratch/foreground.png";
 const MESH_SRC = "/photo-scratch/mesh.json";
 
-type PhotoScratchCardEntry = {
-  id: string;
-  label: string;
-  background: string;
-  bikini: string;
-  clothes: string;
-  mesh: string;
-  model_id?: string;
-  /** Catalog theme id — intro clips are shared across cards in the same theme. */
-  theme_id?: string;
-  /** One-time clip played before the player's first scratch on this theme. */
-  intro?: string;
-};
+type PhotoScratchCardEntry = CatalogPhotoCard;
 
 function readCardIdFromLocation(): string {
   if (typeof window === "undefined") return "";
@@ -79,12 +71,7 @@ function readCardIdFromLocation(): string {
 }
 
 async function fetchPhotoScratchIndex(): Promise<PhotoScratchCardEntry[]> {
-  const response = await fetch("/photo-scratch/index.json", {
-    cache: "no-store",
-  });
-  if (!response.ok) return [];
-  const data = (await response.json()) as { cards?: PhotoScratchCardEntry[] };
-  return data.cards ?? [];
+  return fetchCatalogPhotoCards();
 }
 
 const SCRATCH_RADIUS = 0.045;
