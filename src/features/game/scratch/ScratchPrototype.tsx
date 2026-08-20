@@ -1524,6 +1524,12 @@ export function ScratchPrototype() {
   const handStartCountdownOverIntroRef = useRef(false);
   /** One 3-2-1 per hand — later cards skip straight to play after the top bar. */
   const handCountdownDoneRef = useRef(false);
+  /**
+   * Resume after Save & Exit mid win-reveal: don't arm intro/countdown on the
+   * finished card under the restored overlay. Clear once selectedCardId moves on.
+   */
+  const deferIntroForPendingResultRef = useRef(false);
+  const pendingResultCardIdRef = useRef<string | null>(null);
   /** Keeps match locked until that over-intro countdown finishes. */
   const [handStartCountdownPending, setHandStartCountdownPending] =
     useState(false);
@@ -2024,6 +2030,25 @@ export function ScratchPrototype() {
       !entryReady
     ) {
       return;
+    }
+    if (deferIntroForPendingResultRef.current) {
+      // Still showing the finished card under a restored win/no-win overlay.
+      if (
+        pendingResultCardIdRef.current &&
+        selectedCardId === pendingResultCardIdRef.current
+      ) {
+        return;
+      }
+      // Advanced to the next card — force a fresh visit countdown.
+      deferIntroForPendingResultRef.current = false;
+      pendingResultCardIdRef.current = null;
+      handStartIntroDoneRef.current = false;
+      handCountdownDoneRef.current = false;
+      handStartCountdownOverIntroRef.current = false;
+      setHandStartCountdownPending(false);
+      setShowIntroCountdown(false);
+      showIntroCountdownRef.current = false;
+      setHandStartIntroResolved(false);
     }
     armHandStartIntro(selectedCardId, gameSession);
   }, [gameMode, gameSession, selectedCardId, themeIntrosReady, entryReady]);
@@ -2561,6 +2586,11 @@ export function ScratchPrototype() {
               : fromUrl && remaining.some((entry) => entry.id === fromUrl)
                 ? fromUrl
                 : (remaining[0]?.id ?? ordered[0]!.id);
+            if (pending) {
+              // Win/no-win overlay first — arm 3-2-1 only for the next card.
+              deferIntroForPendingResultRef.current = true;
+              pendingResultCardIdRef.current = pending.cardId;
+            }
             setSelectedCardId(startId);
             if (pending) {
               void loadGameCatalog().then((catalog) => {
@@ -3287,6 +3317,8 @@ export function ScratchPrototype() {
     clearPendingMotionResult();
     if (!result) return;
     if (result.current >= result.total) {
+      deferIntroForPendingResultRef.current = false;
+      pendingResultCardIdRef.current = null;
       void goToPhotoSummary();
       return;
     }

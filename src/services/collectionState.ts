@@ -65,25 +65,50 @@ function writeLedger(ledger: CollectionLedger) {
   }
 }
 
-function countReadyPhotoScratch(): number {
-  if (typeof window === "undefined") return 0;
+type StoredGameSession = {
+  phase?: string;
+  wonPhotoIds?: string[];
+  completedPhotoIds?: string[];
+  motionCardIds?: string[];
+  completedMotionIds?: string[];
+  packScratch?: { readyPackId?: string };
+};
+
+function readStoredGameSession(): StoredGameSession | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw =
       window.localStorage.getItem("sugar_scratchie_game_v1") ??
       window.sessionStorage.getItem("sugar_scratchie_game_v1");
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw) as {
-      phase?: string;
-      wonPhotoIds?: string[];
-      completedPhotoIds?: string[];
-    };
-    if (parsed.phase !== "photo_reveal" && parsed.phase !== "photo") return 0;
-    const won = parsed.wonPhotoIds ?? [];
-    const done = parsed.completedPhotoIds ?? [];
-    return won.filter((id) => !done.includes(id)).length;
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredGameSession;
   } catch {
+    return null;
+  }
+}
+
+function countReadyPhotoScratch(): number {
+  const parsed = readStoredGameSession();
+  if (!parsed) return 0;
+  if (parsed.phase !== "photo_reveal" && parsed.phase !== "photo") return 0;
+  const won = parsed.wonPhotoIds ?? [];
+  const done = parsed.completedPhotoIds ?? [];
+  return won.filter((id) => !done.includes(id)).length;
+}
+
+/** Mid-session motion left when readyToScratch inventory hasn't caught up. */
+function countOrphanMotionFromSession(): number {
+  const parsed = readStoredGameSession();
+  if (!parsed || parsed.phase !== "motion") return 0;
+  const remaining = (parsed.motionCardIds ?? []).filter(
+    (id) => !(parsed.completedMotionIds ?? []).includes(id),
+  );
+  if (remaining.length === 0) return 0;
+  const packId = parsed.packScratch?.readyPackId;
+  if (packId && listReadyToScratch().some((group) => group.id === packId)) {
     return 0;
   }
+  return remaining.length;
 }
 function slugId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
@@ -229,6 +254,7 @@ export function getCollectionPageState(): CollectionPageState {
   const unopenedPackCount = countUnopened();
   const unscratchedCardCount =
     listReadyToScratch().reduce((sum, group) => sum + group.count, 0) +
+    countOrphanMotionFromSession() +
     countReadyPhotoScratch();
   const ledger = readLedger();
   const creators = mergeStartedCreators(ledger);

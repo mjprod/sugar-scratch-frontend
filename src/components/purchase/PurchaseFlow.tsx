@@ -30,7 +30,7 @@ import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
-import { PACK_PHOTOS } from "@/lib/photos";
+import { PACK_PHOTOS, resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   isVideoSrc,
   loadModelProfile,
@@ -227,8 +227,13 @@ export function PurchaseFlow({
   const tearLocked = useRef(false);
   /** Skip pack opening when resuming from Collection Ready to Scratch. */
   const autoLaunchScratchRef = useRef(false);
-  const packImage =
-    session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
+  const packCoverUrl = resolveInventoryCoverUrl({
+    packId: pack.packId,
+    themeName: pack.packName,
+    creator: pack.creator,
+  });
+  /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
+  const packImage = session?.foilFaceUrl ?? packCoverUrl;
   const packDisplayName = session?.foilLabel ?? pack.packName;
   const cardImages = useMemo(() => {
     const faces = session?.cards
@@ -298,7 +303,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session,
       revealed: scratched,
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
   }, [
@@ -309,7 +314,7 @@ export function PurchaseFlow({
     pack.packId,
     pack.packName,
     pack.creator,
-    packImage,
+    packCoverUrl,
     instanceId,
   ]);
 
@@ -341,7 +346,7 @@ export function PurchaseFlow({
         packName: pack.packName,
         creator: pack.creator,
         count: quantity,
-        coverUrl: packImage,
+        coverUrl: packCoverUrl,
         themeName: pack.packName,
       });
       const first = owned[0];
@@ -428,7 +433,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session: next,
       revealed: [],
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
     bumpInventory();
@@ -464,7 +469,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session: session!,
       revealed: revealedIds,
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
@@ -525,7 +530,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session,
       revealed: revealedIds,
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
     trackScratchEvent("Scratch Progress Saved", {
@@ -618,7 +623,7 @@ export function PurchaseFlow({
         creator: pack.creator,
         session,
         revealed: scratched,
-        coverUrl: packImage,
+        coverUrl: packCoverUrl,
         themeName: pack.packName,
       });
       const created = startMotionSession(hand, {
@@ -626,7 +631,7 @@ export function PurchaseFlow({
           readyPackId: readyId,
           packName: pack.packName,
           creator: pack.creator,
-          coverUrl: packImage,
+          coverUrl: packCoverUrl,
           themeName: pack.packName,
           openingSession: session,
           openingCardIds,

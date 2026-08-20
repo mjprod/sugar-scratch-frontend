@@ -46,9 +46,12 @@ import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
 import {
   beginPhotoPhase,
+  firstMissingMotionCardId,
   loadGameSession,
+  motionPlayHref,
   photoPlayHref,
 } from "@/features/game/modules/gameSession";
+import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
 import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,
@@ -270,12 +273,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (action: ProtectedAction | null) => {
       if (!action) return;
       if (action.type === "scratch") {
+        // Collection / auth resume is a user gesture — unlock 3-2-1 audio so
+        // ScratchPrototype can skip Tap-to-play and arm the countdown.
+        unlockCountdownSound();
+        const session = loadGameSession();
+        if (session?.phase === "motion") {
+          navigate(
+            motionPlayHref(session, firstMissingMotionCardId(session)),
+          );
+          return;
+        }
         navigate(Paths.purchase(action.pack.packId), {
           state: { pack: { ...action.pack, entry: "scratch" as const } },
         });
         return;
       }
       if (action.type === "photo-scratch") {
+        unlockCountdownSound();
         const session = loadGameSession();
         if (session && (session.phase === "photo_reveal" || session.phase === "photo")) {
           const started = beginPhotoPhase() ?? session;

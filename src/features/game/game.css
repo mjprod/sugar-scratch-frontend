@@ -249,7 +249,7 @@
 
 .motion-win-reveal.is-fading {
   pointer-events: none;
-  animation: motion-win-fade-out 280ms ease-out forwards;
+  animation: motion-win-fade-out 180ms ease-out forwards;
 }
 
 .motion-win-reveal__backdrop {
@@ -258,7 +258,7 @@
   background: oklch(0.08 0.01 284 / 0.62);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  animation: motion-win-dim 220ms ease-out both;
+  animation: motion-win-dim 140ms ease-out both;
 }
 
 .motion-win-reveal__glow {
@@ -316,7 +316,7 @@
 
 .motion-win-reveal__header {
   text-align: center;
-  animation: motion-win-header-in 320ms ease-out both;
+  animation: motion-win-header-in 200ms ease-out both;
 }
 
 .motion-win-reveal__won {
@@ -344,8 +344,8 @@
   min-height: 168px;
   perspective: 900px;
   transition:
-    transform 420ms ease-in-out,
-    opacity 320ms ease-out;
+    transform 260ms ease-in-out,
+    opacity 200ms ease-out;
 }
 
 .motion-win-reveal__stage.is-minimizing {
@@ -361,8 +361,8 @@
   opacity: 0;
   transform: translateY(14px) scale(0.92);
   transition:
-    opacity 280ms ease-out,
-    transform 280ms ease-out;
+    opacity 180ms ease-out,
+    transform 180ms ease-out;
 }
 
 .motion-win-reveal__stage.is-count-1 .motion-win-reveal__card {
@@ -380,7 +380,7 @@
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 320ms ease-in-out;
+  transition: transform 200ms ease-in-out;
 }
 
 .motion-win-reveal__card.is-flipped .motion-win-reveal__flip {
@@ -388,7 +388,7 @@
 }
 
 .motion-win-reveal__card.is-flipped {
-  animation: motion-win-card-pop 360ms ease-out;
+  animation: motion-win-card-pop 220ms ease-out;
 }
 
 .motion-win-reveal__face {
@@ -450,7 +450,7 @@
   color: oklch(0.87 0.12 145);
   font-size: 13px;
   font-weight: 600;
-  animation: motion-win-header-in 280ms ease-out both;
+  animation: motion-win-header-in 180ms ease-out both;
 }
 
 .motion-win-reveal__mini {
@@ -465,8 +465,8 @@
   opacity: 0;
   transform: translateY(6px) scale(0.9);
   transition:
-    opacity 220ms ease-out,
-    transform 220ms ease-out;
+    opacity 140ms ease-out,
+    transform 140ms ease-out;
   pointer-events: none;
 }
 

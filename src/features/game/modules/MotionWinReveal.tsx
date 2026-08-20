@@ -18,7 +18,7 @@ type Phase =
   | "complete";
 
 const MAX_VISIBLE = 3;
-const SAFETY_MS = 6500;
+const SAFETY_MS = 3800;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -36,7 +36,7 @@ function PhotoLayers({ photo }: { photo: PhotoCard }) {
 }
 
 /**
- * Automatic ~5s Motion Card Win Reveal — presentation only.
+ * Automatic Motion Card Win Reveal (~2.5–3s) — presentation only.
  * Rewards must already be persisted before this mounts.
  */
 export function MotionWinReveal({
@@ -54,7 +54,7 @@ export function MotionWinReveal({
   const visible = photos.slice(0, MAX_VISIBLE);
   const extra = Math.max(0, count - visible.length);
   const reduced = prefersReducedMotion();
-  const durationMs = count <= 1 ? 4200 : 5000;
+  const durationMs = count <= 1 ? 2600 : 3000;
 
   function finish() {
     if (completedRef.current) return;
@@ -78,20 +78,20 @@ export function MotionWinReveal({
     };
 
     if (reduced) {
-      at(120, () => setPhase("appearing"));
-      at(300, () => setPhase("revealing"));
-      at(800, () => setPhase("confirmed"));
-      at(1400, () => setPhase("minimizing"));
-      at(2200, finish);
+      at(60, () => setPhase("appearing"));
+      at(150, () => setPhase("revealing"));
+      at(400, () => setPhase("confirmed"));
+      at(1000, () => setPhase("minimizing"));
+      at(1400, finish);
       at(SAFETY_MS, finish);
       return () => timers.forEach((id) => window.clearTimeout(id));
     }
 
-    at(300, () => setPhase("appearing"));
-    at(900, () => setPhase("revealing"));
+    at(150, () => setPhase("appearing"));
+    at(450, () => setPhase("revealing"));
 
     visible.forEach((_, index) => {
-      const start = 1300 + index * 220;
+      const start = 650 + index * 110;
       at(start, () => {
         setFlipped((prev) => {
           const next = [...prev];
@@ -101,9 +101,10 @@ export function MotionWinReveal({
       });
     });
 
-    const revealDone = 1300 + visible.length * 220 + 450;
-    at(Math.max(revealDone, 3200), () => setPhase("confirmed"));
-    at(Math.max(revealDone + 400, 3800), () => setPhase("minimizing"));
+    const revealDone = 650 + visible.length * 110 + 220;
+    // Hold confirmation briefly so it stays readable at 2× pace.
+    at(Math.max(revealDone, 1500), () => setPhase("confirmed"));
+    at(Math.max(revealDone + 700, 2200), () => setPhase("minimizing"));
     at(durationMs, finish);
     at(SAFETY_MS, finish);
 
@@ -113,7 +114,7 @@ export function MotionWinReveal({
 
   const showHeader =
     phase !== "entering" && phase !== "minimizing" && phase !== "complete";
-  const showConfirm = phase === "confirmed";
+  const showConfirm = phase === "confirmed" || phase === "minimizing";
   const showMini = phase === "minimizing" || phase === "complete";
   const fading = phase === "complete";
 
