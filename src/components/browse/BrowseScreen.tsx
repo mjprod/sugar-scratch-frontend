@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { PackLibrary } from "@/components/home/PackLibrary";
+import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
+import { useAuth } from "@/contexts/AuthContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
@@ -166,6 +169,7 @@ export function HomeScreen({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { guest } = useAuth();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
   const [category, setCategory] = useState<LeaderboardCategory>("all");
@@ -286,7 +290,7 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
+        className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-featured-coverflow is-loading" aria-hidden="true" />
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-6 px-5 lg:px-8">
@@ -323,7 +327,7 @@ export function HomeScreen({
   return (
     <section
       data-page-scroll
-      className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
+      className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
     >
       {showTutorial ? (
         <button
@@ -386,30 +390,68 @@ export function HomeScreen({
           </button>
         </div>
 
-        <section className="home-play-steps" aria-label="Steps to play placeholder">
-          steps to play placeholder
-        </section>
+        {guest ? <PlaySteps /> : null}
 
         <div className="hub-today-bento mt-8">
-          <div className="hub-today-bento-stack">
-            {onClaimDaily ? (
-              <section
-                className="hub-module hub-module--today"
-                aria-labelledby="daily-reward"
-              >
-          
-                <DailyRewardHero
-                  onClaimed={onClaimDaily}
-                  onClaimAttempt={onClaimAttempt}
-                />
-              </section>
-            ) : null}
+          {onClaimDaily ? (
+            <section
+              className="hub-module hub-module--today"
+              aria-labelledby="daily-reward"
+            >
+              <DailyRewardHero
+                onClaimed={onClaimDaily}
+                onClaimAttempt={onClaimAttempt}
+              />
+            </section>
+          ) : null}
 
+          <div className="hub-today-bento-stack">
             <ContinueCollecting
               items={home.continueCollecting}
               onOpen={openCollection}
               onSeeAllClick={() => setLibraryOpen(true)}
             />
+
+            <section
+              className="continue-collecting hub-upcoming-card"
+              aria-labelledby="browse-upcoming-heading"
+            >
+              <div className="continue-collecting-header">
+                <div className="continue-collecting-title-row">
+                  <CalendarDays
+                    className="continue-collecting-heart"
+                    aria-hidden="true"
+                  />
+                  <h2
+                    id="browse-upcoming-heading"
+                    className="continue-collecting-title"
+                  >
+                    Upcoming Events
+                  </h2>
+                </div>
+              </div>
+              <div className="hub-upcoming-empty">
+                <span className="hub-upcoming-empty-icon" aria-hidden="true">
+                  <CalendarDays className="size-5" />
+                </span>
+                <div className="hub-upcoming-empty-copy">
+                  <p className="hub-upcoming-empty-title">No live events right now.</p>
+                  <p className="hub-upcoming-empty-sub">Check back tomorrow.</p>
+                </div>
+                <span className="hub-upcoming-empty-atmosphere" aria-hidden="true" />
+              </div>
+              <div className="hub-upcoming-notify-wrap">
+                <div className="hub-upcoming-notify">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("pillPurpleCTA")}
+                    fillParent
+                    label="Notify Me"
+                    costAmount={null}
+                    fontSize={14}
+                  />
+                </div>
+              </div>
+            </section>
           </div>
 
           <aside className="hub-today-bento-reel" aria-label="Discover video reel">
@@ -440,31 +482,6 @@ export function HomeScreen({
             onViewFull={() => setLibraryOpen(true)}
           />
         </div>
-
-        <section
-          className="hub-module mt-10"
-          aria-labelledby="browse-upcoming-heading"
-        >
-          <div className="hub-section-row">
-            <h2
-              id="browse-upcoming-heading"
-              className="hub-section-label hub-section-label--upcoming"
-            >
-              <CalendarDays className="size-3.5" aria-hidden="true" />
-              Upcoming
-            </h2>
-          </div>
-          <div className="hub-upcoming-empty">
-            <span className="hub-upcoming-empty-icon" aria-hidden="true">
-              <CalendarDays className="size-5" />
-            </span>
-            <div className="hub-upcoming-empty-copy">
-              <p className="hub-upcoming-empty-title">No live events right now.</p>
-              <p className="hub-upcoming-empty-sub">Check back tomorrow.</p>
-            </div>
-            <span className="hub-upcoming-empty-atmosphere" aria-hidden="true" />
-          </div>
-        </section>
 
         <button
           type="button"

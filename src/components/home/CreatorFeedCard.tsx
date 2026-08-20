@@ -80,6 +80,7 @@ export function CreatorFeedCard({
   onBuy,
   onOpenCreator,
   videoRef,
+  buyCta = "squircleCTA",
 }: {
   item: HomeFeedCreator;
   active: boolean;
@@ -90,6 +91,7 @@ export function CreatorFeedCard({
   onBuy: () => void;
   onOpenCreator?: (creatorId: string) => void;
   videoRef: (node: HTMLVideoElement | null) => void;
+  buyCta?: "squircleCTA" | "pillGoldCTA";
 }) {
   const [burst, setBurst] = useState(false);
   const [heartBurst, setHeartBurst] = useState<HeartBurst | null>(null);
@@ -349,7 +351,7 @@ export function CreatorFeedCard({
         <div className="hf-actions">
           <div className="hf-buy">
             <CtaButton
-              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              {...ctaButtonPropsFromTemplate(buyCta)}
               fillParent
               label="Buy Pack"
               costAmount={item.diamondCost}

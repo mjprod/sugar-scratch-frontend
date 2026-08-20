@@ -140,7 +140,7 @@ export function SpotlightBanner() {
     <section
       ref={rootRef}
       className="hub-spotlight-band"
-      aria-label="Invite your favourite influencer to join"
+      aria-label="Want to see your favourite creator in Sugar Scratch"
     >
       <div ref={bgRef} className="hub-spotlight-band-layer hub-spotlight-band-bg">
         <img
@@ -176,7 +176,7 @@ export function SpotlightBanner() {
       >
         <div ref={brandRef} className="hub-spotlight-band-brand">
           <p className="hub-spotlight-band-copy">
-            Invite your favourite influencer to join
+            Want to see your favourite creator in
           </p>
           <img
             src="/svg/logoSugarScratch.svg"
@@ -189,7 +189,7 @@ export function SpotlightBanner() {
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
             fillParent
-            label="Send Invite"
+            label="Send them an invitation"
             costAmount={null}
             fontSize={14}
             onClick={() => setInviteOpen(true)}

@@ -64,6 +64,26 @@ export function DailyRewardHero({
       )}
       aria-labelledby="hub-daily-title"
     >
+      <div className="hub-daily-stage" aria-hidden="true">
+        <span className="hub-daily-stage-bloom" />
+        <span className="hub-daily-stage-particle is-a">
+          <Sparkles className="size-3" />
+        </span>
+        <span className="hub-daily-stage-particle is-b">
+          <DiamondLottie size={12} aria-hidden />
+        </span>
+        <span className="hub-daily-stage-particle is-c">
+          <Sparkles className="size-2.5" />
+        </span>
+        <span className="hub-daily-stage-particle is-d">
+          <DiamondLottie size={10} aria-hidden />
+        </span>
+        <div className="hub-daily-stage-object">
+          <Gift className="hub-daily-stage-gift" strokeWidth={1.35} />
+        </div>
+        <span className="hub-daily-stage-platform" />
+      </div>
+
       <div className="hub-daily-hero-body">
         <div className="hub-daily-hero-head">
           <h3 id="hub-daily-title" className="hub-daily-hero-title">
@@ -91,41 +111,22 @@ export function DailyRewardHero({
         )}
       </div>
 
-      <div className="hub-daily-stage" aria-hidden="true">
-        <span className="hub-daily-stage-bloom" />
-        <span className="hub-daily-stage-particle is-a">
-          <Sparkles className="size-3" />
-        </span>
-        <span className="hub-daily-stage-particle is-b">
-          <DiamondLottie size={12} aria-hidden />
-        </span>
-        <span className="hub-daily-stage-particle is-c">
-          <Sparkles className="size-2.5" />
-        </span>
-        <span className="hub-daily-stage-particle is-d">
-          <DiamondLottie size={10} aria-hidden />
-        </span>
-        <div className="hub-daily-stage-object">
-          <Gift className="hub-daily-stage-gift" strokeWidth={1.35} />
-        </div>
-        <span className="hub-daily-stage-platform" />
-      </div>
-
       <div className="hub-daily-hero-actions">
         {claimed ? (
-          <>
-            <p className="hub-daily-hero-sub">Come back tomorrow.</p>
-            <p className="hub-daily-hero-reset">
-              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-              Next reward in{" "}
-              <span className="tabular-nums">{countdown}</span>
-            </p>
-          </>
+          <p className="hub-daily-hero-reset">
+            <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+            Next reward in{" "}
+            <span className="tabular-nums">{countdown}</span>
+          </p>
         ) : (
           <>
+            <p className="hub-daily-hero-reset">
+              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+              Resets in <span className="tabular-nums">{countdown}</span>
+            </p>
             <div className="hub-daily-hero-cta">
               <CtaButton
-                {...ctaButtonPropsFromTemplate("pillGoldCTA")}
+                {...ctaButtonPropsFromTemplate("pillBlackCTA")}
                 fillParent
                 label={claiming ? "Claiming…" : "Claim Reward"}
                 costAmount={null}
@@ -135,10 +136,6 @@ export function DailyRewardHero({
                 onClick={handleClaim}
               />
             </div>
-            <p className="hub-daily-hero-reset">
-              <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-              Resets in <span className="tabular-nums">{countdown}</span>
-            </p>
           </>
         )}
       </div>

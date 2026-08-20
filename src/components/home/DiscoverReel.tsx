@@ -691,6 +691,7 @@ export function DiscoverReel({
                         item={item}
                         active={live && item.id === activeId}
                         warm={warm}
+                        buyCta="pillGoldCTA"
                         onLike={() => toggleLike(item.id)}
                         onEnsureLike={() => ensureLike(item.id)}
                         onBuy={() => {
