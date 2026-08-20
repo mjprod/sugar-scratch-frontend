@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { type ScratchReadyGroup, type UnopenedPack } from "@/services/collection";
-import { listUnopenedGroups } from "@/services/packInventory";
 import {
-  listReadyToScratch,
-  trackScratchEvent,
-} from "@/services/readyToScratch";
+  listAllReadyScratch,
+  listUnopenedPackShelf,
+} from "@/services/scratchResume";
+import { trackScratchEvent } from "@/services/readyToScratch";
 import { RevealInventoryTile } from "./RevealInventoryTile";
 
 type ReadySegment = "packs" | "scratch";
 
 /** Display-only: drop trailing " Pack" from theme labels. */
 function themeLabel(name: string) {
-  return name.replace(/\s+Pack$/i, "");
+  return name
+    .replace(/\s+Pack$/i, "")
+    .replace(/\s·\sMotion$/i, "")
+    .replace(/\s·\sPhotos$/i, "");
 }
 
 function defaultSegment(
@@ -39,11 +42,11 @@ export function ReadyToReveal({
   inventoryRevision?: number;
 }) {
   const packs = useMemo(
-    () => unopenedPacks ?? listUnopenedGroups(),
+    () => unopenedPacks ?? listUnopenedPackShelf(),
     [unopenedPacks, inventoryRevision],
   );
   const scratches = useMemo(
-    () => scratchGroups ?? listReadyToScratch(),
+    () => scratchGroups ?? listAllReadyScratch(),
     [scratchGroups, inventoryRevision],
   );
   const packCount = packs.reduce((sum, pack) => sum + pack.count, 0);
@@ -105,9 +108,14 @@ export function ReadyToReveal({
           scratchCount > 0 ? (
             scratches.map((group) => {
               const title = themeLabel(group.collectionName);
-              const qtyLabel = `${group.count} ${
-                group.count === 1 ? "Card Ready" : "Cards Ready"
-              }`;
+              const isPhoto = group.kind === "photo";
+              const qtyLabel = isPhoto
+                ? `${group.count} ${
+                    group.count === 1 ? "Photo Card" : "Photo Cards"
+                  }`
+                : `${group.count} ${
+                    group.count === 1 ? "Motion Card" : "Motion Cards"
+                  }`;
               return (
                 <RevealInventoryTile
                   key={group.id}
@@ -124,7 +132,8 @@ export function ReadyToReveal({
             <article className="collection-empty-panel ready-reveal-empty">
               <h3 className="collection-empty-title">No unscratched cards</h3>
               <p className="collection-empty-copy">
-                Open a pack to add cards here.
+                Opened packs you haven&apos;t finished, and Photo Cards waiting
+                to scratch, show up here.
               </p>
             </article>
           )
@@ -148,7 +157,7 @@ export function ReadyToReveal({
           <article className="collection-empty-panel ready-reveal-empty">
             <h3 className="collection-empty-title">No unopened packs</h3>
             <p className="collection-empty-copy">
-              Purchase packs from Discover to fill this shelf.
+              Sealed packs you haven&apos;t torn open yet appear here.
             </p>
           </article>
         )}

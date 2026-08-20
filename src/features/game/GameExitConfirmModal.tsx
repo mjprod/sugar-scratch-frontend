@@ -5,12 +5,14 @@ type GameExitConfirmModalProps = {
   open: boolean;
   onStay: () => void;
   onExit: () => void;
+  copy?: string;
 };
 
 export function GameExitConfirmModal({
   open,
   onStay,
   onExit,
+  copy = "Your progress is saved. You can continue scratching anytime.",
 }: GameExitConfirmModalProps) {
   const titleId = useId();
 
@@ -40,24 +42,22 @@ export function GameExitConfirmModal({
         aria-labelledby={titleId}
       >
         <h2 id={titleId} className="game-exit-modal__title">
-          Leave game?
+          Finish Later?
         </h2>
-        <p className="game-exit-modal__copy">
-          Your scratch progress is saved. Exit now or keep playing this round.
-        </p>
+        <p className="game-exit-modal__copy">{copy}</p>
         <button
           type="button"
           className="game-exit-modal__exit"
           onClick={onExit}
         >
-          Exit game
+          Save & Exit
         </button>
         <button
           type="button"
           className="game-exit-modal__stay"
           onClick={onStay}
         >
-          Keep scratching
+          Keep Scratching
         </button>
       </div>
     </div>,

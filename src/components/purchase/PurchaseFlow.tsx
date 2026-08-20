@@ -30,7 +30,7 @@ import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
-import { PACK_PHOTOS } from "@/lib/photos";
+import { PACK_PHOTOS, resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   isVideoSrc,
   loadModelProfile,
@@ -80,7 +80,11 @@ import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
 import {
   motionPlayHref,
   navigateTo,
+  photoPlayHref,
   startMotionSession,
+  loadGameSession,
+  loadGameSessionForPack,
+  activateGameSessionForPack,
 } from "@/features/game/modules/gameSession";
 import {
   loadGameCatalog,
@@ -223,10 +227,15 @@ export function PurchaseFlow({
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
-  /** Skip Cards Ready UI — launch motion game once (resume or stray stage). */
+  /** Skip pack opening when resuming from Collection Ready to Scratch. */
   const autoLaunchScratchRef = useRef(false);
-  const packImage =
-    session?.foilFaceUrl ?? PACK_PHOTOS[pack.packId] ?? PACK_PHOTOS.ep1;
+  const packCoverUrl = resolveInventoryCoverUrl({
+    packId: pack.packId,
+    themeName: pack.packName,
+    creator: pack.creator,
+  });
+  /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
+  const packImage = session?.foilFaceUrl ?? packCoverUrl;
   const packDisplayName = session?.foilLabel ?? pack.packName;
   const cardImages = useMemo(() => {
     const faces = session?.cards
@@ -296,7 +305,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session,
       revealed: scratched,
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
   }, [
@@ -307,7 +316,7 @@ export function PurchaseFlow({
     pack.packId,
     pack.packName,
     pack.creator,
-    packImage,
+    packCoverUrl,
     instanceId,
   ]);
 
@@ -339,7 +348,7 @@ export function PurchaseFlow({
         packName: pack.packName,
         creator: pack.creator,
         count: quantity,
-        coverUrl: packImage,
+        coverUrl: packCoverUrl,
         themeName: pack.packName,
       });
       const first = owned[0];
@@ -426,7 +435,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session: next,
       revealed: [],
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
     bumpInventory();
@@ -462,7 +471,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session: session!,
       revealed: revealedIds,
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
@@ -523,7 +532,7 @@ export function PurchaseFlow({
       creator: pack.creator,
       session,
       revealed: revealedIds,
-      coverUrl: packImage,
+      coverUrl: packCoverUrl,
       themeName: pack.packName,
     });
     trackScratchEvent("Scratch Progress Saved", {
@@ -595,13 +604,30 @@ export function PurchaseFlow({
         .map((oid) => openingToMotion.get(oid))
         .filter((id): id is string => Boolean(id));
       const readyId = instanceId ?? pack.packId;
+      const existing = loadGameSessionForPack(readyId);
+      if (
+        existing?.packScratch?.readyPackId === readyId &&
+        (existing.phase === "photo_reveal" || existing.phase === "done")
+      ) {
+        activateGameSessionForPack(readyId);
+        navigateTo("/game");
+        return;
+      }
+      if (
+        existing?.packScratch?.readyPackId === readyId &&
+        existing.phase === "photo"
+      ) {
+        activateGameSessionForPack(readyId);
+        navigateTo(photoPlayHref(existing));
+        return;
+      }
       upsertReadyToScratch({
         packId: readyId,
         packName: pack.packName,
         creator: pack.creator,
         session,
         revealed: scratched,
-        coverUrl: packImage,
+        coverUrl: packCoverUrl,
         themeName: pack.packName,
       });
       const created = startMotionSession(hand, {
@@ -609,7 +635,7 @@ export function PurchaseFlow({
           readyPackId: readyId,
           packName: pack.packName,
           creator: pack.creator,
-          coverUrl: packImage,
+          coverUrl: packCoverUrl,
           themeName: pack.packName,
           openingSession: session,
           openingCardIds,
@@ -638,16 +664,6 @@ export function PurchaseFlow({
     void launchMotionScratch();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
   }, [pack.entry, session]);
-
-  // Legacy openings saved on Cards Ready — skip that screen and launch the game.
-  useEffect(() => {
-    if (stage !== "cards-ready" || !session || autoLaunchScratchRef.current) {
-      return;
-    }
-    autoLaunchScratchRef.current = true;
-    void launchMotionScratch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
-  }, [stage, session]);
 
   function leaveSaved(destination?: () => void) {
     bumpInventory();
@@ -825,13 +841,28 @@ export function PurchaseFlow({
                 );
               }}
               onContinue={() => void launchMotionScratch()}
+              onSaveLater={() => scratchLater("decision")}
             />
           ) : null}
 
           {stage === "cards-ready" && session ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-              <Loader2 className="size-8 animate-spin text-white/50" />
-              <p className="mt-4 text-[14px] text-white/50">Starting…</p>
+            <div className="flex flex-1 flex-col items-center justify-end px-5 pb-10 text-center">
+              <button
+                type="button"
+                className="motion-reveal__continue"
+                onClick={() => void launchMotionScratch()}
+                disabled={savingLater}
+              >
+                {savingLater ? "Starting…" : "Scratch Now"}
+              </button>
+              <button
+                type="button"
+                className="motion-reveal__later"
+                onClick={() => scratchLater("decision")}
+                disabled={savingLater}
+              >
+                Save for Later
+              </button>
             </div>
           ) : null}
 
@@ -1317,6 +1348,7 @@ function MotionRevealStage({
   launching = false,
   onCards,
   onContinue,
+  onSaveLater,
 }: {
   modelId: string;
   girlName: string;
@@ -1329,6 +1361,7 @@ function MotionRevealStage({
   launching?: boolean;
   onCards: (cards: RevealCard[]) => void;
   onContinue: () => void;
+  onSaveLater: () => void;
 }) {
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null);
   const [ready, setReady] = useState(false);
@@ -1356,6 +1389,11 @@ function MotionRevealStage({
       cancelled = true;
     };
   }, [modelId]);
+
+  useEffect(() => {
+    if (!sequence.showPlay) return;
+    trackScratchEvent("Scratch Decision Shown", { packId: modelId });
+  }, [modelId, sequence.showPlay]);
 
   const cards = useMemo(() => {
     if (!ready) return [];
@@ -1403,14 +1441,24 @@ function MotionRevealStage({
         />
       </div>
       {sequence.showPlay ? (
-        <button
-          type="button"
-          className="motion-reveal__continue"
-          onClick={onContinue}
-          disabled={launching}
-        >
-          {launching ? "Starting…" : "Scratch Now"}
-        </button>
+        <div className="motion-reveal__cta">
+          <button
+            type="button"
+            className="motion-reveal__continue"
+            onClick={onContinue}
+            disabled={launching}
+          >
+            {launching ? "Starting…" : "Scratch Now"}
+          </button>
+          <button
+            type="button"
+            className="motion-reveal__later"
+            onClick={onSaveLater}
+            disabled={launching}
+          >
+            Save for Later
+          </button>
+        </div>
       ) : null}
     </div>
   );

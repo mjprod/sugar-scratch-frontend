@@ -1,4 +1,5 @@
 import { apiMutate } from "@/lib/api";
+import { upsertReadyToScratch } from "@/services/readyToScratch";
 import type { OpeningSession } from "@/services/purchase";
 import {
   loadGameCatalog,
@@ -20,6 +21,7 @@ export type PackScratchLink = {
 };
 
 export const GAME_SESSION_KEY = "sugar_scratchie_game_v1";
+const SESSIONS_STORE_KEY = "sugar_scratchie_sessions_v1";
 
 export type GameSessionPhase =
   | "motion"
@@ -47,6 +49,16 @@ export type GameSession = {
   walletCredited: boolean;
   /** Set when motion play continues a pack opening from PurchaseFlow. */
   packScratch?: PackScratchLink;
+  /** Photo Cards awarded by the Motion Card that just completed. */
+  lastMotionWinPhotoIds?: string[];
+  /** Result overlay waiting for Scratch Next / Save Remaining / photo summary. */
+  pendingMotionResult?: {
+    cardId: string;
+    photoIds: string[];
+    prize: number;
+    current: number;
+    total: number;
+  };
 };
 
 function isGameSession(value: unknown): value is GameSession {
@@ -63,7 +75,6 @@ function isGameSession(value: unknown): value is GameSession {
     Array.isArray(v.wonPhotoIds) &&
     Array.isArray(v.completedPhotoIds) &&
     typeof v.diamondTotal === "number" &&
-    // Older sessions omit the field; reject corrupted non-booleans.
     (v.walletCredited === undefined || typeof v.walletCredited === "boolean")
   );
 }
@@ -75,38 +86,169 @@ function normalizeGameSession(session: GameSession): GameSession {
   };
 }
 
-export function loadGameSession(): GameSession | null {
-  if (typeof window === "undefined") return null;
+type GameSessionStore = {
+  version: 1;
+  activeKey: string;
+  byKey: Record<string, GameSession>;
+};
+
+function isGameSessionStore(value: unknown): value is GameSessionStore {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    v.version === 1 &&
+    typeof v.activeKey === "string" &&
+    !!v.byKey &&
+    typeof v.byKey === "object"
+  );
+}
+
+function emptyStore(): GameSessionStore {
+  return { version: 1, activeKey: "hub", byKey: {} };
+}
+
+/** Storage bucket: pack readyPackId, or `hub` for GameHub-only sessions. */
+export function gameSessionStorageKey(session: GameSession): string {
+  return session.packScratch?.readyPackId ?? "hub";
+}
+
+function readStoreFromStorage(storage: Storage): GameSessionStore | null {
   try {
-    const raw = sessionStorage.getItem(GAME_SESSION_KEY);
+    const raw = storage.getItem(SESSIONS_STORE_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isGameSession(parsed) ? normalizeGameSession(parsed) : null;
+    if (!isGameSessionStore(parsed)) return null;
+    const byKey: Record<string, GameSession> = {};
+    for (const [key, value] of Object.entries(parsed.byKey)) {
+      if (isGameSession(value)) byKey[key] = normalizeGameSession(value);
+    }
+    return { version: 1, activeKey: parsed.activeKey, byKey };
   } catch {
     return null;
   }
 }
 
-export function saveGameSession(session: GameSession): void {
+function migrateLegacySingleSession(store: GameSessionStore): GameSessionStore {
+  if (Object.keys(store.byKey).length > 0 || typeof window === "undefined") {
+    return store;
+  }
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      const raw = storage.getItem(GAME_SESSION_KEY);
+      if (!raw) continue;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isGameSession(parsed)) continue;
+      const session = normalizeGameSession(parsed);
+      const key = gameSessionStorageKey(session);
+      return { version: 1, activeKey: key, byKey: { [key]: session } };
+    } catch {
+      continue;
+    }
+  }
+  return store;
+}
+
+function readStore(): GameSessionStore {
+  if (typeof window === "undefined") return emptyStore();
+  const store =
+    readStoreFromStorage(window.sessionStorage) ??
+    readStoreFromStorage(window.localStorage) ??
+    emptyStore();
+  return migrateLegacySingleSession(store);
+}
+
+function writeStore(store: GameSessionStore): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(GAME_SESSION_KEY, JSON.stringify(session));
+    const payload = JSON.stringify(store);
+    window.sessionStorage.setItem(SESSIONS_STORE_KEY, payload);
+    window.localStorage.setItem(SESSIONS_STORE_KEY, payload);
+    const active = store.byKey[store.activeKey];
+    if (active) {
+      const legacy = JSON.stringify(active);
+      window.sessionStorage.setItem(GAME_SESSION_KEY, legacy);
+      window.localStorage.setItem(GAME_SESSION_KEY, legacy);
+    } else {
+      window.sessionStorage.removeItem(GAME_SESSION_KEY);
+      window.localStorage.removeItem(GAME_SESSION_KEY);
+    }
   } catch {
     // Ignore quota / private mode.
   }
+}
+
+function setActiveStoreKey(key: string): GameSession | null {
+  const store = readStore();
+  const session = store.byKey[key];
+  if (!session) return null;
+  store.activeKey = key;
+  writeStore(store);
+  return session;
+}
+
+export function listStoredGameSessions(): GameSession[] {
+  return Object.values(readStore().byKey);
+}
+
+export function loadGameSessionForPack(readyPackId: string): GameSession | null {
+  return readStore().byKey[readyPackId] ?? null;
+}
+
+export function activateGameSessionForPack(readyPackId: string): GameSession | null {
+  return setActiveStoreKey(readyPackId);
+}
+
+export function loadGameSession(): GameSession | null {
+  const store = readStore();
+  return store.byKey[store.activeKey] ?? null;
+}
+
+export function saveGameSession(session: GameSession): void {
+  if (typeof window === "undefined") return;
+  const store = readStore();
+  const key = gameSessionStorageKey(session);
+  store.byKey[key] = session;
+  store.activeKey = key;
+  writeStore(store);
   void apiMutate("/api/me/game-session", {
     method: "PUT",
     body: JSON.stringify(session),
   }).catch(() => undefined);
 }
 
-export function clearGameSession(): void {
+export function clearGameSession(key?: string): void {
   if (typeof window === "undefined") return;
-  try {
-    sessionStorage.removeItem(GAME_SESSION_KEY);
-  } catch {
-    // ignore
+  const store = readStore();
+  const target = key ?? store.activeKey;
+  delete store.byKey[target];
+  const keys = Object.keys(store.byKey);
+  if (store.activeKey === target) {
+    store.activeKey = keys[0] ?? "hub";
   }
+  writeStore(store);
+}
+
+/** Keep opened-pack Ready to Scratch in sync with the live game session. */
+export function persistPackScratchInventory(session: GameSession): void {
+  const link = session.packScratch;
+  if (!link) return;
+  upsertReadyToScratch({
+    packId: link.readyPackId,
+    packName: link.packName,
+    creator: link.creator,
+    session: link.openingSession,
+    revealed: link.settledOpeningIds,
+    coverUrl: link.coverUrl,
+    themeName: link.themeName,
+  });
+}
+
+export function persistGameProgress(): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  saveGameSession(session);
+  persistPackScratchInventory(session);
+  return session;
 }
 
 export function isGameModeUrl(search = window.location.search): boolean {
@@ -124,6 +266,49 @@ export function startMotionSession(
   hand: ThemedMotionCard[],
   options?: StartMotionSessionOptions,
 ): GameSession {
+  const readyId = options?.packScratch?.readyPackId;
+  const existing = readyId
+    ? loadGameSessionForPack(readyId)
+    : readStore().byKey.hub ?? null;
+  if (
+    existing &&
+    readyId &&
+    existing.packScratch?.readyPackId === readyId &&
+    existing.phase !== "motion"
+  ) {
+    setActiveStoreKey(readyId);
+    return existing;
+  }
+  if (
+    existing &&
+    readyId &&
+    existing.packScratch?.readyPackId === readyId &&
+    existing.phase === "motion"
+  ) {
+    const completed = [
+      ...new Set([
+        ...existing.completedMotionIds,
+        ...(options?.completedMotionIds ?? []),
+      ]),
+    ];
+    const next: GameSession = {
+      ...existing,
+      completedMotionIds: completed,
+      packScratch: options?.packScratch
+        ? {
+            ...existing.packScratch,
+            ...options.packScratch,
+            settledOpeningIds:
+              options.packScratch.settledOpeningIds ??
+              existing.packScratch.settledOpeningIds,
+          }
+        : existing.packScratch,
+    };
+    saveGameSession(next);
+    persistPackScratchInventory(next);
+    return next;
+  }
+
   const first = hand[0];
   const session: GameSession = {
     version: 1,
@@ -216,24 +401,97 @@ export function recordMotionCardResult(
   return next;
 }
 
-/** After all motion cards: pick random photocards and move to reveal. */
+/** Assign Photo Cards for this Motion Card win and open the result overlay. */
+export async function awardMotionCardPhotos(
+  cardId: string,
+  prize: number,
+): Promise<GameSession | null> {
+  const session = loadGameSession();
+  if (!session) return null;
+  const total = Math.max(1, session.motionCardIds.length);
+  const current = Math.max(1, session.completedMotionIds.indexOf(cardId) + 1);
+  if (prize <= 0) {
+    const next: GameSession = {
+      ...session,
+      lastMotionWinPhotoIds: [],
+      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
+    };
+    saveGameSession(next);
+    persistPackScratchInventory(next);
+    return next;
+  }
+  try {
+    const catalog = await loadGameCatalog();
+    const theme = themeForMotionCard(session, cardId);
+    const picked = pickWonPhotocards(
+      catalog.photos,
+      prize,
+      theme ? [theme, ...session.themes] : session.themes,
+      session.wonPhotoIds,
+    );
+    const photoIds = picked.map((photo) => photo.id);
+    const next: GameSession = {
+      ...session,
+      wonPhotoIds: [...session.wonPhotoIds, ...photoIds],
+      lastMotionWinPhotoIds: photoIds,
+      pendingMotionResult: { cardId, photoIds, prize, current, total },
+    };
+    saveGameSession(next);
+    persistPackScratchInventory(next);
+    return next;
+  } catch {
+    const next: GameSession = {
+      ...session,
+      lastMotionWinPhotoIds: [],
+      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
+    };
+    saveGameSession(next);
+    persistPackScratchInventory(next);
+    return next;
+  }
+}
+
+export function clearPendingMotionResult(): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  if (!session.pendingMotionResult && !session.lastMotionWinPhotoIds?.length) {
+    return session;
+  }
+  const next: GameSession = {
+    ...session,
+    pendingMotionResult: undefined,
+  };
+  saveGameSession(next);
+  return next;
+}
+
+/** After all motion cards: keep awarded photos and move to Photo Card Summary. */
 export async function finishMotionHand(): Promise<GameSession | null> {
   const session = loadGameSession();
   if (!session) return null;
   if (session.phase !== "motion") return session;
 
-  const catalog = await loadGameCatalog();
-  const won = pickWonPhotocards(
-    catalog.photos,
-    session.photoPrizeTotal,
-    session.themes,
-  );
+  let wonPhotoIds = session.wonPhotoIds;
+  if (wonPhotoIds.length === 0 && session.photoPrizeTotal > 0) {
+    try {
+      const catalog = await loadGameCatalog();
+      wonPhotoIds = pickWonPhotocards(
+        catalog.photos,
+        session.photoPrizeTotal,
+        session.themes,
+      ).map((photo) => photo.id);
+    } catch {
+      wonPhotoIds = [];
+    }
+  }
   const next: GameSession = {
     ...session,
     phase: "photo_reveal",
-    wonPhotoIds: won.map((photo) => photo.id),
+    wonPhotoIds,
+    pendingMotionResult: undefined,
   };
   saveGameSession(next);
+  persistPackScratchInventory(next);
   return next;
 }
 

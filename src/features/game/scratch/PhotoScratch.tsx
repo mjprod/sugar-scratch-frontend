@@ -11,7 +11,7 @@ import {
   PRESENT_ZOOM,
   type ImageLayerCameras,
 } from "./glRenderer";
-import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
   finishPhotoHand,
@@ -2652,6 +2652,17 @@ export function PhotoScratch() {
               </div>
             ))}
           </div>
+          {playlist.length > 1 &&
+          completedCardIds.length < playlist.length &&
+          selectedCardId ? (
+            <PackProgress
+              current={Math.min(
+                completedCardIds.length + 1,
+                playlist.length,
+              )}
+              total={playlist.length}
+            />
+          ) : null}
           <div className="mobile-sound-wrap">
             <button
               type="button"

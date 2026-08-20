@@ -88,3 +88,39 @@ export const PREFERENCE_PHOTOS = [
   HOLO_PACKS.racingHolo,
   HOLO_PACKS.samuraiHolo,
 ] as const;
+
+/** Foil pack faces are often MP4 — those must not be used as <img> covers. */
+export function isProbablyVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url.trim());
+}
+
+/**
+ * Inventory tile cover: still image only.
+ * Rejects designed foil video URLs that were historically saved as coverUrl.
+ */
+export function resolveInventoryCoverUrl(input: {
+  coverUrl?: string | null;
+  packId?: string | null;
+  themeName?: string | null;
+  creator?: string | null;
+}): string {
+  const raw = input.coverUrl?.trim() ?? "";
+  if (raw && !isProbablyVideoUrl(raw)) return raw;
+
+  const packId = input.packId?.trim() ?? "";
+  if (packId && PACK_PHOTOS[packId]) return PACK_PHOTOS[packId];
+
+  const theme = (input.themeName ?? "").toLowerCase();
+  const creator = (input.creator ?? "").toLowerCase();
+  if (creator.includes("juliana") || theme.includes("juliana")) {
+    if (/fire|pack\s*1/.test(theme)) return MODEL_PACK_PHOTOS.julianaFiregirl;
+    if (/gym|pack\s*2/.test(theme)) return MODEL_PACK_PHOTOS.julianaGym;
+    if (/nurse|pack\s*3/.test(theme)) return MODEL_PACK_PHOTOS.julianaNurse;
+    if (/police|pack\s*4/.test(theme)) return MODEL_PACK_PHOTOS.julianaPolice;
+    if (/teach|pack\s*5/.test(theme)) return MODEL_PACK_PHOTOS.julianaTeacher;
+    return CREATOR_CARD_PHOTOS.juliana;
+  }
+
+  return PACK_PHOTOS.ep1;
+}
+

@@ -3,7 +3,7 @@
  * Survives navigation, refresh, and logout — ownership is not session-only.
  */
 import type { OpeningSession } from "./purchase";
-import { PACK_PHOTOS } from "../lib/photos";
+import { resolveInventoryCoverUrl } from "../lib/photos";
 
 export type PackStatus = "unopened" | "opened";
 export type CardRevealStatus = "unscratched" | "scratch-in-progress" | "revealed";
@@ -22,6 +22,8 @@ export type ReadyScratchPack = {
   savedAt: number;
 };
 
+export type ReadyScratchKind = "motion" | "photo";
+
 export type ReadyScratchGroup = {
   id: string;
   creatorId: string;
@@ -29,6 +31,7 @@ export type ReadyScratchGroup = {
   collectionName: string;
   count: number;
   coverUrl: string;
+  kind: ReadyScratchKind;
 };
 
 const KEY = "sugar.v8.readyToScratch";
@@ -95,7 +98,12 @@ export function upsertReadyToScratch(
     creator: input.creator,
     creatorId: input.creatorId ?? slugId(input.creator),
     themeName: input.themeName ?? input.packName,
-    coverUrl: input.coverUrl ?? PACK_PHOTOS[input.packId] ?? PACK_PHOTOS.ep1,
+    coverUrl: resolveInventoryCoverUrl({
+      coverUrl: input.coverUrl,
+      packId: input.packId,
+      themeName: input.themeName ?? input.packName,
+      creator: input.creator,
+    }),
     packStatus: "opened",
     session: input.session,
     revealed,
@@ -123,7 +131,13 @@ export function listReadyToScratch(): ReadyScratchGroup[] {
       creatorName: pack.creator,
       collectionName: pack.themeName,
       count: remainingCount(pack),
-      coverUrl: pack.coverUrl,
+      coverUrl: resolveInventoryCoverUrl({
+        coverUrl: pack.coverUrl,
+        packId: pack.packId,
+        themeName: pack.themeName,
+        creator: pack.creator,
+      }),
+      kind: "motion" as const,
     }))
     .filter((group) => group.count > 0);
 }

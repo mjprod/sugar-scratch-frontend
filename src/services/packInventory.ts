@@ -2,7 +2,7 @@
  * Persistent pack ownership. Purchase creates unopened instances immediately;
  * Tear Completion is the only path to opened (cards live in readyToScratch).
  */
-import { PACK_PHOTOS } from "../lib/photos";
+import { resolveInventoryCoverUrl } from "../lib/photos";
 import type { UnopenedPack } from "./collection";
 
 export type PackStatus = "unopened" | "opened";
@@ -90,8 +90,12 @@ export function addUnopenedFromPurchase(input: {
     );
   }
 
-  const coverUrl =
-    input.coverUrl ?? PACK_PHOTOS[input.catalogPackId] ?? PACK_PHOTOS.ep1;
+  const coverUrl = resolveInventoryCoverUrl({
+    coverUrl: input.coverUrl,
+    packId: input.catalogPackId,
+    themeName: input.themeName ?? input.packName,
+    creator: input.creator,
+  });
   const creatorId = slugId(input.creator);
   const themeName = input.themeName ?? input.packName;
   const created: OwnedPackInstance[] = Array.from(
@@ -148,7 +152,12 @@ export function listUnopenedGroups(): UnopenedPack[] {
       creator: pack.creator,
       creatorId: pack.creatorId,
       count: 1,
-      coverUrl: pack.coverUrl,
+      coverUrl: resolveInventoryCoverUrl({
+        coverUrl: pack.coverUrl,
+        packId: pack.catalogPackId,
+        themeName: pack.themeName,
+        creator: pack.creator,
+      }),
       catalogPackId: pack.catalogPackId,
       instanceIds: [pack.instanceId],
     });

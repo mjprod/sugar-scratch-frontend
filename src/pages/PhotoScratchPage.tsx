@@ -8,8 +8,7 @@ import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoS
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
 import {
-  loadGameSession,
-  saveGameSession,
+  persistGameProgress,
 } from "@/features/game/modules/gameSession";
 import "@/features/game/game.css";
 
@@ -42,8 +41,7 @@ export function PhotoScratchPage() {
   const gameMode = searchParams.get("game") === "1";
 
   function leaveGameForCollection() {
-    const session = loadGameSession();
-    if (session) saveGameSession(session);
+    persistGameProgress();
     setExitConfirmOpen(false);
     navigate(Paths.collection);
   }
@@ -73,6 +71,7 @@ export function PhotoScratchPage() {
         <FirstPlayTutorial scene="foil" />
         <GameExitConfirmModal
           open={exitConfirmOpen}
+          copy="Your progress is saved. Continue scratching whenever you're ready."
           onStay={() => setExitConfirmOpen(false)}
           onExit={leaveGameForCollection}
         />

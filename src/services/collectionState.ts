@@ -9,6 +9,7 @@ import {
   listOwnedPacks,
 } from "./packInventory";
 import { CREATOR_PHOTOS } from "../lib/photos";
+import { listStoredGameSessions } from "@/features/game/modules/gameSession";
 import { listReadyToScratch } from "./readyToScratch";
 import { apiFetch } from "../lib/api";
 
@@ -65,6 +66,32 @@ function writeLedger(ledger: CollectionLedger) {
   }
 }
 
+
+function countReadyPhotoScratch(): number {
+  return listStoredGameSessions().reduce((total, session) => {
+    if (session.phase !== "photo_reveal" && session.phase !== "photo") {
+      return total;
+    }
+    const won = session.wonPhotoIds ?? [];
+    const done = session.completedPhotoIds ?? [];
+    return total + won.filter((id) => !done.includes(id)).length;
+  }, 0);
+}
+
+/** Mid-session motion left when readyToScratch inventory hasn't caught up. */
+function countOrphanMotionFromSession(): number {
+  const shelfIds = new Set(listReadyToScratch().map((group) => group.id));
+  return listStoredGameSessions().reduce((total, session) => {
+    if (session.phase !== "motion") return total;
+    const remaining = (session.motionCardIds ?? []).filter(
+      (id) => !(session.completedMotionIds ?? []).includes(id),
+    );
+    if (remaining.length === 0) return total;
+    const packId = session.packScratch?.readyPackId;
+    if (packId && shelfIds.has(packId)) return total;
+    return total + remaining.length;
+  }, 0);
+}
 function slugId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
 }
@@ -142,6 +169,21 @@ export function recordRevealedCards(input: {
   writeLedger(ledger);
 }
 
+/** Photo Cards earned from a Motion Card win — owned before the result UI. */
+export function recordWonPhotoCards(input: {
+  count: number;
+  creatorId: string;
+  creatorName: string;
+}) {
+  if (input.count < 1) return;
+  recordRevealedCards({
+    count: input.count,
+    creatorId: input.creatorId,
+    creatorName: input.creatorName,
+    motionCount: 0,
+  });
+}
+
 export type CollectionPageState = {
   totalPurchasedPacks: number;
   unopenedPackCount: number;
@@ -192,10 +234,10 @@ function mergeStartedCreators(
 export function getCollectionPageState(): CollectionPageState {
   const owned = countOwnedPacks();
   const unopenedPackCount = countUnopened();
-  const unscratchedCardCount = listReadyToScratch().reduce(
-    (sum, group) => sum + group.count,
-    0,
-  );
+  const unscratchedCardCount =
+    listReadyToScratch().reduce((sum, group) => sum + group.count, 0) +
+    countOrphanMotionFromSession() +
+    countReadyPhotoScratch();
   const ledger = readLedger();
   const creators = mergeStartedCreators(ledger);
 

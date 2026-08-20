@@ -8,8 +8,7 @@ import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
 import {
-  loadGameSession,
-  saveGameSession,
+  persistGameProgress,
 } from "@/features/game/modules/gameSession";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
@@ -45,8 +44,7 @@ function ScratchGameEmbed() {
   const card = searchParams.get("card")?.trim() || "";
 
   function leaveGameForCollection() {
-    const session = loadGameSession();
-    if (session) saveGameSession(session);
+    persistGameProgress();
     setExitConfirmOpen(false);
     navigate(Paths.collection);
   }

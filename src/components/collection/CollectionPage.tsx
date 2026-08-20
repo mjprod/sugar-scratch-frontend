@@ -7,6 +7,7 @@ import {
 } from "@/services/collection";
 import { getCollectionPageState } from "@/services/collectionState";
 import type { PurchaseFlowPack } from "@/services/purchase";
+import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
 import { CardLibraryPreview } from "./CardLibraryPreview";
 import { CollectionEmptyState } from "./CollectionEmptyState";
 import { CollectionPlaceholder } from "./CollectionPlaceholder";
@@ -49,13 +50,16 @@ export function CollectionPage({
   );
 
   function openPack(pack: UnopenedPack) {
+    const target = resolveUnopenedOpenTarget(pack);
     onOpenPack({
-      packId: pack.id,
+      packId: target.catalogPackId,
       packName: pack.name,
       price: "Free",
       creator: pack.creator,
       entry: "open",
       unopenedPacks: pack.count,
+      instanceId: target.instanceId,
+      purchaseId: target.purchaseId,
     });
   }
 
