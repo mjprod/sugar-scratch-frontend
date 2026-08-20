@@ -259,6 +259,8 @@ export type LiquidGlassNavProps = {
   inboxUnreadCount?: number;
   /** Inbox is a utility route — no primary tab should stay selected. */
   inboxActive?: boolean;
+  /** Hide the mobile bottom dock (purchase keeps the top bar only). */
+  hideDock?: boolean;
 };
 
 /**
@@ -276,6 +278,7 @@ export function LiquidGlassNav({
   onOpenInbox,
   inboxUnreadCount = 0,
   inboxActive = false,
+  hideDock = false,
 }: LiquidGlassNavProps) {
   const { authed, guestAuthLabel } = useAuth();
   const desktopTabs = useMemo(
@@ -932,6 +935,7 @@ export function LiquidGlassNav({
     "nav-test",
     "liquid-glass-nav",
     hidden ? "is-chrome-hidden" : "",
+    hideDock ? "is-dock-hidden" : "",
     handoff === "to-desktop"
       ? "is-handoff-to-desktop"
       : handoff === "to-mobile"

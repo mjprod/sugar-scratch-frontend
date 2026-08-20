@@ -45,8 +45,8 @@ export function AppLayout() {
     return () => bindGameNavigate(null);
   }, [navigate]);
 
+  const isPurchase = location.pathname.startsWith("/purchase");
   const hideChrome =
-    location.pathname.startsWith("/purchase") ||
     location.pathname.startsWith("/recommend") ||
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/photo-scratch");
@@ -119,6 +119,7 @@ export function AppLayout() {
           onOpenInbox={showTopUtility ? openInbox : undefined}
           inboxUnreadCount={inboxUnread}
           inboxActive={onInbox}
+          hideDock={isPurchase}
         />
       ) : null}
 

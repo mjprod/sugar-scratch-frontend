@@ -9,7 +9,7 @@ import {
 } from "@/services/homepage";
 import { PackArt } from "./PackArt";
 
-const SLIDE = { duration: 0.28, ease: [0.32, 0.72, 0, 1] as const };
+const SLIDE = { type: "tween" as const, duration: 0.4, ease: [0.32, 0.72, 0, 1] };
 
 export function PackLibrary({
   open,
@@ -69,20 +69,18 @@ export function PackLibrary({
   return createPortal(
     <AnimatePresence>
       {open ? (
-        <div
-          className="fixed inset-0 z-[1100] flex h-[100dvh] items-start justify-center overflow-hidden"
+        <motion.div
+          key="pack-library"
+          className="pack-library-overlay fixed inset-0 z-[1100] flex h-[100dvh] items-start justify-center overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Pack library"
+          initial={reduce ? false : { y: "100%" }}
+          animate={{ y: 0 }}
+          exit={reduce ? undefined : { y: "100%" }}
+          transition={SLIDE}
         >
-          <motion.div
-            key="pack-library-panel"
-            className="pack-library-panel mx-auto mt-[8dvh] flex h-[calc(100dvh-8dvh)] max-h-[84dvh] w-full flex-col lg:h-auto lg:max-w-[60rem]"
-            initial={reduce ? false : { y: 72 }}
-            animate={{ y: 0 }}
-            exit={reduce ? undefined : { y: 72 }}
-            transition={SLIDE}
-          >
+          <div className="pack-library-panel mx-auto mt-[8dvh] flex h-[calc(100dvh-8dvh)] max-h-[84dvh] w-full flex-col lg:h-auto lg:max-w-[60rem]">
             <div className="flex items-center justify-between px-5 py-3">
               <h2 className="text-[24px] font-bold tracking-[-0.02em]">All Packs</h2>
               <button
@@ -149,8 +147,8 @@ export function PackLibrary({
                 </div>
               )}
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       ) : null}
     </AnimatePresence>,
     document.body,
