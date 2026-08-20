@@ -1,16 +1,22 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
+import { GameExitConfirmModal } from "@/features/game/GameExitConfirmModal";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
+import {
+  loadGameSession,
+  saveGameSession,
+} from "@/features/game/modules/gameSession";
 import "@/features/game/game.css";
 
 export function PhotoScratchPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   useLayoutEffect(() => {
     if (typeof document === "undefined") return;
@@ -35,6 +41,13 @@ export function PhotoScratchPage() {
   const model = searchParams.get("model")?.trim() || "";
   const gameMode = searchParams.get("game") === "1";
 
+  function leaveGameForCollection() {
+    const session = loadGameSession();
+    if (session) saveGameSession(session);
+    setExitConfirmOpen(false);
+    navigate(Paths.collection);
+  }
+
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
@@ -42,10 +55,10 @@ export function PhotoScratchPage() {
           type="button"
           className="stage-game__exit"
           data-tutorial-target="collection"
-          aria-label={gameMode ? "Back to game" : "Back to collection"}
+          aria-label={gameMode ? "Leave game" : "Back to collection"}
           onClick={() => {
             if (gameMode) {
-              navigate(Paths.game);
+              setExitConfirmOpen(true);
               return;
             }
             const motionCardId = card
@@ -58,6 +71,11 @@ export function PhotoScratchPage() {
         </button>
         <PhotoScratch key={card || "default"} />
         <FirstPlayTutorial scene="foil" />
+        <GameExitConfirmModal
+          open={exitConfirmOpen}
+          onStay={() => setExitConfirmOpen(false)}
+          onExit={leaveGameForCollection}
+        />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@
  */
 
 import { loadModels, profileFromModel, type BackendModel } from "./models";
+import { isFeedFavourite } from "./feedFavourites";
 
 export type HomeFeedCreator = {
   id: string;
@@ -247,7 +248,10 @@ export async function fetchHomeFeedPage(
     items.push({
       ...seed,
       id: `${seed.id}__${pageIndex}`,
-      liked: false,
+      liked: isFeedFavourite({
+        id: `${seed.id}__${pageIndex}`,
+        creatorId: seed.creatorId,
+      }),
     });
   }
 

@@ -1,4 +1,5 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { settlePackMotionCard } from "@/services/packMotionSettle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
@@ -1259,6 +1260,61 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
     sparse.push(...densifyScratchPath(line.points, AUTO_SCRATCH_PATH_STEP_UV));
   }
   return sparse;
+}
+
+function PackProgress({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
+  if (total <= 0 || current < 1 || current > total) return null;
+  const remaining = total - current;
+  const isFinal = remaining === 0;
+  const stack = Math.min(remaining, 4);
+
+  return (
+    <div
+      className={["pack-progress", isFinal ? "is-final" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      role="status"
+      aria-label={
+        isFinal
+          ? `Final card, card ${current} of ${total}`
+          : `${remaining} left, card ${current} of ${total}`
+      }
+    >
+      {isFinal ? (
+        <span className="pack-progress__spark" aria-hidden="true">
+          ✦
+        </span>
+      ) : (
+        <span
+          key={remaining}
+          className="pack-progress__stack"
+          aria-hidden="true"
+        >
+          {Array.from({ length: stack }, (_, i) => (
+            <span
+              key={i}
+              className="pack-progress__card"
+              style={{ "--i": i } as CSSProperties}
+            />
+          ))}
+        </span>
+      )}
+      <div className="pack-progress__copy">
+        <p className="pack-progress__remain">
+          {isFinal ? "FINAL CARD" : `${remaining} LEFT`}
+        </p>
+        <p className="pack-progress__pos">
+          CARD {current} OF {total}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function ScratchPrototype() {
@@ -3180,16 +3236,20 @@ export function ScratchPrototype() {
   }
   resetScratchRef.current = resetScratch;
 
+  function commitMotionCardResult(cardId: string, prize: number) {
+    let updated = recordMotionCardResult(cardId, prize);
+    if (!updated) return;
+    const settled = settlePackMotionCard(cardId);
+    if (settled) updated = settled;
+    setGameSession(updated);
+  }
+
   function finishCardTransition(transition: CardTransitionState) {
     cardTransitionActiveRef.current = false;
     setCardTransition(null);
 
     if (gameMode) {
-      const updated = recordMotionCardResult(
-        transition.finishedId,
-        transition.prize,
-      );
-      if (updated) setGameSession(updated);
+      commitMotionCardResult(transition.finishedId, transition.prize);
     }
 
     const nextCompleted = [
@@ -3245,8 +3305,7 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      const updated = recordMotionCardResult(finishedId, prize);
-      if (updated) setGameSession(updated);
+      commitMotionCardResult(finishedId, prize);
     }
 
     completedCardIdsRef.current = nextCompleted;
@@ -4501,12 +4560,16 @@ export function ScratchPrototype() {
               )}
             </button>
           </div>
-          {gameMode ? (
-            <a className="mobile-game-badge" href="/collection">
-              GAME {completedCardIds.length + (card ? 1 : 0)}/
-              {modelCards.length}
-              {gameSession ? ` · ${gameSession.photoPrizeTotal} photos` : ""}
-            </a>
+          {gameMode &&
+          modelCards.length > 0 &&
+          completedCardIds.length < modelCards.length ? (
+            <PackProgress
+              current={Math.min(
+                completedCardIds.length + 1,
+                modelCards.length,
+              )}
+              total={modelCards.length}
+            />
           ) : null}
           {/* Phones hide the dev panel, so surface compact controls on the stage
               itself. Hidden on desktop where the panel is used. */}

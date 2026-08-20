@@ -117,6 +117,8 @@ body[data-theme="v8"][data-liquid-nav="mobile"] .app-layout--hud .top-nav-mobile
 }
 
 /* Clearance: desktop top bar vs mobile HUD height */
+body[data-theme="v8"][data-liquid-nav="desktop"],
+body[data-theme="v8"][data-liquid-nav="to-desktop"],
 body[data-theme="v8"][data-liquid-nav="desktop"] .app-layout--hud,
 body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   --app-diamond-offset: calc(

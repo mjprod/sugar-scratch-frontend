@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
@@ -98,6 +99,7 @@ export function CreatorFeedCard({
   const likeBtnRef = useRef<HTMLButtonElement>(null);
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
   const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
+  const likedViaTapRef = useRef(0);
   const burstIdRef = useRef(0);
   const tags = feedVisibleTags(item.tags);
   const packLabel = feedPackLabel(item.packName);
@@ -187,7 +189,14 @@ export function CreatorFeedCard({
   function handleDoubleTapLike(clientX: number, clientY: number) {
     if (!active || gestureLayerBlocked()) return;
     if (!onEnsureLike()) return;
+    likedViaTapRef.current = performance.now();
     playHeartBurst("media", clientX, clientY);
+  }
+
+  function onCardDoubleClick(e: ReactMouseEvent<HTMLElement>) {
+    if (isExcludedControl(e.target)) return;
+    if (performance.now() - likedViaTapRef.current < 400) return;
+    handleDoubleTapLike(e.clientX, e.clientY);
   }
 
   function onCardPointerDown(e: ReactPointerEvent<HTMLElement>) {
@@ -251,6 +260,7 @@ export function CreatorFeedCard({
       onPointerDown={onCardPointerDown}
       onPointerUp={onCardPointerUp}
       onPointerCancel={onCardPointerCancel}
+      onDoubleClick={onCardDoubleClick}
     >
       <div className={["hf-media", active ? "is-active" : ""].join(" ")}>
         {item.mediaType === "video" && item.videoUrl ? (
