@@ -59,6 +59,9 @@ import {
 import { inferThemeFromLabel } from "../modules/session";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
+  fetchCatalogMotionCards,
+} from "../shared/catalog";
+import {
   loadVideoSrc,
   playThemeIntro,
   releaseMediaElement,
@@ -324,8 +327,6 @@ type Card = {
   photos?: Array<{ id: string; src: string }>;
 };
 
-const CARDS_INDEX_SRC = "/cards/index.json";
-
 const DEFAULT_CARDS: Card[] = [
   {
     id: "original",
@@ -377,58 +378,6 @@ const DEFAULT_CARDS: Card[] = [
   },
 ];
 
-type CardsIndexResponse = {
-  cards?: Array<{
-    id: string;
-    label: string;
-    bottom: string;
-    foreground: string;
-    mesh: string;
-    chroma_key?: boolean;
-    model_id?: string;
-    theme_id?: string;
-    sort_order?: number;
-    photos?: Array<{ id: string; src: string }>;
-  }>;
-};
-
-function cardUsesChromaKey(
-  id: string,
-  chromaKey: boolean | undefined,
-): boolean {
-  if (typeof chromaKey === "boolean") return chromaKey;
-  return id === "original";
-}
-
-function parseCardsIndex(data: CardsIndexResponse): Card[] | null {
-  if (!Array.isArray(data.cards) || data.cards.length === 0) return null;
-  const cards: Card[] = [];
-  for (const entry of data.cards) {
-    if (
-      typeof entry.id !== "string" ||
-      typeof entry.label !== "string" ||
-      typeof entry.bottom !== "string" ||
-      typeof entry.foreground !== "string" ||
-      typeof entry.mesh !== "string"
-    ) {
-      continue;
-    }
-    cards.push({
-      id: entry.id,
-      label: entry.label,
-      bottom: entry.bottom,
-      foreground: entry.foreground,
-      mesh: entry.mesh,
-      chromaKey: cardUsesChromaKey(entry.id, entry.chroma_key),
-      model_id: entry.model_id,
-      theme_id: entry.theme_id,
-      sort_order: typeof entry.sort_order === "number" ? entry.sort_order : 0,
-      photos: entry.photos,
-    });
-  }
-  return cards.length > 0 ? cards : null;
-}
-
 function playlistCardsForModel(cards: Card[], modelId: string): Card[] {
   return cards
     .filter((entry) => entry.model_id === modelId)
@@ -455,10 +404,8 @@ function playlistCardsForGameSession(
 
 async function loadCards(): Promise<Card[]> {
   try {
-    const response = await fetch(CARDS_INDEX_SRC, { cache: "no-store" });
-    if (!response.ok) return DEFAULT_CARDS;
-    const data = (await response.json()) as CardsIndexResponse;
-    return parseCardsIndex(data) ?? DEFAULT_CARDS;
+    const cards = await fetchCatalogMotionCards();
+    return cards.length > 0 ? cards : DEFAULT_CARDS;
   } catch {
     return DEFAULT_CARDS;
   }
