@@ -1,8 +1,10 @@
 import type { HomeFeedCreator } from "./creatorFeed";
+import { getAuthUserId } from "./auth";
 
-const KEY = "sugar.v8.feedFavourites";
+const KEY_PREFIX = "sugar.v8.feedFavourites";
 
 export type FeedFavourite = {
+  /** Feed video instance id (includes page index suffix). */
   id: string;
   creatorId: string;
   creatorName: string;
@@ -13,13 +15,16 @@ export type FeedFavourite = {
   savedAt: number;
 };
 
-function favouriteId(item: { id: string; creatorId: string }) {
-  return item.creatorId || item.id;
+function storageKey(): string | null {
+  const userId = getAuthUserId();
+  return userId ? `${KEY_PREFIX}.${userId}` : null;
 }
 
 function read(): FeedFavourite[] {
+  const key = storageKey();
+  if (!key) return [];
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as FeedFavourite[];
     return Array.isArray(parsed) ? parsed : [];
@@ -29,8 +34,10 @@ function read(): FeedFavourite[] {
 }
 
 function write(items: FeedFavourite[]) {
+  const key = storageKey();
+  if (!key) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify(items));
+    localStorage.setItem(key, JSON.stringify(items));
   } catch {
     /* storage unavailable */
   }
@@ -40,16 +47,14 @@ export function listFeedFavourites(): FeedFavourite[] {
   return read().sort((a, b) => b.savedAt - a.savedAt);
 }
 
-export function isFeedFavourite(item: { id: string; creatorId: string }) {
-  const id = favouriteId(item);
-  return read().some((entry) => entry.id === id);
+export function isFeedFavourite(item: { id: string }) {
+  return read().some((entry) => entry.id === item.id);
 }
 
 export function addFeedFavourite(item: HomeFeedCreator) {
-  const id = favouriteId(item);
-  const items = read().filter((entry) => entry.id !== id);
+  const items = read().filter((entry) => entry.id !== item.id);
   items.unshift({
-    id,
+    id: item.id,
     creatorId: item.creatorId,
     creatorName: item.creatorName,
     packName: item.packName,
@@ -61,15 +66,14 @@ export function addFeedFavourite(item: HomeFeedCreator) {
   write(items);
 }
 
-export function removeFeedFavourite(item: { id: string; creatorId: string }) {
-  const id = favouriteId(item);
-  write(read().filter((entry) => entry.id !== id));
+export function removeFeedFavourite(item: { id: string }) {
+  write(read().filter((entry) => entry.id !== item.id));
 }
 
 export function withFavouriteLikes(items: HomeFeedCreator[]): HomeFeedCreator[] {
   const ids = new Set(read().map((entry) => entry.id));
   return items.map((item) => ({
     ...item,
-    liked: ids.has(favouriteId(item)),
+    liked: ids.has(item.id),
   }));
 }

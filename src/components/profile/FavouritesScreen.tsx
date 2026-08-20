@@ -31,9 +31,7 @@ export function FavouritesScreen({
       writeHomeFeedCache({
         ...cache,
         items: cache.items.map((entry) =>
-          (entry.creatorId || entry.id) === item.id
-            ? { ...entry, liked: false }
-            : entry,
+          entry.id === item.id ? { ...entry, liked: false } : entry,
         ),
       });
     }

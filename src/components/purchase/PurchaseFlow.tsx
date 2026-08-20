@@ -562,7 +562,7 @@ export function PurchaseFlow({
     return markCurrentRevealed();
   }
 
-  async function startScratchNow() {
+  async function launchMotionScratch() {
     if (!session || savingLater) return;
     setSavingLater(true);
     trackScratchEvent("Scratch Now Selected", {
@@ -574,8 +574,9 @@ export function PurchaseFlow({
     try {
       const catalog = await loadGameCatalog();
       const modelId = model?.id ?? pack.packId;
+      const openingIds = session.cards.map((card) => card.id);
       const hand = resolveMotionHandFromIds(
-        session.cards.map((card) => card.id),
+        openingIds,
         catalog.motion,
         { modelId },
       );
@@ -586,22 +587,36 @@ export function PurchaseFlow({
         return;
       }
       unlockCountdownSound();
-      const created = startMotionSession(hand);
-      const allIds = session.cards.map((card) => card.id);
+      const openingCardIds = openingIds.slice(0, hand.length);
+      const openingToMotion = new Map(
+        openingCardIds.map((oid, index) => [oid, hand[index]!.id]),
+      );
+      const completedMotionIds = scratched
+        .map((oid) => openingToMotion.get(oid))
+        .filter((id): id is string => Boolean(id));
       const readyId = instanceId ?? pack.packId;
-      // Mark every fan card revealed so this pack leaves Ready-to-Scratch.
       upsertReadyToScratch({
         packId: readyId,
         packName: pack.packName,
         creator: pack.creator,
         session,
-        revealed: allIds,
+        revealed: scratched,
         coverUrl: packImage,
         themeName: pack.packName,
       });
-      // Awards coins / purchased-pack count / purchase seed via parent onComplete,
-      // and records collection (deduped by awardedIds) — same path as in-flow scratch.
-      settleRevealed(allIds);
+      const created = startMotionSession(hand, {
+        packScratch: {
+          readyPackId: readyId,
+          packName: pack.packName,
+          creator: pack.creator,
+          coverUrl: packImage,
+          themeName: pack.packName,
+          openingSession: session,
+          openingCardIds,
+          settledOpeningIds: [...scratched],
+        },
+        completedMotionIds,
+      });
       clearOpening();
       bumpInventory();
       navigateTo(motionPlayHref(created));
@@ -614,15 +629,24 @@ export function PurchaseFlow({
     }
   }
 
+  // Resume from My Collection — launch motion without replaying pack opening.
+  useEffect(() => {
+    if (pack.entry !== "scratch" || !session || autoLaunchScratchRef.current) {
+      return;
+    }
+    autoLaunchScratchRef.current = true;
+    void launchMotionScratch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
+  }, [pack.entry, session]);
+
   // Legacy openings saved on Cards Ready — skip that screen and launch the game.
   useEffect(() => {
     if (stage !== "cards-ready" || !session || autoLaunchScratchRef.current) {
       return;
     }
     autoLaunchScratchRef.current = true;
-    void startScratchNow();
-    // Intentionally once per mount/resume into cards-ready.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- startScratchNow closes over latest session
+    void launchMotionScratch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- launchMotionScratch closes over latest session
   }, [stage, session]);
 
   function leaveSaved(destination?: () => void) {
@@ -809,7 +833,7 @@ export function PurchaseFlow({
                     : current,
                 );
               }}
-              onContinue={() => void startScratchNow()}
+              onContinue={() => void launchMotionScratch()}
             />
           ) : null}
 
@@ -1394,7 +1418,7 @@ function MotionRevealStage({
           onClick={onContinue}
           disabled={launching}
         >
-          {launching ? "Starting…" : "Continue"}
+          {launching ? "Starting…" : "Scratch Now"}
         </button>
       ) : null}
     </div>

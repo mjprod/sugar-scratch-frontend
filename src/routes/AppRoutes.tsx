@@ -17,6 +17,7 @@ import { ProfilePage } from "@/pages/ProfilePage";
 import { FavouritesPage } from "@/pages/FavouritesPage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
+import { WelcomePage } from "@/pages/WelcomePage";
 import { RecIntroPage } from "@/pages/RecIntroPage";
 import { RecSwipePage } from "@/pages/RecSwipePage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
@@ -95,6 +96,14 @@ export function AppRoutes() {
           element={
             <OnboardShell badge="Recommend · Ready">
               <RecCompletePage />
+            </OnboardShell>
+          }
+        />
+        <Route
+          path={Paths.welcome}
+          element={
+            <OnboardShell badge="Welcome">
+              <WelcomePage />
             </OnboardShell>
           }
         />

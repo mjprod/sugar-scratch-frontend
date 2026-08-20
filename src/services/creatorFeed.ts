@@ -250,7 +250,6 @@ export async function fetchHomeFeedPage(
       id: `${seed.id}__${pageIndex}`,
       liked: isFeedFavourite({
         id: `${seed.id}__${pageIndex}`,
-        creatorId: seed.creatorId,
       }),
     });
   }
