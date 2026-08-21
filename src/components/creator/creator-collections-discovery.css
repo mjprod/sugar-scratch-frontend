@@ -132,6 +132,7 @@
 .ccd-nav-copy {
   display: flex;
   min-width: 0;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
 }
@@ -157,6 +158,30 @@
   line-height: 1.2;
 }
 
+.ccd-nav-reward {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: oklch(1 0 0 / 0.7);
+}
+
+.ccd-nav-reward.is-claimable {
+  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  background: color-mix(
+    in oklch,
+    var(--color-accent, oklch(0.656 0.212 354.31)) 16%,
+    transparent
+  );
+}
+
+.ccd-nav-reward.is-claimed {
+  color: oklch(0.78 0.12 145);
+  background: oklch(0.78 0.12 145 / 0.12);
+}
+
 /* —— Center: Theme hero —— */
 .ccd-hero {
   position: relative;
@@ -164,7 +189,7 @@
   flex-direction: column;
   justify-content: flex-end;
   min-height: 340px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid oklch(1 0 0 / 0.1);
   border-radius: 18px;
   background: oklch(0.14 0.01 285);
@@ -183,6 +208,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: inherit;
 }
 
 .ccd-hero-art--empty {
@@ -193,12 +219,22 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  border-radius: inherit;
   background: linear-gradient(
     180deg,
     oklch(0 0 0 / 0.15) 0%,
     oklch(0 0 0 / 0.25) 35%,
-    oklch(0.12 0.01 285 / 0.88) 100%
+    oklch(0.12 0.01 285 / 0.92) 100%
   );
+}
+
+.ccd-hero-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px 20px;
 }
 
 .ccd-hero-top {
@@ -228,56 +264,261 @@
   cursor: default;
 }
 
-.ccd-hero-copy {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 22px 20px 20px;
-}
-
 .ccd-hero-title {
   margin: 0;
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  min-width: 0;
+  color: oklch(1 0 0);
   font-size: clamp(22px, 2.6vw, 28px);
   font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
 
-.ccd-hero-meta {
-  margin: 0;
-  color: oklch(1 0 0 / 0.68);
-  font-size: 13px;
-  font-weight: 500;
+.ccd-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  max-width: 100%;
 }
 
-.ccd-hero-desc {
-  margin: 2px 0 4px;
-  max-width: 34ch;
-  color: oklch(1 0 0 / 0.78);
-  font-size: 14px;
-  font-weight: 450;
-  line-height: 1.45;
+.ccd-hero.is-just-complete {
+  box-shadow: 0 0 0 1px
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 35%,
+      transparent
+    );
+}
+
+/* Collection Progress + Theme Reward — compact overlay (70px) */
+.ccd-progress {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 0;
+  min-width: 0;
+  max-width: 423px;
+  height: 70px;
+  padding: 8px 12px;
+  border: 1px solid
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 42%,
+      oklch(0.45 0.08 320)
+    );
+  border-radius: 12px;
+  background: oklch(0.13 0.02 310 / 0.92);
+  box-shadow:
+    0 0 0 1px oklch(0 0 0 / 0.35) inset,
+    0 0 22px
+      color-mix(
+        in oklch,
+        var(--color-accent, oklch(0.656 0.212 354.31)) 12%,
+        transparent
+      );
+  overflow: hidden;
+}
+
+.ccd-progress-label {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.ccd-progress-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+}
+
+.ccd-progress-main {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ccd-progress-track {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: oklch(0.34 0.06 340);
+  overflow: visible;
+}
+
+.ccd-progress-fill {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent, oklch(0.656 0.212 354.31)),
+    oklch(0.72 0.22 350)
+  );
+  box-shadow: 0 0 10px
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 40%,
+      transparent
+    );
+  transition: width 320ms ease-out;
+}
+
+.ccd-progress-knob {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-accent, oklch(0.656 0.212 354.31));
+  box-shadow:
+    0 0 0 2px oklch(0.13 0.02 310),
+    0 0 12px
+      color-mix(
+        in oklch,
+        var(--color-accent, oklch(0.656 0.212 354.31)) 70%,
+        transparent
+      );
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left 320ms ease-out;
+}
+
+.ccd-progress-count {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.ccd-progress-reward {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.ccd-progress-reward-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1.5px solid oklch(0.84 0.14 70);
+  background:
+    radial-gradient(circle at 50% 35%, oklch(0.45 0.12 40 / 0.55), transparent 65%),
+    oklch(0.18 0.03 40);
+  color: oklch(0.88 0.14 70);
+  box-shadow:
+    0 0 12px oklch(0.75 0.16 55 / 0.4),
+    0 0 20px oklch(0.7 0.18 40 / 0.2);
+  animation: ccd-reward-glow 2.4s ease-in-out infinite;
+  transition:
+    border-color 280ms ease,
+    box-shadow 280ms ease,
+    color 280ms ease,
+    transform 280ms ease;
+}
+
+.ccd-progress-sparkle {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: oklch(0.92 0.12 85);
+  clip-path: polygon(50% 0%, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0% 50%, 38% 38%);
+  opacity: 0.9;
+  pointer-events: none;
+  animation: ccd-sparkle 1.8s ease-in-out infinite;
+}
+
+.ccd-progress-sparkle.s1 {
+  top: -3px;
+  left: 4px;
+  animation-delay: 0s;
+}
+
+.ccd-progress-sparkle.s2 {
+  top: 2px;
+  right: -4px;
+  width: 4px;
+  height: 4px;
+  animation-delay: 0.35s;
+}
+
+.ccd-progress-sparkle.s3 {
+  bottom: 2px;
+  left: -3px;
+  width: 4px;
+  height: 4px;
+  animation-delay: 0.7s;
+}
+
+.ccd-progress-sparkle.s4 {
+  bottom: -2px;
+  right: 6px;
+  animation-delay: 1.05s;
+}
+
+.ccd-progress.is-locked .ccd-progress-reward-icon {
+  opacity: 1;
+}
+
+.ccd-progress.is-near .ccd-progress-reward-icon,
+.ccd-progress.is-claimable .ccd-progress-reward-icon {
+  animation-duration: 1.8s;
+}
+
+.ccd-progress.is-claimed .ccd-progress-reward-icon {
+  color: oklch(0.82 0.08 145);
+  border-color: oklch(0.82 0.08 145 / 0.55);
+  background: oklch(0.82 0.08 145 / 0.14);
+  box-shadow: none;
+  animation: none;
+}
+
+.ccd-progress.is-claimed .ccd-progress-sparkle {
+  display: none;
+}
+
+.ccd-progress.is-celebrating .ccd-progress-reward-icon {
+  animation: ccd-reward-pop 800ms ease;
 }
 
 .ccd-hero-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  align-self: flex-start;
-  margin-top: 4px;
+  gap: 8px;
+  flex: 0 0 auto;
+  height: 44px;
+  margin-top: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--color-accent, oklch(0.656 0.212 354.31));
   color: oklch(1 0 0);
-  padding: 11px 18px;
+  padding: 0 16px;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
   transition: filter 160ms ease;
+  white-space: nowrap;
 }
 
 .ccd-hero-cta:hover:not(:disabled) {
@@ -292,10 +533,31 @@
 .ccd-hero-cta-cost {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding-left: 10px;
-  border-left: 1px solid oklch(1 0 0 / 0.28);
+  gap: 5px;
+  padding: 0;
+  border: 0;
   font-variant-numeric: tabular-nums;
+}
+
+.ccd-hero-cta.is-secondary {
+  opacity: 0.78;
+  background: oklch(0.28 0.02 285);
+  border: 1px solid oklch(1 0 0 / 0.14);
+}
+
+@media (max-width: 480px) {
+  .ccd-progress {
+    max-width: 100%;
+  }
+
+  .ccd-hero-actions {
+    flex-wrap: wrap;
+  }
+
+  .ccd-hero-cta {
+    height: 44px;
+    width: 100%;
+  }
 }
 
 /* —— Right: Card preview —— */
@@ -553,12 +815,177 @@
   text-shadow: 0 1px 6px oklch(0 0 0 / 0.75);
 }
 
+/* Completion reward under card preview */
+.ccd-reward {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 40%,
+      oklch(1 0 0 / 0.12)
+    );
+  border-radius: 14px;
+  background:
+    radial-gradient(
+      circle at 12% 20%,
+      color-mix(
+        in oklch,
+        var(--color-accent, oklch(0.656 0.212 354.31)) 18%,
+        transparent
+      ),
+      transparent 55%
+    ),
+    oklch(0.14 0.012 285);
+  transition: box-shadow 400ms ease, border-color 400ms ease;
+}
+
+.ccd-reward.is-claimable {
+  box-shadow: 0 0 20px
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 18%,
+      transparent
+    );
+}
+
+.ccd-reward.is-celebrating {
+  animation: ccd-reward-pop 900ms ease;
+}
+
+.ccd-reward.is-claimed {
+  border-color: oklch(1 0 0 / 0.1);
+  box-shadow: none;
+  opacity: 0.92;
+}
+
+.ccd-reward-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: color-mix(
+    in oklch,
+    var(--color-accent, oklch(0.656 0.212 354.31)) 18%,
+    transparent
+  );
+  color: var(--color-accent, oklch(0.656 0.212 354.31));
+}
+
+.ccd-reward.is-claimed .ccd-reward-icon {
+  color: oklch(0.82 0.08 145);
+  background: oklch(0.82 0.08 145 / 0.12);
+}
+
+.ccd-reward-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.ccd-reward-title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ccd-reward-desc {
+  margin: 4px 0 0;
+  color: oklch(1 0 0 / 0.58);
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.35;
+}
+
+.ccd-reward-error {
+  margin: 6px 0 0;
+  color: oklch(0.72 0.16 25);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ccd-reward-cta {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-accent, oklch(0.656 0.212 354.31));
+  color: oklch(1 0 0);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 160ms ease;
+}
+
+.ccd-reward-cta:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.ccd-reward-cta:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 @keyframes ccd-fade {
   from {
     opacity: 0.72;
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes ccd-reward-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 14px oklch(0.75 0.16 55 / 0.35),
+      0 0 24px oklch(0.7 0.18 40 / 0.18);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 22px oklch(0.8 0.16 60 / 0.65),
+      0 0 36px oklch(0.72 0.18 45 / 0.35);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes ccd-sparkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes ccd-reward-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ccd-progress-reward-icon,
+  .ccd-progress-sparkle {
+    animation: none !important;
   }
 }
 

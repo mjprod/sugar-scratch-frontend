@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Gift, Lock } from "lucide-react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import type { CardConfig } from "@/features/collection/lib/cards";
 import type { ThemeCardData, ThemeDetailData } from "@/services/collection";
 import { packUnitCost } from "@/services/purchase";
+import {
+  claimThemeCompletionReward,
+  getThemeCompletionReward,
+  type ThemeRewardStatus,
+} from "@/services/themeCompletionReward";
 import "./creator-collections-discovery.css";
 
 export type CollectionPreviewCard = {
@@ -45,12 +52,6 @@ function themeGlyph(theme: Pick<ThemeCardData, "id" | "name">): string {
   return "✦";
 }
 
-function themeDescription(creatorName: string, themeName: string): string {
-  const name = creatorName.trim() || "This creator";
-  const theme = themeName.trim() || "this collection";
-  return `Hot looks and exclusive motion cards.\n${name} as ${theme}.`;
-}
-
 /** First N photo-slot cards across the theme's motion cards (preview only). */
 export function buildCollectionPreviewCards(
   motionCards: readonly CardConfig[],
@@ -68,7 +69,6 @@ export function buildCollectionPreviewCards(
       sequence += 1;
       const collected = slot < filled;
       const slotUrl = card.photoUrls?.[slot]?.trim() || "";
-      // Prefer per-slot art; fall back to motion poster so locked cards stay unique.
       const thumbnailUrl = slotUrl || motionTeaser || undefined;
       out.push({
         id: `${card.id}:slot:${slot}`,
@@ -92,7 +92,6 @@ function buildPreviewFromThemeDetail(
     id: `${detail.themeId}-photo-${card.index}`,
     number: String(card.index).padStart(2, "0"),
     collected: card.isUnlocked,
-    // Keep teaser art for locked slots — CSS obscures it.
     thumbnailUrl: card.thumbnailUrl || undefined,
     motionCardId: detail.motionCards[0]
       ? `${detail.themeId}-m${detail.motionCards[0].index}`
@@ -100,9 +99,40 @@ function buildPreviewFromThemeDetail(
   }));
 }
 
+function rewardStatusForTheme(
+  creatorId: string,
+  theme: ThemeCardData,
+  revision: number,
+): ThemeRewardStatus {
+  void revision;
+  return getThemeCompletionReward({
+    creatorId,
+    themeId: theme.id,
+    themeName: theme.name,
+    collected: theme.collected,
+    total: theme.total,
+  }).status;
+}
+
+/**
+ * Demo seed: force the first theme to 100% collected so the claimable /
+ * claimed completion UI can be reviewed without owning every card.
+ * Remove once live ownership drives completion.
+ */
+function withDemoCompleteTheme(themes: ThemeCardData[]): ThemeCardData[] {
+  if (themes.length === 0) return themes;
+  const demoId = themes[0]!.id;
+  return themes.map((theme) =>
+    theme.id === demoId
+      ? { ...theme, collected: Math.max(theme.total, 1), total: Math.max(theme.total, 1) }
+      : theme,
+  );
+}
+
 export function CreatorCollectionsDiscovery({
-  creatorName,
-  themes,
+  creatorId,
+  creatorName: _creatorName,
+  themes: themesIn,
   selectedThemeId,
   onSelectTheme,
   cardsByThemeId,
@@ -113,6 +143,7 @@ export function CreatorCollectionsDiscovery({
   onOpenCollectedCard,
   onLockedCardHint,
 }: {
+  creatorId: string;
   creatorName: string;
   themes: ThemeCardData[];
   selectedThemeId: string;
@@ -125,6 +156,17 @@ export function CreatorCollectionsDiscovery({
   onOpenCollectedCard: (motionCardId: string) => void;
   onLockedCardHint: () => void;
 }) {
+  const { requireAuth } = useAuth();
+  const { addDiamonds } = useWallet();
+  const [rewardRevision, setRewardRevision] = useState(0);
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [justComplete, setJustComplete] = useState(false);
+  const prevPctRef = useRef(0);
+
+  const themes = useMemo(() => withDemoCompleteTheme(themesIn), [themesIn]);
+  const demoCompleteThemeId = themes[0]?.id ?? null;
+
   const selectedIndex = Math.max(
     0,
     themes.findIndex((theme) => theme.id === selectedThemeId),
@@ -133,21 +175,72 @@ export function CreatorCollectionsDiscovery({
   const motionCards = cardsByThemeId[selected?.id ?? ""] ?? [];
   const previewCards = useMemo(() => {
     const fromLive = buildCollectionPreviewCards(motionCards, PREVIEW_LIMIT);
-    if (fromLive.length > 0) return fromLive;
-    return buildPreviewFromThemeDetail(
-      selected ? themeDetails?.[selected.id] : undefined,
-      PREVIEW_LIMIT,
-    );
-  }, [motionCards, selected, themeDetails]);
+    const base =
+      fromLive.length > 0
+        ? fromLive
+        : buildPreviewFromThemeDetail(
+            selected ? themeDetails?.[selected.id] : undefined,
+            PREVIEW_LIMIT,
+          );
+    if (!selected || selected.id !== demoCompleteThemeId) return base;
+    // Match 100% progress: show every preview slot as collected.
+    return base.map((card) => ({
+      ...card,
+      collected: true,
+      thumbnailUrl: card.thumbnailUrl || "/img/SugarScratch.png",
+    }));
+  }, [motionCards, selected, themeDetails, demoCompleteThemeId]);
   const navRef = useRef<HTMLDivElement>(null);
   const [fadeKey, setFadeKey] = useState(selected?.id ?? "");
   const packCost = packUnitCost(
     selected ? `${selected.id}-buy` : "pack",
   );
 
+  const reward = useMemo(() => {
+    if (!selected) return null;
+    return getThemeCompletionReward({
+      creatorId,
+      themeId: selected.id,
+      themeName: selected.name,
+      collected: selected.collected,
+      total: selected.total,
+    });
+  }, [creatorId, selected, rewardRevision]);
+
+  const total = selected?.total ?? 0;
+  const collected = Math.min(
+    total,
+    Math.max(0, selected?.collected ?? 0),
+  );
+  const pct =
+    total > 0 ? Math.min(100, Math.round((collected / total) * 100)) : 0;
+
+  const progressAria =
+    !selected || total <= 0
+      ? undefined
+      : reward?.status === "claimed"
+        ? `${selected.name} collection complete. Theme reward claimed.`
+        : reward?.status === "claimable"
+          ? `${selected.name} collection complete. Theme reward available.`
+          : `${selected.name} collection progress: ${collected} of ${total} cards collected. Theme reward unlocks when all ${total} cards are collected.`;
+
   useEffect(() => {
     setFadeKey(selected?.id ?? "");
+    setClaimError(null);
+    setJustComplete(false);
+    prevPctRef.current = pct;
   }, [selected?.id]);
+
+  useEffect(() => {
+    if (!showPersonalProgress || !selected) return;
+    const was = prevPctRef.current;
+    prevPctRef.current = pct;
+    if (was < 100 && pct >= 100 && reward?.status === "claimable") {
+      setJustComplete(true);
+      const t = window.setTimeout(() => setJustComplete(false), 1100);
+      return () => window.clearTimeout(t);
+    }
+  }, [pct, reward?.status, selected, showPersonalProgress]);
 
   useEffect(() => {
     const el = navRef.current;
@@ -165,11 +258,6 @@ export function CreatorCollectionsDiscovery({
 
   const glyph = selected ? themeGlyph(selected) : "✦";
   const cover = selected?.thumbnailUrl?.trim() || "";
-  const total = selected?.total ?? 0;
-  const collected = selected?.collected ?? 0;
-  const description = selected
-    ? themeDescription(creatorName, selected.name)
-    : "";
   const canPrev = selectedIndex > 0;
   const canNext = selectedIndex < themes.length - 1;
 
@@ -178,13 +266,41 @@ export function CreatorCollectionsDiscovery({
     if (next) onSelectTheme(next.id);
   }
 
+  async function handleClaim() {
+    if (!selected || claiming) return;
+    if (!requireAuth({ type: "claim" })) return;
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 280));
+      const result = claimThemeCompletionReward({
+        creatorId,
+        themeId: selected.id,
+        themeName: selected.name,
+        collected: selected.collected,
+        total: selected.total,
+      });
+      if (!result.ok) {
+        setClaimError(result.message || "Couldn't claim reward. Please try again.");
+        return;
+      }
+      if (!result.alreadyClaimed && result.diamondAmount > 0) {
+        addDiamonds(result.diamondAmount);
+      }
+      setRewardRevision((n) => n + 1);
+    } catch {
+      setClaimError("Couldn't claim reward. Please try again.");
+    } finally {
+      setClaiming(false);
+    }
+  }
+
   return (
     <section
       className="ccd"
       aria-label="Creator collections"
       id="creator-collections-discovery"
     >
-      {/* Left — theme navigation */}
       <aside className="ccd-nav">
         <h3 className="ccd-nav-title">Collections</h3>
         <div
@@ -203,6 +319,9 @@ export function CreatorCollectionsDiscovery({
               ))
             : themes.map((theme) => {
                 const active = theme.id === selected?.id;
+                const status = showPersonalProgress
+                  ? rewardStatusForTheme(creatorId, theme, rewardRevision)
+                  : "locked";
                 return (
                   <button
                     key={theme.id}
@@ -240,14 +359,36 @@ export function CreatorCollectionsDiscovery({
                         </span>
                       )}
                     </span>
+                    {status === "claimable" ? (
+                      <span
+                        className="ccd-nav-reward is-claimable"
+                        title={`${theme.name} Completion Reward ready to claim`}
+                        aria-label="Reward available"
+                      >
+                        <Gift size={14} strokeWidth={2} />
+                      </span>
+                    ) : null}
+                    {status === "claimed" ? (
+                      <span
+                        className="ccd-nav-reward is-claimed"
+                        title="Reward claimed"
+                        aria-label="Reward claimed"
+                      >
+                        <Check size={14} strokeWidth={2.4} />
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
         </div>
       </aside>
 
-      {/* Center — selected theme hero */}
-      <div className="ccd-hero" key={fadeKey}>
+      <div
+        className={["ccd-hero", justComplete ? "is-just-complete" : ""]
+          .filter(Boolean)
+          .join(" ")}
+        key={fadeKey}
+      >
         {cover ? (
           <img
             src={cover}
@@ -287,42 +428,80 @@ export function CreatorCollectionsDiscovery({
             <span aria-hidden="true">{glyph} </span>
             {selected?.name ?? "Collection"}
           </h3>
-          <p className="ccd-hero-meta">
-            {total} Cards
-            {showPersonalProgress ? (
-              <>
-                <span aria-hidden="true"> · </span>
-                {collected} Collected
-              </>
-            ) : null}
-          </p>
-          {description ? (
-            <p className="ccd-hero-desc">
-              {description.split("\n").map((line, i) => (
-                <span key={i}>
-                  {i > 0 ? <br /> : null}
-                  {line}
-                </span>
-              ))}
-            </p>
-          ) : null}
 
-          <button
-            type="button"
-            className="ccd-hero-cta"
-            disabled={!selected}
-            onClick={() => selected && onBuyPack(selected.id)}
-          >
-            <span>Buy Pack</span>
-            <span className="ccd-hero-cta-cost">
-              <DiamondLottie size={14} aria-hidden />
-              {packCost}
-            </span>
-          </button>
+          <div className="ccd-hero-actions">
+            {total > 0 ? (
+              <div
+                className={[
+                  "ccd-progress",
+                  reward?.status === "locked" ? "is-locked" : "",
+                  reward?.status === "claimable" ? "is-claimable" : "",
+                  reward?.status === "claimed" ? "is-claimed" : "",
+                  justComplete ? "is-celebrating" : "",
+                  pct >= 90 && reward?.status === "locked" ? "is-near" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <p className="ccd-progress-label">Collection Progress</p>
+                <div className="ccd-progress-body">
+                  <div className="ccd-progress-main">
+                    <div
+                      className="ccd-progress-track"
+                      role="progressbar"
+                      aria-valuenow={pct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuetext={progressAria}
+                      aria-label={progressAria}
+                    >
+                      <span
+                        className="ccd-progress-fill"
+                        style={{ width: `${pct}%` }}
+                      />
+                      <span
+                        className="ccd-progress-knob"
+                        style={{ left: pct <= 0 ? "7px" : `${pct}%` }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="ccd-progress-count">
+                      {collected} / {total}
+                    </p>
+                  </div>
+                  <div className="ccd-progress-reward" aria-hidden="true">
+                    <span className="ccd-progress-reward-icon">
+                      <span className="ccd-progress-sparkle s1" />
+                      <span className="ccd-progress-sparkle s2" />
+                      <span className="ccd-progress-sparkle s3" />
+                      <span className="ccd-progress-sparkle s4" />
+                      {reward?.status === "claimed" ? (
+                        <Check size={13} strokeWidth={2.5} />
+                      ) : (
+                        <Gift size={13} strokeWidth={2.1} />
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              className="ccd-hero-cta"
+              disabled={!selected}
+              onClick={() => selected && onBuyPack(selected.id)}
+            >
+              <span className="ccd-hero-cta-cost">
+                <DiamondLottie size={15} aria-hidden />
+                {packCost}
+              </span>
+              <span>Buy Pack</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Right — card preview */}
       <div className="ccd-preview" key={`preview-${fadeKey}`}>
         <div className="ccd-preview-head">
           <h4 className="ccd-preview-title">Card Preview</h4>
@@ -393,6 +572,52 @@ export function CreatorCollectionsDiscovery({
                 </button>
               ))}
         </div>
+
+        {showPersonalProgress && reward && reward.status !== "locked" ? (
+          <div
+            className={[
+              "ccd-reward",
+              reward.status === "claimable" ? "is-claimable" : "is-claimed",
+              justComplete ? "is-celebrating" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <div className="ccd-reward-icon" aria-hidden="true">
+              {reward.status === "claimed" ? (
+                <Check size={18} strokeWidth={2.4} />
+              ) : (
+                <Gift size={18} strokeWidth={2} />
+              )}
+            </div>
+            <div className="ccd-reward-copy">
+              <p className="ccd-reward-title">
+                {selected?.name ?? "Theme"} Collection Complete
+                {reward.status === "claimable" ? "!" : ""}
+              </p>
+              <p className="ccd-reward-desc">
+                {reward.status === "claimed"
+                  ? "Reward Claimed ✓"
+                  : reward.description}
+              </p>
+              {claimError ? (
+                <p className="ccd-reward-error" role="alert">
+                  {claimError}
+                </p>
+              ) : null}
+            </div>
+            {reward.status === "claimable" ? (
+              <button
+                type="button"
+                className="ccd-reward-cta"
+                disabled={claiming}
+                onClick={() => void handleClaim()}
+              >
+                {claiming ? "Claiming…" : claimError ? "Try Again" : "Claim Reward"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );

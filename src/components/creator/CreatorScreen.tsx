@@ -264,6 +264,7 @@ function CreatorScreenInner({
         <div key={viewMode} className="cpv2-mode-panel">
           {viewMode === "grid" ? (
             <CreatorCollectionsDiscovery
+              creatorId={purchaseCreatorId}
               creatorName={creatorName}
               themes={themes}
               selectedThemeId={theme?.id ?? selectedThemeId}
