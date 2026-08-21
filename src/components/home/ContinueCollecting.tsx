@@ -1,5 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { ChevronRight, Heart } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import type { ContinueCollectingItem } from "@/services/homepage";
 
 export type CollectionCardData = {
@@ -51,6 +57,48 @@ export function ContinueCollectingSection({
   onCardClick,
   onOpen,
 }: ContinueCollectingSectionProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(max - el.scrollLeft > 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    const ro = new ResizeObserver(updateScrollState);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      ro.disconnect();
+    };
+  }, [items, updateScrollState]);
+
+  const scrollByPage = useCallback((direction: -1 | 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>(".continue-collecting-card");
+    const styles = window.getComputedStyle(el);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 20;
+    const cardWidth = card?.offsetWidth ?? 120;
+    const step = cardWidth + gap;
+    const visible = Math.max(1, Math.floor((el.clientWidth + gap) / step));
+    const page = Math.max(1, visible > 1 ? visible - 1 : 1);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({
+      left: direction * page * step,
+      behavior: reduce ? "auto" : "smooth",
+    });
+  }, []);
+
   if (!items.length) return null;
 
   return (
@@ -77,25 +125,57 @@ export function ContinueCollectingSection({
       </div>
 
       <div className="continue-collecting-scroll-wrap">
-        <div className="continue-collecting-scroll">
-          {items.map((item) => {
-            const card = toCard(item);
-            return (
-              <CollectionCard
-                key={card.id}
-                card={card}
-                onClick={() => {
-                  onCardClick?.(card.id);
-                  onOpen?.(item);
-                }}
-              />
-            );
-          })}
+        <button
+          type="button"
+          className="continue-collecting-arrow is-prev"
+          aria-label="Previous creators"
+          disabled={!canScrollLeft}
+          onClick={() => scrollByPage(-1)}
+        >
+          <ChevronLeft className="size-5" aria-hidden="true" />
+        </button>
+
+        <div className="continue-collecting-viewport">
+          <div ref={scrollRef} className="continue-collecting-scroll">
+            {items.map((item) => {
+              const card = toCard(item);
+              return (
+                <CollectionCard
+                  key={card.id}
+                  card={card}
+                  onClick={() => {
+                    onCardClick?.(card.id);
+                    onOpen?.(item);
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div
+            className={[
+              "continue-collecting-fade is-left",
+              canScrollLeft ? "is-visible" : "",
+            ].join(" ")}
+            aria-hidden="true"
+          />
+          <div
+            className={[
+              "continue-collecting-fade",
+              canScrollRight ? "is-visible" : "",
+            ].join(" ")}
+            aria-hidden="true"
+          />
         </div>
-        <div className="continue-collecting-fade" aria-hidden="true" />
-        <div className="continue-collecting-more" aria-hidden="true">
-          <ChevronRight className="size-5" />
-        </div>
+
+        <button
+          type="button"
+          className="continue-collecting-arrow is-next"
+          aria-label="Next creators"
+          disabled={!canScrollRight}
+          onClick={() => scrollByPage(1)}
+        >
+          <ChevronRight className="size-5" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
