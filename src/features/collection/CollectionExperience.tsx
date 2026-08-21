@@ -217,10 +217,21 @@ function AppInner({
 
   const handleFocusChange = useCallback(
     (slotIndex: number) => {
-      if (activeCardId) return
-      setFocusIndex(clampSlotIndex(slotIndex, slotCount))
+      const next = clampSlotIndex(slotIndex, slotCount)
+      setFocusIndex(next)
+      // While a card is open, chevron paging transfers the hero to the newly
+      // focused card so you don't have to close first.
+      if (!activeCardId) return
+      const slot = layoutSlots[next]
+      if (!slot || slot.kind !== 'card') {
+        setActiveCardId(null)
+        return
+      }
+      const card = cards[slot.cardIndex]
+      if (card) setActiveCardId(card.id)
+      else setActiveCardId(null)
     },
-    [activeCardId, slotCount],
+    [activeCardId, cards, layoutSlots, setActiveCardId, slotCount],
   )
 
   const handleSelectCard = useCallback(
@@ -279,20 +290,20 @@ function AppInner({
       }
 
       // Open motion card: static-slot cycling / Space / Enter live on the panel;
-      // flip (\) is handled on the active HoloCard.
+      // flip (\) is handled on the active HoloCard. Chevrons still page heroes.
       if (activeCardId) return
 
       if (event.key === 'ArrowLeft' || event.key === 'Left') {
         if (focusIndex <= 0) return
         event.preventDefault()
-        setFocusIndex(clampSlotIndex(focusIndex - 1, slotCount))
+        handleFocusChange(focusIndex - 1)
         return
       }
 
       if (event.key === 'ArrowRight' || event.key === 'Right') {
         if (focusIndex >= slotCount - 1) return
         event.preventDefault()
-        setFocusIndex(clampSlotIndex(focusIndex + 1, slotCount))
+        handleFocusChange(focusIndex + 1)
         return
       }
 
@@ -312,6 +323,7 @@ function AppInner({
     activeCardId,
     cards,
     focusIndex,
+    handleFocusChange,
     layoutSlots,
     setActiveCardId,
     slotCount,

@@ -1322,7 +1322,6 @@ function CardCarouselInner({
     direction: ScrollDirection,
     e: ReactPointerEvent<HTMLButtonElement>
   ) => {
-    if (expanded) return
     if (e.button !== 0 && e.pointerType === 'mouse') return
     e.preventDefault()
 
@@ -1355,9 +1354,9 @@ function CardCarouselInner({
     }
   }, [releaseChevronInteraction])
 
-  // --- Wheel: discrete steps with intensity-based acceleration ---
-  // Slow scrolls stay 1-step with a longer lock; dense/fast bursts step farther
-  // and reduce the cooldown so the carousel cycles quicker.
+  // --- Wheel: horizontal-only discrete steps (vertical scrolls the page) ---
+  // Side wheel / trackpad swipe / Shift+wheel page the carousel. Intensity
+  // still scales step count + cooldown so dense horizontal bursts move faster.
   const wheelLockUntilRef = useRef(0)
   const wheelBurstRef = useRef<{ t: number; absDelta: number }[]>([])
   // While the wheel is spinning, suppress CSS :hover (it goes stale mid-scroll).
@@ -1479,31 +1478,30 @@ function CardCarouselInner({
     if (!stage) return
 
     const handleWheel = (event: WheelEvent) => {
-      // Always capture wheel over the stage so the page doesn't also scroll.
-      event.preventDefault()
-      event.stopPropagation()
-
       // Keep pointer sample even while expanded (for when we leave active).
       lastPointerPosRef.current = { x: event.clientX, y: event.clientY }
 
       if (expandedRef.current) return
       if (countRef.current <= 1) return
 
-      // Prefer true horizontal wheel input when present; boost it so mouse
-      // horizontal wheels match vertical scroll speed through the carousel.
+      // Vertical wheel/trackpad → page scroll. Only horizontal intent pages
+      // the carousel (side wheel, trackpad swipe, or Shift+wheel).
       const absX = Math.abs(event.deltaX)
       const absY = Math.abs(event.deltaY)
-      const usingHorizontal = absX > absY * 0.85 && absX > 0
-      const rawDelta = usingHorizontal ? event.deltaX : event.deltaY
-      const scaledDelta = usingHorizontal
-        ? rawDelta * WHEEL_HORIZONTAL_GAIN
-        : rawDelta
+      const shiftAsHorizontal = event.shiftKey && absY > absX
+      const usingHorizontal =
+        (absX > absY && absX > 0) || shiftAsHorizontal
+      if (!usingHorizontal) return
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      const rawDelta = shiftAsHorizontal ? event.deltaY : event.deltaX
+      const scaledDelta = rawDelta * WHEEL_HORIZONTAL_GAIN
 
       const absDelta = Math.abs(scaledDelta)
       // Horizontal wheels often emit smaller ticks — slightly lower threshold.
-      const threshold = usingHorizontal
-        ? WHEEL_DELTA_THRESHOLD * 0.7
-        : WHEEL_DELTA_THRESHOLD
+      const threshold = WHEEL_DELTA_THRESHOLD * 0.7
       if (absDelta < threshold) return
 
       const now = performance.now()
@@ -1517,10 +1515,7 @@ function CardCarouselInner({
       wheelBurstRef.current = burst
 
       const burstEnergy = burst.reduce((sum, sample) => sum + sample.absDelta, 0)
-      // Horizontal bursts usually accumulate less energy; ease the full-scale.
-      const burstFull = usingHorizontal
-        ? WHEEL_BURST_DELTA_FULL * 0.7
-        : WHEEL_BURST_DELTA_FULL
+      const burstFull = WHEEL_BURST_DELTA_FULL * 0.7
       // 0 = slow single tick, 1 = hard continuous scroll in the burst window.
       const intensity = Math.min(
         1,
@@ -1539,10 +1534,7 @@ function CardCarouselInner({
         1 + Math.floor(intensity * (WHEEL_MAX_STEPS - 1) + 0.0001)
       )
       // More scroll energy → shorter cooldown between pulses.
-      // Horizontal gets a slightly snappier floor so side-scroll keeps up.
-      const lockFloor = usingHorizontal
-        ? Math.max(40, WHEEL_LOCK_MS_FAST - 10)
-        : WHEEL_LOCK_MS_FAST
+      const lockFloor = Math.max(40, WHEEL_LOCK_MS_FAST - 10)
       const lockMs = Math.round(
         WHEEL_LOCK_MS - intensity * (WHEEL_LOCK_MS - lockFloor)
       )
@@ -1834,7 +1826,23 @@ function CardCarouselInner({
           disabled={!canPrev}
           aria-label="Previous card"
         >
-          ‹
+          <svg
+            className="coverflow__chevron-icon"
+            viewBox="0 0 24 24"
+            width="1em"
+            height="1em"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M14.5 5.5 8 12l6.5 6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
 
         <div
@@ -1870,7 +1878,23 @@ function CardCarouselInner({
           disabled={!canNext}
           aria-label="Next card"
         >
-          ›
+          <svg
+            className="coverflow__chevron-icon"
+            viewBox="0 0 24 24"
+            width="1em"
+            height="1em"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M9.5 5.5 16 12l-6.5 6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
 
         {navDotSlots.length > 1 && (

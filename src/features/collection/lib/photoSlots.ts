@@ -25,7 +25,10 @@ export function motionCardIdFromPhotoScratchId(photoCardId: string): string {
 }
 
 export type PhotoSlotFill = {
+  /** Preview / collected art (null = empty locked cell). */
   src: string | null
+  /** True only when the user has collected this slot. */
+  collected: boolean
 }
 
 function hashSeed(input: string): number {
@@ -63,11 +66,13 @@ function normalizePhotoUrls(urls?: readonly string[] | null): string[] {
 }
 
 /**
- * Deterministic per-card photo fills:
- * - explicit photoUrls from the catalog take priority (index-aligned when sparse)
- * - optional filledOverride forces an exact filled count (0–PHOTO_SLOTS)
- * - otherwise some cards get none, others get 1–4 random placeholder images
- * Same cardKey always yields the same layout when using the random path.
+ * Deterministic per-card photo fills.
+ *
+ * `filledOverride` is user-owned photo count (0–10). Catalog `photoUrls` are
+ * previews only — without ownership they render locked (B&W + lock).
+ *
+ * Without an override, non-empty catalog URLs count as collected (demo decks).
+ * The random placeholder path is only for demos with neither URLs nor override.
  */
 export function buildPhotoSlotFills(
   cardKey: string,
@@ -75,41 +80,29 @@ export function buildPhotoSlotFills(
   photoUrls?: readonly string[] | null,
 ): PhotoSlotFill[] {
   const catalogUrls = normalizePhotoUrls(photoUrls)
-  const hasExplicitGrid =
-    Array.isArray(photoUrls) &&
-    (photoUrls.length >= PHOTO_SLOTS ||
-      photoUrls.some((url) => !String(url ?? '').trim()))
+  const hasOverride =
+    typeof filledOverride === 'number' && Number.isFinite(filledOverride)
+  const collectedCount = hasOverride
+    ? Math.max(0, Math.min(PHOTO_SLOTS, Math.round(filledOverride)))
+    : null
 
-  if (catalogUrls.some(Boolean)) {
-    if (hasExplicitGrid) {
-      return Array.from({ length: PHOTO_SLOTS }, (_, i) => ({
-        src: catalogUrls[i] || null,
-      }))
-    }
-    // Packed catalog photos: place in order, leave remaining slots empty.
-    // If filledOverride is smaller, only show that many leading photos.
-    let count = catalogUrls.length
-    if (typeof filledOverride === 'number' && Number.isFinite(filledOverride)) {
-      count = Math.max(
-        0,
-        Math.min(PHOTO_SLOTS, Math.round(filledOverride), catalogUrls.length),
-      )
-    }
-    return Array.from({ length: PHOTO_SLOTS }, (_, i) => ({
-      src: i < count ? (catalogUrls[i] ?? null) : null,
-    }))
+  if (catalogUrls.some(Boolean) || hasOverride) {
+    return Array.from({ length: PHOTO_SLOTS }, (_, i) => {
+      const preview = catalogUrls[i] || null
+      const collected =
+        collectedCount != null ? i < collectedCount : Boolean(preview)
+      const src = collected
+        ? preview || PHOTO_SLOT_IMAGE
+        : preview
+      return { src, collected }
+    })
   }
 
-  if (typeof filledOverride === 'number' && Number.isFinite(filledOverride)) {
-    const count = Math.max(0, Math.min(PHOTO_SLOTS, Math.round(filledOverride)))
-    return Array.from({ length: PHOTO_SLOTS }, (_, i) => ({
-      src: i < count ? PHOTO_SLOT_IMAGE : null,
-    }))
-  }
-
+  // Demo-only random fills when the API gave no progress and no previews.
   const rand = mulberry32(hashSeed(cardKey || 'photo-grid'))
   const fills: PhotoSlotFill[] = Array.from({ length: PHOTO_SLOTS }, () => ({
     src: null,
+    collected: false,
   }))
 
   // ~70% of cards get at least one photo; others stay empty.
@@ -125,28 +118,26 @@ export function buildPhotoSlotFills(
 
   for (let n = 0; n < count; n++) {
     const slot = indices[n]!
-    fills[slot] = { src: PHOTO_SLOT_IMAGE }
+    fills[slot] = { src: PHOTO_SLOT_IMAGE, collected: true }
   }
   return fills
 }
 
-/** Count of filled photo slots for a motion card (0–PHOTO_SLOTS). */
+/** Count of collected photo slots for a motion card (0–PHOTO_SLOTS). */
 export function getPhotoFilledCount(
   cardKey: string,
   filledOverride?: number | null,
   photoUrls?: readonly string[] | null,
 ): number {
   return buildPhotoSlotFills(cardKey, filledOverride, photoUrls).filter(
-    (s) => s.src,
+    (s) => s.collected,
   ).length
 }
 
 /**
  * Number of video cards available for a motion card.
- * Deterministic 1–2 by default. Optional override (0–5) is used when a card
- * seeds an explicit count:
- *   0 → motion card stays visible, meta shows "0x", no stack-backs / no play
- *   5 → deep stack demo
+ * Explicit override (including 0) always wins — never invent ownership.
+ * Demo decks without an override still get a deterministic 1–2 play count.
  */
 export function getVideoCardCount(
   cardKey: string,

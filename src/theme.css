@@ -4915,73 +4915,97 @@ body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
   }
 }
 
-/* Header — landscape 16:9 */
+/* Header — full-bleed image hero with overlaid identity */
+body[data-theme="v8"] .cpv2-header {
+  width: 100%;
+  margin: 0 0 20px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
 body[data-theme="v8"] .cpv2-header-hero {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 16 / 9;
-  height: 220px;
-  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  width: 100%;
+  height: 300px;
+  max-height: 300px;
+  padding: 20px 22px;
   border-radius: 22px;
   border: 1px solid oklch(1 0 0 / 0.08);
   background: oklch(0.186 0.016 284.72);
 }
 
-@media (min-width: 1024px) {
-  body[data-theme="v8"] .cpv2-header-hero {
-    height: 300px;
-    max-height: 300px;
-  }
-}
-
-body[data-theme="v8"] .cpv2-header-shade {
+body[data-theme="v8"] .cpv2-header-portrait {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg,
-      oklch(0 0 0 / 0.2) 0%,
-      oklch(0.136 0.007 285.45 / 0.25) 45%,
-      oklch(0.136 0.007 285.45 / 0.92) 100%);
+  z-index: 0;
+}
+
+body[data-theme="v8"] .cpv2-header-portrait > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+body[data-theme="v8"] .cpv2-header-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    oklch(0 0 0 / 0.18) 0%,
+    oklch(0.136 0.007 285.45 / 0.2) 40%,
+    oklch(0.136 0.007 285.45 / 0.92) 100%
+  );
 }
 
 body[data-theme="v8"] .cpv2-back {
   position: absolute;
   top: 14px;
   left: 14px;
-  z-index: 2;
+  z-index: 3;
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 1px solid oklch(1 0 0 / 0.14);
   border-radius: 999px;
-  background: oklch(0.156 0.008 285.38 / 0.45);
+  background: oklch(0.156 0.008 285.38 / 0.55);
   color: oklch(1 0 0);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   cursor: pointer;
 }
 
-body[data-theme="v8"] .cpv2-header-copy {
-  position: absolute;
-  inset: auto 0 0 0;
-  z-index: 1;
-  padding: 20px 22px;
+body[data-theme="v8"] .cpv2-header-main {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  max-width: 40rem;
+}
+
+body[data-theme="v8"] .cpv2-header-identity {
+  min-width: 0;
 }
 
 body[data-theme="v8"] .cpv2-title {
   margin: 0;
   color: oklch(1 0 0);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 1.05;
-}
-
-body[data-theme="v8"] .cpv2-subtitle {
-  margin: 6px 0 0;
-  color: oklch(0.692 0.223 356.89);
-  font-size: 14px;
-  font-weight: 600;
+  line-height: 1.1;
 }
 
 @media (min-width: 1024px) {
@@ -4990,11 +5014,90 @@ body[data-theme="v8"] .cpv2-subtitle {
   }
 }
 
-body[data-theme="v8"] .cpv2-header {
-  margin-bottom: 16px;
+body[data-theme="v8"] .cpv2-username {
+  margin: 6px 0 0;
+  color: oklch(1 0 0 / 0.72);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
-/* Quiet Creator Summary — contextual text only, never competes with Theme */
+body[data-theme="v8"] .cpv2-favorite {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 999px;
+  background: oklch(0.156 0.008 285.38 / 0.45);
+  color: oklch(1 0 0 / 0.82);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+body[data-theme="v8"] .cpv2-favorite:hover {
+  border-color: oklch(1 0 0 / 0.28);
+  background: oklch(1 0 0 / 0.08);
+}
+
+body[data-theme="v8"] .cpv2-favorite.is-favorited {
+  border-color: oklch(0.7 0.18 15 / 0.45);
+  color: oklch(0.78 0.16 15);
+}
+
+body[data-theme="v8"] .cpv2-favorite-icon {
+  width: 15px;
+  height: 15px;
+}
+
+body[data-theme="v8"] .cpv2-header-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-theme="v8"] .cpv2-header-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 999px;
+  background: oklch(0 0 0 / 0.28);
+  color: oklch(1 0 0 / 0.88);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.2;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+body[data-theme="v8"] .cpv2-header-desc {
+  margin: 0;
+  max-width: 36rem;
+  color: oklch(1 0 0 / 0.78);
+  font-size: 14px;
+  font-weight: 450;
+  line-height: 1.45;
+}
+
+/* Quiet Creator Summary — kept for other surfaces; unused on V2 header */
 body[data-theme="v8"] .cpv2-creator-summary {
   width: 100%;
   display: flex;
