@@ -3,14 +3,14 @@ import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CreatorCollectionBrowse } from "@/components/creator/CreatorCollectionBrowse";
+import { CreatorCollectionsDiscovery } from "@/components/creator/CreatorCollectionsDiscovery";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
-import { ThemeMotionDetail } from "@/components/creator/ThemeMotionDetail";
-import { ThemeSelector } from "@/components/creator/ThemeSelector";
 import {
   ViewModeToggle,
   type ViewMode,
 } from "@/components/creator/ViewModeToggle";
+import { useAuth } from "@/contexts/AuthContext";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import {
   normalizeMediaUrl,
@@ -25,7 +25,7 @@ import {
   matchLiveThemeId,
   type ThemeCardData,
 } from "@/services/collection";
-import type { PurchaseFlowPack } from "@/services/purchase";
+import { packUnitCost, type PurchaseFlowPack } from "@/services/purchase";
 import "./creator-collection.css";
 
 /**
@@ -36,7 +36,7 @@ export function CreatorScreen({
   diamonds: _diamonds,
   onBack,
   onOpenPack: _onOpenPack,
-  onBuyPack: _onBuyPack,
+  onBuyPack,
 }: {
   creatorId: string;
   diamonds: number;
@@ -66,6 +66,7 @@ export function CreatorScreen({
         creatorId={creatorId}
         model={resolvedModel}
         onBack={onBack}
+        onBuyPack={onBuyPack}
       />
     </CatalogProvider>
   );
@@ -81,10 +82,12 @@ function CreatorScreenInner({
   creatorId,
   model,
   onBack,
+  onBuyPack,
 }: {
   creatorId: string;
   model: BackendModel | null;
   onBack: () => void;
+  onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
   const modelId = model?.id ?? null;
@@ -95,6 +98,7 @@ function CreatorScreenInner({
       collection.cards.length > 0,
   );
   const navigate = useNavigate();
+  const { authed } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("carousel");
   const [selectedThemeId, setSelectedThemeId] = useState(
@@ -190,7 +194,6 @@ function CreatorScreenInner({
     (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
     (usingLiveThemes ? (theme?.thumbnailUrl ?? "") : "") ||
     page.creator.coverUrl;
-  const motionCards = collection.cardsByThemeId[theme?.id ?? ""] ?? [];
 
   function notice(message: string) {
     setToast(message);
@@ -225,6 +228,21 @@ function CreatorScreenInner({
     setViewMode(mode);
   }
 
+  function buyThemePack(themeId: string) {
+    const packTheme =
+      themes.find((entry) => entry.id === themeId) ?? themes[0];
+    if (!packTheme) return;
+    const packId = `${purchaseCreatorId}-${packTheme.id}-buy`;
+    const cost = packUnitCost(packId);
+    onBuyPack({
+      packId,
+      packName: packTheme.name,
+      price: `${cost} ◆`,
+      creator: creatorName,
+      entry: "purchase",
+    });
+  }
+
   return (
     <section data-page-scroll className="cpv2-page no-sticky-cta">
       <div className="cpv2-shell">
@@ -245,25 +263,25 @@ function CreatorScreenInner({
 
         <div key={viewMode} className="cpv2-mode-panel">
           {viewMode === "grid" ? (
-            <>
-              <ThemeSelector
-                themes={themes}
-                selectedThemeId={theme?.id ?? selectedThemeId}
-                onSelect={(id) => {
-                  setSelectedThemeId(id);
-                  syncCardParam(null, id);
-                }}
-              />
-              <ThemeMotionDetail
-                themeName={theme?.name ?? "Theme"}
-                cards={motionCards}
-                loading={collection.loading}
-                onSelectCard={(card) => {
-                  setFeaturedCardId(card.id);
-                  syncCardParam(card.id, theme?.id);
-                }}
-              />
-            </>
+            <CreatorCollectionsDiscovery
+              creatorName={creatorName}
+              themes={themes}
+              selectedThemeId={theme?.id ?? selectedThemeId}
+              onSelectTheme={(id) => {
+                setSelectedThemeId(id);
+                syncCardParam(null, id);
+              }}
+              cardsByThemeId={collection.cardsByThemeId}
+              themeDetails={page.themeDetails}
+              loading={collection.loading}
+              showPersonalProgress={authed}
+              onBuyPack={buyThemePack}
+              onOpenCollectedCard={(cardId) => {
+                setFeaturedCardId(cardId);
+                syncCardParam(cardId, selectedThemeId);
+              }}
+              onLockedCardHint={() => notice("Not collected yet")}
+            />
           ) : (
             <CreatorCollectionBrowse
               modelId={collection.modelId}
