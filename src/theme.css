@@ -8788,6 +8788,10 @@ body[data-theme="v8"] .auth7-onboard-header {
   margin-bottom: 12px;
 }
 
+body[data-theme="v8"] .auth7-onboard-header:not(:has(.auth7-onboard-badge)) {
+  justify-content: center;
+}
+
 body[data-theme="v8"] .auth7-onboard-badge {
   color: oklch(1 0 0 / 0.35);
   font-size: 11px;
@@ -8848,6 +8852,73 @@ body[data-theme="v8"] .auth7-onboard-panel {
   width: 100%;
   margin: 0 auto;
   padding: 12px 4px 8px;
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 20px;
+}
+
+body[data-theme="v8"] .auth7-complete-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 320px;
+}
+
+body[data-theme="v8"] .auth7-complete-mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 0 4px;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 45%,
+      transparent
+    );
+  background: color-mix(
+    in oklch,
+    var(--color-accent, oklch(0.656 0.212 354.31)) 16%,
+    oklch(0.16 0.01 285)
+  );
+  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  box-shadow: 0 0 24px
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 20%,
+      transparent
+    );
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete .auth7-onboard-title {
+  max-width: 16ch;
+  margin: 0;
+  font-size: clamp(26px, 4.2vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete .auth7-onboard-copy {
+  max-width: 30ch;
+  margin: 0;
+  color: oklch(1 0 0 / 0.68);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 450;
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete .auth2-primary-cta {
+  width: 100%;
+  max-width: 260px;
+  margin-top: 10px;
 }
 
 body[data-theme="v8"] .auth7-onboard-title {

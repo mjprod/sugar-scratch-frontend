@@ -26,7 +26,7 @@ export type PersonalizationSwipeResult = {
 
 /**
  * Incoming home swipe deck, used as Recommendation Initialization.
- * Continue when the stack is empty.
+ * Advances when the stack empties (no interstitial empty screen).
  */
 export function PersonalizationSwipeScreen({
   onContinue,
@@ -121,8 +121,7 @@ export function PersonalizationSwipeScreen({
                   initialCards={deck}
                   playSwipeHint={mediaReady}
                   onSwipe={handleSwipe}
-                  onContinue={() => onContinue(snapshot())}
-                  continueLabel="Continue"
+                  onEmpty={() => onContinue(snapshot())}
                 />
               </animated.div>
             </div>

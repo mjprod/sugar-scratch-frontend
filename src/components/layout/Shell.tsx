@@ -30,7 +30,8 @@ export function OnboardShell({
   swipe = false,
 }: {
   children: ReactNode;
-  badge: string;
+  /** Optional step label — omit for production-facing screens. */
+  badge?: string;
   /** Recommendation intro — compact card layout */
   intro?: boolean;
   /** Full-bleed incoming swipe stage */
@@ -46,7 +47,7 @@ export function OnboardShell({
           draggable={false}
         />
       </span>
-      <span className="auth7-onboard-badge">{badge}</span>
+      {badge ? <span className="auth7-onboard-badge">{badge}</span> : null}
     </header>
   );
   const main = (

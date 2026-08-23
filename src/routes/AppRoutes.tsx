@@ -94,7 +94,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommendDone}
           element={
-            <OnboardShell badge="Recommend · Ready">
+            <OnboardShell>
               <RecCompletePage />
             </OnboardShell>
           }
@@ -102,7 +102,7 @@ export function AppRoutes() {
         <Route
           path={Paths.welcome}
           element={
-            <OnboardShell badge="Welcome">
+            <OnboardShell>
               <WelcomePage />
             </OnboardShell>
           }
