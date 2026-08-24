@@ -1341,9 +1341,10 @@ export function SwipeDeck({
       */}
       <StackBacks visibleCount={stackBackCount} zIndex={0} />
       {/*
-        Empty sits under cards/backs and springs in with the pack dissolve so
-        the last lip fade and "No more cards" share the same Time Machine beat.
+        Empty interstitial only when the caller wants CTAs (onContinue / onRestart).
+        When onEmpty is provided, skip this screen and let the parent advance.
       */}
+      {!onEmpty ? (
       <animated.div
         className="swipe-deck swipe-deck--empty"
         style={{
@@ -1383,6 +1384,7 @@ export function SwipeDeck({
           ) : null}
         </div>
       </animated.div>
+      ) : null}
       {displayCards
         .map((card, index) => {
           const isLeaving = leaving?.card.id === card.id

@@ -5213,6 +5213,41 @@ body[data-theme="v8"] .cpv2-back {
   cursor: pointer;
 }
 
+body[data-theme="v8"] .cpv2-header-actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 72px);
+}
+
+body[data-theme="v8"] .cpv2-follow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(0.606 0.219 292.72);
+  color: oklch(1 0 0);
+  font-size: 13px;
+  font-weight: 650;
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .cpv2-follow.is-following {
+  background: oklch(0.156 0.008 285.38 / 0.55);
+  color: oklch(1 0 0 / 0.85);
+}
+
 body[data-theme="v8"] .cpv2-header-main {
   position: relative;
   z-index: 2;
@@ -5251,10 +5286,6 @@ body[data-theme="v8"] .cpv2-username {
 }
 
 body[data-theme="v8"] .cpv2-favorite {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 3;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -8689,10 +8720,19 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
 }
 
 @media (min-width: 507px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-bottom: 48px;
+  }
+
+  /* Favourites — clear floating top nav so Back + title stay above the grid. */
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
+    padding-top: var(--app-diamond-offset);
+    padding-bottom: 48px;
+  }
+
+  body[data-theme="v8"] .favourites-page .subpage-header {
+    position: static;
   }
 }
 
@@ -9220,6 +9260,10 @@ body[data-theme="v8"] .auth7-onboard-header {
   margin-bottom: 12px;
 }
 
+body[data-theme="v8"] .auth7-onboard-header:not(:has(.auth7-onboard-badge)) {
+  justify-content: center;
+}
+
 body[data-theme="v8"] .auth7-onboard-badge {
   color: oklch(1 0 0 / 0.35);
   font-size: 11px;
@@ -9280,6 +9324,73 @@ body[data-theme="v8"] .auth7-onboard-panel {
   width: 100%;
   margin: 0 auto;
   padding: 12px 4px 8px;
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 20px;
+}
+
+body[data-theme="v8"] .auth7-complete-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 320px;
+}
+
+body[data-theme="v8"] .auth7-complete-mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 0 4px;
+  border-radius: 999px;
+  border: 1px solid
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 45%,
+      transparent
+    );
+  background: color-mix(
+    in oklch,
+    var(--color-accent, oklch(0.656 0.212 354.31)) 16%,
+    oklch(0.16 0.01 285)
+  );
+  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  box-shadow: 0 0 24px
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 20%,
+      transparent
+    );
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete .auth7-onboard-title {
+  max-width: 16ch;
+  margin: 0;
+  font-size: clamp(26px, 4.2vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete .auth7-onboard-copy {
+  max-width: 30ch;
+  margin: 0;
+  color: oklch(1 0 0 / 0.68);
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 450;
+}
+
+body[data-theme="v8"] .auth7-onboard-panel--complete .auth2-primary-cta {
+  width: 100%;
+  max-width: 260px;
+  margin-top: 10px;
 }
 
 body[data-theme="v8"] .auth7-onboard-title {
@@ -11121,7 +11232,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
 
   body[data-theme="v8"] .app-layout--hud .app-page-shell.store-page,
   body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: var(--app-diamond-offset);
   }
 
@@ -11272,15 +11384,14 @@ body[data-theme="v8"] .app-page-shell-inner {
     padding-inline: 0;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page):not(.favourites-page) {
+  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page) {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
     padding-bottom: 48px;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary.settings-page,
-  body[data-theme="v8"] .app-page-shell--secondary.inbox-page,
-  body[data-theme="v8"] .app-page-shell--secondary.favourites-page {
+  body[data-theme="v8"] .app-page-shell--secondary.inbox-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-inline: 0;
     padding-bottom: 48px;
@@ -11289,8 +11400,7 @@ body[data-theme="v8"] .app-page-shell-inner {
 
 /* Desktop: shell is notch-only — sticky subpage header clears the floating nav. */
 @media (min-width: 1024px) {
-  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header,
-  body[data-theme="v8"] .app-page-shell.favourites-page .subpage-header {
+  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header {
     top: var(--app-diamond-offset);
   }
 }
@@ -11342,6 +11452,11 @@ body[data-theme="v8"] .app-empty-action {
 
 body[data-theme="v8"] .app-page-shell--profile {
   padding-top: calc(var(--app-diamond-offset) + 8px);
+}
+
+/* Beat packs.css global `h1 { color: var(--ink-strong) }` on dark profile chrome. */
+body[data-theme="v8"] .app-page-shell--profile .profile-display-name {
+  color: oklch(1 0 0);
 }
 
 @media (min-width: 507px) {

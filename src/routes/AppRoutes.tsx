@@ -15,7 +15,8 @@ import { NavTestPage } from "@/pages/NavTestPage";
 import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
-import { FavouritesPage } from "@/pages/FavouritesPage";
+import { FollowingPage } from "@/pages/FollowingPage";
+import { GameSettingsPage } from "@/pages/GameSettingsPage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
 import { WelcomePage } from "@/pages/WelcomePage";
@@ -95,7 +96,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommendDone}
           element={
-            <OnboardShell badge="Recommend · Ready">
+            <OnboardShell>
               <RecCompletePage />
             </OnboardShell>
           }
@@ -103,7 +104,7 @@ export function AppRoutes() {
         <Route
           path={Paths.welcome}
           element={
-            <OnboardShell badge="Welcome">
+            <OnboardShell>
               <WelcomePage />
             </OnboardShell>
           }
@@ -147,10 +148,18 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="profile/favourites"
+            path="profile/following"
             element={
               <SoftGate tab="profile">
-                <FavouritesPage />
+                <FollowingPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/game-settings"
+            element={
+              <SoftGate tab="profile">
+                <GameSettingsPage />
               </SoftGate>
             }
           />

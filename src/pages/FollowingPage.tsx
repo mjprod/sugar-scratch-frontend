@@ -1,15 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { FavouritesScreen } from "@/components/profile/FavouritesScreen";
+import { FollowingScreen } from "@/components/profile/FollowingScreen";
 import { Paths } from "@/routes/Paths";
 
-export function FavouritesPage() {
+export function FollowingPage() {
   const navigate = useNavigate();
   const { openCreator } = useAuth();
   return (
-    <FavouritesScreen
+    <FollowingScreen
       onBack={() => navigate(Paths.profile)}
-      onOpenCreator={openCreator}
+      onOpenCreator={(id) => openCreator(id)}
+      onDiscoverCreators={() => navigate(Paths.discover)}
     />
   );
 }

@@ -31,6 +31,8 @@ export function CreatorHeader({
   description,
   tags,
   onBack,
+  following = false,
+  onToggleFollow,
 }: {
   creatorId: string;
   name: string;
@@ -39,6 +41,8 @@ export function CreatorHeader({
   description: string;
   tags: string[];
   onBack: () => void;
+  following?: boolean;
+  onToggleFollow?: () => void;
 }) {
   const [favorited, setFavorited] = useState(false);
 
@@ -66,25 +70,43 @@ export function CreatorHeader({
           <ChevronLeft className="size-5" />
         </button>
 
-        <button
-          type="button"
-          className={[
-            "cpv2-favorite",
-            favorited ? "is-favorited" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-pressed={favorited}
-          aria-label={favorited ? "Remove favorite" : "Add favorite"}
-          onClick={toggleFavorite}
-        >
-          <Heart
-            className="cpv2-favorite-icon"
-            fill={favorited ? "currentColor" : "none"}
-            aria-hidden
-          />
-          <span>{favorited ? "Favorited" : "Favorite"}</span>
-        </button>
+        <div className="cpv2-header-actions">
+          {onToggleFollow ? (
+            <button
+              type="button"
+              className={[
+                "cpv2-follow",
+                following ? "is-following" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={following}
+              onClick={onToggleFollow}
+            >
+              {following ? "Following" : "Follow"}
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            className={[
+              "cpv2-favorite",
+              favorited ? "is-favorited" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-pressed={favorited}
+            aria-label={favorited ? "Remove favorite" : "Add favorite"}
+            onClick={toggleFavorite}
+          >
+            <Heart
+              className="cpv2-favorite-icon"
+              fill={favorited ? "currentColor" : "none"}
+              aria-hidden
+            />
+            <span>{favorited ? "Favorited" : "Favorite"}</span>
+          </button>
+        </div>
 
         <div className="cpv2-header-portrait" aria-hidden="true">
           <img src={coverUrl} alt="" />

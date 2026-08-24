@@ -7,9 +7,10 @@ import {
   HelpCircle,
   Lock,
   LogOut,
+  Settings,
   Smartphone,
   ShieldCheck,
-  Heart,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useId, useState } from "react";
@@ -25,13 +26,15 @@ export function UserDashboardScreen({
   avatar,
   onLogout,
   onOpenChangePassword,
-  onOpenFavourites,
+  onOpenFollowing,
+  onOpenGameSettings,
 }: {
   name: string;
   avatar?: string | null;
   onLogout: () => void;
   onOpenChangePassword: () => void;
-  onOpenFavourites?: () => void;
+  onOpenFollowing?: () => void;
+  onOpenGameSettings?: () => void;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -57,8 +60,12 @@ export function UserDashboardScreen({
       onOpenChangePassword();
       return;
     }
-    if (label === "Favourite") {
-      onOpenFavourites?.();
+    if (label === "Following") {
+      onOpenFollowing?.();
+      return;
+    }
+    if (label === "Game Settings") {
+      onOpenGameSettings?.();
       return;
     }
     if (label === "Privacy Policy") {
@@ -105,10 +112,10 @@ export function UserDashboardScreen({
             {avatar || "✨"}
           </div>
           <div className="min-w-0 flex-1">
-            <span className="inline-flex rounded-full border border-[oklch(0.767_0.139_91.06)]/35 bg-[oklch(0.767_0.139_91.06)]/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-[oklch(0.767_0.139_91.06)] uppercase">
-              Gold Member
-            </span>
-            <h1 className="mt-2 truncate text-[30px] font-bold tracking-[-0.03em]">
+            <h1
+              className="profile-display-name truncate text-[30px] font-bold tracking-[-0.03em]"
+              title={name || "Collector"}
+            >
               {name || "Collector"}
             </h1>
             <p className="text-[13px] text-white/45">
@@ -159,7 +166,7 @@ export function UserDashboardScreen({
           title="Profile & Account"
           items={[
             { label: "Purchase History", icon: CreditCard },
-            { label: "Favourite", icon: Heart },
+            { label: "Following", icon: Users },
             { label: "Notifications", icon: Bell },
             { label: "Change Password", icon: Lock },
           ]}
@@ -169,6 +176,7 @@ export function UserDashboardScreen({
           title="Preferences & Support"
           items={[
             { label: "Language", icon: Globe2 },
+            { label: "Game Settings", icon: Settings },
             { label: "Help Centre", icon: HelpCircle },
             { label: "Privacy Policy", icon: ShieldCheck },
             { label: "Terms of Service", icon: FileText },
