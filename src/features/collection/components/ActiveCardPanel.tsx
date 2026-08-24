@@ -843,19 +843,21 @@ function PhotoSlot({
   onRevealPlay?: (index: number) => void
   onPlay?: (index: number) => void
 }) {
-  const filled = Boolean(fill.src)
+  const collected = fill.collected
   return (
     <div
-      className={`photo-cards__slot${filled ? ' is-filled' : ''}${
-        filled && playRevealed ? ' is-play-revealed' : ''
+      className={`photo-cards__slot${collected ? ' is-filled is-collected' : ' is-locked'}${
+        collected && playRevealed ? ' is-play-revealed' : ''
       }${keyboardSelected ? ' is-kb-selected' : ''}`}
       style={{ ['--slot-i' as string]: String(index) } as CSSProperties}
       aria-label={
-        filled ? `Photo card ${index + 1}` : `Photo card slot ${index + 1}`
+        collected
+          ? `Photo card ${index + 1}, collected`
+          : `Photo card slot ${index + 1}, not collected`
       }
       aria-current={keyboardSelected ? 'true' : undefined}
       onPointerDown={
-        filled
+        collected
           ? (event) => {
               // Stage drag / card gestures must not steal the slot press.
               event.stopPropagation()
@@ -863,7 +865,7 @@ function PhotoSlot({
           : undefined
       }
       onClick={
-        filled
+        collected
           ? (event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -875,36 +877,52 @@ function PhotoSlot({
     >
       {/* Inner face owns hover scale so entrance animation doesn't snap it. */}
       <div className="photo-cards__slot-face">
-        {filled ? (
-          <>
-            <img
-              className="photo-cards__slot-img"
-              src={fill.src!}
-              alt=""
-              loading="lazy"
-              draggable={false}
-            />
-            <button
-              type="button"
-              className="photo-cards__play"
-              aria-label={`Play static card ${index + 1}`}
-              title="Play"
-              onPointerDown={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-              }}
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onPlay?.(index)
-              }}
-            >
-              <PhotoSlotPlayIcon />
-            </button>
-          </>
+        {fill.src ? (
+          <img
+            className="photo-cards__slot-img"
+            src={fill.src}
+            alt=""
+            loading="lazy"
+            draggable={false}
+          />
         ) : (
           <span className="photo-cards__slot-num" aria-hidden="true">
             {index + 1}
+          </span>
+        )}
+        {collected ? (
+          <button
+            type="button"
+            className="photo-cards__play"
+            aria-label={`Play static card ${index + 1}`}
+            title="Play"
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onPlay?.(index)
+            }}
+          >
+            <PhotoSlotPlayIcon />
+          </button>
+        ) : (
+          <span className="photo-cards__lock" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="1em"
+              height="1em"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
           </span>
         )}
       </div>
@@ -970,7 +988,7 @@ export default function ActiveCardPanel({
     [cardKey, cardName, photoFilledCount, photoUrls],
   )
   const filledCount = useMemo(
-    () => slotFills.filter((s) => s.src).length,
+    () => slotFills.filter((s) => s.collected).length,
     [slotFills]
   )
   // Same seed as coverflow__meta-text play count ("Nx").
@@ -1149,11 +1167,11 @@ export default function ActiveCardPanel({
         return
       }
 
-      // Space opens the currently selected static card (filled only).
+      // Space opens the currently selected static card (collected only).
       if (key === ' ' || key === 'Spacebar' || key === 'Space') {
         if (kbSelectedSlot == null) return
         const fill = slotFills[kbSelectedSlot]
-        if (!fill?.src) return
+        if (!fill?.collected) return
         event.preventDefault()
         setRevealedPlaySlot(kbSelectedSlot)
         handlePlayStaticCard(kbSelectedSlot)
