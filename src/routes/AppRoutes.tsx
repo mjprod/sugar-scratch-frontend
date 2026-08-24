@@ -10,6 +10,7 @@ import { CollectionPage } from "@/pages/CollectionPage";
 import { CreatorPage } from "@/pages/CreatorPage";
 import { GamePage } from "@/pages/GamePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
+import { CoverFlowV2Page } from "@/pages/CoverFlowV2Page";
 import { NavTestPage } from "@/pages/NavTestPage";
 import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
@@ -179,6 +180,7 @@ export function AppRoutes() {
             }
           />
           <Route path="purchase/:packId" element={<PurchaseFlowPage />} />
+          <Route path="coverflow-v2" element={<CoverFlowV2Page />} />
           <Route
             path="game"
             element={
