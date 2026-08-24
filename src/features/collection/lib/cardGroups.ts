@@ -619,7 +619,10 @@ export function createBackendDeck(
         mediaType: hasMedia ? 'video' : 'image',
         mediaUrl: hasMedia ? mediaUrl : PLACEHOLDER_MEDIA_URL,
         videoCardCount: 0,
-        photoFilledCount: 0,
+        photoFilledCount: Math.max(
+          0,
+          Math.min(10, Math.round(card.photoScratchDone ?? 0)),
+        ),
         photoUrls: card.photoUrls,
         ...(overlay
           ? {

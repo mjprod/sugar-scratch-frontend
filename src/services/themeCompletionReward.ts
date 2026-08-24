@@ -13,7 +13,7 @@ export type ThemeCompletionRewardView = {
   title: string;
   description: string;
   isMystery: boolean;
-  /** Diamonds granted on claim when not mystery. */
+  /** Diamonds granted on successful claim. */
   diamondAmount: number;
   claimedAt?: number;
 };
@@ -24,7 +24,7 @@ type ClaimLedger = {
 
 const KEY = "sugar.v8.themeCompletionRewards";
 
-/** Default known reward — mystery titles until reward catalog exists. */
+/** Default known diamond grant until a reward catalog exists. */
 const DEFAULT_DIAMONDS = 50;
 
 /** In-memory fallback when localStorage is missing (tests / private mode). */
@@ -123,7 +123,7 @@ export function getThemeCompletionReward(input: {
         : status === "claimable"
           ? "Claim your exclusive Theme Reward"
           : "Complete the collection to unlock the reward.",
-    isMystery: true,
+    isMystery: false,
     diamondAmount: DEFAULT_DIAMONDS,
     claimedAt: claimed ? claimedAt : undefined,
   };

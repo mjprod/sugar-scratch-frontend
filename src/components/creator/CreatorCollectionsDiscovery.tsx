@@ -11,21 +11,12 @@ import {
   getThemeCompletionReward,
   type ThemeRewardStatus,
 } from "@/services/themeCompletionReward";
+import {
+  buildCollectionPreviewCards,
+  buildPreviewFromThemeDetail,
+  COLLECTION_PREVIEW_LIMIT,
+} from "@/components/creator/collectionPreviewCards";
 import "./creator-collections-discovery.css";
-
-export type CollectionPreviewCard = {
-  id: string;
-  number: string;
-  collected: boolean;
-  /**
-   * Artwork for this slot. Collected → full reveal.
-   * Uncollected → same asset rendered as a blurred/dark teaser (unique per card).
-   */
-  thumbnailUrl?: string;
-  motionCardId: string;
-};
-
-const PREVIEW_LIMIT = 10;
 
 const THEME_GLYPH: Record<string, string> = {
   firegirl: "🔥",
@@ -52,53 +43,6 @@ function themeGlyph(theme: Pick<ThemeCardData, "id" | "name">): string {
   return "✦";
 }
 
-/** First N photo-slot cards across the theme's motion cards (preview only). */
-export function buildCollectionPreviewCards(
-  motionCards: readonly CardConfig[],
-  limit = PREVIEW_LIMIT,
-): CollectionPreviewCard[] {
-  const out: CollectionPreviewCard[] = [];
-  let sequence = 0;
-  for (const card of motionCards) {
-    const filled = Math.max(0, Math.min(10, card.photoFilledCount ?? 0));
-    const motionTeaser =
-      card.mediaType === "image" && card.mediaUrl?.trim()
-        ? card.mediaUrl.trim()
-        : "";
-    for (let slot = 0; slot < 10; slot++) {
-      sequence += 1;
-      const collected = slot < filled;
-      const slotUrl = card.photoUrls?.[slot]?.trim() || "";
-      const thumbnailUrl = slotUrl || motionTeaser || undefined;
-      out.push({
-        id: `${card.id}:slot:${slot}`,
-        number: String(sequence).padStart(2, "0"),
-        collected,
-        thumbnailUrl,
-        motionCardId: card.id,
-      });
-      if (out.length >= limit) return out;
-    }
-  }
-  return out;
-}
-
-function buildPreviewFromThemeDetail(
-  detail: ThemeDetailData | undefined,
-  limit = PREVIEW_LIMIT,
-): CollectionPreviewCard[] {
-  if (!detail) return [];
-  return detail.photoCards.slice(0, limit).map((card) => ({
-    id: `${detail.themeId}-photo-${card.index}`,
-    number: String(card.index).padStart(2, "0"),
-    collected: card.isUnlocked,
-    thumbnailUrl: card.thumbnailUrl || undefined,
-    motionCardId: detail.motionCards[0]
-      ? `${detail.themeId}-m${detail.motionCards[0].index}`
-      : detail.themeId,
-  }));
-}
-
 function rewardStatusForTheme(
   creatorId: string,
   theme: ThemeCardData,
@@ -115,23 +59,25 @@ function rewardStatusForTheme(
 }
 
 /**
- * Demo seed: force the first theme to 100% collected so the claimable /
- * claimed completion UI can be reviewed without owning every card.
- * Remove once live ownership drives completion.
+ * DEV-only: force the first theme to 100% collected so claimable / claimed UI
+ * can be reviewed without owning every card. Never runs in production.
  */
 function withDemoCompleteTheme(themes: ThemeCardData[]): ThemeCardData[] {
-  if (themes.length === 0) return themes;
+  if (!import.meta.env.DEV || themes.length === 0) return themes;
   const demoId = themes[0]!.id;
   return themes.map((theme) =>
     theme.id === demoId
-      ? { ...theme, collected: Math.max(theme.total, 1), total: Math.max(theme.total, 1) }
+      ? {
+          ...theme,
+          collected: Math.max(theme.total, 1),
+          total: Math.max(theme.total, 1),
+        }
       : theme,
   );
 }
 
 export function CreatorCollectionsDiscovery({
   creatorId,
-  creatorName: _creatorName,
   themes: themesIn,
   selectedThemeId,
   onSelectTheme,
@@ -144,7 +90,6 @@ export function CreatorCollectionsDiscovery({
   onLockedCardHint,
 }: {
   creatorId: string;
-  creatorName: string;
   themes: ThemeCardData[];
   selectedThemeId: string;
   onSelectTheme: (themeId: string) => void;
@@ -165,7 +110,9 @@ export function CreatorCollectionsDiscovery({
   const prevPctRef = useRef(0);
 
   const themes = useMemo(() => withDemoCompleteTheme(themesIn), [themesIn]);
-  const demoCompleteThemeId = themes[0]?.id ?? null;
+  const demoCompleteThemeId = import.meta.env.DEV
+    ? (themes[0]?.id ?? null)
+    : null;
 
   const selectedIndex = Math.max(
     0,
@@ -174,16 +121,20 @@ export function CreatorCollectionsDiscovery({
   const selected = themes[selectedIndex] ?? themes[0];
   const motionCards = cardsByThemeId[selected?.id ?? ""] ?? [];
   const previewCards = useMemo(() => {
-    const fromLive = buildCollectionPreviewCards(motionCards, PREVIEW_LIMIT);
+    const fromLive = buildCollectionPreviewCards(
+      motionCards,
+      COLLECTION_PREVIEW_LIMIT,
+    );
     const base =
       fromLive.length > 0
         ? fromLive
         : buildPreviewFromThemeDetail(
             selected ? themeDetails?.[selected.id] : undefined,
-            PREVIEW_LIMIT,
+            COLLECTION_PREVIEW_LIMIT,
           );
-    if (!selected || selected.id !== demoCompleteThemeId) return base;
-    // Match 100% progress: show every preview slot as collected.
+    if (!selected || !demoCompleteThemeId || selected.id !== demoCompleteThemeId)
+      return base;
+    // DEV demo: match 100% progress — show every preview slot as collected.
     return base.map((card) => ({
       ...card,
       collected: true,
@@ -193,7 +144,7 @@ export function CreatorCollectionsDiscovery({
   const navRef = useRef<HTMLDivElement>(null);
   const [fadeKey, setFadeKey] = useState(selected?.id ?? "");
   const packCost = packUnitCost(
-    selected ? `${selected.id}-buy` : "pack",
+    selected ? `${creatorId}-${selected.id}-buy` : "pack",
   );
 
   const reward = useMemo(() => {
@@ -273,12 +224,14 @@ export function CreatorCollectionsDiscovery({
     setClaimError(null);
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 280));
+      // Eligibility from un-faked API progress — presentation demo cannot grant.
+      const real = themesIn.find((t) => t.id === selected.id) ?? selected;
       const result = claimThemeCompletionReward({
         creatorId,
         themeId: selected.id,
         themeName: selected.name,
-        collected: selected.collected,
-        total: selected.total,
+        collected: real.collected,
+        total: real.total,
       });
       if (!result.ok) {
         setClaimError(result.message || "Couldn't claim reward. Please try again.");

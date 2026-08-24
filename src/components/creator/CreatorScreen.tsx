@@ -33,15 +33,11 @@ import "./creator-collection.css";
  */
 export function CreatorScreen({
   creatorId,
-  diamonds: _diamonds,
   onBack,
-  onOpenPack: _onOpenPack,
   onBuyPack,
 }: {
   creatorId: string;
-  diamonds: number;
   onBack: () => void;
-  onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const [resolvedModel, setResolvedModel] = useState<BackendModel | null>(
@@ -265,7 +261,6 @@ function CreatorScreenInner({
           {viewMode === "grid" ? (
             <CreatorCollectionsDiscovery
               creatorId={purchaseCreatorId}
-              creatorName={creatorName}
               themes={themes}
               selectedThemeId={theme?.id ?? selectedThemeId}
               onSelectTheme={(id) => {
