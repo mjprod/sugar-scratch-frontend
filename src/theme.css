@@ -561,6 +561,127 @@ body[data-theme="v8"] .home-view-all-packs {
   z-index: 20;
 }
 
+/* Homepage-only site footer (pack browse /) — desktop only. */
+body[data-theme="v8"] .home-site-footer {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+  padding: 28px 8px 8px;
+  border-top: 1px solid oklch(1 0 0 / 0.08);
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-site-footer {
+    display: flex;
+  }
+}
+
+body[data-theme="v8"] .home-site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 10px;
+}
+
+body[data-theme="v8"] .home-site-footer-link {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.48);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .home-site-footer-link:hover {
+  color: oklch(1 0 0 / 0.78);
+}
+
+body[data-theme="v8"] .home-site-footer-dot {
+  color: oklch(1 0 0 / 0.22);
+  font-size: 12px;
+}
+
+body[data-theme="v8"] .home-site-footer-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-theme="v8"] .home-site-footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: oklch(1 0 0 / 0.55);
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+body[data-theme="v8"] .home-site-footer-social-link:hover {
+  color: oklch(1 0 0 / 0.9);
+  background: oklch(1 0 0 / 0.1);
+  border-color: oklch(1 0 0 / 0.14);
+}
+
+body[data-theme="v8"] .home-site-footer-copy {
+  margin: 0;
+  color: oklch(1 0 0 / 0.32);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Mobile: site links live on Profile (Terms/Privacy already in menu). */
+body[data-theme="v8"] .profile-site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 1.75rem;
+  margin-bottom: 0.25rem;
+  padding: 24px 8px 4px;
+  border-top: 1px solid oklch(1 0 0 / 0.08);
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .profile-site-footer {
+    display: none;
+  }
+}
+
+/* Host for homepage legal — content uses Profile shell/panel styles.
+ * Above liquid-glass nav/dock (5000/5010) and auth sheet (5200). */
+body[data-theme="v8"] .home-legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5300;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: oklch(0.13 0.005 285.67);
+}
+
+body[data-theme="v8"] .home-legal-overlay .app-page-shell {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
 body[data-theme="v8"] .home-featured-heading {
   position: absolute;
   top: var(--hero-heading-y, 7.1rem);
@@ -7868,6 +7989,93 @@ body[data-theme="v8"] .auth7-legal-doc {
   align-items: stretch;
   padding-right: 40px;
   margin-bottom: 20px;
+}
+
+body[data-theme="v8"] .auth7-legal-doc {
+  padding-right: 0;
+  margin-bottom: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+body[data-theme="v8"] .auth7-legal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-bottom: 28px;
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+body[data-theme="v8"] .auth7-legal-meta {
+  margin: 0;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .auth7-legal-lede {
+  margin: 0 0 6px;
+  color: oklch(1 0 0 / 0.78);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+body[data-theme="v8"] .auth7-legal-h2 {
+  margin: 14px 0 0;
+  color: oklch(1 0 0);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+body[data-theme="v8"] .auth7-legal-h3 {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.88);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+body[data-theme="v8"] .auth7-legal-p,
+body[data-theme="v8"] .auth7-legal-note {
+  margin: 0;
+  color: oklch(1 0 0 / 0.68);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+body[data-theme="v8"] .auth7-legal-note {
+  font-style: italic;
+  color: oklch(1 0 0 / 0.55);
+}
+
+body[data-theme="v8"] .auth7-legal-ul {
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  color: oklch(1 0 0 / 0.68);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+body[data-theme="v8"] .auth7-legal-ul li + li {
+  margin-top: 6px;
+}
+
+body[data-theme="v8"] .settings-legal-panel .auth7-legal-body {
+  max-height: none;
+  flex: 1;
+  padding-bottom: 48px;
+}
+
+body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc {
+  flex: 1;
+  min-height: 0;
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
