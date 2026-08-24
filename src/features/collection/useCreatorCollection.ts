@@ -60,7 +60,12 @@ function buildThemes(
   const themes: CreatorThemeChip[] = groups.map((group) => {
     const id = themeIdOf(group);
     groupByThemeId[id] = group;
-    const filled = 0;
+    // Real owned-photo progress. Motion-card ownership has no ledger yet, so
+    // theme progress counts photo slots only.
+    const filled = group.cards.reduce(
+      (sum, card) => sum + Math.max(0, card.photoScratchDone ?? 0),
+      0,
+    );
     const total = Math.max(group.cards.length * 10, 1);
     const cover =
       group.avatarUrl ||

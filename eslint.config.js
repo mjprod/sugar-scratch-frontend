@@ -19,5 +19,13 @@ export default defineConfig([
       ecmaVersion: 2022,
       globals: globals.browser,
     },
+    rules: {
+      // Callback signatures are fixed by their prop type — an `_`-prefixed
+      // parameter is the intended way to skip one. Unused *variables* still error.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
   },
 ]);

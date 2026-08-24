@@ -11,93 +11,20 @@ import {
   getThemeCompletionReward,
   type ThemeRewardStatus,
 } from "@/services/themeCompletionReward";
+import {
+  buildCollectionPreviewCards,
+  buildPreviewFromThemeDetail,
+  PREVIEW_LIMIT,
+  themeGlyph,
+} from "./collectionPreview";
 import "./creator-collections-discovery.css";
 
-export type CollectionPreviewCard = {
-  id: string;
-  number: string;
-  collected: boolean;
-  /**
-   * Artwork for this slot. Collected → full reveal.
-   * Uncollected → same asset rendered as a blurred/dark teaser (unique per card).
-   */
-  thumbnailUrl?: string;
-  motionCardId: string;
-};
-
-const PREVIEW_LIMIT = 10;
-
-const THEME_GLYPH: Record<string, string> = {
-  firegirl: "🔥",
-  firefighter: "🔥",
-  fire: "🔥",
-  nurse: "✚",
-  teacher: "📖",
-  gym: "🏋",
-  police: "🚓",
-  cop: "🚓",
-  bikini: "☀",
-  summer: "☀",
-  casual: "✦",
-  office: "💼",
-  cyber: "⚡",
-  midnight: "🌙",
-};
-
-function themeGlyph(theme: Pick<ThemeCardData, "id" | "name">): string {
-  const key = `${theme.id} ${theme.name}`.toLowerCase();
-  for (const [id, glyph] of Object.entries(THEME_GLYPH)) {
-    if (key.includes(id)) return glyph;
-  }
-  return "✦";
-}
-
-/** First N photo-slot cards across the theme's motion cards (preview only). */
-export function buildCollectionPreviewCards(
-  motionCards: readonly CardConfig[],
-  limit = PREVIEW_LIMIT,
-): CollectionPreviewCard[] {
-  const out: CollectionPreviewCard[] = [];
-  let sequence = 0;
-  for (const card of motionCards) {
-    const filled = Math.max(0, Math.min(10, card.photoFilledCount ?? 0));
-    const motionTeaser =
-      card.mediaType === "image" && card.mediaUrl?.trim()
-        ? card.mediaUrl.trim()
-        : "";
-    for (let slot = 0; slot < 10; slot++) {
-      sequence += 1;
-      const collected = slot < filled;
-      const slotUrl = card.photoUrls?.[slot]?.trim() || "";
-      const thumbnailUrl = slotUrl || motionTeaser || undefined;
-      out.push({
-        id: `${card.id}:slot:${slot}`,
-        number: String(sequence).padStart(2, "0"),
-        collected,
-        thumbnailUrl,
-        motionCardId: card.id,
-      });
-      if (out.length >= limit) return out;
-    }
-  }
-  return out;
-}
-
-function buildPreviewFromThemeDetail(
-  detail: ThemeDetailData | undefined,
-  limit = PREVIEW_LIMIT,
-): CollectionPreviewCard[] {
-  if (!detail) return [];
-  return detail.photoCards.slice(0, limit).map((card) => ({
-    id: `${detail.themeId}-photo-${card.index}`,
-    number: String(card.index).padStart(2, "0"),
-    collected: card.isUnlocked,
-    thumbnailUrl: card.thumbnailUrl || undefined,
-    motionCardId: detail.motionCards[0]
-      ? `${detail.themeId}-m${detail.motionCards[0].index}`
-      : detail.themeId,
-  }));
-}
+/**
+ * Demo seed forces the first theme to 100% so the claimable / claimed UI can be
+ * reviewed without owning every card. It is dev-only: in production it would
+ * make a real, diamond-granting claim available to users who own nothing.
+ */
+const DEMO_COMPLETE_FIRST_THEME = import.meta.env.DEV;
 
 function rewardStatusForTheme(
   creatorId: string,
@@ -114,13 +41,8 @@ function rewardStatusForTheme(
   }).status;
 }
 
-/**
- * Demo seed: force the first theme to 100% collected so the claimable /
- * claimed completion UI can be reviewed without owning every card.
- * Remove once live ownership drives completion.
- */
 function withDemoCompleteTheme(themes: ThemeCardData[]): ThemeCardData[] {
-  if (themes.length === 0) return themes;
+  if (!DEMO_COMPLETE_FIRST_THEME || themes.length === 0) return themes;
   const demoId = themes[0]!.id;
   return themes.map((theme) =>
     theme.id === demoId
@@ -131,7 +53,6 @@ function withDemoCompleteTheme(themes: ThemeCardData[]): ThemeCardData[] {
 
 export function CreatorCollectionsDiscovery({
   creatorId,
-  creatorName: _creatorName,
   themes: themesIn,
   selectedThemeId,
   onSelectTheme,
@@ -144,7 +65,6 @@ export function CreatorCollectionsDiscovery({
   onLockedCardHint,
 }: {
   creatorId: string;
-  creatorName: string;
   themes: ThemeCardData[];
   selectedThemeId: string;
   onSelectTheme: (themeId: string) => void;
@@ -165,35 +85,40 @@ export function CreatorCollectionsDiscovery({
   const prevPctRef = useRef(0);
 
   const themes = useMemo(() => withDemoCompleteTheme(themesIn), [themesIn]);
-  const demoCompleteThemeId = themes[0]?.id ?? null;
+  const demoCompleteThemeId = DEMO_COMPLETE_FIRST_THEME
+    ? (themes[0]?.id ?? null)
+    : null;
 
   const selectedIndex = Math.max(
     0,
     themes.findIndex((theme) => theme.id === selectedThemeId),
   );
   const selected = themes[selectedIndex] ?? themes[0];
-  const motionCards = cardsByThemeId[selected?.id ?? ""] ?? [];
+  const selectedId = selected?.id ?? null;
   const previewCards = useMemo(() => {
+    const motionCards = cardsByThemeId[selectedId ?? ""] ?? [];
     const fromLive = buildCollectionPreviewCards(motionCards, PREVIEW_LIMIT);
     const base =
       fromLive.length > 0
         ? fromLive
         : buildPreviewFromThemeDetail(
-            selected ? themeDetails?.[selected.id] : undefined,
+            selectedId ? themeDetails?.[selectedId] : undefined,
             PREVIEW_LIMIT,
           );
-    if (!selected || selected.id !== demoCompleteThemeId) return base;
-    // Match 100% progress: show every preview slot as collected.
+    if (!selectedId || selectedId !== demoCompleteThemeId) return base;
+    // Match the demo 100% progress: show every preview slot as collected.
     return base.map((card) => ({
       ...card,
       collected: true,
       thumbnailUrl: card.thumbnailUrl || "/img/SugarScratch.png",
     }));
-  }, [motionCards, selected, themeDetails, demoCompleteThemeId]);
+  }, [cardsByThemeId, selectedId, themeDetails, demoCompleteThemeId]);
   const navRef = useRef<HTMLDivElement>(null);
   const [fadeKey, setFadeKey] = useState(selected?.id ?? "");
+  // Must match the packId buyThemePack charges, or the shown price can drift
+  // from the charged price once real per-pack pricing lands.
   const packCost = packUnitCost(
-    selected ? `${selected.id}-buy` : "pack",
+    selectedId ? `${creatorId}-${selectedId}-buy` : "pack",
   );
 
   const reward = useMemo(() => {
@@ -205,6 +130,9 @@ export function CreatorCollectionsDiscovery({
       collected: selected.collected,
       total: selected.total,
     });
+    // rewardRevision is a cache-bust key: the claim ledger is module state, so
+    // a successful claim has to force this re-read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creatorId, selected, rewardRevision]);
 
   const total = selected?.total ?? 0;
@@ -225,11 +153,14 @@ export function CreatorCollectionsDiscovery({
           : `${selected.name} collection progress: ${collected} of ${total} cards collected. Theme reward unlocks when all ${total} cards are collected.`;
 
   useEffect(() => {
-    setFadeKey(selected?.id ?? "");
+    setFadeKey(selectedId ?? "");
     setClaimError(null);
     setJustComplete(false);
+    // Re-baseline progress for the new theme; reacting to `pct` itself would
+    // swallow the 99→100 transition the celebration effect below watches for.
     prevPctRef.current = pct;
-  }, [selected?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   useEffect(() => {
     if (!showPersonalProgress || !selected) return;
@@ -244,13 +175,12 @@ export function CreatorCollectionsDiscovery({
 
   useEffect(() => {
     const el = navRef.current;
-    if (!el || !selected) return;
+    if (!el || !selectedId) return;
     const row = Array.from(el.children).find(
-      (child) =>
-        (child as HTMLElement).dataset.collectionId === selected.id,
+      (child) => (child as HTMLElement).dataset.collectionId === selectedId,
     ) as HTMLElement | undefined;
     row?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [selected?.id]);
+  }, [selectedId]);
 
   if (themes.length === 0 && !loading) {
     return null;
@@ -266,6 +196,9 @@ export function CreatorCollectionsDiscovery({
     if (next) onSelectTheme(next.id);
   }
 
+  // `selected` carries the demo seed in dev builds, so this can grant diamonds
+  // for a theme the user has not completed. That is only safe while
+  // DEMO_COMPLETE_FIRST_THEME stays dev-only.
   async function handleClaim() {
     if (!selected || claiming) return;
     if (!requireAuth({ type: "claim" })) return;
@@ -303,12 +236,12 @@ export function CreatorCollectionsDiscovery({
     >
       <aside className="ccd-nav">
         <h3 className="ccd-nav-title">Collections</h3>
-        <div
-          ref={navRef}
-          className="ccd-nav-list"
-          role="listbox"
-          aria-label="Collections"
-        >
+        {/*
+          Plain button group rather than listbox/option: options must not be
+          independently focusable buttons, and these need normal button
+          semantics for click + Enter/Space.
+        */}
+        <div ref={navRef} className="ccd-nav-list" aria-label="Collections">
           {loading && themes.length === 0
             ? Array.from({ length: 5 }, (_, i) => (
                 <div
@@ -326,8 +259,7 @@ export function CreatorCollectionsDiscovery({
                   <button
                     key={theme.id}
                     type="button"
-                    role="option"
-                    aria-selected={active}
+                    aria-current={active ? "true" : undefined}
                     data-collection-id={theme.id}
                     className={["ccd-nav-row", active ? "is-active" : ""]
                       .filter(Boolean)
@@ -453,7 +385,7 @@ export function CreatorCollectionsDiscovery({
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuetext={progressAria}
-                      aria-label={progressAria}
+                      aria-label="Collection progress"
                     >
                       <span
                         className="ccd-progress-fill"
