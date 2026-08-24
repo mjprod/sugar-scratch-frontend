@@ -43,7 +43,7 @@ export function HomeSiteFooter() {
             className="home-site-footer-link"
             onClick={() => setLegal("terms")}
           >
-            Terms and Conditions
+            Terms of Service
           </button>
           <span className="home-site-footer-dot" aria-hidden="true">
             ·
@@ -73,7 +73,7 @@ export function HomeSiteFooter() {
               {/* Same shell + panel as Profile legal view */}
               <AppPageShell
                 aria-label={
-                  legal === "terms" ? "Terms and Conditions" : "Privacy Policy"
+                  legal === "terms" ? "Terms of Service" : "Privacy Policy"
                 }
                 className="app-page-shell--profile"
               >

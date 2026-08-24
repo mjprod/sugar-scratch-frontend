@@ -1,4 +1,9 @@
-/** End-user legal copy sourced from Sugar Scratch Terms / Privacy drafts. */
+/** End-user legal copy for Sugar Scratch.
+ * Contact / entity constants — update when Legal finalizes the operating company. */
+const LEGAL_EFFECTIVE_DATE = "August 25, 2026";
+const LEGAL_COMPANY_NAME = "Sugar Scratch";
+const LEGAL_SUPPORT_EMAIL = "support@sugarscratch.com";
+const LEGAL_PRIVACY_EMAIL = "privacy@sugarscratch.com";
 
 export type LegalBlock =
   | { type: "lede"; text: string }
@@ -9,14 +14,18 @@ export type LegalBlock =
   | { type: "ul"; items: string[] }
   | { type: "note"; text: string };
 
-export const TERMS_TITLE = "Terms and Conditions";
+/** Matches create-account consent copy ("Terms of Service"). */
+export const TERMS_TITLE = "Terms of Service";
 export const PRIVACY_TITLE = "Privacy Policy";
 
 export const TERMS_BLOCKS: LegalBlock[] = [
-  { type: "meta", text: "Effective Date: [Insert Date] · Last Updated: [Insert Date]" },
+  {
+    type: "meta",
+    text: `Effective Date: ${LEGAL_EFFECTIVE_DATE} · Last Updated: ${LEGAL_EFFECTIVE_DATE}`,
+  },
   {
     type: "lede",
-    text: 'These Terms and Conditions ("Terms") govern your access to and use of Sugar Scratch (the "Service", "we", "us", "our"), a web-based digital collectible card platform operated by [Company Legal Name] ("Company"). By creating an account, purchasing Diamonds, or otherwise using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.',
+    text: `These Terms of Service ("Terms") govern your access to and use of Sugar Scratch (the "Service", "we", "us", "our"), a web-based digital collectible card platform operated by ${LEGAL_COMPANY_NAME} ("Company"). By creating an account, purchasing Diamonds, or otherwise using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.`,
   },
   { type: "h2", text: "1. Eligibility" },
   {
@@ -111,7 +120,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "5.3 To request a refund review, contact [support email] within [X] days of the transaction, including your account ID and transaction reference.",
+    text: `5.3 To request a refund review, contact ${LEGAL_SUPPORT_EMAIL} within 14 days of the transaction, including your account ID and transaction reference.`,
   },
   {
     type: "p",
@@ -141,7 +150,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "7.3 We prohibit content that violates our creator content guidelines (including but not limited to non-consensual, exploitative, or sexually explicit material). Users may report concerning content via [in-app report mechanism / support email].",
+    text: `7.3 We prohibit content that violates our creator content guidelines (including but not limited to non-consensual, exploitative, or sexually explicit material). Users may report concerning content via in-app reporting or ${LEGAL_SUPPORT_EMAIL}.`,
   },
   { type: "h2", text: "8. Intellectual Property" },
   {
@@ -185,7 +194,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "11. Termination" },
   {
     type: "p",
-    text: "11.1 You may stop using the Service and request account deletion at any time via [Profile settings / support email].",
+    text: `11.1 You may stop using the Service and request account deletion at any time via Profile settings or ${LEGAL_SUPPORT_EMAIL}.`,
   },
   {
     type: "p",
@@ -207,7 +216,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "13. Limitation of Liability" },
   {
     type: "p",
-    text: "To the maximum extent permitted by applicable law, the Company's total liability for any claim arising from your use of the Service shall not exceed the amount you paid to the Company in the [12 months] preceding the claim. We are not liable for indirect, incidental, or consequential damages.",
+    text: "To the maximum extent permitted by applicable law, the Company's total liability for any claim arising from your use of the Service shall not exceed the amount you paid to the Company in the 12 months preceding the claim. We are not liable for indirect, incidental, or consequential damages.",
   },
   {
     type: "note",
@@ -216,11 +225,11 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "14. Governing Law & Dispute Resolution" },
   {
     type: "p",
-    text: "14.1 These Terms are governed by the laws of [Jurisdiction — to be finalized per operating entity], without regard to conflict-of-law principles.",
+    text: "14.1 These Terms are governed by the laws applicable where the Company operates the Service, without regard to conflict-of-law principles.",
   },
   {
     type: "p",
-    text: "14.2 [Insert dispute resolution mechanism — e.g., informal resolution first, then arbitration or courts of a specified jurisdiction.]",
+    text: "14.2 Before filing a formal claim, you agree to contact us and attempt informal resolution. If we cannot resolve the dispute within 30 days, either party may pursue relief in a court of competent jurisdiction.",
   },
   { type: "h2", text: "15. Changes to These Terms" },
   {
@@ -234,15 +243,18 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "ul",
-    items: ["[Support email]", "[Company legal name and address]"],
+    items: [LEGAL_SUPPORT_EMAIL, LEGAL_COMPANY_NAME],
   },
 ];
 
 export const PRIVACY_BLOCKS: LegalBlock[] = [
-  { type: "meta", text: "Effective Date: [Insert Date] · Last Updated: [Insert Date]" },
+  {
+    type: "meta",
+    text: `Effective Date: ${LEGAL_EFFECTIVE_DATE} · Last Updated: ${LEGAL_EFFECTIVE_DATE}`,
+  },
   {
     type: "lede",
-    text: 'This Privacy Policy explains how [Company Legal Name] ("Company", "we", "us", "our") collects, uses, discloses, and protects information when you use Sugar Scratch (the "Service"). It should be read together with our Terms and Conditions.',
+    text: `This Privacy Policy explains how ${LEGAL_COMPANY_NAME} ("Company", "we", "us", "our") collects, uses, discloses, and protects information when you use Sugar Scratch (the "Service"). It should be read together with our Terms of Service.`,
   },
   { type: "h2", text: "1. Information We Collect" },
   { type: "h3", text: "1.1 Information you provide directly" },
@@ -349,9 +361,9 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
   {
     type: "ul",
     items: [
-      "Account data: retained while your account is active, and for a limited period after closure for fraud/legal purposes (typically [X] months/years — to be confirmed with Legal).",
+      "Account data: retained while your account is active, and for up to 24 months after closure for fraud and legal purposes, unless a longer period is required by law.",
       "Transaction records: retained as required by applicable tax and financial recordkeeping law.",
-      "Support communications: retained for [X] period to handle follow-up disputes.",
+      "Support communications: retained for up to 24 months to handle follow-up disputes.",
     ],
   },
   {
@@ -361,7 +373,7 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "8. Children's Privacy" },
   {
     type: "p",
-    text: "Sugar Scratch is intended for users 18 and older (see Terms, Section 1). We do not knowingly collect personal information from anyone under 18. If we become aware that we have collected data from a minor, we will delete the account and associated data promptly. If you believe a minor has provided us data, contact us at [support email].",
+    text: `Sugar Scratch is intended for users 18 and older (see Terms, Section 1). We do not knowingly collect personal information from anyone under 18. If we become aware that we have collected data from a minor, we will delete the account and associated data promptly. If you believe a minor has provided us data, contact us at ${LEGAL_SUPPORT_EMAIL}.`,
   },
   { type: "h2", text: "9. Your Rights" },
   {
@@ -381,7 +393,7 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "To exercise these rights, contact us at [support/privacy email]. We may need to verify your identity before fulfilling a request. Note that deleting your account will result in forfeiture of Diamonds, Sugar Coin, and collected items, consistent with the Terms.",
+    text: `To exercise these rights, contact us at ${LEGAL_PRIVACY_EMAIL}. We may need to verify your identity before fulfilling a request. Note that deleting your account will result in forfeiture of Diamonds, Sugar Coin, and collected items, consistent with the Terms.`,
   },
   { type: "h2", text: "10. Data Security" },
   {
@@ -405,7 +417,7 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
   },
   {
     type: "ul",
-    items: ["[Privacy/support email]", "[Company legal name and address]"],
+    items: [LEGAL_PRIVACY_EMAIL, LEGAL_COMPANY_NAME],
   },
   {
     type: "p",

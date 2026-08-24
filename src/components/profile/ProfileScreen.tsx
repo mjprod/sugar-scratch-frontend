@@ -65,7 +65,7 @@ export function UserDashboardScreen({
       setView("legal-privacy");
       return;
     }
-    if (label === "Terms and Conditions") {
+    if (label === "Terms of Service") {
       setView("legal-terms");
       return;
     }
@@ -171,7 +171,7 @@ export function UserDashboardScreen({
             { label: "Language", icon: Globe2 },
             { label: "Help Centre", icon: HelpCircle },
             { label: "Privacy Policy", icon: ShieldCheck },
-            { label: "Terms and Conditions", icon: FileText },
+            { label: "Terms of Service", icon: FileText },
           ]}
           onOpen={open}
         />

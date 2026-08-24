@@ -663,11 +663,12 @@ body[data-theme="v8"] .profile-site-footer {
   }
 }
 
-/* Host for homepage legal — content uses Profile shell/panel styles. */
+/* Host for homepage legal — content uses Profile shell/panel styles.
+ * Above liquid-glass nav/dock (5000/5010) and auth sheet (5200). */
 body[data-theme="v8"] .home-legal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: 5300;
   display: flex;
   flex-direction: column;
   min-height: 0;
