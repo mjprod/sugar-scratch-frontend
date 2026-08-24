@@ -734,6 +734,50 @@ body[data-theme="v8"] .home-hero-debug__head {
   gap: 0.5rem;
 }
 
+body[data-theme="v8"] .home-hero-debug__timeline {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+body[data-theme="v8"] .home-hero-debug__step {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  min-height: 2.6rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 10px;
+  background: oklch(0.267 0.015 256.8 / 0.95);
+  color: oklch(0.943 0.011 243.66);
+  font: inherit;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .home-hero-debug__step span {
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+body[data-theme="v8"] .home-hero-debug__step em {
+  font-style: normal;
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: oklch(1 0 0 / 0.5);
+}
+
+body[data-theme="v8"] .home-hero-debug__step.is-active {
+  border-color: oklch(0.824 0.137 68.76);
+  background: oklch(0.33 0.04 70 / 0.28);
+}
+
+body[data-theme="v8"] .home-hero-debug__step.is-active em {
+  color: oklch(0.887 0.101 77.93 / 0.95);
+}
+
 body[data-theme="v8"] .home-hero-debug__title {
   margin: 0;
   font-size: 0.72rem;
@@ -814,6 +858,12 @@ body[data-theme="v8"] .home-hero-debug__field em {
 
 body[data-theme="v8"] .home-hero-debug__field input[type="range"] {
   width: 100%;
+  accent-color: oklch(0.824 0.137 68.76);
+}
+
+body[data-theme="v8"] .home-hero-debug__field input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
   accent-color: oklch(0.824 0.137 68.76);
 }
 

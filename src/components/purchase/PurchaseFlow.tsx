@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from "framer-motion";
+import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import {
   AlertTriangle,
   Check,
@@ -12,12 +12,16 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { FoilPackFace } from "@/components/purchase/FoilPackFace";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
+import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
+import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
+import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
+import { setCardTopTearT, setPackOpenRequested } from "@/features/packs/cardTopDebug";
 import "@/features/packs/packs.css";
 import { CardFan } from "@/features/reveal/components/CardFan";
 import { useRevealSequence } from "@/features/reveal/hooks/useRevealSequence";
@@ -123,6 +127,59 @@ function newPurchaseId() {
   return `tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function PurchaseCtaButton({
+  label,
+  onClick,
+  disabled = false,
+  className,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <CtaButton
+      {...ctaButtonPropsFromTemplate("squircleCTA")}
+      fillParent
+      type="button"
+      label={label}
+      costAmount={null}
+      fontSize={15}
+      strokeWidth={1}
+      disabled={disabled}
+      className={className}
+      onClick={onClick}
+    />
+  );
+}
+
+function readyPacksForSession(
+  purchasedFoil: FoilPack | null,
+  session: OpeningSession | null,
+  pack: PurchaseFlowPack,
+  count: number,
+  modelPacks: readonly FoilPack[],
+): FoilPack[] {
+  const source =
+    purchasedFoil ??
+    (session?.foilFaceUrl
+      ? {
+          slot: 1 as const,
+          id: session.cards[0]?.id ?? `${pack.packId}-1`,
+          label: session.foilLabel ?? pack.packName,
+          videoUrl: session.foilFaceUrl,
+        }
+      : modelPacks[0] ?? null);
+  if (!source) return [];
+  const copies = Math.max(1, count);
+  return Array.from({ length: copies }, (_, index) => ({
+    ...source,
+    id: `${source.id}::ready-${index + 1}`,
+    slot: (index === 0 ? source.slot : 2) as FoilPack["slot"],
+  }));
+}
+
 export function PurchaseFlow({
   pack,
   diamonds,
@@ -201,6 +258,16 @@ export function PurchaseFlow({
   const [model, setModel] = useState<ModelProfile | null>(null);
   const [, setPendingFoil] = useState<FoilPack | null>(null);
   const lastFoilRef = useRef<FoilPack | null>(null);
+  const [purchasedFoil, setPurchasedFoil] = useState<FoilPack | null>(() => {
+    const faceUrl = initialSession?.foilFaceUrl?.trim();
+    if (!faceUrl) return null;
+    return {
+      slot: 1,
+      id: initialSession?.cards[0]?.id ?? `${pack.packId}-1`,
+      label: initialSession?.foilLabel ?? pack.packName,
+      videoUrl: faceUrl,
+    };
+  });
   const [selectedCard, setSelectedCard] = useState(
     resumeIndex ?? resumed?.cardIndex ?? 0,
   );
@@ -216,6 +283,9 @@ export function PurchaseFlow({
   );
   const [purchaseId, setPurchaseId] = useState<string | null>(
     openResume?.purchaseId ?? pack.purchaseId ?? null,
+  );
+  const [readyPackCount, setReadyPackCount] = useState(
+    () => pack.unopenedPacks ?? Math.max(1, session?.quantity ?? 1),
   );
   const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
     countUnopened(),
@@ -336,6 +406,7 @@ export function PurchaseFlow({
     setPending(quantity);
     if (foil) {
       lastFoilRef.current = foil;
+      setPurchasedFoil(foil);
       setPendingFoil(foil);
     }
     try {
@@ -357,6 +428,7 @@ export function PurchaseFlow({
       noteCreatorStarted(first.creatorId, pack.creator);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
+      setReadyPackCount(owned.length || quantity);
       setSession(
         foil
           ? {
@@ -440,7 +512,6 @@ export function PurchaseFlow({
     });
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
-    setStage("reveal");
   }
 
   function scratch(amount = 34) {
@@ -482,6 +553,7 @@ export function PurchaseFlow({
       clearOpening();
       setInstanceId(nextPack.instanceId);
       setSession(null);
+      setReadyPackCount((count) => Math.max(1, count - 1));
       setScratched([]);
       setSelectedCard(0);
       setScratchProgress(0);
@@ -545,6 +617,11 @@ export function PurchaseFlow({
   function scratchLater(from: "decision" | "finish" | "exit") {
     if (savingLater || !session) return;
     setSavingLater(true);
+    persistCurrentAndLeave(from);
+    setStage("saved");
+  }
+
+  function persistCurrentAndLeave(from: "decision" | "finish" | "exit") {
     setScratchProgress(0);
     const revealedIds =
       from === "decision" ? scratched : markCurrentRevealedIfDone();
@@ -563,7 +640,39 @@ export function PurchaseFlow({
     }
     persistOpened(revealedIds);
     clearOpening();
-    setStage("saved");
+  }
+
+  function openNextPurchasedPack() {
+    if (savingLater || !session) return;
+    const nextPack =
+      purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+    if (!nextPack) {
+      scratchLater("decision");
+      return;
+    }
+    persistCurrentAndLeave("decision");
+    setPackOpenRequested(false);
+    setCardTopTearT(0, false);
+    setInstanceId(nextPack.instanceId);
+    setSession(
+      purchasedFoil
+        ? {
+            ...buildFoilOpeningSession([purchasedFoil], packCost(1, pack.packId)),
+            foilFaceUrl: purchasedFoil.videoUrl,
+            foilLabel: purchasedFoil.label,
+          }
+        : {
+            ...buildOpeningSession(1, nextPack.instanceId),
+          },
+    );
+    setReadyPackCount((count) => Math.max(1, count - 1));
+    setScratched([]);
+    setSelectedCard(0);
+    awardedIds.current = new Set();
+    tearLocked.current = false;
+    setSavingLater(false);
+    bumpInventory();
+    setStage("ready");
   }
 
   function markCurrentRevealedIfDone() {
@@ -803,13 +912,47 @@ export function PurchaseFlow({
 
           {stage === "ready" && session ? (
             <ReadyStage
-              packName={packDisplayName}
-              packImage={packImage}
-              remainingUnopened={pack.unopenedPacks ?? Math.max(1, unopenedRemaining)}
+              key={instanceId ?? purchaseId ?? pack.packId}
+              remainingUnopened={readyPackCount}
               onOpened={completeTear}
-              quantity={session.quantity}
-              designed={Boolean(session.foilFaceUrl)}
-              collection={model?.collectionLabel}
+              packs={readyPacksForSession(
+                purchasedFoil,
+                session,
+                pack,
+                readyPackCount,
+                model?.packs ?? [],
+              )}
+              modelId={model?.id ?? pack.packId}
+              girlName={model?.name ?? pack.creator}
+              overlayColor={model?.overlayColorEnd ?? "oklch(0.798 0.104 207.84)"}
+              city={model?.city ?? null}
+              country={model?.country ?? null}
+              flagEmoji={model?.flagEmoji ?? null}
+              flagSvgUrl={model?.flagSvgUrl ?? null}
+              overlayColorStart={model?.overlayColorStart ?? null}
+              overlayColorEnd={model?.overlayColorEnd ?? null}
+              launching={savingLater}
+              onCards={(cards) => {
+                setSession((current) =>
+                  current
+                    ? {
+                        ...current,
+                        cards: cards.map((card, index) => ({
+                          id: card.id,
+                          rarity:
+                            index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
+                          reward: 10 + index * 5,
+                          faceUrl: card.mediaUrl,
+                        })),
+                      }
+                    : current,
+                );
+              }}
+              onContinue={() => void launchMotionScratch()}
+              onSaveLater={() => scratchLater("decision")}
+              onSaveAndOpenNext={
+                readyPackCount > 1 ? openNextPurchasedPack : undefined
+              }
             />
           ) : null}
 
@@ -842,19 +985,21 @@ export function PurchaseFlow({
               }}
               onContinue={() => void launchMotionScratch()}
               onSaveLater={() => scratchLater("decision")}
+              onSaveAndOpenNext={
+                readyPackCount > 1 ? openNextPurchasedPack : undefined
+              }
             />
           ) : null}
 
           {stage === "cards-ready" && session ? (
             <div className="flex flex-1 flex-col items-center justify-end px-5 pb-10 text-center">
-              <button
-                type="button"
-                className="motion-reveal__continue"
-                onClick={() => void launchMotionScratch()}
-                disabled={savingLater}
-              >
-                {savingLater ? "Starting…" : "Scratch Now"}
-              </button>
+              <div className="motion-reveal__continue">
+                <PurchaseCtaButton
+                  label={savingLater ? "Starting…" : "Scratch Now"}
+                  onClick={() => void launchMotionScratch()}
+                  disabled={savingLater}
+                />
+              </div>
               <button
                 type="button"
                 className="motion-reveal__later"
@@ -863,6 +1008,16 @@ export function PurchaseFlow({
               >
                 Save for Later
               </button>
+              {readyPackCount > 1 ? (
+                <button
+                  type="button"
+                  className="motion-reveal__later"
+                  onClick={openNextPurchasedPack}
+                  disabled={savingLater}
+                >
+                  Save for later and open another
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -1086,15 +1241,13 @@ function StateScreen({
       </span>
       <h1 className="mt-5 text-[24px] font-bold tracking-[-0.02em]">{title}</h1>
       <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-white/55">{body}</p>
-      <button
-        type="button"
-        onClick={primary.onClick}
-        disabled={primary.busy}
-        className="mt-7 inline-flex h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] text-[15px] font-semibold disabled:opacity-60"
-      >
-        {primary.busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-        {primary.label}
-      </button>
+      <div className="mt-7 h-14 w-full max-w-sm">
+        <PurchaseCtaButton
+          label={primary.busy ? "Working…" : primary.label}
+          onClick={primary.onClick}
+          disabled={primary.busy}
+        />
+      </div>
       {secondary ? (
         <button
           type="button"
@@ -1257,81 +1410,182 @@ function SelectStage({
 }
 
 function ReadyStage({
-  packName,
-  packImage,
   remainingUnopened,
-  quantity: _quantity,
-  designed = false,
-  collection,
   onOpened,
+  packs,
+  modelId,
+  girlName,
+  overlayColor,
+  city,
+  country,
+  flagEmoji,
+  flagSvgUrl,
+  overlayColorStart,
+  overlayColorEnd,
+  launching = false,
+  onCards,
+  onContinue,
+  onSaveLater,
+  onSaveAndOpenNext,
 }: {
-  packName: string;
-  packImage: string;
   remainingUnopened: number;
-  quantity: PackQuantity;
-  designed?: boolean;
-  collection?: string;
   onOpened: () => void;
+  packs: readonly FoilPack[];
+  modelId: string;
+  girlName: string;
+  overlayColor: string;
+  city: string | null;
+  country: string | null;
+  flagEmoji: string | null;
+  flagSvgUrl: string | null;
+  overlayColorStart: string | null;
+  overlayColorEnd: string | null;
+  launching?: boolean;
+  onCards: (cards: RevealCard[]) => void;
+  onContinue: () => void;
+  onSaveLater: () => void;
+  onSaveAndOpenNext?: () => void;
 }) {
-  const rotate = useMotionValue(0);
-  const rotateY = useTransform(rotate, [-180, 180], [-35, 35]);
+  const tear = useCoverflowTearSlider();
+  const openedRef = useRef(false);
+  const items = useMemo(
+    () =>
+      (packs.length
+        ? packs
+        : [
+            {
+              id: `pack-${modelId}`,
+              slot: 1 as const,
+              label: girlName,
+              videoUrl: "",
+            },
+          ]
+      ).map((foil) =>
+        packItemToIteration({
+          id: foil.id,
+          characterId: modelId,
+          name: girlName,
+          modelUrl: "/assets/CardPack2-min.glb",
+          modelName: "CardPack2-min.glb",
+          videoUrl: foil.videoUrl,
+          price: 0,
+          girlName,
+          packNumber: foil.slot === 1 ? 101 : 102,
+          packName: foil.label,
+          flagEmoji: flagEmoji ?? "",
+          flagSvgUrl: flagSvgUrl ?? "",
+          city: city ?? "",
+          country: country ?? "",
+          overlayColorStart: overlayColorStart ?? overlayColor,
+          overlayColorEnd: overlayColorEnd ?? overlayColor,
+          backgroundColor: overlayColor,
+        }),
+      ),
+    [
+      city,
+      country,
+      flagEmoji,
+      flagSvgUrl,
+      girlName,
+      modelId,
+      overlayColor,
+      overlayColorEnd,
+      overlayColorStart,
+      packs,
+    ],
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => items[0]?.id ?? null,
+  );
 
-  function tear(_: unknown, info: PanInfo) {
-    if (Math.abs(info.offset.x) > 100) onOpened();
-  }
+  useEffect(() => {
+    if (!items.length) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((current) =>
+      current && items.some((item) => item.id === current)
+        ? current
+        : items[0]!.id,
+    );
+  }, [items]);
 
-  const requireTearDrag = !isScratchTutorialCompleted();
+  useEffect(() => {
+    tear.replayTear();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) tear.replayTear();
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (openedRef.current || !selectedId) return;
+    if (tear.debug.tearT < 0.999) return;
+    openedRef.current = true;
+    onOpened();
+  }, [onOpened, selectedId, tear.debug.tearT]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-      <p className="text-[12px] font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
-        {remainingUnopened <= 1
-          ? "Pack ready"
-          : `${remainingUnopened} packs ready to open`}
-      </p>
-      <h1 className="mt-2 text-[28px] font-bold">Inspect. Then tear the seal.</h1>
-      <p className="mt-2 text-[13px] text-white/45">Drag the pack to rotate it.</p>
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        style={{ x: rotate, rotateY }}
-        className="relative mt-8 cursor-grab touch-none active:cursor-grabbing"
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      {!selectedId ? (
+        <div className="pointer-events-none absolute inset-x-0 top-6 z-20 px-5 text-center">
+          <p className="text-[12px] font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
+            {remainingUnopened <= 1
+              ? "Pack ready"
+              : `${remainingUnopened} packs ready to open`}
+          </p>
+          <h1 className="mt-2 text-[28px] font-bold">Inspect. Then tear the seal.</h1>
+          <p className="mt-2 text-[13px] text-white/45">Select a pack, then swipe to open.</p>
+        </div>
+      ) : null}
+      <div
+        className="stage-packs"
+        style={{ ["--overlay-gradient-color-end" as string]: overlayColor }}
       >
-        {designed ? (
-          <FoilPackFace src={packImage} collection={collection} packLabel={packName} sealed>
-            <motion.button
-              type="button"
-              data-tutorial-target="tear"
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              onDragEnd={tear}
-              onClick={requireTearDrag ? undefined : onOpened}
-              className="absolute inset-x-3 top-[48%] z-10 flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
-            >
-              <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
-                ← Drag to tear →
-              </motion.span>
-            </motion.button>
-          </FoilPackFace>
-        ) : (
-          <>
-            <HolographicPackCard src={packImage} name={packName} badge="Sealed" interactive={false} />
-            <motion.button
-              type="button"
-              data-tutorial-target="tear"
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              onDragEnd={tear}
-              onClick={requireTearDrag ? undefined : onOpened}
-              className="absolute inset-x-3 top-[48%] flex h-12 cursor-ew-resize items-center justify-center overflow-hidden rounded-xl border border-dashed border-white/50 bg-black/55 text-[12px] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
-            >
-              <motion.span animate={{ x: [-8, 8, -8] }} transition={{ repeat: Infinity, duration: 1.8 }}>
-                ← Drag to tear →
-              </motion.span>
-            </motion.button>
-          </>
-        )}
-      </motion.div>
+        <div className="packs-glow-stack packs-glow-stack--base" aria-hidden="true">
+          <div className="packs-circle packs-circle--bloom" />
+          <div className="packs-circle packs-circle--core" />
+        </div>
+        <CoverFlowCarouselV2
+          items={items}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onDeselect={() => {
+            openedRef.current = false;
+          }}
+          onFocusChange={(item) => {
+            if (item) setSelectedId(item.id);
+          }}
+          disableSwipeDownDeactivate
+          disableWheelPaging
+          revealModelId={modelId}
+          revealGirlName={girlName}
+          revealOverlay={{
+            city,
+            country,
+            flagEmoji,
+            flagSvgUrl,
+            gradientColor: overlayColorStart ?? overlayColor,
+            gradientColorEnd: overlayColorEnd ?? overlayColor,
+          }}
+          onRevealCards={onCards}
+          onRevealContinue={() => onContinue()}
+          onRevealSaveLater={onSaveLater}
+          onRevealSaveAndOpenNext={onSaveAndOpenNext}
+          revealContinueLabel={launching ? "Starting…" : "Scratch Now"}
+          revealSaveLaterLabel="Save for Later"
+          revealSaveAndOpenNextLabel="Save for later and open another"
+          tearHud={
+            selectedId ? (
+              <DragToTearControl
+                percent={tear.sliderPercent}
+                finishing={tear.finishing}
+                onScrub={tear.scrubSlider}
+              />
+            ) : null
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -1349,6 +1603,7 @@ function MotionRevealStage({
   onCards,
   onContinue,
   onSaveLater,
+  onSaveAndOpenNext,
 }: {
   modelId: string;
   girlName: string;
@@ -1362,6 +1617,7 @@ function MotionRevealStage({
   onCards: (cards: RevealCard[]) => void;
   onContinue: () => void;
   onSaveLater: () => void;
+  onSaveAndOpenNext?: () => void;
 }) {
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null);
   const [ready, setReady] = useState(false);
@@ -1442,14 +1698,13 @@ function MotionRevealStage({
       </div>
       {sequence.showPlay ? (
         <div className="motion-reveal__cta">
-          <button
-            type="button"
-            className="motion-reveal__continue"
-            onClick={onContinue}
-            disabled={launching}
-          >
-            {launching ? "Starting…" : "Scratch Now"}
-          </button>
+          <div className="motion-reveal__continue">
+            <PurchaseCtaButton
+              label={launching ? "Starting…" : "Scratch Now"}
+              onClick={onContinue}
+              disabled={launching}
+            />
+          </div>
           <button
             type="button"
             className="motion-reveal__later"
@@ -1458,6 +1713,16 @@ function MotionRevealStage({
           >
             Save for Later
           </button>
+          {onSaveAndOpenNext ? (
+            <button
+              type="button"
+              className="motion-reveal__later"
+              onClick={onSaveAndOpenNext}
+              disabled={launching}
+            >
+              Save for later and open another
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -1598,14 +1863,12 @@ function ScratchStage({
           animate={{ opacity: 1, y: 0 }}
           className="mt-7 flex w-full max-w-sm flex-col items-center"
         >
-          <button
-            type="button"
-            onClick={onScratchNext}
-            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[oklch(0.606_0.219_292.72)] px-8 text-[15px] font-semibold"
-          >
-            <Check className="size-4" />
-            {hasMore ? "Scratch Next" : "Finish"}
-          </button>
+          <div className="h-14 w-full">
+            <PurchaseCtaButton
+              label={hasMore ? "Scratch Next" : "Finish"}
+              onClick={onScratchNext}
+            />
+          </div>
           {hasMore ? (
             <button
               type="button"
