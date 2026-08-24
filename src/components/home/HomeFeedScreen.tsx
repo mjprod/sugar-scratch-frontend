@@ -14,7 +14,10 @@ import {
 } from "@/components/home/CreatorFeedCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
+  FEED_WARM_AHEAD,
+  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
+  isWarmFeedIndex,
   readHomeFeedCache,
   toPurchasePack,
   writeHomeFeedCache,
@@ -660,16 +663,12 @@ export function HomeFeedScreen({
 
   useEffect(() => {
     const activeIndex = items.findIndex((item) => item.id === activeId);
+    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
     const warmIds = new Set<string>();
-    if (activeIndex >= 0) {
-      // Next card is visible in the bottom peek — always warm it.
-      const nextItem = items[activeIndex + 1];
-      const prevItem = items[activeIndex - 1];
-      if (nextItem) warmIds.add(nextItem.id);
-      if (prevItem) warmIds.add(prevItem.id);
-    } else if (items[1]) {
-      // Before activeId settles, still warm the second slide for initial peek.
-      warmIds.add(items[1].id);
+    for (let offset = -FEED_WARM_BEHIND; offset <= FEED_WARM_AHEAD; offset += 1) {
+      if (offset === 0) continue;
+      const neighbor = items[resolvedActiveIndex + offset];
+      if (neighbor) warmIds.add(neighbor.id);
     }
 
     videoRefs.current.forEach((video, id) => {
@@ -688,23 +687,9 @@ export function HomeFeedScreen({
 
       video.pause();
 
-      // Eager-buffer neighbors so the next-video peek isn't black frames.
       if (warmIds.has(id)) {
         try {
           if (video.preload !== "auto") video.preload = "auto";
-          // Kick the network pipeline without playing (iOS-friendly).
-          if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-            void video.play().then(() => {
-              video.pause();
-              try {
-                video.currentTime = 0;
-              } catch {
-                /* ignore seek errors */
-              }
-            }).catch(() => {
-              /* poster still shows */
-            });
-          }
         } catch {
           /* ignore media errors on warm path */
         }
@@ -1007,8 +992,15 @@ export function HomeFeedScreen({
     try {
       const page = await fetchHomeFeedPage(cursor);
       setItems((prev) => {
-        const seen = new Set(prev.map((item) => item.id));
-        const next = page.items.filter((item) => !seen.has(item.id));
+        const seenIds = new Set(prev.map((item) => item.id));
+        const seenVideos = new Set(
+          prev.map((item) => item.videoUrl).filter((url): url is string => Boolean(url)),
+        );
+        const next = page.items.filter((item) => {
+          if (seenIds.has(item.id)) return false;
+          if (item.videoUrl && seenVideos.has(item.videoUrl)) return false;
+          return true;
+        });
         const merged = [...prev, ...next];
         persist({
           items: merged,
@@ -1026,6 +1018,14 @@ export function HomeFeedScreen({
       setLoadingMore(false);
     }
   }
+
+  useEffect(() => {
+    if (status !== "loaded") return;
+    const activeIndex = items.findIndex((item) => item.id === activeId);
+    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
+    const remaining = items.length - 1 - resolvedActiveIndex;
+    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+  }, [activeId, items.length, status]);
 
   function onScroll() {
     const root = scrollerRef.current;
@@ -1048,7 +1048,7 @@ export function HomeFeedScreen({
     applyScrollFx(root);
 
     const remaining = items.length - 1 - index;
-    if (remaining <= 2) void loadMore();
+    if (remaining <= FEED_WARM_AHEAD) void loadMore();
   }
 
   function toggleLike(id: string) {
@@ -1178,11 +1178,7 @@ export function HomeFeedScreen({
               const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
 
               return items.map((item, index) => {
-                const warm =
-                  index === resolvedActiveIndex + 1 ||
-                  index === resolvedActiveIndex - 1 ||
-                  // Always warm slide 1 on first paint so the bottom peek has pixels.
-                  (resolvedActiveIndex === 0 && index === 1);
+                const warm = isWarmFeedIndex(index, resolvedActiveIndex);
 
                 return (
                   <div key={item.id} className="hf-slide">

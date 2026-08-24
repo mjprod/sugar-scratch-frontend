@@ -602,120 +602,44 @@ export type FeedPreview = {
   packId: string;
   packName: string;
   posterUrl: string;
-  videoUrl: string;
+  videoUrl?: string;
   cardCount: number;
   diamondCost: number;
   limited?: boolean;
   liked: boolean;
 };
 
-const FEED_VIDEOS = [
-  "/videos/demo-asianGirl.mp4",
-  "/videos/demo-blondGuy.mp4",
-  "/videos/demo-bikiniYellow.mp4",
-  "/videos/demo-brazilianGuy.mp4",
-  "/videos/demo-blackHat.mp4",
-  "/videos/demo-olderGuy.mp4",
-  "/videos/demo-carGirl.mp4",
-  "/videos/demo-cowgirl.mp4",
-  "/videos/demo-crazyEyes.mp4",
-  "/videos/demo-dancingGirlk.mp4",
-  "/videos/demo-hairGirl.mp4",
-  "/videos/demo-nikki_murci.mp4",
-  "/videos/demo-portugueseGirl.mp4",
-  "/videos/demo-thikkGirl.mp4",
-  "/videos/demo-towelGirl.mp4",
-];
-
 export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
-  await wait(500);
-  return [
-    {
-      id: "pv1",
-      creatorId: "emma",
-      creatorName: "Emily",
-      creatorAvatar: CREATOR_PHOTOS.emma.avatar,
-      collectionName: "Summer Nights",
-      packId: "ep1",
-      packName: "After Class Foil Pack",
-      posterUrl: CREATOR_PHOTOS.emma.portrait,
-      videoUrl: FEED_VIDEOS[0],
-      cardCount: 12,
-      diamondCost: 10,
-      limited: true,
+  const models = await loadModels();
+  const shuffled = [...models];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = shuffled[i]!;
+    shuffled[i] = shuffled[j]!;
+    shuffled[j] = current;
+  }
+  return shuffled.map((model, index) => {
+    const id = modelId(model, index);
+    const name = modelDisplayName(model);
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const avatarUrl = avatarRaw ? normalizeMediaUrl(avatarRaw) : "";
+    const videoUrl = model.swipeVideoUrl
+      ? normalizeMediaUrl(model.swipeVideoUrl)
+      : undefined;
+    const packName = model.cardPackName?.trim() || `${name} Collection`;
+    return {
+      id: `pv-${id}`,
+      creatorId: id,
+      creatorName: name,
+      creatorAvatar: avatarUrl,
+      collectionName: packName,
+      packId: id,
+      packName,
+      posterUrl: avatarUrl,
+      videoUrl,
+      cardCount: 0,
+      diamondCost: diamondCostForPackId(id),
       liked: false,
-    },
-    {
-      id: "pv2",
-      creatorId: "nancy",
-      creatorName: "Nancy Allison",
-      creatorAvatar: CREATOR_PHOTOS.nancy.avatar,
-      collectionName: "Daily Ritual",
-      packId: "nl1",
-      packName: "Daily Drop Foil Pack",
-      posterUrl: CREATOR_PHOTOS.nancy.portrait,
-      videoUrl: FEED_VIDEOS[1],
-      cardCount: 10,
-      diamondCost: 8,
-      limited: true,
-      liked: true,
-    },
-    {
-      id: "pv3",
-      creatorId: "alex",
-      creatorName: "Alex Rivera",
-      creatorAvatar: CREATOR_PHOTOS.alex.avatar,
-      collectionName: "Neon Muse",
-      packId: "aa1",
-      packName: "Neon Muse Pack",
-      posterUrl: CREATOR_PHOTOS.alex.portrait,
-      videoUrl: FEED_VIDEOS[2],
-      cardCount: 15,
-      diamondCost: 12,
-      liked: false,
-    },
-    {
-      id: "pv4",
-      creatorId: "emma",
-      creatorName: "Emily",
-      creatorAvatar: CREATOR_PHOTOS.emma.avatar,
-      collectionName: "Sunset Glow",
-      packId: "eb1",
-      packName: "Sunset Glow Pack",
-      posterUrl: PACK_PHOTOS.eb1,
-      videoUrl: FEED_VIDEOS[3],
-      cardCount: 12,
-      diamondCost: 10,
-      limited: true,
-      liked: false,
-    },
-    {
-      id: "pv5",
-      creatorId: "sam",
-      creatorName: "Sam Chen",
-      creatorAvatar: CREATOR_PHOTOS.sam.avatar,
-      collectionName: "Weekend Edit",
-      packId: "sw1",
-      packName: "Bonus Rush Pack",
-      posterUrl: CREATOR_PHOTOS.sam.portrait,
-      videoUrl: FEED_VIDEOS[4],
-      cardCount: 8,
-      diamondCost: 6,
-      liked: false,
-    },
-    {
-      id: "pv6",
-      creatorId: "nancy",
-      creatorName: "Nancy Allison",
-      creatorAvatar: CREATOR_PHOTOS.nancy.avatar,
-      collectionName: "Champagne Hours",
-      packId: "np1",
-      packName: "Champagne Foil Pack",
-      posterUrl: PACK_PHOTOS.np1,
-      videoUrl: FEED_VIDEOS[0],
-      cardCount: 14,
-      diamondCost: 15,
-      liked: false,
-    },
-  ];
+    };
+  });
 }
