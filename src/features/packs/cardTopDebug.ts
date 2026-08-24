@@ -29,8 +29,15 @@ export type CardTopDebugState = {
   position: CardTopPosition;
   rotation: CardTopRotation;
   scale: CardTopScale;
+  opacity: number;
   pivot: CardTopPivot;
   showGizmo: boolean;
+  tearT: number;
+  tearPlaying: boolean;
+  tearDurationMs: number;
+  selectedTearKeyId: string | null;
+  packOpenRequested: boolean;
+  lottieOffset: CardTopVec3;
 };
 
 export const DEFAULT_CARD_TOP_POSITION: CardTopPosition = {
@@ -57,15 +64,24 @@ export const DEFAULT_CARD_TOP_PIVOT: CardTopPivot = {
   z: 0.783224879081698,
 };
 
+export const DEFAULT_CARD_TOP_TEAR_DURATION_MS = 1000;
+
 export const DEFAULT_CARD_TOP_DEBUG: CardTopDebugState = {
   position: { ...DEFAULT_CARD_TOP_POSITION },
   rotation: { ...DEFAULT_CARD_TOP_ROTATION },
   scale: { ...DEFAULT_CARD_TOP_SCALE },
+  opacity: 1,
   pivot: { ...DEFAULT_CARD_TOP_PIVOT },
-  showGizmo: true,
+  showGizmo: false,
+  tearT: 0,
+  tearPlaying: false,
+  tearDurationMs: DEFAULT_CARD_TOP_TEAR_DURATION_MS,
+  selectedTearKeyId: "tear-1",
+  packOpenRequested: false,
+  lottieOffset: { x: -0.97, y: 2.26, z: -1.92 },
 };
 
-const STORAGE_KEY = "sugar.coverflowV2.cardTop.v4";
+const STORAGE_KEY = "sugar.coverflowV2.cardTop.v10";
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -96,12 +112,34 @@ function normalizeScale(
 function normalizeState(
   parsed: Partial<CardTopDebugState> | null | undefined,
 ): CardTopDebugState {
+  const tearT = isFiniteNumber(parsed?.tearT)
+    ? Math.min(1, Math.max(0, parsed.tearT))
+    : DEFAULT_CARD_TOP_DEBUG.tearT;
+  const tearDurationMs = isFiniteNumber(parsed?.tearDurationMs)
+    ? Math.min(4000, Math.max(200, parsed.tearDurationMs))
+    : DEFAULT_CARD_TOP_TEAR_DURATION_MS;
   return {
     position: normalizeVec3(parsed?.position, DEFAULT_CARD_TOP_POSITION),
     rotation: normalizeVec3(parsed?.rotation, DEFAULT_CARD_TOP_ROTATION),
     scale: normalizeScale(parsed?.scale),
+    opacity: isFiniteNumber(parsed?.opacity)
+      ? Math.min(1, Math.max(0, parsed.opacity))
+      : 1,
     pivot: normalizeVec3(parsed?.pivot, DEFAULT_CARD_TOP_PIVOT),
-    showGizmo: typeof parsed?.showGizmo === "boolean" ? parsed.showGizmo : true,
+    showGizmo: parsed?.showGizmo === true,
+    tearT,
+    tearPlaying: parsed?.tearPlaying === true,
+    tearDurationMs,
+    selectedTearKeyId:
+      typeof parsed?.selectedTearKeyId === "string"
+        ? parsed.selectedTearKeyId
+        : DEFAULT_CARD_TOP_DEBUG.selectedTearKeyId,
+    packOpenRequested: parsed?.packOpenRequested === true,
+    lottieOffset: normalizeVec3(parsed?.lottieOffset, {
+      x: -0.97,
+      y: 2.26,
+      z: -1.92,
+    }),
   };
 }
 
@@ -131,6 +169,10 @@ function emit() {
   listeners.forEach((listener) => listener(current));
 }
 
+export function notifyCardTopDebug() {
+  emit();
+}
+
 export function getCardTopDebug(): CardTopDebugState {
   return current;
 }
@@ -143,7 +185,10 @@ export function getCardTopBounds(): CardTopBounds | null {
   return measuredBounds;
 }
 
-export function setCardTopDebug(next: Partial<CardTopDebugState>) {
+export function setCardTopDebug(
+  next: Partial<CardTopDebugState>,
+  options?: { persist?: boolean },
+) {
   current = normalizeState({
     ...current,
     ...next,
@@ -156,7 +201,7 @@ export function setCardTopDebug(next: Partial<CardTopDebugState>) {
     scale: next.scale ? { ...current.scale, ...next.scale } : current.scale,
     pivot: next.pivot ? { ...current.pivot, ...next.pivot } : current.pivot,
   });
-  persist(current);
+  if (options?.persist !== false) persist(current);
   emit();
 }
 
@@ -178,6 +223,55 @@ export function setCardTopPivot(next: Partial<CardTopPivot>) {
 
 export function setCardTopShowGizmo(showGizmo: boolean) {
   setCardTopDebug({ showGizmo });
+}
+
+export function setCardTopTearT(tearT: number, tearPlaying = false) {
+  setCardTopDebug(
+    {
+      tearT: Math.min(1, Math.max(0, tearT)),
+      tearPlaying,
+    },
+    { persist: !tearPlaying },
+  );
+}
+
+export function setCardTopTearPlaying(tearPlaying: boolean) {
+  setCardTopDebug({ tearPlaying });
+}
+
+export function setCardTopTearDurationMs(tearDurationMs: number) {
+  setCardTopDebug({ tearDurationMs });
+}
+
+export function setSelectedTearKeyId(selectedTearKeyId: string | null) {
+  setCardTopDebug({ selectedTearKeyId });
+}
+
+export function playCardTopTear() {
+  const start = current.tearT >= 0.999 ? 0 : current.tearT;
+  setCardTopDebug({ tearT: start, tearPlaying: true });
+}
+
+export function pauseCardTopTear() {
+  setCardTopDebug({ tearPlaying: false });
+}
+
+export function rewindCardTopTear() {
+  setCardTopDebug({
+    tearT: 0,
+    tearPlaying: false,
+    packOpenRequested: false,
+  });
+}
+
+export function setPackOpenRequested(packOpenRequested: boolean) {
+  setCardTopDebug({ packOpenRequested }, { persist: false });
+}
+
+export function setCardTopLottieOffset(next: Partial<CardTopVec3>) {
+  setCardTopDebug({
+    lottieOffset: { ...current.lottieOffset, ...next },
+  });
 }
 
 export function resetCardTopRotation() {

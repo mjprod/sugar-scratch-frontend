@@ -1,23 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion, type PanInfo } from "framer-motion";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
 import {
-  applyCardTopPivotPreset,
-  getCardTopBounds,
   getCardTopDebug,
-  matchingPivotPreset,
-  resetCardTopDebug,
-  setCardTopPivot,
-  setCardTopPosition,
-  setCardTopRotation,
-  setCardTopScale,
-  setCardTopShowGizmo,
-  subscribeCardTopBounds,
+  setCardTopDebug,
+  setCardTopLottieOffset,
+  setCardTopTearT,
+  setPackOpenRequested,
+  setSelectedTearKeyId,
   subscribeCardTopDebug,
-  type CardTopBounds,
   type CardTopDebugState,
-  type CardTopPivotPreset,
 } from "@/features/packs/cardTopDebug";
+import {
+  CARD_TOP_TEAR_FINISH_MS,
+  cardTopTearSpinStartT,
+  cardTopTearSliderEndT,
+  loadCardTopTearTimeline,
+  sampleCardTopTear,
+  saveCardTopTearTimeline,
+  sliderPercentFromTearT,
+  tearTFromSliderPercent,
+  type CardTopTearPose,
+  type CardTopTearTimeline,
+} from "@/features/packs/cardTopTearTimeline";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/AuthContext";
@@ -136,51 +143,199 @@ function CardTopDebugField({
   );
 }
 
-const PIVOT_PRESETS: Array<{ id: CardTopPivotPreset; label: string }> = [
-  { id: "origin", label: "Origin" },
-  { id: "center", label: "Center" },
-  { id: "bottom-left", label: "Bottom left" },
-  { id: "bottom-right", label: "Bottom right" },
-  { id: "top-left", label: "Top left" },
-  { id: "top-right", label: "Top right" },
-];
+const TEAR_DRAG_DISTANCE_PX = 180;
 
-function CardTopDebugPanel() {
+function useCoverflowTearSlider() {
   const [debug, setDebug] = useState<CardTopDebugState>(getCardTopDebug);
-  const [bounds, setBounds] = useState<CardTopBounds | null>(getCardTopBounds);
-  const [open, setOpen] = useState(true);
-  const [copyLabel, setCopyLabel] = useState("Copy");
-  const activePreset = matchingPivotPreset(debug.pivot, bounds);
+  const [timeline, setTimeline] = useState<CardTopTearTimeline>(
+    loadCardTopTearTimeline,
+  );
+  const [finishing, setFinishing] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const finishStartedRef = useRef(false);
+  const sliderEndT = cardTopTearSliderEndT(timeline);
+  const sliderPercent = sliderPercentFromTearT(debug.tearT, timeline);
 
   useEffect(() => subscribeCardTopDebug(setDebug), []);
-  useEffect(() => subscribeCardTopBounds(setBounds), []);
 
-  const pivotRange = bounds
-    ? {
-        x: { min: bounds.min.x - bounds.size.x, max: bounds.max.x + bounds.size.x },
-        y: { min: bounds.min.y - bounds.size.y, max: bounds.max.y + bounds.size.y },
-        z: { min: bounds.min.z - bounds.size.z, max: bounds.max.z + bounds.size.z },
+  function applyPoseToPack(pose: CardTopTearPose, extra?: Partial<CardTopDebugState>) {
+    setCardTopDebug({
+      ...extra,
+      position: { x: pose.x, y: pose.y, z: pose.z },
+      rotation: { x: pose.rotX, y: pose.rotY, z: pose.rotZ },
+      scale: { x: pose.scaleX, y: pose.scaleY, z: pose.scaleZ },
+      opacity: pose.opacity,
+    });
+  }
+
+  function persistTimeline(next: CardTopTearTimeline, pose?: CardTopTearPose) {
+    saveCardTopTearTimeline(next);
+    setTimeline(next);
+    if (pose) applyPoseToPack(pose);
+  }
+
+  function applyTearT(tearT: number, playing = false) {
+    const pose = sampleCardTopTear(timeline, tearT);
+    setSelectedTearKeyId(null);
+    setCardTopTearT(tearT, playing);
+    applyPoseToPack(pose);
+    setPackOpenRequested(tearT >= cardTopTearSpinStartT(timeline) - 0.001);
+  }
+
+  function startFinish() {
+    finishStartedRef.current = true;
+    setClosing(false);
+    setFinishing(true);
+    applyTearT(sliderEndT, true);
+  }
+
+  function startClose() {
+    if (closing || finishing || debug.tearT <= 0.001) return;
+    finishStartedRef.current = false;
+    setFinishing(false);
+    setClosing(true);
+    applyTearT(debug.tearT, true);
+  }
+
+  function replayTear() {
+    finishStartedRef.current = false;
+    setFinishing(false);
+    setClosing(false);
+    applyTearT(0, false);
+  }
+
+  function scrubSlider(percent: number, options?: { snapClosed?: boolean }) {
+    finishStartedRef.current = false;
+    setFinishing(false);
+    setClosing(false);
+    const nextPercent = Math.min(100, Math.max(0, percent));
+    applyTearT(tearTFromSliderPercent(nextPercent, timeline), false);
+    if (nextPercent >= 100) startFinish();
+    else if (options?.snapClosed) startClose();
+  }
+
+  useEffect(() => {
+    if (!debug.tearPlaying && !finishing && !closing) return;
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const state = getCardTopDebug();
+      if (!state.tearPlaying && !finishing && !closing) return;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (closing) {
+        const next = state.tearT - dt / 0.28;
+        if (next <= 0) {
+          applyTearT(0, false);
+          setClosing(false);
+          return;
+        }
+        applyTearT(next, true);
+        frame = window.requestAnimationFrame(tick);
+        return;
       }
-    : {
-        x: { min: -2, max: 2 },
-        y: { min: -2, max: 2 },
-        z: { min: -2, max: 2 },
-      };
+      const duration = finishing
+        ? CARD_TOP_TEAR_FINISH_MS
+        : CARD_TOP_TEAR_FINISH_MS + sliderEndT * 1000;
+      const span = finishing ? 1 - sliderEndT : sliderEndT;
+      const next = state.tearT + (dt / (duration / 1000)) * span;
+      const cap = finishing ? 1 : sliderEndT;
+      if (next >= cap) {
+        applyTearT(cap, false);
+        if (finishing) setFinishing(false);
+        return;
+      }
+      applyTearT(next, true);
+      frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [closing, debug.tearPlaying, finishing, sliderEndT, timeline]);
 
-  async function copyDebug() {
+  return {
+    debug,
+    timeline,
+    finishing,
+    finishStartedRef,
+    sliderEndT,
+    sliderPercent,
+    applyPoseToPack,
+    persistTimeline,
+    applyTearT,
+    startFinish,
+    scrubSlider,
+    replayTear,
+    setFinishing,
+  };
+}
+
+function DragToTearControl({
+  percent,
+  finishing,
+  onScrub,
+}: {
+  percent: number;
+  finishing: boolean;
+  onScrub: (percent: number, options?: { snapClosed?: boolean }) => void;
+}) {
+  const originPercentRef = useRef(percent);
+  const torn = finishing || percent >= 100;
+  const boxOpacity = torn ? 0 : 1 - Math.min(100, Math.max(0, percent)) / 100;
+
+  return (
+    <div className="pointer-events-none flex justify-center">
+      <motion.button
+        type="button"
+        data-tutorial-target="tear"
+        aria-label="Drag to tear"
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.12}
+        animate={{ opacity: boxOpacity, x: 0 }}
+        transition={{ duration: torn ? 0.2 : 0 }}
+        style={{ pointerEvents: torn ? "none" : "auto", x: 0 }}
+        onDragStart={() => {
+          originPercentRef.current = percent;
+        }}
+        onDrag={(_, info: PanInfo) => {
+          const next = originPercentRef.current + (info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
+          onScrub(next);
+        }}
+        onDragEnd={(_, info: PanInfo) => {
+          const next = originPercentRef.current + (info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
+          onScrub(next, { snapClosed: true });
+        }}
+        className="pointer-events-auto flex h-[6.3rem] w-[28rem] cursor-ew-resize items-center justify-center overflow-hidden bg-transparent p-0"
+      >
+        <DotLottieReact
+          src="/lottie/iconSwipe.lottie"
+          autoplay
+          loop
+          speed={1}
+          renderConfig={{
+            devicePixelRatio:
+              typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+            autoResize: true,
+          }}
+          style={{ width: 288, height: 288 }}
+        />
+      </motion.button>
+    </div>
+  );
+}
+
+function TearLottieDebugPanel({ onReplay }: { onReplay: () => void }) {
+  const [debug, setDebug] = useState<CardTopDebugState>(getCardTopDebug);
+  const [open, setOpen] = useState(true);
+  const [copyLabel, setCopyLabel] = useState("Copy");
+
+  useEffect(() => subscribeCardTopDebug(setDebug), []);
+
+  async function copyOffset() {
     const snippet = [
-      `cardTop.position.x: ${debug.position.x},`,
-      `cardTop.position.y: ${debug.position.y},`,
-      `cardTop.position.z: ${debug.position.z},`,
-      `cardTop.rotation.x: ${debug.rotation.x},`,
-      `cardTop.rotation.y: ${debug.rotation.y},`,
-      `cardTop.rotation.z: ${debug.rotation.z},`,
-      `cardTop.scale.x: ${debug.scale.x},`,
-      `cardTop.scale.y: ${debug.scale.y},`,
-      `cardTop.scale.z: ${debug.scale.z},`,
-      `cardTop.pivot.x: ${debug.pivot.x},`,
-      `cardTop.pivot.y: ${debug.pivot.y},`,
-      `cardTop.pivot.z: ${debug.pivot.z},`,
+      `lottieOffset.x: ${debug.lottieOffset.x},`,
+      `lottieOffset.y: ${debug.lottieOffset.y},`,
+      `lottieOffset.z: ${debug.lottieOffset.z},`,
     ].join("\n");
     try {
       await navigator.clipboard.writeText(snippet);
@@ -198,22 +353,31 @@ function CardTopDebugPanel() {
       className={["home-hero-debug", open ? "" : "is-collapsed"]
         .filter(Boolean)
         .join(" ")}
-      aria-label="cardTop rotation debug"
+      aria-label="Tear lottie position"
     >
       <div className="home-hero-debug__head">
-        <p className="home-hero-debug__title">cardTop</p>
+        <p className="home-hero-debug__title">Tear lottie</p>
         <div className="home-hero-debug__actions">
           <button
             type="button"
             className="home-hero-debug__btn"
-            onClick={() => resetCardTopDebug()}
+            onClick={onReplay}
+          >
+            Replay
+          </button>
+          <button
+            type="button"
+            className="home-hero-debug__btn"
+            onClick={() =>
+              setCardTopLottieOffset({ x: -0.97, y: 2.26, z: -1.92 })
+            }
           >
             Reset
           </button>
           <button
             type="button"
             className="home-hero-debug__btn"
-            onClick={() => void copyDebug()}
+            onClick={() => void copyOffset()}
           >
             {copyLabel}
           </button>
@@ -228,162 +392,37 @@ function CardTopDebugPanel() {
       </div>
       <div className="home-hero-debug__body">
         <div className="home-hero-debug__section">
-          <p className="home-hero-debug__section-title">Move</p>
+          <p className="home-hero-debug__section-title">Position</p>
           <CardTopDebugField
-            label="Position X"
-            value={debug.position.x}
-            min={-3}
-            max={3}
+            label="X"
+            value={debug.lottieOffset.x}
+            min={-2}
+            max={2}
             step={0.01}
             suffix=""
             digits={2}
-            onChange={(value) => setCardTopPosition({ x: value })}
+            onChange={(value) => setCardTopLottieOffset({ x: value })}
           />
           <CardTopDebugField
-            label="Position Y"
-            value={debug.position.y}
-            min={-3}
-            max={3}
+            label="Y"
+            value={debug.lottieOffset.y}
+            min={-2}
+            max={5}
             step={0.01}
             suffix=""
             digits={2}
-            onChange={(value) => setCardTopPosition({ y: value })}
+            onChange={(value) => setCardTopLottieOffset({ y: value })}
           />
           <CardTopDebugField
-            label="Position Z"
-            value={debug.position.z}
-            min={-3}
-            max={3}
+            label="Z"
+            value={debug.lottieOffset.z}
+            min={-2}
+            max={2}
             step={0.01}
             suffix=""
             digits={2}
-            onChange={(value) => setCardTopPosition({ z: value })}
+            onChange={(value) => setCardTopLottieOffset({ z: value })}
           />
-        </div>
-        <div className="home-hero-debug__section">
-          <p className="home-hero-debug__section-title">Rotate object</p>
-          <CardTopDebugField
-            label="Rotate X"
-            value={debug.rotation.x}
-            min={-359}
-            max={359}
-            step={1}
-            suffix="°"
-            onChange={(value) => setCardTopRotation({ x: value })}
-          />
-          <CardTopDebugField
-            label="Rotate Y"
-            value={debug.rotation.y}
-            min={-359}
-            max={359}
-            step={1}
-            suffix="°"
-            onChange={(value) => setCardTopRotation({ y: value })}
-          />
-          <CardTopDebugField
-            label="Rotate Z"
-            value={debug.rotation.z}
-            min={-359}
-            max={359}
-            step={1}
-            suffix="°"
-            onChange={(value) => setCardTopRotation({ z: value })}
-          />
-        </div>
-        <div className="home-hero-debug__section">
-          <p className="home-hero-debug__section-title">Scale</p>
-          <CardTopDebugField
-            label="Scale X"
-            value={debug.scale.x}
-            min={0.1}
-            max={3}
-            step={0.01}
-            suffix="×"
-            digits={2}
-            onChange={(value) => setCardTopScale({ x: value })}
-          />
-          <CardTopDebugField
-            label="Scale Y"
-            value={debug.scale.y}
-            min={0.1}
-            max={3}
-            step={0.01}
-            suffix="×"
-            digits={2}
-            onChange={(value) => setCardTopScale({ y: value })}
-          />
-          <CardTopDebugField
-            label="Scale Z"
-            value={debug.scale.z}
-            min={0.1}
-            max={3}
-            step={0.01}
-            suffix="×"
-            digits={2}
-            onChange={(value) => setCardTopScale({ z: value })}
-          />
-        </div>
-        <div className="home-hero-debug__section">
-          <p className="home-hero-debug__section-title">Rotation point</p>
-          <div className="home-hero-debug__actions">
-            {PIVOT_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className="home-hero-debug__btn"
-                aria-pressed={activePreset === preset.id}
-                onClick={() => applyCardTopPivotPreset(preset.id)}
-                style={
-                  activePreset === preset.id
-                    ? { borderColor: "oklch(0.824 0.137 68.76)" }
-                    : undefined
-                }
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <CardTopDebugField
-            label="Pivot X"
-            value={debug.pivot.x}
-            min={pivotRange.x.min}
-            max={pivotRange.x.max}
-            step={0.01}
-            suffix=""
-            digits={2}
-            onChange={(value) => setCardTopPivot({ x: value })}
-          />
-          <CardTopDebugField
-            label="Pivot Y"
-            value={debug.pivot.y}
-            min={pivotRange.y.min}
-            max={pivotRange.y.max}
-            step={0.01}
-            suffix=""
-            digits={2}
-            onChange={(value) => setCardTopPivot({ y: value })}
-          />
-          <CardTopDebugField
-            label="Pivot Z"
-            value={debug.pivot.z}
-            min={pivotRange.z.min}
-            max={pivotRange.z.max}
-            step={0.01}
-            suffix=""
-            digits={2}
-            onChange={(value) => setCardTopPivot({ z: value })}
-          />
-          <label className="home-hero-debug__field">
-            <span>
-              Show pivot
-              <em>{debug.showGizmo ? "On" : "Off"}</em>
-            </span>
-            <input
-              type="checkbox"
-              checked={debug.showGizmo}
-              onChange={(event) => setCardTopShowGizmo(event.target.checked)}
-            />
-          </label>
         </div>
       </div>
     </aside>,
@@ -429,6 +468,7 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
 /** Isolated playground for the next 3D pack coverflow. Original home/purchase stages are untouched. */
 export function CoverFlowV2Page() {
   const { openPurchase } = useAuth();
+  const tear = useCoverflowTearSlider();
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
@@ -476,7 +516,7 @@ export function CoverFlowV2Page() {
         className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
         aria-label="Coverflow v2"
       >
-        <CardTopDebugPanel />
+        <TearLottieDebugPanel onReplay={tear.replayTear} />
       </section>
     );
   }
@@ -519,9 +559,16 @@ export function CoverFlowV2Page() {
               "buy-pack",
             );
           }}
+          tearHud={
+            <DragToTearControl
+              percent={tear.sliderPercent}
+              finishing={tear.finishing}
+              onScrub={tear.scrubSlider}
+            />
+          }
         />
       </div>
-      <CardTopDebugPanel />
+      <TearLottieDebugPanel onReplay={tear.replayTear} />
     </section>
   );
 }

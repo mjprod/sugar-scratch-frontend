@@ -12,6 +12,7 @@ import {
 	  useRef,
 	  useState,
 	  type CSSProperties,
+	  type ReactNode,
 	} from 'react'
 import type { Group, Object3D, PerspectiveCamera } from 'three'
 import {
@@ -85,6 +86,10 @@ import {
   subscribeCardTopDebug,
   type CardTopDebugState,
 } from './cardTopDebug'
+import {
+  loadCardTopTearTimeline,
+  sampleCardTopTear,
+} from './cardTopTearTimeline'
 
 /** Isolated v2 pack mesh — original coverflow still uses /assets/card2.glb. */
 const PACK_MODEL_URL_V2 = '/assets/CardPack2-min.glb'
@@ -381,6 +386,8 @@ interface CoverFlowCarouselProps {
   disableSwipeDownDeactivate?: boolean
   /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
   disableWheelPaging?: boolean
+  /** Optional HUD pinned to the cardTop rotation point. */
+  tearHud?: ReactNode
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -465,6 +472,46 @@ function createCardTopPivotGizmo(size: number) {
   return group
 }
 
+function isUnderObject(object: Object3D, ancestor: Object3D | null) {
+  if (!ancestor) return false
+  let current: Object3D | null = object
+  while (current) {
+    if (current === ancestor) return true
+    current = current.parent
+  }
+  return false
+}
+
+function applyCardTopOpacity(cardTop: Object3D, opacity: number) {
+  const next = Math.min(1, Math.max(0, opacity))
+  cardTop.traverse((object) => {
+    const mesh = object as { isMesh?: boolean; material?: any }
+    if (!mesh.isMesh) return
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const material of materials) {
+      if (!material || !('opacity' in material)) continue
+      material.transparent = true
+      material.opacity = next
+      material.depthWrite = next > 0.95
+      material.visible = next > 0.001
+      material.needsUpdate = true
+    }
+  })
+  cardTop.visible = next > 0.001
+}
+
+function resolveCardTopDebugPose(debug: CardTopDebugState): CardTopDebugState {
+  if (!debug.tearPlaying) return debug
+  const pose = sampleCardTopTear(loadCardTopTearTimeline(), debug.tearT)
+  return {
+    ...debug,
+    position: { x: pose.x, y: pose.y, z: pose.z },
+    rotation: { x: pose.rotX, y: pose.rotY, z: pose.rotZ },
+    scale: { x: pose.scaleX, y: pose.scaleY, z: pose.scaleZ },
+    opacity: pose.opacity,
+  }
+}
+
 function applyCardTopPivotDebug(
   cardTop: Object3D,
   rest: CardTopRestTransform,
@@ -516,6 +563,7 @@ function applyCardTopPivotDebug(
   cardTop.position.set(-debug.pivot.x, -debug.pivot.y, -debug.pivot.z)
   cardTop.rotation.set(0, 0, 0)
   cardTop.scale.set(1, 1, 1)
+  applyCardTopOpacity(cardTop, debug.opacity)
 
   let gizmo = pivot.getObjectByName('cardTopPivotGizmo')
   if (!gizmo) {
@@ -647,6 +695,34 @@ function measurePackLocalBottom(
   return { x: bottom.x, y: bottom.y, z: bottom.z }
 }
 
+function TearLottieHud({
+  modelY,
+  children,
+}: {
+  modelY: number
+  children: ReactNode
+}) {
+  const [debug, setDebug] = useState(getCardTopDebug)
+  useEffect(() => subscribeCardTopDebug(setDebug), [])
+  return (
+    <Html
+      position={[
+        debug.pivot.x + debug.lottieOffset.x,
+        modelY + debug.pivot.y + debug.lottieOffset.y,
+        debug.pivot.z + debug.lottieOffset.z,
+      ]}
+      center
+      transform={false}
+      sprite={false}
+      zIndexRange={[40, 0]}
+      style={{ pointerEvents: 'none' }}
+      wrapperClass="coverflow-pack-html coverflow-pack-html--tear"
+    >
+      <div style={{ pointerEvents: 'auto' }}>{children}</div>
+    </Html>
+  )
+}
+
 function CoverFlowPack({
 	  item,
 	  index,
@@ -670,28 +746,29 @@ function CoverFlowPack({
 	  onSelect,
 	  onOpenSequenceComplete,
 	  onOpenPackBehindFan,
-	  onOpenPackBlurChange,
-	  formatPrice,
-	  onBuy,
-	}: {
-	  item: Iteration
-	  index: number
-	  focusIndex: number
-	  isActive: boolean
-	  hasActiveSelection: boolean
-	  modelY: number
-	  layout: CoverFlowLayoutSettings
-	  textureTransform: VideoTextureTransform
-	  centerTiltYaw: number
-	  centerTiltPitch: number
-	  isMobile: boolean
-	  /** Browser height < 550px — frosted glass behind pack HUD. */
-	  shortHudGlass: boolean
-	  /** True while any pack open sequence is running. */
-	  revealMode: boolean
-	  /** This pack is the one being opened. */
-	  isRevealHero: boolean
-	  playOpenSequence: boolean
+		  onOpenPackBlurChange,
+		  formatPrice,
+		  onBuy,
+		  tearHud,
+		}: {
+		  item: Iteration
+		  index: number
+		  focusIndex: number
+		  isActive: boolean
+		  hasActiveSelection: boolean
+		  modelY: number
+		  layout: CoverFlowLayoutSettings
+		  textureTransform: VideoTextureTransform
+		  centerTiltYaw: number
+		  centerTiltPitch: number
+		  isMobile: boolean
+		  /** Browser height < 550px — frosted glass behind pack HUD. */
+		  shortHudGlass: boolean
+		  /** True while any pack open sequence is running. */
+		  revealMode: boolean
+		  /** This pack is the one being opened. */
+		  isRevealHero: boolean
+		  playOpenSequence: boolean
 	  packsX: number
 	  packsY: number
 	  openTimeline: PackTimeline
@@ -699,11 +776,12 @@ function CoverFlowPack({
 	  onSelect: (id: string) => void
 	  onOpenSequenceComplete?: () => void
 	  onOpenPackBehindFan?: () => void
-	  onOpenPackBlurChange?: (blurPx: number) => void
-	  formatPrice: (price: number) => string
-	  onBuy?: (item: Iteration) => void
-	}) {
-const groupRef = useRef<Group>(null)
+		  onOpenPackBlurChange?: (blurPx: number) => void
+		  formatPrice: (price: number) => string
+		  onBuy?: (item: Iteration) => void
+		  tearHud?: ReactNode
+		}) {
+	const groupRef = useRef<Group>(null)
 	  const modelRef = useRef<Group>(null)
   // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
   const hoverYawTargetRef = useRef(0)
@@ -849,6 +927,7 @@ const groupRef = useRef<Group>(null)
       }
       if (groupRef.current) {
         groupRef.current.traverse((object) => {
+          if (isUnderObject(object, cardTop)) return
           const mesh = object as { isMesh?: boolean; material?: any }
           if (!mesh.isMesh) return
           const materials = Array.isArray(mesh.material)
@@ -1110,7 +1189,10 @@ const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
       cardTopBounds: nextCardTop ? measureCardTopLocalBounds(nextCardTop) : null,
     }
   }, [gltf.scene])
-		  const targetMaterial = useMemo(() => resolveTargetMaterial(scene), [scene])
+			  const targetMaterial = useMemo(() => {
+    const packBody = findNamedObject(scene, 'cardPack')
+    return resolveTargetMaterial(packBody ?? scene)
+  }, [scene])
 
   useLayoutEffect(() => {
     if (!cardTop || !cardTopRest) return
@@ -1118,9 +1200,19 @@ const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
     const gizmoSize = cardTopBounds
       ? Math.max(cardTopBounds.size.x, cardTopBounds.size.y, cardTopBounds.size.z)
       : 0.4
-    applyCardTopPivotDebug(cardTop, cardTopRest, getCardTopDebug(), gizmoSize)
+    applyCardTopPivotDebug(
+      cardTop,
+      cardTopRest,
+      resolveCardTopDebugPose(getCardTopDebug()),
+      gizmoSize,
+    )
     return subscribeCardTopDebug((debug) => {
-      applyCardTopPivotDebug(cardTop, cardTopRest, debug, gizmoSize)
+      applyCardTopPivotDebug(
+        cardTop,
+        cardTopRest,
+        resolveCardTopDebugPose(debug),
+        gizmoSize,
+      )
     })
   }, [cardTop, cardTopBounds, cardTopRest, isCenter])
 
@@ -1181,6 +1273,7 @@ const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
     opacityRef.current = opacity
     if (!groupRef.current) return
     groupRef.current.traverse((object) => {
+      if (isUnderObject(object, cardTop)) return
       const mesh = object as { isMesh?: boolean; material?: any }
       if (!mesh.isMesh) return
       const materials = Array.isArray(mesh.material)
@@ -1710,7 +1803,9 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--browse${
 	        </Html>
 	      ) : null}
 
-{activeHudMounted ? (
+	{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
+
+	{activeHudMounted ? (
 		        <Html
 		          position={activeHudPosition}
 		          center
@@ -1780,31 +1875,33 @@ function CoverFlowScene({
 	  onRevealSequenceComplete,
 	  onRevealPackBehindFan,
 	  onRevealPackBlurChange,
-	  formatPrice,
-	  onBuy,
-	}: {
-	  items: Iteration[]
-	  focusIndex: number
-	  selectedId: string | null
-	  cameraSettings: CoverFlowCameraSettings
-	  layout: CoverFlowLayoutSettings
-	  textureTransform: VideoTextureTransform
-	  centerTiltYaw: number
-	  centerTiltPitch: number
-	  isMobile: boolean
-	  shortHudGlass: boolean
-	  revealMode: boolean
-	  revealingPackId: string | null
-	  revealPlaySequence: boolean
-	  revealTimeline: PackTimeline
-	  revealDuckInTimeline: DuckInTimeline
-	  onSelect: (id: string) => void
-	  onRevealSequenceComplete?: () => void
-	  onRevealPackBehindFan?: () => void
-	  onRevealPackBlurChange?: (blurPx: number) => void
-	  formatPrice: (price: number) => string
-	  onBuy?: (item: Iteration) => void
-	}) {
+		  formatPrice,
+		  onBuy,
+		  tearHud,
+		}: {
+		  items: Iteration[]
+		  focusIndex: number
+		  selectedId: string | null
+		  cameraSettings: CoverFlowCameraSettings
+		  layout: CoverFlowLayoutSettings
+		  textureTransform: VideoTextureTransform
+		  centerTiltYaw: number
+		  centerTiltPitch: number
+		  isMobile: boolean
+		  shortHudGlass: boolean
+		  revealMode: boolean
+		  revealingPackId: string | null
+		  revealPlaySequence: boolean
+		  revealTimeline: PackTimeline
+		  revealDuckInTimeline: DuckInTimeline
+		  onSelect: (id: string) => void
+		  onRevealSequenceComplete?: () => void
+		  onRevealPackBehindFan?: () => void
+		  onRevealPackBlurChange?: (blurPx: number) => void
+		  formatPrice: (price: number) => string
+		  onBuy?: (item: Iteration) => void
+		  tearHud?: ReactNode
+		}) {
 	  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -1858,6 +1955,7 @@ function CoverFlowScene({
               }
               formatPrice={formatPrice}
               onBuy={onBuy}
+              tearHud={index === focusIndex ? tearHud : undefined}
             />
           )
         })}
@@ -1907,6 +2005,7 @@ export function CoverFlowCarouselV2({
   layout: layoutProp,
   disableSwipeDownDeactivate = false,
   disableWheelPaging = false,
+  tearHud,
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -1960,10 +2059,23 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   const [revealDuckInTimeline] = useState(() => loadDuckInTimeline())
   const [fanLayout] = useState(() => loadFanLayout())
   const [fanDrag] = useState(() => loadFanDrag())
-  const revealMode = revealingCharacterId != null
+  const [packOpenRequested, setPackOpenRequestedState] = useState(
+    () => getCardTopDebug().packOpenRequested,
+  )
+  useEffect(() => {
+    return subscribeCardTopDebug((debug) => {
+      setPackOpenRequestedState(debug.packOpenRequested)
+    })
+  }, [])
+  const focusedTearPack = items[focusIndex] ?? items[0] ?? null
+  const tearOpenCharacterId = packOpenRequested
+    ? ((focusedTearPack?.id as CharacterId | undefined) ?? revealingCharacterId)
+    : revealingCharacterId
+  const revealMode = packOpenRequested || revealingCharacterId != null
   // Prefer the exact pack id (foil slot 1 or 2); fall back to slot-1 id.
   const revealingPackId =
     revealingPackIdProp ??
+    (packOpenRequested ? focusedTearPack?.id ?? null : null) ??
     (revealingCharacterId ? `pack-${revealingCharacterId}` : null)
   const revealingPackMeta = revealingPackId
     ? parsePackId(revealingPackId)
@@ -2988,6 +3100,7 @@ isMobile={isMobileViewportActive}
                 onRevealPackBlurChange={sequence.handlePackBlurChange}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
+                tearHud={tearHud}
               />
             </Suspense>
           </Canvas>
