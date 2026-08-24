@@ -498,16 +498,20 @@ function applyCardTopPivotDebug(
   ).applyQuaternion(restQuat)
 
   pivot.position.set(
-    rest.position.x + scaledPivot.x,
-    rest.position.y + scaledPivot.y,
-    rest.position.z + scaledPivot.z,
+    rest.position.x + scaledPivot.x + debug.position.x,
+    rest.position.y + scaledPivot.y + debug.position.y,
+    rest.position.z + scaledPivot.z + debug.position.z,
   )
   pivot.rotation.set(
     rest.rotation.x + MathUtils.degToRad(debug.rotation.x),
     rest.rotation.y + MathUtils.degToRad(debug.rotation.y),
     rest.rotation.z + MathUtils.degToRad(debug.rotation.z),
   )
-  pivot.scale.set(rest.scale.x, rest.scale.y, rest.scale.z)
+  pivot.scale.set(
+    rest.scale.x * debug.scale.x,
+    rest.scale.y * debug.scale.y,
+    rest.scale.z * debug.scale.z,
+  )
 
   cardTop.position.set(-debug.pivot.x, -debug.pivot.y, -debug.pivot.z)
   cardTop.rotation.set(0, 0, 0)

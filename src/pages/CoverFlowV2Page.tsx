@@ -8,7 +8,9 @@ import {
   matchingPivotPreset,
   resetCardTopDebug,
   setCardTopPivot,
+  setCardTopPosition,
   setCardTopRotation,
+  setCardTopScale,
   setCardTopShowGizmo,
   subscribeCardTopBounds,
   subscribeCardTopDebug,
@@ -167,9 +169,15 @@ function CardTopDebugPanel() {
 
   async function copyDebug() {
     const snippet = [
+      `cardTop.position.x: ${debug.position.x},`,
+      `cardTop.position.y: ${debug.position.y},`,
+      `cardTop.position.z: ${debug.position.z},`,
       `cardTop.rotation.x: ${debug.rotation.x},`,
       `cardTop.rotation.y: ${debug.rotation.y},`,
       `cardTop.rotation.z: ${debug.rotation.z},`,
+      `cardTop.scale.x: ${debug.scale.x},`,
+      `cardTop.scale.y: ${debug.scale.y},`,
+      `cardTop.scale.z: ${debug.scale.z},`,
       `cardTop.pivot.x: ${debug.pivot.x},`,
       `cardTop.pivot.y: ${debug.pivot.y},`,
       `cardTop.pivot.z: ${debug.pivot.z},`,
@@ -220,12 +228,45 @@ function CardTopDebugPanel() {
       </div>
       <div className="home-hero-debug__body">
         <div className="home-hero-debug__section">
+          <p className="home-hero-debug__section-title">Move</p>
+          <CardTopDebugField
+            label="Position X"
+            value={debug.position.x}
+            min={-3}
+            max={3}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => setCardTopPosition({ x: value })}
+          />
+          <CardTopDebugField
+            label="Position Y"
+            value={debug.position.y}
+            min={-3}
+            max={3}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => setCardTopPosition({ y: value })}
+          />
+          <CardTopDebugField
+            label="Position Z"
+            value={debug.position.z}
+            min={-3}
+            max={3}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => setCardTopPosition({ z: value })}
+          />
+        </div>
+        <div className="home-hero-debug__section">
           <p className="home-hero-debug__section-title">Rotate object</p>
           <CardTopDebugField
             label="Rotate X"
             value={debug.rotation.x}
-            min={-180}
-            max={180}
+            min={-359}
+            max={359}
             step={1}
             suffix="°"
             onChange={(value) => setCardTopRotation({ x: value })}
@@ -233,8 +274,8 @@ function CardTopDebugPanel() {
           <CardTopDebugField
             label="Rotate Y"
             value={debug.rotation.y}
-            min={-180}
-            max={180}
+            min={-359}
+            max={359}
             step={1}
             suffix="°"
             onChange={(value) => setCardTopRotation({ y: value })}
@@ -242,11 +283,44 @@ function CardTopDebugPanel() {
           <CardTopDebugField
             label="Rotate Z"
             value={debug.rotation.z}
-            min={-180}
-            max={180}
+            min={-359}
+            max={359}
             step={1}
             suffix="°"
             onChange={(value) => setCardTopRotation({ z: value })}
+          />
+        </div>
+        <div className="home-hero-debug__section">
+          <p className="home-hero-debug__section-title">Scale</p>
+          <CardTopDebugField
+            label="Scale X"
+            value={debug.scale.x}
+            min={0.1}
+            max={3}
+            step={0.01}
+            suffix="×"
+            digits={2}
+            onChange={(value) => setCardTopScale({ x: value })}
+          />
+          <CardTopDebugField
+            label="Scale Y"
+            value={debug.scale.y}
+            min={0.1}
+            max={3}
+            step={0.01}
+            suffix="×"
+            digits={2}
+            onChange={(value) => setCardTopScale({ y: value })}
+          />
+          <CardTopDebugField
+            label="Scale Z"
+            value={debug.scale.z}
+            min={0.1}
+            max={3}
+            step={0.01}
+            suffix="×"
+            digits={2}
+            onChange={(value) => setCardTopScale({ z: value })}
           />
         </div>
         <div className="home-hero-debug__section">
