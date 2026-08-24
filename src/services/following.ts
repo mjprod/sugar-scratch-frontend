@@ -45,6 +45,32 @@ function storageKey(): string | null {
   return userId ? `${KEY_PREFIX}.${userId}` : null;
 }
 
+/** One-shot demo seed — never re-run after unfollow-all / empty ledger. */
+function seedFlagKey(): string | null {
+  const userId = getAuthUserId();
+  return userId ? `${KEY_PREFIX}.seeded.${userId}` : null;
+}
+
+function hasSeededOnce(): boolean {
+  const key = seedFlagKey();
+  if (!key) return true;
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function markSeededOnce() {
+  const key = seedFlagKey();
+  if (!key) return;
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 function read(): FollowedCreator[] {
   const key = storageKey();
   if (!key) return [];
@@ -117,7 +143,7 @@ export function followedCreatorFromModel(
     username,
     avatarUrl,
     followedAt,
-    lastActiveAt: followedAt,
+    // lastActiveAt omitted — never invent activity timestamps
     hasUnseenActivity: false,
     currentCollection: collectionFromModel(model),
   };
@@ -144,6 +170,7 @@ export function followCreator(creator: FollowedCreator) {
     hasUnseenActivity: Boolean(creator.hasUnseenActivity),
   });
   write(items);
+  markSeededOnce();
 }
 
 export function unfollowCreator(creatorId: string) {
@@ -212,23 +239,28 @@ export function recentlyActiveCreators(
 }
 
 /**
- * First visit: seed from live models so the Following UI can be reviewed.
- * No-op when the user already has follows or models are unavailable.
+ * One-shot demo seed from live models. Never re-seeds after unfollow-all
+ * (flag: sugar.v8.creatorFollowing.seeded.<userId>).
  */
 export async function hydrateFollowingFromModelsIfEmpty(): Promise<
   FollowedCreator[]
 > {
   const existing = read();
-  if (existing.length > 0) return existing;
+  if (existing.length > 0) {
+    markSeededOnce();
+    return existing;
+  }
+  if (hasSeededOnce()) return [];
+
   try {
     const models = await fetchModels();
-    if (!models.length) return [];
     const now = Date.now();
     const seeded: FollowedCreator[] = [];
     for (let i = 0; i < models.length && seeded.length < 6; i++) {
       const creator = followedCreatorFromModel(models[i]!, now - i * 86_400_000);
       if (creator) seeded.push(creator);
     }
+    markSeededOnce();
     if (seeded.length) write(seeded);
     return seeded;
   } catch {

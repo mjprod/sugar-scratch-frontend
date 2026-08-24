@@ -19,7 +19,6 @@ export const Paths = {
   store: "/store",
   settings: "/settings",
   changePassword: "/settings/change-password",
-  favourites: "/profile/favourites",
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
   inbox: "/inbox",

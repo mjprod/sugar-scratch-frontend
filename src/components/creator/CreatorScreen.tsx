@@ -38,8 +38,15 @@ import {
 } from "@/services/collection";
 import { listUnopenedInstances } from "@/services/packInventory";
 import { listReadyToScratch } from "@/services/readyToScratch";
+import {
+  followCreator,
+  followedCreatorFromModel,
+  isFollowing,
+  unfollowCreator,
+} from "@/services/following";
 import type { PurchaseFlowPack } from "@/services/purchase";
 import type { CardConfig } from "@/features/collection/lib/cards";
+import { useAuth } from "@/contexts/AuthContext";
 import "./creator-collection.css";
 
 /**
@@ -162,6 +169,7 @@ function CreatorScreenInner({
       collection.cards.length > 0,
   );
   const navigate = useNavigate();
+  const { requireAuth } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedThemeId, setSelectedThemeId] = useState(
@@ -172,6 +180,12 @@ function CreatorScreenInner({
   );
   const [toast, setToast] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
+  const followId = (model?.id ?? creatorId).trim();
+  const [following, setFollowing] = useState(() => isFollowing(followId));
+
+  useEffect(() => {
+    setFollowing(isFollowing(followId));
+  }, [followId]);
 
   const apiThemes: ThemeCardData[] = useMemo(
     () =>
@@ -324,6 +338,35 @@ function CreatorScreenInner({
     );
   }
 
+  function handleToggleFollow() {
+    if (!requireAuth({ type: "collection", creatorId: followId || creatorId })) {
+      return;
+    }
+
+    if (following) {
+      unfollowCreator(followId);
+      setFollowing(false);
+      notice(`Unfollowed ${creatorName}`);
+      return;
+    }
+
+    const fromModel = model ? followedCreatorFromModel(model) : null;
+    const entry =
+      fromModel ??
+      ({
+        id: followId || creatorId,
+        displayName: creatorName,
+        username: "",
+        avatarUrl: coverUrl || "/img/placeholder.png",
+        followedAt: Date.now(),
+        hasUnseenActivity: false,
+      } as const);
+
+    followCreator(entry);
+    setFollowing(true);
+    notice(`Following ${creatorName}`);
+  }
+
   function switchMode(mode: ViewMode) {
     if (mode === viewMode) return;
     setFeaturedCardId(null);
@@ -344,6 +387,8 @@ function CreatorScreenInner({
           name={creatorName}
           coverUrl={coverUrl}
           onBack={onBack}
+          following={following}
+          onToggleFollow={handleToggleFollow}
         />
         <StatsBar stats={stats} />
 
