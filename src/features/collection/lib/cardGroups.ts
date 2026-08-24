@@ -606,6 +606,9 @@ export function createBackendDeck(
         (card.videoUrl && card.videoUrl.trim()) ||
         ''
       const hasMedia = Boolean(mediaUrl)
+      // Catalog browse lists every published card as a preview. Ownership only
+      // comes from buying/opening packs — until that ledger is wired per card,
+      // keep motion + photo slots locked (grayscale preview + lock).
       const next = create({
         id: card.id,
         sequence,
@@ -615,7 +618,11 @@ export function createBackendDeck(
         modelId: group.modelId,
         mediaType: hasMedia ? 'video' : 'image',
         mediaUrl: hasMedia ? mediaUrl : PLACEHOLDER_MEDIA_URL,
-        photoFilledCount: card.photoScratchDone,
+        videoCardCount: 0,
+        photoFilledCount: Math.max(
+          0,
+          Math.min(10, Math.round(card.photoScratchDone ?? 0)),
+        ),
         photoUrls: card.photoUrls,
         ...(overlay
           ? {

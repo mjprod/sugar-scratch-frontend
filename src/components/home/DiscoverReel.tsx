@@ -13,7 +13,10 @@ import {
 } from "@/components/home/CreatorFeedCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
+  FEED_WARM_AHEAD,
+  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
+  isWarmFeedIndex,
   toPurchasePack,
   type HomeFeedCreator,
 } from "@/services/creatorFeed";
@@ -285,12 +288,12 @@ export function DiscoverReel({
 
   useEffect(() => {
     const activeIndex = items.findIndex((item) => item.id === activeId);
+    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
     const warmIds = new Set<string>();
-    if (activeIndex >= 0) {
-      const nextItem = items[activeIndex + 1];
-      const prevItem = items[activeIndex - 1];
-      if (nextItem) warmIds.add(nextItem.id);
-      if (prevItem) warmIds.add(prevItem.id);
+    for (let offset = -FEED_WARM_BEHIND; offset <= FEED_WARM_AHEAD; offset += 1) {
+      if (offset === 0) continue;
+      const neighbor = items[resolvedActiveIndex + offset];
+      if (neighbor) warmIds.add(neighbor.id);
     }
 
     const live = desktop && inView;
@@ -378,13 +381,7 @@ export function DiscoverReel({
       const { slideHeight } = getSlideMetrics(root);
       if (slideHeight <= 0) return;
       const index = Math.round(root.scrollTop / slideHeight);
-      if (index >= items.length - 1) {
-        root.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-        return;
-      }
+      if (index >= items.length - 1) return;
       go(1);
     }, AUTO_ADVANCE_MS);
 
@@ -555,8 +552,15 @@ export function DiscoverReel({
     try {
       const page = await fetchHomeFeedPage(cursor);
       setItems((prev) => {
-        const seen = new Set(prev.map((item) => item.id));
-        const next = page.items.filter((item) => !seen.has(item.id));
+        const seenIds = new Set(prev.map((item) => item.id));
+        const seenVideos = new Set(
+          prev.map((item) => item.videoUrl).filter((url): url is string => Boolean(url)),
+        );
+        const next = page.items.filter((item) => {
+          if (seenIds.has(item.id)) return false;
+          if (item.videoUrl && seenVideos.has(item.videoUrl)) return false;
+          return true;
+        });
         return [...prev, ...next];
       });
       setCursor(page.nextCursor);
@@ -569,6 +573,14 @@ export function DiscoverReel({
     }
   }
 
+  useEffect(() => {
+    if (status !== "loaded") return;
+    const activeIndex = items.findIndex((item) => item.id === activeId);
+    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
+    const remaining = items.length - 1 - resolvedActiveIndex;
+    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+  }, [activeId, items.length, status]);
+
   function onScroll() {
     const root = scrollerRef.current;
     if (!root || !items.length) return;
@@ -578,7 +590,7 @@ export function DiscoverReel({
     if (next && next.id !== activeId) setActiveId(next.id);
     applyScrollFx(root);
     const remaining = items.length - 1 - index;
-    if (remaining <= 2) void loadMore();
+    if (remaining <= FEED_WARM_AHEAD) void loadMore();
   }
 
   function toggleLike(id: string) {
@@ -681,9 +693,7 @@ export function DiscoverReel({
             >
               {(() => {
                 return items.map((item, index) => {
-                  const warm =
-                    index === resolvedActiveIndex + 1 ||
-                    index === resolvedActiveIndex - 1;
+                  const warm = isWarmFeedIndex(index, resolvedActiveIndex);
 
                   return (
                     <div key={item.id} className="hf-slide">
@@ -731,7 +741,10 @@ export function DiscoverReel({
               aria-label="Previous creator"
               data-no-feed-drag
               disabled={resolvedActiveIndex <= 0}
-              onClick={() => goFromUser(-1)}
+              onClick={() => {
+                if (resolvedActiveIndex <= 0) return;
+                goFromUser(-1);
+              }}
             >
               <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
             </button>
@@ -741,7 +754,10 @@ export function DiscoverReel({
               aria-label="Next creator"
               data-no-feed-drag
               disabled={resolvedActiveIndex >= items.length - 1}
-              onClick={() => goFromUser(1)}
+              onClick={() => {
+                if (resolvedActiveIndex >= items.length - 1) return;
+                goFromUser(1);
+              }}
             >
               <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
             </button>

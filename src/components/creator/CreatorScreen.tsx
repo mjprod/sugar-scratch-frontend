@@ -2,51 +2,36 @@ import { useEffect, useMemo, useState } from "react";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
-import { CollectionPlaceholder } from "@/components/collection/CollectionPlaceholder";
 import { CreatorCollectionBrowse } from "@/components/creator/CreatorCollectionBrowse";
+import { CreatorCollectionsDiscovery } from "@/components/creator/CreatorCollectionsDiscovery";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
-import { StatsBar } from "@/components/creator/StatsBar";
-import { StickyFooterCTA } from "@/components/creator/StickyFooterCTA";
-import { ThemeMotionDetail } from "@/components/creator/ThemeMotionDetail";
-import { ThemeSelector } from "@/components/creator/ThemeSelector";
 import {
   ViewModeToggle,
   type ViewMode,
 } from "@/components/creator/ViewModeToggle";
+import { useAuth } from "@/contexts/AuthContext";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import {
   normalizeMediaUrl,
   type BackendModel,
 } from "@/shared/backend/collection";
 import { modelDisplayName } from "@/shared/backend/modelProfile";
-import {
-  useCreatorCollection,
-  type CreatorCollectionState,
-} from "@/features/collection/useCreatorCollection";
+import { formatSocialHandle } from "@/shared/catalog/characters";
+import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
 import {
   getCreatorPage,
-  getStickyCtaMode,
   matchLiveThemeId,
-  resolveThemeDetail,
-  countMatchingUnopened,
-  countMatchingScratchReady,
-  type CreatorPageData,
-  type MotionCardSlot,
   type ThemeCardData,
 } from "@/services/collection";
-import { listUnopenedInstances } from "@/services/packInventory";
-import { listReadyToScratch } from "@/services/readyToScratch";
 import {
   followCreator,
   followedCreatorFromModel,
   isFollowing,
   unfollowCreator,
 } from "@/services/following";
-import type { PurchaseFlowPack } from "@/services/purchase";
-import type { CardConfig } from "@/features/collection/lib/cards";
-import { useAuth } from "@/contexts/AuthContext";
+import { packUnitCost, type PurchaseFlowPack } from "@/services/purchase";
 import "./creator-collection.css";
 
 /**
@@ -54,15 +39,11 @@ import "./creator-collection.css";
  */
 export function CreatorScreen({
   creatorId,
-  diamonds,
   onBack,
-  onOpenPack,
   onBuyPack,
 }: {
   creatorId: string;
-  diamonds: number;
   onBack: () => void;
-  onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const [resolvedModel, setResolvedModel] = useState<BackendModel | null>(
@@ -85,10 +66,8 @@ export function CreatorScreen({
     <CatalogProvider preferredModelId={preferredModelId}>
       <CreatorScreenInner
         creatorId={creatorId}
-        diamonds={diamonds}
         model={resolvedModel}
         onBack={onBack}
-        onOpenPack={onOpenPack}
         onBuyPack={onBuyPack}
       />
     </CatalogProvider>
@@ -101,63 +80,15 @@ function titleCaseSlug(value: string): string {
   return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-function liveCreatorStats(
-  page: CreatorPageData,
-  collection: CreatorCollectionState,
-  usingLiveThemes: boolean,
-): CreatorPageData["creator"]["stats"] {
-  if (!usingLiveThemes) return page.creator.stats;
-
-  const motionTotal = collection.cards.length;
-  const motionUnlocked = collection.cards.filter(
-    (card) => (card.videoCardCount ?? 0) > 0 || Boolean(card.mediaUrl),
-  ).length;
-  const photoUnlocked = collection.themes.reduce(
-    (sum, theme) => sum + theme.collected,
-    0,
-  );
-  const photoTotal = collection.themes.reduce(
-    (sum, theme) => sum + theme.total,
-    0,
-  );
-  const themesCompleted = collection.themes.filter(
-    (theme) => theme.total > 0 && theme.collected >= theme.total,
-  ).length;
-
-  return {
-    collected: photoUnlocked,
-    totalCollectible: Math.max(photoTotal, 1),
-    motionCardsUnlocked: motionUnlocked,
-    motionCardsTotal: motionTotal,
-    photoCardsUnlocked: photoUnlocked,
-    photoCardsTotal: photoTotal,
-    themesCompleted,
-    themeCount: collection.themes.length,
-  };
-}
-
-function motionSlotsFromCards(cards: CardConfig[]): MotionCardSlot[] {
-  return cards.map((card, index) => ({
-    index: index + 1,
-    label: card.name,
-    isUnlocked: Boolean(card.mediaUrl) || (card.videoCardCount ?? 0) > 0,
-    thumbnailUrl: card.mediaUrl || undefined,
-  }));
-}
-
 function CreatorScreenInner({
   creatorId,
-  diamonds,
   model,
   onBack,
-  onOpenPack,
   onBuyPack,
 }: {
   creatorId: string;
-  diamonds: number;
   model: BackendModel | null;
   onBack: () => void;
-  onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
@@ -169,9 +100,9 @@ function CreatorScreenInner({
       collection.cards.length > 0,
   );
   const navigate = useNavigate();
-  const { requireAuth } = useAuth();
+  const { authed, requireAuth } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("carousel");
   const [selectedThemeId, setSelectedThemeId] = useState(
     () => searchParams.get("theme") || page.themes[0]?.id || "summer",
   );
@@ -179,7 +110,6 @@ function CreatorScreenInner({
     () => searchParams.get("card"),
   );
   const [toast, setToast] = useState<string | null>(null);
-  const [overlay, setOverlay] = useState<string | null>(null);
   const followId = (model?.id ?? creatorId).trim();
   const [following, setFollowing] = useState(() => isFollowing(followId));
 
@@ -206,8 +136,13 @@ function CreatorScreenInner({
     (model ? modelDisplayName(model) : "") ||
     titleCaseSlug(creatorId) ||
     page.creator.name;
+  const username =
+    formatSocialHandle(model?.label) ||
+    formatSocialHandle(creatorId) ||
+    "";
+  const creatorDescription = `${creatorName} brings confidence, charm, and energy to every moment. Explore her exclusive collections.`;
+  const themeTags = themes.map((entry) => entry.name).slice(0, 6);
   const purchaseCreatorId = creatorId || page.creator.id;
-  const stats = liveCreatorStats(page, collection, usingLiveThemes);
 
   useEffect(() => {
     if (!usingLiveThemes) return;
@@ -267,25 +202,6 @@ function CreatorScreenInner({
     (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
     (usingLiveThemes ? (theme?.thumbnailUrl ?? "") : "") ||
     page.creator.coverUrl;
-  const motionCards = collection.cardsByThemeId[theme?.id ?? ""] ?? [];
-  const liveInventory = usingLiveThemes
-    ? {
-        unopenedPacks: countMatchingUnopened(theme, listUnopenedInstances()),
-        scratchReady: countMatchingScratchReady(theme, listReadyToScratch()),
-        motionCards: motionSlotsFromCards(motionCards),
-      }
-    : null;
-  const detail = resolveThemeDetail(
-    theme,
-    page.themeDetails,
-    liveInventory,
-  );
-  const ctaMode = getStickyCtaMode({
-    detail,
-    theme: theme ?? page.themes[0]!,
-    collected: theme?.collected ?? 0,
-    total: theme?.total ?? 1,
-  });
 
   function notice(message: string) {
     setToast(message);
@@ -298,31 +214,6 @@ function CreatorScreenInner({
     else next.delete("card");
     if (themeId) next.set("theme", themeId);
     setSearchParams(next, { replace: true });
-  }
-
-  function openOwnedPack() {
-    onOpenPack({
-      packId: `${purchaseCreatorId}-${theme?.id ?? "theme"}-owned`,
-      packName: theme?.name ?? "Pack",
-      price: "Free",
-      creator: creatorName,
-      entry: "open",
-      unopenedPacks: detail.unopenedPacks,
-    });
-  }
-
-  function buyThemePack() {
-    if (diamonds < 10) {
-      notice("Not enough diamonds");
-      return;
-    }
-    onBuyPack({
-      packId: `${purchaseCreatorId}-${theme?.id ?? "theme"}-buy`,
-      packName: theme?.name ?? "Pack",
-      price: "10 ◆",
-      creator: creatorName,
-      entry: "purchase",
-    });
   }
 
   function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
@@ -374,23 +265,35 @@ function CreatorScreenInner({
     setViewMode(mode);
   }
 
+  function buyThemePack(themeId: string) {
+    const packTheme =
+      themes.find((entry) => entry.id === themeId) ?? themes[0];
+    if (!packTheme) return;
+    const packId = `${purchaseCreatorId}-${packTheme.id}-buy`;
+    const cost = packUnitCost(packId);
+    onBuyPack({
+      packId,
+      packName: packTheme.name,
+      price: `${cost} ◆`,
+      creator: creatorName,
+      entry: "purchase",
+    });
+  }
+
   return (
-    <section
-      data-page-scroll
-      className={[
-        "cpv2-page",
-        ctaMode ? "has-sticky-cta" : "no-sticky-cta",
-      ].join(" ")}
-    >
+    <section data-page-scroll className="cpv2-page no-sticky-cta">
       <div className="cpv2-shell">
         <CreatorHeader
+          creatorId={purchaseCreatorId}
           name={creatorName}
+          username={username}
           coverUrl={coverUrl}
+          description={creatorDescription}
+          tags={themeTags}
           onBack={onBack}
           following={following}
           onToggleFollow={handleToggleFollow}
         />
-        <StatsBar stats={stats} />
 
         <div className="cpv2-choose-row" id="cpv2-choose-theme">
           <h2 className="cpv2-choose-title">Choose a Theme</h2>
@@ -399,25 +302,25 @@ function CreatorScreenInner({
 
         <div key={viewMode} className="cpv2-mode-panel">
           {viewMode === "grid" ? (
-            <>
-              <ThemeSelector
-                themes={themes}
-                selectedThemeId={theme?.id ?? selectedThemeId}
-                onSelect={(id) => {
-                  setSelectedThemeId(id);
-                  syncCardParam(null, id);
-                }}
-              />
-              <ThemeMotionDetail
-                themeName={theme?.name ?? "Theme"}
-                cards={motionCards}
-                loading={collection.loading}
-                onSelectCard={(card) => {
-                  setFeaturedCardId(card.id);
-                  syncCardParam(card.id, theme?.id);
-                }}
-              />
-            </>
+            <CreatorCollectionsDiscovery
+              creatorId={purchaseCreatorId}
+              themes={themes}
+              selectedThemeId={theme?.id ?? selectedThemeId}
+              onSelectTheme={(id) => {
+                setSelectedThemeId(id);
+                syncCardParam(null, id);
+              }}
+              cardsByThemeId={collection.cardsByThemeId}
+              themeDetails={page.themeDetails}
+              loading={collection.loading}
+              showPersonalProgress={authed}
+              onBuyPack={buyThemePack}
+              onOpenCollectedCard={(cardId) => {
+                setFeaturedCardId(cardId);
+                syncCardParam(cardId, selectedThemeId);
+              }}
+              onLockedCardHint={() => notice("Not collected yet")}
+            />
           ) : (
             <CreatorCollectionBrowse
               modelId={collection.modelId}
@@ -429,27 +332,7 @@ function CreatorScreenInner({
         </div>
       </div>
 
-      <StickyFooterCTA
-        mode={ctaMode}
-        theme={theme ?? page.themes[0]!}
-        detail={detail}
-        diamonds={diamonds}
-        onScratch={() => setOverlay("Scratch Flow")}
-        onOpenPack={openOwnedPack}
-        onBuy={buyThemePack}
-        onView={() => setOverlay("View My Collection")}
-        onClaim={() => setOverlay("Claim Reward")}
-      />
-
       {toast ? <div className="cpv2-toast">{toast}</div> : null}
-
-      {overlay ? (
-        <CollectionPlaceholder
-          title={overlay}
-          detail={theme?.name}
-          onClose={() => setOverlay(null)}
-        />
-      ) : null}
 
       {viewMode === "grid" &&
       featuredCardId &&

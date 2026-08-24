@@ -12,14 +12,25 @@ import {
 	  useRef,
 	  useState,
 	  type CSSProperties,
+	  type ReactNode,
 	} from 'react'
 import type { Group, Object3D, PerspectiveCamera } from 'three'
-import { Box3, Group as ThreeGroup, MathUtils, Vector3 } from 'three'
+import {
+  Box3,
+  CylinderGeometry,
+  Euler,
+  Group as ThreeGroup,
+  MathUtils,
+  Mesh,
+  MeshBasicMaterial,
+  Quaternion,
+  SphereGeometry,
+  Vector3,
+} from 'three'
 import {
   applyPackFaceMaterial,
   cloneSceneWithMaterials,
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
-	  PACK_MODEL_URL,
 	  PACK_TEXTURE_SIZE,
 	  PACK_VIDEO_FIT_MODE,
 	  resolveTargetMaterial,
@@ -69,6 +80,19 @@ import {
   formatPackPrice,
   type Iteration,
 } from './types'
+import {
+  getCardTopDebug,
+  reportCardTopBounds,
+  subscribeCardTopDebug,
+  type CardTopDebugState,
+} from './cardTopDebug'
+import {
+  loadCardTopTearTimeline,
+  sampleCardTopTear,
+} from './cardTopTearTimeline'
+
+/** Isolated v2 pack mesh — original coverflow still uses /assets/card2.glb. */
+const PACK_MODEL_URL_V2 = '/assets/CardPack2-min.glb'
 
 // Keep the cover-flow light by mounting only nearby packs.
 // Mobile: 5 packs (center ± 2). Desktop: 10 packs (center ± 5).
@@ -362,10 +386,209 @@ interface CoverFlowCarouselProps {
   disableSwipeDownDeactivate?: boolean
   /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
   disableWheelPaging?: boolean
+  /** Optional HUD pinned to the cardTop rotation point. */
+  tearHud?: ReactNode
+  /** Live model id for backend fan cards / overlay colors. */
+  revealModelId?: string | null
+  revealGirlName?: string | null
+  revealOverlay?: {
+    city?: string | null
+    country?: string | null
+    flagEmoji?: string | null
+    flagSvgUrl?: string | null
+    gradientColor?: string | null
+    gradientColorEnd?: string | null
+  } | null
+  onRevealCards?: (cards: RevealCard[]) => void
+  onRevealContinue?: (cards: RevealCard[]) => void
+  onRevealSaveLater?: () => void
+  onRevealSaveAndOpenNext?: () => void
+  revealContinueLabel?: string
+  revealSaveLaterLabel?: string
+  revealSaveAndOpenNextLabel?: string
 }
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function findNamedObject(root: Object3D, name: string): Object3D | null {
+  let found: Object3D | null = null
+  root.traverse((object) => {
+    if (!found && object.name === name) found = object
+  })
+  return found
+}
+
+type CardTopRestTransform = {
+  position: { x: number; y: number; z: number }
+  rotation: { x: number; y: number; z: number }
+  scale: { x: number; y: number; z: number }
+}
+
+function measureCardTopLocalBounds(cardTop: Object3D) {
+  cardTop.updateWorldMatrix(true, true)
+  const box = new Box3().setFromObject(cardTop)
+  if (box.isEmpty()) return null
+  const inverse = cardTop.matrixWorld.clone().invert()
+  const min = box.min.clone().applyMatrix4(inverse)
+  const max = box.max.clone().applyMatrix4(inverse)
+  return {
+    min: { x: min.x, y: min.y, z: min.z },
+    max: { x: max.x, y: max.y, z: max.z },
+    center: {
+      x: (min.x + max.x) * 0.5,
+      y: (min.y + max.y) * 0.5,
+      z: (min.z + max.z) * 0.5,
+    },
+    size: {
+      x: Math.max(0.0001, max.x - min.x),
+      y: Math.max(0.0001, max.y - min.y),
+      z: Math.max(0.0001, max.z - min.z),
+    },
+  }
+}
+
+function createCardTopPivotGizmo(size: number) {
+  const group = new ThreeGroup()
+  group.name = 'cardTopPivotGizmo'
+  const axis = Math.max(0.12, size * 0.22)
+  const radius = axis * 0.045
+  const axes: Array<{ color: string; rotation: [number, number, number] }> = [
+    { color: '#ff4d6d', rotation: [0, 0, Math.PI / 2] },
+    { color: '#3dff9a', rotation: [0, 0, 0] },
+    { color: '#4da3ff', rotation: [Math.PI / 2, 0, 0] },
+  ]
+  for (const axisDef of axes) {
+    const mesh = new Mesh(
+      new CylinderGeometry(radius, radius, axis, 8),
+      new MeshBasicMaterial({
+        color: axisDef.color,
+        depthTest: false,
+        depthWrite: false,
+        transparent: true,
+        opacity: 0.95,
+      }),
+    )
+    mesh.rotation.set(...axisDef.rotation)
+    mesh.renderOrder = 999
+    mesh.raycast = () => {}
+    group.add(mesh)
+  }
+  const nub = new Mesh(
+    new SphereGeometry(radius * 2.4, 16, 16),
+    new MeshBasicMaterial({
+      color: '#ffe14d',
+      depthTest: false,
+      depthWrite: false,
+    }),
+  )
+  nub.renderOrder = 1000
+  nub.raycast = () => {}
+  group.add(nub)
+  group.raycast = () => {}
+  return group
+}
+
+function isUnderObject(object: Object3D, ancestor: Object3D | null) {
+  if (!ancestor) return false
+  let current: Object3D | null = object
+  while (current) {
+    if (current === ancestor) return true
+    current = current.parent
+  }
+  return false
+}
+
+function applyCardTopOpacity(cardTop: Object3D, opacity: number) {
+  const next = Math.min(1, Math.max(0, opacity))
+  cardTop.traverse((object) => {
+    const mesh = object as { isMesh?: boolean; material?: any }
+    if (!mesh.isMesh) return
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const material of materials) {
+      if (!material || !('opacity' in material)) continue
+      material.transparent = true
+      material.opacity = next
+      material.depthWrite = next > 0.95
+      material.visible = next > 0.001
+      material.needsUpdate = true
+    }
+  })
+  cardTop.visible = next > 0.001
+}
+
+function resolveCardTopDebugPose(debug: CardTopDebugState): CardTopDebugState {
+  if (!debug.tearPlaying) return debug
+  const pose = sampleCardTopTear(loadCardTopTearTimeline(), debug.tearT)
+  return {
+    ...debug,
+    position: { x: pose.x, y: pose.y, z: pose.z },
+    rotation: { x: pose.rotX, y: pose.rotY, z: pose.rotZ },
+    scale: { x: pose.scaleX, y: pose.scaleY, z: pose.scaleZ },
+    opacity: pose.opacity,
+  }
+}
+
+function applyCardTopPivotDebug(
+  cardTop: Object3D,
+  rest: CardTopRestTransform,
+  debug: CardTopDebugState,
+  gizmoSize: number,
+) {
+  const parent =
+    cardTop.parent?.name === 'cardTopPivot' ? cardTop.parent.parent : cardTop.parent
+  if (!parent) return
+
+  let pivot =
+    cardTop.parent?.name === 'cardTopPivot'
+      ? cardTop.parent
+      : parent.getObjectByName('cardTopPivot')
+  if (!pivot) {
+    pivot = new ThreeGroup()
+    pivot.name = 'cardTopPivot'
+    parent.add(pivot)
+    pivot.add(cardTop)
+  } else if (cardTop.parent !== pivot) {
+    pivot.add(cardTop)
+  }
+
+  const restQuat = new Quaternion().setFromEuler(
+    new Euler(rest.rotation.x, rest.rotation.y, rest.rotation.z),
+  )
+  const scaledPivot = new Vector3(
+    debug.pivot.x * rest.scale.x,
+    debug.pivot.y * rest.scale.y,
+    debug.pivot.z * rest.scale.z,
+  ).applyQuaternion(restQuat)
+
+  pivot.position.set(
+    rest.position.x + scaledPivot.x + debug.position.x,
+    rest.position.y + scaledPivot.y + debug.position.y,
+    rest.position.z + scaledPivot.z + debug.position.z,
+  )
+  pivot.rotation.set(
+    rest.rotation.x + MathUtils.degToRad(debug.rotation.x),
+    rest.rotation.y + MathUtils.degToRad(debug.rotation.y),
+    rest.rotation.z + MathUtils.degToRad(debug.rotation.z),
+  )
+  pivot.scale.set(
+    rest.scale.x * debug.scale.x,
+    rest.scale.y * debug.scale.y,
+    rest.scale.z * debug.scale.z,
+  )
+
+  cardTop.position.set(-debug.pivot.x, -debug.pivot.y, -debug.pivot.z)
+  cardTop.rotation.set(0, 0, 0)
+  cardTop.scale.set(1, 1, 1)
+  applyCardTopOpacity(cardTop, debug.opacity)
+
+  let gizmo = pivot.getObjectByName('cardTopPivotGizmo')
+  if (!gizmo) {
+    gizmo = createCardTopPivotGizmo(gizmoSize)
+    pivot.add(gizmo)
+  }
+  gizmo.visible = debug.showGizmo
 }
 
 const MAX_HOVER_YAW = Math.PI / 5.5
@@ -490,6 +713,34 @@ function measurePackLocalBottom(
   return { x: bottom.x, y: bottom.y, z: bottom.z }
 }
 
+function TearLottieHud({
+  modelY,
+  children,
+}: {
+  modelY: number
+  children: ReactNode
+}) {
+  const [debug, setDebug] = useState(getCardTopDebug)
+  useEffect(() => subscribeCardTopDebug(setDebug), [])
+  return (
+    <Html
+      position={[
+        debug.pivot.x + debug.lottieOffset.x,
+        modelY + debug.pivot.y + debug.lottieOffset.y,
+        debug.pivot.z + debug.lottieOffset.z,
+      ]}
+      center
+      transform={false}
+      sprite={false}
+      zIndexRange={[40, 0]}
+      style={{ pointerEvents: 'none' }}
+      wrapperClass="coverflow-pack-html coverflow-pack-html--tear"
+    >
+      <div style={{ pointerEvents: 'auto' }}>{children}</div>
+    </Html>
+  )
+}
+
 function CoverFlowPack({
 	  item,
 	  index,
@@ -513,28 +764,29 @@ function CoverFlowPack({
 	  onSelect,
 	  onOpenSequenceComplete,
 	  onOpenPackBehindFan,
-	  onOpenPackBlurChange,
-	  formatPrice,
-	  onBuy,
-	}: {
-	  item: Iteration
-	  index: number
-	  focusIndex: number
-	  isActive: boolean
-	  hasActiveSelection: boolean
-	  modelY: number
-	  layout: CoverFlowLayoutSettings
-	  textureTransform: VideoTextureTransform
-	  centerTiltYaw: number
-	  centerTiltPitch: number
-	  isMobile: boolean
-	  /** Browser height < 550px — frosted glass behind pack HUD. */
-	  shortHudGlass: boolean
-	  /** True while any pack open sequence is running. */
-	  revealMode: boolean
-	  /** This pack is the one being opened. */
-	  isRevealHero: boolean
-	  playOpenSequence: boolean
+		  onOpenPackBlurChange,
+		  formatPrice,
+		  onBuy,
+		  tearHud,
+		}: {
+		  item: Iteration
+		  index: number
+		  focusIndex: number
+		  isActive: boolean
+		  hasActiveSelection: boolean
+		  modelY: number
+		  layout: CoverFlowLayoutSettings
+		  textureTransform: VideoTextureTransform
+		  centerTiltYaw: number
+		  centerTiltPitch: number
+		  isMobile: boolean
+		  /** Browser height < 550px — frosted glass behind pack HUD. */
+		  shortHudGlass: boolean
+		  /** True while any pack open sequence is running. */
+		  revealMode: boolean
+		  /** This pack is the one being opened. */
+		  isRevealHero: boolean
+		  playOpenSequence: boolean
 	  packsX: number
 	  packsY: number
 	  openTimeline: PackTimeline
@@ -542,11 +794,12 @@ function CoverFlowPack({
 	  onSelect: (id: string) => void
 	  onOpenSequenceComplete?: () => void
 	  onOpenPackBehindFan?: () => void
-	  onOpenPackBlurChange?: (blurPx: number) => void
-	  formatPrice: (price: number) => string
-	  onBuy?: (item: Iteration) => void
-	}) {
-const groupRef = useRef<Group>(null)
+		  onOpenPackBlurChange?: (blurPx: number) => void
+		  formatPrice: (price: number) => string
+		  onBuy?: (item: Iteration) => void
+		  tearHud?: ReactNode
+		}) {
+	const groupRef = useRef<Group>(null)
 	  const modelRef = useRef<Group>(null)
   // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
   const hoverYawTargetRef = useRef(0)
@@ -692,6 +945,7 @@ const groupRef = useRef<Group>(null)
       }
       if (groupRef.current) {
         groupRef.current.traverse((object) => {
+          if (isUnderObject(object, cardTop)) return
           const mesh = object as { isMesh?: boolean; material?: any }
           if (!mesh.isMesh) return
           const materials = Array.isArray(mesh.material)
@@ -743,7 +997,7 @@ const groupRef = useRef<Group>(null)
 
   const offset = index - focusIndex
   const isCenter = offset === 0
-  const modelUrl = item.modelUrl || PACK_MODEL_URL
+  const modelUrl = item.modelUrl || PACK_MODEL_URL_V2
   const gltf = useGLTF(modelUrl)
   // Local pack-bottom anchor for DOM HUD (title / pack Nº / CTA).
   const hudLocalBottom = useMemo(
@@ -925,8 +1179,60 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
     },
   )
 
-const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
-	  const targetMaterial = useMemo(() => resolveTargetMaterial(scene), [scene])
+const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
+    const cloned = cloneSceneWithMaterials(gltf.scene)
+    const nextCardTop = findNamedObject(cloned, 'cardTop')
+    return {
+      scene: cloned,
+      cardTop: nextCardTop,
+      cardTopRest: nextCardTop
+        ? {
+            position: {
+              x: nextCardTop.position.x,
+              y: nextCardTop.position.y,
+              z: nextCardTop.position.z,
+            },
+            rotation: {
+              x: nextCardTop.rotation.x,
+              y: nextCardTop.rotation.y,
+              z: nextCardTop.rotation.z,
+            },
+            scale: {
+              x: nextCardTop.scale.x,
+              y: nextCardTop.scale.y,
+              z: nextCardTop.scale.z,
+            },
+          }
+        : null,
+      cardTopBounds: nextCardTop ? measureCardTopLocalBounds(nextCardTop) : null,
+    }
+  }, [gltf.scene])
+			  const targetMaterial = useMemo(() => {
+    const packBody = findNamedObject(scene, 'cardPack')
+    return resolveTargetMaterial(packBody ?? scene)
+  }, [scene])
+
+  useLayoutEffect(() => {
+    if (!cardTop || !cardTopRest) return
+    if (cardTopBounds && isCenter) reportCardTopBounds(cardTopBounds)
+    const gizmoSize = cardTopBounds
+      ? Math.max(cardTopBounds.size.x, cardTopBounds.size.y, cardTopBounds.size.z)
+      : 0.4
+    applyCardTopPivotDebug(
+      cardTop,
+      cardTopRest,
+      resolveCardTopDebugPose(getCardTopDebug()),
+      gizmoSize,
+    )
+    return subscribeCardTopDebug((debug) => {
+      applyCardTopPivotDebug(
+        cardTop,
+        cardTopRest,
+        resolveCardTopDebugPose(debug),
+        gizmoSize,
+      )
+    })
+  }, [cardTop, cardTopBounds, cardTopRest, isCenter])
 
 	  // Seed pack pose before first paint so pack-attached Html isn't stuck at origin
 	  // until the first pointer/frame interaction.
@@ -985,6 +1291,7 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
     opacityRef.current = opacity
     if (!groupRef.current) return
     groupRef.current.traverse((object) => {
+      if (isUnderObject(object, cardTop)) return
       const mesh = object as { isMesh?: boolean; material?: any }
       if (!mesh.isMesh) return
       const materials = Array.isArray(mesh.material)
@@ -1514,7 +1821,9 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--browse${
 	        </Html>
 	      ) : null}
 
-{activeHudMounted ? (
+	{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
+
+	{activeHudMounted ? (
 		        <Html
 		          position={activeHudPosition}
 		          center
@@ -1584,31 +1893,33 @@ function CoverFlowScene({
 	  onRevealSequenceComplete,
 	  onRevealPackBehindFan,
 	  onRevealPackBlurChange,
-	  formatPrice,
-	  onBuy,
-	}: {
-	  items: Iteration[]
-	  focusIndex: number
-	  selectedId: string | null
-	  cameraSettings: CoverFlowCameraSettings
-	  layout: CoverFlowLayoutSettings
-	  textureTransform: VideoTextureTransform
-	  centerTiltYaw: number
-	  centerTiltPitch: number
-	  isMobile: boolean
-	  shortHudGlass: boolean
-	  revealMode: boolean
-	  revealingPackId: string | null
-	  revealPlaySequence: boolean
-	  revealTimeline: PackTimeline
-	  revealDuckInTimeline: DuckInTimeline
-	  onSelect: (id: string) => void
-	  onRevealSequenceComplete?: () => void
-	  onRevealPackBehindFan?: () => void
-	  onRevealPackBlurChange?: (blurPx: number) => void
-	  formatPrice: (price: number) => string
-	  onBuy?: (item: Iteration) => void
-	}) {
+		  formatPrice,
+		  onBuy,
+		  tearHud,
+		}: {
+		  items: Iteration[]
+		  focusIndex: number
+		  selectedId: string | null
+		  cameraSettings: CoverFlowCameraSettings
+		  layout: CoverFlowLayoutSettings
+		  textureTransform: VideoTextureTransform
+		  centerTiltYaw: number
+		  centerTiltPitch: number
+		  isMobile: boolean
+		  shortHudGlass: boolean
+		  revealMode: boolean
+		  revealingPackId: string | null
+		  revealPlaySequence: boolean
+		  revealTimeline: PackTimeline
+		  revealDuckInTimeline: DuckInTimeline
+		  onSelect: (id: string) => void
+		  onRevealSequenceComplete?: () => void
+		  onRevealPackBehindFan?: () => void
+		  onRevealPackBlurChange?: (blurPx: number) => void
+		  formatPrice: (price: number) => string
+		  onBuy?: (item: Iteration) => void
+		  tearHud?: ReactNode
+		}) {
 	  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -1662,6 +1973,7 @@ function CoverFlowScene({
               }
               formatPrice={formatPrice}
               onBuy={onBuy}
+              tearHud={index === focusIndex ? tearHud : undefined}
             />
           )
         })}
@@ -1696,7 +2008,7 @@ type LiveGestureMode =
   | 'activate'
   | 'deactivate'
 
-export function CoverFlowCarousel({
+export function CoverFlowCarouselV2({
   items,
   selectedId: selectedIdProp,
   onSelect: onSelectProp,
@@ -1711,6 +2023,17 @@ export function CoverFlowCarousel({
   layout: layoutProp,
   disableSwipeDownDeactivate = false,
   disableWheelPaging = false,
+  tearHud,
+  revealModelId = null,
+  revealGirlName = null,
+  revealOverlay = null,
+  onRevealCards,
+  onRevealContinue,
+  onRevealSaveLater,
+  onRevealSaveAndOpenNext,
+  revealContinueLabel = 'Play now',
+  revealSaveLaterLabel = 'Save for Later',
+  revealSaveAndOpenNextLabel = 'Save for later and open another',
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -1764,21 +2087,94 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   const [revealDuckInTimeline] = useState(() => loadDuckInTimeline())
   const [fanLayout] = useState(() => loadFanLayout())
   const [fanDrag] = useState(() => loadFanDrag())
-  const revealMode = revealingCharacterId != null
+  const [packOpenRequested, setPackOpenRequestedState] = useState(
+    () => getCardTopDebug().packOpenRequested,
+  )
+  useEffect(() => {
+    return subscribeCardTopDebug((debug) => {
+      setPackOpenRequestedState(debug.packOpenRequested)
+    })
+  }, [])
+  const focusedTearPack = items[focusIndex] ?? items[0] ?? null
+  const revealMode = packOpenRequested || revealingCharacterId != null
   // Prefer the exact pack id (foil slot 1 or 2); fall back to slot-1 id.
   const revealingPackId =
     revealingPackIdProp ??
+    (packOpenRequested ? focusedTearPack?.id ?? null : null) ??
     (revealingCharacterId ? `pack-${revealingCharacterId}` : null)
+  const revealingPack = revealingPackId
+    ? items.find((item) => item.id === revealingPackId) ?? focusedTearPack
+    : focusedTearPack
   const revealingPackMeta = revealingPackId
     ? parsePackId(revealingPackId)
     : null
   const revealingPackSlot: PackFaceSlot = revealingPackMeta?.slot ?? 1
-  // Model packs use owner ids like `glauca`; role packs keep catalog CharacterIds.
+  // Foil ids are `julianaval-1`, not `pack-julianaval`. Prefer the live model id.
   const revealingModelId =
-    revealingPackMeta && !revealingPackMeta.characterId
+    revealModelId?.trim() ||
+    revealingPack?.characterId?.trim() ||
+    (revealingPackMeta && !revealingPackMeta.characterId
       ? revealingPackMeta.ownerId
-      : null
+      : null) ||
+    null
   const revealShared = catalog.resolveProductSharedMedia(revealingModelId)
+  const fanGirlName =
+    revealGirlName?.trim() ||
+    revealingPack?.girlName?.trim() ||
+    revealShared.girlName
+  const fanOverlay = useMemo(
+    () => ({
+      name: fanGirlName,
+      city:
+        revealOverlay?.city ??
+        revealingPack?.city ??
+        revealShared.influencerCity,
+      country:
+        revealOverlay?.country ??
+        revealingPack?.country ??
+        revealShared.influencerCountry,
+      flagEmoji:
+        revealOverlay?.flagEmoji ??
+        revealingPack?.flagEmoji ??
+        revealShared.flagEmoji,
+      flagSvgUrl:
+        revealOverlay?.flagSvgUrl ??
+        revealingPack?.flagSvgUrl ??
+        revealShared.flagSvgUrl,
+      gradientColor:
+        revealOverlay?.gradientColor ??
+        revealingPack?.overlayColorStart ??
+        revealingPack?.backgroundColor ??
+        revealShared.overlayBackgroundColor,
+      gradientColorEnd:
+        revealOverlay?.gradientColorEnd ??
+        revealingPack?.overlayColorEnd ??
+        revealingPack?.backgroundColor ??
+        revealShared.overlayBackgroundColorEnd,
+    }),
+    [
+      fanGirlName,
+      revealOverlay?.city,
+      revealOverlay?.country,
+      revealOverlay?.flagEmoji,
+      revealOverlay?.flagSvgUrl,
+      revealOverlay?.gradientColor,
+      revealOverlay?.gradientColorEnd,
+      revealShared.flagEmoji,
+      revealShared.flagSvgUrl,
+      revealShared.influencerCity,
+      revealShared.influencerCountry,
+      revealShared.overlayBackgroundColor,
+      revealShared.overlayBackgroundColorEnd,
+      revealingPack?.backgroundColor,
+      revealingPack?.city,
+      revealingPack?.country,
+      revealingPack?.flagEmoji,
+      revealingPack?.flagSvgUrl,
+      revealingPack?.overlayColorStart,
+      revealingPack?.overlayColorEnd,
+    ],
+  )
 
   // Foil pack lights follow the centered (or revealing) pack's model colors.
   const focusedPackId =
@@ -1790,8 +2186,12 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   // model when known so every theme belongs to the same girl.
   useEffect(() => {
     let cancelled = false
-    void fetchPackFanCatalog(revealingModelId).then((result) => {
-      if (!cancelled) setBackendFan(result)
+    setBackendFan(null)
+    void fetchPackFanCatalog(revealingModelId).then(async (result) => {
+      if (cancelled) return
+      const fan =
+        result && result.cards.length > 0 ? result : await fetchPackFanCatalog()
+      if (!cancelled) setBackendFan(fan)
     })
     return () => {
       cancelled = true
@@ -1807,26 +2207,17 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   // runId forces a fresh Math.random draw on every open / Replay open.
   const revealCards = useMemo(
     () =>
-      revealMode
+      revealMode && backendFan
         ? createMixedCategoryPackCards({
           characters: catalog.characters,
           backendFan,
           packSlot: revealingPackSlot,
           seed: sequence.runId,
-          girlName: revealShared.girlName,
-          overlay: {
-            name: revealShared.girlName,
-            city: revealShared.influencerCity,
-            country: revealShared.influencerCountry,
-            flagEmoji: revealShared.flagEmoji,
-            flagSvgUrl: revealShared.flagSvgUrl,
-            gradientColor: revealShared.overlayBackgroundColor,
-            gradientColorEnd: revealShared.overlayBackgroundColorEnd,
-          },
+          girlName: fanGirlName,
+          overlay: fanOverlay,
         })
         : [],
     // Refresh card variants when replaying the open sequence.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       revealMode,
       revealingPackId,
@@ -1834,7 +2225,8 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
       sequence.runId,
       backendFan,
       catalog.characters,
-      revealShared,
+      fanGirlName,
+      fanOverlay,
     ],
   )
 const selectedIdRef = useRef(selectedId)
@@ -1969,6 +2361,10 @@ useEffect(() => {
   useEffect(() => {
     revealCardsRef.current = revealCards
   }, [revealCards])
+
+  useEffect(() => {
+    if (revealCards.length) onRevealCards?.(revealCards)
+  }, [onRevealCards, revealCards])
 
   useEffect(() => {
     itemsRef.current = items
@@ -2792,15 +3188,16 @@ isMobile={isMobileViewportActive}
                 onRevealPackBlurChange={sequence.handlePackBlurChange}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
+                tearHud={tearHud}
               />
             </Suspense>
           </Canvas>
         </div>
 
-        {revealMode && sequence.showFan ? (
+        {revealMode && sequence.showFan && revealCards.length > 0 ? (
           <div className="reveal-stage__fan coverflow-reveal-fan">
             <CardFan
-              key={`fan-${revealingCharacterId}-${sequence.runId}`}
+              key={`fan-${revealingModelId ?? revealingCharacterId}-${sequence.runId}`}
               cards={revealCards}
               active={sequence.fanActive}
               layout={fanLayout}
@@ -2812,26 +3209,62 @@ isMobile={isMobileViewportActive}
           </div>
         ) : null}
 
-        {revealMode && sequence.showPlay && revealingCharacterId ? (
+        {revealMode && sequence.showPlay && (onRevealContinue || revealingCharacterId) ? (
           <div
             className="reveal-stage__cta is-enter coverflow-reveal-cta"
             key={`play-cta-${sequence.runId}`}
           >
-            <BuyButton
-              label="Play now"
-              onClick={() => {
-                // Leave the open pose frozen; page transition owns the exit.
-                onPlayNow?.(revealingCharacterId, revealCards)
-              }}
-              visible
-            />
-            <button
-              type="button"
-              className="reveal-replay"
-              onClick={sequence.handleReplay}
-            >
-              Replay open
-            </button>
+            {onRevealContinue ? (
+              <>
+                <div className="motion-reveal__continue">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate('squircleCTA')}
+                    fillParent
+                    type="button"
+                    label={revealContinueLabel}
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    onClick={() => onRevealContinue(revealCards)}
+                  />
+                </div>
+                {onRevealSaveLater ? (
+                  <button
+                    type="button"
+                    className="motion-reveal__later"
+                    onClick={onRevealSaveLater}
+                  >
+                    {revealSaveLaterLabel}
+                  </button>
+                ) : null}
+                {onRevealSaveAndOpenNext ? (
+                  <button
+                    type="button"
+                    className="motion-reveal__later"
+                    onClick={onRevealSaveAndOpenNext}
+                  >
+                    {revealSaveAndOpenNextLabel}
+                  </button>
+                ) : null}
+              </>
+            ) : revealingCharacterId ? (
+              <>
+                <BuyButton
+                  label="Play now"
+                  onClick={() => {
+                    onPlayNow?.(revealingCharacterId, revealCards)
+                  }}
+                  visible
+                />
+                <button
+                  type="button"
+                  className="reveal-replay"
+                  onClick={sequence.handleReplay}
+                >
+                  Replay open
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
 
@@ -2925,4 +3358,4 @@ isMobile={isMobileViewportActive}
   )
 }
 
-useGLTF.preload(PACK_MODEL_URL)
+useGLTF.preload(PACK_MODEL_URL_V2)

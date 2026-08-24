@@ -1036,21 +1036,26 @@ button {
   transform: none;
   width: 100%;
   height: 3.25rem;
-  padding: 0 2rem;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: oklch(0.606 0.219 292.72);
-  color: oklch(1 0 0);
-  font-size: 0.95rem;
-  font-weight: 600;
+  background: transparent;
+}
+
+.motion-reveal__continue .cta-button-glow,
+.motion-reveal__continue .cta-button-glow.cta-button-glow--fill,
+.motion-reveal__continue .cta-button,
+.motion-reveal__continue .cta-button--fill {
+  width: 100%;
+  height: 100%;
 }
 
 .motion-reveal__later {
-  height: 2.75rem;
-  padding: 0 1.5rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 1.5rem;
   border: 0;
   background: transparent;
   color: oklch(1 0 0 / 0.7);
   font-size: 0.88rem;
   font-weight: 600;
+  text-wrap: balance;
 }

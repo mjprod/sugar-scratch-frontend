@@ -102,18 +102,15 @@ function useIsMobileViewport() {
 }
 
 /**
- * Full multi drop-shadow bloom is expensive on phones. Prefer the cheaper
- * "lite" cone on mobile unless the caller opts into full/off explicitly.
- * (Previously squircle defaulted to "off", which made the orbiting stroke
- * effectively invisible — only a 1px mesh rim remained.)
+ * Outer bloom (especially the desktop multi-shadow cone) is too expensive.
+ * Default to off unless a caller opts back in.
  */
 function resolveGlowOuterBloom(
   glowOuterBloom: boolean | "full" | "lite" | "off" | undefined,
-  isMobile: boolean,
+  _isMobile: boolean,
 ): boolean | "full" | "lite" | "off" {
   if (glowOuterBloom !== undefined) return glowOuterBloom;
-  if (isMobile) return "lite";
-  return "full";
+  return "off";
 }
 
 export type CtaButtonProps = {
@@ -204,8 +201,7 @@ export type CtaButtonProps = {
    * - "lite" — cheaper single soft glow (mobile)
    * - false/"off" — rim only
    *
-   * When omitted, uses `"lite"` on mobile (≤980px) for perf, and `"full"`
-   * otherwise. Pass an explicit value to override.
+   * When omitted, bloom is off. Pass an explicit value to override.
    */
   glowOuterBloom?: boolean | "full" | "lite" | "off";
   className?: string;

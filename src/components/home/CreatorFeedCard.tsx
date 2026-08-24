@@ -95,6 +95,7 @@ export function CreatorFeedCard({
   buyCta?: "squircleCTA" | "pillGoldCTA";
 }) {
   const [burst, setBurst] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
   const [heartBurst, setHeartBurst] = useState<HeartBurst | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const cardRef = useRef<HTMLElement>(null);
@@ -107,6 +108,7 @@ export function CreatorFeedCard({
   const packLabel = feedPackLabel(item.packName);
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
   const shouldBuffer = active || warm;
+  const videoKey = item.videoUrl || item.id;
   /**
    * Keep CTA shader motion alive across the mid-scroll handoff.
    * `active` flips at ~50% slide travel (Math.round), so gating aurora on
@@ -114,6 +116,17 @@ export function CreatorFeedCard({
    * Warm neighbors stay in view during that transition — keep them live too.
    */
   const ctaMotionLive = (active || warm) && !reducedMotion;
+
+  useEffect(() => {
+    setMediaReady(false);
+  }, [videoKey]);
+
+  function markVideoReady(video: HTMLVideoElement) {
+    if (!item.videoUrl) return;
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+    if (!video.currentSrc) return;
+    setMediaReady(true);
+  }
 
   function playHeartBurst(mode: BurstMode, clientX?: number, clientY?: number) {
     const root = cardRef.current;
@@ -267,25 +280,27 @@ export function CreatorFeedCard({
       <div className={["hf-media", active ? "is-active" : ""].join(" ")}>
         {item.mediaType === "video" && item.videoUrl ? (
           <video
+            key={videoKey}
             ref={videoRef}
             src={item.videoUrl}
-            poster={item.posterUrl}
             playsInline
             muted
             loop
             autoPlay={active}
-            /* Active + next/prev peek: full buffer so the strip isn't empty black */
             preload={shouldBuffer ? "auto" : "metadata"}
-            className="hf-media-el hf-media-video"
+            className={[
+              "hf-media-el hf-media-video",
+              mediaReady ? "is-ready" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            onLoadStart={() => setMediaReady(false)}
+            onEmptied={() => setMediaReady(false)}
+            onLoadedData={(event) => markVideoReady(event.currentTarget)}
+            onCanPlay={(event) => markVideoReady(event.currentTarget)}
+            onPlaying={(event) => markVideoReady(event.currentTarget)}
           />
-        ) : (
-          <img
-            src={item.posterUrl}
-            alt=""
-            className="hf-media-el hf-media-still"
-            draggable={false}
-          />
-        )}
+        ) : null}
         <div className="hf-media-shade" aria-hidden="true" />
       </div>
 

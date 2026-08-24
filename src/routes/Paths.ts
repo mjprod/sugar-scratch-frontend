@@ -56,6 +56,7 @@ export const Paths = {
   welcome: "/welcome",
   resetPassword: "/reset-password",
   navTest: "/nav-test",
+  coverflowV2: "/coverflow-v2",
 } as const;
 
 /** Tabs guests can open without auth (Store is browseable; purchase still gates). */

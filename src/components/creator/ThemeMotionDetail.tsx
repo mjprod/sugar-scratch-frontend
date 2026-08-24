@@ -37,7 +37,7 @@ export function ThemeMotionDetail({
           ) : (
             <div className="cpv2-motion-row">
               {cards.map((card) => {
-                const unlocked = (card.videoCardCount ?? 0) > 0 || Boolean(card.mediaUrl);
+                const unlocked = (card.videoCardCount ?? 0) > 0;
                 return (
                   <button
                     key={card.id}
@@ -47,7 +47,11 @@ export function ThemeMotionDetail({
                       unlocked ? "is-unlocked" : "is-locked",
                     ].join(" ")}
                     onClick={() => onSelectCard(card)}
-                    aria-label={card.name}
+                    aria-label={
+                      unlocked
+                        ? `${card.name}, collected`
+                        : `${card.name}, not collected`
+                    }
                   >
                     {card.mediaUrl ? (
                       card.mediaType === "video" ? (
@@ -56,13 +60,23 @@ export function ThemeMotionDetail({
                           muted
                           playsInline
                           preload="metadata"
-                          className="cpv2-motion-thumb"
+                          className={[
+                            "cpv2-motion-thumb",
+                            unlocked ? "" : "cpv2-locked-blur",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
                         />
                       ) : (
                         <img
                           src={card.mediaUrl}
                           alt=""
-                          className="cpv2-motion-thumb"
+                          className={[
+                            "cpv2-motion-thumb",
+                            unlocked ? "" : "cpv2-locked-blur",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
                         />
                       )
                     ) : (

@@ -34,6 +34,7 @@ import {
   PLACEHOLDER_MEDIA_URL,
   type CardFaceOverlayConfig,
 } from '../lib/cards'
+import { getVideoCardCount } from '../lib/photoSlots'
 import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
 import { useCollectionActions } from '../CollectionActionsContext'
 
@@ -437,6 +438,8 @@ export default function HoloCard({
   )
 
   const active = activeCardId === cardId
+  /** Owned / playable motion card — otherwise show B&W + lock. */
+  const isCollected = getVideoCardCount(cardId, videoCardCount) > 0
   /** Safari + mobile: no shine/glare (unreliable WebKit holo). */
   const holoDisabled = useMemo(() => shouldDisableHoloEffects(), [])
 
@@ -1853,7 +1856,9 @@ export default function HoloCard({
         pinHolo ? ' holo-pinned' : ''
       }${fullBleed ? ' full-bleed' : ''}${
         holoDisabled ? ' holo-disabled' : ''
-      }${holoClassNames ? ` ${holoClassNames}` : ''}`}
+      }${isCollected ? ' is-collected' : ' is-locked'}${
+        holoClassNames ? ` ${holoClassNames}` : ''
+      }`}
       data-number=""
       data-set=""
       data-subtypes={subtypes}
@@ -2070,6 +2075,23 @@ export default function HoloCard({
             aria-hidden="true"
           />
         )}
+        {!isCollected ? (
+          <div className="card__collect-lock" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="28"
+              height="28"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+          </div>
+        ) : null}
         <button
           ref={rotatorRef}
           type="button"

@@ -61,7 +61,8 @@ function buildThemes(
     const id = themeIdOf(group);
     groupByThemeId[id] = group;
     const filled = group.cards.reduce(
-      (sum, card) => sum + Math.max(0, card.photoScratchDone ?? 0),
+      (sum, card) =>
+        sum + Math.max(0, Math.min(10, Math.round(card.photoScratchDone ?? 0))),
       0,
     );
     const total = Math.max(group.cards.length * 10, 1);

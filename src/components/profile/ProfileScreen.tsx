@@ -16,6 +16,7 @@ import {
 import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
@@ -71,7 +72,7 @@ export function UserDashboardScreen({
       setView("legal-privacy");
       return;
     }
-    if (label === "Terms and Conditions") {
+    if (label === "Terms of Service") {
       setView("legal-terms");
       return;
     }
@@ -178,15 +179,16 @@ export function UserDashboardScreen({
             { label: "Game Settings", icon: Settings },
             { label: "Help Centre", icon: HelpCircle },
             { label: "Privacy Policy", icon: ShieldCheck },
-            { label: "Terms and Conditions", icon: FileText },
+            { label: "Terms of Service", icon: FileText },
           ]}
           onOpen={open}
         />
       </div>
 
-      <div className="mt-10 flex flex-col gap-4">
-        <p className="settings-app-version">App · v8</p>
-      </div>
+      <footer className="profile-site-footer" aria-label="Site">
+        <SiteSocialLinks />
+        <p className="home-site-footer-copy">© 2026 Sugar Scratch</p>
+      </footer>
 
       {notice ? (
         <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">

@@ -506,7 +506,10 @@ export async function fetchPackFanCatalog(
   const published = cards
     .map(toBackendFanCard)
     .filter((card): card is BackendFanCard => Boolean(card))
-    .filter((card) => !modelId || card.modelId === modelId)
+    .filter((card) => {
+      if (!modelId) return true
+      return card.modelId.trim().toLowerCase() === modelId.trim().toLowerCase()
+    })
     .sort(
       (a, b) =>
         a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
@@ -874,7 +877,6 @@ export async function fetchCollectionCatalogLegacy(
             .map((card) => {
               const photoUrls =
                 photosByCardId.get(card.id) ?? emptyPhotoUrls()
-              const filled = photoUrls.filter(Boolean).length
               const trailerUrl = normalizeMediaUrl(card.trailer ?? '')
               const motionUrl =
                 normalizeMediaUrl(card.foreground) ||
@@ -889,7 +891,9 @@ export async function fetchCollectionCatalogLegacy(
                   0,
                   Math.min(
                     10,
-                    Math.round(card.photo_scratch_done ?? filled),
+                    // Never fall back to asset-thumb count — those are catalog
+                    // previews, not proof the user collected the slot.
+                    Math.round(card.photo_scratch_done ?? 0),
                   ),
                 ),
                 photoUrls,
