@@ -7,6 +7,7 @@ import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
+import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { PackLibrary } from "@/components/home/PackLibrary";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
@@ -490,6 +491,8 @@ export function HomeScreen({
         >
           Restart prototype (clears first-visit flags)
         </button>
+
+        <HomeSiteFooter />
       </div>
 
       {toast ? (

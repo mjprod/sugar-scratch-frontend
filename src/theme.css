@@ -561,6 +561,126 @@ body[data-theme="v8"] .home-view-all-packs {
   z-index: 20;
 }
 
+/* Homepage-only site footer (pack browse /) — desktop only. */
+body[data-theme="v8"] .home-site-footer {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+  padding: 28px 8px 8px;
+  border-top: 1px solid oklch(1 0 0 / 0.08);
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-site-footer {
+    display: flex;
+  }
+}
+
+body[data-theme="v8"] .home-site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 10px;
+}
+
+body[data-theme="v8"] .home-site-footer-link {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.48);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .home-site-footer-link:hover {
+  color: oklch(1 0 0 / 0.78);
+}
+
+body[data-theme="v8"] .home-site-footer-dot {
+  color: oklch(1 0 0 / 0.22);
+  font-size: 12px;
+}
+
+body[data-theme="v8"] .home-site-footer-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-theme="v8"] .home-site-footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  color: oklch(1 0 0 / 0.55);
+  background: oklch(1 0 0 / 0.05);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+body[data-theme="v8"] .home-site-footer-social-link:hover {
+  color: oklch(1 0 0 / 0.9);
+  background: oklch(1 0 0 / 0.1);
+  border-color: oklch(1 0 0 / 0.14);
+}
+
+body[data-theme="v8"] .home-site-footer-copy {
+  margin: 0;
+  color: oklch(1 0 0 / 0.32);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Mobile: site links live on Profile (Terms/Privacy already in menu). */
+body[data-theme="v8"] .profile-site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 1.75rem;
+  margin-bottom: 0.25rem;
+  padding: 24px 8px 4px;
+  border-top: 1px solid oklch(1 0 0 / 0.08);
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .profile-site-footer {
+    display: none;
+  }
+}
+
+/* Host for homepage legal — content uses Profile shell/panel styles. */
+body[data-theme="v8"] .home-legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: oklch(0.13 0.005 285.67);
+}
+
+body[data-theme="v8"] .home-legal-overlay .app-page-shell {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
 body[data-theme="v8"] .home-featured-heading {
   position: absolute;
   top: var(--hero-heading-y, 7.1rem);
