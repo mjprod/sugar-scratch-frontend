@@ -1,0 +1,124 @@
+/* Game Settings — Music Control toggles */
+
+.game-settings-page .app-page-shell-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.game-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.game-settings-section-label {
+  margin: 0;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-settings-card {
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 24px;
+  background: oklch(1 0 0 / 0.03);
+}
+
+.game-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border-top: 1px solid oklch(1 0 0 / 0.06);
+}
+
+.game-settings-row:first-child {
+  border-top: 0;
+}
+
+.game-settings-row-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(1 0 0 / 0.05);
+  color: oklch(1 0 0 / 0.75);
+}
+
+.game-settings-row-label {
+  flex: 1;
+  min-width: 0;
+  color: oklch(1 0 0);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.game-settings-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: oklch(0.35 0.01 285);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.game-settings-switch.is-on {
+  background: oklch(0.72 0.19 145);
+}
+
+.game-settings-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: oklch(1 0 0);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.35);
+  transition: transform 160ms ease;
+}
+
+.game-settings-switch.is-on .game-settings-switch-knob {
+  transform: translateX(20px);
+}
+
+.game-settings-switch:focus-visible {
+  outline: 2px solid
+    color-mix(
+      in oklch,
+      var(--color-accent, oklch(0.656 0.212 354.31)) 70%,
+      transparent
+    );
+  outline-offset: 2px;
+}
+
+@media (min-width: 507px) {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.game-settings-page {
+    padding-top: var(--app-diamond-offset);
+    padding-bottom: 48px;
+  }
+
+  body[data-theme="v8"] .game-settings-page .subpage-header {
+    position: static;
+  }
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.game-settings-page {
+    padding-top: var(--app-diamond-offset);
+  }
+}

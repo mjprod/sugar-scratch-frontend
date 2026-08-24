@@ -8257,10 +8257,19 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
 }
 
 @media (min-width: 507px) {
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-bottom: 48px;
+  }
+
+  /* Favourites — clear floating top nav so Back + title stay above the grid. */
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
+    padding-top: var(--app-diamond-offset);
+    padding-bottom: 48px;
+  }
+
+  body[data-theme="v8"] .favourites-page .subpage-header {
+    position: static;
   }
 }
 
@@ -10760,7 +10769,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
 
   body[data-theme="v8"] .app-layout--hud .app-page-shell.store-page,
   body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page,
-  body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page {
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page,
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.favourites-page {
     padding-top: var(--app-diamond-offset);
   }
 
@@ -10911,15 +10921,14 @@ body[data-theme="v8"] .app-page-shell-inner {
     padding-inline: 0;
   }
 
-  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page):not(.favourites-page) {
+  body[data-theme="v8"] .app-page-shell--secondary:not(.settings-page):not(.inbox-page) {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
     padding-bottom: 48px;
   }
 
   body[data-theme="v8"] .app-page-shell--secondary.settings-page,
-  body[data-theme="v8"] .app-page-shell--secondary.inbox-page,
-  body[data-theme="v8"] .app-page-shell--secondary.favourites-page {
+  body[data-theme="v8"] .app-page-shell--secondary.inbox-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-inline: 0;
     padding-bottom: 48px;
@@ -10928,8 +10937,7 @@ body[data-theme="v8"] .app-page-shell-inner {
 
 /* Desktop: shell is notch-only — sticky subpage header clears the floating nav. */
 @media (min-width: 1024px) {
-  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header,
-  body[data-theme="v8"] .app-page-shell.favourites-page .subpage-header {
+  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header {
     top: var(--app-diamond-offset);
   }
 }
@@ -10981,6 +10989,11 @@ body[data-theme="v8"] .app-empty-action {
 
 body[data-theme="v8"] .app-page-shell--profile {
   padding-top: calc(var(--app-diamond-offset) + 8px);
+}
+
+/* Beat packs.css global `h1 { color: var(--ink-strong) }` on dark profile chrome. */
+body[data-theme="v8"] .app-page-shell--profile .profile-display-name {
+  color: oklch(1 0 0);
 }
 
 @media (min-width: 507px) {

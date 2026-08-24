@@ -12,7 +12,8 @@ export function ProfilePage() {
       avatar={profile.avatar}
       onLogout={logout}
       onOpenChangePassword={() => navigate(Paths.changePassword)}
-      onOpenFavourites={() => navigate(Paths.favourites)}
+      onOpenFollowing={() => navigate(Paths.following)}
+      onOpenGameSettings={() => navigate(Paths.gameSettings)}
     />
   );
 }

@@ -15,6 +15,8 @@ import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { FavouritesPage } from "@/pages/FavouritesPage";
+import { FollowingPage } from "@/pages/FollowingPage";
+import { GameSettingsPage } from "@/pages/GameSettingsPage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
 import { WelcomePage } from "@/pages/WelcomePage";
@@ -150,6 +152,22 @@ export function AppRoutes() {
             element={
               <SoftGate tab="profile">
                 <FavouritesPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/following"
+            element={
+              <SoftGate tab="profile">
+                <FollowingPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/game-settings"
+            element={
+              <SoftGate tab="profile">
+                <GameSettingsPage />
               </SoftGate>
             }
           />

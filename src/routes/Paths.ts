@@ -20,6 +20,8 @@ export const Paths = {
   settings: "/settings",
   changePassword: "/settings/change-password",
   favourites: "/profile/favourites",
+  following: "/profile/following",
+  gameSettings: "/profile/game-settings",
   inbox: "/inbox",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
