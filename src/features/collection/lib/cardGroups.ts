@@ -606,10 +606,9 @@ export function createBackendDeck(
         (card.videoUrl && card.videoUrl.trim()) ||
         ''
       const hasMedia = Boolean(mediaUrl)
-      // Catalog browse lists every published card as a preview, so media URLs
-      // prove nothing about ownership. `photoScratchDone` is the API's real
-      // per-slot progress, but there is no equivalent ledger for motion cards
-      // yet — those stay locked (grayscale preview + lock) until there is one.
+      // Catalog browse lists every published card as a preview. Ownership only
+      // comes from buying/opening packs — until that ledger is wired per card,
+      // keep motion + photo slots locked (grayscale preview + lock).
       const next = create({
         id: card.id,
         sequence,
@@ -620,7 +619,7 @@ export function createBackendDeck(
         mediaType: hasMedia ? 'video' : 'image',
         mediaUrl: hasMedia ? mediaUrl : PLACEHOLDER_MEDIA_URL,
         videoCardCount: 0,
-        photoFilledCount: card.photoScratchDone,
+        photoFilledCount: 0,
         photoUrls: card.photoUrls,
         ...(overlay
           ? {

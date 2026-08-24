@@ -33,11 +33,15 @@ import "./creator-collection.css";
  */
 export function CreatorScreen({
   creatorId,
+  diamonds: _diamonds,
   onBack,
+  onOpenPack: _onOpenPack,
   onBuyPack,
 }: {
   creatorId: string;
+  diamonds: number;
   onBack: () => void;
+  onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const [resolvedModel, setResolvedModel] = useState<BackendModel | null>(
@@ -72,20 +76,6 @@ function titleCaseSlug(value: string): string {
   const slug = value.trim();
   if (!slug || !/^[a-z][a-z0-9_-]{0,63}$/i.test(slug)) return "";
   return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
-}
-
-/**
- * ponytail: creators have no bio field yet. Derive a neutral line from the
- * profile data we do have; replace once the API exposes real copy.
- */
-function creatorBlurb(name: string, model: BackendModel | null): string {
-  const place = [model?.influencerCity, model?.influencerCountry]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(", ");
-  return place
-    ? `${name} — ${place}. Explore the exclusive collections below.`
-    : `Explore ${name}'s exclusive collections.`;
 }
 
 function CreatorScreenInner({
@@ -142,7 +132,7 @@ function CreatorScreenInner({
     formatSocialHandle(model?.label) ||
     formatSocialHandle(creatorId) ||
     "";
-  const creatorDescription = creatorBlurb(creatorName, model);
+  const creatorDescription = `${creatorName} brings confidence, charm, and energy to every moment. Explore her exclusive collections.`;
   const themeTags = themes.map((entry) => entry.name).slice(0, 6);
   const purchaseCreatorId = creatorId || page.creator.id;
 
@@ -275,6 +265,7 @@ function CreatorScreenInner({
           {viewMode === "grid" ? (
             <CreatorCollectionsDiscovery
               creatorId={purchaseCreatorId}
+              creatorName={creatorName}
               themes={themes}
               selectedThemeId={theme?.id ?? selectedThemeId}
               onSelectTheme={(id) => {

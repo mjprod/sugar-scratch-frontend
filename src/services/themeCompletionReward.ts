@@ -12,9 +12,8 @@ export type ThemeCompletionRewardView = {
   status: ThemeRewardStatus;
   title: string;
   description: string;
-  /** True once the reward catalog can hand out non-diamond prizes. */
   isMystery: boolean;
-  /** Diamonds granted on the first successful claim. */
+  /** Diamonds granted on claim when not mystery. */
   diamondAmount: number;
   claimedAt?: number;
 };
@@ -25,7 +24,7 @@ type ClaimLedger = {
 
 const KEY = "sugar.v8.themeCompletionRewards";
 
-/** Flat grant until a per-theme reward catalog exists. */
+/** Default known reward — mystery titles until reward catalog exists. */
 const DEFAULT_DIAMONDS = 50;
 
 /** In-memory fallback when localStorage is missing (tests / private mode). */
@@ -45,32 +44,21 @@ function emptyLedger(): ClaimLedger {
   return { claimed: {} };
 }
 
-function parseLedger(raw: string): ClaimLedger {
-  const parsed = JSON.parse(raw) as Partial<ClaimLedger>;
-  const source =
-    parsed.claimed && typeof parsed.claimed === "object" ? parsed.claimed : {};
-  const claimed: Record<string, number> = {};
-  for (const [id, at] of Object.entries(source)) {
-    if (typeof at === "number" && Number.isFinite(at)) claimed[id] = at;
-  }
-  return { claimed };
-}
-
-/**
- * Cached after the first read — callers re-check status for every theme on
- * every render, and re-parsing localStorage each time is needlessly expensive.
- */
 function readLedger(): ClaimLedger {
   if (memoryLedger) return memoryLedger;
-  let ledger: ClaimLedger;
   try {
     const raw = localStorage.getItem(KEY);
-    ledger = raw ? parseLedger(raw) : emptyLedger();
+    if (!raw) return emptyLedger();
+    const parsed = JSON.parse(raw) as Partial<ClaimLedger>;
+    return {
+      claimed:
+        parsed.claimed && typeof parsed.claimed === "object"
+          ? parsed.claimed
+          : {},
+    };
   } catch {
-    ledger = emptyLedger();
+    return memoryLedger ?? emptyLedger();
   }
-  memoryLedger = ledger;
-  return ledger;
 }
 
 function writeLedger(ledger: ClaimLedger) {
@@ -135,8 +123,7 @@ export function getThemeCompletionReward(input: {
         : status === "claimable"
           ? "Claim your exclusive Theme Reward"
           : "Complete the collection to unlock the reward.",
-    // Every reward is a flat diamond grant until a reward catalog exists.
-    isMystery: false,
+    isMystery: true,
     diamondAmount: DEFAULT_DIAMONDS,
     claimedAt: claimed ? claimedAt : undefined,
   };

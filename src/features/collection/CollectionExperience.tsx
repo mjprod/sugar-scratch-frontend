@@ -219,15 +219,17 @@ function AppInner({
     (slotIndex: number) => {
       const next = clampSlotIndex(slotIndex, slotCount)
       setFocusIndex(next)
-      // While a card is open, paging transfers the hero to the newly focused
-      // card so you don't have to close first. Group-label slots have no card
-      // to transfer to — keep the current hero rather than closing it, since
-      // this also fires from dot scrub and drag snap, not just the chevrons.
+      // While a card is open, chevron paging transfers the hero to the newly
+      // focused card so you don't have to close first.
       if (!activeCardId) return
       const slot = layoutSlots[next]
-      if (!slot || slot.kind !== 'card') return
+      if (!slot || slot.kind !== 'card') {
+        setActiveCardId(null)
+        return
+      }
       const card = cards[slot.cardIndex]
-      if (card && card.id !== activeCardId) setActiveCardId(card.id)
+      if (card) setActiveCardId(card.id)
+      else setActiveCardId(null)
     },
     [activeCardId, cards, layoutSlots, setActiveCardId, slotCount],
   )
