@@ -388,6 +388,24 @@ interface CoverFlowCarouselProps {
   disableWheelPaging?: boolean
   /** Optional HUD pinned to the cardTop rotation point. */
   tearHud?: ReactNode
+  /** Live model id for backend fan cards / overlay colors. */
+  revealModelId?: string | null
+  revealGirlName?: string | null
+  revealOverlay?: {
+    city?: string | null
+    country?: string | null
+    flagEmoji?: string | null
+    flagSvgUrl?: string | null
+    gradientColor?: string | null
+    gradientColorEnd?: string | null
+  } | null
+  onRevealCards?: (cards: RevealCard[]) => void
+  onRevealContinue?: (cards: RevealCard[]) => void
+  onRevealSaveLater?: () => void
+  onRevealSaveAndOpenNext?: () => void
+  revealContinueLabel?: string
+  revealSaveLaterLabel?: string
+  revealSaveAndOpenNextLabel?: string
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -2006,6 +2024,16 @@ export function CoverFlowCarouselV2({
   disableSwipeDownDeactivate = false,
   disableWheelPaging = false,
   tearHud,
+  revealModelId = null,
+  revealGirlName = null,
+  revealOverlay = null,
+  onRevealCards,
+  onRevealContinue,
+  onRevealSaveLater,
+  onRevealSaveAndOpenNext,
+  revealContinueLabel = 'Play now',
+  revealSaveLaterLabel = 'Save for Later',
+  revealSaveAndOpenNextLabel = 'Save for later and open another',
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -2068,25 +2096,85 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
     })
   }, [])
   const focusedTearPack = items[focusIndex] ?? items[0] ?? null
-  const tearOpenCharacterId = packOpenRequested
-    ? ((focusedTearPack?.id as CharacterId | undefined) ?? revealingCharacterId)
-    : revealingCharacterId
   const revealMode = packOpenRequested || revealingCharacterId != null
   // Prefer the exact pack id (foil slot 1 or 2); fall back to slot-1 id.
   const revealingPackId =
     revealingPackIdProp ??
     (packOpenRequested ? focusedTearPack?.id ?? null : null) ??
     (revealingCharacterId ? `pack-${revealingCharacterId}` : null)
+  const revealingPack = revealingPackId
+    ? items.find((item) => item.id === revealingPackId) ?? focusedTearPack
+    : focusedTearPack
   const revealingPackMeta = revealingPackId
     ? parsePackId(revealingPackId)
     : null
   const revealingPackSlot: PackFaceSlot = revealingPackMeta?.slot ?? 1
-  // Model packs use owner ids like `glauca`; role packs keep catalog CharacterIds.
+  // Foil ids are `julianaval-1`, not `pack-julianaval`. Prefer the live model id.
   const revealingModelId =
-    revealingPackMeta && !revealingPackMeta.characterId
+    revealModelId?.trim() ||
+    revealingPack?.characterId?.trim() ||
+    (revealingPackMeta && !revealingPackMeta.characterId
       ? revealingPackMeta.ownerId
-      : null
+      : null) ||
+    null
   const revealShared = catalog.resolveProductSharedMedia(revealingModelId)
+  const fanGirlName =
+    revealGirlName?.trim() ||
+    revealingPack?.girlName?.trim() ||
+    revealShared.girlName
+  const fanOverlay = useMemo(
+    () => ({
+      name: fanGirlName,
+      city:
+        revealOverlay?.city ??
+        revealingPack?.city ??
+        revealShared.influencerCity,
+      country:
+        revealOverlay?.country ??
+        revealingPack?.country ??
+        revealShared.influencerCountry,
+      flagEmoji:
+        revealOverlay?.flagEmoji ??
+        revealingPack?.flagEmoji ??
+        revealShared.flagEmoji,
+      flagSvgUrl:
+        revealOverlay?.flagSvgUrl ??
+        revealingPack?.flagSvgUrl ??
+        revealShared.flagSvgUrl,
+      gradientColor:
+        revealOverlay?.gradientColor ??
+        revealingPack?.overlayColorStart ??
+        revealingPack?.backgroundColor ??
+        revealShared.overlayBackgroundColor,
+      gradientColorEnd:
+        revealOverlay?.gradientColorEnd ??
+        revealingPack?.overlayColorEnd ??
+        revealingPack?.backgroundColor ??
+        revealShared.overlayBackgroundColorEnd,
+    }),
+    [
+      fanGirlName,
+      revealOverlay?.city,
+      revealOverlay?.country,
+      revealOverlay?.flagEmoji,
+      revealOverlay?.flagSvgUrl,
+      revealOverlay?.gradientColor,
+      revealOverlay?.gradientColorEnd,
+      revealShared.flagEmoji,
+      revealShared.flagSvgUrl,
+      revealShared.influencerCity,
+      revealShared.influencerCountry,
+      revealShared.overlayBackgroundColor,
+      revealShared.overlayBackgroundColorEnd,
+      revealingPack?.backgroundColor,
+      revealingPack?.city,
+      revealingPack?.country,
+      revealingPack?.flagEmoji,
+      revealingPack?.flagSvgUrl,
+      revealingPack?.overlayColorStart,
+      revealingPack?.overlayColorEnd,
+    ],
+  )
 
   // Foil pack lights follow the centered (or revealing) pack's model colors.
   const focusedPackId =
@@ -2098,8 +2186,12 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   // model when known so every theme belongs to the same girl.
   useEffect(() => {
     let cancelled = false
-    void fetchPackFanCatalog(revealingModelId).then((result) => {
-      if (!cancelled) setBackendFan(result)
+    setBackendFan(null)
+    void fetchPackFanCatalog(revealingModelId).then(async (result) => {
+      if (cancelled) return
+      const fan =
+        result && result.cards.length > 0 ? result : await fetchPackFanCatalog()
+      if (!cancelled) setBackendFan(fan)
     })
     return () => {
       cancelled = true
@@ -2115,26 +2207,17 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   // runId forces a fresh Math.random draw on every open / Replay open.
   const revealCards = useMemo(
     () =>
-      revealMode
+      revealMode && backendFan
         ? createMixedCategoryPackCards({
           characters: catalog.characters,
           backendFan,
           packSlot: revealingPackSlot,
           seed: sequence.runId,
-          girlName: revealShared.girlName,
-          overlay: {
-            name: revealShared.girlName,
-            city: revealShared.influencerCity,
-            country: revealShared.influencerCountry,
-            flagEmoji: revealShared.flagEmoji,
-            flagSvgUrl: revealShared.flagSvgUrl,
-            gradientColor: revealShared.overlayBackgroundColor,
-            gradientColorEnd: revealShared.overlayBackgroundColorEnd,
-          },
+          girlName: fanGirlName,
+          overlay: fanOverlay,
         })
         : [],
     // Refresh card variants when replaying the open sequence.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       revealMode,
       revealingPackId,
@@ -2142,7 +2225,8 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
       sequence.runId,
       backendFan,
       catalog.characters,
-      revealShared,
+      fanGirlName,
+      fanOverlay,
     ],
   )
 const selectedIdRef = useRef(selectedId)
@@ -2277,6 +2361,10 @@ useEffect(() => {
   useEffect(() => {
     revealCardsRef.current = revealCards
   }, [revealCards])
+
+  useEffect(() => {
+    if (revealCards.length) onRevealCards?.(revealCards)
+  }, [onRevealCards, revealCards])
 
   useEffect(() => {
     itemsRef.current = items
@@ -3106,10 +3194,10 @@ isMobile={isMobileViewportActive}
           </Canvas>
         </div>
 
-        {revealMode && sequence.showFan ? (
+        {revealMode && sequence.showFan && revealCards.length > 0 ? (
           <div className="reveal-stage__fan coverflow-reveal-fan">
             <CardFan
-              key={`fan-${revealingCharacterId}-${sequence.runId}`}
+              key={`fan-${revealingModelId ?? revealingCharacterId}-${sequence.runId}`}
               cards={revealCards}
               active={sequence.fanActive}
               layout={fanLayout}
@@ -3121,26 +3209,62 @@ isMobile={isMobileViewportActive}
           </div>
         ) : null}
 
-        {revealMode && sequence.showPlay && revealingCharacterId ? (
+        {revealMode && sequence.showPlay && (onRevealContinue || revealingCharacterId) ? (
           <div
             className="reveal-stage__cta is-enter coverflow-reveal-cta"
             key={`play-cta-${sequence.runId}`}
           >
-            <BuyButton
-              label="Play now"
-              onClick={() => {
-                // Leave the open pose frozen; page transition owns the exit.
-                onPlayNow?.(revealingCharacterId, revealCards)
-              }}
-              visible
-            />
-            <button
-              type="button"
-              className="reveal-replay"
-              onClick={sequence.handleReplay}
-            >
-              Replay open
-            </button>
+            {onRevealContinue ? (
+              <>
+                <div className="motion-reveal__continue">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate('squircleCTA')}
+                    fillParent
+                    type="button"
+                    label={revealContinueLabel}
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    onClick={() => onRevealContinue(revealCards)}
+                  />
+                </div>
+                {onRevealSaveLater ? (
+                  <button
+                    type="button"
+                    className="motion-reveal__later"
+                    onClick={onRevealSaveLater}
+                  >
+                    {revealSaveLaterLabel}
+                  </button>
+                ) : null}
+                {onRevealSaveAndOpenNext ? (
+                  <button
+                    type="button"
+                    className="motion-reveal__later"
+                    onClick={onRevealSaveAndOpenNext}
+                  >
+                    {revealSaveAndOpenNextLabel}
+                  </button>
+                ) : null}
+              </>
+            ) : revealingCharacterId ? (
+              <>
+                <BuyButton
+                  label="Play now"
+                  onClick={() => {
+                    onPlayNow?.(revealingCharacterId, revealCards)
+                  }}
+                  visible
+                />
+                <button
+                  type="button"
+                  className="reveal-replay"
+                  onClick={sequence.handleReplay}
+                >
+                  Replay open
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
 

@@ -1,30 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, type PanInfo } from "framer-motion";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
+import { DragToTearControl } from "@/features/packs/DragToTearControl";
+import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
 import {
   getCardTopDebug,
-  setCardTopDebug,
   setCardTopLottieOffset,
-  setCardTopTearT,
-  setPackOpenRequested,
-  setSelectedTearKeyId,
   subscribeCardTopDebug,
   type CardTopDebugState,
 } from "@/features/packs/cardTopDebug";
-import {
-  CARD_TOP_TEAR_FINISH_MS,
-  cardTopTearSpinStartT,
-  cardTopTearSliderEndT,
-  loadCardTopTearTimeline,
-  sampleCardTopTear,
-  saveCardTopTearTimeline,
-  sliderPercentFromTearT,
-  tearTFromSliderPercent,
-  type CardTopTearPose,
-  type CardTopTearTimeline,
-} from "@/features/packs/cardTopTearTimeline";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/AuthContext";
@@ -84,6 +68,11 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           packNumber: foil.slot === 1 ? 101 : 102,
           packName: foil.label,
           flagEmoji: profile.flagEmoji ?? "",
+          flagSvgUrl: profile.flagSvgUrl ?? "",
+          city: profile.city ?? "",
+          country: profile.country ?? "",
+          overlayColorStart: profile.overlayColorStart ?? DEFAULT_GLOW,
+          overlayColorEnd: profile.overlayColorEnd ?? DEFAULT_GLOW,
           backgroundColor: profile.overlayColorEnd ?? DEFAULT_GLOW,
         }),
       );
@@ -140,187 +129,6 @@ function CardTopDebugField({
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>
-  );
-}
-
-const TEAR_DRAG_DISTANCE_PX = 180;
-
-function useCoverflowTearSlider() {
-  const [debug, setDebug] = useState<CardTopDebugState>(getCardTopDebug);
-  const [timeline, setTimeline] = useState<CardTopTearTimeline>(
-    loadCardTopTearTimeline,
-  );
-  const [finishing, setFinishing] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const finishStartedRef = useRef(false);
-  const sliderEndT = cardTopTearSliderEndT(timeline);
-  const sliderPercent = sliderPercentFromTearT(debug.tearT, timeline);
-
-  useEffect(() => subscribeCardTopDebug(setDebug), []);
-
-  function applyPoseToPack(pose: CardTopTearPose, extra?: Partial<CardTopDebugState>) {
-    setCardTopDebug({
-      ...extra,
-      position: { x: pose.x, y: pose.y, z: pose.z },
-      rotation: { x: pose.rotX, y: pose.rotY, z: pose.rotZ },
-      scale: { x: pose.scaleX, y: pose.scaleY, z: pose.scaleZ },
-      opacity: pose.opacity,
-    });
-  }
-
-  function persistTimeline(next: CardTopTearTimeline, pose?: CardTopTearPose) {
-    saveCardTopTearTimeline(next);
-    setTimeline(next);
-    if (pose) applyPoseToPack(pose);
-  }
-
-  function applyTearT(tearT: number, playing = false) {
-    const pose = sampleCardTopTear(timeline, tearT);
-    setSelectedTearKeyId(null);
-    setCardTopTearT(tearT, playing);
-    applyPoseToPack(pose);
-    setPackOpenRequested(tearT >= cardTopTearSpinStartT(timeline) - 0.001);
-  }
-
-  function startFinish() {
-    finishStartedRef.current = true;
-    setClosing(false);
-    setFinishing(true);
-    applyTearT(sliderEndT, true);
-  }
-
-  function startClose() {
-    if (closing || finishing || debug.tearT <= 0.001) return;
-    finishStartedRef.current = false;
-    setFinishing(false);
-    setClosing(true);
-    applyTearT(debug.tearT, true);
-  }
-
-  function replayTear() {
-    finishStartedRef.current = false;
-    setFinishing(false);
-    setClosing(false);
-    applyTearT(0, false);
-  }
-
-  function scrubSlider(percent: number, options?: { snapClosed?: boolean }) {
-    finishStartedRef.current = false;
-    setFinishing(false);
-    setClosing(false);
-    const nextPercent = Math.min(100, Math.max(0, percent));
-    applyTearT(tearTFromSliderPercent(nextPercent, timeline), false);
-    if (nextPercent >= 100) startFinish();
-    else if (options?.snapClosed) startClose();
-  }
-
-  useEffect(() => {
-    if (!debug.tearPlaying && !finishing && !closing) return;
-    let frame = 0;
-    let last = performance.now();
-    const tick = (now: number) => {
-      const state = getCardTopDebug();
-      if (!state.tearPlaying && !finishing && !closing) return;
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      if (closing) {
-        const next = state.tearT - dt / 0.28;
-        if (next <= 0) {
-          applyTearT(0, false);
-          setClosing(false);
-          return;
-        }
-        applyTearT(next, true);
-        frame = window.requestAnimationFrame(tick);
-        return;
-      }
-      const duration = finishing
-        ? CARD_TOP_TEAR_FINISH_MS
-        : CARD_TOP_TEAR_FINISH_MS + sliderEndT * 1000;
-      const span = finishing ? 1 - sliderEndT : sliderEndT;
-      const next = state.tearT + (dt / (duration / 1000)) * span;
-      const cap = finishing ? 1 : sliderEndT;
-      if (next >= cap) {
-        applyTearT(cap, false);
-        if (finishing) setFinishing(false);
-        return;
-      }
-      applyTearT(next, true);
-      frame = window.requestAnimationFrame(tick);
-    };
-    frame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame);
-  }, [closing, debug.tearPlaying, finishing, sliderEndT, timeline]);
-
-  return {
-    debug,
-    timeline,
-    finishing,
-    finishStartedRef,
-    sliderEndT,
-    sliderPercent,
-    applyPoseToPack,
-    persistTimeline,
-    applyTearT,
-    startFinish,
-    scrubSlider,
-    replayTear,
-    setFinishing,
-  };
-}
-
-function DragToTearControl({
-  percent,
-  finishing,
-  onScrub,
-}: {
-  percent: number;
-  finishing: boolean;
-  onScrub: (percent: number, options?: { snapClosed?: boolean }) => void;
-}) {
-  const originPercentRef = useRef(percent);
-  const torn = finishing || percent >= 100;
-  const boxOpacity = torn ? 0 : 1 - Math.min(100, Math.max(0, percent)) / 100;
-
-  return (
-    <div className="pointer-events-none flex justify-center">
-      <motion.button
-        type="button"
-        data-tutorial-target="tear"
-        aria-label="Drag to tear"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.12}
-        animate={{ opacity: boxOpacity, x: 0 }}
-        transition={{ duration: torn ? 0.2 : 0 }}
-        style={{ pointerEvents: torn ? "none" : "auto", x: 0 }}
-        onDragStart={() => {
-          originPercentRef.current = percent;
-        }}
-        onDrag={(_, info: PanInfo) => {
-          const next = originPercentRef.current + (info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
-          onScrub(next);
-        }}
-        onDragEnd={(_, info: PanInfo) => {
-          const next = originPercentRef.current + (info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
-          onScrub(next, { snapClosed: true });
-        }}
-        className="pointer-events-auto flex h-[6.3rem] w-[28rem] cursor-ew-resize items-center justify-center overflow-hidden bg-transparent p-0"
-      >
-        <DotLottieReact
-          src="/lottie/iconSwipe.lottie"
-          autoplay
-          loop
-          speed={1}
-          renderConfig={{
-            devicePixelRatio:
-              typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
-            autoResize: true,
-          }}
-          style={{ width: 288, height: 288 }}
-        />
-      </motion.button>
-    </div>
   );
 }
 
@@ -542,6 +350,42 @@ export function CoverFlowV2Page() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
+          revealModelId={
+            (selectedId && catalog.playById.get(selectedId)?.id) ||
+            items.find((item) => item.id === selectedId)?.characterId ||
+            items[0]?.characterId ||
+            null
+          }
+          revealGirlName={
+            (selectedId && catalog.playById.get(selectedId)?.creatorName) ||
+            items.find((item) => item.id === selectedId)?.girlName ||
+            items[0]?.girlName ||
+            null
+          }
+          revealOverlay={{
+            city:
+              items.find((item) => item.id === selectedId)?.city ||
+              items[0]?.city ||
+              "",
+            country:
+              items.find((item) => item.id === selectedId)?.country ||
+              items[0]?.country ||
+              "",
+            flagEmoji:
+              items.find((item) => item.id === selectedId)?.flagEmoji ||
+              items[0]?.flagEmoji ||
+              "",
+            flagSvgUrl:
+              items.find((item) => item.id === selectedId)?.flagSvgUrl ||
+              items[0]?.flagSvgUrl ||
+              "",
+            gradientColor:
+              items.find((item) => item.id === selectedId)?.overlayColorStart ||
+              glow,
+            gradientColorEnd:
+              items.find((item) => item.id === selectedId)?.overlayColorEnd ||
+              glow,
+          }}
           onFocusChange={(item) => {
             setGlow(item?.backgroundColor || DEFAULT_GLOW);
           }}

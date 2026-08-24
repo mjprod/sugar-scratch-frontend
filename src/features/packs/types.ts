@@ -39,6 +39,8 @@ export const DEFAULT_CAMERA_SETTINGS: CameraSettings = {
 export interface Iteration {
   cameraSettings: CameraSettings;
   id: string;
+  /** Backend model / creator id used for fan catalog + overlay. */
+  characterId?: string;
   name: string;
   modelAnchor: ModelRotationAnchor;
   modelName: string;
@@ -56,6 +58,11 @@ export interface Iteration {
   packNumber: number;
   packName?: string;
   flagEmoji: string;
+  flagSvgUrl?: string;
+  city?: string;
+  country?: string;
+  overlayColorStart?: string;
+  overlayColorEnd?: string;
   backgroundColor: string;
 }
 
@@ -93,12 +100,18 @@ export type PackItem = {
   packNumber: number;
   packName?: string;
   flagEmoji: string;
+  flagSvgUrl?: string;
+  city?: string;
+  country?: string;
+  overlayColorStart?: string;
+  overlayColorEnd?: string;
   backgroundColor: string;
 };
 
 export function packItemToIteration(item: PackItem): Iteration {
   return {
     id: item.id,
+    characterId: item.characterId,
     name: item.name,
     modelName: item.modelName,
     modelUrl: item.modelUrl,
@@ -117,6 +130,11 @@ export function packItemToIteration(item: PackItem): Iteration {
     packNumber: item.packNumber,
     packName: item.packName?.trim() || undefined,
     flagEmoji: item.flagEmoji,
+    flagSvgUrl: item.flagSvgUrl,
+    city: item.city,
+    country: item.country,
+    overlayColorStart: item.overlayColorStart,
+    overlayColorEnd: item.overlayColorEnd,
     backgroundColor: item.backgroundColor,
   };
 }

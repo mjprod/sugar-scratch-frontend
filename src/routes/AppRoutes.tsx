@@ -179,8 +179,22 @@ export function AppRoutes() {
               </SoftGate>
             }
           />
-          <Route path="purchase/:packId" element={<PurchaseFlowPage />} />
-          <Route path="coverflow-v2" element={<CoverFlowV2Page />} />
+          <Route
+            path="purchase/:packId"
+            element={
+              <CatalogProvider>
+                <PurchaseFlowPage />
+              </CatalogProvider>
+            }
+          />
+          <Route
+            path="coverflow-v2"
+            element={
+              <CatalogProvider>
+                <CoverFlowV2Page />
+              </CatalogProvider>
+            }
+          />
           <Route
             path="game"
             element={

@@ -506,7 +506,10 @@ export async function fetchPackFanCatalog(
   const published = cards
     .map(toBackendFanCard)
     .filter((card): card is BackendFanCard => Boolean(card))
-    .filter((card) => !modelId || card.modelId === modelId)
+    .filter((card) => {
+      if (!modelId) return true
+      return card.modelId.trim().toLowerCase() === modelId.trim().toLowerCase()
+    })
     .sort(
       (a, b) =>
         a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
