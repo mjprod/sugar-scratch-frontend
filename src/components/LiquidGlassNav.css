@@ -672,7 +672,14 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
+  overflow: visible;
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Store diamond reads a bit small at stroke-icon size — ~20% larger */
+.nav-test-top-icon.nav-diamond-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .nav-test-top-label {
@@ -1635,6 +1642,12 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   height: 21px;
 }
 
+/* Store diamond reads a bit small at stroke-icon size — ~20% larger */
+.nav-test-dock-icon.nav-diamond-icon {
+  width: 25px;
+  height: 25px;
+}
+
 .nav-test-dock-item .nav-login-icon,
 .nav-test-dock-item.is-active .nav-login-icon,
 .nav-test-dock-item.is-drag-target .nav-login-icon {
@@ -1872,6 +1885,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test-dock-primary-icon {
   width: 28px;
   height: 28px;
+  overflow: visible;
   /* Hex keeps drop-shadow bloom reliable across WebKit mask + filter combos. */
   filter: drop-shadow(0 0 3px #ff0068);
   color: #ff0068;

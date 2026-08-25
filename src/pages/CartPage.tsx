@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
@@ -8,12 +8,19 @@ import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
+  clearCart,
   listCartPacks,
   removePackFromCart,
   subscribeCart,
   type CartPack,
 } from "@/services/cart";
 import { addUnopenedFromPurchase } from "@/services/packInventory";
+import {
+  getCardTopDebug,
+  setCardTopTearT,
+  setPackOpenRequested,
+  rewindCardTopTear,
+} from "@/features/packs/cardTopDebug";
 import {
   loadModels,
   matchModel,
@@ -89,7 +96,28 @@ export function CartPage() {
 
   useMarkPageReady(true);
 
+  // Synchronous too: CoverFlow reads packOpenRequested in useState initializers
+  // during this render (before layout effects). Only write when dirty.
+  /* sync tear reset */
+  {
+    const debug = getCardTopDebug();
+    if (debug.packOpenRequested || debug.tearPlaying || debug.tearT > 0) {
+      rewindCardTopTear();
+      setPackOpenRequested(false);
+      setCardTopTearT(0, false);
+    }
+  }
+
+
   useEffect(() => subscribeCart(() => setPacks(listCartPacks())), []);
+
+  // Pack Pocket is browse-only. Clear leftover tear/open state before paint so
+  // CoverFlow never mounts already mid-tear / auto-opening from a prior checkout.
+  useLayoutEffect(() => {
+    rewindCardTopTear();
+    setPackOpenRequested(false);
+    setCardTopTearT(0, false);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -158,6 +186,8 @@ export function CartPage() {
       },
       "open-pack",
     );
+    // Checkout empties Pack Pocket; opened packs live in inventory / ready-to-scratch.
+    clearCart();
   }
 
   if (!items.length) {
@@ -172,22 +202,21 @@ export function CartPage() {
             title="Your pack pocket is empty"
             copy="Buy a pack and it will wait here, ready to check out."
             action={
-              <button
-                type="button"
-                className="rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-[14px] font-semibold text-white"
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                label="Browse packs"
+                costAmount={null}
+                width={200}
+                height={48}
+                fontSize={14}
                 onClick={() => requestTab("feed")}
-              >
-                Browse packs
-              </button>
+              />
             }
           />
         </div>
       </section>
     );
   }
-
-  const focused =
-    items.find((item) => item.id === selectedId) ?? items[0];
 
   return (
     <section
@@ -210,16 +239,8 @@ export function CartPage() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
-          revealModelId={focused.characterId || null}
-          revealGirlName={focused.girlName || null}
-          revealOverlay={{
-            city: focused.city || "",
-            country: focused.country || "",
-            flagEmoji: focused.flagEmoji || "",
-            flagSvgUrl: focused.flagSvgUrl || "",
-            gradientColor: focused.overlayColorStart || glow,
-            gradientColorEnd: focused.overlayColorEnd || glow,
-          }}
+          // Browse-only: never inherit tear/open reveal from a prior checkout.
+          disablePackOpenReveal
           onFocusChange={(item) => {
             setGlow(item?.backgroundColor || DEFAULT_GLOW);
           }}

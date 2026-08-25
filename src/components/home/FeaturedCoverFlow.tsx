@@ -29,7 +29,7 @@ import {
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const MAX_HOME_PACKS = 10;
-const HERO_DEBUG_STORAGE_KEY = "sugar.homeHeroDebug.v1";
+const HERO_DEBUG_STORAGE_KEY = "sugar.homeHeroDebug.v2";
 const COVERFLOW_MOBILE_QUERY = "(max-width: 980px)";
 /** Flip to true to restore the homepage hero placement sliders. */
 const HERO_DEBUG_ENABLED = false;
@@ -54,10 +54,17 @@ function isMobileCoverflowViewport() {
   );
 }
 
+/** Desktop homepage hero — locked from center debug. */
 const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   ...DEFAULT_COVERFLOW_CAMERA,
+  packsX: 0.015,
   packsY: -1.25,
+  modelY: -0.02,
+  cameraX: 0.11,
+  cameraY: 0.27,
   cameraZ: 5.9,
+  lookAtY: 0.1,
+  fov: 36,
 };
 
 function defaultHeroDebug(isMobile: boolean): HeroDebugState {
@@ -415,17 +422,27 @@ export function FeaturedCoverFlow({
             if (target) onPlay(target);
           }}
         />
+        {HERO_DEBUG_ENABLED && debugOpen ? (
+          <div className="coverflow-center-guide" aria-hidden="true">
+            <span className="coverflow-center-guide__line" />
+            <span className="coverflow-center-guide__label">center</span>
+          </div>
+        ) : null}
       </div>
       {HERO_DEBUG_ENABLED && typeof document !== "undefined"
         ? createPortal(
             <aside
-              className={["home-hero-debug", debugOpen ? "" : "is-collapsed"]
+              className={[
+                "home-hero-debug",
+                "home-hero-debug--center",
+                debugOpen ? "" : "is-collapsed",
+              ]
                 .filter(Boolean)
                 .join(" ")}
               aria-label="Hero placement debug"
             >
               <div className="home-hero-debug__head">
-                <p className="home-hero-debug__title">Hero debug</p>
+                <p className="home-hero-debug__title">Coverflow center</p>
                 <div className="home-hero-debug__actions">
                   <button
                     type="button"
@@ -453,6 +470,31 @@ export function FeaturedCoverFlow({
               <div className="home-hero-debug__body">
                 <div className="home-hero-debug__section">
                   <p className="home-hero-debug__section-title">
+                    Horizontal center
+                  </p>
+                  <p className="home-hero-debug__hint">
+                    Green line = viewport center. Nudge Camera X / Packs X until
+                    the active pack sits on it.
+                  </p>
+                  <HeroDebugField
+                    label="Camera X"
+                    value={debug.cameraX}
+                    min={-2}
+                    max={2}
+                    step={0.005}
+                    onChange={(value) => updateDebug("cameraX", value)}
+                  />
+                  <HeroDebugField
+                    label="Packs X"
+                    value={debug.packsX}
+                    min={-2}
+                    max={2}
+                    step={0.005}
+                    onChange={(value) => updateDebug("packsX", value)}
+                  />
+                </div>
+                <div className="home-hero-debug__section">
+                  <p className="home-hero-debug__section-title">
                     Collect Reveal text
                   </p>
                   <HeroDebugField
@@ -474,22 +516,6 @@ export function FeaturedCoverFlow({
                 </div>
                 <div className="home-hero-debug__section">
                   <p className="home-hero-debug__section-title">Cards</p>
-                  <HeroDebugField
-                    label="Camera X"
-                    value={debug.cameraX}
-                    min={-2}
-                    max={2}
-                    step={0.01}
-                    onChange={(value) => updateDebug("cameraX", value)}
-                  />
-                  <HeroDebugField
-                    label="Packs X"
-                    value={debug.packsX}
-                    min={-2}
-                    max={2}
-                    step={0.01}
-                    onChange={(value) => updateDebug("packsX", value)}
-                  />
                   <HeroDebugField
                     label="Packs Y"
                     value={debug.packsY}

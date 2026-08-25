@@ -327,6 +327,12 @@ body[data-theme="v8"] .bottom-nav-icon {
   height: 21px;
 }
 
+/* Store diamond reads a bit small at stroke-icon size — ~20% larger */
+body[data-theme="v8"] .bottom-nav-icon.nav-diamond-icon {
+  width: 25px;
+  height: 25px;
+}
+
 body[data-theme="v8"] .bottom-nav-label {
   line-height: 1;
   padding-bottom: 1px;
@@ -846,6 +852,57 @@ body[data-theme="v8"] .home-hero-debug {
   box-shadow: 0 16px 40px oklch(0 0 0 / 0.4);
   color: oklch(0.945 0.012 259.82);
   backdrop-filter: blur(16px);
+}
+
+/* Second panel (e.g. center tools next to tear lottie) */
+body[data-theme="v8"] .home-hero-debug--center {
+  left: auto;
+  right: 12px;
+  bottom: 12px;
+}
+
+body[data-theme="v8"] .home-hero-debug__hint {
+  margin: 0 0 0.35rem;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+/* Viewport midline overlay while tuning coverflow horizontal center */
+body[data-theme="v8"] .coverflow-center-guide {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .coverflow-center-guide__line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: oklch(0.86 0.19 145 / 0.9);
+  box-shadow:
+    0 0 0 1px oklch(0 0 0 / 0.35),
+    0 0 12px oklch(0.86 0.19 145 / 0.45);
+}
+
+body[data-theme="v8"] .coverflow-center-guide__label {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: oklch(0.2 0.02 145 / 0.85);
+  border: 1px solid oklch(0.86 0.19 145 / 0.55);
+  color: oklch(0.92 0.12 145);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 body[data-theme="v8"] .home-hero-debug__head {
@@ -2215,6 +2272,36 @@ body[data-theme="v8"] .store-watch-ad:focus-visible {
   outline-offset: 2px;
 }
 
+/* Coin bonus under Diamonds — fixed icon track + amount */
+body[data-theme="v8"] .store-package-coins {
+  display: grid;
+  grid-template: 1fr / 24px 1fr;
+  gap: 0;
+  align-items: center;
+  justify-items: start;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+body[data-theme="v8"] .store-package-coins .store-package-coin {
+  /* Visual is 2× the 24px grid track — overflow without growing the layout */
+  width: 48px;
+  height: 48px;
+  max-width: none;
+  justify-self: center;
+  transform: translateX(0);
+  margin-inline: -12px;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .store-package-coins-value {
+  min-width: 0;
+  padding-left: 2px;
+  line-height: 1;
+  text-align: left;
+}
+
 /* Subtle diamond utility highlight while Store is open */
 body[data-theme="v8"] .top-nav-resource--store-active {
   border: 1px solid color-mix(in oklab, oklch(0.828 0.101 230.32) 42%, transparent);
@@ -2336,7 +2423,8 @@ body[data-theme="v8"] .hub-today-bento-reel {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hub-today-bento {
-    grid-template-columns: 1.75fr 1fr;
+    /* Reel left, Continue Collecting + Upcoming Events right */
+    grid-template-columns: 1fr 1.75fr;
     grid-template-rows: auto minmax(40rem, auto);
     gap: 16px 20px;
   }
@@ -2355,14 +2443,14 @@ body[data-theme="v8"] .hub-today-bento-reel {
     min-width: 0;
     min-height: 40rem;
     overflow: visible;
-    /* Half the chevron (3.25rem) so its right edge sits on the column. */
-    padding-right: 1.625rem;
+    /* Half the chevron (3.25rem) so its left edge sits on the column. */
+    padding-left: 1.625rem;
   }
 }
 
 body[data-theme="v8"] .hub-today-bento-reel-frame {
   position: absolute;
-  inset: 0 1.625rem 0 0;
+  inset: 0 0 0 1.625rem;
   overflow: visible;
   border-radius: 28px;
 }

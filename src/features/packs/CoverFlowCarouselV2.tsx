@@ -2,7 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import {
 	  Suspense,
 	  useCallback,
@@ -81,6 +81,7 @@ import {
   type Iteration,
 } from './types'
 import {
+  DEFAULT_CARD_TOP_DEBUG,
   getCardTopDebug,
   reportCardTopBounds,
   subscribeCardTopDebug,
@@ -132,7 +133,41 @@ const OPEN_DUCK_DEPTH_BLUR_PX = 9
 const OPEN_DUCK_BLUR_LEAD_IN_MS = 47
 const OPEN_DUCK_BLUR_FULL_AT = 1
 
+// --- Cart remove exit: slight rise (anticipation), then drop out ---
+const REMOVE_ANTICIPATION_MS = 95
+const REMOVE_DROP_MS = 280
+const REMOVE_ANTICIPATION_Y = 0.07
+const REMOVE_ANTICIPATION_SCALE = 1.035
+const REMOVE_DROP_Y = -1.85
+const REMOVE_DROP_SCALE = 0.78
+const REMOVE_DROP_ROT_X_DEG = 16
+
 type OpenAnimPhase = 'idle' | 'anticipation' | 'spin' | 'duck'
+type RemoveExitPhase = 'idle' | 'anticipation' | 'drop'
+
+type RemoveExitState = {
+  phase: RemoveExitPhase
+  startMs: number
+  fromX: number
+  fromY: number
+  fromZ: number
+  fromScale: number
+  fromRotY: number
+  fromOpacity: number
+}
+
+function emptyRemoveExit(): RemoveExitState {
+  return {
+    phase: 'idle',
+    startMs: 0,
+    fromX: 0,
+    fromY: 0,
+    fromZ: 0,
+    fromScale: 1,
+    fromRotY: 0,
+    fromOpacity: 1,
+  }
+}
 
 type OpenAnimState = {
   phase: OpenAnimPhase
@@ -218,6 +253,52 @@ function easeDuckProgress(t: number) {
   return lerp(out, terminal, 0.22)
 }
 
+/**
+ * Unit cubic-bezier (x1,y1,x2,y2) like CSS / Apple UIKit curves.
+ * Solves x(t) → y for monotonic x in [0,1].
+ */
+function cubicBezierEase(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  t: number,
+) {
+  const x = clamp01(t)
+  if (x <= 0) return 0
+  if (x >= 1) return 1
+
+  let guess = x
+  for (let i = 0; i < 6; i += 1) {
+    const u = 1 - guess
+    const cx =
+      3 * u * u * guess * x1 + 3 * u * guess * guess * x2 + guess * guess * guess
+    const dx =
+      3 * u * u * x1 +
+      6 * u * guess * (x2 - x1) +
+      3 * guess * guess * (1 - x2)
+    if (Math.abs(dx) < 1e-6) break
+    guess = MathUtils.clamp(guess - (cx - x) / dx, 0, 1)
+  }
+
+  const v = 1 - guess
+  return (
+    3 * v * v * guess * y1 +
+    3 * v * guess * guess * y2 +
+    guess * guess * guess
+  )
+}
+
+/** Apple-like springy ease-out — quick response, soft settle (≈ 0.16, 1, 0.3, 1). */
+function easeAppleOut(t: number) {
+  return cubicBezierEase(0.16, 1, 0.3, 1, t)
+}
+
+/** Apple-like dismiss drop — light hold, then decisive acceleration (custom). */
+function easeAppleDrop(t: number) {
+  return cubicBezierEase(0.48, 0.04, 0.72, 0.12, t)
+}
+
 /** Convert reveal world pose into coverflow local space (packs group origin). */
 function worldPoseToLocal(
   pose: PackPose,
@@ -280,14 +361,14 @@ export interface CoverFlowCameraSettings {
   modelY: number
 }
 
-// Match reveal PackStage camera + start pose placement (same card2.glb).
+// Locked from coverflow center debug (desktop + tear / pack pocket).
 export const DEFAULT_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   cameraX: 0.11,
   cameraY: 0.27,
   cameraZ: 6.7,
   fov: 36,
   lookAtY: 0.1,
-  packsX: -0.01,
+  packsX: 0.115,
   packsY: -0.94,
   modelY: -0.02,
 }
@@ -298,7 +379,7 @@ export const MOBILE_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   cameraZ: 6.45,
   fov: 36,
   lookAtY: 0,
-  packsX: -0.01,
+  packsX: 0.115,
   packsY: -0.94,
   modelY: -0.3,
 }
@@ -373,6 +454,8 @@ interface CoverFlowCarouselProps {
   onBuy?: (item: Iteration) => void
   /** Cart: remove this pack. Replaces the Buy Pack CTA when set. */
   onRemove?: (item: Iteration) => void
+  /** Hide Buy Pack / remove CTA under the active pack (tear page). */
+  hideActiveCta?: boolean
   formatPrice?: (price: number) => string
   /** When set, run reveal open sequence in-canvas for this character. */
   revealingCharacterId?: CharacterId | null
@@ -386,6 +469,8 @@ interface CoverFlowCarouselProps {
   layout?: CoverFlowLayoutSettings
   /** Homepage: ignore swipe-down deactivate so the page can keep scrolling. */
   disableSwipeDownDeactivate?: boolean
+  /** Browse surfaces (cart): ignore global packOpenRequested / auto-open. */
+  disablePackOpenReveal?: boolean
   /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
   disableWheelPaging?: boolean
   /** Optional HUD pinned to the cardTop rotation point. */
@@ -529,6 +614,21 @@ function resolveCardTopDebugPose(debug: CardTopDebugState): CardTopDebugState {
     rotation: { x: pose.rotX, y: pose.rotY, z: pose.rotZ },
     scale: { x: pose.scaleX, y: pose.scaleY, z: pose.scaleZ },
     opacity: pose.opacity,
+  }
+}
+
+/** Closed seal pose for non-active packs — ignore shared tear scrub state. */
+function closedCardTopDebugPose(debug: CardTopDebugState): CardTopDebugState {
+  return {
+    ...debug,
+    position: { ...DEFAULT_CARD_TOP_DEBUG.position },
+    rotation: { ...DEFAULT_CARD_TOP_DEBUG.rotation },
+    scale: { ...DEFAULT_CARD_TOP_DEBUG.scale },
+    opacity: DEFAULT_CARD_TOP_DEBUG.opacity,
+    tearT: 0,
+    tearPlaying: false,
+    packOpenRequested: false,
+    showGizmo: false,
   }
 }
 
@@ -767,56 +867,62 @@ function CoverFlowPack({
 	  onOpenSequenceComplete,
 	  onOpenPackBehindFan,
 		  onOpenPackBlurChange,
-			  formatPrice,
-			  onBuy,
-			  onRemove,
-			  tearHud,
-			}: {
-			  item: Iteration
-			  index: number
-			  focusIndex: number
-			  isActive: boolean
-			  hasActiveSelection: boolean
-			  modelY: number
-			  layout: CoverFlowLayoutSettings
-			  textureTransform: VideoTextureTransform
-			  centerTiltYaw: number
-			  centerTiltPitch: number
-			  isMobile: boolean
-			  /** Browser height < 550px — frosted glass behind pack HUD. */
-			  shortHudGlass: boolean
-			  /** True while any pack open sequence is running. */
-			  revealMode: boolean
-			  /** This pack is the one being opened. */
-			  isRevealHero: boolean
-			  playOpenSequence: boolean
-		  packsX: number
-		  packsY: number
-		  openTimeline: PackTimeline
-		  openDuckInTimeline: DuckInTimeline
-		  onSelect: (id: string) => void
-		  onOpenSequenceComplete?: () => void
-		  onOpenPackBehindFan?: () => void
-			  onOpenPackBlurChange?: (blurPx: number) => void
-			  formatPrice: (price: number) => string
-			  onBuy?: (item: Iteration) => void
-			  onRemove?: (item: Iteration) => void
-			  tearHud?: ReactNode
-			}) {
-	const groupRef = useRef<Group>(null)
-	  const modelRef = useRef<Group>(null)
-  // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
-  const hoverYawTargetRef = useRef(0)
-  const hoverYawRef = useRef(0)
-  // Applied touch tilt eases toward the live target so release isn't snappy.
-  const appliedTiltRef = useRef(0)
-  const appliedPitchRef = useRef(0)
-  const isHoveredRef = useRef(false)
-  // Keep latest focus in a ref so useFrame can animate smoothly without
-  // hard-snapping transforms on every React re-render.
-  const focusIndexRef = useRef(focusIndex)
-  const isActiveRef = useRef(isActive)
-  const hasActiveSelectionRef = useRef(hasActiveSelection)
+formatPrice,
+				  onBuy,
+				  onRemove,
+				  hideActiveCta = false,
+				  tearHud,
+				}: {
+				  item: Iteration
+				  index: number
+				  focusIndex: number
+				  isActive: boolean
+				  hasActiveSelection: boolean
+				  modelY: number
+				  layout: CoverFlowLayoutSettings
+				  textureTransform: VideoTextureTransform
+				  centerTiltYaw: number
+				  centerTiltPitch: number
+				  isMobile: boolean
+				  /** Browser height < 550px — frosted glass behind pack HUD. */
+				  shortHudGlass: boolean
+				  /** True while any pack open sequence is running. */
+				  revealMode: boolean
+				  /** This pack is the one being opened. */
+				  isRevealHero: boolean
+				  playOpenSequence: boolean
+			  packsX: number
+			  packsY: number
+			  openTimeline: PackTimeline
+			  openDuckInTimeline: DuckInTimeline
+			  onSelect: (id: string) => void
+			  onOpenSequenceComplete?: () => void
+			  onOpenPackBehindFan?: () => void
+				  onOpenPackBlurChange?: (blurPx: number) => void
+				  formatPrice: (price: number) => string
+				  onBuy?: (item: Iteration) => void
+				  onRemove?: (item: Iteration) => void
+				  hideActiveCta?: boolean
+				  tearHud?: ReactNode
+				}) {
+const groupRef = useRef<Group>(null)
+		  const modelRef = useRef<Group>(null)
+	  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
+	  const [isRemoving, setIsRemoving] = useState(false)
+	  const removeExitRef = useRef<RemoveExitState>(emptyRemoveExit())
+	  const onRemoveRef = useRef(onRemove)
+	  // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
+	  const hoverYawTargetRef = useRef(0)
+	  const hoverYawRef = useRef(0)
+	  // Applied touch tilt eases toward the live target so release isn't snappy.
+	  const appliedTiltRef = useRef(0)
+	  const appliedPitchRef = useRef(0)
+	  const isHoveredRef = useRef(false)
+	  // Keep latest focus in a ref so useFrame can animate smoothly without
+	  // hard-snapping transforms on every React re-render.
+	  const focusIndexRef = useRef(focusIndex)
+	  const isActiveRef = useRef(isActive)
+	  const hasActiveSelectionRef = useRef(hasActiveSelection)
   const layoutRef = useRef(layout)
   const centerTiltYawRef = useRef(centerTiltYaw)
   const centerTiltPitchRef = useRef(centerTiltPitch)
@@ -858,13 +964,111 @@ function CoverFlowPack({
     vScale: 0,
   })
 
-  useEffect(() => {
-    focusIndexRef.current = focusIndex
-  }, [focusIndex])
+useEffect(() => {
+	    focusIndexRef.current = focusIndex
+	  }, [focusIndex])
 
-  useEffect(() => {
-    isActiveRef.current = isActive
-  }, [isActive])
+	  useEffect(() => {
+	    isActiveRef.current = isActive
+	  }, [isActive])
+
+	  useEffect(() => {
+	    onRemoveRef.current = onRemove
+	  }, [onRemove])
+
+	  useEffect(() => {
+	    if (!isActive && index !== focusIndex) setRemoveConfirmOpen(false)
+	  }, [focusIndex, index, isActive])
+
+	  useEffect(() => {
+	    if (!removeConfirmOpen) return
+	    const onKeyDown = (event: KeyboardEvent) => {
+	      if (event.key === 'Escape') {
+	        event.preventDefault()
+	        setRemoveConfirmOpen(false)
+	      }
+	    }
+	    window.addEventListener('keydown', onKeyDown)
+	    return () => window.removeEventListener('keydown', onKeyDown)
+	  }, [removeConfirmOpen])
+
+	  function beginRemoveExit() {
+	    if (isRemoving || removeExitRef.current.phase !== 'idle') return
+	    setRemoveConfirmOpen(false)
+	    setIsRemoving(true)
+	    const motion = motionRef.current
+	    removeExitRef.current = {
+	      phase: 'anticipation',
+	      startMs: performance.now(),
+	      fromX: motion.x,
+	      fromY: motion.y,
+	      fromZ: motion.z,
+	      fromScale: motion.scale,
+	      fromRotY: motion.rotY,
+	      fromOpacity: opacityRef.current,
+	    }
+	    motion.vx = 0
+	    motion.vy = 0
+	    motion.vz = 0
+	    motion.vRotY = 0
+	    motion.vScale = 0
+	    hoverYawTargetRef.current = 0
+	    hoverYawRef.current = 0
+	  }
+
+	  const removeControl =
+	    onRemove && !isRemoving ? (
+	      <div className="coverflow-cart-remove-wrap">
+	        <button
+	          type="button"
+	          className="coverflow-cart-remove"
+	          aria-label={`Remove ${item.packName || item.girlName} from cart`}
+	          aria-expanded={removeConfirmOpen}
+	          aria-controls={`coverflow-cart-remove-confirm-${item.id}`}
+	          onClick={(event) => {
+	            event.stopPropagation()
+	            setRemoveConfirmOpen((open) => !open)
+	          }}
+	        >
+	          <span aria-hidden="true">×</span>
+	        </button>
+	        {removeConfirmOpen ? (
+	          <div
+	            id={`coverflow-cart-remove-confirm-${item.id}`}
+	            className="coverflow-cart-remove-confirm"
+	            role="dialog"
+	            aria-label="Remove pack?"
+	            aria-modal="false"
+	          >
+	            <p className="coverflow-cart-remove-confirm__label">Remove</p>
+	            <div className="coverflow-cart-remove-confirm__actions">
+	              <button
+	                type="button"
+	                className="coverflow-cart-remove-confirm__btn is-cancel"
+	                aria-label="Cancel remove"
+	                onClick={(event) => {
+	                  event.stopPropagation()
+	                  setRemoveConfirmOpen(false)
+	                }}
+	              >
+	                <X aria-hidden="true" strokeWidth={2.5} />
+	              </button>
+	              <button
+	                type="button"
+	                className="coverflow-cart-remove-confirm__btn is-confirm"
+	                aria-label="Confirm remove"
+	                onClick={(event) => {
+	                  event.stopPropagation()
+	                  beginRemoveExit()
+	                }}
+	              >
+	                <Check aria-hidden="true" strokeWidth={2.5} />
+	              </button>
+	            </div>
+	          </div>
+	        ) : null}
+	      </div>
+	    ) : null
 
   useEffect(() => {
     hasActiveSelectionRef.current = hasActiveSelection
@@ -964,6 +1168,8 @@ function CoverFlowPack({
           }
         })
       }
+      // Lids fade with the body on side packs — restore them the same way.
+      if (cardTop) applyCardTopOpacity(cardTop, 1)
       lastBlurRef.current = 0
       onOpenPackBlurChangeRef.current?.(0)
       return
@@ -1216,27 +1422,39 @@ const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
     return resolveTargetMaterial(packBody ?? scene)
   }, [scene])
 
-  useLayoutEffect(() => {
-    if (!cardTop || !cardTopRest) return
-    if (cardTopBounds && isCenter) reportCardTopBounds(cardTopBounds)
-    const gizmoSize = cardTopBounds
-      ? Math.max(cardTopBounds.size.x, cardTopBounds.size.y, cardTopBounds.size.z)
-      : 0.4
-    applyCardTopPivotDebug(
-      cardTop,
-      cardTopRest,
-      resolveCardTopDebugPose(getCardTopDebug()),
-      gizmoSize,
-    )
-    return subscribeCardTopDebug((debug) => {
-      applyCardTopPivotDebug(
-        cardTop,
-        cardTopRest,
-        resolveCardTopDebugPose(debug),
-        gizmoSize,
-      )
-    })
-  }, [cardTop, cardTopBounds, cardTopRest, isCenter])
+useLayoutEffect(() => {
+	    if (!cardTop || !cardTopRest) return
+	    if (cardTopBounds && isCenter) reportCardTopBounds(cardTopBounds)
+	    const gizmoSize = cardTopBounds
+	      ? Math.max(cardTopBounds.size.x, cardTopBounds.size.y, cardTopBounds.size.z)
+	      : 0.4
+	    // Drag-to-tear is shared state; only the active/front pack should open.
+	    // Non-hero packs also multiply lid opacity by the side-pack fade so tear
+	    // ticks can't keep lids fully visible while the body disappears.
+	    const poseForPack = (debug: CardTopDebugState) => {
+	      if (isActive) return resolveCardTopDebugPose(debug)
+	      const closed = closedCardTopDebugPose(debug)
+	      if (!revealModeRef.current) return closed
+	      return {
+	        ...closed,
+	        opacity: closed.opacity * sideFadeRef.current,
+	      }
+	    }
+	    applyCardTopPivotDebug(
+	      cardTop,
+	      cardTopRest,
+	      poseForPack(getCardTopDebug()),
+	      gizmoSize,
+	    )
+	    return subscribeCardTopDebug((debug) => {
+	      applyCardTopPivotDebug(
+	        cardTop,
+	        cardTopRest,
+	        poseForPack(debug),
+	        gizmoSize,
+	      )
+	    })
+	  }, [cardTop, cardTopBounds, cardTopRest, isActive, isCenter])
 
 	  // Seed pack pose before first paint so pack-attached Html isn't stuck at origin
 	  // until the first pointer/frame interaction.
@@ -1295,7 +1513,8 @@ const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
     opacityRef.current = opacity
     if (!groupRef.current) return
     groupRef.current.traverse((object) => {
-      if (isUnderObject(object, cardTop)) return
+      // Hero lid is driven by the tear pose; side packs fade lid + body together.
+      if (cardTop && isUnderObject(object, cardTop)) return
       const mesh = object as { isMesh?: boolean; material?: any }
       if (!mesh.isMesh) return
       const materials = Array.isArray(mesh.material)
@@ -1309,19 +1528,118 @@ const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
         material.needsUpdate = true
       }
     })
+    // Keep top-edge / lids in lockstep with the pack body on non-hero packs.
+    // (Hero cardTop opacity stays on the tear timeline.)
+    if (cardTop && !isRevealHeroRef.current) {
+      applyCardTopOpacity(cardTop, opacity)
+    }
   }
 
-  useFrame((_, delta) => {
-    if (!groupRef.current) {
-      return
-    }
+useFrame((_, delta) => {
+	    if (!groupRef.current) {
+	      return
+	    }
 
-    const liveOffset = index - focusIndexRef.current
-    const isLiveCenter = liveOffset === 0
-    const dt = Math.min(delta, 1 / 30)
+	    const liveOffset = index - focusIndexRef.current
+	    const isLiveCenter = liveOffset === 0
+	    const dt = Math.min(delta, 1 / 30)
 
-    // ---- Hero open sequence: same pack, spin/duck in place ----
-    if (isRevealHeroRef.current && openAnimRef.current.phase !== 'idle') {
+	    // ---- Cart remove exit: rise (anticipation), then drop out ----
+	    if (removeExitRef.current.phase !== 'idle') {
+	      const exit = removeExitRef.current
+	      const motion = motionRef.current
+	      const modelRot = modelRotRef.current
+
+	      motion.vx = 0
+	      motion.vy = 0
+	      motion.vz = 0
+	      motion.vRotY = 0
+	      motion.vScale = 0
+	      hoverYawTargetRef.current = 0
+	      hoverYawRef.current = 0
+
+	      if (exit.phase === 'anticipation') {
+	        const t = clamp01(
+	          (performance.now() - exit.startMs) / REMOVE_ANTICIPATION_MS,
+	        )
+	        const wind = easeAppleOut(t)
+	        motion.x = exit.fromX
+	        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_ANTICIPATION_Y, wind)
+	        motion.z = exit.fromZ
+	        motion.scale = lerp(
+	          exit.fromScale,
+	          exit.fromScale * REMOVE_ANTICIPATION_SCALE,
+	          wind,
+	        )
+	        motion.rotY = exit.fromRotY
+	        modelRot.x = item.modelRotation.x
+	        modelRot.y = item.modelRotation.y
+	        modelRot.z = item.modelRotation.z
+	        applyOpacity(exit.fromOpacity)
+
+	        groupRef.current.position.set(motion.x, motion.y, motion.z)
+	        groupRef.current.rotation.set(0, motion.rotY, 0)
+	        groupRef.current.scale.setScalar(motion.scale)
+	        if (modelRef.current) {
+	          modelRef.current.rotation.set(
+	            MathUtils.degToRad(modelRot.x),
+	            MathUtils.degToRad(modelRot.y),
+	            MathUtils.degToRad(modelRot.z),
+	          )
+	        }
+	        groupRef.current.visible = true
+
+	        if (t < 1) return
+
+	        exit.phase = 'drop'
+	        exit.startMs = performance.now()
+	        exit.fromX = motion.x
+	        exit.fromY = motion.y
+	        exit.fromZ = motion.z
+	        exit.fromScale = motion.scale
+	        exit.fromRotY = motion.rotY
+	        exit.fromOpacity = opacityRef.current
+	        // Fall through into drop this frame.
+	      }
+
+	      if (exit.phase === 'drop') {
+	        const t = clamp01((performance.now() - exit.startMs) / REMOVE_DROP_MS)
+	        const fall = easeAppleDrop(t)
+	        // Opacity lags a touch so the pack stays readable while it starts falling.
+	        const fade = cubicBezierEase(0.55, 0.02, 0.78, 0.28, t)
+	        motion.x = exit.fromX
+	        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_DROP_Y, fall)
+	        motion.z = exit.fromZ
+	        motion.scale = lerp(exit.fromScale, exit.fromScale * REMOVE_DROP_SCALE, fall)
+	        motion.rotY = exit.fromRotY
+	        modelRot.x = item.modelRotation.x + REMOVE_DROP_ROT_X_DEG * fall
+	        modelRot.y = item.modelRotation.y
+	        modelRot.z = item.modelRotation.z
+	        applyOpacity(lerp(exit.fromOpacity, 0, fade))
+
+	        groupRef.current.position.set(motion.x, motion.y, motion.z)
+	        groupRef.current.rotation.set(0, motion.rotY, 0)
+	        groupRef.current.scale.setScalar(motion.scale)
+	        if (modelRef.current) {
+	          modelRef.current.rotation.set(
+	            MathUtils.degToRad(modelRot.x),
+	            MathUtils.degToRad(modelRot.y),
+	            MathUtils.degToRad(modelRot.z),
+	          )
+	        }
+	        groupRef.current.visible = opacityRef.current > 0.02
+
+	        if (t < 1) return
+
+	        exit.phase = 'idle'
+	        groupRef.current.visible = false
+	        onRemoveRef.current?.(item)
+	        return
+	      }
+	    }
+
+	    // ---- Hero open sequence: same pack, spin/duck in place ----
+	    if (isRevealHeroRef.current && openAnimRef.current.phase !== 'idle') {
       const openAnim = openAnimRef.current
       const tl = openTimelineRef.current
       const packsX = packsXRef.current
@@ -1729,11 +2047,11 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
       inRange && (isRevealHeroRef.current || opacity > 0.02)
   })
 
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation()
-    if (revealModeRef.current) return
-    onSelect(item.id)
-  }
+const handleClick = (event: ThreeEvent<MouseEvent>) => {
+	    event.stopPropagation()
+	    if (revealModeRef.current || removeExitRef.current.phase !== 'idle') return
+	    onSelect(item.id)
+	  }
 
   const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
     if (
@@ -1789,22 +2107,22 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
 	        transform=false + no distanceFactor => constant CSS size
 	        (labels/CTA never scale with pack pop, FOV, or camera distance).
 	      */}
-{browseHudMounted ? (
-		        <Html
-		          position={browseHudPosition}
-		          center
-		          transform={false}
-		          sprite={false}
-		          zIndexRange={[20, 0]}
-		          style={{ pointerEvents: 'none' }}
-wrapperClass={`coverflow-pack-html coverflow-pack-html--browse${
-	            isActive
-	              ? ' is-active-hidden'
-	              : browseHudVisible
-	                ? ' is-visible'
-	                : ''
-	          }${shortHudGlass ? ' is-short-glass' : ''}`}
-	        >
+{browseHudMounted && !isRemoving ? (
+			        <Html
+			          position={browseHudPosition}
+			          center
+			          transform={false}
+			          sprite={false}
+			          zIndexRange={[20, 0]}
+			          style={{ pointerEvents: 'none' }}
+	wrapperClass={`coverflow-pack-html coverflow-pack-html--browse${
+		            isActive
+		              ? ' is-active-hidden'
+		              : browseHudVisible
+		                ? ' is-visible'
+		                : ''
+		          }${shortHudGlass ? ' is-short-glass' : ''}`}
+		        >
 	          <div
 	            className={`coverflow-pack-html-label${
 	              isActive
@@ -1821,37 +2139,25 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--browse${
             <p className="coverflow-pack-label__pack">
               {formatPackNumberLabel(item.girlName, item.packNumber)}
             </p>
-            {onRemove ? (
-              <button
-                type="button"
-                className="coverflow-cart-remove"
-                aria-label={`Remove ${item.packName || item.girlName} from cart`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onRemove(item)
-                }}
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            ) : null}
-          </div>
-        </Html>
-      ) : null}
+{removeControl}
+	          </div>
+	        </Html>
+	      ) : null}
 
-	{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
+		{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
 
-	{activeHudMounted ? (
-		        <Html
-		          position={activeHudPosition}
-		          center
-		          transform={false}
-		          sprite={false}
-		          zIndexRange={[30, 0]}
-		          style={{ pointerEvents: 'none' }}
-wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
-	            activeHudVisible ? ' is-visible' : ''
-	          }${shortHudGlass ? ' is-short-glass' : ''}`}
-	        >
+{activeHudMounted && !isRemoving ? (
+			        <Html
+			          position={activeHudPosition}
+			          center
+			          transform={false}
+			          sprite={false}
+			          zIndexRange={[30, 0]}
+			          style={{ pointerEvents: 'none' }}
+	wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
+		            activeHudVisible ? ' is-visible' : ''
+		          }${shortHudGlass ? ' is-short-glass' : ''}`}
+		        >
 	          <div
 	            className={`coverflow-active-stack coverflow-active-stack--html${
 	              activeHudVisible ? ' is-visible' : ''
@@ -1867,42 +2173,32 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                {formatPackNumberLabel(item.girlName, item.packNumber)}
 	              </p>
 	            </div>
-            {onRemove ? (
-              <button
-                type="button"
-                className="coverflow-cart-remove"
-                aria-label={`Remove ${item.packName || item.girlName} from cart`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onRemove(item)
-                }}
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            ) : (
-              <div className="coverflow-buy-pack-cta">
-                <CtaButton
-                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
-                  {...ctaSize}
-                  auroraPaused={isMobile}
-                  glowOuterBloom="off"
-                  label="Buy Pack"
-                  costAmount={formatPrice(item.price ?? 4.99)}
-                  className="coverflow-buy-pack-cta__button"
-                  tabIndex={0}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onBuy?.(item)
-                  }}
-                />
-              </div>
-            )}
-	          </div>
-	        </Html>
-	      ) : null}
-    </group>
-  )
-}
+{hideActiveCta ? null : onRemove ? (
+		              removeControl
+		            ) : (
+		              <div className="coverflow-buy-pack-cta">
+		                <CtaButton
+		                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+		                  {...ctaSize}
+		                  auroraPaused={isMobile}
+		                  glowOuterBloom="off"
+		                  label="Buy Pack"
+		                  costAmount={formatPrice(item.price ?? 4.99)}
+		                  className="coverflow-buy-pack-cta__button"
+		                  tabIndex={0}
+		                  onClick={(event) => {
+		                    event.stopPropagation()
+		                    onBuy?.(item)
+		                  }}
+		                />
+		              </div>
+		            )}
+		          </div>
+		        </Html>
+		      ) : null}
+	    </group>
+	  )
+	}
 
 function CoverFlowScene({
 	  items,
@@ -1924,35 +2220,37 @@ function CoverFlowScene({
 	  onRevealSequenceComplete,
 	  onRevealPackBehindFan,
 	  onRevealPackBlurChange,
-			  formatPrice,
-			  onBuy,
-			  onRemove,
-			  tearHud,
-			}: {
-			  items: Iteration[]
-			  focusIndex: number
-			  selectedId: string | null
-			  cameraSettings: CoverFlowCameraSettings
-			  layout: CoverFlowLayoutSettings
-			  textureTransform: VideoTextureTransform
-			  centerTiltYaw: number
-			  centerTiltPitch: number
-			  isMobile: boolean
-			  shortHudGlass: boolean
-			  revealMode: boolean
-			  revealingPackId: string | null
-			  revealPlaySequence: boolean
-			  revealTimeline: PackTimeline
-			  revealDuckInTimeline: DuckInTimeline
-			  onSelect: (id: string) => void
-			  onRevealSequenceComplete?: () => void
-			  onRevealPackBehindFan?: () => void
-			  onRevealPackBlurChange?: (blurPx: number) => void
-			  formatPrice: (price: number) => string
-			  onBuy?: (item: Iteration) => void
-			  onRemove?: (item: Iteration) => void
-			  tearHud?: ReactNode
-			}) {
+formatPrice,
+				  onBuy,
+				  onRemove,
+				  hideActiveCta = false,
+				  tearHud,
+				}: {
+				  items: Iteration[]
+				  focusIndex: number
+				  selectedId: string | null
+				  cameraSettings: CoverFlowCameraSettings
+				  layout: CoverFlowLayoutSettings
+				  textureTransform: VideoTextureTransform
+				  centerTiltYaw: number
+				  centerTiltPitch: number
+				  isMobile: boolean
+				  shortHudGlass: boolean
+				  revealMode: boolean
+				  revealingPackId: string | null
+				  revealPlaySequence: boolean
+				  revealTimeline: PackTimeline
+				  revealDuckInTimeline: DuckInTimeline
+				  onSelect: (id: string) => void
+				  onRevealSequenceComplete?: () => void
+				  onRevealPackBehindFan?: () => void
+				  onRevealPackBlurChange?: (blurPx: number) => void
+				  formatPrice: (price: number) => string
+				  onBuy?: (item: Iteration) => void
+				  onRemove?: (item: Iteration) => void
+				  hideActiveCta?: boolean
+				  tearHud?: ReactNode
+				}) {
 	  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -2004,17 +2302,18 @@ function CoverFlowScene({
               onOpenPackBlurChange={
                 isRevealHero ? onRevealPackBlurChange : undefined
               }
-              formatPrice={formatPrice}
-              onBuy={onBuy}
-              onRemove={onRemove}
-              tearHud={index === focusIndex ? tearHud : undefined}
-            />
-          )
-        })}
-      </group>
-    </>
-  )
-}
+formatPrice={formatPrice}
+	              onBuy={onBuy}
+	              onRemove={onRemove}
+	              hideActiveCta={hideActiveCta}
+	              tearHud={index === focusIndex ? tearHud : undefined}
+	            />
+	          )
+	        })}
+	      </group>
+	    </>
+	  )
+	}
 
 // pmndrs/use-gesture thresholds
 const TAP_MAX_MOVE_PX = 12
@@ -2050,6 +2349,7 @@ export function CoverFlowCarouselV2({
   onFocusChange,
   onBuy,
   onRemove,
+  hideActiveCta = false,
   formatPrice = formatPackPrice,
   revealingCharacterId = null,
   revealingPackId: revealingPackIdProp = null,
@@ -2057,6 +2357,7 @@ export function CoverFlowCarouselV2({
   cameraSettings: cameraSettingsProp,
   layout: layoutProp,
   disableSwipeDownDeactivate = false,
+  disablePackOpenReveal = false,
   disableWheelPaging = false,
   tearHud,
   revealModelId = null,
@@ -2123,15 +2424,21 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   const [fanLayout] = useState(() => loadFanLayout())
   const [fanDrag] = useState(() => loadFanDrag())
   const [packOpenRequested, setPackOpenRequestedState] = useState(
-    () => getCardTopDebug().packOpenRequested,
+    () => (disablePackOpenReveal ? false : getCardTopDebug().packOpenRequested),
   )
   useEffect(() => {
+    if (disablePackOpenReveal) {
+      setPackOpenRequestedState(false)
+      return
+    }
     return subscribeCardTopDebug((debug) => {
       setPackOpenRequestedState(debug.packOpenRequested)
     })
-  }, [])
+  }, [disablePackOpenReveal])
   const focusedTearPack = items[focusIndex] ?? items[0] ?? null
-  const revealMode = packOpenRequested || revealingCharacterId != null
+  const revealMode =
+    !disablePackOpenReveal &&
+    (packOpenRequested || revealingCharacterId != null)
   // Prefer the exact pack id (foil slot 1 or 2); fall back to slot-1 id.
   const revealingPackId =
     revealingPackIdProp ??
@@ -2297,6 +2604,11 @@ const selectedIdRef = useRef(selectedId)
   // Once a chevron is clicked, suppress hover-auto-cycle until the pointer leaves and re-enters.
   const chevronHoverSuppressedDirectionRef = useRef<-1 | 1 | 0>(0)
 
+  // Ignore stage-level tap activation briefly after a pack mesh click.
+  // Otherwise R3F onClick (side pack) and use-gesture tap (focused pack)
+  // both fire and fight over which pack stays active.
+  const lastPackMeshSelectMsRef = useRef(0)
+
   // Keep keyboard/gesture handlers on the latest selection immediately.
   // selectedId only lands in selectedIdRef after paint via effect, so a fast
   // ↑ then ↓ (especially while the pointer is hovering the pack / CTA) used to
@@ -2304,11 +2616,27 @@ const selectedIdRef = useRef(selectedId)
   const selectPack = useCallback(
     (id: string) => {
       selectedIdRef.current = id
+      // Center the chosen pack in the same turn as selection so a following
+      // stage-tap / focus sync cannot snap back to the previous index.
+      const nextIndex = itemsRef.current.findIndex((item) => item.id === id)
+      if (nextIndex >= 0) {
+        focusIndexRef.current = nextIndex
+        setFocusIndex((current) => (current === nextIndex ? current : nextIndex))
+      }
+      lastPackMeshSelectMsRef.current = performance.now()
       onSelect(id)
     },
     [onSelect],
   )
   const deselectPack = useCallback(() => {
+    // Tear page (and other surfaces that disable swipe-down close) keep one
+    // pack active. Clearing the ref here while the controlled selectedId stays
+    // set makes moveFocus think nothing is active, then the selectedId effect
+    // yanks focus back — packs oscillate and never settle.
+    if (disableSwipeDownDeactivateRef.current && selectedIdRef.current) {
+      onDeselect()
+      return
+    }
     selectedIdRef.current = null
     onDeselect()
   }, [onDeselect])
@@ -2433,7 +2761,10 @@ useEffect(() => {
     if (selectedId) {
       const selectedIndex = items.findIndex((item) => item.id === selectedId)
       if (selectedIndex >= 0) {
-        setFocusIndex(selectedIndex)
+        // Avoid thrashing when selectedId is already centered.
+        setFocusIndex((current) =>
+          current === selectedIndex ? current : selectedIndex,
+        )
         return
       }
     }
@@ -2442,14 +2773,23 @@ useEffect(() => {
   }, [items, selectedId])
 
   // Bubble centered pack changes so the stage glow can follow each model.
+  // Only fire when the focused pack id changes — not on every items[] identity churn.
+  const lastFocusNotifyIdRef = useRef<string | null>(null)
   useEffect(() => {
     if (!onFocusChange) return
     if (items.length === 0) {
-      onFocusChange(null, 0)
+      if (lastFocusNotifyIdRef.current !== null) {
+        lastFocusNotifyIdRef.current = null
+        onFocusChange(null, 0)
+      }
       return
     }
     const index = clamp(focusIndex, 0, items.length - 1)
-    onFocusChange(items[index] ?? null, index)
+    const item = items[index] ?? null
+    const id = item?.id ?? null
+    if (id === lastFocusNotifyIdRef.current) return
+    lastFocusNotifyIdRef.current = id
+    onFocusChange(item, index)
   }, [focusIndex, items, onFocusChange])
 
   // Phone tilt drives the same center-pack yaw used by scrub/hover.
@@ -2883,6 +3223,12 @@ useEffect(() => {
       }
 
       const commitActivate = (mode: LiveGestureMode = 'activate') => {
+        // Pack mesh onClick already selected + focused; don't re-activate the
+        // previously centered pack and undo that choice.
+        if (performance.now() - lastPackMeshSelectMsRef.current < 450) {
+          finishGesture(mode)
+          return
+        }
         const focused = itemsRef.current[focusIndexRef.current]
         if (focused) {
           selectPack(focused.id)
@@ -3224,6 +3570,7 @@ isMobile={isMobileViewportActive}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
                 onRemove={onRemove}
+                hideActiveCta={hideActiveCta}
                 tearHud={tearHud}
               />
             </Suspense>

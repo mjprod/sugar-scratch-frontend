@@ -10,9 +10,7 @@ import {
 } from "react";
 import {
   Compass,
-  Gift,
   Home,
-  Layers3,
   User,
   type LucideIcon,
 } from "lucide-react";
@@ -70,7 +68,11 @@ function bubbleRadiusForTab(id: AppTab) {
   return BUBBLE_RADIUS.default;
 }
 
-type NavIcon = LucideIcon | typeof LoginIcon;
+type NavIcon =
+  | LucideIcon
+  | typeof LoginIcon
+  | typeof DiamondIcon
+  | typeof CollectionIcon;
 
 type TabConfig = {
   id: AppTab;
@@ -106,12 +108,68 @@ function LoginIcon({
   );
 }
 
+/** Store tab — sourced from /public/svg/iconDiamond.svg */
+function DiamondIcon({
+  className,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  fill?: string;
+  fillOpacity?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={["nav-diamond-icon", className].filter(Boolean).join(" ")}
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M11.329 19.159q-.323-.14-.566-.432L3.267 9.731q-.186-.217-.28-.475t-.093-.55q0-.187.047-.366q.048-.18.134-.361l1.779-3.59q.217-.405.603-.647t.845-.242h11.396q.46 0 .845.242t.603.646l1.779 3.59q.087.182.134.362t.047.366q0 .292-.094.55t-.28.475l-7.495 8.996q-.243.292-.566.432q-.323.139-.671.139t-.671-.14M8.817 8.5h6.366l-2-4h-2.366zm2.683 9.56V9.5H4.392zm1 0l7.108-8.56H12.5zm3.792-9.56h3.766L18.23 4.846q-.077-.154-.231-.25t-.327-.096h-3.38zm-12.35 0h3.766l2-4H6.327q-.173 0-.327.096t-.23.25z"
+      />
+    </svg>
+  );
+}
+
+/** My Collection tab — stacked cards mark (14 artboard, padded for stroke). */
+function CollectionIcon({
+  className,
+  strokeWidth = 1.8,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  fill?: string;
+  fillOpacity?: number;
+}) {
+  // Lucide icons use ~1.8–2.1 on a 24 viewBox; scale to this 14 artboard.
+  const sw = Math.max(0.9, (strokeWidth * 14) / 24);
+  return (
+    <svg
+      viewBox="-1 -1 16 16"
+      fill="none"
+      overflow="visible"
+      className={className}
+      aria-hidden="true"
+    >
+      <g
+        stroke="currentColor"
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M6.546.857a.475.475 0 0 1 .581-.335l6.02 1.612a.475.475 0 0 1 .337.581l-2.31 8.618a.475.475 0 0 1-.582.335l-6.02-1.612a.475.475 0 0 1-.336-.581z" />
+        <path d="M6.108 2.535L.852 3.944a.475.475 0 0 0-.336.581l2.308 8.618a.475.475 0 0 0 .582.335l3.01-.806" />
+      </g>
+    </svg>
+  );
+}
+
 /** Mobile dock order. */
 const TABS: TabConfig[] = [
   { id: "home", label: "Discover", icon: Compass },
   { id: "feed", label: "Home", icon: Home },
-  { id: "bag", label: "My Collection", icon: Layers3, primary: true },
-  { id: "hub", label: "Store", icon: Gift },
+  { id: "bag", label: "My Collection", icon: CollectionIcon, primary: true },
+  { id: "hub", label: "Store", icon: DiamondIcon },
   { id: "profile", label: "Profile", icon: User },
 ];
 
@@ -122,8 +180,8 @@ const TABS: TabConfig[] = [
 const DESKTOP_TABS: TabConfig[] = [
   { id: "feed", label: "Home", icon: Home },
   { id: "home", label: "Discover", icon: Compass },
-  { id: "hub", label: "Store", icon: Gift },
-  { id: "bag", label: "My Collection", icon: Layers3, primary: true },
+  { id: "hub", label: "Store", icon: DiamondIcon },
+  { id: "bag", label: "My Collection", icon: CollectionIcon, primary: true },
 ];
 
 /**

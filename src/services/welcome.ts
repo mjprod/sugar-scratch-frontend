@@ -79,6 +79,7 @@ export function claimWelcomeRewards(accountClaimed = false): {
 export function clearWelcomeGiftState() {
   try {
     localStorage.removeItem(CLAIMED_KEY);
+    localStorage.removeItem("sugar.v8.welcomeStatus");
     sessionStorage.removeItem(SESSION_HIDE_KEY);
   } catch {
     /* ignore */

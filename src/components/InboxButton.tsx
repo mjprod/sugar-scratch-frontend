@@ -1,4 +1,5 @@
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
+import { countCartPacks, subscribeCart } from "@/services/cart";
 
 /**
  * Global HUD utility control — cart for packs to open (TopNav / mobile utility).
@@ -12,6 +13,19 @@ export function InboxUtilityBadge({ count = 0 }: { count?: number }) {
       {badgeLabel}
     </span>
   );
+}
+
+function usePackPocketCount() {
+  const [count, setCount] = useState(() =>
+    typeof window === "undefined" ? 0 : countCartPacks(),
+  );
+
+  useEffect(() => {
+    setCount(countCartPacks());
+    return subscribeCart(() => setCount(countCartPacks()));
+  }, []);
+
+  return count;
 }
 
 function CartOutlineIcon({
@@ -79,17 +93,23 @@ export const PacksButton = forwardRef<
   { onOpen, className = "", variant = "surface", active = false },
   ref,
 ) {
+  const packCount = usePackPocketCount();
   const surfaceClasses =
     "inbox-utility-btn relative grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95";
   const ghostClasses =
     "inbox-utility-btn inbox-utility-btn--ghost relative grid min-h-10 min-w-10 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95";
+
+  const ariaLabel =
+    packCount > 0
+      ? `Pack Pocket, ${packCount} pack${packCount === 1 ? "" : "s"}`
+      : "Pack Pocket";
 
   return (
     <button
       ref={ref}
       type="button"
       onClick={onOpen}
-      aria-label="Pack Pocket"
+      aria-label={ariaLabel}
       aria-current={active ? "page" : undefined}
       className={[
         variant === "ghost" ? ghostClasses : surfaceClasses,
@@ -102,6 +122,7 @@ export const PacksButton = forwardRef<
       <CartOutlineIcon
         className={variant === "ghost" ? "size-[18px]" : "size-5"}
       />
+      <InboxUtilityBadge count={packCount} />
     </button>
   );
 });

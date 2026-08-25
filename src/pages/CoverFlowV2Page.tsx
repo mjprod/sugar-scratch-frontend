@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
+import {
+  CoverFlowCarouselV2,
+  DEFAULT_COVERFLOW_CAMERA,
+  MOBILE_COVERFLOW_CAMERA,
+  type CoverFlowCameraSettings,
+} from "@/features/packs/CoverFlowCarouselV2";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
 import {
@@ -27,6 +32,60 @@ import {
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const MAX_PACKS = 10;
 const PACK_MODEL_URL_V2 = "/assets/CardPack2-min.glb";
+const COVERFLOW_MOBILE_QUERY = "(max-width: 980px)";
+const CENTER_DEBUG_STORAGE_KEY = "sugar.coverflowV2.centerDebug.v2";
+/** Flip off when horizontal centering is locked in. */
+const CENTER_DEBUG_ENABLED = false;
+
+type CenterDebugState = {
+  cameraX: number;
+  packsX: number;
+  cameraY: number;
+  packsY: number;
+  modelY: number;
+  cameraZ: number;
+  lookAtY: number;
+  fov: number;
+};
+
+function isMobileCoverflowViewport() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
+  );
+}
+
+function defaultCenterDebug(isMobile: boolean): CenterDebugState {
+  const camera = isMobile ? MOBILE_COVERFLOW_CAMERA : DEFAULT_COVERFLOW_CAMERA;
+  return {
+    cameraX: camera.cameraX,
+    packsX: camera.packsX,
+    cameraY: camera.cameraY,
+    packsY: camera.packsY,
+    modelY: camera.modelY,
+    cameraZ: camera.cameraZ,
+    lookAtY: camera.lookAtY,
+    fov: camera.fov,
+  };
+}
+
+function loadCenterDebug(isMobile: boolean): CenterDebugState {
+  const fallback = defaultCenterDebug(isMobile);
+  if (!CENTER_DEBUG_ENABLED || typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(CENTER_DEBUG_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<CenterDebugState>;
+    const next = { ...fallback };
+    (Object.keys(fallback) as Array<keyof CenterDebugState>).forEach((key) => {
+      const value = parsed[key];
+      if (typeof value === "number" && Number.isFinite(value)) next[key] = value;
+    });
+    return next;
+  } catch {
+    return fallback;
+  }
+}
 
 type CoverFlowCatalog = {
   items: Iteration[];
@@ -238,6 +297,184 @@ function TearLottieDebugPanel({ onReplay }: { onReplay: () => void }) {
   );
 }
 
+function CoverflowCenterDebugPanel({
+  debug,
+  open,
+  isMobile,
+  onChange,
+  onOpenChange,
+}: {
+  debug: CenterDebugState;
+  open: boolean;
+  isMobile: boolean;
+  onChange: (next: CenterDebugState) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [copyLabel, setCopyLabel] = useState("Copy");
+
+  function update<K extends keyof CenterDebugState>(
+    key: K,
+    value: CenterDebugState[K],
+  ) {
+    onChange({ ...debug, [key]: value });
+  }
+
+  async function copyDebug() {
+    const snippet = [
+      `cameraX: ${debug.cameraX},`,
+      `packsX: ${debug.packsX},`,
+      `cameraY: ${debug.cameraY},`,
+      `packsY: ${debug.packsY},`,
+      `modelY: ${debug.modelY},`,
+      `cameraZ: ${debug.cameraZ},`,
+      `lookAtY: ${debug.lookAtY},`,
+      `fov: ${debug.fov},`,
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopyLabel("Copied");
+    } catch {
+      setCopyLabel("Copy failed");
+    }
+    window.setTimeout(() => setCopyLabel("Copy"), 1600);
+  }
+
+  if (!CENTER_DEBUG_ENABLED || typeof document === "undefined") return null;
+
+  return createPortal(
+    <aside
+      className={[
+        "home-hero-debug",
+        "home-hero-debug--center",
+        open ? "" : "is-collapsed",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="Coverflow center debug"
+    >
+      <div className="home-hero-debug__head">
+        <p className="home-hero-debug__title">Coverflow center</p>
+        <div className="home-hero-debug__actions">
+          <button
+            type="button"
+            className="home-hero-debug__btn"
+            onClick={() => onChange(defaultCenterDebug(isMobile))}
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            className="home-hero-debug__btn"
+            onClick={() => void copyDebug()}
+          >
+            {copyLabel}
+          </button>
+          <button
+            type="button"
+            className="home-hero-debug__btn"
+            onClick={() => onOpenChange(!open)}
+          >
+            {open ? "Hide" : "Show"}
+          </button>
+        </div>
+      </div>
+      <div className="home-hero-debug__body">
+        <div className="home-hero-debug__section">
+          <p className="home-hero-debug__section-title">Horizontal center</p>
+          <p className="home-hero-debug__hint">
+            Green line = viewport center. Nudge Camera X / Packs X until the
+            active pack sits on it.
+          </p>
+          <CardTopDebugField
+            label="Camera X"
+            value={debug.cameraX}
+            min={-2}
+            max={2}
+            step={0.005}
+            suffix=""
+            digits={3}
+            onChange={(value) => update("cameraX", value)}
+          />
+          <CardTopDebugField
+            label="Packs X"
+            value={debug.packsX}
+            min={-2}
+            max={2}
+            step={0.005}
+            suffix=""
+            digits={3}
+            onChange={(value) => update("packsX", value)}
+          />
+        </div>
+        <div className="home-hero-debug__section">
+          <p className="home-hero-debug__section-title">Vertical / depth</p>
+          <CardTopDebugField
+            label="Packs Y"
+            value={debug.packsY}
+            min={-3}
+            max={1.5}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => update("packsY", value)}
+          />
+          <CardTopDebugField
+            label="Model Y"
+            value={debug.modelY}
+            min={-2}
+            max={1.5}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => update("modelY", value)}
+          />
+          <CardTopDebugField
+            label="Camera Y"
+            value={debug.cameraY}
+            min={-1.5}
+            max={2}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => update("cameraY", value)}
+          />
+          <CardTopDebugField
+            label="Look at Y"
+            value={debug.lookAtY}
+            min={-1.5}
+            max={1.5}
+            step={0.01}
+            suffix=""
+            digits={2}
+            onChange={(value) => update("lookAtY", value)}
+          />
+          <CardTopDebugField
+            label="Camera Z"
+            value={debug.cameraZ}
+            min={3}
+            max={10}
+            step={0.05}
+            suffix=""
+            digits={2}
+            onChange={(value) => update("cameraZ", value)}
+          />
+          <CardTopDebugField
+            label="FOV"
+            value={debug.fov}
+            min={18}
+            max={55}
+            step={0.5}
+            suffix="°"
+            digits={1}
+            onChange={(value) => update("fov", value)}
+          />
+        </div>
+      </div>
+    </aside>,
+    document.body,
+  );
+}
+
 function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
   const items: Iteration[] = [];
   const playById = new Map<
@@ -280,8 +517,32 @@ export function CoverFlowV2Page() {
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    isMobileCoverflowViewport,
+  );
+  const [centerDebug, setCenterDebug] = useState<CenterDebugState>(() =>
+    loadCenterDebug(isMobileCoverflowViewport()),
+  );
+  const [centerDebugOpen, setCenterDebugOpen] = useState(CENTER_DEBUG_ENABLED);
 
   useMarkPageReady(catalog !== null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(COVERFLOW_MOBILE_QUERY);
+    const apply = () => setIsMobileViewport(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!CENTER_DEBUG_ENABLED || typeof window === "undefined") return;
+    window.localStorage.setItem(
+      CENTER_DEBUG_STORAGE_KEY,
+      JSON.stringify(centerDebug),
+    );
+  }, [centerDebug]);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,6 +572,23 @@ export function CoverFlowV2Page() {
 
   const items = catalog?.items ?? [];
 
+  const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
+    const base = isMobileViewport
+      ? MOBILE_COVERFLOW_CAMERA
+      : DEFAULT_COVERFLOW_CAMERA;
+    return {
+      ...base,
+      cameraX: centerDebug.cameraX,
+      packsX: centerDebug.packsX,
+      cameraY: centerDebug.cameraY,
+      packsY: centerDebug.packsY,
+      modelY: centerDebug.modelY,
+      cameraZ: centerDebug.cameraZ,
+      lookAtY: centerDebug.lookAtY,
+      fov: centerDebug.fov,
+    };
+  }, [centerDebug, isMobileViewport]);
+
   useEffect(() => {
     if (!selectedId && items[0]) {
       setSelectedId(items[0].id);
@@ -325,6 +603,13 @@ export function CoverFlowV2Page() {
         aria-label="Coverflow v2"
       >
         <TearLottieDebugPanel onReplay={tear.replayTear} />
+        <CoverflowCenterDebugPanel
+          debug={centerDebug}
+          open={centerDebugOpen}
+          isMobile={isMobileViewport}
+          onChange={setCenterDebug}
+          onOpenChange={setCenterDebugOpen}
+        />
       </section>
     );
   }
@@ -350,6 +635,7 @@ export function CoverFlowV2Page() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
+          cameraSettings={cameraSettings}
           revealModelId={
             (selectedId && catalog.playById.get(selectedId)?.id) ||
             items.find((item) => item.id === selectedId)?.characterId ||
@@ -418,8 +704,21 @@ export function CoverFlowV2Page() {
             />
           }
         />
+        {CENTER_DEBUG_ENABLED && centerDebugOpen ? (
+          <div className="coverflow-center-guide" aria-hidden="true">
+            <span className="coverflow-center-guide__line" />
+            <span className="coverflow-center-guide__label">center</span>
+          </div>
+        ) : null}
       </div>
       <TearLottieDebugPanel onReplay={tear.replayTear} />
+      <CoverflowCenterDebugPanel
+        debug={centerDebug}
+        open={centerDebugOpen}
+        isMobile={isMobileViewport}
+        onChange={setCenterDebug}
+        onOpenChange={setCenterDebugOpen}
+      />
     </section>
   );
 }
