@@ -1386,8 +1386,8 @@ textarea:focus-visible {
 /* Body match: light 2.5D — one glow plate + paused symbol (no blend modes). */
 .flying-coin.is-match-fly {
   z-index: 12;
-  width: 84px;
-  height: 84px;
+  width: 42px;
+  height: 42px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -3440,10 +3440,10 @@ dd {
   display: none;
   align-items: center;
   justify-content: center;
-  /* Keep in sync with BODY_SYMBOL_ICON_PX in ScratchPrototype / PhotoScratchTest. */
-  width: 72px;
-  height: 72px;
-  margin: -36px 0 0 -36px;
+  /* Keep in sync with BODY_SYMBOL_ICON_PX in ScratchPrototype / PhotoScratch. */
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
   border: none;
   background: transparent;
   overflow: hidden;

@@ -443,8 +443,8 @@ const SYMBOL_REVEAL_UV_RADIUS = 0.06;
  * floating over still-opaque clothing just because a stroke passed nearby. */
 const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
- * upscale a soft 42px canvas. */
-const BODY_SYMBOL_ICON_PX = 72;
+ * upscale a soft canvas. */
+const BODY_SYMBOL_ICON_PX = 36;
 
 type ScratchZoomSettings = {
   enabled: boolean;
@@ -4471,7 +4471,7 @@ export function ScratchPrototype() {
                   }
                 >
                   {index < revealedSymbols ? (
-                    <GameSymbolIcon typeId={typeId} />
+                    <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
                   ) : null}
                 </div>
               ))}
@@ -4504,6 +4504,7 @@ export function ScratchPrototype() {
                       <GameSymbolIcon
                         typeId={typeId}
                         size={BODY_SYMBOL_ICON_PX}
+                        pixelScale={1.2}
                         paused
                       />
                     </span>
@@ -4542,7 +4543,7 @@ export function ScratchPrototype() {
                   onAnimationEnd={() => removeFlyingCoin(coin.id)}
                   aria-hidden="true"
                 >
-                  <GameSymbolIcon typeId={coin.typeId} />
+                  <GameSymbolIcon typeId={coin.typeId} pixelScale={1.15} />
                 </div>
               ))
             : flyingCoins.map((coin) => (
@@ -4573,7 +4574,12 @@ export function ScratchPrototype() {
                       aria-hidden="true"
                     />
                     <span className="flying-coin-face flying-coin-plane flying-coin-plane--mid">
-                      <GameSymbolIcon typeId={coin.typeId} size={68} paused />
+                      <GameSymbolIcon
+                        typeId={coin.typeId}
+                        size={34}
+                        pixelScale={2.2}
+                        paused
+                      />
                     </span>
                   </span>
                 </div>

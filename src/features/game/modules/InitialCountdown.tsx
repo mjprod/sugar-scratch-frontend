@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 
 /** Match `.top-symbol-bar` dock fly animation in styles.css. */
 export const TOP_BAR_DOCK_MS = 720;
@@ -282,6 +283,7 @@ export function InitialCountdown({
           height={COUNTDOWN_SIZE_PX}
           className="initial-countdown-lottie"
           style={{ width: COUNTDOWN_SIZE_PX, height: COUNTDOWN_SIZE_PX }}
+          renderConfig={lottieRenderConfig()}
           dotLottieRefCallback={setDotLottie}
         />
       ) : (

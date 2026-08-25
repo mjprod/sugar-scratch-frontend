@@ -2,9 +2,9 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import type { CSSProperties } from "react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
-export const DIAMOND_LOTTIE_SRC = "/lottie/lottieDiamond.lottie";
+export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond Coin.lottie";
 
-type DiamondLottieProps = {
+type CoinLottieProps = {
   className?: string;
   /** Square edge length in CSS px (or any CSS length). Default 1em so it tracks text. */
   size?: number | string;
@@ -17,10 +17,9 @@ type DiamondLottieProps = {
 };
 
 /**
- * Inline diamond mark powered by public/lottie/lottieDiamond.lottie.
- * Drop-in replacement for the 💎 emoji in currency / cost UI.
+ * Inline coin mark powered by the media-proxied cursor-fx Diamond Coin Lottie.
  */
-export function DiamondLottie({
+export function CoinLottie({
   className,
   size = "1em",
   loop = true,
@@ -28,14 +27,13 @@ export function DiamondLottie({
   speed = 1.25,
   style,
   "aria-hidden": ariaHidden = true,
-}: DiamondLottieProps) {
-  // Scale mark ~30% larger than the surrounding text size, keep square.
+}: CoinLottieProps) {
   const edge =
     typeof size === "number" ? `${size * 1.3}px` : `calc(${size} * 1.3)`;
 
   return (
     <span
-      className={["diamond-lottie", className].filter(Boolean).join(" ")}
+      className={["coin-lottie", className].filter(Boolean).join(" ")}
       style={{
         display: "inline-grid",
         placeItems: "center",
@@ -49,7 +47,7 @@ export function DiamondLottie({
       aria-hidden={ariaHidden}
     >
       <DotLottieReact
-        src={DIAMOND_LOTTIE_SRC}
+        src={COIN_LOTTIE_SRC}
         autoplay={autoplay}
         loop={loop}
         speed={speed}

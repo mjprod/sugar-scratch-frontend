@@ -2,6 +2,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { DotLottieWorker } from "@lottiefiles/dotlottie-web";
 import type { DotLottie } from "@lottiefiles/dotlottie-web";
 import { useEffect, useRef, useState } from "react";
+import { lottieDevicePixelRatio, lottieRenderConfig } from "@/utils/lottieRender";
 import { SYMBOL_TYPES } from "./matchGame";
 import { joinSymbolRotation, type SymbolTurn } from "./symbolPlaybackRotation";
 
@@ -33,10 +34,12 @@ function WorkerSymbolIcon({
   src,
   size,
   paused,
+  pixelScale,
 }: {
   src: string;
   size: number;
   paused: boolean;
+  pixelScale: number;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<DotLottieWorker | null>(null);
@@ -50,18 +53,22 @@ function WorkerSymbolIcon({
     const host = hostRef.current;
     if (!host) return;
     const canvas = document.createElement("canvas");
-    // Bitmap starts at CSS size; DotLottieWorker then raises the backing store
-    // to size×DPR. Chrome lays transferred OffscreenCanvas out at buffer
-    // pixels unless CSS width/height are locked to `size` with !important —
-    // percentage sizing is ignored on those placeholders, so icons go ~2×.
-    canvas.width = size;
-    canvas.height = size;
+    // Size the buffer from CSS px × real DPR × extraScale. Do not append
+    // before constructing the player: `_create` reads getBoundingClientRect
+    // synchronously, and the top-bar enter animation is still at ~0.58× then,
+    // which would lock in a soft bitmap (`autoResize` is off). Detached
+    // canvases report 0×0, so the worker falls back to canvas.width/height.
+    // Chrome lays transferred OffscreenCanvas out at buffer pixels unless
+    // CSS width/height are locked to `size` with !important.
+    const dpr = lottieDevicePixelRatio(pixelScale);
+    const buffer = Math.max(1, Math.round(size * dpr));
+    canvas.width = buffer;
+    canvas.height = buffer;
     const lockCssSize = () => {
       canvas.style.setProperty("width", `${size}px`, "important");
       canvas.style.setProperty("height", `${size}px`, "important");
     };
     lockCssSize();
-    host.appendChild(canvas);
     const player = new DotLottieWorker({
       canvas,
       // Must be absolute: the worker fetches this itself, and a worker's base
@@ -75,12 +82,13 @@ function WorkerSymbolIcon({
       // See the note on the non-worker path below.
       useFrameInterpolation: false,
       workerId: SYMBOL_WORKER_ID,
-      // Keep DPR for sharpness, but never auto-grow the DOM box.
-      renderConfig: {
+      // Keep full DPR for sharpness, but never auto-grow the DOM box.
+      renderConfig: lottieRenderConfig({
         autoResize: false,
-        freezeOnOffscreen: true,
-      },
+        extraScale: pixelScale,
+      }),
     });
+    host.appendChild(canvas);
     const turn = joinSymbolRotation(() => {
       void player.play();
     });
@@ -122,7 +130,7 @@ function WorkerSymbolIcon({
       void player.destroy();
       canvas.remove();
     };
-  }, [src, size]);
+  }, [src, size, pixelScale]);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -152,14 +160,21 @@ function WorkerSymbolIcon({
 // NOTE: renderConfig must be a full-enough object — the library merges only
 // what you pass, but omitting autoResize previously defaulted in ways that
 // fought our fixed CSS box. We always pass autoResize: false here so the
-// worker keeps the host's inline `size` instead of growing with DPR.
+// worker keeps the host's inline `size` instead of growing with DPR, and
+// an explicit devicePixelRatio so icons stay sharp on retina.
 export function GameSymbolIcon({
   typeId,
   size = 24,
   paused = false,
+  pixelScale = 1,
 }: {
   typeId: number;
   size?: number;
+  /**
+   * Extra backing-store multiplier for CSS enlargements (top-bar slot pop,
+   * match-fly surge). 1 = screen DPR only.
+   */
+  pixelScale?: number;
   /**
    * Hold on the first frame and leave the playback rotation. Also freezes the
    * worker so desaturated / hidden icons (dormant top-bar slots, missed body
@@ -220,7 +235,13 @@ export function GameSymbolIcon({
 
   if (SUPPORTS_OFFSCREEN) {
     return (
-      <WorkerSymbolIcon key={entry.src} src={entry.src} size={size} paused={paused} />
+      <WorkerSymbolIcon
+        key={entry.src}
+        src={entry.src}
+        size={size}
+        paused={paused}
+        pixelScale={pixelScale}
+      />
     );
   }
 
@@ -237,6 +258,10 @@ export function GameSymbolIcon({
       // autoResize trap described above. It is read when the player is
       // constructed, so a hot reload will not apply a change to it.
       useFrameInterpolation={false}
+      renderConfig={lottieRenderConfig({
+        autoResize: false,
+        extraScale: pixelScale,
+      })}
       dotLottieRefCallback={(instance) => {
         setPlayer(instance as DotLottie | null);
       }}

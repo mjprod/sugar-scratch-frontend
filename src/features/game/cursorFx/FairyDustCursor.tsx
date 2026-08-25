@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DotLottie } from "@lottiefiles/dotlottie-web";
+import { lottieDevicePixelRatio } from "@/utils/lottieRender";
 
 // Ported from sugar-scratch-cursor-test-main's FairyDustCursor. The original
 // used `lottie-web` + a hidden DOM host to snapshot animation frames onto
@@ -55,10 +56,10 @@ const DEFAULT_COLORS = ["#ffffff"];
 const DEFAULT_CHARACTER_SET = ["✨", "⭐", "🌟", "★", "*"];
 const DEFAULT_INITIAL_VELOCITY = { min: 0.5, max: 1.5 };
 
-const LOTTIE_RENDER_SIZE = 128;
+const LOTTIE_RENDER_SIZE_CSS = 128;
 const LOTTIE_MAX_FRAMES = 48;
 const LOTTIE_FPS = 30;
-const EMOJI_RENDER_SIZE = 72;
+const EMOJI_RENDER_SIZE_CSS = 72;
 const PARTICLE_LIFESPAN = 100;
 // Particles are culled once they fade past this alpha. At the default fade
 // speed that ends their life around frame 40 rather than the ~75 frames it
@@ -101,13 +102,17 @@ function defaultTypesFromCharacters(chars: string[]): ParticleType[] {
 
 function prerenderLottieFrames(source: string | ArrayBuffer): Promise<HTMLCanvasElement[]> {
   return new Promise((resolve) => {
+    const renderSize = Math.max(
+      LOTTIE_RENDER_SIZE_CSS,
+      Math.round(LOTTIE_RENDER_SIZE_CSS * lottieDevicePixelRatio()),
+    );
     let player: DotLottie;
     try {
       player = new DotLottie({
         data: source,
         autoplay: false,
         loop: false,
-        canvas: { width: LOTTIE_RENDER_SIZE, height: LOTTIE_RENDER_SIZE },
+        canvas: { width: renderSize, height: renderSize },
       });
     } catch {
       resolve([]);
@@ -136,11 +141,11 @@ function prerenderLottieFrames(source: string | ArrayBuffer): Promise<HTMLCanvas
         if (!buffer) continue;
 
         const frame = document.createElement("canvas");
-        frame.width = LOTTIE_RENDER_SIZE;
-        frame.height = LOTTIE_RENDER_SIZE;
+        frame.width = renderSize;
+        frame.height = renderSize;
         const ctx = frame.getContext("2d");
         if (ctx) {
-          const imageData = new ImageData(new Uint8ClampedArray(buffer), LOTTIE_RENDER_SIZE, LOTTIE_RENDER_SIZE);
+          const imageData = new ImageData(new Uint8ClampedArray(buffer), renderSize, renderSize);
           ctx.putImageData(imageData, 0, 0);
         }
         frames.push(frame);
@@ -154,16 +159,20 @@ function prerenderLottieFrames(source: string | ArrayBuffer): Promise<HTMLCanvas
 // Rasterising a glyph once and blitting it is far cheaper than a `fillText`
 // (and its font re-parse) per particle per frame.
 function renderGlyph(character: string): HTMLCanvasElement {
+  const renderSize = Math.max(
+    EMOJI_RENDER_SIZE_CSS,
+    Math.round(EMOJI_RENDER_SIZE_CSS * lottieDevicePixelRatio()),
+  );
   const glyph = document.createElement("canvas");
-  glyph.width = EMOJI_RENDER_SIZE;
-  glyph.height = EMOJI_RENDER_SIZE;
+  glyph.width = renderSize;
+  glyph.height = renderSize;
   const ctx = glyph.getContext("2d");
   if (ctx) {
-    ctx.font = `${Math.round(EMOJI_RENDER_SIZE * 0.78)}px serif`;
+    ctx.font = `${Math.round(renderSize * 0.78)}px serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(character, EMOJI_RENDER_SIZE / 2, EMOJI_RENDER_SIZE / 2);
+    ctx.fillText(character, renderSize / 2, renderSize / 2);
   }
   return glyph;
 }
@@ -295,8 +304,14 @@ function FairyDustCursorImpl({
     if (!context) return;
 
     const { width, height } = canvasSize;
-    if (canvas.width !== width) canvas.width = width;
-    if (canvas.height !== height) canvas.height = height;
+    const overlayDpr = lottieDevicePixelRatio();
+    const bufferWidth = Math.max(1, Math.round(width * overlayDpr));
+    const bufferHeight = Math.max(1, Math.round(height * overlayDpr));
+    if (canvas.width !== bufferWidth) canvas.width = bufferWidth;
+    if (canvas.height !== bufferHeight) canvas.height = bufferHeight;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    context.setTransform(overlayDpr, 0, 0, overlayDpr, 0, 0);
 
     const particles = particlesRef.current;
     let animationFrameId = 0;
@@ -517,12 +532,12 @@ function FairyDustCursorImpl({
     <canvas
       ref={canvasRef}
       className="fairy-dust-cursor"
-      width={canvasSize.width}
-      height={canvasSize.height}
       style={{
         position: element ? "absolute" : "fixed",
         top: 0,
         left: 0,
+        width: canvasSize.width,
+        height: canvasSize.height,
         pointerEvents: "none",
         zIndex: 9999,
       }}
