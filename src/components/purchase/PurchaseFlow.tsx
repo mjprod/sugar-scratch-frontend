@@ -71,6 +71,7 @@ import {
   noteCreatorStarted,
   recordRevealedCards,
 } from "@/services/collectionState";
+import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   addUnopenedFromPurchase,
   countUnopened,
@@ -313,10 +314,14 @@ export function PurchaseFlow({
   const autoLaunchScratchRef = useRef(false);
   const sessionRef = useRef(session);
   sessionRef.current = session;
-  // Cover / inventory label — keep local (no missing helper that can crash render).
   const collectionTheme =
-    session?.foilLabel?.trim() ||
-    purchasedFoil?.label?.trim() ||
+    resolveCollectionThemeLabel({
+      themeName: pack.themeName,
+      packName: session?.foilLabel ?? purchasedFoil?.label ?? pack.packName,
+      catalogPackId: pack.packId,
+      creator: pack.creator,
+    }) ||
+    pack.themeName?.trim() ||
     pack.packName;
   const packCoverUrl = resolveInventoryCoverUrl({
     packId: pack.packId,
@@ -335,7 +340,8 @@ export function PurchaseFlow({
   }, [session]);
 
   useEffect(() => {
-    // Buy needs foil picker; open-from-inventory needs model id for motion hand.
+    // Buy path needs the model for foil picker; open-from-inventory needs it
+    // so Pack Ready can show a real foil instead of an empty shell.
     if (!buying && pack.entry !== "open") return;
     void loadModelProfile(pack.packId, pack.creator).then((profile) => {
       setModel(profile);
@@ -398,7 +404,7 @@ export function PurchaseFlow({
       session,
       revealed: scratched,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
   }, [
     stage,
@@ -435,6 +441,15 @@ export function PurchaseFlow({
       const paid = await submitPurchase(quantity, diamonds, pack.packId);
       onSpend(paid.diamondCost);
       const tx = newPurchaseId();
+      const themeName =
+        resolveCollectionThemeLabel({
+          themeName: pack.themeName,
+          packName: foil?.label ?? pack.packName,
+          catalogPackId: pack.packId,
+          creator: pack.creator,
+        }) ||
+        pack.themeName?.trim() ||
+        pack.packName;
       const owned = addUnopenedFromPurchase({
         purchaseId: tx,
         catalogPackId: pack.packId,
@@ -442,12 +457,12 @@ export function PurchaseFlow({
         creator: pack.creator,
         count: quantity,
         coverUrl: packCoverUrl,
-        themeName: pack.packName,
+        themeName,
       });
       const first = owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
       commitPurchaseIdempotencyKey(pack.packId, quantity);
-      noteCreatorStarted(first.creatorId, pack.creator);
+      noteCreatorStarted(first.creatorId, pack.creator, themeName);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
       setReadyPackCount(owned.length || quantity);
@@ -557,6 +572,7 @@ export function PurchaseFlow({
       count: fresh.length,
       creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
       creatorName: pack.creator,
+      themeName: collectionTheme,
     });
     onComplete({ cards: fresh.length, coins });
   }
@@ -571,7 +587,7 @@ export function PurchaseFlow({
       session: session!,
       revealed: revealedIds,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
 
@@ -633,7 +649,7 @@ export function PurchaseFlow({
       session,
       revealed: revealedIds,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     trackScratchEvent("Scratch Progress Saved", {
       packId: readyId,
@@ -967,8 +983,9 @@ export function PurchaseFlow({
             />
           ) : null}
 
-          {/* Open-from-Collection can land on ready before a session exists;
-              tear / fan cards create one. Requiring session hid ReadyStage. */}
+          {/* Open-from-Collection lands on ready with no session yet — tear
+              builds one in completeTear. Requiring session hid ReadyStage and
+              made Ready to Reveal "Open Pack" look broken. */}
           {stage === "ready" ? (
             <ReadyStage
               key={purchaseId ?? pack.packId}
@@ -1590,7 +1607,8 @@ function ReadyStage({
     );
   }, [items]);
 
-  // Reset tear before paint so a prior tearT≈1 cannot open reveal / black stage.
+  // Reset tear state before paint so a prior session's tearT≈1 cannot
+  // auto-fire onOpened / open reveal mode on mount.
   useLayoutEffect(() => {
     tear.replayTear();
   }, []);
@@ -1601,6 +1619,8 @@ function ReadyStage({
 
   useEffect(() => {
     if (openedRef.current || !selectedId) return;
+    // Only settle after a user-driven tear finish this mount — never from a
+    // persisted tearT≈1 left over from a previous pack open.
     if (!userTearRef.current) return;
     if (tear.debug.tearT < 0.999) return;
     openedRef.current = true;

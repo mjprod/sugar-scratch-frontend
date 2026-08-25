@@ -85,6 +85,35 @@ export function isThemeCompletionClaimed(
   return Boolean(readLedger().claimed[id]);
 }
 
+/** Theme ids already claimed for this creator (`theme-complete:creator:theme`). */
+export function listClaimedThemeIdsForCreator(creatorId: string): string[] {
+  const prefix = `theme-complete:${creatorId.trim()}:`;
+  return Object.keys(readLedger().claimed)
+    .filter((id) => id.startsWith(prefix))
+    .map((id) => id.slice(prefix.length))
+    .filter(Boolean);
+}
+
+export function creatorHasAnyThemeCompletionClaim(creatorId: string): boolean {
+  return listClaimedThemeIdsForCreator(creatorId).length > 0;
+}
+
+/**
+ * True when at least one listed theme is complete and still unclaimed.
+ * Prefer this over checking a fake `"primary"` theme id.
+ */
+export function creatorHasClaimableThemeReward(
+  creatorId: string,
+  themes: readonly { id: string; collected: number; total: number }[],
+): boolean {
+  return themes.some(
+    (theme) =>
+      theme.total > 0 &&
+      theme.collected >= theme.total &&
+      !isThemeCompletionClaimed(creatorId, theme.id),
+  );
+}
+
 export function resolveThemeRewardStatus(
   collected: number,
   total: number,

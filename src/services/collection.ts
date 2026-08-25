@@ -189,6 +189,8 @@ export type CreatorProgress = CreatorSummary & {
   themesStarted: number;
   themesTotal: number;
   cta: "continue" | "view" | "claim";
+  /** Most recent / active theme label for this creator, when known. */
+  themeName?: string;
 };
 
 export const CREATOR_SUMMARIES: CreatorSummary[] = [
@@ -400,6 +402,98 @@ const THEME_ALIASES: Record<string, string> = {
 export function canonicalThemeKey(value: string | null | undefined): string {
   const key = normalizeThemeKey(value);
   return THEME_ALIASES[key] ?? key;
+}
+
+/** Foil slot defaults when the API omits cardPackName (Juliana model packs). */
+const JULIANA_FOIL_THEME_BY_SLOT: Record<string, string> = {
+  "1": "Firegirl",
+  "2": "Gym",
+  "3": "Nurse",
+  "4": "Police",
+  "5": "Teacher",
+};
+
+/** Catalog / featured pack ids → theme display names. */
+const CATALOG_THEME_LABELS: Record<string, string> = {
+  cyber: "Cyber Nights",
+  "cyber-holo": "Cyber Nights",
+  "juliana-firegirl": "Firegirl",
+  "juliana-police": "Police",
+  "juliana-gym": "Gym",
+  "juliana-nurse": "Nurse",
+  "juliana-teacher": "Teacher",
+};
+
+const THEME_KEY_DISPLAY: Record<string, string> = {
+  cyber: "Cyber Nights",
+  summer: "Summer Nights",
+  police: "Police",
+  fire: "Firegirl",
+  firegirl: "Firegirl",
+  gym: "Gym",
+  nurse: "Nurse",
+  teacher: "Teacher",
+  midnight: "Midnight Room",
+  office: "Office Hours",
+};
+
+function isGenericPackLabel(value: string): boolean {
+  return /^pack\s*(?:n[ºo°.]?\s*)?\d+$/i.test(value.trim());
+}
+
+function tidyThemeLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+Pack$/i, "")
+    .replace(/\s·\s(?:Motion|Photos)$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+/**
+ * Prefer a real collection theme over foil placeholders like "Pack 1".
+ * Used by My Collection / Ready to Reveal labels.
+ */
+export function resolveCollectionThemeLabel(input: {
+  themeName?: string | null;
+  packName?: string | null;
+  catalogPackId?: string | null;
+  creator?: string | null;
+}): string {
+  const candidates = [input.themeName, input.packName]
+    .map((value) => (value ?? "").trim())
+    .filter(Boolean);
+
+  for (const raw of candidates) {
+    if (isGenericPackLabel(raw)) continue;
+    const key = canonicalThemeKey(raw);
+    if (key && THEME_KEY_DISPLAY[key]) return THEME_KEY_DISPLAY[key];
+    const cleaned = tidyThemeLabel(raw);
+    if (cleaned && !isGenericPackLabel(cleaned)) return cleaned;
+  }
+
+  const creator = (input.creator ?? "").toLowerCase();
+  for (const raw of candidates) {
+    const slot = raw.match(/^pack\s*(?:n[ºo°.]?\s*)?(\d+)$/i)?.[1];
+    if (!slot) continue;
+    if (creator.includes("juliana")) {
+      const mapped = JULIANA_FOIL_THEME_BY_SLOT[slot];
+      if (mapped) return mapped;
+    }
+  }
+
+  const catalogId = (input.catalogPackId ?? "").trim().toLowerCase();
+  if (catalogId && CATALOG_THEME_LABELS[catalogId]) {
+    return CATALOG_THEME_LABELS[catalogId];
+  }
+  if (catalogId) {
+    for (const part of catalogId.split(/[-_/]+/)) {
+      const key = canonicalThemeKey(part);
+      if (key && THEME_KEY_DISPLAY[key]) return THEME_KEY_DISPLAY[key];
+    }
+  }
+
+  return "";
 }
 
 export function themesMatch(

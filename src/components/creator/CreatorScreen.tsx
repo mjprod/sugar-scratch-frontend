@@ -274,6 +274,7 @@ function CreatorScreenInner({
     onBuyPack({
       packId,
       packName: packTheme.name,
+      themeName: packTheme.name,
       price: `${cost} ◆`,
       creator: creatorName,
       entry: "purchase",

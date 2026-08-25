@@ -101,13 +101,48 @@ reset();
   });
   clearReadyToScratch();
   const s = getCollectionPageState();
-  assert(s.hasCollectedCards && s.summary.uniqueCards === 3, "summary after reveal");
+  assert(s.hasCollectedCards && s.summary.cardsCollected === 3, "summary after reveal");
+  assert(s.summary.creatorsCollectedFrom >= 1, "creators from collected");
+  assert(typeof s.summary.collectionsInProgress === "number", "collections in progress");
+  assert(s.summary.rewardReadyCount === 0 || s.summary.rewardReadyCount >= 0, "reward ready absolute");
   assert(!s.hasPendingReveal, "ready hidden when nothing pending");
   assert(s.hasStartedCollection, "continue remains");
   assert(
     s.continueCreators.find((c) => c.id === "ashley")!.collected >= 3,
     "progress updates",
   );
+}
+
+reset();
+{
+  const owned = addUnopenedFromPurchase({
+    purchaseId: "tx-cyber-theme",
+    catalogPackId: "cyber-holo",
+    packName: "Pack 1",
+    creator: "Emily",
+    count: 1,
+    themeName: "Pack 1",
+  });
+  noteCreatorStarted(owned[0]!.creatorId, "Emily", "Pack 1");
+  const s = getCollectionPageState();
+  const emily = s.continueCreators.find((c) => c.name === "Emily");
+  assert(emily?.themeName === "Cyber Nights", "resolves Pack 1 via catalog to Cyber Nights");
+}
+
+reset();
+{
+  const owned = addUnopenedFromPurchase({
+    purchaseId: "tx-juliana-foil",
+    catalogPackId: "julianaval-1",
+    packName: "Pack 1",
+    creator: "Juliana",
+    count: 1,
+    themeName: "Pack 1",
+  });
+  noteCreatorStarted(owned[0]!.creatorId, "Juliana", "Pack 1");
+  const s = getCollectionPageState();
+  const juliana = s.continueCreators.find((c) => c.name === "Juliana");
+  assert(juliana?.themeName === "Firegirl", "Juliana Pack 1 → Firegirl");
 }
 
 console.log("v8 collection state self-check passed");

@@ -3,7 +3,9 @@
  */
 import {
   claimThemeCompletionReward,
+  creatorHasAnyThemeCompletionClaim,
   getThemeCompletionReward,
+  listClaimedThemeIdsForCreator,
   resetThemeCompletionRewardsForTests,
   resolveThemeRewardStatus,
 } from "./themeCompletionReward.ts";
@@ -68,5 +70,18 @@ const after = getThemeCompletionReward({
   total: 10,
 });
 assert(after.status === "claimed", "persists claimed");
+
+assert(
+  listClaimedThemeIdsForCreator(creatorId).includes("police"),
+  "claimed theme id is police (not primary)",
+);
+assert(
+  creatorHasAnyThemeCompletionClaim(creatorId),
+  "creator has at least one claim",
+);
+assert(
+  !creatorHasAnyThemeCompletionClaim("other-creator"),
+  "other creator has no claims",
+);
 
 console.log("themeCompletionReward.self-check: ok");
