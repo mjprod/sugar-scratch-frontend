@@ -21,6 +21,7 @@ import {
   diamondCostForPackId,
   type FeaturedPack,
 } from "@/services/homepage";
+import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   loadModels,
   profileFromModel,
@@ -120,6 +121,7 @@ export type FeaturedCoverFlowPlayTarget = {
   name: string;
   creatorName: string;
   diamondCost: number;
+  themeName?: string;
 };
 
 type CoverFlowCatalog = {
@@ -160,6 +162,12 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
         name: foil.label || profile.name,
         creatorName: profile.name,
         diamondCost,
+        themeName:
+          resolveCollectionThemeLabel({
+            packName: foil.label,
+            catalogPackId: foil.id,
+            creator: profile.name,
+          }) || undefined,
       });
     }
   }
@@ -193,6 +201,7 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
       name: pack.name,
       creatorName: pack.creatorName,
       diamondCost: pack.diamondCost,
+      themeName: pack.themeName,
     });
   }
 

@@ -252,10 +252,12 @@ export function HomeScreen({
     name: string;
     creatorName: string;
     diamondCost: number;
+    themeName?: string;
   }) {
     onStartPlaying?.({
       packId: pack.foilId ?? pack.id,
       packName: pack.name,
+      themeName: pack.themeName,
       price: String(pack.diamondCost),
       creator: pack.creatorName,
       characterId: pack.id,
@@ -268,6 +270,7 @@ export function HomeScreen({
       name: pack.name,
       creatorName: pack.creatorName,
       diamondCost: pack.diamondCost,
+      themeName: pack.themeName,
     });
   }
 

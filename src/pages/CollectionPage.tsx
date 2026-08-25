@@ -11,7 +11,7 @@ function CollectionScreen({
   onScratchGroup,
   inventoryRevision,
 }: {
-  onOpenCreator: (creatorId: string) => void;
+  onOpenCreator: (creatorId: string, themeId?: string) => void;
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onExplorePacks: () => void;
   onScratchGroup: (group: ScratchReadyGroup) => void;

@@ -163,7 +163,7 @@ type AuthContextValue = {
   openUnopenedPacks: () => void;
   openCart: () => void;
   addToCart: (pack: CartAddInput) => void;
-  openCreator: (id: string) => void;
+  openCreator: (id: string, themeId?: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
   openPasswordReset: () => void;
@@ -287,8 +287,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ScratchPrototype can skip Tap-to-play and arm the countdown.
         unlockCountdownSound();
         const readyId = action.pack.instanceId ?? action.pack.packId;
-        const packSession = loadGameSessionForPack(readyId);
-        if (packSession?.phase === "motion") {
+        // Pack-keyed only — resumeHref must not land in another pack's hand.
+        const packSession =
+          activateGameSessionForPack(readyId) ??
+          loadGameSessionForPack(readyId);
+        if (
+          packSession?.phase === "motion" &&
+          (!packSession.packScratch?.readyPackId ||
+            packSession.packScratch.readyPackId === readyId)
+        ) {
           activateGameSessionForPack(readyId);
           navigate(
             motionPlayHref(
@@ -306,16 +313,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "photo-scratch") {
         unlockCountdownSound();
         const packId = action.packId?.trim();
-        const session =
-          (packId && packId !== "session"
-            ? activateGameSessionForPack(packId)
-            : null) ?? loadGameSession();
-        if (session && (session.phase === "photo_reveal" || session.phase === "photo")) {
-          const started = beginPhotoPhase() ?? session;
+        const packSession =
+          packId && packId !== "session"
+            ? (activateGameSessionForPack(packId) ??
+              loadGameSessionForPack(packId))
+            : null;
+        if (
+          packSession &&
+          (packSession.phase === "photo_reveal" ||
+            packSession.phase === "photo") &&
+          (!packSession.packScratch?.readyPackId ||
+            !packId ||
+            packSession.packScratch.readyPackId === packId)
+        ) {
+          const started = beginPhotoPhase() ?? packSession;
           navigate(photoPlayHref(started));
-        } else {
-          navigate(Paths.collection);
+          return;
         }
+        if (!packId) {
+          const session = loadGameSession();
+          if (
+            session &&
+            (session.phase === "photo_reveal" || session.phase === "photo")
+          ) {
+            const started = beginPhotoPhase() ?? session;
+            navigate(photoPlayHref(started));
+            return;
+          }
+        }
+        navigate(Paths.collection);
         return;
       }
       if (action.type === "buy") {
@@ -499,9 +525,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const openCreator = useCallback(
-    (id: string) => {
+    (id: string, themeId?: string) => {
       noteCreatorEngagement(id);
-      navigate(Paths.creator(id));
+      const query = themeId?.trim()
+        ? `?theme=${encodeURIComponent(themeId.trim())}`
+        : "";
+      navigate(`${Paths.creator(id)}${query}`);
     },
     [navigate],
   );

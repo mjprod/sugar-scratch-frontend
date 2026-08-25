@@ -4,6 +4,7 @@
  */
 import type { OpeningSession } from "./purchase";
 import { resolveInventoryCoverUrl } from "../lib/photos";
+import { getPackInstance } from "./packInventory";
 
 export type PackStatus = "unopened" | "opened";
 export type CardRevealStatus = "unscratched" | "scratch-in-progress" | "revealed";
@@ -125,6 +126,13 @@ export function getReadyToScratch(packId: string): ReadyScratchPack | null {
 
 export function listReadyToScratch(): ReadyScratchGroup[] {
   return readAll()
+    .filter((pack) => {
+      // Sealed packs belong under Packs, never Cards — drop ghost entries
+      // created if tear settlement fired before a real open.
+      const owned = getPackInstance(pack.packId);
+      if (owned && owned.status === "unopened") return false;
+      return true;
+    })
     .map((pack) => ({
       id: pack.packId,
       creatorId: pack.creatorId,

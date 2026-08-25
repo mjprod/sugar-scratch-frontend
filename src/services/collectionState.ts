@@ -2,7 +2,11 @@
  * Persistent Collection ledger — revealed cards + started creators.
  * Pack inventory + ready-to-scratch remain source of pending ownership.
  */
-import type { CreatorProgress } from "./collection";
+import {
+  resolveCollectionThemeLabel,
+  canonicalThemeKey,
+  type CreatorProgress,
+} from "./collection";
 import {
   countOwnedPacks,
   countUnopened,
@@ -11,6 +15,10 @@ import {
 import { CREATOR_PHOTOS } from "../lib/photos";
 import { listStoredGameSessions } from "@/features/game/modules/gameSession";
 import { listReadyToScratch } from "./readyToScratch";
+import {
+  creatorHasAnyThemeCompletionClaim,
+  isThemeCompletionClaimed,
+} from "./themeCompletionReward";
 import { apiFetch } from "../lib/api";
 
 type CreatorLedger = {
@@ -19,6 +27,8 @@ type CreatorLedger = {
   collected: number;
   total: number;
   lastActiveAt: number;
+  /** Most recent theme / pack collection name, when known. */
+  themeName?: string;
 };
 
 type CollectionLedger = {
@@ -108,14 +118,34 @@ function avatarFor(creatorId: string, name: string) {
   return match?.[1].avatar ?? Object.values(CREATOR_PHOTOS)[0]?.avatar ?? "";
 }
 
+function themeLabelFromPack(
+  themeName?: string,
+  packName?: string,
+  catalogPackId?: string,
+  creator?: string,
+): string {
+  return resolveCollectionThemeLabel({
+    themeName,
+    packName,
+    catalogPackId,
+    creator,
+  });
+}
+
 /** Mark a Creator as started (e.g. after first Pack purchase). */
-export function noteCreatorStarted(creatorId: string, creatorName: string) {
+export function noteCreatorStarted(
+  creatorId: string,
+  creatorName: string,
+  themeName?: string,
+) {
   const id = creatorId || slugId(creatorName);
   const ledger = readLedger();
+  const theme = themeLabelFromPack(themeName);
   const existing = ledger.creators[id];
   if (existing) {
     existing.lastActiveAt = Date.now();
     existing.name = creatorName || existing.name;
+    if (theme) existing.themeName = theme;
   } else {
     ledger.creators[id] = {
       id,
@@ -123,6 +153,7 @@ export function noteCreatorStarted(creatorId: string, creatorName: string) {
       collected: 0,
       total: 15,
       lastActiveAt: Date.now(),
+      themeName: theme || undefined,
     };
   }
   writeLedger(ledger);
@@ -133,6 +164,7 @@ export function recordRevealedCards(input: {
   count: number;
   creatorId: string;
   creatorName: string;
+  themeName?: string;
   /** Defaults: ~1/3 motion, rest photo — demo split until rarity metadata exists. */
   motionCount?: number;
 }) {
@@ -148,6 +180,7 @@ export function recordRevealedCards(input: {
   ledger.photoCards += photo;
 
   const id = input.creatorId || slugId(input.creatorName);
+  const theme = themeLabelFromPack(input.themeName);
   const existing = ledger.creators[id];
   if (existing) {
     existing.collected = Math.min(
@@ -156,6 +189,7 @@ export function recordRevealedCards(input: {
     );
     existing.lastActiveAt = Date.now();
     existing.name = input.creatorName || existing.name;
+    if (theme) existing.themeName = theme;
   } else {
     const total = 15;
     ledger.creators[id] = {
@@ -164,6 +198,7 @@ export function recordRevealedCards(input: {
       collected: Math.min(total, input.count),
       total,
       lastActiveAt: Date.now(),
+      themeName: theme || undefined,
     };
   }
   writeLedger(ledger);
@@ -197,10 +232,24 @@ export type CollectionPageState = {
   isTrueEmpty: boolean;
   hasStartedCollection: boolean;
   summary: {
+    /** Absolute revealed/collected card count — never a global denominator. */
+    cardsCollected: number;
+    /** Unique creators represented by collected cards. */
+    creatorsCollectedFrom: number;
+    /** Incomplete theme/sets with at least one collected card. */
+    collectionsInProgress: number;
+    /** Unclaimed theme-completion rewards (> 0 to show Reward Ready). */
+    rewardReadyCount: number;
+    /** @deprecated Prefer cardsCollected */
+    collectedCards: number;
+    /** @deprecated Removed from UI — kept for older callers. */
+    totalCards: number;
+    pct: number;
+    creators: number;
+    themes: number;
     uniqueCards: number;
     motionCards: number;
     photoCards: number;
-    creators: number;
   };
   continueCreators: CreatorProgress[];
 };
@@ -211,6 +260,12 @@ function mergeStartedCreators(
   const creators: Record<string, CreatorLedger> = { ...ledger.creators };
   for (const pack of listOwnedPacks()) {
     const id = pack.creatorId || slugId(pack.creator);
+    const theme = themeLabelFromPack(
+      pack.themeName,
+      pack.packName,
+      pack.catalogPackId,
+      pack.creator,
+    );
     if (!creators[id]) {
       creators[id] = {
         id,
@@ -218,13 +273,18 @@ function mergeStartedCreators(
         collected: 0,
         total: 15,
         lastActiveAt: pack.savedAt,
+        themeName: theme || undefined,
       };
-    } else if (pack.savedAt > creators[id].lastActiveAt) {
-      creators[id] = {
-        ...creators[id],
-        lastActiveAt: pack.savedAt,
-        name: pack.creator || creators[id].name,
-      };
+    } else {
+      const next = { ...creators[id] };
+      if (pack.savedAt > next.lastActiveAt) {
+        next.lastActiveAt = pack.savedAt;
+        next.name = pack.creator || next.name;
+      }
+      if (theme && (!next.themeName || pack.savedAt >= next.lastActiveAt)) {
+        next.themeName = theme;
+      }
+      creators[id] = next;
     }
   }
   return creators;
@@ -253,12 +313,32 @@ export function getCollectionPageState(): CollectionPageState {
     unopenedPackCount === 0 &&
     unscratchedCardCount === 0;
 
+  const ownedPacks = listOwnedPacks();
   const continueCreators: CreatorProgress[] = Object.values(creators)
     .sort((a, b) => b.lastActiveAt - a.lastActiveAt)
     .map((creator) => {
       const pct = Math.round(
         (creator.collected / Math.max(1, creator.total)) * 100,
       );
+      const packTheme = ownedPacks
+        .filter(
+          (pack) =>
+            (pack.creatorId || slugId(pack.creator)) === creator.id,
+        )
+        .sort((a, b) => b.savedAt - a.savedAt)
+        .map((pack) =>
+          themeLabelFromPack(
+            pack.themeName,
+            pack.packName,
+            pack.catalogPackId,
+            pack.creator,
+          ),
+        )
+        .find(Boolean);
+      const themeName =
+        packTheme ||
+        themeLabelFromPack(creator.themeName) ||
+        undefined;
       return {
         id: creator.id,
         name: creator.name,
@@ -270,8 +350,23 @@ export function getCollectionPageState(): CollectionPageState {
         themesStarted: creator.collected > 0 ? 1 : 0,
         themesTotal: 5,
         cta: "continue" as const,
+        themeName,
       };
     });
+
+  const creatorsWithProgress = continueCreators.filter((c) => c.collected > 0);
+  const collectionsInProgress = creatorsWithProgress.filter(
+    (c) => c.collected < c.total,
+  ).length;
+  // Match claim ledger keys: theme-complete:${creatorId}:${themeId}
+  // (never a fake "primary" id — that never gets written on claim).
+  const rewardReadyCount = creatorsWithProgress.filter((c) => {
+    if (!(c.collected >= c.total && c.total > 0)) return false;
+    const themeId = canonicalThemeKey(c.themeName);
+    if (themeId) return !isThemeCompletionClaimed(c.id, themeId);
+    // No resolvable theme on the hub row — clear after any claim for this creator.
+    return !creatorHasAnyThemeCompletionClaim(c.id);
+  }).length;
 
   return {
     totalPurchasedPacks: owned,
@@ -286,10 +381,18 @@ export function getCollectionPageState(): CollectionPageState {
     isTrueEmpty,
     hasStartedCollection: hasEverPurchasedPack,
     summary: {
-      uniqueCards: ledger.collectedCardCount,
+      cardsCollected: collectedCardCount,
+      creatorsCollectedFrom: creatorsWithProgress.length,
+      collectionsInProgress,
+      rewardReadyCount,
+      collectedCards: collectedCardCount,
+      totalCards: 0,
+      pct: 0,
+      creators: creatorsWithProgress.length,
+      themes: collectionsInProgress,
+      uniqueCards: collectedCardCount,
       motionCards: ledger.motionCards,
       photoCards: ledger.photoCards,
-      creators: Object.values(creators).filter((c) => c.collected > 0).length,
     },
     continueCreators,
   };

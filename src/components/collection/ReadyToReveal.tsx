@@ -1,36 +1,41 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { type ScratchReadyGroup, type UnopenedPack } from "@/services/collection";
 import {
+  resolveCollectionThemeLabel,
+  type ScratchReadyGroup,
+  type UnopenedPack,
+} from "@/services/collection";
+import {
+  cardActionForGroup,
   listAllReadyScratch,
   listUnopenedPackShelf,
 } from "@/services/scratchResume";
 import { trackScratchEvent } from "@/services/readyToScratch";
 import { RevealInventoryTile } from "./RevealInventoryTile";
 
-type ReadySegment = "packs" | "scratch";
-
-/** Display-only: drop trailing " Pack" from theme labels. */
-function themeLabel(name: string) {
-  return name
-    .replace(/\s+Pack$/i, "")
-    .replace(/\s·\sMotion$/i, "")
-    .replace(/\s·\sPhotos$/i, "");
+/** Display-only: real theme name, never foil placeholders like "Pack 1". */
+function themeLabel(
+  name: string,
+  opts?: { catalogPackId?: string; creator?: string },
+) {
+  return (
+    resolveCollectionThemeLabel({
+      themeName: name,
+      packName: name,
+      catalogPackId: opts?.catalogPackId,
+      creator: opts?.creator,
+    }) || name.replace(/\s+Pack$/i, "")
+  );
 }
 
-function defaultSegment(
-  scratchCount: number,
-  packCount: number,
-): ReadySegment {
-  if (scratchCount > 0) return "scratch";
-  if (packCount > 0) return "packs";
-  return "scratch";
-}
-
+/**
+ * Ready to Reveal — unfinished owned inventory only.
+ * Packs (unopened) + Cards (unscratched / resume). Rendering never settles state.
+ */
 export function ReadyToReveal({
   onOpenPack,
   onScratch,
-  onExplorePacks: _onExplorePacks,
+  onExplorePacks,
   scratchGroups,
   unopenedPacks,
   inventoryRevision = 0,
@@ -42,6 +47,8 @@ export function ReadyToReveal({
   unopenedPacks?: UnopenedPack[];
   inventoryRevision?: number;
 }) {
+  const [searchParams] = useSearchParams();
+  const revealPacks = searchParams.get("reveal") === "packs";
   const packs = useMemo(
     () => unopenedPacks ?? listUnopenedPackShelf(),
     [unopenedPacks, inventoryRevision],
@@ -50,28 +57,21 @@ export function ReadyToReveal({
     () => scratchGroups ?? listAllReadyScratch(),
     [scratchGroups, inventoryRevision],
   );
-  const packCount = packs.reduce((sum, pack) => sum + pack.count, 0);
-  const scratchCount = scratches.reduce((sum, group) => sum + group.count, 0);
+
+  // Header / subsection counts = actionable inventory tiles (grouped items),
+  // not every card inside a grouped photo session.
+  const packItems = packs.length;
+  const cardItems = scratches.length;
+  const totalActions = packItems + cardItems;
+  const empty = totalActions === 0;
+  const showPacks = packItems > 0;
+  const showCards = cardItems > 0;
 
   useEffect(() => {
-    if (scratchCount > 0) {
-      trackScratchEvent("Ready To Scratch Viewed", { count: scratchCount });
+    if (cardItems > 0) {
+      trackScratchEvent("Ready To Scratch Viewed", { count: cardItems });
     }
-  }, [scratchCount, inventoryRevision]);
-
-  const [searchParams] = useSearchParams();
-  const revealPacks = searchParams.get("reveal") === "packs";
-  const [segment, setSegment] = useState<ReadySegment>(() =>
-    revealPacks ? "packs" : defaultSegment(scratchCount, packCount),
-  );
-
-  useEffect(() => {
-    if (revealPacks) {
-      setSegment("packs");
-      return;
-    }
-    setSegment(defaultSegment(scratchCount, packCount));
-  }, [scratchCount, packCount, inventoryRevision, revealPacks]);
+  }, [cardItems, inventoryRevision]);
 
   useEffect(() => {
     if (!revealPacks) return;
@@ -81,104 +81,121 @@ export function ReadyToReveal({
         ? "auto"
         : "smooth",
     });
-  }, [revealPacks, packCount]);
-
-  if (packCount === 0 && scratchCount === 0 && !revealPacks) return null;
+  }, [revealPacks, packItems]);
 
   return (
-    <section className="collection-section" aria-labelledby="ready-heading">
-      <h2 id="ready-heading" className="collection-section-title">
-        Ready to Reveal
-      </h2>
-
-      <div className="collection-segment" role="tablist" aria-label="Pending type">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={segment === "scratch"}
-          className={[
-            "collection-segment-btn",
-            segment === "scratch" ? "is-active" : "",
-          ].join(" ")}
-          onClick={() => setSegment("scratch")}
-        >
-          Unscratched Cards
-          <span className="collection-segment-count">{scratchCount}</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={segment === "packs"}
-          className={[
-            "collection-segment-btn",
-            segment === "packs" ? "is-active" : "",
-          ].join(" ")}
-          onClick={() => setSegment("packs")}
-        >
-          Unopened Packs
-          <span className="collection-segment-count">{packCount}</span>
-        </button>
+    <section
+      className="collection-section ready-reveal"
+      aria-labelledby="ready-heading"
+    >
+      <div className="ready-reveal-head">
+        <div className="ready-reveal-intro">
+          <h2 id="ready-heading" className="collection-section-title">
+            Ready to Reveal
+            {!empty ? (
+              <span className="collection-section-count">{totalActions}</span>
+            ) : null}
+          </h2>
+        </div>
       </div>
 
-      <div className="collection-h-row" key={segment}>
-        {segment === "scratch" ? (
-          scratchCount > 0 ? (
-            scratches.map((group) => {
-              const title = themeLabel(group.collectionName);
-              const isPhoto = group.kind === "photo";
-              const qtyLabel = isPhoto
-                ? `${group.count} ${
-                    group.count === 1 ? "Photo Card" : "Photo Cards"
-                  }`
-                : `${group.count} ${
-                    group.count === 1 ? "Motion Card" : "Motion Cards"
+      {empty ? (
+        <div className="ready-reveal-panel ready-reveal-empty">
+          <h3 className="collection-empty-title">
+            <span aria-hidden="true">✓ </span>
+            You&apos;re all caught up
+          </h3>
+          <p className="collection-empty-copy">
+            Everything you own has been revealed.
+          </p>
+          <button
+            type="button"
+            className="collection-snapshot-cta"
+            onClick={onExplorePacks}
+          >
+            Explore Packs
+          </button>
+        </div>
+      ) : (
+        <div className="ready-reveal-panel">
+          {showPacks ? (
+            <div className="ready-reveal-group" aria-label="Packs">
+              <h3 className="ready-reveal-group-title">
+                Packs
+                <span className="ready-reveal-group-count">{packItems}</span>
+              </h3>
+              <div className="collection-h-row">
+                {packs.map((pack) => {
+                  const title = themeLabel(pack.name, {
+                    catalogPackId: pack.catalogPackId,
+                    creator: pack.creator,
+                  });
+                  const qtyLabel = `${pack.count} ${
+                    pack.count === 1 ? "Pack" : "Packs"
                   }`;
-              return (
-                <RevealInventoryTile
-                  key={group.id}
-                  coverUrl={group.coverUrl}
-                  title={title}
-                  creator={group.creatorName}
-                  quantityLabel={qtyLabel}
-                  ariaLabel={`Scratch ${title}, ${qtyLabel}`}
-                  onClick={() => onScratch(group)}
-                />
-              );
-            })
-          ) : (
-            <article className="collection-empty-panel ready-reveal-empty">
-              <h3 className="collection-empty-title">No unscratched cards</h3>
-              <p className="collection-empty-copy">
-                Opened packs you haven&apos;t finished, and Photo Cards waiting
-                to scratch, show up here.
-              </p>
-            </article>
-          )
-        ) : packCount > 0 ? (
-          packs.map((pack) => {
-            const title = themeLabel(pack.name);
-            const qtyLabel = `${pack.count} ${pack.count === 1 ? "Pack" : "Packs"}`;
-            return (
-              <RevealInventoryTile
-                key={pack.id}
-                coverUrl={pack.coverUrl}
-                title={title}
-                creator={pack.creator}
-                quantityLabel={qtyLabel}
-                ariaLabel={`Open ${title}, ${qtyLabel}`}
-                onClick={() => onOpenPack(pack)}
-              />
-            );
-          })
-        ) : (
-          <article className="collection-empty-panel ready-reveal-empty">
-            <h3 className="collection-empty-title">No unopened packs</h3>
-            <p className="collection-empty-copy">
-              Sealed packs you haven&apos;t torn open yet appear here.
-            </p>
-          </article>
-        )}
-      </div>
+                  return (
+                    <RevealInventoryTile
+                      key={pack.id}
+                      coverUrl={pack.coverUrl}
+                      title={title}
+                      creator={pack.creator}
+                      quantityLabel={qtyLabel}
+                      actionLabel="Open Pack"
+                      ariaLabel={`Open ${title}, ${qtyLabel}`}
+                      onClick={() => onOpenPack(pack)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {showPacks && showCards ? (
+            <div className="ready-reveal-divider" role="separator" />
+          ) : null}
+
+          {showCards ? (
+            <div className="ready-reveal-group" aria-label="Cards">
+              <h3 className="ready-reveal-group-title">
+                Cards
+                <span className="ready-reveal-group-count">{cardItems}</span>
+              </h3>
+              <div className="collection-h-row">
+                {scratches.map((group) => {
+                  const title = themeLabel(group.collectionName, {
+                    creator: group.creatorName,
+                  });
+                  const isPhoto = group.kind === "photo";
+                  const typeLabel = isPhoto ? "Photo Card" : "Motion Card";
+                  const action =
+                    cardActionForGroup(group) === "resume"
+                      ? "Resume"
+                      : "Scratch";
+                  const qtyLabel =
+                    group.count > 1
+                      ? `${group.count} ${
+                          isPhoto ? "Photo Cards" : "Motion Cards"
+                        }`
+                      : `${group.count} ${typeLabel}`;
+                  return (
+                    <RevealInventoryTile
+                      key={group.id}
+                      coverUrl={group.coverUrl}
+                      title={title}
+                      creator={group.creatorName}
+                      quantityLabel={qtyLabel}
+                      typeLabel={typeLabel}
+                      actionLabel={action}
+                      ariaLabel={`${action} ${title}, ${typeLabel}`}
+                      onClick={() => onScratch(group)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }
