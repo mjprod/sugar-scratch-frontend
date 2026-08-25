@@ -328,6 +328,22 @@ export function PurchaseFlow({
     themeName: collectionTheme,
     creator: pack.creator,
   });
+  /** Single source for foil-aware Ready-to-Scratch inventory labels. */
+  function upsertPackReadyToScratch(input: {
+    packId: string;
+    session: OpeningSession;
+    revealed: string[];
+  }) {
+    upsertReadyToScratch({
+      packId: input.packId,
+      packName: pack.packName,
+      creator: pack.creator,
+      session: input.session,
+      revealed: input.revealed,
+      coverUrl: packCoverUrl,
+      themeName: collectionTheme,
+    });
+  }
   /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
   const packImage = session?.foilFaceUrl ?? packCoverUrl;
   const packDisplayName = session?.foilLabel ?? pack.packName;
@@ -397,14 +413,10 @@ export function PurchaseFlow({
       cardIndex: selectedCard,
       scratched,
     });
-    upsertReadyToScratch({
+    upsertPackReadyToScratch({
       packId: instanceId ?? pack.packId,
-      packName: pack.packName,
-      creator: pack.creator,
       session,
       revealed: scratched,
-      coverUrl: packCoverUrl,
-      themeName: collectionTheme,
     });
   }, [
     stage,
@@ -414,6 +426,7 @@ export function PurchaseFlow({
     pack.packId,
     pack.packName,
     pack.creator,
+    collectionTheme,
     packCoverUrl,
     instanceId,
   ]);
@@ -541,14 +554,10 @@ export function PurchaseFlow({
     sessionRef.current = next;
     setScratched([]);
     setSelectedCard(0);
-    upsertReadyToScratch({
+    upsertPackReadyToScratch({
       packId: currentId,
-      packName: pack.packName,
-      creator: pack.creator,
       session: next,
       revealed: [],
-      coverUrl: packCoverUrl,
-      themeName: collectionTheme,
     });
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
@@ -580,14 +589,10 @@ export function PurchaseFlow({
   function finishSession(revealedIds: string[]) {
     settleRevealed(revealedIds);
     const readyId = instanceId ?? pack.packId;
-    upsertReadyToScratch({
+    upsertPackReadyToScratch({
       packId: readyId,
-      packName: pack.packName,
-      creator: pack.creator,
       session: session!,
       revealed: revealedIds,
-      coverUrl: packCoverUrl,
-      themeName: collectionTheme,
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
 
@@ -642,14 +647,10 @@ export function PurchaseFlow({
   function persistOpened(revealedIds: string[]) {
     if (!session) return;
     const readyId = instanceId ?? pack.packId;
-    upsertReadyToScratch({
+    upsertPackReadyToScratch({
       packId: readyId,
-      packName: pack.packName,
-      creator: pack.creator,
       session,
       revealed: revealedIds,
-      coverUrl: packCoverUrl,
-      themeName: collectionTheme,
     });
     trackScratchEvent("Scratch Progress Saved", {
       packId: readyId,
@@ -803,14 +804,10 @@ export function PurchaseFlow({
         navigateTo(photoPlayHref(existing));
         return;
       }
-      upsertReadyToScratch({
+      upsertPackReadyToScratch({
         packId: readyId,
-        packName: pack.packName,
-        creator: pack.creator,
         session: active,
         revealed: scratched,
-        coverUrl: packCoverUrl,
-        themeName: collectionTheme,
       });
       const created = startMotionSession(hand, {
         packScratch: {
