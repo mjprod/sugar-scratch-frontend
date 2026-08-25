@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   type CollectionLibraryFilter,
   type LibraryPreviewCard,
@@ -39,6 +40,8 @@ export function CollectionPage({
   inventoryRevision?: number;
 }) {
   const [overlay, setOverlay] = useState<HubOverlay>(null);
+  const [searchParams] = useSearchParams();
+  const revealPacks = searchParams.get("reveal") === "packs";
   const state = useMemo(
     () => getCollectionPageState(),
     [inventoryRevision],
@@ -83,8 +86,20 @@ export function CollectionPage({
       }
     >
       <div className="collection-page-content page-container">
-        {state.isTrueEmpty ? (
+        {state.isTrueEmpty && !revealPacks ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
+        ) : state.isTrueEmpty && revealPacks ? (
+          <>
+            <header className="collection-page-intro">
+              <h1 className="collection-page-title">Your Collection</h1>
+            </header>
+            <ReadyToReveal
+              onOpenPack={openPack}
+              onScratch={openScratch}
+              onExplorePacks={onExplorePacks}
+              inventoryRevision={inventoryRevision}
+            />
+          </>
         ) : (
           <>
             <header className="collection-page-intro">
@@ -99,7 +114,7 @@ export function CollectionPage({
               onOpenCreators={() => setOverlay({ kind: "creators" })}
             />
 
-            {state.hasPendingReveal ? (
+            {state.hasPendingReveal || revealPacks ? (
               <ReadyToReveal
                 onOpenPack={openPack}
                 onScratch={openScratch}

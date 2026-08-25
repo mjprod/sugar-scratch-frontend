@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { UserRound } from "lucide-react";
 import type { AppTab } from "@/types/app";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
-import { InboxButton } from "@/components/InboxButton";
+import { InboxUtilityBadge, PacksButton } from "@/components/InboxButton";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 
 const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
@@ -15,7 +15,7 @@ const DESKTOP_DESTINATIONS: { id: AppTab; label: string }[] = [
 
 const SCROLL_SELECTOR = "[data-page-scroll], .hf-viewport, .app-page-shell, .inbox-page";
 
-/** Top Navigation — mobile Diamond + Inbox utility + desktop global header. */
+/** Top Navigation — mobile Diamond + packs utility + desktop global header. */
 export function TopNav({
   coins,
   diamonds,
@@ -23,15 +23,15 @@ export function TopNav({
   onTabChange,
   onProfile,
   onOpenStore,
-  onOpenInbox,
+  onOpenUnopenedPacks,
   inboxUnreadCount = 0,
-  inboxActive = false,
+  packsActive = false,
   storeActive = false,
   profileActive = false,
   settingsActive = false,
   showBalances = true,
   showMobileDiamond = true,
-  showInbox = true,
+  showPacks = true,
   routeKey,
 }: {
   coins: number | null;
@@ -42,10 +42,10 @@ export function TopNav({
   onSettings?: () => void;
   onSearch?: () => void;
   onOpenStore?: () => void;
-  onOpenInbox?: () => void;
+  onOpenUnopenedPacks?: () => void;
   inboxUnreadCount?: number;
-  /** Bell active while Inbox route is open — primary tabs stay neutral. */
-  inboxActive?: boolean;
+  /** Cart active while Unopened Packs is open. */
+  packsActive?: boolean;
   /** Subtle diamond utility active while Store is open. */
   storeActive?: boolean;
   /** Profile utility active on Profile page only (not Settings). */
@@ -55,13 +55,12 @@ export function TopNav({
   showBalances?: boolean;
   /** Immersive / guest flows set false via App shell. */
   showMobileDiamond?: boolean;
-  /** Hide on Inbox route to avoid redundant self-nav. */
-  showInbox?: boolean;
+  /** Hide cart on packs-to-open to avoid redundant self-nav. */
+  showPacks?: boolean;
   routeKey?: string;
 }) {
   const [scrolled, setScrolled] = useState(false);
-  const primaryActive =
-    inboxActive || storeActive || settingsActive ? null : activeTab;
+  const primaryActive = storeActive || settingsActive ? null : activeTab;
 
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll(SCROLL_SELECTOR)).filter(
@@ -83,23 +82,21 @@ export function TopNav({
     };
   }, [activeTab, routeKey]);
 
-  const mobileInbox =
-    showInbox && onOpenInbox ? (
-      <InboxButton
-        unreadCount={inboxUnreadCount}
-        onOpen={onOpenInbox}
+  const mobilePacks =
+    showPacks && onOpenUnopenedPacks ? (
+      <PacksButton
+        onOpen={onOpenUnopenedPacks}
         variant="ghost"
-        active={inboxActive}
+        active={packsActive}
       />
     ) : null;
 
-  const desktopInbox =
-    showInbox && onOpenInbox ? (
-      <InboxButton
-        unreadCount={inboxUnreadCount}
-        onOpen={onOpenInbox}
+  const desktopPacks =
+    showPacks && onOpenUnopenedPacks ? (
+      <PacksButton
+        onOpen={onOpenUnopenedPacks}
         variant="ghost"
-        active={inboxActive}
+        active={packsActive}
       />
     ) : null;
 
@@ -111,7 +108,7 @@ export function TopNav({
         onOpenStore={onOpenStore}
         onOpenHome={() => onTabChange("home")}
         visible={showMobileDiamond && showBalances}
-        trailing={mobileInbox}
+        trailing={mobilePacks}
       />
 
       <header
@@ -174,19 +171,24 @@ export function TopNav({
             ) : null}
             <button
               type="button"
-              aria-label="Profile"
+              aria-label={
+                inboxUnreadCount > 0
+                  ? `Profile, ${inboxUnreadCount} unread message${inboxUnreadCount === 1 ? "" : "s"}`
+                  : "Profile"
+              }
               aria-current={profileActive ? "page" : undefined}
               onClick={onProfile}
               className={[
-                "top-nav-profile grid min-h-10 min-w-10 place-items-center rounded-md transition active:scale-95",
+                "top-nav-profile relative grid min-h-10 min-w-10 place-items-center rounded-md transition active:scale-95",
                 profileActive
                   ? "top-nav-profile--active"
                   : "text-white/55 hover:bg-white/[0.06] hover:text-white/85",
               ].join(" ")}
             >
               <UserRound className="size-[18px]" aria-hidden="true" />
+              <InboxUtilityBadge count={inboxUnreadCount} />
             </button>
-            {desktopInbox}
+            {desktopPacks}
           </div>
         </div>
       </header>

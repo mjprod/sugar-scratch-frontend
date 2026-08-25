@@ -101,6 +101,7 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "store" ||
     action.type === "like" ||
     action.type === "inbox" ||
+    action.type === "unopened-packs" ||
     action.type === "collection"
   );
 }
@@ -156,6 +157,7 @@ type AuthContextValue = {
   requestTab: (tab: AppTab) => void;
   openStore: () => void;
   openInbox: () => void;
+  openUnopenedPacks: () => void;
   openCreator: (id: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
@@ -340,6 +342,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate(Paths.inbox);
         return;
       }
+      if (action.type === "unopened-packs") {
+        navigate(Paths.collectionPacks);
+        return;
+      }
       if (action.type === "collection") {
         noteCreatorEngagement(action.creatorId);
         navigate(Paths.creator(action.creatorId));
@@ -458,6 +464,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const openInbox = useCallback(() => {
     if (!requireAuth({ type: "inbox" })) return;
+  }, [requireAuth]);
+
+  const openUnopenedPacks = useCallback(() => {
+    if (!requireAuth({ type: "unopened-packs" })) return;
   }, [requireAuth]);
 
   const openCreator = useCallback(
@@ -647,6 +657,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestTab,
       openStore,
       openInbox,
+      openUnopenedPacks,
       openCreator,
       openPurchase,
       openSettings,
@@ -696,6 +707,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inventoryRevision,
       openCreator,
       openInbox,
+      openUnopenedPacks,
       openPasswordReset,
       openPurchase,
       openSettings,

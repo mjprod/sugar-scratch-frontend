@@ -183,7 +183,7 @@ export function AppRoutes() {
           <Route
             path="inbox"
             element={
-              <SoftGate tab="hub" action={{ type: "inbox" }}>
+              <SoftGate tab="profile" action={{ type: "inbox" }}>
                 <InboxPage />
               </SoftGate>
             }

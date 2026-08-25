@@ -51,6 +51,7 @@ export type ProtectedAction =
   | { type: "photo-scratch"; packId?: string }
   | { type: "store" }
   | { type: "inbox" }
+  | { type: "unopened-packs" }
   | { type: "claim" }
   | { type: "collection"; creatorId: string };
 
@@ -346,7 +347,8 @@ export function triggerFromAction(
     return "scratch-card";
   }
   if (action.type === "store") return "open-store";
-  if (action.type === "inbox") return "view-rewards";
+  if (action.type === "inbox") return "view-profile";
+  if (action.type === "unopened-packs") return "view-collection";
   if (action.type === "claim") return "claim-reward";
   if (action.type === "collection") return "view-collection";
   if (action.type === "buy") {

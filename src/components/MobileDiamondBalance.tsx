@@ -75,7 +75,7 @@ export function MobileDiamondUtility({
   onOpenStore?: () => void;
   onOpenHome?: () => void;
   visible?: boolean;
-  /** e.g. InboxButton (ghost) — sits beside balances. */
+  /** e.g. PacksButton (ghost) — sits beside balances. */
   trailing?: ReactNode;
   showBrand?: boolean;
 }) {

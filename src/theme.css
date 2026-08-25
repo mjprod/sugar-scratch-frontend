@@ -10931,7 +10931,10 @@ body[data-theme="v8"] .top-nav-resource--action:active {
   background: oklch(1 0 0 / 0.06);
 }
 
-body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
+body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge,
+body[data-theme="v8"] .nav-test-top-profile .inbox-utility-badge,
+body[data-theme="v8"] .nav-test-dock-icon-wrap .inbox-utility-badge,
+body[data-theme="v8"] .top-nav-profile .inbox-utility-badge {
   top: 2px;
   right: 2px;
   min-width: 14px;
@@ -10940,6 +10943,11 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge {
   font-size: 8px;
   line-height: 14px;
   background: var(--color-rose, oklch(0.656 0.212 354.31));
+}
+
+body[data-theme="v8"] .nav-test-dock-icon-wrap .inbox-utility-badge {
+  top: -4px;
+  right: -6px;
 }
 
 /* Desktop utility Profile — sole Profile entry (no text tab). */

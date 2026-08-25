@@ -1,29 +1,81 @@
-import { Bell } from "lucide-react";
-
 /**
- * Global Inbox utility — one control for TopNav / mobile utility / subpage trailing.
+ * Global HUD utility control — cart for packs to open (TopNav / mobile utility).
+ * Unread inbox count uses {@link InboxUtilityBadge} on the Profile icon.
  */
-export function InboxButton({
-  unreadCount = 0,
+export function InboxUtilityBadge({ count = 0 }: { count?: number }) {
+  if (count <= 0) return null;
+  const badgeLabel = count > 9 ? "9+" : String(count);
+  return (
+    <span className="inbox-utility-badge" aria-hidden="true">
+      {badgeLabel}
+    </span>
+  );
+}
+
+function CartOutlineIcon({
+  className,
+  strokeWidth = 32,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 512 512"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <circle
+        cx="176"
+        cy="416"
+        r="16"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <circle
+        cx="400"
+        cy="416"
+        r="16"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+      />
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+        d="M48 80h64l48 272h256"
+      />
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={strokeWidth}
+        d="M160 288h249.44a8 8 0 0 0 7.85-6.43l28.8-144a8 8 0 0 0-7.85-9.57H128"
+      />
+    </svg>
+  );
+}
+
+export function PacksButton({
   onOpen,
   className = "",
   variant = "surface",
   active = false,
 }: {
-  unreadCount?: number;
   onOpen: () => void;
   className?: string;
   /** surface = bordered circle (subpage headers); ghost = compact HUD (TopNav). */
   variant?: "surface" | "ghost";
-  /** Active while the Inbox route is open. */
+  /** Active while unopened packs (collection reveal) is open. */
   active?: boolean;
 }) {
-  const hasUnread = unreadCount > 0;
-  const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
-  const ariaLabel = hasUnread
-    ? `Inbox, ${unreadCount} unread message${unreadCount === 1 ? "" : "s"}`
-    : "Inbox";
-
   const surfaceClasses =
     "inbox-utility-btn relative grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95";
   const ghostClasses =
@@ -33,7 +85,7 @@ export function InboxButton({
     <button
       type="button"
       onClick={onOpen}
-      aria-label={ariaLabel}
+      aria-label="Packs to open"
       aria-current={active ? "page" : undefined}
       className={[
         variant === "ghost" ? ghostClasses : surfaceClasses,
@@ -43,16 +95,9 @@ export function InboxButton({
         .filter(Boolean)
         .join(" ")}
     >
-      <Bell
+      <CartOutlineIcon
         className={variant === "ghost" ? "size-[18px]" : "size-5"}
-        strokeWidth={1.75}
-        aria-hidden="true"
       />
-      {hasUnread ? (
-        <span className="inbox-utility-badge" aria-hidden="true">
-          {badgeLabel}
-        </span>
-      ) : null}
     </button>
   );
 }

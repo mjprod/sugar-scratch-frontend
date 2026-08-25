@@ -65,7 +65,7 @@
 /*
  * App chrome pairing (driven by body[data-liquid-nav] from LiquidGlassNav):
  *  - mobile: bottom dock + mobile diamond utility
- *  - desktop: top liquid nav [logo | tabs | balances/inbox]
+ *  - desktop: top liquid nav [logo | tabs | balances/cart]
  *  - to-desktop / to-mobile: staged so HUDs don't overlap mid-handoff
  *
  * Fallback without JS attribute still uses the 507px MQ.
@@ -173,8 +173,9 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   transform: none;
 }
 
-/* Icon-only Profile — sits after Inbox. Guest mode adds a Log in label. */
+/* Icon-only Profile — sits after cart. Guest mode adds a Log in label. */
 .nav-test-top-profile {
+  position: relative;
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -1586,6 +1587,12 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test-dock-item:focus-visible {
   outline: 1.5px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: -3px;
+}
+
+.nav-test-dock-icon-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
 }
 
 .nav-test-dock-icon {

@@ -17,7 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
-import { InboxButton } from "@/components/InboxButton";
+import { InboxUtilityBadge, PacksButton } from "@/components/InboxButton";
 import { BorderGlow } from "@/components/ui/BorderGlow";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppTab } from "@/types/app";
@@ -255,10 +255,10 @@ export type LiquidGlassNavProps = {
   coins?: number | null;
   diamonds?: number | null;
   onOpenStore?: () => void;
-  onOpenInbox?: () => void;
+  onOpenUnopenedPacks?: () => void;
   inboxUnreadCount?: number;
-  /** Inbox is a utility route — no primary tab should stay selected. */
-  inboxActive?: boolean;
+  /** Cart is active while Unopened Packs is open. */
+  packsActive?: boolean;
   /** Hide the mobile bottom dock (purchase keeps the top bar only). */
   hideDock?: boolean;
 };
@@ -275,9 +275,9 @@ export function LiquidGlassNav({
   coins = null,
   diamonds = null,
   onOpenStore,
-  onOpenInbox,
+  onOpenUnopenedPacks,
   inboxUnreadCount = 0,
-  inboxActive = false,
+  packsActive = false,
   hideDock = false,
 }: LiquidGlassNavProps) {
   const { authed, guestAuthLabel } = useAuth();
@@ -294,7 +294,7 @@ export function LiquidGlassNav({
       ),
     [authed, guestAuthLabel],
   );
-  const active = inboxActive ? null : activeTab;
+  const active = activeTab;
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [handoff, setHandoff] = useState<NavHandoff>("none");
   const [bubble, setBubble] = useState<DockBubble>(HIDDEN_BUBBLE);
@@ -1097,12 +1097,11 @@ export function LiquidGlassNav({
                 diamonds={diamonds}
                 onOpenStore={onOpenStore}
               />
-              {onOpenInbox ? (
-                <InboxButton
-                  unreadCount={inboxUnreadCount}
-                  onOpen={onOpenInbox}
+              {onOpenUnopenedPacks ? (
+                <PacksButton
+                  onOpen={onOpenUnopenedPacks}
                   variant="ghost"
-                  active={inboxActive}
+                  active={packsActive}
                 />
               ) : null}
             </div>
@@ -1120,29 +1119,38 @@ export function LiquidGlassNav({
             ]
               .filter(Boolean)
               .join(" ")}
-            aria-label={authed ? "Profile" : guestAuthLabel}
+            aria-label={
+              authed && inboxUnreadCount > 0
+                ? `Profile, ${inboxUnreadCount} unread message${inboxUnreadCount === 1 ? "" : "s"}`
+                : authed
+                  ? "Profile"
+                  : guestAuthLabel
+            }
             aria-current={active === "profile" ? "page" : undefined}
             tabIndex={hidden ? -1 : undefined}
             onClick={() => selectTab("profile")}
           >
             {authed ? (
-              <User
-                className="nav-test-top-profile-icon"
-                strokeWidth={
-                  active === "profile" || topDragHoverTab === "profile"
-                    ? 2.1
-                    : 1.8
-                }
-                fill={
-                  active === "profile" || topDragHoverTab === "profile"
-                    ? "currentColor"
-                    : "none"
-                }
-                fillOpacity={
-                  active === "profile" || topDragHoverTab === "profile" ? 0.2 : 0
-                }
-                aria-hidden="true"
-              />
+              <>
+                <User
+                  className="nav-test-top-profile-icon"
+                  strokeWidth={
+                    active === "profile" || topDragHoverTab === "profile"
+                      ? 2.1
+                      : 1.8
+                  }
+                  fill={
+                    active === "profile" || topDragHoverTab === "profile"
+                      ? "currentColor"
+                      : "none"
+                  }
+                  fillOpacity={
+                    active === "profile" || topDragHoverTab === "profile" ? 0.2 : 0
+                  }
+                  aria-hidden="true"
+                />
+                <InboxUtilityBadge count={inboxUnreadCount} />
+              </>
             ) : (
               <>
                 <LoginIcon className="nav-test-top-profile-icon" />
@@ -1301,17 +1309,26 @@ export function LiquidGlassNav({
                     .filter(Boolean)
                     .join(" ")}
                   aria-current={isActive ? "page" : undefined}
-                  aria-label={tab.label}
+                  aria-label={
+                    tab.id === "profile" && inboxUnreadCount > 0
+                      ? `${tab.label}, ${inboxUnreadCount} unread message${inboxUnreadCount === 1 ? "" : "s"}`
+                      : tab.label
+                  }
                   tabIndex={hidden ? -1 : undefined}
                   onClick={() => selectTab(tab.id)}
                 >
-                  <Icon
-                    className="nav-test-dock-icon"
-                    strokeWidth={isActive || isDragTarget ? 2.1 : 1.8}
-                    fill={isActive || isDragTarget ? "currentColor" : "none"}
-                    fillOpacity={isActive || isDragTarget ? 0.2 : 0}
-                    aria-hidden="true"
-                  />
+                  <span className="nav-test-dock-icon-wrap">
+                    <Icon
+                      className="nav-test-dock-icon"
+                      strokeWidth={isActive || isDragTarget ? 2.1 : 1.8}
+                      fill={isActive || isDragTarget ? "currentColor" : "none"}
+                      fillOpacity={isActive || isDragTarget ? 0.2 : 0}
+                      aria-hidden="true"
+                    />
+                    {tab.id === "profile" ? (
+                      <InboxUtilityBadge count={inboxUnreadCount} />
+                    ) : null}
+                  </span>
                   <span className="nav-test-dock-label">{tab.label}</span>
                 </button>
               );

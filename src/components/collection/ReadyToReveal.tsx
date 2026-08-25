@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { type ScratchReadyGroup, type UnopenedPack } from "@/services/collection";
 import {
   listAllReadyScratch,
@@ -58,15 +59,31 @@ export function ReadyToReveal({
     }
   }, [scratchCount, inventoryRevision]);
 
+  const [searchParams] = useSearchParams();
+  const revealPacks = searchParams.get("reveal") === "packs";
   const [segment, setSegment] = useState<ReadySegment>(() =>
-    defaultSegment(scratchCount, packCount),
+    revealPacks ? "packs" : defaultSegment(scratchCount, packCount),
   );
 
   useEffect(() => {
+    if (revealPacks) {
+      setSegment("packs");
+      return;
+    }
     setSegment(defaultSegment(scratchCount, packCount));
-  }, [scratchCount, packCount, inventoryRevision]);
+  }, [scratchCount, packCount, inventoryRevision, revealPacks]);
 
-  if (packCount === 0 && scratchCount === 0) return null;
+  useEffect(() => {
+    if (!revealPacks) return;
+    document.getElementById("ready-heading")?.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [revealPacks, packCount]);
+
+  if (packCount === 0 && scratchCount === 0 && !revealPacks) return null;
 
   return (
     <section className="collection-section" aria-labelledby="ready-heading">

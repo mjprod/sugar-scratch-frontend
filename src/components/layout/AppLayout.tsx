@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
-import { InboxButton } from "@/components/InboxButton";
+import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,7 +26,7 @@ export function AppLayout() {
     verifyOpen,
     navNotice,
     openStore,
-    openInbox,
+    openUnopenedPacks,
     completeAuth,
     dismissAuth,
     onVerified,
@@ -74,7 +74,9 @@ export function AppLayout() {
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/photo-scratch");
 
-  const onInbox = location.pathname.startsWith("/inbox");
+  const onUnopenedPacks =
+    location.pathname.startsWith("/collection") &&
+    new URLSearchParams(location.search).get("reveal") === "packs";
 
   const showTopUtility =
     !hideChrome &&
@@ -99,12 +101,11 @@ export function AppLayout() {
     };
   }, [guest, setInboxUnread]);
 
-  const mobileInbox = openInbox ? (
-    <InboxButton
-      unreadCount={inboxUnread}
-      onOpen={openInbox}
+  const mobilePacks = openUnopenedPacks ? (
+    <PacksButton
+      onOpen={openUnopenedPacks}
       variant="ghost"
-      active={onInbox}
+      active={onUnopenedPacks}
     />
   ) : null;
 
@@ -124,7 +125,7 @@ export function AppLayout() {
           onOpenStore={openStore}
           onOpenHome={() => requestTab("home")}
           visible
-          trailing={mobileInbox}
+          trailing={mobilePacks}
         />
       ) : null}
 
@@ -139,9 +140,9 @@ export function AppLayout() {
           coins={guest ? null : coins}
           diamonds={guest ? null : diamonds}
           onOpenStore={showTopUtility ? openStore : undefined}
-          onOpenInbox={showTopUtility ? openInbox : undefined}
+          onOpenUnopenedPacks={showTopUtility ? openUnopenedPacks : undefined}
           inboxUnreadCount={inboxUnread}
-          inboxActive={onInbox}
+          packsActive={onUnopenedPacks}
           hideDock={isPurchase}
         />
       ) : null}
