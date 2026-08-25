@@ -10,7 +10,7 @@ import {
   Sparkles,
   TimerOff,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -326,12 +326,16 @@ export function PurchaseFlow({
   }, [session]);
 
   useEffect(() => {
-    if (!buying) return;
+    // Buy path needs the model for foil picker; open-from-inventory needs it
+    // so Pack Ready can show a real foil instead of an empty shell.
+    if (!buying && pack.entry !== "open") return;
     void loadModelProfile(pack.packId, pack.creator).then((profile) => {
       setModel(profile);
-      if (!profile?.packs.length) setStage((current) => (current === "choose" ? "select" : current));
+      if (!profile?.packs.length) {
+        setStage((current) => (current === "choose" ? "select" : current));
+      }
     });
-  }, [buying, pack.creator, pack.packId]);
+  }, [buying, pack.entry, pack.creator, pack.packId]);
 
   useEffect(() => {
     if (stage === "expired") clearOpening();
@@ -930,7 +934,10 @@ export function PurchaseFlow({
             />
           ) : null}
 
-          {stage === "ready" && session ? (
+          {/* Open-from-Collection lands on ready with no session yet — tear
+              builds one in completeTear. Requiring session hid ReadyStage and
+              made Ready to Reveal "Open Pack" look broken. */}
+          {stage === "ready" ? (
             <ReadyStage
               key={instanceId ?? purchaseId ?? pack.packId}
               remainingUnopened={readyPackCount}
@@ -953,20 +960,23 @@ export function PurchaseFlow({
               overlayColorEnd={model?.overlayColorEnd ?? null}
               launching={savingLater}
               onCards={(cards) => {
-                setSession((current) =>
-                  current
-                    ? {
-                        ...current,
-                        cards: cards.map((card, index) => ({
-                          id: card.id,
-                          rarity:
-                            index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
-                          reward: 10 + index * 5,
-                          faceUrl: card.mediaUrl,
-                        })),
-                      }
-                    : current,
-                );
+                setSession((current) => {
+                  const mapped = cards.map((card, index) => ({
+                    id: card.id,
+                    rarity:
+                      index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
+                    reward: 10 + index * 5,
+                    faceUrl: card.mediaUrl,
+                  }));
+                  if (current) return { ...current, cards: mapped };
+                  return {
+                    ...buildOpeningSession(
+                      1,
+                      instanceId ?? pack.instanceId ?? pack.packId,
+                    ),
+                    cards: mapped,
+                  };
+                });
               }}
               onContinue={() => void launchMotionScratch()}
               onSaveLater={() => scratchLater("decision")}
@@ -1530,7 +1540,9 @@ function ReadyStage({
     );
   }, [items]);
 
-  useEffect(() => {
+  // Reset tear state before paint so a prior session's tearT≈1 cannot
+  // auto-fire onOpened / open reveal mode on mount.
+  useLayoutEffect(() => {
     tear.replayTear();
   }, []);
 
@@ -1540,6 +1552,9 @@ function ReadyStage({
 
   useEffect(() => {
     if (openedRef.current || !selectedId) return;
+    // Only settle after a user-driven tear finish this mount — never from a
+    // persisted tearT≈1 left over from a previous pack open.
+    if (!tear.finishStartedRef.current) return;
     if (tear.debug.tearT < 0.999) return;
     openedRef.current = true;
     onOpened();

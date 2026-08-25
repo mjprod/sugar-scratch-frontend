@@ -58,6 +58,7 @@ import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,
 } from "@/lib/navigation";
+import { resumeHrefForScratchGroup } from "@/services/scratchResume";
 
 type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
 
@@ -280,6 +281,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ScratchPrototype can skip Tap-to-play and arm the countdown.
         unlockCountdownSound();
         const readyId = action.pack.instanceId ?? action.pack.packId;
+        const liveHref = resumeHrefForScratchGroup({
+          id: readyId,
+          creatorId: "",
+          creatorName: action.pack.creator,
+          collectionName: action.pack.packName,
+          count: 1,
+          coverUrl: "",
+          kind: "motion",
+        });
+        if (liveHref) {
+          navigate(liveHref);
+          return;
+        }
         const packSession = loadGameSessionForPack(readyId);
         if (packSession?.phase === "motion") {
           activateGameSessionForPack(readyId);
@@ -299,6 +313,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "photo-scratch") {
         unlockCountdownSound();
         const packId = action.packId?.trim();
+        const liveHref = resumeHrefForScratchGroup({
+          id: packId ? `photo:${packId}` : "photo:session",
+          creatorId: "",
+          creatorName: "Photo Cards",
+          collectionName: "Photo Cards",
+          count: 1,
+          coverUrl: "",
+          kind: "photo",
+        });
+        if (liveHref) {
+          navigate(liveHref);
+          return;
+        }
         const session =
           (packId && packId !== "session"
             ? activateGameSessionForPack(packId)

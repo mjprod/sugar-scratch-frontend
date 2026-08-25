@@ -95,7 +95,7 @@ export function CollectionSnapshot({
             <SummaryMetric
               icon={Layers}
               value={summary.collectionsInProgress}
-              label="Collections in Progress"
+              label="In Progress"
               accent="muted"
               onClick={onOpenMyCollection}
             />
