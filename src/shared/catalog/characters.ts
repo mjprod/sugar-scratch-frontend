@@ -26,7 +26,7 @@ export type Character = {
   avatarUrl?: string;
 };
 
-export const CARD_BACK_URL = "/img/SugarScratch.png";
+export const CARD_BACK_URL = "/images/logoSugar.png";
 /** Local fallback when `/api/models` has no swipe video. */
 export const DEFAULT_SWIPE_VIDEO_URL = "/assets/juliana/swipe.mp4";
 export const PHOTO_SLOT_COUNT = 10;

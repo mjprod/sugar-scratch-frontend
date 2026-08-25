@@ -1541,22 +1541,25 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                {formatPackNumberLabel(item.girlName, item.packNumber)}
 	              </p>
 	            </div>
-	            <div className="coverflow-buy-pack-cta">
-	              <CtaButton
-	                {...ctaButtonPropsFromTemplate('hexGoldCTA')}
-	                {...ctaSize}
-                auroraPaused={isMobile}
-                glowOuterBloom="off"
-                label="Buy Pack"
-	                costAmount={formatPrice(item.price ?? 4.99)}
-	                className="coverflow-buy-pack-cta__button"
-	                tabIndex={0}
-	                onClick={(event) => {
-	                  event.stopPropagation()
-	                  onBuy?.(item)
-	                }}
-	              />
-	            </div>
+	            {/* Buy Pack only while purchasing — owned/ready-to-tear omits onBuy. */}
+	            {onBuy ? (
+	              <div className="coverflow-buy-pack-cta">
+	                <CtaButton
+	                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+	                  {...ctaSize}
+	                  auroraPaused={isMobile}
+	                  glowOuterBloom="off"
+	                  label="Buy Pack"
+	                  costAmount={formatPrice(item.price ?? 4.99)}
+	                  className="coverflow-buy-pack-cta__button"
+	                  tabIndex={0}
+	                  onClick={(event) => {
+	                    event.stopPropagation()
+	                    onBuy(item)
+	                  }}
+	                />
+	              </div>
+	            ) : null}
 	          </div>
 	        </Html>
 	      ) : null}

@@ -405,6 +405,7 @@ export function recordMotionCardResult(
 export async function awardMotionCardPhotos(
   cardId: string,
   prize: number,
+  catalog?: Awaited<ReturnType<typeof loadGameCatalog>>,
 ): Promise<GameSession | null> {
   const session = loadGameSession();
   if (!session) return null;
@@ -421,10 +422,10 @@ export async function awardMotionCardPhotos(
     return next;
   }
   try {
-    const catalog = await loadGameCatalog();
+    const resolved = catalog ?? (await loadGameCatalog());
     const theme = themeForMotionCard(session, cardId);
     const picked = pickWonPhotocards(
-      catalog.photos,
+      resolved.photos,
       prize,
       theme ? [theme, ...session.themes] : session.themes,
       session.wonPhotoIds,

@@ -234,45 +234,72 @@ async function loadThemeMap(): Promise<Map<string, string>> {
   return map;
 }
 
-export async function loadGameCatalog(): Promise<{
+type GameCatalog = {
   motion: ThemedMotionCard[];
   photos: PhotoCard[];
-}> {
-  const [motionCards, photos, themeMap] = await Promise.all([
-    fetchCatalogMotionCards(),
-    fetchCatalogPhotoCards(),
-    loadThemeMap(),
-  ]);
+};
 
-  const motion = motionCards
-    .filter((card) => card.id !== "original")
-    .map((card) => ({
-      id: card.id,
-      label: card.label,
-      bottom: card.bottom,
-      foreground: card.foreground,
-      mesh: card.mesh,
-      chromaKey: card.chromaKey,
-      model_id: card.model_id,
-      theme_id: card.theme_id,
-      sort_order: card.sort_order,
-      theme: themeForMotionCard(card, themeMap),
-    }))
-    .filter((card) => Boolean(card.theme.trim()));
+const GAME_CATALOG_TTL_MS = 60_000;
+let gameCatalogCache: GameCatalog | null = null;
+let gameCatalogCacheAt = 0;
+let gameCatalogInflight: Promise<GameCatalog> | null = null;
 
-  return {
-    motion,
-    photos: photos.map((card) => ({
-      id: card.id,
-      label: card.label,
-      model_id: card.model_id,
-      theme_id: card.theme_id,
-      background: card.background,
-      bikini: card.bikini,
-      clothes: card.clothes,
-      mesh: card.mesh,
-    })),
-  };
+export async function loadGameCatalog(): Promise<GameCatalog> {
+  const now = Date.now();
+  if (
+    gameCatalogCache &&
+    now - gameCatalogCacheAt < GAME_CATALOG_TTL_MS
+  ) {
+    return gameCatalogCache;
+  }
+  if (gameCatalogInflight) return gameCatalogInflight;
+
+  gameCatalogInflight = (async () => {
+    const [motionCards, photos, themeMap] = await Promise.all([
+      fetchCatalogMotionCards(),
+      fetchCatalogPhotoCards(),
+      loadThemeMap(),
+    ]);
+
+    const motion = motionCards
+      .filter((card) => card.id !== "original")
+      .map((card) => ({
+        id: card.id,
+        label: card.label,
+        bottom: card.bottom,
+        foreground: card.foreground,
+        mesh: card.mesh,
+        chromaKey: card.chromaKey,
+        model_id: card.model_id,
+        theme_id: card.theme_id,
+        sort_order: card.sort_order,
+        theme: themeForMotionCard(card, themeMap),
+      }))
+      .filter((card) => Boolean(card.theme.trim()));
+
+    const next = {
+      motion,
+      photos: photos.map((card) => ({
+        id: card.id,
+        label: card.label,
+        model_id: card.model_id,
+        theme_id: card.theme_id,
+        background: card.background,
+        bikini: card.bikini,
+        clothes: card.clothes,
+        mesh: card.mesh,
+      })),
+    };
+    gameCatalogCache = next;
+    gameCatalogCacheAt = Date.now();
+    return next;
+  })();
+
+  try {
+    return await gameCatalogInflight;
+  } finally {
+    gameCatalogInflight = null;
+  }
 }
 
 /** Preferred costume themes for the pack / hub shuffler fan. */

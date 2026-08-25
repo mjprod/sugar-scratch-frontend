@@ -388,6 +388,11 @@ interface CoverFlowCarouselProps {
   disableWheelPaging?: boolean
   /** Optional HUD pinned to the cardTop rotation point. */
   tearHud?: ReactNode
+  /**
+   * When false, tear progress does not enter coverflow revealMode.
+   * Purchase Ready uses a separate MotionRevealStage after tear completes.
+   */
+  tearDrivesReveal?: boolean
   /** Live model id for backend fan cards / overlay colors. */
   revealModelId?: string | null
   revealGirlName?: string | null
@@ -1850,22 +1855,25 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                {formatPackNumberLabel(item.girlName, item.packNumber)}
 	              </p>
 	            </div>
-	            <div className="coverflow-buy-pack-cta">
-	              <CtaButton
-	                {...ctaButtonPropsFromTemplate('hexGoldCTA')}
-	                {...ctaSize}
-                auroraPaused={isMobile}
-                glowOuterBloom="off"
-                label="Buy Pack"
-	                costAmount={formatPrice(item.price ?? 4.99)}
-	                className="coverflow-buy-pack-cta__button"
-	                tabIndex={0}
-	                onClick={(event) => {
-	                  event.stopPropagation()
-	                  onBuy?.(item)
-	                }}
-	              />
-	            </div>
+	            {/* Buy Pack only while purchasing — owned/ready-to-tear omits onBuy. */}
+	            {onBuy ? (
+	              <div className="coverflow-buy-pack-cta">
+	                <CtaButton
+	                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+	                  {...ctaSize}
+	                  auroraPaused={isMobile}
+	                  glowOuterBloom="off"
+	                  label="Buy Pack"
+	                  costAmount={formatPrice(item.price ?? 4.99)}
+	                  className="coverflow-buy-pack-cta__button"
+	                  tabIndex={0}
+	                  onClick={(event) => {
+	                    event.stopPropagation()
+	                    onBuy(item)
+	                  }}
+	                />
+	              </div>
+	            ) : null}
 	          </div>
 	        </Html>
 	      ) : null}
@@ -2024,6 +2032,7 @@ export function CoverFlowCarouselV2({
   disableSwipeDownDeactivate = false,
   disableWheelPaging = false,
   tearHud,
+  tearDrivesReveal = true,
   revealModelId = null,
   revealGirlName = null,
   revealOverlay = null,
@@ -2087,16 +2096,17 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   const [revealDuckInTimeline] = useState(() => loadDuckInTimeline())
   const [fanLayout] = useState(() => loadFanLayout())
   const [fanDrag] = useState(() => loadFanDrag())
-  const [packOpenRequested, setPackOpenRequestedState] = useState(
-    () => getCardTopDebug().packOpenRequested,
-  )
+  // Start closed — don't inherit a stale packOpenRequested from a prior tear
+  // (that paints a black reveal stage with no fan cards yet).
+  const [packOpenRequested, setPackOpenRequestedState] = useState(false)
   useEffect(() => {
     return subscribeCardTopDebug((debug) => {
       setPackOpenRequestedState(debug.packOpenRequested)
     })
   }, [])
   const focusedTearPack = items[focusIndex] ?? items[0] ?? null
-  const revealMode = packOpenRequested || revealingCharacterId != null
+  const revealMode =
+    (tearDrivesReveal && packOpenRequested) || revealingCharacterId != null
   // Prefer the exact pack id (foil slot 1 or 2); fall back to slot-1 id.
   const revealingPackId =
     revealingPackIdProp ??
@@ -2182,32 +2192,40 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   const focusedOwnerId = focusedPackId ? ownerIdFromPackId(focusedPackId) : null
   catalog.resolveProductSharedMedia(revealingModelId ?? focusedOwnerId)
 
-  // One random motion card per theme for the open fan. Scope to the pack's
-  // model when known so every theme belongs to the same girl.
+  // Prefetch fan media for the focused model. Never clear cards to null while
+  // revealing — that left a black stage after the pack ducked behind a missing fan.
   useEffect(() => {
     let cancelled = false
-    setBackendFan(null)
     void fetchPackFanCatalog(revealingModelId).then(async (result) => {
       if (cancelled) return
       const fan =
         result && result.cards.length > 0 ? result : await fetchPackFanCatalog()
-      if (!cancelled) setBackendFan(fan)
+      if (!cancelled && fan) setBackendFan(fan)
     })
     return () => {
       cancelled = true
     }
   }, [revealingModelId])
 
+  // Stable key so reveal auto-starts as soon as the seal opens — even if the
+  // focused pack id briefly flickers during foil swap.
+  const revealAutoStartKey =
+    revealingPackId ??
+    (packOpenRequested
+      ? focusedTearPack?.id ?? selectedId ?? items[0]?.id ?? 'open'
+      : null) ??
+    revealingCharacterId
+
   const sequence = useRevealSequence({
     autoStart: revealMode,
-    autoStartKey: revealingPackId ?? revealingCharacterId,
+    autoStartKey: revealAutoStartKey,
     autoStartDelayMs: 80,
   })
-  // Always-random shuffler: one motion card per theme, shuffled fan order.
-  // runId forces a fresh Math.random draw on every open / Replay open.
+  // Don't wait on backendFan — local role videos fill empty API pools so the
+  // fan always has cards once revealMode is on (avoids post-tear black screen).
   const revealCards = useMemo(
     () =>
-      revealMode && backendFan
+      revealMode
         ? createMixedCategoryPackCards({
           characters: catalog.characters,
           backendFan,
@@ -3184,7 +3202,13 @@ isMobile={isMobileViewportActive}
                 revealDuckInTimeline={revealDuckInTimeline}
                 onSelect={selectPack}
                 onRevealSequenceComplete={sequence.handleSequenceComplete}
-                onRevealPackBehindFan={sequence.handlePackBehindFan}
+                onRevealPackBehindFan={() => {
+                  // Don't tuck the pack away until the fan has cards — otherwise
+                  // a slow/failed fan catalog fetch leaves a pure black stage.
+                  if (revealCardsRef.current.length > 0) {
+                    sequence.handlePackBehindFan()
+                  }
+                }}
                 onRevealPackBlurChange={sequence.handlePackBlurChange}
                 formatPrice={formatPrice}
                 onBuy={onBuy}

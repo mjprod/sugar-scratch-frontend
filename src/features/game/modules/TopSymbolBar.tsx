@@ -78,7 +78,7 @@ function rgbBytesToOklch(r: number, g: number, b: number) {
 export type TopBarPhase = "center" | "docked" | "showcase";
 
 /** Fly back to center + pulse matched finds before advancing. */
-export const TOP_BAR_SHOWCASE_MS = 2400;
+export const TOP_BAR_SHOWCASE_MS = 400;
 
 type TopSymbolBarProps = {
   symbols: number[];
