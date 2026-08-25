@@ -10436,24 +10436,12 @@ body[data-theme="v8"] .inbox-utility-btn:focus-visible {
   outline-offset: 2px;
 }
 
-body[data-theme="v8"] .inbox-utility-btn--active {
-  border-color: color-mix(in oklab, var(--color-brand) 45%, var(--color-rose) 35%) !important;
-  background: color-mix(
-    in oklab,
-    color-mix(in oklab, var(--color-brand) 28%, var(--color-rose) 18%) 42%,
-    transparent
-  ) !important;
-  color: oklch(1 0 0 / 0.94) !important;
+body[data-theme="v8"] .inbox-utility-btn.is-active {
+  color: oklch(0.779 0.139 1.41);
 }
 
-body[data-theme="v8"] .inbox-utility-btn--active:hover {
-  border-color: color-mix(in oklab, var(--color-brand) 55%, var(--color-rose) 40%) !important;
-  background: color-mix(
-    in oklab,
-    color-mix(in oklab, var(--color-brand) 32%, var(--color-rose) 22%) 48%,
-    transparent
-  ) !important;
-  color: oklch(1 0 0) !important;
+body[data-theme="v8"] .inbox-utility-btn.is-active:hover {
+  color: oklch(0.779 0.139 1.41);
 }
 
 body[data-theme="v8"] .inbox-utility-badge {
@@ -11054,6 +11042,10 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     }
   }
 
+  body[data-theme="v8"] .top-nav-mobile {
+    overflow: hidden;
+  }
+
   body[data-theme="v8"] .top-nav-mobile-inner {
     position: relative;
     z-index: 1;
@@ -11094,6 +11086,18 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     gap: 0.65rem;
     min-width: 0;
     margin-left: auto;
+  }
+
+  body[data-theme="v8"] .top-nav-mobile-trailing {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+  }
+
+  body[data-theme="v8"] .top-nav-mobile .inbox-utility-btn--ghost.is-active {
+    background: transparent;
+    color: oklch(0.779 0.139 1.41);
   }
 
   body[data-theme="v8"] .top-nav-mobile .top-nav-resource,

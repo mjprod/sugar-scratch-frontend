@@ -218,16 +218,18 @@ function measureBubbleForTab(
   };
 }
 
-/** Top-nav bubble — centered on the item, includes Collection. */
+type TopNavTarget = AppTab | "cart";
+
+/** Top-nav bubble — centered on the item, includes Collection and cart. */
 function measureTopBubbleForTab(
   parent: HTMLElement,
   target: HTMLElement,
-  tabId: AppTab,
+  tabId: TopNavTarget,
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
   // Slight outer pad so the pill reads roomier than the label (esp. My Collection).
-  const padX = tabId === "profile" ? 8 : 6;
+  const padX = tabId === "profile" || tabId === "cart" ? 8 : 6;
   const insetY = 4;
   const fullH = Math.max(0, rect.height - insetY * 2);
   const bubbleH = fullH * 1.2;
@@ -257,7 +259,7 @@ export type LiquidGlassNavProps = {
   onOpenStore?: () => void;
   onOpenUnopenedPacks?: () => void;
   inboxUnreadCount?: number;
-  /** Cart is active while Unopened Packs is open. */
+  /** Cart / Pack Pocket is active — bubble sits on the cart utility. */
   packsActive?: boolean;
   /** Hide the mobile bottom dock (purchase keeps the top bar only). */
   hideDock?: boolean;
@@ -294,7 +296,7 @@ export function LiquidGlassNav({
       ),
     [authed, guestAuthLabel],
   );
-  const active = activeTab;
+  const active = packsActive ? null : activeTab;
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [handoff, setHandoff] = useState<NavHandoff>("none");
   const [bubble, setBubble] = useState<DockBubble>(HIDDEN_BUBBLE);
@@ -302,7 +304,9 @@ export function LiquidGlassNav({
   const [isDraggingBubble, setIsDraggingBubble] = useState(false);
   const [isDraggingTopBubble, setIsDraggingTopBubble] = useState(false);
   const [dragHoverTab, setDragHoverTab] = useState<AppTab | null>(null);
-  const [topDragHoverTab, setTopDragHoverTab] = useState<AppTab | null>(null);
+  const [topDragHoverTab, setTopDragHoverTab] = useState<TopNavTarget | null>(
+    null,
+  );
   const [utilsOverlap, setUtilsOverlap] = useState(0);
   const topUtilsRef = useRef<HTMLDivElement>(null);
 
@@ -312,6 +316,7 @@ export function LiquidGlassNav({
   const topItemsRef = useRef<HTMLDivElement>(null);
   const topTabRefs = useRef<Array<HTMLElement | null>>([]);
   const topProfileRef = useRef<HTMLButtonElement>(null);
+  const topCartRef = useRef<HTMLButtonElement>(null);
   const bubbleDragRef = useRef<{
     pointerId: number;
     grabOffsetX: number;
@@ -405,24 +410,37 @@ export function LiquidGlassNav({
 
   const findNearestTopTab = useCallback(
     (clientX: number) => {
-      const fromTabs = findNearestTab(clientX, topTabRefs.current, desktopTabs);
-      const profileEl = topProfileRef.current;
-      if (!profileEl) return fromTabs;
+      type Candidate = {
+        id: TopNavTarget;
+        index: number;
+        el: HTMLElement;
+        dist: number;
+      };
+      let best: Candidate | null = findNearestTab(
+        clientX,
+        topTabRefs.current,
+        desktopTabs,
+      );
 
-      const rect = profileEl.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const dist = Math.abs(clientX - cx);
-      const hit = clientX >= rect.left && clientX <= rect.right;
-      const score = hit ? dist * 0.25 : dist;
-      if (!fromTabs || score < fromTabs.dist) {
-        return {
-          id: "profile" as AppTab,
-          index: desktopTabs.length,
-          el: profileEl,
-          dist: score,
-        };
-      }
-      return fromTabs;
+      const consider = (
+        id: TopNavTarget,
+        el: HTMLElement | null,
+        index: number,
+      ) => {
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const dist = Math.abs(clientX - cx);
+        const hit = clientX >= rect.left && clientX <= rect.right;
+        const score = hit ? dist * 0.25 : dist;
+        if (!best || score < best.dist) {
+          best = { id, index, el, dist: score };
+        }
+      };
+
+      consider("cart", topCartRef.current, desktopTabs.length);
+      consider("profile", topProfileRef.current, desktopTabs.length + 1);
+      return best;
     },
     [desktopTabs, findNearestTab],
   );
@@ -459,7 +477,14 @@ export function LiquidGlassNav({
     const target = dockTabRefs.current[activeIndex];
 
     // Hero/Collection slot has its own glow treatment — hide shared bubble.
-    if (!parent || !target || !activeTabConfig || activeTabConfig.primary) {
+    // Cart is a top-bar destination, so the dock indicator stays off.
+    if (
+      packsActive ||
+      !parent ||
+      !target ||
+      !activeTabConfig ||
+      activeTabConfig.primary
+    ) {
       setBubble((prev) => ({
         ...prev,
         underCollection: 0,
@@ -479,18 +504,26 @@ export function LiquidGlassNav({
       // bubble slides up from the default (0,0) origin on load.
       ready: prev.ready,
     }));
-  }, [active, measureUnderCollection]);
+  }, [active, measureUnderCollection, packsActive]);
 
   const updateTopBubble = useCallback(() => {
     if (topBubbleDragRef.current) return;
 
     const parent = topBarRef.current;
-    const activeIndex = desktopTabs.findIndex((tab) => tab.id === active);
-    const target =
-      active === "profile"
-        ? topProfileRef.current
-        : topTabRefs.current[activeIndex];
-    const activeTabId = active === "profile" ? "profile" : desktopTabs[activeIndex]?.id;
+    let target: HTMLElement | null = null;
+    let activeTabId: TopNavTarget | undefined;
+
+    if (packsActive) {
+      target = topCartRef.current;
+      activeTabId = "cart";
+    } else if (active === "profile") {
+      target = topProfileRef.current;
+      activeTabId = "profile";
+    } else {
+      const activeIndex = desktopTabs.findIndex((tab) => tab.id === active);
+      target = topTabRefs.current[activeIndex] ?? null;
+      activeTabId = desktopTabs[activeIndex]?.id;
+    }
 
     if (!parent || !target || !activeTabId) {
       setTopBubble((prev) => ({
@@ -509,7 +542,7 @@ export function LiquidGlassNav({
       // Same first-paint snap as the dock bubble.
       ready: prev.ready,
     }));
-  }, [active, desktopTabs]);
+  }, [active, desktopTabs, packsActive]);
 
   useLayoutEffect(() => {
     updateDockBubble();
@@ -764,10 +797,18 @@ export function LiquidGlassNav({
 
       event.currentTarget.setPointerCapture(event.pointerId);
       setIsDraggingTopBubble(true);
-      setTopDragHoverTab(active);
+      setTopDragHoverTab(packsActive ? "cart" : active);
       event.preventDefault();
     },
-    [active, topBubble.h, topBubble.visible, topBubble.w, topBubble.x, topBubble.y],
+    [
+      active,
+      packsActive,
+      topBubble.h,
+      topBubble.visible,
+      topBubble.w,
+      topBubble.x,
+      topBubble.y,
+    ],
   );
 
   const handleTopBubblePointerMove = useCallback(
@@ -791,7 +832,9 @@ export function LiquidGlassNav({
       const overlapW = nearest
         ? measureTopBubbleForTab(parent, nearest.el, nearest.id).w
         : drag.width;
-      setUtilsOverlap(measureUtilsOverlap(nextX, overlapW));
+      setUtilsOverlap(
+        nearest?.id === "cart" ? 0 : measureUtilsOverlap(nextX, overlapW),
+      );
 
       if (nearest) {
         const measured = measureTopBubbleForTab(parent, nearest.el, nearest.id);
@@ -851,7 +894,11 @@ export function LiquidGlassNav({
 
         const nearest = findNearestTopTab(event.clientX);
         if (nearest) {
-          onTabChange(nearest.id);
+          if (nearest.id === "cart") {
+            onOpenUnopenedPacks?.();
+          } else {
+            onTabChange(nearest.id);
+          }
           const measured = measureTopBubbleForTab(
             parent,
             nearest.el,
@@ -869,7 +916,7 @@ export function LiquidGlassNav({
 
       updateTopBubble();
     },
-    [findNearestTopTab, onTabChange, updateTopBubble],
+    [findNearestTopTab, onOpenUnopenedPacks, onTabChange, updateTopBubble],
   );
 
   useEffect(() => {
@@ -1050,7 +1097,7 @@ export function LiquidGlassNav({
         <div className="nav-test-top-items" ref={topItemsRef}>
           {desktopTabs.map((tab, index) => {
             const Icon = tab.icon;
-            const isActive = active === tab.id;
+            const isActive = !packsActive && active === tab.id;
             const isDragTarget =
               isDraggingTopBubble && topDragHoverTab === tab.id;
 
@@ -1097,14 +1144,20 @@ export function LiquidGlassNav({
                 diamonds={diamonds}
                 onOpenStore={onOpenStore}
               />
-              {onOpenUnopenedPacks ? (
-                <PacksButton
-                  onOpen={onOpenUnopenedPacks}
-                  variant="ghost"
-                  active={packsActive}
-                />
-              ) : null}
             </div>
+          ) : null}
+          {authed && onOpenUnopenedPacks ? (
+            <PacksButton
+              ref={topCartRef}
+              onOpen={onOpenUnopenedPacks}
+              variant="ghost"
+              active={packsActive || topDragHoverTab === "cart"}
+              className={
+                isDraggingTopBubble && topDragHoverTab === "cart"
+                  ? "is-drag-target"
+                  : ""
+              }
+            />
           ) : null}
           <button
             ref={topProfileRef}
@@ -1112,7 +1165,7 @@ export function LiquidGlassNav({
             className={[
               "nav-test-top-profile",
               authed ? "" : "is-login",
-              active === "profile" ? "is-active" : "",
+              !packsActive && active === "profile" ? "is-active" : "",
               isDraggingTopBubble && topDragHoverTab === "profile"
                 ? "is-drag-target"
                 : "",
@@ -1126,7 +1179,9 @@ export function LiquidGlassNav({
                   ? "Profile"
                   : guestAuthLabel
             }
-            aria-current={active === "profile" ? "page" : undefined}
+            aria-current={
+              !packsActive && active === "profile" ? "page" : undefined
+            }
             tabIndex={hidden ? -1 : undefined}
             onClick={() => selectTab("profile")}
           >
@@ -1135,17 +1190,22 @@ export function LiquidGlassNav({
                 <User
                   className="nav-test-top-profile-icon"
                   strokeWidth={
-                    active === "profile" || topDragHoverTab === "profile"
+                    (!packsActive && active === "profile") ||
+                    topDragHoverTab === "profile"
                       ? 2.1
                       : 1.8
                   }
                   fill={
-                    active === "profile" || topDragHoverTab === "profile"
+                    (!packsActive && active === "profile") ||
+                    topDragHoverTab === "profile"
                       ? "currentColor"
                       : "none"
                   }
                   fillOpacity={
-                    active === "profile" || topDragHoverTab === "profile" ? 0.2 : 0
+                    (!packsActive && active === "profile") ||
+                    topDragHoverTab === "profile"
+                      ? 0.2
+                      : 0
                   }
                   aria-hidden="true"
                 />
@@ -1238,7 +1298,7 @@ export function LiquidGlassNav({
 
             {dockTabs.map((tab, index) => {
               const Icon = tab.icon;
-              const isActive = active === tab.id;
+              const isActive = !packsActive && active === tab.id;
               const isDragTarget =
                 isDraggingBubble && dragHoverTab === tab.id && !tab.primary;
 

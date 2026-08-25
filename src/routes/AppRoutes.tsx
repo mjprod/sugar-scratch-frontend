@@ -28,6 +28,7 @@ import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
 import { InboxPage } from "@/pages/InboxPage";
+import { CartPage } from "@/pages/CartPage";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 
 function GameCatalogRoute({ children }: { children: ReactNode }) {
@@ -187,6 +188,20 @@ export function AppRoutes() {
                 <InboxPage />
               </SoftGate>
             }
+          />
+          <Route
+            path="pack-pocket"
+            element={
+              <SoftGate tab="feed" action={{ type: "cart" }}>
+                <CatalogProvider>
+                  <CartPage />
+                </CatalogProvider>
+              </SoftGate>
+            }
+          />
+          <Route
+            path="cart"
+            element={<Navigate to={Paths.packPocket} replace />}
           />
           <Route
             path="purchase/:packId"

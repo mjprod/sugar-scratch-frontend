@@ -154,6 +154,15 @@ function PurchaseCtaButton({
   );
 }
 
+function cartFoilsForTear(pack: PurchaseFlowPack): FoilPack[] {
+  return (pack.cartFoils ?? []).map((foil, index) => ({
+    slot: foil.slot ?? ((index === 0 ? 1 : 2) as FoilPack["slot"]),
+    id: foil.id,
+    label: foil.label,
+    videoUrl: foil.videoUrl,
+  }));
+}
+
 function readyPacksForSession(
   purchasedFoil: FoilPack | null,
   session: OpeningSession | null,
@@ -161,6 +170,8 @@ function readyPacksForSession(
   count: number,
   modelPacks: readonly FoilPack[],
 ): FoilPack[] {
+  const cartFoils = cartFoilsForTear(pack);
+  if (cartFoils.length) return cartFoils;
   const source =
     purchasedFoil ??
     (session?.foilFaceUrl
@@ -241,6 +252,7 @@ export function PurchaseFlow({
       if (!bagResume || resumeIndex === null) return "expired";
       return "scratch";
     }
+    if (pack.entry === "cart-tear") return "ready";
     if (pack.entry === "open") return openResume ? "ready" : "no-packs";
     if (buying) return "choose";
     if (restored.status === "expired") return "expired";
@@ -254,11 +266,24 @@ export function PurchaseFlow({
     }
     return "select";
   });
-  const [session, setSession] = useState<OpeningSession | null>(initialSession);
+  const [session, setSession] = useState<OpeningSession | null>(() => {
+    if (initialSession) return initialSession;
+    if (pack.entry !== "cart-tear") return null;
+    const foils = cartFoilsForTear(pack);
+    const first = foils[0];
+    if (!first) return buildOpeningSession(1, pack.packId);
+    return {
+      ...buildFoilOpeningSession(foils, packCost(1, pack.packId)),
+      foilFaceUrl: first.videoUrl,
+      foilLabel: first.label,
+    };
+  });
   const [model, setModel] = useState<ModelProfile | null>(null);
   const [, setPendingFoil] = useState<FoilPack | null>(null);
   const lastFoilRef = useRef<FoilPack | null>(null);
   const [purchasedFoil, setPurchasedFoil] = useState<FoilPack | null>(() => {
+    const cartFirst = cartFoilsForTear(pack)[0];
+    if (cartFirst) return cartFirst;
     const faceUrl = initialSession?.foilFaceUrl?.trim();
     if (!faceUrl) return null;
     return {

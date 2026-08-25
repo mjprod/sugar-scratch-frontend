@@ -109,6 +109,7 @@ function formatDebugNumber(value: number) {
 
 export type FeaturedCoverFlowPlayTarget = {
   id: string;
+  foilId?: string;
   name: string;
   creatorName: string;
   diamondCost: number;
@@ -148,6 +149,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
       );
       playById.set(foil.id, {
         id: profile.id,
+        foilId: foil.id,
         name: foil.label || profile.name,
         creatorName: profile.name,
         diamondCost,

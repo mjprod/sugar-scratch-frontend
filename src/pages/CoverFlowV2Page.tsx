@@ -275,7 +275,7 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
 
 /** Isolated playground for the next 3D pack coverflow. Original home/purchase stages are untouched. */
 export function CoverFlowV2Page() {
-  const { openPurchase } = useAuth();
+  const { addToCart } = useAuth();
   const tear = useCoverflowTearSlider();
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -393,15 +393,22 @@ export function CoverFlowV2Page() {
           onBuy={(item) => {
             const target = catalog.playById.get(item.id);
             if (!target) return;
-            openPurchase(
-              {
-                packId: target.id,
-                packName: target.name,
-                price: String(target.diamondCost),
-                creator: target.creatorName,
-              },
-              "buy-pack",
-            );
+            addToCart({
+              packId: target.id,
+              packName: target.name,
+              creator: target.creatorName,
+              characterId: target.id,
+              price: target.diamondCost,
+              videoUrl: item.videoUrl,
+              packNumber: item.packNumber,
+              flagEmoji: item.flagEmoji,
+              flagSvgUrl: item.flagSvgUrl,
+              city: item.city,
+              country: item.country,
+              overlayColorStart: item.overlayColorStart,
+              overlayColorEnd: item.overlayColorEnd,
+              backgroundColor: item.backgroundColor,
+            });
           }}
           tearHud={
             <DragToTearControl

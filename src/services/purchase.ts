@@ -13,10 +13,18 @@ export type PurchaseFlowPack = {
    * purchase — buy then open
    * open — open an owned sealed pack
    * scratch — resume Ready-to-Scratch (never replays pack opening)
+   * cart-tear — open remaining cart packs on the Tear stage
    */
-  entry?: "purchase" | "open" | "scratch";
+  entry?: "purchase" | "open" | "scratch" | "cart-tear";
   /** Remaining unopened packs — drives the "No Remaining Packs" state. */
   unopenedPacks?: number;
+  /** Cart leftovers to open on Tear (video faces included). */
+  cartFoils?: Array<{
+    id: string;
+    label: string;
+    videoUrl: string;
+    slot?: 1 | 2;
+  }>;
   /** Specific owned pack instance when resuming Open Pack. */
   instanceId?: string;
   /** Purchase transaction id — used for multi-pack continuation. */

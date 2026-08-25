@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 /**
  * Global HUD utility control — cart for packs to open (TopNav / mobile utility).
  * Unread inbox count uses {@link InboxUtilityBadge} on the Profile icon.
@@ -63,19 +65,20 @@ function CartOutlineIcon({
   );
 }
 
-export function PacksButton({
-  onOpen,
-  className = "",
-  variant = "surface",
-  active = false,
-}: {
-  onOpen: () => void;
-  className?: string;
-  /** surface = bordered circle (subpage headers); ghost = compact HUD (TopNav). */
-  variant?: "surface" | "ghost";
-  /** Active while unopened packs (collection reveal) is open. */
-  active?: boolean;
-}) {
+export const PacksButton = forwardRef<
+  HTMLButtonElement,
+  {
+    onOpen: () => void;
+    className?: string;
+    /** surface = bordered circle (subpage headers); ghost = compact HUD (TopNav). */
+    variant?: "surface" | "ghost";
+    /** Active while the cart page is open. */
+    active?: boolean;
+  }
+>(function PacksButton(
+  { onOpen, className = "", variant = "surface", active = false },
+  ref,
+) {
   const surfaceClasses =
     "inbox-utility-btn relative grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95";
   const ghostClasses =
@@ -83,13 +86,14 @@ export function PacksButton({
 
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onOpen}
-      aria-label="Packs to open"
+      aria-label="Pack Pocket"
       aria-current={active ? "page" : undefined}
       className={[
         variant === "ghost" ? ghostClasses : surfaceClasses,
-        active ? "inbox-utility-btn--active" : "",
+        active ? "is-active" : "",
         className,
       ]
         .filter(Boolean)
@@ -100,4 +104,4 @@ export function PacksButton({
       />
     </button>
   );
-}
+});

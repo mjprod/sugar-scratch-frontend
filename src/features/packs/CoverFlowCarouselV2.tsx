@@ -371,6 +371,8 @@ interface CoverFlowCarouselProps {
   onFocusChange?: (item: Iteration | null, index: number) => void
   /** Product CTA when the focused pack is active. */
   onBuy?: (item: Iteration) => void
+  /** Cart: remove this pack. Replaces the Buy Pack CTA when set. */
+  onRemove?: (item: Iteration) => void
   formatPrice?: (price: number) => string
   /** When set, run reveal open sequence in-canvas for this character. */
   revealingCharacterId?: CharacterId | null
@@ -765,40 +767,42 @@ function CoverFlowPack({
 	  onOpenSequenceComplete,
 	  onOpenPackBehindFan,
 		  onOpenPackBlurChange,
-		  formatPrice,
-		  onBuy,
-		  tearHud,
-		}: {
-		  item: Iteration
-		  index: number
-		  focusIndex: number
-		  isActive: boolean
-		  hasActiveSelection: boolean
-		  modelY: number
-		  layout: CoverFlowLayoutSettings
-		  textureTransform: VideoTextureTransform
-		  centerTiltYaw: number
-		  centerTiltPitch: number
-		  isMobile: boolean
-		  /** Browser height < 550px — frosted glass behind pack HUD. */
-		  shortHudGlass: boolean
-		  /** True while any pack open sequence is running. */
-		  revealMode: boolean
-		  /** This pack is the one being opened. */
-		  isRevealHero: boolean
-		  playOpenSequence: boolean
-	  packsX: number
-	  packsY: number
-	  openTimeline: PackTimeline
-	  openDuckInTimeline: DuckInTimeline
-	  onSelect: (id: string) => void
-	  onOpenSequenceComplete?: () => void
-	  onOpenPackBehindFan?: () => void
-		  onOpenPackBlurChange?: (blurPx: number) => void
-		  formatPrice: (price: number) => string
-		  onBuy?: (item: Iteration) => void
-		  tearHud?: ReactNode
-		}) {
+			  formatPrice,
+			  onBuy,
+			  onRemove,
+			  tearHud,
+			}: {
+			  item: Iteration
+			  index: number
+			  focusIndex: number
+			  isActive: boolean
+			  hasActiveSelection: boolean
+			  modelY: number
+			  layout: CoverFlowLayoutSettings
+			  textureTransform: VideoTextureTransform
+			  centerTiltYaw: number
+			  centerTiltPitch: number
+			  isMobile: boolean
+			  /** Browser height < 550px — frosted glass behind pack HUD. */
+			  shortHudGlass: boolean
+			  /** True while any pack open sequence is running. */
+			  revealMode: boolean
+			  /** This pack is the one being opened. */
+			  isRevealHero: boolean
+			  playOpenSequence: boolean
+		  packsX: number
+		  packsY: number
+		  openTimeline: PackTimeline
+		  openDuckInTimeline: DuckInTimeline
+		  onSelect: (id: string) => void
+		  onOpenSequenceComplete?: () => void
+		  onOpenPackBehindFan?: () => void
+			  onOpenPackBlurChange?: (blurPx: number) => void
+			  formatPrice: (price: number) => string
+			  onBuy?: (item: Iteration) => void
+			  onRemove?: (item: Iteration) => void
+			  tearHud?: ReactNode
+			}) {
 	const groupRef = useRef<Group>(null)
 	  const modelRef = useRef<Group>(null)
   // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
@@ -1814,12 +1818,25 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--browse${
 	            <p className="coverflow-pack-label__collection">
 	              {formatPackCollectionLabel(item.girlName)}
 	            </p>
-	            <p className="coverflow-pack-label__pack">
-	              {formatPackNumberLabel(item.girlName, item.packNumber)}
-	            </p>
-	          </div>
-	        </Html>
-	      ) : null}
+            <p className="coverflow-pack-label__pack">
+              {formatPackNumberLabel(item.girlName, item.packNumber)}
+            </p>
+            {onRemove ? (
+              <button
+                type="button"
+                className="coverflow-cart-remove"
+                aria-label={`Remove ${item.packName || item.girlName} from cart`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onRemove(item)
+                }}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            ) : null}
+          </div>
+        </Html>
+      ) : null}
 
 	{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
 
@@ -1850,22 +1867,36 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                {formatPackNumberLabel(item.girlName, item.packNumber)}
 	              </p>
 	            </div>
-	            <div className="coverflow-buy-pack-cta">
-	              <CtaButton
-	                {...ctaButtonPropsFromTemplate('hexGoldCTA')}
-	                {...ctaSize}
-                auroraPaused={isMobile}
-                glowOuterBloom="off"
-                label="Buy Pack"
-	                costAmount={formatPrice(item.price ?? 4.99)}
-	                className="coverflow-buy-pack-cta__button"
-	                tabIndex={0}
-	                onClick={(event) => {
-	                  event.stopPropagation()
-	                  onBuy?.(item)
-	                }}
-	              />
-	            </div>
+            {onRemove ? (
+              <button
+                type="button"
+                className="coverflow-cart-remove"
+                aria-label={`Remove ${item.packName || item.girlName} from cart`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onRemove(item)
+                }}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            ) : (
+              <div className="coverflow-buy-pack-cta">
+                <CtaButton
+                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+                  {...ctaSize}
+                  auroraPaused={isMobile}
+                  glowOuterBloom="off"
+                  label="Buy Pack"
+                  costAmount={formatPrice(item.price ?? 4.99)}
+                  className="coverflow-buy-pack-cta__button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onBuy?.(item)
+                  }}
+                />
+              </div>
+            )}
 	          </div>
 	        </Html>
 	      ) : null}
@@ -1893,33 +1924,35 @@ function CoverFlowScene({
 	  onRevealSequenceComplete,
 	  onRevealPackBehindFan,
 	  onRevealPackBlurChange,
-		  formatPrice,
-		  onBuy,
-		  tearHud,
-		}: {
-		  items: Iteration[]
-		  focusIndex: number
-		  selectedId: string | null
-		  cameraSettings: CoverFlowCameraSettings
-		  layout: CoverFlowLayoutSettings
-		  textureTransform: VideoTextureTransform
-		  centerTiltYaw: number
-		  centerTiltPitch: number
-		  isMobile: boolean
-		  shortHudGlass: boolean
-		  revealMode: boolean
-		  revealingPackId: string | null
-		  revealPlaySequence: boolean
-		  revealTimeline: PackTimeline
-		  revealDuckInTimeline: DuckInTimeline
-		  onSelect: (id: string) => void
-		  onRevealSequenceComplete?: () => void
-		  onRevealPackBehindFan?: () => void
-		  onRevealPackBlurChange?: (blurPx: number) => void
-		  formatPrice: (price: number) => string
-		  onBuy?: (item: Iteration) => void
-		  tearHud?: ReactNode
-		}) {
+			  formatPrice,
+			  onBuy,
+			  onRemove,
+			  tearHud,
+			}: {
+			  items: Iteration[]
+			  focusIndex: number
+			  selectedId: string | null
+			  cameraSettings: CoverFlowCameraSettings
+			  layout: CoverFlowLayoutSettings
+			  textureTransform: VideoTextureTransform
+			  centerTiltYaw: number
+			  centerTiltPitch: number
+			  isMobile: boolean
+			  shortHudGlass: boolean
+			  revealMode: boolean
+			  revealingPackId: string | null
+			  revealPlaySequence: boolean
+			  revealTimeline: PackTimeline
+			  revealDuckInTimeline: DuckInTimeline
+			  onSelect: (id: string) => void
+			  onRevealSequenceComplete?: () => void
+			  onRevealPackBehindFan?: () => void
+			  onRevealPackBlurChange?: (blurPx: number) => void
+			  formatPrice: (price: number) => string
+			  onBuy?: (item: Iteration) => void
+			  onRemove?: (item: Iteration) => void
+			  tearHud?: ReactNode
+			}) {
 	  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -1973,6 +2006,7 @@ function CoverFlowScene({
               }
               formatPrice={formatPrice}
               onBuy={onBuy}
+              onRemove={onRemove}
               tearHud={index === focusIndex ? tearHud : undefined}
             />
           )
@@ -2015,6 +2049,7 @@ export function CoverFlowCarouselV2({
   onDeselect: onDeselectProp,
   onFocusChange,
   onBuy,
+  onRemove,
   formatPrice = formatPackPrice,
   revealingCharacterId = null,
   revealingPackId: revealingPackIdProp = null,
@@ -3188,6 +3223,7 @@ isMobile={isMobileViewportActive}
                 onRevealPackBlurChange={sequence.handlePackBlurChange}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
+                onRemove={onRemove}
                 tearHud={tearHud}
               />
             </Suspense>

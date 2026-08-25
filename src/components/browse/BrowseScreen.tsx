@@ -159,6 +159,7 @@ export function HomeScreen({
     packName: string;
     price: string;
     creator: string;
+    characterId?: string;
   }) => void;
   onOpenCreator?: (creatorId: string) => void;
   onClaimDaily?: (diamonds: number) => void;
@@ -247,15 +248,17 @@ export function HomeScreen({
 
   function playPack(pack: {
     id: string;
+    foilId?: string;
     name: string;
     creatorName: string;
     diamondCost: number;
   }) {
     onStartPlaying?.({
-      packId: pack.id,
+      packId: pack.foilId ?? pack.id,
       packName: pack.name,
       price: String(pack.diamondCost),
       creator: pack.creatorName,
+      characterId: pack.id,
     });
   }
 

@@ -52,6 +52,8 @@ export type ProtectedAction =
   | { type: "store" }
   | { type: "inbox" }
   | { type: "unopened-packs" }
+  | { type: "cart" }
+  | { type: "add-to-cart"; pack: import("./cart").CartAddInput }
   | { type: "claim" }
   | { type: "collection"; creatorId: string };
 
@@ -349,6 +351,7 @@ export function triggerFromAction(
   if (action.type === "store") return "open-store";
   if (action.type === "inbox") return "view-profile";
   if (action.type === "unopened-packs") return "view-collection";
+  if (action.type === "cart" || action.type === "add-to-cart") return "buy-pack";
   if (action.type === "claim") return "claim-reward";
   if (action.type === "collection") return "view-collection";
   if (action.type === "buy") {

@@ -6,13 +6,21 @@ import { CreatorScreen } from "@/components/creator/CreatorScreen";
 export function CreatorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { openPurchase } = useAuth();
+  const { addToCart } = useAuth();
   if (!id) return null;
   return (
     <CreatorScreen
       creatorId={id}
       onBack={() => navigate(Paths.home)}
-      onBuyPack={(pack) => openPurchase(pack, "buy-pack")}
+      onBuyPack={(pack) =>
+        addToCart({
+          packId: pack.packId,
+          packName: pack.packName,
+          creator: pack.creator,
+          characterId: pack.packId,
+          price: pack.price,
+        })
+      }
     />
   );
 }

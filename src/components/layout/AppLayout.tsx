@@ -26,7 +26,7 @@ export function AppLayout() {
     verifyOpen,
     navNotice,
     openStore,
-    openUnopenedPacks,
+    openCart,
     completeAuth,
     dismissAuth,
     onVerified,
@@ -74,9 +74,9 @@ export function AppLayout() {
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/photo-scratch");
 
-  const onUnopenedPacks =
-    location.pathname.startsWith("/collection") &&
-    new URLSearchParams(location.search).get("reveal") === "packs";
+  const onPackPocket =
+    location.pathname.startsWith("/pack-pocket") ||
+    location.pathname.startsWith("/cart");
 
   const showTopUtility =
     !hideChrome &&
@@ -101,13 +101,9 @@ export function AppLayout() {
     };
   }, [guest, setInboxUnread]);
 
-  const mobilePacks = openUnopenedPacks ? (
-    <PacksButton
-      onOpen={openUnopenedPacks}
-      variant="ghost"
-      active={onUnopenedPacks}
-    />
-  ) : null;
+  const mobilePacks = (
+    <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
+  );
 
   return (
     <div
@@ -140,9 +136,9 @@ export function AppLayout() {
           coins={guest ? null : coins}
           diamonds={guest ? null : diamonds}
           onOpenStore={showTopUtility ? openStore : undefined}
-          onOpenUnopenedPacks={showTopUtility ? openUnopenedPacks : undefined}
+          onOpenUnopenedPacks={showTopUtility ? openCart : undefined}
           inboxUnreadCount={inboxUnread}
-          packsActive={onUnopenedPacks}
+          packsActive={onPackPocket}
           hideDock={isPurchase}
         />
       ) : null}

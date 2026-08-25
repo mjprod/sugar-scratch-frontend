@@ -24,6 +24,10 @@ export const Paths = {
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
   inbox: "/inbox",
+  /** Packs ready to check out — not the Store. */
+  packPocket: "/pack-pocket",
+  /** @deprecated Use Paths.packPocket */
+  cart: "/pack-pocket",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
   game: "/game",
