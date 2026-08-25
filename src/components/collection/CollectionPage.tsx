@@ -1,5 +1,4 @@
 import { useMemo, type CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
@@ -7,7 +6,6 @@ import {
 } from "@/services/collection";
 import { getCollectionPageState } from "@/services/collectionState";
 import type { PurchaseFlowPack } from "@/services/purchase";
-import { Paths } from "@/routes/Paths";
 import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
 import { CollectionEmptyState } from "./CollectionEmptyState";
 import { CollectionSnapshot } from "./CollectionSnapshot";
@@ -30,7 +28,6 @@ export function CollectionPage({
   onScratchGroup?: (group: ScratchReadyGroup) => void;
   inventoryRevision?: number;
 }) {
-  const navigate = useNavigate();
   const state = useMemo(
     () => getCollectionPageState(),
     [inventoryRevision],
@@ -99,7 +96,6 @@ export function CollectionPage({
               hasPendingReveal={state.hasPendingReveal}
               onExplorePacks={onExplorePacks}
               onFocusReadyToReveal={() => scrollTo("ready-heading")}
-              onClaimReward={() => navigate(Paths.rewards)}
               onOpenMyCollection={() => scrollTo("my-collection")}
             />
 

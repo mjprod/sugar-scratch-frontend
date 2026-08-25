@@ -4,6 +4,7 @@
  */
 import {
   resolveCollectionThemeLabel,
+  canonicalThemeKey,
   type CreatorProgress,
 } from "./collection";
 import {
@@ -14,7 +15,10 @@ import {
 import { CREATOR_PHOTOS } from "../lib/photos";
 import { listStoredGameSessions } from "@/features/game/modules/gameSession";
 import { listReadyToScratch } from "./readyToScratch";
-import { isThemeCompletionClaimed } from "./themeCompletionReward";
+import {
+  creatorHasAnyThemeCompletionClaim,
+  isThemeCompletionClaimed,
+} from "./themeCompletionReward";
 import { apiFetch } from "../lib/api";
 
 type CreatorLedger = {
@@ -354,14 +358,15 @@ export function getCollectionPageState(): CollectionPageState {
   const collectionsInProgress = creatorsWithProgress.filter(
     (c) => c.collected < c.total,
   ).length;
-  // One claimable reward per completed creator set (theme id "primary") until
-  // theme-level ledger exists on the collection hub.
-  const rewardReadyCount = creatorsWithProgress.filter(
-    (c) =>
-      c.collected >= c.total &&
-      c.total > 0 &&
-      !isThemeCompletionClaimed(c.id, "primary"),
-  ).length;
+  // Match claim ledger keys: theme-complete:${creatorId}:${themeId}
+  // (never a fake "primary" id — that never gets written on claim).
+  const rewardReadyCount = creatorsWithProgress.filter((c) => {
+    if (!(c.collected >= c.total && c.total > 0)) return false;
+    const themeId = canonicalThemeKey(c.themeName);
+    if (themeId) return !isThemeCompletionClaimed(c.id, themeId);
+    // No resolvable theme on the hub row — clear after any claim for this creator.
+    return !creatorHasAnyThemeCompletionClaim(c.id);
+  }).length;
 
   return {
     totalPurchasedPacks: owned,

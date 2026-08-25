@@ -149,21 +149,71 @@ export function resumeHrefForScratchGroup(
     const packId = group.id.startsWith("photo:")
       ? group.id.slice("photo:".length)
       : null;
+    // Prefer pack-keyed session. Only use the active session when the tile is
+    // explicitly the generic "photo:session" fallback — never cross-pack.
     const session =
-      (packId && packId !== "session"
-        ? activateGameSessionForPack(packId)
-        : null) ?? loadGameSession();
+      packId && packId !== "session"
+        ? (activateGameSessionForPack(packId) ??
+          loadGameSessionForPack(packId))
+        : loadGameSession();
     if (!session) return null;
+    if (
+      packId &&
+      packId !== "session" &&
+      session.packScratch?.readyPackId &&
+      session.packScratch.readyPackId !== packId
+    ) {
+      return null;
+    }
+    if (session.phase !== "photo" && session.phase !== "photo_reveal") {
+      return null;
+    }
     return photoPlayHref(session);
   }
+
+  // Motion: pack-keyed only. Do not fall back to whatever motion hand is active.
   const session =
     activateGameSessionForPack(group.id) ??
     loadGameSessionForPack(group.id) ??
-    (loadGameSession()?.phase === "motion" ? loadGameSession() : null);
+    motionSessionMatchingGroupId(group.id);
   if (session?.phase === "motion") {
+    if (
+      session.packScratch?.readyPackId &&
+      session.packScratch.readyPackId !== group.id &&
+      !group.id.startsWith("motion:")
+    ) {
+      return null;
+    }
     return motionPlayHref(session, firstMissingMotionCardId(session));
   }
   return null;
+}
+
+/** Session whose motion card list matches a `motion:id1,id2,…` shelf id. */
+function motionSessionMatchingGroupId(
+  groupId: string,
+): ReturnType<typeof loadGameSession> {
+  if (!groupId.startsWith("motion:")) return null;
+  const encoded = groupId.slice("motion:".length);
+  return (
+    listStoredGameSessions().find(
+      (session) =>
+        session.phase === "motion" &&
+        session.motionCardIds.join(",") === encoded,
+    ) ?? null
+  );
+}
+
+function motionGroupMatchesSession(
+  groupId: string,
+  session: NonNullable<ReturnType<typeof loadGameSession>>,
+): boolean {
+  const packId = session.packScratch?.readyPackId;
+  if (packId && packId === groupId) return true;
+  if (groupId.startsWith("motion:")) {
+    return groupId.slice("motion:".length) === session.motionCardIds.join(",");
+  }
+  return false;
 }
 
 /** Scratch = never started; Resume = existing progress on this asset. */
@@ -192,8 +242,7 @@ export function cardActionForGroup(group: {
   for (const session of listStoredGameSessions()) {
     if (session.phase !== "motion") continue;
     if (session.completedMotionIds.length === 0) continue;
-    const packId = session.packScratch?.readyPackId;
-    if (packId === group.id || group.id.startsWith("motion:")) return "resume";
+    if (motionGroupMatchesSession(group.id, session)) return "resume";
   }
   return "scratch";
 }

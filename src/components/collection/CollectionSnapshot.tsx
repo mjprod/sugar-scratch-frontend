@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Gift, Images, Layers, Users } from "lucide-react";
+import { Images, Layers, Users } from "lucide-react";
 
 export type CollectionSummaryData = {
   cardsCollected: number;
@@ -13,18 +13,15 @@ export function CollectionSnapshot({
   hasPendingReveal = false,
   onExplorePacks,
   onFocusReadyToReveal,
-  onClaimReward,
   onOpenMyCollection,
 }: {
   summary: CollectionSummaryData;
   hasPendingReveal?: boolean;
   onExplorePacks?: () => void;
   onFocusReadyToReveal?: () => void;
-  onClaimReward?: () => void;
   onOpenMyCollection?: () => void;
 }) {
   const empty = summary.cardsCollected === 0;
-  const rewardReady = summary.rewardReadyCount > 0;
 
   return (
     <section className="collection-snapshot" aria-label="Collection summary">
@@ -66,62 +63,34 @@ export function CollectionSnapshot({
           )}
         </div>
       ) : (
-        <>
-          <div
-            className={[
-              "collection-snapshot-metrics",
-              rewardReady ? "has-reward" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            role="group"
-            aria-label="Collection breakdown"
-          >
-            <SummaryMetric
-              icon={Images}
-              value={summary.cardsCollected}
-              label="Cards Collected"
-              accent="pink"
-              onClick={onOpenMyCollection}
-            />
-            <span className="collection-snapshot-sep" aria-hidden="true" />
-            <SummaryMetric
-              icon={Users}
-              value={summary.creatorsCollectedFrom}
-              label="Creators"
-              accent="muted"
-            />
-            <span className="collection-snapshot-sep" aria-hidden="true" />
-            <SummaryMetric
-              icon={Layers}
-              value={summary.collectionsInProgress}
-              label="In Progress"
-              accent="muted"
-              onClick={onOpenMyCollection}
-            />
-            {rewardReady ? (
-              <>
-                <span className="collection-snapshot-sep" aria-hidden="true" />
-                <SummaryMetric
-                  icon={Gift}
-                  value={summary.rewardReadyCount}
-                  label={
-                    summary.rewardReadyCount === 1
-                      ? "Reward Ready"
-                      : "Rewards Ready"
-                  }
-                  accent="reward"
-                  actionLabel={
-                    summary.rewardReadyCount === 1
-                      ? "Claim Reward"
-                      : "View Rewards"
-                  }
-                  onAction={onClaimReward}
-                />
-              </>
-            ) : null}
-          </div>
-        </>
+        <div
+          className="collection-snapshot-metrics"
+          role="group"
+          aria-label="Collection breakdown"
+        >
+          <SummaryMetric
+            icon={Images}
+            value={summary.cardsCollected}
+            label="Cards Collected"
+            accent="pink"
+            onClick={onOpenMyCollection}
+          />
+          <span className="collection-snapshot-sep" aria-hidden="true" />
+          <SummaryMetric
+            icon={Users}
+            value={summary.creatorsCollectedFrom}
+            label="Creators"
+            accent="muted"
+          />
+          <span className="collection-snapshot-sep" aria-hidden="true" />
+          <SummaryMetric
+            icon={Layers}
+            value={summary.collectionsInProgress}
+            label="In Progress"
+            accent="muted"
+            onClick={onOpenMyCollection}
+          />
+        </div>
       )}
     </section>
   );
@@ -133,21 +102,17 @@ function SummaryMetric({
   label,
   accent,
   onClick,
-  actionLabel,
-  onAction,
 }: {
   icon: LucideIcon;
   value: number;
   label: string;
-  accent: "pink" | "muted" | "reward";
+  accent: "pink" | "muted";
   onClick?: () => void;
-  actionLabel?: string;
-  onAction?: () => void;
 }) {
   const className = [
     "collection-snapshot-metric",
     `is-${accent}`,
-    onClick && !actionLabel ? "is-interactive" : "",
+    onClick ? "is-interactive" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -161,22 +126,10 @@ function SummaryMetric({
       />
       <strong className="collection-snapshot-metric-value">{value}</strong>
       <span className="collection-snapshot-metric-label">{label}</span>
-      {actionLabel ? (
-        <button
-          type="button"
-          className="collection-snapshot-metric-action"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAction?.();
-          }}
-        >
-          {actionLabel}
-        </button>
-      ) : null}
     </>
   );
 
-  if (onClick && !actionLabel) {
+  if (onClick) {
     return (
       <button type="button" className={className} onClick={onClick}>
         {body}

@@ -58,7 +58,6 @@ import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,
 } from "@/lib/navigation";
-import { resumeHrefForScratchGroup } from "@/services/scratchResume";
 
 type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
 
@@ -281,21 +280,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ScratchPrototype can skip Tap-to-play and arm the countdown.
         unlockCountdownSound();
         const readyId = action.pack.instanceId ?? action.pack.packId;
-        const liveHref = resumeHrefForScratchGroup({
-          id: readyId,
-          creatorId: "",
-          creatorName: action.pack.creator,
-          collectionName: action.pack.packName,
-          count: 1,
-          coverUrl: "",
-          kind: "motion",
-        });
-        if (liveHref) {
-          navigate(liveHref);
-          return;
-        }
-        const packSession = loadGameSessionForPack(readyId);
-        if (packSession?.phase === "motion") {
+        // Pack-keyed only — resumeHref must not land in another pack's hand.
+        const packSession =
+          activateGameSessionForPack(readyId) ??
+          loadGameSessionForPack(readyId);
+        if (
+          packSession?.phase === "motion" &&
+          (!packSession.packScratch?.readyPackId ||
+            packSession.packScratch.readyPackId === readyId)
+        ) {
           activateGameSessionForPack(readyId);
           navigate(
             motionPlayHref(
@@ -313,29 +306,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "photo-scratch") {
         unlockCountdownSound();
         const packId = action.packId?.trim();
-        const liveHref = resumeHrefForScratchGroup({
-          id: packId ? `photo:${packId}` : "photo:session",
-          creatorId: "",
-          creatorName: "Photo Cards",
-          collectionName: "Photo Cards",
-          count: 1,
-          coverUrl: "",
-          kind: "photo",
-        });
-        if (liveHref) {
-          navigate(liveHref);
+        const packSession =
+          packId && packId !== "session"
+            ? (activateGameSessionForPack(packId) ??
+              loadGameSessionForPack(packId))
+            : null;
+        if (
+          packSession &&
+          (packSession.phase === "photo_reveal" ||
+            packSession.phase === "photo") &&
+          (!packSession.packScratch?.readyPackId ||
+            !packId ||
+            packSession.packScratch.readyPackId === packId)
+        ) {
+          const started = beginPhotoPhase() ?? packSession;
+          navigate(photoPlayHref(started));
           return;
         }
-        const session =
-          (packId && packId !== "session"
-            ? activateGameSessionForPack(packId)
-            : null) ?? loadGameSession();
-        if (session && (session.phase === "photo_reveal" || session.phase === "photo")) {
-          const started = beginPhotoPhase() ?? session;
-          navigate(photoPlayHref(started));
-        } else {
-          navigate(Paths.collection);
+        if (!packId) {
+          const session = loadGameSession();
+          if (
+            session &&
+            (session.phase === "photo_reveal" || session.phase === "photo")
+          ) {
+            const started = beginPhotoPhase() ?? session;
+            navigate(photoPlayHref(started));
+            return;
+          }
         }
+        navigate(Paths.collection);
         return;
       }
       if (action.type === "buy") {
