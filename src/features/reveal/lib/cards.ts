@@ -6,6 +6,7 @@ import {
 import {
   CHARACTER_BY_ID,
   CHARACTER_IDS,
+  DEFAULT_SWIPE_VIDEO_URL,
   formatCardNumber,
   formatCharacterDisplayName,
   MOTION_VIDEO_COUNT,
@@ -16,7 +17,8 @@ import {
 } from '@/shared/catalog/characters'
 import type { BackendFanCatalog } from '@/shared/backend/collection'
 
-export const DEFAULT_BACK_URL = '/img/SugarScratch.png'
+/** Local pack-back art (missing /img/SugarScratch.png used to 404). */
+export const DEFAULT_BACK_URL = '/images/logoSugar.png'
 
 export type MediaType = 'image' | 'video'
 
@@ -64,7 +66,8 @@ function resolveMotionUrl(character: Character, motionSlot: number): string {
     const trimmed = (url ?? '').trim()
     if (trimmed) return trimmed
   }
-  return character.videoUrl.trim() || DEFAULT_BACK_URL
+  // Roles ship empty locally — use the shared swipe clip, never a missing PNG.
+  return character.videoUrl.trim() || DEFAULT_SWIPE_VIDEO_URL
 }
 
 /** True random 0..n-1 — used so every open/replay redraws fresh. */

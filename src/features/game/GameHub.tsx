@@ -434,9 +434,6 @@ export function GameHub() {
                   ))}
                 </div>
               ) : null}
-              {session.wonPhotoIds.length > 0 ? (
-                <p>Ready for Photo Scratch</p>
-              ) : null}
             </div>
           ) : null}
 

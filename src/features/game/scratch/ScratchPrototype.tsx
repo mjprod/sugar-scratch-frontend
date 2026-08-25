@@ -24,6 +24,7 @@ import {
   InitialCountdown,
   isCountdownSoundUnlocked,
   TOP_BAR_DOCK_MS,
+  TOP_BAR_DOCK_NEXT_CARD_MS,
   unlockCountdownSound,
 } from "../modules/InitialCountdown";
 import {
@@ -1859,11 +1860,14 @@ export function ScratchPrototype() {
 
   function unlockPlayAfterDock() {
     clearIntroDockTimer();
+    const dockMs = handCountdownDoneRef.current
+      ? TOP_BAR_DOCK_NEXT_CARD_MS
+      : TOP_BAR_DOCK_MS;
     introDockTimerRef.current = window.setTimeout(() => {
       introDockTimerRef.current = null;
       setIntroGateActive(false);
       introGateActiveRef.current = false;
-    }, TOP_BAR_DOCK_MS);
+    }, dockMs);
   }
 
   function onTopBarAllRevealed() {
@@ -3223,14 +3227,21 @@ export function ScratchPrototype() {
 
     if (gameMode) {
       commitMotionCardResult(finishedId, prize);
-      const awarded = await awardMotionCardPhotos(finishedId, prize);
+      // One catalog fetch for award + overlay photos (used to load twice).
+      const catalog = prize > 0 ? await loadGameCatalog() : null;
+      const awarded = await awardMotionCardPhotos(
+        finishedId,
+        prize,
+        catalog ?? undefined,
+      );
       if (awarded) setGameSession(awarded);
       const pending = awarded?.pendingMotionResult;
-      const catalog = await loadGameCatalog();
       const photoIds = pending?.photoIds ?? awarded?.lastMotionWinPhotoIds ?? [];
-      const photos = photoIds
-        .map((id) => catalog.photos.find((photo) => photo.id === id))
-        .filter((photo): photo is PhotoCard => Boolean(photo));
+      const photos = catalog
+        ? photoIds
+            .map((id) => catalog.photos.find((photo) => photo.id === id))
+            .filter((photo): photo is PhotoCard => Boolean(photo))
+        : [];
       if (prize > 0 && photos.length > 0) {
         const pack = awarded?.packScratch;
         recordWonPhotoCards({
@@ -3306,6 +3317,12 @@ export function ScratchPrototype() {
     setClaimed(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
+    // Pack / game hand: hard-cut to the next card. The mirror-slide transition
+    // re-decodes both videos and then waits for stage ready (~1–3s of dead air).
+    if (nextCard && gameMode) {
+      setSelectedCardId(nextCard.id);
+      return;
+    }
     if (nextCard && finishedCard?.bottom && nextCard.foreground) {
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
@@ -3384,7 +3401,12 @@ export function ScratchPrototype() {
     const finishedCard =
       modelCards.find((entry) => entry.id === finishedId) ?? card;
 
-    if (nextCard && finishedCard?.bottom && nextCard.foreground) {
+    if (
+      nextCard &&
+      !gameMode &&
+      finishedCard?.bottom &&
+      nextCard.foreground
+    ) {
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
       );
@@ -3493,7 +3515,8 @@ export function ScratchPrototype() {
       soundEnabledRef.current,
     );
     clearGameResultTimer();
-    // Body-hunt cards: bar flies back to center and pulses finds, then next card.
+    // Body-hunt cards: short showcase pulse, then result / next card.
+    // Don't hold the handoff for the full outcome sound — let it play under.
     if (useBodySymbolsRef.current) {
       setTopBarPhase("showcase");
       topBarPhaseRef.current = "showcase";
@@ -3501,18 +3524,19 @@ export function ScratchPrototype() {
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const showcaseMs = reduceMotion
-        ? Math.min(advanceDelayMs, 600)
-        : Math.max(advanceDelayMs, TOP_BAR_SHOWCASE_MS);
+        ? Math.min(advanceDelayMs, 300)
+        : TOP_BAR_SHOWCASE_MS;
       gameResultTimerRef.current = window.setTimeout(() => {
         gameResultTimerRef.current = null;
         void presentMotionResult();
       }, showcaseMs);
       return;
     }
+    // Plain scratch: don't wait on the multi-second win fanfare before advancing.
     gameResultTimerRef.current = window.setTimeout(() => {
       gameResultTimerRef.current = null;
       void presentMotionResult();
-    }, advanceDelayMs);
+    }, Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS));
   }
   tryResolveGameRef.current = tryResolveGame;
 

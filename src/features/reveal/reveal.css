@@ -1019,14 +1019,28 @@ button {
 .motion-reveal__cta {
   position: absolute;
   left: 50%;
-  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  /* Sit just under the fan (cards anchor ~46%), not as a detached footer. */
+  top: 68%;
+  bottom: auto;
   z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.2rem;
   width: min(100% - 2rem, 22rem);
   transform: translateX(-50%);
+}
+
+@media (max-width: 520px) {
+  .motion-reveal__cta {
+    top: 64%;
+  }
+}
+
+@media (min-height: 900px) {
+  .motion-reveal__cta {
+    top: 62%;
+  }
 }
 
 .motion-reveal__continue {
@@ -1050,8 +1064,8 @@ button {
 }
 
 .motion-reveal__later {
-  min-height: 2.75rem;
-  padding: 0.35rem 1.5rem;
+  min-height: 2.25rem;
+  padding: 0.2rem 1.5rem;
   border: 0;
   background: transparent;
   color: oklch(1 0 0 / 0.7);

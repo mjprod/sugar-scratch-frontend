@@ -10,7 +10,7 @@ import {
   Sparkles,
   TimerOff,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -21,7 +21,11 @@ import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
-import { setCardTopTearT, setPackOpenRequested } from "@/features/packs/cardTopDebug";
+import {
+  rewindCardTopTear,
+  setCardTopTearT,
+  setPackOpenRequested,
+} from "@/features/packs/cardTopDebug";
 import "@/features/packs/packs.css";
 import { CardFan } from "@/features/reveal/components/CardFan";
 import { useRevealSequence } from "@/features/reveal/hooks/useRevealSequence";
@@ -291,17 +295,32 @@ export function PurchaseFlow({
     countUnopened(),
   );
   const [tearTutorialFade, setTearTutorialFade] = useState(false);
+  /** Seal torn — hide tear tutorial so it can't block Scratch Now. */
+  const [sealTorn, setSealTorn] = useState(false);
   const tearTutorialWasReady = useRef(false);
   useMarkPageReady(!buying || model !== null || stage !== "choose");
+
+  // Clear leftover tear/open state from a previous pack so Pack Ready isn't a
+  // black torn foil on a black stage.
+  useLayoutEffect(() => {
+    rewindCardTopTear();
+  }, []);
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
   /** Skip pack opening when resuming from Collection Ready to Scratch. */
   const autoLaunchScratchRef = useRef(false);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  // Cover / inventory label — keep local (no missing helper that can crash render).
+  const collectionTheme =
+    session?.foilLabel?.trim() ||
+    purchasedFoil?.label?.trim() ||
+    pack.packName;
   const packCoverUrl = resolveInventoryCoverUrl({
     packId: pack.packId,
-    themeName: pack.packName,
+    themeName: collectionTheme,
     creator: pack.creator,
   });
   /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
@@ -316,12 +335,15 @@ export function PurchaseFlow({
   }, [session]);
 
   useEffect(() => {
-    if (!buying) return;
+    // Buy needs foil picker; open-from-inventory needs model id for motion hand.
+    if (!buying && pack.entry !== "open") return;
     void loadModelProfile(pack.packId, pack.creator).then((profile) => {
       setModel(profile);
-      if (!profile?.packs.length) setStage((current) => (current === "choose" ? "select" : current));
+      if (!profile?.packs.length) {
+        setStage((current) => (current === "choose" ? "select" : current));
+      }
     });
-  }, [buying, pack.creator, pack.packId]);
+  }, [buying, pack.entry, pack.creator, pack.packId]);
 
   useEffect(() => {
     if (stage === "expired") clearOpening();
@@ -487,18 +509,21 @@ export function PurchaseFlow({
       return;
     }
     tearLocked.current = true;
+    setSealTorn(true);
     const opened = markPackOpened(currentId);
     if (!opened || opened.status !== "opened") {
       tearLocked.current = false;
       setStage("opening-interrupted");
       return;
     }
-    const next = session?.foilFaceUrl
-      ? session
-      : buildOpeningSession(1, currentId);
+    const live = sessionRef.current;
+    const next = live?.foilFaceUrl
+      ? live
+      : live ?? buildOpeningSession(1, currentId);
     setInstanceId(currentId);
     setPurchaseId(opened.purchaseId);
     setSession(next);
+    sessionRef.current = next;
     setScratched([]);
     setSelectedCard(0);
     upsertReadyToScratch({
@@ -508,10 +533,13 @@ export function PurchaseFlow({
       session: next,
       revealed: [],
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
+    // Leave CoverFlow tear/reveal (black-stage trap) and show the fan stage.
+    rewindCardTopTear();
+    setStage("reveal");
   }
 
   function scratch(amount = 34) {
@@ -680,9 +708,40 @@ export function PurchaseFlow({
     return markCurrentRevealed();
   }
 
-  async function launchMotionScratch() {
-    if (!session || savingLater) return;
+  async function launchMotionScratch(revealCards?: RevealCard[]) {
+    if (savingLater) return;
+
+    let active = sessionRef.current;
+    if (revealCards?.length) {
+      const mapped = revealCards.map((card, index) => ({
+        id: card.id,
+        rarity:
+          (index === revealCards.length - 1
+            ? "Ultra Rare"
+            : "Super Rare") as OpeningSession["cards"][number]["rarity"],
+        reward: 10 + index * 5,
+        faceUrl: card.mediaUrl,
+      }));
+      active = active
+        ? { ...active, cards: mapped }
+        : {
+            ...buildOpeningSession(
+              1,
+              instanceId ?? pack.instanceId ?? pack.packId,
+            ),
+            cards: mapped,
+          };
+      sessionRef.current = active;
+      setSession(active);
+    }
+
+    if (!active?.cards.length) {
+      setModal("failed");
+      return;
+    }
+
     setSavingLater(true);
+    setSealTorn(true);
     trackScratchEvent("Scratch Now Selected", {
       packId: instanceId ?? pack.packId,
     });
@@ -692,12 +751,10 @@ export function PurchaseFlow({
     try {
       const catalog = await loadGameCatalog();
       const modelId = model?.id ?? pack.packId;
-      const openingIds = session.cards.map((card) => card.id);
-      const hand = resolveMotionHandFromIds(
-        openingIds,
-        catalog.motion,
-        { modelId },
-      );
+      const openingIds = active.cards.map((card) => card.id);
+      const hand = resolveMotionHandFromIds(openingIds, catalog.motion, {
+        modelId,
+      });
       if (hand.length === 0) {
         autoLaunchScratchRef.current = false;
         if (stage === "cards-ready") setStage("reveal");
@@ -734,10 +791,10 @@ export function PurchaseFlow({
         packId: readyId,
         packName: pack.packName,
         creator: pack.creator,
-        session,
+        session: active,
         revealed: scratched,
         coverUrl: packCoverUrl,
-        themeName: pack.packName,
+        themeName: collectionTheme,
       });
       const created = startMotionSession(hand, {
         packScratch: {
@@ -745,8 +802,8 @@ export function PurchaseFlow({
           packName: pack.packName,
           creator: pack.creator,
           coverUrl: packCoverUrl,
-          themeName: pack.packName,
-          openingSession: session,
+          themeName: collectionTheme,
+          openingSession: active,
           openingCardIds,
           settledOpeningIds: [...scratched],
         },
@@ -882,7 +939,7 @@ export function PurchaseFlow({
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
           className={[
-            "flex min-h-0 flex-1 flex-col",
+            "flex min-h-0 flex-1 flex-col bg-[oklch(0.14_0_0)]",
             stage === "choose" || stage === "reveal" || stage === "cards-ready"
               ? "overflow-hidden"
               : "overflow-y-auto",
@@ -910,9 +967,11 @@ export function PurchaseFlow({
             />
           ) : null}
 
-          {stage === "ready" && session ? (
+          {/* Open-from-Collection can land on ready before a session exists;
+              tear / fan cards create one. Requiring session hid ReadyStage. */}
+          {stage === "ready" ? (
             <ReadyStage
-              key={instanceId ?? purchaseId ?? pack.packId}
+              key={purchaseId ?? pack.packId}
               remainingUnopened={readyPackCount}
               onOpened={completeTear}
               packs={readyPacksForSession(
@@ -933,22 +992,30 @@ export function PurchaseFlow({
               overlayColorEnd={model?.overlayColorEnd ?? null}
               launching={savingLater}
               onCards={(cards) => {
-                setSession((current) =>
-                  current
-                    ? {
-                        ...current,
-                        cards: cards.map((card, index) => ({
-                          id: card.id,
-                          rarity:
-                            index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
-                          reward: 10 + index * 5,
-                          faceUrl: card.mediaUrl,
-                        })),
-                      }
-                    : current,
-                );
+                setSession((current) => {
+                  const mapped = cards.map((card, index) => ({
+                    id: card.id,
+                    rarity:
+                      (index === cards.length - 1
+                        ? "Ultra Rare"
+                        : "Super Rare") as OpeningSession["cards"][number]["rarity"],
+                    reward: 10 + index * 5,
+                    faceUrl: card.mediaUrl,
+                  }));
+                  const next = current
+                    ? { ...current, cards: mapped }
+                    : {
+                        ...buildOpeningSession(
+                          1,
+                          instanceId ?? pack.instanceId ?? pack.packId,
+                        ),
+                        cards: mapped,
+                      };
+                  sessionRef.current = next;
+                  return next;
+                });
               }}
-              onContinue={() => void launchMotionScratch()}
+              onContinue={(cards) => void launchMotionScratch(cards)}
               onSaveLater={() => scratchLater("decision")}
               onSaveAndOpenNext={
                 readyPackCount > 1 ? openNextPurchasedPack : undefined
@@ -956,7 +1023,7 @@ export function PurchaseFlow({
             />
           ) : null}
 
-          {stage === "reveal" && session ? (
+          {stage === "reveal" ? (
             <MotionRevealStage
               modelId={model?.id ?? pack.packId}
               girlName={model?.name ?? pack.creator}
@@ -968,22 +1035,30 @@ export function PurchaseFlow({
               overlayColorEnd={model?.overlayColorEnd ?? null}
               launching={savingLater}
               onCards={(cards) => {
-                setSession((current) =>
-                  current
-                    ? {
-                        ...current,
-                        cards: cards.map((card, index) => ({
-                          id: card.id,
-                          rarity:
-                            index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
-                          reward: 10 + index * 5,
-                          faceUrl: card.mediaUrl,
-                        })),
-                      }
-                    : current,
-                );
+                setSession((current) => {
+                  const mapped = cards.map((card, index) => ({
+                    id: card.id,
+                    rarity:
+                      (index === cards.length - 1
+                        ? "Ultra Rare"
+                        : "Super Rare") as OpeningSession["cards"][number]["rarity"],
+                    reward: 10 + index * 5,
+                    faceUrl: card.mediaUrl,
+                  }));
+                  const next = current
+                    ? { ...current, cards: mapped }
+                    : {
+                        ...buildOpeningSession(
+                          1,
+                          instanceId ?? pack.instanceId ?? pack.packId,
+                        ),
+                        cards: mapped,
+                      };
+                  sessionRef.current = next;
+                  return next;
+                });
               }}
-              onContinue={() => void launchMotionScratch()}
+              onContinue={(cards) => void launchMotionScratch(cards)}
               onSaveLater={() => scratchLater("decision")}
               onSaveAndOpenNext={
                 readyPackCount > 1 ? openNextPurchasedPack : undefined
@@ -1165,7 +1240,9 @@ export function PurchaseFlow({
         </motion.div>
       </AnimatePresence>
 
-      {!isScratchTutorialCompleted() && (stage === "ready" || tearTutorialFade) ? (
+      {!isScratchTutorialCompleted() &&
+      !sealTorn &&
+      (stage === "ready" || tearTutorialFade) ? (
         <FirstPlayTutorial scene="tear" fading={tearTutorialFade} />
       ) : null}
 
@@ -1442,12 +1519,15 @@ function ReadyStage({
   overlayColorEnd: string | null;
   launching?: boolean;
   onCards: (cards: RevealCard[]) => void;
-  onContinue: () => void;
+  onContinue: (cards?: RevealCard[]) => void;
   onSaveLater: () => void;
   onSaveAndOpenNext?: () => void;
 }) {
   const tear = useCoverflowTearSlider();
   const openedRef = useRef(false);
+  // Only settle after a user-driven tear finish this mount — never from a
+  // leftover tearT≈1 in memory from a previous open.
+  const userTearRef = tear.finishStartedRef;
   const items = useMemo(
     () =>
       (packs.length
@@ -1510,7 +1590,8 @@ function ReadyStage({
     );
   }, [items]);
 
-  useEffect(() => {
+  // Reset tear before paint so a prior tearT≈1 cannot open reveal / black stage.
+  useLayoutEffect(() => {
     tear.replayTear();
   }, []);
 
@@ -1520,10 +1601,11 @@ function ReadyStage({
 
   useEffect(() => {
     if (openedRef.current || !selectedId) return;
+    if (!userTearRef.current) return;
     if (tear.debug.tearT < 0.999) return;
     openedRef.current = true;
     onOpened();
-  }, [onOpened, selectedId, tear.debug.tearT]);
+  }, [onOpened, selectedId, tear.debug.tearT, userTearRef]);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1558,6 +1640,7 @@ function ReadyStage({
           }}
           disableSwipeDownDeactivate
           disableWheelPaging
+          tearDrivesReveal={false}
           revealModelId={modelId}
           revealGirlName={girlName}
           revealOverlay={{
@@ -1568,13 +1651,6 @@ function ReadyStage({
             gradientColor: overlayColorStart ?? overlayColor,
             gradientColorEnd: overlayColorEnd ?? overlayColor,
           }}
-          onRevealCards={onCards}
-          onRevealContinue={() => onContinue()}
-          onRevealSaveLater={onSaveLater}
-          onRevealSaveAndOpenNext={onSaveAndOpenNext}
-          revealContinueLabel={launching ? "Starting…" : "Scratch Now"}
-          revealSaveLaterLabel="Save for Later"
-          revealSaveAndOpenNextLabel="Save for later and open another"
           tearHud={
             selectedId ? (
               <DragToTearControl
@@ -1615,18 +1691,17 @@ function MotionRevealStage({
   overlayColorEnd: string | null;
   launching?: boolean;
   onCards: (cards: RevealCard[]) => void;
-  onContinue: () => void;
+  onContinue: (cards?: RevealCard[]) => void;
   onSaveLater: () => void;
   onSaveAndOpenNext?: () => void;
 }) {
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null);
-  const [ready, setReady] = useState(false);
   const [fanLayout] = useState(() => loadFanLayout());
   const [fanDrag] = useState(() => loadFanDrag());
   const onCardsRef = useRef(onCards);
   onCardsRef.current = onCards;
   const sequence = useRevealSequence({
-    autoStart: ready,
+    autoStart: true,
     autoStartKey: modelId,
     autoStartDelayMs: 80,
   });
@@ -1637,9 +1712,8 @@ function MotionRevealStage({
       if (cancelled) return;
       const fan =
         result && result.cards.length > 0 ? result : await fetchPackFanCatalog();
-      if (cancelled) return;
+      if (cancelled || !fan) return;
       setBackendFan(fan);
-      setReady(true);
     });
     return () => {
       cancelled = true;
@@ -1652,7 +1726,6 @@ function MotionRevealStage({
   }, [modelId, sequence.showPlay]);
 
   const cards = useMemo(() => {
-    if (!ready) return [];
     return createMixedCategoryPackCards({
       backendFan,
       seed: `${modelId}:${sequence.runId}`,
@@ -1677,7 +1750,6 @@ function MotionRevealStage({
     modelId,
     overlayColorEnd,
     overlayColorStart,
-    ready,
     sequence.runId,
   ]);
 
@@ -1701,7 +1773,7 @@ function MotionRevealStage({
           <div className="motion-reveal__continue">
             <PurchaseCtaButton
               label={launching ? "Starting…" : "Scratch Now"}
-              onClick={onContinue}
+              onClick={() => onContinue(cards)}
               disabled={launching}
             />
           </div>

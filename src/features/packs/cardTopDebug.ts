@@ -111,13 +111,19 @@ function normalizeScale(
 
 function normalizeState(
   parsed: Partial<CardTopDebugState> | null | undefined,
+  options?: { hydrateEphemeral?: boolean },
 ): CardTopDebugState {
-  const tearT = isFiniteNumber(parsed?.tearT)
-    ? Math.min(1, Math.max(0, parsed.tearT))
-    : DEFAULT_CARD_TOP_DEBUG.tearT;
   const tearDurationMs = isFiniteNumber(parsed?.tearDurationMs)
     ? Math.min(4000, Math.max(200, parsed.tearDurationMs))
     : DEFAULT_CARD_TOP_TEAR_DURATION_MS;
+  // On disk hydrate, drop tear/open playback — tearT≈1 made Pack Ready a
+  // black torn foil on a black stage. Live setCardTopDebug keeps ephemeral values.
+  const hydrateEphemeral = options?.hydrateEphemeral === true;
+  const tearT = hydrateEphemeral
+    ? 0
+    : isFiniteNumber(parsed?.tearT)
+      ? Math.min(1, Math.max(0, parsed.tearT))
+      : DEFAULT_CARD_TOP_DEBUG.tearT;
   return {
     position: normalizeVec3(parsed?.position, DEFAULT_CARD_TOP_POSITION),
     rotation: normalizeVec3(parsed?.rotation, DEFAULT_CARD_TOP_ROTATION),
@@ -128,13 +134,15 @@ function normalizeState(
     pivot: normalizeVec3(parsed?.pivot, DEFAULT_CARD_TOP_PIVOT),
     showGizmo: parsed?.showGizmo === true,
     tearT,
-    tearPlaying: parsed?.tearPlaying === true,
+    tearPlaying: hydrateEphemeral ? false : parsed?.tearPlaying === true,
     tearDurationMs,
     selectedTearKeyId:
       typeof parsed?.selectedTearKeyId === "string"
         ? parsed.selectedTearKeyId
         : DEFAULT_CARD_TOP_DEBUG.selectedTearKeyId,
-    packOpenRequested: parsed?.packOpenRequested === true,
+    packOpenRequested: hydrateEphemeral
+      ? false
+      : parsed?.packOpenRequested === true,
     lottieOffset: normalizeVec3(parsed?.lottieOffset, {
       x: -0.97,
       y: 2.26,
@@ -148,7 +156,9 @@ function loadStoredState(): CardTopDebugState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_CARD_TOP_DEBUG };
-    return normalizeState(JSON.parse(raw) as Partial<CardTopDebugState>);
+    return normalizeState(JSON.parse(raw) as Partial<CardTopDebugState>, {
+      hydrateEphemeral: true,
+    });
   } catch {
     return { ...DEFAULT_CARD_TOP_DEBUG };
   }
@@ -226,12 +236,13 @@ export function setCardTopShowGizmo(showGizmo: boolean) {
 }
 
 export function setCardTopTearT(tearT: number, tearPlaying = false) {
+  // Never persist tear progress — sealed packs must load closed.
   setCardTopDebug(
     {
       tearT: Math.min(1, Math.max(0, tearT)),
       tearPlaying,
     },
-    { persist: !tearPlaying },
+    { persist: false },
   );
 }
 
@@ -257,12 +268,16 @@ export function pauseCardTopTear() {
 }
 
 export function rewindCardTopTear() {
-  setCardTopDebug({
-    tearT: 0,
-    tearPlaying: false,
-    packOpenRequested: false,
-  });
+  setCardTopDebug(
+    {
+      tearT: 0,
+      tearPlaying: false,
+      packOpenRequested: false,
+    },
+    { persist: false },
+  );
 }
+
 
 export function setPackOpenRequested(packOpenRequested: boolean) {
   setCardTopDebug({ packOpenRequested }, { persist: false });
