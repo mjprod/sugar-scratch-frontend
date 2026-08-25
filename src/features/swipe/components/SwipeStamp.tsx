@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DotLottieReact, type DotLottie } from '@lottiefiles/dotlottie-react'
+import { lottieRenderConfig } from '@/utils/lottieRender'
 import { COMMIT_FINISH_MS, type StampTransform } from '../constants/swipeFeedback'
 
 type SwipeStampProps = {
@@ -374,6 +375,7 @@ export function SwipeStamp({
         src={LOTTIE_SRC[type]}
         autoplay={false}
         loop={false}
+        renderConfig={lottieRenderConfig({ extraScale: 1.35 })}
         dotLottieRefCallback={handlePlayer}
         className="swipe-stamp__lottie"
       />

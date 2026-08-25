@@ -1,5 +1,6 @@
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import type { CSSProperties } from "react";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const DIAMOND_LOTTIE_SRC = "/lottie/lottieDiamond.lottie";
 
@@ -52,6 +53,7 @@ export function DiamondLottie({
         autoplay={autoplay}
         loop={loop}
         speed={speed}
+        renderConfig={lottieRenderConfig()}
         style={{ width: "100%", height: "100%" }}
       />
     </span>

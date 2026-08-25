@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 import { GameSymbolIcon } from "./GameSymbolIcon";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
 
@@ -881,6 +882,9 @@ export function TopSymbolBar({
             <GameSymbolIcon
               typeId={typeId}
               size={28}
+              // Slot pop / match reactivate scale past 1.2× — render sharper
+              // than the 28px CSS box so those beats stay crisp.
+              pixelScale={1.3}
               // Only animate during the center foil reveal. Docked / showcase
               // use CSS (dormant desat, pulse) — keeps DotLottie workers frozen
               // for the whole hunt, which is the long expensive stretch.
@@ -910,6 +914,10 @@ export function TopSymbolBar({
               width={PEEL_LOTTIE_WIDTH}
               height={PEEL_LOTTIE_WIDTH}
               className="lottie-clipper-peel-player"
+              renderConfig={lottieRenderConfig({
+                extraScale: 1.8,
+                autoResize: false,
+              })}
               style={{
                 width: "100%",
                 height: "100%",

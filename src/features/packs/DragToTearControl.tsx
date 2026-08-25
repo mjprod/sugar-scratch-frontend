@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion, type PanInfo } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 
 const TEAR_DRAG_DISTANCE_PX = 180;
 
@@ -49,11 +50,7 @@ export function DragToTearControl({
           autoplay
           loop
           speed={1}
-          renderConfig={{
-            devicePixelRatio:
-              typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
-            autoResize: true,
-          }}
+          renderConfig={lottieRenderConfig()}
           style={{ width: 288, height: 288 }}
         />
       </motion.button>
