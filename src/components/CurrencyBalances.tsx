@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 /** Inline coin + diamond HUD counters (TopNav, mobile HUD, and subpage headers). */
@@ -48,7 +48,11 @@ export function CurrencyBalances({
         className="top-nav-resource inline-flex items-center gap-1.5"
         aria-label={`${coinLabel} Sugar Coins`}
       >
-        <Sparkles className="top-nav-resource-icon top-nav-resource-icon--coin size-3.5 shrink-0" aria-hidden />
+        <CoinLottie
+          className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
+          size={36}
+          aria-hidden
+        />
         <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
           {coinLabel}
         </span>
