@@ -10,7 +10,7 @@ import {
   Sparkles,
   TimerOff,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -67,6 +67,7 @@ import {
   noteCreatorStarted,
   recordRevealedCards,
 } from "@/services/collectionState";
+import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   addUnopenedFromPurchase,
   countUnopened,
@@ -299,9 +300,18 @@ export function PurchaseFlow({
   const tearLocked = useRef(false);
   /** Skip pack opening when resuming from Collection Ready to Scratch. */
   const autoLaunchScratchRef = useRef(false);
+  const collectionTheme =
+    resolveCollectionThemeLabel({
+      themeName: pack.themeName,
+      packName: session?.foilLabel ?? purchasedFoil?.label ?? pack.packName,
+      catalogPackId: pack.packId,
+      creator: pack.creator,
+    }) ||
+    pack.themeName?.trim() ||
+    pack.packName;
   const packCoverUrl = resolveInventoryCoverUrl({
     packId: pack.packId,
-    themeName: pack.packName,
+    themeName: collectionTheme,
     creator: pack.creator,
   });
   /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
@@ -316,12 +326,16 @@ export function PurchaseFlow({
   }, [session]);
 
   useEffect(() => {
-    if (!buying) return;
+    // Buy path needs the model for foil picker; open-from-inventory needs it
+    // so Pack Ready can show a real foil instead of an empty shell.
+    if (!buying && pack.entry !== "open") return;
     void loadModelProfile(pack.packId, pack.creator).then((profile) => {
       setModel(profile);
-      if (!profile?.packs.length) setStage((current) => (current === "choose" ? "select" : current));
+      if (!profile?.packs.length) {
+        setStage((current) => (current === "choose" ? "select" : current));
+      }
     });
-  }, [buying, pack.creator, pack.packId]);
+  }, [buying, pack.entry, pack.creator, pack.packId]);
 
   useEffect(() => {
     if (stage === "expired") clearOpening();
@@ -376,7 +390,7 @@ export function PurchaseFlow({
       session,
       revealed: scratched,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
   }, [
     stage,
@@ -413,6 +427,15 @@ export function PurchaseFlow({
       const paid = await submitPurchase(quantity, diamonds, pack.packId);
       onSpend(paid.diamondCost);
       const tx = newPurchaseId();
+      const themeName =
+        resolveCollectionThemeLabel({
+          themeName: pack.themeName,
+          packName: foil?.label ?? pack.packName,
+          catalogPackId: pack.packId,
+          creator: pack.creator,
+        }) ||
+        pack.themeName?.trim() ||
+        pack.packName;
       const owned = addUnopenedFromPurchase({
         purchaseId: tx,
         catalogPackId: pack.packId,
@@ -420,12 +443,12 @@ export function PurchaseFlow({
         creator: pack.creator,
         count: quantity,
         coverUrl: packCoverUrl,
-        themeName: pack.packName,
+        themeName,
       });
       const first = owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
       commitPurchaseIdempotencyKey(pack.packId, quantity);
-      noteCreatorStarted(first.creatorId, pack.creator);
+      noteCreatorStarted(first.creatorId, pack.creator, themeName);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
       setReadyPackCount(owned.length || quantity);
@@ -508,7 +531,7 @@ export function PurchaseFlow({
       session: next,
       revealed: [],
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
@@ -529,6 +552,7 @@ export function PurchaseFlow({
       count: fresh.length,
       creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
       creatorName: pack.creator,
+      themeName: collectionTheme,
     });
     onComplete({ cards: fresh.length, coins });
   }
@@ -543,7 +567,7 @@ export function PurchaseFlow({
       session: session!,
       revealed: revealedIds,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
 
@@ -605,7 +629,7 @@ export function PurchaseFlow({
       session,
       revealed: revealedIds,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     trackScratchEvent("Scratch Progress Saved", {
       packId: readyId,
@@ -737,7 +761,7 @@ export function PurchaseFlow({
         session,
         revealed: scratched,
         coverUrl: packCoverUrl,
-        themeName: pack.packName,
+        themeName: collectionTheme,
       });
       const created = startMotionSession(hand, {
         packScratch: {
@@ -745,7 +769,7 @@ export function PurchaseFlow({
           packName: pack.packName,
           creator: pack.creator,
           coverUrl: packCoverUrl,
-          themeName: pack.packName,
+          themeName: collectionTheme,
           openingSession: session,
           openingCardIds,
           settledOpeningIds: [...scratched],
@@ -910,7 +934,10 @@ export function PurchaseFlow({
             />
           ) : null}
 
-          {stage === "ready" && session ? (
+          {/* Open-from-Collection lands on ready with no session yet — tear
+              builds one in completeTear. Requiring session hid ReadyStage and
+              made Ready to Reveal "Open Pack" look broken. */}
+          {stage === "ready" ? (
             <ReadyStage
               key={instanceId ?? purchaseId ?? pack.packId}
               remainingUnopened={readyPackCount}
@@ -933,20 +960,23 @@ export function PurchaseFlow({
               overlayColorEnd={model?.overlayColorEnd ?? null}
               launching={savingLater}
               onCards={(cards) => {
-                setSession((current) =>
-                  current
-                    ? {
-                        ...current,
-                        cards: cards.map((card, index) => ({
-                          id: card.id,
-                          rarity:
-                            index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
-                          reward: 10 + index * 5,
-                          faceUrl: card.mediaUrl,
-                        })),
-                      }
-                    : current,
-                );
+                setSession((current) => {
+                  const mapped = cards.map((card, index) => ({
+                    id: card.id,
+                    rarity:
+                      index === cards.length - 1 ? "Ultra Rare" : "Super Rare",
+                    reward: 10 + index * 5,
+                    faceUrl: card.mediaUrl,
+                  }));
+                  if (current) return { ...current, cards: mapped };
+                  return {
+                    ...buildOpeningSession(
+                      1,
+                      instanceId ?? pack.instanceId ?? pack.packId,
+                    ),
+                    cards: mapped,
+                  };
+                });
               }}
               onContinue={() => void launchMotionScratch()}
               onSaveLater={() => scratchLater("decision")}
@@ -1510,7 +1540,9 @@ function ReadyStage({
     );
   }, [items]);
 
-  useEffect(() => {
+  // Reset tear state before paint so a prior session's tearT≈1 cannot
+  // auto-fire onOpened / open reveal mode on mount.
+  useLayoutEffect(() => {
     tear.replayTear();
   }, []);
 
@@ -1520,6 +1552,9 @@ function ReadyStage({
 
   useEffect(() => {
     if (openedRef.current || !selectedId) return;
+    // Only settle after a user-driven tear finish this mount — never from a
+    // persisted tearT≈1 left over from a previous pack open.
+    if (!tear.finishStartedRef.current) return;
     if (tear.debug.tearT < 0.999) return;
     openedRef.current = true;
     onOpened();

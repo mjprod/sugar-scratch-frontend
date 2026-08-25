@@ -43,7 +43,7 @@ function themeIdOf(group: BackendCollectionGroup): string {
   );
 }
 
-function buildThemes(
+export function buildThemes(
   catalog: BackendCollectionCatalog | null,
   modelId: string | null,
 ): {
