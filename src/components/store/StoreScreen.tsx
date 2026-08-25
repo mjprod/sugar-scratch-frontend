@@ -14,7 +14,6 @@ import {
   clearPurchaseSession,
   createPurchaseSession,
   fetchStoreProducts,
-  peekStoreProducts,
   loadPurchaseSession,
   resumePurchaseSession,
   returnFromGateway,
@@ -78,7 +77,7 @@ export function StoreScreen({
   }) => void;
 }) {
   const { requireAuth } = useAuth();
-  const [load, setLoad] = useState<LoadState>(() => peekStoreProducts());
+  const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [claimedAds, setClaimedAds] = useState<string[]>([]);
   const resumed = useRef(false);

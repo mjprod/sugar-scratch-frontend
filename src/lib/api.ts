@@ -13,6 +13,12 @@ export class ApiError extends Error {
   }
 }
 
+export type ApiGetFailReason = "unauthorized" | "timeout" | "network" | "http";
+
+export type ApiGetResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; reason: ApiGetFailReason; status: number };
+
 function resolveUrl(path: string): string {
   const trimmed = path.trim();
   if (!trimmed) return trimmed;
@@ -50,23 +56,42 @@ async function request(path: string, init: RequestInit = {}, timeoutMs = DEFAULT
   }
 }
 
+export async function apiGet<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<ApiGetResult<T>> {
+  try {
+    const response = await request(path, init);
+    if (response.status === 401) {
+      return { ok: false, reason: "unauthorized", status: 401 };
+    }
+    if (!response.ok) {
+      return { ok: false, reason: "http", status: response.status };
+    }
+    const text = await response.text();
+    if (!text) return { ok: false, reason: "http", status: response.status };
+    return { ok: true, data: JSON.parse(text) as T };
+  } catch (error) {
+    const timeout =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    return {
+      ok: false,
+      reason: timeout ? "timeout" : "network",
+      status: 0,
+    };
+  }
+}
+
 /**
- * Fail-soft JSON GET/POST helper for live `/api/*` calls.
- * Returns null on network errors, abort, or non-OK responses.
+ * Fail-soft JSON helper. Prefer `apiGet` when you need to tell timeout from 401.
  */
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T | null> {
-  try {
-    const response = await request(path, init);
-    if (!response.ok) return null;
-    const text = await response.text();
-    if (!text) return null;
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
+  const result = await apiGet<T>(path, init);
+  return result.ok ? result.data : null;
 }
 
 /** Strict helper for mutations — throws ApiError on non-OK. */

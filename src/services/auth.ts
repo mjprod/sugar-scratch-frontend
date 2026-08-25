@@ -3,7 +3,7 @@
  * Recommendation lives in ./recommendation.ts (independent system).
  */
 
-import { apiFetch, apiMutate, ApiError } from "../lib/api";
+import { apiGet, apiMutate, ApiError } from "../lib/api";
 import type { AppTab } from "@/types/app";
 import type { PurchaseFlowPack } from "./purchase";
 
@@ -52,7 +52,8 @@ export type ProtectedAction =
   | { type: "store" }
   | { type: "inbox" }
   | { type: "claim" }
-  | { type: "collection"; creatorId: string };
+  | { type: "collection"; creatorId: string }
+  | { type: "session-expired" };
 
 export type AuthenticationSheetMode =
   | "login"
@@ -122,14 +123,18 @@ export function clearHasLoggedIn() {
   }
 }
 
-/** Returns null when the request fails soft (network/timeout/non-OK). */
-export async function fetchAuthSession(): Promise<{
-  authenticated: boolean;
-  user: AuthUser | null;
-} | null> {
-  return apiFetch<{ authenticated: boolean; user: AuthUser | null }>(
+/** Returns a live session, logged-out, or unreachable (timeout/network/5xx). */
+export async function fetchAuthSession(): Promise<
+  | { state: "ok"; authenticated: boolean; user: AuthUser | null }
+  | { state: "unreachable"; reason: "unauthorized" | "timeout" | "network" | "http" }
+> {
+  const result = await apiGet<{ authenticated: boolean; user: AuthUser | null }>(
     "/api/auth/session",
   );
+  if (result.ok) {
+    return { state: "ok", authenticated: result.data.authenticated, user: result.data.user };
+  }
+  return { state: "unreachable", reason: result.reason };
 }
 
 export async function loginWithEmail(email: string, password: string) {
@@ -346,6 +351,7 @@ export function triggerFromAction(
     return "scratch-card";
   }
   if (action.type === "store") return "open-store";
+  if (action.type === "session-expired") return "session-expired";
   if (action.type === "inbox") return "view-rewards";
   if (action.type === "claim") return "claim-reward";
   if (action.type === "collection") return "view-collection";
