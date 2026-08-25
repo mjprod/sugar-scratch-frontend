@@ -4,6 +4,8 @@ import { lottieRenderConfig } from "@/utils/lottieRender";
 
 /** Match `.top-symbol-bar` dock fly animation in styles.css. */
 export const TOP_BAR_DOCK_MS = 720;
+/** Later cards in a hand — shorter dock before body scratch unlocks. */
+export const TOP_BAR_DOCK_NEXT_CARD_MS = 220;
 
 export const INITIAL_COUNTDOWN_SRC = "/lotties/lottieInitialCountdown.json";
 export const INITIAL_COUNTDOWN_SOUND_SRC = "/sounds/321_go_countdown.mp3";

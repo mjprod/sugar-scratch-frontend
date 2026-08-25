@@ -262,6 +262,13 @@
 
 .coverflow-reveal-cta {
   z-index: 10;
+  pointer-events: auto;
+}
+
+.coverflow-reveal-cta .motion-reveal__continue,
+.coverflow-reveal-cta .cta-button-glow,
+.coverflow-reveal-cta .cta-button {
+  pointer-events: auto;
 }
 
 .coverflow-shell.is-revealing .coverflow-nav-chevron,

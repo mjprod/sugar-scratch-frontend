@@ -1883,6 +1883,7 @@ export function PhotoScratch() {
       soundEnabledRef.current,
     );
     clearGameResultTimer();
+    // Don't hold the handoff for the full outcome sound — let it play under.
     if (hasBodySymbolsRef.current) {
       setTopBarPhase("showcase");
       topBarPhaseRef.current = "showcase";
@@ -1890,8 +1891,8 @@ export function PhotoScratch() {
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const showcaseMs = reduceMotion
-        ? Math.min(advanceDelayMs, 600)
-        : Math.max(advanceDelayMs, TOP_BAR_SHOWCASE_MS);
+        ? Math.min(advanceDelayMs, 300)
+        : TOP_BAR_SHOWCASE_MS;
       gameResultTimerRef.current = window.setTimeout(() => {
         gameResultTimerRef.current = null;
         advanceAfterScratchRef.current();
@@ -1901,7 +1902,7 @@ export function PhotoScratch() {
     gameResultTimerRef.current = window.setTimeout(() => {
       gameResultTimerRef.current = null;
       advanceAfterScratchRef.current();
-    }, advanceDelayMs);
+    }, Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS));
   }
   tryResolveGameRef.current = tryResolveGame;
 

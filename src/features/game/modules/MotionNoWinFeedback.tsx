@@ -5,10 +5,10 @@ type MotionNoWinFeedbackProps = {
   onComplete: () => void;
 };
 
-const DURATION_MS = 1600;
-const SAFETY_MS = 2800;
+const DURATION_MS = 1200;
+const SAFETY_MS = 1800;
 
-/** Short automatic no-win beat — no CTAs, no card flip. */
+/** Short automatic no-win beat (~1.2s) — no CTAs, no card flip. */
 export function MotionNoWinFeedback({
   resultId,
   onComplete,
