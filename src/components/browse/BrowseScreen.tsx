@@ -250,10 +250,12 @@ export function HomeScreen({
     name: string;
     creatorName: string;
     diamondCost: number;
+    themeName?: string;
   }) {
     onStartPlaying?.({
       packId: pack.id,
       packName: pack.name,
+      themeName: pack.themeName,
       price: String(pack.diamondCost),
       creator: pack.creatorName,
     });
@@ -265,6 +267,7 @@ export function HomeScreen({
       name: pack.name,
       creatorName: pack.creatorName,
       diamondCost: pack.diamondCost,
+      themeName: pack.themeName,
     });
   }
 

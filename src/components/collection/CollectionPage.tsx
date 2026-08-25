@@ -1,29 +1,21 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  type CollectionLibraryFilter,
-  type LibraryPreviewCard,
+  resolveCollectionThemeLabel,
   type ScratchReadyGroup,
   type UnopenedPack,
 } from "@/services/collection";
 import { getCollectionPageState } from "@/services/collectionState";
 import type { PurchaseFlowPack } from "@/services/purchase";
+import { Paths } from "@/routes/Paths";
 import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
-import { CardLibraryPreview } from "./CardLibraryPreview";
 import { CollectionEmptyState } from "./CollectionEmptyState";
-import { CollectionPlaceholder } from "./CollectionPlaceholder";
 import { CollectionSnapshot } from "./CollectionSnapshot";
-import { ContinueCollectingSection } from "./ContinueCollectingSection";
+import { MyCollectionSection } from "./MyCollectionSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
-type HubOverlay =
-  | { kind: "library"; filter: CollectionLibraryFilter }
-  | { kind: "creators" }
-  | { kind: "card"; card: LibraryPreviewCard }
-  | { kind: "scratch"; group: ScratchReadyGroup }
-  | null;
-
 /**
- * Collection hub — modules appear only when inventory makes them relevant.
+ * Collection hub — Summary → Ready to Reveal → My Collection.
  */
 export function CollectionPage({
   onOpenCreator,
@@ -32,28 +24,36 @@ export function CollectionPage({
   onScratchGroup,
   inventoryRevision = 0,
 }: {
-  onOpenCreator: (creatorId: string) => void;
+  onOpenCreator: (creatorId: string, themeId?: string) => void;
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onExplorePacks: () => void;
   onScratchGroup?: (group: ScratchReadyGroup) => void;
   inventoryRevision?: number;
 }) {
-  const [overlay, setOverlay] = useState<HubOverlay>(null);
+  const navigate = useNavigate();
   const state = useMemo(
     () => getCollectionPageState(),
     [inventoryRevision],
   );
 
-  const continueCreators = useMemo(
+  const collectedCreators = useMemo(
     () => state.continueCreators.filter((creator) => creator.collected > 0),
     [state.continueCreators],
   );
 
   function openPack(pack: UnopenedPack) {
     const target = resolveUnopenedOpenTarget(pack);
+    const themeName =
+      resolveCollectionThemeLabel({
+        themeName: pack.name,
+        packName: pack.name,
+        catalogPackId: target.catalogPackId,
+        creator: pack.creator,
+      }) || pack.name;
     onOpenPack({
       packId: target.catalogPackId,
       packName: pack.name,
+      themeName,
       price: "Free",
       creator: pack.creator,
       entry: "open",
@@ -64,11 +64,14 @@ export function CollectionPage({
   }
 
   function openScratch(group: ScratchReadyGroup) {
-    if (onScratchGroup) {
-      onScratchGroup(group);
-      return;
-    }
-    setOverlay({ kind: "scratch", group });
+    onScratchGroup?.(group);
+  }
+
+  function scrollTo(id: string) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   return (
@@ -88,77 +91,35 @@ export function CollectionPage({
         ) : (
           <>
             <header className="collection-page-intro">
-              <h1 className="collection-page-title">Your Collection</h1>
+              <h1 className="collection-page-title">Collection</h1>
             </header>
 
             <CollectionSnapshot
               summary={state.summary}
-              onOpenLibrary={(filter) =>
-                setOverlay({ kind: "library", filter })
-              }
-              onOpenCreators={() => setOverlay({ kind: "creators" })}
+              hasPendingReveal={state.hasPendingReveal}
+              onExplorePacks={onExplorePacks}
+              onFocusReadyToReveal={() => scrollTo("ready-heading")}
+              onClaimReward={() => navigate(Paths.rewards)}
+              onOpenMyCollection={() => scrollTo("my-collection")}
             />
 
-            {state.hasPendingReveal ? (
-              <ReadyToReveal
-                onOpenPack={openPack}
-                onScratch={openScratch}
-                onExplorePacks={onExplorePacks}
-                inventoryRevision={inventoryRevision}
-              />
-            ) : null}
+            <ReadyToReveal
+              onOpenPack={openPack}
+              onScratch={openScratch}
+              onExplorePacks={onExplorePacks}
+              inventoryRevision={inventoryRevision}
+            />
 
-            {state.hasStartedCollection && continueCreators.length > 0 ? (
-              <ContinueCollectingSection
-                creators={continueCreators}
-                onOpenCreator={onOpenCreator}
-                onViewAll={() => setOverlay({ kind: "creators" })}
-              />
-            ) : null}
-
-            {state.hasCollectedCards ? (
-              <CardLibraryPreview
-                onViewAll={() => setOverlay({ kind: "library", filter: "all" })}
-                onOpenCard={(card) => setOverlay({ kind: "card", card })}
-              />
-            ) : null}
+            <MyCollectionSection
+              creators={collectedCreators}
+              hasPendingReveal={state.hasPendingReveal}
+              onOpenCreator={onOpenCreator}
+              onExplorePacks={onExplorePacks}
+              onFocusReadyToReveal={() => scrollTo("ready-heading")}
+            />
           </>
         )}
       </div>
-
-      {overlay ? (
-        <CollectionPlaceholder
-          title={overlayTitle(overlay)}
-          detail={overlayDetail(overlay)}
-          onClose={() => setOverlay(null)}
-        />
-      ) : null}
     </section>
   );
-}
-
-function overlayTitle(overlay: Exclude<HubOverlay, null>): string {
-  switch (overlay.kind) {
-    case "library":
-      return "Card Library";
-    case "creators":
-      return "Creators";
-    case "card":
-      return overlay.card.name;
-    case "scratch":
-      return "Scratch";
-  }
-}
-
-function overlayDetail(overlay: Exclude<HubOverlay, null>): string {
-  switch (overlay.kind) {
-    case "library":
-      return `Filter: ${overlay.filter}`;
-    case "creators":
-      return "Browse creators you’ve started collecting.";
-    case "card":
-      return overlay.card.rarity;
-    case "scratch":
-      return `${overlay.group.creatorName} · ${overlay.group.collectionName}`;
-  }
 }

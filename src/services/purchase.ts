@@ -9,6 +9,8 @@ export type PurchaseFlowPack = {
   packName: string;
   price: string;
   creator: string;
+  /** Collection theme label when distinct from packName (e.g. Cyber Nights). */
+  themeName?: string;
   /**
    * purchase — buy then open
    * open — open an owned sealed pack

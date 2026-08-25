@@ -172,6 +172,10 @@ const THEME_ID_LABELS: Record<string, string> = {
   firefighter: 'Firefighter',
   firegirl: 'Firegirl',
   fire: 'Firegirl',
+  cyber: 'Cyber Nights',
+  cybernights: 'Cyber Nights',
+  summer: 'Summer Nights',
+  summernights: 'Summer Nights',
 }
 
 /** Map free-text / card-id hints onto canonical theme ids used by the API. */
@@ -241,6 +245,8 @@ export function themeNameFromApiText(
   }
 
   if (/^motion(?:\s*\d+)?$/i.test(value)) return null
+  // Foil slot placeholders ("Pack 1") are not theme names.
+  if (/^pack\s*(?:n[ºo°.]?\s*)?\d+$/i.test(value)) return null
   if (value.length <= 24 && !/\//.test(value)) return titleCaseTheme(value)
   return null
 }

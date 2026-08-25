@@ -67,6 +67,7 @@ import {
   noteCreatorStarted,
   recordRevealedCards,
 } from "@/services/collectionState";
+import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   addUnopenedFromPurchase,
   countUnopened,
@@ -299,9 +300,18 @@ export function PurchaseFlow({
   const tearLocked = useRef(false);
   /** Skip pack opening when resuming from Collection Ready to Scratch. */
   const autoLaunchScratchRef = useRef(false);
+  const collectionTheme =
+    resolveCollectionThemeLabel({
+      themeName: pack.themeName,
+      packName: session?.foilLabel ?? purchasedFoil?.label ?? pack.packName,
+      catalogPackId: pack.packId,
+      creator: pack.creator,
+    }) ||
+    pack.themeName?.trim() ||
+    pack.packName;
   const packCoverUrl = resolveInventoryCoverUrl({
     packId: pack.packId,
-    themeName: pack.packName,
+    themeName: collectionTheme,
     creator: pack.creator,
   });
   /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
@@ -376,7 +386,7 @@ export function PurchaseFlow({
       session,
       revealed: scratched,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
   }, [
     stage,
@@ -413,6 +423,15 @@ export function PurchaseFlow({
       const paid = await submitPurchase(quantity, diamonds, pack.packId);
       onSpend(paid.diamondCost);
       const tx = newPurchaseId();
+      const themeName =
+        resolveCollectionThemeLabel({
+          themeName: pack.themeName,
+          packName: foil?.label ?? pack.packName,
+          catalogPackId: pack.packId,
+          creator: pack.creator,
+        }) ||
+        pack.themeName?.trim() ||
+        pack.packName;
       const owned = addUnopenedFromPurchase({
         purchaseId: tx,
         catalogPackId: pack.packId,
@@ -420,12 +439,12 @@ export function PurchaseFlow({
         creator: pack.creator,
         count: quantity,
         coverUrl: packCoverUrl,
-        themeName: pack.packName,
+        themeName,
       });
       const first = owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
       commitPurchaseIdempotencyKey(pack.packId, quantity);
-      noteCreatorStarted(first.creatorId, pack.creator);
+      noteCreatorStarted(first.creatorId, pack.creator, themeName);
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
       setReadyPackCount(owned.length || quantity);
@@ -508,7 +527,7 @@ export function PurchaseFlow({
       session: next,
       revealed: [],
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
@@ -529,6 +548,7 @@ export function PurchaseFlow({
       count: fresh.length,
       creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
       creatorName: pack.creator,
+      themeName: collectionTheme,
     });
     onComplete({ cards: fresh.length, coins });
   }
@@ -543,7 +563,7 @@ export function PurchaseFlow({
       session: session!,
       revealed: revealedIds,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
 
@@ -605,7 +625,7 @@ export function PurchaseFlow({
       session,
       revealed: revealedIds,
       coverUrl: packCoverUrl,
-      themeName: pack.packName,
+      themeName: collectionTheme,
     });
     trackScratchEvent("Scratch Progress Saved", {
       packId: readyId,
@@ -737,7 +757,7 @@ export function PurchaseFlow({
         session,
         revealed: scratched,
         coverUrl: packCoverUrl,
-        themeName: pack.packName,
+        themeName: collectionTheme,
       });
       const created = startMotionSession(hand, {
         packScratch: {
@@ -745,7 +765,7 @@ export function PurchaseFlow({
           packName: pack.packName,
           creator: pack.creator,
           coverUrl: packCoverUrl,
-          themeName: pack.packName,
+          themeName: collectionTheme,
           openingSession: session,
           openingCardIds,
           settledOpeningIds: [...scratched],

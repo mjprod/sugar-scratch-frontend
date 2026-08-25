@@ -156,7 +156,7 @@ type AuthContextValue = {
   requestTab: (tab: AppTab) => void;
   openStore: () => void;
   openInbox: () => void;
-  openCreator: (id: string) => void;
+  openCreator: (id: string, themeId?: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
   openPasswordReset: () => void;
@@ -461,9 +461,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [requireAuth]);
 
   const openCreator = useCallback(
-    (id: string) => {
+    (id: string, themeId?: string) => {
       noteCreatorEngagement(id);
-      navigate(Paths.creator(id));
+      const query = themeId?.trim()
+        ? `?theme=${encodeURIComponent(themeId.trim())}`
+        : "";
+      navigate(`${Paths.creator(id)}${query}`);
     },
     [navigate],
   );

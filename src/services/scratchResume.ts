@@ -165,3 +165,35 @@ export function resumeHrefForScratchGroup(
   }
   return null;
 }
+
+/** Scratch = never started; Resume = existing progress on this asset. */
+export function cardActionForGroup(group: {
+  id: string;
+  kind?: "motion" | "photo";
+}): "scratch" | "resume" {
+  if (group.kind === "photo") {
+    const packId = group.id.startsWith("photo:")
+      ? group.id.slice("photo:".length)
+      : null;
+    for (const session of listStoredGameSessions()) {
+      if (session.phase !== "photo" && session.phase !== "photo_reveal") {
+        continue;
+      }
+      const sessionPack = session.packScratch?.readyPackId ?? "session";
+      if (packId && packId !== sessionPack && packId !== "session") continue;
+      if (session.completedPhotoIds.length > 0) return "resume";
+    }
+    return "scratch";
+  }
+
+  const inventory = getReadyToScratch(group.id);
+  if (inventory && inventory.revealed.length > 0) return "resume";
+
+  for (const session of listStoredGameSessions()) {
+    if (session.phase !== "motion") continue;
+    if (session.completedMotionIds.length === 0) continue;
+    const packId = session.packScratch?.readyPackId;
+    if (packId === group.id || group.id.startsWith("motion:")) return "resume";
+  }
+  return "scratch";
+}

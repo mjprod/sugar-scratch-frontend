@@ -35,6 +35,7 @@ export function settlePackMotionCard(motionCardId: string): GameSession | null {
     count: 1,
     creatorId: packScratch.creator.trim().toLowerCase().replace(/\s+/g, "-"),
     creatorName: packScratch.creator,
+    themeName: packScratch.themeName || packScratch.packName,
   });
 
   if (typeof window !== "undefined") {
