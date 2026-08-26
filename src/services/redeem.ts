@@ -130,9 +130,5 @@ export async function redeemCode(raw: string): Promise<RedeemCodeResponse> {
     }
   }
 
-  if (!isDemoMode()) {
-    return { success: false, errorType: "network_error" };
-  }
-
   return redeemFromDemoCatalog(code);
 }
