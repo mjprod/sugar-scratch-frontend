@@ -1,8 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { GameSettingsScreen } from "@/components/profile/GameSettingsScreen";
+import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";
 
 export function GameSettingsPage() {
-  const navigate = useNavigate();
-  return <GameSettingsScreen onBack={() => navigate(Paths.profile)} />;
+  const goBack = useGoBack(Paths.profile);
+  return <GameSettingsScreen onBack={goBack} />;
 }

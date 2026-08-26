@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Search } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
@@ -9,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
+import { Paths } from "@/routes/Paths";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
 import { PACK_OPENING_REWARD_EVENT } from "@/services/packMotionSettle";
@@ -78,6 +80,7 @@ export function AppLayout() {
   const onPackPocket =
     location.pathname.startsWith("/pack-pocket") ||
     location.pathname.startsWith("/cart");
+  const onSearch = location.pathname.startsWith("/search");
 
   const showTopUtility =
     !hideChrome &&
@@ -106,8 +109,26 @@ export function AppLayout() {
     };
   }, [guest, invalidateRemoteSession, setInboxUnread]);
 
-  const mobilePacks = (
-    <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
+  const mobileTrailing = (
+    <div className="flex items-center gap-0.5">
+      <button
+        type="button"
+        onClick={() =>
+          navigate(Paths.search, { state: { from: location.pathname } })
+        }
+        aria-label="Search"
+        aria-current={onSearch ? "page" : undefined}
+        className={[
+          "inbox-utility-btn inbox-utility-btn--ghost relative grid min-h-10 min-w-10 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+          onSearch ? "is-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <Search className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+      </button>
+      <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
+    </div>
   );
 
   return (
@@ -126,7 +147,7 @@ export function AppLayout() {
           onOpenStore={openStore}
           onOpenHome={() => requestTab("home")}
           visible
-          trailing={mobilePacks}
+          trailing={mobileTrailing}
         />
       ) : null}
 

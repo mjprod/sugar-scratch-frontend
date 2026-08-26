@@ -163,7 +163,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   align-items: center;
   justify-content: flex-end;
   justify-self: end;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
   height: 100%;
   padding: 0 2px 0 4px;
@@ -171,6 +171,10 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   opacity: 1;
   visibility: visible;
   transform: none;
+}
+
+.nav-test-top-utils .top-nav-resources {
+  gap: 0.75rem;
 }
 
 /* Cart utility — same active treatment as Profile (bubble owns chrome). */
