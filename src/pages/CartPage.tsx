@@ -71,8 +71,17 @@ function openCartTearFlow(input: {
   instanceIds: string[];
   purchaseId: string;
   openPurchase: ReturnType<typeof useAuth>["openPurchase"];
+  /** Demo checkout still holds cart rows until tear opens; authed removes per line. */
+  clearCartAfterOpen?: boolean;
 }) {
-  const { remaining, profiles, instanceIds, purchaseId, openPurchase } = input;
+  const {
+    remaining,
+    profiles,
+    instanceIds,
+    purchaseId,
+    openPurchase,
+    clearCartAfterOpen = false,
+  } = input;
   const first = remaining[0];
   if (!first || !instanceIds.length) return;
   const matched = profiles ? foilForCartPack(first, profiles) : null;
@@ -92,7 +101,7 @@ function openCartTearFlow(input: {
     },
     "open-pack",
   );
-  clearCart();
+  if (clearCartAfterOpen) clearCart();
 }
 
 function foilForCartPack(
@@ -326,6 +335,7 @@ export function CartPage() {
         instanceIds: created.map((pack) => pack.instanceId),
         purchaseId,
         openPurchase,
+        clearCartAfterOpen: true,
       });
     } catch (error) {
       const message =
