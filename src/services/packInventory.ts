@@ -2,8 +2,11 @@
  * Persistent pack ownership. Purchase creates unopened instances immediately;
  * Tear Completion is the only path to opened (cards live in readyToScratch).
  */
+import { apiFetch } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 import { resolveInventoryCoverUrl } from "../lib/photos";
 import type { UnopenedPack } from "./collection";
+import type { PackInstanceApi } from "./purchase";
 
 export type PackStatus = "unopened" | "opened";
 
@@ -21,6 +24,12 @@ export type OwnedPackInstance = {
 };
 
 const KEY = "sugar.v8.packInventory";
+
+/** Client/demo inventory rows — not issued by POST /api/packs/.../purchase. */
+export function isLocalPackInstanceId(instanceId: string): boolean {
+  const id = instanceId.trim();
+  return id.startsWith("pack-") || id.startsWith("demo-pack-");
+}
 
 function readAll(): OwnedPackInstance[] {
   try {
@@ -118,6 +127,93 @@ export function addUnopenedFromPurchase(input: {
   return created;
 }
 
+function apiInstanceToOwned(instance: PackInstanceApi): OwnedPackInstance {
+  const creatorId =
+    instance.creatorId?.trim() || slugId(instance.creator);
+  const themeName = instance.themeName || instance.packName;
+  return {
+    instanceId: instance.instanceId,
+    catalogPackId: instance.catalogPackId,
+    packName: instance.packName,
+    creator: instance.creator,
+    creatorId,
+    themeName,
+    coverUrl: resolveInventoryCoverUrl({
+      coverUrl: instance.coverUrl,
+      packId: instance.catalogPackId,
+      themeName,
+      creator: instance.creator,
+    }),
+    status: instance.status === "opened" ? "opened" : "unopened",
+    purchaseId: instance.purchaseId,
+    savedAt: instance.savedAt || Date.now(),
+  };
+}
+
+/**
+ * Persist server-issued pack instances from a purchase or open response.
+ * Inserts new rows ahead of existing inventory; updates known instanceIds in place
+ * (e.g. unopened → opened after POST /api/me/packs/:id/open).
+ */
+export function upsertInstancesFromApi(
+  instances: PackInstanceApi[],
+): OwnedPackInstance[] {
+  if (!instances.length) return [];
+  const existing = readAll();
+  const indexById = new Map(
+    existing.map((pack, index) => [pack.instanceId, index]),
+  );
+  const touched: OwnedPackInstance[] = [];
+  const prepended: OwnedPackInstance[] = [];
+  const updated = [...existing];
+  let changed = false;
+
+  for (const instance of instances) {
+    const owned = apiInstanceToOwned(instance);
+    touched.push(owned);
+    const index = indexById.get(owned.instanceId);
+    if (index === undefined) {
+      prepended.push(owned);
+      changed = true;
+      continue;
+    }
+    if (updated[index] !== owned) {
+      updated[index] = owned;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    writeAll([...prepended, ...updated]);
+  }
+  return touched;
+}
+
+/** Replace local inventory with the server list (server wins). */
+export function replaceInventoryFromApi(
+  instances: PackInstanceApi[],
+): OwnedPackInstance[] {
+  const owned = instances.map(apiInstanceToOwned);
+  writeAll(owned);
+  return owned;
+}
+
+/**
+ * Hydrate pack inventory from GET /api/me/packs.
+ * Returns false when demo mode, unauthenticated, or API unreachable — keeps last cache.
+ * Optional beforeWrite runs after fetch; skip persisting when it returns false (stale auth).
+ */
+export async function syncMyPacks(options?: {
+  beforeWrite?: () => boolean;
+}): Promise<boolean> {
+  if (isDemoMode()) return false;
+  const data = await apiFetch<{ packs: PackInstanceApi[] }>("/api/me/packs");
+  if (!data?.packs) return false;
+  if (options?.beforeWrite && !options.beforeWrite()) return false;
+  replaceInventoryFromApi(data.packs);
+  return true;
+}
+
 /** All owned pack instances (unopened + opened). */
 export function listOwnedPacks(): OwnedPackInstance[] {
   return readAll();
@@ -175,6 +271,19 @@ export function peekUnopenedInstance(
     return key === groupOrCatalogId || pack.catalogPackId === groupOrCatalogId;
   });
   return byGroup ?? null;
+}
+
+/** Newest unopened instance for a catalog pack id (e.g. after redeem). */
+export function peekNewestUnopenedInstance(
+  catalogPackId: string,
+): OwnedPackInstance | null {
+  const matches = listUnopenedInstances().filter(
+    (pack) => pack.catalogPackId === catalogPackId,
+  );
+  if (!matches.length) return null;
+  return matches.reduce((latest, pack) =>
+    pack.savedAt >= latest.savedAt ? pack : latest,
+  );
 }
 
 export function countUnopened(): number {

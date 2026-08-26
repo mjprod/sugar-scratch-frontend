@@ -39,5 +39,13 @@ assert(
   triggerFromAction({ type: "like", feedItemId: "x" }) === "like-creator",
   "like trigger",
 );
+assert(
+  triggerFromAction({ type: "follow", creatorId: "c1" }) === "follow-creator",
+  "follow trigger",
+);
+assert(
+  supportingCopyForTrigger("follow-creator").includes("follow"),
+  "follow supporting copy",
+);
 
 console.log("auth.self-check: ok");
