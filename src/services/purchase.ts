@@ -32,6 +32,8 @@ export type PurchaseFlowPack = {
   instanceId?: string;
   /** Purchase transaction id — used for multi-pack continuation. */
   purchaseId?: string;
+  /** Cart tear queue — open order when checkout spans multiple purchases. */
+  tearInstanceIds?: string[];
 };
 
 export type OpeningCard = {

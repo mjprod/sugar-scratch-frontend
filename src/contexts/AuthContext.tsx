@@ -227,15 +227,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setInventoryRevision((n) => n + 1);
   }, []);
 
+  // Bumped on login/logout so stale in-flight auth/inventory sync cannot cross sessions.
+  const sessionSyncEpochRef = useRef(0);
+
   useEffect(() => {
     if (!authed || isDemoMode()) return;
-    void syncMyPacks().then((ok) => {
+    const epoch = sessionSyncEpochRef.current;
+    let cancelled = false;
+    void syncMyPacks({
+      beforeWrite: () =>
+        !cancelled && epoch === sessionSyncEpochRef.current,
+    }).then((ok) => {
+      if (cancelled) return;
+      if (epoch !== sessionSyncEpochRef.current) return;
       if (ok) bumpInventoryRevision();
     });
+    return () => {
+      cancelled = true;
+    };
   }, [authed, bumpInventoryRevision]);
-
-  // Bumped on login/logout so a stale in-flight session probe cannot wipe a fresh session.
-  const sessionSyncEpochRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -682,6 +692,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     destroySession();
     clearEmailVerified();
+    clearPackInventory();
     setAuthed(false);
     setEmailVerified(false);
     setInboxUnread(0);

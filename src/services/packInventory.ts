@@ -25,6 +25,12 @@ export type OwnedPackInstance = {
 
 const KEY = "sugar.v8.packInventory";
 
+/** Client/demo inventory rows — not issued by POST /api/packs/.../purchase. */
+export function isLocalPackInstanceId(instanceId: string): boolean {
+  const id = instanceId.trim();
+  return id.startsWith("pack-") || id.startsWith("demo-pack-");
+}
+
 function readAll(): OwnedPackInstance[] {
   try {
     const raw = localStorage.getItem(KEY);
@@ -145,34 +151,42 @@ function apiInstanceToOwned(instance: PackInstanceApi): OwnedPackInstance {
 }
 
 /**
- * Persist server-issued pack instances from a purchase response.
- * Skips duplicates by instanceId; merges new rows ahead of existing inventory.
+ * Persist server-issued pack instances from a purchase or open response.
+ * Inserts new rows ahead of existing inventory; updates known instanceIds in place
+ * (e.g. unopened → opened after POST /api/me/packs/:id/open).
  */
 export function upsertInstancesFromApi(
   instances: PackInstanceApi[],
 ): OwnedPackInstance[] {
   if (!instances.length) return [];
   const existing = readAll();
-  const knownIds = new Set(existing.map((pack) => pack.instanceId));
-  const created: OwnedPackInstance[] = [];
+  const indexById = new Map(
+    existing.map((pack, index) => [pack.instanceId, index]),
+  );
+  const touched: OwnedPackInstance[] = [];
+  const prepended: OwnedPackInstance[] = [];
+  const updated = [...existing];
+  let changed = false;
+
   for (const instance of instances) {
-    if (knownIds.has(instance.instanceId)) continue;
     const owned = apiInstanceToOwned(instance);
-    created.push(owned);
-    knownIds.add(owned.instanceId);
-  }
-  if (!created.length) {
-    const purchaseId = instances[0]?.purchaseId;
-    if (purchaseId) {
-      return existing.filter(
-        (pack) =>
-          pack.purchaseId === purchaseId && pack.status === "unopened",
-      );
+    touched.push(owned);
+    const index = indexById.get(owned.instanceId);
+    if (index === undefined) {
+      prepended.push(owned);
+      changed = true;
+      continue;
     }
-    return [];
+    if (updated[index] !== owned) {
+      updated[index] = owned;
+      changed = true;
+    }
   }
-  writeAll([...created, ...existing]);
-  return created;
+
+  if (changed) {
+    writeAll([...prepended, ...updated]);
+  }
+  return touched;
 }
 
 /** Replace local inventory with the server list (server wins). */
@@ -187,11 +201,15 @@ export function replaceInventoryFromApi(
 /**
  * Hydrate pack inventory from GET /api/me/packs.
  * Returns false when demo mode, unauthenticated, or API unreachable — keeps last cache.
+ * Optional beforeWrite runs after fetch; skip persisting when it returns false (stale auth).
  */
-export async function syncMyPacks(): Promise<boolean> {
+export async function syncMyPacks(options?: {
+  beforeWrite?: () => boolean;
+}): Promise<boolean> {
   if (isDemoMode()) return false;
   const data = await apiFetch<{ packs: PackInstanceApi[] }>("/api/me/packs");
   if (!data?.packs) return false;
+  if (options?.beforeWrite && !options.beforeWrite()) return false;
   replaceInventoryFromApi(data.packs);
   return true;
 }
@@ -253,6 +271,19 @@ export function peekUnopenedInstance(
     return key === groupOrCatalogId || pack.catalogPackId === groupOrCatalogId;
   });
   return byGroup ?? null;
+}
+
+/** Newest unopened instance for a catalog pack id (e.g. after redeem). */
+export function peekNewestUnopenedInstance(
+  catalogPackId: string,
+): OwnedPackInstance | null {
+  const matches = listUnopenedInstances().filter(
+    (pack) => pack.catalogPackId === catalogPackId,
+  );
+  if (!matches.length) return null;
+  return matches.reduce((latest, pack) =>
+    pack.savedAt >= latest.savedAt ? pack : latest,
+  );
 }
 
 export function countUnopened(): number {

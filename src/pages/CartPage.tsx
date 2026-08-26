@@ -6,7 +6,9 @@ import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
 import { packItemToIteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { isDemoMode } from "@/lib/demo";
 import {
   clearCart,
   listCartPacks,
@@ -14,7 +16,15 @@ import {
   subscribeCart,
   type CartPack,
 } from "@/services/cart";
-import { addUnopenedFromPurchase } from "@/services/packInventory";
+import {
+  addUnopenedFromPurchase,
+  upsertInstancesFromApi,
+} from "@/services/packInventory";
+import {
+  PurchaseError,
+  packCost,
+  submitPurchase,
+} from "@/services/purchase";
 import {
   getCardTopDebug,
   setCardTopTearT,
@@ -29,6 +39,59 @@ import {
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const PACK_MODEL_URL = "/assets/CardPack2-min.glb";
+
+function catalogPackIdForCartItem(
+  cartPack: CartPack,
+  profiles: Awaited<ReturnType<typeof loadModels>> | null,
+) {
+  const matched = profiles ? foilForCartPack(cartPack, profiles) : null;
+  return matched?.profile.id || cartPack.characterId || cartPack.packId;
+}
+
+function cartFoilsFromPacks(
+  packs: CartPack[],
+  profiles: Awaited<ReturnType<typeof loadModels>> | null,
+) {
+  return packs.map((cartPack) => {
+    const item = profiles ? foilForCartPack(cartPack, profiles) : null;
+    return {
+      id: cartPack.cartItemId,
+      label: item?.foil?.label || cartPack.packName,
+      videoUrl: item?.foil?.videoUrl || cartPack.videoUrl,
+      slot: item?.foil?.slot,
+    };
+  });
+}
+
+function openCartTearFlow(input: {
+  remaining: CartPack[];
+  profiles: Awaited<ReturnType<typeof loadModels>> | null;
+  instanceIds: string[];
+  purchaseId: string;
+  openPurchase: ReturnType<typeof useAuth>["openPurchase"];
+}) {
+  const { remaining, profiles, instanceIds, purchaseId, openPurchase } = input;
+  const first = remaining[0];
+  if (!first || !instanceIds.length) return;
+  const matched = profiles ? foilForCartPack(first, profiles) : null;
+  const packId = catalogPackIdForCartItem(first, profiles);
+  openPurchase(
+    {
+      packId,
+      packName: matched?.foil?.label || first.packName,
+      price: String(first.price || 0),
+      creator: matched?.profile.name || first.creator,
+      entry: "cart-tear",
+      unopenedPacks: remaining.length,
+      instanceId: instanceIds[0],
+      purchaseId,
+      tearInstanceIds: instanceIds,
+      cartFoils: cartFoilsFromPacks(remaining, profiles),
+    },
+    "open-pack",
+  );
+  clearCart();
+}
 
 function foilForCartPack(
   pack: CartPack,
@@ -82,7 +145,14 @@ function cartPacksToItems(
 }
 
 export function CartPage() {
-  const { requestTab, openPurchase } = useAuth();
+  const {
+    requestTab,
+    openPurchase,
+    authed,
+    bumpInventoryRevision,
+    setPurchasedPacks,
+  } = useAuth();
+  const { diamonds, coins, setDiamonds, setCoins } = useWallet();
   const [packs, setPacks] = useState<CartPack[]>(() => listCartPacks());
   const [selectedId, setSelectedId] = useState<string | null>(
     () => listCartPacks()[0]?.cartItemId ?? null,
@@ -93,6 +163,8 @@ export function CartPage() {
   const [models, setModels] = useState<Awaited<ReturnType<typeof loadModels>> | null>(
     null,
   );
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useMarkPageReady(true);
 
@@ -149,45 +221,87 @@ export function CartPage() {
     }
   }, [items, selectedId]);
 
-  function continueToTear() {
+  async function continueToTear() {
+    if (checkingOut) return;
     const remaining = listCartPacks();
     const first = remaining[0];
     if (!first) return;
-    const matched = models ? foilForCartPack(first, models) : null;
-    const packId = matched?.profile.id || first.characterId || first.packId;
-    const purchaseId = `cart-${Date.now().toString(36)}`;
-    const created = addUnopenedFromPurchase({
-      purchaseId,
-      catalogPackId: packId,
-      packName: matched?.foil?.label || first.packName,
-      creator: matched?.profile.name || first.creator,
-      count: remaining.length,
-      themeName: matched?.foil?.label || first.packName,
-    });
-    openPurchase(
-      {
-        packId,
-        packName: matched?.foil?.label || first.packName,
-        price: String(first.price || 0),
-        creator: matched?.profile.name || first.creator,
-        entry: "cart-tear",
-        unopenedPacks: remaining.length,
-        instanceId: created[0]?.instanceId,
+    setCheckoutError(null);
+    setCheckingOut(true);
+    try {
+      if (authed && !isDemoMode()) {
+        let balance = diamonds;
+        const instanceIds: string[] = [];
+        let lastPurchaseId = "";
+        for (const cartPack of remaining) {
+          const catalogId = catalogPackIdForCartItem(cartPack, models);
+          const cost = packCost(1, catalogId);
+          if (cost > balance) {
+            throw new PurchaseError(
+              "insufficient",
+              "Not enough diamonds to open these packs.",
+            );
+          }
+          const result = await submitPurchase(
+            1,
+            balance,
+            catalogId,
+            undefined,
+            coins,
+          );
+          balance = result.wallet.diamonds;
+          setDiamonds(result.wallet.diamonds);
+          setCoins(result.wallet.coins);
+          const owned = upsertInstancesFromApi(result.instances);
+          const instanceId =
+            result.instances[0]?.instanceId ?? owned[0]?.instanceId;
+          if (!instanceId) {
+            throw new PurchaseError("failed", "Pack ownership failed.");
+          }
+          instanceIds.push(instanceId);
+          lastPurchaseId = result.purchaseId;
+        }
+        bumpInventoryRevision();
+        setPurchasedPacks((count) => count + remaining.length);
+        openCartTearFlow({
+          remaining,
+          profiles: models,
+          instanceIds,
+          purchaseId: lastPurchaseId,
+          openPurchase,
+        });
+        return;
+      }
+
+      const matched = models ? foilForCartPack(first, models) : null;
+      const packId = catalogPackIdForCartItem(first, models);
+      const purchaseId = `cart-${Date.now().toString(36)}`;
+      const created = addUnopenedFromPurchase({
         purchaseId,
-        cartFoils: remaining.map((pack) => {
-          const item = models ? foilForCartPack(pack, models) : null;
-          return {
-            id: pack.cartItemId,
-            label: item?.foil?.label || pack.packName,
-            videoUrl: item?.foil?.videoUrl || pack.videoUrl,
-            slot: item?.foil?.slot,
-          };
-        }),
-      },
-      "open-pack",
-    );
-    // Checkout empties Pack Pocket; opened packs live in inventory / ready-to-scratch.
-    clearCart();
+        catalogPackId: packId,
+        packName: matched?.foil?.label || first.packName,
+        creator: matched?.profile.name || first.creator,
+        count: remaining.length,
+        themeName: matched?.foil?.label || first.packName,
+      });
+      openCartTearFlow({
+        remaining,
+        profiles: models,
+        instanceIds: created.map((pack) => pack.instanceId),
+        purchaseId,
+        openPurchase,
+      });
+    } catch (error) {
+      const message =
+        error instanceof PurchaseError
+          ? error.kind === "insufficient"
+            ? "Not enough diamonds to open these packs."
+            : "Checkout failed. Your packs are still in Pack Pocket."
+          : "Checkout failed. Your packs are still in Pack Pocket.";
+      setCheckoutError(message);
+    } finally {
+      setCheckingOut(false);
+    }
   }
 
   if (!items.length) {
@@ -253,13 +367,19 @@ export function CartPage() {
         <div className="cart-continue">
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
-            label="Continue"
+            label={checkingOut ? "Checking out…" : "Continue"}
             costAmount={null}
             width={220}
             height={56}
             fontSize={16}
-            onClick={continueToTear}
+            disabled={checkingOut}
+            onClick={() => void continueToTear()}
           />
+          {checkoutError ? (
+            <p className="mt-3 text-center text-[13px] text-[oklch(0.711_0.166_22.22)]">
+              {checkoutError}
+            </p>
+          ) : null}
         </div>
       </div>
     </section>

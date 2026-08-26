@@ -78,11 +78,13 @@ import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   countUnopened,
   getPackInstance,
+  isLocalPackInstanceId,
   markPackOpened,
   nextUnopenedInPurchase,
   peekUnopenedInstance,
   syncMyPacks,
   upsertInstancesFromApi,
+  type OwnedPackInstance,
 } from "@/services/packInventory";
 import {
   clearCart,
@@ -186,6 +188,19 @@ function foilIdentityKey(foil: Pick<FoilPack, "id" | "videoUrl" | "label" | "slo
 }
 
 /** One coverflow entry per pack face — never clone / repeat the same pack. */
+function nextQueuedTearInstance(
+  pack: PurchaseFlowPack,
+  currentId: string,
+  purchaseId: string | null,
+): OwnedPackInstance | null {
+  if (pack.entry === "cart-tear" && pack.tearInstanceIds?.length) {
+    const index = pack.tearInstanceIds.indexOf(currentId);
+    const nextId = index >= 0 ? pack.tearInstanceIds[index + 1] : undefined;
+    return nextId ? getPackInstance(nextId) : null;
+  }
+  return purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+}
+
 function dedupeTearFoils(foils: readonly FoilPack[]): FoilPack[] {
   const seen = new Set<string>();
   const unique: FoilPack[] = [];
@@ -661,7 +676,7 @@ export function PurchaseFlow({
       let scratchedIds: string[] = [];
       const live = sessionRef.current;
 
-      if (authed && !isDemoMode()) {
+      if (authed && !isDemoMode() && !isLocalPackInstanceId(currentId)) {
         const result = await openPackInstance(currentId);
         upsertInstancesFromApi([result.instance]);
         openingIdRef.current = result.openingId;
@@ -761,8 +776,11 @@ export function PurchaseFlow({
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
 
-    const nextPack =
-      purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+    const nextPack = nextQueuedTearInstance(
+      pack,
+      instanceId ?? pack.packId,
+      purchaseId,
+    );
     if (nextPack) {
       clearOpening();
       const remainingAfter = Math.max(0, readyPackCount - 1);
@@ -777,6 +795,7 @@ export function PurchaseFlow({
       const nextFace = remainingFoils[0] ?? purchasedFoil;
       setPurchasedFoil(nextFace);
       setInstanceId(nextPack.instanceId);
+      setPurchaseId(nextPack.purchaseId);
       setSession(
         nextFace
           ? {
@@ -877,8 +896,11 @@ export function PurchaseFlow({
 
   function openNextPurchasedPack() {
     if (savingLater || !session) return;
-    const nextPack =
-      purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+    const nextPack = nextQueuedTearInstance(
+      pack,
+      instanceId ?? pack.packId,
+      purchaseId,
+    );
     if (!nextPack) {
       setTearFoils([]);
       openedTearFoilKeyRef.current = null;
@@ -901,6 +923,7 @@ export function PurchaseFlow({
     const nextFace = remainingFoils[0] ?? purchasedFoil;
     setPurchasedFoil(nextFace);
     setInstanceId(nextPack.instanceId);
+    setPurchaseId(nextPack.purchaseId);
     setSession(
       nextFace
         ? {

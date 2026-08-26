@@ -4,8 +4,9 @@ import { StoreScreen } from "@/components/store/StoreScreen";
 import { isDemoMode } from "@/lib/demo";
 import {
   addUnopenedFromPurchase,
-  listUnopenedInstances,
+  peekNewestUnopenedInstance,
   syncMyPacks,
+  upsertInstancesFromApi,
 } from "@/services/packInventory";
 import type { RedeemReward } from "@/services/redeem";
 
@@ -36,13 +37,32 @@ export function StorePage() {
       return { instanceId: created[0]?.instanceId };
     }
 
+    const grantedId = reward.instanceId?.trim();
+    if (grantedId) {
+      upsertInstancesFromApi([
+        {
+          instanceId: grantedId,
+          catalogPackId: reward.packId,
+          packName: reward.sceneName,
+          creator: reward.creatorHandle,
+          themeName: reward.sceneName,
+          coverUrl: "",
+          status: "unopened",
+          purchaseId: `redeem-${grantedId}`,
+          savedAt: Date.now(),
+        },
+      ]);
+      bumpInventoryRevision();
+      setPurchasedPacks((n) => n + 1);
+      void syncMyPacks();
+      return { instanceId: grantedId };
+    }
+
     const synced = await syncMyPacks();
-    if (!synced) return {};
     bumpInventoryRevision();
     setPurchasedPacks((n) => n + 1);
-    const instance =
-      listUnopenedInstances().find((pack) => pack.catalogPackId === reward.packId) ??
-      null;
+    if (!synced) return {};
+    const instance = peekNewestUnopenedInstance(reward.packId);
     return { instanceId: instance?.instanceId };
   }
 
