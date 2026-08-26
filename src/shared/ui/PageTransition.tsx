@@ -29,13 +29,10 @@ function pageKey(pathname: string, search: string) {
 export function routeNeedsWait(pathname: string) {
   if (pathname === Paths.preLoader || pathname === Paths.loading) return false;
   if (pathname === Paths.home) return true;
-  if (pathname.startsWith(Paths.discover)) return true;
   if (pathname.startsWith("/creator/")) return true;
   if (pathname === Paths.recommendSwipe) return true;
   if (pathname.startsWith("/purchase/")) return true;
   if (pathname === Paths.coverflowV2) return true;
-  if (pathname.startsWith(Paths.game)) return true;
-  if (pathname.startsWith(Paths.photoScratch)) return true;
   return false;
 }
 

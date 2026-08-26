@@ -126,6 +126,12 @@ export function modelId(model: BackendModel, fallbackIndex = 0) {
   return optionalString(model.id) ?? `model-${fallbackIndex + 1}`;
 }
 
+function packIdCandidates(packId: string): string[] {
+  const raw = packId.trim();
+  const stripped = raw.replace(/[-_][12]$/, "");
+  return stripped && stripped !== raw ? [raw, stripped] : [raw];
+}
+
 export function matchModel(
   models: BackendModel[],
   hints: { packId?: string | null; name?: string | null } = {},
@@ -134,16 +140,18 @@ export function matchModel(
 
   const packId = optionalString(hints.packId);
   if (packId) {
-    const exact = models.find((model) => model.id === packId);
-    if (exact) return exact;
-    const key = normalizeKey(packId);
-    const fuzzy = models.find((model) => {
-      const id = normalizeKey(model.id ?? "");
-      const label = normalizeKey(model.label ?? "");
-      const name = normalizeKey(model.influencerName ?? "");
-      return id === key || label === key || name === key;
-    });
-    if (fuzzy) return fuzzy;
+    for (const candidate of packIdCandidates(packId)) {
+      const exact = models.find((model) => model.id === candidate);
+      if (exact) return exact;
+      const key = normalizeKey(candidate);
+      const fuzzy = models.find((model) => {
+        const id = normalizeKey(model.id ?? "");
+        const label = normalizeKey(model.label ?? "");
+        const name = normalizeKey(model.influencerName ?? "");
+        return id === key || label === key || name === key;
+      });
+      if (fuzzy) return fuzzy;
+    }
   }
 
   const nameKey = normalizeKey(hints.name ?? "");
@@ -181,6 +189,81 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
     });
   }
   return packs;
+}
+
+/** Pick foil 1/2 from a catalog id (`model-2`) or pack/theme label. */
+export function foilForInventoryHints(
+  model: BackendModel,
+  hints: {
+    packId?: string | null;
+    packName?: string | null;
+    themeName?: string | null;
+  } = {},
+): FoilPack | null {
+  const packs = foilsFromModel(model);
+  if (!packs.length) return null;
+
+  const packId = optionalString(hints.packId);
+  if (packId) {
+    const exact = packs.find((pack) => pack.id === packId);
+    if (exact) return exact;
+    const slot = packId.match(/(?:^|[-_])([12])$/)?.[1];
+    if (slot === "1" || slot === "2") {
+      const bySlot = packs.find((pack) => pack.slot === Number(slot));
+      if (bySlot) return bySlot;
+    }
+  }
+
+  const name =
+    optionalString(hints.packName) ?? optionalString(hints.themeName);
+  if (name) {
+    const key = normalizeKey(name);
+    const byLabel = packs.find((pack) => normalizeKey(pack.label) === key);
+    if (byLabel) return byLabel;
+    const slot = name.match(/^pack\s*(?:n[ºo°.]?\s*)?(\d+)$/i)?.[1];
+    if (slot === "1" || slot === "2") {
+      const bySlot = packs.find((pack) => pack.slot === Number(slot));
+      if (bySlot) return bySlot;
+    }
+  }
+
+  return packs[0] ?? null;
+}
+
+/** API pack product name — omit generic "Pack 1" placeholders. */
+export function cardPackNameFromModel(
+  model: BackendModel | null | undefined,
+  hints: {
+    packId?: string | null;
+    packName?: string | null;
+    themeName?: string | null;
+  } = {},
+): string | null {
+  if (!model) return null;
+  const foil = foilForInventoryHints(model, hints);
+  if (!foil) return optionalString(model.cardPackName);
+  const named =
+    foil.slot === 2
+      ? optionalString(model.cardPackName2)
+      : optionalString(model.cardPackName);
+  return named ?? optionalString(model.cardPackName);
+}
+
+export function packFaceVideoFromModel(
+  model: BackendModel | null | undefined,
+  hints: {
+    packId?: string | null;
+    packName?: string | null;
+    themeName?: string | null;
+  } = {},
+): string | null {
+  if (!model) return null;
+  const foil = foilForInventoryHints(model, hints);
+  return foil?.videoUrl ?? optionalMedia(model.packFaceVideoUrl);
+}
+
+export function modelAvatarUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.avatar);
 }
 
 export function profileFromModel(model: BackendModel): ModelProfile {

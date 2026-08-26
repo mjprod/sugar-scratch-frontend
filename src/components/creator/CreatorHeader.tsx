@@ -63,7 +63,7 @@ export function CreatorHeader({
       <div className="cpv2-header-hero">
         <button
           type="button"
-          aria-label="Back to Home"
+          aria-label="Back to My Collection"
           onClick={onBack}
           className="cpv2-back"
         >

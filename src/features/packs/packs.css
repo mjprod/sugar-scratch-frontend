@@ -860,6 +860,26 @@ h1 {
   white-space: pre-line;
 }
 
+.coverflow-pack-label__price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22em;
+  margin: 0.12rem auto 0;
+  color: oklch(1 0 0);
+  font-family: sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
+  white-space: nowrap;
+}
+
+.coverflow-pack-label__price-amount {
+  font-variant-numeric: tabular-nums;
+}
+
 .coverflow-pack-flag {
   display: inline-block;
   margin-right: 0.15rem;
@@ -1121,7 +1141,8 @@ h1 {
 }
 
 .coverflow-pack-html-label .coverflow-pack-label__collection,
-.coverflow-pack-html-label .coverflow-pack-label__pack {
+.coverflow-pack-html-label .coverflow-pack-label__pack,
+.coverflow-pack-html-label .coverflow-pack-label__price {
   opacity: 0;
   filter: blur(6px);
   transform: translateY(10px);
@@ -1166,6 +1187,17 @@ h1 {
   transition-delay: 70ms;
 }
 
+.coverflow-pack-html-label.is-visible .coverflow-pack-label__price {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 300ms ease,
+    transform 320ms ease,
+    filter 320ms ease;
+  transition-delay: 100ms;
+}
+
 /* Active / leave-center: fade up + blur out (mirrors active-stack exit). */
 .coverflow-pack-html-label.is-active-hidden,
 .coverflow-pack-html--browse.is-active-hidden .coverflow-pack-html-label {
@@ -1181,12 +1213,16 @@ h1 {
 
 .coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__collection,
 .coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__pack,
+.coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__price,
 .coverflow-pack-html--browse.is-active-hidden
   .coverflow-pack-html-label
   .coverflow-pack-label__collection,
 .coverflow-pack-html--browse.is-active-hidden
   .coverflow-pack-html-label
-  .coverflow-pack-label__pack {
+  .coverflow-pack-label__pack,
+.coverflow-pack-html--browse.is-active-hidden
+  .coverflow-pack-html-label
+  .coverflow-pack-label__price {
   opacity: 0;
   filter: blur(6px);
   transform: translateY(-8px);
@@ -1552,6 +1588,24 @@ h1 {
   pointer-events: auto;
 }
 
+.cart-continue__cta .cta-button__leading-icon {
+  width: auto;
+  height: auto;
+}
+
+.cart-continue__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.cart-continue__cost-amount {
+  font-size: 1em;
+}
+
 .coverflow-pack-html-label .coverflow-cart-remove-wrap,
 .coverflow-pack-html-label .coverflow-cart-remove,
 .coverflow-pack-html-label .coverflow-cart-remove-confirm {
@@ -1585,7 +1639,8 @@ h1 {
     font-size: 0.8075rem;
   }
 
-  .coverflow-pack-html--browse .coverflow-pack-label__pack {
+  .coverflow-pack-html--browse .coverflow-pack-label__pack,
+  .coverflow-pack-html--browse .coverflow-pack-label__price {
     font-size: 0.741rem;
   }
 }

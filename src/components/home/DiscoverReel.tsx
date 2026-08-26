@@ -639,6 +639,36 @@ export function DiscoverReel({
       aria-label="Discover video reel"
     >
       <div className="hf-stage">
+        {status === "loaded" && items.length > 1 ? (
+          <div className="hf-stepper" aria-label="Feed navigation">
+            <button
+              type="button"
+              className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+              aria-label="Previous creator"
+              data-no-feed-drag
+              disabled={resolvedActiveIndex <= 0}
+              onClick={() => {
+                if (resolvedActiveIndex <= 0) return;
+                goFromUser(-1);
+              }}
+            >
+              <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+              aria-label="Next creator"
+              data-no-feed-drag
+              disabled={resolvedActiveIndex >= items.length - 1}
+              onClick={() => {
+                if (resolvedActiveIndex >= items.length - 1) return;
+                goFromUser(1);
+              }}
+            >
+              <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
         <div className="hf-frame">
           {status === "loading" || status === "idle" ? (
             <div className="hf-state" aria-busy="true">
@@ -733,36 +763,6 @@ export function DiscoverReel({
             </div>
           ) : null}
         </div>
-        {status === "loaded" && items.length > 1 ? (
-          <div className="hf-stepper" aria-label="Feed navigation">
-            <button
-              type="button"
-              className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
-              aria-label="Previous creator"
-              data-no-feed-drag
-              disabled={resolvedActiveIndex <= 0}
-              onClick={() => {
-                if (resolvedActiveIndex <= 0) return;
-                goFromUser(-1);
-              }}
-            >
-              <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
-              aria-label="Next creator"
-              data-no-feed-drag
-              disabled={resolvedActiveIndex >= items.length - 1}
-              onClick={() => {
-                if (resolvedActiveIndex >= items.length - 1) return;
-                goFromUser(1);
-              }}
-            >
-              <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
-            </button>
-          </div>
-        ) : null}
       </div>
     </section>
   );

@@ -22,8 +22,18 @@ export function PurchaseFlowPage() {
   } = useAuth();
   const { diamonds, spendDiamonds, addCoins } = useWallet();
   const pack = (location.state as { pack?: PurchaseFlowPack } | null)?.pack;
+  const isTearOpenRoute =
+    location.pathname === Paths.purchaseTearOpen ||
+    packId === Paths.purchaseTearOpenSlug;
 
-  if (!pack || (packId && pack.packId !== packId)) {
+  if (
+    !pack ||
+    (isTearOpenRoute
+      ? pack.entry !== "cart-tear"
+      : packId
+        ? pack.packId !== packId
+        : false)
+  ) {
     return <Navigate to={Paths.home} replace />;
   }
 

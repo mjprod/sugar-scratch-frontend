@@ -89,14 +89,14 @@ export const PREFERENCE_PHOTOS = [
   HOLO_PACKS.samuraiHolo,
 ] as const;
 
-/** Foil pack faces are often MP4 — those must not be used as <img> covers. */
+/** Foil pack faces are often MP4 (`packFaceVideoUrl`). */
 export function isProbablyVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url.trim());
 }
 
 /**
- * Inventory tile cover: still image only.
- * Rejects designed foil video URLs that were historically saved as coverUrl.
+ * Inventory tile cover. Prefer the stored URL, including API pack-face videos.
+ * Local stills are only a fallback when no cover was persisted.
  */
 export function resolveInventoryCoverUrl(input: {
   coverUrl?: string | null;
@@ -105,7 +105,7 @@ export function resolveInventoryCoverUrl(input: {
   creator?: string | null;
 }): string {
   const raw = input.coverUrl?.trim() ?? "";
-  if (raw && !isProbablyVideoUrl(raw)) return raw;
+  if (raw) return raw;
 
   const packId = input.packId?.trim() ?? "";
   if (packId && PACK_PHOTOS[packId]) return PACK_PHOTOS[packId];

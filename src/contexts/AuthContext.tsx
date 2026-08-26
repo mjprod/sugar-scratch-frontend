@@ -346,13 +346,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isBuyPack =
           action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
         if (isBuyPack) clearOpening();
-        navigate(Paths.purchase(action.pack.packId), {
-          state: {
-            pack: isBuyPack
-              ? { ...action.pack, entry: "purchase" as const }
-              : action.pack,
+        navigate(
+          action.pack.entry === "cart-tear"
+            ? Paths.purchaseTearOpen
+            : Paths.purchase(action.pack.packId),
+          {
+            state: {
+              pack: isBuyPack
+                ? { ...action.pack, entry: "purchase" as const }
+                : action.pack,
+            },
           },
-        });
+        );
         return;
       }
       if (action.type === "like") {

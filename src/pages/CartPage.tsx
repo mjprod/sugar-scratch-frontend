@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
 import { packItemToIteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
@@ -138,6 +139,11 @@ export function CartPage() {
     [models, packs],
   );
 
+  const combinedPrice = useMemo(
+    () => items.reduce((sum, item) => sum + (Number(item.price) || 0), 0),
+    [items],
+  );
+
   useEffect(() => {
     if (!items.length) {
       setSelectedId(null);
@@ -162,6 +168,7 @@ export function CartPage() {
       packName: matched?.foil?.label || first.packName,
       creator: matched?.profile.name || first.creator,
       count: remaining.length,
+      coverUrl: matched?.foil?.videoUrl || first.videoUrl,
       themeName: matched?.foil?.label || first.packName,
     });
     openPurchase(
@@ -253,11 +260,19 @@ export function CartPage() {
         <div className="cart-continue">
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
-            label="Continue"
+            className="cart-continue__cta"
+            leadingIcon={
+              <span className="cart-continue__cost">
+                <DiamondLottie size={16} aria-hidden />
+                <span className="cart-continue__cost-amount">{combinedPrice}</span>
+              </span>
+            }
+            label="Confirm"
             costAmount={null}
-            width={220}
+            width={248}
             height={56}
             fontSize={16}
+            aria-label={`${combinedPrice} diamonds, Confirm`}
             onClick={continueToTear}
           />
         </div>

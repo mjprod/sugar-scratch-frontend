@@ -626,9 +626,6 @@
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  background:
-    radial-gradient(circle at 50% 0%, oklch(0.278 0.03 256.85) 0%, transparent 55%),
-    oklch(0.176 0.014 258.36);
 }
 
 .prototype-app:not(.collection-app--embedded) .prototype-preview {
@@ -3765,15 +3762,22 @@
 }
 
 .coverflow__chevron {
+  --coverflow-chevron-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  --glass-bg-opacity: 0;
   position: absolute;
   top: 50%;
   width: var(--chevron-size, 7.5rem);
   height: var(--chevron-size, 7.5rem);
   margin-top: calc(var(--chevron-size, 7.5rem) / -2);
   padding: 0;
-  border: 1px solid oklch(0.33 0.015 252.31);
-  background: oklch(0.267 0.015 256.8);
-  color: oklch(0.943 0.011 243.66);
+  border: 1px solid oklch(1 0 0 / 0.05);
+  background: var(--coverflow-chevron-surface);
+  color: oklch(1 0 0 / 0.88);
   border-radius: 999px;
   font-size: calc(var(--chevron-size, 7.5rem) * 0.42);
   line-height: 0;
@@ -3787,9 +3791,37 @@
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.coverflow__chevron.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  background: var(--coverflow-chevron-surface);
+  border: 1px solid oklch(1 0 0 / 0.05);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+@supports (-webkit-touch-callout: none) {
+  .coverflow__chevron.glass {
+    --tw-glass-filter: ;
+    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
+    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+  }
 }
 
 .coverflow__chevron-icon {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 1em;
   height: 1em;
@@ -3798,13 +3830,25 @@
 
 @media (hover: hover) and (pointer: fine) {
   .coverflow__chevron:hover:not(:disabled) {
-    background: oklch(0.33 0.015 252.31);
+    border-color: oklch(1 0 0 / 0.1);
+    background: linear-gradient(
+      180deg,
+      oklch(0.26 0 0 / 0.18) 0%,
+      oklch(0 0 0 / 0.1) 42%,
+      oklch(0.16 0 0 / 0.16) 100%
+    );
+    color: oklch(1 0 0);
   }
 }
 
+.coverflow__chevron:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
 .coverflow__chevron:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+  opacity: 0.32;
+  cursor: default;
 }
 
 /* Pin chevrons to the stage edges — independent of card-stack width. */

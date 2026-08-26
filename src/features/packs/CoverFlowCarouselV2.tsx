@@ -50,6 +50,7 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from '@/shared/ui/cta'
+import { DiamondLottie } from '@/components/ui/DiamondLottie'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
   PackLights,
@@ -2144,7 +2145,18 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
             <p className="coverflow-pack-label__pack">
               {formatPackNumberLabel(item.girlName, item.packNumber)}
             </p>
-{removeControl}
+            {hideActiveCta ? null : (
+              <p
+                className="coverflow-pack-label__price"
+                aria-label={`${formatPrice(item.price ?? 4.99)} diamonds`}
+              >
+                <DiamondLottie size={13} aria-hidden />
+                <span className="coverflow-pack-label__price-amount">
+                  {formatPrice(item.price ?? 4.99)}
+                </span>
+              </p>
+            )}
+	{removeControl}
 	          </div>
 	        </Html>
 	      ) : null}
@@ -2170,14 +2182,25 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
 	            style={{ ['--active-stack-gap' as string]: '1rem' }}
 	            aria-hidden={!activeHudVisible}
 	          >
-	            <div className="coverflow-active-pack-label">
-	              <p className="coverflow-pack-label__collection">
-	                {formatPackCollectionLabel(item.girlName)}
-	              </p>
-	              <p className="coverflow-pack-label__pack">
-	                {formatPackNumberLabel(item.girlName, item.packNumber)}
-	              </p>
-	            </div>
+		            <div className="coverflow-active-pack-label">
+		              <p className="coverflow-pack-label__collection">
+		                {formatPackCollectionLabel(item.girlName)}
+		              </p>
+		              <p className="coverflow-pack-label__pack">
+		                {formatPackNumberLabel(item.girlName, item.packNumber)}
+		              </p>
+		              {hideActiveCta ? null : (
+		                <p
+		                  className="coverflow-pack-label__price"
+		                  aria-label={`${formatPrice(item.price ?? 4.99)} diamonds`}
+		                >
+		                  <DiamondLottie size={13} aria-hidden />
+		                  <span className="coverflow-pack-label__price-amount">
+		                    {formatPrice(item.price ?? 4.99)}
+		                  </span>
+		                </p>
+		              )}
+		            </div>
 {hideActiveCta ? null : onRemove ? (
 		              removeControl
 		            ) : (

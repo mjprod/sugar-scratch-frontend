@@ -11,7 +11,7 @@ export function CreatorPage() {
   return (
     <CreatorScreen
       creatorId={id}
-      onBack={() => navigate(Paths.home)}
+      onBack={() => navigate(Paths.collection)}
       onBuyPack={(pack) =>
         addToCart({
           packId: pack.packId,

@@ -1106,6 +1106,41 @@ export function HomeFeedScreen({
     >
       {personalizationPrompt}
       <div className="hf-stage">
+        {isDesktopFeed && status === "loaded" && items.length > 1 ? (
+        <div className="hf-stepper" aria-label="Feed navigation">
+          <button
+            type="button"
+            className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+            aria-label="Previous creator"
+            data-no-feed-drag
+            disabled={
+              items.findIndex((item) => item.id === activeId) <= 0
+            }
+            onClick={() => {
+              markFeedActivityRef.current();
+              go(-1);
+            }}
+          >
+            <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+            aria-label="Next creator"
+            data-no-feed-drag
+            disabled={
+              items.findIndex((item) => item.id === activeId) >=
+              items.length - 1
+            }
+            onClick={() => {
+              markFeedActivityRef.current();
+              go(1);
+            }}
+          >
+            <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
         <div className="hf-frame">
           {status === "loading" ? (
           <div className="hf-state" aria-busy="true">
@@ -1207,41 +1242,6 @@ export function HomeFeedScreen({
             </div>
           ) : null}
         </div>
-        {isDesktopFeed && status === "loaded" && items.length > 1 ? (
-        <div className="hf-stepper" aria-label="Feed navigation">
-          <button
-            type="button"
-            className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
-            aria-label="Previous creator"
-            data-no-feed-drag
-            disabled={
-              items.findIndex((item) => item.id === activeId) <= 0
-            }
-            onClick={() => {
-              markFeedActivityRef.current();
-              go(-1);
-            }}
-          >
-            <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
-            aria-label="Next creator"
-            data-no-feed-drag
-            disabled={
-              items.findIndex((item) => item.id === activeId) >=
-              items.length - 1
-            }
-            onClick={() => {
-              markFeedActivityRef.current();
-              go(1);
-            }}
-          >
-            <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
-          </button>
-        </div>
-      ) : null}
       </div>
     </section>
   );

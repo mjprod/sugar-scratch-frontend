@@ -4744,6 +4744,8 @@ body[data-theme="v8"] .ready-reveal-intro {
 
 body[data-theme="v8"] .ready-reveal-intro .collection-section-title,
 body[data-theme="v8"] .ready-reveal-intro .collection-section-copy {
+  display: flex;
+  justify-content: space-between;
   margin: 0;
 }
 
@@ -4781,16 +4783,33 @@ body[data-theme="v8"] .ready-reveal-group {
   min-width: 0;
 }
 
+body[data-theme="v8"] .ready-reveal-group-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
 body[data-theme="v8"] .ready-reveal-group-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 0;
   color: oklch(1 0 0 / 0.45);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+body[data-theme="v8"] .ready-reveal-group-arrows {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 body[data-theme="v8"] .ready-reveal-group-count {
@@ -4815,9 +4834,17 @@ body[data-theme="v8"] .ready-reveal-divider {
   background: oklch(1 0 0 / 0.1);
 }
 
+body[data-theme="v8"] .ready-reveal-group .collection-h-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 14px) / 2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
 body[data-theme="v8"] .ready-reveal-tile {
-  flex: 0 0 148px;
-  width: 148px;
+  width: 100%;
+  min-width: 0;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
@@ -4869,6 +4896,10 @@ body[data-theme="v8"] .ready-reveal-tile-art-img {
   height: 100%;
   object-fit: cover;
   transition: transform 220ms ease;
+}
+
+body[data-theme="v8"] video.ready-reveal-tile-art-img {
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .ready-reveal-tile-body {
@@ -4940,26 +4971,40 @@ body[data-theme="v8"] .ready-reveal-tile-type {
 }
 
 body[data-theme="v8"] .ready-reveal-tile-action {
+  position: relative;
+  z-index: 1;
   width: 100%;
+  height: 36px;
   min-height: 36px;
   margin: 0;
   margin-top: auto;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--app-cta-face);
-  color: var(--app-cta-label, oklch(1 0 0));
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
+  overflow: visible;
 }
 
-body[data-theme="v8"] .ready-reveal-tile-action:hover {
-  filter: brightness(1.06);
+body[data-theme="v8"] .ready-reveal-tile-action .cta-button-glow,
+body[data-theme="v8"] .ready-reveal-tile-action .cta-button-glow--fill,
+body[data-theme="v8"] .ready-reveal-tile-action .cta-button,
+body[data-theme="v8"] .ready-reveal-tile-action .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .ready-reveal-tile-action .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
 }
 
 @media (min-width: 768px) {
+  body[data-theme="v8"] .ready-reveal-group .collection-h-row {
+    display: flex;
+    grid-auto-flow: unset;
+    grid-auto-columns: unset;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
   body[data-theme="v8"] .ready-reveal-tile {
     flex: 0 0 300px;
     width: 300px;
@@ -4980,9 +5025,7 @@ body[data-theme="v8"] .ready-reveal-tile-action:hover {
   }
 
   body[data-theme="v8"] .ready-reveal-tile-action {
-    width: auto;
-    align-self: flex-end;
-    padding: 0 14px;
+    width: 128px;
   }
 }
 
@@ -7140,7 +7183,7 @@ body[data-theme="v8"] .hf-stepper {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  margin-left: 0;
+  margin-right: 0;
 }
 
 body[data-theme="v8"] .hf-stepper-btn {
@@ -7267,7 +7310,7 @@ body[data-theme="v8"] .hf-stepper-icon {
     display: flex;
     align-self: center;
     z-index: 8;
-    margin-left: -2.5rem;
+    margin-right: -2.5rem;
   }
 }
 
@@ -7335,10 +7378,10 @@ body[data-theme="v8"] .app-layout--hud .hf-page--embed .hf-stepper {
   display: flex;
   position: absolute;
   top: 50%;
-  right: 0;
+  left: 0;
   z-index: 8;
   margin: 0;
-  transform: translate(50%, -50%);
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
@@ -12109,7 +12152,7 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
 
   /* Home frame under HUD chrome — top clearance from --hf-top-clearance (507px+). */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
-    margin-top: 4%;
+    margin-top: 5%;
     margin-bottom: 0;
   }
 

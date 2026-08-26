@@ -1,6 +1,8 @@
 /** Shared inventory tile for Ready to Reveal (packs + cards). */
 import { useEffect, useState } from "react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { PACK_PHOTOS } from "@/lib/photos";
+import { isVideoSrc } from "@/services/models";
 
 export function RevealInventoryTile({
   coverUrl,
@@ -27,6 +29,10 @@ export function RevealInventoryTile({
     setSrc(coverUrl || PACK_PHOTOS.ep1);
   }, [coverUrl]);
 
+  function fallbackSrc() {
+    if (src !== PACK_PHOTOS.ep1) setSrc(PACK_PHOTOS.ep1);
+  }
+
   return (
     <article className="ready-reveal-tile">
       <button
@@ -35,14 +41,24 @@ export function RevealInventoryTile({
         onClick={onClick}
         aria-label={ariaLabel}
       >
-        <img
-          src={src}
-          alt=""
-          className="ready-reveal-tile-art-img"
-          onError={() => {
-            if (src !== PACK_PHOTOS.ep1) setSrc(PACK_PHOTOS.ep1);
-          }}
-        />
+        {isVideoSrc(src) ? (
+          <video
+            src={src}
+            className="ready-reveal-tile-art-img"
+            muted
+            loop
+            playsInline
+            autoPlay
+            onError={fallbackSrc}
+          />
+        ) : (
+          <img
+            src={src}
+            alt=""
+            className="ready-reveal-tile-art-img"
+            onError={fallbackSrc}
+          />
+        )}
       </button>
       <div className="ready-reveal-tile-body">
         <button
@@ -60,14 +76,16 @@ export function RevealInventoryTile({
             <span className="ready-reveal-tile-type">{typeLabel}</span>
           ) : null}
         </button>
-        <button
-          type="button"
-          className="ready-reveal-tile-action"
-          onClick={onClick}
-        >
-          {actionLabel}
-          <span aria-hidden="true"> →</span>
-        </button>
+        <div className="ready-reveal-tile-action">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            label={actionLabel}
+            costAmount={null}
+            fontSize={12}
+            onClick={onClick}
+          />
+        </div>
       </div>
     </article>
   );

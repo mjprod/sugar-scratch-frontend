@@ -389,28 +389,32 @@ export function PurchaseFlow({
     }) ||
     pack.themeName?.trim() ||
     pack.packName;
-  const packCoverUrl = resolveInventoryCoverUrl({
-    packId: pack.packId,
-    themeName: collectionTheme,
-    creator: pack.creator,
-  });
+  const packCoverUrl =
+    purchasedFoil?.videoUrl ||
+    session?.foilFaceUrl ||
+    resolveInventoryCoverUrl({
+      packId: pack.packId,
+      themeName: collectionTheme,
+      creator: pack.creator,
+    });
   /** Single source for foil-aware Ready-to-Scratch inventory labels. */
   function upsertPackReadyToScratch(input: {
     packId: string;
     session: OpeningSession;
     revealed: string[];
   }) {
+    const foilName =
+      input.session.foilLabel || purchasedFoil?.label || pack.packName;
     upsertReadyToScratch({
       packId: input.packId,
-      packName: pack.packName,
+      packName: foilName,
       creator: pack.creator,
       session: input.session,
       revealed: input.revealed,
-      coverUrl: packCoverUrl,
-      themeName: collectionTheme,
+      coverUrl: input.session.foilFaceUrl || packCoverUrl,
+      themeName: foilName,
     });
   }
-  /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
   const packImage = session?.foilFaceUrl ?? packCoverUrl;
   const packDisplayName = session?.foilLabel ?? pack.packName;
   const cardImages = useMemo(() => {
@@ -539,10 +543,12 @@ export function PurchaseFlow({
       const paid = await submitPurchase(quantity, diamonds, pack.packId);
       onSpend(paid.diamondCost);
       const tx = newPurchaseId();
+      const foilName = foil?.label?.trim() || "";
       const themeName =
+        foilName ||
         resolveCollectionThemeLabel({
           themeName: pack.themeName,
-          packName: foil?.label ?? pack.packName,
+          packName: pack.packName,
           catalogPackId: pack.packId,
           creator: pack.creator,
         }) ||
@@ -551,10 +557,10 @@ export function PurchaseFlow({
       const owned = addUnopenedFromPurchase({
         purchaseId: tx,
         catalogPackId: pack.packId,
-        packName: pack.packName,
+        packName: foilName || pack.packName,
         creator: pack.creator,
         count: quantity,
-        coverUrl: packCoverUrl,
+        coverUrl: foil?.videoUrl || packCoverUrl,
         themeName,
       });
       const first = owned[0];
