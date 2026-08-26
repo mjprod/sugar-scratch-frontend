@@ -57,6 +57,7 @@ import {
   commitPurchaseIdempotencyKey,
   loadOpeningAssets,
   nextUnscratchedIndex,
+  openPackInstance,
   packCost,
   restoreOpening,
   saveOpening,
@@ -67,18 +68,23 @@ import {
   type PackQuantity,
   type PurchaseFlowPack,
 } from "@/services/purchase";
+import { useAuth } from "@/contexts/AuthContext";
+import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,
   recordRevealedCards,
 } from "@/services/collectionState";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
-  addUnopenedFromPurchase,
   countUnopened,
   getPackInstance,
+  isLocalPackInstanceId,
   markPackOpened,
   nextUnopenedInPurchase,
   peekUnopenedInstance,
+  syncMyPacks,
+  upsertInstancesFromApi,
+  type OwnedPackInstance,
 } from "@/services/packInventory";
 import {
   clearCart,
@@ -132,10 +138,6 @@ const OPENED_STAGES: OpeningStage[] = [
   "complete",
 ];
 
-function newPurchaseId() {
-  return `tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function PurchaseCtaButton({
   label,
   onClick,
@@ -186,6 +188,19 @@ function foilIdentityKey(foil: Pick<FoilPack, "id" | "videoUrl" | "label" | "slo
 }
 
 /** One coverflow entry per pack face — never clone / repeat the same pack. */
+function nextQueuedTearInstance(
+  pack: PurchaseFlowPack,
+  currentId: string,
+  purchaseId: string | null,
+): OwnedPackInstance | null {
+  if (pack.entry === "cart-tear" && pack.tearInstanceIds?.length) {
+    const index = pack.tearInstanceIds.indexOf(currentId);
+    const nextId = index >= 0 ? pack.tearInstanceIds[index + 1] : undefined;
+    return nextId ? getPackInstance(nextId) : null;
+  }
+  return purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+}
+
 function dedupeTearFoils(foils: readonly FoilPack[]): FoilPack[] {
   const seen = new Set<string>();
   const unique: FoilPack[] = [];
@@ -228,8 +243,9 @@ function readyPacksForSession(
 export function PurchaseFlow({
   pack,
   diamonds,
+  coins = 0,
   onClose,
-  onSpend,
+  onWalletUpdate,
   onComplete,
   onGetDiamonds,
   onGoHome,
@@ -240,8 +256,9 @@ export function PurchaseFlow({
 }: {
   pack: PurchaseFlowPack;
   diamonds: number;
+  coins?: number;
   onClose: () => void;
-  onSpend: (diamonds: number) => void;
+  onWalletUpdate?: (wallet: { diamonds: number }) => void;
   onComplete: (result: { cards: number; coins: number }) => void;
   onGetDiamonds?: () => void;
   onGoHome?: () => void;
@@ -250,6 +267,7 @@ export function PurchaseFlow({
   onReturnContext?: () => void;
   onInventoryChange?: () => void;
 }) {
+  const { authed } = useAuth();
   const bagResume = useRef(
     pack.entry === "scratch" ? getReadyToScratch(pack.packId) : null,
   ).current;
@@ -343,6 +361,7 @@ export function PurchaseFlow({
   const [purchaseId, setPurchaseId] = useState<string | null>(
     openResume?.purchaseId ?? pack.purchaseId ?? null,
   );
+  const [openingIdRef] = useState(() => ({ current: null as string | null }));
   const [readyPackCount, setReadyPackCount] = useState(
     () => pack.unopenedPacks ?? Math.max(1, session?.quantity ?? 1),
   );
@@ -536,9 +555,14 @@ export function PurchaseFlow({
       setPendingFoil(foil);
     }
     try {
-      const paid = await submitPurchase(quantity, diamonds, pack.packId);
-      onSpend(paid.diamondCost);
-      const tx = newPurchaseId();
+      const result = await submitPurchase(
+        quantity,
+        diamonds,
+        pack.packId,
+        undefined,
+        coins,
+      );
+      onWalletUpdate?.({ diamonds: result.wallet.diamonds });
       const themeName =
         resolveCollectionThemeLabel({
           themeName: pack.themeName,
@@ -548,20 +572,17 @@ export function PurchaseFlow({
         }) ||
         pack.themeName?.trim() ||
         pack.packName;
-      const owned = addUnopenedFromPurchase({
-        purchaseId: tx,
-        catalogPackId: pack.packId,
-        packName: pack.packName,
-        creator: pack.creator,
-        count: quantity,
-        coverUrl: packCoverUrl,
-        themeName,
-      });
-      const first = owned[0];
+      const owned = upsertInstancesFromApi(result.instances);
+      if (authed && !isDemoMode()) {
+        await syncMyPacks();
+      }
+      const first =
+        getPackInstance(result.instances[0]?.instanceId ?? "") ??
+        owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
       commitPurchaseIdempotencyKey(pack.packId, quantity);
       noteCreatorStarted(first.creatorId, pack.creator, themeName);
-      setPurchaseId(tx);
+      setPurchaseId(result.purchaseId);
       setInstanceId(first.instanceId);
       setReadyPackCount(owned.length || quantity);
       const seededFoils = dedupeTearFoils(
@@ -637,7 +658,7 @@ export function PurchaseFlow({
     return next;
   }
 
-  function completeTear(openedFoilId?: string | null) {
+  async function completeTear(openedFoilId?: string | null) {
     if (tearLocked.current) return;
     const currentId =
       instanceId ??
@@ -648,59 +669,81 @@ export function PurchaseFlow({
       return;
     }
     tearLocked.current = true;
-    const opened = markPackOpened(currentId);
-    if (!opened || opened.status !== "opened") {
+
+    try {
+      let opened = getPackInstance(currentId);
+      let next: OpeningSession;
+      let scratchedIds: string[] = [];
+      const live = sessionRef.current;
+
+      if (authed && !isDemoMode() && !isLocalPackInstanceId(currentId)) {
+        const result = await openPackInstance(currentId);
+        upsertInstancesFromApi([result.instance]);
+        openingIdRef.current = result.openingId;
+        opened = getPackInstance(currentId);
+        next = live?.foilFaceUrl
+          ? {
+              ...result.session,
+              foilFaceUrl: live.foilFaceUrl,
+              foilLabel: live.foilLabel,
+            }
+          : result.session;
+        scratchedIds = result.scratched;
+      } else {
+        opened = markPackOpened(currentId);
+        next = live?.foilFaceUrl
+          ? live
+          : live ?? buildOpeningSession(1, currentId);
+      }
+
+      if (!opened || opened.status !== "opened") {
+        tearLocked.current = false;
+        setStage("opening-interrupted");
+        return;
+      }
+
+      setSealTorn(true);
+      const openedFoil =
+        (openedFoilId
+          ? tearFoils.find((foil) => foil.id === openedFoilId) ?? null
+          : null) ??
+        purchasedFoil ??
+        (live?.foilFaceUrl
+          ? {
+              slot: 1 as const,
+              id: live.cards[0]?.id ?? `${pack.packId}-1`,
+              label: live.foilLabel ?? pack.packName,
+              videoUrl: live.foilFaceUrl,
+            }
+          : null);
+      openedTearFoilKeyRef.current = openedFoil
+        ? foilIdentityKey(openedFoil)
+        : openedFoilId?.trim() || null;
+      if (openedFoil) setPurchasedFoil(openedFoil);
+      setInstanceId(currentId);
+      setPurchaseId(opened.purchaseId);
+      setSession(next);
+      sessionRef.current = next;
+      setScratched(scratchedIds);
+      setSelectedCard(0);
+      upsertPackReadyToScratch({
+        packId: currentId,
+        session: next,
+        revealed: scratchedIds,
+      });
+      if (pack.entry === "cart-tear") {
+        const cartItemId = openedFoil?.id?.trim();
+        if (cartItemId) removePackFromCart(cartItemId);
+        if (tearFoils.filter((foil) => foil.id !== cartItemId).length <= 0) {
+          clearCart();
+        }
+      }
+      bumpInventory();
+      trackScratchEvent("Pack Opened", { packId: currentId });
+    } catch {
       tearLocked.current = false;
       setStage("opening-interrupted");
-      return;
     }
-    setSealTorn(true);
-    const live = sessionRef.current;
-    const next = live?.foilFaceUrl
-      ? live
-      : live ?? buildOpeningSession(1, currentId);
-    const openedFoil =
-      (openedFoilId
-        ? tearFoils.find((foil) => foil.id === openedFoilId) ?? null
-        : null) ??
-      purchasedFoil ??
-      (live?.foilFaceUrl
-        ? {
-            slot: 1 as const,
-            id: live.cards[0]?.id ?? `${pack.packId}-1`,
-            label: live.foilLabel ?? pack.packName,
-            videoUrl: live.foilFaceUrl,
-          }
-        : null);
-    // Store face identity (not raw id) so later filters match dedupe keys.
-    openedTearFoilKeyRef.current = openedFoil
-      ? foilIdentityKey(openedFoil)
-      : openedFoilId?.trim() || null;
-    if (openedFoil) setPurchasedFoil(openedFoil);
-    setInstanceId(currentId);
-    setPurchaseId(opened.purchaseId);
-    setSession(next);
-    sessionRef.current = next;
-    setScratched([]);
-    setSelectedCard(0);
-    upsertPackReadyToScratch({
-      packId: currentId,
-      session: next,
-      revealed: [],
-    });
-    // Cart checkout: drop the torn pack from Pack Pocket immediately.
-    if (pack.entry === "cart-tear") {
-      const cartItemId = openedFoil?.id?.trim();
-      if (cartItemId) removePackFromCart(cartItemId);
-      // If nothing left to tear, empty the pocket entirely.
-      if (tearFoils.filter((foil) => foil.id !== cartItemId).length <= 0) {
-        clearCart();
-      }
-    }
-    bumpInventory();
-    trackScratchEvent("Pack Opened", { packId: currentId });
-    // Stay on ReadyStage so CoverFlow can play the 3D open spin + in-canvas fan.
-    // Switching to MotionRevealStage here unmounted the pack and skipped the spin.
   }
 
   function scratch(amount = 34) {
@@ -733,8 +776,11 @@ export function PurchaseFlow({
     });
     trackScratchEvent("All Cards Revealed", { packId: readyId });
 
-    const nextPack =
-      purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+    const nextPack = nextQueuedTearInstance(
+      pack,
+      instanceId ?? pack.packId,
+      purchaseId,
+    );
     if (nextPack) {
       clearOpening();
       const remainingAfter = Math.max(0, readyPackCount - 1);
@@ -749,6 +795,7 @@ export function PurchaseFlow({
       const nextFace = remainingFoils[0] ?? purchasedFoil;
       setPurchasedFoil(nextFace);
       setInstanceId(nextPack.instanceId);
+      setPurchaseId(nextPack.purchaseId);
       setSession(
         nextFace
           ? {
@@ -849,8 +896,11 @@ export function PurchaseFlow({
 
   function openNextPurchasedPack() {
     if (savingLater || !session) return;
-    const nextPack =
-      purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
+    const nextPack = nextQueuedTearInstance(
+      pack,
+      instanceId ?? pack.packId,
+      purchaseId,
+    );
     if (!nextPack) {
       setTearFoils([]);
       openedTearFoilKeyRef.current = null;
@@ -873,6 +923,7 @@ export function PurchaseFlow({
     const nextFace = remainingFoils[0] ?? purchasedFoil;
     setPurchasedFoil(nextFace);
     setInstanceId(nextPack.instanceId);
+    setPurchaseId(nextPack.purchaseId);
     setSession(
       nextFace
         ? {

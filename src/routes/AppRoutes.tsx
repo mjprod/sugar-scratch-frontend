@@ -25,6 +25,7 @@ import { RecSwipePage } from "@/pages/RecSwipePage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { RewardsPage } from "@/pages/RewardsPage";
 import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
+import { EditProfilePage } from "@/pages/EditProfilePage";
 import { SearchPage } from "@/pages/SearchPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
@@ -90,7 +91,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommendSwipe}
           element={
-            <OnboardShell badge="Recommend · Swipe" swipe>
+            <OnboardShell swipe>
               <RecSwipePage />
             </OnboardShell>
           }
@@ -147,6 +148,14 @@ export function AppRoutes() {
             element={
               <SoftGate tab="profile">
                 <ProfilePage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/edit"
+            element={
+              <SoftGate tab="profile">
+                <EditProfilePage />
               </SoftGate>
             }
           />

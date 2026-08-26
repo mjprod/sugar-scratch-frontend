@@ -38,14 +38,19 @@ export type HomeFeedPage = {
 function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> {
   const profile = profileFromModel(model);
   const videoUrl = profile.swipeVideoUrl ?? undefined;
+  /** Prefer backend pack title over "{Creator} Collection". */
+  const packName =
+    model.cardPackName?.trim() ||
+    profile.packs[0]?.label?.trim() ||
+    profile.collectionLabel;
   return {
     id: `hf-${profile.id}`,
     creatorId: profile.id,
     creatorName: profile.name,
-    collectionName: profile.city ?? "Collection",
+    collectionName: packName,
     description: profile.collectionLabel,
     packId: profile.id,
-    packName: profile.collectionLabel,
+    packName,
     tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
     mediaType: videoUrl ? "video" : "image",
     posterUrl: "",
@@ -55,7 +60,7 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
 }
 
 const PAGE_SIZE = 6;
-const FEED_CACHE_VERSION = 13;
+const FEED_CACHE_VERSION = 14;
 
 function shuffleCatalog<T>(items: T[]): T[] {
   const next = [...items];
@@ -105,6 +110,30 @@ export function feedPackLabel(packName: string) {
 export function feedVisibleTags(tags: string[] | undefined) {
   if (!tags?.length) return [];
   return tags.slice(0, 3);
+}
+
+/**
+ * Stable pseudo like-count until a backend counter exists.
+ * Current-user like bumps the displayed total by 1.
+ */
+export function feedLikeCount(creatorId: string, liked: boolean): number {
+  const id = creatorId.trim() || "creator";
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const base = 180 + (hash >>> 0) % 12820; // 180–13000
+  return base + (liked ? 1 : 0);
+}
+
+export function formatFeedLikeCount(count: number): string {
+  if (count < 1000) return String(count);
+  if (count < 10_000) {
+    const tenths = Math.round(count / 100) / 10;
+    return `${tenths}k`.replace(/\.0k$/, "k");
+  }
+  return `${Math.round(count / 1000)}k`;
 }
 
 function wait(ms: number) {

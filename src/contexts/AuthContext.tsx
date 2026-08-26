@@ -39,7 +39,10 @@ import {
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
 import { addPackToCart, type CartAddInput } from "@/services/cart";
+import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
+import { clearPackInventory, syncMyPacks } from "@/services/packInventory";
+import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
@@ -101,6 +104,7 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "photo-scratch" ||
     action.type === "store" ||
     action.type === "like" ||
+    action.type === "follow" ||
     action.type === "inbox" ||
     action.type === "unopened-packs" ||
     action.type === "cart" ||
@@ -224,8 +228,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setInventoryRevision((n) => n + 1);
   }, []);
 
-  // Bumped on login/logout so a stale in-flight session probe cannot wipe a fresh session.
+  // Bumped on login/logout so stale in-flight auth/inventory sync cannot cross sessions.
   const sessionSyncEpochRef = useRef(0);
+
+  useEffect(() => {
+    if (!authed || isDemoMode()) return;
+    const epoch = sessionSyncEpochRef.current;
+    let cancelled = false;
+    void syncMyPacks({
+      beforeWrite: () =>
+        !cancelled && epoch === sessionSyncEpochRef.current,
+    }).then((ok) => {
+      if (cancelled) return;
+      if (epoch !== sessionSyncEpochRef.current) return;
+      if (ok) bumpInventoryRevision();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, bumpInventoryRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -359,6 +380,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "like") {
         setResumeLikeId(action.feedItemId);
         navigate(Paths.discover);
+        return;
+      }
+      if (action.type === "follow") {
+        // Apply follow after login. Stay on creator profiles; otherwise Discover.
+        followCreator({
+          id: action.creatorId,
+          displayName: action.displayName?.trim() || action.creatorId,
+          username: "",
+          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.png",
+          followedAt: Date.now(),
+          hasUnseenActivity: false,
+        });
+        if (!window.location.pathname.startsWith("/creator/")) {
+          navigate(Paths.discover);
+        }
         return;
       }
       if (action.type === "store") {
@@ -657,6 +693,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     destroySession();
     clearEmailVerified();
+    clearPackInventory();
     setAuthed(false);
     setEmailVerified(false);
     setInboxUnread(0);
@@ -670,6 +707,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     void logoutRemote();
     destroySession();
+    clearPackInventory();
     setAuthed(false);
     setPending(null);
     setAuthOpen(false);
@@ -689,6 +727,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
+    clearPackInventory();
     setProfile(initialProfile);
     setAuthed(false);
     setReturningUser(false);

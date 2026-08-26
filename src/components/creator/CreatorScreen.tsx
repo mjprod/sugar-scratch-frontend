@@ -115,7 +115,7 @@ function CreatorScreenInner({
 
   useEffect(() => {
     setFollowing(isFollowing(followId));
-  }, [followId]);
+  }, [followId, authed]);
 
   const apiThemes: ThemeCardData[] = useMemo(
     () =>
@@ -230,7 +230,13 @@ function CreatorScreenInner({
   }
 
   function handleToggleFollow() {
-    if (!requireAuth({ type: "collection", creatorId: followId || creatorId })) {
+    if (!authed) {
+      requireAuth({
+        type: "follow",
+        creatorId: followId || creatorId,
+        displayName: creatorName,
+        avatarUrl: coverUrl || "/img/placeholder.png",
+      });
       return;
     }
 
@@ -285,7 +291,6 @@ function CreatorScreenInner({
     <section data-page-scroll className="cpv2-page no-sticky-cta">
       <div className="cpv2-shell">
         <CreatorHeader
-          creatorId={purchaseCreatorId}
           name={creatorName}
           username={username}
           coverUrl={coverUrl}

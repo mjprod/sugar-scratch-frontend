@@ -32,6 +32,7 @@ const HAS_LOGGED_IN_MAX_AGE = 60 * 60 * 24 * 365;
 
 export type ProtectedActionType =
   | "like-creator"
+  | "follow-creator"
   | "buy-pack"
   | "open-pack"
   | "scratch-card"
@@ -46,6 +47,12 @@ export type ProtectedActionType =
 export type ProtectedAction =
   | { type: "buy"; pack: PurchaseFlowPack; kind?: "buy-pack" | "open-pack" }
   | { type: "like"; feedItemId: string }
+  | {
+      type: "follow";
+      creatorId: string;
+      displayName?: string;
+      avatarUrl?: string;
+    }
   | { type: "tab"; tab: AppTab }
   | { type: "scratch"; pack: PurchaseFlowPack }
   | { type: "photo-scratch"; packId?: string }
@@ -345,11 +352,121 @@ export function changePasswordErrorMessage(error: ChangePasswordError) {
   return "We couldn't change your password. Please try again.";
 }
 
+/** Display-name rules from Complete Profile (min 2, max 24). */
+export const DISPLAY_NAME_MAX_LENGTH = 24;
+
+export function normalizeDisplayName(value: string) {
+  return value.trim().slice(0, DISPLAY_NAME_MAX_LENGTH);
+}
+
+export function displayNameValidationMessage(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return "Display name is required.";
+  if (trimmed.length < 2) return "Display name must be at least 2 characters.";
+  return null;
+}
+
+/** Username rules from Create Username (4–20, a-z0-9_). */
+export const USERNAME_MIN_LENGTH = 4;
+export const USERNAME_MAX_LENGTH = 20;
+
+export function normalizeUsername(value: string) {
+  return value
+    .replace(/[^a-zA-Z0-9_]/g, "")
+    .slice(0, USERNAME_MAX_LENGTH)
+    .toLowerCase();
+}
+
+export function usernameValidationMessage(
+  value: string,
+  opts?: { currentUsername?: string },
+): string | null {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return "Enter a valid username.";
+  if (trimmed.length < USERNAME_MIN_LENGTH) {
+    return `Username must be at least ${USERNAME_MIN_LENGTH} characters.`;
+  }
+  if (!/^[a-z0-9_]+$/.test(trimmed)) {
+    return "Only letters, numbers, and underscores.";
+  }
+  const current = (opts?.currentUsername ?? "").trim().toLowerCase();
+  if (trimmed !== current && TAKEN_USERNAMES.has(trimmed)) {
+    return "This username is already taken.";
+  }
+  return null;
+}
+
+const TAKEN_USERNAMES = new Set(["taken", "admin", "sugar", "test"]);
+
+export type UpdateProfileInput = {
+  displayName: string;
+  username: string;
+  avatarUrl: string | null;
+  /** Existing handle — used to skip “taken” when unchanged. */
+  currentUsername?: string;
+};
+
+export type UpdateProfileResult =
+  | { ok: true; user: AuthUser | null }
+  | { ok: false };
+
+/**
+ * Authenticated profile identity update.
+ * Prefer remote `/api/auth/profile`; fall back to local success when the
+ * endpoint is unavailable (prototype / offline).
+ */
+export async function updateProfile(
+  input: UpdateProfileInput,
+): Promise<UpdateProfileResult> {
+  const displayName = normalizeDisplayName(input.displayName);
+  const username = normalizeUsername(input.username);
+  if (displayNameValidationMessage(displayName)) return { ok: false };
+  if (
+    usernameValidationMessage(username, {
+      currentUsername: input.currentUsername,
+    })
+  ) {
+    return { ok: false };
+  }
+
+  try {
+    const result = await apiMutate<{ ok: boolean; user?: AuthUser }>(
+      "/api/auth/profile",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          display_name: displayName,
+          username,
+          avatar_url: input.avatarUrl,
+        }),
+      },
+    );
+    return { ok: true, user: result.user ?? null };
+  } catch (error) {
+    // Missing endpoint only — local prototype soft-success.
+    // Network / 5xx / validation must not report success.
+    if (
+      error instanceof ApiError &&
+      (error.status === 404 ||
+        error.status === 405 ||
+        error.status === 501)
+    ) {
+      return { ok: true, user: null };
+    }
+    return { ok: false };
+  }
+}
+
+export function updateProfileErrorMessage() {
+  return "We couldn't update your profile. Please try again.";
+}
+
 export function triggerFromAction(
   action: ProtectedAction | null,
 ): ProtectedActionType | undefined {
   if (!action) return undefined;
   if (action.type === "like") return "like-creator";
+  if (action.type === "follow") return "follow-creator";
   if (action.type === "scratch" || action.type === "photo-scratch") {
     return "scratch-card";
   }
@@ -379,6 +496,8 @@ export function supportingCopyForTrigger(
   switch (trigger) {
     case "like-creator":
       return "Log in to save creators you like.";
+    case "follow-creator":
+      return "Log in to follow this creator.";
     case "buy-pack":
       return "Log in to purchase this pack and save it to your account.";
     case "open-pack":
