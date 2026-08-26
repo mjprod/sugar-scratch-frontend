@@ -12,6 +12,8 @@ export type RedeemReward =
       packId: string;
       creatorHandle: string;
       sceneName: string;
+      /** Server-issued row from POST /api/rewards/redeem (production). */
+      instanceId?: string;
     };
 
 export type RedeemErrorType =

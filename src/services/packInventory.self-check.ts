@@ -1,13 +1,18 @@
 import {
   addUnopenedFromPurchase,
   clearPackInventory,
+  countOwnedPacks,
   countUnopened,
   getPackInstance,
+  isLocalPackInstanceId,
   listUnopenedGroups,
   markPackOpened,
   nextUnopenedInPurchase,
+  peekNewestUnopenedInstance,
   peekUnopenedInstance,
   purchaseAlreadyOwned,
+  replaceInventoryFromApi,
+  upsertInstancesFromApi,
 } from "./packInventory.ts";
 
 function assert(condition: unknown, message: string) {
@@ -60,5 +65,106 @@ assert(markPackOpened(first!.instanceId)?.status === "opened", "idempotent open"
 
 const next = nextUnopenedInPurchase(purchaseId);
 assert(next != null && next.instanceId !== first!.instanceId, "next in purchase");
+
+clearPackInventory();
+const replaced = replaceInventoryFromApi([
+  {
+    instanceId: "srv-1",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-1",
+    savedAt: 1,
+  },
+  {
+    instanceId: "srv-2",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "opened",
+    purchaseId: "buy-1",
+    savedAt: 2,
+  },
+]);
+assert(replaced.length === 2, "replace writes server list");
+assert(countUnopened() === 1, "replace respects opened status");
+assert(getPackInstance("srv-1")?.instanceId === "srv-1", "replace keeps server ids");
+
+const merged = upsertInstancesFromApi([
+  {
+    instanceId: "srv-3",
+    catalogPackId: "ep2",
+    packName: "Other",
+    creator: "Emily",
+    themeName: "Other",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-2",
+    savedAt: 3,
+  },
+]);
+assert(merged.length === 1, "upsert adds to replaced inventory");
+assert(countOwnedPacks() === 3, "upsert merges without dropping replaced rows");
+
+const openedViaApi = upsertInstancesFromApi([
+  {
+    instanceId: "srv-1",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "opened",
+    purchaseId: "buy-1",
+    savedAt: 4,
+  },
+]);
+assert(openedViaApi.length === 1, "upsert returns updated instance");
+assert(
+  getPackInstance("srv-1")?.status === "opened",
+  "upsert updates known instance status from api",
+);
+assert(countUnopened() === 1, "opened update only affects matching instance");
+
+upsertInstancesFromApi([
+  {
+    instanceId: "srv-old",
+    catalogPackId: "ep9",
+    packName: "Rank",
+    creator: "Emily",
+    themeName: "Rank",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-old",
+    savedAt: 1,
+  },
+  {
+    instanceId: "srv-new",
+    catalogPackId: "ep9",
+    packName: "Rank",
+    creator: "Emily",
+    themeName: "Rank",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-new",
+    savedAt: 99,
+  },
+]);
+assert(
+  peekNewestUnopenedInstance("ep9")?.instanceId === "srv-new",
+  "newest unopened prefers latest savedAt",
+);
+
+assert(isLocalPackInstanceId("pack-abc123"), "local pack id");
+assert(isLocalPackInstanceId("demo-pack-xyz"), "demo pack id");
+assert(!isLocalPackInstanceId("550e8400-e29b-41d4-a716-446655440000"), "server uuid");
 
 console.log("v8 pack inventory self-check passed");

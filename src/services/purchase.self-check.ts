@@ -2,6 +2,7 @@ import { diamondCostForPackId } from "./homepage.ts";
 import {
   buildFoilOpeningSession,
   buildOpeningSession,
+  cartCheckoutIdempotencyKey,
   clearOpening,
   nextUnscratchedIndex,
   packCost,
@@ -132,6 +133,16 @@ assert(
 assert(
   upsertInstancesFromApi(apiInstances)[0]?.instanceId === "server-uuid-1",
   "api upsert keeps server instance ids",
+);
+
+assert(
+  cartCheckoutIdempotencyKey("cart-abc") !==
+    cartCheckoutIdempotencyKey("cart-def"),
+  "cart checkout keys are per line",
+);
+assert(
+  cartCheckoutIdempotencyKey("cart-abc") === "cart-buy:cart-abc",
+  "cart checkout key format",
 );
 
 console.log("v8 purchase flow self-check passed");

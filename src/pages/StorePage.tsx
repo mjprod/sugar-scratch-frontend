@@ -2,7 +2,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
 import { isDemoMode } from "@/lib/demo";
-import { addUnopenedFromPurchase } from "@/services/packInventory";
+import {
+  addUnopenedFromPurchase,
+  peekNewestUnopenedInstance,
+  syncMyPacks,
+  upsertInstancesFromApi,
+} from "@/services/packInventory";
 import type { RedeemReward } from "@/services/redeem";
 
 export function StorePage() {
@@ -14,19 +19,52 @@ export function StorePage() {
   } = useAuth();
   const { addCoins, addDiamonds, refreshWallet } = useWallet();
 
-  function onPackReward(reward: Extract<RedeemReward, { type: "free_pack" }>) {
-    const purchaseId = `redeem-${reward.packId}-${Date.now().toString(36)}`;
-    const created = addUnopenedFromPurchase({
-      purchaseId,
-      catalogPackId: reward.packId,
-      packName: reward.sceneName,
-      creator: reward.creatorHandle,
-      count: 1,
-      themeName: reward.sceneName,
-    });
+  async function onPackReward(
+    reward: Extract<RedeemReward, { type: "free_pack" }>,
+  ) {
+    if (isDemoMode()) {
+      const purchaseId = `redeem-${reward.packId}-${Date.now().toString(36)}`;
+      const created = addUnopenedFromPurchase({
+        purchaseId,
+        catalogPackId: reward.packId,
+        packName: reward.sceneName,
+        creator: reward.creatorHandle,
+        count: 1,
+        themeName: reward.sceneName,
+      });
+      bumpInventoryRevision();
+      setPurchasedPacks((n) => n + 1);
+      return { instanceId: created[0]?.instanceId };
+    }
+
+    const grantedId = reward.instanceId?.trim();
+    if (grantedId) {
+      upsertInstancesFromApi([
+        {
+          instanceId: grantedId,
+          catalogPackId: reward.packId,
+          packName: reward.sceneName,
+          creator: reward.creatorHandle,
+          themeName: reward.sceneName,
+          coverUrl: "",
+          status: "unopened",
+          purchaseId: `redeem-${grantedId}`,
+          savedAt: Date.now(),
+        },
+      ]);
+      bumpInventoryRevision();
+      setPurchasedPacks((n) => n + 1);
+      void syncMyPacks();
+      return { instanceId: grantedId };
+    }
+
+    const synced = await syncMyPacks();
+    if (!synced) return {};
+    const instance = peekNewestUnopenedInstance(reward.packId);
+    if (!instance?.instanceId) return {};
     bumpInventoryRevision();
     setPurchasedPacks((n) => n + 1);
-    return { instanceId: created[0]?.instanceId };
+    return { instanceId: instance.instanceId };
   }
 
   return (
