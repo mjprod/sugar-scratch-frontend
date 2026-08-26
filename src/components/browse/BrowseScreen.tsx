@@ -437,11 +437,13 @@ export function HomeScreen({
           </aside>
 
           <div className="hub-today-bento-stack">
-            <ContinueCollecting
-              items={home.continueCollecting}
-              onOpen={openCollection}
-              onSeeAllClick={() => setLibraryOpen(true)}
-            />
+            {!guest ? (
+              <ContinueCollecting
+                items={home.continueCollecting}
+                onOpen={openCollection}
+                onSeeAllClick={() => setLibraryOpen(true)}
+              />
+            ) : null}
 
             <section
               className="continue-collecting hub-upcoming-card"
