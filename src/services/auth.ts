@@ -32,6 +32,7 @@ const HAS_LOGGED_IN_MAX_AGE = 60 * 60 * 24 * 365;
 
 export type ProtectedActionType =
   | "like-creator"
+  | "follow-creator"
   | "buy-pack"
   | "open-pack"
   | "scratch-card"
@@ -442,13 +443,13 @@ export async function updateProfile(
     );
     return { ok: true, user: result.user ?? null };
   } catch (error) {
-    // Missing endpoint / offline prototype — persist locally.
-    // Explicit client/validation errors keep the form unsaved.
-    if (!(error instanceof ApiError)) return { ok: true, user: null };
+    // Missing endpoint only — local prototype soft-success.
+    // Network / 5xx / validation must not report success.
     if (
-      error.status === 404 ||
-      error.status === 405 ||
-      error.status === 501
+      error instanceof ApiError &&
+      (error.status === 404 ||
+        error.status === 405 ||
+        error.status === 501)
     ) {
       return { ok: true, user: null };
     }
@@ -465,7 +466,7 @@ export function triggerFromAction(
 ): ProtectedActionType | undefined {
   if (!action) return undefined;
   if (action.type === "like") return "like-creator";
-  if (action.type === "follow") return "like-creator";
+  if (action.type === "follow") return "follow-creator";
   if (action.type === "scratch" || action.type === "photo-scratch") {
     return "scratch-card";
   }
@@ -495,6 +496,8 @@ export function supportingCopyForTrigger(
   switch (trigger) {
     case "like-creator":
       return "Log in to save creators you like.";
+    case "follow-creator":
+      return "Log in to follow this creator.";
     case "buy-pack":
       return "Log in to purchase this pack and save it to your account.";
     case "open-pack":

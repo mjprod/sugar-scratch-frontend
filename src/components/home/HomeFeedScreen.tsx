@@ -126,9 +126,12 @@ export function HomeFeedScreen({
   const [activeId, setActiveId] = useState<string | null>(
     cached?.activeId ?? null,
   );
-  const [viewIndex, setViewIndex] = useState(() =>
-    Math.max(0, cached?.scrollIndex ?? 0),
-  );
+  const [viewIndex, setViewIndex] = useState(() => {
+    const logical = Math.max(0, cached?.scrollIndex ?? 0);
+    // Loop slides: index 0 is the head clone; real items start at 1.
+    const loop = (cached?.items.length ?? 0) > 1;
+    return loop ? logical + 1 : logical;
+  });
   const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
   const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);

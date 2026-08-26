@@ -115,7 +115,7 @@ function CreatorScreenInner({
 
   useEffect(() => {
     setFollowing(isFollowing(followId));
-  }, [followId]);
+  }, [followId, authed]);
 
   const apiThemes: ThemeCardData[] = useMemo(
     () =>
@@ -232,8 +232,10 @@ function CreatorScreenInner({
   function handleToggleFollow() {
     if (!authed) {
       requireAuth({
-        type: "collection",
+        type: "follow",
         creatorId: followId || creatorId,
+        displayName: creatorName,
+        avatarUrl: coverUrl || "/img/placeholder.png",
       });
       return;
     }
