@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -125,6 +126,12 @@ export function HomeFeedScreen({
   const [activeId, setActiveId] = useState<string | null>(
     cached?.activeId ?? null,
   );
+  const [viewIndex, setViewIndex] = useState(() => {
+    const logical = Math.max(0, cached?.scrollIndex ?? 0);
+    // Loop slides: index 0 is the head clone; real items start at 1.
+    const loop = (cached?.items.length ?? 0) > 1;
+    return loop ? logical + 1 : logical;
+  });
   const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
   const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -143,6 +150,41 @@ export function HomeFeedScreen({
   const mediaScaleMax = isDesktopFeed
     ? MEDIA_SCALE_MAX_DESKTOP
     : MEDIA_SCALE_MAX_MOBILE;
+  /** Seamless loop: clone last before first, clone first after last. */
+  const loopEnabled = items.length > 1;
+  const loopSlides = useMemo(() => {
+    if (!loopEnabled) {
+      return items.map((item, logicalIndex) => ({
+        item,
+        key: item.id,
+        logicalIndex,
+        clone: false as const,
+      }));
+    }
+    const first = items[0]!;
+    const last = items[items.length - 1]!;
+    return [
+      {
+        item: last,
+        key: `${last.id}__loop-head`,
+        logicalIndex: items.length - 1,
+        clone: true as const,
+      },
+      ...items.map((item, logicalIndex) => ({
+        item,
+        key: item.id,
+        logicalIndex,
+        clone: false as const,
+      })),
+      {
+        item: first,
+        key: `${first.id}__loop-tail`,
+        logicalIndex: 0,
+        clone: true as const,
+      },
+    ];
+  }, [items, loopEnabled]);
+  const maxScrollIndex = Math.max(0, loopSlides.length - 1);
   const parallaxTargetRef = useRef(new Map<string, number>());
   const parallaxCurrentRef = useRef(new Map<string, number>());
   const scaleTargetRef = useRef(new Map<string, number>());
@@ -283,20 +325,20 @@ export function HomeFeedScreen({
 
       // Clear stale targets outside the active window so they don't keep ticking.
       for (const key of [...parallaxTargetRef.current.keys()]) {
-        const idx = items.findIndex((item) => item.id === key);
-        if (idx < start || idx > end) {
+        const idx = Number.parseInt(key, 10);
+        if (!Number.isFinite(idx) || idx < start || idx > end) {
           parallaxTargetRef.current.delete(key);
           parallaxCurrentRef.current.delete(key);
           scaleTargetRef.current.delete(key);
           scaleCurrentRef.current.delete(key);
           blurTargetRef.current.delete(key);
           blurCurrentRef.current.delete(key);
-          if (idx >= 0 && slides[idx]) resetSlideFx(slides[idx]);
+          if (Number.isFinite(idx) && slides[idx]) resetSlideFx(slides[idx]!);
         }
       }
 
       for (let index = start; index <= end; index += 1) {
-        const key = items[index]?.id ?? String(index);
+        const key = String(index);
         const slideTop = index * slideHeight;
         const progress = (scrollTop - slideTop) / slideHeight;
         const absProgress = Math.min(1, Math.abs(progress));
@@ -438,11 +480,41 @@ export function HomeFeedScreen({
     [
       allowMediaBlur,
       getSlideMetrics,
-      items,
       mediaScaleGain,
       mediaScaleMax,
       reducedMotion,
     ],
+  );
+
+  const normalizeLoopScroll = useCallback(
+    (root: HTMLElement) => {
+      if (!loopEnabled) return;
+      const { slideHeight } = getSlideMetrics(root);
+      if (slideHeight <= 0) return;
+      const index = Math.round(root.scrollTop / slideHeight);
+      // Head clone → real last; tail clone → real first.
+      let target = index;
+      if (index <= 0) target = items.length;
+      else if (index >= items.length + 1) target = 1;
+      else return;
+
+      const y = target * slideHeight;
+      if (Math.abs(root.scrollTop - y) < 1) return;
+
+      const prevSnap = root.style.scrollSnapType;
+      const prevBehavior = root.style.scrollBehavior;
+      root.style.scrollSnapType = "none";
+      root.style.scrollBehavior = "auto";
+      root.scrollTop = y;
+      setViewIndex(target);
+      scrollIndexRef.current = target - 1;
+      requestAnimationFrame(() => {
+        root.style.scrollSnapType = prevSnap;
+        root.style.scrollBehavior = prevBehavior;
+        applyScrollFx(root, true);
+      });
+    },
+    [applyScrollFx, getSlideMetrics, items.length, loopEnabled],
   );
 
   useEffect(() => {
@@ -451,15 +523,17 @@ export function HomeFeedScreen({
     if (!root || !items.length) return;
     restoredRef.current = true;
     const { slideHeight } = getSlideMetrics(root);
-    const index = Math.min(
+    const logical = Math.min(
       scrollIndexRef.current,
       Math.max(0, items.length - 1),
     );
+    const index = loopEnabled ? logical + 1 : logical;
     root.scrollTo({ top: index * slideHeight });
-    const next = items[index];
+    setViewIndex(index);
+    const next = items[logical];
     if (next) setActiveId(next.id);
     applyScrollFx(root, true);
-  }, [status, items, getSlideMetrics, applyScrollFx]);
+  }, [status, items, getSlideMetrics, applyScrollFx, loopEnabled]);
 
   const stopScrollNudge = useCallback(() => {
     if (nudgeRafRef.current) {
@@ -490,8 +564,8 @@ export function HomeFeedScreen({
     const restTop = root.scrollTop;
     const index = Math.round(restTop / slideHeight);
     if (Math.abs(restTop - index * slideHeight) > 2) return;
-    // Last card has nowhere to peek; skip.
-    if (index >= items.length - 1) return;
+    // Need a next slide to peek (includes loop tail clone after the last real).
+    if (index >= maxScrollIndex) return;
 
     const travel = Math.min(
       SCROLL_NUDGE_TRAVEL_MAX_PX,
@@ -548,10 +622,19 @@ export function HomeFeedScreen({
     applyScrollFx,
     getSlideMetrics,
     items.length,
+    maxScrollIndex,
     reducedMotion,
     status,
     stopScrollNudge,
   ]);
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root || !loopEnabled || status !== "loaded") return;
+    const onScrollEnd = () => normalizeLoopScroll(root);
+    root.addEventListener("scrollend", onScrollEnd);
+    return () => root.removeEventListener("scrollend", onScrollEnd);
+  }, [loopEnabled, normalizeLoopScroll, status, items.length]);
 
   const armScrollNudgeIdle = useCallback(() => {
     if (nudgeIdleTimerRef.current) {
@@ -662,13 +745,23 @@ export function HomeFeedScreen({
   }, []);
 
   useEffect(() => {
-    const activeIndex = items.findIndex((item) => item.id === activeId);
-    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
-    const warmIds = new Set<string>();
+    const activeSlide = loopSlides[viewIndex];
+    const activeKey = activeSlide?.key;
+    const logical = activeSlide?.logicalIndex ?? 0;
+    const warmKeys = new Set<string>();
     for (let offset = -FEED_WARM_BEHIND; offset <= FEED_WARM_AHEAD; offset += 1) {
       if (offset === 0) continue;
-      const neighbor = items[resolvedActiveIndex + offset];
-      if (neighbor) warmIds.add(neighbor.id);
+      const neighborLogical = logical + offset;
+      if (neighborLogical < 0 || neighborLogical >= items.length) continue;
+      const neighbor = items[neighborLogical];
+      if (neighbor) warmKeys.add(neighbor.id);
+      // Also warm the matching loop clone keys when relevant.
+      if (loopEnabled && neighborLogical === 0) {
+        warmKeys.add(`${items[0]!.id}__loop-tail`);
+      }
+      if (loopEnabled && neighborLogical === items.length - 1) {
+        warmKeys.add(`${items[items.length - 1]!.id}__loop-head`);
+      }
     }
 
     videoRefs.current.forEach((video, id) => {
@@ -677,7 +770,7 @@ export function HomeFeedScreen({
         return;
       }
 
-      if (id === activeId) {
+      if (id === activeKey) {
         video.muted = true;
         void video.play().catch(() => {
           /* poster still shows */
@@ -687,7 +780,7 @@ export function HomeFeedScreen({
 
       video.pause();
 
-      if (warmIds.has(id)) {
+      if (warmKeys.has(id)) {
         try {
           if (video.preload !== "auto") video.preload = "auto";
         } catch {
@@ -695,22 +788,31 @@ export function HomeFeedScreen({
         }
       }
     });
-  }, [active, activeId, items, videoRefs]);
+  }, [active, items, loopEnabled, loopSlides, videoRefs, viewIndex]);
 
   const go = useCallback(
     (delta: number) => {
       const root = scrollerRef.current;
-      if (!root || !items.length) return;
+      if (!root || !loopSlides.length) return;
       const { slideHeight } = getSlideMetrics(root);
       if (slideHeight <= 0) return;
-      const next = Math.round(root.scrollTop / slideHeight) + delta;
-      const clamped = Math.max(0, Math.min(items.length - 1, next));
+      const current = Math.round(root.scrollTop / slideHeight);
+      const next = Math.max(0, Math.min(maxScrollIndex, current + delta));
       root.scrollTo({
-        top: clamped * slideHeight,
+        top: next * slideHeight,
         behavior: reducedMotion ? "auto" : "smooth",
       });
+      if (reducedMotion) {
+        normalizeLoopScroll(root);
+      }
     },
-    [getSlideMetrics, items.length, reducedMotion],
+    [
+      getSlideMetrics,
+      loopSlides.length,
+      maxScrollIndex,
+      normalizeLoopScroll,
+      reducedMotion,
+    ],
   );
 
   goRef.current = go;
@@ -746,13 +848,14 @@ export function HomeFeedScreen({
         target = startIndex - 1;
       }
 
-      const clamped = Math.max(0, Math.min(items.length - 1, target));
+      target = Math.max(0, Math.min(maxScrollIndex, target));
       root.scrollTo({
-        top: clamped * slideHeight,
+        top: target * slideHeight,
         behavior: reducedMotion ? "auto" : "smooth",
       });
+      if (reducedMotion) normalizeLoopScroll(root);
     },
-    [getSlideMetrics, items.length, reducedMotion],
+    [getSlideMetrics, maxScrollIndex, normalizeLoopScroll, reducedMotion],
   );
 
   const isDragFromInteractive = useCallback((target: EventTarget | null) => {
@@ -1029,26 +1132,43 @@ export function HomeFeedScreen({
 
   function onScroll() {
     const root = scrollerRef.current;
-    if (!root || !items.length) return;
+    if (!root || !loopSlides.length) return;
     // Programmatic nudge drives scrollTop itself — don't treat that as user activity.
     if (!nudgeAnimatingRef.current) {
       markFeedActivityRef.current();
     }
     const { slideHeight } = getSlideMetrics(root);
     const index = Math.round(root.scrollTop / slideHeight);
-    scrollIndexRef.current = index;
-    const next = items[Math.max(0, Math.min(items.length - 1, index))];
-    if (next && next.id !== activeId) {
-      setActiveId(next.id);
-      persist({ activeId: next.id, scrollIndex: index });
-    } else {
-      persist({ scrollIndex: index });
+    const safeIndex = Math.max(0, Math.min(maxScrollIndex, index));
+    setViewIndex(safeIndex);
+    const slide = loopSlides[safeIndex];
+    if (slide) {
+      scrollIndexRef.current = slide.logicalIndex;
+      if (slide.item.id !== activeId) {
+        setActiveId(slide.item.id);
+        persist({
+          activeId: slide.item.id,
+          scrollIndex: slide.logicalIndex,
+        });
+      } else {
+        persist({ scrollIndex: slide.logicalIndex });
+      }
     }
 
     applyScrollFx(root);
 
-    const remaining = items.length - 1 - index;
+    const logical = slide?.logicalIndex ?? 0;
+    const remaining = items.length - 1 - logical;
     if (remaining <= FEED_WARM_AHEAD) void loadMore();
+
+    // Settled on a loop clone → teleport to the matching real slide.
+    if (
+      loopEnabled &&
+      Math.abs(root.scrollTop - safeIndex * slideHeight) < 2 &&
+      (safeIndex <= 0 || safeIndex >= items.length + 1)
+    ) {
+      normalizeLoopScroll(root);
+    }
   }
 
   function toggleLike(id: string) {
@@ -1174,25 +1294,29 @@ export function HomeFeedScreen({
             }
           >
             {(() => {
-              const activeIndex = items.findIndex((it) => it.id === activeId);
-              const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
+              const activeLogical =
+                loopSlides[viewIndex]?.logicalIndex ??
+                items.findIndex((it) => it.id === activeId);
+              const resolvedActiveIndex = activeLogical >= 0 ? activeLogical : 0;
 
-              return items.map((item, index) => {
-                const warm = isWarmFeedIndex(index, resolvedActiveIndex);
+              return loopSlides.map((slide, index) => {
+                const warm =
+                  !slide.clone &&
+                  isWarmFeedIndex(slide.logicalIndex, resolvedActiveIndex);
 
                 return (
-                  <div key={item.id} className="hf-slide">
+                  <div key={slide.key} className="hf-slide">
                     <CreatorFeedCard
-                      item={item}
-                      active={active && item.id === activeId}
-                      warm={warm}
-                      onLike={() => toggleLike(item.id)}
-                      onEnsureLike={() => ensureLike(item.id)}
-                      onBuy={() => onBuyPack(toPurchasePack(item))}
+                      item={slide.item}
+                      active={active && index === viewIndex}
+                      warm={warm || (active && index === viewIndex)}
+                      onLike={() => toggleLike(slide.item.id)}
+                      onEnsureLike={() => ensureLike(slide.item.id)}
+                      onBuy={() => onBuyPack(toPurchasePack(slide.item))}
                       onOpenCreator={onOpenCreator}
                       videoRef={(node) => {
-                        if (node) videoRefs.current.set(item.id, node);
-                        else videoRefs.current.delete(item.id);
+                        if (node) videoRefs.current.set(slide.key, node);
+                        else videoRefs.current.delete(slide.key);
                       }}
                     />
                   </div>
@@ -1214,9 +1338,6 @@ export function HomeFeedScreen({
             className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Previous creator"
             data-no-feed-drag
-            disabled={
-              items.findIndex((item) => item.id === activeId) <= 0
-            }
             onClick={() => {
               markFeedActivityRef.current();
               go(-1);
@@ -1229,10 +1350,6 @@ export function HomeFeedScreen({
             className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Next creator"
             data-no-feed-drag
-            disabled={
-              items.findIndex((item) => item.id === activeId) >=
-              items.length - 1
-            }
             onClick={() => {
               markFeedActivityRef.current();
               go(1);

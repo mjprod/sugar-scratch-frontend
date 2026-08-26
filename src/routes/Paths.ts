@@ -18,6 +18,7 @@ export const Paths = {
   collectionPacks: "/collection?reveal=packs",
   rewards: "/rewards",
   profile: "/profile",
+  editProfile: "/profile/edit",
   store: "/store",
   settings: "/settings",
   changePassword: "/settings/change-password",

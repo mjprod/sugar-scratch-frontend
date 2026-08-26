@@ -12,11 +12,19 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
+import { useAuth } from "@/contexts/AuthContext";
 import {
+  feedLikeCount,
   feedPackLabel,
   feedVisibleTags,
+  formatFeedLikeCount,
   type HomeFeedCreator,
 } from "@/services/creatorFeed";
+import {
+  followCreator,
+  isFollowing,
+  unfollowCreator,
+} from "@/services/following";
 
 const DOUBLE_TAP_MS = 280;
 const TAP_MOVE_PX = 14;
@@ -94,9 +102,13 @@ export function CreatorFeedCard({
   videoRef: (node: HTMLVideoElement | null) => void;
   buyCta?: "squircleCTA" | "pillGoldCTA";
 }) {
+  const { requireAuth, authed } = useAuth();
   const [burst, setBurst] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [heartBurst, setHeartBurst] = useState<HeartBurst | null>(null);
+  const [following, setFollowing] = useState(() =>
+    isFollowing(item.creatorId),
+  );
   const reducedMotion = usePrefersReducedMotion();
   const cardRef = useRef<HTMLElement>(null);
   const likeBtnRef = useRef<HTMLButtonElement>(null);
@@ -106,9 +118,49 @@ export function CreatorFeedCard({
   const burstIdRef = useRef(0);
   const tags = feedVisibleTags(item.tags);
   const packLabel = feedPackLabel(item.packName);
+  const likeCountLabel = formatFeedLikeCount(
+    feedLikeCount(item.creatorId, item.liked),
+  );
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
   const shouldBuffer = active || warm;
   const videoKey = item.videoUrl || item.id;
+
+  useEffect(() => {
+    setFollowing(isFollowing(item.creatorId));
+  }, [item.creatorId]);
+
+  function handleToggleFollow(e: ReactMouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const creatorId = item.creatorId.trim();
+    if (!creatorId) return;
+    // Same gate as Like: guests open auth; never resume a navigation action.
+    if (!authed) {
+      requireAuth({
+        type: "follow",
+        creatorId,
+        displayName: item.creatorName,
+        avatarUrl: item.posterUrl || "/img/placeholder.png",
+      });
+      return;
+    }
+
+    if (following) {
+      unfollowCreator(creatorId);
+      setFollowing(false);
+      return;
+    }
+
+    followCreator({
+      id: creatorId,
+      displayName: item.creatorName,
+      username: "",
+      avatarUrl: item.posterUrl || "/img/placeholder.png",
+      followedAt: Date.now(),
+      hasUnseenActivity: false,
+    });
+    setFollowing(true);
+  }
   /**
    * Keep CTA shader motion alive across the mid-scroll handoff.
    * `active` flips at ~50% slide travel (Math.round), so gating aurora on
@@ -347,20 +399,39 @@ export function CreatorFeedCard({
 
       <div className={["hf-overlay", active ? "is-visible" : ""].join(" ")}>
         <div className="hf-info">
-          {canOpenCreator ? (
+          <div className="hf-name-row">
+            {canOpenCreator ? (
+              <button
+                type="button"
+                className="hf-creator hf-creator--link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCreator?.(item.creatorId);
+                }}
+              >
+                {item.creatorName}
+              </button>
+            ) : (
+              <h2 className="hf-creator">{item.creatorName}</h2>
+            )}
             <button
               type="button"
-              className="hf-creator hf-creator--link"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenCreator?.(item.creatorId);
-              }}
+              className={[
+                "hf-follow",
+                following ? "is-following" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={following}
+              aria-label={following ? "Unfollow" : "Follow"}
+              data-no-feed-drag
+              onClick={handleToggleFollow}
+              onPointerDown={(e) => e.stopPropagation()}
+              onPointerUp={(e) => e.stopPropagation()}
             >
-              {item.creatorName}
+              {following ? "Following" : "Follow"}
             </button>
-          ) : (
-            <h2 className="hf-creator">{item.creatorName}</h2>
-          )}
+          </div>
           <p className="hf-pack">{packLabel}</p>
           {tags.length > 0 ? (
             <ul className="hf-tags" aria-label="Pack tags">
@@ -402,31 +473,42 @@ export function CreatorFeedCard({
             />
           </div>
 
-          <button
-            ref={likeBtnRef}
-            type="button"
-            className={[
-              "hf-like",
-              item.liked ? "is-liked" : "",
-              burst ? "is-burst" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-label={item.liked ? "Unlike" : "Like"}
-            aria-pressed={item.liked}
-            onClick={(e) => {
-              e.stopPropagation();
-              like();
-            }}
-          >
-            <Heart
-              className="hf-like-icon"
-              fill={item.liked ? "currentColor" : "none"}
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            {burst ? <span className="hf-like-burst" aria-hidden="true" /> : null}
-          </button>
+          <div className="hf-like-wrap">
+            <button
+              ref={likeBtnRef}
+              type="button"
+              className={[
+                "hf-like",
+                item.liked ? "is-liked" : "",
+                burst ? "is-burst" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-label={
+                item.liked
+                  ? `Unlike · ${likeCountLabel} likes`
+                  : `Like · ${likeCountLabel} likes`
+              }
+              aria-pressed={item.liked}
+              onClick={(e) => {
+                e.stopPropagation();
+                like();
+              }}
+            >
+              <Heart
+                className="hf-like-icon"
+                fill={item.liked ? "currentColor" : "none"}
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+              {burst ? (
+                <span className="hf-like-burst" aria-hidden="true" />
+              ) : null}
+            </button>
+            <span className="hf-like-caption" aria-hidden="true">
+              {likeCountLabel}
+            </span>
+          </div>
         </div>
       </div>
     </article>
