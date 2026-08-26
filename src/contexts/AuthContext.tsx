@@ -19,7 +19,6 @@ import {
   fetchAuthSession,
   getAuthEmail,
   hasLoggedInBefore,
-  isAuthenticated,
   isEmailVerified,
   logoutRemote,
   markEmailVerified,
@@ -188,6 +187,7 @@ type AuthContextValue = {
   setNavNotice: (msg: string) => void;
   consumeResumeLike: () => void;
   applyRecommendationDecision: (action: ProtectedAction | null) => void;
+  invalidateRemoteSession: () => void;
   verifyEmail: string;
 };
 
@@ -195,7 +195,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [authed, setAuthed] = useState(false);
   const [returningUser, setReturningUser] = useState(() => hasLoggedInBefore());
   const [profile, setProfile] = useState(initialProfile);
   const [authOpen, setAuthOpen] = useState(false);
@@ -233,8 +233,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       // Ignore results from a probe that started before a local auth transition.
       if (epoch !== sessionSyncEpochRef.current) return;
-      // Network/timeout/non-OK: leave local session alone.
-      if (!session) return;
+
+      if (session.state === "unreachable") {
+        // Cookie may still be valid. Do not resume gated actions (authed stays false).
+        return;
+      }
 
       if (session.authenticated && session.user) {
         applyRemoteUser(session.user, {
@@ -245,12 +248,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Definitive logged-out response — clear only stale local keys.
-      if (!isAuthenticated()) {
-        setAuthed(false);
-        setEmailVerified(false);
-        return;
-      }
       destroySession();
       clearEmailVerified();
       setAuthed(false);
@@ -281,7 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resumePending = useCallback(
     (action: ProtectedAction | null) => {
-      if (!action) return;
+      if (!action || action.type === "session-expired") return;
       if (action.type === "scratch") {
         // Collection / auth resume is a user gesture — unlock 3-2-1 audio so
         // ScratchPrototype can skip Tap-to-play and arm the countdown.
@@ -424,6 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (pendingAction: ProtectedAction | null) => {
       const decision = evaluateRecommendationEligibility({
         pending: pendingAction,
+        authenticated: true,
       });
 
       if (decision.action === "launch-initialization") {
@@ -470,7 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requireAuth = useCallback(
     (action: ProtectedAction) => {
-      if (authed || isAuthenticated()) {
+      if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
           setVerifyPending(action);
           setVerifyOpen(true);
@@ -654,6 +652,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const invalidateRemoteSession = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+    destroySession();
+    clearEmailVerified();
+    setAuthed(false);
+    setEmailVerified(false);
+    setInboxUnread(0);
+    setPending({ type: "session-expired" });
+    setAuthSheetMode("login");
+    setAuthSheetEmail("");
+    setAuthOpen(true);
+  }, []);
+
   const logout = useCallback(() => {
     sessionSyncEpochRef.current += 1;
     void logoutRemote();
@@ -739,6 +750,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setNavNotice,
       consumeResumeLike,
       applyRecommendationDecision,
+      invalidateRemoteSession,
       verifyEmail: profile.email || getAuthEmail(),
     }),
     [
@@ -754,6 +766,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finishRecommendationAndResume,
       guest,
       guestAuthLabel,
+      invalidateRemoteSession,
       logout,
       navNotice,
       notePackPurchaseSeed,

@@ -14,7 +14,6 @@ import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  INBOX_FIXTURES,
   countUnread,
   fetchInboxMessages,
   markInboxRead,
@@ -34,22 +33,31 @@ export function InboxScreen({
   onBack: () => void;
   onMessageAction: (message: InboxMessage) => void;
 }) {
-  const { guest, setInboxUnread } = useAuth();
-  const [messages, setMessages] = useState(() => [...INBOX_FIXTURES]);
+  const { guest, setInboxUnread, invalidateRemoteSession } = useAuth();
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   useEffect(() => {
     if (guest) return;
     let cancelled = false;
-    void fetchInboxMessages().then((list) => {
+    void fetchInboxMessages().then((result) => {
       if (cancelled) return;
-      setMessages(list);
-      setInboxUnread(countUnread(list));
+      setMessages(result.messages);
+      setLoadError(
+        result.status === "error" || result.status === "unauthorized"
+          ? result.message
+          : "",
+      );
+      setInboxUnread(countUnread(result.messages));
+      if (result.status === "unauthorized") {
+        invalidateRemoteSession();
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [guest, setInboxUnread]);
+  }, [guest, invalidateRemoteSession, setInboxUnread]);
 
   const { newer, earlier } = useMemo(
     () => splitInboxSections(messages, filterUnreadOnly),
@@ -98,7 +106,14 @@ export function InboxScreen({
         }
       />
 
-      {emptyAll || emptyFiltered ? (
+      {loadError ? (
+        <EmptyState
+          icon={TriangleAlert}
+          title="Couldn't load inbox"
+          titleId="inbox-error-title"
+          copy={loadError}
+        />
+      ) : emptyAll || emptyFiltered ? (
         <div className="inbox-empty-wrap">
           <div className="inbox-section-head">
             <span className="inbox-section-label">New</span>

@@ -49,8 +49,13 @@ Live catalog HTTP goes through `src/lib/api.ts` (`apiFetch`).
 
 | Surface | Status |
 |---------|--------|
-| `/api/models`, `/api/collection`, `/api/cards`, `/api/video-flow` | Live (FastAPI) |
-| Auth, purchase, homepage featured, store | Local mock (`sessionStorage` / `localStorage`) |
+| `/api/models`, `/api/collection`, `/api/cards`, `/api/me/wallet`, `/api/auth/*` | Live (FastAPI, cookie session) |
+| Pack purchase, store products/purchases, inbox | Live; **fail closed** (empty + error) if the API is down |
+| Homepage featured / leaderboard, store fixture catalog, inbox fixtures | Only with `?demo=1` |
+| Following list | `localStorage` until a follow API exists (no auto-seed unless `?demo=1`) |
+| Google / Apple OAuth | Disabled unless `VITE_STUB_OAUTH=1` **and** `ALLOW_STUB_OAUTH=1` |
+
+Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/auth/session`, not `sessionStorage` alone.
 
 ## Scripts
 

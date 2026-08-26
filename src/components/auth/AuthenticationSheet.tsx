@@ -23,6 +23,7 @@ import {
   type ProtectedActionType,
 } from "@/services/auth";
 import { isValidEmail } from "@/types/app";
+import { STUB_OAUTH_ENABLED } from "@/env";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import iconApple from "@/assets/auth/iconApple.svg";
@@ -351,6 +352,8 @@ export function AuthenticationSheet({
                       </form>
                     ) : (
                       <>
+                        {STUB_OAUTH_ENABLED ? (
+                        <>
                         <div className="auth7-sheet-social">
                           <div className="auth7-social-btn is-google">
                             <CtaButton
@@ -403,6 +406,8 @@ export function AuthenticationSheet({
                         <div className="auth7-sheet-divider" role="separator">
                           <span>or</span>
                         </div>
+                        </>
+                        ) : null}
 
                         <form
                           className="auth7-sheet-form"

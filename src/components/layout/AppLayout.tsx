@@ -35,6 +35,7 @@ export function AppLayout() {
     verifyEmail,
     inboxUnread,
     setInboxUnread,
+    invalidateRemoteSession,
     setPurchasedPacks,
     bumpInventoryRevision,
   } = useAuth();
@@ -92,14 +93,18 @@ export function AppLayout() {
       return;
     }
     let cancelled = false;
-    void fetchInboxMessages().then((messages) => {
+    void fetchInboxMessages().then((result) => {
       if (cancelled) return;
-      setInboxUnread(countUnread(messages));
+      if (result.status === "unauthorized") {
+        invalidateRemoteSession();
+        return;
+      }
+      setInboxUnread(countUnread(result.messages));
     });
     return () => {
       cancelled = true;
     };
-  }, [guest, setInboxUnread]);
+  }, [guest, invalidateRemoteSession, setInboxUnread]);
 
   const mobilePacks = (
     <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />

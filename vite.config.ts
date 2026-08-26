@@ -64,6 +64,8 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(rootDir, "./src"),
+        "@sugar/mesh-geometry": path.resolve(rootDir, "../src/meshGeometry.ts"),
+        "@sugar/gl-renderer": path.resolve(rootDir, "../src/glRenderer.ts"),
       },
     },
     server: {
@@ -73,6 +75,9 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       https: localHttps ?? true,
+      fs: {
+        allow: [rootDir, path.resolve(rootDir, "..")],
+      },
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
       allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
