@@ -4,6 +4,7 @@
  */
 import { resolveInventoryCoverUrl } from "../lib/photos";
 import type { UnopenedPack } from "./collection";
+import type { PackInstanceApi } from "./purchase";
 
 export type PackStatus = "unopened" | "opened";
 
@@ -114,6 +115,60 @@ export function addUnopenedFromPurchase(input: {
     }),
   );
 
+  writeAll([...created, ...existing]);
+  return created;
+}
+
+function apiInstanceToOwned(instance: PackInstanceApi): OwnedPackInstance {
+  const creatorId =
+    instance.creatorId?.trim() || slugId(instance.creator);
+  const themeName = instance.themeName || instance.packName;
+  return {
+    instanceId: instance.instanceId,
+    catalogPackId: instance.catalogPackId,
+    packName: instance.packName,
+    creator: instance.creator,
+    creatorId,
+    themeName,
+    coverUrl: resolveInventoryCoverUrl({
+      coverUrl: instance.coverUrl,
+      packId: instance.catalogPackId,
+      themeName,
+      creator: instance.creator,
+    }),
+    status: instance.status === "opened" ? "opened" : "unopened",
+    purchaseId: instance.purchaseId,
+    savedAt: instance.savedAt || Date.now(),
+  };
+}
+
+/**
+ * Persist server-issued pack instances from a purchase response.
+ * Skips duplicates by instanceId; merges new rows ahead of existing inventory.
+ */
+export function upsertInstancesFromApi(
+  instances: PackInstanceApi[],
+): OwnedPackInstance[] {
+  if (!instances.length) return [];
+  const existing = readAll();
+  const knownIds = new Set(existing.map((pack) => pack.instanceId));
+  const created: OwnedPackInstance[] = [];
+  for (const instance of instances) {
+    if (knownIds.has(instance.instanceId)) continue;
+    const owned = apiInstanceToOwned(instance);
+    created.push(owned);
+    knownIds.add(owned.instanceId);
+  }
+  if (!created.length) {
+    const purchaseId = instances[0]?.purchaseId;
+    if (purchaseId) {
+      return existing.filter(
+        (pack) =>
+          pack.purchaseId === purchaseId && pack.status === "unopened",
+      );
+    }
+    return [];
+  }
   writeAll([...created, ...existing]);
   return created;
 }

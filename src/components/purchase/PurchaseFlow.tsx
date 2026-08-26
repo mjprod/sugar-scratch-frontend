@@ -73,12 +73,12 @@ import {
 } from "@/services/collectionState";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
-  addUnopenedFromPurchase,
   countUnopened,
   getPackInstance,
   markPackOpened,
   nextUnopenedInPurchase,
   peekUnopenedInstance,
+  upsertInstancesFromApi,
 } from "@/services/packInventory";
 import {
   clearCart,
@@ -131,10 +131,6 @@ const OPENED_STAGES: OpeningStage[] = [
   "scratch",
   "complete",
 ];
-
-function newPurchaseId() {
-  return `tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function PurchaseCtaButton({
   label,
@@ -229,7 +225,7 @@ export function PurchaseFlow({
   pack,
   diamonds,
   onClose,
-  onSpend,
+  onWalletUpdate,
   onComplete,
   onGetDiamonds,
   onGoHome,
@@ -241,7 +237,7 @@ export function PurchaseFlow({
   pack: PurchaseFlowPack;
   diamonds: number;
   onClose: () => void;
-  onSpend: (diamonds: number) => void;
+  onWalletUpdate?: (wallet: { diamonds: number; coins: number }) => void;
   onComplete: (result: { cards: number; coins: number }) => void;
   onGetDiamonds?: () => void;
   onGoHome?: () => void;
@@ -536,9 +532,8 @@ export function PurchaseFlow({
       setPendingFoil(foil);
     }
     try {
-      const paid = await submitPurchase(quantity, diamonds, pack.packId);
-      onSpend(paid.diamondCost);
-      const tx = newPurchaseId();
+      const result = await submitPurchase(quantity, diamonds, pack.packId);
+      onWalletUpdate?.(result.wallet);
       const themeName =
         resolveCollectionThemeLabel({
           themeName: pack.themeName,
@@ -548,20 +543,12 @@ export function PurchaseFlow({
         }) ||
         pack.themeName?.trim() ||
         pack.packName;
-      const owned = addUnopenedFromPurchase({
-        purchaseId: tx,
-        catalogPackId: pack.packId,
-        packName: pack.packName,
-        creator: pack.creator,
-        count: quantity,
-        coverUrl: packCoverUrl,
-        themeName,
-      });
+      const owned = upsertInstancesFromApi(result.instances);
       const first = owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
       commitPurchaseIdempotencyKey(pack.packId, quantity);
       noteCreatorStarted(first.creatorId, pack.creator, themeName);
-      setPurchaseId(tx);
+      setPurchaseId(result.purchaseId);
       setInstanceId(first.instanceId);
       setReadyPackCount(owned.length || quantity);
       const seededFoils = dedupeTearFoils(

@@ -1,4 +1,5 @@
 import { apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 import { diamondCostForPackId } from "./homepage";
 
 export type PackQuantity = 1 | 5;
@@ -109,8 +110,28 @@ export function buildFoilOpeningSession(
 }
 
 /* ---------------------------------------------------------------------------
- * Purchase requests (mocked network)
+ * Purchase requests
  * ------------------------------------------------------------------------ */
+
+export type PackInstanceApi = {
+  instanceId: string;
+  catalogPackId: string;
+  packName: string;
+  creator: string;
+  creatorId?: string;
+  themeName: string;
+  coverUrl: string;
+  status: "unopened" | "opened";
+  purchaseId: string;
+  savedAt: number;
+};
+
+export type PurchaseResult = {
+  purchaseId: string;
+  instances: PackInstanceApi[];
+  wallet: { diamonds: number; coins: number };
+  diamondCost: number;
+};
 
 export type PurchaseErrorKind = "insufficient" | "failed" | "assets";
 
@@ -183,34 +204,86 @@ export function commitPurchaseIdempotencyKey(
   clearPurchaseIdempotencyKey(packId, quantity);
 }
 
+function newDemoInstanceId() {
+  return `demo-pack-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function newDemoPurchaseId() {
+  return `demo-tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** `?demo=1` only — offline fixture when the API is unreachable. */
+function purchaseFromDemoFixture(
+  quantity: PackQuantity,
+  balance: number,
+  packId: string,
+): PurchaseResult {
+  const diamondCost = packCost(quantity, packId);
+  if (diamondCost > balance) throw new PurchaseError("insufficient");
+  const purchaseId = newDemoPurchaseId();
+  const instances: PackInstanceApi[] = Array.from({ length: quantity }, () => ({
+    instanceId: newDemoInstanceId(),
+    catalogPackId: packId,
+    packName: packId,
+    creator: "Sugar",
+    themeName: packId,
+    coverUrl: "",
+    status: "unopened",
+    purchaseId,
+    savedAt: Date.now(),
+  }));
+  return {
+    purchaseId,
+    instances,
+    wallet: {
+      diamonds: Math.max(0, balance - diamondCost),
+      coins: 0,
+    },
+    diamondCost,
+  };
+}
+
 export async function submitPurchase(
   quantity: PackQuantity,
   balance: number,
   packId = "pack",
   idempotencyKey?: string,
-): Promise<OpeningSession> {
-  if (packCost(quantity, packId) > balance) throw new PurchaseError("insufficient");
+): Promise<PurchaseResult> {
+  const diamondCost = packCost(quantity, packId);
+  if (diamondCost > balance) throw new PurchaseError("insufficient");
   if (failureMode() === "purchase") {
     throw new PurchaseError("failed", "Purchase could not be completed.");
   }
   const key = getPurchaseIdempotencyKey(packId, quantity, idempotencyKey);
   try {
-    await apiMutate(`/api/packs/${packId}/purchase`, {
+    const remote = await apiMutate<{
+      purchaseId: string;
+      instances: PackInstanceApi[];
+      wallet: { diamonds: number; coins: number };
+    }>(`/api/packs/${packId}/purchase`, {
       method: "POST",
       headers: { "Idempotency-Key": key },
       body: JSON.stringify({ quantity }),
     });
     /* keep key until the client fully commits — retries after a lost response
        or a post-charge failure must reuse it */
+    return {
+      purchaseId: remote.purchaseId,
+      instances: remote.instances,
+      wallet: remote.wallet,
+      diamondCost,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "insufficient") {
       clearPurchaseIdempotencyKey(packId, quantity);
       throw new PurchaseError("insufficient");
     }
-    /* keep key so a retry after a lost response reuses it; local opening still proceeds */
+    if (!isDemoMode()) {
+      throw new PurchaseError("failed", "Purchase could not be completed.");
+    }
+    return purchaseFromDemoFixture(quantity, balance, packId);
   }
-  return buildOpeningSession(quantity, packId);
 }
 
 export async function loadOpeningAssets(): Promise<void> {
