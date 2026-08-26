@@ -88,7 +88,7 @@ export const SECONDARY_SURFACES: Record<string, SecondarySurface> = {
     kind: "secondary",
     fallbackTab: "feed",
     title: "Creator",
-    backLabel: "Back to Home",
+    backLabel: "Back",
   },
 };
 

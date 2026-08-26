@@ -25,6 +25,7 @@ import { RecSwipePage } from "@/pages/RecSwipePage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { RewardsPage } from "@/pages/RewardsPage";
 import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
+import { SearchPage } from "@/pages/SearchPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
 import { InboxPage } from "@/pages/InboxPage";
@@ -123,6 +124,7 @@ export function AppRoutes() {
           <Route path="discover" element={<HomeFeedPage />} />
           {/* Legacy /browse → root Home */}
           <Route path="browse" element={<Navigate to={Paths.home} replace />} />
+          <Route path="search" element={<SearchPage />} />
           <Route path="creator/:id" element={<CreatorPage />} />
           <Route
             path="collection"

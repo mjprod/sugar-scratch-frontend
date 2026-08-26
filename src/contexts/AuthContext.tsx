@@ -58,6 +58,7 @@ import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,
 } from "@/lib/navigation";
+import { navigateBackOr } from "@/hooks/useGoBack";
 
 type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
 
@@ -559,9 +560,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const closeSecondary = useCallback(
     (surface: SecondarySurfaceId) => {
-      const next = resolveSecondaryBack(secondaryReturnTab, surface);
       setSecondaryReturnTab(null);
-      navigate(pathForTab(next));
+      // Prefer the real previous step (Discover → Creator → back, etc.).
+      navigateBackOr(navigate, pathForTab(resolveSecondaryBack(secondaryReturnTab, surface)));
     },
     [navigate, secondaryReturnTab],
   );

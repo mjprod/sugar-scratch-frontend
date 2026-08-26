@@ -7,7 +7,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   CreatorFeedCard,
   useVideoRegistry,
@@ -28,6 +29,7 @@ import {
   removeFeedFavourite,
   withFavouriteLikes,
 } from "@/services/feedFavourites";
+import { Paths } from "@/routes/Paths";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const SNAP_MS = 220;
@@ -114,6 +116,7 @@ export function HomeFeedScreen({
   onOpenCreator?: (creatorId: string) => void;
   personalizationPrompt?: ReactNode;
 }) {
+  const navigate = useNavigate();
   const cached = readHomeFeedCache();
   const [items, setItems] = useState<HomeFeedCreator[]>(
     () => withFavouriteLikes(cached?.items ?? []),
@@ -1107,6 +1110,15 @@ export function HomeFeedScreen({
       {personalizationPrompt}
       <div className="hf-stage">
         <div className="hf-frame">
+          <button
+            type="button"
+            className="hf-search-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+            aria-label="Search"
+            data-no-feed-drag
+            onClick={() => navigate(Paths.search)}
+          >
+            <Search className="hf-search-icon" aria-hidden="true" />
+          </button>
           {status === "loading" ? (
           <div className="hf-state" aria-busy="true">
             <div className="hf-skeleton" />

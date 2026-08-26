@@ -265,8 +265,10 @@ export function HomeScreen({
   }
 
   function playFeatured(pack: FeaturedPack) {
+    const foilId = pack.id !== pack.creatorId ? pack.id : undefined;
     playPack({
-      id: pack.id,
+      id: foilId ? pack.creatorId : pack.id,
+      foilId,
       name: pack.name,
       creatorName: pack.creatorName,
       diamondCost: pack.diamondCost,
@@ -276,10 +278,12 @@ export function HomeScreen({
 
   function playRow(row: LeaderboardRow) {
     playPack({
-      id: row.packId,
+      id: row.characterId ?? row.packId,
+      foilId: row.characterId ? row.packId : undefined,
       name: row.packName,
       creatorName: row.creatorName,
       diamondCost: row.diamondCost,
+      themeName: row.themeName,
     });
   }
 
@@ -500,7 +504,6 @@ export function HomeScreen({
             onCategoryChange={(c) => void changeCategory(c)}
             onPlay={playRow}
             onOpen={playRow}
-            onViewFull={() => setLibraryOpen(true)}
           />
         </div>
 
