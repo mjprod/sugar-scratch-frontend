@@ -135,7 +135,7 @@ export function listUnopenedInstances(): OwnedPackInstance[] {
   return readAll().filter((pack) => pack.status === "unopened");
 }
 
-/** Group unopened packs for My Bag (catalog + theme). */
+/** Group unopened packs for My Collection (catalog + theme). */
 export function listUnopenedGroups(): UnopenedPack[] {
   const groups = new Map<string, UnopenedPack & { instanceIds: string[] }>();
   for (const pack of listUnopenedInstances()) {

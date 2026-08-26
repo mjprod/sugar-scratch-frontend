@@ -14,6 +14,8 @@ export const Paths = {
   creator: (id: string) => `/creator/${id}`,
   creatorPattern: "/creator/:id",
   collection: "/collection",
+  /** Collection hub opened on Unopened Packs. */
+  collectionPacks: "/collection?reveal=packs",
   rewards: "/rewards",
   profile: "/profile",
   store: "/store",
@@ -22,6 +24,10 @@ export const Paths = {
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
   inbox: "/inbox",
+  /** Packs ready to check out — not the Store. */
+  packPocket: "/pack-pocket",
+  /** @deprecated Use Paths.packPocket */
+  cart: "/pack-pocket",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
   game: "/game",
@@ -93,14 +99,14 @@ export function tabFromPathname(pathname: string): AppTab {
     return "feed";
   }
   if (pathname.startsWith("/collection")) return "bag";
-  if (
-    pathname.startsWith("/rewards") ||
-    pathname.startsWith("/store") ||
-    pathname.startsWith("/inbox")
-  ) {
+  if (pathname.startsWith("/rewards") || pathname.startsWith("/store")) {
     return "hub";
   }
-  if (pathname.startsWith("/profile") || pathname.startsWith("/settings")) {
+  if (
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/inbox")
+  ) {
     return "profile";
   }
   return "feed";

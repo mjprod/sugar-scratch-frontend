@@ -27,6 +27,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { useAuth } from "@/contexts/AuthContext";
 import type { RedeemReward } from "@/services/redeem";
+import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 type LoadState =
@@ -34,6 +35,15 @@ type LoadState =
   | { status: "ok"; products: StoreProduct[] }
   | { status: "empty" }
   | { status: "error"; message: string };
+
+/** Coins shown under Diamonds: ceil(price) × 1000 — e.g. $3.99 → 4000. */
+function coinsFromPriceLabel(priceLabel: string): number | null {
+  const match = priceLabel.replace(/,/g, "").match(/(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const dollars = Number(match[1]);
+  if (!Number.isFinite(dollars) || dollars <= 0) return null;
+  return Math.ceil(dollars) * 1000;
+}
 
 /** Paid purchase stages after product selection. */
 type Flow =
@@ -558,6 +568,7 @@ function PackageCard({
   onSelect: () => void;
 }) {
   const featured = product.badge === "Best Value";
+  const coinAmount = coinsFromPriceLabel(product.priceLabel);
 
   return (
     <button
@@ -592,7 +603,24 @@ function PackageCard({
       </span>
       <span className="mt-1 text-[12px] font-medium text-white/50">Diamonds</span>
 
-      <span className="mt-3 text-[14px] font-semibold tabular-nums text-white/90">
+      {coinAmount != null ? (
+        <span
+          className="store-package-coins mt-1.5 text-[12px] font-semibold tabular-nums text-white/70"
+          aria-label={`${coinAmount.toLocaleString()} coins`}
+        >
+          <CoinLottie
+            className="store-package-coin"
+            size={37}
+            style={{ width: 48, height: 48 }}
+            aria-hidden
+          />
+          <span className="store-package-coins-value">
+            {coinAmount.toLocaleString()}
+          </span>
+        </span>
+      ) : null}
+
+      <span className="mt-3 text-center text-[14px] font-semibold tabular-nums text-white/90">
         {processing ? "Processing…" : product.priceLabel}
       </span>
     </button>

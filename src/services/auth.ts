@@ -51,6 +51,9 @@ export type ProtectedAction =
   | { type: "photo-scratch"; packId?: string }
   | { type: "store" }
   | { type: "inbox" }
+  | { type: "unopened-packs" }
+  | { type: "cart" }
+  | { type: "add-to-cart"; pack: import("./cart").CartAddInput }
   | { type: "claim" }
   | { type: "collection"; creatorId: string }
   | { type: "session-expired" };
@@ -353,6 +356,8 @@ export function triggerFromAction(
   if (action.type === "store") return "open-store";
   if (action.type === "session-expired") return "session-expired";
   if (action.type === "inbox") return "view-rewards";
+  if (action.type === "unopened-packs") return "view-collection";
+  if (action.type === "cart" || action.type === "add-to-cart") return "buy-pack";
   if (action.type === "claim") return "claim-reward";
   if (action.type === "collection") return "view-collection";
   if (action.type === "buy") {

@@ -1,8 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/AuthContext";
+import "@/components/LiquidGlassNav.css";
 
 /**
  * Compact diamond control — used on secondary subpage trailings (Store/Settings).
@@ -75,7 +83,7 @@ export function MobileDiamondUtility({
   onOpenStore?: () => void;
   onOpenHome?: () => void;
   visible?: boolean;
-  /** e.g. InboxButton (ghost) — sits beside balances. */
+  /** e.g. PacksButton (ghost) — sits beside balances. */
   trailing?: ReactNode;
   showBrand?: boolean;
 }) {
@@ -85,6 +93,16 @@ export function MobileDiamondUtility({
   const [logoutReveal, setLogoutReveal] = useState(false);
   const wasAuthedRef = useRef(!guest);
   const pendingLogoutRef = useRef(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const trailingRef = useRef<HTMLDivElement>(null);
+  const [cartBubble, setCartBubble] = useState({
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    visible: false,
+    ready: false,
+  });
 
   useEffect(() => {
     const reduce =
@@ -141,10 +159,81 @@ export function MobileDiamondUtility({
     };
   }, [guest, pathname]);
 
+  useLayoutEffect(() => {
+    const parent = headerRef.current;
+    const measure = () => {
+      const target = trailingRef.current?.querySelector<HTMLElement>(
+        "button[aria-current='page']",
+      );
+      if (!parent || !target) {
+        setCartBubble((prev) => ({ ...prev, visible: false }));
+        return;
+      }
+
+      const parentRect = parent.getBoundingClientRect();
+      const rect = target.getBoundingClientRect();
+      const padX = 8;
+      const insetY = 4;
+      const fullH = Math.max(0, rect.height - insetY * 2);
+      const bubbleH = fullH * 1.2;
+      setCartBubble((prev) => ({
+        x: rect.left - parentRect.left - padX,
+        y: rect.top - parentRect.top + insetY + (fullH - bubbleH) / 2,
+        w: Math.max(0, rect.width + padX * 2),
+        h: bubbleH,
+        visible: true,
+        ready: prev.ready,
+      }));
+    };
+
+    measure();
+    if (!parent || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(parent);
+    if (trailingRef.current) ro.observe(trailingRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [pathname, trailing, loginReveal, logoutReveal]);
+
+  useEffect(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+    if (!cartBubble.visible || cartBubble.ready || cartBubble.w <= 0) return;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setCartBubble((prev) =>
+          prev.visible && !prev.ready && prev.w > 0
+            ? { ...prev, ready: true }
+            : prev,
+        );
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [cartBubble.ready, cartBubble.visible, cartBubble.w]);
+
   if (!visible) return null;
+
+  const cartBubbleStyle = {
+    ["--top-bubble-x" as string]: `${cartBubble.x}px`,
+    ["--top-bubble-y" as string]: `${cartBubble.y}px`,
+    ["--top-bubble-w" as string]: `${cartBubble.w}px`,
+    ["--top-bubble-h" as string]: `${cartBubble.h}px`,
+    ["--top-bubble-radius" as string]: "0.5rem",
+    ["--top-bubble-opacity" as string]: cartBubble.visible ? "1" : "0",
+    ["--top-bubble-scale" as string]: "1",
+    ["--top-bubble-duration" as string]: cartBubble.ready ? "420ms" : "0ms",
+    ["--top-bubble-opacity-duration" as string]: "220ms",
+  } satisfies CSSProperties;
 
   return (
     <header
+      ref={headerRef}
       className={[
         "top-nav-mobile glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface fixed top-0 z-[var(--app-top-nav-z-index,30)] lg:hidden",
         loginReveal ? "is-login-reveal" : "",
@@ -153,7 +242,10 @@ export function MobileDiamondUtility({
         .filter(Boolean)
         .join(" ")}
       aria-label="Utilities"
+      style={cartBubbleStyle}
     >
+      <div className="nav-test-top-bubble-active-glow" aria-hidden="true" />
+      <div className="nav-test-top-bubble" aria-hidden="true" />
       <div className="top-nav-mobile-inner">
         {showBrand ? (
           onOpenHome ? (
@@ -189,7 +281,11 @@ export function MobileDiamondUtility({
             diamonds={balance}
             onOpenStore={onOpenStore}
           />
-          {trailing}
+          {trailing ? (
+            <div ref={trailingRef} className="top-nav-mobile-trailing">
+              {trailing}
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

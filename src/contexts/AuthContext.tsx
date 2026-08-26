@@ -38,6 +38,7 @@ import {
   setRecommendationSeedCreator,
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
+import { addPackToCart, type CartAddInput } from "@/services/cart";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import { resetPageReady } from "@/shared/ui/PageTransition";
@@ -100,6 +101,9 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "store" ||
     action.type === "like" ||
     action.type === "inbox" ||
+    action.type === "unopened-packs" ||
+    action.type === "cart" ||
+    action.type === "add-to-cart" ||
     action.type === "collection"
   );
 }
@@ -155,6 +159,9 @@ type AuthContextValue = {
   requestTab: (tab: AppTab) => void;
   openStore: () => void;
   openInbox: () => void;
+  openUnopenedPacks: () => void;
+  openCart: () => void;
+  addToCart: (pack: CartAddInput) => void;
   openCreator: (id: string, themeId?: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
@@ -337,7 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "buy") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
         const isBuyPack =
-          action.type === "buy" ? action.kind !== "open-pack" : true;
+          action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
         if (isBuyPack) clearOpening();
         navigate(Paths.purchase(action.pack.packId), {
           state: {
@@ -361,6 +368,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "inbox") {
         captureSecondaryReturn();
         navigate(Paths.inbox);
+        return;
+      }
+      if (action.type === "unopened-packs") {
+        navigate(Paths.collectionPacks);
+        return;
+      }
+      if (action.type === "cart") {
+        captureSecondaryReturn();
+        navigate(Paths.packPocket);
+        return;
+      }
+      if (action.type === "add-to-cart") {
+        addPackToCart(action.pack);
+        captureSecondaryReturn();
+        navigate(Paths.packPocket);
         return;
       }
       if (action.type === "collection") {
@@ -483,6 +505,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openInbox = useCallback(() => {
     if (!requireAuth({ type: "inbox" })) return;
   }, [requireAuth]);
+
+  const openUnopenedPacks = useCallback(() => {
+    if (!requireAuth({ type: "unopened-packs" })) return;
+  }, [requireAuth]);
+
+  const openCart = useCallback(() => {
+    if (!requireAuth({ type: "cart" })) return;
+  }, [requireAuth]);
+
+  const addToCart = useCallback(
+    (pack: CartAddInput) => {
+      if (pack.creator) noteCreatorEngagement(pack.creator);
+      requireAuth({ type: "add-to-cart", pack });
+    },
+    [requireAuth],
+  );
 
   const openCreator = useCallback(
     (id: string, themeId?: string) => {
@@ -687,6 +725,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestTab,
       openStore,
       openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
       openCreator,
       openPurchase,
       openSettings,
@@ -738,6 +779,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inventoryRevision,
       openCreator,
       openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
       openPasswordReset,
       openPurchase,
       openSettings,
