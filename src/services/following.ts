@@ -9,6 +9,7 @@ import {
   type BackendModel,
 } from "./models";
 import { formatSocialHandle } from "@/shared/catalog/characters";
+import { isDemoMode } from "@/lib/demo";
 
 const KEY_PREFIX = "sugar.v8.creatorFollowing";
 
@@ -251,6 +252,7 @@ export async function hydrateFollowingFromModelsIfEmpty(): Promise<
     return existing;
   }
   if (hasSeededOnce()) return [];
+  if (!isDemoMode()) return [];
 
   try {
     const models = await fetchModels();

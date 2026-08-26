@@ -3,7 +3,8 @@
  * New vs Earlier is chronological (24h window), not read-state.
  */
 import { CREATOR_PHOTOS, HOLO_PACKS } from "../lib/photos";
-import { apiFetch, apiMutate } from "../lib/api";
+import { apiGet, apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 
 export type InboxMessageType =
   | "creator_drop"
@@ -235,9 +236,31 @@ export const INBOX_FIXTURES: InboxMessage[] = [
   },
 ];
 
-export async function fetchInboxMessages(): Promise<InboxMessage[]> {
-  const data = await apiFetch<{ messages: InboxMessage[] }>("/api/inbox");
-  return data?.messages ?? INBOX_FIXTURES;
+export type InboxLoadResult =
+  | { status: "ok"; messages: InboxMessage[] }
+  | { status: "error"; messages: InboxMessage[]; message: string }
+  | { status: "unauthorized"; messages: InboxMessage[]; message: string };
+
+export async function fetchInboxMessages(): Promise<InboxLoadResult> {
+  if (isDemoMode()) {
+    return { status: "ok", messages: [...INBOX_FIXTURES] };
+  }
+  const data = await apiGet<{ messages: InboxMessage[] }>("/api/inbox");
+  if (data.ok) {
+    return { status: "ok", messages: data.data.messages ?? [] };
+  }
+  if (data.reason === "unauthorized") {
+    return {
+      status: "unauthorized",
+      messages: [],
+      message: "Your session expired. Log in to continue.",
+    };
+  }
+  return {
+    status: "error",
+    messages: [],
+    message: "Unable to load inbox.",
+  };
 }
 
 export async function markInboxRead(id: string) {
