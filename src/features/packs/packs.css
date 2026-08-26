@@ -1387,15 +1387,15 @@ h1 {
   transition-delay: 0ms;
 }
 
-.coverflow-cart-remove-wrap {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 0.75rem;
-  pointer-events: auto;
-}
+	.coverflow-cart-remove-wrap {
+	  position: relative;
+	  z-index: 2;
+	  display: flex;
+	  flex-direction: column;
+	  align-items: center;
+	  margin-top: 0;
+	  pointer-events: auto;
+	}
 
 .coverflow-cart-remove {
   position: relative;
@@ -1619,10 +1619,50 @@ h1 {
 }
 
 @media (max-width: 980px) {
-  /* Tighter vertical rhythm inside the shorter mobile hex CTA. */
-  .coverflow-buy-pack-cta .cta-button__label {
-    gap: 0.12em;
-  }
+				  /* Pack-pocket only: drop the 3D pack + X; leave .cart-continue put. */
+				  .stage-packs:has(.cart-continue) .coverflow-stage {
+				    translate: 0 10dvh;
+				  }
+
+		  /* Close control lives above the pack on mobile, not under the labels. */
+			  .coverflow-pack-html--remove {
+			    left: 50% !important;
+				    transform: translate3d(-50%, 6dvh, 0) !important;
+			    pointer-events: none !important;
+			  }
+
+	  .coverflow-pack-html--remove .coverflow-cart-remove-wrap {
+	    margin-top: 0;
+	    opacity: 0;
+	    filter: blur(8px);
+	    transform: translateY(10px);
+	    transition:
+	      opacity 360ms ease,
+	      transform 380ms ease,
+	      filter 380ms ease;
+	  }
+
+	  .coverflow-pack-html--remove.is-visible .coverflow-cart-remove-wrap {
+	    opacity: 1;
+	    filter: blur(0);
+	    transform: translateY(0);
+	  }
+
+		  .coverflow-pack-html--remove .coverflow-cart-remove-confirm {
+		    top: calc(100% + 0.55rem);
+		    bottom: auto;
+		  }
+
+		  .coverflow-pack-html--remove .coverflow-cart-remove-confirm::before {
+		    top: -6px;
+		    bottom: auto;
+		    transform: translateX(-50%) rotate(45deg);
+		  }
+
+	  /* Tighter vertical rhythm inside the shorter mobile hex CTA. */
+	  .coverflow-buy-pack-cta .cta-button__label {
+	    gap: 0.12em;
+	  }
 
   .coverflow-buy-pack-cta .cta-button--hex .cta-button__label {
     gap: 0.1em;
@@ -1639,11 +1679,16 @@ h1 {
     font-size: 0.8075rem;
   }
 
-  .coverflow-pack-html--browse .coverflow-pack-label__pack,
-  .coverflow-pack-html--browse .coverflow-pack-label__price {
-    font-size: 0.741rem;
-  }
-}
+	  .coverflow-pack-html--browse .coverflow-pack-label__pack,
+	  .coverflow-pack-html--browse .coverflow-pack-label__price {
+	    font-size: 0.741rem;
+	  }
+
+		  /* Sit just under the pack, still above the bottom nav + Collection FAB. */
+		  .cart-continue {
+			    bottom: calc(8.5dvh + env(safe-area-inset-bottom, 0px));
+		  }
+	}
 
 /* Buy Pack button styles */
 .btn-180 {

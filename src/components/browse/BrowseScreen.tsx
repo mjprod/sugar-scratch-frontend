@@ -266,7 +266,8 @@ export function HomeScreen({
 
   function playFeatured(pack: FeaturedPack) {
     playPack({
-      id: pack.id,
+      id: pack.creatorId || pack.id,
+      foilId: pack.id !== pack.creatorId ? pack.id : undefined,
       name: pack.name,
       creatorName: pack.creatorName,
       diamondCost: pack.diamondCost,

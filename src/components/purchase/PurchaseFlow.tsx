@@ -17,7 +17,10 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
-import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
+import {
+  CoverFlowCarouselV2,
+  type CoverFlowCameraSettings,
+} from "@/features/packs/CoverFlowCarouselV2";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
@@ -1701,6 +1704,26 @@ function SelectStage({
   );
 }
 
+const COVERFLOW_MOBILE_QUERY = "(max-width: 980px)";
+
+const TEAR_OPEN_MOBILE_CAMERA: CoverFlowCameraSettings = {
+  cameraX: 0.11,
+  cameraY: 0.27,
+  cameraZ: 6.45,
+  fov: 36,
+  lookAtY: 0,
+  packsX: 0.115,
+  packsY: -0.58,
+  modelY: -0.59,
+};
+
+function isMobileCoverflowViewport() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
+  );
+}
+
 function ReadyStage({
   remainingUnopened,
   onOpened,
@@ -1817,6 +1840,20 @@ function ReadyStage({
   const [selectedId, setSelectedId] = useState<string | null>(
     () => items[0]?.id ?? null,
   );
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    isMobileCoverflowViewport,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(COVERFLOW_MOBILE_QUERY);
+    const apply = () => setIsMobileViewport(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  const cameraSettings = isMobileViewport ? TEAR_OPEN_MOBILE_CAMERA : undefined;
 
   useEffect(() => {
     if (!items.length) {
@@ -1886,6 +1923,7 @@ function ReadyStage({
         <CoverFlowCarouselV2
           items={items}
           selectedId={selectedId}
+          cameraSettings={cameraSettings}
           onSelect={setSelectedId}
           onDeselect={() => {
             // Tear page always keeps a pack selected (carousel also ignores

@@ -286,12 +286,38 @@
 }
 
 /*
-  Static aurora stand-in for offscreen / paused CTAs.
-  Avoids mounting a WebGL canvas on every feed card.
+  Aurora stand-in for offscreen / paused CTAs, and the first-frame underlay
+  while a shared WebGL blit is spinning up. Keep this close to the shader look
+  so list pages still feel alive if WebGL is skipped.
 */
+@keyframes cta-aurora-drift {
+  0% {
+    background-position: 12% 110%, 88% -8%, 0% 50%;
+  }
+  50% {
+    background-position: 78% 8%, 16% 92%, 100% 40%;
+  }
+  100% {
+    background-position: 12% 110%, 88% -8%, 0% 50%;
+  }
+}
+
+@keyframes cta-aurora-speck {
+  0%,
+  100% {
+    transform: translate3d(0, 8%, 0) scale(0.85);
+    opacity: 0.15;
+  }
+  45% {
+    transform: translate3d(18%, -42%, 0) scale(1);
+    opacity: 0.55;
+  }
+}
+
 .cta-button__aurora-fallback {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
   background:
     radial-gradient(
@@ -310,7 +336,41 @@
       color-mix(in srgb, var(--cta-stroke-b, oklch(0.591 0.242 355.7)) 42%, transparent) 46%,
       color-mix(in srgb, var(--cta-stroke-c, oklch(0.671 0.182 48.12)) 28%, transparent) 100%
     );
+  background-size: 140% 140%, 130% 130%, 180% 180%;
+  background-repeat: no-repeat;
   opacity: 0.92;
+  animation: cta-aurora-drift 9s ease-in-out infinite;
+}
+
+.cta-button__aurora-fallback::before,
+.cta-button__aurora-fallback::after {
+  content: "";
+  position: absolute;
+  width: 48%;
+  height: 218%;
+  border-radius: 999px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--cta-stroke-b, oklch(0.591 0.242 355.7)) 70%, white);
+  filter: blur(3px);
+  opacity: 0.28;
+  animation: cta-aurora-speck 5.6s ease-in-out infinite;
+}
+
+.cta-button__aurora-fallback::after {
+  left: -12%;
+  width: 72%;
+  height: 218%;
+  background: color-mix(in srgb, var(--cta-stroke-a, oklch(0.483 0.193 357.41)) 65%, white);
+  animation-duration: 7.2s;
+  animation-delay: -2.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-button__aurora-fallback,
+  .cta-button__aurora-fallback::before,
+  .cta-button__aurora-fallback::after {
+    animation: none;
+  }
 }
 
 .cta-button--squircle>.cta-button__inner {

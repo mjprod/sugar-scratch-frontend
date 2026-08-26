@@ -7,6 +7,11 @@ import {
   formatPrice,
   type FeaturedPack,
 } from "@/services/homepage";
+import { useModels } from "@/hooks/useModels";
+import {
+  matchModel,
+  packFaceVideoFromModel,
+} from "@/services/models";
 import { PackArt } from "./PackArt";
 
 const SLIDE = { type: "tween" as const, duration: 0.4, ease: [0.32, 0.72, 0, 1] };
@@ -24,6 +29,7 @@ export function PackLibrary({
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const reduce = useReducedMotion();
+  const models = useModels();
 
   useEffect(() => {
     let alive = true;
@@ -130,20 +136,38 @@ export function PackLibrary({
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {filtered.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => onPlay(p)}
-                      className="rounded-2xl text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
-                    >
-                      <PackArt src={p.coverImageUrl} alt={p.name} size="thumb" className="!w-full" />
-                      <p className="mt-2 truncate px-0.5 text-[13px] font-semibold">{p.name}</p>
-                      <p className="truncate px-0.5 text-[12px] text-white/45">
-                        {p.creatorName} · {formatPrice(p.price)}
-                      </p>
-                    </button>
-                  ))}
+                  {filtered.map((p) => {
+                    const model = matchModel(models, {
+                      packId: p.id,
+                      name: p.creatorName,
+                    });
+                    const coverUrl =
+                      packFaceVideoFromModel(model, {
+                        packId: p.id,
+                        packName: p.name,
+                        themeName: p.themeName,
+                      }) || p.coverImageUrl;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => onPlay(p)}
+                        className="rounded-2xl text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
+                      >
+                        <PackArt
+                          src={coverUrl}
+                          alt={p.name}
+                          size="thumb"
+                          fit="contain"
+                          className="!w-full !aspect-[9/16]"
+                        />
+                        <p className="mt-2 truncate px-0.5 text-[13px] font-semibold">{p.name}</p>
+                        <p className="truncate px-0.5 text-[12px] text-white/45">
+                          {p.creatorName} · {formatPrice(p.price)}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

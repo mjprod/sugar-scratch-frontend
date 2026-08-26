@@ -169,9 +169,26 @@ function queryFlag(name: string): string | null {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+function normalizeProductCoins(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.trunc(parsed);
+  }
+  return undefined;
+}
+
+function normalizeStoreProduct(product: StoreProduct): StoreProduct {
+  const coins = normalizeProductCoins(product.coins);
+  return coins === undefined ? product : { ...product, coins };
+}
+
 export function listAvailableProducts(source: StoreProduct[] = CATALOG): StoreProduct[] {
   return source
     .filter((product) => product.available)
+    .map(normalizeStoreProduct)
     .slice()
     .sort((a, b) => a.order - b.order);
 }

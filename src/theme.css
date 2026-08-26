@@ -541,13 +541,14 @@ body[data-theme="v8"] .home-featured-coverflow {
   }
 
   body[data-theme="v8"] .home-view-all-packs {
-    margin-top: -2.5rem;
+	    margin-top: -5.5rem;
   }
 
-  /* Let the page scroller keep vertical pans; carousel only takes X. */
-  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
-    touch-action: pan-y;
-  }
+	  /* Let the page scroller keep vertical pans; carousel only takes X. */
+	  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
+	    touch-action: pan-y;
+	    translate: 0 -4dvh;
+	  }
 }
 
 body[data-theme="v8"] .home-featured-coverflow.is-loading {
@@ -11745,6 +11746,11 @@ body[data-theme="v8"] .nav-test-dock-icon-wrap .inbox-utility-badge {
   right: -6px;
 }
 
+body[data-theme="v8"] .nav-test-top-utils .inbox-utility-btn--ghost .inbox-utility-badge {
+  top: -2px;
+  right: -3px;
+}
+
 /* Desktop utility Profile — sole Profile entry (no text tab). */
 body[data-theme="v8"] .top-nav-profile {
   border: 1px solid transparent;
@@ -11905,6 +11911,11 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
   body[data-theme="v8"] .top-nav-mobile .inbox-utility-btn--ghost.is-active {
     background: transparent;
     color: oklch(0.779 0.139 1.41);
+  }
+
+  body[data-theme="v8"] .top-nav-mobile .inbox-utility-btn--ghost .inbox-utility-badge {
+    top: -4px;
+    right: -4px;
   }
 
   body[data-theme="v8"] .top-nav-mobile .top-nav-resource,

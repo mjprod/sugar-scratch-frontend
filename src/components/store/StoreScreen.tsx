@@ -38,7 +38,7 @@ type LoadState =
 
 function packageCoinAmount(product: StoreProduct): number | null {
   const coins = product.coins;
-  if (typeof coins !== "number" || !Number.isFinite(coins) || coins <= 0) {
+  if (typeof coins !== "number" || !Number.isFinite(coins) || coins < 0) {
     return null;
   }
   return Math.trunc(coins);

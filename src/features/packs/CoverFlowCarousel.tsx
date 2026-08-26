@@ -347,6 +347,8 @@ interface CoverFlowCarouselProps {
   onFocusChange?: (item: Iteration | null, index: number) => void
   /** Product CTA when the focused pack is active. */
   onBuy?: (item: Iteration) => void
+  /** Label for the focused-pack CTA. Homepage uses Add Pack; purchase keeps Buy Pack. */
+  buyLabel?: string
   formatPrice?: (price: number) => string
   /** When set, run reveal open sequence in-canvas for this character. */
   revealingCharacterId?: CharacterId | null
@@ -514,38 +516,40 @@ function CoverFlowPack({
 	  onOpenSequenceComplete,
 	  onOpenPackBehindFan,
 	  onOpenPackBlurChange,
-	  formatPrice,
-	  onBuy,
-	}: {
-	  item: Iteration
-	  index: number
-	  focusIndex: number
-	  isActive: boolean
-	  hasActiveSelection: boolean
-	  modelY: number
-	  layout: CoverFlowLayoutSettings
-	  textureTransform: VideoTextureTransform
-	  centerTiltYaw: number
-	  centerTiltPitch: number
-	  isMobile: boolean
-	  /** Browser height < 550px — frosted glass behind pack HUD. */
-	  shortHudGlass: boolean
-	  /** True while any pack open sequence is running. */
-	  revealMode: boolean
-	  /** This pack is the one being opened. */
-	  isRevealHero: boolean
-	  playOpenSequence: boolean
-	  packsX: number
-	  packsY: number
-	  openTimeline: PackTimeline
-	  openDuckInTimeline: DuckInTimeline
-	  onSelect: (id: string) => void
-	  onOpenSequenceComplete?: () => void
-	  onOpenPackBehindFan?: () => void
-	  onOpenPackBlurChange?: (blurPx: number) => void
-	  formatPrice: (price: number) => string
-	  onBuy?: (item: Iteration) => void
-	}) {
+		  formatPrice,
+		  onBuy,
+		  buyLabel,
+		}: {
+		  item: Iteration
+		  index: number
+		  focusIndex: number
+		  isActive: boolean
+		  hasActiveSelection: boolean
+		  modelY: number
+		  layout: CoverFlowLayoutSettings
+		  textureTransform: VideoTextureTransform
+		  centerTiltYaw: number
+		  centerTiltPitch: number
+		  isMobile: boolean
+		  /** Browser height < 550px — frosted glass behind pack HUD. */
+		  shortHudGlass: boolean
+		  /** True while any pack open sequence is running. */
+		  revealMode: boolean
+		  /** This pack is the one being opened. */
+		  isRevealHero: boolean
+		  playOpenSequence: boolean
+		  packsX: number
+		  packsY: number
+		  openTimeline: PackTimeline
+		  openDuckInTimeline: DuckInTimeline
+		  onSelect: (id: string) => void
+		  onOpenSequenceComplete?: () => void
+		  onOpenPackBehindFan?: () => void
+		  onOpenPackBlurChange?: (blurPx: number) => void
+		  formatPrice: (price: number) => string
+		  onBuy?: (item: Iteration) => void
+		  buyLabel: string
+		}) {
 const groupRef = useRef<Group>(null)
 	  const modelRef = useRef<Group>(null)
   // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
@@ -1549,7 +1553,7 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                  {...ctaSize}
 	                  auroraPaused={isMobile}
 	                  glowOuterBloom="off"
-	                  label="Buy Pack"
+		                  label={buyLabel}
 	                  costAmount={formatPrice(item.price ?? 4.99)}
 	                  className="coverflow-buy-pack-cta__button"
 	                  tabIndex={0}
@@ -1587,31 +1591,33 @@ function CoverFlowScene({
 	  onRevealSequenceComplete,
 	  onRevealPackBehindFan,
 	  onRevealPackBlurChange,
-	  formatPrice,
-	  onBuy,
-	}: {
-	  items: Iteration[]
-	  focusIndex: number
-	  selectedId: string | null
-	  cameraSettings: CoverFlowCameraSettings
-	  layout: CoverFlowLayoutSettings
-	  textureTransform: VideoTextureTransform
-	  centerTiltYaw: number
-	  centerTiltPitch: number
-	  isMobile: boolean
-	  shortHudGlass: boolean
-	  revealMode: boolean
-	  revealingPackId: string | null
-	  revealPlaySequence: boolean
-	  revealTimeline: PackTimeline
-	  revealDuckInTimeline: DuckInTimeline
-	  onSelect: (id: string) => void
-	  onRevealSequenceComplete?: () => void
-	  onRevealPackBehindFan?: () => void
-	  onRevealPackBlurChange?: (blurPx: number) => void
-	  formatPrice: (price: number) => string
-	  onBuy?: (item: Iteration) => void
-	}) {
+		  formatPrice,
+		  onBuy,
+		  buyLabel,
+		}: {
+		  items: Iteration[]
+		  focusIndex: number
+		  selectedId: string | null
+		  cameraSettings: CoverFlowCameraSettings
+		  layout: CoverFlowLayoutSettings
+		  textureTransform: VideoTextureTransform
+		  centerTiltYaw: number
+		  centerTiltPitch: number
+		  isMobile: boolean
+		  shortHudGlass: boolean
+		  revealMode: boolean
+		  revealingPackId: string | null
+		  revealPlaySequence: boolean
+		  revealTimeline: PackTimeline
+		  revealDuckInTimeline: DuckInTimeline
+		  onSelect: (id: string) => void
+		  onRevealSequenceComplete?: () => void
+		  onRevealPackBehindFan?: () => void
+		  onRevealPackBlurChange?: (blurPx: number) => void
+		  formatPrice: (price: number) => string
+		  onBuy?: (item: Iteration) => void
+		  buyLabel: string
+		}) {
 	  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -1660,12 +1666,13 @@ function CoverFlowScene({
               onOpenPackBehindFan={
                 isRevealHero ? onRevealPackBehindFan : undefined
               }
-              onOpenPackBlurChange={
-                isRevealHero ? onRevealPackBlurChange : undefined
-              }
-              formatPrice={formatPrice}
-              onBuy={onBuy}
-            />
+	              onOpenPackBlurChange={
+	                isRevealHero ? onRevealPackBlurChange : undefined
+	              }
+	              formatPrice={formatPrice}
+	              onBuy={onBuy}
+	              buyLabel={buyLabel}
+	            />
           )
         })}
       </group>
@@ -1706,6 +1713,7 @@ export function CoverFlowCarousel({
   onDeselect: onDeselectProp,
   onFocusChange,
   onBuy,
+  buyLabel = "Buy Pack",
   formatPrice = formatPackPrice,
   revealingCharacterId = null,
   revealingPackId: revealingPackIdProp = null,
@@ -2795,6 +2803,7 @@ isMobile={isMobileViewportActive}
                 onRevealPackBlurChange={sequence.handlePackBlurChange}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
+                buyLabel={buyLabel}
               />
             </Suspense>
           </Canvas>
