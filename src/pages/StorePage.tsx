@@ -59,11 +59,12 @@ export function StorePage() {
     }
 
     const synced = await syncMyPacks();
-    bumpInventoryRevision();
-    setPurchasedPacks((n) => n + 1);
     if (!synced) return {};
     const instance = peekNewestUnopenedInstance(reward.packId);
-    return { instanceId: instance?.instanceId };
+    if (!instance?.instanceId) return {};
+    bumpInventoryRevision();
+    setPurchasedPacks((n) => n + 1);
+    return { instanceId: instance.instanceId };
   }
 
   return (

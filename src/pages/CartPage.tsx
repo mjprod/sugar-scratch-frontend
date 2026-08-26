@@ -22,6 +22,8 @@ import {
 } from "@/services/packInventory";
 import {
   PurchaseError,
+  cartCheckoutIdempotencyKey,
+  commitPurchaseIdempotencyKey,
   packCost,
   submitPurchase,
 } from "@/services/purchase";
@@ -151,6 +153,7 @@ export function CartPage() {
     authed,
     bumpInventoryRevision,
     setPurchasedPacks,
+    setNavNotice,
   } = useAuth();
   const { diamonds, coins, setDiamonds, setCoins } = useWallet();
   const [packs, setPacks] = useState<CartPack[]>(() => listCartPacks());
@@ -231,45 +234,78 @@ export function CartPage() {
     try {
       if (authed && !isDemoMode()) {
         let balance = diamonds;
+        const purchasedLines: CartPack[] = [];
         const instanceIds: string[] = [];
         let lastPurchaseId = "";
+        let partialFailure: PurchaseError | null = null;
+
         for (const cartPack of remaining) {
           const catalogId = catalogPackIdForCartItem(cartPack, models);
           const cost = packCost(1, catalogId);
           if (cost > balance) {
-            throw new PurchaseError(
+            partialFailure = new PurchaseError(
               "insufficient",
               "Not enough diamonds to open these packs.",
             );
+            break;
           }
-          const result = await submitPurchase(
-            1,
-            balance,
-            catalogId,
-            undefined,
-            coins,
-          );
-          balance = result.wallet.diamonds;
-          setDiamonds(result.wallet.diamonds);
-          setCoins(result.wallet.coins);
-          const owned = upsertInstancesFromApi(result.instances);
-          const instanceId =
-            result.instances[0]?.instanceId ?? owned[0]?.instanceId;
-          if (!instanceId) {
-            throw new PurchaseError("failed", "Pack ownership failed.");
+          try {
+            const result = await submitPurchase(
+              1,
+              balance,
+              catalogId,
+              cartCheckoutIdempotencyKey(cartPack.cartItemId),
+              coins,
+            );
+            balance = result.wallet.diamonds;
+            setDiamonds(result.wallet.diamonds);
+            setCoins(result.wallet.coins);
+            const owned = upsertInstancesFromApi(result.instances);
+            const instanceId =
+              result.instances[0]?.instanceId ?? owned[0]?.instanceId;
+            if (!instanceId) {
+              throw new PurchaseError("failed", "Pack ownership failed.");
+            }
+            purchasedLines.push(cartPack);
+            instanceIds.push(instanceId);
+            lastPurchaseId = result.purchaseId;
+            removePackFromCart(cartPack.cartItemId);
+            commitPurchaseIdempotencyKey(catalogId, 1);
+          } catch (error) {
+            partialFailure =
+              error instanceof PurchaseError
+                ? error
+                : new PurchaseError("failed", "Checkout failed.");
+            break;
           }
-          instanceIds.push(instanceId);
-          lastPurchaseId = result.purchaseId;
         }
-        bumpInventoryRevision();
-        setPurchasedPacks((count) => count + remaining.length);
-        openCartTearFlow({
-          remaining,
-          profiles: models,
-          instanceIds,
-          purchaseId: lastPurchaseId,
-          openPurchase,
-        });
+
+        setPacks(listCartPacks());
+
+        if (purchasedLines.length > 0) {
+          bumpInventoryRevision();
+          setPurchasedPacks((count) => count + purchasedLines.length);
+          openCartTearFlow({
+            remaining: purchasedLines,
+            profiles: models,
+            instanceIds,
+            purchaseId: lastPurchaseId,
+            openPurchase,
+          });
+          if (partialFailure && purchasedLines.length < remaining.length) {
+            setNavNotice(
+              partialFailure.kind === "insufficient"
+                ? "Some packs purchased. The rest are still in Pack Pocket."
+                : "Some packs purchased. Retry the rest from Pack Pocket.",
+            );
+            window.setTimeout(() => setNavNotice(""), 3200);
+          }
+          return;
+        }
+
+        if (partialFailure) {
+          throw partialFailure;
+        }
         return;
       }
 
@@ -299,6 +335,7 @@ export function CartPage() {
             : "Checkout failed. Your packs are still in Pack Pocket."
           : "Checkout failed. Your packs are still in Pack Pocket.";
       setCheckoutError(message);
+      setPacks(listCartPacks());
     } finally {
       setCheckingOut(false);
     }

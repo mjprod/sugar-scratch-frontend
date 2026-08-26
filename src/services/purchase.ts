@@ -206,6 +206,12 @@ export function commitPurchaseIdempotencyKey(
   clearPurchaseIdempotencyKey(packId, quantity);
 }
 
+/** One distinct server purchase per Pack Pocket line at checkout. */
+export function cartCheckoutIdempotencyKey(cartItemId: string): string {
+  const id = cartItemId.trim();
+  return id ? `cart-buy:${id}` : `cart-buy:${newIdempotencyToken()}`;
+}
+
 function newDemoInstanceId() {
   return `demo-pack-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
