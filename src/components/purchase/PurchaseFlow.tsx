@@ -57,6 +57,7 @@ import {
   commitPurchaseIdempotencyKey,
   loadOpeningAssets,
   nextUnscratchedIndex,
+  openPackInstance,
   packCost,
   restoreOpening,
   saveOpening,
@@ -67,6 +68,8 @@ import {
   type PackQuantity,
   type PurchaseFlowPack,
 } from "@/services/purchase";
+import { useAuth } from "@/contexts/AuthContext";
+import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,
   recordRevealedCards,
@@ -78,6 +81,7 @@ import {
   markPackOpened,
   nextUnopenedInPurchase,
   peekUnopenedInstance,
+  syncMyPacks,
   upsertInstancesFromApi,
 } from "@/services/packInventory";
 import {
@@ -248,6 +252,7 @@ export function PurchaseFlow({
   onReturnContext?: () => void;
   onInventoryChange?: () => void;
 }) {
+  const { authed } = useAuth();
   const bagResume = useRef(
     pack.entry === "scratch" ? getReadyToScratch(pack.packId) : null,
   ).current;
@@ -341,6 +346,7 @@ export function PurchaseFlow({
   const [purchaseId, setPurchaseId] = useState<string | null>(
     openResume?.purchaseId ?? pack.purchaseId ?? null,
   );
+  const [openingIdRef] = useState(() => ({ current: null as string | null }));
   const [readyPackCount, setReadyPackCount] = useState(
     () => pack.unopenedPacks ?? Math.max(1, session?.quantity ?? 1),
   );
@@ -552,7 +558,12 @@ export function PurchaseFlow({
         pack.themeName?.trim() ||
         pack.packName;
       const owned = upsertInstancesFromApi(result.instances);
-      const first = owned[0];
+      if (authed && !isDemoMode()) {
+        await syncMyPacks();
+      }
+      const first =
+        getPackInstance(result.instances[0]?.instanceId ?? "") ??
+        owned[0];
       if (!first) throw new PurchaseError("failed", "Pack ownership failed.");
       commitPurchaseIdempotencyKey(pack.packId, quantity);
       noteCreatorStarted(first.creatorId, pack.creator, themeName);
@@ -632,7 +643,7 @@ export function PurchaseFlow({
     return next;
   }
 
-  function completeTear(openedFoilId?: string | null) {
+  async function completeTear(openedFoilId?: string | null) {
     if (tearLocked.current) return;
     const currentId =
       instanceId ??
@@ -643,59 +654,81 @@ export function PurchaseFlow({
       return;
     }
     tearLocked.current = true;
-    const opened = markPackOpened(currentId);
-    if (!opened || opened.status !== "opened") {
+
+    try {
+      let opened = getPackInstance(currentId);
+      let next: OpeningSession;
+      let scratchedIds: string[] = [];
+      const live = sessionRef.current;
+
+      if (authed && !isDemoMode()) {
+        const result = await openPackInstance(currentId);
+        upsertInstancesFromApi([result.instance]);
+        openingIdRef.current = result.openingId;
+        opened = getPackInstance(currentId);
+        next = live?.foilFaceUrl
+          ? {
+              ...result.session,
+              foilFaceUrl: live.foilFaceUrl,
+              foilLabel: live.foilLabel,
+            }
+          : result.session;
+        scratchedIds = result.scratched;
+      } else {
+        opened = markPackOpened(currentId);
+        next = live?.foilFaceUrl
+          ? live
+          : live ?? buildOpeningSession(1, currentId);
+      }
+
+      if (!opened || opened.status !== "opened") {
+        tearLocked.current = false;
+        setStage("opening-interrupted");
+        return;
+      }
+
+      setSealTorn(true);
+      const openedFoil =
+        (openedFoilId
+          ? tearFoils.find((foil) => foil.id === openedFoilId) ?? null
+          : null) ??
+        purchasedFoil ??
+        (live?.foilFaceUrl
+          ? {
+              slot: 1 as const,
+              id: live.cards[0]?.id ?? `${pack.packId}-1`,
+              label: live.foilLabel ?? pack.packName,
+              videoUrl: live.foilFaceUrl,
+            }
+          : null);
+      openedTearFoilKeyRef.current = openedFoil
+        ? foilIdentityKey(openedFoil)
+        : openedFoilId?.trim() || null;
+      if (openedFoil) setPurchasedFoil(openedFoil);
+      setInstanceId(currentId);
+      setPurchaseId(opened.purchaseId);
+      setSession(next);
+      sessionRef.current = next;
+      setScratched(scratchedIds);
+      setSelectedCard(0);
+      upsertPackReadyToScratch({
+        packId: currentId,
+        session: next,
+        revealed: scratchedIds,
+      });
+      if (pack.entry === "cart-tear") {
+        const cartItemId = openedFoil?.id?.trim();
+        if (cartItemId) removePackFromCart(cartItemId);
+        if (tearFoils.filter((foil) => foil.id !== cartItemId).length <= 0) {
+          clearCart();
+        }
+      }
+      bumpInventory();
+      trackScratchEvent("Pack Opened", { packId: currentId });
+    } catch {
       tearLocked.current = false;
       setStage("opening-interrupted");
-      return;
     }
-    setSealTorn(true);
-    const live = sessionRef.current;
-    const next = live?.foilFaceUrl
-      ? live
-      : live ?? buildOpeningSession(1, currentId);
-    const openedFoil =
-      (openedFoilId
-        ? tearFoils.find((foil) => foil.id === openedFoilId) ?? null
-        : null) ??
-      purchasedFoil ??
-      (live?.foilFaceUrl
-        ? {
-            slot: 1 as const,
-            id: live.cards[0]?.id ?? `${pack.packId}-1`,
-            label: live.foilLabel ?? pack.packName,
-            videoUrl: live.foilFaceUrl,
-          }
-        : null);
-    // Store face identity (not raw id) so later filters match dedupe keys.
-    openedTearFoilKeyRef.current = openedFoil
-      ? foilIdentityKey(openedFoil)
-      : openedFoilId?.trim() || null;
-    if (openedFoil) setPurchasedFoil(openedFoil);
-    setInstanceId(currentId);
-    setPurchaseId(opened.purchaseId);
-    setSession(next);
-    sessionRef.current = next;
-    setScratched([]);
-    setSelectedCard(0);
-    upsertPackReadyToScratch({
-      packId: currentId,
-      session: next,
-      revealed: [],
-    });
-    // Cart checkout: drop the torn pack from Pack Pocket immediately.
-    if (pack.entry === "cart-tear") {
-      const cartItemId = openedFoil?.id?.trim();
-      if (cartItemId) removePackFromCart(cartItemId);
-      // If nothing left to tear, empty the pocket entirely.
-      if (tearFoils.filter((foil) => foil.id !== cartItemId).length <= 0) {
-        clearCart();
-      }
-    }
-    bumpInventory();
-    trackScratchEvent("Pack Opened", { packId: currentId });
-    // Stay on ReadyStage so CoverFlow can play the 3D open spin + in-canvas fan.
-    // Switching to MotionRevealStage here unmounted the pack and skipped the spin.
   }
 
   function scratch(amount = 34) {

@@ -1,6 +1,7 @@
 import {
   addUnopenedFromPurchase,
   clearPackInventory,
+  countOwnedPacks,
   countUnopened,
   getPackInstance,
   listUnopenedGroups,
@@ -8,6 +9,8 @@ import {
   nextUnopenedInPurchase,
   peekUnopenedInstance,
   purchaseAlreadyOwned,
+  replaceInventoryFromApi,
+  upsertInstancesFromApi,
 } from "./packInventory.ts";
 
 function assert(condition: unknown, message: string) {
@@ -60,5 +63,52 @@ assert(markPackOpened(first!.instanceId)?.status === "opened", "idempotent open"
 
 const next = nextUnopenedInPurchase(purchaseId);
 assert(next != null && next.instanceId !== first!.instanceId, "next in purchase");
+
+clearPackInventory();
+const replaced = replaceInventoryFromApi([
+  {
+    instanceId: "srv-1",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-1",
+    savedAt: 1,
+  },
+  {
+    instanceId: "srv-2",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "opened",
+    purchaseId: "buy-1",
+    savedAt: 2,
+  },
+]);
+assert(replaced.length === 2, "replace writes server list");
+assert(countUnopened() === 1, "replace respects opened status");
+assert(getPackInstance("srv-1")?.instanceId === "srv-1", "replace keeps server ids");
+
+const merged = upsertInstancesFromApi([
+  {
+    instanceId: "srv-3",
+    catalogPackId: "ep2",
+    packName: "Other",
+    creator: "Emily",
+    themeName: "Other",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-2",
+    savedAt: 3,
+  },
+]);
+assert(merged.length === 1, "upsert adds to replaced inventory");
+assert(countOwnedPacks() === 3, "upsert merges without dropping replaced rows");
 
 console.log("v8 pack inventory self-check passed");

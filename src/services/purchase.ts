@@ -295,6 +295,76 @@ export async function loadOpeningAssets(): Promise<void> {
   }
 }
 
+export type OpenPackResult = {
+  openingId: string;
+  stage: string;
+  cardIndex: number;
+  session: OpeningSession;
+  scratched: string[];
+  instance: PackInstanceApi;
+};
+
+function mapOpeningSession(raw: {
+  quantity: number;
+  diamondCost: number;
+  cards: Array<{
+    id: string;
+    rarity: string;
+    reward: number;
+    faceUrl?: string | null;
+  }>;
+  foilFaceUrl?: string | null;
+  foilLabel?: string | null;
+}): OpeningSession {
+  return {
+    quantity: (raw.quantity === 5 ? 5 : 1) as PackQuantity,
+    diamondCost: raw.diamondCost,
+    cards: raw.cards.map((card) => ({
+      id: card.id,
+      rarity: card.rarity as OpeningCard["rarity"],
+      reward: card.reward,
+      faceUrl: card.faceUrl ?? undefined,
+    })),
+    foilFaceUrl: raw.foilFaceUrl ?? undefined,
+    foilLabel: raw.foilLabel ?? undefined,
+  };
+}
+
+/** Open a sealed pack instance — deals cards on the server when authed. */
+export async function openPackInstance(instanceId: string): Promise<OpenPackResult> {
+  try {
+    const remote = await apiMutate<{
+      instance: PackInstanceApi;
+      openingId: string;
+      stage: string;
+      cardIndex: number;
+      session: {
+        quantity: number;
+        diamondCost: number;
+        cards: Array<{
+          id: string;
+          rarity: string;
+          reward: number;
+          faceUrl?: string | null;
+        }>;
+        foilFaceUrl?: string | null;
+        foilLabel?: string | null;
+      };
+      scratched: string[];
+    }>(`/api/me/packs/${instanceId}/open`, { method: "POST" });
+    return {
+      openingId: remote.openingId,
+      stage: remote.stage,
+      cardIndex: remote.cardIndex,
+      session: mapOpeningSession(remote.session),
+      scratched: remote.scratched,
+      instance: remote.instance,
+    };
+  } catch {
+    throw new PurchaseError("failed", "Pack could not be opened.");
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * Opening session persistence (resume after interruption)
  * ------------------------------------------------------------------------ */

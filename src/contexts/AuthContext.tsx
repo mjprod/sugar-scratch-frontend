@@ -41,6 +41,8 @@ import { clearHomeFeedCache } from "@/services/creatorFeed";
 import { addPackToCart, type CartAddInput } from "@/services/cart";
 import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
+import { clearPackInventory, syncMyPacks } from "@/services/packInventory";
+import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
@@ -224,6 +226,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const bumpInventoryRevision = useCallback(() => {
     setInventoryRevision((n) => n + 1);
   }, []);
+
+  useEffect(() => {
+    if (!authed || isDemoMode()) return;
+    void syncMyPacks().then((ok) => {
+      if (ok) bumpInventoryRevision();
+    });
+  }, [authed, bumpInventoryRevision]);
 
   // Bumped on login/logout so a stale in-flight session probe cannot wipe a fresh session.
   const sessionSyncEpochRef = useRef(0);
@@ -686,6 +695,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     void logoutRemote();
     destroySession();
+    clearPackInventory();
     setAuthed(false);
     setPending(null);
     setAuthOpen(false);
@@ -705,6 +715,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
+    clearPackInventory();
     setProfile(initialProfile);
     setAuthed(false);
     setReturningUser(false);

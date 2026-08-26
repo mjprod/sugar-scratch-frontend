@@ -21,9 +21,11 @@ export function HubRedeemSection({
   onOpenPack,
 }: {
   onDiamondReward: (amount: number) => void;
-  onPackReward: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
-    instanceId?: string;
-  };
+  onPackReward: (
+    reward: Extract<RedeemReward, { type: "free_pack" }>,
+  ) =>
+    | { instanceId?: string }
+    | Promise<{ instanceId?: string }>;
   onOpenPack: (input: {
     packId: string;
     packName: string;
@@ -54,7 +56,7 @@ export function HubRedeemSection({
         if (res.reward.type === "diamonds") {
           onDiamondReward(res.reward.amount);
         } else {
-          const result = onPackReward(res.reward);
+          const result = await Promise.resolve(onPackReward(res.reward));
           setPackInstanceId(result.instanceId);
         }
         return;

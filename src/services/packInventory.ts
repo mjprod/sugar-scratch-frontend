@@ -2,6 +2,8 @@
  * Persistent pack ownership. Purchase creates unopened instances immediately;
  * Tear Completion is the only path to opened (cards live in readyToScratch).
  */
+import { apiFetch } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 import { resolveInventoryCoverUrl } from "../lib/photos";
 import type { UnopenedPack } from "./collection";
 import type { PackInstanceApi } from "./purchase";
@@ -171,6 +173,27 @@ export function upsertInstancesFromApi(
   }
   writeAll([...created, ...existing]);
   return created;
+}
+
+/** Replace local inventory with the server list (server wins). */
+export function replaceInventoryFromApi(
+  instances: PackInstanceApi[],
+): OwnedPackInstance[] {
+  const owned = instances.map(apiInstanceToOwned);
+  writeAll(owned);
+  return owned;
+}
+
+/**
+ * Hydrate pack inventory from GET /api/me/packs.
+ * Returns false when demo mode, unauthenticated, or API unreachable — keeps last cache.
+ */
+export async function syncMyPacks(): Promise<boolean> {
+  if (isDemoMode()) return false;
+  const data = await apiFetch<{ packs: PackInstanceApi[] }>("/api/me/packs");
+  if (!data?.packs) return false;
+  replaceInventoryFromApi(data.packs);
+  return true;
 }
 
 /** All owned pack instances (unopened + opened). */
