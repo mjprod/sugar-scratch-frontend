@@ -359,7 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (action.type === "follow") {
-        // Apply follow after login; stay on Discover (do not open creator).
+        // Apply follow after login. Stay on creator profiles; otherwise Discover.
         followCreator({
           id: action.creatorId,
           displayName: action.displayName?.trim() || action.creatorId,
@@ -368,7 +368,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           followedAt: Date.now(),
           hasUnseenActivity: false,
         });
-        navigate(Paths.discover);
+        if (!window.location.pathname.startsWith("/creator/")) {
+          navigate(Paths.discover);
+        }
         return;
       }
       if (action.type === "store") {

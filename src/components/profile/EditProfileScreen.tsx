@@ -1,4 +1,4 @@
-import { Camera, Check } from "lucide-react";
+import { Camera } from "lucide-react";
 import {
   useId,
   useState,
@@ -261,11 +261,6 @@ export function EditProfileScreen({
                 role="alert"
               >
                 {usernameError}
-              </p>
-            ) : usernameChanged && !userMsg ? (
-              <p className="edit-profile-ok" aria-live="polite">
-                <Check className="size-3.5" aria-hidden="true" />
-                Username available
               </p>
             ) : null}
           </div>
