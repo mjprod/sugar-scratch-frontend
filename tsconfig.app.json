@@ -20,9 +20,7 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@sugar/mesh-geometry": ["../src/meshGeometry.ts"],
-      "@sugar/gl-renderer": ["../src/glRenderer.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"]

@@ -3,9 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@sugar/mesh-geometry": ["../src/meshGeometry.ts"],
-      "@sugar/gl-renderer": ["../src/glRenderer.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "references": [

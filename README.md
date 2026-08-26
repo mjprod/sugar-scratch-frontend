@@ -70,6 +70,12 @@ Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/au
 
 ## Structure
 
+Scratch engine (`meshGeometry.ts`, `glRenderer.ts`) lives under `src/features/game/scratch/` — vendored from the operator monorepo so this repo runs standalone (no parent checkout required). After editing those files in `sugar_scratchie/src/`, run from the monorepo root:
+
+```bash
+npm run sync:player-scratch
+```
+
 ```
 src/
   pages/        # Thin route screens (wire contexts only)
