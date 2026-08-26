@@ -224,6 +224,7 @@ function readyPacksForSession(
 export function PurchaseFlow({
   pack,
   diamonds,
+  coins = 0,
   onClose,
   onWalletUpdate,
   onComplete,
@@ -236,8 +237,9 @@ export function PurchaseFlow({
 }: {
   pack: PurchaseFlowPack;
   diamonds: number;
+  coins?: number;
   onClose: () => void;
-  onWalletUpdate?: (wallet: { diamonds: number; coins: number }) => void;
+  onWalletUpdate?: (wallet: { diamonds: number }) => void;
   onComplete: (result: { cards: number; coins: number }) => void;
   onGetDiamonds?: () => void;
   onGoHome?: () => void;
@@ -532,8 +534,14 @@ export function PurchaseFlow({
       setPendingFoil(foil);
     }
     try {
-      const result = await submitPurchase(quantity, diamonds, pack.packId);
-      onWalletUpdate?.(result.wallet);
+      const result = await submitPurchase(
+        quantity,
+        diamonds,
+        pack.packId,
+        undefined,
+        coins,
+      );
+      onWalletUpdate?.({ diamonds: result.wallet.diamonds });
       const themeName =
         resolveCollectionThemeLabel({
           themeName: pack.themeName,

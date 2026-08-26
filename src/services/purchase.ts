@@ -217,6 +217,7 @@ function purchaseFromDemoFixture(
   quantity: PackQuantity,
   balance: number,
   packId: string,
+  coinBalance: number,
 ): PurchaseResult {
   const diamondCost = packCost(quantity, packId);
   if (diamondCost > balance) throw new PurchaseError("insufficient");
@@ -237,7 +238,7 @@ function purchaseFromDemoFixture(
     instances,
     wallet: {
       diamonds: Math.max(0, balance - diamondCost),
-      coins: 0,
+      coins: coinBalance,
     },
     diamondCost,
   };
@@ -248,6 +249,7 @@ export async function submitPurchase(
   balance: number,
   packId = "pack",
   idempotencyKey?: string,
+  coinBalance = 0,
 ): Promise<PurchaseResult> {
   const diamondCost = packCost(quantity, packId);
   if (diamondCost > balance) throw new PurchaseError("insufficient");
@@ -282,7 +284,7 @@ export async function submitPurchase(
     if (!isDemoMode()) {
       throw new PurchaseError("failed", "Purchase could not be completed.");
     }
-    return purchaseFromDemoFixture(quantity, balance, packId);
+    return purchaseFromDemoFixture(quantity, balance, packId, coinBalance);
   }
 }
 

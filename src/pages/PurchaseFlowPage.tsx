@@ -20,7 +20,7 @@ export function PurchaseFlowPage() {
     requestTab,
     bumpInventoryRevision,
   } = useAuth();
-  const { diamonds, setDiamonds, addCoins } = useWallet();
+  const { coins, diamonds, setDiamonds, addCoins } = useWallet();
   const pack = (location.state as { pack?: PurchaseFlowPack } | null)?.pack;
 
   if (!pack || (packId && pack.packId !== packId)) {
@@ -31,6 +31,7 @@ export function PurchaseFlowPage() {
     <PurchaseFlow
       pack={pack}
       diamonds={diamonds}
+      coins={coins}
       onClose={() => {
         navigate(Paths.home);
         if (!isRecommendationInitialized()) {
