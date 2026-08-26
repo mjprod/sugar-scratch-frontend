@@ -8,6 +8,10 @@ import {
   restoreOpening,
   saveOpening,
 } from "./purchase.ts";
+import {
+  clearPackInventory,
+  upsertInstancesFromApi,
+} from "./packInventory.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -91,5 +95,43 @@ assert(restoreOpening("ep1").status === "expired", "stale session expires");
 
 clearOpening();
 assert(restoreOpening("ep1").status === "none", "clear removes the session");
+
+clearPackInventory();
+const apiInstances = [
+  {
+    instanceId: "server-uuid-1",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened" as const,
+    purchaseId: "purchase-uuid-1",
+    savedAt: Date.now(),
+  },
+  {
+    instanceId: "server-uuid-2",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened" as const,
+    purchaseId: "purchase-uuid-1",
+    savedAt: Date.now(),
+  },
+];
+const upserted = upsertInstancesFromApi(apiInstances);
+assert(upserted.length === 2, "api instances persisted");
+assert(
+  upsertInstancesFromApi(apiInstances).length === 2,
+  "duplicate api upsert is idempotent",
+);
+assert(
+  upsertInstancesFromApi(apiInstances)[0]?.instanceId === "server-uuid-1",
+  "api upsert keeps server instance ids",
+);
 
 console.log("v8 purchase flow self-check passed");
