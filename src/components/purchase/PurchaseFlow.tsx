@@ -10,7 +10,7 @@ import {
   Sparkles,
   TimerOff,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -483,7 +483,7 @@ export function PurchaseFlow({
       saveOpening({
         packId: pack.packId,
         session,
-        stage: "ready",
+        stage: sealTorn ? "reveal" : "ready",
         cardIndex: selectedCard,
         scratched,
       });
@@ -513,6 +513,7 @@ export function PurchaseFlow({
     collectionTheme,
     packCoverUrl,
     instanceId,
+    sealTorn,
   ]);
 
   function bumpInventory() {
@@ -585,6 +586,7 @@ export function PurchaseFlow({
       setSelectedCard(0);
       awardedIds.current = new Set();
       tearLocked.current = false;
+      setSealTorn(false);
       bumpInventory();
       await loadOpeningAssets();
       setStage("ready");
@@ -646,13 +648,13 @@ export function PurchaseFlow({
       return;
     }
     tearLocked.current = true;
-    setSealTorn(true);
     const opened = markPackOpened(currentId);
     if (!opened || opened.status !== "opened") {
       tearLocked.current = false;
       setStage("opening-interrupted");
       return;
     }
+    setSealTorn(true);
     const live = sessionRef.current;
     const next = live?.foilFaceUrl
       ? live
@@ -697,9 +699,8 @@ export function PurchaseFlow({
     }
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
-    // Leave CoverFlow tear/reveal (black-stage trap) and show the fan stage.
-    rewindCardTopTear();
-    setStage("reveal");
+    // Stay on ReadyStage so CoverFlow can play the 3D open spin + in-canvas fan.
+    // Switching to MotionRevealStage here unmounted the pack and skipped the spin.
   }
 
   function scratch(amount = 34) {
@@ -763,6 +764,7 @@ export function PurchaseFlow({
       setScratchProgress(0);
       awardedIds.current = new Set();
       tearLocked.current = false;
+      setSealTorn(false);
       bumpInventory();
       setStage("ready");
       return;
@@ -887,6 +889,7 @@ export function PurchaseFlow({
     setSelectedCard(0);
     awardedIds.current = new Set();
     tearLocked.current = false;
+    setSealTorn(false);
     setSavingLater(false);
     bumpInventory();
     setStage("ready");
@@ -1038,6 +1041,10 @@ export function PurchaseFlow({
 
   function onHeaderClose() {
     if (stage === "ready") {
+      if (sealTorn && session) {
+        scratchLater("decision");
+        return;
+      }
       exitUnopened();
       return;
     }
@@ -1056,6 +1063,8 @@ export function PurchaseFlow({
     }
     if (stage === "opening-interrupted") {
       tearLocked.current = false;
+      setSealTorn(false);
+      resetTearOpenState();
       setStage("ready");
       return;
     }
@@ -1128,7 +1137,10 @@ export function PurchaseFlow({
           transition={{ duration: 0.25, ease: "easeOut" }}
           className={[
             "flex min-h-0 flex-1 flex-col bg-[oklch(0.14_0_0)]",
-            stage === "choose" || stage === "reveal" || stage === "cards-ready"
+            stage === "choose" ||
+            stage === "reveal" ||
+            stage === "cards-ready" ||
+            stage === "ready"
               ? "overflow-hidden"
               : "overflow-y-auto",
           ].join(" ")}
@@ -1160,7 +1172,7 @@ export function PurchaseFlow({
               made Ready to Reveal "Open Pack" look broken. */}
           {stage === "ready" ? (
             <ReadyStage
-              key={`${purchaseId ?? pack.packId}:${tearFoils.map((f) => f.id).join(",") || "empty"}`}
+              key={`${pack.packId}:${tearFoils.map((f) => f.id).join(",") || "empty"}`}
               remainingUnopened={Math.max(readyPackCount, tearFoils.length)}
               onOpened={completeTear}
               packs={
@@ -1400,6 +1412,8 @@ export function PurchaseFlow({
                 label: "Try Again",
                 onClick: () => {
                   tearLocked.current = false;
+                  setSealTorn(false);
+                  resetTearOpenState();
                   setStage("ready");
                 },
               }}
@@ -1720,6 +1734,26 @@ function ReadyStage({
 }) {
   const tear = useCoverflowTearSlider();
   const openedRef = useRef(false);
+  const onCardsRef = useRef(onCards);
+  const onContinueRef = useRef(onContinue);
+  const onSaveLaterRef = useRef(onSaveLater);
+  const onSaveAndOpenNextRef = useRef(onSaveAndOpenNext);
+  onCardsRef.current = onCards;
+  onContinueRef.current = onContinue;
+  onSaveLaterRef.current = onSaveLater;
+  onSaveAndOpenNextRef.current = onSaveAndOpenNext;
+  const handleRevealCards = useCallback((cards: RevealCard[]) => {
+    onCardsRef.current(cards);
+  }, []);
+  const handleRevealContinue = useCallback((cards: RevealCard[]) => {
+    onContinueRef.current(cards);
+  }, []);
+  const handleRevealSaveLater = useCallback(() => {
+    onSaveLaterRef.current();
+  }, []);
+  const handleRevealSaveAndOpenNext = useCallback(() => {
+    onSaveAndOpenNextRef.current?.();
+  }, []);
   // Parent rebuilds `packs` every render; key off stable foil identity so the
   // coverflow doesn't thrash focus/selection on unrelated parent updates.
   const packsKey = packs.map((foil) => `${foil.id}|${foil.videoUrl}|${foil.slot}`).join(";");
@@ -1816,6 +1850,12 @@ function ReadyStage({
     onOpened(selectedId);
   }, [onOpened, selectedId, tear.debug.tearT, userTearRef]);
 
+  // Opening the next purchased pack rewinds tear without remounting ReadyStage.
+  useEffect(() => {
+    if (tear.debug.tearT > 0.01 || tear.debug.packOpenRequested) return;
+    openedRef.current = false;
+  }, [tear.debug.packOpenRequested, tear.debug.tearT]);
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       {!selectedId ? (
@@ -1849,7 +1889,7 @@ function ReadyStage({
           hideActiveCta
           disableSwipeDownDeactivate
           disableWheelPaging
-          tearDrivesReveal={false}
+          tearDrivesReveal
           revealModelId={modelId}
           revealGirlName={girlName}
           revealOverlay={{
@@ -1860,8 +1900,15 @@ function ReadyStage({
             gradientColor: overlayColorStart ?? overlayColor,
             gradientColorEnd: overlayColorEnd ?? overlayColor,
           }}
+          revealContinueLabel={launching ? "Starting…" : "Scratch Now"}
+          onRevealCards={handleRevealCards}
+          onRevealContinue={handleRevealContinue}
+          onRevealSaveLater={handleRevealSaveLater}
+          onRevealSaveAndOpenNext={
+            onSaveAndOpenNext ? handleRevealSaveAndOpenNext : undefined
+          }
           tearHud={
-            selectedId ? (
+            selectedId && !tear.debug.packOpenRequested ? (
               <DragToTearControl
                 percent={tear.sliderPercent}
                 finishing={tear.finishing}

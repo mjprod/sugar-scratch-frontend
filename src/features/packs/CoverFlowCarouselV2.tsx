@@ -477,7 +477,7 @@ interface CoverFlowCarouselProps {
   tearHud?: ReactNode
   /**
    * When false, tear progress does not enter coverflow revealMode.
-   * Purchase Ready uses a separate MotionRevealStage after tear completes.
+   * Purchase Ready leaves this on so the 3D open spin plays in-canvas.
    */
   tearDrivesReveal?: boolean
   /** Live model id for backend fan cards / overlay colors. */
