@@ -7,6 +7,7 @@ import {
   HelpCircle,
   Lock,
   LogOut,
+  Pencil,
   Settings,
   Smartphone,
   ShieldCheck,
@@ -23,16 +24,20 @@ type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
 export function UserDashboardScreen({
   name,
+  username,
   avatar,
   onLogout,
   onOpenChangePassword,
+  onOpenEditProfile,
   onOpenFollowing,
   onOpenGameSettings,
 }: {
   name: string;
+  username: string;
   avatar?: string | null;
   onLogout: () => void;
   onOpenChangePassword: () => void;
+  onOpenEditProfile: () => void;
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
 }) {
@@ -54,6 +59,11 @@ export function UserDashboardScreen({
       : tiltActive
         ? "Disable phone tilt"
         : "Enable phone tilt";
+
+  const handle = (username || name || "collector")
+    .replace(/^@/, "")
+    .trim()
+    .toLowerCase();
 
   function open(label: string) {
     if (label === "Change Password") {
@@ -106,23 +116,37 @@ export function UserDashboardScreen({
 
   return (
     <AppPageShell aria-label="Profile" className="app-page-shell--profile">
-      <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,oklch(0.606_0.219_292.72_/_0.3),transparent_42%),oklch(0.196_0_0)] p-6 sm:p-8">
-        <div className="flex items-center gap-4">
-          <div className="grid size-20 place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[oklch(0.627_0.233_303.9)] to-[oklch(0.359_0.135_278.7)] text-[30px] shadow-glow">
-            {avatar || "✨"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1
-              className="profile-display-name truncate text-[30px] font-bold tracking-[-0.03em]"
-              title={name || "Collector"}
-            >
-              {name || "Collector"}
-            </h1>
-            <p className="text-[13px] text-white/45">
-              @{(name || "collector").toLowerCase()}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+      <h1 className="profile-settings-title">Settings</h1>
+
+      <div className="profile-hero profile-card">
+        <div className="profile-hero-row">
+          <button
+            type="button"
+            className="profile-identity"
+            onClick={onOpenEditProfile}
+            aria-label="Edit profile"
+          >
+            <div className="profile-identity-avatar" aria-hidden="true">
+              {avatar || "✨"}
+            </div>
+            <div className="profile-identity-copy">
+              <p
+                className="profile-display-name"
+                title={name || "Collector"}
+              >
+                {name || "Collector"}
+              </p>
+              <p className="profile-username">@{handle || "collector"}</p>
+              <span className="profile-edit-link">
+                <Pencil className="size-3.5" aria-hidden="true" />
+                Edit Profile
+              </span>
+            </div>
+          </button>
+
+          <div className="profile-hero-divider" aria-hidden="true" />
+
+          <div className="profile-hero-actions">
             <button
               type="button"
               aria-label={tiltLabel}
@@ -133,27 +157,28 @@ export function UserDashboardScreen({
                 void toggleMotionEnabled();
               }}
               className={[
-                "profile-logout-btn grid size-11 place-items-center rounded-full border bg-white/[0.05] disabled:opacity-50",
-                tiltActive
-                  ? "border-[oklch(0.798_0.104_207.84_/_0.55)] text-[oklch(0.963_0.028_216.4)]"
-                  : "border-white/10 text-white/65",
-              ].join(" ")}
+                "profile-action-btn profile-action-btn--tilt",
+                tiltActive ? "is-active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              <Smartphone className="size-5 shrink-0" />
-              <span className="profile-logout-label">
+              <Smartphone className="size-5 shrink-0" aria-hidden="true" />
+              <span className="profile-action-label">
                 {tiltActive ? "Tilt on" : "Tilt off"}
               </span>
             </button>
+            <span className="profile-action-sep" aria-hidden="true" />
             <button
               type="button"
               aria-label={loggingOut ? "Logging out" : "Log out"}
               onClick={handleLogout}
               disabled={loggingOut}
               aria-busy={loggingOut}
-              className="profile-logout-btn grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65 disabled:opacity-50"
+              className="profile-action-btn profile-action-btn--logout"
             >
-              <LogOut className="size-5 shrink-0 text-[oklch(0.711_0.166_22.22)]" />
-              <span className="profile-logout-label">
+              <LogOut className="size-5 shrink-0" aria-hidden="true" />
+              <span className="profile-action-label">
                 {loggingOut ? "Logging out" : "Log out"}
               </span>
             </button>
@@ -161,7 +186,7 @@ export function UserDashboardScreen({
         </div>
       </div>
 
-      <div className="mt-7 grid gap-5 lg:grid-cols-2">
+      <div className="profile-menu-grid">
         <MenuGroup
           title="Profile & Account"
           items={[
@@ -209,11 +234,9 @@ function MenuGroup({
   onOpen: (label: string) => void;
 }) {
   return (
-    <div>
-      <h2 className="mb-2 text-[12px] font-semibold tracking-[0.12em] text-white/40 uppercase">
-        {title}
-      </h2>
-      <div className="overflow-hidden rounded-[24px] border border-white/[0.08] bg-white/[0.03]">
+    <div className="profile-menu-group">
+      <h2 className="profile-menu-group-title">{title}</h2>
+      <div className="profile-menu-group-card">
         {items.map((item, index) => {
           const Icon = item.icon;
           return (
@@ -222,9 +245,11 @@ function MenuGroup({
               type="button"
               onClick={() => onOpen(item.label)}
               className={[
-                "flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.05]",
-                index ? "border-t border-white/[0.06]" : "",
-              ].join(" ")}
+                "profile-menu-row",
+                index ? "is-divided" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
               <Icon className="size-4 text-white/45" />
               <span className="flex-1 text-[14px]">{item.label}</span>
