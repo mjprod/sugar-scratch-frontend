@@ -338,6 +338,35 @@ function mapOpeningSession(raw: {
   };
 }
 
+export type RevealCardResult = {
+  card: { id: string; revealStatus: string; reward: number };
+  scratched: string[];
+  wallet: { diamonds: number; coins: number };
+};
+
+/** Reveal one scratched card — credits diamonds and collection on the server. */
+export async function revealPackCard(
+  openingId: string,
+  cardId: string,
+): Promise<RevealCardResult> {
+  try {
+    const remote = await apiMutate<{
+      card: { id: string; revealStatus: string; reward: number };
+      scratched: string[];
+      wallet: { diamonds: number; coins: number };
+    }>(`/api/me/openings/${openingId}/cards/${cardId}/reveal`, {
+      method: "POST",
+    });
+    return {
+      card: remote.card,
+      scratched: remote.scratched,
+      wallet: remote.wallet,
+    };
+  } catch {
+    throw new PurchaseError("failed", "Card reveal could not be completed.");
+  }
+}
+
 /** Open a sealed pack instance — deals cards on the server when authed. */
 export async function openPackInstance(instanceId: string): Promise<OpenPackResult> {
   try {
@@ -397,6 +426,8 @@ export type PersistedOpening = {
   cardIndex: number;
   /** Card ids already fully scratched — never replayed on resume. */
   scratched: string[];
+  /** Server opening row — required for reveal API on resume. */
+  openingId?: string;
 };
 
 export type RestoreResult =
@@ -472,6 +503,11 @@ export function restoreOpening(packId: string): RestoreResult {
   if (parsed.packId !== packId) return { status: "none" };
 
   return { status: "resume", data: parsed };
+}
+
+/** Card ids in `revealedIds` not yet settled (local or server). */
+export function freshRevealIds(revealedIds: string[], awarded: ReadonlySet<string>) {
+  return revealedIds.filter((id) => !awarded.has(id));
 }
 
 /** First card that still needs scratching, or null when the session is done. */

@@ -4,6 +4,7 @@ import {
   buildOpeningSession,
   cartCheckoutIdempotencyKey,
   clearOpening,
+  freshRevealIds,
   nextUnscratchedIndex,
   packCost,
   restoreOpening,
@@ -53,6 +54,16 @@ assert(
   "fully scratched session reports done",
 );
 
+const awarded = new Set([single.cards[0].id]);
+assert(
+  freshRevealIds([single.cards[0].id, single.cards[1].id], awarded).length === 1,
+  "fresh reveal ids skip already awarded",
+);
+assert(
+  freshRevealIds([single.cards[0].id], awarded).length === 0,
+  "no fresh ids when all awarded",
+);
+
 /* Persistence round-trip against an in-memory localStorage stand-in. */
 const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
@@ -69,6 +80,7 @@ saveOpening({
   stage: "scratch",
   cardIndex: 1,
   scratched: [single.cards[0].id],
+  openingId: "opening-uuid-1",
 });
 
 const resumed = restoreOpening("ep1");
@@ -76,6 +88,10 @@ assert(resumed.status === "resume", "saved session resumes");
 assert(
   resumed.status === "resume" && resumed.data.scratched.length === 1,
   "resume keeps scratched cards",
+);
+assert(
+  resumed.status === "resume" && resumed.data.openingId === "opening-uuid-1",
+  "resume keeps server opening id",
 );
 assert(restoreOpening("ep2").status === "none", "other packs ignore this session");
 
