@@ -160,6 +160,7 @@ export function HomeScreen({
     price: string;
     creator: string;
     characterId?: string;
+    themeName?: string;
   }) => void;
   onOpenCreator?: (creatorId: string) => void;
   onClaimDaily?: (diamonds: number) => void;

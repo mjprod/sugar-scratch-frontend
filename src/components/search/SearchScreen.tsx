@@ -93,7 +93,7 @@ export function SearchScreen({
               autoComplete="off"
               spellCheck={false}
               className="search-bar-input"
-              placeholder="Search creators, packs, cards, themes..."
+              placeholder="Search creators and packs..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -163,11 +163,7 @@ export function SearchScreen({
               </p>
             </div>
 
-            <div
-              className="search-filters"
-              role="tablist"
-              aria-label="Content type"
-            >
+            <div className="search-filters" aria-label="Content type">
               {(
                 [
                   ["all", "All"],
@@ -178,8 +174,7 @@ export function SearchScreen({
                 <button
                   key={id}
                   type="button"
-                  role="tab"
-                  aria-selected={filter === id}
+                  aria-pressed={filter === id}
                   className={[
                     "search-filter-chip",
                     filter === id ? "is-active" : "",
@@ -191,9 +186,6 @@ export function SearchScreen({
                   {label}
                 </button>
               ))}
-              <span className="search-sort-label" aria-hidden="true">
-                Newest ▾
-              </span>
             </div>
 
             {visibleTotal === 0 ? (

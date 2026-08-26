@@ -12712,14 +12712,6 @@ body[data-theme="v8"] .search-filter-chip.is-active {
   color: white;
 }
 
-body[data-theme="v8"] .search-sort-label {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-size: 13px;
-  color: oklch(1 0 0 / 0.45);
-  white-space: nowrap;
-}
-
 body[data-theme="v8"] .search-creator-list {
   list-style: none;
   margin: 0;

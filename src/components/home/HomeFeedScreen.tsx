@@ -1115,7 +1115,9 @@ export function HomeFeedScreen({
             className="hf-search-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Search"
             data-no-feed-drag
-            onClick={() => navigate(Paths.search)}
+            onClick={() =>
+              navigate(Paths.search, { state: { from: Paths.discover } })
+            }
           >
             <Search className="hf-search-icon" aria-hidden="true" />
           </button>

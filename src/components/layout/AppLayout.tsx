@@ -113,7 +113,9 @@ export function AppLayout() {
     <div className="flex items-center gap-0.5">
       <button
         type="button"
-        onClick={() => navigate(Paths.search)}
+        onClick={() =>
+          navigate(Paths.search, { state: { from: location.pathname } })
+        }
         aria-label="Search"
         aria-current={onSearch ? "page" : undefined}
         className={[

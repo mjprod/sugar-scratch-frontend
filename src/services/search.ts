@@ -180,6 +180,19 @@ export function filterSearchCatalog(
 }
 
 export async function loadSearchCatalog(): Promise<SearchCatalog> {
-  const models = await loadModels().catch(() => [] as BackendModel[]);
+  const models = await loadModels();
   return buildSearchCatalog(models);
+}
+
+/** Mirror browse foil routing: foil id for purchase URL, parent model when ids match. */
+export function searchPackToPurchase(pack: SearchPack) {
+  const foilId = pack.id !== pack.creatorId ? pack.id : undefined;
+  return {
+    packId: foilId ?? pack.id,
+    packName: pack.name,
+    themeName: pack.themeName,
+    price: String(pack.diamondCost),
+    creator: pack.creatorName,
+    entry: "purchase" as const,
+  };
 }
