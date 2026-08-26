@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
@@ -28,6 +29,8 @@ export function CollectionPage({
   onScratchGroup?: (group: ScratchReadyGroup) => void;
   inventoryRevision?: number;
 }) {
+  const [searchParams] = useSearchParams();
+  const revealPacks = searchParams.get("reveal") === "packs";
   const state = useMemo(
     () => getCollectionPageState(),
     [inventoryRevision],
@@ -83,8 +86,20 @@ export function CollectionPage({
       }
     >
       <div className="collection-page-content page-container">
-        {state.isTrueEmpty ? (
+        {state.isTrueEmpty && !revealPacks ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
+        ) : state.isTrueEmpty && revealPacks ? (
+          <>
+            <header className="collection-page-intro">
+              <h1 className="collection-page-title">Your Collection</h1>
+            </header>
+            <ReadyToReveal
+              onOpenPack={openPack}
+              onScratch={openScratch}
+              onExplorePacks={onExplorePacks}
+              inventoryRevision={inventoryRevision}
+            />
+          </>
         ) : (
           <>
             <header className="collection-page-intro">

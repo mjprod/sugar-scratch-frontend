@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
+import { isDemoMode } from "@/lib/demo";
 import { addUnopenedFromPurchase } from "@/services/packInventory";
 import type { RedeemReward } from "@/services/redeem";
 
@@ -11,7 +12,7 @@ export function StorePage() {
     bumpInventoryRevision,
     setPurchasedPacks,
   } = useAuth();
-  const { addCoins, addDiamonds } = useWallet();
+  const { addCoins, addDiamonds, refreshWallet } = useWallet();
 
   function onPackReward(reward: Extract<RedeemReward, { type: "free_pack" }>) {
     const purchaseId = `redeem-${reward.packId}-${Date.now().toString(36)}`;
@@ -35,7 +36,10 @@ export function StorePage() {
         addDiamonds(gained);
         addCoins(gainedCoins);
       }}
-      onDiamondReward={(amount) => addDiamonds(amount)}
+      onDiamondReward={(amount) => {
+        if (isDemoMode()) addDiamonds(amount);
+        else void refreshWallet();
+      }}
       onPackReward={onPackReward}
       onOpenPack={({ packId, packName, creator, instanceId }) => {
         openPurchase(

@@ -1351,6 +1351,219 @@ h1 {
   transition-delay: 0ms;
 }
 
+.coverflow-cart-remove-wrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 0.75rem;
+  pointer-events: auto;
+}
+
+.coverflow-cart-remove {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.05);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  color: oklch(1 0 0 / 0.88);
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease,
+    transform 140ms ease;
+}
+
+.coverflow-cart-remove > span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.04em);
+}
+
+.coverflow-cart-remove:hover {
+  border-color: oklch(1 0 0 / 0.1);
+  background: linear-gradient(
+    180deg,
+    oklch(0.26 0 0 / 0.18) 0%,
+    oklch(0 0 0 / 0.1) 42%,
+    oklch(0.16 0 0 / 0.16) 100%
+  );
+  color: oklch(1 0 0);
+}
+
+.coverflow-cart-remove:active {
+  transform: scale(0.96);
+}
+
+.coverflow-cart-remove:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+.coverflow-cart-remove-confirm {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 7.5rem;
+  padding: 0.7rem 0.8rem 0.75rem;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 1.15rem;
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0 0 / 0.92) 0%,
+    oklch(0.12 0 0 / 0.94) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.1),
+    0 12px 28px oklch(0 0 0 / 0.42);
+  color: oklch(1 0 0 / 0.92);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.coverflow-cart-remove-confirm::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid oklch(1 0 0 / 0.1);
+  border-left: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(0.19 0 0 / 0.94);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.coverflow-cart-remove-confirm__label {
+  margin: 0;
+  color: oklch(1 0 0 / 0.78);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.coverflow-cart-remove-confirm__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.coverflow-cart-remove-confirm__btn {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.9);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms ease;
+}
+
+.coverflow-cart-remove-confirm__btn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.coverflow-cart-remove-confirm__btn:hover {
+  transform: scale(1.04);
+}
+
+.coverflow-cart-remove-confirm__btn:active {
+  transform: scale(0.96);
+}
+
+.coverflow-cart-remove-confirm__btn.is-confirm {
+  border-color: oklch(0.72 0.16 25 / 0.45);
+  background: oklch(0.48 0.14 25 / 0.28);
+  color: oklch(0.9 0.08 25);
+}
+
+.coverflow-cart-remove-confirm__btn.is-confirm:hover {
+  background: oklch(0.52 0.15 25 / 0.4);
+}
+
+.coverflow-cart-remove-confirm__btn.is-cancel {
+  border-color: oklch(1 0 0 / 0.16);
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.72);
+}
+
+.coverflow-cart-remove-confirm__btn.is-cancel:hover {
+  border-color: oklch(1 0 0 / 0.24);
+  background: oklch(1 0 0 / 0.14);
+  color: oklch(1 0 0 / 0.9);
+}
+
+.coverflow-cart-remove-confirm__btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+.cart-continue {
+  position: absolute;
+  right: 0;
+  bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  left: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.cart-continue > * {
+  pointer-events: auto;
+}
+
+.coverflow-pack-html-label .coverflow-cart-remove-wrap,
+.coverflow-pack-html-label .coverflow-cart-remove,
+.coverflow-pack-html-label .coverflow-cart-remove-confirm {
+  pointer-events: auto;
+}
+
+.coverflow-active-stack.is-visible .coverflow-cart-remove-wrap,
+.coverflow-active-stack.is-visible .coverflow-cart-remove,
+.coverflow-active-stack.is-visible .coverflow-cart-remove-confirm {
+  pointer-events: auto;
+}
+
 @media (max-width: 980px) {
   /* Tighter vertical rhythm inside the shorter mobile hex CTA. */
   .coverflow-buy-pack-cta .cta-button__label {

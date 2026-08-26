@@ -5,7 +5,7 @@ export function HomeFeedPage() {
   const {
     resumeLikeId,
     consumeResumeLike,
-    openPurchase,
+    addToCart,
     requireAuth,
     openCreator,
     authed,
@@ -16,7 +16,15 @@ export function HomeFeedPage() {
       active
       resumeLikeId={resumeLikeId}
       onResumeLikeConsumed={consumeResumeLike}
-      onBuyPack={(pack) => openPurchase(pack, "buy-pack")}
+      onBuyPack={(pack) =>
+        addToCart({
+          packId: pack.packId,
+          packName: pack.packName,
+          creator: pack.creator,
+          characterId: pack.packId,
+          price: pack.price,
+        })
+      }
       onLikeAttempt={(id) => {
         if (authed) return true;
         requireAuth({ type: "like", feedItemId: id });

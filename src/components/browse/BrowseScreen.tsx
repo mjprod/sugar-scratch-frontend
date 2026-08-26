@@ -159,6 +159,7 @@ export function HomeScreen({
     packName: string;
     price: string;
     creator: string;
+    characterId?: string;
   }) => void;
   onOpenCreator?: (creatorId: string) => void;
   onClaimDaily?: (diamonds: number) => void;
@@ -247,17 +248,19 @@ export function HomeScreen({
 
   function playPack(pack: {
     id: string;
+    foilId?: string;
     name: string;
     creatorName: string;
     diamondCost: number;
     themeName?: string;
   }) {
     onStartPlaying?.({
-      packId: pack.id,
+      packId: pack.foilId ?? pack.id,
       packName: pack.name,
       themeName: pack.themeName,
       price: String(pack.diamondCost),
       creator: pack.creatorName,
+      characterId: pack.id,
     });
   }
 
@@ -388,8 +391,20 @@ export function HomeScreen({
           <button
             type="button"
             onClick={() => setLibraryOpen(true)}
-            className="min-h-11 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
           >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              className="size-5 shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                fill="currentColor"
+                d="M5.75 3h8.5A2.75 2.75 0 0 1 17 5.75v8.5A2.75 2.75 0 0 1 14.25 17h-4.129l-1-1h5.129A1.75 1.75 0 0 0 16 14.25v-8.5A1.75 1.75 0 0 0 14.25 4h-8.5A1.75 1.75 0 0 0 4 5.75v3.277a4.5 4.5 0 0 0-1 .23V5.75A2.75 2.75 0 0 1 5.75 3M9.5 14a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1zm-2-6.75a.75.75 0 1 1-1.5 0a.75.75 0 0 1 1.5 0m2-.25a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1zm-5 7c.786 0 1.512-.26 2.096-.697l2.55 2.55a.5.5 0 1 0 .708-.707l-2.55-2.55A3.5 3.5 0 1 0 4.5 17m0-1a2.5 2.5 0 1 1 0-5a2.5 2.5 0 0 1 0 5"
+              />
+            </svg>
             View All Packs
           </button>
         </div>
@@ -408,6 +423,18 @@ export function HomeScreen({
               />
             </section>
           ) : null}
+
+          <aside className="hub-today-bento-reel" aria-label="Discover video reel">
+            <div className="hub-today-bento-reel-frame">
+              <DiscoverReel
+                onBuyPack={(pack) => onStartPlaying?.(pack)}
+                onLikeAttempt={onLikeAttempt}
+                onOpenCreator={onOpenCreator}
+                resumeLikeId={resumeLikeId}
+                onResumeLikeConsumed={onResumeLikeConsumed}
+              />
+            </div>
+          </aside>
 
           <div className="hub-today-bento-stack">
             <ContinueCollecting
@@ -457,18 +484,6 @@ export function HomeScreen({
               </div>
             </section>
           </div>
-
-          <aside className="hub-today-bento-reel" aria-label="Discover video reel">
-            <div className="hub-today-bento-reel-frame">
-              <DiscoverReel
-                onBuyPack={(pack) => onStartPlaying?.(pack)}
-                onLikeAttempt={onLikeAttempt}
-                onOpenCreator={onOpenCreator}
-                resumeLikeId={resumeLikeId}
-                onResumeLikeConsumed={onResumeLikeConsumed}
-              />
-            </div>
-          </aside>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ import {
   Sparkles,
   TimerOff,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -80,6 +80,10 @@ import {
   nextUnopenedInPurchase,
   peekUnopenedInstance,
 } from "@/services/packInventory";
+import {
+  clearCart,
+  removePackFromCart,
+} from "@/services/cart";
 import {
   getReadyToScratch,
   trackScratchEvent,
@@ -159,13 +163,54 @@ function PurchaseCtaButton({
   );
 }
 
+function resetTearOpenState() {
+  rewindCardTopTear();
+  setPackOpenRequested(false);
+  setCardTopTearT(0, false);
+}
+
+function cartFoilsForTear(pack: PurchaseFlowPack): FoilPack[] {
+  return (pack.cartFoils ?? []).map((foil, index) => ({
+    slot: foil.slot ?? ((index === 0 ? 1 : 2) as FoilPack["slot"]),
+    id: foil.id,
+    label: foil.label,
+    videoUrl: foil.videoUrl,
+  }));
+}
+
+/** Prefer face identity so the same design never appears twice in coverflow. */
+function foilIdentityKey(foil: Pick<FoilPack, "id" | "videoUrl" | "label" | "slot">) {
+  const face = `${foil.videoUrl.trim()}|${foil.label.trim()}|${foil.slot}`;
+  if (foil.videoUrl.trim() || foil.label.trim()) return face;
+  return foil.id.trim() || face;
+}
+
+/** One coverflow entry per pack face — never clone / repeat the same pack. */
+function dedupeTearFoils(foils: readonly FoilPack[]): FoilPack[] {
+  const seen = new Set<string>();
+  const unique: FoilPack[] = [];
+  for (const foil of foils) {
+    const key = foilIdentityKey(foil);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(foil);
+  }
+  return unique;
+}
+
 function readyPacksForSession(
   purchasedFoil: FoilPack | null,
   session: OpeningSession | null,
   pack: PurchaseFlowPack,
-  count: number,
+  _count: number,
   modelPacks: readonly FoilPack[],
 ): FoilPack[] {
+  const cartFoils = cartFoilsForTear(pack);
+  if (cartFoils.length) return dedupeTearFoils(cartFoils);
+
+  // Prefer distinct designed foils from the model (slot 1 / slot 2), not N clones.
+  if (modelPacks.length) return dedupeTearFoils(modelPacks);
+
   const source =
     purchasedFoil ??
     (session?.foilFaceUrl
@@ -175,14 +220,9 @@ function readyPacksForSession(
           label: session.foilLabel ?? pack.packName,
           videoUrl: session.foilFaceUrl,
         }
-      : modelPacks[0] ?? null);
+      : null);
   if (!source) return [];
-  const copies = Math.max(1, count);
-  return Array.from({ length: copies }, (_, index) => ({
-    ...source,
-    id: `${source.id}::ready-${index + 1}`,
-    slot: (index === 0 ? source.slot : 2) as FoilPack["slot"],
-  }));
+  return dedupeTearFoils([source]);
 }
 
 export function PurchaseFlow({
@@ -246,6 +286,7 @@ export function PurchaseFlow({
       if (!bagResume || resumeIndex === null) return "expired";
       return "scratch";
     }
+    if (pack.entry === "cart-tear") return "ready";
     if (pack.entry === "open") return openResume ? "ready" : "no-packs";
     if (buying) return "choose";
     if (restored.status === "expired") return "expired";
@@ -259,11 +300,24 @@ export function PurchaseFlow({
     }
     return "select";
   });
-  const [session, setSession] = useState<OpeningSession | null>(initialSession);
+  const [session, setSession] = useState<OpeningSession | null>(() => {
+    if (initialSession) return initialSession;
+    if (pack.entry !== "cart-tear") return null;
+    const foils = cartFoilsForTear(pack);
+    const first = foils[0];
+    if (!first) return buildOpeningSession(1, pack.packId);
+    return {
+      ...buildFoilOpeningSession(foils, packCost(1, pack.packId)),
+      foilFaceUrl: first.videoUrl,
+      foilLabel: first.label,
+    };
+  });
   const [model, setModel] = useState<ModelProfile | null>(null);
   const [, setPendingFoil] = useState<FoilPack | null>(null);
   const lastFoilRef = useRef<FoilPack | null>(null);
   const [purchasedFoil, setPurchasedFoil] = useState<FoilPack | null>(() => {
+    const cartFirst = cartFoilsForTear(pack)[0];
+    if (cartFirst) return cartFirst;
     const faceUrl = initialSession?.foilFaceUrl?.trim();
     if (!faceUrl) return null;
     return {
@@ -292,6 +346,18 @@ export function PurchaseFlow({
   const [readyPackCount, setReadyPackCount] = useState(
     () => pack.unopenedPacks ?? Math.max(1, session?.quantity ?? 1),
   );
+  /** Foils still available on the tear coverflow (opened ones are dropped). */
+  const [tearFoils, setTearFoils] = useState<FoilPack[]>(() =>
+    readyPacksForSession(
+      null,
+      initialSession,
+      pack,
+      pack.unopenedPacks ?? Math.max(1, initialSession?.quantity ?? 1),
+      [],
+    ),
+  );
+  /** Foil identity last torn — removed when returning to the tear stage. */
+  const openedTearFoilKeyRef = useRef<string | null>(null);
   const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
     countUnopened(),
   );
@@ -367,9 +433,27 @@ export function PurchaseFlow({
     });
   }, [buying, pack.entry, pack.creator, pack.packId]);
 
+  // Once model foils load, seed the tear coverflow with unique packs only
+  // (never N clones of the same face).
+  useEffect(() => {
+    if (!model?.packs.length) return;
+    setTearFoils((current) => {
+      if (current.length) return dedupeTearFoils(current);
+      return dedupeTearFoils(model.packs);
+    });
+  }, [model]);
+
   useEffect(() => {
     if (stage === "expired") clearOpening();
   }, [stage]);
+
+  // Always leave global tear/open debug clean when this flow unmounts so Cart /
+  // homepage coverflows never inherit an in-progress open.
+  useEffect(() => {
+    return () => {
+      resetTearOpenState();
+    };
+  }, []);
 
   useEffect(() => {
     if (isScratchTutorialCompleted()) return;
@@ -399,7 +483,7 @@ export function PurchaseFlow({
       saveOpening({
         packId: pack.packId,
         session,
-        stage: "ready",
+        stage: sealTorn ? "reveal" : "ready",
         cardIndex: selectedCard,
         scratched,
       });
@@ -429,6 +513,7 @@ export function PurchaseFlow({
     collectionTheme,
     packCoverUrl,
     instanceId,
+    sealTorn,
   ]);
 
   function bumpInventory() {
@@ -479,6 +564,15 @@ export function PurchaseFlow({
       setPurchaseId(tx);
       setInstanceId(first.instanceId);
       setReadyPackCount(owned.length || quantity);
+      const seededFoils = dedupeTearFoils(
+        foil ? [foil] : model?.packs ?? [],
+      );
+      setTearFoils(
+        seededFoils.length
+          ? seededFoils
+          : readyPacksForSession(foil ?? null, null, pack, quantity, []),
+      );
+      openedTearFoilKeyRef.current = null;
       setSession(
         foil
           ? {
@@ -492,6 +586,7 @@ export function PurchaseFlow({
       setSelectedCard(0);
       awardedIds.current = new Set();
       tearLocked.current = false;
+      setSealTorn(false);
       bumpInventory();
       await loadOpeningAssets();
       setStage("ready");
@@ -526,7 +621,23 @@ export function PurchaseFlow({
     }
   }
 
-  function completeTear() {
+  function remainingTearFoils(
+    current: readonly FoilPack[],
+    openedKey: string | null,
+    remainingUnopened: number,
+  ): FoilPack[] {
+    if (!openedKey) return [...current];
+    const next = current.filter((foil) => foilIdentityKey(foil) !== openedKey);
+    // Distinct foil faces: drop the opened design. Same-face multi-buy with
+    // inventory left: keep a single coverflow entry (never re-clone).
+    if (!next.length && remainingUnopened > 0) {
+      const kept = current.find((foil) => foilIdentityKey(foil) === openedKey);
+      return kept ? [kept] : current.slice(0, 1);
+    }
+    return next;
+  }
+
+  function completeTear(openedFoilId?: string | null) {
     if (tearLocked.current) return;
     const currentId =
       instanceId ??
@@ -537,17 +648,35 @@ export function PurchaseFlow({
       return;
     }
     tearLocked.current = true;
-    setSealTorn(true);
     const opened = markPackOpened(currentId);
     if (!opened || opened.status !== "opened") {
       tearLocked.current = false;
       setStage("opening-interrupted");
       return;
     }
+    setSealTorn(true);
     const live = sessionRef.current;
     const next = live?.foilFaceUrl
       ? live
       : live ?? buildOpeningSession(1, currentId);
+    const openedFoil =
+      (openedFoilId
+        ? tearFoils.find((foil) => foil.id === openedFoilId) ?? null
+        : null) ??
+      purchasedFoil ??
+      (live?.foilFaceUrl
+        ? {
+            slot: 1 as const,
+            id: live.cards[0]?.id ?? `${pack.packId}-1`,
+            label: live.foilLabel ?? pack.packName,
+            videoUrl: live.foilFaceUrl,
+          }
+        : null);
+    // Store face identity (not raw id) so later filters match dedupe keys.
+    openedTearFoilKeyRef.current = openedFoil
+      ? foilIdentityKey(openedFoil)
+      : openedFoilId?.trim() || null;
+    if (openedFoil) setPurchasedFoil(openedFoil);
     setInstanceId(currentId);
     setPurchaseId(opened.purchaseId);
     setSession(next);
@@ -559,11 +688,19 @@ export function PurchaseFlow({
       session: next,
       revealed: [],
     });
+    // Cart checkout: drop the torn pack from Pack Pocket immediately.
+    if (pack.entry === "cart-tear") {
+      const cartItemId = openedFoil?.id?.trim();
+      if (cartItemId) removePackFromCart(cartItemId);
+      // If nothing left to tear, empty the pocket entirely.
+      if (tearFoils.filter((foil) => foil.id !== cartItemId).length <= 0) {
+        clearCart();
+      }
+    }
     bumpInventory();
     trackScratchEvent("Pack Opened", { packId: currentId });
-    // Leave CoverFlow tear/reveal (black-stage trap) and show the fan stage.
-    rewindCardTopTear();
-    setStage("reveal");
+    // Stay on ReadyStage so CoverFlow can play the 3D open spin + in-canvas fan.
+    // Switching to MotionRevealStage here unmounted the pack and skipped the spin.
   }
 
   function scratch(amount = 34) {
@@ -600,18 +737,41 @@ export function PurchaseFlow({
       purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
     if (nextPack) {
       clearOpening();
+      const remainingAfter = Math.max(0, readyPackCount - 1);
+      const openedKey = openedTearFoilKeyRef.current;
+      const remainingFoils = remainingTearFoils(
+        tearFoils,
+        openedKey,
+        remainingAfter,
+      );
+      setTearFoils(remainingFoils);
+      openedTearFoilKeyRef.current = null;
+      const nextFace = remainingFoils[0] ?? purchasedFoil;
+      setPurchasedFoil(nextFace);
       setInstanceId(nextPack.instanceId);
-      setSession(null);
+      setSession(
+        nextFace
+          ? {
+              ...buildFoilOpeningSession([nextFace], packCost(1, pack.packId)),
+              foilFaceUrl: nextFace.videoUrl,
+              foilLabel: nextFace.label,
+            }
+          : null,
+      );
       setReadyPackCount((count) => Math.max(1, count - 1));
       setScratched([]);
       setSelectedCard(0);
       setScratchProgress(0);
       awardedIds.current = new Set();
       tearLocked.current = false;
+      setSealTorn(false);
       bumpInventory();
       setStage("ready");
       return;
     }
+    setTearFoils([]);
+    openedTearFoilKeyRef.current = null;
+    if (pack.entry === "cart-tear") clearCart();
     setStage("complete");
   }
 
@@ -692,19 +852,33 @@ export function PurchaseFlow({
     const nextPack =
       purchaseId != null ? nextUnopenedInPurchase(purchaseId) : null;
     if (!nextPack) {
+      setTearFoils([]);
+      openedTearFoilKeyRef.current = null;
+      if (pack.entry === "cart-tear") clearCart();
       scratchLater("decision");
       return;
     }
     persistCurrentAndLeave("decision");
-    setPackOpenRequested(false);
-    setCardTopTearT(0, false);
+    resetTearOpenState();
+    const remainingAfter = Math.max(0, readyPackCount - 1);
+    const openedKey = openedTearFoilKeyRef.current;
+    // Drop the pack that was just opened before rebuilding the tear coverflow.
+    const remainingFoils = remainingTearFoils(
+      tearFoils,
+      openedKey,
+      remainingAfter,
+    );
+    setTearFoils(remainingFoils);
+    openedTearFoilKeyRef.current = null;
+    const nextFace = remainingFoils[0] ?? purchasedFoil;
+    setPurchasedFoil(nextFace);
     setInstanceId(nextPack.instanceId);
     setSession(
-      purchasedFoil
+      nextFace
         ? {
-            ...buildFoilOpeningSession([purchasedFoil], packCost(1, pack.packId)),
-            foilFaceUrl: purchasedFoil.videoUrl,
-            foilLabel: purchasedFoil.label,
+            ...buildFoilOpeningSession([nextFace], packCost(1, pack.packId)),
+            foilFaceUrl: nextFace.videoUrl,
+            foilLabel: nextFace.label,
           }
         : {
             ...buildOpeningSession(1, nextPack.instanceId),
@@ -715,6 +889,7 @@ export function PurchaseFlow({
     setSelectedCard(0);
     awardedIds.current = new Set();
     tearLocked.current = false;
+    setSealTorn(false);
     setSavingLater(false);
     bumpInventory();
     setStage("ready");
@@ -845,24 +1020,31 @@ export function PurchaseFlow({
   }, [pack.entry, session]);
 
   function leaveSaved(destination?: () => void) {
+    resetTearOpenState();
     bumpInventory();
     (destination ?? onReturnContext ?? onClose)();
   }
 
   function exit(destination?: () => void) {
     clearOpening();
+    resetTearOpenState();
     bumpInventory();
     (destination ?? onClose)();
   }
 
   function exitUnopened() {
     clearOpening();
+    resetTearOpenState();
     bumpInventory();
     setStage("saved-unopened");
   }
 
   function onHeaderClose() {
     if (stage === "ready") {
+      if (sealTorn && session) {
+        scratchLater("decision");
+        return;
+      }
       exitUnopened();
       return;
     }
@@ -881,6 +1063,8 @@ export function PurchaseFlow({
     }
     if (stage === "opening-interrupted") {
       tearLocked.current = false;
+      setSealTorn(false);
+      resetTearOpenState();
       setStage("ready");
       return;
     }
@@ -953,7 +1137,10 @@ export function PurchaseFlow({
           transition={{ duration: 0.25, ease: "easeOut" }}
           className={[
             "flex min-h-0 flex-1 flex-col bg-[oklch(0.14_0_0)]",
-            stage === "choose" || stage === "reveal" || stage === "cards-ready"
+            stage === "choose" ||
+            stage === "reveal" ||
+            stage === "cards-ready" ||
+            stage === "ready"
               ? "overflow-hidden"
               : "overflow-y-auto",
           ].join(" ")}
@@ -985,16 +1172,20 @@ export function PurchaseFlow({
               made Ready to Reveal "Open Pack" look broken. */}
           {stage === "ready" ? (
             <ReadyStage
-              key={purchaseId ?? pack.packId}
-              remainingUnopened={readyPackCount}
+              key={`${pack.packId}:${tearFoils.map((f) => f.id).join(",") || "empty"}`}
+              remainingUnopened={Math.max(readyPackCount, tearFoils.length)}
               onOpened={completeTear}
-              packs={readyPacksForSession(
-                purchasedFoil,
-                session,
-                pack,
-                readyPackCount,
-                model?.packs ?? [],
-              )}
+              packs={
+                tearFoils.length
+                  ? tearFoils
+                  : readyPacksForSession(
+                      purchasedFoil,
+                      session,
+                      pack,
+                      readyPackCount,
+                      model?.packs ?? [],
+                    )
+              }
               modelId={model?.id ?? pack.packId}
               girlName={model?.name ?? pack.creator}
               overlayColor={model?.overlayColorEnd ?? "oklch(0.798 0.104 207.84)"}
@@ -1032,7 +1223,9 @@ export function PurchaseFlow({
               onContinue={(cards) => void launchMotionScratch(cards)}
               onSaveLater={() => scratchLater("decision")}
               onSaveAndOpenNext={
-                readyPackCount > 1 ? openNextPurchasedPack : undefined
+                readyPackCount > 1 || tearFoils.length > 1
+                  ? openNextPurchasedPack
+                  : undefined
               }
             />
           ) : null}
@@ -1139,7 +1332,7 @@ export function PurchaseFlow({
             <StateScreen
               icon={<PackageOpen className="size-7" />}
               tone="success"
-              title="Saved to My Bag"
+              title="Saved to My Collection"
               body="Scratch them whenever you're ready."
               primary={{
                 label: "Continue",
@@ -1148,7 +1341,7 @@ export function PurchaseFlow({
               secondary={
                 onGoMyBag
                   ? {
-                      label: "View My Bag",
+                      label: "View My Collection",
                       onClick: () => leaveSaved(onGoMyBag),
                     }
                   : undefined
@@ -1160,7 +1353,7 @@ export function PurchaseFlow({
             <StateScreen
               icon={<PackageOpen className="size-7" />}
               tone="success"
-              title="Saved to My Bag"
+              title="Saved to My Collection"
               body="Your pack is waiting under Unopened Packs."
               primary={{
                 label: "Continue",
@@ -1169,7 +1362,7 @@ export function PurchaseFlow({
               secondary={
                 onGoMyBag
                   ? {
-                      label: "View My Bag",
+                      label: "View My Collection",
                       onClick: () => leaveSaved(onGoMyBag),
                     }
                   : undefined
@@ -1219,6 +1412,8 @@ export function PurchaseFlow({
                 label: "Try Again",
                 onClick: () => {
                   tearLocked.current = false;
+                  setSealTorn(false);
+                  resetTearOpenState();
                   setStage("ready");
                 },
               }}
@@ -1244,7 +1439,7 @@ export function PurchaseFlow({
               icon={<TimerOff className="size-7" />}
               tone="neutral"
               title="Session expired"
-              body="Your opening session expired. Owned packs are still in My Bag."
+              body="Your opening session expired. Owned packs are still in My Collection."
               primary={{
                 label: "Close",
                 onClick: onClose,
@@ -1520,7 +1715,7 @@ function ReadyStage({
   onSaveAndOpenNext,
 }: {
   remainingUnopened: number;
-  onOpened: () => void;
+  onOpened: (openedFoilId?: string | null) => void;
   packs: readonly FoilPack[];
   modelId: string;
   girlName: string;
@@ -1539,6 +1734,29 @@ function ReadyStage({
 }) {
   const tear = useCoverflowTearSlider();
   const openedRef = useRef(false);
+  const onCardsRef = useRef(onCards);
+  const onContinueRef = useRef(onContinue);
+  const onSaveLaterRef = useRef(onSaveLater);
+  const onSaveAndOpenNextRef = useRef(onSaveAndOpenNext);
+  onCardsRef.current = onCards;
+  onContinueRef.current = onContinue;
+  onSaveLaterRef.current = onSaveLater;
+  onSaveAndOpenNextRef.current = onSaveAndOpenNext;
+  const handleRevealCards = useCallback((cards: RevealCard[]) => {
+    onCardsRef.current(cards);
+  }, []);
+  const handleRevealContinue = useCallback((cards: RevealCard[]) => {
+    onContinueRef.current(cards);
+  }, []);
+  const handleRevealSaveLater = useCallback(() => {
+    onSaveLaterRef.current();
+  }, []);
+  const handleRevealSaveAndOpenNext = useCallback(() => {
+    onSaveAndOpenNextRef.current?.();
+  }, []);
+  // Parent rebuilds `packs` every render; key off stable foil identity so the
+  // coverflow doesn't thrash focus/selection on unrelated parent updates.
+  const packsKey = packs.map((foil) => `${foil.id}|${foil.videoUrl}|${foil.slot}`).join(";");
   // Only settle after a user-driven tear finish this mount — never from a
   // leftover tearT≈1 in memory from a previous open.
   const userTearRef = tear.finishStartedRef;
@@ -1575,6 +1793,8 @@ function ReadyStage({
           backgroundColor: overlayColor,
         }),
       ),
+    // packsKey captures foil identity; packs itself is intentionally omitted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       city,
       country,
@@ -1585,7 +1805,7 @@ function ReadyStage({
       overlayColor,
       overlayColorEnd,
       overlayColorStart,
-      packs,
+      packsKey,
     ],
   );
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -1610,8 +1830,14 @@ function ReadyStage({
     tear.replayTear();
   }, []);
 
+  const lastTearResetIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedId) tear.replayTear();
+    // Switching the front pack should never leave a half-torn seal behind.
+    // Skip no-op re-entry of the same id so tear/open state doesn't thrash.
+    if (!selectedId || selectedId === lastTearResetIdRef.current) return;
+    lastTearResetIdRef.current = selectedId;
+    tear.replayTear();
+    openedRef.current = false;
   }, [selectedId]);
 
   useEffect(() => {
@@ -1621,8 +1847,14 @@ function ReadyStage({
     if (!userTearRef.current) return;
     if (tear.debug.tearT < 0.999) return;
     openedRef.current = true;
-    onOpened();
+    onOpened(selectedId);
   }, [onOpened, selectedId, tear.debug.tearT, userTearRef]);
+
+  // Opening the next purchased pack rewinds tear without remounting ReadyStage.
+  useEffect(() => {
+    if (tear.debug.tearT > 0.01 || tear.debug.packOpenRequested) return;
+    openedRef.current = false;
+  }, [tear.debug.packOpenRequested, tear.debug.tearT]);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1650,14 +1882,14 @@ function ReadyStage({
           selectedId={selectedId}
           onSelect={setSelectedId}
           onDeselect={() => {
+            // Tear page always keeps a pack selected (carousel also ignores
+            // deselect while disableSwipeDownDeactivate is on).
             openedRef.current = false;
           }}
-          onFocusChange={(item) => {
-            if (item) setSelectedId(item.id);
-          }}
+          hideActiveCta
           disableSwipeDownDeactivate
           disableWheelPaging
-          tearDrivesReveal={false}
+          tearDrivesReveal
           revealModelId={modelId}
           revealGirlName={girlName}
           revealOverlay={{
@@ -1668,8 +1900,15 @@ function ReadyStage({
             gradientColor: overlayColorStart ?? overlayColor,
             gradientColorEnd: overlayColorEnd ?? overlayColor,
           }}
+          revealContinueLabel={launching ? "Starting…" : "Scratch Now"}
+          onRevealCards={handleRevealCards}
+          onRevealContinue={handleRevealContinue}
+          onRevealSaveLater={handleRevealSaveLater}
+          onRevealSaveAndOpenNext={
+            onSaveAndOpenNext ? handleRevealSaveAndOpenNext : undefined
+          }
           tearHud={
-            selectedId ? (
+            selectedId && !tear.debug.packOpenRequested ? (
               <DragToTearControl
                 percent={tear.sliderPercent}
                 finishing={tear.finishing}

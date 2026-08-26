@@ -19,7 +19,6 @@ import {
   fetchAuthSession,
   getAuthEmail,
   hasLoggedInBefore,
-  isAuthenticated,
   isEmailVerified,
   logoutRemote,
   markEmailVerified,
@@ -39,6 +38,7 @@ import {
   setRecommendationSeedCreator,
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
+import { addPackToCart, type CartAddInput } from "@/services/cart";
 import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
@@ -103,6 +103,9 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "like" ||
     action.type === "follow" ||
     action.type === "inbox" ||
+    action.type === "unopened-packs" ||
+    action.type === "cart" ||
+    action.type === "add-to-cart" ||
     action.type === "collection"
   );
 }
@@ -158,6 +161,9 @@ type AuthContextValue = {
   requestTab: (tab: AppTab) => void;
   openStore: () => void;
   openInbox: () => void;
+  openUnopenedPacks: () => void;
+  openCart: () => void;
+  addToCart: (pack: CartAddInput) => void;
   openCreator: (id: string, themeId?: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
@@ -183,6 +189,7 @@ type AuthContextValue = {
   setNavNotice: (msg: string) => void;
   consumeResumeLike: () => void;
   applyRecommendationDecision: (action: ProtectedAction | null) => void;
+  invalidateRemoteSession: () => void;
   verifyEmail: string;
 };
 
@@ -190,7 +197,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [authed, setAuthed] = useState(false);
   const [returningUser, setReturningUser] = useState(() => hasLoggedInBefore());
   const [profile, setProfile] = useState(initialProfile);
   const [authOpen, setAuthOpen] = useState(false);
@@ -228,8 +235,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       // Ignore results from a probe that started before a local auth transition.
       if (epoch !== sessionSyncEpochRef.current) return;
-      // Network/timeout/non-OK: leave local session alone.
-      if (!session) return;
+
+      if (session.state === "unreachable") {
+        // Cookie may still be valid. Do not resume gated actions (authed stays false).
+        return;
+      }
 
       if (session.authenticated && session.user) {
         applyRemoteUser(session.user, {
@@ -240,12 +250,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Definitive logged-out response — clear only stale local keys.
-      if (!isAuthenticated()) {
-        setAuthed(false);
-        setEmailVerified(false);
-        return;
-      }
       destroySession();
       clearEmailVerified();
       setAuthed(false);
@@ -276,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resumePending = useCallback(
     (action: ProtectedAction | null) => {
-      if (!action) return;
+      if (!action || action.type === "session-expired") return;
       if (action.type === "scratch") {
         // Collection / auth resume is a user gesture — unlock 3-2-1 audio so
         // ScratchPrototype can skip Tap-to-play and arm the countdown.
@@ -342,7 +346,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "buy") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
         const isBuyPack =
-          action.type === "buy" ? action.kind !== "open-pack" : true;
+          action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
         if (isBuyPack) clearOpening();
         navigate(Paths.purchase(action.pack.packId), {
           state: {
@@ -381,6 +385,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate(Paths.inbox);
         return;
       }
+      if (action.type === "unopened-packs") {
+        navigate(Paths.collectionPacks);
+        return;
+      }
+      if (action.type === "cart") {
+        captureSecondaryReturn();
+        navigate(Paths.packPocket);
+        return;
+      }
+      if (action.type === "add-to-cart") {
+        addPackToCart(action.pack);
+        captureSecondaryReturn();
+        navigate(Paths.packPocket);
+        return;
+      }
       if (action.type === "collection") {
         noteCreatorEngagement(action.creatorId);
         navigate(Paths.creator(action.creatorId));
@@ -417,6 +436,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (pendingAction: ProtectedAction | null) => {
       const decision = evaluateRecommendationEligibility({
         pending: pendingAction,
+        authenticated: true,
       });
 
       if (decision.action === "launch-initialization") {
@@ -463,7 +483,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requireAuth = useCallback(
     (action: ProtectedAction) => {
-      if (authed || isAuthenticated()) {
+      if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
           setVerifyPending(action);
           setVerifyOpen(true);
@@ -500,6 +520,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openInbox = useCallback(() => {
     if (!requireAuth({ type: "inbox" })) return;
   }, [requireAuth]);
+
+  const openUnopenedPacks = useCallback(() => {
+    if (!requireAuth({ type: "unopened-packs" })) return;
+  }, [requireAuth]);
+
+  const openCart = useCallback(() => {
+    if (!requireAuth({ type: "cart" })) return;
+  }, [requireAuth]);
+
+  const addToCart = useCallback(
+    (pack: CartAddInput) => {
+      if (pack.creator) noteCreatorEngagement(pack.creator);
+      requireAuth({ type: "add-to-cart", pack });
+    },
+    [requireAuth],
+  );
 
   const openCreator = useCallback(
     (id: string, themeId?: string) => {
@@ -631,6 +667,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const invalidateRemoteSession = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+    destroySession();
+    clearEmailVerified();
+    setAuthed(false);
+    setEmailVerified(false);
+    setInboxUnread(0);
+    setPending({ type: "session-expired" });
+    setAuthSheetMode("login");
+    setAuthSheetEmail("");
+    setAuthOpen(true);
+  }, []);
+
   const logout = useCallback(() => {
     sessionSyncEpochRef.current += 1;
     void logoutRemote();
@@ -691,6 +740,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestTab,
       openStore,
       openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
       openCreator,
       openPurchase,
       openSettings,
@@ -713,6 +765,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setNavNotice,
       consumeResumeLike,
       applyRecommendationDecision,
+      invalidateRemoteSession,
       verifyEmail: profile.email || getAuthEmail(),
     }),
     [
@@ -728,6 +781,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       finishRecommendationAndResume,
       guest,
       guestAuthLabel,
+      invalidateRemoteSession,
       logout,
       navNotice,
       notePackPurchaseSeed,
@@ -740,6 +794,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inventoryRevision,
       openCreator,
       openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
       openPasswordReset,
       openPurchase,
       openSettings,

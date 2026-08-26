@@ -3,6 +3,7 @@
  */
 
 import { apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 
 export type RedeemReward =
   | { type: "diamonds"; amount: number }
@@ -87,6 +88,22 @@ function markRedeemed(code: string) {
   writeHistoryCodes(next);
 }
 
+/** `?demo=1` only — offline fixture catalog when the API is unreachable. */
+function redeemFromDemoCatalog(code: string): RedeemCodeResponse {
+  if (readHistoryCodes().includes(code)) {
+    return { success: false, errorType: "already_redeemed" };
+  }
+
+  const entry = DEMO_CODES[code];
+  if (!entry) return { success: false, errorType: "invalid_code" };
+  if (entry.kind === "error") {
+    return { success: false, errorType: entry.errorType };
+  }
+
+  markRedeemed(code);
+  return { success: true, reward: entry.reward };
+}
+
 /** Redeem a promo code. Case-insensitive; trims whitespace. */
 export async function redeemCode(raw: string): Promise<RedeemCodeResponse> {
   const code = normalizeCode(raw);
@@ -108,19 +125,10 @@ export async function redeemCode(raw: string): Promise<RedeemCodeResponse> {
     if (remote.success) markRedeemed(code);
     return remote;
   } catch {
-    /* fall through to local demo catalog */
+    if (!isDemoMode()) {
+      return { success: false, errorType: "network_error" };
+    }
   }
 
-  if (readHistoryCodes().includes(code)) {
-    return { success: false, errorType: "already_redeemed" };
-  }
-
-  const entry = DEMO_CODES[code];
-  if (!entry) return { success: false, errorType: "invalid_code" };
-  if (entry.kind === "error") {
-    return { success: false, errorType: entry.errorType };
-  }
-
-  markRedeemed(code);
-  return { success: true, reward: entry.reward };
+  return redeemFromDemoCatalog(code);
 }

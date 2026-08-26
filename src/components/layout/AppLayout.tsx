@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
-import { InboxButton } from "@/components/InboxButton";
+import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,7 +26,7 @@ export function AppLayout() {
     verifyOpen,
     navNotice,
     openStore,
-    openInbox,
+    openCart,
     completeAuth,
     dismissAuth,
     onVerified,
@@ -35,6 +35,7 @@ export function AppLayout() {
     verifyEmail,
     inboxUnread,
     setInboxUnread,
+    invalidateRemoteSession,
     setPurchasedPacks,
     bumpInventoryRevision,
   } = useAuth();
@@ -74,7 +75,9 @@ export function AppLayout() {
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/photo-scratch");
 
-  const onInbox = location.pathname.startsWith("/inbox");
+  const onPackPocket =
+    location.pathname.startsWith("/pack-pocket") ||
+    location.pathname.startsWith("/cart");
 
   const showTopUtility =
     !hideChrome &&
@@ -90,23 +93,22 @@ export function AppLayout() {
       return;
     }
     let cancelled = false;
-    void fetchInboxMessages().then((messages) => {
+    void fetchInboxMessages().then((result) => {
       if (cancelled) return;
-      setInboxUnread(countUnread(messages));
+      if (result.status === "unauthorized") {
+        invalidateRemoteSession();
+        return;
+      }
+      setInboxUnread(countUnread(result.messages));
     });
     return () => {
       cancelled = true;
     };
-  }, [guest, setInboxUnread]);
+  }, [guest, invalidateRemoteSession, setInboxUnread]);
 
-  const mobileInbox = openInbox ? (
-    <InboxButton
-      unreadCount={inboxUnread}
-      onOpen={openInbox}
-      variant="ghost"
-      active={onInbox}
-    />
-  ) : null;
+  const mobilePacks = (
+    <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
+  );
 
   return (
     <div
@@ -124,7 +126,7 @@ export function AppLayout() {
           onOpenStore={openStore}
           onOpenHome={() => requestTab("home")}
           visible
-          trailing={mobileInbox}
+          trailing={mobilePacks}
         />
       ) : null}
 
@@ -139,9 +141,9 @@ export function AppLayout() {
           coins={guest ? null : coins}
           diamonds={guest ? null : diamonds}
           onOpenStore={showTopUtility ? openStore : undefined}
-          onOpenInbox={showTopUtility ? openInbox : undefined}
+          onOpenUnopenedPacks={showTopUtility ? openCart : undefined}
           inboxUnreadCount={inboxUnread}
-          inboxActive={onInbox}
+          packsActive={onPackPocket}
           hideDock={isPurchase}
         />
       ) : null}

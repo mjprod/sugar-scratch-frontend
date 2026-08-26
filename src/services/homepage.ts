@@ -13,6 +13,7 @@ import {
   PACK_PHOTOS,
 } from "../lib/photos";
 import { getCollectionPageState } from "./collectionState";
+import { isDemoMode } from "../lib/demo";
 import {
   loadModels,
   modelDisplayName,
@@ -528,16 +529,24 @@ function wait(ms = 420) {
 
 export async function fetchHomepage(): Promise<HomepageData> {
   const continueCollecting = await loadContinueCollecting();
+  if (isDemoMode()) {
+    return {
+      featured: FEATURED,
+      continueCollecting,
+      leaderboard: LEADERBOARD,
+    };
+  }
   return {
-    featured: FEATURED,
+    featured: [],
     continueCollecting,
-    leaderboard: LEADERBOARD,
+    leaderboard: [],
   };
 }
 
 export async function fetchLeaderboard(
   category: LeaderboardCategory,
 ): Promise<LeaderboardRow[]> {
+  if (!isDemoMode()) return [];
   await wait(280);
   const rows =
     category === "all"
@@ -551,6 +560,7 @@ export async function fetchLeaderboard(
 }
 
 export async function fetchPackLibrary(): Promise<FeaturedPack[]> {
+  if (!isDemoMode()) return [];
   await wait(300);
   const defaults = {
     diamondCost: 8,

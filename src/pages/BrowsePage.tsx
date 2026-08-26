@@ -6,7 +6,7 @@ import { WelcomeGiftOverlay } from "@/components/welcome/WelcomeGiftOverlay";
 export function BrowsePage() {
   const {
     restart,
-    openPurchase,
+    addToCart,
     openCreator,
     resumeLikeId,
     consumeResumeLike,
@@ -21,7 +21,15 @@ export function BrowsePage() {
         onTutorialDone={() => undefined}
         onSkipTutorial={() => undefined}
         onRestart={restart}
-        onStartPlaying={(pack) => openPurchase(pack, "buy-pack")}
+        onStartPlaying={(pack) =>
+          addToCart({
+            packId: pack.packId,
+            packName: pack.packName,
+            creator: pack.creator,
+            characterId: pack.characterId ?? pack.packId,
+            price: pack.price,
+          })
+        }
         onOpenCreator={openCreator}
         onClaimDaily={(diamonds) => addDiamonds(diamonds)}
         onClaimAttempt={() => {

@@ -3,7 +3,7 @@
  * Auth never decides recommendation. This module is the sole launcher.
  */
 
-import { isAuthenticated, type ProtectedAction } from "./auth";
+import { type ProtectedAction } from "./auth";
 
 const STATUS_KEY = "sugar.v8.recommendationStatus";
 const DEFER_KEY = "sugar.v8.recommendationDeferredSession";
@@ -334,8 +334,10 @@ export function saveSwipePreferences(result: {
  */
 export function evaluateRecommendationEligibility(opts: {
   pending: ProtectedAction | null;
+  /** True only after this login / confirmed session, not leftover sessionStorage. */
+  authenticated: boolean;
 }): RecommendationDecision {
-  if (!isAuthenticated()) return { action: "none" };
+  if (!opts.authenticated) return { action: "none" };
 
   const status = getRecommendationStatus();
 

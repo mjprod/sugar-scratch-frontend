@@ -1,5 +1,5 @@
 import {
-  Bell,
+  Inbox,
   ChevronRight,
   CreditCard,
   FileText,
@@ -31,6 +31,7 @@ export function UserDashboardScreen({
   onOpenEditProfile,
   onOpenFollowing,
   onOpenGameSettings,
+  onOpenInbox,
 }: {
   name: string;
   username: string;
@@ -40,6 +41,7 @@ export function UserDashboardScreen({
   onOpenEditProfile: () => void;
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
+  onOpenInbox?: () => void;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -72,6 +74,10 @@ export function UserDashboardScreen({
     }
     if (label === "Following") {
       onOpenFollowing?.();
+      return;
+    }
+    if (label === "Inbox") {
+      onOpenInbox?.();
       return;
     }
     if (label === "Game Settings") {
@@ -190,9 +196,9 @@ export function UserDashboardScreen({
         <MenuGroup
           title="Profile & Account"
           items={[
+            { label: "Inbox", icon: Inbox },
             { label: "Purchase History", icon: CreditCard },
             { label: "Following", icon: Users },
-            { label: "Notifications", icon: Bell },
             { label: "Change Password", icon: Lock },
           ]}
           onOpen={open}

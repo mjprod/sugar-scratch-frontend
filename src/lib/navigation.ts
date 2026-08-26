@@ -35,6 +35,8 @@ export const SURFACE_KIND: Record<string, NavSurfaceKind> = {
   bag: "primary",
   profile: "primary",
   inbox: "secondary",
+  cart: "secondary",
+  "pack-pocket": "secondary",
   store: "secondary",
   settings: "secondary",
   "change-password": "secondary",
@@ -59,6 +61,13 @@ export const SECONDARY_SURFACES: Record<string, SecondarySurface> = {
     fallbackTab: "profile",
     title: "Inbox",
     backLabel: "Back to Profile",
+  },
+  cart: {
+    id: "cart",
+    kind: "secondary",
+    fallbackTab: "feed",
+    title: "Pack Pocket",
+    backLabel: "Back",
   },
   store: {
     id: "store",

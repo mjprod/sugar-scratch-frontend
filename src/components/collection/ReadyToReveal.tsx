@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
@@ -46,6 +47,8 @@ export function ReadyToReveal({
   unopenedPacks?: UnopenedPack[];
   inventoryRevision?: number;
 }) {
+  const [searchParams] = useSearchParams();
+  const revealPacks = searchParams.get("reveal") === "packs";
   const packs = useMemo(
     () => unopenedPacks ?? listUnopenedPackShelf(),
     [unopenedPacks, inventoryRevision],
@@ -69,6 +72,16 @@ export function ReadyToReveal({
       trackScratchEvent("Ready To Scratch Viewed", { count: cardItems });
     }
   }, [cardItems, inventoryRevision]);
+
+  useEffect(() => {
+    if (!revealPacks) return;
+    document.getElementById("ready-heading")?.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }, [revealPacks, packItems]);
 
   return (
     <section

@@ -12,5 +12,6 @@ assert(REDEEM_ERROR_COPY.invalid_code.includes("isn't valid"), "invalid copy");
 assert(REDEEM_ERROR_COPY.expired.includes("expired"), "expired copy");
 assert(REDEEM_ERROR_COPY.already_redeemed.includes("already"), "already copy");
 assert(REDEEM_ERROR_COPY.unavailable.includes("no longer"), "unavailable copy");
+assert(REDEEM_ERROR_COPY.network_error.includes("wrong"), "network copy");
 
 console.log("v8 redeem self-check passed");

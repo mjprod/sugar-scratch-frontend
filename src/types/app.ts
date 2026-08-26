@@ -20,7 +20,7 @@ export type Step =
 export type AppTab = "home" | "feed" | "hub" | "bag" | "profile";
 
 /** Full-screen destinations from Top Navigation (hide footer while open) */
-export type AppOverlay = "settings" | "store" | "inbox" | null;
+export type AppOverlay = "settings" | "store" | "inbox" | "cart" | "pack-pocket" | null;
 
 export type GenderInterest = "male" | "female" | "both";
 

@@ -3,7 +3,7 @@
 // Compositing pipeline (per frame):
 //   1. bottom video  -> screen, aspect-cover (fills canvas, crops overflow)
 //   2. foreground video -> offscreen FBO, chroma-keyed in the fragment shader
-//      (occupancy snapshot for pointer tests is copied here, before punch)
+//      (copied to a pre-punch FBO for cursor-on-fabric alpha queries)
 //   3. tracked mesh triangles -> punch holes in that FBO wherever the UV-space
 //      scratch texture is marked (multiplies dst alpha by 1 - scratch)
 //   4. composite the FBO over the bottom video
@@ -347,8 +347,8 @@ export class GarmentGLRenderer {
   private scratchReadPixel = new Uint8Array(4);
   private fgColorTex: WebGLTexture;
   private fgFbo: WebGLFramebuffer;
-  /** Keyed fabric before mesh punch — occupancy for pointer hit-tests. */
-  private fgKeyedTex: WebGLTexture;
+  /** Keyed foreground before mesh punch — used by `foregroundAlphaAt`. */
+  private fgKeyedColorTex: WebGLTexture;
   private fgKeyedFbo: WebGLFramebuffer;
   // Once a video has been drawn at least once we keep drawing its last good
   // frame even if it momentarily stalls (common on mobile during a loop wrap, or
@@ -388,22 +388,12 @@ export class GarmentGLRenderer {
       pixelRatio?: number;
     },
   ) {
-    let gl = canvas.getContext("webgl2", {
+    const gl = canvas.getContext("webgl2", {
       premultipliedAlpha: false,
       alpha: options?.alpha ?? false,
       preserveDrawingBuffer: options?.preserveDrawingBuffer ?? false,
     });
-    // A prior dispose({ loseContext: true }) leaves getContext returning the
-    // same lost context forever — draws clear to black. Restore once if we can.
-    if (gl?.isContextLost()) {
-      gl.getExtension("WEBGL_lose_context")?.restoreContext();
-      gl = canvas.getContext("webgl2", {
-        premultipliedAlpha: false,
-        alpha: options?.alpha ?? false,
-        preserveDrawingBuffer: options?.preserveDrawingBuffer ?? false,
-      });
-    }
-    if (!gl || gl.isContextLost()) throw new Error("WebGL2 not available");
+    if (!gl) throw new Error("WebGL2 not available");
     this.gl = gl;
     this.width = width;
     this.height = height;
@@ -481,14 +471,14 @@ export class GarmentGLRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fgFbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.fgColorTex, 0);
 
-    this.fgKeyedTex = makeTexture(gl, this.bufferWidth, this.bufferHeight);
+    this.fgKeyedColorTex = makeTexture(gl, this.bufferWidth, this.bufferHeight);
     this.fgKeyedFbo = gl.createFramebuffer()!;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fgKeyedFbo);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       gl.COLOR_ATTACHMENT0,
       gl.TEXTURE_2D,
-      this.fgKeyedTex,
+      this.fgKeyedColorTex,
       0,
     );
 
@@ -616,9 +606,7 @@ export class GarmentGLRenderer {
   }
 
   /**
-   * Keyed fabric occupancy at a reference-frame canvas point (pre-punch).
-   * Holes from `drawMeshPunch` must not count as off-fabric — the pointer sits
-   * in the stroke it just painted, where post-punch alpha is ~0.
+   * Keyed fabric alpha at a reference-frame canvas point (before scratch holes).
    * Returns -1 when the keyed FBO is not ready yet.
    */
   foregroundAlphaAt(worldX: number, worldY: number): number {
@@ -641,7 +629,7 @@ export class GarmentGLRenderer {
     return this.scratchReadPixel[3] / 255;
   }
 
-  /** Copy the just-keyed fgFbo into occupancy before mesh punch. */
+  /** Copy the just-drawn keyed FG into `fgKeyedFbo` before holes are punched. */
   private snapshotKeyedForeground() {
     const gl = this.gl;
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fgFbo);
@@ -714,14 +702,11 @@ export class GarmentGLRenderer {
     if (!vw || !vh || video.readyState < 2) return false;
     const state = this.videoTexState.get(tex);
     const sizeChanged = !state || state.w !== vw || state.h !== vh;
-    if (sizeChanged || !state) return true;
-    // Hybrid: trust rVFC when it says a frame is ready, but also treat a
-    // currentTime advance as pending. Relying on rVFC alone leaves Chrome /
-    // Safari stuck on a black first upload when callbacks stall after src swap.
-    const rvfcReady =
-      this.videoFrameHooked.has(video) && !!this.videoFrameReady.get(video);
-    if (rvfcReady) return true;
-    return state.t !== video.currentTime;
+    if (sizeChanged) return true;
+    if (this.hookVideoFrames(video)) {
+      return !!this.videoFrameReady.get(video);
+    }
+    return !state || state.t !== video.currentTime;
   }
 
   // Hook requestVideoFrameCallback (once per video) so we know precisely when a
@@ -736,10 +721,7 @@ export class GarmentGLRenderer {
     if (typeof rvfcVideo.requestVideoFrameCallback !== "function") return false;
     if (this.videoFrameHooked.has(video)) return true;
     this.videoFrameHooked.add(video);
-    // Do NOT mark ready=true here — that raced a black/empty first upload before
-    // the decoder had presented a real frame. Wait for the first rVFC (or the
-    // currentTime hybrid in uploadVideo / isVideoFramePending).
-    this.videoFrameReady.set(video, false);
+    this.videoFrameReady.set(video, true);
     let handle = 0;
     const onFrame = () => {
       if (this.disposed) return;
@@ -782,7 +764,7 @@ export class GarmentGLRenderer {
     gl.deleteTexture(this.fgTex);
     gl.deleteTexture(this.scratchTex);
     gl.deleteTexture(this.fgColorTex);
-    gl.deleteTexture(this.fgKeyedTex);
+    gl.deleteTexture(this.fgKeyedColorTex);
     gl.deleteBuffer(this.quadBuf);
     gl.deleteBuffer(this.meshPosBuf);
     gl.deleteBuffer(this.meshUvBuf);
@@ -795,10 +777,10 @@ export class GarmentGLRenderer {
     gl.deleteProgram(this.line);
     gl.deleteProgram(this.flake);
 
-    // Only lose the context when the caller opts in (canvas going away).
-    // Default keep-alive: remounting GarmentGLRenderer on the same canvas must
-    // not leave getContext stuck on a lost handle (black stage).
-    if (options?.loseContext === true) {
+    // Only lose the context when the canvas itself is going away. Recreating a
+    // renderer on the same canvas must keep the WebGL2 context alive — Safari
+    // returns the existing (lost) context from getContext otherwise.
+    if (options?.loseContext !== false) {
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     }
   }
@@ -812,16 +794,17 @@ export class GarmentGLRenderer {
 
     const state = this.videoTexState.get(tex);
     const sizeChanged = !state || state.w !== vw || state.h !== vh;
-    const hooked = this.hookVideoFrames(video);
-    const rvfcReady = hooked && !!this.videoFrameReady.get(video);
-    const timeAdvanced = !state || state.t !== video.currentTime;
 
     // Re-uploading a frame the texture already holds is pure waste (the render
-    // loop ticks faster than the clip's fps). Prefer rVFC when it fires; also
-    // accept currentTime advances so a stalled rVFC chain cannot freeze on the
-    // black clear that starts every draw.
-    if (!sizeChanged && !rvfcReady && !timeAdvanced) return;
-    if (rvfcReady) this.videoFrameReady.set(video, false);
+    // loop ticks faster than the clip's fps). Decide if there's anything new:
+    // prefer rVFC ("a new frame was presented"); fall back to a currentTime
+    // change. Either way this cuts uploads to roughly the clip's real fps.
+    if (this.hookVideoFrames(video)) {
+      if (!sizeChanged && !this.videoFrameReady.get(video)) return;
+      this.videoFrameReady.set(video, false);
+    } else if (!sizeChanged && state && state.t === video.currentTime) {
+      return;
+    }
 
     // Hunt-phase knob: keep FG at full clip fps, but only push every other
     // bottom frame to the GPU (~25% less upload traffic with two videos).
@@ -1172,58 +1155,10 @@ export class GarmentGLRenderer {
       bottomPending ||
       fgPending ||
       hideForeground !== this.lastHideForeground;
-    // With preserveDrawingBuffer:false the browser clears the backbuffer after
-    // compositing — skipping a frame paints black. Always re-present cached
-    // layers when nothing else changed.
-    if (!needsDraw) {
-      if (!this.hasPresentedFrame) return;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      this.setBufferViewport();
-      gl.disable(gl.BLEND);
-      gl.clearColor(0, 0, 0, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      if (this.bottomEverReady && bottomVideo) {
-        this.drawVideo(
-          this.blit,
-          this.bottomTex,
-          bottomVideo,
-          false,
-          camX,
-          camY,
-          zoom,
-          false,
-        );
-      }
-      if (!hideForeground && this.fgEverReady) {
-        gl.useProgram(this.composite);
-        gl.enable(gl.BLEND);
-        gl.blendEquation(gl.FUNC_ADD);
-        gl.blendFuncSeparate(
-          gl.SRC_ALPHA,
-          gl.ONE_MINUS_SRC_ALPHA,
-          gl.ONE,
-          gl.ONE_MINUS_SRC_ALPHA,
-        );
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.fgColorTex);
-        gl.uniform1i(this.compositeTexLoc, 0);
-        gl.uniform2f(this.compositeScaleLoc, zoom, zoom);
-        gl.uniform2f(this.compositeOffsetLoc, camX, camY);
-        this.bindQuad(this.composite);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      }
-      return;
-    }
+    if (!needsDraw) return;
 
     const paintedScratch = this.scratchDirty;
     this.scratchDirty = false;
-
-    // Wait for a real bottom frame before clearing. Clearing to black then
-    // drawing an empty video texture is exactly the "foil on black stage" bug
-    // in Chrome/Safari when the first upload races the decoder.
-    const bottomCanUpload =
-      !!bottomVideo && bottomVideo.readyState >= 2 && bottomVideo.videoWidth > 0;
-    if (!bottomCanUpload && !this.bottomEverReady) return;
 
     // 1. bottom video to screen
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -1231,8 +1166,8 @@ export class GarmentGLRenderer {
     gl.disable(gl.BLEND);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    if (bottomCanUpload) {
-      this.drawVideo(this.blit, this.bottomTex, bottomVideo!, false, camX, camY, zoom);
+    if (bottomVideo && bottomVideo.readyState >= 2) {
+      this.drawVideo(this.blit, this.bottomTex, bottomVideo, false, camX, camY, zoom);
       this.bottomEverReady = true;
     } else if (bottomVideo && this.bottomEverReady) {
       // Bottom stalled (e.g. mid loop wrap): redraw its last frame so scratched
@@ -1240,19 +1175,15 @@ export class GarmentGLRenderer {
       this.drawVideo(this.blit, this.bottomTex, bottomVideo, false, camX, camY, zoom, false);
     }
 
-    const fgFresh =
-      !!foregroundVideo &&
-      foregroundVideo.readyState >= 2 &&
-      foregroundVideo.videoWidth > 0;
+    const fgFresh = !!foregroundVideo && foregroundVideo.readyState >= 2;
     // Nothing to show yet: bail until the foreground has decoded its first frame.
-    // Bottom is already on screen above, so this does not flash black.
     if (!hideForeground && !fgFresh && !this.fgEverReady) return;
 
     this.lastPresentedCam.x = camX;
     this.lastPresentedCam.y = camY;
     this.lastPresentedZoom = zoom;
     this.lastHideForeground = hideForeground;
-    this.hasPresentedFrame = this.bottomEverReady;
+    this.hasPresentedFrame = true;
 
     // Rebuild the keyed FG FBO only when the performer frame or scratch map
     // changed. Camera pans and bottom-only updates just re-composite.

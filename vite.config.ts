@@ -73,6 +73,9 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       https: localHttps ?? true,
+      fs: {
+        allow: [rootDir],
+      },
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
       allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
