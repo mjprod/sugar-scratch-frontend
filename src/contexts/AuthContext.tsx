@@ -39,6 +39,7 @@ import {
   setRecommendationSeedCreator,
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
+import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import { resetPageReady } from "@/shared/ui/PageTransition";
@@ -100,6 +101,7 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "photo-scratch" ||
     action.type === "store" ||
     action.type === "like" ||
+    action.type === "follow" ||
     action.type === "inbox" ||
     action.type === "collection"
   );
@@ -353,6 +355,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "like") {
         setResumeLikeId(action.feedItemId);
+        navigate(Paths.discover);
+        return;
+      }
+      if (action.type === "follow") {
+        // Apply follow after login; stay on Discover (do not open creator).
+        followCreator({
+          id: action.creatorId,
+          displayName: action.displayName?.trim() || action.creatorId,
+          username: "",
+          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.png",
+          followedAt: Date.now(),
+          hasUnseenActivity: false,
+        });
         navigate(Paths.discover);
         return;
       }

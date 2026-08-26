@@ -230,7 +230,11 @@ function CreatorScreenInner({
   }
 
   function handleToggleFollow() {
-    if (!requireAuth({ type: "collection", creatorId: followId || creatorId })) {
+    if (!authed) {
+      requireAuth({
+        type: "collection",
+        creatorId: followId || creatorId,
+      });
       return;
     }
 
@@ -285,7 +289,6 @@ function CreatorScreenInner({
     <section data-page-scroll className="cpv2-page no-sticky-cta">
       <div className="cpv2-shell">
         <CreatorHeader
-          creatorId={purchaseCreatorId}
           name={creatorName}
           username={username}
           coverUrl={coverUrl}
