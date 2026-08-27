@@ -539,9 +539,10 @@ body[data-theme="v8"] .guest-home-landing__cta {
   z-index: 1;
   display: flex;
   flex: 1;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   pointer-events: none;
+  padding-bottom: 13dvh;
 }
 
 body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow,
@@ -7630,6 +7631,18 @@ body[data-theme="v8"] .hf-slide {
   min-height: calc(100% - var(--hf-next-peek, 0px));
   scroll-snap-align: start;
   scroll-snap-stop: always;
+}
+
+/*
+ * Slides are shorter than the viewport so the next card can peek.
+ * Extra end space lets the last slide snap to the same rest position,
+ * otherwise CTA / details sit ~peek lower with nowhere to scroll.
+ */
+body[data-theme="v8"] .hf-viewport::after {
+  content: "";
+  display: block;
+  height: var(--hf-next-peek, 0px);
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .hf-card {
