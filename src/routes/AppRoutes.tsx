@@ -6,6 +6,7 @@ import { AppShell, OnboardShell } from "@/components/layout/Shell";
 import { SoftGate } from "@/routes/SoftGate";
 import { Paths } from "@/routes/Paths";
 import { BrowsePage } from "@/pages/BrowsePage";
+import { LoggedInHomePage } from "@/pages/LoggedInHomePage";
 import { CollectionPage } from "@/pages/CollectionPage";
 import { CreatorPage } from "@/pages/CreatorPage";
 import { GamePage } from "@/pages/GamePage";
@@ -120,6 +121,7 @@ export function AppRoutes() {
         >
           {/* Home nav → pack browse at root; Discover nav → home feed */}
           <Route index element={<BrowsePage />} />
+          <Route path="loggedInHome" element={<LoggedInHomePage />} />
           <Route path="discover" element={<HomeFeedPage />} />
           {/* Legacy /browse → root Home */}
           <Route path="browse" element={<Navigate to={Paths.home} replace />} />

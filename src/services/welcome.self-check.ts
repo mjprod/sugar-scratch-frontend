@@ -4,6 +4,8 @@
  */
 import {
   claimWelcomeRewards,
+  fulfillPendingWelcomeGift,
+  hasPendingWelcomeGift,
   hideWelcomeOverlayForSession,
   isWelcomeGiftClaimed,
   isWelcomeGiftEligible,
@@ -42,10 +44,22 @@ assert(!shouldShowWelcomeOverlay(true), "account flag hides overlay");
 assert(!claimWelcomeRewards(true).granted, "account flag claim is a no-op");
 assert(shouldShowWelcomeOverlay(), "local still eligible without account flag");
 
-const first = claimWelcomeRewards();
-assert(first.granted, "claim grants");
+const deferred = claimWelcomeRewards(false, { deferGrant: true });
+assert(deferred.granted, "guest claim grants");
+assert(deferred.deferred, "guest claim is deferred");
 assert(isWelcomeGiftClaimed(), "claimed");
+assert(hasPendingWelcomeGift(), "pending until signup");
 assert(!shouldShowWelcomeOverlay(), "no overlay after claim");
+assert(!fulfillPendingWelcomeGift(true), "account already claimed skips grant");
+assert(hasPendingWelcomeGift() === false, "account claimed clears pending");
+
+local.clear();
+session.clear();
+const deferredAgain = claimWelcomeRewards(false, { deferGrant: true });
+assert(deferredAgain.granted, "guest claim again");
+assert(fulfillPendingWelcomeGift(), "signup fulfills pending gift");
+assert(!hasPendingWelcomeGift(), "pending cleared after fulfill");
+assert(!fulfillPendingWelcomeGift(), "second fulfill is a no-op");
 
 const second = claimWelcomeRewards();
 assert(!second.granted, "second claim is a no-op");

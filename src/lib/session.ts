@@ -46,6 +46,7 @@ export function clearV8Session() {
     localStorage.removeItem("sugar.v8.recommendationStatus");
     localStorage.removeItem("sugar.v8.welcomeStatus");
     localStorage.removeItem("sugar.v8.welcomeGiftClaimed");
+    localStorage.removeItem("sugar.v8.welcomeGiftPending");
     localStorage.removeItem("sugar.v8.scratchTutorialCompleted");
     localStorage.removeItem("sugar.v8.preferenceStatus");
     localStorage.removeItem("sugar.v8.personalizationCompleted");

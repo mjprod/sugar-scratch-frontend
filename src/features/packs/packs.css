@@ -265,6 +265,11 @@
   pointer-events: auto;
 }
 
+.reveal-stage__cta.is-enter.coverflow-reveal-cta {
+  width: 100%;
+  max-width: 17rem;
+}
+
 .coverflow-reveal-cta .motion-reveal__continue,
 .coverflow-reveal-cta .cta-button-glow,
 .coverflow-reveal-cta .cta-button {
@@ -1378,6 +1383,63 @@ h1 {
 .coverflow-buy-pack-cta .cta-button:disabled .cta-button__cost,
 .coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__cost {
   opacity: 0.3;
+}
+
+.coverflow-buy-pack-cta .cta-button__inner,
+.coverflow-buy-pack-cta .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button__face,
+.coverflow-buy-pack-cta .cta-button__cost {
+  transition:
+    opacity 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    filter 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    background 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
+  Add Pack → In Pocket: anticipate (scale down), punch up, settle.
+  Gold chrome holds through the scale; In Pocket color eases in after.
+*/
+@keyframes coverflow-buy-cta-confirm {
+  0% {
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  16% {
+    transform: scale(0.9);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  52% {
+    transform: scale(1.1);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.coverflow-buy-pack-cta.is-confirming .cta-button-glow {
+  transform-origin: center center;
+  animation: coverflow-buy-cta-confirm 560ms both;
+}
+
+.coverflow-buy-pack-cta.is-confirming .cta-button {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverflow-buy-pack-cta.is-confirming .cta-button-glow {
+    animation: none;
+  }
+
+  .coverflow-buy-pack-cta .cta-button__inner,
+  .coverflow-buy-pack-cta .cta-button__stroke,
+  .coverflow-buy-pack-cta .cta-button__aurora,
+  .coverflow-buy-pack-cta .cta-button__face,
+  .coverflow-buy-pack-cta .cta-button__cost {
+    transition: none;
+  }
 }
 
 /* Staggered entrance inside the active stack: label first, then CTA. */

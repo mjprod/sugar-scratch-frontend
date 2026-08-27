@@ -41,6 +41,7 @@ import { clearHomeFeedCache } from "@/services/creatorFeed";
 import { addPackToCart, type CartAddInput } from "@/services/cart";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
+import { fulfillPendingWelcomeGift } from "@/services/welcome";
 import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
@@ -594,6 +595,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       markEntered();
       markOnboardingDone();
+      const grantedWelcome = fulfillPendingWelcomeGift(
+        Boolean(result.user?.welcomeClaimed),
+      );
+      if (grantedWelcome) {
+        setProfile((d) => ({ ...d, welcomeClaimed: true }));
+        setPurchasedPacks((n) => n + 1);
+        bumpInventoryRevision();
+      }
       setAuthOpen(false);
       setAuthSheetMode("login");
       setAuthSheetEmail("");
@@ -611,7 +620,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applyRecommendationDecision(action);
       }, 0);
     },
-    [applyRecommendationDecision, pending],
+    [applyRecommendationDecision, bumpInventoryRevision, pending],
   );
 
   const dismissAuth = useCallback(() => {

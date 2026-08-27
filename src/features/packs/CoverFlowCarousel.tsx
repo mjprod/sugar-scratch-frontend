@@ -613,6 +613,32 @@ function CoverFlowPack({
     vRotY: 0,
     vScale: 0,
   })
+  const [confirmingAdd, setConfirmingAdd] = useState(false)
+  const wasActiveAndEnabledRef = useRef(isActive && !buyDisabled)
+  const visuallyDisabled = buyDisabled && !confirmingAdd
+
+  useEffect(() => {
+    const wasActiveAndEnabled = wasActiveAndEnabledRef.current
+    wasActiveAndEnabledRef.current = isActive && !buyDisabled
+    if (!isActive || !buyDisabled) {
+      setConfirmingAdd(false)
+      return
+    }
+    if (!wasActiveAndEnabled) return
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return
+    }
+    setConfirmingAdd(true)
+  }, [buyDisabled, isActive])
+
+  useEffect(() => {
+    if (!confirmingAdd) return
+    const timeout = window.setTimeout(() => setConfirmingAdd(false), 580)
+    return () => window.clearTimeout(timeout)
+  }, [confirmingAdd])
 
   useEffect(() => {
     focusIndexRef.current = focusIndex
@@ -1555,28 +1581,42 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	              </p>
 	            </div>
 	            {/* Buy Pack only while purchasing — owned/ready-to-tear omits onBuy. */}
-	            {onBuy ? (
-	              <div className="coverflow-buy-pack-cta">
-		                <CtaButton
-		                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
-		                  {...ctaSize}
-		                  auroraPaused={isMobile}
-		                  glowOuterBloom="off"
-			                  label={buyLabel}
-			                  leadingIcon={buyLeadingIcon}
-			                  costAmount={formatPrice(item.price ?? 4.99)}
-		                  className="coverflow-buy-pack-cta__button"
-		                  tabIndex={buyDisabled ? -1 : 0}
-		                  disabled={buyDisabled}
-		                  aria-disabled={buyDisabled || undefined}
-		                  onClick={(event) => {
-		                    event.stopPropagation()
-		                    if (buyDisabled) return
-		                    onBuy(item)
-		                  }}
-		                />
-	              </div>
-	            ) : null}
+            {onBuy ? (
+              <div
+                className={`coverflow-buy-pack-cta${
+                  confirmingAdd ? ' is-confirming' : ''
+                }`}
+                onAnimationEnd={(event) => {
+                  if (event.animationName !== 'coverflow-buy-cta-confirm') return
+                  setConfirmingAdd(false)
+                }}
+              >
+			                <CtaButton
+			                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+			                  {...ctaSize}
+			                  auroraPaused={isMobile}
+			                  glowOuterBloom="off"
+				                  label={buyLabel}
+				                  leadingIcon={buyLeadingIcon}
+				                  costAmount={formatPrice(item.price ?? 4.99)}
+			                  className="coverflow-buy-pack-cta__button"
+			                  tabIndex={visuallyDisabled ? -1 : 0}
+			                  disabled={visuallyDisabled}
+			                  aria-disabled={visuallyDisabled || undefined}
+			                  onClick={(event) => {
+			                    event.stopPropagation()
+			                    if (buyDisabled || confirmingAdd) return
+			                    if (
+			                      typeof window === 'undefined' ||
+			                      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+			                    ) {
+			                      setConfirmingAdd(true)
+			                    }
+			                    onBuy(item)
+			                  }}
+			                />
+		              </div>
+		            ) : null}
 	          </div>
 	        </Html>
 	      ) : null}

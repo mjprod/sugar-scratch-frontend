@@ -1,9 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { HomeScreen } from "@/components/browse/BrowseScreen";
-import { GuestHomeLanding } from "@/components/home/GuestHomeLanding";
 
-export function BrowsePage() {
+export function LoggedInHomePage() {
   const {
     restart,
     addToCart,
@@ -14,11 +13,6 @@ export function BrowsePage() {
     authed,
   } = useAuth();
   const { addDiamonds } = useWallet();
-
-  if (!authed) {
-    return <GuestHomeLanding />;
-  }
-
   return (
     <>
       <HomeScreen

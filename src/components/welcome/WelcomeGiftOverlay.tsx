@@ -30,14 +30,15 @@ export function WelcomeGiftOverlay() {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("offer");
   const [error, setError] = useState(false);
+  const [heldForAccount, setHeldForAccount] = useState(false);
 
   useEffect(() => {
-    if (!skip && authed && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
+    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
       setOpen(true);
       return;
     }
     if (profile.welcomeClaimed) setOpen(false);
-  }, [authed, skip, profile.welcomeClaimed]);
+  }, [skip, profile.welcomeClaimed]);
 
   useEffect(() => {
     if (open) claimSlotRef.current?.querySelector("button")?.focus();
@@ -57,8 +58,11 @@ export function WelcomeGiftOverlay() {
   function onClaim() {
     if (phase !== "offer") return;
     setError(false);
+    setHeldForAccount(false);
     setPhase("claiming");
-    const result = claimWelcomeRewards(profile.welcomeClaimed);
+    const result = claimWelcomeRewards(profile.welcomeClaimed, {
+      deferGrant: !authed,
+    });
     if (!result.granted) {
       if (result.error) {
         setError(true);
@@ -68,8 +72,12 @@ export function WelcomeGiftOverlay() {
       setOpen(false);
       return;
     }
-    bumpInventoryRevision();
-    setPurchasedPacks((n) => n + 1);
+    if (result.deferred) {
+      setHeldForAccount(true);
+    } else {
+      bumpInventoryRevision();
+      setPurchasedPacks((n) => n + 1);
+    }
     setProfile((d) => ({ ...d, welcomeClaimed: true }));
     setPhase("confirm");
   }
@@ -79,6 +87,7 @@ export function WelcomeGiftOverlay() {
     setProfile((d) => ({ ...d, welcomeClaimed: false }));
     setPhase("offer");
     setError(false);
+    setHeldForAccount(false);
     setOpen(true);
   }
 
@@ -164,7 +173,11 @@ export function WelcomeGiftOverlay() {
           {phase === "confirm" ? (
             <div className="welcome-gift-confirm" role="status">
               <strong>Gift Claimed</strong>
-              <span>Added to your Bag</span>
+              <span>
+                {heldForAccount
+                  ? "Waiting in your Bag after you create an account"
+                  : "Added to your Bag"}
+              </span>
             </div>
           ) : (
             <>
