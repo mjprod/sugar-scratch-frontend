@@ -3203,10 +3203,10 @@ export function ScratchPrototype() {
   }
   resetScratchRef.current = resetScratch;
 
-  function commitMotionCardResult(cardId: string, prize: number) {
+  async function commitMotionCardResult(cardId: string, prize: number) {
     let updated = recordMotionCardResult(cardId, prize);
     if (!updated) return;
-    const settled = settlePackMotionCard(cardId);
+    const settled = await settlePackMotionCard(cardId);
     if (settled) updated = settled;
     setGameSession(updated);
   }
@@ -3226,7 +3226,7 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      commitMotionCardResult(finishedId, prize);
+      await commitMotionCardResult(finishedId, prize);
       // One catalog fetch for award + overlay photos (used to load twice).
       const catalog = prize > 0 ? await loadGameCatalog() : null;
       const awarded = await awardMotionCardPhotos(
@@ -3355,7 +3355,7 @@ export function ScratchPrototype() {
     setGameVideosReady(false);
     glRendererRef.current?.resetForeground();
     if (gameMode) {
-      commitMotionCardResult(transition.finishedId, transition.prize);
+      void commitMotionCardResult(transition.finishedId, transition.prize);
     }
     if (!completedCardIdsRef.current.includes(transition.finishedId)) {
       const nextCompleted = [
@@ -3426,7 +3426,7 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      commitMotionCardResult(finishedId, prize);
+      void commitMotionCardResult(finishedId, prize);
     }
 
     completedCardIdsRef.current = nextCompleted;

@@ -13,7 +13,10 @@ import { useTabNav } from "@/hooks/useTabNav";
 import { Paths } from "@/routes/Paths";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
-import { PACK_OPENING_REWARD_EVENT } from "@/services/packMotionSettle";
+import {
+  PACK_OPENING_REWARD_EVENT,
+  type PackOpeningRewardDetail,
+} from "@/services/packMotionSettle";
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -41,7 +44,7 @@ export function AppLayout() {
     setPurchasedPacks,
     bumpInventoryRevision,
   } = useAuth();
-  const { coins, diamonds, addCoins } = useWallet();
+  const { coins, diamonds, addCoins, setCoins, setDiamonds } = useWallet();
   const { activeTab: tab, requestTab } = useTabNav();
 
   useEffect(() => {
@@ -55,21 +58,33 @@ export function AppLayout() {
 
   useEffect(() => {
     function onPackOpeningReward(event: Event) {
-      const detail = (event as CustomEvent<{ coins?: number; cards?: number }>)
-        .detail;
+      const detail = (event as CustomEvent<PackOpeningRewardDetail>).detail;
       const rewardCoins = detail?.coins ?? 0;
       const rewardCards = detail?.cards ?? 0;
-      if (rewardCoins > 0) addCoins(rewardCoins);
+      if (detail?.wallet) {
+        setDiamonds(detail.wallet.diamonds);
+        setCoins(detail.wallet.coins);
+      } else if (rewardCoins > 0) {
+        addCoins(rewardCoins);
+      }
       if (rewardCards > 0) {
         setPurchasedPacks((count) => count + rewardCards);
       }
-      if (rewardCoins > 0 || rewardCards > 0) bumpInventoryRevision();
+      if (detail?.wallet || rewardCoins > 0 || rewardCards > 0) {
+        bumpInventoryRevision();
+      }
     }
     window.addEventListener(PACK_OPENING_REWARD_EVENT, onPackOpeningReward);
     return () => {
       window.removeEventListener(PACK_OPENING_REWARD_EVENT, onPackOpeningReward);
     };
-  }, [addCoins, bumpInventoryRevision, setPurchasedPacks]);
+  }, [
+    addCoins,
+    bumpInventoryRevision,
+    setCoins,
+    setDiamonds,
+    setPurchasedPacks,
+  ]);
 
   const hideChrome =
     location.pathname.startsWith("/recommend") ||

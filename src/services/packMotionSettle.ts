@@ -4,6 +4,7 @@ import {
   type GameSession,
 } from "@/features/game/modules/gameSession";
 import { recordRevealedCards } from "@/services/collectionState";
+import { revealPackCard } from "@/services/purchase";
 import {
   getReadyToScratch,
   upsertReadyToScratch,
@@ -11,40 +12,18 @@ import {
 
 export const PACK_OPENING_REWARD_EVENT = "sugar:pack-opening-reward";
 
-/** Settle one opening card when its linked motion card finishes (idempotent). */
-export function settlePackMotionCard(motionCardId: string): GameSession | null {
-  const session = loadGameSession();
-  if (!session?.packScratch) return session;
+export type PackOpeningRewardDetail = {
+  coins?: number;
+  cards?: number;
+  wallet?: { diamonds: number; coins: number };
+};
 
-  const motionIndex = session.motionCardIds.indexOf(motionCardId);
-  if (motionIndex < 0) return session;
-
-  const openingId = session.packScratch.openingCardIds[motionIndex];
-  if (!openingId) return session;
-  if (session.packScratch.settledOpeningIds.includes(openingId)) {
-    return session;
-  }
-
+function persistPackMotionSettle(
+  session: GameSession,
+  openingId: string,
+): GameSession {
   const { packScratch } = session;
-  const card = packScratch.openingSession.cards.find(
-    (entry) => entry.id === openingId,
-  );
-  const coins = card?.reward ?? 0;
-
-  recordRevealedCards({
-    count: 1,
-    creatorId: packScratch.creator.trim().toLowerCase().replace(/\s+/g, "-"),
-    creatorName: packScratch.creator,
-    themeName: packScratch.themeName || packScratch.packName,
-  });
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent(PACK_OPENING_REWARD_EVENT, {
-        detail: { coins, cards: 1 },
-      }),
-    );
-  }
+  if (!packScratch) return session;
 
   const ready = getReadyToScratch(packScratch.readyPackId);
   const revealed = [...new Set([...(ready?.revealed ?? []), openingId])];
@@ -67,4 +46,69 @@ export function settlePackMotionCard(motionCardId: string): GameSession | null {
   };
   saveGameSession(next);
   return next;
+}
+
+/** Settle one opening card when its linked motion card finishes (idempotent). */
+export async function settlePackMotionCard(
+  motionCardId: string,
+): Promise<GameSession | null> {
+  const session = loadGameSession();
+  if (!session?.packScratch) return session;
+
+  const motionIndex = session.motionCardIds.indexOf(motionCardId);
+  if (motionIndex < 0) return session;
+
+  const openingId = session.packScratch.openingCardIds[motionIndex];
+  if (!openingId) return session;
+  if (session.packScratch.settledOpeningIds.includes(openingId)) {
+    return session;
+  }
+
+  const { packScratch } = session;
+  const serverOpeningId = packScratch.serverOpeningId?.trim();
+  const serverCardId = packScratch.serverRevealCardIds?.[motionIndex]?.trim();
+
+  if (serverOpeningId && serverCardId) {
+    try {
+      const result = await revealPackCard(serverOpeningId, serverCardId);
+      recordRevealedCards({
+        count: 1,
+        creatorId: packScratch.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+        creatorName: packScratch.creator,
+        themeName: packScratch.themeName || packScratch.packName,
+      });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
+            detail: { cards: 1, wallet: result.wallet },
+          }),
+        );
+      }
+      return persistPackMotionSettle(session, openingId);
+    } catch {
+      return session;
+    }
+  }
+
+  const card = packScratch.openingSession.cards.find(
+    (entry) => entry.id === openingId,
+  );
+  const coins = card?.reward ?? 0;
+
+  recordRevealedCards({
+    count: 1,
+    creatorId: packScratch.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+    creatorName: packScratch.creator,
+    themeName: packScratch.themeName || packScratch.packName,
+  });
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
+        detail: { coins, cards: 1 },
+      }),
+    );
+  }
+
+  return persistPackMotionSettle(session, openingId);
 }
