@@ -4,10 +4,10 @@ import { useLocation } from "react-router-dom";
 import { CREATOR_CARD_PHOTOS } from "@/lib/photos";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { syncMyPacks } from "@/services/packInventory";
 import {
   claimWelcomeRewards,
   clearWelcomeGiftState,
+  finalizeWelcomeClaimRemote,
   hideWelcomeOverlayForSession,
   shouldShowWelcomeOverlay,
 } from "@/services/welcome";
@@ -20,10 +20,11 @@ export function WelcomeGiftOverlay() {
     authed,
     profile,
     bumpInventoryRevision,
+    invalidatePackSync,
     setProfile,
     setPurchasedPacks,
   } = useAuth();
-  const { refreshWallet } = useWallet();
+  const { setCoins, setDiamonds } = useWallet();
   const location = useLocation();
   const skip =
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
@@ -74,8 +75,16 @@ export function WelcomeGiftOverlay() {
       bumpInventoryRevision();
       setPurchasedPacks((n) => n + 1);
     } else {
-      await syncMyPacks();
-      await refreshWallet();
+      invalidatePackSync();
+      const committed = await finalizeWelcomeClaimRemote(result, (wallet) => {
+        setDiamonds(wallet.diamonds);
+        setCoins(wallet.coins);
+      });
+      if (!committed) {
+        setError(true);
+        setPhase("offer");
+        return;
+      }
       bumpInventoryRevision();
     }
     setProfile((d) => ({

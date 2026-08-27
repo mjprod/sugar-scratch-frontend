@@ -5,7 +5,12 @@
 
 import { apiMutate } from "../lib/api";
 import { isDemoMode } from "../lib/demo";
-import { addUnopenedFromPurchase } from "./packInventory";
+import {
+  addUnopenedFromPurchase,
+  getPackInstance,
+  syncMyPacks,
+  upsertInstancesFromApi,
+} from "./packInventory";
 import type { PackInstanceApi } from "./purchase";
 
 const CLAIMED_KEY = "sugar.v8.welcomeGiftClaimed";
@@ -105,6 +110,9 @@ export async function claimWelcomeRewards(
 
   try {
     const remote = await claimWelcomeRewardsRemote();
+    if (!remote.instance?.instanceId) {
+      return { granted: false, error: true };
+    }
     return {
       granted: true,
       welcomeClaimed: remote.welcomeClaimed,
@@ -114,6 +122,49 @@ export async function claimWelcomeRewards(
   } catch {
     return { granted: false, error: true };
   }
+}
+
+/** Apply claim payload to local wallet + pack inventory. */
+export function commitWelcomeClaimLocally(
+  result: Pick<WelcomeClaimResult, "instance" | "wallet">,
+  applyWallet: (wallet: { diamonds: number; coins: number }) => void,
+): boolean {
+  if (result.wallet) {
+    applyWallet(result.wallet);
+  }
+  const instance = result.instance;
+  if (!instance?.instanceId) {
+    return false;
+  }
+  upsertInstancesFromApi([instance]);
+  return Boolean(getPackInstance(instance.instanceId));
+}
+
+/**
+ * Commit welcome pack from API response, then reconcile with GET /api/me/packs.
+ * Returns false when the granted instance never lands in local inventory.
+ */
+export async function finalizeWelcomeClaimRemote(
+  result: WelcomeClaimResult,
+  applyWallet: (wallet: { diamonds: number; coins: number }) => void,
+): Promise<boolean> {
+  if (result.demo) return true;
+  const instanceId = result.instance?.instanceId;
+  if (!instanceId) return false;
+
+  if (!commitWelcomeClaimLocally(result, applyWallet)) {
+    return false;
+  }
+
+  await syncMyPacks();
+  if (getPackInstance(instanceId)) {
+    return true;
+  }
+
+  if (result.instance) {
+    upsertInstancesFromApi([result.instance]);
+  }
+  return Boolean(getPackInstance(instanceId));
 }
 
 export function clearWelcomeGiftState() {
