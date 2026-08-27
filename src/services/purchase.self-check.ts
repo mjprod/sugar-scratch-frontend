@@ -81,6 +81,11 @@ saveOpening({
   cardIndex: 1,
   scratched: [single.cards[0].id],
   openingId: "opening-uuid-1",
+  serverRevealCardIds: [
+    "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+    "cccccccc-dddd-eeee-ffff-000000000000",
+  ],
 });
 
 const resumed = restoreOpening("ep1");
@@ -92,6 +97,12 @@ assert(
 assert(
   resumed.status === "resume" && resumed.data.openingId === "opening-uuid-1",
   "resume keeps server opening id",
+);
+assert(
+  resumed.status === "resume" &&
+    resumed.data.serverRevealCardIds?.[0] ===
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "resume keeps server reveal card ids",
 );
 assert(restoreOpening("ep2").status === "none", "other packs ignore this session");
 

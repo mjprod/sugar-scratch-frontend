@@ -428,6 +428,8 @@ export type PersistedOpening = {
   scratched: string[];
   /** Server opening row — required for reveal API on resume. */
   openingId?: string;
+  /** Server PackOpeningCard uuids (parallel to session.cards slots). */
+  serverRevealCardIds?: string[];
 };
 
 export type RestoreResult =
@@ -448,6 +450,19 @@ function isValidOpening(value: unknown): value is PersistedOpening {
     Array.isArray(data.session.cards) &&
     data.session.cards.length > 0
   );
+}
+
+/** Postgres PackOpeningCard id — not fan/reveal placeholder ids. */
+export function isServerOpeningCardId(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    id.trim(),
+  );
+}
+
+export function areServerRevealCardIds(
+  ids: readonly string[] | null | undefined,
+): boolean {
+  return Boolean(ids?.length && ids.every(isServerOpeningCardId));
 }
 
 export function saveOpening(data: Omit<PersistedOpening, "savedAt">) {

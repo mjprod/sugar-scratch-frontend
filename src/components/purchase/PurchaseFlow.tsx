@@ -62,6 +62,7 @@ import {
   revealPackCard,
   restoreOpening,
   saveOpening,
+  areServerRevealCardIds,
   buildFoilOpeningSession,
   submitPurchase,
   type OpeningSession,
@@ -366,9 +367,10 @@ export function PurchaseFlow({
   const [openingIdRef] = useState(() => ({
     current: resumed?.openingId ?? (null as string | null),
   }));
+  const resumedServerIds = resumed?.serverRevealCardIds;
   /** Server PackOpeningCard ids — parallel to session.cards (survives fan remap). */
   const serverRevealCardIdsRef = useRef<string[] | null>(
-    initialSession?.cards.map((card) => card.id) ?? null,
+    areServerRevealCardIds(resumedServerIds) ? resumedServerIds! : null,
   );
   const [readyPackCount, setReadyPackCount] = useState(
     () => pack.unopenedPacks ?? Math.max(1, session?.quantity ?? 1),
@@ -403,6 +405,13 @@ export function PurchaseFlow({
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
   /** Cards with a reveal API call in flight — blocks duplicate settlement. */
   const settlingRevealIdsRef = useRef<Set<string>>(new Set());
+  function releaseUnsettledRevealIds(ids: readonly string[]) {
+    ids.forEach((id) => {
+      if (!awardedIds.current.has(id)) {
+        settlingRevealIdsRef.current.delete(id);
+      }
+    });
+  }
   const revealActionLockedRef = useRef(false);
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
@@ -513,7 +522,12 @@ export function PurchaseFlow({
     if (!authed || isDemoMode()) return;
     const currentId = instanceId ?? pack.instanceId;
     if (!currentId || isLocalPackInstanceId(currentId)) return;
-    if (openingIdRef.current) return;
+    if (
+      openingIdRef.current &&
+      areServerRevealCardIds(serverRevealCardIdsRef.current)
+    ) {
+      return;
+    }
     if (stage === "ready" && !sealTorn) return;
     if (
       stage !== "scratch" &&
@@ -547,6 +561,7 @@ export function PurchaseFlow({
         cardIndex: selectedCard,
         scratched,
         openingId,
+        serverRevealCardIds: serverRevealCardIdsRef.current ?? undefined,
       });
       return;
     }
@@ -558,6 +573,7 @@ export function PurchaseFlow({
       cardIndex: selectedCard,
       scratched,
       openingId,
+      serverRevealCardIds: serverRevealCardIdsRef.current ?? undefined,
     });
     upsertPackReadyToScratch({
       packId: instanceId ?? pack.packId,
@@ -831,10 +847,13 @@ export function PurchaseFlow({
     ) {
       return null;
     }
-    if (openingIdRef.current && serverRevealCardIdsRef.current?.length) {
+    if (
+      openingIdRef.current &&
+      areServerRevealCardIds(serverRevealCardIdsRef.current)
+    ) {
       return {
         openingId: openingIdRef.current,
-        cardIds: serverRevealCardIdsRef.current,
+        cardIds: serverRevealCardIdsRef.current!,
       };
     }
     try {
@@ -864,6 +883,7 @@ export function PurchaseFlow({
       if (needsServerReveal()) {
         const serverOpen = await resolveServerOpeningForMotion();
         if (!serverOpen) {
+          releaseUnsettledRevealIds(fresh);
           setStage("opening-interrupted");
           return false;
         }
@@ -890,11 +910,7 @@ export function PurchaseFlow({
           onComplete({ cards: fresh.length, coins: 0 });
           return true;
         } catch {
-          fresh.forEach((id) => {
-            if (!awardedIds.current.has(id)) {
-              settlingRevealIdsRef.current.delete(id);
-            }
-          });
+          releaseUnsettledRevealIds(fresh);
           setStage("opening-interrupted");
           return false;
         }
@@ -916,11 +932,7 @@ export function PurchaseFlow({
       onComplete({ cards: fresh.length, coins });
       return true;
     } catch {
-      fresh.forEach((id) => {
-        if (!awardedIds.current.has(id)) {
-          settlingRevealIdsRef.current.delete(id);
-        }
-      });
+      releaseUnsettledRevealIds(fresh);
       return false;
     }
   }
@@ -993,7 +1005,10 @@ export function PurchaseFlow({
       scratched.includes(card.id) ||
       settlingRevealIdsRef.current.has(card.id)
     ) {
-      return { ids: scratched, ok: true };
+      return {
+        ids: scratched,
+        ok: !settlingRevealIdsRef.current.has(card?.id ?? ""),
+      };
     }
 
     const ok = await settleRevealed([card.id]);
@@ -1316,6 +1331,7 @@ export function PurchaseFlow({
     if (stage === "opening-interrupted") {
       tearLocked.current = false;
       setSealTorn(false);
+      settlingRevealIdsRef.current.clear();
       resetTearOpenState();
       setStage("ready");
       return;
@@ -1666,6 +1682,7 @@ export function PurchaseFlow({
                 onClick: () => {
                   tearLocked.current = false;
                   setSealTorn(false);
+                  settlingRevealIdsRef.current.clear();
                   resetTearOpenState();
                   setStage("ready");
                 },
