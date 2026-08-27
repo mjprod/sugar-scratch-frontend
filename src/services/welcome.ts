@@ -3,7 +3,10 @@
  * Overlay may hide for the session; only Claim marks it claimed.
  */
 
+import { apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 import { addUnopenedFromPurchase } from "./packInventory";
+import type { PackInstanceApi } from "./purchase";
 
 const CLAIMED_KEY = "sugar.v8.welcomeGiftClaimed";
 const SESSION_HIDE_KEY = "sugar.v8.welcomeOverlayHidden";
@@ -16,6 +19,16 @@ const WELCOME_PACK = {
   count: 1,
   themeName: "Starter",
 } as const;
+
+export type WelcomeClaimResult = {
+  granted: boolean;
+  error?: boolean;
+  /** True when the offline demo fixture path ran. */
+  demo?: boolean;
+  welcomeClaimed?: boolean;
+  instance?: PackInstanceApi | null;
+  wallet?: { diamonds: number; coins: number };
+};
 
 export function isWelcomeGiftClaimed(accountClaimed = false) {
   if (accountClaimed) return true;
@@ -52,7 +65,7 @@ export function hideWelcomeOverlayForSession() {
   }
 }
 
-function markWelcomeClaimed() {
+function markWelcomeClaimedLocal() {
   try {
     localStorage.setItem(CLAIMED_KEY, "1");
     sessionStorage.removeItem(SESSION_HIDE_KEY);
@@ -61,16 +74,43 @@ function markWelcomeClaimed() {
   }
 }
 
-/** Grant starter pack once. Duplicate purchaseId is a no-op. */
-export function claimWelcomeRewards(accountClaimed = false): {
-  granted: boolean;
-  error?: boolean;
-} {
-  if (isWelcomeGiftClaimed(accountClaimed)) return { granted: false };
+function claimWelcomeRewardsDemo(): WelcomeClaimResult {
   try {
     addUnopenedFromPurchase({ ...WELCOME_PACK });
-    markWelcomeClaimed();
-    return { granted: true };
+    markWelcomeClaimedLocal();
+    return { granted: true, demo: true, welcomeClaimed: true };
+  } catch {
+    return { granted: false, error: true };
+  }
+}
+
+export async function claimWelcomeRewardsRemote() {
+  return apiMutate<{
+    ok: boolean;
+    welcomeClaimed: boolean;
+    instance: PackInstanceApi | null;
+    wallet: { diamonds: number; coins: number };
+  }>("/api/me/welcome/claim", { method: "POST" });
+}
+
+/** Grant starter pack once — server when authed, local only in demo mode. */
+export async function claimWelcomeRewards(
+  accountClaimed = false,
+): Promise<WelcomeClaimResult> {
+  if (isWelcomeGiftClaimed(accountClaimed)) return { granted: false };
+
+  if (isDemoMode()) {
+    return claimWelcomeRewardsDemo();
+  }
+
+  try {
+    const remote = await claimWelcomeRewardsRemote();
+    return {
+      granted: true,
+      welcomeClaimed: remote.welcomeClaimed,
+      instance: remote.instance,
+      wallet: remote.wallet,
+    };
   } catch {
     return { granted: false, error: true };
   }

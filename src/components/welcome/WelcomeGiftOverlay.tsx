@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { CREATOR_CARD_PHOTOS } from "@/lib/photos";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
+import { syncMyPacks } from "@/services/packInventory";
 import {
   claimWelcomeRewards,
   clearWelcomeGiftState,
@@ -21,6 +23,7 @@ export function WelcomeGiftOverlay() {
     setProfile,
     setPurchasedPacks,
   } = useAuth();
+  const { refreshWallet } = useWallet();
   const location = useLocation();
   const skip =
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
@@ -53,11 +56,11 @@ export function WelcomeGiftOverlay() {
     setOpen(false);
   }
 
-  function onClaim() {
+  async function onClaim() {
     if (phase !== "offer") return;
     setError(false);
     setPhase("claiming");
-    const result = claimWelcomeRewards(profile.welcomeClaimed);
+    const result = await claimWelcomeRewards(profile.welcomeClaimed);
     if (!result.granted) {
       if (result.error) {
         setError(true);
@@ -67,9 +70,18 @@ export function WelcomeGiftOverlay() {
       setOpen(false);
       return;
     }
-    bumpInventoryRevision();
-    setPurchasedPacks((n) => n + 1);
-    setProfile((d) => ({ ...d, welcomeClaimed: true }));
+    if (result.demo) {
+      bumpInventoryRevision();
+      setPurchasedPacks((n) => n + 1);
+    } else {
+      await syncMyPacks();
+      await refreshWallet();
+      bumpInventoryRevision();
+    }
+    setProfile((d) => ({
+      ...d,
+      welcomeClaimed: result.welcomeClaimed ?? true,
+    }));
     setPhase("confirm");
   }
 
