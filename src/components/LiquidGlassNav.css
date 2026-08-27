@@ -1923,20 +1923,29 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   color: oklch(0.779 0.139 1.41);
 }
 
-/* Logged-out: Collection icon/text at 20% of current strength. */
-.nav-test-dock-primary.is-guest-disabled .nav-test-dock-primary-icon,
-.nav-test-dock-primary.is-guest-disabled .nav-test-dock-primary-label {
-  opacity: 0.2;
+@keyframes nav-test-dock-guest-card-scale {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.05);
+  }
 }
 
-/* Logged-out: pause Collection orbit and hide the middle rim highlight. */
-.nav-test-dock-primary.is-guest-disabled .nav-test-dock-primary-glow,
-.nav-test-dock-primary.is-guest-disabled .nav-test-dock-primary-glow.border-glow-orbiting,
-.nav-test-dock-primary.is-guest-disabled .nav-test-dock-primary-glow.border-glow-orbiting.is-css-orbit {
-  animation-play-state: paused !important;
-  opacity: 0.15;
+.nav-test-dock-primary-guest-card {
+  width: auto;
+  height: 3rem;
+  display: block;
+  color: oklch(0.639 0.256 9.90);
+  filter: drop-shadow(0px 1px 5px oklch(0.639 0.256 9.90));
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  animation: nav-test-dock-guest-card-scale 1.25s ease-in-out infinite alternate;
 }
 
-body[data-guest] .nav-test-dock .middle-right-rim-light {
-  opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  .nav-test-dock-primary-guest-card {
+    animation: none;
+  }
 }
