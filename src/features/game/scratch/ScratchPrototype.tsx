@@ -1341,6 +1341,7 @@ export function ScratchPrototype() {
     resultId: string;
   } | null>(null);
   const [packRevealFailed, setPackRevealFailed] = useState(false);
+  const [packRevealRetrying, setPackRevealRetrying] = useState(false);
   const packRevealBlockedRef = useRef(false);
   const motionResultRef = useRef(motionResult);
   motionResultRef.current = motionResult;
@@ -1712,6 +1713,12 @@ export function ScratchPrototype() {
       // ignore
     }
     glRendererRef.current?.detachVideoFrames(foregroundVideo);
+  }
+
+  function resumeForegroundDecoder() {
+    if (!fgParkedRef.current) return;
+    fgParkedRef.current = false;
+    kickGameVideos();
   }
 
   function kickGameVideos() {
@@ -3231,9 +3238,23 @@ export function ScratchPrototype() {
   }
 
   function abortPackRevealAttempt() {
+    clearGameResultTimer();
+    gameResultPendingRef.current = null;
     packRevealBlockedRef.current = true;
-    resetScratch();
+    resumeForegroundDecoder();
     setPackRevealFailed(true);
+  }
+
+  async function retryPackReveal() {
+    if (!packRevealFailed || packRevealRetrying) return;
+    setPackRevealRetrying(true);
+    packRevealBlockedRef.current = false;
+    setPackRevealFailed(false);
+    try {
+      await presentMotionResult();
+    } finally {
+      setPackRevealRetrying(false);
+    }
   }
 
   async function presentMotionResult() {
@@ -3798,10 +3819,7 @@ export function ScratchPrototype() {
     finalize = true,
   ) {
     if (gameResultPendingRef.current !== null) return;
-    if (packRevealBlockedRef.current && finalize) {
-      packRevealBlockedRef.current = false;
-      setPackRevealFailed(false);
-    }
+    if (packRevealBlockedRef.current) return;
     if (isBodyScratchLocked()) {
       return;
     }
@@ -4449,8 +4467,16 @@ export function ScratchPrototype() {
               <div className="game-result-card">
                 <p className="game-result-title">Reveal interrupted</p>
                 <p className="game-result-detail">
-                  Your card is safe. Scratch again to retry.
+                  Your match is saved. Retry the reveal when you are back online.
                 </p>
+                <button
+                  type="button"
+                  className="game-result-button"
+                  disabled={packRevealRetrying}
+                  onClick={() => void retryPackReveal()}
+                >
+                  {packRevealRetrying ? "Retrying…" : "Retry reveal"}
+                </button>
               </div>
             </div>
           ) : null}
