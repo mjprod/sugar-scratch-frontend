@@ -1341,6 +1341,7 @@ export function ScratchPrototype() {
     resultId: string;
   } | null>(null);
   const [packRevealFailed, setPackRevealFailed] = useState(false);
+  const packRevealBlockedRef = useRef(false);
   const motionResultRef = useRef(motionResult);
   motionResultRef.current = motionResult;
   const activeModel =
@@ -2310,7 +2311,11 @@ export function ScratchPrototype() {
               sampleCount,
               autoMode,
             ));
-        if (hideForeground && !claimedRef.current) {
+        if (
+          hideForeground &&
+          !claimedRef.current &&
+          !packRevealBlockedRef.current
+        ) {
           claimedRef.current = true;
           setClaimed(true);
           tryResolveGameRef.current();
@@ -2836,7 +2841,9 @@ export function ScratchPrototype() {
         );
     claimedRef.current = nextClaimed;
     setClaimed(nextClaimed);
-    if (nextClaimed) tryResolveGameRef.current();
+    if (nextClaimed && !packRevealBlockedRef.current) {
+      tryResolveGameRef.current();
+    }
   }, [trackedMesh]);
 
   useEffect(() => {
@@ -3218,14 +3225,14 @@ export function ScratchPrototype() {
     const updated = recordMotionCardResult(cardId, prize);
     if (!updated) return false;
     setGameSession(updated);
+    packRevealBlockedRef.current = false;
     setPackRevealFailed(false);
     return true;
   }
 
   function abortPackRevealAttempt() {
-    resetGameOutcome();
-    setClaimed(false);
-    claimedRef.current = false;
+    packRevealBlockedRef.current = true;
+    resetScratch();
     setPackRevealFailed(true);
   }
 
@@ -3496,6 +3503,7 @@ export function ScratchPrototype() {
 
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
+    if (packRevealBlockedRef.current) return;
     const autoMode = autoScratchRef.current.enabled;
     const sampleCount = revealSamplesRef.current.length;
     if (
@@ -3790,6 +3798,10 @@ export function ScratchPrototype() {
     finalize = true,
   ) {
     if (gameResultPendingRef.current !== null) return;
+    if (packRevealBlockedRef.current && finalize) {
+      packRevealBlockedRef.current = false;
+      setPackRevealFailed(false);
+    }
     if (isBodyScratchLocked()) {
       return;
     }
@@ -3898,6 +3910,7 @@ export function ScratchPrototype() {
       revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
     if (
       canClaimGarment &&
+      !packRevealBlockedRef.current &&
       isGarmentFullyRevealed(
         nextProgress,
         revealedCountRef.current,
