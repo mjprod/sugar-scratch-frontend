@@ -3248,8 +3248,6 @@ export function ScratchPrototype() {
   async function retryPackReveal() {
     if (!packRevealFailed || packRevealRetrying) return;
     setPackRevealRetrying(true);
-    packRevealBlockedRef.current = false;
-    setPackRevealFailed(false);
     try {
       await presentMotionResult();
     } finally {
@@ -4462,24 +4460,6 @@ export function ScratchPrototype() {
               </div>
             </div>
           ) : null}
-          {packRevealFailed && gameSession?.packScratch ? (
-            <div className="game-result-overlay" role="alert">
-              <div className="game-result-card">
-                <p className="game-result-title">Reveal interrupted</p>
-                <p className="game-result-detail">
-                  Your match is saved. Retry the reveal when you are back online.
-                </p>
-                <button
-                  type="button"
-                  className="game-result-button"
-                  disabled={packRevealRetrying}
-                  onClick={() => void retryPackReveal()}
-                >
-                  {packRevealRetrying ? "Retrying…" : "Retry reveal"}
-                </button>
-              </div>
-            </div>
-          ) : null}
           {motionResult?.win && motionResult.photos.length > 0 ? (
             <MotionWinReveal
               key={motionResult.resultId}
@@ -4712,7 +4692,11 @@ export function ScratchPrototype() {
             className="game-stage-canvas"
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
-            style={cardTransition ? { pointerEvents: "none" } : undefined}
+            style={
+              cardTransition || packRevealFailed
+                ? { pointerEvents: "none" }
+                : undefined
+            }
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
               huntHintActivityAtRef.current = performance.now();
@@ -4773,6 +4757,33 @@ export function ScratchPrototype() {
               clearScratchZoom();
             }}
           />
+          {packRevealFailed && gameSession?.packScratch ? (
+            <div
+              className="game-result game-result--static"
+              role="alert"
+              style={{ pointerEvents: "auto" }}
+            >
+              <div className="game-result-iris">
+                <div className="game-result-surface">
+                  <div className="game-result-card">
+                    <p className="game-result-title">Reveal interrupted</p>
+                    <p className="game-result-detail">
+                      Your match is saved. Retry the reveal when you are back
+                      online.
+                    </p>
+                    <button
+                      type="button"
+                      className="game-result-button"
+                      disabled={packRevealRetrying}
+                      onClick={() => void retryPackReveal()}
+                    >
+                      {packRevealRetrying ? "Retrying…" : "Retry reveal"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {cardTransition ? (
             <MirrorSlideTransition
               fromSrc={cardTransition.fromBottom}
