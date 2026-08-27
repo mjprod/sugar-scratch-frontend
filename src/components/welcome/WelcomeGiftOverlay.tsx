@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CREATOR_CARD_PHOTOS } from "@/lib/photos";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -25,7 +26,7 @@ export function WelcomeGiftOverlay() {
   const skip =
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
   const titleId = useId();
-  const claimRef = useRef<HTMLButtonElement>(null);
+  const claimSlotRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("offer");
   const [error, setError] = useState(false);
@@ -39,7 +40,7 @@ export function WelcomeGiftOverlay() {
   }, [authed, skip, profile.welcomeClaimed]);
 
   useEffect(() => {
-    if (open) claimRef.current?.focus();
+    if (open) claimSlotRef.current?.querySelector("button")?.focus();
   }, [open]);
 
   useEffect(() => {
@@ -118,7 +119,15 @@ export function WelcomeGiftOverlay() {
             </button>
           ) : null}
 
-          <p className="welcome-gift-kicker">Welcome to Sugar</p>
+          <p className="welcome-gift-kicker">
+            Welcome to
+            <img
+              src="/svg/logoSugarScratch.svg"
+              alt="Sugar Scratch"
+              className="welcome-gift-kicker-logo"
+              draggable={false}
+            />
+          </p>
           <h2 id={titleId} className="welcome-gift-headline">
             Your welcome gift is here.
           </h2>
@@ -164,15 +173,19 @@ export function WelcomeGiftOverlay() {
                   We couldn&apos;t claim your gift. Please try again.
                 </p>
               ) : null}
-              <button
-                ref={claimRef}
-                type="button"
-                className="welcome-gift-cta"
-                onClick={onClaim}
-                disabled={busy}
-              >
-                {error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim"}
-              </button>
+              <div ref={claimSlotRef} className="welcome-gift-cta">
+                <CtaButton
+                  {...ctaButtonPropsFromTemplate("pillGoldCTA")}
+                  fillParent
+                  label={error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim"}
+                  costAmount={null}
+                  fontSize={15}
+                  strokeWidth={1}
+                  disabled={busy}
+                  aria-busy={busy}
+                  onClick={onClaim}
+                />
+              </div>
               <p className="welcome-gift-reassure">+ Your first one is on us +</p>
             </>
           )}

@@ -1,15 +1,52 @@
-import { forwardRef, useEffect, useState } from "react";
-import { countCartPacks, subscribeCart } from "@/services/cart";
+import {
+  DotLottieReact,
+  type DotLottie,
+} from "@lottiefiles/dotlottie-react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import {
+  countCartPacks,
+  subscribeCart,
+  subscribeCartRemoveIntent,
+} from "@/services/cart";
+import { lottieRenderConfig } from "@/utils/lottieRender";
+
+type PocketFxDirection = "forward" | "reverse";
+
+const ADDED_LOTTIE_SRC = "/lottie/iconAdded.lottie";
+/** iconAdded.lottie is 60 frames @ 60fps. Add plays 1.25×; remove plays reverse at 1.5×. */
+const ADDED_LOTTIE_SPEED = 1.25;
+const ADDED_LOTTIE_MS = 920;
+const REMOVED_LOTTIE_SPEED = 1.5;
+const REMOVED_LOTTIE_MS = 780;
 
 /**
  * Global HUD utility control — cart for packs to open (TopNav / mobile utility).
  * Unread inbox count uses {@link InboxUtilityBadge} on the Profile icon.
  */
-export function InboxUtilityBadge({ count = 0 }: { count?: number }) {
+export function InboxUtilityBadge({
+  count = 0,
+  bump = false,
+  tone = "inbox",
+}: {
+  count?: number;
+  bump?: boolean;
+  tone?: "pack" | "inbox";
+}) {
   if (count <= 0) return null;
   const badgeLabel = count > 9 ? "9+" : String(count);
   return (
-    <span className="inbox-utility-badge" aria-hidden="true">
+    <span
+      className={[
+        "inbox-utility-badge",
+        tone === "pack"
+          ? "inbox-utility-badge--pack"
+          : "inbox-utility-badge--inbox",
+        bump ? "is-bumping" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden="true"
+    >
       {badgeLabel}
     </span>
   );
@@ -66,6 +103,86 @@ export const PacksButton = forwardRef<
   ref,
 ) {
   const packCount = usePackPocketCount();
+  const previousCountRef = useRef(packCount);
+  const playerRef = useRef<DotLottie | null>(null);
+  const hideTimeoutRef = useRef<number | null>(null);
+  const [bumpId, setBumpId] = useState(0);
+  const [fxVisible, setFxVisible] = useState(false);
+  const [fxDirection, setFxDirection] = useState<PocketFxDirection>("forward");
+
+  const prefersReducedMotion = useCallback(() => {
+    return (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
+  }, []);
+
+  const playPocketFx = useCallback(
+    (direction: PocketFxDirection) => {
+      if (prefersReducedMotion()) return;
+      if (hideTimeoutRef.current != null) {
+        window.clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+      setFxDirection(direction);
+      setFxVisible(true);
+
+      const player = playerRef.current;
+      if (player?.isLoaded) {
+        player.setMode(direction);
+        player.setSpeed(
+          direction === "reverse" ? REMOVED_LOTTIE_SPEED : ADDED_LOTTIE_SPEED,
+        );
+        const lastFrame = Math.max(0, player.totalFrames - 1);
+        player.setFrame(direction === "reverse" ? lastFrame : 0);
+        player.play();
+      }
+
+      hideTimeoutRef.current = window.setTimeout(
+        () => {
+          setFxVisible(false);
+          hideTimeoutRef.current = null;
+        },
+        direction === "reverse" ? REMOVED_LOTTIE_MS : ADDED_LOTTIE_MS,
+      );
+    },
+    [prefersReducedMotion],
+  );
+
+  const handlePlayer = useCallback((player: DotLottie | null) => {
+    playerRef.current = player;
+    if (!player) return;
+    const ready = () => {
+      player.setLoop(false);
+    };
+    if (player.isLoaded) ready();
+    else player.addEventListener("load", ready);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current != null) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const previous = previousCountRef.current;
+    if (packCount === previous) return;
+
+    if (packCount > previous) {
+      setBumpId((id) => id + 1);
+      playPocketFx("forward");
+    }
+
+    previousCountRef.current = packCount;
+  }, [packCount, playPocketFx]);
+
+  useEffect(() => subscribeCartRemoveIntent(() => playPocketFx("reverse")), [
+    playPocketFx,
+  ]);
+
   const surfaceClasses =
     "inbox-utility-btn relative grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95";
   const ghostClasses =
@@ -91,8 +208,33 @@ export const PacksButton = forwardRef<
         .filter(Boolean)
         .join(" ")}
     >
-      <CartOutlineIcon className="h-full w-full" />
-      <InboxUtilityBadge count={packCount} />
+      <span
+        className="inbox-utility-added-fx"
+        aria-hidden="true"
+        style={{ visibility: fxVisible ? "visible" : "hidden" }}
+      >
+        <DotLottieReact
+          src={ADDED_LOTTIE_SRC}
+          autoplay={false}
+          loop={false}
+          mode={fxDirection}
+          speed={
+            fxDirection === "reverse"
+              ? REMOVED_LOTTIE_SPEED
+              : ADDED_LOTTIE_SPEED
+          }
+          renderConfig={lottieRenderConfig()}
+          dotLottieRefCallback={handlePlayer}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </span>
+      <CartOutlineIcon className="inbox-utility-icon h-full w-full" />
+      <InboxUtilityBadge
+        key={bumpId}
+        count={packCount}
+        bump={bumpId > 0}
+        tone="pack"
+      />
     </button>
   );
 });

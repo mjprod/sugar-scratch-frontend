@@ -386,8 +386,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "add-to-cart") {
         addPackToCart(action.pack);
-        captureSecondaryReturn();
-        navigate(Paths.packPocket);
         return;
       }
       if (action.type === "collection") {

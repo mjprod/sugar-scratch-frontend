@@ -51,6 +51,7 @@ import {
   ctaButtonPropsFromTemplate,
 } from '@/shared/ui/cta'
 import { DiamondLottie } from '@/components/ui/DiamondLottie'
+import { notifyCartRemoveIntent } from '@/services/cart'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
   PackLights,
@@ -1007,10 +1008,11 @@ useEffect(() => {
 	    return () => window.removeEventListener('keydown', onKeyDown)
 	  }, [removeConfirmOpen])
 
-	  function beginRemoveExit() {
-	    if (isRemoving || removeExitRef.current.phase !== 'idle') return
-	    setRemoveConfirmOpen(false)
-	    setIsRemoving(true)
+		  function beginRemoveExit() {
+		    if (isRemoving || removeExitRef.current.phase !== 'idle') return
+		    setRemoveConfirmOpen(false)
+		    setIsRemoving(true)
+		    notifyCartRemoveIntent()
 	    const motion = motionRef.current
 	    removeExitRef.current = {
 	      phase: 'anticipation',

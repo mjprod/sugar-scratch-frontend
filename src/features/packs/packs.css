@@ -1333,6 +1333,53 @@ h1 {
   pointer-events: none;
 }
 
+.coverflow-buy-pack-cta .cta-button__title-row {
+  gap: 0.32em;
+}
+
+.coverflow-buy-pack-cta .cta-button__leading-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+/*
+  In Pocket: black chrome (plate, aurora, stroke, glow) at 30%.
+  Title + checkmark stay fully opaque; diamond cost fades with the chrome.
+*/
+.coverflow-buy-pack-cta .cta-button:disabled,
+.coverflow-buy-pack-cta .cta-button.is-disabled,
+.coverflow-buy-pack-cta .cta-button-glow.is-disabled,
+.coverflow-buy-pack-cta .cta-button-glow:has(> .border-glow-inner .cta-button:disabled),
+.coverflow-buy-pack-cta .cta-button-glow:has(> .border-glow-inner .cta-button.is-disabled) {
+  filter: none;
+  opacity: 1;
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__inner,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__inner {
+  background: rgb(0 0 0 / 0.3);
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__face,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__face {
+  opacity: 0.3;
+  filter: grayscale(1) brightness(0);
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__label,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__label {
+  opacity: 1;
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__cost,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__cost {
+  opacity: 0.3;
+}
+
 /* Staggered entrance inside the active stack: label first, then CTA. */
 .coverflow-active-stack.is-visible .coverflow-active-pack-label {
   opacity: 1;
