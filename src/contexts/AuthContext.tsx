@@ -174,6 +174,8 @@ type AuthContextValue = {
   closeSecondary: (surface: SecondarySurfaceId) => void;
   inventoryRevision: number;
   bumpInventoryRevision: () => void;
+  /** Drop in-flight login pack syncs before writing claim/purchase inventory. */
+  invalidatePackSync: () => void;
   inboxUnread: number;
   setInboxUnread: Dispatch<SetStateAction<number>>;
   completeAuth: (result: AuthSuccessResult) => void;
@@ -230,6 +232,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Bumped on login/logout so stale in-flight auth/inventory sync cannot cross sessions.
   const sessionSyncEpochRef = useRef(0);
+
+  const invalidatePackSync = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+  }, []);
 
   useEffect(() => {
     if (!authed || isDemoMode()) return;
@@ -775,6 +781,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeSecondary,
       inventoryRevision,
       bumpInventoryRevision,
+      invalidatePackSync,
       inboxUnread,
       setInboxUnread,
       completeAuth,
@@ -814,6 +821,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onVerified,
       onVerifyLater,
       bumpInventoryRevision,
+      invalidatePackSync,
       closeSecondary,
       inboxUnread,
       inventoryRevision,
