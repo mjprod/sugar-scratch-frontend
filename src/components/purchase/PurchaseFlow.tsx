@@ -59,8 +59,10 @@ import {
   nextUnscratchedIndex,
   openPackInstance,
   packCost,
+  revealPackCard,
   restoreOpening,
   saveOpening,
+  areServerRevealCardIds,
   buildFoilOpeningSession,
   submitPurchase,
   type OpeningSession,
@@ -258,7 +260,7 @@ export function PurchaseFlow({
   diamonds: number;
   coins?: number;
   onClose: () => void;
-  onWalletUpdate?: (wallet: { diamonds: number }) => void;
+  onWalletUpdate?: (wallet: { diamonds: number; coins: number }) => void;
   onComplete: (result: { cards: number; coins: number }) => void;
   onGetDiamonds?: () => void;
   onGoHome?: () => void;
@@ -350,6 +352,7 @@ export function PurchaseFlow({
   );
   const [scratched, setScratched] = useState<string[]>(initialScratched);
   const [scratchProgress, setScratchProgress] = useState(0);
+  const [revealSettling, setRevealSettling] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState<PackQuantity | null>(null);
@@ -361,7 +364,14 @@ export function PurchaseFlow({
   const [purchaseId, setPurchaseId] = useState<string | null>(
     openResume?.purchaseId ?? pack.purchaseId ?? null,
   );
-  const [openingIdRef] = useState(() => ({ current: null as string | null }));
+  const [openingIdRef] = useState(() => ({
+    current: resumed?.openingId ?? (null as string | null),
+  }));
+  const resumedServerIds = resumed?.serverRevealCardIds;
+  /** Server PackOpeningCard ids — parallel to session.cards (survives fan remap). */
+  const serverRevealCardIdsRef = useRef<string[] | null>(
+    areServerRevealCardIds(resumedServerIds) ? resumedServerIds! : null,
+  );
   const [readyPackCount, setReadyPackCount] = useState(
     () => pack.unopenedPacks ?? Math.max(1, session?.quantity ?? 1),
   );
@@ -393,6 +403,16 @@ export function PurchaseFlow({
   }, []);
 
   const awardedIds = useRef<Set<string>>(new Set(initialScratched));
+  /** Cards with a reveal API call in flight — blocks duplicate settlement. */
+  const settlingRevealIdsRef = useRef<Set<string>>(new Set());
+  function releaseUnsettledRevealIds(ids: readonly string[]) {
+    ids.forEach((id) => {
+      if (!awardedIds.current.has(id)) {
+        settlingRevealIdsRef.current.delete(id);
+      }
+    });
+  }
+  const revealActionLockedRef = useRef(false);
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
   /** Skip pack opening when resuming from Collection Ready to Scratch. */
@@ -496,8 +516,43 @@ export function PurchaseFlow({
     }
   }, [pack.entry, pack.packId, session]);
 
+  // Recover server openingId only after tear (or mid-scratch resume). Never deal
+  // cards while the pack is still on Pack Ready — completeTear owns first open.
+  useEffect(() => {
+    if (!authed || isDemoMode()) return;
+    const currentId = instanceId ?? pack.instanceId;
+    if (!currentId || isLocalPackInstanceId(currentId)) return;
+    if (
+      openingIdRef.current &&
+      areServerRevealCardIds(serverRevealCardIdsRef.current)
+    ) {
+      return;
+    }
+    if (stage === "ready" && !sealTorn) return;
+    if (
+      stage !== "scratch" &&
+      !sealTorn &&
+      !OPENED_STAGES.includes(stage as OpeningStage)
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const result = await openPackInstance(currentId);
+        if ((instanceId ?? pack.instanceId) !== currentId) return;
+        openingIdRef.current = result.openingId;
+        result.scratched.forEach((id) => awardedIds.current.add(id));
+        serverRevealCardIdsRef.current = result.session.cards.map((card) => card.id);
+      } catch {
+        /* resume without openingId — reveal will fail closed */
+      }
+    })();
+  }, [authed, instanceId, pack.instanceId, stage, sealTorn]);
+
   useEffect(() => {
     if (!session) return;
+    const openingId = openingIdRef.current ?? undefined;
     if (stage === "ready") {
       saveOpening({
         packId: pack.packId,
@@ -505,6 +560,8 @@ export function PurchaseFlow({
         stage: sealTorn ? "reveal" : "ready",
         cardIndex: selectedCard,
         scratched,
+        openingId,
+        serverRevealCardIds: serverRevealCardIdsRef.current ?? undefined,
       });
       return;
     }
@@ -515,6 +572,8 @@ export function PurchaseFlow({
       stage: stage as OpeningStage,
       cardIndex: selectedCard,
       scratched,
+      openingId,
+      serverRevealCardIds: serverRevealCardIdsRef.current ?? undefined,
     });
     upsertPackReadyToScratch({
       packId: instanceId ?? pack.packId,
@@ -562,7 +621,10 @@ export function PurchaseFlow({
         undefined,
         coins,
       );
-      onWalletUpdate?.({ diamonds: result.wallet.diamonds });
+      onWalletUpdate?.({
+        diamonds: result.wallet.diamonds,
+        coins: result.wallet.coins,
+      });
       const themeName =
         resolveCollectionThemeLabel({
           themeName: pack.themeName,
@@ -606,6 +668,8 @@ export function PurchaseFlow({
       setScratched([]);
       setSelectedCard(0);
       awardedIds.current = new Set();
+      settlingRevealIdsRef.current.clear();
+      serverRevealCardIdsRef.current = null;
       tearLocked.current = false;
       setSealTorn(false);
       bumpInventory();
@@ -689,6 +753,8 @@ export function PurchaseFlow({
             }
           : result.session;
         scratchedIds = result.scratched;
+        scratchedIds.forEach((id) => awardedIds.current.add(id));
+        serverRevealCardIdsRef.current = next.cards.map((card) => card.id);
       } else {
         opened = markPackOpened(currentId);
         next = live?.foilFaceUrl
@@ -750,24 +816,130 @@ export function PurchaseFlow({
     setScratchProgress((value) => Math.min(100, value + amount));
   }
 
-  function settleRevealed(revealedIds: string[]) {
-    const fresh = revealedIds.filter((id) => !awardedIds.current.has(id));
-    if (!fresh.length || !session) return;
-    fresh.forEach((id) => awardedIds.current.add(id));
-    const coins = session.cards
-      .filter((card) => fresh.includes(card.id))
-      .reduce((total, card) => total + card.reward, 0);
-    recordRevealedCards({
-      count: fresh.length,
-      creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
-      creatorName: pack.creator,
-      themeName: collectionTheme,
-    });
-    onComplete({ cards: fresh.length, coins });
+  function needsServerReveal() {
+    const currentId = instanceId ?? pack.instanceId;
+    return Boolean(
+      authed &&
+        !isDemoMode() &&
+        currentId &&
+        !isLocalPackInstanceId(currentId),
+    );
   }
 
-  function finishSession(revealedIds: string[]) {
-    settleRevealed(revealedIds);
+  /** Map a session/fan card id to the server PackOpeningCard uuid (by slot index). */
+  function serverCardIdForReveal(sessionCardId: string): string {
+    const index = session?.cards.findIndex((card) => card.id === sessionCardId) ?? -1;
+    const serverId =
+      index >= 0 ? serverRevealCardIdsRef.current?.[index]?.trim() : "";
+    return serverId || sessionCardId;
+  }
+
+  async function resolveServerOpeningForMotion(): Promise<{
+    openingId: string;
+    cardIds: string[];
+  } | null> {
+    const currentId = instanceId ?? pack.instanceId;
+    if (
+      !authed ||
+      isDemoMode() ||
+      !currentId ||
+      isLocalPackInstanceId(currentId)
+    ) {
+      return null;
+    }
+    if (
+      openingIdRef.current &&
+      areServerRevealCardIds(serverRevealCardIdsRef.current)
+    ) {
+      return {
+        openingId: openingIdRef.current,
+        cardIds: serverRevealCardIdsRef.current!,
+      };
+    }
+    try {
+      const result = await openPackInstance(currentId);
+      openingIdRef.current = result.openingId;
+      result.scratched.forEach((id) => awardedIds.current.add(id));
+      serverRevealCardIdsRef.current = result.session.cards.map((card) => card.id);
+      return {
+        openingId: result.openingId,
+        cardIds: serverRevealCardIdsRef.current,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function settleRevealed(revealedIds: string[]): Promise<boolean> {
+    const fresh = revealedIds.filter(
+      (id) =>
+        !awardedIds.current.has(id) && !settlingRevealIdsRef.current.has(id),
+    );
+    if (!fresh.length || !session) return true;
+
+    fresh.forEach((id) => settlingRevealIdsRef.current.add(id));
+
+    try {
+      if (needsServerReveal()) {
+        const serverOpen = await resolveServerOpeningForMotion();
+        if (!serverOpen) {
+          releaseUnsettledRevealIds(fresh);
+          setStage("opening-interrupted");
+          return false;
+        }
+        try {
+          let wallet: { diamonds: number; coins: number } | null = null;
+          for (const cardId of fresh) {
+            const result = await revealPackCard(
+              serverOpen.openingId,
+              serverCardIdForReveal(cardId),
+            );
+            wallet = result.wallet;
+            awardedIds.current.add(cardId);
+            settlingRevealIdsRef.current.delete(cardId);
+          }
+          if (wallet) {
+            onWalletUpdate?.(wallet);
+          }
+          recordRevealedCards({
+            count: fresh.length,
+            creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+            creatorName: pack.creator,
+            themeName: collectionTheme,
+          });
+          onComplete({ cards: fresh.length, coins: 0 });
+          return true;
+        } catch {
+          releaseUnsettledRevealIds(fresh);
+          setStage("opening-interrupted");
+          return false;
+        }
+      }
+
+      fresh.forEach((id) => {
+        awardedIds.current.add(id);
+        settlingRevealIdsRef.current.delete(id);
+      });
+      const coins = session.cards
+        .filter((card) => fresh.includes(card.id))
+        .reduce((total, card) => total + card.reward, 0);
+      recordRevealedCards({
+        count: fresh.length,
+        creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+        creatorName: pack.creator,
+        themeName: collectionTheme,
+      });
+      onComplete({ cards: fresh.length, coins });
+      return true;
+    } catch {
+      releaseUnsettledRevealIds(fresh);
+      return false;
+    }
+  }
+
+  async function finishSession(revealedIds: string[]) {
+    const settled = await settleRevealed(revealedIds);
+    if (!settled) return;
     const readyId = instanceId ?? pack.packId;
     upsertPackReadyToScratch({
       packId: readyId,
@@ -810,6 +982,9 @@ export function PurchaseFlow({
       setSelectedCard(0);
       setScratchProgress(0);
       awardedIds.current = new Set();
+      settlingRevealIdsRef.current.clear();
+      openingIdRef.current = null;
+      serverRevealCardIdsRef.current = null;
       tearLocked.current = false;
       setSealTorn(false);
       bumpInventory();
@@ -822,33 +997,53 @@ export function PurchaseFlow({
     setStage("complete");
   }
 
-  function markCurrentRevealed() {
-    if (!session) return scratched;
+  async function markCurrentRevealed(): Promise<{ ids: string[]; ok: boolean }> {
+    if (!session) return { ids: scratched, ok: true };
     const card = session.cards[selectedCard];
-    if (!card || scratched.includes(card.id)) return scratched;
+    if (
+      !card ||
+      scratched.includes(card.id) ||
+      settlingRevealIdsRef.current.has(card.id)
+    ) {
+      return {
+        ids: scratched,
+        ok: !settlingRevealIdsRef.current.has(card?.id ?? ""),
+      };
+    }
+
+    const ok = await settleRevealed([card.id]);
+    if (!ok) return { ids: scratched, ok: false };
+
     const next = [...scratched, card.id];
     setScratched(next);
     trackScratchEvent("Card Revealed", {
       packId: instanceId ?? pack.packId,
       cardId: card.id,
     });
-    settleRevealed(next);
-    return next;
+    return { ids: next, ok: true };
   }
 
-  function scratchNext() {
-    if (!session) return;
-    trackScratchEvent("Scratch Next Selected", {
-      packId: instanceId ?? pack.packId,
-    });
-    const revealedIds = markCurrentRevealed();
-    const next = nextUnscratchedIndex(session, revealedIds);
-    if (next === null) {
-      finishSession(revealedIds);
-      return;
+  async function scratchNext() {
+    if (!session || revealActionLockedRef.current) return;
+    revealActionLockedRef.current = true;
+    setRevealSettling(true);
+    try {
+      trackScratchEvent("Scratch Next Selected", {
+        packId: instanceId ?? pack.packId,
+      });
+      const { ids: revealedIds, ok } = await markCurrentRevealed();
+      if (!ok) return;
+      const next = nextUnscratchedIndex(session, revealedIds);
+      if (next === null) {
+        await finishSession(revealedIds);
+        return;
+      }
+      setSelectedCard(next);
+      setScratchProgress(0);
+    } finally {
+      revealActionLockedRef.current = false;
+      setRevealSettling(false);
     }
-    setSelectedCard(next);
-    setScratchProgress(0);
   }
 
   function persistOpened(revealedIds: string[]) {
@@ -869,29 +1064,38 @@ export function PurchaseFlow({
   function scratchLater(from: "decision" | "finish" | "exit") {
     if (savingLater || !session) return;
     setSavingLater(true);
-    persistCurrentAndLeave(from);
-    setStage("saved");
+    void persistCurrentAndLeave(from).then((ok) => {
+      setSavingLater(false);
+      if (ok) setStage("saved");
+    });
   }
 
-  function persistCurrentAndLeave(from: "decision" | "finish" | "exit") {
+  async function persistCurrentAndLeave(
+    from: "decision" | "finish" | "exit",
+  ): Promise<boolean> {
     setScratchProgress(0);
-    const revealedIds =
-      from === "decision" ? scratched : markCurrentRevealedIfDone();
+    let revealedIds = scratched;
     if (from === "decision") {
       trackScratchEvent("Scratch Later Selected", {
         packId: instanceId ?? pack.packId,
       });
-    } else if (from === "finish") {
-      trackScratchEvent("Finish Later Selected", {
-        packId: instanceId ?? pack.packId,
-      });
     } else {
-      trackScratchEvent("Scratch Session Exited", {
-        packId: instanceId ?? pack.packId,
-      });
+      const result = await markCurrentRevealedIfDone();
+      revealedIds = result.ids;
+      if (!result.ok) return false;
+      if (from === "finish") {
+        trackScratchEvent("Finish Later Selected", {
+          packId: instanceId ?? pack.packId,
+        });
+      } else {
+        trackScratchEvent("Scratch Session Exited", {
+          packId: instanceId ?? pack.packId,
+        });
+      }
     }
     persistOpened(revealedIds);
     clearOpening();
+    return true;
   }
 
   function openNextPurchasedPack() {
@@ -908,46 +1112,55 @@ export function PurchaseFlow({
       scratchLater("decision");
       return;
     }
-    persistCurrentAndLeave("decision");
-    resetTearOpenState();
-    const remainingAfter = Math.max(0, readyPackCount - 1);
-    const openedKey = openedTearFoilKeyRef.current;
-    // Drop the pack that was just opened before rebuilding the tear coverflow.
-    const remainingFoils = remainingTearFoils(
-      tearFoils,
-      openedKey,
-      remainingAfter,
-    );
-    setTearFoils(remainingFoils);
-    openedTearFoilKeyRef.current = null;
-    const nextFace = remainingFoils[0] ?? purchasedFoil;
-    setPurchasedFoil(nextFace);
-    setInstanceId(nextPack.instanceId);
-    setPurchaseId(nextPack.purchaseId);
-    setSession(
-      nextFace
-        ? {
-            ...buildFoilOpeningSession([nextFace], packCost(1, pack.packId)),
-            foilFaceUrl: nextFace.videoUrl,
-            foilLabel: nextFace.label,
-          }
-        : {
-            ...buildOpeningSession(1, nextPack.instanceId),
-          },
-    );
-    setReadyPackCount((count) => Math.max(1, count - 1));
-    setScratched([]);
-    setSelectedCard(0);
-    awardedIds.current = new Set();
-    tearLocked.current = false;
-    setSealTorn(false);
-    setSavingLater(false);
-    bumpInventory();
-    setStage("ready");
+    void persistCurrentAndLeave("decision").then((ok) => {
+      if (!ok) {
+        setSavingLater(false);
+        return;
+      }
+      resetTearOpenState();
+      const remainingAfter = Math.max(0, readyPackCount - 1);
+      const openedKey = openedTearFoilKeyRef.current;
+      // Drop the pack that was just opened before rebuilding the tear coverflow.
+      const remainingFoils = remainingTearFoils(
+        tearFoils,
+        openedKey,
+        remainingAfter,
+      );
+      setTearFoils(remainingFoils);
+      openedTearFoilKeyRef.current = null;
+      const nextFace = remainingFoils[0] ?? purchasedFoil;
+      setPurchasedFoil(nextFace);
+      setInstanceId(nextPack.instanceId);
+      setPurchaseId(nextPack.purchaseId);
+      openingIdRef.current = null;
+      serverRevealCardIdsRef.current = null;
+      setSession(
+        nextFace
+          ? {
+              ...buildFoilOpeningSession([nextFace], packCost(1, pack.packId)),
+              foilFaceUrl: nextFace.videoUrl,
+              foilLabel: nextFace.label,
+            }
+          : {
+              ...buildOpeningSession(1, nextPack.instanceId),
+            },
+      );
+      setReadyPackCount((count) => Math.max(1, count - 1));
+      setScratched([]);
+      setSelectedCard(0);
+      awardedIds.current = new Set();
+      settlingRevealIdsRef.current.clear();
+      serverRevealCardIdsRef.current = null;
+      tearLocked.current = false;
+      setSealTorn(false);
+      setSavingLater(false);
+      bumpInventory();
+      setStage("ready");
+    });
   }
 
-  function markCurrentRevealedIfDone() {
-    if (!session || scratchProgress < 100) return scratched;
+  async function markCurrentRevealedIfDone(): Promise<{ ids: string[]; ok: boolean }> {
+    if (!session || scratchProgress < 100) return { ids: scratched, ok: true };
     return markCurrentRevealed();
   }
 
@@ -1035,6 +1248,7 @@ export function PurchaseFlow({
         session: active,
         revealed: scratched,
       });
+      const serverOpen = await resolveServerOpeningForMotion();
       const created = startMotionSession(hand, {
         packScratch: {
           readyPackId: readyId,
@@ -1045,6 +1259,8 @@ export function PurchaseFlow({
           openingSession: active,
           openingCardIds,
           settledOpeningIds: [...scratched],
+          serverOpeningId: serverOpen?.openingId,
+          serverRevealCardIds: serverOpen?.cardIds.slice(0, openingCardIds.length),
         },
         completedMotionIds,
       });
@@ -1115,6 +1331,7 @@ export function PurchaseFlow({
     if (stage === "opening-interrupted") {
       tearLocked.current = false;
       setSealTorn(false);
+      settlingRevealIdsRef.current.clear();
       resetTearOpenState();
       setStage("ready");
       return;
@@ -1373,6 +1590,7 @@ export function PurchaseFlow({
               image={cardImages[selectedCard % cardImages.length]}
               progress={scratchProgress}
               remainingAfterReveal={remainingAfterCurrent}
+              settling={revealSettling}
               onScratch={scratch}
               onScratchNext={scratchNext}
               onFinishLater={() => scratchLater("finish")}
@@ -1464,6 +1682,7 @@ export function PurchaseFlow({
                 onClick: () => {
                   tearLocked.current = false;
                   setSealTorn(false);
+                  settlingRevealIdsRef.current.clear();
                   resetTearOpenState();
                   setStage("ready");
                 },
@@ -2167,6 +2386,7 @@ function ScratchStage({
   image,
   progress,
   remainingAfterReveal,
+  settling = false,
   onScratch,
   onScratchNext,
   onFinishLater,
@@ -2175,6 +2395,7 @@ function ScratchStage({
   image: string;
   progress: number;
   remainingAfterReveal: number;
+  settling?: boolean;
   onScratch: (amount?: number) => void;
   onScratchNext: () => void;
   onFinishLater: () => void;
@@ -2244,14 +2465,22 @@ function ScratchStage({
         >
           <div className="h-14 w-full">
             <PurchaseCtaButton
-              label={hasMore ? "Scratch Next" : "Finish"}
+              label={
+                settling
+                  ? "Revealing…"
+                  : hasMore
+                    ? "Scratch Next"
+                    : "Finish"
+              }
               onClick={onScratchNext}
+              disabled={settling}
             />
           </div>
           {hasMore ? (
             <button
               type="button"
               onClick={onFinishLater}
+              disabled={settling}
               className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70"
             >
               Finish Later
