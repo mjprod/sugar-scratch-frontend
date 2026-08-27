@@ -1340,6 +1340,7 @@ export function ScratchPrototype() {
     total: number;
     resultId: string;
   } | null>(null);
+  const [packRevealFailed, setPackRevealFailed] = useState(false);
   const motionResultRef = useRef(motionResult);
   motionResultRef.current = motionResult;
   const activeModel =
@@ -3203,12 +3204,29 @@ export function ScratchPrototype() {
   }
   resetScratchRef.current = resetScratch;
 
-  async function commitMotionCardResult(cardId: string, prize: number) {
-    let updated = recordMotionCardResult(cardId, prize);
-    if (!updated) return;
-    const settled = await settlePackMotionCard(cardId);
-    if (settled) updated = settled;
+  async function commitMotionCardResult(
+    cardId: string,
+    prize: number,
+  ): Promise<boolean> {
+    const session = loadGameSession();
+    if (session?.packScratch) {
+      const settle = await settlePackMotionCard(cardId);
+      if (!settle.ok) return false;
+      if (settle.session) setGameSession(settle.session);
+    }
+
+    const updated = recordMotionCardResult(cardId, prize);
+    if (!updated) return false;
     setGameSession(updated);
+    setPackRevealFailed(false);
+    return true;
+  }
+
+  function abortPackRevealAttempt() {
+    resetGameOutcome();
+    setClaimed(false);
+    claimedRef.current = false;
+    setPackRevealFailed(true);
   }
 
   async function presentMotionResult() {
@@ -3226,7 +3244,11 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      await commitMotionCardResult(finishedId, prize);
+      const committed = await commitMotionCardResult(finishedId, prize);
+      if (!committed) {
+        abortPackRevealAttempt();
+        return;
+      }
       // One catalog fetch for award + overlay photos (used to load twice).
       const catalog = prize > 0 ? await loadGameCatalog() : null;
       const awarded = await awardMotionCardPhotos(
@@ -3348,14 +3370,22 @@ export function ScratchPrototype() {
     void goToPhotoSummary();
   }
 
-  function beginCardTransitionHandoff(transition: CardTransitionState) {
+  async function beginCardTransitionHandoff(transition: CardTransitionState) {
     if (cardTransitionHandoffRef.current) return;
     cardTransitionHandoffRef.current = true;
     setCardTransitionReady(false);
     setGameVideosReady(false);
     glRendererRef.current?.resetForeground();
     if (gameMode) {
-      void commitMotionCardResult(transition.finishedId, transition.prize);
+      const committed = await commitMotionCardResult(
+        transition.finishedId,
+        transition.prize,
+      );
+      if (!committed) {
+        cardTransitionHandoffRef.current = false;
+        abortPackRevealAttempt();
+        return;
+      }
     }
     if (!completedCardIdsRef.current.includes(transition.finishedId)) {
       const nextCompleted = [
@@ -3379,7 +3409,7 @@ export function ScratchPrototype() {
     setCardTransition(null);
   }
 
-  function advanceAfterScratch() {
+  async function advanceAfterScratch() {
     const finishedId = selectedCardId;
     if (!finishedId || completedCardIdsRef.current.includes(finishedId)) return;
     if (cardTransitionActiveRef.current) return;
@@ -3426,7 +3456,11 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      void commitMotionCardResult(finishedId, prize);
+      const committed = await commitMotionCardResult(finishedId, prize);
+      if (!committed) {
+        abortPackRevealAttempt();
+        return;
+      }
     }
 
     completedCardIdsRef.current = nextCompleted;
@@ -4397,6 +4431,16 @@ export function ScratchPrototype() {
               </div>
             </div>
           ) : null}
+          {packRevealFailed && gameSession?.packScratch ? (
+            <div className="game-result-overlay" role="alert">
+              <div className="game-result-card">
+                <p className="game-result-title">Reveal interrupted</p>
+                <p className="game-result-detail">
+                  Your card is safe. Scratch again to retry.
+                </p>
+              </div>
+            </div>
+          ) : null}
           {motionResult?.win && motionResult.photos.length > 0 ? (
             <MotionWinReveal
               key={motionResult.resultId}
@@ -4697,8 +4741,8 @@ export function ScratchPrototype() {
               templateId={cardTransition.templateId}
               holdUntilReady
               blendOut={cardTransitionReady}
-              onComplete={() => beginCardTransitionHandoff(cardTransition)}
-              onError={() => beginCardTransitionHandoff(cardTransition)}
+              onComplete={() => void beginCardTransitionHandoff(cardTransition)}
+              onError={() => void beginCardTransitionHandoff(cardTransition)}
             />
           ) : null}
           <div className="mobile-sound-wrap">

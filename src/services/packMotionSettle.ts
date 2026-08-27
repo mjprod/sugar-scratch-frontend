@@ -18,6 +18,11 @@ export type PackOpeningRewardDetail = {
   wallet?: { diamonds: number; coins: number };
 };
 
+export type PackMotionSettleResult = {
+  ok: boolean;
+  session: GameSession | null;
+};
+
 function persistPackMotionSettle(
   session: GameSession,
   openingId: string,
@@ -51,17 +56,17 @@ function persistPackMotionSettle(
 /** Settle one opening card when its linked motion card finishes (idempotent). */
 export async function settlePackMotionCard(
   motionCardId: string,
-): Promise<GameSession | null> {
+): Promise<PackMotionSettleResult> {
   const session = loadGameSession();
-  if (!session?.packScratch) return session;
+  if (!session?.packScratch) return { ok: true, session };
 
   const motionIndex = session.motionCardIds.indexOf(motionCardId);
-  if (motionIndex < 0) return session;
+  if (motionIndex < 0) return { ok: true, session };
 
   const openingId = session.packScratch.openingCardIds[motionIndex];
-  if (!openingId) return session;
+  if (!openingId) return { ok: true, session };
   if (session.packScratch.settledOpeningIds.includes(openingId)) {
-    return session;
+    return { ok: true, session };
   }
 
   const { packScratch } = session;
@@ -84,9 +89,12 @@ export async function settlePackMotionCard(
           }),
         );
       }
-      return persistPackMotionSettle(session, openingId);
+      return {
+        ok: true,
+        session: persistPackMotionSettle(session, openingId),
+      };
     } catch {
-      return session;
+      return { ok: false, session };
     }
   }
 
@@ -110,5 +118,8 @@ export async function settlePackMotionCard(
     );
   }
 
-  return persistPackMotionSettle(session, openingId);
+  return {
+    ok: true,
+    session: persistPackMotionSettle(session, openingId),
+  };
 }
