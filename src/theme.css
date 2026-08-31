@@ -7833,7 +7833,7 @@ body[data-theme="v8"] .hf-overlay.is-visible {
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-overlay,
   body[data-theme="v8"] .hf-overlay.is-visible {
-    padding: 16px 16px 12px;
+    padding: 16px 16px 2dvh;
   }
 }
 
@@ -7863,6 +7863,7 @@ body[data-theme="v8"] .hf-actions {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  max-width: 22rem;
   margin-top: 4px;
   overflow: visible;
   -webkit-user-select: none;

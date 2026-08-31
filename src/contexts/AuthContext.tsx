@@ -445,17 +445,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deferred?: ProtectedAction | null;
       scrollToDailyReward?: boolean;
     }) => {
+      // First-run / post-recommend always lands on Discover — not Profile.
+      // Soft-gate from /profile would otherwise resume that tab after onboarding.
       const deferred = opts?.deferred ?? null;
-      if (deferred) {
-        navigate(Paths.home);
-        window.setTimeout(() => resumePending(deferred), 0);
+      const resume =
+        deferred &&
+        !(deferred.type === "tab" && deferred.tab === "profile")
+          ? deferred
+          : null;
+
+      if (resume) {
+        navigate(Paths.discover);
+        window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      navigate(Paths.home, {
-        state: opts?.scrollToDailyReward
-          ? { scrollToDailyReward: true }
-          : undefined,
-      });
+      navigate(Paths.discover);
     },
     [navigate, resumePending],
   );
