@@ -199,18 +199,22 @@ export function AppRoutes() {
           />
           <Route path="store" element={<StorePage />} />
           <Route
-            path="settings"
+            path="profile/change-password"
             element={
               <SoftGate tab="profile">
-                <SettingsPage />
+                <ChangePasswordPage />
               </SoftGate>
             }
           />
           <Route
             path="settings/change-password"
+            element={<Navigate to={Paths.changePassword} replace />}
+          />
+          <Route
+            path="settings"
             element={
               <SoftGate tab="profile">
-                <ChangePasswordPage />
+                <SettingsPage />
               </SoftGate>
             }
           />

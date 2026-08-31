@@ -10497,18 +10497,15 @@ body[data-theme="v8"] .settings-utility-card {
 }
 
 body[data-theme="v8"] .change-password-stack {
-  /* Share Settings utility page width — no narrower auth-modal max-width. */
   margin-top: 20px;
   width: 100%;
-  max-width: none;
 }
 
 body[data-theme="v8"] .change-password-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   width: 100%;
-  max-width: none;
 }
 
 body[data-theme="v8"] .change-password-form .auth7-field {
@@ -10666,6 +10663,10 @@ body[data-theme="v8"] .change-password-success .change-password-cta {
     min-width: 17.5rem;
     max-width: 22.5rem;
     height: 52px;
+  }
+
+  body[data-theme="v8"] .change-password-page .subpage-header {
+    position: static;
   }
 }
 
