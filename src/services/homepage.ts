@@ -12,7 +12,6 @@ import {
   MODEL_PACK_PHOTOS,
   PACK_PHOTOS,
 } from "../lib/photos";
-import { resolveCollectionThemeLabel } from "./collection";
 import { getCollectionPageState } from "./collectionState";
 import { isDemoMode } from "../lib/demo";
 import { canonicalThemeKey, resolveCollectionThemeLabel } from "./collection";
@@ -719,50 +718,6 @@ export async function fetchLeaderboard(
     return filterLeaderboardRows(LEADERBOARD, category);
   }
   return filterLeaderboardRows(await loadLeaderboard(), category);
-}
-
-const LIBRARY_ACCENT = {
-  primary: "oklch(0.85 0.123 82.79)",
-  secondary: "oklch(0.656 0.212 354.31)",
-  glow: "oklch(0.85 0.123 82.79 / 0.22)",
-};
-
-/** Live catalog packs — same `/api/models` pack-face URLs as Ready to Reveal. */
-function featuredPacksFromModels(models: BackendModel[]): FeaturedPack[] {
-  const packs: FeaturedPack[] = [];
-  for (const model of models) {
-    const profile = profileFromModel(model);
-    for (const foil of profile.packs) {
-      const diamondCost = diamondCostForPackId(profile.id);
-      const themeName =
-        resolveCollectionThemeLabel({
-          packName: foil.label,
-          catalogPackId: foil.id,
-          creator: profile.name,
-        }) || foil.label;
-      packs.push({
-        id: foil.id,
-        name: foil.label || profile.name,
-        packTitle: foil.label,
-        creatorId: profile.id,
-        creatorName: profile.name,
-        collectionName: profile.collectionLabel,
-        themeName,
-        coverImageUrl: foil.videoUrl,
-        price: { amount: diamondCost / 10, currency: "USD" },
-        diamondCost,
-        collected: 0,
-        collectionTotal: 15,
-        accentColors: {
-          primary: profile.overlayColorStart ?? LIBRARY_ACCENT.primary,
-          secondary: profile.overlayColorEnd ?? LIBRARY_ACCENT.secondary,
-          glow: LIBRARY_ACCENT.glow,
-        },
-        isAvailable: true,
-      });
-    }
-  }
-  return packs;
 }
 
 export async function fetchPackLibrary(): Promise<FeaturedPack[]> {
