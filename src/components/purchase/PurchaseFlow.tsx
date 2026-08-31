@@ -453,7 +453,8 @@ export function PurchaseFlow({
       session: input.session,
       revealed: input.revealed,
       coverUrl: input.session.foilFaceUrl || packCoverUrl,
-      themeName: foilName,
+      // Foil label is display-only; collection grouping needs the theme.
+      themeName: collectionTheme,
     });
   }
   const packImage = session?.foilFaceUrl ?? packCoverUrl;
@@ -630,9 +631,7 @@ export function PurchaseFlow({
         diamonds: result.wallet.diamonds,
         coins: result.wallet.coins,
       });
-      const foilName = foil?.label?.trim() || "";
       const themeName =
-        foilName ||
         resolveCollectionThemeLabel({
           themeName: pack.themeName,
           packName: pack.packName,

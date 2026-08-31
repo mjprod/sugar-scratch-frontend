@@ -25,7 +25,9 @@ import {
   PurchaseError,
   cartCheckoutIdempotencyKey,
   commitPurchaseIdempotencyKey,
+  loadPackCatalog,
   packCost,
+  resolvePurchasePackId,
   submitPurchase,
 } from "@/services/purchase";
 import {
@@ -34,6 +36,7 @@ import {
   setPackOpenRequested,
   rewindCardTopTear,
 } from "@/features/packs/cardTopDebug";
+import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   loadModels,
   matchModel,
@@ -176,6 +179,9 @@ export function CartPage() {
   const [models, setModels] = useState<Awaited<ReturnType<typeof loadModels>> | null>(
     null,
   );
+  const [packCatalog, setPackCatalog] = useState<
+    Awaited<ReturnType<typeof loadPackCatalog>>
+  >([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -218,15 +224,34 @@ export function CartPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadPackCatalog()
+      .then((loaded) => {
+        if (!cancelled) setPackCatalog(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setPackCatalog([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const items = useMemo(
     () => cartPacksToItems(packs, models),
     [models, packs],
   );
 
-  const combinedPrice = useMemo(
-    () => items.reduce((sum, item) => sum + (Number(item.price) || 0), 0),
-    [items],
-  );
+  const combinedPrice = useMemo(() => {
+    return packs.reduce((sum, cartPack) => {
+      const catalogId = catalogPackIdForCartItem(cartPack, models);
+      const purchaseId = packCatalog.length
+        ? resolvePurchasePackId(packCatalog, catalogId)
+        : catalogId;
+      return sum + packCost(1, purchaseId);
+    }, 0);
+  }, [models, packCatalog, packs]);
 
   useEffect(() => {
     if (!items.length) {
@@ -254,9 +279,13 @@ export function CartPage() {
         let lastPurchaseId = "";
         let partialFailure: PurchaseError | null = null;
 
+        const catalog = packCatalog.length ? packCatalog : await loadPackCatalog();
+        if (!packCatalog.length && catalog.length) setPackCatalog(catalog);
+
         for (const cartPack of remaining) {
           const catalogId = catalogPackIdForCartItem(cartPack, models);
-          const cost = packCost(1, catalogId);
+          const purchaseId = resolvePurchasePackId(catalog, catalogId);
+          const cost = packCost(1, purchaseId);
           if (cost > balance) {
             partialFailure = new PurchaseError(
               "insufficient",
@@ -268,7 +297,7 @@ export function CartPage() {
             const result = await submitPurchase(
               1,
               balance,
-              catalogId,
+              purchaseId,
               cartCheckoutIdempotencyKey(cartPack.cartItemId),
               coins,
             );
@@ -285,7 +314,7 @@ export function CartPage() {
             instanceIds.push(instanceId);
             lastPurchaseId = result.purchaseId;
             removePackFromCart(cartPack.cartItemId);
-            commitPurchaseIdempotencyKey(catalogId, 1);
+            commitPurchaseIdempotencyKey(purchaseId, 1);
           } catch (error) {
             partialFailure =
               error instanceof PurchaseError
@@ -327,13 +356,21 @@ export function CartPage() {
       const matched = models ? foilForCartPack(first, models) : null;
       const packId = catalogPackIdForCartItem(first, models);
       const purchaseId = `cart-${Date.now().toString(36)}`;
+      const themeName =
+        resolveCollectionThemeLabel({
+          packName: matched?.foil?.label || first.packName,
+          catalogPackId: packId,
+          creator: matched?.profile.name || first.creator,
+        }) ||
+        matched?.foil?.label ||
+        first.packName;
       const created = addUnopenedFromPurchase({
         purchaseId,
         catalogPackId: packId,
         packName: matched?.foil?.label || first.packName,
         creator: matched?.profile.name || first.creator,
         count: remaining.length,
-        themeName: matched?.foil?.label || first.packName,
+        themeName,
       });
       openCartTearFlow({
         remaining,

@@ -7,6 +7,7 @@ import {
   freshRevealIds,
   nextUnscratchedIndex,
   packCost,
+  resolvePurchasePackId,
   restoreOpening,
   saveOpening,
 } from "./purchase.ts";
@@ -170,6 +171,28 @@ assert(
 assert(
   cartCheckoutIdempotencyKey("cart-abc") === "cart-buy:cart-abc",
   "cart checkout key format",
+);
+
+assert(
+  resolvePurchasePackId(
+    [{ id: "julianaval-pack", modelId: "julianaval", diamondCost: 80 }],
+    "julianaval",
+  ) === "julianaval-pack",
+  "model id maps to catalog pack product",
+);
+assert(
+  resolvePurchasePackId(
+    [{ id: "julianaval-pack", modelId: "julianaval", diamondCost: 80 }],
+    "julianaval-1",
+  ) === "julianaval-pack",
+  "foil id maps to catalog pack product",
+);
+assert(
+  resolvePurchasePackId(
+    [{ id: "julianaval-pack", modelId: "julianaval", diamondCost: 80 }],
+    "julianaval-pack",
+  ) === "julianaval-pack",
+  "exact catalog id is preserved",
 );
 
 console.log("v8 purchase flow self-check passed");
