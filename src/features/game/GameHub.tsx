@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BuyButton } from '@/features/reveal/components/BuyButton'
+import { CtaButton, ctaButtonPropsFromTemplate } from '@/components/cta'
+import { DiamondLottie } from '@/components/ui/DiamondLottie'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
   DEFAULT_BACK_URL,
@@ -91,6 +92,49 @@ function motionHandToRevealCards(
       },
     }
   })
+}
+
+function HubCtaButton({
+  label,
+  onClick,
+  disabled = false,
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="game-hub-pack__cta-primary">
+      <CtaButton
+        {...ctaButtonPropsFromTemplate('squircleCTA')}
+        fillParent
+        type="button"
+        label={label}
+        costAmount={null}
+        fontSize={15}
+        strokeWidth={1}
+        disabled={disabled}
+        onClick={onClick}
+      />
+    </div>
+  )
+}
+
+function HubRewardTally({ amount }: { amount: number }) {
+  return (
+    <div
+      className="game-hub-pack__tally"
+      role="status"
+      aria-label={`${amount} diamonds won`}
+    >
+      <div className="game-hub-pack__tally-reward">
+        <div className="game-hub-pack__tally-icon" aria-hidden="true">
+          <DiamondLottie size={88} />
+        </div>
+        <p className="game-hub-pack__tally-value">{amount}</p>
+      </div>
+    </div>
+  )
 }
 
 export function GameHub() {
@@ -438,28 +482,16 @@ export function GameHub() {
           ) : null}
 
           {phase === 'done' && session ? (
-            <div className="game-hub-pack__tally" role="status">
-              <p className="game-hub-pack__kicker">Complete</p>
-              <p className="game-hub-pack__tally-label">Diamonds won</p>
-              <p className="game-hub-pack__tally-value">{session.diamondTotal}</p>
-              <p>
-                From {session.wonPhotoIds.length} photo scratch
-                {session.wonPhotoIds.length === 1 ? '' : 'es'}
-              </p>
-              {session.walletCredited && session.diamondTotal > 0 ? (
-                <p className="game-hub-pack__tally-note">Added to your balance</p>
-              ) : null}
-            </div>
+            <HubRewardTally amount={session.diamondTotal} />
           ) : null}
         </section>
 
         <div className="game-hub-pack__cta">
           {phase === 'idle' ? (
-            <BuyButton
+            <HubCtaButton
               label="New Game"
               onClick={() => void startNewGame()}
               disabled={!canDeal}
-              visible
             />
           ) : null}
 
@@ -467,11 +499,7 @@ export function GameHub() {
           session &&
           session.wonPhotoIds.length > 0 ? (
             <>
-              <BuyButton
-                label="Scratch Photo Cards"
-                onClick={playPhotoHand}
-                visible
-              />
+              <HubCtaButton label="Scratch Photo Cards" onClick={playPhotoHand} />
               <button
                 type="button"
                 className="game-hub-pack__link reveal-replay"
@@ -486,13 +514,12 @@ export function GameHub() {
           session &&
           session.wonPhotoIds.length === 0 ? (
             <>
-              <BuyButton
+              <HubCtaButton
                 label="View Collection"
                 onClick={() => {
                   persistGameProgress()
                   navigate(Paths.collection)
                 }}
-                visible
               />
               <button
                 type="button"
@@ -511,13 +538,12 @@ export function GameHub() {
 
           {phase === 'done' ? (
             <>
-              <BuyButton
+              <HubCtaButton
                 label="View Collection"
                 onClick={() => {
                   persistGameProgress()
                   navigate(Paths.collection)
                 }}
-                visible
               />
               <button
                 type="button"
@@ -535,11 +561,10 @@ export function GameHub() {
           ) : null}
 
           {phase === 'ready' && showPlay ? (
-            <BuyButton
+            <HubCtaButton
               label={playLabel}
               onClick={playMotionHand}
               disabled={busy || hand.length === 0}
-              visible
             />
           ) : null}
 

@@ -23,7 +23,7 @@ export const Paths = {
   editProfile: "/profile/edit",
   store: "/store",
   settings: "/settings",
-  changePassword: "/settings/change-password",
+  changePassword: "/profile/change-password",
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
   /** Wallet / purchase ledger (Profile → History). */

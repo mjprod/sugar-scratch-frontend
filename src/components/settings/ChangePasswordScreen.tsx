@@ -133,7 +133,7 @@ export function ChangePasswordScreen({
               {...ctaButtonPropsFromTemplate("squircleCTA")}
               fillParent
               type="button"
-              label="Back to Settings"
+              label="Back to Profile"
               costAmount={null}
               fontSize={15}
               strokeWidth={1}
@@ -150,6 +150,7 @@ export function ChangePasswordScreen({
       onBack={onBack}
       sectionId="change-password-security"
       sectionLabel="Security"
+      carded
     >
       <form
         className="change-password-form"
@@ -282,26 +283,25 @@ function ChangePasswordShell({
   onBack,
   sectionId,
   sectionLabel,
-  carded = false,
+  carded = true,
   children,
 }: {
   onBack: () => void;
   sectionId: string;
   sectionLabel: string;
-  /** Compact confirmation / provider cards only — not the password form. */
+  /** Wrap body in the shared settings utility card (Edit Profile pattern). */
   carded?: boolean;
   children: ReactNode;
 }) {
   return (
     <AppPageShell
-      variant="secondary"
       aria-label="Change Password"
-      className="settings-page"
+      className="app-page-shell--profile change-password-page"
     >
       <SubpageHeader
         title="Change Password"
         onBack={onBack}
-        backLabel="Back to Settings"
+        backLabel="Back to profile"
       />
       <div className="settings-stack change-password-stack">
         <section className="settings-section" aria-labelledby={sectionId}>

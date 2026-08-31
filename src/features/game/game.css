@@ -507,6 +507,236 @@
   display: none;
 }
 
+.photo-diamond-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  pointer-events: auto;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.photo-diamond-reveal.is-fading {
+  pointer-events: none;
+  animation: motion-win-fade-out 320ms ease-out forwards;
+}
+
+.photo-diamond-reveal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: motion-win-dim 320ms ease-out both;
+}
+
+.photo-diamond-reveal__glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(88%, 320px);
+  height: 240px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    oklch(0.78 0.14 330 / 0.32) 0%,
+    oklch(0.65 0.16 330 / 0.12) 42%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+.photo-diamond-reveal__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.photo-diamond-reveal__particles span {
+  --i: 0;
+  position: absolute;
+  left: calc(18% + var(--i) * 7%);
+  top: calc(28% + (var(--i) % 4) * 12%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: oklch(0.92 0.1 90 / 0.7);
+  opacity: 0;
+  animation: motion-win-spark 2.6s ease-in-out calc(var(--i) * 120ms) infinite;
+}
+
+.photo-diamond-reveal__particles span:nth-child(odd) {
+  background: oklch(0.78 0.16 330 / 0.65);
+}
+
+.photo-diamond-reveal__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 16px 88px;
+  box-sizing: border-box;
+}
+
+.photo-diamond-reveal__header {
+  text-align: center;
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.photo-diamond-reveal__won {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+}
+
+.photo-diamond-reveal__count {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.92);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.photo-diamond-reveal__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: scale(0.88);
+  transition:
+    opacity 420ms ease-out,
+    transform 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.photo-diamond-reveal__hero.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  animation: motion-win-card-pop 720ms ease-out both;
+}
+
+.photo-diamond-reveal__hero.is-minimizing {
+  transform: scale(0.72) translateY(-18px);
+  opacity: 0.35;
+  transition:
+    transform 420ms ease-in-out,
+    opacity 320ms ease-out;
+}
+
+.photo-diamond-reveal__icon {
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 22px oklch(0.78 0.16 330 / 0.45));
+}
+
+.photo-diamond-reveal__amount {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 0 24px oklch(0.78 0.16 330 / 0.35);
+}
+
+.photo-diamond-reveal__owned {
+  margin: 0;
+  color: oklch(1 0 0 / 0.72);
+  font-size: 13px;
+  font-weight: 600;
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.photo-diamond-reveal__mini {
+  position: absolute;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.157 0.013 284.85 / 0.92);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 360ms ease-out,
+    transform 360ms ease-out;
+  pointer-events: none;
+}
+
+.photo-diamond-reveal__mini.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.photo-diamond-reveal__mini-icon {
+  display: grid;
+  place-items: center;
+}
+
+.photo-diamond-reveal__mini-new {
+  color: oklch(0.937 0.086 91.56);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.photo-diamond-reveal.is-reduced .photo-diamond-reveal__particles {
+  display: none;
+}
+
+.photo-no-win {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+  animation: motion-win-fade-out 360ms ease-out 1640ms both;
+}
+
+.photo-no-win__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.photo-no-win__card {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 32px, 300px);
+  padding: 22px 18px;
+  border-radius: 18px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0.157 0.013 284.85 / 0.92);
+  text-align: center;
+  animation: motion-win-header-in 520ms ease-out both;
+}
+
+.photo-no-win__title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.photo-no-win__support {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.62);
+  font-size: 13px;
+}
+
 .motion-no-win {
   position: absolute;
   inset: 0;
@@ -604,7 +834,241 @@
   }
 }
 
+.photo-hand-summary {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding:
+    calc(48px + env(safe-area-inset-top, 0px))
+    20px
+    calc(24px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  pointer-events: auto;
+  animation: photo-hand-summary-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.photo-hand-summary__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.photo-hand-summary__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.photo-hand-summary__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.photo-hand-summary__title {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.photo-hand-summary__reward-wrap {
+  position: relative;
+  width: min(68vw, 220px);
+  height: min(68vw, 220px);
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 28px oklch(0.722 0.179 303.81 / 0.35));
+}
+
+.photo-hand-summary__reward-wrap.is-counting {
+  filter: drop-shadow(0 0 22px oklch(0.741 0.162 10.42 / 0.32));
+}
+
+.photo-hand-summary__reward-wrap.is-credited {
+  filter: drop-shadow(0 0 36px oklch(0.741 0.162 10.42 / 0.45));
+  animation: photo-hand-summary-credited 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.photo-hand-summary__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.photo-hand-summary__ring-track {
+  fill: none;
+  stroke: rgba(170, 8, 95, 0.28);
+  stroke-width: 5;
+}
+
+.photo-hand-summary__ring-progress {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 628.32;
+  stroke-dashoffset: 0;
+  transform-origin: center;
+}
+
+.photo-hand-summary__ring-progress.is-animating {
+  animation:
+    photo-hand-summary-ring-drain var(--photo-collect-countdown, 8s) linear forwards,
+    photo-hand-summary-ring-pulse 2.2s ease-in-out infinite;
+}
+
+.photo-hand-summary__ring-progress.is-complete {
+  stroke-dashoffset: 0;
+  animation: photo-hand-summary-ring-complete 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.photo-hand-summary__reward-wrap.is-credited .photo-hand-summary__ring-progress {
+  stroke-dashoffset: 0;
+}
+
+.photo-hand-summary__reward {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: game-hub-tally-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.photo-hand-summary__icon {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 16px 40px rgba(224, 0, 131, 0.45));
+}
+
+.photo-hand-summary__icon .diamond-lottie {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.photo-hand-summary__amount {
+  margin: 0;
+  font-size: clamp(40px, 12vw, 56px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(180deg, #ffe0e8 18%, #e00083 72%, #eb6a00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.photo-hand-summary__actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 280px);
+}
+
+.photo-hand-summary__cta-primary {
+  width: 100%;
+  height: 56px;
+}
+
+.photo-scratch-stage.is-hand-summary {
+  pointer-events: none;
+}
+
+.photo-scratch-stage.is-hand-summary .photo-hand-summary {
+  pointer-events: auto;
+}
+
+@keyframes photo-hand-summary-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes photo-hand-summary-credited {
+  from {
+    transform: scale(0.96);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes photo-hand-summary-ring-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 628.32;
+  }
+}
+
+@keyframes photo-hand-summary-ring-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(224, 0, 131, 0.35));
+  }
+  50% {
+    opacity: 0.94;
+    filter: drop-shadow(0 0 12px rgba(235, 106, 0, 0.55));
+  }
+}
+
+@keyframes photo-hand-summary-ring-complete {
+  from {
+    stroke-dashoffset: 628.32;
+    opacity: 0.85;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes game-hub-tally-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .photo-hand-summary__ring-progress.is-animating {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
   .motion-win-reveal__backdrop,
   .motion-win-reveal__header,
   .motion-win-reveal__owned,
@@ -613,7 +1077,14 @@
   .motion-win-reveal__stage,
   .motion-win-reveal__mini,
   .motion-no-win,
-  .motion-no-win__card {
+  .motion-no-win__card,
+  .photo-diamond-reveal__backdrop,
+  .photo-diamond-reveal__header,
+  .photo-diamond-reveal__owned,
+  .photo-diamond-reveal__hero,
+  .photo-diamond-reveal__mini,
+  .photo-no-win,
+  .photo-no-win__card {
     animation: none !important;
     transition: none !important;
   }
