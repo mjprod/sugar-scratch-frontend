@@ -83,6 +83,13 @@ export const SECONDARY_SURFACES: Record<string, SecondarySurface> = {
     title: "Settings",
     backLabel: "Back to Profile",
   },
+  "change-password": {
+    id: "settings",
+    kind: "secondary",
+    fallbackTab: "profile",
+    title: "Change Password",
+    backLabel: "Back to Profile",
+  },
   creator: {
     id: "creator",
     kind: "secondary",

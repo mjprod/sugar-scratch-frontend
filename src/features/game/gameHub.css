@@ -141,11 +141,34 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
   width: min(100%, 420px);
   padding: 0 8px;
   text-align: center;
   animation: game-hub-pack-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.game-hub-pack__prizes {
+  gap: 16px;
+}
+
+.game-hub-pack__tally-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-hub-pack__tally-icon {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  filter: drop-shadow(0 16px 48px oklch(0.686 0.218 3.07 / 0.42));
+}
+
+.game-hub-pack__tally-icon .diamond-lottie {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 @keyframes game-hub-pack-in {
@@ -174,8 +197,7 @@
   font-weight: 600;
 }
 
-.game-hub-pack__prizes h2,
-.game-hub-pack__tally-value {
+.game-hub-pack__prizes h2 {
   margin: 0;
   color: oklch(1 0 0);
   font-size: clamp(22px, 5vw, 32px);
@@ -183,16 +205,18 @@
   letter-spacing: -0.02em;
 }
 
-.game-hub-pack__prizes p,
-.game-hub-pack__tally-label,
-.game-hub-pack__tally .game-hub-pack__idle p {
+.game-hub-pack__prizes p {
   margin: 0;
   color: oklch(1 0 0 / 0.65);
   font-size: 14px;
 }
 
 .game-hub-pack__tally-value {
-  font-size: clamp(48px, 12vw, 72px);
+  margin: 0;
+  font-size: clamp(40px, 10vw, 56px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
   background: linear-gradient(180deg, oklch(1 0 0) 20%, oklch(0.686 0.218 3.07));
   -webkit-background-clip: text;
   background-clip: text;
@@ -293,12 +317,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 12px;
   width: min(92vw, 320px);
 }
 
-.game-hub-pack__cta .btn-180 {
+.game-hub-pack__cta-primary {
   width: 100%;
   max-width: 280px;
+  height: 56px;
 }
 
 .game-hub-pack__secondary {

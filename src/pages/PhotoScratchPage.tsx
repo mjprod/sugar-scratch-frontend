@@ -7,8 +7,12 @@ import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import {
+  loadGameSession,
   persistGameProgress,
+  settleDonePhotoHand,
 } from "@/features/game/modules/gameSession";
 import "@/features/game/game.css";
 
@@ -16,6 +20,8 @@ export function PhotoScratchPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const { addDiamonds } = useWallet();
+  const { bumpInventoryRevision } = useAuth();
 
   useLayoutEffect(() => {
     if (typeof document === "undefined") return;
@@ -41,7 +47,21 @@ export function PhotoScratchPage() {
   const gameMode = searchParams.get("game") === "1";
 
   function leaveGameForCollection() {
-    persistGameProgress();
+    const session = loadGameSession();
+    // TOTAL WIN / last-card overlay: settle credit + collection before leaving.
+    if (
+      session?.phase === "done" ||
+      (session?.phase === "photo" &&
+        session.wonPhotoIds.length > 0 &&
+        session.wonPhotoIds.every((id) =>
+          session.completedPhotoIds.includes(id),
+        ))
+    ) {
+      settleDonePhotoHand(addDiamonds);
+      bumpInventoryRevision();
+    } else {
+      persistGameProgress();
+    }
     setExitConfirmOpen(false);
     navigate(Paths.collection);
   }

@@ -5,7 +5,7 @@ import { getAuthProvider } from "@/services/auth";
 import { Paths } from "@/routes/Paths";
 
 export function ChangePasswordPage() {
-  const goBack = useGoBack(Paths.settings);
+  const goBack = useGoBack(Paths.profile);
   const { openPasswordReset } = useAuth();
 
   return (
