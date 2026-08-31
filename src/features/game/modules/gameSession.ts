@@ -535,6 +535,14 @@ export function finishPhotoHand(): GameSession | null {
   return next;
 }
 
+/** Drop a finished photo hand so Collection resume won't reopen the summary. */
+export function clearCompletedPhotoHand(): boolean {
+  const session = loadGameSession();
+  if (!session || session.phase !== "done") return false;
+  clearGameSession(gameSessionStorageKey(session));
+  return true;
+}
+
 type GameNavigateFn = (to: string) => void;
 
 let gameNavigate: GameNavigateFn | null = null;

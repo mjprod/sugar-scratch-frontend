@@ -15,13 +15,23 @@ import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
+  clearCompletedPhotoHand,
   finishPhotoHand,
   isGameModeUrl,
   loadGameSession,
   navigateTo,
+  persistGameProgress,
   recordPhotoCardResult,
   type GameSession,
 } from "../modules/gameSession";
+import { PhotoHandSummary } from "../modules/PhotoHandSummary";
+import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
+import { PhotoNoWinFeedback } from "../modules/PhotoNoWinFeedback";
+import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
+import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { Paths } from "@/routes/Paths";
+import { useAuth } from "@/contexts/AuthContext";
+import { recordWonPhotoCards } from "@/services/collectionState";
 import {
   applyBodyFindHits,
   buildBodySymbols,
@@ -717,7 +727,19 @@ function motionStatusLabel(status: string) {
   }
 }
 
+function recordPhotoHandToCollection(session: GameSession) {
+  const pack = session.packScratch;
+  const creatorName = pack?.creator ?? session.themes[0] ?? "Game";
+  const creatorId =
+    creatorName.trim().toLowerCase().replace(/\s+/g, "-") || "game";
+  const count = session.wonPhotoIds.length;
+  if (count > 0) {
+    recordWonPhotoCards({ count, creatorId, creatorName });
+  }
+}
+
 export function PhotoScratch() {
+  const { bumpInventoryRevision } = useAuth();
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -877,6 +899,16 @@ export function PhotoScratch() {
   const [selectedCardId, setSelectedCardId] = useState("");
   const [completedCardIds, setCompletedCardIds] = useState<string[]>([]);
   completedCardIdsRef.current = completedCardIds;
+  const [handSummaryDiamonds, setHandSummaryDiamonds] = useState<number | null>(
+    null,
+  );
+  const [photoResult, setPhotoResult] = useState<{
+    win: boolean;
+    diamonds: number;
+    resultId: string;
+  } | null>(null);
+  const photoResultRef = useRef(photoResult);
+  photoResultRef.current = photoResult;
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [introActive, setIntroActive] = useState(false);
   const [introCover, setIntroCover] = useState(false);
@@ -1144,6 +1176,27 @@ export function PhotoScratch() {
 
     if (isGameModeUrl()) {
       const existing = loadGameSession();
+      if (existing?.phase === "done") {
+        const index = await fetchPhotoScratchIndex();
+        const hand = playlistForGameSession(index, existing);
+        setPlaylist(hand);
+        setCompletedCardIds(existing.completedPhotoIds);
+        completedCardIdsRef.current = existing.completedPhotoIds;
+        setHandSummaryDiamonds(existing.diamondTotal);
+        const lastId =
+          existing.completedPhotoIds.at(-1) ??
+          existing.wonPhotoIds.at(-1) ??
+          "";
+        if (lastId) {
+          setSelectedCardId(lastId);
+          const assets = await loadCardAssets(lastId);
+          setUsingSample(false);
+          await applyLoadedAssets(assets);
+        } else {
+          setReady(true);
+        }
+        return;
+      }
       if (
         existing &&
         (existing.phase === "photo_reveal" || existing.phase === "photo") &&
@@ -1906,7 +1959,7 @@ export function PhotoScratch() {
   }
   tryResolveGameRef.current = tryResolveGame;
 
-  function advanceAfterScratch() {
+  function presentPhotoResult() {
     const finishedId = selectedCardId;
     if (!finishedId) {
       resetScratches();
@@ -1923,15 +1976,39 @@ export function PhotoScratch() {
     } else if (result === "win") {
       diamonds = 1;
     }
+
     if (inGame) {
       recordPhotoCardResult(finishedId, diamonds);
+      if (!completedCardIdsRef.current.includes(finishedId)) {
+        const nextCompleted = [...completedCardIdsRef.current, finishedId];
+        completedCardIdsRef.current = nextCompleted;
+        setCompletedCardIds(nextCompleted);
+      }
+      setPhotoResult({
+        win: diamonds > 0,
+        diamonds,
+        resultId: `${finishedId}:${diamonds}`,
+      });
+      return;
     }
 
+    finalizeScratchAdvance(finishedId);
+  }
+
+  function afterPhotoResultPresentation() {
+    setPhotoResult(null);
+    const finishedId = selectedCardId;
+    if (!finishedId) return;
+    finalizeScratchAdvance(finishedId);
+  }
+
+  function finalizeScratchAdvance(finishedId: string) {
     if (!completedCardIdsRef.current.includes(finishedId)) {
       const nextCompleted = [...completedCardIdsRef.current, finishedId];
       completedCardIdsRef.current = nextCompleted;
       setCompletedCardIds(nextCompleted);
     }
+    const inGame = isGameModeUrl() && loadGameSession()?.phase === "photo";
     const done = completedCardIdsRef.current;
     const nextCard = playlist.find(
       (entry) => entry.id !== finishedId && !done.includes(entry.id),
@@ -1942,8 +2019,12 @@ export function PhotoScratch() {
     if (!nextCard) {
       setSelectedCardId("");
       if (inGame) {
-        finishPhotoHand();
-        navigateTo("/game");
+        const finished = finishPhotoHand();
+        if (finished) {
+          setHandSummaryDiamonds(finished.diamondTotal);
+        } else {
+          navigateTo("/game");
+        }
       }
       return;
     }
@@ -1966,7 +2047,8 @@ export function PhotoScratch() {
         );
       });
   }
-  advanceAfterScratchRef.current = advanceAfterScratch;
+
+  advanceAfterScratchRef.current = presentPhotoResult;
 
   function resetScratches() {
     marksRef.current = [];
@@ -2129,6 +2211,27 @@ export function PhotoScratch() {
   );
   const activePlaylistLabel =
     playlist.find((entry) => entry.id === selectedCardId)?.label ?? uploadLabel;
+
+  function leavePhotoScratchAfterHand() {
+    const session = loadGameSession();
+    if (session?.phase === "done") {
+      recordPhotoHandToCollection(session);
+      clearCompletedPhotoHand();
+    } else {
+      persistGameProgress();
+    }
+    bumpInventoryRevision();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("game") === "1") {
+      navigateTo(Paths.collection);
+      return;
+    }
+    const card = params.get("card")?.trim() || "";
+    const model = params.get("model")?.trim() || "";
+    const motionCardId = card ? motionCardIdFromPhotoScratchId(card) : "";
+    navigateTo(collectionReturnHref(model, motionCardId));
+  }
 
   return (
     <main className="app-shell photo-scratch-page">
@@ -2493,7 +2596,7 @@ export function PhotoScratch() {
           data-tutorial-target="reveal"
           className={`stage photo-scratch-stage${ready ? " is-ready" : ""}${isScratching ? " is-finger-dragging is-scratching" : ""}${showLayerBg ? "" : " is-bg-hidden"}${
             gameResult ? " is-game-over" : ""
-          }${topBarPhase === "showcase" ? " is-showcase-phase" : ""}${
+          }${handSummaryDiamonds != null ? " is-hand-summary" : ""}${topBarPhase === "showcase" ? " is-showcase-phase" : ""}${
             hasBodySymbols && !introActive && topBarPhase === "center"
               ? " is-bar-phase"
               : ""
@@ -2661,6 +2764,8 @@ export function PhotoScratch() {
             ))}
           </div>
           {playlist.length > 1 &&
+          handSummaryDiamonds == null &&
+          photoResult == null &&
           completedCardIds.length < playlist.length &&
           selectedCardId ? (
             <PackProgress
@@ -2686,6 +2791,27 @@ export function PhotoScratch() {
               )}
             </button>
           </div>
+          {photoResult?.win && photoResult.diamonds > 0 ? (
+            <PhotoDiamondReveal
+              key={photoResult.resultId}
+              diamonds={photoResult.diamonds}
+              resultId={photoResult.resultId}
+              onComplete={afterPhotoResultPresentation}
+            />
+          ) : null}
+          {photoResult && !(photoResult.win && photoResult.diamonds > 0) ? (
+            <PhotoNoWinFeedback
+              key={photoResult.resultId}
+              resultId={photoResult.resultId}
+              onComplete={afterPhotoResultPresentation}
+            />
+          ) : null}
+          {handSummaryDiamonds != null ? (
+            <PhotoHandSummary
+              diamondTotal={handSummaryDiamonds}
+              onCollect={leavePhotoScratchAfterHand}
+            />
+          ) : null}
         </div>
       </section>
     </main>
