@@ -40,6 +40,7 @@ export type CartAddInput = {
 
 const KEY = "sugar.v8.packCart";
 export const CART_CHANGED_EVENT = "sugar:cart-changed";
+export const CART_REMOVE_INTENT_EVENT = "sugar:cart-remove-intent";
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 
@@ -98,6 +99,18 @@ export function countCartPacks(): number {
   return readAll().length;
 }
 
+/** True when this catalog pack (or its character) is already in Pack Pocket. */
+export function isPackInCart(...ids: Array<string | null | undefined>): boolean {
+  const wanted = new Set(
+    ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id)),
+  );
+  if (!wanted.size) return false;
+  // packId may be a foil id on Browse/Featured and a model id on CoverFlowV2.
+  return readAll().some(
+    (pack) => wanted.has(pack.packId) || wanted.has(pack.characterId),
+  );
+}
+
 export function addPackToCart(input: CartAddInput): CartPack {
   const item: CartPack = {
     cartItemId: newId(),
@@ -140,4 +153,17 @@ export function subscribeCart(onChange: () => void) {
     window.removeEventListener(CART_CHANGED_EVENT, handler);
     window.removeEventListener("storage", handler);
   };
+}
+
+/** Fire as soon as the user confirms remove, before the pack-drop animation finishes. */
+export function notifyCartRemoveIntent() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(CART_REMOVE_INTENT_EVENT));
+}
+
+export function subscribeCartRemoveIntent(onRemove: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+  const handler = () => onRemove();
+  window.addEventListener(CART_REMOVE_INTENT_EVENT, handler);
+  return () => window.removeEventListener(CART_REMOVE_INTENT_EVENT, handler);
 }

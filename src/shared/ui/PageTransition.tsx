@@ -35,8 +35,6 @@ export function routeNeedsWait(pathname: string) {
   if (pathname === Paths.recommendSwipe) return true;
   if (pathname.startsWith("/purchase/")) return true;
   if (pathname === Paths.coverflowV2) return true;
-  if (pathname.startsWith(Paths.game)) return true;
-  if (pathname.startsWith(Paths.photoScratch)) return true;
   return false;
 }
 

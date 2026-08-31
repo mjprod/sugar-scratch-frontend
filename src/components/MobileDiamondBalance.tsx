@@ -175,7 +175,7 @@ export function MobileDiamondUtility({
       const padX = 8;
       const insetY = 4;
       const fullH = Math.max(0, rect.height - insetY * 2);
-      const bubbleH = fullH * 1.2;
+      const bubbleH = fullH * 2.4;
       setCartBubble((prev) => ({
         x: rect.left - parentRect.left - padX,
         y: rect.top - parentRect.top + insetY + (fullH - bubbleH) / 2,

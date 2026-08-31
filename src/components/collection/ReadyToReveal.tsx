@@ -1,10 +1,18 @@
 import { useEffect, useMemo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
+import { useModels } from "@/hooks/useModels";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
   type UnopenedPack,
 } from "@/services/collection";
+import {
+  cardPackNameFromModel,
+  matchModel,
+  packFaceVideoFromModel,
+} from "@/services/models";
 import {
   cardActionForGroup,
   listAllReadyScratch,
@@ -49,6 +57,7 @@ export function ReadyToReveal({
 }) {
   const [searchParams] = useSearchParams();
   const revealPacks = searchParams.get("reveal") === "packs";
+  const models = useModels();
   const packs = useMemo(
     () => unopenedPacks ?? listUnopenedPackShelf(),
     [unopenedPacks, inventoryRevision],
@@ -62,6 +71,7 @@ export function ReadyToReveal({
   // not every card inside a grouped photo session.
   const packItems = packs.length;
   const cardItems = scratches.length;
+  const cardsScroll = useHorizontalScroll(".ready-reveal-tile", cardItems);
   const totalActions = packItems + cardItems;
   const empty = totalActions === 0;
   const showPacks = packItems > 0;
@@ -126,17 +136,30 @@ export function ReadyToReveal({
               </h3>
               <div className="collection-h-row">
                 {packs.map((pack) => {
-                  const title = themeLabel(pack.name, {
-                    catalogPackId: pack.catalogPackId,
-                    creator: pack.creator,
+                  const model = matchModel(models, {
+                    packId: pack.catalogPackId ?? pack.id,
+                    name: pack.creator,
                   });
+                  const foilHints = {
+                    packId: pack.catalogPackId ?? pack.id,
+                    packName: pack.name,
+                    themeName: pack.name,
+                  };
+                  const title =
+                    cardPackNameFromModel(model, foilHints) ||
+                    themeLabel(pack.name, {
+                      catalogPackId: pack.catalogPackId,
+                      creator: pack.creator,
+                    });
+                  const coverUrl =
+                    packFaceVideoFromModel(model, foilHints) || pack.coverUrl;
                   const qtyLabel = `${pack.count} ${
                     pack.count === 1 ? "Pack" : "Packs"
                   }`;
                   return (
                     <RevealInventoryTile
                       key={pack.id}
-                      coverUrl={pack.coverUrl}
+                      coverUrl={coverUrl}
                       title={title}
                       creator={pack.creator}
                       quantityLabel={qtyLabel}
@@ -156,15 +179,50 @@ export function ReadyToReveal({
 
           {showCards ? (
             <div className="ready-reveal-group" aria-label="Cards">
-              <h3 className="ready-reveal-group-title">
-                Cards
-                <span className="ready-reveal-group-count">{cardItems}</span>
-              </h3>
-              <div className="collection-h-row">
+              <div className="ready-reveal-group-head">
+                <h3 className="ready-reveal-group-title">
+                  Cards
+                  <span className="ready-reveal-group-count">{cardItems}</span>
+                </h3>
+                <div className="ready-reveal-group-arrows">
+                  <button
+                    type="button"
+                    className="continue-collecting-arrow is-prev"
+                    aria-label="Previous cards"
+                    disabled={!cardsScroll.canScrollLeft}
+                    onClick={() => cardsScroll.scrollByPage(-1)}
+                  >
+                    <ChevronLeft className="size-5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="continue-collecting-arrow is-next"
+                    aria-label="Next cards"
+                    disabled={!cardsScroll.canScrollRight}
+                    onClick={() => cardsScroll.scrollByPage(1)}
+                  >
+                    <ChevronRight className="size-5" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+              <div ref={cardsScroll.scrollRef} className="collection-h-row">
                 {scratches.map((group) => {
-                  const title = themeLabel(group.collectionName, {
-                    creator: group.creatorName,
+                  const model = matchModel(models, {
+                    packId: group.id.replace(/^(photo|motion):/, ""),
+                    name: group.creatorName,
                   });
+                  const foilHints = {
+                    packId: group.id.replace(/^(photo|motion):/, ""),
+                    packName: group.collectionName,
+                    themeName: group.collectionName,
+                  };
+                  const title =
+                    cardPackNameFromModel(model, foilHints) ||
+                    themeLabel(group.collectionName, {
+                      creator: group.creatorName,
+                    });
+                  const coverUrl =
+                    packFaceVideoFromModel(model, foilHints) || group.coverUrl;
                   const isPhoto = group.kind === "photo";
                   const typeLabel = isPhoto ? "Photo Card" : "Motion Card";
                   const action =
@@ -180,7 +238,7 @@ export function ReadyToReveal({
                   return (
                     <RevealInventoryTile
                       key={group.id}
-                      coverUrl={group.coverUrl}
+                      coverUrl={coverUrl}
                       title={title}
                       creator={group.creatorName}
                       quantityLabel={qtyLabel}

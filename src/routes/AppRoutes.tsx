@@ -233,6 +233,14 @@ export function AppRoutes() {
             element={<Navigate to={Paths.packPocket} replace />}
           />
           <Route
+            path="purchase/tear-open"
+            element={
+              <CatalogProvider>
+                <PurchaseFlowPage />
+              </CatalogProvider>
+            }
+          />
+          <Route
             path="purchase/:packId"
             element={
               <CatalogProvider>

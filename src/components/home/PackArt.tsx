@@ -1,20 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { isVideoSrc } from "@/services/models";
 
 /** Pack artwork with foil overlay + image fallback */
 export function PackArt({
   src,
   alt,
   size = "md",
+  fit = "cover",
   className = "",
 }: {
   src: string;
   alt: string;
   size?: "lg" | "md" | "thumb";
+  fit?: "cover" | "contain";
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const sizeClass =
     size === "lg" ? "card-pack-lg" : size === "thumb" ? "card-pack-thumb" : "card-pack-md";
+  const mediaClass =
+    fit === "contain"
+      ? "absolute inset-0 size-full object-contain"
+      : "absolute inset-0 size-full object-cover";
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
 
   return (
     <div
@@ -26,14 +37,26 @@ export function PackArt({
       ].join(" ")}
     >
       {!failed ? (
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(true)}
-          className="absolute inset-0 size-full object-cover"
-        />
+        isVideoSrc(src) ? (
+          <video
+            src={src}
+            className={mediaClass}
+            muted
+            loop
+            playsInline
+            autoPlay
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <img
+            src={src}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(true)}
+            className={mediaClass}
+          />
+        )
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-[oklch(0.606_0.219_292.72)]/40 to-[oklch(0.196_0_0)]" />
       )}

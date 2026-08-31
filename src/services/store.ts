@@ -20,7 +20,7 @@ export type StoreProduct = {
   priceLabel: string;
   /** Diamonds granted on success. */
   diamonds: number;
-  /** Reward points granted (rewarded ads). */
+  /** Bonus Sugar Coins granted with this product. */
   coins?: number;
   badge?: StoreBadge;
   /** Artwork URL — CSS fallback used when empty. */
@@ -110,6 +110,7 @@ const CATALOG: StoreProduct[] = [
     title: "100 Diamonds",
     priceLabel: "$3.99",
     diamonds: 100,
+    coins: 4000,
     order: 2,
     available: true,
   },
@@ -119,6 +120,7 @@ const CATALOG: StoreProduct[] = [
     title: "500 Diamonds",
     priceLabel: "$7.99",
     diamonds: 500,
+    coins: 8000,
     badge: "Popular",
     order: 3,
     available: true,
@@ -129,6 +131,7 @@ const CATALOG: StoreProduct[] = [
     title: "1200 Diamonds",
     priceLabel: "$19.99",
     diamonds: 1200,
+    coins: 20000,
     badge: "Best Value",
     order: 4,
     available: true,
@@ -139,6 +142,7 @@ const CATALOG: StoreProduct[] = [
     title: "2500 Diamonds",
     priceLabel: "$39.99",
     diamonds: 2500,
+    coins: 40000,
     badge: "Bonus",
     order: 5,
     available: true,
@@ -149,6 +153,7 @@ const CATALOG: StoreProduct[] = [
     title: "5000 Diamonds",
     priceLabel: "$69.99",
     diamonds: 5000,
+    coins: 70000,
     order: 6,
     available: true,
   },
@@ -164,9 +169,26 @@ function queryFlag(name: string): string | null {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+function normalizeProductCoins(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.trunc(parsed);
+  }
+  return undefined;
+}
+
+function normalizeStoreProduct(product: StoreProduct): StoreProduct {
+  const coins = normalizeProductCoins(product.coins);
+  return coins === undefined ? product : { ...product, coins };
+}
+
 export function listAvailableProducts(source: StoreProduct[] = CATALOG): StoreProduct[] {
   return source
     .filter((product) => product.available)
+    .map(normalizeStoreProduct)
     .slice()
     .sort((a, b) => a.order - b.order);
 }

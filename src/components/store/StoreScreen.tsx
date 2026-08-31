@@ -36,13 +36,12 @@ type LoadState =
   | { status: "empty" }
   | { status: "error"; message: string };
 
-/** Coins shown under Diamonds: ceil(price) × 1000 — e.g. $3.99 → 4000. */
-function coinsFromPriceLabel(priceLabel: string): number | null {
-  const match = priceLabel.replace(/,/g, "").match(/(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  const dollars = Number(match[1]);
-  if (!Number.isFinite(dollars) || dollars <= 0) return null;
-  return Math.ceil(dollars) * 1000;
+function packageCoinAmount(product: StoreProduct): number | null {
+  const coins = product.coins;
+  if (typeof coins !== "number" || !Number.isFinite(coins) || coins < 0) {
+    return null;
+  }
+  return Math.trunc(coins);
 }
 
 /** Paid purchase stages after product selection. */
@@ -572,7 +571,7 @@ function PackageCard({
   onSelect: () => void;
 }) {
   const featured = product.badge === "Best Value";
-  const coinAmount = coinsFromPriceLabel(product.priceLabel);
+  const coinAmount = packageCoinAmount(product);
 
   return (
     <button

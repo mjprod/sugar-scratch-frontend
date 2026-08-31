@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Check } from "lucide-react";
 import {
   CoverFlowCarousel,
   DEFAULT_COVERFLOW_CAMERA,
@@ -22,6 +23,7 @@ import {
   type FeaturedPack,
 } from "@/services/homepage";
 import { resolveCollectionThemeLabel } from "@/services/collection";
+import { isPackInCart, subscribeCart } from "@/services/cart";
 import {
   loadModels,
   profileFromModel,
@@ -264,6 +266,7 @@ export function FeaturedCoverFlow({
   );
   const [debugOpen, setDebugOpen] = useState(HERO_DEBUG_ENABLED);
   const [copyLabel, setCopyLabel] = useState("Copy");
+  const [addedToPocket, setAddedToPocket] = useState(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
 
@@ -302,6 +305,20 @@ export function FeaturedCoverFlow({
   }, [featured]);
 
   const items = catalog?.items ?? [];
+  const focusedItem = items.find((item) => item.id === selectedId) ?? null;
+
+  useEffect(() => {
+    const sync = () => {
+      if (!focusedItem) {
+        setAddedToPocket(false);
+        return;
+      }
+      const target = catalog?.playById.get(focusedItem.id);
+      setAddedToPocket(isPackInCart(focusedItem.id, target?.foilId, target?.id));
+    };
+    sync();
+    return subscribeCart(sync);
+  }, [catalog, focusedItem]);
 
   useEffect(() => {
     if (!selectedId && items[0]) {
@@ -426,9 +443,17 @@ export function FeaturedCoverFlow({
           formatPrice={(price) => String(price)}
           disableSwipeDownDeactivate
           disableWheelPaging
+          buyLabel={addedToPocket ? "In Pocket" : "Add Pack"}
+          buyLeadingIcon={
+            addedToPocket ? (
+              <Check aria-hidden="true" strokeWidth={2.75} />
+            ) : undefined
+          }
+          buyDisabled={addedToPocket}
           onBuy={(item) => {
             const target = catalog.playById.get(item.id);
-            if (target) onPlay(target);
+            if (!target || isPackInCart(item.id, target.foilId, target.id)) return;
+            onPlay(target);
           }}
         />
         {HERO_DEBUG_ENABLED && debugOpen ? (

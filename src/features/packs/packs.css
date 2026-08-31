@@ -860,6 +860,26 @@ h1 {
   white-space: pre-line;
 }
 
+.coverflow-pack-label__price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22em;
+  margin: 0.12rem auto 0;
+  color: oklch(1 0 0);
+  font-family: sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
+  white-space: nowrap;
+}
+
+.coverflow-pack-label__price-amount {
+  font-variant-numeric: tabular-nums;
+}
+
 .coverflow-pack-flag {
   display: inline-block;
   margin-right: 0.15rem;
@@ -1121,7 +1141,8 @@ h1 {
 }
 
 .coverflow-pack-html-label .coverflow-pack-label__collection,
-.coverflow-pack-html-label .coverflow-pack-label__pack {
+.coverflow-pack-html-label .coverflow-pack-label__pack,
+.coverflow-pack-html-label .coverflow-pack-label__price {
   opacity: 0;
   filter: blur(6px);
   transform: translateY(10px);
@@ -1166,6 +1187,17 @@ h1 {
   transition-delay: 70ms;
 }
 
+.coverflow-pack-html-label.is-visible .coverflow-pack-label__price {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 300ms ease,
+    transform 320ms ease,
+    filter 320ms ease;
+  transition-delay: 100ms;
+}
+
 /* Active / leave-center: fade up + blur out (mirrors active-stack exit). */
 .coverflow-pack-html-label.is-active-hidden,
 .coverflow-pack-html--browse.is-active-hidden .coverflow-pack-html-label {
@@ -1181,12 +1213,16 @@ h1 {
 
 .coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__collection,
 .coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__pack,
+.coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__price,
 .coverflow-pack-html--browse.is-active-hidden
   .coverflow-pack-html-label
   .coverflow-pack-label__collection,
 .coverflow-pack-html--browse.is-active-hidden
   .coverflow-pack-html-label
-  .coverflow-pack-label__pack {
+  .coverflow-pack-label__pack,
+.coverflow-pack-html--browse.is-active-hidden
+  .coverflow-pack-html-label
+  .coverflow-pack-label__price {
   opacity: 0;
   filter: blur(6px);
   transform: translateY(-8px);
@@ -1297,6 +1333,53 @@ h1 {
   pointer-events: none;
 }
 
+.coverflow-buy-pack-cta .cta-button__title-row {
+  gap: 0.32em;
+}
+
+.coverflow-buy-pack-cta .cta-button__leading-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+/*
+  In Pocket: black chrome (plate, aurora, stroke, glow) at 30%.
+  Title + checkmark stay fully opaque; diamond cost fades with the chrome.
+*/
+.coverflow-buy-pack-cta .cta-button:disabled,
+.coverflow-buy-pack-cta .cta-button.is-disabled,
+.coverflow-buy-pack-cta .cta-button-glow.is-disabled,
+.coverflow-buy-pack-cta .cta-button-glow:has(> .border-glow-inner .cta-button:disabled),
+.coverflow-buy-pack-cta .cta-button-glow:has(> .border-glow-inner .cta-button.is-disabled) {
+  filter: none;
+  opacity: 1;
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__inner,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__inner {
+  background: rgb(0 0 0 / 0.3);
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__face,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__face {
+  opacity: 0.3;
+  filter: grayscale(1) brightness(0);
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__label,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__label {
+  opacity: 1;
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__cost,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__cost {
+  opacity: 0.3;
+}
+
 /* Staggered entrance inside the active stack: label first, then CTA. */
 .coverflow-active-stack.is-visible .coverflow-active-pack-label {
   opacity: 1;
@@ -1351,15 +1434,15 @@ h1 {
   transition-delay: 0ms;
 }
 
-.coverflow-cart-remove-wrap {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 0.75rem;
-  pointer-events: auto;
-}
+	.coverflow-cart-remove-wrap {
+	  position: relative;
+	  z-index: 2;
+	  display: flex;
+	  flex-direction: column;
+	  align-items: center;
+	  margin-top: 0;
+	  pointer-events: auto;
+	}
 
 .coverflow-cart-remove {
   position: relative;
@@ -1552,6 +1635,24 @@ h1 {
   pointer-events: auto;
 }
 
+.cart-continue__cta .cta-button__leading-icon {
+  width: auto;
+  height: auto;
+}
+
+.cart-continue__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.cart-continue__cost-amount {
+  font-size: 1em;
+}
+
 .coverflow-pack-html-label .coverflow-cart-remove-wrap,
 .coverflow-pack-html-label .coverflow-cart-remove,
 .coverflow-pack-html-label .coverflow-cart-remove-confirm {
@@ -1565,10 +1666,50 @@ h1 {
 }
 
 @media (max-width: 980px) {
-  /* Tighter vertical rhythm inside the shorter mobile hex CTA. */
-  .coverflow-buy-pack-cta .cta-button__label {
-    gap: 0.12em;
-  }
+				  /* Pack-pocket only: drop the 3D pack + X; leave .cart-continue put. */
+				  .stage-packs:has(.cart-continue) .coverflow-stage {
+				    translate: 0 10dvh;
+				  }
+
+		  /* Close control lives above the pack on mobile, not under the labels. */
+			  .coverflow-pack-html--remove {
+			    left: 50% !important;
+				    transform: translate3d(-50%, 6dvh, 0) !important;
+			    pointer-events: none !important;
+			  }
+
+	  .coverflow-pack-html--remove .coverflow-cart-remove-wrap {
+	    margin-top: 0;
+	    opacity: 0;
+	    filter: blur(8px);
+	    transform: translateY(10px);
+	    transition:
+	      opacity 360ms ease,
+	      transform 380ms ease,
+	      filter 380ms ease;
+	  }
+
+	  .coverflow-pack-html--remove.is-visible .coverflow-cart-remove-wrap {
+	    opacity: 1;
+	    filter: blur(0);
+	    transform: translateY(0);
+	  }
+
+		  .coverflow-pack-html--remove .coverflow-cart-remove-confirm {
+		    top: calc(100% + 0.55rem);
+		    bottom: auto;
+		  }
+
+		  .coverflow-pack-html--remove .coverflow-cart-remove-confirm::before {
+		    top: -6px;
+		    bottom: auto;
+		    transform: translateX(-50%) rotate(45deg);
+		  }
+
+	  /* Tighter vertical rhythm inside the shorter mobile hex CTA. */
+	  .coverflow-buy-pack-cta .cta-button__label {
+	    gap: 0.12em;
+	  }
 
   .coverflow-buy-pack-cta .cta-button--hex .cta-button__label {
     gap: 0.1em;
@@ -1585,10 +1726,16 @@ h1 {
     font-size: 0.8075rem;
   }
 
-  .coverflow-pack-html--browse .coverflow-pack-label__pack {
-    font-size: 0.741rem;
-  }
-}
+	  .coverflow-pack-html--browse .coverflow-pack-label__pack,
+	  .coverflow-pack-html--browse .coverflow-pack-label__price {
+	    font-size: 0.741rem;
+	  }
+
+		  /* Sit just under the pack, still above the bottom nav + Collection FAB. */
+		  .cart-continue {
+			    bottom: calc(8.5dvh + env(safe-area-inset-bottom, 0px));
+		  }
+	}
 
 /* Buy Pack button styles */
 .btn-180 {

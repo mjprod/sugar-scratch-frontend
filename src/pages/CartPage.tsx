@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
 import { packItemToIteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
@@ -24,7 +25,9 @@ import {
   PurchaseError,
   cartCheckoutIdempotencyKey,
   commitPurchaseIdempotencyKey,
+  loadPackCatalog,
   packCost,
+  resolvePurchasePackId,
   submitPurchase,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
@@ -34,6 +37,7 @@ import {
   setPackOpenRequested,
   rewindCardTopTear,
 } from "@/features/packs/cardTopDebug";
+import { resolveCollectionThemeLabel } from "@/services/collection";
 import {
   loadModels,
   matchModel,
@@ -176,6 +180,9 @@ export function CartPage() {
   const [models, setModels] = useState<Awaited<ReturnType<typeof loadModels>> | null>(
     null,
   );
+  const [packCatalog, setPackCatalog] = useState<
+    Awaited<ReturnType<typeof loadPackCatalog>>
+  >([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -218,10 +225,34 @@ export function CartPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadPackCatalog()
+      .then((loaded) => {
+        if (!cancelled) setPackCatalog(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setPackCatalog([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const items = useMemo(
     () => cartPacksToItems(packs, models),
     [models, packs],
   );
+
+  const combinedPrice = useMemo(() => {
+    return packs.reduce((sum, cartPack) => {
+      const catalogId = catalogPackIdForCartItem(cartPack, models);
+      const purchaseId = packCatalog.length
+        ? resolvePurchasePackId(packCatalog, catalogId)
+        : catalogId;
+      return sum + packCost(1, purchaseId);
+    }, 0);
+  }, [models, packCatalog, packs]);
 
   useEffect(() => {
     if (!items.length) {
@@ -249,9 +280,13 @@ export function CartPage() {
         let lastPurchaseId = "";
         let partialFailure: PurchaseError | null = null;
 
+        const catalog = packCatalog.length ? packCatalog : await loadPackCatalog();
+        if (!packCatalog.length && catalog.length) setPackCatalog(catalog);
+
         for (const cartPack of remaining) {
           const catalogId = catalogPackIdForCartItem(cartPack, models);
-          const cost = packCost(1, catalogId);
+          const purchaseId = resolvePurchasePackId(catalog, catalogId);
+          const cost = packCost(1, purchaseId);
           if (cost > balance) {
             partialFailure = new PurchaseError(
               "insufficient",
@@ -263,7 +298,7 @@ export function CartPage() {
             const result = await submitPurchase(
               1,
               balance,
-              catalogId,
+              purchaseId,
               cartCheckoutIdempotencyKey(cartPack.cartItemId),
               coins,
             );
@@ -290,7 +325,7 @@ export function CartPage() {
             instanceIds.push(instanceId);
             lastPurchaseId = result.purchaseId;
             removePackFromCart(cartPack.cartItemId);
-            commitPurchaseIdempotencyKey(catalogId, 1);
+            commitPurchaseIdempotencyKey(purchaseId, 1);
           } catch (error) {
             partialFailure =
               error instanceof PurchaseError
@@ -332,13 +367,21 @@ export function CartPage() {
       const matched = models ? foilForCartPack(first, models) : null;
       const packId = catalogPackIdForCartItem(first, models);
       const purchaseId = `cart-${Date.now().toString(36)}`;
+      const themeName =
+        resolveCollectionThemeLabel({
+          packName: matched?.foil?.label || first.packName,
+          catalogPackId: packId,
+          creator: matched?.profile.name || first.creator,
+        }) ||
+        matched?.foil?.label ||
+        first.packName;
       const created = addUnopenedFromPurchase({
         purchaseId,
         catalogPackId: packId,
         packName: matched?.foil?.label || first.packName,
         creator: matched?.profile.name || first.creator,
         count: remaining.length,
-        themeName: matched?.foil?.label || first.packName,
+        themeName,
       });
       openCartTearFlow({
         remaining,
@@ -425,11 +468,19 @@ export function CartPage() {
         <div className="cart-continue">
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
-            label={checkingOut ? "Checking out…" : "Continue"}
+            className="cart-continue__cta"
+            leadingIcon={
+              <span className="cart-continue__cost">
+                <DiamondLottie size={16} aria-hidden />
+                <span className="cart-continue__cost-amount">{combinedPrice}</span>
+              </span>
+            }
+            label={checkingOut ? "Checking out…" : "Confirm"}
             costAmount={null}
-            width={220}
+            width={248}
             height={56}
             fontSize={16}
+            aria-label={`${combinedPrice} diamonds, Confirm`}
             disabled={checkingOut}
             onClick={() => void continueToTear()}
           />

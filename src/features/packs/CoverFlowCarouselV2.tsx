@@ -50,6 +50,8 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from '@/shared/ui/cta'
+import { DiamondLottie } from '@/components/ui/DiamondLottie'
+import { notifyCartRemoveIntent } from '@/services/cart'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
   PackLights,
@@ -373,16 +375,16 @@ export const DEFAULT_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   modelY: -0.02,
 }
 
-export const MOBILE_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
-  cameraX: 0.11,
-  cameraY: 0.27,
-  cameraZ: 6.45,
-  fov: 36,
-  lookAtY: 0,
-  packsX: 0.115,
-  packsY: -0.94,
-  modelY: -0.3,
-}
+	export const MOBILE_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
+	  cameraX: 0.11,
+	  cameraY: 0.27,
+	  cameraZ: 6.45,
+	  fov: 36,
+	  lookAtY: 0,
+	  packsX: 0.115,
+	  packsY: -0.58,
+	  modelY: -0.08,
+	}
 
 export interface CoverFlowLightingSettings {
   ambient: number
@@ -611,7 +613,13 @@ function applyCardTopOpacity(cardTop: Object3D, opacity: number) {
 }
 
 function resolveCardTopDebugPose(debug: CardTopDebugState): CardTopDebugState {
-  if (!debug.tearPlaying) return debug
+  const tearing = debug.tearPlaying || debug.tearT > 0.001
+  // Shared debug state keeps a leftover torn pose after rewind (position /
+  // opacity persist independently of tearT). Active packs used to apply that
+  // pose immediately, so the lid dropped as soon as a pack became selected.
+  if (!tearing) {
+    return debug.showGizmo ? debug : closedCardTopDebugPose(debug)
+  }
   const pose = sampleCardTopTear(loadCardTopTearTimeline(), debug.tearT)
   return {
     ...debug,
@@ -874,42 +882,45 @@ function CoverFlowPack({
 		  onOpenPackBlurChange,
 formatPrice,
 				  onBuy,
-				  onRemove,
-				  hideActiveCta = false,
-				  tearHud,
-				}: {
-				  item: Iteration
-				  index: number
-				  focusIndex: number
-				  isActive: boolean
-				  hasActiveSelection: boolean
-				  modelY: number
-				  layout: CoverFlowLayoutSettings
-				  textureTransform: VideoTextureTransform
-				  centerTiltYaw: number
-				  centerTiltPitch: number
-				  isMobile: boolean
-				  /** Browser height < 550px — frosted glass behind pack HUD. */
-				  shortHudGlass: boolean
-				  /** True while any pack open sequence is running. */
-				  revealMode: boolean
-				  /** This pack is the one being opened. */
-				  isRevealHero: boolean
-				  playOpenSequence: boolean
-			  packsX: number
-			  packsY: number
-			  openTimeline: PackTimeline
-			  openDuckInTimeline: DuckInTimeline
-			  onSelect: (id: string) => void
-			  onOpenSequenceComplete?: () => void
-			  onOpenPackBehindFan?: () => void
-				  onOpenPackBlurChange?: (blurPx: number) => void
-				  formatPrice: (price: number) => string
-				  onBuy?: (item: Iteration) => void
-				  onRemove?: (item: Iteration) => void
-				  hideActiveCta?: boolean
-				  tearHud?: ReactNode
-				}) {
+					  onRemove,
+					  hideActiveCta = false,
+					  tearHud,
+					  lockCardTopClosed = false,
+					}: {
+					  item: Iteration
+					  index: number
+					  focusIndex: number
+					  isActive: boolean
+					  hasActiveSelection: boolean
+					  modelY: number
+					  layout: CoverFlowLayoutSettings
+					  textureTransform: VideoTextureTransform
+					  centerTiltYaw: number
+					  centerTiltPitch: number
+					  isMobile: boolean
+					  /** Browser height < 550px — frosted glass behind pack HUD. */
+					  shortHudGlass: boolean
+					  /** True while any pack open sequence is running. */
+					  revealMode: boolean
+					  /** This pack is the one being opened. */
+					  isRevealHero: boolean
+					  playOpenSequence: boolean
+				  packsX: number
+				  packsY: number
+				  openTimeline: PackTimeline
+				  openDuckInTimeline: DuckInTimeline
+				  onSelect: (id: string) => void
+				  onOpenSequenceComplete?: () => void
+				  onOpenPackBehindFan?: () => void
+					  onOpenPackBlurChange?: (blurPx: number) => void
+					  formatPrice: (price: number) => string
+					  onBuy?: (item: Iteration) => void
+					  onRemove?: (item: Iteration) => void
+					  hideActiveCta?: boolean
+					  tearHud?: ReactNode
+					  /** Browse-only surfaces: never apply shared tear pose to the lid. */
+					  lockCardTopClosed?: boolean
+					}) {
 const groupRef = useRef<Group>(null)
 		  const modelRef = useRef<Group>(null)
 	  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
@@ -997,10 +1008,11 @@ useEffect(() => {
 	    return () => window.removeEventListener('keydown', onKeyDown)
 	  }, [removeConfirmOpen])
 
-	  function beginRemoveExit() {
-	    if (isRemoving || removeExitRef.current.phase !== 'idle') return
-	    setRemoveConfirmOpen(false)
-	    setIsRemoving(true)
+		  function beginRemoveExit() {
+		    if (isRemoving || removeExitRef.current.phase !== 'idle') return
+		    setRemoveConfirmOpen(false)
+		    setIsRemoving(true)
+		    notifyCartRemoveIntent()
 	    const motion = motionRef.current
 	    removeExitRef.current = {
 	      phase: 'anticipation',
@@ -1241,15 +1253,25 @@ useEffect(() => {
 	    [hudLocalBottom.x, hudLocalBottom.y, hudLocalBottom.z],
 	  )
 	  // Inactive browse label sits ~20% higher on Y than the active stack anchor.
-	  const browseHudPosition = useMemo(
-	    () =>
-	      [
-	        hudLocalBottom.x,
-	        hudLocalBottom.y + 0.828,
-	        hudLocalBottom.z + 0.12,
-	      ] as [number, number, number],
-	    [hudLocalBottom.x, hudLocalBottom.y, hudLocalBottom.z],
-	  )
+		  const browseHudPosition = useMemo(
+		    () =>
+		      [
+		        hudLocalBottom.x,
+		        hudLocalBottom.y + 0.828,
+		        hudLocalBottom.z + 0.12,
+		      ] as [number, number, number],
+		    [hudLocalBottom.x, hudLocalBottom.y, hudLocalBottom.z],
+		  )
+		  // Mobile close control sits above the pack instead of under the labels.
+		  const removeHudPosition = useMemo(
+		    () =>
+		      [
+		        hudLocalBottom.x,
+		        hudLocalBottom.y + 2.42,
+		        hudLocalBottom.z + 0.12,
+		      ] as [number, number, number],
+		    [hudLocalBottom.x, hudLocalBottom.y, hudLocalBottom.z],
+		  )
 const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
 	  // Keep HUDs mounted through exit transitions (browse hide + active stack out).
 	  // Seed centered browse HUD mounted on first paint so reload doesn't wait for hover.
@@ -1436,9 +1458,9 @@ useLayoutEffect(() => {
 	    // Drag-to-tear is shared state; only the active/front pack should open.
 	    // Non-hero packs also multiply lid opacity by the side-pack fade so tear
 	    // ticks can't keep lids fully visible while the body disappears.
-	    const poseForPack = (debug: CardTopDebugState) => {
-	      if (isActive) return resolveCardTopDebugPose(debug)
-	      const closed = closedCardTopDebugPose(debug)
+		    const poseForPack = (debug: CardTopDebugState) => {
+		      if (isActive && !lockCardTopClosed) return resolveCardTopDebugPose(debug)
+		      const closed = closedCardTopDebugPose(debug)
 	      if (!revealModeRef.current) return closed
 	      return {
 	        ...closed,
@@ -1459,7 +1481,7 @@ useLayoutEffect(() => {
 	        gizmoSize,
 	      )
 	    })
-	  }, [cardTop, cardTopBounds, cardTopRest, isActive, isCenter])
+		  }, [cardTop, cardTopBounds, cardTopRest, isActive, isCenter, lockCardTopClosed])
 
 	  // Seed pack pose before first paint so pack-attached Html isn't stuck at origin
 	  // until the first pointer/frame interaction.
@@ -2144,12 +2166,39 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
             <p className="coverflow-pack-label__pack">
               {formatPackNumberLabel(item.girlName, item.packNumber)}
             </p>
-{removeControl}
-	          </div>
-	        </Html>
-	      ) : null}
+	            {hideActiveCta ? null : (
+	              <p
+	                className="coverflow-pack-label__price"
+	                aria-label={`${formatPrice(item.price ?? 4.99)} diamonds`}
+	              >
+	                <DiamondLottie size={13} aria-hidden />
+	                <span className="coverflow-pack-label__price-amount">
+	                  {formatPrice(item.price ?? 4.99)}
+	                </span>
+	              </p>
+	            )}
+		{isMobile ? null : removeControl}
+		          </div>
+		        </Html>
+		      ) : null}
 
-		{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
+			{isMobile && removeControl && (browseHudMounted || activeHudMounted) ? (
+			        <Html
+			          position={removeHudPosition}
+			          center
+			          transform={false}
+			          sprite={false}
+			          zIndexRange={[35, 0]}
+			          style={{ pointerEvents: 'none' }}
+			          wrapperClass={`coverflow-pack-html coverflow-pack-html--remove${
+			            (isActive ? activeHudVisible : browseHudVisible) ? ' is-visible' : ''
+			          }`}
+			        >
+			          {removeControl}
+			        </Html>
+			      ) : null}
+
+			{isCenter && tearHud ? <TearLottieHud modelY={modelY}>{tearHud}</TearLottieHud> : null}
 
 {activeHudMounted && !isRemoving ? (
 			        <Html
@@ -2170,17 +2219,28 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
 	            style={{ ['--active-stack-gap' as string]: '1rem' }}
 	            aria-hidden={!activeHudVisible}
 	          >
-	            <div className="coverflow-active-pack-label">
-	              <p className="coverflow-pack-label__collection">
-	                {formatPackCollectionLabel(item.girlName)}
-	              </p>
-	              <p className="coverflow-pack-label__pack">
-	                {formatPackNumberLabel(item.girlName, item.packNumber)}
-	              </p>
-	            </div>
-{hideActiveCta ? null : onRemove ? (
-		              removeControl
-		            ) : (
+		            <div className="coverflow-active-pack-label">
+		              <p className="coverflow-pack-label__collection">
+		                {formatPackCollectionLabel(item.girlName)}
+		              </p>
+		              <p className="coverflow-pack-label__pack">
+		                {formatPackNumberLabel(item.girlName, item.packNumber)}
+		              </p>
+		              {hideActiveCta ? null : (
+		                <p
+		                  className="coverflow-pack-label__price"
+		                  aria-label={`${formatPrice(item.price ?? 4.99)} diamonds`}
+		                >
+		                  <DiamondLottie size={13} aria-hidden />
+		                  <span className="coverflow-pack-label__price-amount">
+		                    {formatPrice(item.price ?? 4.99)}
+		                  </span>
+		                </p>
+		              )}
+		            </div>
+	{hideActiveCta || isMobile ? null : onRemove ? (
+			              removeControl
+			            ) : (
 		              <div className="coverflow-buy-pack-cta">
 		                <CtaButton
 		                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
@@ -2227,35 +2287,37 @@ function CoverFlowScene({
 	  onRevealPackBlurChange,
 formatPrice,
 				  onBuy,
-				  onRemove,
-				  hideActiveCta = false,
-				  tearHud,
-				}: {
-				  items: Iteration[]
-				  focusIndex: number
-				  selectedId: string | null
-				  cameraSettings: CoverFlowCameraSettings
-				  layout: CoverFlowLayoutSettings
-				  textureTransform: VideoTextureTransform
-				  centerTiltYaw: number
-				  centerTiltPitch: number
-				  isMobile: boolean
-				  shortHudGlass: boolean
-				  revealMode: boolean
-				  revealingPackId: string | null
-				  revealPlaySequence: boolean
-				  revealTimeline: PackTimeline
-				  revealDuckInTimeline: DuckInTimeline
-				  onSelect: (id: string) => void
-				  onRevealSequenceComplete?: () => void
-				  onRevealPackBehindFan?: () => void
-				  onRevealPackBlurChange?: (blurPx: number) => void
-				  formatPrice: (price: number) => string
-				  onBuy?: (item: Iteration) => void
-				  onRemove?: (item: Iteration) => void
-				  hideActiveCta?: boolean
-				  tearHud?: ReactNode
-				}) {
+					  onRemove,
+					  hideActiveCta = false,
+					  tearHud,
+					  lockCardTopClosed = false,
+					}: {
+					  items: Iteration[]
+					  focusIndex: number
+					  selectedId: string | null
+					  cameraSettings: CoverFlowCameraSettings
+					  layout: CoverFlowLayoutSettings
+					  textureTransform: VideoTextureTransform
+					  centerTiltYaw: number
+					  centerTiltPitch: number
+					  isMobile: boolean
+					  shortHudGlass: boolean
+					  revealMode: boolean
+					  revealingPackId: string | null
+						  revealPlaySequence: boolean
+						  revealTimeline: PackTimeline
+						  revealDuckInTimeline: DuckInTimeline
+						  onSelect: (id: string) => void
+					  onRevealSequenceComplete?: () => void
+					  onRevealPackBehindFan?: () => void
+					  onRevealPackBlurChange?: (blurPx: number) => void
+					  formatPrice: (price: number) => string
+					  onBuy?: (item: Iteration) => void
+					  onRemove?: (item: Iteration) => void
+					  hideActiveCta?: boolean
+					  tearHud?: ReactNode
+					  lockCardTopClosed?: boolean
+					}) {
 	  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -2310,9 +2372,10 @@ formatPrice,
 formatPrice={formatPrice}
 	              onBuy={onBuy}
 	              onRemove={onRemove}
-	              hideActiveCta={hideActiveCta}
-	              tearHud={index === focusIndex ? tearHud : undefined}
-	            />
+		              hideActiveCta={hideActiveCta}
+		              tearHud={index === focusIndex ? tearHud : undefined}
+		              lockCardTopClosed={lockCardTopClosed}
+		            />
 	          )
 	        })}
 	      </group>
@@ -3590,9 +3653,10 @@ isMobile={isMobileViewportActive}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
                 onRemove={onRemove}
-                hideActiveCta={hideActiveCta}
-                tearHud={tearHud}
-              />
+	                hideActiveCta={hideActiveCta}
+	                tearHud={tearHud}
+	                lockCardTopClosed={disablePackOpenReveal}
+	              />
             </Suspense>
           </Canvas>
         </div>

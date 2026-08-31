@@ -374,13 +374,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isBuyPack =
           action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
         if (isBuyPack) clearOpening();
-        navigate(Paths.purchase(action.pack.packId), {
-          state: {
-            pack: isBuyPack
-              ? { ...action.pack, entry: "purchase" as const }
-              : action.pack,
+        navigate(
+          action.pack.entry === "cart-tear"
+            ? Paths.purchaseTearOpen
+            : Paths.purchase(action.pack.packId),
+          {
+            state: {
+              pack: isBuyPack
+                ? { ...action.pack, entry: "purchase" as const }
+                : action.pack,
+            },
           },
-        });
+        );
         return;
       }
       if (action.type === "like") {
@@ -424,8 +429,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "add-to-cart") {
         addPackToCart(action.pack);
-        captureSecondaryReturn();
-        navigate(Paths.packPocket);
         return;
       }
       if (action.type === "collection") {
@@ -445,17 +448,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deferred?: ProtectedAction | null;
       scrollToDailyReward?: boolean;
     }) => {
+      // First-run / post-recommend always lands on Discover — not Profile.
+      // Soft-gate from /profile would otherwise resume that tab after onboarding.
       const deferred = opts?.deferred ?? null;
-      if (deferred) {
-        navigate(Paths.home);
-        window.setTimeout(() => resumePending(deferred), 0);
+      const resume =
+        deferred &&
+        !(deferred.type === "tab" && deferred.tab === "profile")
+          ? deferred
+          : null;
+
+      if (resume) {
+        navigate(Paths.discover);
+        window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      navigate(Paths.home, {
-        state: opts?.scrollToDailyReward
-          ? { scrollToDailyReward: true }
-          : undefined,
-      });
+      navigate(Paths.discover);
     },
     [navigate, resumePending],
   );

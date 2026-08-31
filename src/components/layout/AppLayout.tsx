@@ -55,6 +55,7 @@ export function AppLayout() {
   }, [navigate]);
 
   const isPurchase = location.pathname.startsWith("/purchase");
+  const isTearOpen = location.pathname.startsWith("/purchase/tear-open");
 
   useEffect(() => {
     function onPackOpeningReward(event: Event) {
@@ -180,7 +181,7 @@ export function AppLayout() {
           onOpenUnopenedPacks={showTopUtility ? openCart : undefined}
           inboxUnreadCount={inboxUnread}
           packsActive={onPackPocket}
-          hideDock={isPurchase}
+          hideDock={isPurchase && !isTearOpen}
         />
       ) : null}
 

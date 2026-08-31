@@ -169,7 +169,7 @@ const THEME_ID_LABELS: Record<string, string> = {
   nurse: 'Nurse',
   teacher: 'Teacher',
   gym: 'Gym',
-  firefighter: 'Firefighter',
+  firefighter: 'Firegirl',
   firegirl: 'Firegirl',
   fire: 'Firegirl',
   cyber: 'Cyber Nights',
@@ -190,6 +190,29 @@ const THEME_HINT_TO_ID: Record<string, string> = {
   fire: 'firegirl',
 }
 
+/** Creator page costume order: Police, Teacher, Nurse, Gym, Firegirl. */
+const COSTUME_THEME_ORDER = [
+  'police',
+  'teacher',
+  'nurse',
+  'gym',
+  'firegirl',
+] as const
+
+function compactThemeHint(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function canonicalThemeIdFromHint(value: string | null | undefined): string | null {
+  const compact = compactThemeHint(value ?? '')
+  if (!compact || compact === 'motion') return null
+  if (THEME_HINT_TO_ID[compact]) return THEME_HINT_TO_ID[compact]
+  for (const [key, id] of Object.entries(THEME_HINT_TO_ID)) {
+    if (compact.includes(key)) return id
+  }
+  return null
+}
+
 /**
  * Infer a collection theme id from a deep-linked card id / label
  * (e.g. `julianaval_cop` → `police`).
@@ -203,12 +226,11 @@ export function themeIdFromCardHint(
   const model = (modelId ?? '').trim().toLowerCase()
   const hint =
     model && raw.startsWith(`${model}_`) ? raw.slice(model.length + 1) : raw
-  const compact = hint.replace(/[^a-z0-9]+/g, '')
-  if (THEME_HINT_TO_ID[compact]) return THEME_HINT_TO_ID[compact]
-  for (const [key, id] of Object.entries(THEME_HINT_TO_ID)) {
-    if (compact.includes(key) || hint.includes(key)) return id
-  }
-  return null
+  return (
+    canonicalThemeIdFromHint(hint) ??
+    canonicalThemeIdFromHint(raw) ??
+    null
+  )
 }
 
 function titleCaseTheme(value: string): string {
@@ -244,7 +266,7 @@ export function themeNameFromApiText(
     }
   }
 
-  if (/^motion(?:\s*\d+)?$/i.test(value)) return null
+  if (/^motion(?:\s*\d+)?$/i.test(value) || /motion\d*$/.test(key)) return null
   // Foil slot placeholders ("Pack 1") are not theme names.
   if (/^pack\s*(?:n[ºo°.]?\s*)?\d+$/i.test(value)) return null
   if (value.length <= 24 && !/\//.test(value)) return titleCaseTheme(value)
@@ -255,16 +277,153 @@ function themeNameFromCards(
   cards: Array<Pick<BackendCollectionCard, 'id' | 'label'>>,
   themeByCardId: Map<string, string>,
 ): string | null {
+  const names = new Set<string>()
   for (const card of cards) {
     const fromFlow = themeNameFromApiText(themeByCardId.get(card.id))
-    if (fromFlow) return fromFlow
-  }
-  for (const card of cards) {
+    if (fromFlow) names.add(fromFlow)
     const fromLabel =
       themeNameFromApiText(card.label) ?? themeNameFromApiText(card.id)
-    if (fromLabel) return fromLabel
+    if (fromLabel) names.add(fromLabel)
   }
+  if (names.size === 1) return [...names][0] ?? null
   return null
+}
+
+function themeIdFromGroupSignals(group: BackendCollectionGroup): string | null {
+  return (
+    canonicalThemeIdFromHint(group.themeId) ??
+    canonicalThemeIdFromHint(group.themeName) ??
+    canonicalThemeIdFromHint(group.title) ??
+    null
+  )
+}
+
+function themeIdFromCardSignals(
+  card: Pick<BackendCollectionCard, 'id' | 'label'>,
+  modelId?: string | null,
+): string | null {
+  return (
+    canonicalThemeIdFromHint(card.label) ??
+    themeIdFromCardHint(card.id, modelId) ??
+    null
+  )
+}
+
+function isGenericMotionTheme(
+  themeId?: string | null,
+  themeName?: string | null,
+  title?: string | null,
+): boolean {
+  const values = [themeId, themeName, title]
+    .map((value) => compactThemeHint(value ?? ''))
+    .filter(Boolean)
+  if (values.length === 0) return true
+  return values.every((value) => /motion\d*$/.test(value))
+}
+
+function themeOrderRank(themeId: string): number {
+  const index = COSTUME_THEME_ORDER.indexOf(
+    themeId as (typeof COSTUME_THEME_ORDER)[number],
+  )
+  return index >= 0 ? index : Number.MAX_SAFE_INTEGER
+}
+
+function cardThemeIdsForGroup(group: BackendCollectionGroup): Set<string> {
+  const ids = new Set<string>()
+  for (const card of group.cards ?? []) {
+    const themeId = themeIdFromCardSignals(card, group.modelId)
+    if (themeId) ids.add(themeId)
+  }
+  return ids
+}
+
+function addCardToThemeGroup(
+  byTheme: Map<string, BackendCollectionGroup>,
+  themeId: string,
+  source: BackendCollectionGroup,
+  card: BackendCollectionCard,
+) {
+  const existing = byTheme.get(themeId)
+  if (existing) {
+    if (!existing.cards.some((entry) => entry.id === card.id)) {
+      existing.cards = [...existing.cards, card]
+    }
+    if (!existing.avatarUrl && source.avatarUrl) {
+      existing.avatarUrl = source.avatarUrl
+    }
+    return
+  }
+
+  const label = THEME_ID_LABELS[themeId] ?? themeId
+  const keepId = canonicalThemeIdFromHint(source.themeId) === themeId
+  byTheme.set(themeId, {
+    ...source,
+    id: keepId ? source.id : `${safeIdPart(source.modelId)}-${safeIdPart(themeId)}-1`,
+    themeId,
+    themeName: label,
+    title: source.title.replace(/motion(?:\s*\d+)?/i, label),
+    cards: [card],
+  })
+}
+
+/**
+ * Re-bucket mixed "Motion" API groups onto costume themes from card labels.
+ * Keeps already-themed groups intact and drops leftover unlabeled buckets.
+ */
+export function regroupCollectionGroups(
+  groups: BackendCollectionGroup[],
+  themeIndex: BackendCollectionTheme[] = [],
+): BackendCollectionGroup[] {
+  if (groups.length === 0) return groups
+
+  const byTheme = new Map<string, BackendCollectionGroup>()
+  const passthrough: BackendCollectionGroup[] = []
+  let splitAny = false
+
+  for (const group of groups) {
+    const groupTheme = themeIdFromGroupSignals(group)
+    const generic = isGenericMotionTheme(group.themeId, group.themeName, group.title)
+    const mixed = cardThemeIdsForGroup(group).size > 1
+
+    if (!generic && !mixed) {
+      if (!groupTheme) {
+        passthrough.push(group)
+        continue
+      }
+      for (const card of group.cards ?? []) {
+        addCardToThemeGroup(byTheme, groupTheme, group, card)
+      }
+      continue
+    }
+
+    splitAny = true
+    for (const card of group.cards ?? []) {
+      const themeId = themeIdFromCardSignals(card, group.modelId)
+      if (!themeId) continue
+      addCardToThemeGroup(byTheme, themeId, group, card)
+    }
+  }
+
+  if (!splitAny || byTheme.size === 0) return groups
+
+  const indexRank = new Map(
+    themeIndex.map((theme, index) => [
+      canonicalThemeIdFromHint(theme.id) ?? theme.id,
+      index,
+    ]),
+  )
+  const sorted = [...byTheme.values()].sort((a, b) => {
+    const aId = a.themeId ?? ''
+    const bId = b.themeId ?? ''
+    const aCostume = themeOrderRank(aId)
+    const bCostume = themeOrderRank(bId)
+    if (aCostume !== bCostume) return aCostume - bCostume
+    const aRank = indexRank.get(aId) ?? Number.MAX_SAFE_INTEGER
+    const bRank = indexRank.get(bId) ?? Number.MAX_SAFE_INTEGER
+    if (aRank !== bRank) return aRank - bRank
+    return a.id.localeCompare(b.id)
+  })
+  return [...sorted, ...passthrough]
 }
 
 /**
@@ -301,7 +460,7 @@ export function resolveCollectionGroupThemeName(input: {
     }
     const fromTitle = themeNameFromApiText(title)
     if (fromTitle) return fromTitle
-    if (!/^motion(?:\s*\d+)?$/i.test(title)) return title
+    if (!/motion(?:\s*\d+)?$/i.test(title)) return title
   }
 
   return 'Motion'
@@ -642,6 +801,32 @@ function normalizeCollectionGroup(
   }
 }
 
+function collectionGroupKey(group: BackendCollectionGroup): string {
+  const theme =
+    canonicalThemeIdFromHint(group.themeId) ??
+    canonicalThemeIdFromHint(group.themeName) ??
+    group.id
+  return `${group.modelId}::${theme.toLowerCase()}`
+}
+
+function mergeCollectionGroups(
+  current: BackendCollectionGroup,
+  incoming: BackendCollectionGroup,
+): BackendCollectionGroup {
+  const cards = [...current.cards]
+  for (const card of incoming.cards ?? []) {
+    if (!cards.some((entry) => entry.id === card.id)) cards.push(card)
+  }
+  return {
+    ...current,
+    themeId: current.themeId || incoming.themeId,
+    themeName: current.themeName || incoming.themeName,
+    title: current.title || incoming.title,
+    avatarUrl: current.avatarUrl || incoming.avatarUrl,
+    cards,
+  }
+}
+
 function mergeCollectionCatalogs(
   base: BackendCollectionCatalog | null | undefined,
   page: BackendCollectionCatalog | null | undefined,
@@ -649,8 +834,12 @@ function mergeCollectionCatalogs(
   if (!base && !page) return null
   if (!base) return page ?? null
   if (!page) return base
-  const byId = new Map(base.groups.map((group) => [group.id, group] as const))
-  for (const group of page.groups) byId.set(group.id, group)
+  const byKey = new Map<string, BackendCollectionGroup>()
+  for (const group of [...base.groups, ...page.groups]) {
+    const key = collectionGroupKey(group)
+    const existing = byKey.get(key)
+    byKey.set(key, existing ? mergeCollectionGroups(existing, group) : group)
+  }
   // Preserve theme index order from either response.
   const themeOrder = page.themes?.length ? page.themes : base.themes
   const themeRank = new Map(
@@ -659,14 +848,17 @@ function mergeCollectionCatalogs(
       return [key, index] as const
     }),
   )
-  const groups = Array.from(byId.values()).sort((a, b) => {
-    const aKey = `${a.modelId}::${(a.themeId || a.themeName || a.title).toLowerCase()}`
-    const bKey = `${b.modelId}::${(b.themeId || b.themeName || b.title).toLowerCase()}`
-    const aRank = themeRank.get(aKey) ?? Number.MAX_SAFE_INTEGER
-    const bRank = themeRank.get(bKey) ?? Number.MAX_SAFE_INTEGER
-    if (aRank !== bRank) return aRank - bRank
-    return a.id.localeCompare(b.id)
-  })
+  const groups = regroupCollectionGroups(
+    Array.from(byKey.values()).sort((a, b) => {
+      const aKey = `${a.modelId}::${(a.themeId || a.themeName || a.title).toLowerCase()}`
+      const bKey = `${b.modelId}::${(b.themeId || b.themeName || b.title).toLowerCase()}`
+      const aRank = themeRank.get(aKey) ?? Number.MAX_SAFE_INTEGER
+      const bRank = themeRank.get(bKey) ?? Number.MAX_SAFE_INTEGER
+      if (aRank !== bRank) return aRank - bRank
+      return a.id.localeCompare(b.id)
+    }),
+    themeOrder,
+  )
   return {
     groups,
     themes: themeOrder ?? base.themes ?? page.themes,
@@ -807,10 +999,14 @@ async function fetchCollectionCatalogFromApi(
 
   // Prefer the API's already-themed groups (titles + avatars + photoUrls).
   // Avoid re-fetching cards / video-flow / models — those were dominating TTI.
-  const groups = data.groups.map(normalizeCollectionGroup)
+  const themes = Array.isArray(data.themes) ? data.themes : undefined
+  const groups = regroupCollectionGroups(
+    data.groups.map(normalizeCollectionGroup),
+    themes,
+  )
   return {
     groups,
-    themes: Array.isArray(data.themes) ? data.themes : undefined,
+    themes,
   }
 }
 

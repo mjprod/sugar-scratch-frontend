@@ -1,202 +1,14 @@
-import { Color, Mesh, Program, Renderer, Triangle } from "ogl";
 import { useEffect, useRef } from "react";
 
 import "./Aurora.css";
+import {
+  subscribeAurora,
+  type AuroraColorStops,
+  type AuroraSubscription,
+  type AuroraVisualConfig,
+} from "./auroraShared";
 
-const VERT = `#version 300 es
-in vec2 position;
-void main() {
-  gl_Position = vec4(position, 0.0, 1.0);
-}
-`;
-
-const FRAG = `#version 300 es
-precision highp float;
-
-uniform float uTime;
-uniform float uAmplitude;
-uniform vec3 uColorStops[4];
-uniform vec2 uResolution;
-uniform float uBlend;
-uniform float uBandHeight;
-uniform float uRotation;
-uniform float uParticleCount;
-uniform float uParticleSize;
-uniform float uParticleSpeed;
-uniform float uParticleOpacity;
-uniform vec3 uParticleColor;
-uniform float uParticleTwinkle;
-
-out vec4 fragColor;
-
-vec3 permute(vec3 x) {
-  return mod(((x * 34.0) + 1.0) * x, 289.0);
-}
-
-float snoise(vec2 v){
-  const vec4 C = vec4(
-      0.211324865405187, 0.366025403784439,
-      -0.577350269189626, 0.024390243902439
-  );
-  vec2 i  = floor(v + dot(v, C.yy));
-  vec2 x0 = v - i + dot(i, C.xx);
-  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-  vec4 x12 = x0.xyxy + C.xxzz;
-  x12.xy -= i1;
-  i = mod(i, 289.0);
-
-  vec3 p = permute(
-      permute(i.y + vec3(0.0, i1.y, 1.0))
-    + i.x + vec3(0.0, i1.x, 1.0)
-  );
-
-  vec3 m = max(
-      0.5 - vec3(
-          dot(x0, x0),
-          dot(x12.xy, x12.xy),
-          dot(x12.zw, x12.zw)
-      ),
-      0.0
-  );
-  m = m * m;
-  m = m * m;
-
-  vec3 x = 2.0 * fract(p * C.www) - 1.0;
-  vec3 h = abs(x) - 0.5;
-  vec3 ox = floor(x + 0.5);
-  vec3 a0 = x - ox;
-  m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
-
-  vec3 g;
-  g.x  = a0.x  * x0.x  + h.x  * x0.y;
-  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return 130.0 * dot(m, g);
-}
-
-// Stable pseudo-random helpers for particle seeds.
-float hash11(float p) {
-  p = fract(p * 0.1031);
-  p *= p + 33.33;
-  p *= p + p;
-  return fract(p);
-}
-
-vec2 hash12(float p) {
-  vec3 p3 = fract(vec3(p) * vec3(0.1031, 0.1030, 0.0973));
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.xx + p3.yz) * p3.zy);
-}
-
-struct ColorStop {
-  vec3 color;
-  float position;
-};
-
-#define COLOR_RAMP(colors, factor, finalColor) {              \\
-  int index = 0;                                            \\
-  for (int i = 0; i < 3; i++) {                               \\
-     ColorStop currentColor = colors[i];                    \\
-     bool isInBetween = currentColor.position <= factor;    \\
-     index = int(mix(float(index), float(i), float(isInBetween))); \\
-  }                                                         \\
-  ColorStop currentColor = colors[index];                   \\
-  ColorStop nextColor = colors[index + 1];                  \\
-  float range = nextColor.position - currentColor.position; \\
-  float lerpFactor = (factor - currentColor.position) / range; \\
-  finalColor = mix(currentColor.color, nextColor.color, lerpFactor); \\
-}
-
-void main() {
-  vec2 uv = gl_FragCoord.xy / uResolution;
-  float aspect = max(uResolution.x, 1.0) / max(uResolution.y, 1.0);
-
-  // Rotate the whole field around the button center (aspect-corrected so 45° looks true).
-  float rad = uRotation * 0.017453292519943295; // deg → rad
-  float c = cos(rad);
-  float s = sin(rad);
-  vec2 fromCenter = uv - vec2(0.5);
-  fromCenter.x *= aspect;
-  vec2 rotated = vec2(
-    fromCenter.x * c - fromCenter.y * s,
-    fromCenter.x * s + fromCenter.y * c
-  );
-  rotated.x /= aspect;
-  vec2 ruv = rotated + vec2(0.5);
-
-  ColorStop colors[4];
-  colors[0] = ColorStop(uColorStops[0], 0.0);
-  colors[1] = ColorStop(uColorStops[1], 0.333333);
-  colors[2] = ColorStop(uColorStops[2], 0.666667);
-  colors[3] = ColorStop(uColorStops[3], 1.0);
-
-  vec3 rampColor;
-  COLOR_RAMP(colors, ruv.x, rampColor);
-
-  // bandHeight > 1 stretches the curtain downward so the bands fill more of the button.
-  float cover = max(uBandHeight, 0.05);
-  float y = 1.0 - (1.0 - ruv.y) / cover;
-  y = clamp(y, 0.0, 2.5);
-
-  float height = snoise(vec2(ruv.x * 2.0 + uTime * 0.1, uTime * 0.25)) * 0.5 * uAmplitude;
-  height = exp(height);
-  height = (y * 2.0 - height + 0.2);
-  float intensity = 0.6 * height;
-
-  float midPoint = 0.20;
-  float auroraAlpha = smoothstep(midPoint - uBlend * 0.5, midPoint + uBlend * 0.5, intensity);
-
-  vec3 auroraColor = intensity * rampColor;
-  vec4 color = vec4(auroraColor * auroraAlpha, auroraAlpha);
-
-  // Soft circle particles in the same pass (fixed loop bound, gated by uParticleCount).
-  // Sample in the same rotated, aspect-correct space so dots travel with the angled field.
-  vec2 puv = vec2(ruv.x * aspect, ruv.y);
-  float count = clamp(uParticleCount, 0.0, 24.0);
-  float baseR = max(uParticleSize, 0.0005);
-  float spd = uParticleSpeed;
-  float opac = clamp(uParticleOpacity, 0.0, 1.0);
-
-  for (int i = 0; i < 24; i++) {
-    if (float(i) >= count) break;
-
-    float fi = float(i);
-    vec2 seed = hash12(fi + 1.7);
-    float phase = hash11(fi + 9.1) * 6.2831853;
-    float speedMul = 0.55 + hash11(fi + 3.3) * 0.9;
-    float sizeMul = 0.55 + hash11(fi + 5.7) * 1.1;
-
-    // Drift mostly upward/sideways like glitter in the aurora field.
-    vec2 drift = vec2(
-      sin(uTime * 0.55 * spd * speedMul + phase) * 0.18
-        + cos(uTime * 0.21 * spd + phase * 1.7) * 0.06,
-      fract(seed.y + uTime * 0.08 * spd * speedMul) * 1.15 - 0.08
-    );
-
-    vec2 center = vec2(seed.x * aspect, 0.0) + drift;
-    // Keep particles mostly over the colored band, with a little edge wander.
-    center.x = clamp(center.x, 0.02 * aspect, aspect - 0.02 * aspect);
-
-    float r = baseR * sizeMul * (0.85 + 0.15 * sin(uTime * 1.3 * spd + phase));
-    float d = length(puv - center);
-    float soft = smoothstep(r, r * 0.22, d);
-
-    float twinkle = 1.0;
-    if (uParticleTwinkle > 0.001) {
-      float tw = 0.5 + 0.5 * sin(uTime * (2.0 + hash11(fi + 11.0) * 3.5) * spd + phase);
-      twinkle = mix(1.0, tw, clamp(uParticleTwinkle, 0.0, 1.0));
-    }
-
-    float a = soft * opac * twinkle;
-    // Premultiplied-style add so particles read on top of aurora without a second pass.
-    color.rgb += uParticleColor * a;
-    color.a = max(color.a, a);
-  }
-
-  fragColor = color;
-}
-`;
-
-export type AuroraColorStops = [string, string, string, string];
+export type { AuroraColorStops };
 
 export type AuroraProps = {
   /** Four hex stops: A, B, mid (between B & C), C — spaced at 0 / ⅓ / ⅔ / 1. */
@@ -228,9 +40,21 @@ export type AuroraProps = {
 
 const DEFAULT_COLOR_STOPS: AuroraColorStops = ["#5227FF", "#7cff67", "#ff94b4", "#5227FF"];
 
-function hexToRgb(hex: string): [number, number, number] {
-  const c = new Color(hex);
-  return [c.r, c.g, c.b];
+function toVisualConfig(props: AuroraProps): AuroraVisualConfig {
+  return {
+    colorStops: props.colorStops ?? DEFAULT_COLOR_STOPS,
+    amplitude: props.amplitude ?? 1,
+    blend: props.blend ?? 0.5,
+    speed: props.speed ?? 1,
+    bandHeight: props.bandHeight ?? 1,
+    rotation: props.rotation ?? 0,
+    particleCount: props.particleCount ?? 0,
+    particleSize: props.particleSize ?? 0.03,
+    particleSpeed: props.particleSpeed ?? 1,
+    particleOpacity: props.particleOpacity ?? 0.85,
+    particleColor: props.particleColor ?? "#ffffff",
+    particleTwinkle: props.particleTwinkle ?? 0.45,
+  };
 }
 
 export default function Aurora(props: AuroraProps) {
@@ -238,6 +62,7 @@ export default function Aurora(props: AuroraProps) {
     colorStops = DEFAULT_COLOR_STOPS,
     amplitude = 1.0,
     blend = 0.5,
+    speed = 1.0,
     bandHeight = 1.0,
     rotation = 0,
     particleCount = 0,
@@ -249,208 +74,123 @@ export default function Aurora(props: AuroraProps) {
     paused = false,
     className,
   } = props;
-  const propsRef = useRef(props);
-  propsRef.current = props;
 
   const ctnDom = useRef<HTMLDivElement>(null);
-  /** Lets a separate effect restart the rAF loop after unpause. */
-  const loopControlRef = useRef<{
-    start: () => void;
-    stop: () => void;
-    renderOnce: () => void;
-  } | null>(null);
+  const subscriptionRef = useRef<AuroraSubscription | null>(null);
+  const pausedRef = useRef(paused);
+  const visibleRef = useRef(true);
+  pausedRef.current = paused;
+  const stopsKey = colorStops.join("|");
 
   useEffect(() => {
     const ctn = ctnDom.current;
     if (!ctn) return;
 
-    const renderer = new Renderer({
-      alpha: true,
-      premultipliedAlpha: true,
-      antialias: true,
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    canvas.style.display = "block";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.position = "absolute";
+    canvas.style.inset = "0";
+    canvas.style.pointerEvents = "none";
+    ctn.appendChild(canvas);
+
+    const config = toVisualConfig({
+      colorStops: stopsKey.split("|") as AuroraColorStops,
+      amplitude,
+      blend,
+      speed,
+      bandHeight,
+      rotation,
+      particleCount,
+      particleSize,
+      particleSpeed,
+      particleOpacity,
+      particleColor,
+      particleTwinkle,
     });
-    const gl = renderer.gl;
-    gl.clearColor(0, 0, 0, 0);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.canvas.style.backgroundColor = "transparent";
-    gl.canvas.style.display = "block";
-    gl.canvas.style.width = "100%";
-    gl.canvas.style.height = "100%";
+    const subscription = subscribeAurora(config, canvas);
+    subscriptionRef.current = subscription;
 
-    let program: Program | undefined;
+    if (!subscription) {
+      canvas.remove();
+      return () => {
+        subscriptionRef.current = null;
+      };
+    }
 
-    function resize() {
-      if (!ctn) return;
+    const applySize = () => {
       const width = ctn.offsetWidth;
       const height = ctn.offsetHeight;
       if (width <= 0 || height <= 0) return;
-      renderer.setSize(width, height);
-      if (program) {
-        program.uniforms.uResolution.value = [width, height];
-      }
-    }
-    window.addEventListener("resize", resize);
-
-    const geometry = new Triangle(gl);
-    if (geometry.attributes.uv) {
-      delete geometry.attributes.uv;
-    }
-
-    const colorStopsArray = colorStops.map(hexToRgb);
-
-    program = new Program(gl, {
-      vertex: VERT,
-      fragment: FRAG,
-      uniforms: {
-        uTime: { value: 0 },
-        uAmplitude: { value: amplitude },
-        uColorStops: { value: colorStopsArray },
-        uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
-        uBlend: { value: blend },
-        uBandHeight: { value: bandHeight },
-        uRotation: { value: rotation },
-        uParticleCount: { value: particleCount },
-        uParticleSize: { value: particleSize },
-        uParticleSpeed: { value: particleSpeed },
-        uParticleOpacity: { value: particleOpacity },
-        uParticleColor: { value: hexToRgb(particleColor) },
-        uParticleTwinkle: { value: particleTwinkle },
-      },
-    });
-
-    const mesh = new Mesh(gl, { geometry, program });
-    ctn.appendChild(gl.canvas);
-
-    let animateId = 0;
-    let frozenTime = 0;
-    let hasFrozenTime = false;
-    let timeOriginMs = performance.now();
-    let pausedElapsedSec = 0;
-    let lastParticleColorHex = particleColor;
-    let lastStopsKey = colorStops.join("|");
-
-    const applyUniforms = (nowMs: number) => {
-      if (!program) return;
-      const current = propsRef.current;
-      const isPaused = Boolean(current.paused);
-      const speed = current.speed ?? 1.0;
-      // React Bits Aurora feeds rAF ms as `t * 0.01`, then `uTime = time * speed * 0.1`.
-      // That simplifies to elapsedSeconds * speed. The previous path applied both
-      // 0.01 and 0.1 on seconds, which froze particles (~1000× too slow).
-      const elapsedSec = (nowMs - timeOriginMs) / 1000;
-      const timeFromClock = (seconds: number) =>
-        current.time != null ? current.time * speed * 0.1 : seconds * speed;
-
-      if (isPaused) {
-        if (!hasFrozenTime) {
-          pausedElapsedSec = elapsedSec;
-          frozenTime = timeFromClock(pausedElapsedSec);
-          hasFrozenTime = true;
-        }
-      } else if (hasFrozenTime) {
-        // Resume from the frozen clock so the field doesn't jump.
-        timeOriginMs = nowMs - pausedElapsedSec * 1000;
-        hasFrozenTime = false;
-      }
-
-      const liveTime = timeFromClock(elapsedSec);
-
-      program.uniforms.uTime.value = isPaused ? frozenTime : liveTime;
-      program.uniforms.uAmplitude.value = current.amplitude ?? 1.0;
-      program.uniforms.uBlend.value = current.blend ?? blend;
-      program.uniforms.uBandHeight.value = current.bandHeight ?? bandHeight;
-      program.uniforms.uRotation.value = current.rotation ?? rotation;
-      // Hide particles while paused so the disabled face stays still.
-      program.uniforms.uParticleCount.value = isPaused
-        ? 0
-        : (current.particleCount ?? particleCount);
-      program.uniforms.uParticleSize.value = current.particleSize ?? particleSize;
-      program.uniforms.uParticleSpeed.value = isPaused
-        ? 0
-        : (current.particleSpeed ?? particleSpeed);
-      program.uniforms.uParticleOpacity.value = current.particleOpacity ?? particleOpacity;
-      // Colors rarely change — only rebuild RGB arrays when the hex inputs change.
-      const nextParticleColor = current.particleColor ?? particleColor;
-      if (nextParticleColor !== lastParticleColorHex) {
-        lastParticleColorHex = nextParticleColor;
-        program.uniforms.uParticleColor.value = hexToRgb(nextParticleColor);
-      }
-      program.uniforms.uParticleTwinkle.value = isPaused
-        ? 0
-        : (current.particleTwinkle ?? particleTwinkle);
-      const stops = current.colorStops ?? colorStops;
-      const stopsKey = stops.join("|");
-      if (stopsKey !== lastStopsKey) {
-        lastStopsKey = stopsKey;
-        program.uniforms.uColorStops.value = stops.map(hexToRgb);
-      }
-      renderer.render({ scene: mesh });
+      subscription.setSize(width, height);
     };
 
-    const update = (nowMs: number) => {
-      if (propsRef.current.paused) {
-        animateId = 0;
-        applyUniforms(nowMs);
-        return;
-      }
-      animateId = requestAnimationFrame(update);
-      applyUniforms(nowMs);
+    const applySleep = () => {
+      const sleeping = pausedRef.current || !visibleRef.current;
+      subscription.setSleeping(sleeping);
+      if (sleeping) subscription.renderOnce();
     };
 
-    const stop = () => {
-      if (animateId) {
-        cancelAnimationFrame(animateId);
-        animateId = 0;
-      }
-    };
+    applySize();
+    applySleep();
 
-    const start = () => {
-      if (animateId) return;
-      animateId = requestAnimationFrame(update);
-    };
+    const ro =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(applySize);
+    ro?.observe(ctn);
+    window.addEventListener("resize", applySize);
 
-    const renderOnce = () => {
-      applyUniforms(performance.now());
-    };
-
-    loopControlRef.current = { start, stop, renderOnce };
-
-    if (propsRef.current.paused) {
-      renderOnce();
-    } else {
-      start();
-    }
-
-    resize();
+    const io =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver(
+            ([entry]) => {
+              visibleRef.current = Boolean(entry?.isIntersecting);
+              applySleep();
+            },
+            { rootMargin: "120px" },
+          );
+    io?.observe(ctn);
 
     return () => {
-      stop();
-      loopControlRef.current = null;
-      window.removeEventListener("resize", resize);
-      if (ctn && gl.canvas.parentNode === ctn) {
-        ctn.removeChild(gl.canvas);
-      }
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      window.removeEventListener("resize", applySize);
+      ro?.disconnect();
+      io?.disconnect();
+      subscription.destroy();
+      subscriptionRef.current = null;
+      if (canvas.parentNode === ctn) canvas.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amplitude]);
+  }, [
+    amplitude,
+    bandHeight,
+    blend,
+    particleColor,
+    particleCount,
+    particleOpacity,
+    particleSize,
+    particleSpeed,
+    particleTwinkle,
+    rotation,
+    speed,
+    stopsKey,
+  ]);
 
   useEffect(() => {
-    const control = loopControlRef.current;
-    if (!control) return;
-    if (paused) {
-      control.stop();
-      control.renderOnce();
-      return;
-    }
-    control.start();
+    const subscription = subscriptionRef.current;
+    if (!subscription) return;
+    const sleeping = paused || !visibleRef.current;
+    subscription.setSleeping(sleeping);
+    if (sleeping) subscription.renderOnce();
   }, [paused]);
 
   return (
     <div
       ref={ctnDom}
       className={className ? `aurora-container ${className}` : "aurora-container"}
-    />
+    >
+      <span className="cta-button__aurora-fallback" aria-hidden="true" />
+    </div>
   );
 }

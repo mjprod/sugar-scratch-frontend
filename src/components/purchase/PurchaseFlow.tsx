@@ -17,7 +17,10 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
 import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
-import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
+import {
+  CoverFlowCarouselV2,
+  type CoverFlowCameraSettings,
+} from "@/features/packs/CoverFlowCarouselV2";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
@@ -104,7 +107,6 @@ import {
   navigateTo,
   photoPlayHref,
   startMotionSession,
-  loadGameSession,
   loadGameSessionForPack,
   activateGameSessionForPack,
 } from "@/features/game/modules/gameSession";
@@ -388,7 +390,7 @@ export function PurchaseFlow({
   );
   /** Foil identity last torn — removed when returning to the tear stage. */
   const openedTearFoilKeyRef = useRef<string | null>(null);
-  const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
+  const [, setUnopenedRemaining] = useState(() =>
     countUnopened(),
   );
   const [tearTutorialFade, setTearTutorialFade] = useState(false);
@@ -429,30 +431,34 @@ export function PurchaseFlow({
     }) ||
     pack.themeName?.trim() ||
     pack.packName;
-  const packCoverUrl = resolveInventoryCoverUrl({
-    packId: pack.packId,
-    themeName: collectionTheme,
-    creator: pack.creator,
-  });
+  const packCoverUrl =
+    purchasedFoil?.videoUrl ||
+    session?.foilFaceUrl ||
+    resolveInventoryCoverUrl({
+      packId: pack.packId,
+      themeName: collectionTheme,
+      creator: pack.creator,
+    });
   /** Single source for foil-aware Ready-to-Scratch inventory labels. */
   function upsertPackReadyToScratch(input: {
     packId: string;
     session: OpeningSession;
     revealed: string[];
   }) {
+    const foilName =
+      input.session.foilLabel || purchasedFoil?.label || pack.packName;
     upsertReadyToScratch({
       packId: input.packId,
-      packName: pack.packName,
+      packName: foilName,
       creator: pack.creator,
       session: input.session,
       revealed: input.revealed,
-      coverUrl: packCoverUrl,
+      coverUrl: input.session.foilFaceUrl || packCoverUrl,
+      // Foil label is display-only; collection grouping needs the theme.
       themeName: collectionTheme,
     });
   }
-  /** Designed foil face may be an MP4 — only for tear UI, never inventory <img>. */
   const packImage = session?.foilFaceUrl ?? packCoverUrl;
-  const packDisplayName = session?.foilLabel ?? pack.packName;
   const cardImages = useMemo(() => {
     const faces = session?.cards
       .map((card) => card.faceUrl)
@@ -629,7 +635,7 @@ export function PurchaseFlow({
       const themeName =
         resolveCollectionThemeLabel({
           themeName: pack.themeName,
-          packName: foil?.label ?? pack.packName,
+          packName: pack.packName,
           catalogPackId: pack.packId,
           creator: pack.creator,
         }) ||
@@ -1976,6 +1982,26 @@ function SelectStage({
   );
 }
 
+const COVERFLOW_MOBILE_QUERY = "(max-width: 980px)";
+
+const TEAR_OPEN_MOBILE_CAMERA: CoverFlowCameraSettings = {
+  cameraX: 0.11,
+  cameraY: 0.27,
+  cameraZ: 6.45,
+  fov: 36,
+  lookAtY: 0,
+  packsX: 0.115,
+  packsY: -0.58,
+  modelY: -0.59,
+};
+
+function isMobileCoverflowViewport() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
+  );
+}
+
 function ReadyStage({
   remainingUnopened,
   onOpened,
@@ -2092,6 +2118,20 @@ function ReadyStage({
   const [selectedId, setSelectedId] = useState<string | null>(
     () => items[0]?.id ?? null,
   );
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    isMobileCoverflowViewport,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(COVERFLOW_MOBILE_QUERY);
+    const apply = () => setIsMobileViewport(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  const cameraSettings = isMobileViewport ? TEAR_OPEN_MOBILE_CAMERA : undefined;
 
   useEffect(() => {
     if (!items.length) {
@@ -2161,6 +2201,7 @@ function ReadyStage({
         <CoverFlowCarouselV2
           items={items}
           selectedId={selectedId}
+          cameraSettings={cameraSettings}
           onSelect={setSelectedId}
           onDeselect={() => {
             // Tear page always keeps a pack selected (carousel also ignores
