@@ -8,7 +8,6 @@ export const Paths = {
    * Discover nav tab (home feed) lives at /discover.
    */
   home: "/",
-  loggedInHome: "/loggedInHome",
   discover: "/discover",
   /** Search / find — entered from Home HUD. */
   search: "/search",
@@ -101,7 +100,6 @@ export function tabFromPathname(pathname: string): AppTab {
   if (
     pathname === "/" ||
     pathname.startsWith("/browse") ||
-    pathname.startsWith("/loggedInHome") ||
     pathname.startsWith("/search")
   ) {
     return "feed";
