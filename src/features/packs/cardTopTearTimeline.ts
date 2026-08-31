@@ -395,9 +395,9 @@ export function resetCardTopTearKey(
   const index = sortCardTopTearKeys(timeline.keys).findIndex((key) => key.id === id);
   const fallback = defaults[Math.max(0, index)] ?? DEFAULT_CARD_TOP_TEAR_POSE;
   return captureCardTopTearKey(timeline, id, poseFromKey({
+    ...fallback,
     id,
     t: fallback.t,
-    ...fallback,
   }));
 }
 

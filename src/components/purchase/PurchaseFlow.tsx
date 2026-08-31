@@ -106,7 +106,6 @@ import {
   navigateTo,
   photoPlayHref,
   startMotionSession,
-  loadGameSession,
   loadGameSessionForPack,
   activateGameSessionForPack,
 } from "@/features/game/modules/gameSession";
@@ -390,7 +389,7 @@ export function PurchaseFlow({
   );
   /** Foil identity last torn — removed when returning to the tear stage. */
   const openedTearFoilKeyRef = useRef<string | null>(null);
-  const [unopenedRemaining, setUnopenedRemaining] = useState(() =>
+  const [, setUnopenedRemaining] = useState(() =>
     countUnopened(),
   );
   const [tearTutorialFade, setTearTutorialFade] = useState(false);
@@ -458,7 +457,6 @@ export function PurchaseFlow({
     });
   }
   const packImage = session?.foilFaceUrl ?? packCoverUrl;
-  const packDisplayName = session?.foilLabel ?? pack.packName;
   const cardImages = useMemo(() => {
     const faces = session?.cards
       .map((card) => card.faceUrl)

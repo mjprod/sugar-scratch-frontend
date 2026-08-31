@@ -14,7 +14,11 @@ import {
 } from "@/services/models";
 import { PackArt } from "./PackArt";
 
-const SLIDE = { type: "tween" as const, duration: 0.4, ease: [0.32, 0.72, 0, 1] };
+const SLIDE = {
+  type: "tween" as const,
+  duration: 0.4,
+  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+};
 
 export function PackLibrary({
   open,
