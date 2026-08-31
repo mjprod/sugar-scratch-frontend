@@ -286,12 +286,19 @@ function measureTopBubbleForTab(
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
+  // Pocket is a smaller hit target than Profile; match Profile's indicator height.
+  const heightRect =
+    tabId === "cart"
+      ? parent
+          .querySelector<HTMLElement>(".nav-test-top-profile")
+          ?.getBoundingClientRect() ?? rect
+      : rect;
   // Slight outer pad so the pill reads roomier than the label (esp. My Collection).
   const padX = tabId === "profile" || tabId === "cart" ? 8 : 6;
   const insetY = 4;
-  const fullH = Math.max(0, rect.height - insetY * 2);
+  const fullH = Math.max(0, heightRect.height - insetY * 2);
   const bubbleH = fullH * 1.2;
-  const bubbleY = rect.top - parentRect.top + insetY + (fullH - bubbleH) / 2;
+  const bubbleY = rect.top - parentRect.top + (rect.height - bubbleH) / 2;
 
   // Top nav has uniform corners — no Home/Profile end-cap compensation
   const bubbleX = rect.left - parentRect.left - padX;

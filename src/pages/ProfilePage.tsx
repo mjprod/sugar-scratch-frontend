@@ -5,7 +5,7 @@ import { Paths } from "@/routes/Paths";
 
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { profile, logout, openInbox } = useAuth();
+  const { profile, logout, openInbox, inboxUnread } = useAuth();
   return (
     <UserDashboardScreen
       name={profile.displayName || profile.username}
@@ -17,6 +17,7 @@ export function ProfilePage() {
       onOpenFollowing={() => navigate(Paths.following)}
       onOpenGameSettings={() => navigate(Paths.gameSettings)}
       onOpenInbox={openInbox}
+      inboxUnreadCount={inboxUnread}
     />
   );
 }

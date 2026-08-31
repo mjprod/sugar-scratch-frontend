@@ -1,4 +1,4 @@
-import { apiMutate } from "../lib/api";
+import { apiFetch, apiMutate } from "../lib/api";
 import { isDemoMode } from "../lib/demo";
 import { diamondCostForPackId } from "./homepage";
 
@@ -62,9 +62,76 @@ export const PACK_OPTIONS: {
   { quantity: 5, label: "Play 5 Packs", detail: "Bundle preview" },
 ];
 
+export type CatalogPackProduct = {
+  id: string;
+  modelId?: string | null;
+  diamondCost?: number | null;
+};
+
+let packCatalogPromise: Promise<CatalogPackProduct[]> | null = null;
+let packCatalogCache: CatalogPackProduct[] | null = null;
+
+/** Live pack products from GET /api/packs (ids like `julianaval-pack`). */
+export async function loadPackCatalog(): Promise<CatalogPackProduct[]> {
+  if (packCatalogCache) return packCatalogCache;
+  packCatalogPromise ??= (async () => {
+    const data = await apiFetch<{ packs?: CatalogPackProduct[] }>("/api/packs");
+    const packs =
+      data && Array.isArray(data.packs)
+        ? data.packs.filter(
+            (pack): pack is CatalogPackProduct =>
+              Boolean(pack) && typeof pack.id === "string" && Boolean(pack.id.trim()),
+          )
+        : [];
+    packCatalogCache = packs;
+    return packs;
+  })();
+  try {
+    return await packCatalogPromise;
+  } catch {
+    packCatalogPromise = null;
+    return packCatalogCache ?? [];
+  }
+}
+
+/**
+ * Map UI pack/model/foil ids onto the purchasable catalog product id.
+ * CoverFlow/Browse often pass `julianaval` or `julianaval-1`; the API sells `julianaval-pack`.
+ */
+export function resolvePurchasePackId(
+  packs: CatalogPackProduct[],
+  candidate: string,
+): string {
+  const id = candidate.trim();
+  if (!id) return id;
+  const exact = packs.find((pack) => pack.id === id);
+  if (exact) return exact.id;
+  const byModel = packs.find((pack) => (pack.modelId ?? "").trim() === id);
+  if (byModel) return byModel.id;
+  const foilBase = id.replace(/-\d+$/, "");
+  if (foilBase !== id) {
+    const byFoil = packs.find(
+      (pack) =>
+        (pack.modelId ?? "").trim() === foilBase || pack.id === `${foilBase}-pack`,
+    );
+    if (byFoil) return byFoil.id;
+  }
+  const suffixed = packs.find((pack) => pack.id === `${id}-pack`);
+  if (suffixed) return suffixed.id;
+  return id;
+}
+
+function catalogUnitCost(packId: string): number | null {
+  if (!packCatalogCache?.length) return null;
+  const resolved = resolvePurchasePackId(packCatalogCache, packId);
+  const product = packCatalogCache.find((pack) => pack.id === resolved);
+  const cost = product?.diamondCost;
+  return typeof cost === "number" && Number.isFinite(cost) && cost > 0 ? cost : null;
+}
+
 /** Same unit Diamond cost shown on ranking / pack surfaces. */
 export function packUnitCost(packId = "pack") {
-  return diamondCostForPackId(packId);
+  return catalogUnitCost(packId) ?? diamondCostForPackId(packId);
 }
 
 export function packCost(quantity: PackQuantity, packId = "pack") {
@@ -259,18 +326,20 @@ export async function submitPurchase(
   idempotencyKey?: string,
   coinBalance = 0,
 ): Promise<PurchaseResult> {
-  const diamondCost = packCost(quantity, packId);
+  const catalog = await loadPackCatalog();
+  const purchasePackId = resolvePurchasePackId(catalog, packId);
+  const diamondCost = packCost(quantity, purchasePackId);
   if (diamondCost > balance) throw new PurchaseError("insufficient");
   if (failureMode() === "purchase") {
     throw new PurchaseError("failed", "Purchase could not be completed.");
   }
-  const key = getPurchaseIdempotencyKey(packId, quantity, idempotencyKey);
+  const key = getPurchaseIdempotencyKey(purchasePackId, quantity, idempotencyKey);
   try {
     const remote = await apiMutate<{
       purchaseId: string;
       instances: PackInstanceApi[];
       wallet: { diamonds: number; coins: number };
-    }>(`/api/packs/${packId}/purchase`, {
+    }>(`/api/packs/${encodeURIComponent(purchasePackId)}/purchase`, {
       method: "POST",
       headers: { "Idempotency-Key": key },
       body: JSON.stringify({ quantity }),
@@ -286,13 +355,13 @@ export async function submitPurchase(
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "insufficient") {
-      clearPurchaseIdempotencyKey(packId, quantity);
+      clearPurchaseIdempotencyKey(purchasePackId, quantity);
       throw new PurchaseError("insufficient");
     }
     if (!isDemoMode()) {
       throw new PurchaseError("failed", "Purchase could not be completed.");
     }
-    return purchaseFromDemoFixture(quantity, balance, packId, coinBalance);
+    return purchaseFromDemoFixture(quantity, balance, purchasePackId, coinBalance);
   }
 }
 

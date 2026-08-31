@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import { useMotion } from "@/features/collection/hooks/useMotion";
@@ -32,6 +33,7 @@ export function UserDashboardScreen({
   onOpenFollowing,
   onOpenGameSettings,
   onOpenInbox,
+  inboxUnreadCount = 0,
 }: {
   name: string;
   username: string;
@@ -42,6 +44,7 @@ export function UserDashboardScreen({
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
   onOpenInbox?: () => void;
+  inboxUnreadCount?: number;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -196,7 +199,7 @@ export function UserDashboardScreen({
         <MenuGroup
           title="Profile & Account"
           items={[
-            { label: "Inbox", icon: Inbox },
+            { label: "Inbox", icon: Inbox, badgeCount: inboxUnreadCount },
             { label: "Purchase History", icon: CreditCard },
             { label: "Following", icon: Users },
             { label: "Change Password", icon: Lock },
@@ -236,7 +239,7 @@ function MenuGroup({
   onOpen,
 }: {
   title: string;
-  items: { label: string; icon: LucideIcon }[];
+  items: { label: string; icon: LucideIcon; badgeCount?: number }[];
   onOpen: (label: string) => void;
 }) {
   return (
@@ -257,7 +260,12 @@ function MenuGroup({
                 .filter(Boolean)
                 .join(" ")}
             >
-              <Icon className="size-4 text-white/45" />
+              <span className="profile-menu-icon">
+                <Icon className="size-4 text-white/45" />
+                {item.badgeCount ? (
+                  <InboxUtilityBadge count={item.badgeCount} />
+                ) : null}
+              </span>
               <span className="flex-1 text-[14px]">{item.label}</span>
               <ChevronRight className="size-4 text-white/30" />
             </button>

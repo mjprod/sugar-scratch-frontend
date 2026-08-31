@@ -326,8 +326,9 @@ export function CtaButton({
     glowEnabled && glowAlwaysOn && !disabled && !reducedMotion && glowOrbitSpeed > 0;
   const orbitDurationSec =
     glowOrbitSpeed > 0 ? 360 / Math.max(glowOrbitSpeed, 0.001) : 0;
-  // Skip WebGL entirely while paused — CSS fallback keeps the look.
-  const auroraLive = !disabled && !auroraPaused;
+  // Skip the shared aurora blit while paused — CSS fallback keeps the look.
+  // Matching CTAs share one WebGL context (see auroraShared.ts).
+  const auroraLive = !disabled && !auroraPaused && !reducedMotion;
   // Mobile feed can mount many CTAs; keep particles lighter when animating.
   const liveParticleCount = isMobileViewport
     ? Math.min(particleCount, 8)

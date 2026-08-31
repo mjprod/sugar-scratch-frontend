@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import {
   liveCollectedCount,
-  MyCollectionLivePanel,
   useCreatorsCollectedThemes,
 } from "@/components/collection/MyCollectionLivePanel";
+import { useModels } from "@/hooks/useModels";
 import type { CreatorProgress } from "@/services/collection";
+import { matchModel, modelAvatarUrl } from "@/services/models";
 
 type SortId = "newest" | "oldest";
 type FilterMenu = "creator" | "theme" | "sort" | null;
@@ -17,7 +18,7 @@ const SORT_OPTIONS: Array<{ id: SortId; label: string }> = [
 
 /**
  * My Collection — permanent browsing for already revealed cards.
- * Creator list from local ledger; themes + card previews from live /api/collection.
+ * Creator list from local ledger; tap a creator to open her collection.
  */
 export function MyCollectionSection({
   creators,
@@ -35,11 +36,8 @@ export function MyCollectionSection({
   const [creatorFilter, setCreatorFilter] = useState<string>("all");
   const [themeFilter, setThemeFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortId>("newest");
-  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(
-    null,
-  );
-  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
   const [openMenu, setOpenMenu] = useState<FilterMenu>(null);
+  const models = useModels();
 
   const creatorIds = useMemo(() => creators.map((c) => c.id), [creators]);
   const { themesByCreator } = useCreatorsCollectedThemes(creatorIds);
@@ -80,28 +78,6 @@ export function MyCollectionSection({
     );
   }, [filteredCreators, themeFilter, themesByCreator]);
 
-  useEffect(() => {
-    if (visibleCreators.length === 0) {
-      setSelectedCreatorId(null);
-      return;
-    }
-    if (
-      !selectedCreatorId ||
-      !visibleCreators.some((c) => c.id === selectedCreatorId)
-    ) {
-      setSelectedCreatorId(visibleCreators[0]!.id);
-    }
-  }, [visibleCreators, selectedCreatorId]);
-
-  const selectedCreator =
-    visibleCreators.find((c) => c.id === selectedCreatorId) ??
-    visibleCreators[0] ??
-    null;
-
-  const onSelectThemeId = useCallback((themeId: string | null) => {
-    setSelectedThemeId(themeId);
-  }, []);
-
   const creatorFilterLabel =
     creatorFilter === "all"
       ? "All Creators"
@@ -119,11 +95,6 @@ export function MyCollectionSection({
     setCreatorFilter("all");
     setThemeFilter("all");
     setOpenMenu(null);
-  }
-
-  function openCreatorCollection(themeId?: string | null) {
-    if (!selectedCreator) return;
-    onOpenCreator(selectedCreator.id, themeId ?? undefined);
   }
 
   if (creators.length === 0) {
@@ -235,7 +206,6 @@ export function MyCollectionSection({
                   selected={creatorFilter === creator.id}
                   onSelect={() => {
                     setCreatorFilter(creator.id);
-                    setSelectedCreatorId(creator.id);
                     setThemeFilter("all");
                     setOpenMenu(null);
                   }}
@@ -302,11 +272,10 @@ export function MyCollectionSection({
         <>
           <div
             className="my-collection-creator-row"
-            role="listbox"
+            role="list"
             aria-label="Creators"
           >
             {visibleCreators.map((creator) => {
-              const selected = creator.id === selectedCreator?.id;
               const count = liveCollectedCount(
                 themesByCreator[creator.id],
                 creator.collected,
@@ -315,27 +284,26 @@ export function MyCollectionSection({
                 <button
                   key={creator.id}
                   type="button"
-                  role="option"
-                  aria-selected={selected}
-                  className={[
-                    "my-collection-creator-card",
-                    selected ? "is-selected" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => {
-                    setSelectedCreatorId(creator.id);
-                    if (
-                      creatorFilter !== "all" &&
-                      creatorFilter !== creator.id
-                    ) {
-                      setCreatorFilter(creator.id);
-                    }
-                  }}
+                  className="my-collection-creator-card"
+                  onClick={() =>
+                    onOpenCreator(
+                      creator.id,
+                      themeFilter !== "all" ? themeFilter : undefined,
+                    )
+                  }
                 >
                   <span className="my-collection-creator-art">
                     <img
-                      src={creator.coverUrl || creator.avatarUrl}
+                      src={
+                        modelAvatarUrl(
+                          matchModel(models, {
+                            packId: creator.id,
+                            name: creator.name,
+                          }),
+                        ) ||
+                        creator.avatarUrl ||
+                        creator.coverUrl
+                      }
                       alt=""
                     />
                   </span>
@@ -351,17 +319,6 @@ export function MyCollectionSection({
               );
             })}
           </div>
-
-          {selectedCreator ? (
-            <MyCollectionLivePanel
-              key={selectedCreator.id}
-              creator={selectedCreator}
-              themeFilter={themeFilter}
-              selectedThemeId={selectedThemeId}
-              onSelectThemeId={onSelectThemeId}
-              onOpenCollection={openCreatorCollection}
-            />
-          ) : null}
         </>
       )}
     </section>

@@ -1804,7 +1804,7 @@ function CardCarouselInner({
       >
         <button
           type="button"
-          className="coverflow__chevron coverflow__chevron--left"
+          className="coverflow__chevron coverflow__chevron--left glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           onClick={(e) => e.preventDefault()}
           onPointerDown={(e) => handleChevronPointerDown(-1, e)}
           onPointerUp={releaseChevronInteraction}
@@ -1858,7 +1858,7 @@ function CardCarouselInner({
 
         <button
           type="button"
-          className="coverflow__chevron coverflow__chevron--right"
+          className="coverflow__chevron coverflow__chevron--right glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           onClick={(e) => e.preventDefault()}
           onPointerDown={(e) => handleChevronPointerDown(1, e)}
           onPointerUp={releaseChevronInteraction}

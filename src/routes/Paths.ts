@@ -33,6 +33,9 @@ export const Paths = {
   cart: "/pack-pocket",
   purchase: (packId: string) => `/purchase/${packId}`,
   purchasePattern: "/purchase/:packId",
+  /** Shared tear-open stage — not tied to one influencer pack id. */
+  purchaseTearOpen: "/purchase/tear-open",
+  purchaseTearOpenSlug: "tear-open",
   game: "/game",
   photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
@@ -93,16 +96,21 @@ export function pathForTab(tab: AppTab): string {
 export function tabFromPathname(pathname: string): AppTab {
   // Discover feed
   if (pathname.startsWith("/discover")) return "home";
-  // Home browse + search + creator pages
+  // Home browse + search
   if (
     pathname === "/" ||
     pathname.startsWith("/browse") ||
-    pathname.startsWith("/search") ||
-    pathname.startsWith("/creator")
+    pathname.startsWith("/search")
   ) {
     return "feed";
   }
-  if (pathname.startsWith("/collection")) return "bag";
+  // Collection hub + a girl's collection page
+  if (
+    pathname.startsWith("/collection") ||
+    pathname.startsWith("/creator")
+  ) {
+    return "bag";
+  }
   if (pathname.startsWith("/rewards") || pathname.startsWith("/store")) {
     return "hub";
   }

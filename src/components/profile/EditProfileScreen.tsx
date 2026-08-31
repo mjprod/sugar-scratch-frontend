@@ -1,4 +1,4 @@
-import { Camera } from "lucide-react";
+import { Camera, Check } from "lucide-react";
 import {
   useId,
   useState,

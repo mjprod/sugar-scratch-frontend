@@ -358,7 +358,7 @@ export function CreatorCollectionsDiscovery({
         <div className="ccd-hero-top">
           <button
             type="button"
-            className="ccd-hero-step"
+            className="ccd-hero-step glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Previous theme"
             disabled={!canPrev}
             onClick={() => stepTheme(-1)}
@@ -367,7 +367,7 @@ export function CreatorCollectionsDiscovery({
           </button>
           <button
             type="button"
-            className="ccd-hero-step"
+            className="ccd-hero-step glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Next theme"
             disabled={!canNext}
             onClick={() => stepTheme(1)}

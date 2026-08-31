@@ -273,6 +273,10 @@ export function rewindCardTopTear() {
       tearT: 0,
       tearPlaying: false,
       packOpenRequested: false,
+      position: { ...DEFAULT_CARD_TOP_POSITION },
+      rotation: { ...DEFAULT_CARD_TOP_ROTATION },
+      scale: { ...DEFAULT_CARD_TOP_SCALE },
+      opacity: DEFAULT_CARD_TOP_DEBUG.opacity,
     },
     { persist: false },
   );
