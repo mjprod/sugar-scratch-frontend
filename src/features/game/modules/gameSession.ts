@@ -18,6 +18,10 @@ export type PackScratchLink = {
   openingCardIds: string[];
   /** Opening ids already written to collection ledger (fan scratch or motion settle). */
   settledOpeningIds: string[];
+  /** Server pack opening row — required for reveal API during motion play. */
+  serverOpeningId?: string;
+  /** PackOpeningCard ids (parallel to openingCardIds) for server reveal. */
+  serverRevealCardIds?: string[];
 };
 
 export const GAME_SESSION_KEY = "sugar_scratchie_game_v1";

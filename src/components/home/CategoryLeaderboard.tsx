@@ -1,4 +1,4 @@
-import { ChevronRight, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
@@ -15,7 +15,6 @@ export function CategoryLeaderboard({
   onCategoryChange,
   onPlay,
   onOpen,
-  onViewFull,
 }: {
   category: LeaderboardCategory;
   rows: LeaderboardRow[];
@@ -23,7 +22,6 @@ export function CategoryLeaderboard({
   onCategoryChange: (c: LeaderboardCategory) => void;
   onPlay: (row: LeaderboardRow) => void;
   onOpen: (row: LeaderboardRow) => void;
-  onViewFull: () => void;
 }) {
   return (
     <section
@@ -38,14 +36,6 @@ export function CategoryLeaderboard({
           />
           <h2 className="continue-collecting-title">Top packs by purchase</h2>
         </div>
-        <button
-          type="button"
-          className="continue-collecting-see-all"
-          onClick={onViewFull}
-        >
-          SEE ALL
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </button>
       </div>
 
       <div

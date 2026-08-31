@@ -1,4 +1,5 @@
 import { apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
 import { diamondCostForPackId } from "./homepage";
 
 export type PackQuantity = 1 | 5;
@@ -31,6 +32,8 @@ export type PurchaseFlowPack = {
   instanceId?: string;
   /** Purchase transaction id — used for multi-pack continuation. */
   purchaseId?: string;
+  /** Cart tear queue — open order when checkout spans multiple purchases. */
+  tearInstanceIds?: string[];
 };
 
 export type OpeningCard = {
@@ -109,8 +112,28 @@ export function buildFoilOpeningSession(
 }
 
 /* ---------------------------------------------------------------------------
- * Purchase requests (mocked network)
+ * Purchase requests
  * ------------------------------------------------------------------------ */
+
+export type PackInstanceApi = {
+  instanceId: string;
+  catalogPackId: string;
+  packName: string;
+  creator: string;
+  creatorId?: string;
+  themeName: string;
+  coverUrl: string;
+  status: "unopened" | "opened";
+  purchaseId: string;
+  savedAt: number;
+};
+
+export type PurchaseResult = {
+  purchaseId: string;
+  instances: PackInstanceApi[];
+  wallet: { diamonds: number; coins: number };
+  diamondCost: number;
+};
 
 export type PurchaseErrorKind = "insufficient" | "failed" | "assets";
 
@@ -183,40 +206,199 @@ export function commitPurchaseIdempotencyKey(
   clearPurchaseIdempotencyKey(packId, quantity);
 }
 
+/** One distinct server purchase per Pack Pocket line at checkout. */
+export function cartCheckoutIdempotencyKey(cartItemId: string): string {
+  const id = cartItemId.trim();
+  return id ? `cart-buy:${id}` : `cart-buy:${newIdempotencyToken()}`;
+}
+
+function newDemoInstanceId() {
+  return `demo-pack-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function newDemoPurchaseId() {
+  return `demo-tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** `?demo=1` only — offline fixture when the API is unreachable. */
+function purchaseFromDemoFixture(
+  quantity: PackQuantity,
+  balance: number,
+  packId: string,
+  coinBalance: number,
+): PurchaseResult {
+  const diamondCost = packCost(quantity, packId);
+  if (diamondCost > balance) throw new PurchaseError("insufficient");
+  const purchaseId = newDemoPurchaseId();
+  const instances: PackInstanceApi[] = Array.from({ length: quantity }, () => ({
+    instanceId: newDemoInstanceId(),
+    catalogPackId: packId,
+    packName: packId,
+    creator: "Sugar",
+    themeName: packId,
+    coverUrl: "",
+    status: "unopened",
+    purchaseId,
+    savedAt: Date.now(),
+  }));
+  return {
+    purchaseId,
+    instances,
+    wallet: {
+      diamonds: Math.max(0, balance - diamondCost),
+      coins: coinBalance,
+    },
+    diamondCost,
+  };
+}
+
 export async function submitPurchase(
   quantity: PackQuantity,
   balance: number,
   packId = "pack",
   idempotencyKey?: string,
-): Promise<OpeningSession> {
-  if (packCost(quantity, packId) > balance) throw new PurchaseError("insufficient");
+  coinBalance = 0,
+): Promise<PurchaseResult> {
+  const diamondCost = packCost(quantity, packId);
+  if (diamondCost > balance) throw new PurchaseError("insufficient");
   if (failureMode() === "purchase") {
     throw new PurchaseError("failed", "Purchase could not be completed.");
   }
   const key = getPurchaseIdempotencyKey(packId, quantity, idempotencyKey);
   try {
-    await apiMutate(`/api/packs/${packId}/purchase`, {
+    const remote = await apiMutate<{
+      purchaseId: string;
+      instances: PackInstanceApi[];
+      wallet: { diamonds: number; coins: number };
+    }>(`/api/packs/${packId}/purchase`, {
       method: "POST",
       headers: { "Idempotency-Key": key },
       body: JSON.stringify({ quantity }),
     });
     /* keep key until the client fully commits — retries after a lost response
        or a post-charge failure must reuse it */
+    return {
+      purchaseId: remote.purchaseId,
+      instances: remote.instances,
+      wallet: remote.wallet,
+      diamondCost,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "insufficient") {
       clearPurchaseIdempotencyKey(packId, quantity);
       throw new PurchaseError("insufficient");
     }
-    /* keep key so a retry after a lost response reuses it; local opening still proceeds */
+    if (!isDemoMode()) {
+      throw new PurchaseError("failed", "Purchase could not be completed.");
+    }
+    return purchaseFromDemoFixture(quantity, balance, packId, coinBalance);
   }
-  return buildOpeningSession(quantity, packId);
 }
 
 export async function loadOpeningAssets(): Promise<void> {
   await wait(450);
   if (failureMode() === "assets") {
     throw new PurchaseError("assets", "Pack assets failed to download.");
+  }
+}
+
+export type OpenPackResult = {
+  openingId: string;
+  stage: string;
+  cardIndex: number;
+  session: OpeningSession;
+  scratched: string[];
+  instance: PackInstanceApi;
+};
+
+function mapOpeningSession(raw: {
+  quantity: number;
+  diamondCost: number;
+  cards: Array<{
+    id: string;
+    rarity: string;
+    reward: number;
+    faceUrl?: string | null;
+  }>;
+  foilFaceUrl?: string | null;
+  foilLabel?: string | null;
+}): OpeningSession {
+  return {
+    quantity: (raw.quantity === 5 ? 5 : 1) as PackQuantity,
+    diamondCost: raw.diamondCost,
+    cards: raw.cards.map((card) => ({
+      id: card.id,
+      rarity: card.rarity as OpeningCard["rarity"],
+      reward: card.reward,
+      faceUrl: card.faceUrl ?? undefined,
+    })),
+    foilFaceUrl: raw.foilFaceUrl ?? undefined,
+    foilLabel: raw.foilLabel ?? undefined,
+  };
+}
+
+export type RevealCardResult = {
+  card: { id: string; revealStatus: string; reward: number };
+  scratched: string[];
+  wallet: { diamonds: number; coins: number };
+};
+
+/** Reveal one scratched card — credits diamonds and collection on the server. */
+export async function revealPackCard(
+  openingId: string,
+  cardId: string,
+): Promise<RevealCardResult> {
+  try {
+    const remote = await apiMutate<{
+      card: { id: string; revealStatus: string; reward: number };
+      scratched: string[];
+      wallet: { diamonds: number; coins: number };
+    }>(`/api/me/openings/${openingId}/cards/${cardId}/reveal`, {
+      method: "POST",
+    });
+    return {
+      card: remote.card,
+      scratched: remote.scratched,
+      wallet: remote.wallet,
+    };
+  } catch {
+    throw new PurchaseError("failed", "Card reveal could not be completed.");
+  }
+}
+
+/** Open a sealed pack instance — deals cards on the server when authed. */
+export async function openPackInstance(instanceId: string): Promise<OpenPackResult> {
+  try {
+    const remote = await apiMutate<{
+      instance: PackInstanceApi;
+      openingId: string;
+      stage: string;
+      cardIndex: number;
+      session: {
+        quantity: number;
+        diamondCost: number;
+        cards: Array<{
+          id: string;
+          rarity: string;
+          reward: number;
+          faceUrl?: string | null;
+        }>;
+        foilFaceUrl?: string | null;
+        foilLabel?: string | null;
+      };
+      scratched: string[];
+    }>(`/api/me/packs/${instanceId}/open`, { method: "POST" });
+    return {
+      openingId: remote.openingId,
+      stage: remote.stage,
+      cardIndex: remote.cardIndex,
+      session: mapOpeningSession(remote.session),
+      scratched: remote.scratched,
+      instance: remote.instance,
+    };
+  } catch {
+    throw new PurchaseError("failed", "Pack could not be opened.");
   }
 }
 
@@ -244,6 +426,10 @@ export type PersistedOpening = {
   cardIndex: number;
   /** Card ids already fully scratched — never replayed on resume. */
   scratched: string[];
+  /** Server opening row — required for reveal API on resume. */
+  openingId?: string;
+  /** Server PackOpeningCard uuids (parallel to session.cards slots). */
+  serverRevealCardIds?: string[];
 };
 
 export type RestoreResult =
@@ -264,6 +450,19 @@ function isValidOpening(value: unknown): value is PersistedOpening {
     Array.isArray(data.session.cards) &&
     data.session.cards.length > 0
   );
+}
+
+/** Postgres PackOpeningCard id — not fan/reveal placeholder ids. */
+export function isServerOpeningCardId(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    id.trim(),
+  );
+}
+
+export function areServerRevealCardIds(
+  ids: readonly string[] | null | undefined,
+): boolean {
+  return Boolean(ids?.length && ids.every(isServerOpeningCardId));
 }
 
 export function saveOpening(data: Omit<PersistedOpening, "savedAt">) {
@@ -319,6 +518,11 @@ export function restoreOpening(packId: string): RestoreResult {
   if (parsed.packId !== packId) return { status: "none" };
 
   return { status: "resume", data: parsed };
+}
+
+/** Card ids in `revealedIds` not yet settled (local or server). */
+export function freshRevealIds(revealedIds: string[], awarded: ReadonlySet<string>) {
+  return revealedIds.filter((id) => !awarded.has(id));
 }
 
 /** First card that still needs scratching, or null when the session is done. */

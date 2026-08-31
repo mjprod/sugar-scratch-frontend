@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Search } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
@@ -9,9 +10,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
+import { Paths } from "@/routes/Paths";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
-import { PACK_OPENING_REWARD_EVENT } from "@/services/packMotionSettle";
+import {
+  PACK_OPENING_REWARD_EVENT,
+  type PackOpeningRewardDetail,
+} from "@/services/packMotionSettle";
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -39,7 +44,7 @@ export function AppLayout() {
     setPurchasedPacks,
     bumpInventoryRevision,
   } = useAuth();
-  const { coins, diamonds, addCoins } = useWallet();
+  const { coins, diamonds, addCoins, setCoins, setDiamonds } = useWallet();
   const { activeTab: tab, requestTab } = useTabNav();
 
   useEffect(() => {
@@ -54,21 +59,33 @@ export function AppLayout() {
 
   useEffect(() => {
     function onPackOpeningReward(event: Event) {
-      const detail = (event as CustomEvent<{ coins?: number; cards?: number }>)
-        .detail;
+      const detail = (event as CustomEvent<PackOpeningRewardDetail>).detail;
       const rewardCoins = detail?.coins ?? 0;
       const rewardCards = detail?.cards ?? 0;
-      if (rewardCoins > 0) addCoins(rewardCoins);
+      if (detail?.wallet) {
+        setDiamonds(detail.wallet.diamonds);
+        setCoins(detail.wallet.coins);
+      } else if (rewardCoins > 0) {
+        addCoins(rewardCoins);
+      }
       if (rewardCards > 0) {
         setPurchasedPacks((count) => count + rewardCards);
       }
-      if (rewardCoins > 0 || rewardCards > 0) bumpInventoryRevision();
+      if (detail?.wallet || rewardCoins > 0 || rewardCards > 0) {
+        bumpInventoryRevision();
+      }
     }
     window.addEventListener(PACK_OPENING_REWARD_EVENT, onPackOpeningReward);
     return () => {
       window.removeEventListener(PACK_OPENING_REWARD_EVENT, onPackOpeningReward);
     };
-  }, [addCoins, bumpInventoryRevision, setPurchasedPacks]);
+  }, [
+    addCoins,
+    bumpInventoryRevision,
+    setCoins,
+    setDiamonds,
+    setPurchasedPacks,
+  ]);
 
   const hideChrome =
     location.pathname.startsWith("/recommend") ||
@@ -79,6 +96,7 @@ export function AppLayout() {
   const onPackPocket =
     location.pathname.startsWith("/pack-pocket") ||
     location.pathname.startsWith("/cart");
+  const onSearch = location.pathname.startsWith("/search");
 
   const showTopUtility =
     !hideChrome &&
@@ -107,8 +125,26 @@ export function AppLayout() {
     };
   }, [guest, invalidateRemoteSession, setInboxUnread]);
 
-  const mobilePacks = (
-    <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
+  const mobileTrailing = (
+    <div className="flex items-center gap-0.5">
+      <button
+        type="button"
+        onClick={() =>
+          navigate(Paths.search, { state: { from: location.pathname } })
+        }
+        aria-label="Search"
+        aria-current={onSearch ? "page" : undefined}
+        className={[
+          "inbox-utility-btn inbox-utility-btn--ghost relative grid min-h-10 min-w-10 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+          onSearch ? "is-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <Search className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+      </button>
+      <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
+    </div>
   );
 
   return (
@@ -127,7 +163,7 @@ export function AppLayout() {
           onOpenStore={openStore}
           onOpenHome={() => requestTab("home")}
           visible
-          trailing={mobilePacks}
+          trailing={mobileTrailing}
         />
       ) : null}
 

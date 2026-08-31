@@ -2,12 +2,18 @@ import { diamondCostForPackId } from "./homepage.ts";
 import {
   buildFoilOpeningSession,
   buildOpeningSession,
+  cartCheckoutIdempotencyKey,
   clearOpening,
+  freshRevealIds,
   nextUnscratchedIndex,
   packCost,
   restoreOpening,
   saveOpening,
 } from "./purchase.ts";
+import {
+  clearPackInventory,
+  upsertInstancesFromApi,
+} from "./packInventory.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -48,6 +54,16 @@ assert(
   "fully scratched session reports done",
 );
 
+const awarded = new Set([single.cards[0].id]);
+assert(
+  freshRevealIds([single.cards[0].id, single.cards[1].id], awarded).length === 1,
+  "fresh reveal ids skip already awarded",
+);
+assert(
+  freshRevealIds([single.cards[0].id], awarded).length === 0,
+  "no fresh ids when all awarded",
+);
+
 /* Persistence round-trip against an in-memory localStorage stand-in. */
 const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
@@ -64,6 +80,12 @@ saveOpening({
   stage: "scratch",
   cardIndex: 1,
   scratched: [single.cards[0].id],
+  openingId: "opening-uuid-1",
+  serverRevealCardIds: [
+    "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+    "cccccccc-dddd-eeee-ffff-000000000000",
+  ],
 });
 
 const resumed = restoreOpening("ep1");
@@ -71,6 +93,16 @@ assert(resumed.status === "resume", "saved session resumes");
 assert(
   resumed.status === "resume" && resumed.data.scratched.length === 1,
   "resume keeps scratched cards",
+);
+assert(
+  resumed.status === "resume" && resumed.data.openingId === "opening-uuid-1",
+  "resume keeps server opening id",
+);
+assert(
+  resumed.status === "resume" &&
+    resumed.data.serverRevealCardIds?.[0] ===
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "resume keeps server reveal card ids",
 );
 assert(restoreOpening("ep2").status === "none", "other packs ignore this session");
 
@@ -91,5 +123,53 @@ assert(restoreOpening("ep1").status === "expired", "stale session expires");
 
 clearOpening();
 assert(restoreOpening("ep1").status === "none", "clear removes the session");
+
+clearPackInventory();
+const apiInstances = [
+  {
+    instanceId: "server-uuid-1",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened" as const,
+    purchaseId: "purchase-uuid-1",
+    savedAt: Date.now(),
+  },
+  {
+    instanceId: "server-uuid-2",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Mina",
+    creatorId: "mina",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened" as const,
+    purchaseId: "purchase-uuid-1",
+    savedAt: Date.now(),
+  },
+];
+const upserted = upsertInstancesFromApi(apiInstances);
+assert(upserted.length === 2, "api instances persisted");
+assert(
+  upsertInstancesFromApi(apiInstances).length === 2,
+  "duplicate api upsert is idempotent",
+);
+assert(
+  upsertInstancesFromApi(apiInstances)[0]?.instanceId === "server-uuid-1",
+  "api upsert keeps server instance ids",
+);
+
+assert(
+  cartCheckoutIdempotencyKey("cart-abc") !==
+    cartCheckoutIdempotencyKey("cart-def"),
+  "cart checkout keys are per line",
+);
+assert(
+  cartCheckoutIdempotencyKey("cart-abc") === "cart-buy:cart-abc",
+  "cart checkout key format",
+);
 
 console.log("v8 purchase flow self-check passed");

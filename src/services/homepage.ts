@@ -15,7 +15,9 @@ import {
 import { resolveCollectionThemeLabel } from "./collection";
 import { getCollectionPageState } from "./collectionState";
 import { isDemoMode } from "../lib/demo";
+import { canonicalThemeKey, resolveCollectionThemeLabel } from "./collection";
 import {
+  formatCollectionLabel,
   loadModels,
   modelDisplayName,
   modelId,
@@ -136,6 +138,8 @@ export type LeaderboardCategory =
 export type LeaderboardRow = {
   rank: number;
   packId: string;
+  /** Live foil rows: model id (`packId` is the foil slot id). */
+  characterId?: string;
   packName: string;
   creatorName: string;
   themeName: string;
@@ -463,6 +467,155 @@ async function loadContinueCollecting(): Promise<ContinueCollectingItem[]> {
   }
 }
 
+function themeToLeaderboardCategory(
+  themeName: string,
+): Exclude<LeaderboardCategory, "all"> {
+  const key = canonicalThemeKey(themeName);
+  const table: Record<string, Exclude<LeaderboardCategory, "all">> = {
+    teacher: "teacher",
+    nurse: "nurse",
+    maid: "maid",
+    bikini: "bikini",
+    office: "office",
+    student: "student",
+    police: "office",
+    firegirl: "student",
+    fire: "student",
+    gym: "student",
+  };
+  if (table[key]) return table[key];
+  for (const [needle, category] of Object.entries(table)) {
+    if (key.includes(needle)) return category;
+  }
+  return "student";
+}
+
+/** Map `/api/models` foil packs → leaderboard rows (live prototype). */
+export function leaderboardFromModels(
+  models: BackendModel[],
+): LeaderboardRow[] {
+  const rows: LeaderboardRow[] = [];
+
+  for (const model of models) {
+    const profile = profileFromModel(model);
+    const creatorName = profile.name;
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const thumbnailUrl = avatarRaw
+      ? normalizeMediaUrl(avatarRaw)
+      : CREATOR_PHOTOS.emma.avatar;
+    const created =
+      typeof model.created_at === "number" && Number.isFinite(model.created_at)
+        ? model.created_at
+        : 0;
+
+    for (const foil of profile.packs) {
+      const themeName =
+        resolveCollectionThemeLabel({
+          packName: foil.label,
+          catalogPackId: foil.id,
+          creator: creatorName,
+        }) || foil.label || creatorName;
+      const packName =
+        foil.label?.trim() && !/^pack\s/i.test(foil.label)
+          ? foil.label.trim()
+          : `${creatorName} Pack`;
+      const diamondCost = diamondCostForPackId(profile.id);
+
+      rows.push({
+        rank: 0,
+        packId: foil.id,
+        characterId: profile.id,
+        packName,
+        creatorName,
+        themeName,
+        thumbnailUrl,
+        purchaseCount: Math.max(
+          100,
+          Math.round(created) + (foil.slot === 1 ? 500 : 200),
+        ),
+        price: { amount: diamondCost, currency: "SC" },
+        diamondCost,
+        category: themeToLeaderboardCategory(themeName),
+      });
+    }
+  }
+
+  return rows
+    .sort((a, b) => b.purchaseCount - a.purchaseCount)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+async function loadLeaderboard(): Promise<LeaderboardRow[]> {
+  try {
+    const models = await loadModels();
+    return leaderboardFromModels(models);
+  } catch {
+    return [];
+  }
+}
+
+const LIVE_PACK_ACCENT = {
+  primary: "oklch(0.85 0.123 82.79)",
+  secondary: "oklch(0.656 0.212 354.31)",
+  glow: "oklch(0.85 0.123 82.79 / 0.22)",
+};
+
+/** Map `/api/models` foil packs → pack library cards (live prototype). */
+export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
+  const packs: FeaturedPack[] = [];
+
+  for (const model of models) {
+    const profile = profileFromModel(model);
+    const creatorName = profile.name;
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const coverImageUrl = avatarRaw
+      ? normalizeMediaUrl(avatarRaw)
+      : CREATOR_PHOTOS.emma.avatar;
+    const diamondCost = diamondCostForPackId(profile.id);
+
+    for (const foil of profile.packs) {
+      const themeName =
+        resolveCollectionThemeLabel({
+          packName: foil.label,
+          catalogPackId: foil.id,
+          creator: creatorName,
+        }) || foil.label || creatorName;
+      const name =
+        foil.label?.trim() && !/^pack\s/i.test(foil.label)
+          ? foil.label.trim()
+          : `${creatorName} Pack`;
+
+      packs.push({
+        id: foil.id,
+        name,
+        packTitle: name.toUpperCase(),
+        creatorId: profile.id,
+        creatorName,
+        collectionName: formatCollectionLabel(creatorName).toUpperCase(),
+        themeName,
+        coverImageUrl,
+        price: { amount: diamondCost, currency: "SC" },
+        diamondCost,
+        collected: 0,
+        collectionTotal: 15,
+        accentColors: LIVE_PACK_ACCENT,
+        isAvailable: true,
+      });
+    }
+  }
+
+  return packs;
+}
+
+async function loadPackLibrary(): Promise<FeaturedPack[]> {
+  try {
+    const models = await loadModels();
+    return packLibraryFromModels(models);
+  } catch {
+    return [];
+  }
+}
+
 const PACK_DIAMOND_COSTS: Record<string, number> = {
   ep1: 50,
   ep2: 70,
@@ -541,24 +694,31 @@ export async function fetchHomepage(): Promise<HomepageData> {
   return {
     featured: [],
     continueCollecting,
-    leaderboard: [],
+    leaderboard: await loadLeaderboard(),
   };
+}
+
+function filterLeaderboardRows(
+  rows: LeaderboardRow[],
+  category: LeaderboardCategory,
+): LeaderboardRow[] {
+  const filtered =
+    category === "all"
+      ? [...rows].sort((a, b) => b.purchaseCount - a.purchaseCount)
+      : rows.filter((r) => r.category === category).sort((a, b) => a.rank - b.rank);
+  return filtered.map((row, index) =>
+    category === "all" ? { ...row, rank: index + 1 } : row,
+  );
 }
 
 export async function fetchLeaderboard(
   category: LeaderboardCategory,
 ): Promise<LeaderboardRow[]> {
-  if (!isDemoMode()) return [];
-  await wait(280);
-  const rows =
-    category === "all"
-      ? [...LEADERBOARD].sort((a, b) => b.purchaseCount - a.purchaseCount)
-      : LEADERBOARD.filter((r) => r.category === category).sort(
-          (a, b) => a.rank - b.rank,
-        );
-  return rows.map((r, i) =>
-    category === "all" ? { ...r, rank: i + 1 } : r,
-  );
+  if (isDemoMode()) {
+    await wait(280);
+    return filterLeaderboardRows(LEADERBOARD, category);
+  }
+  return filterLeaderboardRows(await loadLeaderboard(), category);
 }
 
 const LIBRARY_ACCENT = {
@@ -606,13 +766,9 @@ function featuredPacksFromModels(models: BackendModel[]): FeaturedPack[] {
 }
 
 export async function fetchPackLibrary(): Promise<FeaturedPack[]> {
-  try {
-    const fromModels = featuredPacksFromModels(await loadModels());
-    if (fromModels.length) return fromModels;
-  } catch {
-    // Fall through to demo stills when the catalog is empty or offline.
+  if (!isDemoMode()) {
+    return loadPackLibrary();
   }
-  if (!isDemoMode()) return [];
   await wait(300);
   const defaults = {
     diamondCost: 8,

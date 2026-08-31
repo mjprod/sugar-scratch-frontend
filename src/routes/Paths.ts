@@ -9,6 +9,8 @@ export const Paths = {
    */
   home: "/",
   discover: "/discover",
+  /** Search / find — entered from Home HUD. */
+  search: "/search",
   /** @deprecated Use Paths.home — kept for older imports / redirects. */
   browse: "/",
   creator: (id: string) => `/creator/${id}`,
@@ -18,6 +20,7 @@ export const Paths = {
   collectionPacks: "/collection?reveal=packs",
   rewards: "/rewards",
   profile: "/profile",
+  editProfile: "/profile/edit",
   store: "/store",
   settings: "/settings",
   changePassword: "/settings/change-password",
@@ -93,8 +96,12 @@ export function pathForTab(tab: AppTab): string {
 export function tabFromPathname(pathname: string): AppTab {
   // Discover feed
   if (pathname.startsWith("/discover")) return "home";
-  // Home browse
-  if (pathname === "/" || pathname.startsWith("/browse")) {
+  // Home browse + search
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/browse") ||
+    pathname.startsWith("/search")
+  ) {
     return "feed";
   }
   // Collection hub + a girl's collection page
