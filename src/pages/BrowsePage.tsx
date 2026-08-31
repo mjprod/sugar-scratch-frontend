@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { HomeScreen } from "@/components/browse/BrowseScreen";
-import { WelcomeGiftOverlay } from "@/components/welcome/WelcomeGiftOverlay";
+import { GuestHomeLanding } from "@/components/home/GuestHomeLanding";
 
 export function BrowsePage() {
   const {
@@ -14,6 +14,11 @@ export function BrowsePage() {
     authed,
   } = useAuth();
   const { addDiamonds } = useWallet();
+
+  if (!authed) {
+    return <GuestHomeLanding />;
+  }
+
   return (
     <>
       <HomeScreen
@@ -50,7 +55,6 @@ export function BrowsePage() {
           return false;
         }}
       />
-      <WelcomeGiftOverlay />
     </>
   );
 }

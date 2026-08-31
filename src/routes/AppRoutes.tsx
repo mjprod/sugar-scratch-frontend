@@ -122,11 +122,15 @@ export function AppRoutes() {
             </AppShell>
           }
         >
-          {/* Home nav → pack browse at root; Discover nav → home feed */}
+          {/* Home nav → pack browse at root (guest + signed-in); Discover → feed */}
           <Route index element={<BrowsePage />} />
           <Route path="discover" element={<HomeFeedPage />} />
-          {/* Legacy /browse → root Home */}
+          {/* Legacy paths → root Home */}
           <Route path="browse" element={<Navigate to={Paths.home} replace />} />
+          <Route
+            path="loggedInHome"
+            element={<Navigate to={Paths.home} replace />}
+          />
           <Route path="search" element={<SearchPage />} />
           <Route path="creator/:id" element={<CreatorPage />} />
           <Route

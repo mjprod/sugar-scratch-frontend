@@ -34,13 +34,15 @@ export function WelcomeGiftOverlay() {
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("offer");
   const [error, setError] = useState(false);
+  const [heldForAccount, setHeldForAccount] = useState(false);
 
   useEffect(() => {
-    if (!skip && authed && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
+    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
       setOpen(true);
       return;
     }
     if (profile.welcomeClaimed) setOpen(false);
+    // Re-check on auth so a failed signup fulfill (pending cleared) can reopen.
   }, [authed, skip, profile.welcomeClaimed]);
 
   useEffect(() => {
@@ -61,8 +63,11 @@ export function WelcomeGiftOverlay() {
   async function onClaim() {
     if (phase !== "offer") return;
     setError(false);
+    setHeldForAccount(false);
     setPhase("claiming");
-    const result = await claimWelcomeRewards(profile.welcomeClaimed);
+    const result = await claimWelcomeRewards(profile.welcomeClaimed, {
+      deferGrant: !authed,
+    });
     if (!result.granted) {
       if (result.error) {
         setError(true);
@@ -70,6 +75,12 @@ export function WelcomeGiftOverlay() {
         return;
       }
       setOpen(false);
+      return;
+    }
+    if (result.deferred) {
+      // Guest intent only — pack is granted on signup via fulfillPendingWelcomeGift.
+      setHeldForAccount(true);
+      setPhase("confirm");
       return;
     }
     if (result.demo) {
@@ -87,6 +98,7 @@ export function WelcomeGiftOverlay() {
         return;
       }
       bumpInventoryRevision();
+      setPurchasedPacks((n) => n + 1);
     }
     setProfile((d) => ({
       ...d,
@@ -100,6 +112,7 @@ export function WelcomeGiftOverlay() {
     setProfile((d) => ({ ...d, welcomeClaimed: false }));
     setPhase("offer");
     setError(false);
+    setHeldForAccount(false);
     setOpen(true);
   }
 
@@ -185,7 +198,11 @@ export function WelcomeGiftOverlay() {
           {phase === "confirm" ? (
             <div className="welcome-gift-confirm" role="status">
               <strong>Gift Claimed</strong>
-              <span>Added to your Bag</span>
+              <span>
+                {heldForAccount
+                  ? "Waiting in your Bag after you create an account"
+                  : "Added to your Bag"}
+              </span>
             </div>
           ) : (
             <>

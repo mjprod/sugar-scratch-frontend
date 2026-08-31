@@ -501,6 +501,61 @@ body[data-theme="v8"] .footer-navigation {
   display: none;
 }
 
+/* Guest Home landing — looping 16:9 video behind guest nav + centered CTA. */
+body[data-theme="v8"] .guest-home-landing {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body[data-theme="v8"] .guest-home-landing__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .guest-home-landing__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    #000 0%,
+    rgb(0 0 0 / 0) 100%
+  );
+}
+
+body[data-theme="v8"] .guest-home-landing__cta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 13dvh;
+}
+
+body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow,
+body[data-theme="v8"] .guest-home-landing__cta .cta-button {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .guest-home-landing__video {
+    display: none;
+  }
+}
+
 /* Homepage hero — Three.js cover-flow (same stage as purchase choose-pack).
  * Stage starts at the scroller top so glow / heading sit behind the floating nav. */
 body[data-theme="v8"] [data-page-scroll]:has(.home-featured-coverflow) {
@@ -524,10 +579,6 @@ body[data-theme="v8"] .home-featured-coverflow {
 }
 
 @media (max-width: 1023px) {
-  body[data-theme="v8"] .home-featured-heading {
-    display: none;
-  }
-
   body[data-theme="v8"] .home-featured-coverflow {
     height: min(78dvh, 780px);
     min-height: 560px;
@@ -687,57 +738,6 @@ body[data-theme="v8"] .home-legal-overlay .app-page-shell {
   flex: 1;
   min-height: 0;
   height: 100%;
-}
-
-body[data-theme="v8"] .home-featured-heading {
-  position: absolute;
-  top: var(--hero-heading-y, 7.1rem);
-  left: calc(50% + var(--hero-heading-x, 0px));
-  z-index: 1;
-  margin: 0;
-  width: max-content;
-  max-width: calc(100% - 2rem);
-  transform: translateX(-50%);
-  text-align: center;
-  white-space: nowrap;
-  font-size: 4rem;
-  font-weight: 300;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  background-image: linear-gradient(180deg, oklch(1 0 0 / 0.49) 60%, #ffffff00);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  pointer-events: none;
-}
-
-body[data-theme="v8"] .home-featured-heading-reveal {
-  position: relative;
-  display: inline-block;
-  background-image: none;
-  background-clip: border-box;
-  -webkit-background-clip: border-box;
-  color: oklch(0.639 0.256 9.90);
-  -webkit-text-fill-color: oklch(0.639 0.256 9.90);
-}
-
-body[data-theme="v8"] .home-featured-heading-reveal::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.12em;
-  height: 0.28em;
-  background-color: oklch(0.639 0.256 9.90);
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 6H118' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M2 6H118' fill='none' stroke='%23000' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
 }
 
 body[data-theme="v8"] .home-play-steps {
@@ -7756,6 +7756,18 @@ body[data-theme="v8"] .hf-slide {
   scroll-snap-stop: always;
 }
 
+/*
+ * Slides are shorter than the viewport so the next card can peek.
+ * Extra end space lets the last slide snap to the same rest position,
+ * otherwise CTA / details sit ~peek lower with nowhere to scroll.
+ */
+body[data-theme="v8"] .hf-viewport::after {
+  content: "";
+  display: block;
+  height: var(--hf-next-peek, 0px);
+  pointer-events: none;
+}
+
 body[data-theme="v8"] .hf-card {
   position: relative;
   width: 100%;
@@ -13164,6 +13176,130 @@ body[data-theme="v8"] .inbox-empty-wrap {
 
 body[data-theme="v8"] .inbox-empty-wrap .inbox-section-head {
   margin-bottom: 0;
+}
+
+/* Pack Pocket add confirmation — slides from under the top nav. */
+body[data-theme="v8"] .pack-added-toast-stack {
+  --pack-added-toast-nav-top: max(12px, env(safe-area-inset-top, 0px));
+  --pack-added-toast-nav-height: 56px;
+  position: fixed;
+  top: calc(var(--pack-added-toast-nav-top) + var(--pack-added-toast-nav-height) + 10px);
+  left: 50%;
+  right: auto;
+  z-index: 5005;
+  width: min(350px, calc(100% - 32px));
+  max-width: 350px;
+  height: 64px;
+  pointer-events: none;
+  transform: translate3d(-50%, 0, 0);
+}
+
+body[data-theme="v8"] .pack-added-toast {
+  --pack-added-toast-pink: oklch(0.66 0.3 5.67);
+  --pack-added-toast-offset: 0px;
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  overflow: hidden;
+  pointer-events: none;
+  border: 1px solid #ffffff0d;
+  border-radius: 14px;
+  background: oklch(0.08 0 0 / 0.61);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.08),
+    0 8px 24px oklch(0 0 0 / 0.64);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(9px);
+  opacity: 0;
+  transform: translate3d(0, calc(-100% - 18px + var(--pack-added-toast-offset)), 0);
+  animation: pack-added-toast-enter 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+body[data-theme="v8"] .pack-added-toast.is-visible {
+  opacity: 1;
+  transform: translate3d(0, var(--pack-added-toast-offset), 0);
+}
+
+body[data-theme="v8"] .pack-added-toast.is-leaving {
+  animation: pack-added-toast-leave 320ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both;
+}
+
+@keyframes pack-added-toast-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(-100% - 18px + var(--pack-added-toast-offset)), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, var(--pack-added-toast-offset), 0);
+  }
+}
+
+@keyframes pack-added-toast-leave {
+  from {
+    opacity: 1;
+    transform: translate3d(0, var(--pack-added-toast-offset), 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--pack-added-toast-offset) - 8px), 0);
+  }
+}
+
+body[data-theme="v8"] .pack-added-toast__strip {
+  align-self: stretch;
+  flex: 0 0 8px;
+  width: 8px;
+  background: var(--pack-added-toast-pink);
+}
+
+body[data-theme="v8"] .pack-added-toast__copy {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 12px 14px 12px 12px;
+  color: oklch(1 0 0 / 0.92);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+@media (max-width: 506px) {
+  body[data-theme="v8"] .pack-added-toast-stack {
+    --pack-added-toast-nav-top: max(8px, env(safe-area-inset-top, 0px));
+    --pack-added-toast-nav-height: 44px;
+    top: calc(var(--mobile-top-hud-height) + 10px);
+    left: 50%;
+    right: auto;
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (min-width: 507px) {
+  body[data-theme="v8"] .pack-added-toast-stack {
+    left: auto;
+    right: max(16px, calc((100% - min(var(--app-content-max, 80rem), calc(100% - 32px))) / 2));
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .pack-added-toast,
+  body[data-theme="v8"] .pack-added-toast.is-visible,
+  body[data-theme="v8"] .pack-added-toast.is-leaving {
+    animation: none;
+    opacity: 1;
+    transform: translate3d(0, var(--pack-added-toast-offset), 0);
+  }
+
+  body[data-theme="v8"] .pack-added-toast.is-leaving {
+    opacity: 0;
+  }
 }
 
 /* ── Search page MVP ─────────────────────────────────────────────── */

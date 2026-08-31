@@ -414,8 +414,6 @@ export function FeaturedCoverFlow({
       className="home-featured-coverflow"
       style={{
         ["--overlay-gradient-color-end" as string]: glow,
-        ["--hero-heading-x" as string]: `${debug.headingX}px`,
-        ["--hero-heading-y" as string]: `${debug.headingY}rem`,
       }}
     >
       <div className="stage-packs">
@@ -426,11 +424,6 @@ export function FeaturedCoverFlow({
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
-        <h1 className="home-featured-heading">
-          Collect.
-          <span className="home-featured-heading-reveal">Reveal</span>
-          . Scratch & Match
-        </h1>
         <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
