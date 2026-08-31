@@ -18,10 +18,7 @@ import {
   preloadVideoTexture,
   subscribeVideoTextureReady,
 } from "@/lib/pack3d";
-import {
-  diamondCostForPackId,
-  type FeaturedPack,
-} from "@/services/homepage";
+import { type FeaturedPack } from "@/services/homepage";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import { isPackInCart, subscribeCart } from "@/services/cart";
 import {
@@ -29,6 +26,7 @@ import {
   profileFromModel,
   type BackendModel,
 } from "@/services/models";
+import { loadPackCatalog, packUnitCost } from "@/services/purchase";
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const MAX_HOME_PACKS = 10;
@@ -141,7 +139,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
       if (items.length >= MAX_HOME_PACKS) {
         return { items, playById };
       }
-      const diamondCost = diamondCostForPackId(profile.id);
+      const diamondCost = packUnitCost(profile.id);
       items.push(
         packItemToIteration({
           id: foil.id,
@@ -286,8 +284,8 @@ export function FeaturedCoverFlow({
 
   useEffect(() => {
     let cancelled = false;
-    void loadModels()
-      .then((models) => {
+    void Promise.all([loadModels(), loadPackCatalog()])
+      .then(([models]) => {
         if (cancelled) return;
         const fromModels = iterationsFromModels(models);
         setCatalog(

@@ -31,7 +31,11 @@ import {
   isFollowing,
   unfollowCreator,
 } from "@/services/following";
-import { packUnitCost, type PurchaseFlowPack } from "@/services/purchase";
+import {
+  loadPackCatalog,
+  packUnitCost,
+  type PurchaseFlowPack,
+} from "@/services/purchase";
 import "./creator-collection.css";
 
 /**
@@ -52,7 +56,10 @@ export function CreatorScreen({
 
   useEffect(() => {
     let cancelled = false;
-    void resolveModelIdForCreator(creatorId).then(({ model }) => {
+    void Promise.all([
+      resolveModelIdForCreator(creatorId),
+      loadPackCatalog(),
+    ]).then(([{ model }]) => {
       if (!cancelled) setResolvedModel(model);
     });
     return () => {

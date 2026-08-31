@@ -127,9 +127,25 @@ function foilForCartPack(
   return { profile, foil: bySlot ?? profile.packs[0] ?? null };
 }
 
+function diamondCostForCartPack(
+  cartPack: CartPack,
+  profiles: Awaited<ReturnType<typeof loadModels>> | null,
+  catalog: Awaited<ReturnType<typeof loadPackCatalog>>,
+) {
+  const catalogId = catalogPackIdForCartItem(cartPack, profiles);
+  if (catalog.length) {
+    const purchaseId = resolvePurchasePackId(catalog, catalogId);
+    return packCost(1, purchaseId);
+  }
+  // Catalog still loading — keep the cart snapshot so we don't flash the demo default.
+  if (cartPack.price > 0) return cartPack.price;
+  return packCost(1, catalogId);
+}
+
 function cartPacksToItems(
   packs: CartPack[],
   profiles: Awaited<ReturnType<typeof loadModels>> | null,
+  catalog: Awaited<ReturnType<typeof loadPackCatalog>>,
 ) {
   return packs.map((pack) => {
     const matched = profiles ? foilForCartPack(pack, profiles) : null;
@@ -142,7 +158,7 @@ function cartPacksToItems(
       modelUrl: PACK_MODEL_URL,
       modelName: "CardPack2-min.glb",
       videoUrl: foil?.videoUrl || pack.videoUrl,
-      price: pack.price,
+      price: diamondCostForCartPack(pack, profiles, catalog),
       girlName: profile?.name || pack.creator,
       packNumber: foil?.slot === 2 ? 102 : pack.packNumber,
       packName: foil?.label || pack.packName,
@@ -240,18 +256,16 @@ export function CartPage() {
   }, []);
 
   const items = useMemo(
-    () => cartPacksToItems(packs, models),
-    [models, packs],
+    () => cartPacksToItems(packs, models, packCatalog),
+    [models, packCatalog, packs],
   );
 
   const combinedPrice = useMemo(() => {
-    return packs.reduce((sum, cartPack) => {
-      const catalogId = catalogPackIdForCartItem(cartPack, models);
-      const purchaseId = packCatalog.length
-        ? resolvePurchasePackId(packCatalog, catalogId)
-        : catalogId;
-      return sum + packCost(1, purchaseId);
-    }, 0);
+    return packs.reduce(
+      (sum, cartPack) =>
+        sum + diamondCostForCartPack(cartPack, models, packCatalog),
+      0,
+    );
   }, [models, packCatalog, packs]);
 
   useEffect(() => {

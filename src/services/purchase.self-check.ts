@@ -1,4 +1,3 @@
-import { diamondCostForPackId } from "./homepage.ts";
 import {
   buildFoilOpeningSession,
   buildOpeningSession,
@@ -7,6 +6,7 @@ import {
   freshRevealIds,
   nextUnscratchedIndex,
   packCost,
+  packUnitCost,
   resolvePurchasePackId,
   restoreOpening,
   saveOpening,
@@ -22,7 +22,7 @@ function assert(condition: unknown, message: string) {
 
 const single = buildOpeningSession(1, "ep1");
 const bundle = buildOpeningSession(5, "ep1");
-const unit = diamondCostForPackId("ep1");
+const unit = packUnitCost("ep1");
 
 assert(single.diamondCost === unit, "single-pack cost matches ranking");
 assert(single.cards.length === 3, "single-pack card count");

@@ -15,6 +15,7 @@ import {
   normalizeMediaUrl,
   type BackendModel,
 } from "./models";
+import { loadPackCatalog } from "./purchase";
 
 export type SearchCreator = {
   id: string;
@@ -180,7 +181,7 @@ export function filterSearchCatalog(
 }
 
 export async function loadSearchCatalog(): Promise<SearchCatalog> {
-  const models = await loadModels();
+  const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
   return buildSearchCatalog(models);
 }
 
