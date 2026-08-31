@@ -4,9 +4,11 @@ import { useLocation } from "react-router-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CREATOR_CARD_PHOTOS } from "@/lib/photos";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import {
   claimWelcomeRewards,
   clearWelcomeGiftState,
+  finalizeWelcomeClaimRemote,
   hideWelcomeOverlayForSession,
   shouldShowWelcomeOverlay,
 } from "@/services/welcome";
@@ -19,9 +21,11 @@ export function WelcomeGiftOverlay() {
     authed,
     profile,
     bumpInventoryRevision,
+    invalidatePackSync,
     setProfile,
     setPurchasedPacks,
   } = useAuth();
+  const { setCoins, setDiamonds } = useWallet();
   const location = useLocation();
   const skip =
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
@@ -55,12 +59,12 @@ export function WelcomeGiftOverlay() {
     setOpen(false);
   }
 
-  function onClaim() {
+  async function onClaim() {
     if (phase !== "offer") return;
     setError(false);
     setHeldForAccount(false);
     setPhase("claiming");
-    const result = claimWelcomeRewards(profile.welcomeClaimed, {
+    const result = await claimWelcomeRewards(profile.welcomeClaimed, {
       deferGrant: !authed,
     });
     if (!result.granted) {
@@ -74,11 +78,31 @@ export function WelcomeGiftOverlay() {
     }
     if (result.deferred) {
       setHeldForAccount(true);
-    } else {
+      setProfile((d) => ({ ...d, welcomeClaimed: true }));
+    } else if (result.demo) {
       bumpInventoryRevision();
       setPurchasedPacks((n) => n + 1);
+      setProfile((d) => ({
+        ...d,
+        welcomeClaimed: result.welcomeClaimed ?? true,
+      }));
+    } else {
+      invalidatePackSync();
+      const committed = await finalizeWelcomeClaimRemote(result, (wallet) => {
+        setDiamonds(wallet.diamonds);
+        setCoins(wallet.coins);
+      });
+      if (!committed) {
+        setError(true);
+        setPhase("offer");
+        return;
+      }
+      bumpInventoryRevision();
+      setProfile((d) => ({
+        ...d,
+        welcomeClaimed: result.welcomeClaimed ?? true,
+      }));
     }
-    setProfile((d) => ({ ...d, welcomeClaimed: true }));
     setPhase("confirm");
   }
 

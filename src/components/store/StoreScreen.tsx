@@ -75,9 +75,11 @@ export function StoreScreen({
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
   onDiamondReward?: (amount: number) => void;
-  onPackReward?: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
-    instanceId?: string;
-  };
+  onPackReward?: (
+    reward: Extract<RedeemReward, { type: "free_pack" }>,
+  ) =>
+    | { instanceId?: string }
+    | Promise<{ instanceId?: string }>;
   onOpenPack?: (input: {
     packId: string;
     packName: string;
@@ -428,9 +430,11 @@ function StoreCatalog({
   flowStep: Flow["step"];
   onSelect: (product: StoreProduct) => void;
   onDiamondReward?: (amount: number) => void;
-  onPackReward?: (reward: Extract<RedeemReward, { type: "free_pack" }>) => {
-    instanceId?: string;
-  };
+  onPackReward?: (
+    reward: Extract<RedeemReward, { type: "free_pack" }>,
+  ) =>
+    | { instanceId?: string }
+    | Promise<{ instanceId?: string }>;
   onOpenPack?: (input: {
     packId: string;
     packName: string;

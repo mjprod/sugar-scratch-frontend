@@ -99,13 +99,16 @@ export function countCartPacks(): number {
   return readAll().length;
 }
 
-/** True when this catalog pack id is already in Pack Pocket. */
+/** True when this catalog pack (or its character) is already in Pack Pocket. */
 export function isPackInCart(...ids: Array<string | null | undefined>): boolean {
   const wanted = new Set(
     ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id)),
   );
   if (!wanted.size) return false;
-  return readAll().some((pack) => wanted.has(pack.packId));
+  // packId may be a foil id on Browse/Featured and a model id on CoverFlowV2.
+  return readAll().some(
+    (pack) => wanted.has(pack.packId) || wanted.has(pack.characterId),
+  );
 }
 
 export function addPackToCart(input: CartAddInput): CartPack {

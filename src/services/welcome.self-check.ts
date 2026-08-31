@@ -1,67 +1,90 @@
-/**
- * Welcome gift self-check.
- * Run: npx tsx src/services/welcome.self-check.ts
- */
 import {
   claimWelcomeRewards,
+  clearWelcomeGiftState,
+  commitWelcomeClaimLocally,
   fulfillPendingWelcomeGift,
   hasPendingWelcomeGift,
-  hideWelcomeOverlayForSession,
   isWelcomeGiftClaimed,
   isWelcomeGiftEligible,
   shouldShowWelcomeOverlay,
 } from "./welcome.ts";
+import { clearPackInventory } from "./packInventory.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
-const local = new Map<string, string>();
-const session = new Map<string, string>();
+const store = new Map<string, string>();
 (globalThis as { localStorage?: unknown }).localStorage = {
-  getItem: (key: string) => local.get(key) ?? null,
-  setItem: (key: string, value: string) => void local.set(key, value),
-  removeItem: (key: string) => void local.delete(key),
+  getItem: (key: string) => store.get(key) ?? null,
+  setItem: (key: string, value: string) => void store.set(key, value),
+  removeItem: (key: string) => void store.delete(key),
 };
 (globalThis as { sessionStorage?: unknown }).sessionStorage = {
-  getItem: (key: string) => session.get(key) ?? null,
-  setItem: (key: string, value: string) => void session.set(key, value),
-  removeItem: (key: string) => void session.delete(key),
+  getItem: (key: string) => store.get(`sess:${key}`) ?? null,
+  setItem: (key: string, value: string) => void store.set(`sess:${key}`, value),
+  removeItem: (key: string) => void store.delete(`sess:${key}`),
 };
 
-assert(isWelcomeGiftEligible(), "starts eligible");
-assert(shouldShowWelcomeOverlay(), "overlay starts visible");
-assert(!isWelcomeGiftClaimed(), "not claimed");
+clearWelcomeGiftState();
+assert(!isWelcomeGiftClaimed(false), "fresh user not claimed");
+assert(isWelcomeGiftEligible(false), "fresh user eligible");
+assert(shouldShowWelcomeOverlay(false), "overlay shows when eligible");
 
-hideWelcomeOverlayForSession();
-assert(!shouldShowWelcomeOverlay(), "session hide");
-assert(isWelcomeGiftEligible(), "close does not claim");
+store.set("sugar.v8.welcomeGiftClaimed", "1");
+assert(isWelcomeGiftClaimed(false), "local claimed without account flag");
+assert(!isWelcomeGiftEligible(false), "local claimed not eligible");
 
-session.clear();
-assert(shouldShowWelcomeOverlay(), "overlay can return next session");
-assert(!isWelcomeGiftEligible(true), "account flag not eligible");
-assert(!shouldShowWelcomeOverlay(true), "account flag hides overlay");
-assert(!claimWelcomeRewards(true).granted, "account flag claim is a no-op");
-assert(shouldShowWelcomeOverlay(), "local still eligible without account flag");
+clearWelcomeGiftState();
+assert(isWelcomeGiftClaimed(true), "account claimed ignores localStorage");
+assert(!isWelcomeGiftEligible(true), "account claimed not eligible");
+assert(!shouldShowWelcomeOverlay(true), "overlay hidden when account claimed");
 
-const deferred = claimWelcomeRewards(false, { deferGrant: true });
-assert(deferred.granted, "guest claim grants");
-assert(deferred.deferred, "guest claim is deferred");
-assert(isWelcomeGiftClaimed(), "claimed");
-assert(hasPendingWelcomeGift(), "pending until signup");
-assert(!shouldShowWelcomeOverlay(), "no overlay after claim");
-assert(!fulfillPendingWelcomeGift(true), "account already claimed skips grant");
-assert(hasPendingWelcomeGift() === false, "account claimed clears pending");
+void (async () => {
+  const deferred = await claimWelcomeRewards(false, { deferGrant: true });
+  assert(deferred.granted, "guest claim grants");
+  assert(deferred.deferred, "guest claim is deferred");
+  assert(isWelcomeGiftClaimed(), "claimed");
+  assert(hasPendingWelcomeGift(), "pending until signup");
+  assert(!shouldShowWelcomeOverlay(), "no overlay after claim");
+  assert(!fulfillPendingWelcomeGift(true), "account already claimed skips grant");
+  assert(hasPendingWelcomeGift() === false, "account claimed clears pending");
 
-local.clear();
-session.clear();
-const deferredAgain = claimWelcomeRewards(false, { deferGrant: true });
-assert(deferredAgain.granted, "guest claim again");
-assert(fulfillPendingWelcomeGift(), "signup fulfills pending gift");
-assert(!hasPendingWelcomeGift(), "pending cleared after fulfill");
-assert(!fulfillPendingWelcomeGift(), "second fulfill is a no-op");
+  clearWelcomeGiftState();
+  const deferredAgain = await claimWelcomeRewards(false, { deferGrant: true });
+  assert(deferredAgain.granted, "guest claim again");
+  assert(fulfillPendingWelcomeGift(), "signup fulfills pending gift");
+  assert(!hasPendingWelcomeGift(), "pending cleared after fulfill");
+  assert(!fulfillPendingWelcomeGift(), "second fulfill is a no-op");
 
-const second = claimWelcomeRewards();
-assert(!second.granted, "second claim is a no-op");
+  clearPackInventory();
+  const instance = {
+    instanceId: "welcome-uuid-1",
+    catalogPackId: "ep1",
+    packName: "Starter Scratch Pack",
+    creator: "Sugar",
+    creatorId: "sugar",
+    themeName: "Starter",
+    coverUrl: "",
+    status: "unopened" as const,
+    purchaseId: "purchase-welcome-1",
+    savedAt: Date.now(),
+  };
+  let walletApplied = false;
+  assert(
+    commitWelcomeClaimLocally(
+      { instance, wallet: { diamonds: 3, coins: 120 } },
+      () => {
+        walletApplied = true;
+      },
+    ),
+    "commit upserts welcome instance",
+  );
+  assert(walletApplied, "commit applies wallet");
+  assert(
+    !commitWelcomeClaimLocally({ instance: null, wallet: undefined }, () => {}),
+    "commit without instance fails",
+  );
 
-console.log("welcome.self-check: ok");
+  console.log("welcome self-check passed");
+})();

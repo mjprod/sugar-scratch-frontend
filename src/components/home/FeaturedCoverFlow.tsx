@@ -314,7 +314,7 @@ export function FeaturedCoverFlow({
         return;
       }
       const target = catalog?.playById.get(focusedItem.id);
-      setAddedToPocket(isPackInCart(focusedItem.id, target?.foilId));
+      setAddedToPocket(isPackInCart(focusedItem.id, target?.foilId, target?.id));
     };
     sync();
     return subscribeCart(sync);
@@ -445,7 +445,7 @@ export function FeaturedCoverFlow({
           buyDisabled={addedToPocket}
           onBuy={(item) => {
             const target = catalog.playById.get(item.id);
-            if (!target || isPackInCart(item.id, target.foilId)) return;
+            if (!target || isPackInCart(item.id, target.foilId, target.id)) return;
             onPlay(target);
           }}
         />

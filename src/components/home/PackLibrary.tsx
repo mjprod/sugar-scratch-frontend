@@ -14,7 +14,11 @@ import {
 } from "@/services/models";
 import { PackArt } from "./PackArt";
 
-const SLIDE = { type: "tween" as const, duration: 0.4, ease: [0.32, 0.72, 0, 1] };
+const SLIDE = {
+  type: "tween" as const,
+  duration: 0.4,
+  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+};
 
 export function PackLibrary({
   open,
@@ -77,7 +81,7 @@ export function PackLibrary({
       {open ? (
         <motion.div
           key="pack-library"
-          className="pack-library-overlay fixed inset-0 z-[1100] flex h-[100dvh] items-start justify-center overflow-hidden"
+          className="pack-library-overlay fixed inset-0 z-[1100] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Pack library"
@@ -86,7 +90,7 @@ export function PackLibrary({
           exit={reduce ? undefined : { y: "100%" }}
           transition={SLIDE}
         >
-          <div className="pack-library-panel mx-auto mt-[8dvh] flex h-[calc(100dvh-8dvh)] max-h-[84dvh] w-full flex-col lg:h-auto lg:max-w-[60rem]">
+          <div className="pack-library-panel mx-auto flex min-h-0 w-full max-w-[60rem] flex-1 flex-col">
             <div className="flex items-center justify-between px-5 py-3">
               <h2 className="text-[24px] font-bold tracking-[-0.02em]">All Packs</h2>
               <button
@@ -117,6 +121,13 @@ export function PackLibrary({
                       <div className="mt-1.5 h-3 w-1/2 rounded bg-white/10" />
                     </div>
                   ))}
+                </div>
+              ) : !packs.length ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-12 text-center">
+                  <p className="text-[15px] font-semibold">No packs available yet</p>
+                  <p className="mt-1 text-[13px] text-white/45">
+                    Check back soon — new packs are added regularly.
+                  </p>
                 </div>
               ) : !filtered.length ? (
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-12 text-center">

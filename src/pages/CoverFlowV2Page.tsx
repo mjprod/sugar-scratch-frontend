@@ -680,7 +680,8 @@ export function CoverFlowV2Page() {
             const target = catalog.playById.get(item.id);
             if (!target) return;
             addToCart({
-              packId: target.id,
+              // Keep foil id in packId so pocket membership matches Browse/Featured.
+              packId: item.id,
               packName: target.name,
               creator: target.creatorName,
               characterId: target.id,

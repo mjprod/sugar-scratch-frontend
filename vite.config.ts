@@ -72,7 +72,7 @@ export default defineConfig(({ mode }) => {
       host: env.VITE_DEV_HOST || "0.0.0.0",
       port: 5173,
       strictPort: true,
-      https: localHttps ?? true,
+      https: localHttps || undefined,
       fs: {
         allow: [rootDir],
       },
@@ -99,7 +99,7 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: env.VITE_DEV_HOST || "0.0.0.0",
       port: 5173,
-      https: localHttps ?? true,
+      https: localHttps || undefined,
     },
   };
 });

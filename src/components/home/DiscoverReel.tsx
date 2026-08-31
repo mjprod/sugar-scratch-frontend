@@ -325,11 +325,13 @@ export function DiscoverReel({
       if (!root || !items.length) return;
       const { slideHeight } = getSlideMetrics(root);
       if (slideHeight <= 0) return;
-      const next = Math.round(root.scrollTop / slideHeight) + delta;
-      const clamped = Math.max(0, Math.min(items.length - 1, next));
+      const current = Math.round(root.scrollTop / slideHeight);
+      const length = items.length;
+      const next = ((current + delta) % length + length) % length;
+      const wraps = Math.abs(next - current) > 1;
       root.scrollTo({
-        top: clamped * slideHeight,
-        behavior: reducedMotion ? "auto" : "smooth",
+        top: next * slideHeight,
+        behavior: reducedMotion || wraps ? "auto" : "smooth",
       });
       applyScrollFx(root);
     },
@@ -419,10 +421,12 @@ export function DiscoverReel({
         target = startIndex - 1;
       }
 
-      const clamped = Math.max(0, Math.min(items.length - 1, target));
+      const length = items.length;
+      const wrapped = ((target % length) + length) % length;
+      const wraps = Math.abs(wrapped - startIndex) > 1;
       root.scrollTo({
-        top: clamped * slideHeight,
-        behavior: reducedMotion ? "auto" : "smooth",
+        top: wrapped * slideHeight,
+        behavior: reducedMotion || wraps ? "auto" : "smooth",
       });
       applyScrollFx(root);
     },

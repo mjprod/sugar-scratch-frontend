@@ -1340,6 +1340,9 @@ export function ScratchPrototype() {
     total: number;
     resultId: string;
   } | null>(null);
+  const [packRevealFailed, setPackRevealFailed] = useState(false);
+  const [packRevealRetrying, setPackRevealRetrying] = useState(false);
+  const packRevealBlockedRef = useRef(false);
   const motionResultRef = useRef(motionResult);
   motionResultRef.current = motionResult;
   const activeModel =
@@ -1710,6 +1713,12 @@ export function ScratchPrototype() {
       // ignore
     }
     glRendererRef.current?.detachVideoFrames(foregroundVideo);
+  }
+
+  function resumeForegroundDecoder() {
+    if (!fgParkedRef.current) return;
+    fgParkedRef.current = false;
+    kickGameVideos();
   }
 
   function kickGameVideos() {
@@ -2309,7 +2318,11 @@ export function ScratchPrototype() {
               sampleCount,
               autoMode,
             ));
-        if (hideForeground && !claimedRef.current) {
+        if (
+          hideForeground &&
+          !claimedRef.current &&
+          !packRevealBlockedRef.current
+        ) {
           claimedRef.current = true;
           setClaimed(true);
           tryResolveGameRef.current();
@@ -2835,7 +2848,9 @@ export function ScratchPrototype() {
         );
     claimedRef.current = nextClaimed;
     setClaimed(nextClaimed);
-    if (nextClaimed) tryResolveGameRef.current();
+    if (nextClaimed && !packRevealBlockedRef.current) {
+      tryResolveGameRef.current();
+    }
   }, [trackedMesh]);
 
   useEffect(() => {
@@ -3203,12 +3218,41 @@ export function ScratchPrototype() {
   }
   resetScratchRef.current = resetScratch;
 
-  function commitMotionCardResult(cardId: string, prize: number) {
-    let updated = recordMotionCardResult(cardId, prize);
-    if (!updated) return;
-    const settled = settlePackMotionCard(cardId);
-    if (settled) updated = settled;
+  async function commitMotionCardResult(
+    cardId: string,
+    prize: number,
+  ): Promise<boolean> {
+    const session = loadGameSession();
+    if (session?.packScratch) {
+      const settle = await settlePackMotionCard(cardId);
+      if (!settle.ok) return false;
+      if (settle.session) setGameSession(settle.session);
+    }
+
+    const updated = recordMotionCardResult(cardId, prize);
+    if (!updated) return false;
     setGameSession(updated);
+    packRevealBlockedRef.current = false;
+    setPackRevealFailed(false);
+    return true;
+  }
+
+  function abortPackRevealAttempt() {
+    clearGameResultTimer();
+    gameResultPendingRef.current = null;
+    packRevealBlockedRef.current = true;
+    resumeForegroundDecoder();
+    setPackRevealFailed(true);
+  }
+
+  async function retryPackReveal() {
+    if (!packRevealFailed || packRevealRetrying) return;
+    setPackRevealRetrying(true);
+    try {
+      await presentMotionResult();
+    } finally {
+      setPackRevealRetrying(false);
+    }
   }
 
   async function presentMotionResult() {
@@ -3226,7 +3270,11 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      commitMotionCardResult(finishedId, prize);
+      const committed = await commitMotionCardResult(finishedId, prize);
+      if (!committed) {
+        abortPackRevealAttempt();
+        return;
+      }
       // One catalog fetch for award + overlay photos (used to load twice).
       const catalog = prize > 0 ? await loadGameCatalog() : null;
       const awarded = await awardMotionCardPhotos(
@@ -3348,14 +3396,22 @@ export function ScratchPrototype() {
     void goToPhotoSummary();
   }
 
-  function beginCardTransitionHandoff(transition: CardTransitionState) {
+  async function beginCardTransitionHandoff(transition: CardTransitionState) {
     if (cardTransitionHandoffRef.current) return;
     cardTransitionHandoffRef.current = true;
     setCardTransitionReady(false);
     setGameVideosReady(false);
     glRendererRef.current?.resetForeground();
     if (gameMode) {
-      commitMotionCardResult(transition.finishedId, transition.prize);
+      const committed = await commitMotionCardResult(
+        transition.finishedId,
+        transition.prize,
+      );
+      if (!committed) {
+        cardTransitionHandoffRef.current = false;
+        abortPackRevealAttempt();
+        return;
+      }
     }
     if (!completedCardIdsRef.current.includes(transition.finishedId)) {
       const nextCompleted = [
@@ -3379,7 +3435,7 @@ export function ScratchPrototype() {
     setCardTransition(null);
   }
 
-  function advanceAfterScratch() {
+  async function advanceAfterScratch() {
     const finishedId = selectedCardId;
     if (!finishedId || completedCardIdsRef.current.includes(finishedId)) return;
     if (cardTransitionActiveRef.current) return;
@@ -3426,7 +3482,11 @@ export function ScratchPrototype() {
     }
 
     if (gameMode) {
-      commitMotionCardResult(finishedId, prize);
+      const committed = await commitMotionCardResult(finishedId, prize);
+      if (!committed) {
+        abortPackRevealAttempt();
+        return;
+      }
     }
 
     completedCardIdsRef.current = nextCompleted;
@@ -3462,6 +3522,7 @@ export function ScratchPrototype() {
 
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
+    if (packRevealBlockedRef.current) return;
     const autoMode = autoScratchRef.current.enabled;
     const sampleCount = revealSamplesRef.current.length;
     if (
@@ -3756,6 +3817,7 @@ export function ScratchPrototype() {
     finalize = true,
   ) {
     if (gameResultPendingRef.current !== null) return;
+    if (packRevealBlockedRef.current) return;
     if (isBodyScratchLocked()) {
       return;
     }
@@ -3864,6 +3926,7 @@ export function ScratchPrototype() {
       revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
     if (
       canClaimGarment &&
+      !packRevealBlockedRef.current &&
       isGarmentFullyRevealed(
         nextProgress,
         revealedCountRef.current,
@@ -4629,7 +4692,11 @@ export function ScratchPrototype() {
             className="game-stage-canvas"
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
-            style={cardTransition ? { pointerEvents: "none" } : undefined}
+            style={
+              cardTransition || packRevealFailed
+                ? { pointerEvents: "none" }
+                : undefined
+            }
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
               huntHintActivityAtRef.current = performance.now();
@@ -4690,6 +4757,33 @@ export function ScratchPrototype() {
               clearScratchZoom();
             }}
           />
+          {packRevealFailed && gameSession?.packScratch ? (
+            <div
+              className="game-result game-result--static"
+              role="alert"
+              style={{ pointerEvents: "auto" }}
+            >
+              <div className="game-result-iris">
+                <div className="game-result-surface">
+                  <div className="game-result-card">
+                    <p className="game-result-title">Reveal interrupted</p>
+                    <p className="game-result-detail">
+                      Your match is saved. Retry the reveal when you are back
+                      online.
+                    </p>
+                    <button
+                      type="button"
+                      className="game-result-button"
+                      disabled={packRevealRetrying}
+                      onClick={() => void retryPackReveal()}
+                    >
+                      {packRevealRetrying ? "Retrying…" : "Retry reveal"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {cardTransition ? (
             <MirrorSlideTransition
               fromSrc={cardTransition.fromBottom}
@@ -4697,8 +4791,8 @@ export function ScratchPrototype() {
               templateId={cardTransition.templateId}
               holdUntilReady
               blendOut={cardTransitionReady}
-              onComplete={() => beginCardTransitionHandoff(cardTransition)}
-              onError={() => beginCardTransitionHandoff(cardTransition)}
+              onComplete={() => void beginCardTransitionHandoff(cardTransition)}
+              onError={() => void beginCardTransitionHandoff(cardTransition)}
             />
           ) : null}
           <div className="mobile-sound-wrap">

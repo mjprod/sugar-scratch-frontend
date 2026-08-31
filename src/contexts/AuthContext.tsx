@@ -39,7 +39,10 @@ import {
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
 import { addPackToCart, type CartAddInput } from "@/services/cart";
+import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
+import { clearPackInventory, syncMyPacks } from "@/services/packInventory";
+import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import { fulfillPendingWelcomeGift } from "@/services/welcome";
 import { resetPageReady } from "@/shared/ui/PageTransition";
@@ -59,6 +62,7 @@ import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,
 } from "@/lib/navigation";
+import { navigateBackOr } from "@/hooks/useGoBack";
 
 type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
 
@@ -101,6 +105,7 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "photo-scratch" ||
     action.type === "store" ||
     action.type === "like" ||
+    action.type === "follow" ||
     action.type === "inbox" ||
     action.type === "unopened-packs" ||
     action.type === "cart" ||
@@ -170,6 +175,8 @@ type AuthContextValue = {
   closeSecondary: (surface: SecondarySurfaceId) => void;
   inventoryRevision: number;
   bumpInventoryRevision: () => void;
+  /** Drop in-flight login pack syncs before writing claim/purchase inventory. */
+  invalidatePackSync: () => void;
   inboxUnread: number;
   setInboxUnread: Dispatch<SetStateAction<number>>;
   completeAuth: (result: AuthSuccessResult) => void;
@@ -224,8 +231,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setInventoryRevision((n) => n + 1);
   }, []);
 
-  // Bumped on login/logout so a stale in-flight session probe cannot wipe a fresh session.
+  // Bumped on login/logout so stale in-flight auth/inventory sync cannot cross sessions.
   const sessionSyncEpochRef = useRef(0);
+
+  const invalidatePackSync = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+  }, []);
+
+  useEffect(() => {
+    if (!authed || isDemoMode()) return;
+    const epoch = sessionSyncEpochRef.current;
+    let cancelled = false;
+    void syncMyPacks({
+      beforeWrite: () =>
+        !cancelled && epoch === sessionSyncEpochRef.current,
+    }).then((ok) => {
+      if (cancelled) return;
+      if (epoch !== sessionSyncEpochRef.current) return;
+      if (ok) bumpInventoryRevision();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, bumpInventoryRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -366,6 +394,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate(Paths.discover);
         return;
       }
+      if (action.type === "follow") {
+        // Apply follow after login. Stay on creator profiles; otherwise Discover.
+        followCreator({
+          id: action.creatorId,
+          displayName: action.displayName?.trim() || action.creatorId,
+          username: "",
+          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.png",
+          followedAt: Date.now(),
+          hasUnseenActivity: false,
+        });
+        if (!window.location.pathname.startsWith("/creator/")) {
+          navigate(Paths.discover);
+        }
+        return;
+      }
       if (action.type === "store") {
         captureSecondaryReturn();
         navigate(Paths.store);
@@ -406,17 +449,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deferred?: ProtectedAction | null;
       scrollToDailyReward?: boolean;
     }) => {
+      // First-run / post-recommend always lands on Discover — not Profile.
+      // Soft-gate from /profile would otherwise resume that tab after onboarding.
       const deferred = opts?.deferred ?? null;
-      if (deferred) {
-        navigate(Paths.home);
-        window.setTimeout(() => resumePending(deferred), 0);
+      const resume =
+        deferred &&
+        !(deferred.type === "tab" && deferred.tab === "profile")
+          ? deferred
+          : null;
+
+      if (resume) {
+        navigate(Paths.discover);
+        window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      navigate(Paths.home, {
-        state: opts?.scrollToDailyReward
-          ? { scrollToDailyReward: true }
-          : undefined,
-      });
+      navigate(Paths.discover);
     },
     [navigate, resumePending],
   );
@@ -563,9 +610,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const closeSecondary = useCallback(
     (surface: SecondarySurfaceId) => {
-      const next = resolveSecondaryBack(secondaryReturnTab, surface);
       setSecondaryReturnTab(null);
-      navigate(pathForTab(next));
+      // Prefer the real previous step (Discover → Creator → back, etc.).
+      navigateBackOr(navigate, pathForTab(resolveSecondaryBack(secondaryReturnTab, surface)));
     },
     [navigate, secondaryReturnTab],
   );
@@ -668,6 +715,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     destroySession();
     clearEmailVerified();
+    clearPackInventory();
     setAuthed(false);
     setEmailVerified(false);
     setInboxUnread(0);
@@ -681,6 +729,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionSyncEpochRef.current += 1;
     void logoutRemote();
     destroySession();
+    clearPackInventory();
     setAuthed(false);
     setPending(null);
     setAuthOpen(false);
@@ -700,6 +749,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
+    clearPackInventory();
     setProfile(initialProfile);
     setAuthed(false);
     setReturningUser(false);
@@ -747,6 +797,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeSecondary,
       inventoryRevision,
       bumpInventoryRevision,
+      invalidatePackSync,
       inboxUnread,
       setInboxUnread,
       completeAuth,
@@ -786,6 +837,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onVerified,
       onVerifyLater,
       bumpInventoryRevision,
+      invalidatePackSync,
       closeSecondary,
       inboxUnread,
       inventoryRevision,

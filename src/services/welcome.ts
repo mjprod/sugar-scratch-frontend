@@ -4,7 +4,16 @@
  * Guests persist the claim; the starter pack is granted after signup.
  */
 
-import { addUnopenedFromPurchase, purchaseAlreadyOwned } from "./packInventory";
+import { apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
+import {
+  addUnopenedFromPurchase,
+  getPackInstance,
+  purchaseAlreadyOwned,
+  syncMyPacks,
+  upsertInstancesFromApi,
+} from "./packInventory";
+import type { PackInstanceApi } from "./purchase";
 
 const CLAIMED_KEY = "sugar.v8.welcomeGiftClaimed";
 const PENDING_KEY = "sugar.v8.welcomeGiftPending";
@@ -18,6 +27,17 @@ const WELCOME_PACK = {
   count: 1,
   themeName: "Starter",
 } as const;
+
+export type WelcomeClaimResult = {
+  granted: boolean;
+  deferred?: boolean;
+  error?: boolean;
+  /** True when the offline demo fixture path ran. */
+  demo?: boolean;
+  welcomeClaimed?: boolean;
+  instance?: PackInstanceApi | null;
+  wallet?: { diamonds: number; coins: number };
+};
 
 export function isWelcomeGiftClaimed(accountClaimed = false) {
   if (accountClaimed) return true;
@@ -62,7 +82,7 @@ export function hideWelcomeOverlayForSession() {
   }
 }
 
-function markWelcomeClaimed() {
+function markWelcomeClaimedLocal() {
   try {
     localStorage.setItem(CLAIMED_KEY, "1");
     sessionStorage.removeItem(SESSION_HIDE_KEY);
@@ -92,29 +112,61 @@ function grantWelcomePack() {
   clearWelcomeGiftPending();
 }
 
-export type WelcomeClaimResult = {
-  granted: boolean;
-  deferred?: boolean;
-  error?: boolean;
-};
+function claimWelcomeRewardsDemo(): WelcomeClaimResult {
+  try {
+    addUnopenedFromPurchase({ ...WELCOME_PACK });
+    markWelcomeClaimedLocal();
+    return { granted: true, demo: true, welcomeClaimed: true };
+  } catch {
+    return { granted: false, error: true };
+  }
+}
+
+export async function claimWelcomeRewardsRemote() {
+  return apiMutate<{
+    ok: boolean;
+    welcomeClaimed: boolean;
+    instance: PackInstanceApi | null;
+    wallet: { diamonds: number; coins: number };
+  }>("/api/me/welcome/claim", { method: "POST" });
+}
 
 /**
  * Claim the kicker. Guests (`deferGrant`) store intent only;
  * the pack is granted on signup via `fulfillPendingWelcomeGift`.
+ * Authed users hit the server; demo mode stays local-only.
  */
-export function claimWelcomeRewards(
+export async function claimWelcomeRewards(
   accountClaimed = false,
   opts?: { deferGrant?: boolean },
-): WelcomeClaimResult {
+): Promise<WelcomeClaimResult> {
   if (isWelcomeGiftClaimed(accountClaimed)) return { granted: false };
-  try {
-    markWelcomeClaimed();
-    if (opts?.deferGrant) {
+
+  if (opts?.deferGrant) {
+    try {
+      markWelcomeClaimedLocal();
       markWelcomeGiftPending();
-      return { granted: true, deferred: true };
+      return { granted: true, deferred: true, welcomeClaimed: true };
+    } catch {
+      return { granted: false, error: true };
     }
-    grantWelcomePack();
-    return { granted: true };
+  }
+
+  if (isDemoMode()) {
+    return claimWelcomeRewardsDemo();
+  }
+
+  try {
+    const remote = await claimWelcomeRewardsRemote();
+    if (!remote.instance?.instanceId) {
+      return { granted: false, error: true };
+    }
+    return {
+      granted: true,
+      welcomeClaimed: remote.welcomeClaimed,
+      instance: remote.instance,
+      wallet: remote.wallet,
+    };
   } catch {
     return { granted: false, error: true };
   }
@@ -133,11 +185,54 @@ export function fulfillPendingWelcomeGift(accountClaimed = false): boolean {
       return false;
     }
     grantWelcomePack();
-    markWelcomeClaimed();
+    markWelcomeClaimedLocal();
     return true;
   } catch {
     return false;
   }
+}
+
+/** Apply claim payload to local wallet + pack inventory. */
+export function commitWelcomeClaimLocally(
+  result: Pick<WelcomeClaimResult, "instance" | "wallet">,
+  applyWallet: (wallet: { diamonds: number; coins: number }) => void,
+): boolean {
+  if (result.wallet) {
+    applyWallet(result.wallet);
+  }
+  const instance = result.instance;
+  if (!instance?.instanceId) {
+    return false;
+  }
+  upsertInstancesFromApi([instance]);
+  return Boolean(getPackInstance(instance.instanceId));
+}
+
+/**
+ * Commit welcome pack from API response, then reconcile with GET /api/me/packs.
+ * Returns false when the granted instance never lands in local inventory.
+ */
+export async function finalizeWelcomeClaimRemote(
+  result: WelcomeClaimResult,
+  applyWallet: (wallet: { diamonds: number; coins: number }) => void,
+): Promise<boolean> {
+  if (result.demo) return true;
+  const instanceId = result.instance?.instanceId;
+  if (!instanceId) return false;
+
+  if (!commitWelcomeClaimLocally(result, applyWallet)) {
+    return false;
+  }
+
+  await syncMyPacks();
+  if (getPackInstance(instanceId)) {
+    return true;
+  }
+
+  if (result.instance) {
+    upsertInstancesFromApi([result.instance]);
+  }
+  return Boolean(getPackInstance(instanceId));
 }
 
 export function clearWelcomeGiftState() {

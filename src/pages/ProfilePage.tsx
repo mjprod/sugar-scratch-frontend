@@ -9,8 +9,10 @@ export function ProfilePage() {
   return (
     <UserDashboardScreen
       name={profile.displayName || profile.username}
+      username={profile.username}
       avatar={profile.avatar}
       onLogout={logout}
+      onOpenEditProfile={() => navigate(Paths.editProfile)}
       onOpenChangePassword={() => navigate(Paths.changePassword)}
       onOpenFollowing={() => navigate(Paths.following)}
       onOpenGameSettings={() => navigate(Paths.gameSettings)}
