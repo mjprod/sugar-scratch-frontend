@@ -3,6 +3,8 @@
  * Appended at reveal settle; mock seed when empty for demo filters.
  */
 
+import { getPackInstance } from "./packInventory";
+
 export type GameHistoryResult = "win" | "no_prize" | "reversed";
 
 export type GameRewardType = "COIN" | "DIAMOND" | "AUD";
@@ -154,6 +156,16 @@ function seedMockIfNeeded(existing: GameHistoryRecord[]): GameHistoryRecord[] {
     /* ignore */
   }
   return merged;
+}
+
+/** Resolve catalog pack id + wallet purchase id from a ready/scratch pack instance. */
+export function packHistoryIds(packInstanceId: string) {
+  const owned = getPackInstance(packInstanceId);
+  return {
+    packInstanceId,
+    packId: owned?.catalogPackId ?? packInstanceId,
+    purchaseTransactionId: owned?.purchaseId,
+  };
 }
 
 /** Append a confirmed reveal. Idempotent on revealSessionId+cardId when provided. */

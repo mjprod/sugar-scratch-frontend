@@ -4,7 +4,7 @@ import {
   type GameSession,
 } from "@/features/game/modules/gameSession";
 import { recordRevealedCards } from "@/services/collectionState";
-import { recordGameReveal } from "@/services/gameHistory";
+import { packHistoryIds, recordGameReveal } from "@/services/gameHistory";
 import { revealPackCard } from "@/services/purchase";
 import {
   getReadyToScratch,
@@ -70,18 +70,22 @@ function appendGameHistoryFromSettle(
     (entry) => entry.id === openingId,
   );
   const creatorId = slugCreatorId(packScratch.creator);
+  const historyIds = packHistoryIds(packScratch.readyPackId);
+  const revealSessionId = packScratch.serverOpeningId
+    ? `${packScratch.serverOpeningId}:${openingId}`
+    : `${packScratch.readyPackId}:${openingId}`;
   recordGameReveal({
     cardId: motionCardId || openingId,
     cardName: card?.rarity ? `${card.rarity} Card` : "Card",
     cardImageUrl: card?.faceUrl,
-    packInstanceId: packScratch.readyPackId,
-    packId: packScratch.readyPackId,
+    packInstanceId: historyIds.packInstanceId,
+    packId: historyIds.packId,
     packName: packScratch.packName,
     creatorId,
     creatorName: packScratch.creator,
     rewardCoins,
-    revealSessionId: packScratch.serverOpeningId ?? packScratch.readyPackId,
-    purchaseTransactionId: packScratch.readyPackId,
+    revealSessionId,
+    purchaseTransactionId: historyIds.purchaseTransactionId,
   });
 }
 
@@ -121,7 +125,7 @@ export async function settlePackMotionCard(
         session,
         motionCardId,
         openingId,
-        openingCard?.reward ?? 0,
+        result.card.reward ?? openingCard?.reward ?? 0,
       );
       if (typeof window !== "undefined") {
         window.dispatchEvent(

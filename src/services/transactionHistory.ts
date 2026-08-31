@@ -4,6 +4,7 @@
  */
 
 import { listOwnedPacks, type OwnedPackInstance } from "./packInventory";
+import { packCost, packUnitCost, type PackQuantity } from "./purchase";
 
 export type TransactionType =
   | "diamond_purchase"
@@ -211,6 +212,13 @@ function seedMockIfNeeded(existing: TransactionRecord[]): TransactionRecord[] {
   return merged;
 }
 
+function inferPackDiamondCost(catalogPackId: string, quantity: number): number {
+  if (quantity === 1 || quantity === 5) {
+    return packCost(quantity as PackQuantity, catalogPackId);
+  }
+  return packUnitCost(catalogPackId) * quantity;
+}
+
 function packRowsFromInventory(
   ledger: TransactionRecord[],
 ): TransactionRecord[] {
@@ -247,6 +255,7 @@ function packRowsFromInventory(
       creatorNameSnapshot: first.creator,
       quantity: packs.length,
       purchaseId,
+      sourceAmount: inferPackDiamondCost(first.catalogPackId, packs.length),
       sourceCurrency: "DIAMOND",
     });
   }
