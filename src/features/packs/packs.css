@@ -1312,8 +1312,10 @@ h1 {
   position: relative;
   left: auto;
   z-index: 1;
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
   overflow: visible;
   transform: translateY(10px);
   transform-origin: center bottom;
@@ -1327,6 +1329,104 @@ h1 {
     box-shadow 250ms ease;
   transition-delay: 0ms;
   will-change: opacity, transform, filter;
+}
+
+.coverflow-buy-pack-cta__primary {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Buy Pack confirm — same chrome as pack-pocket remove, anchored under the hex CTA. */
+.coverflow-buy-pack-cta .coverflow-buy-confirm {
+  top: calc(100% + 0.45rem);
+  z-index: 6;
+}
+
+/* Positive confirm (buy) — green check instead of destructive red. */
+.coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm {
+  border-color: oklch(0.72 0.17 145 / 0.5);
+  background: oklch(0.48 0.14 145 / 0.32);
+  color: oklch(0.9 0.12 145);
+}
+
+.coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm:hover {
+  background: oklch(0.52 0.15 145 / 0.44);
+  border-color: oklch(0.76 0.17 145 / 0.6);
+  color: oklch(0.94 0.1 145);
+}
+
+.coverflow-buy-pack-cta.is-buy-confirm-open {
+  z-index: 5;
+}
+
+/* White text control under the hex CTA — pocket affordance. */
+.coverflow-add-to-pocket {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: none;
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.85),
+    0 0 10px rgb(0 0 0 / 0.45);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.coverflow-add-to-pocket__icon {
+  width: 1.265em;
+  height: 1.265em;
+  flex-shrink: 0;
+  color: #ffffff;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
+}
+
+.coverflow-add-to-pocket__label {
+  color: #ffffff;
+  font-weight: 400;
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.85),
+    0 0 10px rgb(0 0 0 / 0.45);
+}
+
+.coverflow-active-stack.is-visible .coverflow-add-to-pocket {
+  pointer-events: auto;
+}
+
+.coverflow-add-to-pocket:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.coverflow-add-to-pocket:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.coverflow-add-to-pocket:disabled,
+.coverflow-add-to-pocket[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.coverflow-add-to-pocket:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 0.7);
+  outline-offset: 3px;
+  border-radius: 0.35rem;
 }
 
 .coverflow-buy-pack-cta .cta-button-glow,
@@ -1345,6 +1445,21 @@ h1 {
 .coverflow-buy-pack-cta .cta-button__leading-icon {
   width: 1.05em;
   height: 1.05em;
+}
+
+/* Compact hex height: tighten vertical rhythm so title + cost still fit. */
+.coverflow-buy-pack-cta .cta-button__label {
+  gap: 0.08em;
+}
+
+.coverflow-buy-pack-cta .cta-button--hex .cta-button__label {
+  gap: 0.06em;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.coverflow-buy-pack-cta .cta-button__cost {
+  font-size: 0.98em;
 }
 
 /*

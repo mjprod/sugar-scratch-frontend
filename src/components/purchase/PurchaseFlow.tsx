@@ -200,7 +200,11 @@ function nextQueuedTearInstance(
   currentId: string,
   purchaseId: string | null,
 ): OwnedPackInstance | null {
-  if (pack.entry === "cart-tear" && pack.tearInstanceIds?.length) {
+  // Cart checkout and Pack Pocket owned opens both pass an ordered instance queue.
+  if (
+    (pack.entry === "cart-tear" || pack.entry === "open") &&
+    pack.tearInstanceIds?.length
+  ) {
     const index = pack.tearInstanceIds.indexOf(currentId);
     const nextId = index >= 0 ? pack.tearInstanceIds[index + 1] : undefined;
     return nextId ? getPackInstance(nextId) : null;
@@ -425,6 +429,20 @@ export function PurchaseFlow({
   const autoLaunchScratchRef = useRef(false);
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  const stageRef = useRef(stage);
+  stageRef.current = stage;
+  const sealTornRef = useRef(sealTorn);
+  sealTornRef.current = sealTorn;
+  const scratchedRef = useRef(scratched);
+  scratchedRef.current = scratched;
+  const instanceIdRef = useRef(instanceId);
+  instanceIdRef.current = instanceId;
+  const savingLaterRef = useRef(savingLater);
+  savingLaterRef.current = savingLater;
+  const purchasedFoilRef = useRef(purchasedFoil);
+  purchasedFoilRef.current = purchasedFoil;
+  /** Skip duplicate silent save when header close already persisted. */
+  const leavePersistedRef = useRef(false);
   const collectionTheme =
     resolveCollectionThemeLabel({
       themeName: pack.themeName,
@@ -434,6 +452,8 @@ export function PurchaseFlow({
     }) ||
     pack.themeName?.trim() ||
     pack.packName;
+  const collectionThemeRef = useRef(collectionTheme);
+  collectionThemeRef.current = collectionTheme;
   const packCoverUrl =
     purchasedFoil?.videoUrl ||
     session?.foilFaceUrl ||
@@ -508,10 +528,63 @@ export function PurchaseFlow({
 
   // Always leave global tear/open debug clean when this flow unmounts so Cart /
   // homepage coverflows never inherit an in-progress open.
+  // Also auto-save like "Save for later" when the user navigates away mid-flow:
+  // torn → Ready to Scratch; not torn → stays under Unopened Packs.
   useEffect(() => {
     return () => {
-      resetTearOpenState();
+      try {
+        if (!leavePersistedRef.current && !savingLaterRef.current) {
+          const currentStage = stageRef.current;
+          const terminalLeave =
+            currentStage === "complete" ||
+            currentStage === "saved" ||
+            currentStage === "saved-unopened" ||
+            currentStage === "no-packs" ||
+            currentStage === "expired" ||
+            currentStage === "load-failed";
+          if (!terminalLeave) {
+            const liveSession = sessionRef.current;
+            const readyId =
+              instanceIdRef.current ?? pack.instanceId ?? pack.packId;
+            if (sealTornRef.current && liveSession && readyId) {
+              const foil = purchasedFoilRef.current;
+              const theme = collectionThemeRef.current;
+              upsertReadyToScratch({
+                packId: readyId,
+                packName:
+                  liveSession.foilLabel || foil?.label || pack.packName,
+                creator: pack.creator,
+                session: liveSession,
+                revealed: scratchedRef.current,
+                coverUrl:
+                  liveSession.foilFaceUrl ||
+                  foil?.videoUrl ||
+                  resolveInventoryCoverUrl({
+                    packId: pack.packId,
+                    themeName: theme,
+                    creator: pack.creator,
+                  }),
+                themeName: theme,
+              });
+              trackScratchEvent("Scratch Progress Saved", {
+                packId: readyId,
+                remaining:
+                  liveSession.cards.length - scratchedRef.current.length,
+              });
+              onInventoryChange?.();
+            } else {
+              // Untorn owned pack is already in inventory from purchase —
+              // just refresh collection so Unopened Packs / Pack Pocket see it.
+              onInventoryChange?.();
+            }
+            clearOpening();
+          }
+        }
+      } finally {
+        resetTearOpenState();
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount-only autosave
   }, []);
 
   useEffect(() => {
@@ -1128,6 +1201,7 @@ export function PurchaseFlow({
       packId: readyId,
       remaining: session.cards.length - revealedIds.length,
     });
+    leavePersistedRef.current = true;
     bumpInventory();
   }
 
@@ -1357,12 +1431,14 @@ export function PurchaseFlow({
   }, [pack.entry, session]);
 
   function leaveSaved(destination?: () => void) {
+    leavePersistedRef.current = true;
     resetTearOpenState();
     bumpInventory();
     (destination ?? onReturnContext ?? onClose)();
   }
 
   function exit(destination?: () => void) {
+    leavePersistedRef.current = true;
     clearOpening();
     resetTearOpenState();
     bumpInventory();
@@ -1370,6 +1446,7 @@ export function PurchaseFlow({
   }
 
   function exitUnopened() {
+    leavePersistedRef.current = true;
     clearOpening();
     resetTearOpenState();
     bumpInventory();

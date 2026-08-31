@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check } from "lucide-react";
 import {
   CoverFlowCarousel,
   DEFAULT_COVERFLOW_CAMERA,
@@ -9,6 +8,8 @@ import {
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
   PACK_MODEL_URL,
@@ -18,15 +19,32 @@ import {
   preloadVideoTexture,
   subscribeVideoTextureReady,
 } from "@/lib/pack3d";
+import { isDemoMode } from "@/lib/demo";
+import { needsEmailVerification } from "@/services/auth";
 import { type FeaturedPack } from "@/services/homepage";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import { isPackInCart, subscribeCart } from "@/services/cart";
 import {
   loadModels,
+  matchModel,
   profileFromModel,
   type BackendModel,
 } from "@/services/models";
-import { loadPackCatalog, packUnitCost } from "@/services/purchase";
+import {
+  addUnopenedFromPurchase,
+  upsertInstancesFromApi,
+} from "@/services/packInventory";
+import {
+  PurchaseError,
+  commitPurchaseIdempotencyKey,
+  loadPackCatalog,
+  packCost,
+  packUnitCost,
+  resolvePurchasePackId,
+  submitPurchase,
+  type CatalogPackProduct,
+} from "@/services/purchase";
+import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const MAX_HOME_PACKS = 10;
@@ -250,10 +268,23 @@ export function FeaturedCoverFlow({
   onReady,
 }: {
   featured: FeaturedPack[];
+  /** Existing Pack Pocket add flow (auth-gated by the parent). */
   onPlay: (pack: FeaturedCoverFlowPlayTarget) => void;
   onReady?: () => void;
 }) {
+  const {
+    authed,
+    openPurchase,
+    openStore,
+    requireAuth,
+    bumpInventoryRevision,
+    setPurchasedPacks,
+    setNavNotice,
+  } = useAuth();
+  const { diamonds, coins, setDiamonds, setCoins } = useWallet();
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
+  const [models, setModels] = useState<BackendModel[] | null>(null);
+  const [packCatalog, setPackCatalog] = useState<CatalogPackProduct[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
   const [isMobileViewport, setIsMobileViewport] = useState(
@@ -265,6 +296,8 @@ export function FeaturedCoverFlow({
   const [debugOpen, setDebugOpen] = useState(HERO_DEBUG_ENABLED);
   const [copyLabel, setCopyLabel] = useState("Copy");
   const [addedToPocket, setAddedToPocket] = useState(false);
+  const [buying, setBuying] = useState(false);
+  const buyingRef = useRef(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
 
@@ -285,9 +318,11 @@ export function FeaturedCoverFlow({
   useEffect(() => {
     let cancelled = false;
     void Promise.all([loadModels(), loadPackCatalog()])
-      .then(([models]) => {
+      .then(([loadedModels, loadedCatalog]) => {
         if (cancelled) return;
-        const fromModels = iterationsFromModels(models);
+        setModels(loadedModels);
+        setPackCatalog(loadedCatalog);
+        const fromModels = iterationsFromModels(loadedModels);
         setCatalog(
           fromModels.items.length
             ? fromModels
@@ -396,6 +431,230 @@ export function FeaturedCoverFlow({
     window.setTimeout(() => setCopyLabel("Copy"), 1600);
   }
 
+  const resolveTarget = useCallback(
+    (item: Iteration): FeaturedCoverFlowPlayTarget | null => {
+      return catalog?.playById.get(item.id) ?? null;
+    },
+    [catalog],
+  );
+
+  const handleAddToPocket = useCallback(
+    (item: Iteration) => {
+      const target = resolveTarget(item);
+      if (!target) return;
+      if (isPackInCart(item.id, target.foilId, target.id)) return;
+      onPlay(target);
+    },
+    [onPlay, resolveTarget],
+  );
+
+  const handleBuyPack = useCallback(
+    async (item: Iteration) => {
+      if (buyingRef.current) return;
+      const target = resolveTarget(item);
+      if (!target) return;
+
+      // Guest / email-verify gate only. When already authed+verified, skip
+      // requireAuth — it would resumePending and navigate before purchase.
+      if (!authed || needsEmailVerification()) {
+        requireAuth({
+          type: "buy",
+          kind: "buy-pack",
+          pack: {
+            packId: target.foilId ?? target.id,
+            packName: target.name,
+            price: String(target.diamondCost),
+            creator: target.creatorName,
+            themeName: target.themeName,
+            entry: "purchase",
+          },
+        });
+        return;
+      }
+
+      buyingRef.current = true;
+      setBuying(true);
+
+      try {
+        const catalogList =
+          packCatalog.length > 0 ? packCatalog : await loadPackCatalog();
+        if (!packCatalog.length && catalogList.length) {
+          setPackCatalog(catalogList);
+        }
+
+        const candidateIds = [
+          target.foilId,
+          target.id,
+          item.id,
+          item.characterId,
+        ].filter((id): id is string => Boolean(id && id.trim()));
+
+        let purchasePackId = candidateIds[0] ?? item.id;
+        for (const candidate of candidateIds) {
+          const resolved = resolvePurchasePackId(catalogList, candidate);
+          if (resolved) {
+            purchasePackId = resolved;
+            break;
+          }
+        }
+
+        const cost =
+          packCost(1, purchasePackId) ||
+          target.diamondCost ||
+          packUnitCost(target.id);
+
+        if (cost > diamonds) {
+          setNavNotice("Not enough diamonds to buy this pack.");
+          window.setTimeout(() => setNavNotice(""), 3200);
+          openStore();
+          return;
+        }
+
+        const modelList = models ?? (await loadModels());
+        if (!models && modelList.length) setModels(modelList);
+
+        const matchedModel = matchModel(modelList, {
+          packId: target.id,
+          name: target.creatorName,
+        });
+        const profile = matchedModel ? profileFromModel(matchedModel) : null;
+        const foil =
+          profile?.packs.find((pack) => pack.id === (target.foilId ?? item.id)) ??
+          profile?.packs.find((pack) => pack.id === item.id) ??
+          profile?.packs[0] ??
+          null;
+
+        const packName = foil?.label || target.name;
+        const creatorName = profile?.name || target.creatorName;
+        const themeName =
+          resolveCollectionThemeLabel({
+            themeName: target.themeName,
+            packName,
+            catalogPackId: purchasePackId,
+            creator: creatorName,
+          }) ||
+          target.themeName ||
+          packName;
+
+        let purchaseId = "";
+        let instanceId = "";
+        let diamondCost = cost;
+
+        if (authed && !isDemoMode()) {
+          const result = await submitPurchase(
+            1,
+            diamonds,
+            purchasePackId,
+            undefined,
+            coins,
+          );
+          setDiamonds(result.wallet.diamonds);
+          setCoins(result.wallet.coins);
+          const owned = upsertInstancesFromApi(result.instances);
+          instanceId =
+            result.instances[0]?.instanceId ?? owned[0]?.instanceId ?? "";
+          if (!instanceId) {
+            throw new PurchaseError("failed", "Pack ownership failed.");
+          }
+          purchaseId = result.purchaseId;
+          diamondCost = result.diamondCost;
+          recordPackPurchaseTransaction({
+            purchaseId,
+            packId: purchasePackId,
+            packName: result.instances[0]?.packName || packName,
+            creatorName: result.instances[0]?.creator || creatorName,
+            quantity: result.instances.length || 1,
+            diamondCost,
+          });
+          commitPurchaseIdempotencyKey(purchasePackId, 1);
+        } else {
+          purchaseId = `coverflow-${Date.now().toString(36)}`;
+          const created = addUnopenedFromPurchase({
+            purchaseId,
+            catalogPackId: purchasePackId,
+            packName,
+            creator: creatorName,
+            count: 1,
+            themeName,
+          });
+          instanceId = created[0]?.instanceId ?? "";
+          if (!instanceId) {
+            throw new PurchaseError("failed", "Pack ownership failed.");
+          }
+          if (cost > 0) {
+            setDiamonds(Math.max(0, diamonds - cost));
+          }
+          recordPackPurchaseTransaction({
+            purchaseId,
+            packId: purchasePackId,
+            packName,
+            creatorName,
+            quantity: 1,
+            diamondCost: cost,
+          });
+        }
+
+        bumpInventoryRevision();
+        setPurchasedPacks((count) => count + 1);
+
+        openPurchase(
+          {
+            packId: purchasePackId,
+            packName,
+            price: String(diamondCost),
+            creator: creatorName,
+            themeName,
+            entry: "cart-tear",
+            unopenedPacks: 1,
+            instanceId,
+            purchaseId,
+            tearInstanceIds: [instanceId],
+            cartFoils: [
+              {
+                id: foil?.id || target.foilId || item.id,
+                label: packName,
+                videoUrl: foil?.videoUrl || item.videoUrl || "",
+                slot: foil?.slot,
+              },
+            ],
+          },
+          "open-pack",
+        );
+      } catch (error) {
+        const message =
+          error instanceof PurchaseError
+            ? error.kind === "insufficient"
+              ? "Not enough diamonds to buy this pack."
+              : "Purchase failed. Try again."
+            : "Purchase failed. Try again.";
+        setNavNotice(message);
+        window.setTimeout(() => setNavNotice(""), 3200);
+        if (error instanceof PurchaseError && error.kind === "insufficient") {
+          openStore();
+        }
+      } finally {
+        buyingRef.current = false;
+        setBuying(false);
+      }
+    },
+    [
+      authed,
+      bumpInventoryRevision,
+      coins,
+      diamonds,
+      models,
+      openPurchase,
+      openStore,
+      packCatalog,
+      requireAuth,
+      resolveTarget,
+      setCoins,
+      setDiamonds,
+      setNavNotice,
+      setPurchasedPacks,
+    ],
+  );
+
   if (!catalog) {
     return (
       <div
@@ -434,18 +693,14 @@ export function FeaturedCoverFlow({
           formatPrice={(price) => String(price)}
           disableSwipeDownDeactivate
           disableWheelPaging
-          buyLabel={addedToPocket ? "In Pocket" : "Add Pack"}
-          buyLeadingIcon={
-            addedToPocket ? (
-              <Check aria-hidden="true" strokeWidth={2.75} />
-            ) : undefined
-          }
-          buyDisabled={addedToPocket}
+          buyLabel="Buy Pack"
+          confirmBuy
+          buyDisabled={buying}
+          addToPocketDisabled={addedToPocket}
           onBuy={(item) => {
-            const target = catalog.playById.get(item.id);
-            if (!target || isPackInCart(item.id, target.foilId, target.id)) return;
-            onPlay(target);
+            void handleBuyPack(item);
           }}
+          onAddToPocket={handleAddToPocket}
         />
         {HERO_DEBUG_ENABLED && debugOpen ? (
           <div className="coverflow-center-guide" aria-hidden="true">

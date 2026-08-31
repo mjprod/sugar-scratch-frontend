@@ -4,7 +4,7 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
-import { packItemToIteration } from "@/features/packs/types";
+import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -19,6 +19,8 @@ import {
 } from "@/services/cart";
 import {
   addUnopenedFromPurchase,
+  listUnopenedInstances,
+  type OwnedPackInstance,
   upsertInstancesFromApi,
 } from "@/services/packInventory";
 import {
@@ -176,17 +178,116 @@ function cartPacksToItems(
   });
 }
 
+function foilForOwnedInstance(
+  pack: OwnedPackInstance,
+  profiles: Awaited<ReturnType<typeof loadModels>> | null,
+) {
+  if (!profiles) return null;
+  const model = matchModel(profiles, {
+    packId: pack.catalogPackId,
+    name: pack.creator,
+  });
+  if (!model) return null;
+  const profile = profileFromModel(model);
+  const byId = profile.packs.find((foil) => foil.id === pack.catalogPackId);
+  return { profile, foil: byId ?? profile.packs[0] ?? null };
+}
+
+/** Owned sealed packs shown in Pack Pocket when the cart itself is empty. */
+function unopenedInstancesToItems(
+  instances: OwnedPackInstance[],
+  profiles: Awaited<ReturnType<typeof loadModels>> | null,
+): Iteration[] {
+  // Newest first so the pack just left on tear-open is front-and-center.
+  const ordered = [...instances].sort((a, b) => b.savedAt - a.savedAt);
+  return ordered.map((pack) => {
+    const matched = foilForOwnedInstance(pack, profiles);
+    const foil = matched?.foil;
+    const profile = matched?.profile;
+    return packItemToIteration({
+      id: pack.instanceId,
+      characterId: profile?.id || pack.creatorId,
+      name: profile?.name || pack.creator,
+      modelUrl: PACK_MODEL_URL,
+      modelName: "CardPack2-min.glb",
+      videoUrl: foil?.videoUrl || pack.coverUrl,
+      price: 0,
+      girlName: profile?.name || pack.creator,
+      packNumber: foil?.slot === 2 ? 102 : 101,
+      packName: foil?.label || pack.packName,
+      flagEmoji: profile?.flagEmoji || "",
+      flagSvgUrl: profile?.flagSvgUrl,
+      city: profile?.city,
+      country: profile?.country,
+      overlayColorStart: profile?.overlayColorStart || DEFAULT_GLOW,
+      overlayColorEnd: profile?.overlayColorEnd || DEFAULT_GLOW,
+      backgroundColor: profile?.overlayColorEnd || DEFAULT_GLOW,
+    });
+  });
+}
+
+function openOwnedUnopenedFlow(input: {
+  instances: OwnedPackInstance[];
+  profiles: Awaited<ReturnType<typeof loadModels>> | null;
+  openPurchase: ReturnType<typeof useAuth>["openPurchase"];
+  startInstanceId?: string;
+}) {
+  const { instances, profiles, openPurchase, startInstanceId } = input;
+  if (!instances.length) return;
+  const ordered = [...instances].sort((a, b) => b.savedAt - a.savedAt);
+  const startIndex = startInstanceId
+    ? Math.max(
+        0,
+        ordered.findIndex((pack) => pack.instanceId === startInstanceId),
+      )
+    : 0;
+  const rotated =
+    startIndex > 0
+      ? [...ordered.slice(startIndex), ...ordered.slice(0, startIndex)]
+      : ordered;
+  const first = rotated[0];
+  const matched = foilForOwnedInstance(first, profiles);
+  openPurchase(
+    {
+      packId: first.catalogPackId,
+      packName: matched?.foil?.label || first.packName,
+      themeName: first.themeName || first.packName,
+      price: "Free",
+      creator: matched?.profile.name || first.creator,
+      entry: "open",
+      unopenedPacks: rotated.length,
+      instanceId: first.instanceId,
+      purchaseId: first.purchaseId,
+      tearInstanceIds: rotated.map((pack) => pack.instanceId),
+      cartFoils: rotated.map((pack, index) => {
+        const foilMatch = foilForOwnedInstance(pack, profiles);
+        return {
+          id: pack.instanceId,
+          label: foilMatch?.foil?.label || pack.packName,
+          videoUrl: foilMatch?.foil?.videoUrl || pack.coverUrl,
+          slot: foilMatch?.foil?.slot ?? ((index === 0 ? 1 : 2) as 1 | 2),
+        };
+      }),
+    },
+    "open-pack",
+  );
+}
+
 export function CartPage() {
   const {
     requestTab,
     openPurchase,
     authed,
     bumpInventoryRevision,
+    inventoryRevision,
     setPurchasedPacks,
     setNavNotice,
   } = useAuth();
   const { diamonds, coins, setDiamonds, setCoins } = useWallet();
   const [packs, setPacks] = useState<CartPack[]>(() => listCartPacks());
+  const [unopenedOwned, setUnopenedOwned] = useState<OwnedPackInstance[]>(() =>
+    listUnopenedInstances(),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(
     () => listCartPacks()[0]?.cartItemId ?? null,
   );
@@ -201,6 +302,7 @@ export function CartPage() {
   >([]);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [openingOwned, setOpeningOwned] = useState(false);
 
   useMarkPageReady(true);
 
@@ -216,8 +318,12 @@ export function CartPage() {
     }
   }
 
-
   useEffect(() => subscribeCart(() => setPacks(listCartPacks())), []);
+
+  // Refresh owned sealed packs when inventory changes (e.g. left tear-open).
+  useEffect(() => {
+    setUnopenedOwned(listUnopenedInstances());
+  }, [inventoryRevision, packs.length]);
 
   // Pack Pocket is browse-only. Clear leftover tear/open state before paint so
   // CoverFlow never mounts already mid-tear / auto-opening from a prior checkout.
@@ -255,10 +361,19 @@ export function CartPage() {
     };
   }, []);
 
-  const items = useMemo(
+  const cartItems = useMemo(
     () => cartPacksToItems(packs, models, packCatalog),
     [models, packCatalog, packs],
   );
+
+  const ownedItems = useMemo(
+    () => unopenedInstancesToItems(unopenedOwned, models),
+    [models, unopenedOwned],
+  );
+
+  /** Cart rows win; when empty, show ready-to-tear owned packs instead. */
+  const showingOwnedUnopened = cartItems.length === 0 && ownedItems.length > 0;
+  const items = showingOwnedUnopened ? ownedItems : cartItems;
 
   const combinedPrice = useMemo(() => {
     return packs.reduce(
@@ -278,6 +393,21 @@ export function CartPage() {
       setGlow(items[0].backgroundColor || DEFAULT_GLOW);
     }
   }, [items, selectedId]);
+
+  function openSelectedOwnedPack() {
+    if (openingOwned || !showingOwnedUnopened || !unopenedOwned.length) return;
+    setOpeningOwned(true);
+    try {
+      openOwnedUnopenedFlow({
+        instances: unopenedOwned,
+        profiles: models,
+        openPurchase,
+        startInstanceId: selectedId ?? undefined,
+      });
+    } finally {
+      setOpeningOwned(false);
+    }
+  }
 
   async function continueToTear() {
     if (checkingOut) return;
@@ -450,7 +580,7 @@ export function CartPage() {
   return (
     <section
       className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
-      aria-label="Cart"
+      aria-label={showingOwnedUnopened ? "Pack Pocket" : "Cart"}
     >
       <div
         className="stage-packs"
@@ -474,31 +604,54 @@ export function CartPage() {
             setGlow(item?.backgroundColor || DEFAULT_GLOW);
           }}
           formatPrice={(price) => String(price)}
-          onRemove={(item) => {
-            const next = removePackFromCart(item.id);
-            setPacks(next);
-          }}
+          // Owned ready-to-tear packs are not cart lines — no remove chrome.
+          onRemove={
+            showingOwnedUnopened
+              ? undefined
+              : (item) => {
+                  const next = removePackFromCart(item.id);
+                  setPacks(next);
+                }
+          }
+          hideActiveCta={showingOwnedUnopened}
         />
         <div className="cart-continue">
-          <CtaButton
-            {...ctaButtonPropsFromTemplate("squircleCTA")}
-            className="cart-continue__cta"
-            leadingIcon={
-              <span className="cart-continue__cost">
-                <DiamondLottie size={16} aria-hidden />
-                <span className="cart-continue__cost-amount">{combinedPrice}</span>
-              </span>
-            }
-            label={checkingOut ? "Checking out…" : "Confirm"}
-            costAmount={null}
-            width={248}
-            height={56}
-            fontSize={16}
-            aria-label={`${combinedPrice} diamonds, Confirm`}
-            disabled={checkingOut}
-            onClick={() => void continueToTear()}
-          />
-          {checkoutError ? (
+          {showingOwnedUnopened ? (
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              className="cart-continue__cta"
+              label={openingOwned ? "Opening…" : "Open Pack"}
+              costAmount={null}
+              width={248}
+              height={56}
+              fontSize={16}
+              aria-label="Open pack"
+              disabled={openingOwned}
+              onClick={() => openSelectedOwnedPack()}
+            />
+          ) : (
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              className="cart-continue__cta"
+              leadingIcon={
+                <span className="cart-continue__cost">
+                  <DiamondLottie size={16} aria-hidden />
+                  <span className="cart-continue__cost-amount">
+                    {combinedPrice}
+                  </span>
+                </span>
+              }
+              label={checkingOut ? "Checking out…" : "Confirm"}
+              costAmount={null}
+              width={248}
+              height={56}
+              fontSize={16}
+              aria-label={`${combinedPrice} diamonds, Confirm`}
+              disabled={checkingOut}
+              onClick={() => void continueToTear()}
+            />
+          )}
+          {checkoutError && !showingOwnedUnopened ? (
             <p className="mt-3 text-center text-[13px] text-[oklch(0.711_0.166_22.22)]">
               {checkoutError}
             </p>

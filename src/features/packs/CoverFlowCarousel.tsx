@@ -2,7 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import {
 		  Suspense,
 		  useCallback,
@@ -328,9 +328,36 @@ const CHEVRON_HOLD_REPEAT_MS = 90
 // Hovering a chevron for this long starts auto-cycling in that direction.
 const CHEVRON_HOVER_HOLD_MS = 500
 
-/** Packs hex CTA size — slightly shorter on mobile to reduce inner padding. */
-const BUY_PACK_CTA_SIZE_DESKTOP = { width: 187, height: 63, fontSize: 12, strokeWidth: 2 }
-const BUY_PACK_CTA_SIZE_MOBILE = { width: 176, height: 52, fontSize: 14, strokeWidth: 2 }
+/** Packs hex CTA size — compact height so the pocket text control fits under it. */
+const BUY_PACK_CTA_SIZE_DESKTOP = { width: 187, height: 48, fontSize: 12, strokeWidth: 2 }
+const BUY_PACK_CTA_SIZE_MOBILE = { width: 176, height: 42, fontSize: 13, strokeWidth: 2 }
+
+/** Pack Pocket mark used on the coverflow text control. */
+function PackPocketIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.5"
+      >
+        {/* Pocket outline */}
+        <path d="M4.8 3h14.4c.477 0 .935.199 1.273.553S21 4.388 21 4.89v6.667c0 2.504-.948 4.907-2.636 6.678S14.387 21 12 21a8.6 8.6 0 0 1-3.444-.719a9 9 0 0 1-2.92-2.047C3.948 16.463 3 14.06 3 11.556V4.889c0-.501.19-.982.527-1.336A1.76 1.76 0 0 1 4.8 3" />
+        {/* Cross instead of down chevron — nudged 1px up */}
+        <path d="M12 7.75v6.5" />
+        <path d="M8.75 11h6.5" />
+      </g>
+    </svg>
+  )
+}
 
 /** Local-space bottom-center of the pack mesh (after model rotation, scale 1). */
 type PackLocalBottom = {
@@ -346,14 +373,26 @@ interface CoverFlowCarouselProps {
   onDeselect?: () => void
   /** Fires when the centered coverflow pack changes (browse or select). */
   onFocusChange?: (item: Iteration | null, index: number) => void
-  /** Product CTA when the focused pack is active. */
+  /** Product CTA when the focused pack is active (Buy Pack — may confirm first). */
   onBuy?: (item: Iteration) => void
-  /** Label for the focused-pack CTA. Homepage uses Add Pack; purchase keeps Buy Pack. */
+  /**
+   * Homepage: secondary text control under Buy Pack.
+   * Keeps the existing Pack Pocket add flow separate from purchase.
+   */
+  onAddToPocket?: (item: Iteration) => void
+  /** Label for the focused-pack CTA. Defaults to Buy Pack. */
   buyLabel?: string
-  /** Optional mark left of the CTA title (e.g. In Pocket check). */
+  /** Optional mark left of the CTA title. */
   buyLeadingIcon?: ReactNode
-  /** Grey/disabled CTA (e.g. pack already in Pack Pocket). */
+  /** Grey/disabled Buy Pack CTA (e.g. purchase in flight). */
   buyDisabled?: boolean
+  /** Grey/disabled Add to Pocket control when the pack is already pocketed. */
+  addToPocketDisabled?: boolean
+  /**
+   * When true, Buy Pack opens the anchored Yes/No dialog before calling onBuy
+   * (homepage instant purchase). Purchase choose-pack keeps immediate onBuy.
+   */
+  confirmBuy?: boolean
   formatPrice?: (price: number) => string
   /** When set, run reveal open sequence in-canvas for this character. */
   revealingCharacterId?: CharacterId | null
@@ -521,44 +560,50 @@ function CoverFlowPack({
 	  onOpenSequenceComplete,
 	  onOpenPackBehindFan,
 	  onOpenPackBlurChange,
-			  formatPrice,
-			  onBuy,
-				  buyLabel,
-				  buyLeadingIcon,
-				  buyDisabled,
-				}: {
-				  item: Iteration
-		  index: number
-		  focusIndex: number
-		  isActive: boolean
-		  hasActiveSelection: boolean
-		  modelY: number
-		  layout: CoverFlowLayoutSettings
-		  textureTransform: VideoTextureTransform
-		  centerTiltYaw: number
-		  centerTiltPitch: number
-		  isMobile: boolean
-		  /** Browser height < 550px — frosted glass behind pack HUD. */
-		  shortHudGlass: boolean
-		  /** True while any pack open sequence is running. */
-		  revealMode: boolean
-		  /** This pack is the one being opened. */
-		  isRevealHero: boolean
-		  playOpenSequence: boolean
-		  packsX: number
-		  packsY: number
-		  openTimeline: PackTimeline
-		  openDuckInTimeline: DuckInTimeline
-		  onSelect: (id: string) => void
-		  onOpenSequenceComplete?: () => void
-		  onOpenPackBehindFan?: () => void
-		  onOpenPackBlurChange?: (blurPx: number) => void
-			  formatPrice: (price: number) => string
-				  onBuy?: (item: Iteration) => void
-				  buyLabel: string
-				  buyLeadingIcon?: ReactNode
-				  buyDisabled?: boolean
-				}) {
+formatPrice,
+				  onBuy,
+				  onAddToPocket,
+					  buyLabel,
+					  buyLeadingIcon,
+					  buyDisabled,
+					  addToPocketDisabled,
+					  confirmBuy,
+					}: {
+					  item: Iteration
+			  index: number
+			  focusIndex: number
+			  isActive: boolean
+			  hasActiveSelection: boolean
+			  modelY: number
+			  layout: CoverFlowLayoutSettings
+			  textureTransform: VideoTextureTransform
+			  centerTiltYaw: number
+			  centerTiltPitch: number
+			  isMobile: boolean
+			  /** Browser height < 550px — frosted glass behind pack HUD. */
+			  shortHudGlass: boolean
+			  /** True while any pack open sequence is running. */
+			  revealMode: boolean
+			  /** This pack is the one being opened. */
+			  isRevealHero: boolean
+			  playOpenSequence: boolean
+			  packsX: number
+			  packsY: number
+			  openTimeline: PackTimeline
+			  openDuckInTimeline: DuckInTimeline
+			  onSelect: (id: string) => void
+			  onOpenSequenceComplete?: () => void
+			  onOpenPackBehindFan?: () => void
+			  onOpenPackBlurChange?: (blurPx: number) => void
+				  formatPrice: (price: number) => string
+					  onBuy?: (item: Iteration) => void
+					  onAddToPocket?: (item: Iteration) => void
+					  buyLabel: string
+					  buyLeadingIcon?: ReactNode
+					  buyDisabled?: boolean
+					  addToPocketDisabled?: boolean
+					  confirmBuy?: boolean
+					}) {
 		const groupRef = useRef<Group>(null)
 	  const modelRef = useRef<Group>(null)
   // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
@@ -614,8 +659,10 @@ function CoverFlowPack({
     vScale: 0,
   })
   const [confirmingAdd, setConfirmingAdd] = useState(false)
+  const [buyConfirmOpen, setBuyConfirmOpen] = useState(false)
   const wasActiveAndEnabledRef = useRef(isActive && !buyDisabled)
   const visuallyDisabled = buyDisabled && !confirmingAdd
+  const pocketDisabled = Boolean(addToPocketDisabled)
 
   useEffect(() => {
     const wasActiveAndEnabled = wasActiveAndEnabledRef.current
@@ -639,6 +686,22 @@ function CoverFlowPack({
     const timeout = window.setTimeout(() => setConfirmingAdd(false), 580)
     return () => window.clearTimeout(timeout)
   }, [confirmingAdd])
+
+  useEffect(() => {
+    if (!isActive) setBuyConfirmOpen(false)
+  }, [isActive])
+
+  useEffect(() => {
+    if (!buyConfirmOpen) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setBuyConfirmOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [buyConfirmOpen])
 
   useEffect(() => {
     focusIndexRef.current = focusIndex
@@ -1580,43 +1643,115 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	                {formatPackNumberLabel(item.girlName, item.packNumber)}
 	              </p>
 	            </div>
-	            {/* Buy Pack only while purchasing — owned/ready-to-tear omits onBuy. */}
+{/* Buy Pack / Add to Pocket — owned/ready-to-tear omits onBuy. */}
             {onBuy ? (
               <div
                 className={`coverflow-buy-pack-cta${
                   confirmingAdd ? ' is-confirming' : ''
-                }`}
+                }${buyConfirmOpen ? ' is-buy-confirm-open' : ''}`}
                 onAnimationEnd={(event) => {
                   if (event.animationName !== 'coverflow-buy-cta-confirm') return
                   setConfirmingAdd(false)
                 }}
               >
-			                <CtaButton
-			                  {...ctaButtonPropsFromTemplate('hexGoldCTA')}
-			                  {...ctaSize}
-			                  auroraPaused={isMobile}
-			                  glowOuterBloom="off"
-				                  label={buyLabel}
-				                  leadingIcon={buyLeadingIcon}
-				                  costAmount={formatPrice(item.price ?? 4.99)}
-			                  className="coverflow-buy-pack-cta__button"
-			                  tabIndex={visuallyDisabled ? -1 : 0}
-			                  disabled={visuallyDisabled}
-			                  aria-disabled={visuallyDisabled || undefined}
-			                  onClick={(event) => {
-			                    event.stopPropagation()
-			                    if (buyDisabled || confirmingAdd) return
-			                    if (
-			                      typeof window === 'undefined' ||
-			                      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-			                    ) {
-			                      setConfirmingAdd(true)
-			                    }
-			                    onBuy(item)
-			                  }}
-			                />
-		              </div>
-		            ) : null}
+                <div className="coverflow-buy-pack-cta__primary">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+                    {...ctaSize}
+                    auroraPaused={isMobile}
+                    glowOuterBloom="off"
+                    label={buyLabel}
+                    leadingIcon={buyLeadingIcon}
+                    costAmount={formatPrice(item.price ?? 4.99)}
+                    className="coverflow-buy-pack-cta__button"
+                    tabIndex={visuallyDisabled ? -1 : 0}
+                    disabled={visuallyDisabled}
+                    aria-disabled={visuallyDisabled || undefined}
+                    aria-expanded={confirmBuy ? buyConfirmOpen : undefined}
+                    aria-controls={
+                      confirmBuy
+                        ? `coverflow-buy-confirm-${item.id}`
+                        : undefined
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      if (buyDisabled || confirmingAdd) return
+                      if (confirmBuy) {
+                        setBuyConfirmOpen((open) => !open)
+                        return
+                      }
+                      onBuy(item)
+                    }}
+                  />
+                  {confirmBuy && buyConfirmOpen ? (
+                    <div
+                      id={`coverflow-buy-confirm-${item.id}`}
+                      className="coverflow-cart-remove-confirm coverflow-buy-confirm"
+                      role="dialog"
+                      aria-label="Buy pack?"
+                      aria-modal="false"
+                    >
+                      <p className="coverflow-cart-remove-confirm__label">Buy</p>
+                      <div className="coverflow-cart-remove-confirm__actions">
+                        <button
+                          type="button"
+                          className="coverflow-cart-remove-confirm__btn is-cancel"
+                          aria-label="Cancel buy"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setBuyConfirmOpen(false)
+                          }}
+                        >
+                          <X aria-hidden="true" strokeWidth={2.5} />
+                        </button>
+                        <button
+                          type="button"
+                          className="coverflow-cart-remove-confirm__btn is-confirm"
+                          aria-label="Confirm buy"
+                          disabled={buyDisabled}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            if (buyDisabled) return
+                            setBuyConfirmOpen(false)
+                            onBuy(item)
+                          }}
+                        >
+                          <Check aria-hidden="true" strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                {onAddToPocket ? (
+                  <button
+                    type="button"
+                    className="coverflow-add-to-pocket"
+                    tabIndex={pocketDisabled ? -1 : 0}
+                    disabled={pocketDisabled}
+                    aria-disabled={pocketDisabled || undefined}
+                    aria-label={
+                      pocketDisabled ? 'Already in Pack Pocket' : 'Add to Pocket'
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      if (pocketDisabled) return
+                      if (
+                        typeof window === 'undefined' ||
+                        !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                      ) {
+                        setConfirmingAdd(true)
+                      }
+                      onAddToPocket(item)
+                    }}
+                  >
+                    <PackPocketIcon className="coverflow-add-to-pocket__icon" />
+                    <span className="coverflow-add-to-pocket__label">
+                      {pocketDisabled ? 'In Pocket' : 'Add to Pocket'}
+                    </span>
+                  </button>
+                ) : null}
+              </div>
+			            ) : null}
 	          </div>
 	        </Html>
 	      ) : null}
@@ -1644,37 +1779,43 @@ function CoverFlowScene({
 	  onRevealSequenceComplete,
 	  onRevealPackBehindFan,
 	  onRevealPackBlurChange,
-			  formatPrice,
-			  onBuy,
-				  buyLabel,
-				  buyLeadingIcon,
-				  buyDisabled,
-				}: {
-				  items: Iteration[]
-		  focusIndex: number
-		  selectedId: string | null
-		  cameraSettings: CoverFlowCameraSettings
-		  layout: CoverFlowLayoutSettings
-		  textureTransform: VideoTextureTransform
-		  centerTiltYaw: number
-		  centerTiltPitch: number
-		  isMobile: boolean
-		  shortHudGlass: boolean
-		  revealMode: boolean
-		  revealingPackId: string | null
-		  revealPlaySequence: boolean
-		  revealTimeline: PackTimeline
-		  revealDuckInTimeline: DuckInTimeline
-		  onSelect: (id: string) => void
-		  onRevealSequenceComplete?: () => void
-		  onRevealPackBehindFan?: () => void
-		  onRevealPackBlurChange?: (blurPx: number) => void
-			  formatPrice: (price: number) => string
-				  onBuy?: (item: Iteration) => void
-				  buyLabel: string
-				  buyLeadingIcon?: ReactNode
-				  buyDisabled?: boolean
-				}) {
+formatPrice,
+				  onBuy,
+				  onAddToPocket,
+					  buyLabel,
+					  buyLeadingIcon,
+					  buyDisabled,
+					  addToPocketDisabled,
+					  confirmBuy,
+					}: {
+					  items: Iteration[]
+			  focusIndex: number
+			  selectedId: string | null
+			  cameraSettings: CoverFlowCameraSettings
+			  layout: CoverFlowLayoutSettings
+			  textureTransform: VideoTextureTransform
+			  centerTiltYaw: number
+			  centerTiltPitch: number
+			  isMobile: boolean
+			  shortHudGlass: boolean
+			  revealMode: boolean
+			  revealingPackId: string | null
+			  revealPlaySequence: boolean
+			  revealTimeline: PackTimeline
+			  revealDuckInTimeline: DuckInTimeline
+			  onSelect: (id: string) => void
+			  onRevealSequenceComplete?: () => void
+			  onRevealPackBehindFan?: () => void
+			  onRevealPackBlurChange?: (blurPx: number) => void
+				  formatPrice: (price: number) => string
+					  onBuy?: (item: Iteration) => void
+					  onAddToPocket?: (item: Iteration) => void
+					  buyLabel: string
+					  buyLeadingIcon?: ReactNode
+					  buyDisabled?: boolean
+					  addToPocketDisabled?: boolean
+					  confirmBuy?: boolean
+					}) {
 			  const hasActiveSelection = selectedId !== null
 
 	  return (
@@ -1726,17 +1867,20 @@ function CoverFlowScene({
 	              onOpenPackBlurChange={
 	                isRevealHero ? onRevealPackBlurChange : undefined
 	              }
-			              formatPrice={formatPrice}
-			              onBuy={onBuy}
-			              buyLabel={buyLabel}
-			              buyLeadingIcon={buyLeadingIcon}
-			              buyDisabled={buyDisabled}
-			            />
-	          )
-	        })}
-      </group>
-    </>
-  )
+formatPrice={formatPrice}
+				              onBuy={onBuy}
+				              onAddToPocket={onAddToPocket}
+				              buyLabel={buyLabel}
+				              buyLeadingIcon={buyLeadingIcon}
+				              buyDisabled={buyDisabled}
+				              addToPocketDisabled={addToPocketDisabled}
+				              confirmBuy={confirmBuy}
+				            />
+		          )
+		        })}
+	      </group>
+	    </>
+	  )
 }
 
 // pmndrs/use-gesture thresholds
@@ -1772,9 +1916,12 @@ export function CoverFlowCarousel({
   onDeselect: onDeselectProp,
   onFocusChange,
   onBuy,
+  onAddToPocket,
   buyLabel = "Buy Pack",
   buyLeadingIcon,
   buyDisabled = false,
+  addToPocketDisabled = false,
+  confirmBuy = false,
   formatPrice = formatPackPrice,
   revealingCharacterId = null,
   revealingPackId: revealingPackIdProp = null,
@@ -1913,6 +2060,8 @@ const selectedIdRef = useRef(selectedId)
   const onDeselectRef = useRef(onDeselect)
   const onSelectRef = useRef(onSelect)
   const onBuyRef = useRef(onBuy)
+  const confirmBuyRef = useRef(confirmBuy)
+  const buyDisabledRef = useRef(buyDisabled)
   const onPlayNowRef = useRef(onPlayNow)
   const revealCardsRef = useRef(revealCards)
   const revealModeRef = useRef(revealMode)
@@ -2034,6 +2183,14 @@ useEffect(() => {
   useEffect(() => {
     onBuyRef.current = onBuy
   }, [onBuy])
+
+  useEffect(() => {
+    confirmBuyRef.current = confirmBuy
+  }, [confirmBuy])
+
+  useEffect(() => {
+    buyDisabledRef.current = buyDisabled
+  }, [buyDisabled])
 
   useEffect(() => {
     onPlayNowRef.current = onPlayNow
@@ -2265,6 +2422,8 @@ useEffect(() => {
 
       if (key === 'Enter' || key === 'Return') {
         if (!hasSelection || !focused) return
+        // Homepage Buy Pack uses an anchored confirm dialog — don't skip it.
+        if (confirmBuyRef.current || buyDisabledRef.current) return
         event.preventDefault()
         onBuyRef.current?.(focused)
       }
@@ -2864,9 +3023,12 @@ isMobile={isMobileViewportActive}
                 onRevealPackBlurChange={sequence.handlePackBlurChange}
                 formatPrice={formatPrice}
                 onBuy={onBuy}
+                onAddToPocket={onAddToPocket}
                 buyLabel={buyLabel}
                 buyLeadingIcon={buyLeadingIcon}
                 buyDisabled={buyDisabled}
+                addToPocketDisabled={addToPocketDisabled}
+                confirmBuy={confirmBuy}
               />
             </Suspense>
           </Canvas>
