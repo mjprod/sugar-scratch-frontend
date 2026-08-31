@@ -123,11 +123,14 @@ function applyRemoteUser(
       SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
     >;
   },
+  opts?: { setAuthed?: boolean },
 ) {
   createSession(user.email, user.provider, user.id);
   if (user.emailVerified) markEmailVerified();
   else clearEmailVerified();
-  setters.setAuthed(true);
+  if (opts?.setAuthed !== false) {
+    setters.setAuthed(true);
+  }
   setters.setEmailVerified(user.emailVerified);
   setters.setProfile((prev) => ({
     ...prev,
@@ -623,16 +626,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionSyncEpochRef.current += 1;
       setReturningUser(true);
 
+      const accountAlreadyClaimed = Boolean(result.user?.welcomeClaimed);
+
+      // Establish the local session first, but delay setAuthed(true) until any
+      // guest-deferred welcome claim finishes. That way the login pack sync
+      // (triggered by authed) cannot replace inventory with a pre-claim snapshot.
       if (result.user) {
-        applyRemoteUser(result.user, {
-          setAuthed,
-          setEmailVerified,
-          setProfile,
-        });
+        applyRemoteUser(
+          result.user,
+          { setAuthed, setEmailVerified, setProfile },
+          { setAuthed: false },
+        );
       } else {
         createSession(result.email, result.provider);
         applyUserFromEmail(result.email);
-        setAuthed(true);
         setEmailVerified(isEmailVerified());
         if (result.provider === "email" && !isRecommendationInitialized()) {
           clearEmailVerified();
@@ -642,18 +649,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       markEntered();
       markOnboardingDone();
-      const grantedWelcome = fulfillPendingWelcomeGift(
-        Boolean(result.user?.welcomeClaimed),
-      );
-      if (grantedWelcome) {
-        setProfile((d) => ({ ...d, welcomeClaimed: true }));
-        setPurchasedPacks((n) => n + 1);
-        bumpInventoryRevision();
-      }
       setAuthOpen(false);
       setAuthSheetMode("login");
       setAuthSheetEmail("");
       setPending(null);
+
+      void (async () => {
+        try {
+          const welcome = await fulfillPendingWelcomeGift(accountAlreadyClaimed);
+          if (welcome.granted) {
+            setProfile((d) => ({
+              ...d,
+              welcomeClaimed: welcome.welcomeClaimed ?? true,
+            }));
+            setPurchasedPacks((n) => n + 1);
+            bumpInventoryRevision();
+          }
+        } finally {
+          // Start pack sync only after claim attempt so server wins with the gift.
+          setAuthed(true);
+        }
+      })();
+
       window.setTimeout(() => {
         if (
           action &&

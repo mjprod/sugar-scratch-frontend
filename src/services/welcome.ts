@@ -1,7 +1,8 @@
 /**
  * Welcome gift — independent of first-play tutorial.
  * Overlay may hide for the session; only Claim marks it claimed.
- * Guests persist the claim; the starter pack is granted after signup.
+ * Guests persist pending intent only; the starter pack is granted after signup
+ * via POST /api/me/welcome/claim (or local demo grant).
  */
 
 import { apiMutate } from "../lib/api";
@@ -69,8 +70,12 @@ function isSessionHidden() {
   }
 }
 
-/** Show overlay when unclaimed and not closed this session. */
+/**
+ * Show overlay when unclaimed and not closed this session.
+ * A guest deferred claim keeps CLAIMED unset so a failed signup fulfill can recover.
+ */
 export function shouldShowWelcomeOverlay(accountClaimed = false) {
+  if (hasPendingWelcomeGift()) return false;
   return isWelcomeGiftEligible(accountClaimed) && !isSessionHidden();
 }
 
@@ -107,15 +112,11 @@ function clearWelcomeGiftPending() {
   }
 }
 
-function grantWelcomePack() {
-  addUnopenedFromPurchase({ ...WELCOME_PACK });
-  clearWelcomeGiftPending();
-}
-
 function claimWelcomeRewardsDemo(): WelcomeClaimResult {
   try {
     addUnopenedFromPurchase({ ...WELCOME_PACK });
     markWelcomeClaimedLocal();
+    clearWelcomeGiftPending();
     return { granted: true, demo: true, welcomeClaimed: true };
   } catch {
     return { granted: false, error: true };
@@ -132,9 +133,10 @@ export async function claimWelcomeRewardsRemote() {
 }
 
 /**
- * Claim the kicker. Guests (`deferGrant`) store intent only;
- * the pack is granted on signup via `fulfillPendingWelcomeGift`.
- * Authed users hit the server; demo mode stays local-only.
+ * Claim the kicker.
+ * Guests (`deferGrant`) store pending intent only — CLAIMED is deferred until
+ * signup fulfill succeeds so a failed claim can reopen the overlay.
+ * Authed users hit the server (or local demo fixture).
  */
 export async function claimWelcomeRewards(
   accountClaimed = false,
@@ -144,9 +146,9 @@ export async function claimWelcomeRewards(
 
   if (opts?.deferGrant) {
     try {
-      markWelcomeClaimedLocal();
+      // Do not mark CLAIMED yet — pending alone hides the overlay until fulfill.
       markWelcomeGiftPending();
-      return { granted: true, deferred: true, welcomeClaimed: true };
+      return { granted: true, deferred: true };
     } catch {
       return { granted: false, error: true };
     }
@@ -169,26 +171,6 @@ export async function claimWelcomeRewards(
     };
   } catch {
     return { granted: false, error: true };
-  }
-}
-
-/** After signup: deliver a guest-claimed starter pack if it is still waiting. */
-export function fulfillPendingWelcomeGift(accountClaimed = false): boolean {
-  if (accountClaimed) {
-    clearWelcomeGiftPending();
-    return false;
-  }
-  if (!hasPendingWelcomeGift()) return false;
-  try {
-    if (purchaseAlreadyOwned(WELCOME_PACK.purchaseId)) {
-      clearWelcomeGiftPending();
-      return false;
-    }
-    grantWelcomePack();
-    markWelcomeClaimedLocal();
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -216,7 +198,11 @@ export async function finalizeWelcomeClaimRemote(
   result: WelcomeClaimResult,
   applyWallet: (wallet: { diamonds: number; coins: number }) => void,
 ): Promise<boolean> {
-  if (result.demo) return true;
+  if (result.demo) {
+    markWelcomeClaimedLocal();
+    clearWelcomeGiftPending();
+    return true;
+  }
   const instanceId = result.instance?.instanceId;
   if (!instanceId) return false;
 
@@ -226,13 +212,71 @@ export async function finalizeWelcomeClaimRemote(
 
   await syncMyPacks();
   if (getPackInstance(instanceId)) {
+    markWelcomeClaimedLocal();
+    clearWelcomeGiftPending();
     return true;
   }
 
   if (result.instance) {
     upsertInstancesFromApi([result.instance]);
   }
-  return Boolean(getPackInstance(instanceId));
+  if (getPackInstance(instanceId)) {
+    markWelcomeClaimedLocal();
+    clearWelcomeGiftPending();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * After signup: deliver a guest-claimed starter pack if it is still waiting.
+ * Non-demo path POSTs /api/me/welcome/claim so server welcomeClaimed sticks and
+ * inventory sync cannot clobber a local-only instance.
+ */
+export async function fulfillPendingWelcomeGift(
+  accountClaimed = false,
+  applyWallet: (wallet: { diamonds: number; coins: number }) => void = () => {},
+): Promise<WelcomeClaimResult> {
+  if (accountClaimed) {
+    clearWelcomeGiftPending();
+    markWelcomeClaimedLocal();
+    return { granted: false };
+  }
+  if (!hasPendingWelcomeGift()) return { granted: false };
+
+  if (isDemoMode()) {
+    if (purchaseAlreadyOwned(WELCOME_PACK.purchaseId)) {
+      clearWelcomeGiftPending();
+      markWelcomeClaimedLocal();
+      return { granted: false };
+    }
+    return claimWelcomeRewardsDemo();
+  }
+
+  try {
+    const remote = await claimWelcomeRewardsRemote();
+    if (!remote.instance?.instanceId) {
+      // Drop pending so the (now authed) overlay can reopen and retry remotely.
+      clearWelcomeGiftPending();
+      return { granted: false, error: true };
+    }
+    const result: WelcomeClaimResult = {
+      granted: true,
+      welcomeClaimed: remote.welcomeClaimed,
+      instance: remote.instance,
+      wallet: remote.wallet,
+    };
+    const committed = await finalizeWelcomeClaimRemote(result, applyWallet);
+    if (!committed) {
+      clearWelcomeGiftPending();
+      return { granted: false, error: true };
+    }
+    return result;
+  } catch {
+    // Network / API failure: allow recovery via the authed overlay claim path.
+    clearWelcomeGiftPending();
+    return { granted: false, error: true };
+  }
 }
 
 export function clearWelcomeGiftState() {

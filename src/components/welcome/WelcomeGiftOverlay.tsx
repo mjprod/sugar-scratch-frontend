@@ -42,7 +42,8 @@ export function WelcomeGiftOverlay() {
       return;
     }
     if (profile.welcomeClaimed) setOpen(false);
-  }, [skip, profile.welcomeClaimed]);
+    // Re-check on auth so a failed signup fulfill (pending cleared) can reopen.
+  }, [authed, skip, profile.welcomeClaimed]);
 
   useEffect(() => {
     if (open) claimSlotRef.current?.querySelector("button")?.focus();
@@ -77,15 +78,14 @@ export function WelcomeGiftOverlay() {
       return;
     }
     if (result.deferred) {
+      // Guest intent only — pack is granted on signup via fulfillPendingWelcomeGift.
       setHeldForAccount(true);
-      setProfile((d) => ({ ...d, welcomeClaimed: true }));
-    } else if (result.demo) {
+      setPhase("confirm");
+      return;
+    }
+    if (result.demo) {
       bumpInventoryRevision();
       setPurchasedPacks((n) => n + 1);
-      setProfile((d) => ({
-        ...d,
-        welcomeClaimed: result.welcomeClaimed ?? true,
-      }));
     } else {
       invalidatePackSync();
       const committed = await finalizeWelcomeClaimRemote(result, (wallet) => {
@@ -98,11 +98,12 @@ export function WelcomeGiftOverlay() {
         return;
       }
       bumpInventoryRevision();
-      setProfile((d) => ({
-        ...d,
-        welcomeClaimed: result.welcomeClaimed ?? true,
-      }));
+      setPurchasedPacks((n) => n + 1);
     }
+    setProfile((d) => ({
+      ...d,
+      welcomeClaimed: result.welcomeClaimed ?? true,
+    }));
     setPhase("confirm");
   }
 
