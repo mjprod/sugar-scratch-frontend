@@ -31,6 +31,8 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
 import { InboxPage } from "@/pages/InboxPage";
 import { CartPage } from "@/pages/CartPage";
+import { TransactionHistoryPage } from "@/pages/TransactionHistoryPage";
+import { GameHistoryPage } from "@/pages/GameHistoryPage";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 
 function GameCatalogRoute({ children }: { children: ReactNode }) {
@@ -172,6 +174,22 @@ export function AppRoutes() {
             element={
               <SoftGate tab="profile">
                 <GameSettingsPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/transactions"
+            element={
+              <SoftGate tab="profile">
+                <TransactionHistoryPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/game-history"
+            element={
+              <SoftGate tab="profile">
+                <GameHistoryPage />
               </SoftGate>
             }
           />

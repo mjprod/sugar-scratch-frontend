@@ -1,16 +1,17 @@
 import {
   Inbox,
   ChevronRight,
-  CreditCard,
   FileText,
   Globe2,
   HelpCircle,
   Lock,
   LogOut,
   Pencil,
+  Receipt,
   Settings,
   Smartphone,
   ShieldCheck,
+  Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -32,6 +33,8 @@ export function UserDashboardScreen({
   onOpenFollowing,
   onOpenGameSettings,
   onOpenInbox,
+  onOpenTransactionHistory,
+  onOpenGameHistory,
 }: {
   name: string;
   username: string;
@@ -42,6 +45,8 @@ export function UserDashboardScreen({
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
   onOpenInbox?: () => void;
+  onOpenTransactionHistory?: () => void;
+  onOpenGameHistory?: () => void;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -82,6 +87,14 @@ export function UserDashboardScreen({
     }
     if (label === "Game Settings") {
       onOpenGameSettings?.();
+      return;
+    }
+    if (label === "Transaction History") {
+      onOpenTransactionHistory?.();
+      return;
+    }
+    if (label === "Game History") {
+      onOpenGameHistory?.();
       return;
     }
     if (label === "Privacy Policy") {
@@ -193,16 +206,25 @@ export function UserDashboardScreen({
       </div>
 
       <div className="profile-menu-grid">
-        <MenuGroup
-          title="Profile & Account"
-          items={[
-            { label: "Inbox", icon: Inbox },
-            { label: "Purchase History", icon: CreditCard },
-            { label: "Following", icon: Users },
-            { label: "Change Password", icon: Lock },
-          ]}
-          onOpen={open}
-        />
+        <div className="profile-menu-stack">
+          <MenuGroup
+            title="History"
+            items={[
+              { label: "Transaction History", icon: Receipt },
+              { label: "Game History", icon: Sparkles },
+            ]}
+            onOpen={open}
+          />
+          <MenuGroup
+            title="Profile & Account"
+            items={[
+              { label: "Inbox", icon: Inbox },
+              { label: "Following", icon: Users },
+              { label: "Change Password", icon: Lock },
+            ]}
+            onOpen={open}
+          />
+        </div>
         <MenuGroup
           title="Preferences & Support"
           items={[

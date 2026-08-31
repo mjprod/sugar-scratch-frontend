@@ -26,6 +26,10 @@ export const Paths = {
   changePassword: "/settings/change-password",
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
+  /** Wallet / purchase ledger (Profile → History). */
+  transactions: "/profile/transactions",
+  /** Completed scratch/reveal results (Profile → History). */
+  gameHistory: "/profile/game-history",
   inbox: "/inbox",
   /** Packs ready to check out — not the Store. */
   packPocket: "/pack-pocket",

@@ -88,6 +88,7 @@ import {
   upsertInstancesFromApi,
   type OwnedPackInstance,
 } from "@/services/packInventory";
+import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
 import {
   clearCart,
   removePackFromCart,
@@ -635,6 +636,16 @@ export function PurchaseFlow({
         pack.themeName?.trim() ||
         pack.packName;
       const owned = upsertInstancesFromApi(result.instances);
+      const firstInstance = result.instances[0];
+      recordPackPurchaseTransaction({
+        purchaseId: result.purchaseId,
+        packId: pack.packId,
+        packName:
+          firstInstance?.packName || foil?.label || pack.packName,
+        creatorName: firstInstance?.creator || pack.creator,
+        quantity: result.instances.length || quantity,
+        diamondCost: result.diamondCost,
+      });
       if (authed && !isDemoMode()) {
         await syncMyPacks();
       }

@@ -1,0 +1,604 @@
+/* Sugar History — dark ledger table (spec v1.1). No yellow reference chrome. */
+
+.history-page.app-page-shell--secondary .app-page-shell-inner {
+  max-width: 64rem;
+}
+
+.history-page-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.history-back-btn {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.04);
+  color: oklch(1 0 0 / 0.8);
+  cursor: pointer;
+}
+
+.history-back-btn:focus-visible {
+  outline: 2px solid oklch(0.72 0.14 330);
+  outline-offset: 2px;
+}
+
+.history-page-title {
+  margin: 0;
+  min-width: 0;
+  color: oklch(1 0 0);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.history-related-note {
+  margin: -0.35rem 0 0.75rem;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.history-filter-chip {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.04);
+  color: oklch(1 0 0 / 0.7);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.history-filter-chip.is-active {
+  border-color: oklch(1 0 0 / 0.22);
+  background: oklch(1 0 0 / 0.12);
+  color: oklch(1 0 0 / 0.95);
+}
+
+.history-filter-chip:focus-visible {
+  outline: 2px solid oklch(0.72 0.14 330);
+  outline-offset: 2px;
+}
+
+.history-date-range {
+  margin-left: auto;
+}
+
+.history-date-range-select {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 10px;
+  background: oklch(0.18 0.02 280);
+  color: oklch(1 0 0 / 0.85);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.history-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.history-pager-range {
+  margin: 0;
+  color: oklch(1 0 0 / 0.5);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-pager-btns {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.history-pager-btn {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 10px;
+  background: oklch(1 0 0 / 0.04);
+  color: oklch(1 0 0 / 0.85);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.history-pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.history-pager-btn:focus-visible {
+  outline: 2px solid oklch(0.72 0.14 330);
+  outline-offset: 2px;
+}
+
+.history-table-wrap {
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.03);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.history-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(0.2 0.015 280);
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.history-table th:nth-child(1) {
+  width: 16%;
+}
+.history-table th:nth-child(2) {
+  width: 28%;
+}
+.history-table th:nth-child(3) {
+  width: 24%;
+}
+.history-table th:nth-child(4) {
+  width: 20%;
+}
+.history-table th:nth-child(5) {
+  width: 12%;
+}
+
+.history-table tbody td {
+  padding: 0.85rem;
+  border-bottom: 1px solid oklch(1 0 0 / 0.07);
+  color: oklch(1 0 0 / 0.9);
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-table tbody tr {
+  background: transparent;
+  cursor: pointer;
+}
+
+.history-table tbody tr:nth-child(even) {
+  background: oklch(1 0 0 / 0.02);
+}
+
+.history-table tbody tr:hover {
+  background: oklch(1 0 0 / 0.05);
+}
+
+.history-table tbody tr:focus-visible {
+  outline: 2px solid oklch(0.72 0.14 330);
+  outline-offset: -2px;
+}
+
+.history-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.history-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.history-cell-muted {
+  color: oklch(1 0 0 / 0.5);
+  font-size: 0.75rem;
+}
+
+.history-change-line.is-pos {
+  color: oklch(0.78 0.14 150);
+  font-weight: 650;
+}
+
+.history-change-line.is-neg {
+  color: oklch(1 0 0 / 0.92);
+  font-weight: 650;
+}
+
+.history-change-line.is-paid {
+  color: oklch(1 0 0 / 0.55);
+  font-weight: 550;
+}
+
+.history-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: oklch(1 0 0 / 0.7);
+  white-space: nowrap;
+}
+
+.history-row-chevron {
+  color: oklch(1 0 0 / 0.3);
+  flex-shrink: 0;
+}
+
+/* Mobile stacked ledger rows — no horizontal page scroll. */
+.history-mobile-list {
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.03);
+}
+
+.history-mobile-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: 0;
+  border-top: 1px solid oklch(1 0 0 / 0.07);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-mobile-row:first-child {
+  border-top: 0;
+}
+
+.history-mobile-row:hover {
+  background: oklch(1 0 0 / 0.05);
+}
+
+.history-mobile-row:focus-visible {
+  outline: 2px solid oklch(0.72 0.14 330);
+  outline-offset: -2px;
+}
+
+.history-mobile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.history-mobile-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.history-mobile-when {
+  margin: 0.2rem 0 0;
+  color: oklch(1 0 0 / 0.5);
+  font-size: 0.75rem;
+}
+
+.history-mobile-label {
+  margin: 0 0 0.15rem;
+  color: oklch(1 0 0 / 0.4);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.history-mobile-status {
+  margin: 0;
+  color: oklch(1 0 0 / 0.6);
+  font-size: 0.75rem;
+}
+
+/* Game history card list */
+.history-date-group {
+  margin-bottom: 1.1rem;
+}
+
+.history-date-label {
+  margin: 0 0 0.45rem;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.history-date-card {
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.04);
+}
+
+.history-game-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid oklch(1 0 0 / 0.08);
+}
+
+.history-game-row:first-child {
+  border-top: 0;
+}
+
+.history-row-thumb {
+  width: 2.75rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: 8px;
+  background: oklch(1 0 0 / 0.08);
+}
+
+.history-row-thumb-fallback {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 3.5rem;
+  border-radius: 8px;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.4);
+}
+
+.history-row-copy {
+  min-width: 0;
+}
+
+.history-row-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.history-row-meta {
+  margin: 0.15rem 0 0;
+  color: oklch(1 0 0 / 0.48);
+  font-size: 0.75rem;
+}
+
+.history-row-values {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-row-amount {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.history-row-amount.is-positive {
+  color: oklch(0.78 0.14 150);
+}
+
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.history-empty-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.history-empty-copy {
+  margin: 0;
+  max-width: 22rem;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.875rem;
+}
+
+.history-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.history-empty-cta {
+  min-height: 2.75rem;
+  padding: 0.55rem 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: oklch(0.55 0.18 330);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.history-empty-cta--ghost {
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.8);
+}
+
+.history-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.history-skeleton-row {
+  height: 3.25rem;
+  border-radius: 10px;
+  background: oklch(1 0 0 / 0.06);
+  animation: history-pulse 1.4s ease-in-out infinite;
+}
+
+.history-skeleton-row--head {
+  height: 2.5rem;
+  opacity: 0.7;
+}
+
+@keyframes history-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.history-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+.history-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.04);
+}
+
+.history-detail-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+.history-detail-status {
+  margin: 0;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.8125rem;
+}
+
+.history-detail-fields {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.history-detail-fields > div {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.history-detail-fields dt {
+  margin: 0;
+  color: oklch(1 0 0 / 0.45);
+}
+
+.history-detail-fields dd {
+  margin: 0;
+  color: oklch(1 0 0 / 0.88);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+.history-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.history-detail-hero {
+  width: 100%;
+  max-height: 16rem;
+  object-fit: cover;
+  border-radius: 12px;
+  background: oklch(1 0 0 / 0.08);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 820px) {
+  .history-desktop-only {
+    display: none !important;
+  }
+
+  .history-mobile-list {
+    display: flex;
+  }
+
+  .history-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-date-range {
+    margin-left: 0;
+  }
+
+  .history-date-range-select {
+    width: 100%;
+  }
+}
+
+@media (min-width: 821px) {
+  .history-mobile-only {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-skeleton-row {
+    animation: none;
+  }
+}

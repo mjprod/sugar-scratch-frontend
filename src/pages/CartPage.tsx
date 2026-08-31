@@ -27,6 +27,7 @@ import {
   packCost,
   submitPurchase,
 } from "@/services/purchase";
+import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
 import {
   getCardTopDebug,
   setCardTopTearT,
@@ -275,6 +276,16 @@ export function CartPage() {
             if (!instanceId) {
               throw new PurchaseError("failed", "Pack ownership failed.");
             }
+            recordPackPurchaseTransaction({
+              purchaseId: result.purchaseId,
+              packId: catalogId,
+              packName:
+                result.instances[0]?.packName || cartPack.packName,
+              creatorName:
+                result.instances[0]?.creator || cartPack.creator,
+              quantity: result.instances.length || 1,
+              diamondCost: result.diamondCost,
+            });
             purchasedLines.push(cartPack);
             instanceIds.push(instanceId);
             lastPurchaseId = result.purchaseId;

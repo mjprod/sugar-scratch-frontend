@@ -4,6 +4,7 @@ import {
   type GameSession,
 } from "@/features/game/modules/gameSession";
 import { recordRevealedCards } from "@/services/collectionState";
+import { recordGameReveal } from "@/services/gameHistory";
 import { revealPackCard } from "@/services/purchase";
 import {
   getReadyToScratch,
@@ -53,6 +54,37 @@ function persistPackMotionSettle(
   return next;
 }
 
+function slugCreatorId(creator: string) {
+  return creator.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+function appendGameHistoryFromSettle(
+  session: GameSession,
+  motionCardId: string,
+  openingId: string,
+  rewardCoins: number,
+) {
+  const { packScratch } = session;
+  if (!packScratch) return;
+  const card = packScratch.openingSession.cards.find(
+    (entry) => entry.id === openingId,
+  );
+  const creatorId = slugCreatorId(packScratch.creator);
+  recordGameReveal({
+    cardId: motionCardId || openingId,
+    cardName: card?.rarity ? `${card.rarity} Card` : "Card",
+    cardImageUrl: card?.faceUrl,
+    packInstanceId: packScratch.readyPackId,
+    packId: packScratch.readyPackId,
+    packName: packScratch.packName,
+    creatorId,
+    creatorName: packScratch.creator,
+    rewardCoins,
+    revealSessionId: packScratch.serverOpeningId ?? packScratch.readyPackId,
+    purchaseTransactionId: packScratch.readyPackId,
+  });
+}
+
 /** Settle one opening card when its linked motion card finishes (idempotent). */
 export async function settlePackMotionCard(
   motionCardId: string,
@@ -78,10 +110,19 @@ export async function settlePackMotionCard(
       const result = await revealPackCard(serverOpeningId, serverCardId);
       recordRevealedCards({
         count: 1,
-        creatorId: packScratch.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+        creatorId: slugCreatorId(packScratch.creator),
         creatorName: packScratch.creator,
         themeName: packScratch.themeName || packScratch.packName,
       });
+      const openingCard = packScratch.openingSession.cards.find(
+        (entry) => entry.id === openingId,
+      );
+      appendGameHistoryFromSettle(
+        session,
+        motionCardId,
+        openingId,
+        openingCard?.reward ?? 0,
+      );
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
@@ -105,10 +146,11 @@ export async function settlePackMotionCard(
 
   recordRevealedCards({
     count: 1,
-    creatorId: packScratch.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+    creatorId: slugCreatorId(packScratch.creator),
     creatorName: packScratch.creator,
     themeName: packScratch.themeName || packScratch.packName,
   });
+  appendGameHistoryFromSettle(session, motionCardId, openingId, coins);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(

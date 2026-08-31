@@ -17,6 +17,8 @@ export function ProfilePage() {
       onOpenFollowing={() => navigate(Paths.following)}
       onOpenGameSettings={() => navigate(Paths.gameSettings)}
       onOpenInbox={openInbox}
+      onOpenTransactionHistory={() => navigate(Paths.transactions)}
+      onOpenGameHistory={() => navigate(Paths.gameHistory)}
     />
   );
 }
