@@ -1,4 +1,5 @@
 import { apiMutate } from "@/lib/api";
+import { recordWonPhotoCards } from "@/services/collectionState";
 import { upsertReadyToScratch } from "@/services/readyToScratch";
 import type { OpeningSession } from "@/services/purchase";
 import {
@@ -530,9 +531,69 @@ export function recordPhotoCardResult(
 export function finishPhotoHand(): GameSession | null {
   const session = loadGameSession();
   if (!session) return null;
+  if (session.phase === "done") return session;
   const next: GameSession = { ...session, phase: "done" };
   saveGameSession(next);
   return next;
+}
+
+/** True when every won photo id is already in completedPhotoIds. */
+export function isPhotoHandFullyComplete(session: GameSession): boolean {
+  if (session.wonPhotoIds.length === 0) return false;
+  const done = new Set(session.completedPhotoIds);
+  return session.wonPhotoIds.every((id) => done.has(id));
+}
+
+/**
+ * Promote an all-complete photo phase to done (idempotent).
+ * Used when the last card was recorded but finish was delayed, or on reload.
+ */
+export function promoteCompletePhotoHand(): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  if (session.phase === "done") return session;
+  if (session.phase !== "photo" && session.phase !== "photo_reveal") {
+    return session;
+  }
+  if (!isPhotoHandFullyComplete(session)) return session;
+  return finishPhotoHand();
+}
+
+function recordPhotoHandToCollection(session: GameSession): void {
+  const pack = session.packScratch;
+  const creatorName = pack?.creator ?? session.themes[0] ?? "Game";
+  const creatorId =
+    creatorName.trim().toLowerCase().replace(/\s+/g, "-") || "game";
+  const count = session.wonPhotoIds.length;
+  if (count > 0) {
+    recordWonPhotoCards({ count, creatorId, creatorName });
+  }
+}
+
+/**
+ * Credit wallet (once), write collection, clear done session.
+ * Safe to call from Collect, countdown, unmount, or shell exit.
+ */
+export function settleDonePhotoHand(
+  addDiamonds: (amount: number) => void,
+): boolean {
+  const promoted = promoteCompletePhotoHand();
+  const session = promoted ?? loadGameSession();
+  if (!session || session.phase !== "done") return false;
+
+  if (!session.walletCredited) {
+    if (session.diamondTotal > 0) {
+      addDiamonds(session.diamondTotal);
+    }
+    markWalletCredited();
+  }
+
+  const current = loadGameSession();
+  if (current?.phase === "done") {
+    recordPhotoHandToCollection(current);
+    clearCompletedPhotoHand();
+  }
+  return true;
 }
 
 /** Drop a finished photo hand so Collection resume won't reopen the summary. */

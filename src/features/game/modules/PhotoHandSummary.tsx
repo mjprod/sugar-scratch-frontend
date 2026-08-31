@@ -11,7 +11,7 @@ import {
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useWallet } from "@/contexts/WalletContext";
-import { loadGameSession, markWalletCredited } from "./gameSession";
+import { loadGameSession, settleDonePhotoHand } from "./gameSession";
 
 export const COLLECT_COUNTDOWN_MS = 8000;
 const RING_RADIUS = 100;
@@ -98,31 +98,41 @@ export function PhotoHandSummary({
   const [credited, setCredited] = useState(alreadyCredited);
   const [counting, setCounting] = useState(!alreadyCredited && !reducedMotion);
   const finishedRef = useRef(false);
+  const onCollectRef = useRef(onCollect);
+  onCollectRef.current = onCollect;
+  const addDiamondsRef = useRef(addDiamonds);
+  addDiamondsRef.current = addDiamonds;
 
-  const finishHand = useCallback(() => {
-    if (finishedRef.current) return;
-    finishedRef.current = true;
-    setCounting(false);
-    const session = loadGameSession();
-    if (!session?.walletCredited && diamondTotal > 0) {
-      addDiamonds(diamondTotal);
-    }
-    if (!session?.walletCredited) {
-      markWalletCredited();
-    }
-    setCredited(true);
-    onCollect();
-  }, [addDiamonds, diamondTotal, onCollect]);
+  const finishHand = useCallback(
+    (opts?: { navigate?: boolean }) => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
+      setCounting(false);
+      settleDonePhotoHand(addDiamondsRef.current);
+      setCredited(true);
+      if (opts?.navigate !== false) {
+        onCollectRef.current();
+      }
+    },
+    // Stable: callbacks live on refs so the 8s timer does not restart on parent re-render.
+    [],
+  );
 
   useEffect(() => {
     if (alreadyCredited || finishedRef.current) return;
-    if (reducedMotion) {
-      const timer = window.setTimeout(finishHand, 1200);
-      return () => window.clearTimeout(timer);
-    }
-    const timer = window.setTimeout(finishHand, COLLECT_COUNTDOWN_MS);
+    const delayMs = reducedMotion ? 1200 : COLLECT_COUNTDOWN_MS;
+    const timer = window.setTimeout(() => finishHand(), delayMs);
     return () => window.clearTimeout(timer);
   }, [alreadyCredited, finishHand, reducedMotion]);
+
+  // Shell ‹ exit / route change unmounts this overlay — still settle rewards.
+  useEffect(() => {
+    return () => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
+      settleDonePhotoHand(addDiamondsRef.current);
+    };
+  }, []);
 
   function handleCollect() {
     finishHand();
@@ -157,7 +167,7 @@ export function PhotoHandSummary({
               gradientId={gradientId}
               counting={counting}
               credited={credited}
-              onDrainComplete={finishHand}
+              onDrainComplete={() => finishHand()}
             />
             <div className="photo-hand-summary__reward" role="status">
               <div className="photo-hand-summary__icon" aria-hidden="true">

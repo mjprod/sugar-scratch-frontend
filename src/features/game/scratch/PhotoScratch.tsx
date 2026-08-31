@@ -15,13 +15,13 @@ import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
-  clearCompletedPhotoHand,
   finishPhotoHand,
   isGameModeUrl,
   loadGameSession,
   navigateTo,
-  persistGameProgress,
+  promoteCompletePhotoHand,
   recordPhotoCardResult,
+  settleDonePhotoHand,
   type GameSession,
 } from "../modules/gameSession";
 import { PhotoHandSummary } from "../modules/PhotoHandSummary";
@@ -31,7 +31,7 @@ import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoS
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
 import { useAuth } from "@/contexts/AuthContext";
-import { recordWonPhotoCards } from "@/services/collectionState";
+import { useWallet } from "@/contexts/WalletContext";
 import {
   applyBodyFindHits,
   buildBodySymbols,
@@ -727,19 +727,9 @@ function motionStatusLabel(status: string) {
   }
 }
 
-function recordPhotoHandToCollection(session: GameSession) {
-  const pack = session.packScratch;
-  const creatorName = pack?.creator ?? session.themes[0] ?? "Game";
-  const creatorId =
-    creatorName.trim().toLowerCase().replace(/\s+/g, "-") || "game";
-  const count = session.wonPhotoIds.length;
-  if (count > 0) {
-    recordWonPhotoCards({ count, creatorId, creatorName });
-  }
-}
-
 export function PhotoScratch() {
   const { bumpInventoryRevision } = useAuth();
+  const { addDiamonds } = useWallet();
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -1205,12 +1195,37 @@ export function PhotoScratch() {
         const session = beginPhotoPhase() ?? existing;
         const index = await fetchPhotoScratchIndex();
         const hand = playlistForGameSession(index, session);
-        setPlaylist(hand);
-        setCompletedCardIds(session.completedPhotoIds);
-        completedCardIdsRef.current = session.completedPhotoIds;
         const remaining = hand.filter(
           (entry) => !session.completedPhotoIds.includes(entry.id),
         );
+
+        // All cards already scratched but phase never promoted → recover summary.
+        if (remaining.length === 0 && session.wonPhotoIds.length > 0) {
+          const finished = promoteCompletePhotoHand() ?? finishPhotoHand();
+          if (finished) {
+            setPlaylist(hand);
+            setCompletedCardIds(finished.completedPhotoIds);
+            completedCardIdsRef.current = finished.completedPhotoIds;
+            setHandSummaryDiamonds(finished.diamondTotal);
+            const lastId =
+              finished.completedPhotoIds.at(-1) ??
+              finished.wonPhotoIds.at(-1) ??
+              "";
+            if (lastId) {
+              setSelectedCardId(lastId);
+              const assets = await loadCardAssets(lastId);
+              setUsingSample(false);
+              await applyLoadedAssets(assets);
+            } else {
+              setReady(true);
+            }
+            return;
+          }
+        }
+
+        setPlaylist(hand);
+        setCompletedCardIds(session.completedPhotoIds);
+        completedCardIdsRef.current = session.completedPhotoIds;
         const start =
           (cardId && remaining.find((entry) => entry.id === cardId)) ||
           remaining[0] ||
@@ -1979,11 +1994,21 @@ export function PhotoScratch() {
 
     if (inGame) {
       recordPhotoCardResult(finishedId, diamonds);
-      if (!completedCardIdsRef.current.includes(finishedId)) {
-        const nextCompleted = [...completedCardIdsRef.current, finishedId];
-        completedCardIdsRef.current = nextCompleted;
-        setCompletedCardIds(nextCompleted);
+      const nextCompleted = completedCardIdsRef.current.includes(finishedId)
+        ? completedCardIdsRef.current
+        : [...completedCardIdsRef.current, finishedId];
+      completedCardIdsRef.current = nextCompleted;
+      setCompletedCardIds(nextCompleted);
+
+      const hasNext = playlist.some(
+        (entry) => entry.id !== finishedId && !nextCompleted.includes(entry.id),
+      );
+      // Settle phase → done before the per-card overlay so shell exit can't
+      // orphan an all-complete phase:"photo" session.
+      if (!hasNext) {
+        finishPhotoHand();
       }
+
       setPhotoResult({
         win: diamonds > 0,
         diamonds,
@@ -1999,6 +2024,17 @@ export function PhotoScratch() {
     setPhotoResult(null);
     const finishedId = selectedCardId;
     if (!finishedId) return;
+
+    const session = loadGameSession();
+    if (session?.phase === "done") {
+      resetGameOutcome();
+      claimedRef.current = false;
+      setClaimed(false);
+      setSelectedCardId("");
+      setHandSummaryDiamonds(session.diamondTotal);
+      return;
+    }
+
     finalizeScratchAdvance(finishedId);
   }
 
@@ -2008,7 +2044,10 @@ export function PhotoScratch() {
       completedCardIdsRef.current = nextCompleted;
       setCompletedCardIds(nextCompleted);
     }
-    const inGame = isGameModeUrl() && loadGameSession()?.phase === "photo";
+    const session = loadGameSession();
+    const inGame =
+      isGameModeUrl() &&
+      (session?.phase === "photo" || session?.phase === "done");
     const done = completedCardIdsRef.current;
     const nextCard = playlist.find(
       (entry) => entry.id !== finishedId && !done.includes(entry.id),
@@ -2019,7 +2058,8 @@ export function PhotoScratch() {
     if (!nextCard) {
       setSelectedCardId("");
       if (inGame) {
-        const finished = finishPhotoHand();
+        const finished =
+          session?.phase === "done" ? session : finishPhotoHand();
         if (finished) {
           setHandSummaryDiamonds(finished.diamondTotal);
         } else {
@@ -2213,13 +2253,7 @@ export function PhotoScratch() {
     playlist.find((entry) => entry.id === selectedCardId)?.label ?? uploadLabel;
 
   function leavePhotoScratchAfterHand() {
-    const session = loadGameSession();
-    if (session?.phase === "done") {
-      recordPhotoHandToCollection(session);
-      clearCompletedPhotoHand();
-    } else {
-      persistGameProgress();
-    }
+    settleDonePhotoHand(addDiamonds);
     bumpInventoryRevision();
 
     const params = new URLSearchParams(window.location.search);
