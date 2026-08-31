@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { ShoppingBag } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle, ShoppingBag } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -164,6 +164,9 @@ export function CartPage() {
   const {
     requestTab,
     openPurchase,
+    openStore,
+    requireAuth,
+    guest,
     authed,
     bumpInventoryRevision,
     setPurchasedPacks,
@@ -184,7 +187,9 @@ export function CartPage() {
     Awaited<ReturnType<typeof loadPackCatalog>>
   >([]);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutModal, setCheckoutModal] = useState<
+    null | "insufficient" | "failed"
+  >(null);
 
   useMarkPageReady(true);
 
@@ -270,7 +275,7 @@ export function CartPage() {
     const remaining = listCartPacks();
     const first = remaining[0];
     if (!first) return;
-    setCheckoutError(null);
+    setCheckoutModal(null);
     setCheckingOut(true);
     try {
       if (authed && !isDemoMode()) {
@@ -392,13 +397,11 @@ export function CartPage() {
         clearCartAfterOpen: true,
       });
     } catch (error) {
-      const message =
-        error instanceof PurchaseError
-          ? error.kind === "insufficient"
-            ? "Not enough diamonds to open these packs."
-            : "Checkout failed. Your packs are still in Pack Pocket."
-          : "Checkout failed. Your packs are still in Pack Pocket.";
-      setCheckoutError(message);
+      setCheckoutModal(
+        error instanceof PurchaseError && error.kind === "insufficient"
+          ? "insufficient"
+          : "failed",
+      );
       setPacks(listCartPacks());
     } finally {
       setCheckingOut(false);
@@ -484,13 +487,117 @@ export function CartPage() {
             disabled={checkingOut}
             onClick={() => void continueToTear()}
           />
-          {checkoutError ? (
-            <p className="mt-3 text-center text-[13px] text-[oklch(0.711_0.166_22.22)]">
-              {checkoutError}
-            </p>
-          ) : null}
         </div>
       </div>
+
+      {checkoutModal ? (
+        <CartCheckoutModal
+          kind={checkoutModal}
+          onClose={() => setCheckoutModal(null)}
+          onGetDiamonds={() => {
+            setCheckoutModal(null);
+            if (!guest) openStore();
+            else requireAuth({ type: "store" });
+          }}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function CartCheckoutModal({
+  kind,
+  onClose,
+  onGetDiamonds,
+}: {
+  kind: "insufficient" | "failed";
+  onClose: () => void;
+  onGetDiamonds: () => void;
+}) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="absolute inset-0 z-40 grid place-items-center bg-black/70 px-6 backdrop-blur-sm">
+      <div className="w-full max-w-sm overflow-hidden rounded-[28px] border border-white/[0.1] bg-[oklch(0.191_0.01_303.57)] shadow-[0_24px_60px_oklch(0_0_0_/_0.55)]">
+        {kind === "insufficient" ? (
+          <CartCheckoutModalBody
+            icon={<DiamondLottie size={28} aria-hidden />}
+            tone="warn"
+            title="Not enough diamonds"
+            body="Not enough diamonds to open these packs. Top up to continue — your balance was not charged."
+            primary={{ label: "Get Diamonds", onClick: onGetDiamonds }}
+            secondary={{ label: "Close", onClick: onClose }}
+          />
+        ) : (
+          <CartCheckoutModalBody
+            icon={<AlertTriangle className="size-7" />}
+            tone="danger"
+            title="Checkout failed"
+            body="Something went wrong and you were not charged. Your packs are still in Pack Pocket."
+            primary={{ label: "Close", onClick: onClose }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CartCheckoutModalBody({
+  icon,
+  tone,
+  title,
+  body,
+  primary,
+  secondary,
+}: {
+  icon: ReactNode;
+  tone: "warn" | "danger";
+  title: string;
+  body: string;
+  primary: { label: string; onClick: () => void };
+  secondary?: { label: string; onClick: () => void };
+}) {
+  const toneClass =
+    tone === "warn"
+      ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+      : "border-[oklch(0.711_0.166_22.22)]/30 bg-[oklch(0.711_0.166_22.22)]/10 text-[oklch(0.711_0.166_22.22)]";
+
+  return (
+    <div className="flex flex-col items-center px-6 py-10 text-center">
+      <span
+        className={["grid size-16 place-items-center rounded-full border", toneClass].join(" ")}
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+      <h2 className="mt-5 text-[24px] font-bold tracking-[-0.02em]">{title}</h2>
+      <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-white/55">{body}</p>
+      <div className="mt-7 h-14 w-full max-w-sm">
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          label={primary.label}
+          costAmount={null}
+          fontSize={15}
+          strokeWidth={1}
+          onClick={primary.onClick}
+        />
+      </div>
+      {secondary ? (
+        <button
+          type="button"
+          onClick={secondary.onClick}
+          className="mt-3 h-11 px-6 text-[13px] font-medium text-white/55 hover:text-white/80"
+        >
+          {secondary.label}
+        </button>
+      ) : null}
+    </div>
   );
 }
