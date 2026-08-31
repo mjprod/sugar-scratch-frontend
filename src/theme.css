@@ -9804,6 +9804,13 @@ body[data-theme="v8"] .profile-menu-grid {
   margin-top: 32px;
 }
 
+body[data-theme="v8"] .profile-menu-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 body[data-theme="v8"] .profile-menu-group-title {
   margin: 0 0 14px;
   color: oklch(1 0 0 / 0.4);
@@ -9847,6 +9854,7 @@ body[data-theme="v8"] .profile-menu-row:hover {
 @media (min-width: 1024px) {
   body[data-theme="v8"] .profile-menu-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 }
 

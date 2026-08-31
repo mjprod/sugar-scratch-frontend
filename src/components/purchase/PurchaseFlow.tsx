@@ -91,6 +91,8 @@ import {
   upsertInstancesFromApi,
   type OwnedPackInstance,
 } from "@/services/packInventory";
+import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
+import { packHistoryIds, recordGameReveal } from "@/services/gameHistory";
 import {
   clearCart,
   removePackFromCart,
@@ -641,6 +643,16 @@ export function PurchaseFlow({
         pack.themeName?.trim() ||
         pack.packName;
       const owned = upsertInstancesFromApi(result.instances);
+      const firstInstance = result.instances[0];
+      recordPackPurchaseTransaction({
+        purchaseId: result.purchaseId,
+        packId: pack.packId,
+        packName:
+          firstInstance?.packName || foil?.label || pack.packName,
+        creatorName: firstInstance?.creator || pack.creator,
+        quantity: result.instances.length || quantity,
+        diamondCost: result.diamondCost,
+      });
       if (authed && !isDemoMode()) {
         await syncMyPacks();
       }
@@ -840,6 +852,35 @@ export function PurchaseFlow({
     return serverId || sessionCardId;
   }
 
+  function recordSettledRevealHistory(
+    cardIds: string[],
+    rewardForCard: (cardId: string) => number,
+  ) {
+    if (!session) return;
+    const packInstanceId = instanceId ?? pack.packId;
+    const historyIds = packHistoryIds(packInstanceId);
+    const creatorId = pack.creator.trim().toLowerCase().replace(/\s+/g, "-");
+    const openingId = openingIdRef.current;
+    for (const cardId of cardIds) {
+      const card = session.cards.find((entry) => entry.id === cardId);
+      recordGameReveal({
+        cardId,
+        cardName: card?.rarity ? `${card.rarity} Card` : "Card",
+        cardImageUrl: card?.faceUrl,
+        packInstanceId: historyIds.packInstanceId,
+        packId: historyIds.packId,
+        packName: pack.packName,
+        creatorId,
+        creatorName: pack.creator,
+        rewardCoins: rewardForCard(cardId),
+        revealSessionId: openingId
+          ? `${openingId}:${cardId}`
+          : `${packInstanceId}:${cardId}`,
+        purchaseTransactionId: purchaseId ?? historyIds.purchaseTransactionId,
+      });
+    }
+  }
+
   async function resolveServerOpeningForMotion(): Promise<{
     openingId: string;
     cardIds: string[];
@@ -895,15 +936,22 @@ export function PurchaseFlow({
         }
         try {
           let wallet: { diamonds: number; coins: number } | null = null;
+          const rewards = new Map<string, number>();
           for (const cardId of fresh) {
             const result = await revealPackCard(
               serverOpen.openingId,
               serverCardIdForReveal(cardId),
             );
             wallet = result.wallet;
+            const card = session.cards.find((entry) => entry.id === cardId);
+            rewards.set(
+              cardId,
+              result.card.reward ?? card?.reward ?? 0,
+            );
             awardedIds.current.add(cardId);
             settlingRevealIdsRef.current.delete(cardId);
           }
+          recordSettledRevealHistory(fresh, (cardId) => rewards.get(cardId) ?? 0);
           if (wallet) {
             onWalletUpdate?.(wallet);
           }
@@ -925,6 +973,10 @@ export function PurchaseFlow({
       fresh.forEach((id) => {
         awardedIds.current.add(id);
         settlingRevealIdsRef.current.delete(id);
+      });
+      recordSettledRevealHistory(fresh, (cardId) => {
+        const card = session.cards.find((entry) => entry.id === cardId);
+        return card?.reward ?? 0;
       });
       const coins = session.cards
         .filter((card) => fresh.includes(card.id))
