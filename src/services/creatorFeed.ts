@@ -9,6 +9,7 @@ import {
   type BackendModel,
 } from "./models";
 import { isFeedFavourite } from "./feedFavourites";
+import { loadPackCatalog, packUnitCost } from "./purchase";
 
 export type HomeFeedCreator = {
   id: string;
@@ -55,12 +56,12 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     mediaType: videoUrl ? "video" : "image",
     posterUrl: "",
     videoUrl,
-    diamondCost: 10,
+    diamondCost: packUnitCost(profile.id),
   };
 }
 
 const PAGE_SIZE = 6;
-const FEED_CACHE_VERSION = 14;
+const FEED_CACHE_VERSION = 15;
 
 function shuffleCatalog<T>(items: T[]): T[] {
   const next = [...items];
@@ -151,7 +152,7 @@ export async function fetchHomeFeedPage(
 ): Promise<HomeFeedPage> {
   const [, models] = await Promise.all([
     wait(cursor ? 380 : 520),
-    loadModels(),
+    Promise.all([loadModels(), loadPackCatalog()]).then(([loaded]) => loaded),
   ]);
   if (forceFailNext) {
     forceFailNext = false;

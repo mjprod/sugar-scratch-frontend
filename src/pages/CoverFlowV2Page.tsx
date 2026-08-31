@@ -19,7 +19,6 @@ import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
-  diamondCostForPackId,
   fetchHomepage,
   type FeaturedPack,
 } from "@/services/homepage";
@@ -28,6 +27,7 @@ import {
   profileFromModel,
   type BackendModel,
 } from "@/services/models";
+import { loadPackCatalog, packUnitCost } from "@/services/purchase";
 
 const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
 const MAX_PACKS = 10;
@@ -113,7 +113,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
       if (items.length >= MAX_PACKS) {
         return { items, playById };
       }
-      const diamondCost = diamondCostForPackId(profile.id);
+      const diamondCost = packUnitCost(profile.id);
       items.push(
         packItemToIteration({
           id: foil.id,
@@ -546,8 +546,8 @@ export function CoverFlowV2Page() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([loadModels(), fetchHomepage()])
-      .then(([models, homepage]) => {
+    void Promise.all([loadModels(), loadPackCatalog(), fetchHomepage()])
+      .then(([models, , homepage]) => {
         if (cancelled) return;
         const fromModels = iterationsFromModels(models);
         setCatalog(
@@ -559,6 +559,7 @@ export function CoverFlowV2Page() {
       .catch(async () => {
         if (cancelled) return;
         try {
+          await loadPackCatalog();
           const homepage = await fetchHomepage();
           if (!cancelled) setCatalog(iterationsFromFeatured(homepage.featured));
         } catch {

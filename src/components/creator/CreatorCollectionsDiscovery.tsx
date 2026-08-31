@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import type { CardConfig } from "@/features/collection/lib/cards";
 import type { ThemeCardData, ThemeDetailData } from "@/services/collection";
-import { packUnitCost } from "@/services/purchase";
+import { loadPackCatalog, packUnitCost } from "@/services/purchase";
 import {
   claimThemeCompletionReward,
   getThemeCompletionReward,
@@ -143,8 +143,11 @@ export function CreatorCollectionsDiscovery({
   }, [motionCards, selected, themeDetails, demoCompleteThemeId]);
   const navRef = useRef<HTMLDivElement>(null);
   const [fadeKey, setFadeKey] = useState(selected?.id ?? "");
-  const packCost = packUnitCost(
-    selected ? `${creatorId}-${selected.id}-buy` : "pack",
+  const [catalogReady, setCatalogReady] = useState(false);
+  const packCost = useMemo(
+    () =>
+      packUnitCost(selected ? `${creatorId}-${selected.id}-buy` : "pack"),
+    [catalogReady, creatorId, selected],
   );
 
   const reward = useMemo(() => {
@@ -174,6 +177,16 @@ export function CreatorCollectionsDiscovery({
         : reward?.status === "claimable"
           ? `${selected.name} collection complete. Theme reward available.`
           : `${selected.name} collection progress: ${collected} of ${total} cards collected. Theme reward unlocks when all ${total} cards are collected.`;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPackCatalog().then(() => {
+      if (!cancelled) setCatalogReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setFadeKey(selected?.id ?? "");

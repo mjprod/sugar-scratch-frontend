@@ -59,6 +59,7 @@ import {
   clearOpening,
   commitPurchaseIdempotencyKey,
   loadOpeningAssets,
+  loadPackCatalog,
   nextUnscratchedIndex,
   openPackInstance,
   packCost,
@@ -397,6 +398,7 @@ export function PurchaseFlow({
   const [tearTutorialFade, setTearTutorialFade] = useState(false);
   /** Seal torn — hide tear tutorial so it can't block Scratch Now. */
   const [sealTorn, setSealTorn] = useState(false);
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const tearTutorialWasReady = useRef(false);
   useMarkPageReady(!buying || model !== null || stage !== "choose");
 
@@ -467,6 +469,16 @@ export function PurchaseFlow({
     if (faces?.length) return faces;
     return Object.values(PACK_PHOTOS).slice(0, 8);
   }, [session]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadPackCatalog().then(() => {
+      if (!cancelled) setCatalogRevision((value) => value + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // Buy path needs the model for foil picker; open-from-inventory needs it
@@ -1477,7 +1489,8 @@ export function PurchaseFlow({
               modelId={model?.id ?? pack.packId}
               girlName={model?.name ?? pack.creator}
               submitting={submitting}
-              diamondCost={packCost(1)}
+              diamondCost={packCost(1, model?.id ?? pack.packId)}
+              catalogRevision={catalogRevision}
               onOpen={(foil) => void purchase(1, foil)}
             />
           ) : null}
@@ -1489,6 +1502,7 @@ export function PurchaseFlow({
               diamonds={diamonds}
               submitting={submitting}
               pending={pending}
+              catalogRevision={catalogRevision}
               onPurchase={(quantity) => void purchase(quantity)}
             />
           ) : null}
@@ -1885,6 +1899,7 @@ function ChoosePackStage({
   girlName,
   submitting,
   diamondCost,
+  catalogRevision = 0,
   onOpen,
 }: {
   packs: readonly FoilPack[];
@@ -1892,9 +1907,12 @@ function ChoosePackStage({
   girlName: string;
   submitting: boolean;
   diamondCost: number;
+  catalogRevision?: number;
   onOpen: (foil: FoilPack) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(packs[0]?.id ?? null);
+  const liveCost = packCost(1, modelId) || diamondCost;
+  void catalogRevision;
   const items = useMemo(
     () =>
       packs.map((foil) =>
@@ -1905,7 +1923,7 @@ function ChoosePackStage({
           modelUrl: PACK_MODEL_URL,
           modelName: "card2.glb",
           videoUrl: foil.videoUrl,
-          price: diamondCost,
+          price: liveCost,
           girlName,
           packNumber: foil.slot === 1 ? 101 : 102,
           packName: foil.label,
@@ -1913,7 +1931,7 @@ function ChoosePackStage({
           backgroundColor: "oklch(0.798 0.104 207.84)",
         }),
       ),
-    [diamondCost, girlName, modelId, packs],
+    [catalogRevision, girlName, liveCost, modelId, packs],
   );
 
   useEffect(() => {
@@ -1936,7 +1954,7 @@ function ChoosePackStage({
         selectedId={selectedId}
         onSelect={setSelectedId}
         onDeselect={() => setSelectedId(null)}
-        formatPrice={() => String(diamondCost)}
+        formatPrice={() => String(liveCost)}
         onBuy={(item) => {
           if (submitting) return;
           const foil = packs.find((pack) => pack.id === item.id);
@@ -1953,6 +1971,7 @@ function SelectStage({
   diamonds,
   submitting,
   pending,
+  catalogRevision = 0,
   onPurchase,
 }: {
   pack: PurchaseFlowPack;
@@ -1960,8 +1979,10 @@ function SelectStage({
   diamonds: number;
   submitting: boolean;
   pending: PackQuantity | null;
+  catalogRevision?: number;
   onPurchase: (quantity: PackQuantity) => void;
 }) {
+  void catalogRevision;
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-5 py-6 lg:flex-row lg:items-center lg:gap-16 lg:px-10">
       <div className="flex justify-center lg:flex-1">

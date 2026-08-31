@@ -28,6 +28,7 @@ import {
   fetchCards,
   type BackendCard,
 } from "../shared/backend/collection";
+import { loadPackCatalog, packUnitCost } from "./purchase";
 
 const NEW_MODEL_WINDOW_SEC = 14 * 24 * 60 * 60;
 
@@ -518,7 +519,7 @@ export function leaderboardFromModels(
         foil.label?.trim() && !/^pack\s/i.test(foil.label)
           ? foil.label.trim()
           : `${creatorName} Pack`;
-      const diamondCost = diamondCostForPackId(profile.id);
+      const diamondCost = packUnitCost(profile.id);
 
       rows.push({
         rank: 0,
@@ -546,7 +547,7 @@ export function leaderboardFromModels(
 
 async function loadLeaderboard(): Promise<LeaderboardRow[]> {
   try {
-    const models = await loadModels();
+    const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
     return leaderboardFromModels(models);
   } catch {
     return [];
@@ -570,7 +571,7 @@ export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
     const coverImageUrl = avatarRaw
       ? normalizeMediaUrl(avatarRaw)
       : CREATOR_PHOTOS.emma.avatar;
-    const diamondCost = diamondCostForPackId(profile.id);
+    const diamondCost = packUnitCost(profile.id);
 
     for (const foil of profile.packs) {
       const themeName =
@@ -608,34 +609,18 @@ export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
 
 async function loadPackLibrary(): Promise<FeaturedPack[]> {
   try {
-    const models = await loadModels();
+    const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
     return packLibraryFromModels(models);
   } catch {
     return [];
   }
 }
 
-const PACK_DIAMOND_COSTS: Record<string, number> = {
-  ep1: 50,
-  ep2: 70,
-  ep3: 40,
-  en1: 50,
-  en2: 60,
-  em1: 45,
-  eb1: 60,
-  eb2: 50,
-  al1: 80,
-  sw1: 30,
-  nl1: 40,
-};
-
 /** Shared Diamond cost for ranking / featured / purchase display. */
 export function diamondCostForPackId(packId: string, fallbackUsd?: number) {
   const featured = FEATURED.find((pack) => pack.id === packId);
   if (featured) return featured.diamondCost;
-  if (PACK_DIAMOND_COSTS[packId] != null) return PACK_DIAMOND_COSTS[packId];
-  if (fallbackUsd != null) return Math.max(1, Math.round(fallbackUsd * 10));
-  return 10;
+  return packUnitCost(packId, fallbackUsd);
 }
 
 function row(
@@ -783,7 +768,7 @@ export type FeedPreview = {
 };
 
 export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
-  const models = await loadModels();
+  const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
   const shuffled = [...models];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -811,7 +796,7 @@ export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
       posterUrl: avatarUrl,
       videoUrl,
       cardCount: 0,
-      diamondCost: diamondCostForPackId(id),
+      diamondCost: packUnitCost(id),
       liked: false,
     };
   });

@@ -1,6 +1,5 @@
 import { apiFetch, apiMutate } from "../lib/api";
 import { isDemoMode } from "../lib/demo";
-import { diamondCostForPackId } from "./homepage";
 
 export type PackQuantity = 1 | 5;
 
@@ -129,9 +128,35 @@ function catalogUnitCost(packId: string): number | null {
   return typeof cost === "number" && Number.isFinite(cost) && cost > 0 ? cost : null;
 }
 
-/** Same unit Diamond cost shown on ranking / pack surfaces. */
-export function packUnitCost(packId = "pack") {
-  return catalogUnitCost(packId) ?? diamondCostForPackId(packId);
+/** Demo / offline fixture costs when GET /api/packs has no match yet. */
+const DEMO_PACK_DIAMOND_COSTS: Record<string, number> = {
+  ep1: 50,
+  ep2: 70,
+  ep3: 40,
+  en1: 50,
+  en2: 60,
+  em1: 45,
+  eb1: 60,
+  eb2: 50,
+  al1: 80,
+  sw1: 30,
+  nl1: 40,
+};
+
+function demoUnitCost(packId: string, fallbackUsd?: number) {
+  if (DEMO_PACK_DIAMOND_COSTS[packId] != null) {
+    return DEMO_PACK_DIAMOND_COSTS[packId];
+  }
+  if (fallbackUsd != null) return Math.max(1, Math.round(fallbackUsd * 10));
+  return 10;
+}
+
+/**
+ * Unit Diamond cost for any pack surface.
+ * Prefers live GET /api/packs (via loadPackCatalog); falls back to demo fixtures.
+ */
+export function packUnitCost(packId = "pack", fallbackUsd?: number) {
+  return catalogUnitCost(packId) ?? demoUnitCost(packId, fallbackUsd);
 }
 
 export function packCost(quantity: PackQuantity, packId = "pack") {
