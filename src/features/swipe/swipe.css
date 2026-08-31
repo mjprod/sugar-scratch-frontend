@@ -131,6 +131,10 @@
   width: var(--card-w);
   height: var(--card-h);
   touch-action: none;
+  /* Desktop drag shouldn't paint a blue media/text selection. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Outer wrapper at depth-1 locus; lips stay mounted (springed fade/recede). */
@@ -297,6 +301,10 @@
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
 .swipe-deck__slot--front:active {
@@ -340,6 +348,12 @@
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  /* Desktop: block blue text/media highlight while still allowing drag/swipe. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
 }
 
 /*
@@ -446,6 +460,10 @@
   display: block;
   pointer-events: none;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
   /* Hide until first frame is ready — kills black video flash. */
   opacity: 0;
   /* Longer ease so newly warmed under-cards fade in instead of popping. */
