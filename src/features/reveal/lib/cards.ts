@@ -237,8 +237,3 @@ export function createMixedCategoryPackCards(
     effect: effectForIndex(index),
   }))
 }
-
-/** @deprecated use createMixedCategoryPackCards / createCharacterPackCards */
-export function createDemoPackCards(): RevealCard[] {
-  return createMixedCategoryPackCards({ packSlot: 1, seed: 'demo' })
-}

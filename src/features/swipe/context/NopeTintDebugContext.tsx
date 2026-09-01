@@ -180,14 +180,6 @@ export function NopeTintDebugProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useNopeTintDebug() {
-  const ctx = useContext(NopeTintDebugContext)
-  if (!ctx) {
-    throw new Error('useNopeTintDebug must be used within NopeTintDebugProvider')
-  }
-  return ctx
-}
-
 /** Live tune for StackSlot — falls back to constants when provider is absent. */
 export function useNopeTintTune(): NopeTintTune {
   const ctx = useContext(NopeTintDebugContext)

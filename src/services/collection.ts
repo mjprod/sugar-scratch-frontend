@@ -103,13 +103,6 @@ export const COLLECTION_SNAPSHOT = {
   creators: 5,
 };
 
-/** @deprecated Use COLLECTION_SNAPSHOT — kept for older imports. */
-export const COLLECTION_STATS = {
-  photoCards: COLLECTION_SNAPSHOT.photoCards,
-  motionCards: COLLECTION_SNAPSHOT.motionCards,
-  creators: COLLECTION_SNAPSHOT.creators,
-};
-
 export const UNOPENED_PACKS: UnopenedPack[] = [
   {
     id: "up1",
