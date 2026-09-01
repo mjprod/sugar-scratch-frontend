@@ -1,23 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { X } from "lucide-react";
+import { SearchScreen } from "@/components/search/SearchScreen";
+import { type FeaturedPack } from "@/services/homepage";
 import {
-  fetchPackLibrary,
-  formatPrice,
-  type FeaturedPack,
-} from "@/services/homepage";
-import { useModels } from "@/hooks/useModels";
-import {
-  matchModel,
-  packFaceVideoFromModel,
-} from "@/services/models";
-import { PackArt } from "./PackArt";
+  searchPackToPurchase,
+  type SearchPack,
+} from "@/services/search";
+import { useAuth } from "@/contexts/AuthContext";
 
-const SLIDE = {
-  type: "tween" as const,
-  duration: 0.4,
-  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+const LIBRARY_ACCENT = {
+  primary: "oklch(0.55 0.2 330)",
+  secondary: "oklch(0.45 0.18 300)",
+  glow: "oklch(0.65 0.18 340)",
+} as const;
+
+const ROOT_VARIANTS = {
+  hidden: {
+    transition: {
+      when: "afterChildren" as const,
+      staggerChildren: 0.04,
+      staggerDirection: -1 as const,
+    },
+  },
+  visible: {
+    transition: {
+      when: "beforeChildren" as const,
+      staggerChildren: 0.05,
+    },
+  },
+};
+
+const BACKDROP_VARIANTS = {
+  hidden: {
+    opacity: 0,
+    transition: { duration: 0.22, ease: "easeOut" as const },
+  },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.28, ease: "easeOut" as const },
+  },
+};
+
+const PANEL_VARIANTS = {
+  hidden: {
+    y: "100%",
+    transition: {
+      type: "tween" as const,
+      duration: 0.36,
+      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+    },
+  },
+  visible: {
+    y: 0,
+    transition: {
+      type: "tween" as const,
+      duration: 0.42,
+      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+    },
+  },
 };
 
 export function PackLibrary({
@@ -29,23 +70,8 @@ export function PackLibrary({
   onClose: () => void;
   onPlay: (pack: FeaturedPack) => void;
 }) {
-  const [packs, setPacks] = useState<FeaturedPack[]>([]);
-  const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(true);
   const reduce = useReducedMotion();
-  const models = useModels();
-
-  useEffect(() => {
-    let alive = true;
-    void fetchPackLibrary().then((data) => {
-      if (!alive) return;
-      setPacks(data);
-      setLoading(false);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const { openCreator } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -69,10 +95,28 @@ export function PackLibrary({
     };
   }, [open]);
 
-  const filtered = packs.filter((p) => {
-    const hay = `${p.name} ${p.creatorName} ${p.themeName}`.toLowerCase();
-    return hay.includes(q.trim().toLowerCase());
-  });
+  function handleOpenPack(pack: SearchPack) {
+    const purchase = searchPackToPurchase(pack);
+    onPlay({
+      id: purchase.packId,
+      name: purchase.packName,
+      packTitle: purchase.packName,
+      creatorId: pack.creatorId,
+      creatorName: pack.creatorName,
+      collectionName: pack.themeName || purchase.packName,
+      themeName: pack.themeName,
+      coverImageUrl: pack.coverImageUrl,
+      price: {
+        amount: pack.diamondCost,
+        currency: "SC",
+      },
+      diamondCost: pack.diamondCost,
+      collected: 0,
+      collectionTotal: pack.cardCount || 5,
+      accentColors: LIBRARY_ACCENT,
+      isAvailable: true,
+    });
+  }
 
   if (typeof document === "undefined") return null;
 
@@ -81,108 +125,41 @@ export function PackLibrary({
       {open ? (
         <motion.div
           key="pack-library"
-          className="pack-library-overlay fixed inset-0 z-[1100] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Pack library"
-          initial={reduce ? false : { y: "100%" }}
-          animate={{ y: 0 }}
-          exit={reduce ? undefined : { y: "100%" }}
-          transition={SLIDE}
+          className="pack-library-root fixed inset-0 z-[1100] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
+          role="presentation"
+          initial={reduce ? false : "hidden"}
+          animate="visible"
+          exit={reduce ? undefined : "hidden"}
+          variants={ROOT_VARIANTS}
         >
-          <div className="pack-library-panel mx-auto flex min-h-0 w-full max-w-[60rem] flex-1 flex-col">
-            <div className="flex items-center justify-between px-5 py-3">
-              <h2 className="text-[24px] font-bold tracking-[-0.02em]">All Packs</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="grid size-11 place-items-center rounded-full border border-white/15 text-white/70 transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
-                aria-label="Close pack library"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="px-5 pb-3">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search packs, creators, themes"
-                aria-label="Search packs"
-                className="h-12 w-full rounded-full border border-white/10 bg-white/[0.06] px-4 text-[14px] text-white placeholder:text-white/40 outline-none focus:border-[oklch(0.606_0.219_292.72)]/50"
-              />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-28">
-              {loading ? (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="aspect-[3/4] rounded-[24px] bg-white/10" />
-                      <div className="mt-2 h-3 w-3/4 rounded bg-white/10" />
-                      <div className="mt-1.5 h-3 w-1/2 rounded bg-white/10" />
-                    </div>
-                  ))}
-                </div>
-              ) : !packs.length ? (
-                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-12 text-center">
-                  <p className="text-[15px] font-semibold">No packs available yet</p>
-                  <p className="mt-1 text-[13px] text-white/45">
-                    Check back soon — new packs are added regularly.
-                  </p>
-                </div>
-              ) : !filtered.length ? (
-                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-12 text-center">
-                  <p className="text-[15px] font-semibold">No packs match</p>
-                  <p className="mt-1 text-[13px] text-white/45">
-                    Try another creator, theme, or clear search.
-                  </p>
-                  {q ? (
-                    <button
-                      type="button"
-                      onClick={() => setQ("")}
-                      className="mt-4 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 text-[13px] font-semibold"
-                    >
-                      Clear search
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {filtered.map((p) => {
-                    const model = matchModel(models, {
-                      packId: p.id,
-                      name: p.creatorName,
-                    });
-                    const coverUrl =
-                      packFaceVideoFromModel(model, {
-                        packId: p.id,
-                        packName: p.name,
-                        themeName: p.themeName,
-                      }) || p.coverImageUrl;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => onPlay(p)}
-                        className="rounded-2xl text-left transition-colors hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
-                      >
-                        <PackArt
-                          src={coverUrl}
-                          alt={p.name}
-                          size="thumb"
-                          fit="contain"
-                          className="!w-full !aspect-[9/16]"
-                        />
-                        <p className="mt-2 truncate px-0.5 text-[13px] font-semibold">{p.name}</p>
-                        <p className="truncate px-0.5 text-[12px] text-white/45">
-                          {p.creatorName} · {formatPrice(p.price)}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Backdrop fades on its own track — not tied to the sheet transform. */}
+          <motion.button
+            type="button"
+            className="pack-library-overlay absolute inset-0"
+            aria-label="Dismiss search"
+            variants={BACKDROP_VARIANTS}
+            onClick={onClose}
+          />
+          {/* Search sheet slides up independently of the overlay fade. */}
+          <motion.div
+            className="pack-library-panel relative z-[1] mx-auto mt-auto flex min-h-0 w-full max-w-[75rem] flex-1 flex-col overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pack library"
+            variants={PANEL_VARIANTS}
+          >
+            <SearchScreen
+              onCancel={onClose}
+              onOpenCreator={(id) => {
+                onClose();
+                openCreator(id);
+              }}
+              onOpenPack={(pack) => {
+                onClose();
+                handleOpenPack(pack);
+              }}
+            />
+          </motion.div>
         </motion.div>
       ) : null}
     </AnimatePresence>,

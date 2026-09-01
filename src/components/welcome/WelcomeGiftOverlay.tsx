@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { CREATOR_CARD_PHOTOS } from "@/lib/photos";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
@@ -15,6 +14,20 @@ import {
 import "./welcome-gift.css";
 
 type Phase = "offer" | "claiming" | "confirm";
+/** Close sequence: CTA drops first, then dialog discard. */
+type ExitPhase = "idle" | "cta" | "panel";
+
+/** Quick CTA fade/drop before dialog anticipation. */
+const CTA_EXIT_MS = 150;
+/** Coverflow discard total: 95ms anticipation + 280ms drop. */
+const PANEL_EXIT_MS = 375;
+
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 export function WelcomeGiftOverlay() {
   const {
@@ -31,37 +44,85 @@ export function WelcomeGiftOverlay() {
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
   const titleId = useId();
   const claimSlotRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("offer");
   const [error, setError] = useState(false);
   const [heldForAccount, setHeldForAccount] = useState(false);
+  const [exitPhase, setExitPhase] = useState<ExitPhase>("idle");
 
   useEffect(() => {
     if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
+      setExitPhase("idle");
       setOpen(true);
       return;
     }
-    if (profile.welcomeClaimed) setOpen(false);
+    if (profile.welcomeClaimed) {
+      setExitPhase("idle");
+      setOpen(false);
+    }
     // Re-check on auth so a failed signup fulfill (pending cleared) can reopen.
   }, [authed, skip, profile.welcomeClaimed]);
 
   useEffect(() => {
-    if (open) claimSlotRef.current?.querySelector("button")?.focus();
-  }, [open]);
+    if (open && exitPhase === "idle") {
+      claimSlotRef.current?.querySelector("button")?.focus();
+    }
+  }, [open, exitPhase]);
 
   useEffect(() => {
-    if (phase !== "confirm") return;
+    if (phase !== "confirm" || exitPhase !== "idle") return;
     const id = window.setTimeout(() => setOpen(false), 900);
     return () => window.clearTimeout(id);
-  }, [phase]);
+  }, [phase, exitPhase]);
+
+  // Beat 1 → beat 2: CTA out, then dialog discard.
+  useEffect(() => {
+    if (exitPhase !== "cta") return;
+    const id = window.setTimeout(() => setExitPhase("panel"), CTA_EXIT_MS);
+    return () => window.clearTimeout(id);
+  }, [exitPhase]);
+
+  // Single continuous panel exit — no mid-flight class swap (avoids stutter).
+  useEffect(() => {
+    if (exitPhase !== "panel") return;
+    const panel = panelRef.current;
+    let finished = false;
+
+    function finish() {
+      if (finished) return;
+      finished = true;
+      setOpen(false);
+      setExitPhase("idle");
+    }
+
+    function onEnd(event: AnimationEvent) {
+      if (event.target !== panel) return;
+      if (!String(event.animationName).includes("welcome-gift-exit")) return;
+      finish();
+    }
+
+    panel?.addEventListener("animationend", onEnd);
+    // Fallback if animationend is missed (tab background, etc.).
+    const fallback = window.setTimeout(finish, PANEL_EXIT_MS + 40);
+    return () => {
+      panel?.removeEventListener("animationend", onEnd);
+      window.clearTimeout(fallback);
+    };
+  }, [exitPhase]);
 
   function closeWithoutClaim() {
+    if (exitPhase !== "idle") return;
     hideWelcomeOverlayForSession();
-    setOpen(false);
+    if (prefersReducedMotion()) {
+      setOpen(false);
+      return;
+    }
+    setExitPhase("cta");
   }
 
   async function onClaim() {
-    if (phase !== "offer") return;
+    if (phase !== "offer" || exitPhase !== "idle") return;
     setError(false);
     setHeldForAccount(false);
     setPhase("claiming");
@@ -113,10 +174,22 @@ export function WelcomeGiftOverlay() {
     setPhase("offer");
     setError(false);
     setHeldForAccount(false);
+    setExitPhase("idle");
     setOpen(true);
   }
 
-  const busy = phase === "claiming" || phase === "confirm";
+  // Don't mark CTA disabled during exit — disabled greys the gold button.
+  const claimBusy = phase === "claiming" || phase === "confirm";
+  const exitLocked = exitPhase !== "idle";
+  const overlayExitClass =
+    exitPhase === "cta"
+      ? "is-exit-cta"
+      : exitPhase === "panel"
+        ? "is-exiting"
+        : "";
+  const panelExitClass = exitPhase === "panel" ? "is-exiting" : "";
+  const ctaExitClass =
+    exitPhase === "cta" || exitPhase === "panel" ? "is-exit-cta" : "";
   const debugReset = (
     <button
       type="button"
@@ -133,21 +206,26 @@ export function WelcomeGiftOverlay() {
 
   return createPortal(
     <>
-      <div className="welcome-gift-overlay" role="presentation">
+      <div
+        className={["welcome-gift-overlay", overlayExitClass].filter(Boolean).join(" ")}
+        role="presentation"
+      >
         <div className="welcome-gift-scrim" />
         <div
-          className="welcome-gift-panel"
+          ref={panelRef}
+          className={["welcome-gift-panel", panelExitClass].filter(Boolean).join(" ")}
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
         >
+          <span className="welcome-gift-panel-stroke" aria-hidden="true" />
           {phase !== "confirm" ? (
             <button
               type="button"
               className="welcome-gift-close"
               aria-label="Close welcome gift"
               onClick={closeWithoutClaim}
-              disabled={busy}
+              disabled={claimBusy || exitLocked}
             >
               ×
             </button>
@@ -163,70 +241,74 @@ export function WelcomeGiftOverlay() {
             />
           </p>
           <h2 id={titleId} className="welcome-gift-headline">
-            Your welcome gift is here.
+            A gift for you…
           </h2>
 
           <div className="welcome-gift-stage" aria-hidden="true">
-            <div className="welcome-gift-glow" />
-            <span className="welcome-gift-shard" style={{ top: "8%", left: "-6%", width: 18, height: 14 }} />
-            <span className="welcome-gift-shard" style={{ top: "18%", right: "-8%", width: 14, height: 12, animationDelay: "0.4s" }} />
-            <span className="welcome-gift-shard" style={{ bottom: "16%", left: "-4%", width: 12, height: 10, animationDelay: "0.9s" }} />
-            <span className="welcome-gift-spark" style={{ top: "12%", left: "18%" }} />
-            <span className="welcome-gift-spark" style={{ top: "28%", right: "10%", animationDelay: "0.5s" }} />
-            <span className="welcome-gift-spark" style={{ bottom: "22%", left: "22%", animationDelay: "1s" }} />
+            <span className="welcome-gift-shard" style={{ top: "28%", left: "18%", width: 18, height: 14 }} />
+            <span className="welcome-gift-shard" style={{ top: "34%", right: "16%", width: 14, height: 12, animationDelay: "0.4s" }} />
+            <span className="welcome-gift-shard" style={{ bottom: "28%", left: "24%", width: 12, height: 10, animationDelay: "0.9s" }} />
+            <span className="welcome-gift-spark" style={{ top: "30%", left: "28%" }} />
+            <span className="welcome-gift-spark" style={{ top: "36%", right: "26%", animationDelay: "0.6s" }} />
             <div className="welcome-gift-card">
               <img
-                className="welcome-gift-portrait"
-                src={CREATOR_CARD_PHOTOS.juliana}
+                className="welcome-gift-card-img"
+                src="/img/welcomeGirl.png"
+                srcSet="/img/welcomeGirl.png 1x, /img/welcomeGirl@2x.png 2x, /img/welcomeGirl@3x.png 3x"
                 alt=""
                 draggable={false}
               />
-              <div className="welcome-gift-foil" />
-              <div className="welcome-gift-shimmer" />
-              <span className="welcome-gift-seal">S</span>
             </div>
           </div>
 
-          <div className="welcome-gift-pill">
-            <span className="welcome-gift-pill-icon" aria-hidden="true" />
-            Free Scratch × 1
-          </div>
-          <p className="welcome-gift-copy">
-            A free scratch to get you started.
-          </p>
-
-          {phase === "confirm" ? (
-            <div className="welcome-gift-confirm" role="status">
-              <strong>Gift Claimed</strong>
-              <span>
-                {heldForAccount
-                  ? "Waiting in your Bag after you create an account"
-                  : "Added to your Bag"}
-              </span>
+          <div className="welcome-gift-offer">
+            <div className="welcome-gift-pill">
+              <span className="welcome-gift-pill-icon" aria-hidden="true" />
+              Free Scratch ×1
             </div>
-          ) : (
-            <>
-              {error ? (
-                <p className="welcome-gift-error" role="alert">
-                  We couldn&apos;t claim your gift. Please try again.
-                </p>
-              ) : null}
-              <div ref={claimSlotRef} className="welcome-gift-cta">
-                <CtaButton
-                  {...ctaButtonPropsFromTemplate("pillGoldCTA")}
-                  fillParent
-                  label={error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim"}
-                  costAmount={null}
-                  fontSize={15}
-                  strokeWidth={1}
-                  disabled={busy}
-                  aria-busy={busy}
-                  onClick={onClaim}
-                />
+
+            {phase === "confirm" ? (
+              <div className="welcome-gift-confirm" role="status">
+                <strong>Gift Claimed</strong>
+                <span>
+                  {heldForAccount
+                    ? "Waiting in your Bag after you create an account"
+                    : "Added to your Bag"}
+                </span>
               </div>
-              <p className="welcome-gift-reassure">+ Your first one is on us +</p>
-            </>
-          )}
+            ) : (
+              <>
+                {error ? (
+                  <p className="welcome-gift-error" role="alert">
+                    We couldn&apos;t claim your gift. Please try again.
+                  </p>
+                ) : null}
+                <div
+                  ref={claimSlotRef}
+                  className={["welcome-gift-cta", ctaExitClass].filter(Boolean).join(" ")}
+                >
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("pillGoldCTA")}
+                    fillParent
+                    label={error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim Now!"}
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    disabled={claimBusy}
+                    aria-busy={claimBusy}
+                    onClick={onClaim}
+                  />
+                </div>
+                <p
+                  className={["welcome-gift-reassure", ctaExitClass]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  + Your first one is on us +
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
       {debugReset}

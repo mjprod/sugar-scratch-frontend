@@ -9,7 +9,12 @@ export const Paths = {
    */
   home: "/",
   discover: "/discover",
-  /** Search / find — entered from Home HUD. */
+  /**
+   * Opens Home with the pack-library / search sheet.
+   * Prefer this over `/search` from HUD and Discover.
+   */
+  homeSearch: "/?library=1",
+  /** @deprecated Prefer Paths.homeSearch — kept for deep links / redirects. */
   search: "/search",
   /** @deprecated Use Paths.home — kept for older imports / redirects. */
   browse: "/",

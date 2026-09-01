@@ -1,11 +1,18 @@
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
   type UnopenedPack,
 } from "@/services/collection";
-import { getCollectionPageState } from "@/services/collectionState";
+import {
+  emptyCollectionPageState,
+  fetchCollectionPageStateRemote,
+  getCollectionPageState,
+  type CollectionPageState,
+} from "@/services/collectionState";
+import { isDemoMode } from "@/lib/demo";
+import { syncMyPacks } from "@/services/packInventory";
 import type { PurchaseFlowPack } from "@/services/purchase";
 import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
 import { CollectionEmptyState } from "./CollectionEmptyState";
@@ -15,6 +22,7 @@ import { ReadyToReveal } from "./ReadyToReveal";
 
 /**
  * Collection hub — Summary → Ready to Reveal → My Collection.
+ * Content comes from GET /api/me/collection (+ synced pack inventory). No fixture catalog.
  */
 export function CollectionPage({
   onOpenCreator,
@@ -31,10 +39,71 @@ export function CollectionPage({
 }) {
   const [searchParams] = useSearchParams();
   const revealPacks = searchParams.get("reveal") === "packs";
-  const state = useMemo(
-    () => getCollectionPageState(),
-    [inventoryRevision],
+  const [state, setState] = useState<CollectionPageState>(() =>
+    emptyCollectionPageState(),
   );
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setReady(false);
+
+    void (async () => {
+      // Keep pack shelf in sync with the server before reading local inventory.
+      if (!isDemoMode()) {
+        await syncMyPacks().catch(() => false);
+      }
+
+      const remote = isDemoMode()
+        ? null
+        : await fetchCollectionPageStateRemote().catch(() => null);
+
+      if (cancelled) return;
+
+      if (remote) {
+        // API owns summary + My Collection creators; merge live pack/scratch counts
+        // so Ready to Reveal stays consistent with local open/scratch shelves.
+        const local = getCollectionPageState();
+        setState({
+          ...remote,
+          unopenedPackCount: local.unopenedPackCount,
+          unscratchedCardCount: local.unscratchedCardCount,
+          hasUnopenedPacks: local.hasUnopenedPacks,
+          hasUnscratchedCards: local.hasUnscratchedCards,
+          hasPendingReveal: local.hasPendingReveal,
+          isTrueEmpty:
+            remote.isTrueEmpty &&
+            !local.hasUnopenedPacks &&
+            !local.hasUnscratchedCards,
+          hasEverPurchasedPack:
+            remote.hasEverPurchasedPack || local.hasEverPurchasedPack,
+          hasStartedCollection:
+            remote.hasStartedCollection || local.hasStartedCollection,
+        });
+      } else {
+        // API unavailable — inventory shelves only (synced packs / ready scratch).
+        // Do not surface fixture catalogs or stale demo creator rows.
+        const local = getCollectionPageState();
+        setState({
+          ...emptyCollectionPageState(),
+          unopenedPackCount: local.unopenedPackCount,
+          unscratchedCardCount: local.unscratchedCardCount,
+          hasUnopenedPacks: local.hasUnopenedPacks,
+          hasUnscratchedCards: local.hasUnscratchedCards,
+          hasPendingReveal: local.hasPendingReveal,
+          hasEverPurchasedPack: local.hasEverPurchasedPack,
+          hasStartedCollection: local.hasStartedCollection,
+          totalPurchasedPacks: local.totalPurchasedPacks,
+          isTrueEmpty: local.isTrueEmpty,
+        });
+      }
+      setReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inventoryRevision]);
 
   const collectedCreators = useMemo(
     () => state.continueCreators.filter((creator) => creator.collected > 0),
@@ -86,7 +155,12 @@ export function CollectionPage({
       }
     >
       <div className="collection-page-content page-container">
-        {state.isTrueEmpty && !revealPacks ? (
+        {!ready ? (
+          <header className="collection-page-intro">
+            <h1 className="collection-page-title">Collection</h1>
+            <p className="collection-empty-copy">Loading your collection…</p>
+          </header>
+        ) : state.isTrueEmpty && !revealPacks ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
         ) : state.isTrueEmpty && revealPacks ? (
           <>

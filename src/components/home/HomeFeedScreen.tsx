@@ -35,9 +35,13 @@ import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const SNAP_MS = 220;
 /** Overlay lag vs video (0 = locked, 1 = fully detached). */
-const OVERLAY_PARALLAX = 0.22;
+const OVERLAY_PARALLAX_MOBILE = 0.33;
+/** Desktop: stronger lag so taller frames still read on scrub. */
+const OVERLAY_PARALLAX_DESKTOP = 0.495;
 /** Max overlay drift in px (keeps CTAs readable). */
-const OVERLAY_PARALLAX_MAX_PX = 44;
+const OVERLAY_PARALLAX_MAX_MOBILE_PX = 66;
+/** Desktop can travel farther before the ceiling clips the effect. */
+const OVERLAY_PARALLAX_MAX_DESKTOP_PX = 99;
 /**
  * Overlay settle half-life in ms (time-based damping).
  * Higher = silkier / less stutter; lower = snappier.
@@ -153,6 +157,12 @@ export function HomeFeedScreen({
   const mediaScaleMax = isDesktopFeed
     ? MEDIA_SCALE_MAX_DESKTOP
     : MEDIA_SCALE_MAX_MOBILE;
+  const overlayParallax = isDesktopFeed
+    ? OVERLAY_PARALLAX_DESKTOP
+    : OVERLAY_PARALLAX_MOBILE;
+  const overlayParallaxMaxPx = isDesktopFeed
+    ? OVERLAY_PARALLAX_MAX_DESKTOP_PX
+    : OVERLAY_PARALLAX_MAX_MOBILE_PX;
   /** Seamless loop: clone last before first, clone first after last. */
   const loopEnabled = items.length > 1;
   const loopSlides = useMemo(() => {
@@ -347,10 +357,10 @@ export function HomeFeedScreen({
         const absProgress = Math.min(1, Math.abs(progress));
 
         // Overlay lags the video (signed travel).
-        const overlayRaw = -progress * slideHeight * OVERLAY_PARALLAX;
+        const overlayRaw = -progress * slideHeight * overlayParallax;
         const overlayTarget = Math.max(
-          -OVERLAY_PARALLAX_MAX_PX,
-          Math.min(OVERLAY_PARALLAX_MAX_PX, overlayRaw),
+          -overlayParallaxMaxPx,
+          Math.min(overlayParallaxMaxPx, overlayRaw),
         );
         parallaxTargetRef.current.set(key, overlayTarget);
 
@@ -485,6 +495,8 @@ export function HomeFeedScreen({
       getSlideMetrics,
       mediaScaleGain,
       mediaScaleMax,
+      overlayParallax,
+      overlayParallaxMaxPx,
       reducedMotion,
     ],
   );
@@ -1271,7 +1283,9 @@ export function HomeFeedScreen({
             aria-label="Search"
             data-no-feed-drag
             onClick={() =>
-              navigate(Paths.search, { state: { from: Paths.discover } })
+              navigate(Paths.homeSearch, {
+                state: { openPackLibrary: true, from: Paths.discover },
+              })
             }
           >
             <Search className="hf-search-icon" aria-hidden="true" />

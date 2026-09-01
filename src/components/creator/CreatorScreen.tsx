@@ -21,7 +21,6 @@ import { formatSocialHandle } from "@/shared/catalog/characters";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
 import {
-  getCreatorPage,
   matchLiveThemeId,
   type ThemeCardData,
 } from "@/services/collection";
@@ -98,7 +97,6 @@ function CreatorScreenInner({
   onBack: () => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
-  const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
   const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId);
   useMarkPageReady(
@@ -111,7 +109,7 @@ function CreatorScreenInner({
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>("carousel");
   const [selectedThemeId, setSelectedThemeId] = useState(
-    () => searchParams.get("theme") || page.themes[0]?.id || "summer",
+    () => searchParams.get("theme") || "",
   );
   const [featuredCardId, setFeaturedCardId] = useState<string | null>(
     () => searchParams.get("card"),
@@ -124,32 +122,32 @@ function CreatorScreenInner({
     setFollowing(isFollowing(followId));
   }, [followId, authed]);
 
-  const apiThemes: ThemeCardData[] = useMemo(
+  const themes: ThemeCardData[] = useMemo(
     () =>
       collection.themes.map((theme) => ({
         id: theme.id,
         name: theme.name,
         thumbnailUrl: theme.coverUrl,
-        collected: theme.collected,
+        // Guests browse catalog only — personal progress is API/session owned.
+        collected: authed ? theme.collected : 0,
         total: theme.total,
         progressColor: "pink" as const,
       })),
-    [collection.themes],
+    [collection.themes, authed],
   );
 
-  const themes = apiThemes.length > 0 ? apiThemes : page.themes;
-  const usingLiveThemes = apiThemes.length > 0;
+  const usingLiveThemes = themes.length > 0;
   const creatorName =
     (model ? modelDisplayName(model) : "") ||
     titleCaseSlug(creatorId) ||
-    page.creator.name;
+    creatorId;
   const username =
     formatSocialHandle(model?.label) ||
     formatSocialHandle(creatorId) ||
     "";
   const creatorDescription = `${creatorName} brings confidence, charm, and energy to every moment. Explore her exclusive collections.`;
   const themeTags = themes.map((entry) => entry.name).slice(0, 6);
-  const purchaseCreatorId = creatorId || page.creator.id;
+  const purchaseCreatorId = creatorId || model?.id || "";
 
   useEffect(() => {
     if (!usingLiveThemes) return;
@@ -159,7 +157,7 @@ function CreatorScreenInner({
     const wantedId = urlTheme || selectedThemeId;
 
     const themeFromCard = urlCard
-      ? apiThemes.find((entry) =>
+      ? themes.find((entry) =>
           (collection.cardsByThemeId[entry.id] ?? []).some(
             (card) => card.id === urlCard,
           ),
@@ -168,8 +166,8 @@ function CreatorScreenInner({
 
     const nextThemeId =
       themeFromCard?.id ??
-      matchLiveThemeId(wantedId, apiThemes, page.themes) ??
-      apiThemes[0]!.id;
+      matchLiveThemeId(wantedId, themes) ??
+      themes[0]!.id;
 
     const nextCardId =
       urlCard &&
@@ -193,22 +191,21 @@ function CreatorScreenInner({
       setSearchParams(next, { replace: true });
     }
   }, [
-    apiThemes,
+    themes,
     usingLiveThemes,
     selectedThemeId,
     featuredCardId,
     searchParams,
     setSearchParams,
     collection.cardsByThemeId,
-    page.themes,
   ]);
 
   const theme =
     themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
   const coverUrl =
     (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
-    (usingLiveThemes ? (theme?.thumbnailUrl ?? "") : "") ||
-    page.creator.coverUrl;
+    theme?.thumbnailUrl ||
+    "";
 
   function notice(message: string) {
     setToast(message);
@@ -324,7 +321,6 @@ function CreatorScreenInner({
                 syncCardParam(null, id);
               }}
               cardsByThemeId={collection.cardsByThemeId}
-              themeDetails={page.themeDetails}
               loading={collection.loading}
               showPersonalProgress={authed}
               onBuyPack={buyThemePack}

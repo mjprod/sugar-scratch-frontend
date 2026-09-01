@@ -184,6 +184,25 @@ export function HomeScreen({
 
   useMarkPageReady(status === "error" || heroReady);
 
+  // Search HUD / Discover → Home opens the pack-library search sheet.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const state = location.state as { openPackLibrary?: boolean } | null;
+    const shouldOpen =
+      params.get("library") === "1" || Boolean(state?.openPackLibrary);
+    if (!shouldOpen) return;
+
+    setLibraryOpen(true);
+
+    // Clear the flag so back/refresh doesn't keep reopening.
+    if (params.get("library") === "1" || state?.openPackLibrary) {
+      navigate(
+        { pathname: location.pathname, search: "" },
+        { replace: true, state: {} },
+      );
+    }
+  }, [location.pathname, location.search, location.state, navigate]);
+
   const load = useCallback(async () => {
     setHeroReady(false);
     setStatus("loading");

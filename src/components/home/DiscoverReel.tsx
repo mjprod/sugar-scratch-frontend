@@ -28,8 +28,8 @@ const DESKTOP_DRAG_FLICK_VX = 0.45;
 const DESKTOP_DRAG_COMMIT_RATIO = 0.22;
 const DESKTOP_BENTO_MQ = "(min-width: 1024px)";
 /** Stronger than the full-page feed so the smaller Home tile still reads. */
-const OVERLAY_PARALLAX = 0.38;
-const OVERLAY_PARALLAX_MAX_PX = 56;
+const OVERLAY_PARALLAX = 0.57;
+const OVERLAY_PARALLAX_MAX_PX = 84;
 const MEDIA_SCALE_BASE = 1.08;
 const MEDIA_SCALE_MAX = 1.28;
 const MEDIA_SCALE_GAIN = MEDIA_SCALE_MAX - MEDIA_SCALE_BASE;
