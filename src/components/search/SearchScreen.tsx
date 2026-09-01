@@ -712,7 +712,9 @@ function PackCard({
         <span className="search-pack-name">{pack.name}</span>
         <span className="search-pack-by">by {pack.creatorName}</span>
         <div className="search-pack-footer">
-          <div className="search-pack-cards">5 Motion Cards</div>
+          <div className="search-pack-cards">
+            {pack.cardCount} Motion Card{pack.cardCount === 1 ? "" : "s"}
+          </div>
           <span
             className="search-pack-price"
             aria-label={`${pack.diamondCost} Diamonds`}
