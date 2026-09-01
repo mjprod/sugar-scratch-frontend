@@ -104,6 +104,11 @@ function markWelcomeGiftPending() {
   }
 }
 
+/** Re-apply a guest-deferred claim after an account-switch wipe. */
+export function restoreWelcomeGiftPending() {
+  markWelcomeGiftPending();
+}
+
 function clearWelcomeGiftPending() {
   try {
     localStorage.removeItem(PENDING_KEY);

@@ -42,9 +42,15 @@ import { addPackToCart, type CartAddInput } from "@/services/cart";
 import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearPackInventory, syncMyPacks } from "@/services/packInventory";
+import {
+  adoptAccountLocalState,
+  clearAccountLocalState,
+  clearAccountStateOwner,
+  clearUngatedAccountArtifacts,
+} from "@/services/accountLocalState";
 import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
-import { fulfillPendingWelcomeGift } from "@/services/welcome";
+import { fulfillPendingWelcomeGift, hasPendingWelcomeGift } from "@/services/welcome";
 import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
@@ -141,6 +147,11 @@ function applyRemoteUser(
   },
   opts?: { setAuthed?: boolean },
 ) {
+  if (user.id) {
+    adoptAccountLocalState(user.id, {
+      preserveWelcomePending: hasPendingWelcomeGift(),
+    });
+  }
   createSession(user.email, user.provider, user.id);
   if (user.emailVerified) markEmailVerified();
   else clearEmailVerified();
@@ -761,6 +772,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     destroySession();
     clearEmailVerified();
     clearPackInventory();
+    clearUngatedAccountArtifacts();
     setAuthed(false);
     setEmailVerified(false);
     setInboxUnread(0);
@@ -775,6 +787,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void logoutRemote();
     destroySession();
     clearPackInventory();
+    clearUngatedAccountArtifacts();
     setAuthed(false);
     setPending(null);
     setAuthOpen(false);
@@ -794,7 +807,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
-    clearPackInventory();
+    clearAccountLocalState();
+    clearAccountStateOwner();
     setProfile(initialProfile);
     setAuthed(false);
     setReturningUser(false);

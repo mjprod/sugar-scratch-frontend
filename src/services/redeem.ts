@@ -90,6 +90,14 @@ function markRedeemed(code: string) {
   writeHistoryCodes(next);
 }
 
+export function clearRedeemHistory() {
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** `?demo=1` only — offline fixture catalog when the API is unreachable. */
 function redeemFromDemoCatalog(code: string): RedeemCodeResponse {
   if (readHistoryCodes().includes(code)) {
