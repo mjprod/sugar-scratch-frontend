@@ -37,9 +37,31 @@
   initial-value: 45deg;
 }
 
+/* Animatable mid-stop for the panel fill (magenta band rises in a seamless loop). */
+@property --welcome-mid-stop {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 70%;
+}
+
 @keyframes welcome-stroke-orbit-angle {
   to {
     --welcome-stroke-angle: calc(var(--welcome-stroke-angle-start, 45deg) + 360deg);
+  }
+}
+
+/*
+  Mid color travels fully outside the box at both ends (-30% → 130%),
+  so the first/last frames are solid #090005 and the loop has no pop.
+  Gradient aims top-right; stop advances toward 100% so the band drifts that way.
+*/
+@keyframes welcome-mid-stop-rise {
+  from {
+    --welcome-mid-stop: -30%;
+  }
+
+  to {
+    --welcome-mid-stop: 130%;
   }
 }
 
@@ -54,6 +76,16 @@
   --welcome-stroke-angle-start: 45deg;
   --welcome-stroke-orbit-duration: 5.14s;
   --welcome-stroke-mesh-mix: 58%;
+  --welcome-mid-stop: 70%;
+  /* Opposite of prior 32deg travel: aim top-right, mid-stop advances up-right. */
+  --welcome-panel-fill: linear-gradient(
+    to top right,
+    #090005 0%,
+    #090005 max(0%, calc(var(--welcome-mid-stop) - 28%)),
+    #580136 var(--welcome-mid-stop),
+    #090005 min(100%, calc(var(--welcome-mid-stop) + 28%)),
+    #090005 100%
+  );
 
   position: relative;
   z-index: 1;
@@ -64,14 +96,17 @@
   padding: 36px 0px 28px;
   border: 0;
   border-radius: 32px;
-  background: linear-gradient(32deg, #090005 0%, #580136 70%, #090005 100%);
+  background: var(--welcome-panel-fill);
   box-shadow: 0 28px 64px rgb(0 0 0 / 0.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   transform-origin: 50% 42%;
   transform-style: preserve-3d;
   backface-visibility: hidden;
-  animation: welcome-gift-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Rise in, then keep the mid-stop looping (separate animation names). */
+  animation:
+    welcome-gift-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both,
+    welcome-mid-stop-rise 7.5s linear 0.55s infinite;
   /* Keep CTA border-glow bloom free to paint outside the panel box. */
   overflow: visible;
   -webkit-user-select: none;
@@ -89,6 +124,7 @@
   /* Blur + filter during transform is a common stutter source. */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  /* Exit only — freeze mid-stop travel while the panel drops. */
   animation: welcome-gift-exit 375ms linear both;
 }
 
@@ -124,13 +160,13 @@
 
 .welcome-gift-panel-stroke::before {
   background:
-    linear-gradient(32deg, #090005 0%, #580136 70%, #090005 100%) padding-box,
+    var(--welcome-panel-fill) padding-box,
     linear-gradient(var(--welcome-stroke-color), var(--welcome-stroke-color)) border-box;
 }
 
 .welcome-gift-panel-stroke::after {
   background:
-    linear-gradient(32deg, #090005 0%, #580136 70%, #090005 100%) padding-box,
+    var(--welcome-panel-fill) padding-box,
     radial-gradient(at 80% 55%,
       color-mix(in srgb, var(--welcome-stroke-b) var(--welcome-stroke-mesh-mix), transparent) 0px,
       transparent 50%) border-box,
@@ -509,6 +545,10 @@
   .welcome-gift-shard,
   .welcome-gift-spark {
     animation: none;
+  }
+
+  .welcome-gift-panel {
+    --welcome-mid-stop: 70%;
   }
 
   .welcome-gift-panel.is-exiting,

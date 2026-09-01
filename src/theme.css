@@ -7846,6 +7846,11 @@ body[data-theme="v8"] .hf-media-shade {
 body[data-theme="v8"] .hf-overlay {
   --hf-parallax-y: 0px;
   --hf-overlay-enter: 6px;
+  /*
+    Mobile dock is ~96px tall + safe-area (see .nav-test-dock-wrap).
+    Lift creator chrome above the liquid-glass bottom nav.
+  */
+  --hf-overlay-bottom-clearance: calc(108px + env(safe-area-inset-bottom, 0px));
 
   position: absolute;
   inset: auto 0 0 0;
@@ -7854,8 +7859,7 @@ body[data-theme="v8"] .hf-overlay {
   flex-direction: column;
   justify-content: flex-end;
   gap: 12px;
-  /* Keep CTAs on the card edge — frame already clears the dock / next-peek. */
-  padding: 20px 16px max(10px, env(safe-area-inset-bottom, 0px));
+  padding: 20px 16px var(--hf-overlay-bottom-clearance);
   opacity: 0.88;
   /* Enter offset + scroll-driven lag (JS sets --hf-parallax-y). */
   transform: translate3d(
@@ -7876,12 +7880,13 @@ body[data-theme="v8"] .hf-overlay.is-visible {
 }
 
 /*
-  Desktop: keep overlay flush to the video bottom edge.
+  Desktop: keep overlay flush to the video bottom edge (no mobile dock).
 */
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hf-overlay,
   body[data-theme="v8"] .hf-overlay.is-visible {
-    padding: 16px 16px 2dvh;
+    --hf-overlay-bottom-clearance: 2dvh;
+    padding: 16px 16px var(--hf-overlay-bottom-clearance);
   }
 }
 
