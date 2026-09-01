@@ -76,7 +76,6 @@ export const Paths = {
   recommendDone: "/recommend/done",
   welcome: "/welcome",
   resetPassword: "/reset-password",
-  navTest: "/nav-test",
   coverflowV2: "/coverflow-v2",
 } as const;
 

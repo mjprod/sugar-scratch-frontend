@@ -13,6 +13,7 @@ import { loadFanLayout } from '@/features/reveal/lib/fanLayout'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
+import { PackNoMatchResult } from './modules/PackNoMatchResult'
 import { useWallet } from '@/contexts/WalletContext'
 import { Paths } from '@/routes/Paths'
 import {
@@ -401,6 +402,9 @@ export function GameHub() {
     setPhase('idle')
   }
 
+  const packNoMatch =
+    phase === 'photo_reveal' && session?.wonPhotoIds.length === 0
+
   const canDelete =
     !busy &&
     phase !== 'loading' &&
@@ -449,18 +453,16 @@ export function GameHub() {
             </div>
           ) : null}
 
-          {phase === 'photo_reveal' && session ? (
+          {packNoMatch ? <PackNoMatchResult /> : null}
+
+          {phase === 'photo_reveal' && session && !packNoMatch ? (
             <div className="game-hub-pack__prizes">
               <p className="game-hub-pack__kicker">PACK COMPLETE</p>
               <h2>
                 {session.wonPhotoIds.length} Photo Card
                 {session.wonPhotoIds.length === 1 ? '' : 's'} Revealed
               </h2>
-              {session.wonPhotoIds.length > 0 ? (
-                <p className="game-hub-pack__owned">Added to your Collection ✓</p>
-              ) : (
-                <p>No Photo Cards this pack.</p>
-              )}
+              <p className="game-hub-pack__owned">Added to your Collection ✓</p>
               {wonPhotos.length > 0 ? (
                 <div className="game-hub-pack__prize-grid">
                   {wonPhotos.map((photo, index) => (
@@ -486,7 +488,9 @@ export function GameHub() {
           ) : null}
         </section>
 
-        <div className="game-hub-pack__cta">
+        <div
+          className={`game-hub-pack__cta${packNoMatch ? ' is-no-match' : ''}`}
+        >
           {phase === 'idle' ? (
             <HubCtaButton
               label="New Game"

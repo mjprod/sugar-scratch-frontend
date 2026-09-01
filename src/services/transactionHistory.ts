@@ -1,8 +1,9 @@
 /**
  * Transaction History — client ledger + inventory-derived pack purchases.
- * No backend list API yet; mock seed fills payments/exchanges/refunds.
+ * No backend list API yet; mock seed fills payments/exchanges/refunds in demo mode.
  */
 
+import { isDemoMode } from "../lib/demo";
 import { listOwnedPacks, type OwnedPackInstance } from "./packInventory";
 import { packCost, packUnitCost, type PackQuantity } from "./purchase";
 
@@ -115,6 +116,7 @@ function sortNewest(a: TransactionRecord, b: TransactionRecord) {
 }
 
 function seedMockIfNeeded(existing: TransactionRecord[]): TransactionRecord[] {
+  if (!isDemoMode()) return existing;
   try {
     if (localStorage.getItem(SEED_FLAG) === "1") return existing;
   } catch {

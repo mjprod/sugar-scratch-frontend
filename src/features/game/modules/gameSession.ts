@@ -1,6 +1,9 @@
 import { apiMutate } from "@/lib/api";
 import { recordWonPhotoCards } from "@/services/collectionState";
-import { upsertReadyToScratch } from "@/services/readyToScratch";
+import {
+  removeReadyToScratch,
+  upsertReadyToScratch,
+} from "@/services/readyToScratch";
 import type { OpeningSession } from "@/services/purchase";
 import {
   loadGameCatalog,
@@ -47,6 +50,12 @@ export type GameSession = {
   photoPrizeTotal: number;
   /** Random photocards awarded after the motion hand. */
   wonPhotoIds: string[];
+  /**
+   * Won ids already counted into the collection ledger. The ledger is a plain
+   * additive counter with no per-card dedupe, so the session has to remember
+   * this or a hand gets counted again when it settles.
+   */
+  collectedPhotoIds?: string[];
   completedPhotoIds: string[];
   /** Accumulated diamonds from photo match games. */
   diamondTotal: number;
@@ -237,6 +246,14 @@ export function clearGameSession(key?: string): void {
 export function persistPackScratchInventory(session: GameSession): void {
   const link = session.packScratch;
   if (!link) return;
+  // Past the motion phase the pack has no Motion Cards left to scratch, whatever
+  // settledOpeningIds says — an opening card the hand never mapped (hand caps at
+  // GAME_HAND_SIZE) or a settle that failed would otherwise strand the shelf row
+  // forever as a ghost "Resume" tile.
+  if (session.phase !== "motion") {
+    removeReadyToScratch(link.readyPackId);
+    return;
+  }
   upsertReadyToScratch({
     packId: link.readyPackId,
     packName: link.packName,
@@ -436,12 +453,12 @@ export async function awardMotionCardPhotos(
       session.wonPhotoIds,
     );
     const photoIds = picked.map((photo) => photo.id);
-    const next: GameSession = {
+    const next = recordAwardedPhotoCards({
       ...session,
       wonPhotoIds: [...session.wonPhotoIds, ...photoIds],
       lastMotionWinPhotoIds: photoIds,
       pendingMotionResult: { cardId, photoIds, prize, current, total },
-    };
+    });
     saveGameSession(next);
     persistPackScratchInventory(next);
     return next;
@@ -490,12 +507,12 @@ export async function finishMotionHand(): Promise<GameSession | null> {
       wonPhotoIds = [];
     }
   }
-  const next: GameSession = {
+  const next = recordAwardedPhotoCards({
     ...session,
     phase: "photo_reveal",
     wonPhotoIds,
     pendingMotionResult: undefined,
-  };
+  });
   saveGameSession(next);
   persistPackScratchInventory(next);
   return next;
@@ -559,15 +576,31 @@ export function promoteCompletePhotoHand(): GameSession | null {
   return finishPhotoHand();
 }
 
-function recordPhotoHandToCollection(session: GameSession): void {
-  const pack = session.packScratch;
-  const creatorName = pack?.creator ?? session.themes[0] ?? "Game";
-  const creatorId =
-    creatorName.trim().toLowerCase().replace(/\s+/g, "-") || "game";
-  const count = session.wonPhotoIds.length;
-  if (count > 0) {
-    recordWonPhotoCards({ count, creatorId, creatorName });
-  }
+/** Won photo ids not yet counted into the collection ledger. */
+export function pendingCollectionPhotoIds(session: GameSession): string[] {
+  const already = new Set(session.collectedPhotoIds ?? []);
+  return session.wonPhotoIds.filter((id) => !already.has(id));
+}
+
+/**
+ * Count newly awarded photo cards into the collection ledger, once each.
+ * Every award path funnels through here — the win overlay claims "Added to your
+ * Collection" as each Motion Card resolves, but a catalog miss there would
+ * otherwise leave those ids uncounted until the hand settles.
+ */
+function recordAwardedPhotoCards(session: GameSession): GameSession {
+  const pending = pendingCollectionPhotoIds(session);
+  if (pending.length === 0) return session;
+  const creatorName = session.packScratch?.creator ?? session.themes[0] ?? "Game";
+  recordWonPhotoCards({
+    count: pending.length,
+    creatorId: creatorName.trim().toLowerCase().replace(/\s+/g, "-") || "game",
+    creatorName,
+  });
+  return {
+    ...session,
+    collectedPhotoIds: [...(session.collectedPhotoIds ?? []), ...pending],
+  };
 }
 
 /**
@@ -590,7 +623,10 @@ export function settleDonePhotoHand(
 
   const current = loadGameSession();
   if (current?.phase === "done") {
-    recordPhotoHandToCollection(current);
+    // Normally a no-op — the award paths already counted these. Still the last
+    // net for ids that missed the catalog on the way in. No save: the session
+    // is cleared on the next line.
+    recordAwardedPhotoCards(current);
     clearCompletedPhotoHand();
   }
   return true;

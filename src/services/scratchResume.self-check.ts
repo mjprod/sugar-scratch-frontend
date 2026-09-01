@@ -2,7 +2,8 @@
  * Resume labeling must stay pack-scoped.
  * Run: npx tsx src/services/scratchResume.self-check.ts
  */
-import { cardActionForGroup } from "./scratchResume.ts";
+import { cardActionForGroup, listAllReadyScratch } from "./scratchResume.ts";
+import { getReadyToScratch } from "./readyToScratch.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -74,8 +75,42 @@ store.set(
         motionCardIds: ["c3", "c4"],
         completedMotionIds: [],
       }),
+      "pack-c": {
+        ...motionSession({
+          readyPackId: "pack-c",
+          motionCardIds: ["c5"],
+          completedMotionIds: ["c5"],
+        }),
+        phase: "photo_reveal" as const,
+      },
     },
   }),
+);
+
+// pack-c finished its motion hand but never settled every opening card, so the
+// shelf row survived. It must not resurface as a Motion Card tile.
+store.set(
+  "sugar.v8.readyToScratch",
+  JSON.stringify([
+    {
+      packId: "pack-c",
+      packName: "Pack C",
+      creator: "Ada",
+      creatorId: "ada",
+      themeName: "Pack C",
+      coverUrl: "",
+      packStatus: "opened",
+      session: {
+        purchaseId: "tx",
+        instanceId: "pack-c",
+        foilLabel: "",
+        foilFaceUrl: "",
+        cards: [{ id: "o1", rarity: "Super Rare", reward: 10 }],
+      },
+      revealed: [],
+      savedAt: 0,
+    },
+  ]),
 );
 
 assert(
@@ -99,6 +134,15 @@ assert(
     kind: "motion",
   }) === "resume",
   "motion: fallback matching progressed hand → Resume",
+);
+
+assert(
+  listAllReadyScratch().every((group) => group.id !== "pack-c"),
+  "pack past the motion phase shows no Motion Card tile",
+);
+assert(
+  getReadyToScratch("pack-c") === null,
+  "stale shelf row is pruned from storage",
 );
 
 console.log("scratchResume.self-check: ok");

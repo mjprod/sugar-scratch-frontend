@@ -209,11 +209,6 @@ export function getSlideTarget(
   }
 }
 
-/** @deprecated Prefer getSlideTarget. */
-export const getSlideTransform = getSlideTarget
-/** @deprecated Prefer getSlideTarget. */
-export const getCoverflowTransform = getSlideTarget
-
 /**
  * Absolute index range that may be loaded for the current focus.
  * Finite — clamped to [0, count-1], never wraps, never > MAX_CARDS_LOADED.

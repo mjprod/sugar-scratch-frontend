@@ -141,12 +141,6 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-let forceFailNext = false;
-
-export function __homeFeedForceFailNext() {
-  forceFailNext = true;
-}
-
 export async function fetchHomeFeedPage(
   cursor: string | null = null,
 ): Promise<HomeFeedPage> {
@@ -154,10 +148,6 @@ export async function fetchHomeFeedPage(
     wait(cursor ? 380 : 520),
     Promise.all([loadModels(), loadPackCatalog()]).then(([loaded]) => loaded),
   ]);
-  if (forceFailNext) {
-    forceFailNext = false;
-    throw new Error("Unable to load creators.");
-  }
 
   if (cursor == null || !shuffledCatalog) {
     shuffledCatalog = shuffleCatalog(uniqueFeedItems(models.map(feedItemFromModel)));

@@ -330,7 +330,6 @@
   animation: fp-creator-finger 2.8s ease-in-out infinite;
 }
 
-html[data-scratch-tutorial] .stage-coach,
 html[data-scratch-tutorial] .lottie-clipper {
   visibility: hidden;
 }

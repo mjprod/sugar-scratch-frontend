@@ -12,9 +12,12 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useWallet } from "@/contexts/WalletContext";
 import { loadGameSession, settleDonePhotoHand } from "./gameSession";
+import { PackNoMatchResult } from "./PackNoMatchResult";
 
 export const COLLECT_COUNTDOWN_MS = 8000;
 const RING_RADIUS = 100;
+/** No ring to watch when nothing was won — just long enough to read the result. */
+const NO_MATCH_HOLD_MS = 4500;
 
 type PhotoHandSummaryProps = {
   diamondTotal: number;
@@ -92,12 +95,18 @@ export function PhotoHandSummary({
   onCollect,
 }: PhotoHandSummaryProps) {
   const { addDiamonds } = useWallet();
+  const noDiamonds = diamondTotal <= 0;
   const reducedMotion = prefersReducedMotion();
   const gradientId = useId().replace(/:/g, "");
-  const alreadyCredited = loadGameSession()?.walletCredited === true;
-  const [credited, setCredited] = useState(alreadyCredited);
-  const [counting, setCounting] = useState(!alreadyCredited && !reducedMotion);
+  const walletAlreadyCreditedRef = useRef(
+    loadGameSession()?.walletCredited === true,
+  );
+  const [credited, setCredited] = useState(walletAlreadyCreditedRef.current);
+  const [counting, setCounting] = useState(
+    !walletAlreadyCreditedRef.current && !reducedMotion,
+  );
   const finishedRef = useRef(false);
+  const mountedAtRef = useRef(Date.now());
   const onCollectRef = useRef(onCollect);
   onCollectRef.current = onCollect;
   const addDiamondsRef = useRef(addDiamonds);
@@ -118,17 +127,30 @@ export function PhotoHandSummary({
     [],
   );
 
+  // Always auto-leave when the ring finishes — even if wallet was credited on reload.
   useEffect(() => {
-    if (alreadyCredited || finishedRef.current) return;
-    const delayMs = reducedMotion ? 1200 : COLLECT_COUNTDOWN_MS;
+    if (finishedRef.current) return;
+    // The no-match beat ignores the credited shortcut: a 600ms exit would cut
+    // off its own entry animation.
+    const delayMs = noDiamonds
+      ? reducedMotion
+        ? 2500
+        : NO_MATCH_HOLD_MS
+      : walletAlreadyCreditedRef.current
+        ? 600
+        : reducedMotion
+          ? 1200
+          : COLLECT_COUNTDOWN_MS;
     const timer = window.setTimeout(() => finishHand(), delayMs);
     return () => window.clearTimeout(timer);
-  }, [alreadyCredited, finishHand, reducedMotion]);
+  }, [finishHand, noDiamonds, reducedMotion]);
 
   // Shell ‹ exit / route change unmounts this overlay — still settle rewards.
   useEffect(() => {
     return () => {
       if (finishedRef.current) return;
+      // ponytail: ignore Strict Mode's instant remount — settle only on real unmount.
+      if (Date.now() - mountedAtRef.current < 250) return;
       finishedRef.current = true;
       settleDonePhotoHand(addDiamondsRef.current);
     };
@@ -143,10 +165,17 @@ export function PhotoHandSummary({
       className="photo-hand-summary"
       role="dialog"
       aria-modal="true"
-      aria-label={`Total win. ${diamondTotal} diamonds won.`}
+      aria-label={
+        noDiamonds
+          ? "Pack complete. No diamonds were won this pack."
+          : `Total win. ${diamondTotal} diamonds won.`
+      }
     >
       <div className="photo-hand-summary__backdrop" aria-hidden="true" />
       <div className="photo-hand-summary__content">
+        {noDiamonds ? (
+          <PackNoMatchResult subtitle="No diamonds this pack." />
+        ) : (
         <div className="photo-hand-summary__stack">
           <p className="photo-hand-summary__title">TOTAL WIN</p>
           <div
@@ -182,6 +211,7 @@ export function PhotoHandSummary({
             </p>
           </div>
         </div>
+        )}
       </div>
       <div className="photo-hand-summary__actions">
         <div className="photo-hand-summary__cta-primary">
@@ -189,7 +219,7 @@ export function PhotoHandSummary({
             {...ctaButtonPropsFromTemplate("squircleCTA")}
             fillParent
             type="button"
-            label="Collect"
+            label={noDiamonds ? "Done" : "Collect"}
             costAmount={null}
             fontSize={15}
             strokeWidth={1}
