@@ -241,7 +241,7 @@ export function WelcomeGiftOverlay() {
             />
           </p>
           <h2 id={titleId} className="welcome-gift-headline">
-            Your welcome gift is here.
+            A gift for you…
           </h2>
 
           <div className="welcome-gift-stage" aria-hidden="true">
@@ -266,9 +266,6 @@ export function WelcomeGiftOverlay() {
               <span className="welcome-gift-pill-icon" aria-hidden="true" />
               Free Scratch ×1
             </div>
-            <p className="welcome-gift-copy">
-              A free scratch to get you started.
-            </p>
 
             {phase === "confirm" ? (
               <div className="welcome-gift-confirm" role="status">
@@ -293,7 +290,7 @@ export function WelcomeGiftOverlay() {
                   <CtaButton
                     {...ctaButtonPropsFromTemplate("pillGoldCTA")}
                     fillParent
-                    label={error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim"}
+                    label={error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim Now!"}
                     costAmount={null}
                     fontSize={15}
                     strokeWidth={1}
