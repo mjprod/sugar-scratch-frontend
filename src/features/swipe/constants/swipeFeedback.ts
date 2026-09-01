@@ -1063,28 +1063,12 @@ export function loadSwipeFeedbackByDevice(): SwipeFeedbackByDevice {
   }
 }
 
-/** @deprecated Prefer loadSwipeFeedbackByDevice — returns desktop lane only. */
-export function loadSwipeFeedback(): SwipeFeedbackTune {
-  return loadSwipeFeedbackByDevice().desktop
-}
-
 export function saveSwipeFeedbackByDevice(byDevice: SwipeFeedbackByDevice) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(
     SWIPE_FEEDBACK_STORAGE_KEY,
     JSON.stringify(normalizeTuneByDevice(byDevice)),
   )
-}
-
-/** @deprecated Prefer saveSwipeFeedbackByDevice. */
-export function saveSwipeFeedback(tune: SwipeFeedbackTune) {
-  if (typeof window === 'undefined') return
-  // Preserve the other device lane when only a flat tune is written.
-  const current = loadSwipeFeedbackByDevice()
-  saveSwipeFeedbackByDevice({
-    ...current,
-    desktop: normalizeTune(tune, DEFAULT_SWIPE_FEEDBACK_DESKTOP),
-  })
 }
 
 export function formatSwipeFeedbackPaste(

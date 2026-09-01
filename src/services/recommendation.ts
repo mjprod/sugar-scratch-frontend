@@ -14,8 +14,6 @@ const ENGAGE_KEY = "sugar.v8.creatorEngage";
 
 /** Spec §34 — configurable card count. */
 export const MIN_PERSONALIZATION_CARDS = 6;
-/** @deprecated alias */
-export const MIN_PERSONALIZE_SWIPES = MIN_PERSONALIZATION_CARDS;
 
 export type RecommendationStatus =
   | "unknown"
@@ -139,11 +137,6 @@ export const RECOMMENDATION_CARDS: RecommendationCard[] = [
     tagline: "Portrait-first scratch cards",
   },
 ];
-
-/** @deprecated use RECOMMENDATION_CARDS */
-export const ONBOARD_CARDS = RECOMMENDATION_CARDS;
-/** @deprecated */
-export type OnboardCard = RecommendationCard;
 
 export function getRecommendationStatus(): RecommendationStatus {
   try {
@@ -310,11 +303,6 @@ export function orderedRecommendationCards(
     (c) => c.name.toLowerCase() !== seed && c.creatorId.toLowerCase() !== seed,
   );
   return [...primary, ...rest];
-}
-
-/** @deprecated */
-export function orderedPersonaCards(seed?: string) {
-  return orderedRecommendationCards(seed);
 }
 
 export function saveSwipePreferences(result: {

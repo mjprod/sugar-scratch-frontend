@@ -3,6 +3,7 @@
  * Appended at reveal settle; mock seed when empty for demo filters.
  */
 
+import { isDemoMode } from "../lib/demo";
 import { getPackInstance } from "./packInventory";
 
 export type GameHistoryResult = "win" | "no_prize" | "reversed";
@@ -86,6 +87,7 @@ function sortNewest(a: GameHistoryRecord, b: GameHistoryRecord) {
 }
 
 function seedMockIfNeeded(existing: GameHistoryRecord[]): GameHistoryRecord[] {
+  if (!isDemoMode()) return existing;
   try {
     if (localStorage.getItem(SEED_FLAG) === "1") return existing;
   } catch {

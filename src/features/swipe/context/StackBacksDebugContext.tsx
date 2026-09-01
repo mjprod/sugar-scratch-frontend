@@ -178,14 +178,6 @@ export function StackBacksDebugProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useStackBacksDebug() {
-  const ctx = useContext(StackBacksDebugContext)
-  if (!ctx) {
-    throw new Error('useStackBacksDebug must be used within StackBacksDebugProvider')
-  }
-  return ctx
-}
-
 /** Live tune for StackBacks — falls back to constants when panel provider is absent. */
 export function useStackBacksTune(): StackBacksTune {
   const ctx = useContext(StackBacksDebugContext)

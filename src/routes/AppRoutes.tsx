@@ -11,7 +11,6 @@ import { CreatorPage } from "@/pages/CreatorPage";
 import { GamePage } from "@/pages/GamePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
 import { CoverFlowV2Page } from "@/pages/CoverFlowV2Page";
-import { NavTestPage } from "@/pages/NavTestPage";
 import { PreLoaderPage } from "@/pages/PreLoaderPage";
 import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
@@ -81,7 +80,6 @@ export function AppRoutes() {
             </AuthShell>
           }
         />
-        <Route path={Paths.navTest} element={<NavTestPage />} />
         <Route
           path={Paths.recommend}
           element={

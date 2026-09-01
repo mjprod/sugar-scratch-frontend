@@ -314,16 +314,6 @@ export function SwipeCircleDebugProvider({ children }: { children: ReactNode }) 
   )
 }
 
-export function useSwipeCircleDebug() {
-  const ctx = useContext(SwipeCircleDebugContext)
-  if (!ctx) {
-    throw new Error(
-      'useSwipeCircleDebug must be used within SwipeCircleDebugProvider',
-    )
-  }
-  return ctx
-}
-
 /** Active viewport tune + optional preview — falls back to defaults when provider is absent. */
 export function useSwipeCircleTune(): {
   tune: SwipeCircleTune
