@@ -43,7 +43,9 @@ function ResetQueryRedirect() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.has("reset") && location.pathname !== Paths.resetPassword) {
+    const needsReset =
+      params.has("reset") || (params.has("token") && params.get("token")?.trim());
+    if (needsReset && location.pathname !== Paths.resetPassword) {
       navigate(
         { pathname: Paths.resetPassword, search: location.search },
         { replace: true },

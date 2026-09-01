@@ -1,13 +1,17 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { ApiError } from "@/lib/api";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
   isValidAuthPassword,
+  resetPasswordFailureMessage,
+  resetPasswordWithToken,
 } from "@/services/auth";
 
 /**
  * Reset Password — Spec 7.
+ * Expects `?token=` from the forgot-password email (printed to API logs in local).
  * Demo: `?reset=expired` shows the expired-link state.
  */
 export function ResetPasswordScreen({
@@ -17,11 +21,17 @@ export function ResetPasswordScreen({
   onBack: () => void;
   onDone: () => void;
 }) {
-  const expired = useMemo(() => {
+  const { expired, token } = useMemo(() => {
     try {
-      return new URLSearchParams(window.location.search).get("reset") === "expired";
+      const params = new URLSearchParams(window.location.search);
+      const resetFlag = params.get("reset");
+      const rawToken = (params.get("token") ?? "").trim();
+      return {
+        expired: resetFlag === "expired" || !rawToken,
+        token: rawToken,
+      };
     } catch {
-      return false;
+      return { expired: true, token: "" };
     }
   }, []);
 
@@ -35,6 +45,10 @@ export function ResetPasswordScreen({
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (!token) {
+      setError(resetPasswordFailureMessage());
+      return;
+    }
     if (!isValidAuthPassword(password)) {
       setError(`Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`);
       return;
@@ -45,9 +59,18 @@ export function ResetPasswordScreen({
     }
     setLoading(true);
     setError("");
-    await new Promise((r) => setTimeout(r, 650));
-    setLoading(false);
-    onDone();
+    try {
+      await resetPasswordWithToken(token, password);
+      onDone();
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 400 || err.status === 404)) {
+        setError(resetPasswordFailureMessage());
+      } else {
+        setError("We couldn't update your password. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (expired) {
@@ -80,7 +103,7 @@ export function ResetPasswordScreen({
       <div className="auth2-form-head">
         <h2 className="auth2-form-title">Reset Password</h2>
         <p className="auth2-form-subtitle">
-          Choose a new password. Links expire after 30 minutes and are single-use.
+          Choose a new password. Links expire after 2 hours and are single-use.
         </p>
       </div>
 

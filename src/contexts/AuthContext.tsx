@@ -110,7 +110,10 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "unopened-packs" ||
     action.type === "cart" ||
     action.type === "add-to-cart" ||
-    action.type === "collection"
+    action.type === "collection" ||
+    action.type === "tab" ||
+    action.type === "resume" ||
+    action.type === "claim"
   );
 }
 
@@ -146,6 +149,8 @@ function applyRemoteUser(
 }
 
 type AuthContextValue = {
+  /** False until the initial `/api/auth/session` probe finishes. */
+  authReady: boolean;
   authed: boolean;
   guest: boolean;
   hasLoggedInBefore: boolean;
@@ -206,6 +211,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const [authReady, setAuthReady] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [returningUser, setReturningUser] = useState(() => hasLoggedInBefore());
   const [profile, setProfile] = useState(initialProfile);
@@ -261,30 +267,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     const epoch = sessionSyncEpochRef.current;
-    void fetchAuthSession().then((session) => {
-      if (cancelled) return;
-      // Ignore results from a probe that started before a local auth transition.
-      if (epoch !== sessionSyncEpochRef.current) return;
+    void fetchAuthSession()
+      .then((session) => {
+        if (cancelled) return;
+        // Ignore results from a probe that started before a local auth transition.
+        if (epoch !== sessionSyncEpochRef.current) return;
 
-      if (session.state === "unreachable") {
-        // Cookie may still be valid. Do not resume gated actions (authed stays false).
-        return;
-      }
+        if (session.state === "unreachable") {
+          // Cookie may still be valid. Do not resume gated actions (authed stays false).
+          return;
+        }
 
-      if (session.authenticated && session.user) {
-        applyRemoteUser(session.user, {
-          setAuthed,
-          setEmailVerified,
-          setProfile,
-        });
-        return;
-      }
+        if (session.authenticated && session.user) {
+          applyRemoteUser(session.user, {
+            setAuthed,
+            setEmailVerified,
+            setProfile,
+          });
+          return;
+        }
 
-      destroySession();
-      clearEmailVerified();
-      setAuthed(false);
-      setEmailVerified(false);
-    });
+        destroySession();
+        clearEmailVerified();
+        setAuthed(false);
+        setEmailVerified(false);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -438,6 +448,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (action.type === "collection") {
         noteCreatorEngagement(action.creatorId);
         navigate(Paths.creator(action.creatorId));
+        return;
+      }
+      if (action.type === "resume") {
+        const target = action.path.trim();
+        if (target.startsWith("/")) {
+          navigate(target);
+        }
         return;
       }
       if (action.type === "tab") {
@@ -668,21 +685,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
           // Start pack sync only after claim attempt so server wins with the gift.
           setAuthed(true);
+          // Resume only after authed flips — SoftGate must see authed=true.
+          window.setTimeout(() => {
+            if (
+              action &&
+              actionNeedsVerifiedEmail(action) &&
+              needsEmailVerification()
+            ) {
+              setVerifyPending(action);
+              setVerifyOpen(true);
+              return;
+            }
+            applyRecommendationDecision(action);
+          }, 0);
         }
       })();
-
-      window.setTimeout(() => {
-        if (
-          action &&
-          actionNeedsVerifiedEmail(action) &&
-          needsEmailVerification()
-        ) {
-          setVerifyPending(action);
-          setVerifyOpen(true);
-          return;
-        }
-        applyRecommendationDecision(action);
-      }, 0);
     },
     [applyRecommendationDecision, bumpInventoryRevision, pending],
   );
@@ -784,6 +801,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(
     () => ({
+      authReady,
       authed,
       guest,
       hasLoggedInBefore: returningUser,
@@ -836,6 +854,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       applyRecommendationDecision,
       authOpen,
+      authReady,
       authSheetEmail,
       authSheetMode,
       authed,
