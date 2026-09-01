@@ -26,7 +26,6 @@ import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { RewardsPage } from "@/pages/RewardsPage";
 import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
 import { EditProfilePage } from "@/pages/EditProfilePage";
-import { SearchPage } from "@/pages/SearchPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
 import { InboxPage } from "@/pages/InboxPage";
@@ -131,7 +130,17 @@ export function AppRoutes() {
             path="loggedInHome"
             element={<Navigate to={Paths.home} replace />}
           />
-          <Route path="search" element={<SearchPage />} />
+          {/* Search is the Home pack-library sheet — keep /search as a deep-link. */}
+          <Route
+            path="search"
+            element={
+              <Navigate
+                to={Paths.homeSearch}
+                replace
+                state={{ openPackLibrary: true }}
+              />
+            }
+          />
           <Route path="creator/:id" element={<CreatorPage />} />
           <Route
             path="collection"

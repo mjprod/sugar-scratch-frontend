@@ -561,17 +561,23 @@ const LIVE_PACK_ACCENT = {
 };
 
 /** Map `/api/models` foil packs → pack library cards (live prototype). */
-export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
+export function packLibraryFromModels(
+  models: BackendModel[],
+  cards: BackendCard[] | null = null,
+): FeaturedPack[] {
   const packs: FeaturedPack[] = [];
+  const motionCounts = cardCountsByModel(cards);
 
   for (const model of models) {
     const profile = profileFromModel(model);
     const creatorName = profile.name;
     const avatarRaw = model.avatar?.trim() ?? "";
-    const coverImageUrl = avatarRaw
+    const avatarCover = avatarRaw
       ? normalizeMediaUrl(avatarRaw)
       : CREATOR_PHOTOS.emma.avatar;
     const diamondCost = packUnitCost(profile.id);
+    // Motion cards published for this model on `/api/cards`.
+    const motionCardCount = motionCounts.get(profile.id) ?? 0;
 
     for (const foil of profile.packs) {
       const themeName =
@@ -584,6 +590,8 @@ export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
         foil.label?.trim() && !/^pack\s/i.test(foil.label)
           ? foil.label.trim()
           : `${creatorName} Pack`;
+      // Prefer API pack-face media (video/image); avatar only as fallback.
+      const coverImageUrl = foil.videoUrl?.trim() || avatarCover;
 
       packs.push({
         id: foil.id,
@@ -597,7 +605,7 @@ export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
         price: { amount: diamondCost, currency: "SC" },
         diamondCost,
         collected: 0,
-        collectionTotal: 15,
+        collectionTotal: motionCardCount,
         accentColors: LIVE_PACK_ACCENT,
         isAvailable: true,
       });
@@ -609,8 +617,12 @@ export function packLibraryFromModels(models: BackendModel[]): FeaturedPack[] {
 
 async function loadPackLibrary(): Promise<FeaturedPack[]> {
   try {
-    const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
-    return packLibraryFromModels(models);
+    const [models, cards] = await Promise.all([
+      loadModels(),
+      fetchCards().catch(() => null),
+    ]);
+    await loadPackCatalog().catch(() => null);
+    return packLibraryFromModels(models, cards);
   } catch {
     return [];
   }

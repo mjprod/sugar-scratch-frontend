@@ -1283,7 +1283,9 @@ export function HomeFeedScreen({
             aria-label="Search"
             data-no-feed-drag
             onClick={() =>
-              navigate(Paths.search, { state: { from: Paths.discover } })
+              navigate(Paths.homeSearch, {
+                state: { openPackLibrary: true, from: Paths.discover },
+              })
             }
           >
             <Search className="hf-search-icon" aria-hidden="true" />

@@ -15,6 +15,10 @@ import {
   normalizeMediaUrl,
   type BackendModel,
 } from "./models";
+import {
+  fetchCards,
+  type BackendCard,
+} from "../shared/backend/collection";
 import { loadPackCatalog } from "./purchase";
 
 export type SearchCreator = {
@@ -114,9 +118,12 @@ function buildTrendingChips(
   return chips.slice(0, 7);
 }
 
-export function buildSearchCatalog(models: BackendModel[]): SearchCatalog {
+export function buildSearchCatalog(
+  models: BackendModel[],
+  cards: BackendCard[] | null = null,
+): SearchCatalog {
   const creators = creatorsFromModels(models);
-  const packs = packsFromFeatured(packLibraryFromModels(models));
+  const packs = packsFromFeatured(packLibraryFromModels(models, cards));
   const ranked = leaderboardFromModels(models);
   const packById = new Map(packs.map((p) => [p.id, p]));
   const trendingPacks = ranked
@@ -181,8 +188,12 @@ export function filterSearchCatalog(
 }
 
 export async function loadSearchCatalog(): Promise<SearchCatalog> {
-  const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
-  return buildSearchCatalog(models);
+  const [models, cards] = await Promise.all([
+    loadModels(),
+    fetchCards().catch(() => null),
+  ]);
+  await loadPackCatalog().catch(() => null);
+  return buildSearchCatalog(models, cards);
 }
 
 /** Mirror browse foil routing: foil id for purchase URL, parent model when ids match. */

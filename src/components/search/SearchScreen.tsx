@@ -21,7 +21,6 @@ import {
 } from "@/services/search";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { isVideoSrc } from "@/services/models";
-
 /** Hold the search bar until the pack-library panel has mostly slid up. */
 const BAR_ENTER_DELAY = 0.28;
 /** First body cascade starts after the bar begins fading in. */
@@ -558,7 +557,6 @@ function EmptyResults({
     ".search-pack-card",
     suggestPacks.length,
   );
-
   return (
     <>
       <SearchReveal className="search-empty">
@@ -630,6 +628,7 @@ function EmptyResults({
         </SearchReveal>
       ) : null}
     </>
+  );
   );
 }
 

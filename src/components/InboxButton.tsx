@@ -97,9 +97,17 @@ export const PacksButton = forwardRef<
     variant?: "surface" | "ghost";
     /** Active while the cart page is open. */
     active?: boolean;
+    /** Mobile top-nav bubble drag target marker. */
+    "data-top-nav-target"?: string;
   }
 >(function PacksButton(
-  { onOpen, className = "", variant = "surface", active = false },
+  {
+    onOpen,
+    className = "",
+    variant = "surface",
+    active = false,
+    "data-top-nav-target": topNavTarget,
+  },
   ref,
 ) {
   const packCount = usePackPocketCount();
@@ -200,6 +208,7 @@ export const PacksButton = forwardRef<
       onClick={onOpen}
       aria-label={ariaLabel}
       aria-current={active ? "page" : undefined}
+      data-top-nav-target={topNavTarget}
       className={[
         variant === "ghost" ? ghostClasses : surfaceClasses,
         active ? "is-active" : "",

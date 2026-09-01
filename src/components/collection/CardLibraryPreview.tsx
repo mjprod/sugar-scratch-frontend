@@ -1,17 +1,17 @@
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import {
-  LIBRARY_PREVIEW_CARDS,
-  type LibraryPreviewCard,
-} from "@/services/collection";
+import type { LibraryPreviewCard } from "@/services/collection";
 
 export function CardLibraryPreview({
   onViewAll,
   onOpenCard,
+  cards = [],
 }: {
   onViewAll: () => void;
   onOpenCard: (card: LibraryPreviewCard) => void;
+  /** Revealed cards from the API / live inventory — never a static fixture list. */
+  cards?: LibraryPreviewCard[];
 }) {
-  const cards = LIBRARY_PREVIEW_CARDS;
+
 
   if (cards.length === 0) {
     return (
