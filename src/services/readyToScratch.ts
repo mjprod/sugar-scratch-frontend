@@ -124,6 +124,13 @@ export function getReadyToScratch(packId: string): ReadyScratchPack | null {
   return readAll().find((pack) => pack.packId === packId) ?? null;
 }
 
+/** Drop an opened pack from the shelf regardless of per-card reveal bookkeeping. */
+export function removeReadyToScratch(packId: string): void {
+  const packs = readAll();
+  const next = packs.filter((pack) => pack.packId !== packId);
+  if (next.length !== packs.length) writeAll(next);
+}
+
 export function listReadyToScratch(): ReadyScratchGroup[] {
   return readAll()
     .filter((pack) => {

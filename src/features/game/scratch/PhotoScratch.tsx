@@ -1,5 +1,7 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
+import { navigateBackOr } from "@/hooks/useGoBack";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchCatalogPhotoCards,
@@ -26,7 +28,7 @@ import {
 } from "../modules/gameSession";
 import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
-import { PhotoNoWinFeedback } from "../modules/PhotoNoWinFeedback";
+import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
@@ -39,7 +41,9 @@ import {
   claimNextTopSlot,
   loadSymbolTypes,
   matchedTopSlots,
+  resolveHuntPhase,
   resolveMatchGame,
+  resolveScratchOutcome,
   SYMBOL_TYPE_COUNT,
   TOP_SYMBOL_COUNT,
   type MatchGameOutcome,
@@ -50,9 +54,9 @@ import {
   unlockCountdownSound,
 } from "../modules/InitialCountdown";
 import {
-  resolveStageCoachPhase,
-  StageCoachHint,
-} from "../modules/StageCoachHint";
+  ScratchFrameProgress,
+  type SymbolDiscoveryBatch,
+} from "../modules/ScratchFrameProgress";
 import { TopSymbolBar, TOP_BAR_SHOWCASE_MS, type TopBarPhase } from "../modules/TopSymbolBar";
 import {
   CANVAS_HEIGHT,
@@ -324,32 +328,6 @@ function scheduleTone(
   osc.stop(startAt + durationS + 0.02);
 }
 
-function scheduleSlide(
-  ctx: AudioContext,
-  startAt: number,
-  fromHz: number,
-  toHz: number,
-  durationS: number,
-  volume: number,
-  type: OscillatorType = "triangle",
-) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(fromHz, startAt);
-  osc.frequency.exponentialRampToValueAtTime(
-    Math.max(toHz, 1),
-    startAt + durationS,
-  );
-  gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(startAt);
-  osc.stop(startAt + durationS + 0.02);
-}
-
 function playGameOutcomeSound(
   state: SymbolAudioState,
   outcome: GameResult,
@@ -420,10 +398,11 @@ function playGameOutcomeSound(
     return (endTime - now) * 1000 + GAME_OUTCOME_OVERLAY_PAD_MS;
   }
 
-  scheduleSlide(ctx, now, 340, 190, 0.52, 0.2, "sawtooth");
-  scheduleSlide(ctx, now + 0.62, 290, 130, 0.58, 0.18, "sawtooth");
-  scheduleSlide(ctx, now + 1.28, 220, 95, 0.72, 0.16, "triangle");
-  return 2.05 * 1000 + GAME_OUTCOME_OVERLAY_PAD_MS;
+  // No match is a resolved outcome, not a loss — a soft low chime that settles,
+  // never a descending "you lost" sting.
+  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
+  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
 function buildRevealSamples(mesh: TrackedMesh | null): Vec2[] {
@@ -728,6 +707,7 @@ function motionStatusLabel(status: string) {
 }
 
 export function PhotoScratch() {
+  const navigate = useNavigate();
   const { bumpInventoryRevision } = useAuth();
   const { addDiamonds } = useWallet();
   const bgImageRef = useRef<HTMLImageElement>(null);
@@ -892,6 +872,10 @@ export function PhotoScratch() {
   const [handSummaryDiamonds, setHandSummaryDiamonds] = useState<number | null>(
     null,
   );
+  const [frameDiscoveryBatches, setFrameDiscoveryBatches] = useState<
+    SymbolDiscoveryBatch[]
+  >([]);
+  const frameDiscoveryKeyRef = useRef(0);
   const [photoResult, setPhotoResult] = useState<{
     win: boolean;
     diamonds: number;
@@ -1118,6 +1102,8 @@ export function PhotoScratch() {
     resetGameOutcome();
     resetMatchRound();
     setRevealedSymbols(0);
+    setFrameDiscoveryBatches([]);
+    frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     setBodyFindHits(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     bodyFindHitsRef.current = Array.from(
@@ -1710,6 +1696,7 @@ export function PhotoScratch() {
           newlyRevealed,
           soundEnabledRef.current,
         );
+        pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
         if (nextSymbolCount >= SYMBOL_POINT_COUNT) {
           beginFinishAutoScratch();
@@ -1736,6 +1723,60 @@ export function PhotoScratch() {
     }
   }
   applyScratchAtUvRef.current = applyScratchAtUv;
+
+  function pushFrameDiscoveryBatch(
+    newlyRevealed: readonly number[],
+    foundAfter: number,
+  ) {
+    const stage = stageRef.current;
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    const fgCanvas = fgCanvasRef.current;
+    if (
+      !stage ||
+      !sample ||
+      !bodyPoints ||
+      !fgCanvas ||
+      newlyRevealed.length === 0
+    ) {
+      return;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    if (stageRect.width <= 0 || stageRect.height <= 0) return;
+    const frontCam = fgRendererRef.current?.getFrontPresentCamera() ?? {
+      x: 0,
+      y: 0,
+    };
+    const positions: SymbolDiscoveryBatch["positions"] = [];
+
+    for (const bodyIndex of newlyRevealed) {
+      const point = bodyPoints[bodyIndex];
+      if (!point) continue;
+      const world = sampleMeshUvToWorld(sample, point.u, point.v);
+      const from = worldPointToStage(world, fgCanvas, stage, frontCam);
+      positions.push({
+        nx: from.x / stageRect.width,
+        ny: from.y / stageRect.height,
+      });
+      const marker = bodyMarkerRefs.current[bodyIndex];
+      if (marker) {
+        marker.classList.remove("is-symbol-pop");
+        void marker.offsetWidth;
+        marker.classList.add("is-symbol-pop");
+      }
+    }
+
+    if (positions.length === 0) return;
+    setFrameDiscoveryBatches((prev) => [
+      ...prev,
+      {
+        key: (frameDiscoveryKeyRef.current += 1),
+        positions,
+        foundAfter,
+      },
+    ]);
+  }
 
   function removeFlyingMatch(id: number) {
     setFlyingMatches((current) => {
@@ -2112,6 +2153,8 @@ export function PhotoScratch() {
     resetGameOutcome();
     resetMatchRound();
     setRevealedSymbols(0);
+    setFrameDiscoveryBatches([]);
+    frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     setBodyFindHits(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     bodyFindHitsRef.current = Array.from(
@@ -2231,7 +2274,7 @@ export function PhotoScratch() {
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
-  const stageCoachPhase = resolveStageCoachPhase({
+  const huntPhase = resolveHuntPhase({
     active:
       hasBodySymbols &&
       entryReady &&
@@ -2242,6 +2285,24 @@ export function PhotoScratch() {
     found: revealedSymbols,
     total: SYMBOL_POINT_COUNT,
   });
+  const photoOutcome = resolveScratchOutcome({
+    scratchCompleted: photoResult != null,
+    photoCardFound: false,
+    diamondFound: (photoResult?.diamonds ?? 0) > 0,
+  });
+  // Keep the frame mounted through the no-match beat so its energy can drain
+  // instead of vanishing with the rest of the gameplay HUD.
+  const frameSettling = hasBodySymbols && photoOutcome === "no-match";
+  const frameProgressActive =
+    (hasBodySymbols &&
+      entryReady &&
+      !introActive &&
+      !introGateActive &&
+      !gameResult &&
+      handSummaryDiamonds == null &&
+      topBarPhase !== "center" &&
+      (huntPhase === "hunt" || revealedSymbols >= SYMBOL_POINT_COUNT)) ||
+    frameSettling;
   const autoScratchLocked =
     introActive ||
     (hasBodySymbols &&
@@ -2253,18 +2314,21 @@ export function PhotoScratch() {
     playlist.find((entry) => entry.id === selectedCardId)?.label ?? uploadLabel;
 
   function leavePhotoScratchAfterHand() {
+    setHandSummaryDiamonds(null);
     settleDonePhotoHand(addDiamonds);
     bumpInventoryRevision();
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get("game") === "1") {
-      navigateTo(Paths.collection);
-      return;
-    }
-    const card = params.get("card")?.trim() || "";
-    const model = params.get("model")?.trim() || "";
-    const motionCardId = card ? motionCardIdFromPhotoScratchId(card) : "";
-    navigateTo(collectionReturnHref(model, motionCardId));
+    const fallback =
+      params.get("game") === "1"
+        ? Paths.collection
+        : collectionReturnHref(
+            params.get("model")?.trim() || "",
+            params.get("card")?.trim()
+              ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
+              : "",
+          );
+    navigateBackOr(navigate, fallback);
   }
 
   return (
@@ -2688,11 +2752,12 @@ export function PhotoScratch() {
               onAllRevealed={onTopBarAllRevealed}
             />
           ) : null}
-          <StageCoachHint
-            key={stageCoachPhase}
-            phase={stageCoachPhase}
+          <ScratchFrameProgress
+            active={frameProgressActive}
             found={revealedSymbols}
             total={SYMBOL_POINT_COUNT}
+            batches={frameDiscoveryBatches}
+            settling={frameSettling}
           />
           <div
             className={`bg-drag-scale${isScratching ? " is-bg-blurred" : ""}`}
@@ -2825,7 +2890,7 @@ export function PhotoScratch() {
               )}
             </button>
           </div>
-          {photoResult?.win && photoResult.diamonds > 0 ? (
+          {photoResult && photoOutcome === "diamond" ? (
             <PhotoDiamondReveal
               key={photoResult.resultId}
               diamonds={photoResult.diamonds}
@@ -2833,10 +2898,9 @@ export function PhotoScratch() {
               onComplete={afterPhotoResultPresentation}
             />
           ) : null}
-          {photoResult && !(photoResult.win && photoResult.diamonds > 0) ? (
-            <PhotoNoWinFeedback
+          {photoResult && photoOutcome === "no-match" ? (
+            <NoMatchOutcome
               key={photoResult.resultId}
-              resultId={photoResult.resultId}
               onComplete={afterPhotoResultPresentation}
             />
           ) : null}

@@ -15,6 +15,48 @@ export type MatchGameOutcome = {
   result: "win" | "lose";
 };
 
+export type HuntPhase = "bar" | "hunt" | "hidden";
+
+/**
+ * Where the player is in a body-symbol card: scratching the top foil bar,
+ * hunting symbols on the photo, or neither. Gates the frame progress stroke.
+ */
+export function resolveHuntPhase(options: {
+  active: boolean;
+  topBarPhase: "center" | "docked" | "showcase";
+  found: number;
+  total?: number;
+}): HuntPhase {
+  const total = options.total ?? BODY_SYMBOL_COUNT;
+  if (!options.active) return "hidden";
+  if (options.topBarPhase === "showcase") return "hidden";
+  if (options.topBarPhase === "center") return "bar";
+  if (options.found >= total) return "hidden";
+  return "hunt";
+}
+
+export type ScratchOutcome =
+  | "scratching"
+  | "photo-card"
+  | "diamond"
+  | "no-match";
+
+/**
+ * What a finished card produced. "no-match" is a resolved outcome, not a
+ * failure — it only applies once the scratch itself is complete, never while
+ * the player still has surface left to uncover.
+ */
+export function resolveScratchOutcome(options: {
+  scratchCompleted: boolean;
+  photoCardFound: boolean;
+  diamondFound: boolean;
+}): ScratchOutcome {
+  if (!options.scratchCompleted) return "scratching";
+  if (options.photoCardFound) return "photo-card";
+  if (options.diamondFound) return "diamond";
+  return "no-match";
+}
+
 export type SymbolTypeEntry = { src: string; label: string };
 
 export const DEFAULT_SYMBOL_TYPES: SymbolTypeEntry[] = [

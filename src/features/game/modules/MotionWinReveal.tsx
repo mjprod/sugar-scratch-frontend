@@ -113,7 +113,7 @@ export function MotionWinReveal({
 
   const showHeader =
     phase !== "entering" && phase !== "minimizing" && phase !== "complete";
-  const showConfirm = phase === "confirmed" || phase === "minimizing";
+  const showConfirm = phase === "confirmed";
   const showMini = phase === "minimizing" || phase === "complete";
   const fading = phase === "complete";
 

@@ -1,5 +1,4 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { recordWonPhotoCards } from "@/services/collectionState";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
@@ -28,16 +27,16 @@ import {
   unlockCountdownSound,
 } from "../modules/InitialCountdown";
 import {
-  resolveStageCoachPhase,
-  StageCoachHint,
-} from "../modules/StageCoachHint";
+  ScratchFrameProgress,
+  type SymbolDiscoveryBatch,
+} from "../modules/ScratchFrameProgress";
 import {
   TOP_BAR_SHOWCASE_MS,
   TopSymbolBar,
   type TopBarPhase,
 } from "../modules/TopSymbolBar";
 import { MotionWinReveal } from "../modules/MotionWinReveal";
-import { MotionNoWinFeedback } from "../modules/MotionNoWinFeedback";
+import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import {
   awardMotionCardPhotos,
   clearPendingMotionResult,
@@ -61,7 +60,9 @@ import {
   claimNextTopSlot,
   loadSymbolTypes,
   matchedTopSlots,
+  resolveHuntPhase,
   resolveMatchGame,
+  resolveScratchOutcome,
   SYMBOL_TYPE_COUNT,
   SYMBOL_TYPES,
   TOP_SYMBOL_COUNT,
@@ -609,32 +610,6 @@ function scheduleTone(
   osc.stop(startAt + durationS + 0.02);
 }
 
-function scheduleSlide(
-  ctx: AudioContext,
-  startAt: number,
-  fromHz: number,
-  toHz: number,
-  durationS: number,
-  volume: number,
-  type: OscillatorType = "triangle",
-) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(fromHz, startAt);
-  osc.frequency.exponentialRampToValueAtTime(
-    Math.max(toHz, 1),
-    startAt + durationS,
-  );
-  gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(startAt);
-  osc.stop(startAt + durationS + 0.02);
-}
-
 function playGameOutcomeSound(
   state: SymbolAudioState,
   outcome: GameResult,
@@ -705,11 +680,11 @@ function playGameOutcomeSound(
     return (endTime - now) * 1000 + GAME_OUTCOME_OVERLAY_PAD_MS;
   }
 
-  // Sad descending "wah wah" for a loss.
-  scheduleSlide(ctx, now, 340, 190, 0.52, 0.2, "sawtooth");
-  scheduleSlide(ctx, now + 0.62, 290, 130, 0.58, 0.18, "sawtooth");
-  scheduleSlide(ctx, now + 1.28, 220, 95, 0.72, 0.16, "triangle");
-  return 2.05 * 1000 + GAME_OUTCOME_OVERLAY_PAD_MS;
+  // No match is a resolved outcome, not a loss — a soft low chime that settles,
+  // never a descending "you lost" sting.
+  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
+  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
 function scratchZoomEasing(bounce: boolean) {
@@ -1514,6 +1489,10 @@ export function ScratchPrototype() {
   entryReadyRef.current = entryReady;
   const [sessionSymbols, setSessionSymbols] = useState(buildSessionSymbols);
   const [revealedSymbols, setRevealedSymbols] = useState(0);
+  const [frameDiscoveryBatches, setFrameDiscoveryBatches] = useState<
+    SymbolDiscoveryBatch[]
+  >([]);
+  const frameDiscoveryKeyRef = useRef(0);
   const [bodyRevealed, setBodyRevealed] = useState<boolean[]>(() =>
     Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
   );
@@ -2784,6 +2763,8 @@ export function ScratchPrototype() {
     setProgress(0);
     setClaimed(false);
     setRevealedSymbols(0);
+    setFrameDiscoveryBatches([]);
+    frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setBodyFindHits(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     bodyFindHitsRef.current = Array.from(
@@ -3112,7 +3093,7 @@ export function ScratchPrototype() {
     (!gameMode || gameVideosReady);
   const symbolsHuntComplete =
     useBodySymbols && revealedSymbols >= SYMBOL_SLOT_COUNT;
-  const stageCoachPhase = resolveStageCoachPhase({
+  const huntPhase = resolveHuntPhase({
     active:
       useBodySymbols &&
       matchStartUnlocked &&
@@ -3124,6 +3105,24 @@ export function ScratchPrototype() {
     found: revealedSymbols,
     total: SYMBOL_SLOT_COUNT,
   });
+  const motionOutcome = resolveScratchOutcome({
+    scratchCompleted: motionResult != null,
+    photoCardFound: Boolean(motionResult?.win && motionResult.photos.length > 0),
+    diamondFound: false,
+  });
+  // Keep the frame mounted through the no-match beat so its energy can drain
+  // instead of vanishing with the rest of the gameplay HUD.
+  const frameSettling = useBodySymbols && motionOutcome === "no-match";
+  const frameProgressActive =
+    (useBodySymbols &&
+      matchStartUnlocked &&
+      !introGateActive &&
+      !introActive &&
+      !introCover &&
+      !gameResult &&
+      topBarPhase !== "center" &&
+      (huntPhase === "hunt" || revealedSymbols >= SYMBOL_SLOT_COUNT)) ||
+    frameSettling;
   const autoScratchLocked =
     !matchStartUnlocked ||
     introActive ||
@@ -3202,6 +3201,8 @@ export function ScratchPrototype() {
     setProgress(0);
     setClaimed(false);
     setRevealedSymbols(0);
+    setFrameDiscoveryBatches([]);
+    frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setBodyFindHits(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     bodyFindHitsRef.current = Array.from(
@@ -3290,16 +3291,6 @@ export function ScratchPrototype() {
             .map((id) => catalog.photos.find((photo) => photo.id === id))
             .filter((photo): photo is PhotoCard => Boolean(photo))
         : [];
-      if (prize > 0 && photos.length > 0) {
-        const pack = awarded?.packScratch;
-        recordWonPhotoCards({
-          count: photos.length,
-          creatorId: pack?.creator
-            ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
-            : "",
-          creatorName: pack?.creator ?? "",
-        });
-      }
       const current = pending?.current ?? completedCardIdsRef.current.length + 1;
       const total = awarded?.motionCardIds.length ?? modelCards.length;
       if (!completedCardIdsRef.current.includes(finishedId)) {
@@ -3734,6 +3725,48 @@ export function ScratchPrototype() {
     });
   }
 
+  function pushFrameDiscoveryBatch(
+    newlyRevealed: readonly number[],
+    foundAfter: number,
+  ) {
+    const stage = stageRef.current;
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    if (!stage || !sample || !bodyPoints || newlyRevealed.length === 0) return;
+
+    const stageRect = stage.getBoundingClientRect();
+    if (stageRect.width <= 0 || stageRect.height <= 0) return;
+    const positions: SymbolDiscoveryBatch["positions"] = [];
+
+    for (const bodyIndex of newlyRevealed) {
+      const point = bodyPoints[bodyIndex];
+      if (!point) continue;
+      const world = sampleMeshUvToWorld(sample, point.u, point.v);
+      const from = worldToStagePoint(world);
+      if (!from) continue;
+      positions.push({
+        nx: from.x / stageRect.width,
+        ny: from.y / stageRect.height,
+      });
+      const marker = bodyMarkerRefs.current[bodyIndex];
+      if (marker) {
+        marker.classList.remove("is-symbol-pop");
+        void marker.offsetWidth;
+        marker.classList.add("is-symbol-pop");
+      }
+    }
+
+    if (positions.length === 0) return;
+    setFrameDiscoveryBatches((prev) => [
+      ...prev,
+      {
+        key: (frameDiscoveryKeyRef.current += 1),
+        positions,
+        foundAfter,
+      },
+    ]);
+  }
+
   function spawnBodyMatchFlights(newlyRevealed: readonly number[]) {
     const stage = stageRef.current;
     const sample = trackedSampleRef.current;
@@ -3901,6 +3934,7 @@ export function ScratchPrototype() {
           newlyRevealed,
           soundEnabledRef.current,
         );
+        pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
         if (nextSymbolCount >= SYMBOL_SLOT_COUNT) {
           beginFinishAutoScratch();
@@ -4460,7 +4494,7 @@ export function ScratchPrototype() {
               </div>
             </div>
           ) : null}
-          {motionResult?.win && motionResult.photos.length > 0 ? (
+          {motionResult && motionOutcome === "photo-card" ? (
             <MotionWinReveal
               key={motionResult.resultId}
               photos={motionResult.photos}
@@ -4468,10 +4502,9 @@ export function ScratchPrototype() {
               onComplete={afterMotionResultPresentation}
             />
           ) : null}
-          {motionResult && !(motionResult.win && motionResult.photos.length > 0) ? (
-            <MotionNoWinFeedback
+          {motionResult && motionOutcome === "no-match" ? (
+            <NoMatchOutcome
               key={motionResult.resultId}
-              resultId={motionResult.resultId}
               onComplete={afterMotionResultPresentation}
             />
           ) : null}
@@ -4533,11 +4566,12 @@ export function ScratchPrototype() {
               onAllRevealed={onTopBarAllRevealed}
             />
           ) : null}
-          <StageCoachHint
-            key={stageCoachPhase}
-            phase={stageCoachPhase}
+          <ScratchFrameProgress
+            active={frameProgressActive}
             found={revealedSymbols}
             total={SYMBOL_SLOT_COUNT}
+            batches={frameDiscoveryBatches}
+            settling={frameSettling}
           />
           {!useBodySymbols && matchStartUnlocked ? (
             <div

@@ -993,89 +993,295 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
-/* On-stage coaching — bar foil, then body-symbol hunt. */
-.stage-coach {
+/* Continuous frame progress — outer card stroke (symbol hunt). */
+/* inset must stay 0 — `.stage` clips overflow, so a negative inset would
+   cut the whole stroke off (the frame lives just inside the card edge). */
+.scratch-frame-progress {
   position: absolute;
-  left: 50%;
-  z-index: 8;
-  margin: 0;
-  padding: 9px 16px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    oklch(0.186 0.01 67.12 / 0.72) 0%,
-    oklch(0.136 0.006 71.35 / 0.78) 100%
-  );
-  border: 1px solid oklch(0.949 0.051 83.41 / 0.22);
-  box-shadow:
-    0 8px 28px oklch(0 0 0 / 0.35),
-    inset 0 1px 0 oklch(1 0 0 / 0.1);
-  color: oklch(0.981 0.019 83.06 / 0.95);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  white-space: nowrap;
+  inset: 0;
+  z-index: 7;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  transform: translateX(-50%);
 }
 
-.stage-coach-label {
-  display: inline-block;
+.scratch-frame-progress__svg,
+.scratch-frame-progress__energy {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
-.stage-coach--bar {
-  top: calc(50% + 56px);
-  animation: stage-coach-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both;
+.scratch-frame-progress__energy {
+  z-index: 4;
 }
 
-.stage.is-bar-phase:has(.top-symbol-bar.is-cleared) .stage-coach--bar {
-  animation: stage-coach-exit 280ms ease-in forwards;
+.scratch-frame-progress__svg {
+  z-index: 2;
 }
 
-.stage-coach--hunt {
-  top: calc(max(12px, env(safe-area-inset-top)) + 62px);
-  animation: stage-coach-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 380ms both;
+.scratch-frame-progress__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 1.5;
 }
 
-.stage-coach--hunt .stage-coach-label {
-  animation: stage-coach-tick 320ms cubic-bezier(0.34, 1.4, 0.64, 1);
+.scratch-frame-progress__progress {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: var(--frame-perimeter, 2000);
+  stroke-dashoffset: var(--frame-dashoffset, 2000);
+  opacity: 0.95;
+  filter: drop-shadow(0 0 6px rgba(255, 155, 203, 0.5));
+  /* No delay: a delay restarts on every find, so fast scratching would stall the
+     stroke and then jump. It has to chase the count in real time instead. */
+  transition: stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
 }
 
-@keyframes stage-coach-enter {
+.scratch-frame-progress.is-milestone-4 .scratch-frame-progress__progress,
+.scratch-frame-progress.is-milestone-8 .scratch-frame-progress__progress {
+  animation: scratch-frame-milestone-pulse 420ms ease-out;
+}
+
+.scratch-frame-progress.is-almost .scratch-frame-progress__progress {
+  opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 155, 203, 0.45));
+}
+
+/* No match: the accumulated energy glows once, then drains back to the bare
+   track. Settling, never a red flash or a break. */
+.scratch-frame-progress.is-settling .scratch-frame-progress__progress {
+  transition: none;
+  animation: scratch-frame-settle 600ms ease-out forwards;
+}
+
+.scratch-frame-progress.is-settling .scratch-frame-progress__feedback {
+  display: none;
+}
+
+@keyframes scratch-frame-settle {
   0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(14px) scale(0.9);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 6px rgba(255, 155, 203, 0.5));
+  }
+  20% {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px rgba(255, 155, 203, 0.7));
   }
   100% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
-}
-
-@keyframes stage-coach-exit {
-  0% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
-  }
-  100% {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px) scale(0.92);
+    filter: drop-shadow(0 0 0 rgba(255, 155, 203, 0));
   }
 }
 
-@keyframes stage-coach-tick {
-  0% {
-    transform: scale(0.92);
-    opacity: 0.65;
+@media (prefers-reduced-motion: reduce) {
+  .scratch-frame-progress.is-settling .scratch-frame-progress__progress {
+    animation: none;
+    opacity: 0;
   }
+}
+
+.scratch-frame-progress__sweep {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: var(--frame-perimeter, 2000);
+  stroke-dashoffset: var(--frame-perimeter, 2000);
+  opacity: 0.95;
+  filter: drop-shadow(0 0 14px rgba(255, 214, 176, 0.75));
+  animation: scratch-frame-sweep 760ms ease-out forwards;
+}
+
+.scratch-frame-progress.is-pulsing .scratch-frame-progress__progress {
+  animation: scratch-frame-complete-pulse 280ms ease-out;
+}
+
+/* Comet segment on a pathLength=1 path — dash values are fractions of the
+   trail, so travel speed reads the same however far the symbol is from an edge. */
+.scratch-frame-progress__trail {
+  fill: none;
+  stroke: rgba(255, 226, 238, 0.95);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(255, 155, 203, 0.85));
+  stroke-dasharray: 0.32 1;
+  stroke-dashoffset: 0.32;
+  animation: scratch-energy-trail 420ms cubic-bezier(0.4, 0.1, 0.35, 1) forwards;
+}
+
+.scratch-frame-progress__feedback {
+  position: absolute;
+  right: 16px;
+  bottom: 18px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 7px 10px;
+  border-radius: 11px;
+  background: rgba(10, 8, 15, 0.72);
+  border: 1px solid rgba(255, 170, 220, 0.25);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  animation: scratch-feedback-in 200ms ease-out both;
+}
+
+.scratch-frame-progress__feedback.is-fading {
+  animation: scratch-feedback-out 250ms ease-in forwards;
+}
+
+.scratch-frame-progress__feedback strong {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.scratch-frame-progress__feedback span {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@keyframes scratch-energy-trail {
+  0% {
+    stroke-dashoffset: 0.32;
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  78% {
+    opacity: 1;
+  }
+
+  100% {
+    stroke-dashoffset: -1;
+    opacity: 0;
+  }
+}
+
+@keyframes scratch-frame-milestone-pulse {
+  0% {
+    filter: drop-shadow(0 0 2px rgba(255, 155, 203, 0.2));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 155, 203, 0.45));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 4px rgba(255, 155, 203, 0.25));
+  }
+}
+
+@keyframes scratch-frame-sweep {
+  from {
+    stroke-dashoffset: var(--frame-perimeter, 2000);
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes scratch-frame-complete-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  45% {
+    transform: scale(1.006);
+    opacity: 1;
+  }
+
   100% {
     transform: scale(1);
+    opacity: 0.85;
+  }
+}
+
+@keyframes scratch-feedback-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
     opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scratch-feedback-out {
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.body-symbol-marker.is-symbol-pop {
+  animation: symbol-found-pop 420ms cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+@keyframes symbol-found-pop {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  40% {
+    transform: scale(1.18);
+    filter: brightness(1.5);
+  }
+
+  70% {
+    transform: scale(1.08);
+    filter: brightness(1.25);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scratch-frame-progress__progress {
+    transition: stroke-dashoffset 120ms linear;
+  }
+
+  .scratch-frame-progress__trail,
+  .scratch-frame-progress__sweep,
+  .scratch-frame-progress.is-pulsing .scratch-frame-progress__progress,
+  .scratch-frame-progress.is-milestone-4 .scratch-frame-progress__progress,
+  .scratch-frame-progress.is-milestone-8 .scratch-frame-progress__progress {
+    animation: none !important;
+  }
+
+  .body-symbol-marker.is-symbol-pop {
+    animation: symbol-found-pop-reduced 160ms ease-out;
+  }
+
+  @keyframes symbol-found-pop-reduced {
+    0% {
+      filter: brightness(1);
+    }
+
+    100% {
+      filter: brightness(1.35);
+    }
   }
 }
 
@@ -1248,10 +1454,7 @@ textarea:focus-visible {
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant,
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched,
   .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing,
-  .lottie-clipper-peel,
-  .stage-coach--bar,
-  .stage-coach--hunt,
-  .stage-coach--hunt .stage-coach-label {
+  .lottie-clipper-peel {
     animation: none !important;
     filter: none !important;
     opacity: 1;
@@ -1912,18 +2115,6 @@ textarea:focus-visible {
     height: 30px;
   }
 
-  .stage-coach {
-    font-size: 12px;
-    padding: 8px 14px;
-  }
-
-  .stage-coach--bar {
-    top: calc(50% + 52px);
-  }
-
-  .stage-coach--hunt {
-    top: calc(max(12px, env(safe-area-inset-top)) + 56px);
-  }
 }
 
 .scratch-progress-value {
