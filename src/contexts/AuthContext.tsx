@@ -96,6 +96,19 @@ function isHighIntentForDefer(action: ProtectedAction) {
   );
 }
 
+/** Profile soft-gates must not resume after first-run onboarding (Discover instead). */
+function isProfileOnboardingResume(action: ProtectedAction) {
+  if (action.type === "tab") return action.tab === "profile";
+  if (action.type !== "resume") return false;
+  const pathname = action.path.trim().split(/[?#]/)[0] ?? "";
+  return (
+    pathname === Paths.profile ||
+    pathname.startsWith(`${Paths.profile}/`) ||
+    pathname === Paths.settings ||
+    pathname.startsWith(`${Paths.settings}/`)
+  );
+}
+
 /** Mid-flow actions that should resume after login instead of going Home. */
 function shouldResumeAfterAuth(action: ProtectedAction | null) {
   if (!action) return false;
@@ -470,13 +483,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       scrollToDailyReward?: boolean;
     }) => {
       // First-run / post-recommend always lands on Discover — not Profile.
-      // Soft-gate from /profile would otherwise resume that tab after onboarding.
+      // Soft-gate from /profile now queues { type: "resume", path } (or the
+      // older tab form); both would otherwise send new users back to Profile.
       const deferred = opts?.deferred ?? null;
       const resume =
-        deferred &&
-        !(deferred.type === "tab" && deferred.tab === "profile")
-          ? deferred
-          : null;
+        deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
 
       if (resume) {
         navigate(Paths.discover);
