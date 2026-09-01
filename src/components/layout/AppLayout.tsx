@@ -162,7 +162,7 @@ export function AppLayout() {
           coins={guest ? null : coins}
           balance={guest ? null : diamonds}
           onOpenStore={openStore}
-          onOpenHome={() => requestTab("home")}
+          onOpenHome={() => requestTab("feed")}
           visible
           trailing={mobileTrailing}
         />

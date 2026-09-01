@@ -106,7 +106,7 @@ export function TopNav({
         coins={coins}
         balance={diamonds}
         onOpenStore={onOpenStore}
-        onOpenHome={() => onTabChange("home")}
+        onOpenHome={() => onTabChange("feed")}
         visible={showMobileDiamond && showBalances}
         trailing={mobilePacks}
       />
@@ -122,7 +122,7 @@ export function TopNav({
         <div className="top-nav-desktop-inner page-container flex h-full items-center gap-6">
           <button
             type="button"
-            onClick={() => onTabChange("home")}
+            onClick={() => onTabChange("feed")}
             aria-label="Sugar Scratch Home"
             className="top-nav-brand shrink-0 transition hover:opacity-90"
           >

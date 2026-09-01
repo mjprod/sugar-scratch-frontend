@@ -886,6 +886,12 @@ export function LiquidGlassNav({
     [active, onReselect, onTabChange],
   );
 
+  /** Logo always leaves secondary/immersive routes (tear, pack pocket, etc.). */
+  const goHome = useCallback(() => {
+    if (suppressTabClickRef.current) return;
+    onTabChange("feed");
+  }, [onTabChange]);
+
   const handleTopBubblePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return;
@@ -1196,7 +1202,7 @@ export function LiquidGlassNav({
           className="nav-test-top-brand"
           aria-label="Sugar Scratch Home"
           tabIndex={hidden ? -1 : undefined}
-          onClick={() => selectTab("feed")}
+          onClick={goHome}
         >
           <img
             src="/svg/logoSugarScratch.svg"
