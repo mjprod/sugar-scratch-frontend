@@ -35,6 +35,7 @@ import { Paths } from "@/routes/Paths";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
+  advanceHuntHintCycle,
   applyBodyFindHits,
   buildBodySymbols,
   buildTopSymbols,
@@ -46,6 +47,7 @@ import {
   resolveScratchOutcome,
   SYMBOL_TYPE_COUNT,
   TOP_SYMBOL_COUNT,
+  type HuntHintCycle,
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import {
@@ -139,6 +141,17 @@ const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
  * upscale a soft canvas. */
 const BODY_SYMBOL_ICON_PX = 36;
+
+// Ring one unfound mark at a time once the player is idle and either only a few
+// remain or the garment already reads as finished. The garment threshold is the
+// generous one (a grid point ticks when a stroke passes within SCRATCH_RADIUS),
+// while a symbol needs the scratch map itself past
+// SYMBOL_SCRATCH_REVEAL_THRESHOLD at its exact UV — so the card can look done
+// with symbols still missing, leaving nowhere obvious left to scratch.
+const HINT_REMAINING_MAX = 3;
+const HINT_IDLE_MS = 2200;
+const HINT_PULSE_DWELL_MS = 2600;
+const HINT_PULSE_GAP_MS = 1600;
 
 type FlyingMatch = {
   id: number;
@@ -725,6 +738,20 @@ export function PhotoScratch() {
   const revealedPointsRef = useRef<boolean[]>(
     Array.from({ length: SYMBOL_POINT_COUNT }, () => false),
   );
+  /** Single shared pulsar — repositioned onto one unfound mark at a time. */
+  const huntPulsarRef = useRef<HTMLDivElement | null>(null);
+  const huntPulsarStyleRef = useRef({
+    transform: "",
+    active: false,
+    index: -1,
+  });
+  /** Last scratch activity — the pulsar waits HINT_IDLE_MS after this. */
+  const huntHintActivityAtRef = useRef(performance.now());
+  const huntHintCycleRef = useRef<HuntHintCycle>({
+    index: -1,
+    shownAt: 0,
+    phase: "show",
+  });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const isScratchingRef = useRef(false);
   const scratchStartedRef = useRef(false);
@@ -1571,6 +1598,69 @@ export function PhotoScratch() {
           }
           marker.classList.toggle("is-revealed", visible);
         }
+
+        // Nudge toward one still-unfound mark once the player has run out of
+        // obvious surface to scratch, or is down to the last few.
+        const nowMs = performance.now();
+        const remainingSymbols =
+          SYMBOL_POINT_COUNT - revealedSymbolsRef.current;
+        const pulsarEligible =
+          hasBodySymbolsRef.current &&
+          topBarPhaseRef.current === "docked" &&
+          !claimedRef.current &&
+          !isBodyScratchLocked() &&
+          remainingSymbols > 0 &&
+          (remainingSymbols <= HINT_REMAINING_MAX ||
+            isGarmentFullyRevealed(
+              revealedCountRef.current,
+              revealSamplesRef.current.length,
+              false,
+            )) &&
+          !isScratchingRef.current &&
+          nowMs - huntHintActivityAtRef.current >= HINT_IDLE_MS;
+        const activePulsarIndex = advanceHuntHintCycle(
+          huntHintCycleRef.current,
+          {
+            now: nowMs,
+            revealed: revealedPointsRef.current,
+            eligible: pulsarEligible,
+            dwellMs: HINT_PULSE_DWELL_MS,
+            gapMs: HINT_PULSE_GAP_MS,
+          },
+        );
+
+        const pulsar = huntPulsarRef.current;
+        const pulsarApplied = huntPulsarStyleRef.current;
+        if (pulsar) {
+          if (activePulsarIndex >= 0) {
+            const pt = bodyPoints[activePulsarIndex];
+            const world = sampleMeshUvToWorld(sample, pt.u, pt.v);
+            const stagePos = worldPointToStage(
+              world,
+              fgCanvas,
+              stage,
+              frontCam,
+            );
+            const transform = `translate(${stagePos.x}px, ${stagePos.y}px)`;
+            if (
+              !pulsarApplied.active ||
+              pulsarApplied.index !== activePulsarIndex
+            ) {
+              pulsar.classList.add("is-active");
+              pulsarApplied.active = true;
+              pulsarApplied.index = activePulsarIndex;
+            }
+            if (pulsarApplied.transform !== transform) {
+              pulsar.style.transform = transform;
+              pulsarApplied.transform = transform;
+            }
+          } else if (pulsarApplied.active) {
+            pulsar.classList.remove("is-active");
+            pulsarApplied.active = false;
+            pulsarApplied.index = -1;
+            pulsarApplied.transform = "";
+          }
+        }
       }
       frameId = requestAnimationFrame(render);
     };
@@ -1883,6 +1973,7 @@ export function PhotoScratch() {
   }
 
   function addScratch(clientX: number, clientY: number) {
+    huntHintActivityAtRef.current = performance.now();
     const point = getCanvasPoint(clientX, clientY);
     const sample = trackedSampleRef.current;
     if (!point || !sample) return;
@@ -2264,6 +2355,9 @@ export function PhotoScratch() {
   }
 
   function onPointerUp() {
+    // Idle window starts when the finger lifts, so holding still mid-stroke
+    // doesn't make the hint appear the instant they let go.
+    huntHintActivityAtRef.current = performance.now();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
@@ -2823,6 +2917,17 @@ export function PhotoScratch() {
                   </div>
                 ))
               : null}
+            {hasBodySymbols ? (
+              <div
+                ref={huntPulsarRef}
+                className="hunt-hint-pulsar"
+                aria-hidden="true"
+              >
+                <span className="hunt-hint-pulsar-ring" />
+                <span className="hunt-hint-pulsar-ring hunt-hint-pulsar-ring--delay" />
+                <span className="hunt-hint-pulsar-core" />
+              </div>
+            ) : null}
             {flyingMatches.map((coin) => (
               <div
                 key={coin.id}

@@ -35,6 +35,71 @@ export function resolveHuntPhase(options: {
   return "hunt";
 }
 
+export type HuntHintCycle = {
+  /** Symbol index currently held, or -1 when nothing is showing. */
+  index: number;
+  shownAt: number;
+  phase: "show" | "gap";
+};
+
+/** Next unfound symbol index after `afterIndex`, wrapping. -1 when all found. */
+export function pickNextUnfoundSymbol(
+  revealed: readonly boolean[],
+  afterIndex: number,
+): number {
+  const unfound: number[] = [];
+  for (let i = 0; i < revealed.length; i += 1) {
+    if (!revealed[i]) unfound.push(i);
+  }
+  if (unfound.length === 0) return -1;
+  const next = unfound.find((i) => i > afterIndex);
+  return next ?? unfound[0];
+}
+
+/**
+ * Step the one-at-a-time hint cycle: hold a mark for `dwellMs`, pause `gapMs`,
+ * then ring the next unfound one. Never more than one hint on screen, so the
+ * card stays a hunt rather than a map. Mutates `cycle` in place — the render
+ * loop calls this every frame. Returns the index to ring, or -1 for none.
+ */
+export function advanceHuntHintCycle(
+  cycle: HuntHintCycle,
+  options: {
+    now: number;
+    revealed: readonly boolean[];
+    eligible: boolean;
+    dwellMs: number;
+    gapMs: number;
+  },
+): number {
+  const { now, revealed, eligible, dwellMs, gapMs } = options;
+  if (!eligible) {
+    cycle.index = -1;
+    cycle.shownAt = 0;
+    cycle.phase = "show";
+    return -1;
+  }
+  if (cycle.phase === "gap") {
+    if (now - cycle.shownAt >= gapMs) {
+      cycle.index = pickNextUnfoundSymbol(revealed, cycle.index);
+      cycle.shownAt = now;
+      cycle.phase = "show";
+    }
+  } else if (cycle.index < 0) {
+    cycle.index = pickNextUnfoundSymbol(revealed, -1);
+    cycle.shownAt = now;
+    cycle.phase = "show";
+  } else if (revealed[cycle.index]) {
+    // Found while showing — clear, then gap before the next mark.
+    cycle.phase = "gap";
+    cycle.shownAt = now;
+  } else if (now - cycle.shownAt >= dwellMs) {
+    cycle.phase = "gap";
+    cycle.shownAt = now;
+  }
+  return cycle.phase === "show" ? cycle.index : -1;
+}
+
 export type ScratchOutcome =
   | "scratching"
   | "photo-card"

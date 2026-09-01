@@ -3723,6 +3723,25 @@ dd {
   }
 }
 
+/* The rings start at opacity 0 and only show mid-beat, so stopping the
+   animation alone would hide the hint outright. Hold them still and visible. */
+@media (prefers-reduced-motion: reduce) {
+  .hunt-hint-pulsar-ring,
+  .hunt-hint-pulsar-core {
+    animation: none;
+  }
+
+  .hunt-hint-pulsar-ring {
+    opacity: 0.5;
+    transform: scale(0.7);
+  }
+
+  .hunt-hint-pulsar-ring--delay {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+}
+
 .body-symbol-icon {
   display: flex;
   align-items: center;

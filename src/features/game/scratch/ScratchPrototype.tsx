@@ -54,6 +54,7 @@ import {
   type PhotoCard,
 } from "../modules/session";
 import {
+  advanceHuntHintCycle,
   applyBodyFindHits,
   buildBodySymbols,
   buildTopSymbols,
@@ -66,6 +67,7 @@ import {
   SYMBOL_TYPE_COUNT,
   SYMBOL_TYPES,
   TOP_SYMBOL_COUNT,
+  type HuntHintCycle,
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import { PackProgress } from "../modules/PackProgress";
@@ -935,19 +937,6 @@ const HINT_IDLE_MS = 2200;
 const HINT_PULSE_DWELL_MS = 2600;
 const HINT_PULSE_GAP_MS = 1600;
 
-function pickNextUnfoundSymbol(
-  revealed: boolean[],
-  afterIndex: number,
-): number {
-  const unfound: number[] = [];
-  for (let i = 0; i < revealed.length; i += 1) {
-    if (!revealed[i]) unfound.push(i);
-  }
-  if (unfound.length === 0) return -1;
-  const next = unfound.find((i) => i > afterIndex);
-  return next ?? unfound[0];
-}
-
 // Bilinearly interpolate the deformed mesh at a fractional UV grid position to
 // get its current canvas-pixel location (the mesh UV grid is regular 0..1).
 // sampleMeshUvToWorld lives in meshGeometry.ts
@@ -1399,10 +1388,10 @@ export function ScratchPrototype() {
   /** Last scratch / pointer activity — pulsars wait HINT_IDLE_MS after this. */
   const huntHintActivityAtRef = useRef(performance.now());
   /** One-at-a-time pulsar: show one mark, then gap, then the next. */
-  const huntHintCycleRef = useRef({
+  const huntHintCycleRef = useRef<HuntHintCycle>({
     index: -1,
     shownAt: 0,
-    phase: "show" as "show" | "gap",
+    phase: "show",
   });
   const useBodySymbolsRef = useRef(false);
   const revealedPointsRef = useRef<boolean[]>(
@@ -2364,34 +2353,16 @@ export function ScratchPrototype() {
             remainingSymbols > 0 &&
             remainingSymbols <= HINT_REMAINING_MAX &&
             idleLongEnough;
-          const cycle = huntHintCycleRef.current;
-          if (!pulsarEligible) {
-            cycle.index = -1;
-            cycle.shownAt = 0;
-            cycle.phase = "show";
-          } else {
-            const revealed = revealedPointsRef.current;
-            if (cycle.phase === "gap") {
-              if (nowMs - cycle.shownAt >= HINT_PULSE_GAP_MS) {
-                cycle.index = pickNextUnfoundSymbol(revealed, cycle.index);
-                cycle.shownAt = nowMs;
-                cycle.phase = "show";
-              }
-            } else if (cycle.index < 0) {
-              cycle.index = pickNextUnfoundSymbol(revealed, -1);
-              cycle.shownAt = nowMs;
-              cycle.phase = "show";
-            } else if (revealed[cycle.index]) {
-              // Found while showing — clear, then gap before the next mark.
-              cycle.phase = "gap";
-              cycle.shownAt = nowMs;
-            } else if (nowMs - cycle.shownAt >= HINT_PULSE_DWELL_MS) {
-              cycle.phase = "gap";
-              cycle.shownAt = nowMs;
-            }
-          }
-          const activePulsarIndex =
-            pulsarEligible && cycle.phase === "show" ? cycle.index : -1;
+          const activePulsarIndex = advanceHuntHintCycle(
+            huntHintCycleRef.current,
+            {
+              now: nowMs,
+              revealed: revealedPointsRef.current,
+              eligible: pulsarEligible,
+              dwellMs: HINT_PULSE_DWELL_MS,
+              gapMs: HINT_PULSE_GAP_MS,
+            },
+          );
           for (let index = 0; index < SYMBOL_SLOT_COUNT; index += 1) {
             const marker = bodyMarkerRefs.current[index];
             const revealed = revealedPointsRef.current[index];
