@@ -11,6 +11,7 @@ import { resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   getReadyToScratch,
   listReadyToScratch,
+  removeReadyToScratch,
   type ReadyScratchGroup,
 } from "@/services/readyToScratch";
 import {
@@ -100,6 +101,18 @@ function listReadyMotionFromSession(): ReadyScratchGroup[] {
 }
 
 /**
+ * Heal shelf rows stranded by a hand that already left the motion phase.
+ * persistPackScratchInventory drops them going forward; this catches packs
+ * finished before that guard existed.
+ */
+function pruneFinishedMotionInventory() {
+  for (const session of listStoredGameSessions()) {
+    const packId = session.packScratch?.readyPackId;
+    if (packId && session.phase !== "motion") removeReadyToScratch(packId);
+  }
+}
+
+/**
  * Unscratched Cards shelf:
  * - opened packs with unfinished Motion Scratch
  * - Photo Cards won but not yet photo-scratched
@@ -107,6 +120,7 @@ function listReadyMotionFromSession(): ReadyScratchGroup[] {
  * Never includes sealed (unopened) packs.
  */
 export function listAllReadyScratch(): ReadyScratchGroup[] {
+  pruneFinishedMotionInventory();
   const motion = listReadyToScratch().map((group) => ({
     ...group,
     kind: "motion" as const,

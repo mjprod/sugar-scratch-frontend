@@ -18,19 +18,23 @@
 
 @media (min-width: 701px) {
   .app-shell.app-shell--game {
-    width: min(430px, 100vw);
-    height: min(100dvh, calc(min(430px, 100vw) * 672 / 390));
-    min-width: 0;
-    min-height: 0;
+    /* Fit inside the route outlet — avoid position:fixed inside Framer Motion
+       transform ancestors (clips / mis-centers the phone frame). */
+    --game-shell-w: min(430px, 100cqw, calc(100cqh * 390 / 672));
+    width: var(--game-shell-w);
+    height: min(100cqh, calc(var(--game-shell-w) * 672 / 390));
     max-width: 430px;
-    max-height: 100dvh;
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    max-height: 100%;
+    aspect-ratio: 390 / 672;
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    margin: auto;
+    flex: none;
+    align-self: center;
     border-radius: 16px;
     overflow: hidden;
-    flex: none;
     box-shadow:
       0 0 0 1px oklch(1 0 0 / 0.08),
       0 24px 80px oklch(0 0 0 / 0.55);
@@ -45,6 +49,27 @@
   min-height: 0;
   overflow: hidden;
   background: oklch(0.184 0.005 67.5);
+  container-type: size;
+}
+
+/* Game / photo-scratch fill the outlet and center the phone frame on desktop. */
+.app-layout__immersive {
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+  background: oklch(0.131 0.01 285);
+}
+
+@media (max-width: 700px) {
+  .app-layout__immersive .app-shell.app-shell--game {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 /* Product embed: playable stage only — hide prototype chrome. */
@@ -159,6 +184,24 @@
   background: oklch(0.157 0.013 284.85 / 0.9);
 }
 
+.stage-game .motion-win-reveal__stage {
+  min-height: min(168px, 24cqh);
+  max-width: 100%;
+}
+
+.stage-game .motion-win-reveal__card {
+  width: min(108px, 21cqw);
+}
+
+.stage-game .motion-win-reveal__stage.is-count-1 .motion-win-reveal__card {
+  width: min(148px, 34cqw);
+}
+
+.stage-game .motion-win-reveal__stage.is-count-2 .motion-win-reveal__card,
+.stage-game .motion-win-reveal__stage.is-count-3 .motion-win-reveal__card {
+  width: min(96px, 19cqw);
+}
+
 .game-exit-modal {
   position: fixed;
   inset: 0;
@@ -247,6 +290,29 @@
   touch-action: none;
 }
 
+.motion-win-reveal.is-minimizing,
+.motion-win-reveal.is-fading {
+  pointer-events: none;
+}
+
+.motion-win-reveal.is-minimizing .motion-win-reveal__backdrop {
+  animation: motion-win-backdrop-out 280ms ease-out forwards;
+}
+
+.motion-win-reveal.is-minimizing .motion-win-reveal__center {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes motion-win-backdrop-out {
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+  }
+}
+
 .motion-win-reveal.is-fading {
   pointer-events: none;
   animation: motion-win-fade-out 180ms ease-out forwards;
@@ -309,9 +375,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 64px 16px 88px;
+  gap: clamp(8px, 2cqh, 14px);
+  padding:
+    max(48px, calc(12px + env(safe-area-inset-top, 0px)))
+    16px
+    max(56px, calc(12px + env(safe-area-inset-bottom, 0px)));
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .motion-win-reveal__header {
@@ -455,9 +525,9 @@
 
 .motion-win-reveal__mini {
   position: absolute;
-  top: max(56px, calc(12px + env(safe-area-inset-top, 0px)));
+  top: max(52px, calc(12px + env(safe-area-inset-top, 0px)));
   right: max(12px, env(safe-area-inset-right, 0px));
-  z-index: 2;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -693,7 +763,12 @@
   display: none;
 }
 
-.photo-no-win {
+/* No match — a resolved card outcome. Dims the card just enough to read the
+   result while keeping the creator visible underneath. Staged entrance runs
+   200→780ms so the scratch has a beat to land before the verdict appears, then
+   it holds 2s and fades itself out; no tap needed to reach the next card.
+   Blocks pointer input meanwhile so stray strokes don't hit the next card. */
+.no-match {
   position: absolute;
   inset: 0;
   z-index: 28;
@@ -701,84 +776,101 @@
   place-items: center;
   pointer-events: auto;
   touch-action: none;
-  animation: motion-win-fade-out 360ms ease-out 1640ms both;
+  animation: motion-win-fade-out 300ms ease-out 2780ms both;
 }
 
-.photo-no-win__backdrop {
+.no-match__overlay {
   position: absolute;
   inset: 0;
-  background: oklch(0.08 0.01 284 / 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: oklch(0.08 0.01 284 / 0.28);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  animation: no-match-overlay-in 200ms ease-out 200ms both;
 }
 
-.photo-no-win__card {
+.no-match__content {
   position: relative;
   z-index: 1;
-  width: min(100% - 32px, 300px);
-  padding: 22px 18px;
-  border-radius: 18px;
-  border: 1px solid oklch(1 0 0 / 0.12);
-  background: oklch(0.157 0.013 284.85 / 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  animation: motion-win-header-in 520ms ease-out both;
+  padding: 0 24px;
 }
 
-.photo-no-win__title {
-  margin: 0;
-  color: oklch(1 0 0);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.photo-no-win__support {
-  margin: 8px 0 0;
-  color: oklch(1 0 0 / 0.62);
-  font-size: 13px;
-}
-
-.motion-no-win {
+/* Readability halo — no card/modal chrome, the result floats on the card. */
+.no-match__content::before {
+  content: "";
   position: absolute;
-  inset: 0;
-  z-index: 28;
-  display: grid;
-  place-items: center;
-  pointer-events: auto;
-  touch-action: none;
-  animation: motion-win-fade-out 280ms ease-out 1320ms both;
+  inset: -80px;
+  background: radial-gradient(
+    circle,
+    oklch(0.08 0.01 284 / 0.6) 0%,
+    oklch(0.08 0.01 284 / 0) 70%
+  );
+  pointer-events: none;
+  animation: no-match-overlay-in 200ms ease-out 200ms both;
 }
 
-.motion-no-win__backdrop {
-  position: absolute;
-  inset: 0;
-  background: oklch(0.08 0.01 284 / 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.motion-no-win__card {
+.no-match__icon {
   position: relative;
-  z-index: 1;
-  width: min(100% - 32px, 300px);
-  padding: 22px 18px;
-  border-radius: 18px;
-  border: 1px solid oklch(1 0 0 / 0.12);
-  background: oklch(0.157 0.013 284.85 / 0.92);
-  text-align: center;
-  animation: motion-win-header-in 360ms ease-out both;
+  width: 36px;
+  height: 36px;
+  color: oklch(0.84 0.11 340);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 8px oklch(0.78 0.15 348 / 0.25));
+  animation: no-match-icon-in 200ms ease-out 280ms both;
 }
 
-.motion-no-win__title {
-  margin: 0;
-  color: oklch(1 0 0);
-  font-size: 18px;
-  font-weight: 700;
+.no-match__title {
+  position: relative;
+  margin: 14px 0 0;
+  color: oklch(0.84 0.11 340);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  animation: no-match-rise-in 220ms ease-out 360ms both;
 }
 
-.motion-no-win__support {
-  margin: 8px 0 0;
-  color: oklch(1 0 0 / 0.62);
-  font-size: 13px;
+.no-match__subtitle {
+  position: relative;
+  margin: 10px 0 0;
+  color: oklch(1 0 0 / 0.68);
+  font-size: 14px;
+  font-weight: 400;
+  animation: no-match-overlay-in 200ms ease-out 450ms both;
+}
+
+@keyframes no-match-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes no-match-icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+@keyframes no-match-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes motion-win-dim {
@@ -1076,15 +1168,16 @@
   .motion-win-reveal__flip,
   .motion-win-reveal__stage,
   .motion-win-reveal__mini,
-  .motion-no-win,
-  .motion-no-win__card,
+  .no-match__overlay,
+  .no-match__content::before,
+  .no-match__icon,
+  .no-match__title,
+  .no-match__subtitle,
   .photo-diamond-reveal__backdrop,
   .photo-diamond-reveal__header,
   .photo-diamond-reveal__owned,
   .photo-diamond-reveal__hero,
-  .photo-diamond-reveal__mini,
-  .photo-no-win,
-  .photo-no-win__card {
+  .photo-diamond-reveal__mini {
     animation: none !important;
     transition: none !important;
   }

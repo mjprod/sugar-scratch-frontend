@@ -168,7 +168,14 @@ export function AppLayout() {
         />
       ) : null}
 
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={[
+          "relative flex min-h-0 flex-1 flex-col overflow-hidden",
+          hideChrome ? "app-layout__immersive" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <Outlet />
       </div>
 

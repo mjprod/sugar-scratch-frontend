@@ -1,5 +1,7 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
+import { navigateBackOr } from "@/hooks/useGoBack";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchCatalogPhotoCards,
@@ -26,22 +28,26 @@ import {
 } from "../modules/gameSession";
 import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
-import { PhotoNoWinFeedback } from "../modules/PhotoNoWinFeedback";
+import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { Paths } from "@/routes/Paths";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
+  advanceHuntHintCycle,
   applyBodyFindHits,
   buildBodySymbols,
   buildTopSymbols,
   claimNextTopSlot,
   loadSymbolTypes,
   matchedTopSlots,
+  resolveHuntPhase,
   resolveMatchGame,
+  resolveScratchOutcome,
   SYMBOL_TYPE_COUNT,
   TOP_SYMBOL_COUNT,
+  type HuntHintCycle,
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import {
@@ -50,9 +56,9 @@ import {
   unlockCountdownSound,
 } from "../modules/InitialCountdown";
 import {
-  resolveStageCoachPhase,
-  StageCoachHint,
-} from "../modules/StageCoachHint";
+  ScratchFrameProgress,
+  type SymbolDiscoveryBatch,
+} from "../modules/ScratchFrameProgress";
 import { TopSymbolBar, TOP_BAR_SHOWCASE_MS, type TopBarPhase } from "../modules/TopSymbolBar";
 import {
   CANVAS_HEIGHT,
@@ -135,6 +141,17 @@ const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
  * upscale a soft canvas. */
 const BODY_SYMBOL_ICON_PX = 36;
+
+// Ring one unfound mark at a time once the player is idle and either only a few
+// remain or the garment already reads as finished. The garment threshold is the
+// generous one (a grid point ticks when a stroke passes within SCRATCH_RADIUS),
+// while a symbol needs the scratch map itself past
+// SYMBOL_SCRATCH_REVEAL_THRESHOLD at its exact UV — so the card can look done
+// with symbols still missing, leaving nowhere obvious left to scratch.
+const HINT_REMAINING_MAX = 3;
+const HINT_IDLE_MS = 2200;
+const HINT_PULSE_DWELL_MS = 2600;
+const HINT_PULSE_GAP_MS = 1600;
 
 type FlyingMatch = {
   id: number;
@@ -324,32 +341,6 @@ function scheduleTone(
   osc.stop(startAt + durationS + 0.02);
 }
 
-function scheduleSlide(
-  ctx: AudioContext,
-  startAt: number,
-  fromHz: number,
-  toHz: number,
-  durationS: number,
-  volume: number,
-  type: OscillatorType = "triangle",
-) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(fromHz, startAt);
-  osc.frequency.exponentialRampToValueAtTime(
-    Math.max(toHz, 1),
-    startAt + durationS,
-  );
-  gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(startAt);
-  osc.stop(startAt + durationS + 0.02);
-}
-
 function playGameOutcomeSound(
   state: SymbolAudioState,
   outcome: GameResult,
@@ -420,10 +411,11 @@ function playGameOutcomeSound(
     return (endTime - now) * 1000 + GAME_OUTCOME_OVERLAY_PAD_MS;
   }
 
-  scheduleSlide(ctx, now, 340, 190, 0.52, 0.2, "sawtooth");
-  scheduleSlide(ctx, now + 0.62, 290, 130, 0.58, 0.18, "sawtooth");
-  scheduleSlide(ctx, now + 1.28, 220, 95, 0.72, 0.16, "triangle");
-  return 2.05 * 1000 + GAME_OUTCOME_OVERLAY_PAD_MS;
+  // No match is a resolved outcome, not a loss — a soft low chime that settles,
+  // never a descending "you lost" sting.
+  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
+  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
 function buildRevealSamples(mesh: TrackedMesh | null): Vec2[] {
@@ -728,6 +720,7 @@ function motionStatusLabel(status: string) {
 }
 
 export function PhotoScratch() {
+  const navigate = useNavigate();
   const { bumpInventoryRevision } = useAuth();
   const { addDiamonds } = useWallet();
   const bgImageRef = useRef<HTMLImageElement>(null);
@@ -745,6 +738,20 @@ export function PhotoScratch() {
   const revealedPointsRef = useRef<boolean[]>(
     Array.from({ length: SYMBOL_POINT_COUNT }, () => false),
   );
+  /** Single shared pulsar — repositioned onto one unfound mark at a time. */
+  const huntPulsarRef = useRef<HTMLDivElement | null>(null);
+  const huntPulsarStyleRef = useRef({
+    transform: "",
+    active: false,
+    index: -1,
+  });
+  /** Last scratch activity — the pulsar waits HINT_IDLE_MS after this. */
+  const huntHintActivityAtRef = useRef(performance.now());
+  const huntHintCycleRef = useRef<HuntHintCycle>({
+    index: -1,
+    shownAt: 0,
+    phase: "show",
+  });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const isScratchingRef = useRef(false);
   const scratchStartedRef = useRef(false);
@@ -892,6 +899,10 @@ export function PhotoScratch() {
   const [handSummaryDiamonds, setHandSummaryDiamonds] = useState<number | null>(
     null,
   );
+  const [frameDiscoveryBatches, setFrameDiscoveryBatches] = useState<
+    SymbolDiscoveryBatch[]
+  >([]);
+  const frameDiscoveryKeyRef = useRef(0);
   const [photoResult, setPhotoResult] = useState<{
     win: boolean;
     diamonds: number;
@@ -1118,6 +1129,8 @@ export function PhotoScratch() {
     resetGameOutcome();
     resetMatchRound();
     setRevealedSymbols(0);
+    setFrameDiscoveryBatches([]);
+    frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     setBodyFindHits(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     bodyFindHitsRef.current = Array.from(
@@ -1585,6 +1598,69 @@ export function PhotoScratch() {
           }
           marker.classList.toggle("is-revealed", visible);
         }
+
+        // Nudge toward one still-unfound mark once the player has run out of
+        // obvious surface to scratch, or is down to the last few.
+        const nowMs = performance.now();
+        const remainingSymbols =
+          SYMBOL_POINT_COUNT - revealedSymbolsRef.current;
+        const pulsarEligible =
+          hasBodySymbolsRef.current &&
+          topBarPhaseRef.current === "docked" &&
+          !claimedRef.current &&
+          !isBodyScratchLocked() &&
+          remainingSymbols > 0 &&
+          (remainingSymbols <= HINT_REMAINING_MAX ||
+            isGarmentFullyRevealed(
+              revealedCountRef.current,
+              revealSamplesRef.current.length,
+              false,
+            )) &&
+          !isScratchingRef.current &&
+          nowMs - huntHintActivityAtRef.current >= HINT_IDLE_MS;
+        const activePulsarIndex = advanceHuntHintCycle(
+          huntHintCycleRef.current,
+          {
+            now: nowMs,
+            revealed: revealedPointsRef.current,
+            eligible: pulsarEligible,
+            dwellMs: HINT_PULSE_DWELL_MS,
+            gapMs: HINT_PULSE_GAP_MS,
+          },
+        );
+
+        const pulsar = huntPulsarRef.current;
+        const pulsarApplied = huntPulsarStyleRef.current;
+        if (pulsar) {
+          if (activePulsarIndex >= 0) {
+            const pt = bodyPoints[activePulsarIndex];
+            const world = sampleMeshUvToWorld(sample, pt.u, pt.v);
+            const stagePos = worldPointToStage(
+              world,
+              fgCanvas,
+              stage,
+              frontCam,
+            );
+            const transform = `translate(${stagePos.x}px, ${stagePos.y}px)`;
+            if (
+              !pulsarApplied.active ||
+              pulsarApplied.index !== activePulsarIndex
+            ) {
+              pulsar.classList.add("is-active");
+              pulsarApplied.active = true;
+              pulsarApplied.index = activePulsarIndex;
+            }
+            if (pulsarApplied.transform !== transform) {
+              pulsar.style.transform = transform;
+              pulsarApplied.transform = transform;
+            }
+          } else if (pulsarApplied.active) {
+            pulsar.classList.remove("is-active");
+            pulsarApplied.active = false;
+            pulsarApplied.index = -1;
+            pulsarApplied.transform = "";
+          }
+        }
       }
       frameId = requestAnimationFrame(render);
     };
@@ -1710,6 +1786,7 @@ export function PhotoScratch() {
           newlyRevealed,
           soundEnabledRef.current,
         );
+        pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
         if (nextSymbolCount >= SYMBOL_POINT_COUNT) {
           beginFinishAutoScratch();
@@ -1736,6 +1813,60 @@ export function PhotoScratch() {
     }
   }
   applyScratchAtUvRef.current = applyScratchAtUv;
+
+  function pushFrameDiscoveryBatch(
+    newlyRevealed: readonly number[],
+    foundAfter: number,
+  ) {
+    const stage = stageRef.current;
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    const fgCanvas = fgCanvasRef.current;
+    if (
+      !stage ||
+      !sample ||
+      !bodyPoints ||
+      !fgCanvas ||
+      newlyRevealed.length === 0
+    ) {
+      return;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    if (stageRect.width <= 0 || stageRect.height <= 0) return;
+    const frontCam = fgRendererRef.current?.getFrontPresentCamera() ?? {
+      x: 0,
+      y: 0,
+    };
+    const positions: SymbolDiscoveryBatch["positions"] = [];
+
+    for (const bodyIndex of newlyRevealed) {
+      const point = bodyPoints[bodyIndex];
+      if (!point) continue;
+      const world = sampleMeshUvToWorld(sample, point.u, point.v);
+      const from = worldPointToStage(world, fgCanvas, stage, frontCam);
+      positions.push({
+        nx: from.x / stageRect.width,
+        ny: from.y / stageRect.height,
+      });
+      const marker = bodyMarkerRefs.current[bodyIndex];
+      if (marker) {
+        marker.classList.remove("is-symbol-pop");
+        void marker.offsetWidth;
+        marker.classList.add("is-symbol-pop");
+      }
+    }
+
+    if (positions.length === 0) return;
+    setFrameDiscoveryBatches((prev) => [
+      ...prev,
+      {
+        key: (frameDiscoveryKeyRef.current += 1),
+        positions,
+        foundAfter,
+      },
+    ]);
+  }
 
   function removeFlyingMatch(id: number) {
     setFlyingMatches((current) => {
@@ -1842,6 +1973,7 @@ export function PhotoScratch() {
   }
 
   function addScratch(clientX: number, clientY: number) {
+    huntHintActivityAtRef.current = performance.now();
     const point = getCanvasPoint(clientX, clientY);
     const sample = trackedSampleRef.current;
     if (!point || !sample) return;
@@ -2112,6 +2244,8 @@ export function PhotoScratch() {
     resetGameOutcome();
     resetMatchRound();
     setRevealedSymbols(0);
+    setFrameDiscoveryBatches([]);
+    frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     setBodyFindHits(Array.from({ length: SYMBOL_POINT_COUNT }, () => false));
     bodyFindHitsRef.current = Array.from(
@@ -2221,6 +2355,9 @@ export function PhotoScratch() {
   }
 
   function onPointerUp() {
+    // Idle window starts when the finger lifts, so holding still mid-stroke
+    // doesn't make the hint appear the instant they let go.
+    huntHintActivityAtRef.current = performance.now();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
@@ -2231,7 +2368,7 @@ export function PhotoScratch() {
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
-  const stageCoachPhase = resolveStageCoachPhase({
+  const huntPhase = resolveHuntPhase({
     active:
       hasBodySymbols &&
       entryReady &&
@@ -2242,6 +2379,24 @@ export function PhotoScratch() {
     found: revealedSymbols,
     total: SYMBOL_POINT_COUNT,
   });
+  const photoOutcome = resolveScratchOutcome({
+    scratchCompleted: photoResult != null,
+    photoCardFound: false,
+    diamondFound: (photoResult?.diamonds ?? 0) > 0,
+  });
+  // Keep the frame mounted through the no-match beat so its energy can drain
+  // instead of vanishing with the rest of the gameplay HUD.
+  const frameSettling = hasBodySymbols && photoOutcome === "no-match";
+  const frameProgressActive =
+    (hasBodySymbols &&
+      entryReady &&
+      !introActive &&
+      !introGateActive &&
+      !gameResult &&
+      handSummaryDiamonds == null &&
+      topBarPhase !== "center" &&
+      (huntPhase === "hunt" || revealedSymbols >= SYMBOL_POINT_COUNT)) ||
+    frameSettling;
   const autoScratchLocked =
     introActive ||
     (hasBodySymbols &&
@@ -2253,18 +2408,21 @@ export function PhotoScratch() {
     playlist.find((entry) => entry.id === selectedCardId)?.label ?? uploadLabel;
 
   function leavePhotoScratchAfterHand() {
+    setHandSummaryDiamonds(null);
     settleDonePhotoHand(addDiamonds);
     bumpInventoryRevision();
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get("game") === "1") {
-      navigateTo(Paths.collection);
-      return;
-    }
-    const card = params.get("card")?.trim() || "";
-    const model = params.get("model")?.trim() || "";
-    const motionCardId = card ? motionCardIdFromPhotoScratchId(card) : "";
-    navigateTo(collectionReturnHref(model, motionCardId));
+    const fallback =
+      params.get("game") === "1"
+        ? Paths.collection
+        : collectionReturnHref(
+            params.get("model")?.trim() || "",
+            params.get("card")?.trim()
+              ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
+              : "",
+          );
+    navigateBackOr(navigate, fallback);
   }
 
   return (
@@ -2688,11 +2846,12 @@ export function PhotoScratch() {
               onAllRevealed={onTopBarAllRevealed}
             />
           ) : null}
-          <StageCoachHint
-            key={stageCoachPhase}
-            phase={stageCoachPhase}
+          <ScratchFrameProgress
+            active={frameProgressActive}
             found={revealedSymbols}
             total={SYMBOL_POINT_COUNT}
+            batches={frameDiscoveryBatches}
+            settling={frameSettling}
           />
           <div
             className={`bg-drag-scale${isScratching ? " is-bg-blurred" : ""}`}
@@ -2758,6 +2917,17 @@ export function PhotoScratch() {
                   </div>
                 ))
               : null}
+            {hasBodySymbols ? (
+              <div
+                ref={huntPulsarRef}
+                className="hunt-hint-pulsar"
+                aria-hidden="true"
+              >
+                <span className="hunt-hint-pulsar-ring" />
+                <span className="hunt-hint-pulsar-ring hunt-hint-pulsar-ring--delay" />
+                <span className="hunt-hint-pulsar-core" />
+              </div>
+            ) : null}
             {flyingMatches.map((coin) => (
               <div
                 key={coin.id}
@@ -2825,7 +2995,7 @@ export function PhotoScratch() {
               )}
             </button>
           </div>
-          {photoResult?.win && photoResult.diamonds > 0 ? (
+          {photoResult && photoOutcome === "diamond" ? (
             <PhotoDiamondReveal
               key={photoResult.resultId}
               diamonds={photoResult.diamonds}
@@ -2833,10 +3003,9 @@ export function PhotoScratch() {
               onComplete={afterPhotoResultPresentation}
             />
           ) : null}
-          {photoResult && !(photoResult.win && photoResult.diamonds > 0) ? (
-            <PhotoNoWinFeedback
+          {photoResult && photoOutcome === "no-match" ? (
+            <NoMatchOutcome
               key={photoResult.resultId}
-              resultId={photoResult.resultId}
               onComplete={afterPhotoResultPresentation}
             />
           ) : null}
