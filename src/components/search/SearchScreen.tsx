@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useState } from "react";
-import { Search, X, ChevronRight } from "lucide-react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 import {
   filterSearchCatalog,
   loadSearchCatalog,
@@ -10,6 +11,7 @@ import {
   type SearchPack,
 } from "@/services/search";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { isVideoSrc } from "@/services/models";
 
 export function SearchScreen({
   onCancel,
@@ -245,6 +247,50 @@ export function SearchScreen({
   );
 }
 
+function SearchSectionHeader({
+  id,
+  title,
+  scroll,
+  prevLabel,
+  nextLabel,
+}: {
+  id: string;
+  title: ReactNode;
+  scroll?: ReturnType<typeof useHorizontalScroll>;
+  prevLabel?: string;
+  nextLabel?: string;
+}) {
+  return (
+    <div className="search-section-header">
+      <h2 id={id} className="search-section-title">
+        {title}
+      </h2>
+      {scroll ? (
+        <div className="ready-reveal-group-arrows">
+          <button
+            type="button"
+            className="continue-collecting-arrow is-prev"
+            aria-label={prevLabel ?? "Previous"}
+            disabled={!scroll.canScrollLeft}
+            onClick={() => scroll.scrollByPage(-1)}
+          >
+            <ChevronLeft className="size-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="continue-collecting-arrow is-next"
+            aria-label={nextLabel ?? "Next"}
+            disabled={!scroll.canScrollRight}
+            onClick={() => scroll.scrollByPage(1)}
+          >
+            <ChevronRight className="size-5" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function DefaultDiscovery({
   catalog,
   onChip,
@@ -256,15 +302,20 @@ function DefaultDiscovery({
   onOpenCreator: (id: string) => void;
   onOpenPack: (pack: SearchPack) => void;
 }) {
+  const creatorsScroll = useHorizontalScroll(
+    ".search-creator-tile",
+    catalog.popularCreators.length,
+  );
+  const packsScroll = useHorizontalScroll(
+    ".search-pack-card",
+    catalog.trendingPacks.length,
+  );
+
   return (
     <div className="search-default">
       {catalog.trendingChips.length > 0 ? (
         <section className="search-section" aria-labelledby="search-trending-h">
-          <div className="search-section-header">
-            <h2 id="search-trending-h" className="search-section-title">
-              Trending searches
-            </h2>
-          </div>
+          <SearchSectionHeader id="search-trending-h" title="Trending searches" />
           <div className="search-chips">
             {catalog.trendingChips.map((term) => (
               <button
@@ -282,12 +333,14 @@ function DefaultDiscovery({
 
       {catalog.popularCreators.length > 0 ? (
         <section className="search-section" aria-labelledby="search-popular-h">
-          <div className="search-section-header">
-            <h2 id="search-popular-h" className="search-section-title">
-              Popular creators
-            </h2>
-          </div>
-          <div className="search-creator-scroll">
+          <SearchSectionHeader
+            id="search-popular-h"
+            title="Popular creators"
+            scroll={creatorsScroll}
+            prevLabel="Previous creators"
+            nextLabel="Next creators"
+          />
+          <div ref={creatorsScroll.scrollRef} className="search-creator-scroll">
             {catalog.popularCreators.map((creator) => (
               <button
                 key={creator.id}
@@ -305,12 +358,14 @@ function DefaultDiscovery({
 
       {catalog.trendingPacks.length > 0 ? (
         <section className="search-section" aria-labelledby="search-packs-trend-h">
-          <div className="search-section-header">
-            <h2 id="search-packs-trend-h" className="search-section-title">
-              Trending packs
-            </h2>
-          </div>
-          <div className="search-pack-scroll">
+          <SearchSectionHeader
+            id="search-packs-trend-h"
+            title="Trending packs"
+            scroll={packsScroll}
+            prevLabel="Previous packs"
+            nextLabel="Next packs"
+          />
+          <div ref={packsScroll.scrollRef} className="search-pack-scroll">
             {catalog.trendingPacks.map((pack) => (
               <PackCard
                 key={pack.id}
@@ -350,6 +405,17 @@ function EmptyResults({
   onOpenCreator: (id: string) => void;
   onOpenPack: (pack: SearchPack) => void;
 }) {
+  const suggestCreators = catalog.popularCreators.slice(0, 6);
+  const suggestPacks = catalog.trendingPacks.slice(0, 4);
+  const creatorsScroll = useHorizontalScroll(
+    ".search-creator-tile",
+    suggestCreators.length,
+  );
+  const packsScroll = useHorizontalScroll(
+    ".search-pack-card",
+    suggestPacks.length,
+  );
+
   return (
     <div className="search-empty">
       <p className="search-empty-title">No results for &ldquo;{query}&rdquo;</p>
@@ -360,36 +426,52 @@ function EmptyResults({
         Clear search
       </button>
 
-      {(catalog.popularCreators.length > 0 ||
-        catalog.trendingPacks.length > 0) && (
+      {(suggestCreators.length > 0 || suggestPacks.length > 0) && (
         <div className="search-might-like">
-          <h3 className="search-section-title">You might like</h3>
-          {catalog.popularCreators.length > 0 ? (
-            <div className="search-creator-scroll">
-              {catalog.popularCreators.slice(0, 6).map((creator) => (
-                <button
-                  key={creator.id}
-                  type="button"
-                  className="search-creator-tile"
-                  onClick={() => onOpenCreator(creator.id)}
-                >
-                  <CreatorAvatar creator={creator} size={56} />
-                  <span className="search-creator-tile-name">{creator.name}</span>
-                </button>
-              ))}
-            </div>
+          {suggestCreators.length > 0 ? (
+            <section className="search-section" aria-labelledby="search-like-creators-h">
+              <SearchSectionHeader
+                id="search-like-creators-h"
+                title="You might like"
+                scroll={creatorsScroll}
+                prevLabel="Previous creators"
+                nextLabel="Next creators"
+              />
+              <div ref={creatorsScroll.scrollRef} className="search-creator-scroll">
+                {suggestCreators.map((creator) => (
+                  <button
+                    key={creator.id}
+                    type="button"
+                    className="search-creator-tile"
+                    onClick={() => onOpenCreator(creator.id)}
+                  >
+                    <CreatorAvatar creator={creator} size={56} />
+                    <span className="search-creator-tile-name">{creator.name}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ) : null}
-          {catalog.trendingPacks.length > 0 ? (
-            <div className="search-pack-scroll">
-              {catalog.trendingPacks.slice(0, 4).map((pack) => (
-                <PackCard
-                  key={pack.id}
-                  pack={pack}
-                  wide
-                  onOpen={() => onOpenPack(pack)}
-                />
-              ))}
-            </div>
+          {suggestPacks.length > 0 ? (
+            <section className="search-section" aria-labelledby="search-like-packs-h">
+              <SearchSectionHeader
+                id="search-like-packs-h"
+                title={suggestCreators.length > 0 ? "Trending packs" : "You might like"}
+                scroll={packsScroll}
+                prevLabel="Previous packs"
+                nextLabel="Next packs"
+              />
+              <div ref={packsScroll.scrollRef} className="search-pack-scroll">
+                {suggestPacks.map((pack) => (
+                  <PackCard
+                    key={pack.id}
+                    pack={pack}
+                    wide
+                    onOpen={() => onOpenPack(pack)}
+                  />
+                ))}
+              </div>
+            </section>
           ) : null}
         </div>
       )}
@@ -448,6 +530,7 @@ function PackCard({
   onOpen: () => void;
   wide?: boolean;
 }) {
+  const art = pack.coverImageUrl?.trim() ?? "";
   return (
     <button
       type="button"
@@ -455,22 +538,39 @@ function PackCard({
       onClick={onOpen}
     >
       <span className="search-pack-art">
-        {pack.coverImageUrl ? (
-          <img src={pack.coverImageUrl} alt="" loading="lazy" />
+        {art ? (
+          isVideoSrc(art) ? (
+            <video
+              src={art}
+              muted
+              loop
+              playsInline
+              autoPlay
+              preload="metadata"
+              aria-hidden="true"
+            />
+          ) : (
+            <img src={art} alt="" loading="lazy" />
+          )
         ) : null}
       </span>
       <span className="search-pack-meta">
         <span className="search-pack-name">{pack.name}</span>
         <span className="search-pack-by">by {pack.creatorName}</span>
-        <span className="search-pack-footer">
-          <span>
-            {pack.cardCount > 0 ? `${pack.cardCount} Cards` : pack.themeName}
+        <div className="search-pack-footer">
+          <div className="search-pack-cards">5 Motion Cards</div>
+          <span
+            className="search-pack-price"
+            aria-label={`${pack.diamondCost} Diamonds`}
+          >
+            <DiamondLottie
+              className="search-pack-diamond shrink-0"
+              size={14}
+              aria-hidden
+            />
+            <span className="tabular-nums">{pack.diamondCost}</span>
           </span>
-          <span className="search-pack-price">
-            <DiamondLottie className="search-pack-diamond" size={14} aria-hidden />
-            {pack.diamondCost} SC
-          </span>
-        </span>
+        </div>
       </span>
     </button>
   );

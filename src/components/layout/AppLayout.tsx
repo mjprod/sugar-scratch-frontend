@@ -97,7 +97,10 @@ export function AppLayout() {
   const onPackPocket =
     location.pathname.startsWith("/pack-pocket") ||
     location.pathname.startsWith("/cart");
-  const onSearch = location.pathname.startsWith("/search");
+  const onSearch =
+    location.pathname.startsWith("/search") ||
+    (location.pathname === Paths.home &&
+      new URLSearchParams(location.search).get("library") === "1");
 
   const showTopUtility =
     !hideChrome &&
@@ -126,25 +129,47 @@ export function AppLayout() {
     };
   }, [guest, invalidateRemoteSession, setInboxUnread]);
 
+  const openSearch = () => {
+    // Stay on Home when already there; otherwise go Home and open the sheet.
+    if (
+      location.pathname === Paths.home ||
+      location.pathname === "/" ||
+      location.pathname === ""
+    ) {
+      navigate(
+        { pathname: Paths.home, search: "?library=1" },
+        { replace: true, state: { openPackLibrary: true } },
+      );
+      return;
+    }
+    navigate(Paths.homeSearch, {
+      state: { openPackLibrary: true, from: location.pathname },
+    });
+  };
+
   const mobileTrailing = (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-3">
+      <PacksButton
+        onOpen={openCart}
+        variant="ghost"
+        active={onPackPocket}
+        data-top-nav-target="pack-pocket"
+      />
       <button
         type="button"
-        onClick={() =>
-          navigate(Paths.search, { state: { from: location.pathname } })
-        }
+        onClick={openSearch}
         aria-label="Search"
         aria-current={onSearch ? "page" : undefined}
+        data-top-nav-target="search"
         className={[
-          "inbox-utility-btn inbox-utility-btn--ghost relative grid min-h-10 min-w-10 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+          "inbox-utility-btn inbox-utility-btn--ghost relative grid size-7 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
           onSearch ? "is-active" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
-        <Search className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+        <Search className="size-full" strokeWidth={1.5} aria-hidden="true" />
       </button>
-      <PacksButton onOpen={openCart} variant="ghost" active={onPackPocket} />
     </div>
   );
 
@@ -163,6 +188,10 @@ export function AppLayout() {
           balance={guest ? null : diamonds}
           onOpenStore={openStore}
           onOpenHome={() => requestTab("feed")}
+          onOpenPackPocket={openCart}
+          onOpenSearch={openSearch}
+          packsActive={onPackPocket}
+          searchActive={onSearch}
           visible
           trailing={mobileTrailing}
         />

@@ -58,27 +58,9 @@ function rewardStatusForTheme(
   }).status;
 }
 
-/**
- * DEV-only: force the first theme to 100% collected so claimable / claimed UI
- * can be reviewed without owning every card. Never runs in production.
- */
-function withDemoCompleteTheme(themes: ThemeCardData[]): ThemeCardData[] {
-  if (!import.meta.env.DEV || themes.length === 0) return themes;
-  const demoId = themes[0]!.id;
-  return themes.map((theme) =>
-    theme.id === demoId
-      ? {
-          ...theme,
-          collected: Math.max(theme.total, 1),
-          total: Math.max(theme.total, 1),
-        }
-      : theme,
-  );
-}
-
 export function CreatorCollectionsDiscovery({
   creatorId,
-  themes: themesIn,
+  themes,
   selectedThemeId,
   onSelectTheme,
   cardsByThemeId,
@@ -109,11 +91,6 @@ export function CreatorCollectionsDiscovery({
   const [justComplete, setJustComplete] = useState(false);
   const prevPctRef = useRef(0);
 
-  const themes = useMemo(() => withDemoCompleteTheme(themesIn), [themesIn]);
-  const demoCompleteThemeId = import.meta.env.DEV
-    ? (themes[0]?.id ?? null)
-    : null;
-
   const selectedIndex = Math.max(
     0,
     themes.findIndex((theme) => theme.id === selectedThemeId),
@@ -125,22 +102,13 @@ export function CreatorCollectionsDiscovery({
       motionCards,
       COLLECTION_PREVIEW_LIMIT,
     );
-    const base =
-      fromLive.length > 0
-        ? fromLive
-        : buildPreviewFromThemeDetail(
-            selected ? themeDetails?.[selected.id] : undefined,
-            COLLECTION_PREVIEW_LIMIT,
-          );
-    if (!selected || !demoCompleteThemeId || selected.id !== demoCompleteThemeId)
-      return base;
-    // DEV demo: match 100% progress — show every preview slot as collected.
-    return base.map((card) => ({
-      ...card,
-      collected: true,
-      thumbnailUrl: card.thumbnailUrl || "/img/SugarScratch.png",
-    }));
-  }, [motionCards, selected, themeDetails, demoCompleteThemeId]);
+    if (fromLive.length > 0) return fromLive;
+    // Optional API-shaped detail only — never static Emily/Sophia fixtures.
+    return buildPreviewFromThemeDetail(
+      selected ? themeDetails?.[selected.id] : undefined,
+      COLLECTION_PREVIEW_LIMIT,
+    );
+  }, [motionCards, selected, themeDetails]);
   const navRef = useRef<HTMLDivElement>(null);
   const [fadeKey, setFadeKey] = useState(selected?.id ?? "");
   const [catalogReady, setCatalogReady] = useState(false);
@@ -237,14 +205,12 @@ export function CreatorCollectionsDiscovery({
     setClaimError(null);
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 280));
-      // Eligibility from un-faked API progress — presentation demo cannot grant.
-      const real = themesIn.find((t) => t.id === selected.id) ?? selected;
       const result = claimThemeCompletionReward({
         creatorId,
         themeId: selected.id,
         themeName: selected.name,
-        collected: real.collected,
-        total: real.total,
+        collected: selected.collected,
+        total: selected.total,
       });
       if (!result.ok) {
         setClaimError(result.message || "Couldn't claim reward. Please try again.");

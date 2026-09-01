@@ -406,6 +406,216 @@ export function clearCollectionLedger() {
   }
 }
 
-export async function fetchCollectionPageStateRemote() {
-  return apiFetch<CollectionPageState>("/api/me/collection");
+/** Empty hub state — used while the API loads or when the account has nothing. */
+export function emptyCollectionPageState(): CollectionPageState {
+  return {
+    totalPurchasedPacks: 0,
+    unopenedPackCount: 0,
+    unscratchedCardCount: 0,
+    collectedCardCount: 0,
+    hasEverPurchasedPack: false,
+    hasCollectedCards: false,
+    hasUnopenedPacks: false,
+    hasUnscratchedCards: false,
+    hasPendingReveal: false,
+    isTrueEmpty: true,
+    hasStartedCollection: false,
+    summary: {
+      cardsCollected: 0,
+      creatorsCollectedFrom: 0,
+      collectionsInProgress: 0,
+      rewardReadyCount: 0,
+      collectedCards: 0,
+      totalCards: 0,
+      pct: 0,
+      creators: 0,
+      themes: 0,
+      uniqueCards: 0,
+      motionCards: 0,
+      photoCards: 0,
+    },
+    continueCreators: [],
+  };
+}
+
+function asFiniteNumber(value: unknown, fallback = 0): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeRemoteCreator(raw: unknown): CreatorProgress | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Record<string, unknown>;
+  const id = String(data.id ?? data.creatorId ?? "").trim();
+  const name = String(data.name ?? data.creatorName ?? "").trim();
+  if (!id && !name) return null;
+  const collected = Math.max(0, asFiniteNumber(data.collected));
+  const total = Math.max(collected, asFiniteNumber(data.total, 0));
+  const pct =
+    data.pct != null
+      ? Math.max(0, Math.min(100, Math.round(asFiniteNumber(data.pct))))
+      : total > 0
+        ? Math.round((collected / total) * 100)
+        : 0;
+  const resolvedId = id || slugId(name);
+  return {
+    id: resolvedId,
+    name: name || resolvedId,
+    avatarUrl:
+      String(data.avatarUrl ?? data.avatar ?? "").trim() ||
+      avatarFor(resolvedId, name),
+    coverUrl:
+      String(data.coverUrl ?? data.avatarUrl ?? data.avatar ?? "").trim() ||
+      avatarFor(resolvedId, name),
+    collected,
+    total,
+    pct,
+    themesStarted: Math.max(0, asFiniteNumber(data.themesStarted)),
+    themesTotal: Math.max(0, asFiniteNumber(data.themesTotal)),
+    cta:
+      data.cta === "view" || data.cta === "claim" || data.cta === "continue"
+        ? data.cta
+        : "continue",
+    themeName:
+      String(data.themeName ?? data.theme ?? "").trim() || undefined,
+  };
+}
+
+/**
+ * Normalize GET /api/me/collection into CollectionPageState.
+ * Accepts either the full page-state shape or a summary-only payload.
+ */
+export function normalizeCollectionPageStateRemote(
+  raw: unknown,
+): CollectionPageState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as Record<string, unknown>;
+  const summaryRaw =
+    data.summary && typeof data.summary === "object"
+      ? (data.summary as Record<string, unknown>)
+      : {};
+
+  const continueRaw = Array.isArray(data.continueCreators)
+    ? data.continueCreators
+    : Array.isArray(data.creators)
+      ? data.creators
+      : [];
+  const continueCreators = continueRaw
+    .map(normalizeRemoteCreator)
+    .filter((creator): creator is CreatorProgress => Boolean(creator));
+
+  const collectedCardCount = Math.max(
+    0,
+    asFiniteNumber(
+      data.collectedCardCount ??
+        summaryRaw.cardsCollected ??
+        summaryRaw.collectedCards ??
+        summaryRaw.uniqueCards,
+    ),
+  );
+  const unopenedPackCount = Math.max(
+    0,
+    asFiniteNumber(data.unopenedPackCount ?? data.unopenedPacks),
+  );
+  const unscratchedCardCount = Math.max(
+    0,
+    asFiniteNumber(
+      data.unscratchedCardCount ?? data.scratchCards ?? data.readyToScratch,
+    ),
+  );
+  const totalPurchasedPacks = Math.max(
+    0,
+    asFiniteNumber(data.totalPurchasedPacks ?? data.purchasedPacks),
+  );
+  const creatorsWithProgress = continueCreators.filter((c) => c.collected > 0);
+  const collectionsInProgress = Math.max(
+    0,
+    asFiniteNumber(
+      summaryRaw.collectionsInProgress ?? summaryRaw.themes,
+      creatorsWithProgress.filter((c) => c.collected < c.total || c.total === 0)
+        .length,
+    ),
+  );
+  const creatorsCollectedFrom = Math.max(
+    0,
+    asFiniteNumber(
+      summaryRaw.creatorsCollectedFrom ?? summaryRaw.creators,
+      creatorsWithProgress.length,
+    ),
+  );
+  const rewardReadyCount = Math.max(
+    0,
+    asFiniteNumber(summaryRaw.rewardReadyCount),
+  );
+  const hasEverPurchasedPack =
+    typeof data.hasEverPurchasedPack === "boolean"
+      ? data.hasEverPurchasedPack
+      : totalPurchasedPacks > 0 || unopenedPackCount > 0;
+  const hasCollectedCards =
+    typeof data.hasCollectedCards === "boolean"
+      ? data.hasCollectedCards
+      : collectedCardCount > 0;
+  const hasUnopenedPacks =
+    typeof data.hasUnopenedPacks === "boolean"
+      ? data.hasUnopenedPacks
+      : unopenedPackCount > 0;
+  const hasUnscratchedCards =
+    typeof data.hasUnscratchedCards === "boolean"
+      ? data.hasUnscratchedCards
+      : unscratchedCardCount > 0;
+  const hasPendingReveal =
+    typeof data.hasPendingReveal === "boolean"
+      ? data.hasPendingReveal
+      : hasUnopenedPacks || hasUnscratchedCards;
+  const isTrueEmpty =
+    typeof data.isTrueEmpty === "boolean"
+      ? data.isTrueEmpty
+      : !hasEverPurchasedPack &&
+        !hasCollectedCards &&
+        !hasUnopenedPacks &&
+        !hasUnscratchedCards;
+
+  return {
+    totalPurchasedPacks,
+    unopenedPackCount,
+    unscratchedCardCount,
+    collectedCardCount,
+    hasEverPurchasedPack,
+    hasCollectedCards,
+    hasUnopenedPacks,
+    hasUnscratchedCards,
+    hasPendingReveal,
+    isTrueEmpty,
+    hasStartedCollection:
+      typeof data.hasStartedCollection === "boolean"
+        ? data.hasStartedCollection
+        : hasEverPurchasedPack,
+    summary: {
+      cardsCollected: collectedCardCount,
+      creatorsCollectedFrom,
+      collectionsInProgress,
+      rewardReadyCount,
+      collectedCards: collectedCardCount,
+      totalCards: Math.max(0, asFiniteNumber(summaryRaw.totalCards)),
+      pct: Math.max(0, Math.min(100, asFiniteNumber(summaryRaw.pct))),
+      creators: creatorsCollectedFrom,
+      themes: collectionsInProgress,
+      uniqueCards: Math.max(
+        0,
+        asFiniteNumber(summaryRaw.uniqueCards, collectedCardCount),
+      ),
+      motionCards: Math.max(0, asFiniteNumber(summaryRaw.motionCards)),
+      photoCards: Math.max(0, asFiniteNumber(summaryRaw.photoCards)),
+    },
+    continueCreators,
+  };
+}
+
+/**
+ * Live Collection hub payload from GET /api/me/collection.
+ * Returns null when unauthenticated / unreachable — callers must not invent fixtures.
+ */
+export async function fetchCollectionPageStateRemote(): Promise<CollectionPageState | null> {
+  const raw = await apiFetch<unknown>("/api/me/collection");
+  return normalizeCollectionPageStateRemote(raw);
 }
