@@ -629,7 +629,6 @@ function EmptyResults({
       ) : null}
     </>
   );
-  );
 }
 
 function CreatorAvatar({
