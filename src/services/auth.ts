@@ -63,6 +63,8 @@ export type ProtectedAction =
   | { type: "add-to-cart"; pack: import("./cart").CartAddInput }
   | { type: "claim" }
   | { type: "collection"; creatorId: string }
+  /** SoftGate / deep-link: return to this path after login. */
+  | { type: "resume"; path: string }
   | { type: "session-expired" };
 
 export type AuthenticationSheetMode =
@@ -187,6 +189,17 @@ export async function requestPasswordReset(email: string) {
     method: "POST",
     body: JSON.stringify({ email }),
   });
+}
+
+export async function resetPasswordWithToken(token: string, password: string) {
+  await apiMutate("/api/auth/password/reset", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+}
+
+export function resetPasswordFailureMessage() {
+  return "This reset link is invalid or has expired. Request a new one.";
 }
 
 export async function markEmailVerifiedRemote() {
@@ -411,9 +424,7 @@ export type UpdateProfileResult =
   | { ok: false };
 
 /**
- * Authenticated profile identity update.
- * Prefer remote `/api/auth/profile`; fall back to local success when the
- * endpoint is unavailable (prototype / offline).
+ * Authenticated profile identity update → `PATCH /api/me/profile`.
  */
 export async function updateProfile(
   input: UpdateProfileInput,
@@ -430,10 +441,10 @@ export async function updateProfile(
   }
 
   try {
-    const result = await apiMutate<{ ok: boolean; user?: AuthUser }>(
-      "/api/auth/profile",
+    const result = await apiMutate<{ user: AuthUser }>(
+      "/api/me/profile",
       {
-        method: "POST",
+        method: "PATCH",
         body: JSON.stringify({
           display_name: displayName,
           username,
@@ -442,17 +453,7 @@ export async function updateProfile(
       },
     );
     return { ok: true, user: result.user ?? null };
-  } catch (error) {
-    // Missing endpoint only — local prototype soft-success.
-    // Network / 5xx / validation must not report success.
-    if (
-      error instanceof ApiError &&
-      (error.status === 404 ||
-        error.status === 405 ||
-        error.status === 501)
-    ) {
-      return { ok: true, user: null };
-    }
+  } catch {
     return { ok: false };
   }
 }
@@ -481,6 +482,17 @@ export function triggerFromAction(
     return action.kind === "open-pack" || action.pack.entry === "open"
       ? "open-pack"
       : "buy-pack";
+  }
+  if (action.type === "resume") {
+    const path = action.path.split("?")[0] ?? action.path;
+    if (path.startsWith("/collection")) return "view-collection";
+    if (path.startsWith("/rewards")) return "view-rewards";
+    if (path.startsWith("/profile")) return "view-profile";
+    if (path.startsWith("/inbox")) return "view-rewards";
+    if (path.startsWith("/pack-pocket") || path.startsWith("/cart")) {
+      return "buy-pack";
+    }
+    return "view-profile";
   }
   if (action.type === "tab") {
     if (action.tab === "bag") return "view-collection";

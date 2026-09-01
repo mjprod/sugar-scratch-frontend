@@ -96,6 +96,19 @@ function isHighIntentForDefer(action: ProtectedAction) {
   );
 }
 
+/** Profile soft-gates must not resume after first-run onboarding (Discover instead). */
+function isProfileOnboardingResume(action: ProtectedAction) {
+  if (action.type === "tab") return action.tab === "profile";
+  if (action.type !== "resume") return false;
+  const pathname = action.path.trim().split(/[?#]/)[0] ?? "";
+  return (
+    pathname === Paths.profile ||
+    pathname.startsWith(`${Paths.profile}/`) ||
+    pathname === Paths.settings ||
+    pathname.startsWith(`${Paths.settings}/`)
+  );
+}
+
 /** Mid-flow actions that should resume after login instead of going Home. */
 function shouldResumeAfterAuth(action: ProtectedAction | null) {
   if (!action) return false;
@@ -110,7 +123,10 @@ function shouldResumeAfterAuth(action: ProtectedAction | null) {
     action.type === "unopened-packs" ||
     action.type === "cart" ||
     action.type === "add-to-cart" ||
-    action.type === "collection"
+    action.type === "collection" ||
+    action.type === "tab" ||
+    action.type === "resume" ||
+    action.type === "claim"
   );
 }
 
@@ -146,6 +162,8 @@ function applyRemoteUser(
 }
 
 type AuthContextValue = {
+  /** False until the initial `/api/auth/session` probe finishes. */
+  authReady: boolean;
   authed: boolean;
   guest: boolean;
   hasLoggedInBefore: boolean;
@@ -206,6 +224,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const [authReady, setAuthReady] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [returningUser, setReturningUser] = useState(() => hasLoggedInBefore());
   const [profile, setProfile] = useState(initialProfile);
@@ -261,30 +280,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     const epoch = sessionSyncEpochRef.current;
-    void fetchAuthSession().then((session) => {
-      if (cancelled) return;
-      // Ignore results from a probe that started before a local auth transition.
-      if (epoch !== sessionSyncEpochRef.current) return;
+    void fetchAuthSession()
+      .then((session) => {
+        if (cancelled) return;
+        // Ignore results from a probe that started before a local auth transition.
+        if (epoch !== sessionSyncEpochRef.current) return;
 
-      if (session.state === "unreachable") {
-        // Cookie may still be valid. Do not resume gated actions (authed stays false).
-        return;
-      }
+        if (session.state === "unreachable") {
+          // Cookie may still be valid. Do not resume gated actions (authed stays false).
+          return;
+        }
 
-      if (session.authenticated && session.user) {
-        applyRemoteUser(session.user, {
-          setAuthed,
-          setEmailVerified,
-          setProfile,
-        });
-        return;
-      }
+        if (session.authenticated && session.user) {
+          applyRemoteUser(session.user, {
+            setAuthed,
+            setEmailVerified,
+            setProfile,
+          });
+          return;
+        }
 
-      destroySession();
-      clearEmailVerified();
-      setAuthed(false);
-      setEmailVerified(false);
-    });
+        destroySession();
+        clearEmailVerified();
+        setAuthed(false);
+        setEmailVerified(false);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -440,6 +463,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate(Paths.creator(action.creatorId));
         return;
       }
+      if (action.type === "resume") {
+        const target = action.path.trim();
+        if (target.startsWith("/")) {
+          navigate(target);
+        }
+        return;
+      }
       if (action.type === "tab") {
         navigate(pathForTab(action.tab));
       }
@@ -453,13 +483,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       scrollToDailyReward?: boolean;
     }) => {
       // First-run / post-recommend always lands on Discover — not Profile.
-      // Soft-gate from /profile would otherwise resume that tab after onboarding.
+      // Soft-gate from /profile now queues { type: "resume", path } (or the
+      // older tab form); both would otherwise send new users back to Profile.
       const deferred = opts?.deferred ?? null;
       const resume =
-        deferred &&
-        !(deferred.type === "tab" && deferred.tab === "profile")
-          ? deferred
-          : null;
+        deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
 
       if (resume) {
         navigate(Paths.discover);
@@ -668,21 +696,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
           // Start pack sync only after claim attempt so server wins with the gift.
           setAuthed(true);
+          // Resume only after authed flips — SoftGate must see authed=true.
+          window.setTimeout(() => {
+            if (
+              action &&
+              actionNeedsVerifiedEmail(action) &&
+              needsEmailVerification()
+            ) {
+              setVerifyPending(action);
+              setVerifyOpen(true);
+              return;
+            }
+            applyRecommendationDecision(action);
+          }, 0);
         }
       })();
-
-      window.setTimeout(() => {
-        if (
-          action &&
-          actionNeedsVerifiedEmail(action) &&
-          needsEmailVerification()
-        ) {
-          setVerifyPending(action);
-          setVerifyOpen(true);
-          return;
-        }
-        applyRecommendationDecision(action);
-      }, 0);
     },
     [applyRecommendationDecision, bumpInventoryRevision, pending],
   );
@@ -784,6 +812,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextValue>(
     () => ({
+      authReady,
       authed,
       guest,
       hasLoggedInBefore: returningUser,
@@ -836,6 +865,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       applyRecommendationDecision,
       authOpen,
+      authReady,
       authSheetEmail,
       authSheetMode,
       authed,
