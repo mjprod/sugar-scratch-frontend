@@ -21,6 +21,7 @@ export type BackendModel = {
   packFaceVideoUrl?: string | null;
   packFaceVideoUrl2?: string | null;
   swipeVideoUrl?: string | null;
+  swipePosterUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
   tags?: string[];
 };
@@ -264,6 +265,10 @@ export function packFaceVideoFromModel(
 
 export function modelAvatarUrl(model: BackendModel | null | undefined) {
   return optionalMedia(model?.avatar);
+}
+
+export function modelSwipePosterUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.swipePosterUrl);
 }
 
 export function profileFromModel(model: BackendModel): ModelProfile {
