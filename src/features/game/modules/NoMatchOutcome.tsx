@@ -5,7 +5,7 @@ type NoMatchOutcomeProps = {
   onComplete: () => void;
 };
 
-/* Keep in sync with the .no-match animation timings in game.css. */
+/* Entrance timing for .no-match__* in game.css; hold ends via TOTAL_MS. */
 const CONTENT_IN_MS = 780;
 /** Per-card result hold before auto-advance to the next card. */
 export const CARD_NO_MATCH_RESULT_MS = 2000;

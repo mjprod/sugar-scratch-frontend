@@ -207,6 +207,7 @@ export function InitialCountdown({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const audioStartedRef = useRef(false);
+  const countdownSessionRef = useRef(0);
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
   const [dotLottie, setDotLottie] = useState<DotLottie | null>(null);
@@ -231,6 +232,7 @@ export function InitialCountdown({
     if (!soundEnabledRef.current || audioStartedRef.current) return;
     audioStartedRef.current = true;
     const session = ++countdownPlaySession;
+    countdownSessionRef.current = session;
     requestAnimationFrame(() => {
       if (countdownPlaySession !== session) return;
       void playCountdownSound().catch(() => undefined);
@@ -240,6 +242,7 @@ export function InitialCountdown({
   // Timer owns completion — do not finish from Lottie events.
   useEffect(() => {
     audioStartedRef.current = false;
+    countdownSessionRef.current = 0;
     setStep(0);
     const stepMs = Math.floor(INITIAL_COUNTDOWN_MS / FALLBACK_LABELS.length);
     let current = 0;
@@ -256,8 +259,10 @@ export function InitialCountdown({
     return () => {
       window.clearInterval(id);
       window.clearTimeout(safetyId);
+      const session = countdownSessionRef.current;
+      if (session === 0) return;
       window.setTimeout(() => {
-        if (countdownPlaySession > 0) stopCountdownAudio();
+        if (countdownPlaySession === session) stopCountdownAudio();
       }, 0);
     };
   }, [finish]);
