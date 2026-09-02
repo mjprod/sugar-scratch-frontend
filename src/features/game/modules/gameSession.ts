@@ -1,4 +1,5 @@
 import { apiMutate } from "@/lib/api";
+import { getAuthUserId } from "@/services/auth";
 import { recordWonPhotoCards } from "@/services/collectionState";
 import {
   removeReadyToScratch,
@@ -73,6 +74,8 @@ export type GameSession = {
     current: number;
     total: number;
   };
+  /** Account that created this session — never PUT under a different user. */
+  ownerUserId?: string;
 };
 
 function isGameSession(value: unknown): value is GameSession {
@@ -219,15 +222,30 @@ export function loadGameSession(): GameSession | null {
 
 export function saveGameSession(session: GameSession): void {
   if (typeof window === "undefined") return;
+  const userId = getAuthUserId();
+  if (session.ownerUserId && userId && session.ownerUserId !== userId) {
+    return;
+  }
+  const next: GameSession = userId
+    ? { ...session, ownerUserId: userId }
+    : session;
   const store = readStore();
-  const key = gameSessionStorageKey(session);
-  store.byKey[key] = session;
+  const key = gameSessionStorageKey(next);
+  store.byKey[key] = next;
   store.activeKey = key;
   writeStore(store);
+  // Guests and foreign leftover sessions must not write /api/me/game-session.
+  if (!userId) return;
   void apiMutate("/api/me/game-session", {
     method: "PUT",
-    body: JSON.stringify(session),
+    body: JSON.stringify(next),
   }).catch(() => undefined);
+}
+
+/** Drop every stored game session (logout / account switch). */
+export function clearAllGameSessions(): void {
+  if (typeof window === "undefined") return;
+  writeStore(emptyStore());
 }
 
 export function clearGameSession(key?: string): void {
