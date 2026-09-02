@@ -8985,16 +8985,13 @@ body[data-theme="v8"] .auth7-sheet-panel {
   }
 
   body[data-theme="v8"] .auth7-sheet-chrome {
-    margin: -12px -24px 0;
+    position: static;
+    height: 0;
+    margin: 0;
   }
 
   body[data-theme="v8"] .auth7-sheet-handle {
     display: none;
-  }
-
-  body[data-theme="v8"] .auth7-sheet-close {
-    top: 0.7rem;
-    right: 0.9rem;
   }
 }
 
@@ -9054,6 +9051,13 @@ body[data-theme="v8"] .auth7-sheet-close {
 body[data-theme="v8"] .auth7-sheet-close:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-sheet-close {
+    top: 1.7rem;
+    right: 0.9rem;
+  }
 }
 
 body[data-theme="v8"] .auth7-sheet-body {
