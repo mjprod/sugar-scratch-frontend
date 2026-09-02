@@ -8,6 +8,7 @@ import {
   type AnimationEvent,
   type CSSProperties,
 } from "react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useWallet } from "@/contexts/WalletContext";
 import { loadGameSession, settleDonePhotoHand } from "./gameSession";
@@ -205,11 +206,25 @@ export function PhotoHandSummary({
             <p className="sr-only" aria-live="polite">
               {credited
                 ? "Diamonds added to your balance."
-                : "Diamonds are added automatically when the countdown completes."}
+                : "Tap Continue to claim now. Diamonds are added and you leave automatically when the ring completes."}
             </p>
           </div>
         </div>
         )}
+      </div>
+      <div className="photo-hand-summary__actions">
+        <div className="photo-hand-summary__cta-primary">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            type="button"
+            label={noDiamonds ? "Done" : "Continue"}
+            costAmount={null}
+            fontSize={15}
+            strokeWidth={1}
+            onClick={() => finishHand()}
+          />
+        </div>
       </div>
     </div>
   );
