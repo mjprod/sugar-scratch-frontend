@@ -1,4 +1,12 @@
-import { Gem, Gift, Loader2, Play, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import {
+  Check,
+  Gift,
+  Info,
+  Loader2,
+  Play,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
 import { useState } from "react";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
@@ -15,7 +23,7 @@ import { GetDiamondsHeroVisual } from "@/components/store/GetDiamondsHeroVisual"
 const TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure payment" },
   { icon: Zap, label: "Instant delivery" },
-  { icon: Sparkles, label: "Trusted checkout" },
+  { icon: Check, label: "Trusted checkout" },
 ] as const;
 
 export function GetDiamondsCatalog({
@@ -81,9 +89,12 @@ export function GetDiamondsCatalog({
       <section aria-labelledby="buy-cash-heading">
         <header className="get-diamonds-section__head">
           <h2 id="buy-cash-heading" className="get-diamonds-section__title">
-            <Gem className="size-4" aria-hidden="true" />
+            <Zap className="size-4" aria-hidden="true" />
             Buy with Cash
           </h2>
+          <p className="get-diamonds-section__desc">
+            Fast, secure and instant
+          </p>
         </header>
         <div className="get-diamonds-packages">
           {packs.map((product) => (
@@ -114,7 +125,6 @@ export function GetDiamondsCatalog({
           {adProduct ? (
             <WatchAdPanel
               product={adProduct}
-              remaining={adRemaining}
               processing={isProcessing(adProduct.id)}
               disabled={busy || adRemaining <= 0}
               onWatch={() => onSelect(adProduct)}
@@ -131,6 +141,7 @@ export function GetDiamondsCatalog({
 
       {onDiamondReward && onPackReward && onOpenPack ? (
         <HubRedeemSection
+          heading="Redeem Code"
           onDiamondReward={onDiamondReward}
           onPackReward={onPackReward}
           onOpenPack={onOpenPack}
@@ -146,7 +157,6 @@ function GetDiamondsHero() {
   return (
     <header className="get-diamonds-hero">
       <div className="get-diamonds-hero__copy-block">
-        <p className="get-diamonds-hero__eyebrow">Sugar currency hub</p>
         <h1 className="get-diamonds-hero__title">
           Get Diamonds <span className="get-diamonds-hero__accent">✦</span>
         </h1>
@@ -196,10 +206,16 @@ function PackageCard({
         : product.badge === "Bonus"
           ? "is-bonus"
           : "";
+  const bonus =
+    typeof product.bonusDiamonds === "number" && product.bonusDiamonds > 0
+      ? product.bonusDiamonds
+      : null;
 
   return (
     <article
-      className={["get-diamonds-package", featured ? "is-featured" : ""].join(" ")}
+      className={["get-diamonds-package", featured ? "is-featured" : ""].join(
+        " ",
+      )}
     >
       {product.badge ? (
         <span className={["get-diamonds-package__badge", badgeClass].join(" ")}>
@@ -208,7 +224,10 @@ function PackageCard({
       ) : null}
       <span className="get-diamonds-package__icon">
         {processing ? (
-          <Loader2 className="size-6 animate-spin text-sky-200" aria-hidden="true" />
+          <Loader2
+            className="size-6 animate-spin text-sky-200"
+            aria-hidden="true"
+          />
         ) : (
           <DiamondLottie size={40} aria-hidden />
         )}
@@ -217,9 +236,9 @@ function PackageCard({
         {product.diamonds.toLocaleString()}
       </p>
       <p className="get-diamonds-package__label">Diamonds</p>
-      {product.coins ? (
+      {bonus != null ? (
         <p className="get-diamonds-package__bonus">
-          +{product.coins.toLocaleString()} Coins
+          +{bonus.toLocaleString()} Bonus
         </p>
       ) : null}
       <p className="get-diamonds-package__price">{product.priceLabel}</p>
@@ -239,26 +258,24 @@ function PackageCard({
 
 function WatchAdPanel({
   product,
-  remaining,
   processing,
   disabled,
   onWatch,
 }: {
   product: StoreProduct;
-  remaining: number;
   processing: boolean;
   disabled: boolean;
   onWatch: () => void;
 }) {
   return (
     <div className="get-diamonds-watch-ad">
+      <span className="get-diamonds-watch-ad__play" aria-hidden="true">
+        <Play className="size-5" fill="currentColor" />
+      </span>
       <h3 className="get-diamonds-watch-ad__title">Watch Ad</h3>
       <p className="get-diamonds-watch-ad__copy">
         Earn free Diamonds by watching short ads.
       </p>
-      <span className="get-diamonds-watch-ad__limit">
-        Daily limit {remaining}/{DAILY_AD_LIMIT}
-      </span>
       <p className="get-diamonds-watch-ad__reward">
         +{product.diamonds}
         <DiamondLottie size={28} aria-hidden />
@@ -316,16 +333,19 @@ function ExchangePanel({
     <div className="get-diamonds-exchange">
       <div className="get-diamonds-exchange__head">
         <div>
-          <h3 className="get-diamonds-section__title">Exchange Sugar Coins</h3>
+          <h3 className="get-diamonds-section__title">
+            <CoinLottie size={16} aria-hidden />
+            Exchange Sugar Coins
+          </h3>
           <p className="get-diamonds-section__desc">
             Use your Sugar Coins to exchange for Diamonds.
           </p>
         </div>
         <div className="get-diamonds-exchange__balance">
-          Your balance
+          Your Balance
           <div className="get-diamonds-exchange__balance-value">
-            {coinBalance.toLocaleString()}
             <CoinLottie size={18} aria-hidden />
+            {coinBalance.toLocaleString()}
           </div>
         </div>
       </div>
@@ -336,14 +356,19 @@ function ExchangePanel({
           return (
             <div key={option.id} className="get-diamonds-exchange-card">
               <p className="get-diamonds-exchange-card__diamonds">
+                <DiamondLottie size={16} aria-hidden />
                 {option.diamonds.toLocaleString()}
               </p>
               <p className="get-diamonds-exchange-card__coins">
-                {option.coins.toLocaleString()} Coins
+                <CoinLottie size={14} aria-hidden />
+                {option.coins.toLocaleString()}
               </p>
               <button
                 type="button"
-                className="get-diamonds-exchange-card__btn"
+                className={[
+                  "get-diamonds-exchange-card__btn",
+                  canAfford ? "is-active" : "",
+                ].join(" ")}
                 disabled={disabled || !canAfford || busy}
                 aria-label={`Exchange ${option.coins} Sugar Coins for ${option.diamonds} Diamonds`}
                 onClick={() => handleExchange(option.diamonds, option.coins)}
@@ -355,10 +380,15 @@ function ExchangePanel({
         })}
       </div>
       <p className="get-diamonds-exchange__hint">
-        Sugar Coins can be earned from gameplay, daily rewards and events.
+        <Info className="size-3.5 shrink-0" aria-hidden="true" />
+        Sugar Coins can be earned from gameplay, daily rewards, and events.
       </p>
       {message ? (
-        <p className="get-diamonds-exchange__hint" role="status" aria-live="polite">
+        <p
+          className="get-diamonds-exchange__hint"
+          role="status"
+          aria-live="polite"
+        >
           {message}
         </p>
       ) : null}

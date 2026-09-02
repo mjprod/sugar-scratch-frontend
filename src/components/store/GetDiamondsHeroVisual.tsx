@@ -1,5 +1,4 @@
 import Aurora from "@/components/cta/Aurora";
-import { DiamondGem3D } from "@/components/store/DiamondGem3D";
 
 const HERO_ART = "/images/store/get-diamonds-hero.webp";
 
@@ -28,7 +27,6 @@ export function GetDiamondsHeroVisual() {
         loading="eager"
         decoding="async"
       />
-      <DiamondGem3D className="get-diamonds-hero__gem" />
       <span className="get-diamonds-hero__sheen" aria-hidden="true" />
     </div>
   );

@@ -11,12 +11,13 @@ export type StoreBadge =
 
 export type StoreProductKind = "rewarded-ad" | "diamonds";
 
+/** Soft-currency exchange — intentionally worse $/Diamond than cash at higher tiers (GD-AC22). */
 export const COIN_EXCHANGE_OPTIONS = [
   { id: "x100", diamonds: 100, coins: 100 },
-  { id: "x500", diamonds: 500, coins: 700 },
-  { id: "x1200", diamonds: 1200, coins: 1800 },
-  { id: "x2500", diamonds: 2500, coins: 4000 },
-  { id: "x5000", diamonds: 5000, coins: 8500 },
+  { id: "x500", diamonds: 500, coins: 780 },
+  { id: "x1200", diamonds: 1200, coins: 2400 },
+  { id: "x2500", diamonds: 2500, coins: 5800 },
+  { id: "x5000", diamonds: 5000, coins: 13000 },
 ] as const;
 
 export type CoinExchangeOption = (typeof COIN_EXCHANGE_OPTIONS)[number];
@@ -30,9 +31,14 @@ export type StoreProduct = {
   /** Short line under the title for rewarded ads / bonuses. */
   subtitle?: string;
   priceLabel: string;
-  /** Diamonds granted on success. */
+  /** Diamonds granted on success (inclusive of bonusDiamonds when present). */
   diamonds: number;
-  /** Bonus Sugar Coins granted with this product. */
+  /**
+   * Explanatory bonus portion already included in `diamonds` (GD-AC10).
+   * Display only — not added again on purchase.
+   */
+  bonusDiamonds?: number;
+  /** Bonus Sugar Coins granted with this product (not shown on cash package cards). */
   coins?: number;
   badge?: StoreBadge;
   /** Artwork URL — CSS fallback used when empty. */
@@ -122,7 +128,6 @@ const CATALOG: StoreProduct[] = [
     title: "100 Diamonds",
     priceLabel: "$3.99",
     diamonds: 100,
-    coins: 4000,
     order: 2,
     available: true,
   },
@@ -132,7 +137,6 @@ const CATALOG: StoreProduct[] = [
     title: "500 Diamonds",
     priceLabel: "$7.99",
     diamonds: 500,
-    coins: 8000,
     badge: "Popular",
     order: 3,
     available: true,
@@ -143,7 +147,7 @@ const CATALOG: StoreProduct[] = [
     title: "1200 Diamonds",
     priceLabel: "$19.99",
     diamonds: 1200,
-    coins: 20000,
+    bonusDiamonds: 200,
     badge: "Best Value",
     order: 4,
     available: true,
@@ -154,7 +158,7 @@ const CATALOG: StoreProduct[] = [
     title: "2500 Diamonds",
     priceLabel: "$39.99",
     diamonds: 2500,
-    coins: 40000,
+    bonusDiamonds: 500,
     badge: "Bonus",
     order: 5,
     available: true,
@@ -165,7 +169,7 @@ const CATALOG: StoreProduct[] = [
     title: "5000 Diamonds",
     priceLabel: "$69.99",
     diamonds: 5000,
-    coins: 70000,
+    bonusDiamonds: 1200,
     order: 6,
     available: true,
   },
@@ -194,7 +198,11 @@ function normalizeProductCoins(value: unknown): number | undefined {
 
 function normalizeStoreProduct(product: StoreProduct): StoreProduct {
   const coins = normalizeProductCoins(product.coins);
-  return coins === undefined ? product : { ...product, coins };
+  const bonusDiamonds = normalizeProductCoins(product.bonusDiamonds);
+  let next = product;
+  if (coins !== undefined) next = { ...next, coins };
+  if (bonusDiamonds !== undefined) next = { ...next, bonusDiamonds };
+  return next;
 }
 
 export function listAvailableProducts(source: StoreProduct[] = CATALOG): StoreProduct[] {
