@@ -4279,6 +4279,8 @@ dd {
   width: 100%;
   pointer-events: auto;
   filter: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /*

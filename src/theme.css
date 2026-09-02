@@ -8025,6 +8025,21 @@ body[data-theme="v8"] .hf-buy .cta-button__cost {
   flex-shrink: 0;
 }
 
+@media (max-width: 980px) {
+  /* Skip WebGL aurora on mobile reels — solid plate, keep the orbiting stroke. */
+  body[data-theme="v8"] .hf-buy .cta-button__inner {
+    background: oklch(0.242 0.076 4.64);
+  }
+
+  body[data-theme="v8"] .hf-buy .cta-button__aurora,
+  body[data-theme="v8"] .hf-buy .cta-button__aurora-fallback,
+  body[data-theme="v8"] .hf-buy .cta-button__aurora-fallback::before,
+  body[data-theme="v8"] .hf-buy .cta-button__aurora-fallback::after,
+  body[data-theme="v8"] .hf-buy .cta-button__face {
+    display: none;
+  }
+}
+
 body[data-theme="v8"] .hf-like-wrap {
   display: flex;
   flex: 0 0 auto;
