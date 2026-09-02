@@ -99,8 +99,6 @@ src/
 - After login, **only** `evaluateRecommendationEligibility` may open Tinder personalization.
 - Buy path never inserts personalization.
 
-See `old_app/src/v8/CHEATSHEET.md` for the full rules. `old_app/` is the junior prototype kept as reference.
-
 ## Notes
 
 - Pack art under `public/images/packs/` is SVG placeholders until real assets arrive.

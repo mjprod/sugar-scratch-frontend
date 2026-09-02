@@ -9,8 +9,6 @@
     "prebuild": "node scripts/copy-dotlottie-wasm.mjs",
     "dev": "vite",
     "dev:host": "vite --host",
-    "dev:v8": "vite --config vite.old-app.config.ts",
-    "dev:v8:host": "vite --config vite.old-app.config.ts --host",
     "certs": "node scripts/gen-dev-certs.mjs",
     "fix:5173": "bash scripts/fix-5173.sh",
     "build": "tsc -b && vite build",

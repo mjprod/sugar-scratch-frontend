@@ -16,9 +16,7 @@ If something fails, read the error — self-checks usually name the rule you bro
 
 ## Auth, buy, welcome, packs
 
-If your change touches login, purchase, onboarding, or pack inventory, read:
-
-**`old_app/src/v8/CHEATSHEET.md`**
+If your change touches login, purchase, onboarding, or pack inventory, read the **Product rules** section in **`README.md`**.
 
 Key product rules (don't break these):
 
