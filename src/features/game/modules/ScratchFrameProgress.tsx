@@ -171,10 +171,10 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
             x2={FRAME_W}
             y2={FRAME_H}
           >
-            <stop offset="0%" stopColor="#FF9BCB" />
-            <stop offset="45%" stopColor="#FFD6B0" />
-            <stop offset="75%" stopColor="#F4B7FF" />
-            <stop offset="100%" stopColor="#A98BFF" />
+            <stop offset="0%" stopColor="#E8589A" />
+            <stop offset="45%" stopColor="#E08848" />
+            <stop offset="75%" stopColor="#B858D8" />
+            <stop offset="100%" stopColor="#7050D8" />
           </linearGradient>
         </defs>
         <rect

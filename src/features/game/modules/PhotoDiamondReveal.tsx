@@ -15,8 +15,9 @@ type Phase =
   | "minimizing"
   | "complete";
 
-const DURATION_MS = 2600;
-const SAFETY_MS = 3400;
+/** Per-card result hold before auto-advance to the next card. */
+export const CARD_DIAMOND_RESULT_MS = 2000;
+const SAFETY_MS = CARD_DIAMOND_RESULT_MS + 800;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -24,8 +25,9 @@ function prefersReducedMotion() {
 }
 
 /**
- * Automatic photo-card diamond win reveal (~2.6s) — presentation only.
+ * Per-card diamond win reveal — presentation only.
  * Session diamonds must already be persisted before this mounts.
+ * Auto-advances after ~2s; navigation is handled by the parent.
  */
 export function PhotoDiamondReveal({
   diamonds,
@@ -54,19 +56,21 @@ export function PhotoDiamondReveal({
       timers.push(window.setTimeout(fn, ms));
     };
 
+    const holdMs = reduced ? 1500 : CARD_DIAMOND_RESULT_MS;
+
     if (reduced) {
       at(120, () => setPhase("appearing"));
       at(600, () => setPhase("confirmed"));
-      at(1500, () => setPhase("minimizing"));
-      at(1900, finish);
+      at(holdMs - 200, () => setPhase("minimizing"));
+      at(holdMs, finish);
       at(SAFETY_MS, finish);
       return () => timers.forEach((id) => window.clearTimeout(id));
     }
 
     at(200, () => setPhase("appearing"));
-    at(1100, () => setPhase("confirmed"));
-    at(2000, () => setPhase("minimizing"));
-    at(DURATION_MS, finish);
+    at(700, () => setPhase("confirmed"));
+    at(holdMs - 300, () => setPhase("minimizing"));
+    at(holdMs, finish);
     at(SAFETY_MS, finish);
 
     return () => timers.forEach((id) => window.clearTimeout(id));
@@ -129,10 +133,6 @@ export function PhotoDiamondReveal({
           </div>
           <p className="photo-diamond-reveal__amount">{diamonds}</p>
         </div>
-
-        {showConfirm ? (
-          <p className="photo-diamond-reveal__owned">Added to your run total ✓</p>
-        ) : null}
       </div>
 
       <div

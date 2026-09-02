@@ -8,7 +8,6 @@ import {
   type AnimationEvent,
   type CSSProperties,
 } from "react";
-import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useWallet } from "@/contexts/WalletContext";
 import { loadGameSession, settleDonePhotoHand } from "./gameSession";
@@ -156,10 +155,6 @@ export function PhotoHandSummary({
     };
   }, []);
 
-  function handleCollect() {
-    finishHand();
-  }
-
   return (
     <div
       className="photo-hand-summary"
@@ -177,7 +172,10 @@ export function PhotoHandSummary({
           <PackNoMatchResult subtitle="No diamonds this pack." />
         ) : (
         <div className="photo-hand-summary__stack">
-          <p className="photo-hand-summary__title">TOTAL WIN</p>
+          <p className="photo-hand-summary__title">PACK COMPLETE</p>
+          <p className="photo-hand-summary__subtitle">
+            {diamondTotal} Diamond{diamondTotal === 1 ? "" : "s"} Earned
+          </p>
           <div
             className={[
               "photo-hand-summary__reward-wrap",
@@ -207,25 +205,11 @@ export function PhotoHandSummary({
             <p className="sr-only" aria-live="polite">
               {credited
                 ? "Diamonds added to your balance."
-                : "Tap Collect to claim now. Diamonds are added and you leave automatically when the ring completes."}
+                : "Diamonds are added automatically when the countdown completes."}
             </p>
           </div>
         </div>
         )}
-      </div>
-      <div className="photo-hand-summary__actions">
-        <div className="photo-hand-summary__cta-primary">
-          <CtaButton
-            {...ctaButtonPropsFromTemplate("squircleCTA")}
-            fillParent
-            type="button"
-            label={noDiamonds ? "Done" : "Collect"}
-            costAmount={null}
-            fontSize={15}
-            strokeWidth={1}
-            onClick={handleCollect}
-          />
-        </div>
       </div>
     </div>
   );
