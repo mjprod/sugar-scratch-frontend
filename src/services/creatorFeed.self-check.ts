@@ -7,7 +7,11 @@ import {
   clearHomeFeedCache,
   feedPackLabel,
   feedVisibleTags,
+  FEED_PRELOAD_AUTO_CAP,
   fetchHomeFeedPage,
+  isFeedMountIndex,
+  isFeedPreloadAutoIndex,
+  isWarmFeedIndex,
   readHomeFeedCache,
   toPurchasePack,
   writeHomeFeedCache,
@@ -54,6 +58,17 @@ async function main() {
   }
   assert(feedPackLabel("Golden Hour Pack") === "Golden Hour", "strip Pack suffix");
   assert(feedPackLabel("Cyber Nights") === "Cyber Nights", "keep bare titles");
+
+  assert(isFeedMountIndex(0, 0), "active index mounts");
+  assert(isFeedMountIndex(1, 0), "warm ahead mounts");
+  assert(!isFeedMountIndex(3, 0), "far index does not mount");
+  assert(!isWarmFeedIndex(0, 0), "active is not warm-neighbor");
+  assert(isWarmFeedIndex(1, 0), "ahead neighbor is warm");
+  assert(isFeedPreloadAutoIndex(0, 0), "active gets preload=auto");
+  assert(
+    FEED_PRELOAD_AUTO_CAP >= 1 && FEED_PRELOAD_AUTO_CAP <= 2,
+    "preload auto capped to 1–2",
+  );
 
   // Paginated pages must reuse the in-memory catalog (no reshuffle / re-seed).
   clearHomeFeedCache();

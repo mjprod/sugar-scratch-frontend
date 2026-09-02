@@ -311,14 +311,14 @@ export function DiscoverReel({
   useEffect(() => {
     return () => {
       if (scrollFxRafRef.current) cancelAnimationFrame(scrollFxRafRef.current);
+      if (scrollStateRafRef.current) cancelAnimationFrame(scrollStateRafRef.current);
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+      }
     };
   }, []);
 
   useEffect(() => {
-    const activeIndex = items.findIndex((item) => item.id === activeId);
-    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
-    const peekId = items[resolvedActiveIndex + 1]?.id;
-
     const live = desktop && inView;
     videoRefs.current.forEach((video, id) => {
       if (!live) {
@@ -333,16 +333,8 @@ export function DiscoverReel({
         return;
       }
       video.pause();
-      // Cap preload=auto: active (via prop) + one ahead peek.
-      if (id === peekId) {
-        try {
-          if (video.preload !== "auto") video.preload = "auto";
-        } catch {
-          /* ignore media errors on warm path */
-        }
-      }
     });
-  }, [activeId, desktop, inView, items, videoRefs]);
+  }, [activeId, desktop, inView, videoRefs]);
 
   const go = useCallback(
     (delta: number) => {
@@ -614,13 +606,34 @@ export function DiscoverReel({
   function onScroll() {
     const root = scrollerRef.current;
     if (!root || !items.length) return;
-    const { slideHeight } = getSlideMetrics(root);
-    const index = Math.round(root.scrollTop / slideHeight);
-    const next = items[Math.max(0, Math.min(items.length - 1, index))];
-    if (next && next.id !== activeId) setActiveId(next.id);
+
+    setFeedScrolling(true);
+    if (feedScrollSettleTimerRef.current) {
+      window.clearTimeout(feedScrollSettleTimerRef.current);
+    }
+    // Fallback when scrollend is missing — also commits activeId.
+    feedScrollSettleTimerRef.current = window.setTimeout(() => {
+      feedScrollSettleTimerRef.current = 0;
+      setFeedScrolling(false);
+      const node = scrollerRef.current;
+      if (node) commitSettledActiveId(node);
+    }, FEED_SCROLL_SETTLE_MS);
+
     applyScrollFx(root);
-    const remaining = items.length - 1 - index;
-    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+
+    // Track scroll in refs only; React activeId waits for snap settle.
+    if (scrollStateRafRef.current) return;
+    scrollStateRafRef.current = requestAnimationFrame(() => {
+      scrollStateRafRef.current = 0;
+      const node = scrollerRef.current;
+      if (!node || !items.length) return;
+      const { slideHeight } = getSlideMetrics(node);
+      const index = Math.round(node.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(items.length - 1, index));
+      scrollIndexRef.current = safeIndex;
+      const remaining = items.length - 1 - safeIndex;
+      if (remaining <= FEED_WARM_AHEAD) void loadMore();
+    });
   }
 
   function toggleLike(id: string) {
@@ -753,7 +766,7 @@ export function DiscoverReel({
             >
               {(() => {
                 return items.map((item, index) => {
-                  const warm = isWarmFeedIndex(index, resolvedActiveIndex);
+                  const mountVideo = isFeedMountIndex(index, resolvedActiveIndex);
                   const eagerPreload =
                     live && isFeedPreloadAutoIndex(index, resolvedActiveIndex);
 
@@ -762,8 +775,9 @@ export function DiscoverReel({
                       <CreatorFeedCard
                         item={item}
                         active={live && item.id === activeId}
-                        warm={warm}
+                        warm={mountVideo}
                         eagerPreload={eagerPreload}
+                        feedScrolling={feedScrolling || !live}
                         buyCta="pillGoldCTA"
                         onLike={() => toggleLike(item.id)}
                         onEnsureLike={() => ensureLike(item.id)}
