@@ -670,7 +670,10 @@ function gestureLayerBlocked() {
 }
 
 function useIsMobileFeed() {
-  const [mobile, setMobile] = useState(false);
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 980px)").matches;
+  });
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 980px)");
     const apply = () => setMobile(mq.matches);
