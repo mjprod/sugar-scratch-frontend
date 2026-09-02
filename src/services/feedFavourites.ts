@@ -8,6 +8,7 @@ export type FeedFavourite = {
   id: string;
   creatorId: string;
   creatorName: string;
+  avatarUrl: string;
   packName: string;
   posterUrl: string;
   videoUrl?: string;
@@ -57,8 +58,9 @@ export function addFeedFavourite(item: HomeFeedCreator) {
     id: item.id,
     creatorId: item.creatorId,
     creatorName: item.creatorName,
+    avatarUrl: item.avatarUrl || "",
     packName: item.packName,
-    posterUrl: item.posterUrl,
+    posterUrl: item.swipePosterUrl || item.avatarUrl || "",
     videoUrl: item.videoUrl,
     mediaType: item.mediaType,
     savedAt: Date.now(),
