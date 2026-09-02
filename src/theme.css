@@ -7813,7 +7813,6 @@ body[data-theme="v8"] .hf-card {
 
 body[data-theme="v8"] .hf-media {
   --hf-media-scale: 1.04;
-  --hf-media-blur: 0px;
 
   position: absolute;
   inset: 0;
@@ -7829,8 +7828,7 @@ body[data-theme="v8"] .hf-media-el {
   object-position: center 20%;
   transform: scale(var(--hf-media-scale));
   transform-origin: center 30%;
-  filter: blur(var(--hf-media-blur));
-  will-change: transform, filter;
+  will-change: transform;
 }
 
 body[data-theme="v8"] .hf-media-poster {
@@ -8369,7 +8367,6 @@ body[data-theme="v8"] .hf-loading-more {
 
   body[data-theme="v8"] .hf-media {
     --hf-media-scale: 1 !important;
-    --hf-media-blur: 0px !important;
   }
 
   body[data-theme="v8"] .hf-like.is-burst .hf-like-icon,

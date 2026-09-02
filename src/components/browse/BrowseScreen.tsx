@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
@@ -6,7 +6,6 @@ import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
-import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
@@ -21,6 +20,12 @@ import {
   type LeaderboardCategory,
   type LeaderboardRow,
 } from "@/services/homepage";
+
+const FeaturedCoverFlow = lazy(() =>
+  import("@/components/home/FeaturedCoverFlow").then((m) => ({
+    default: m.FeaturedCoverFlow,
+  })),
+);
 
 type PageStatus = "loading" | "loaded" | "error";
 
@@ -345,11 +350,13 @@ export function HomeScreen({
             : "",
         ].join(" ")}
       >
-        <FeaturedCoverFlow
-          featured={home.featured}
-          onPlay={playPack}
-          onReady={() => setHeroReady(true)}
-        />
+        <Suspense fallback={null}>
+          <FeaturedCoverFlow
+            featured={home.featured}
+            onPlay={playPack}
+            onReady={() => setHeroReady(true)}
+          />
+        </Suspense>
       </div>
 
       {showTutorial ? (

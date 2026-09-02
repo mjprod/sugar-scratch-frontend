@@ -16,9 +16,9 @@ import {
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   FEED_WARM_AHEAD,
-  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
-  isWarmFeedIndex,
+  isFeedMountIndex,
+  isFeedPreloadAutoIndex,
   preloadFeedPosters,
   readHomeFeedCache,
   toPurchasePack,
@@ -63,12 +63,10 @@ const MEDIA_SCALE_MAX_MOBILE = 1.16;
  */
 const MEDIA_SCALE_MAX_DESKTOP = 1.5;
 const MEDIA_SCALE_GAIN_DESKTOP = MEDIA_SCALE_MAX_DESKTOP - MEDIA_SCALE_BASE;
-/** Max scroll-driven media blur (px). Desktop only — mobile skips filter blur. */
-const MEDIA_BLUR_MAX_PX = 5;
-/** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
-const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
 /** How close scale must get before we snap to target (smaller = smoother end). */
 const MEDIA_SCALE_SETTLE_EPS = 0.0002;
+/** After last scroll event, treat the feed as settled (CTA motion resumes). */
+const FEED_SCROLL_SETTLE_MS = 140;
 /** Desktop drag: ignore tiny pointer jitter before treating as a swipe. */
 const DESKTOP_DRAG_THRESHOLD_PX = 6;
 /** Desktop drag: velocity (px/ms) needed to advance a slide on release. */
@@ -148,9 +146,8 @@ export function HomeFeedScreen({
   const scrollIndexRef = useRef(cached?.scrollIndex ?? 0);
   const restoredRef = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
-  /** Desktop (≥981px): blur + aggressive scrub zoom. Mobile keeps the light path. */
+  /** Desktop (≥981px): aggressive scrub zoom. Mobile keeps the light path. */
   const isDesktopFeed = useIsDesktopFeed();
-  const allowMediaBlur = isDesktopFeed;
   const mediaScaleGain = isDesktopFeed
     ? MEDIA_SCALE_GAIN_DESKTOP
     : MEDIA_SCALE_GAIN_MOBILE;
@@ -202,10 +199,12 @@ export function HomeFeedScreen({
   const parallaxCurrentRef = useRef(new Map<string, number>());
   const scaleTargetRef = useRef(new Map<string, number>());
   const scaleCurrentRef = useRef(new Map<string, number>());
-  const blurTargetRef = useRef(new Map<string, number>());
-  const blurCurrentRef = useRef(new Map<string, number>());
   const scrollFxRafRef = useRef(0);
   const scrollFxLastTsRef = useRef(0);
+  const viewIndexRef = useRef(viewIndex);
+  const scrollStateRafRef = useRef(0);
+  const feedScrollSettleTimerRef = useRef(0);
+  const [feedScrolling, setFeedScrolling] = useState(false);
   const [isDesktopDragging, setIsDesktopDragging] = useState(false);
   const desktopDragRef = useRef<{
     pointerId: number;
@@ -321,7 +320,6 @@ export function HomeFeedScreen({
         const media = slide.querySelector<HTMLElement>(".hf-media");
         overlay?.style.setProperty("--hf-parallax-y", "0px");
         media?.style.setProperty("--hf-media-scale", String(MEDIA_SCALE_BASE));
-        media?.style.setProperty("--hf-media-blur", "0px");
       };
 
       if (reducedMotion) {
@@ -330,8 +328,6 @@ export function HomeFeedScreen({
         parallaxCurrentRef.current.clear();
         scaleTargetRef.current.clear();
         scaleCurrentRef.current.clear();
-        blurTargetRef.current.clear();
-        blurCurrentRef.current.clear();
         if (scrollFxRafRef.current) {
           cancelAnimationFrame(scrollFxRafRef.current);
           scrollFxRafRef.current = 0;
@@ -348,8 +344,6 @@ export function HomeFeedScreen({
           parallaxCurrentRef.current.delete(key);
           scaleTargetRef.current.delete(key);
           scaleCurrentRef.current.delete(key);
-          blurTargetRef.current.delete(key);
-          blurCurrentRef.current.delete(key);
           if (Number.isFinite(idx) && slides[idx]) resetSlideFx(slides[idx]!);
         }
       }
@@ -376,24 +370,12 @@ export function HomeFeedScreen({
         );
         scaleTargetRef.current.set(key, scaleTarget);
 
-        // Blur only on exit (leaving upward). Incoming/next peek stays sharp.
-        // Mobile: skip expensive filter blur; keep scale + parallax.
-        const exitProgress = Math.max(0, progress);
-        const blurTarget = allowMediaBlur
-          ? Math.min(
-              MEDIA_BLUR_MAX_PX,
-              exitProgress * MEDIA_BLUR_PROGRESS_GAIN * MEDIA_BLUR_MAX_PX,
-            )
-          : 0;
-        blurTargetRef.current.set(key, blurTarget);
-
         if (immediate) {
           const slide = slides[index];
           const overlay = slide?.querySelector<HTMLElement>(".hf-overlay");
           const media = slide?.querySelector<HTMLElement>(".hf-media");
           parallaxCurrentRef.current.set(key, overlayTarget);
           scaleCurrentRef.current.set(key, scaleTarget);
-          blurCurrentRef.current.set(key, blurTarget);
           overlay?.style.setProperty(
             "--hf-parallax-y",
             `${overlayTarget.toFixed(3)}px`,
@@ -401,10 +383,6 @@ export function HomeFeedScreen({
           media?.style.setProperty(
             "--hf-media-scale",
             scaleTarget.toFixed(5),
-          );
-          media?.style.setProperty(
-            "--hf-media-blur",
-            `${blurTarget.toFixed(3)}px`,
           );
         }
       }
@@ -440,7 +418,8 @@ export function HomeFeedScreen({
         let drifting = false;
 
         for (let index = liveStart; index <= liveEnd; index += 1) {
-          const key = items[index]?.id ?? String(index);
+          // Keys must match writes above (scroll index), not item.id.
+          const key = String(index);
           const slide = liveSlides[index];
           const overlay = slide?.querySelector<HTMLElement>(".hf-overlay");
           const media = slide?.querySelector<HTMLElement>(".hf-media");
@@ -469,18 +448,6 @@ export function HomeFeedScreen({
             sValue.toFixed(5),
           );
           if (!sSettled) drifting = true;
-
-          const bTarget = blurTargetRef.current.get(key) ?? 0;
-          const bCurrent = blurCurrentRef.current.get(key) ?? 0;
-          const bNext = bCurrent + (bTarget - bCurrent) * mediaAlpha;
-          const bSettled = Math.abs(bTarget - bNext) < 0.01;
-          const bValue = bSettled ? bTarget : bNext;
-          blurCurrentRef.current.set(key, bValue);
-          media?.style.setProperty(
-            "--hf-media-blur",
-            `${bValue.toFixed(3)}px`,
-          );
-          if (!bSettled) drifting = true;
         }
 
         if (drifting) {
@@ -495,7 +462,6 @@ export function HomeFeedScreen({
       scrollFxRafRef.current = requestAnimationFrame(tick);
     },
     [
-      allowMediaBlur,
       getSlideMetrics,
       mediaScaleGain,
       mediaScaleMax,
@@ -525,6 +491,7 @@ export function HomeFeedScreen({
       root.style.scrollSnapType = "none";
       root.style.scrollBehavior = "auto";
       root.scrollTop = y;
+      viewIndexRef.current = target;
       setViewIndex(target);
       scrollIndexRef.current = target - 1;
       requestAnimationFrame(() => {
@@ -548,6 +515,7 @@ export function HomeFeedScreen({
     );
     const index = loopEnabled ? logical + 1 : logical;
     root.scrollTo({ top: index * slideHeight });
+    viewIndexRef.current = index;
     setViewIndex(index);
     const next = items[logical];
     if (next) setActiveId(next.id);
@@ -647,13 +615,60 @@ export function HomeFeedScreen({
     stopScrollNudge,
   ]);
 
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+  const loopSlidesRef = useRef(loopSlides);
+  loopSlidesRef.current = loopSlides;
+  const maxScrollIndexRef = useRef(maxScrollIndex);
+  maxScrollIndexRef.current = maxScrollIndex;
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+
+  const commitSettledViewIndex = useCallback(
+    (root: HTMLElement) => {
+      const slides = loopSlidesRef.current;
+      const maxIdx = maxScrollIndexRef.current;
+      if (!slides.length) return;
+      const { slideHeight } = getSlideMetrics(root);
+      if (slideHeight <= 0) return;
+      const index = Math.round(root.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(maxIdx, index));
+      // Only commit React state once the snap has parked on a slide.
+      if (Math.abs(root.scrollTop - safeIndex * slideHeight) > 2) return;
+
+      const slide = slides[safeIndex];
+      viewIndexRef.current = safeIndex;
+      setViewIndex(safeIndex);
+      if (slide) {
+        scrollIndexRef.current = slide.logicalIndex;
+        if (slide.item.id !== activeIdRef.current) {
+          setActiveId(slide.item.id);
+        }
+        persistRef.current({
+          activeId: slide.item.id,
+          scrollIndex: slide.logicalIndex,
+        });
+      }
+    },
+    [getSlideMetrics],
+  );
+
   useEffect(() => {
     const root = scrollerRef.current;
-    if (!root || !loopEnabled || status !== "loaded") return;
-    const onScrollEnd = () => normalizeLoopScroll(root);
+    if (!root || status !== "loaded") return;
+
+    const onScrollEnd = () => {
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+        feedScrollSettleTimerRef.current = 0;
+      }
+      setFeedScrolling(false);
+      if (loopEnabled) normalizeLoopScroll(root);
+      commitSettledViewIndex(root);
+    };
     root.addEventListener("scrollend", onScrollEnd);
     return () => root.removeEventListener("scrollend", onScrollEnd);
-  }, [loopEnabled, normalizeLoopScroll, status, items.length]);
+  }, [commitSettledViewIndex, loopEnabled, normalizeLoopScroll, status, items.length]);
 
   const armScrollNudgeIdle = useCallback(() => {
     if (nudgeIdleTimerRef.current) {
@@ -748,6 +763,14 @@ export function HomeFeedScreen({
         cancelAnimationFrame(scrollFxRafRef.current);
         scrollFxRafRef.current = 0;
       }
+      if (scrollStateRafRef.current) {
+        cancelAnimationFrame(scrollStateRafRef.current);
+        scrollStateRafRef.current = 0;
+      }
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+        feedScrollSettleTimerRef.current = 0;
+      }
       if (nudgeRafRef.current) {
         cancelAnimationFrame(nudgeRafRef.current);
         nudgeRafRef.current = 0;
@@ -766,22 +789,6 @@ export function HomeFeedScreen({
   useEffect(() => {
     const activeSlide = loopSlides[viewIndex];
     const activeKey = activeSlide?.key;
-    const logical = activeSlide?.logicalIndex ?? 0;
-    const warmKeys = new Set<string>();
-    for (let offset = -FEED_WARM_BEHIND; offset <= FEED_WARM_AHEAD; offset += 1) {
-      if (offset === 0) continue;
-      const neighborLogical = logical + offset;
-      if (neighborLogical < 0 || neighborLogical >= items.length) continue;
-      const neighbor = items[neighborLogical];
-      if (neighbor) warmKeys.add(neighbor.id);
-      // Also warm the matching loop clone keys when relevant.
-      if (loopEnabled && neighborLogical === 0) {
-        warmKeys.add(`${items[0]!.id}__loop-tail`);
-      }
-      if (loopEnabled && neighborLogical === items.length - 1) {
-        warmKeys.add(`${items[items.length - 1]!.id}__loop-head`);
-      }
-    }
 
     videoRefs.current.forEach((video, id) => {
       if (!active) {
@@ -798,16 +805,8 @@ export function HomeFeedScreen({
       }
 
       video.pause();
-
-      if (warmKeys.has(id)) {
-        try {
-          if (video.preload !== "auto") video.preload = "auto";
-        } catch {
-          /* ignore media errors on warm path */
-        }
-      }
     });
-  }, [active, items, loopEnabled, loopSlides, videoRefs, viewIndex]);
+  }, [active, loopSlides, videoRefs, viewIndex]);
 
   const go = useCallback(
     (delta: number) => {
@@ -1156,39 +1155,52 @@ export function HomeFeedScreen({
     // Programmatic nudge drives scrollTop itself — don't treat that as user activity.
     if (!nudgeAnimatingRef.current) {
       markFeedActivityRef.current();
-    }
-    const { slideHeight } = getSlideMetrics(root);
-    const index = Math.round(root.scrollTop / slideHeight);
-    const safeIndex = Math.max(0, Math.min(maxScrollIndex, index));
-    setViewIndex(safeIndex);
-    const slide = loopSlides[safeIndex];
-    if (slide) {
-      scrollIndexRef.current = slide.logicalIndex;
-      if (slide.item.id !== activeId) {
-        setActiveId(slide.item.id);
-        persist({
-          activeId: slide.item.id,
-          scrollIndex: slide.logicalIndex,
-        });
-      } else {
-        persist({ scrollIndex: slide.logicalIndex });
+      setFeedScrolling(true);
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
       }
+      // Fallback when scrollend is missing (older WebKit) — also commits view index.
+      feedScrollSettleTimerRef.current = window.setTimeout(() => {
+        feedScrollSettleTimerRef.current = 0;
+        setFeedScrolling(false);
+        const node = scrollerRef.current;
+        if (!node) return;
+        if (loopEnabled) normalizeLoopScroll(node);
+        commitSettledViewIndex(node);
+      }, FEED_SCROLL_SETTLE_MS);
     }
 
+    // Visual FX every scroll event (DOM writes only — no React index updates).
     applyScrollFx(root);
 
-    const logical = slide?.logicalIndex ?? 0;
-    const remaining = items.length - 1 - logical;
-    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+    // Track scroll position in refs only; React viewIndex waits for snap settle.
+    if (scrollStateRafRef.current) return;
+    scrollStateRafRef.current = requestAnimationFrame(() => {
+      scrollStateRafRef.current = 0;
+      const node = scrollerRef.current;
+      if (!node || !loopSlides.length) return;
+      const { slideHeight } = getSlideMetrics(node);
+      const index = Math.round(node.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(maxScrollIndex, index));
+      const slide = loopSlides[safeIndex];
+      viewIndexRef.current = safeIndex;
+      if (slide) {
+        scrollIndexRef.current = slide.logicalIndex;
+      }
 
-    // Settled on a loop clone → teleport to the matching real slide.
-    if (
-      loopEnabled &&
-      Math.abs(root.scrollTop - safeIndex * slideHeight) < 2 &&
-      (safeIndex <= 0 || safeIndex >= items.length + 1)
-    ) {
-      normalizeLoopScroll(root);
-    }
+      const logical = slide?.logicalIndex ?? 0;
+      const remaining = items.length - 1 - logical;
+      if (remaining <= FEED_WARM_AHEAD) void loadMore();
+
+      // Settled on a loop clone → teleport to the matching real slide.
+      if (
+        loopEnabled &&
+        Math.abs(node.scrollTop - safeIndex * slideHeight) < 2 &&
+        (safeIndex <= 0 || safeIndex >= items.length + 1)
+      ) {
+        normalizeLoopScroll(node);
+      }
+    });
   }
 
   function toggleLike(id: string) {
@@ -1364,16 +1376,23 @@ export function HomeFeedScreen({
               const resolvedActiveIndex = activeLogical >= 0 ? activeLogical : 0;
 
               return loopSlides.map((slide, index) => {
-                const warm =
-                  !slide.clone &&
-                  isWarmFeedIndex(slide.logicalIndex, resolvedActiveIndex);
+                // True window: active ± warm (incl. visible slide). Far = poster only.
+                const mountVideo =
+                  index === viewIndex ||
+                  (!slide.clone &&
+                    isFeedMountIndex(slide.logicalIndex, resolvedActiveIndex));
+                const eagerPreload =
+                  active &&
+                  isFeedPreloadAutoIndex(slide.logicalIndex, resolvedActiveIndex);
 
                 return (
                   <div key={slide.key} className="hf-slide">
                     <CreatorFeedCard
                       item={slide.item}
                       active={active && index === viewIndex}
-                      warm={warm || (active && index === viewIndex)}
+                      warm={mountVideo}
+                      eagerPreload={eagerPreload}
+                      feedScrolling={feedScrolling || !active}
                       onLike={() => toggleLike(slide.item.id)}
                       onEnsureLike={() => ensureLike(slide.item.id)}
                       onBuy={() => onBuyPack(toPurchasePack(slide.item))}
@@ -1423,7 +1442,7 @@ function gestureLayerBlocksNudge() {
 
 /**
  * Desktop feed breakpoint — matches CTA / pack mobile MQ (≤980 = mobile).
- * Used for blur + larger scrub zoom where there's GPU headroom.
+ * Used for larger scrub zoom where there's GPU headroom.
  */
 function useIsDesktopFeed() {
   const [desktop, setDesktop] = useState(false);

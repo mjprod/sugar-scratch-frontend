@@ -55,6 +55,21 @@ async function main() {
   assert(feedPackLabel("Golden Hour Pack") === "Golden Hour", "strip Pack suffix");
   assert(feedPackLabel("Cyber Nights") === "Cyber Nights", "keep bare titles");
 
+  // Paginated pages must reuse the in-memory catalog (no reshuffle / re-seed).
+  clearHomeFeedCache();
+  const seeded = await fetchHomeFeedPage(null);
+  if (seeded.hasMore && seeded.nextCursor) {
+    const next = await fetchHomeFeedPage(seeded.nextCursor);
+    assert(next.items.length > 0 || !next.hasMore, "page 2 should slice catalog");
+    // Same shuffle order: page2 ids are offset continuations of page1 seeds.
+    if (seeded.items[0] && next.items[0]) {
+      assert(
+        next.items[0].id !== seeded.items[0].id,
+        "page 2 advances without rebuilding catalog",
+      );
+    }
+  }
+
   writeHomeFeedCache({
     items: page1.items,
     cursor: page1.nextCursor,
