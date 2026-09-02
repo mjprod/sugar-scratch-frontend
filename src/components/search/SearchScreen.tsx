@@ -27,7 +27,7 @@ const BAR_ENTER_DELAY = 0.28;
 /** First body cascade starts just after the bar begins fading in. */
 const BODY_OPEN_DELAY = 0.16;
 const BODY_UPDATE_DELAY = 0.04;
-const BODY_STAGGER = 0.04;
+const BODY_STAGGER = 0.14;
 
 const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -374,6 +374,10 @@ const SKELETON_CHIP_WIDTHS = [88, 118, 96, 132, 84, 110, 102];
 const SKELETON_CREATOR_COUNT = 6;
 const SKELETON_PACK_COUNT = 4;
 const MEDIA_READY_TIMEOUT_MS = 8000;
+const CONTENT_FADE_MS = 360;
+const CONTENT_STAGGER_MS = 140;
+const CONTENT_FADE_OUT_MS =
+  CONTENT_FADE_MS + CONTENT_STAGGER_MS * 2 + 80;
 
 function discoveryMediaIds(catalog: SearchCatalog) {
   const ids: string[] = [];
@@ -448,78 +452,98 @@ function SearchSectionHeader({
   );
 }
 
-function DiscoverySkeleton() {
+function SkeletonChips() {
   return (
-    <>
-      <SearchReveal
-        as="section"
-        className="search-section"
-        aria-label="Trending searches"
-      >
-        <SearchSectionHeader
-          id="search-trending-skeleton-h"
-          title={<SkeletonBar className="search-skeleton-title" width={148} />}
-        />
-        <div className="search-chips">
-          {SKELETON_CHIP_WIDTHS.map((width) => (
+    <section className="search-section" aria-label="Trending searches">
+      <SearchSectionHeader
+        id="search-trending-skeleton-h"
+        title={<SkeletonBar className="search-skeleton-title" width={148} />}
+      />
+      <div className="search-chips">
+        {SKELETON_CHIP_WIDTHS.map((width) => (
+          <SkeletonBar
+            key={width}
+            className="search-chip search-chip--skeleton"
+            width={width}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SkeletonCreators() {
+  return (
+    <section className="search-section" aria-label="Popular creators">
+      <SearchSectionHeader
+        id="search-popular-skeleton-h"
+        title={<SkeletonBar className="search-skeleton-title" width={156} />}
+      />
+      <div className="search-creator-scroll">
+        {Array.from({ length: SKELETON_CREATOR_COUNT }, (_, index) => (
+          <span key={index} className="search-creator-tile is-skeleton">
             <SkeletonBar
-              key={width}
-              className="search-chip search-chip--skeleton"
-              width={width}
+              className="search-creator-avatar"
+              width={72}
+              height={72}
             />
-          ))}
-        </div>
-      </SearchReveal>
+            <SkeletonBar className="search-skeleton-line" width={64} height={10} />
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-      <SearchReveal
-        as="section"
-        className="search-section"
-        aria-label="Popular creators"
-      >
-        <SearchSectionHeader
-          id="search-popular-skeleton-h"
-          title={<SkeletonBar className="search-skeleton-title" width={156} />}
-        />
-        <div className="search-creator-scroll">
-          {Array.from({ length: SKELETON_CREATOR_COUNT }, (_, index) => (
-            <span key={index} className="search-creator-tile is-skeleton">
-              <SkeletonBar
-                className="search-creator-avatar"
-                width={72}
-                height={72}
-              />
-              <SkeletonBar className="search-skeleton-line" width={64} height={10} />
-            </span>
-          ))}
-        </div>
-      </SearchReveal>
-
-      <SearchReveal
-        as="section"
-        className="search-section"
-        aria-label="Trending packs"
-      >
-        <SearchSectionHeader
-          id="search-packs-trend-skeleton-h"
-          title={<SkeletonBar className="search-skeleton-title" width={132} />}
-        />
-        <div className="search-pack-scroll">
-          {Array.from({ length: SKELETON_PACK_COUNT }, (_, index) => (
-            <span key={index} className="search-pack-card is-wide is-skeleton">
-              <SkeletonBar className="search-pack-art" />
-              <span className="search-pack-meta">
-                <SkeletonBar className="search-skeleton-line" width="72%" height={14} />
-                <SkeletonBar className="search-skeleton-line" width="48%" height={12} />
-                <span className="search-pack-footer">
-                  <SkeletonBar className="search-skeleton-line" width={92} height={12} />
-                  <SkeletonBar className="search-skeleton-line" width={36} height={12} />
-                </span>
+function SkeletonPacks() {
+  return (
+    <section className="search-section" aria-label="Trending packs">
+      <SearchSectionHeader
+        id="search-packs-trend-skeleton-h"
+        title={<SkeletonBar className="search-skeleton-title" width={132} />}
+      />
+      <div className="search-pack-scroll">
+        {Array.from({ length: SKELETON_PACK_COUNT }, (_, index) => (
+          <span key={index} className="search-pack-card is-wide is-skeleton">
+            <SkeletonBar className="search-pack-art" />
+            <span className="search-pack-meta">
+              <SkeletonBar className="search-skeleton-line" width="72%" height={14} />
+              <SkeletonBar className="search-skeleton-line" width="48%" height={12} />
+              <span className="search-pack-footer">
+                <SkeletonBar className="search-skeleton-line" width={92} height={12} />
+                <SkeletonBar className="search-skeleton-line" width={36} height={12} />
               </span>
             </span>
-          ))}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DiscoverySlot({
+  delayMs,
+  ready,
+  skeleton,
+  children,
+}: {
+  delayMs: number;
+  ready: boolean;
+  skeleton: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <SearchReveal
+      className={["search-slot", ready ? "is-ready" : ""].filter(Boolean).join(" ")}
+      style={{ ["--search-reveal-delay" as string]: `${delayMs}ms` }}
+    >
+      {skeleton ? (
+        <div className="search-slot-skeleton" aria-hidden={ready}>
+          {skeleton}
         </div>
-      </SearchReveal>
-    </>
+      ) : null}
+      {children ? <div className="search-slot-real">{children}</div> : null}
+    </SearchReveal>
   );
 }
 
@@ -539,6 +563,7 @@ function DefaultDiscovery({
   const packs = catalog?.trendingPacks ?? [];
   const pendingIds = useRef(new Set<string>());
   const [mediaReady, setMediaReady] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(true);
 
   useEffect(() => {
     if (!catalog) {
@@ -563,133 +588,147 @@ function DefaultDiscovery({
     if (pendingIds.current.size === 0) setMediaReady(true);
   }, []);
 
+  const showLoaded = Boolean(catalog) && mediaReady;
+
+  useEffect(() => {
+    if (!showLoaded) {
+      setShowSkeleton(true);
+      return;
+    }
+    const fade = window.setTimeout(() => setShowSkeleton(false), CONTENT_FADE_OUT_MS);
+    return () => window.clearTimeout(fade);
+  }, [showLoaded]);
+
+  const scrollRevision = showLoaded ? 1 : 0;
   const creatorsScroll = useHorizontalScroll(
     ".search-creator-tile",
-    mediaReady ? creators.length : SKELETON_CREATOR_COUNT,
+    scrollRevision,
   );
-  const packsScroll = useHorizontalScroll(
-    ".search-pack-card",
-    mediaReady ? packs.length : SKELETON_PACK_COUNT,
-  );
+  const packsScroll = useHorizontalScroll(".search-pack-card", scrollRevision);
 
-  const showLoaded = Boolean(catalog) && mediaReady;
+  useEffect(() => {
+    if (!showLoaded) return;
+    const measure = () => {
+      creatorsScroll.updateScrollState();
+      packsScroll.updateScrollState();
+    };
+    const raf = window.requestAnimationFrame(measure);
+    const later = window.setTimeout(measure, CONTENT_FADE_MS + 40);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(later);
+    };
+  }, [creatorsScroll, packsScroll, showLoaded]);
+
   const showChips = chips.length > 0;
   const showCreators = creators.length > 0;
   const showPacks = packs.length > 0;
 
   return (
-    <div className="search-discovery">
-      {showLoaded ? null : <DiscoverySkeleton />}
+    <>
+      <DiscoverySlot
+        delayMs={0}
+        ready={showLoaded}
+        skeleton={showSkeleton ? <SkeletonChips /> : null}
+      >
+        {catalog && showChips ? (
+          <section className="search-section" aria-labelledby="search-trending-h">
+            <SearchSectionHeader
+              id="search-trending-h"
+              title="Trending searches"
+            />
+            <div className="search-chips">
+              {chips.map((term) => (
+                <button
+                  key={term}
+                  type="button"
+                  className="search-chip"
+                  onClick={() => onChip(term)}
+                  tabIndex={showLoaded ? undefined : -1}
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </DiscoverySlot>
 
-      {catalog ? (
-        <div
-          className={[
-            "search-discovery-real",
-            showLoaded ? "" : "is-pending",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-hidden={!showLoaded}
-        >
-          {showChips ? (
-            <SearchReveal
-              as="section"
-              className="search-section"
-              aria-labelledby="search-trending-h"
-            >
-              <SearchSectionHeader
-                id="search-trending-h"
-                title="Trending searches"
-              />
-              <div className="search-chips">
-                {chips.map((term) => (
-                  <button
-                    key={term}
-                    type="button"
-                    className="search-chip"
-                    onClick={() => onChip(term)}
-                    tabIndex={showLoaded ? undefined : -1}
-                  >
-                    {term}
-                  </button>
-                ))}
-              </div>
-            </SearchReveal>
-          ) : null}
-
-          {showCreators ? (
-            <SearchReveal
-              as="section"
-              className="search-section"
-              aria-labelledby="search-popular-h"
-            >
-              <SearchSectionHeader
-                id="search-popular-h"
-                title="Popular creators"
-                scroll={showLoaded ? creatorsScroll : undefined}
-                prevLabel="Previous creators"
-                nextLabel="Next creators"
-              />
-              <div ref={creatorsScroll.scrollRef} className="search-creator-scroll">
-                {creators.map((creator) => (
-                  <button
-                    key={creator.id}
-                    type="button"
-                    className="search-creator-tile"
-                    onClick={() => onOpenCreator(creator.id)}
-                    tabIndex={showLoaded ? undefined : -1}
-                  >
-                    <CreatorAvatar
-                      creator={creator}
-                      size={72}
-                      onReady={() => onMediaReady(`creator:${creator.id}`)}
-                    />
-                    <span className="search-creator-tile-name">{creator.name}</span>
-                  </button>
-                ))}
-              </div>
-            </SearchReveal>
-          ) : null}
-
-          {showPacks ? (
-            <SearchReveal
-              as="section"
-              className="search-section"
-              aria-labelledby="search-packs-trend-h"
-            >
-              <SearchSectionHeader
-                id="search-packs-trend-h"
-                title="Trending packs"
-                scroll={showLoaded ? packsScroll : undefined}
-                prevLabel="Previous packs"
-                nextLabel="Next packs"
-              />
-              <div ref={packsScroll.scrollRef} className="search-pack-scroll">
-                {packs.map((pack) => (
-                  <PackCard
-                    key={pack.id}
-                    pack={pack}
-                    wide
-                    onOpen={() => onOpenPack(pack)}
-                    onArtReady={() => onMediaReady(`pack:${pack.id}`)}
-                    inert={!showLoaded}
+      <DiscoverySlot
+        delayMs={CONTENT_STAGGER_MS}
+        ready={showLoaded}
+        skeleton={showSkeleton ? <SkeletonCreators /> : null}
+      >
+        {catalog && showCreators ? (
+          <section className="search-section" aria-labelledby="search-popular-h">
+            <SearchSectionHeader
+              id="search-popular-h"
+              title="Popular creators"
+              scroll={showLoaded ? creatorsScroll : undefined}
+              prevLabel="Previous creators"
+              nextLabel="Next creators"
+            />
+            <div ref={creatorsScroll.scrollRef} className="search-creator-scroll">
+              {creators.map((creator) => (
+                <button
+                  key={creator.id}
+                  type="button"
+                  className="search-creator-tile"
+                  onClick={() => onOpenCreator(creator.id)}
+                  tabIndex={showLoaded ? undefined : -1}
+                >
+                  <CreatorAvatar
+                    creator={creator}
+                    size={72}
+                    onReady={() => onMediaReady(`creator:${creator.id}`)}
                   />
-                ))}
-              </div>
-            </SearchReveal>
-          ) : null}
+                  <span className="search-creator-tile-name">{creator.name}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </DiscoverySlot>
 
-          {showLoaded && !showChips && !showCreators && !showPacks ? (
-            <SearchReveal className="search-empty">
-              <p className="search-empty-title">Nothing to explore yet</p>
-              <p className="search-empty-sub">
-                Check back soon — creators and packs will show up here.
-              </p>
-            </SearchReveal>
-          ) : null}
-        </div>
+      <DiscoverySlot
+        delayMs={CONTENT_STAGGER_MS * 2}
+        ready={showLoaded}
+        skeleton={showSkeleton ? <SkeletonPacks /> : null}
+      >
+        {catalog && showPacks ? (
+          <section className="search-section" aria-labelledby="search-packs-trend-h">
+            <SearchSectionHeader
+              id="search-packs-trend-h"
+              title="Trending packs"
+              scroll={showLoaded ? packsScroll : undefined}
+              prevLabel="Previous packs"
+              nextLabel="Next packs"
+            />
+            <div ref={packsScroll.scrollRef} className="search-pack-scroll">
+              {packs.map((pack) => (
+                <PackCard
+                  key={pack.id}
+                  pack={pack}
+                  wide
+                  onOpen={() => onOpenPack(pack)}
+                  onArtReady={() => onMediaReady(`pack:${pack.id}`)}
+                  inert={!showLoaded}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </DiscoverySlot>
+
+      {showLoaded && !showChips && !showCreators && !showPacks ? (
+        <SearchReveal className="search-empty">
+          <p className="search-empty-title">Nothing to explore yet</p>
+          <p className="search-empty-sub">
+            Check back soon — creators and packs will show up here.
+          </p>
+        </SearchReveal>
       ) : null}
-    </div>
+    </>
   );
 }
 

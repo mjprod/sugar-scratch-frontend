@@ -13492,6 +13492,7 @@ body[data-theme="v8"] .search-body {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .search-discovery {
@@ -13501,18 +13502,53 @@ body[data-theme="v8"] .search-discovery {
   gap: 32px;
 }
 
-body[data-theme="v8"] .search-discovery-real {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
+body[data-theme="v8"] .search-slot {
+  position: relative;
+  min-width: 0;
+  width: 100%;
 }
 
-body[data-theme="v8"] .search-discovery-real.is-pending {
+body[data-theme="v8"] .search-slot-skeleton,
+body[data-theme="v8"] .search-slot-real {
+  min-width: 0;
+  width: 100%;
+}
+
+body[data-theme="v8"] .search-slot-skeleton,
+body[data-theme="v8"] .search-slot-real {
+  transition: opacity 0.36s ease;
+  transition-delay: var(--search-reveal-delay, 0ms);
+}
+
+body[data-theme="v8"] .search-slot-real {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  inset: 0 auto auto 0;
+  right: 0;
   opacity: 0;
-  overflow: hidden;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .search-slot.is-ready .search-slot-real {
+  position: relative;
+  inset: auto;
+  right: auto;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .search-slot.is-ready .search-slot-skeleton {
+  position: absolute;
+  inset: 0 auto auto 0;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .search-slot-skeleton,
+  body[data-theme="v8"] .search-slot-real {
+    transition: none;
+  }
 }
 
 body[data-theme="v8"] .search-section {
