@@ -10,11 +10,11 @@ export const Paths = {
   home: "/",
   discover: "/discover",
   /**
-   * Opens Home with the pack-library / search sheet.
-   * Prefer this over `/search` from HUD and Discover.
+   * Opens the global search overlay on the current page.
+   * Prefer `openSearch()` from SearchContext; this query is a deep-link fallback.
    */
   homeSearch: "/?library=1",
-  /** @deprecated Prefer Paths.homeSearch — kept for deep links / redirects. */
+  /** Deep-link that opens the global search overlay. */
   search: "/search",
   /** @deprecated Use Paths.home — kept for older imports / redirects. */
   browse: "/",

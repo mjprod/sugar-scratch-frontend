@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   CreatorFeedCard,
   useVideoRegistry,
@@ -20,6 +19,7 @@ import {
   FEED_WARM_BEHIND,
   fetchHomeFeedPage,
   isWarmFeedIndex,
+  preloadFeedPosters,
   readHomeFeedCache,
   toPurchasePack,
   writeHomeFeedCache,
@@ -30,7 +30,7 @@ import {
   removeFeedFavourite,
   withFavouriteLikes,
 } from "@/services/feedFavourites";
-import { Paths } from "@/routes/Paths";
+import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const SNAP_MS = 220;
@@ -121,7 +121,7 @@ export function HomeFeedScreen({
   onOpenCreator?: (creatorId: string) => void;
   personalizationPrompt?: ReactNode;
 }) {
-  const navigate = useNavigate();
+  const { openSearch } = useSearch();
   const cached = readHomeFeedCache();
   const [items, setItems] = useState<HomeFeedCreator[]>(
     () => withFavouriteLikes(cached?.items ?? []),
@@ -273,6 +273,7 @@ export function HomeFeedScreen({
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
       scrollIndexRef.current = 0;
+      preloadFeedPosters(page.items);
       setStatus("loaded");
       writeHomeFeedCache({
         items: page.items,
@@ -290,7 +291,10 @@ export function HomeFeedScreen({
   }, []);
 
   useEffect(() => {
-    if (cached?.items.length) return;
+    if (cached?.items.length) {
+      preloadFeedPosters(cached.items);
+      return;
+    }
     void loadInitial();
   }, [cached?.items.length, loadInitial]);
 
@@ -1109,6 +1113,7 @@ export function HomeFeedScreen({
     setLoadingMore(true);
     try {
       const page = await fetchHomeFeedPage(cursor);
+      preloadFeedPosters(page.items);
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(
@@ -1282,11 +1287,7 @@ export function HomeFeedScreen({
             className="hf-search-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Search"
             data-no-feed-drag
-            onClick={() =>
-              navigate(Paths.homeSearch, {
-                state: { openPackLibrary: true, from: Paths.discover },
-              })
-            }
+            onClick={openSearch}
           >
             <Search className="hf-search-icon" aria-hidden="true" />
           </button>

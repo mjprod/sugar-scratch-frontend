@@ -8,16 +8,15 @@ import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
 import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
-import { PackLibrary } from "@/components/home/PackLibrary";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
   fetchLeaderboard,
   type ContinueCollectingItem,
-  type FeaturedPack,
   type HomepageData,
   type LeaderboardCategory,
   type LeaderboardRow,
@@ -173,35 +172,16 @@ export function HomeScreen({
   const location = useLocation();
   const navigate = useNavigate();
   const { guest } = useAuth();
+  const { openSearch } = useSearch();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
   const [category, setCategory] = useState<LeaderboardCategory>("all");
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const [boardLoading, setBoardLoading] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [heroReady, setHeroReady] = useState(false);
 
   useMarkPageReady(status === "error" || heroReady);
-
-  // Search HUD / Discover → Home opens the pack-library search sheet.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const state = location.state as { openPackLibrary?: boolean } | null;
-    const shouldOpen =
-      params.get("library") === "1" || Boolean(state?.openPackLibrary);
-    if (!shouldOpen) return;
-
-    setLibraryOpen(true);
-
-    // Clear the flag so back/refresh doesn't keep reopening.
-    if (params.get("library") === "1" || state?.openPackLibrary) {
-      navigate(
-        { pathname: location.pathname, search: "" },
-        { replace: true, state: {} },
-      );
-    }
-  }, [location.pathname, location.search, location.state, navigate]);
 
   const load = useCallback(async () => {
     setHeroReady(false);
@@ -281,18 +261,6 @@ export function HomeScreen({
       price: String(pack.diamondCost),
       creator: pack.creatorName,
       characterId: pack.id,
-    });
-  }
-
-  function playFeatured(pack: FeaturedPack) {
-    const foilId = pack.id !== pack.creatorId ? pack.id : undefined;
-    playPack({
-      id: foilId ? pack.creatorId : pack.id,
-      foilId,
-      name: pack.name,
-      creatorName: pack.creatorName,
-      diamondCost: pack.diamondCost,
-      themeName: pack.themeName,
     });
   }
 
@@ -414,7 +382,7 @@ export function HomeScreen({
         <div className="home-view-all-packs mt-6 flex justify-center">
           <button
             type="button"
-            onClick={() => setLibraryOpen(true)}
+            onClick={openSearch}
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
           >
             <svg
@@ -465,7 +433,7 @@ export function HomeScreen({
               <ContinueCollecting
                 items={home.continueCollecting}
                 onOpen={openCollection}
-                onSeeAllClick={() => setLibraryOpen(true)}
+                onSeeAllClick={openSearch}
               />
             ) : null}
 
@@ -544,14 +512,6 @@ export function HomeScreen({
         </div>
       ) : null}
 
-      <PackLibrary
-        open={libraryOpen}
-        onClose={() => setLibraryOpen(false)}
-        onPlay={(pack) => {
-          setLibraryOpen(false);
-          playFeatured(pack);
-        }}
-      />
     </section>
   );
 }

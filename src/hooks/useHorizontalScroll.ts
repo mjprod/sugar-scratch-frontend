@@ -17,12 +17,15 @@ export function useHorizontalScroll(itemSelector: string, revision = 0) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    updateScrollState();
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    const ro = new ResizeObserver(updateScrollState);
+    const measure = () => updateScrollState();
+    measure();
+    const raf = window.requestAnimationFrame(measure);
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => {
-      el.removeEventListener("scroll", updateScrollState);
+      window.cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", measure);
       ro.disconnect();
     };
   }, [revision, updateScrollState]);

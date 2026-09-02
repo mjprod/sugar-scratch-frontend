@@ -18,12 +18,14 @@ import { canonicalThemeKey, resolveCollectionThemeLabel } from "./collection";
 import {
   formatCollectionLabel,
   loadModels,
+  modelAvatarUrl,
   modelDisplayName,
   modelId,
   normalizeMediaUrl,
   profileFromModel,
   type BackendModel,
 } from "./models";
+import { feedPosterUrl } from "./creatorFeed";
 import {
   fetchCards,
   type BackendCard,
@@ -791,8 +793,7 @@ export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
   return shuffled.map((model, index) => {
     const id = modelId(model, index);
     const name = modelDisplayName(model);
-    const avatarRaw = model.avatar?.trim() ?? "";
-    const avatarUrl = avatarRaw ? normalizeMediaUrl(avatarRaw) : "";
+    const avatarUrl = modelAvatarUrl(model) ?? "";
     const videoUrl = model.swipeVideoUrl
       ? normalizeMediaUrl(model.swipeVideoUrl)
       : undefined;
@@ -805,7 +806,7 @@ export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
       collectionName: packName,
       packId: id,
       packName,
-      posterUrl: avatarUrl,
+      posterUrl: feedPosterUrl(model),
       videoUrl,
       cardCount: 0,
       diamondCost: packUnitCost(id),
