@@ -7,7 +7,7 @@ alwaysApply: true
 
 Before changing auth, recommendations, purchase, welcome, packs, or navigation:
 
-- Read **`old_app/src/v8/CHEATSHEET.md`** for auth / rec / buy rules.
+- Read **`README.md`** (Product rules) for auth / rec / buy rules.
 - Read **`VIBING.md`** for the pre-PR checklist (`npm run test`).
 
 ## Do not break
