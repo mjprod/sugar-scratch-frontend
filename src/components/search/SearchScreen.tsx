@@ -212,8 +212,13 @@ export function SearchScreen({
               </button>
             ) : null}
           </label>
-          <button type="button" className="search-cancel" onClick={onCancel}>
-            Cancel
+          <button
+            type="button"
+            className="search-cancel"
+            aria-label="Close"
+            onClick={onCancel}
+          >
+            <X className="size-5" aria-hidden="true" />
           </button>
         </motion.div>
 

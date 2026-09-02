@@ -19,6 +19,7 @@ import {
   FEED_WARM_BEHIND,
   fetchHomeFeedPage,
   isWarmFeedIndex,
+  preloadFeedPosters,
   readHomeFeedCache,
   toPurchasePack,
   writeHomeFeedCache,
@@ -272,6 +273,7 @@ export function HomeFeedScreen({
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
       scrollIndexRef.current = 0;
+      preloadFeedPosters(page.items);
       setStatus("loaded");
       writeHomeFeedCache({
         items: page.items,
@@ -289,7 +291,10 @@ export function HomeFeedScreen({
   }, []);
 
   useEffect(() => {
-    if (cached?.items.length) return;
+    if (cached?.items.length) {
+      preloadFeedPosters(cached.items);
+      return;
+    }
     void loadInitial();
   }, [cached?.items.length, loadInitial]);
 
@@ -1108,6 +1113,7 @@ export function HomeFeedScreen({
     setLoadingMore(true);
     try {
       const page = await fetchHomeFeedPage(cursor);
+      preloadFeedPosters(page.items);
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(

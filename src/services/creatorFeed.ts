@@ -39,6 +39,25 @@ export type HomeFeedPage = {
   hasMore: boolean;
 };
 
+export function feedPosterUrl(model: BackendModel) {
+  return modelSwipePosterUrl(model) ?? modelAvatarUrl(model) ?? "";
+}
+
+export function preloadFeedPosters(
+  items: Array<{ swipePosterUrl?: string | null }>,
+) {
+  if (typeof window === "undefined") return;
+  const seen = new Set<string>();
+  for (const item of items) {
+    const src = item.swipePosterUrl?.trim();
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    const image = new Image();
+    image.decoding = "async";
+    image.src = src;
+  }
+}
+
 function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> {
   const profile = profileFromModel(model);
   const videoUrl = profile.swipeVideoUrl ?? undefined;
@@ -58,7 +77,7 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     packName,
     tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
     mediaType: videoUrl ? "video" : "image",
-    swipePosterUrl: modelSwipePosterUrl(model) ?? modelAvatarUrl(model) ?? "",
+    swipePosterUrl: feedPosterUrl(model),
     videoUrl,
     diamondCost: packUnitCost(profile.id),
   };

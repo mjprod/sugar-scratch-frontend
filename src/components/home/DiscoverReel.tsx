@@ -17,6 +17,7 @@ import {
   FEED_WARM_BEHIND,
   fetchHomeFeedPage,
   isWarmFeedIndex,
+  preloadFeedPosters,
   toPurchasePack,
   type HomeFeedCreator,
 } from "@/services/creatorFeed";
@@ -110,6 +111,7 @@ export function DiscoverReel({
       setCursor(page.nextCursor);
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
+      preloadFeedPosters(page.items);
       setStatus("loaded");
       requestAnimationFrame(() => {
         scrollerRef.current?.scrollTo({ top: 0 });
@@ -555,6 +557,7 @@ export function DiscoverReel({
     setLoadingMore(true);
     try {
       const page = await fetchHomeFeedPage(cursor);
+      preloadFeedPosters(page.items);
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(
