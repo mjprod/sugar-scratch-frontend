@@ -1685,7 +1685,9 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                     tabIndex={visuallyDisabled ? -1 : 0}
                     disabled={visuallyDisabled}
                     aria-disabled={visuallyDisabled || undefined}
-                    aria-expanded={confirmBuy ? buyConfirmOpen : undefined}
+                    aria-expanded={
+                      confirmBuy ? buyConfirmOpen || buyConfirmLeaving : undefined
+                    }
                     aria-controls={
                       confirmBuy
                         ? `coverflow-buy-confirm-${item.id}`

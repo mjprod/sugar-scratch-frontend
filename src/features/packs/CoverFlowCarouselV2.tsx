@@ -1058,7 +1058,7 @@ useEffect(() => {
 	          type="button"
 	          className="coverflow-cart-remove"
 	          aria-label={`Remove ${item.packName || item.girlName} from cart`}
-	          aria-expanded={removeConfirmOpen}
+	          aria-expanded={removeConfirmOpen || removeConfirmLeaving}
 	          aria-controls={`coverflow-cart-remove-confirm-${item.id}`}
 	          onClick={(event) => {
 	            event.stopPropagation()
