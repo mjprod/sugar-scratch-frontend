@@ -357,20 +357,22 @@ export function AuthenticationSheet({
             onDrag={onHandleDrag}
             onDragEnd={onHandleDragEnd}
           >
-            <div
-              className="auth7-sheet-handle"
-              aria-hidden="true"
-              onPointerDown={startHandleDrag}
-            />
-            <button
-              type="button"
-              className="auth7-sheet-close"
-              aria-label="Close"
-              disabled={busy || isClosing}
-              onClick={dismissWithAnticipation}
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
+            <div className="auth7-sheet-chrome">
+              <div
+                className="auth7-sheet-handle"
+                aria-hidden="true"
+                onPointerDown={startHandleDrag}
+              />
+              <button
+                type="button"
+                className="auth7-sheet-close"
+                aria-label="Close"
+                disabled={busy || isClosing}
+                onClick={dismissWithAnticipation}
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
 
             <AnimatePresence mode="wait">
               <motion.div
@@ -758,7 +760,7 @@ export function AuthenticationSheet({
                             </>
                           ) : (
                             <>
-                              New to Sugar?{" "}
+                              New to Sugar Scratch?{" "}
                               <button
                                 type="button"
                                 className="auth7-text-link is-strong"

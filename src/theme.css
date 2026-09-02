@@ -2793,7 +2793,7 @@ body[data-theme="v8"] .pack-library-panel {
   border: 1px solid oklch(1 0 0 / 0.08);
   border-radius: 2rem;
   padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
-  background: transparent;
+  background: oklch(0 0 0 / 0.26);
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.08),
     0 -8px 32px oklch(0 0 0 / 0.4);
@@ -8984,48 +8984,68 @@ body[data-theme="v8"] .auth7-sheet-panel {
     -webkit-overflow-scrolling: auto;
   }
 
+  body[data-theme="v8"] .auth7-sheet-chrome {
+    margin: -12px -24px 0;
+  }
+
   body[data-theme="v8"] .auth7-sheet-handle {
     display: none;
   }
 
   body[data-theme="v8"] .auth7-sheet-close {
-    top: 12px;
-    right: 12px;
+    top: 0.7rem;
+    right: 0.9rem;
   }
+}
+
+body[data-theme="v8"] .auth7-sheet-chrome {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin: -2rem -2rem 12px;
+  flex-shrink: 0;
 }
 
 body[data-theme="v8"] .auth7-sheet-handle {
   position: relative;
-  width: 42px;
-  height: 4px;
-  margin: 0 auto 10px;
-  border-radius: 999px;
-  background: oklch(1 0 0 / 0.22);
+  width: 96px;
+  height: 44px;
+  margin: 0;
+  border: 0;
+  background: transparent;
   cursor: grab;
   touch-action: none;
 }
 
-body[data-theme="v8"] .auth7-sheet-handle::before {
+body[data-theme="v8"] .auth7-sheet-handle::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 96px;
-  height: 28px;
-  transform: translate(-50%, -50%);
+  width: 42px;
+  height: 4px;
+  margin-left: -21px;
+  margin-top: -2px;
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.22);
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .auth7-sheet-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
-  display: grid;
+  top: 0.7rem;
+  right: 0.9rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.15);
+  border-radius: 50%;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
   cursor: pointer;
@@ -9565,13 +9585,13 @@ body[data-theme="v8"] .auth7-legal {
     padding: 2rem;
   }
 
-  body[data-theme="v8"] .auth7-sheet-handle {
-    margin-bottom: 6px;
+  body[data-theme="v8"] .auth7-sheet-chrome {
+    margin: -2rem -2rem 8px;
   }
 
   body[data-theme="v8"] .auth7-sheet-close {
-    top: 4px;
-    right: 4px;
+    top: 0.7rem;
+    right: 0.9rem;
   }
 
   body[data-theme="v8"] .auth7-sheet-body {
@@ -13508,15 +13528,20 @@ body[data-theme="v8"] .search-bar-clear:hover {
 body[data-theme="v8"] .search-cancel {
   display: grid;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   padding: 0;
-  border: 0;
+  border: 1px solid oklch(1 0 0 / 0.22);
   border-radius: 999px;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
   cursor: pointer;
+}
+
+body[data-theme="v8"] .search-cancel svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 body[data-theme="v8"] .search-cancel:hover {
