@@ -331,27 +331,42 @@ export function CreatorFeedCard({
     >
       <div className={["hf-media", active ? "is-active" : ""].join(" ")}>
         {item.mediaType === "video" && item.videoUrl ? (
-          <video
-            key={videoKey}
-            ref={videoRef}
-            src={item.videoUrl}
-            playsInline
-            muted
-            loop
-            autoPlay={active}
-            preload={shouldBuffer ? "auto" : "metadata"}
-            className={[
-              "hf-media-el hf-media-video",
-              mediaReady ? "is-ready" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            onLoadStart={() => setMediaReady(false)}
-            onEmptied={() => setMediaReady(false)}
-            onLoadedData={(event) => markVideoReady(event.currentTarget)}
-            onCanPlay={(event) => markVideoReady(event.currentTarget)}
-            onPlaying={(event) => markVideoReady(event.currentTarget)}
-          />
+          <>
+            {item.posterUrl ? (
+              <img
+                src={item.posterUrl}
+                alt=""
+                aria-hidden="true"
+                className="hf-media-el hf-media-poster"
+              />
+            ) : !mediaReady ? (
+              <div
+                className="hf-media-el hf-media-poster hf-media-poster--idle"
+                aria-hidden="true"
+              />
+            ) : null}
+            <video
+              key={videoKey}
+              ref={videoRef}
+              src={item.videoUrl}
+              playsInline
+              muted
+              loop
+              autoPlay={active}
+              preload={shouldBuffer ? "auto" : "metadata"}
+              className={[
+                "hf-media-el hf-media-video",
+                mediaReady ? "is-ready" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onLoadStart={() => setMediaReady(false)}
+              onEmptied={() => setMediaReady(false)}
+              onLoadedData={(event) => markVideoReady(event.currentTarget)}
+              onCanPlay={(event) => markVideoReady(event.currentTarget)}
+              onPlaying={(event) => markVideoReady(event.currentTarget)}
+            />
+          </>
         ) : null}
         <div className="hf-media-shade" aria-hidden="true" />
       </div>

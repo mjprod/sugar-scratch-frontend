@@ -5,6 +5,8 @@
 
 import {
   loadModels,
+  modelAvatarUrl,
+  modelSwipePosterUrl,
   profileFromModel,
   type BackendModel,
 } from "./models";
@@ -54,14 +56,14 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     packName,
     tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
     mediaType: videoUrl ? "video" : "image",
-    posterUrl: "",
+    posterUrl: modelSwipePosterUrl(model) ?? modelAvatarUrl(model) ?? "",
     videoUrl,
     diamondCost: packUnitCost(profile.id),
   };
 }
 
 const PAGE_SIZE = 6;
-const FEED_CACHE_VERSION = 15;
+const FEED_CACHE_VERSION = 17;
 
 function shuffleCatalog<T>(items: T[]): T[] {
   const next = [...items];
