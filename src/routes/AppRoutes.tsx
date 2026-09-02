@@ -129,7 +129,7 @@ export function AppRoutes() {
             path="loggedInHome"
             element={<Navigate to={Paths.home} replace />}
           />
-          {/* Search is the Home pack-library sheet — keep /search as a deep-link. */}
+          {/* Deep-link: land on Home and open the global search overlay. */}
           <Route
             path="search"
             element={

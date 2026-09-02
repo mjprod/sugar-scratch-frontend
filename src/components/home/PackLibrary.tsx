@@ -2,18 +2,8 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { SearchScreen } from "@/components/search/SearchScreen";
-import { type FeaturedPack } from "@/services/homepage";
-import {
-  searchPackToPurchase,
-  type SearchPack,
-} from "@/services/search";
+import { searchPackToPurchase } from "@/services/search";
 import { useAuth } from "@/contexts/AuthContext";
-
-const LIBRARY_ACCENT = {
-  primary: "oklch(0.55 0.2 330)",
-  secondary: "oklch(0.45 0.18 300)",
-  glow: "oklch(0.65 0.18 340)",
-} as const;
 
 const ROOT_VARIANTS = {
   hidden: {
@@ -64,23 +54,23 @@ const PANEL_VARIANTS = {
 export function PackLibrary({
   open,
   onClose,
-  onPlay,
 }: {
   open: boolean;
   onClose: () => void;
-  onPlay: (pack: FeaturedPack) => void;
 }) {
   const reduce = useReducedMotion();
-  const { openCreator } = useAuth();
+  const { authOpen, openCreator, openPurchase } = useAuth();
 
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      if (authOpen) return;
+      onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [authOpen, open, onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -95,29 +85,6 @@ export function PackLibrary({
     };
   }, [open]);
 
-  function handleOpenPack(pack: SearchPack) {
-    const purchase = searchPackToPurchase(pack);
-    onPlay({
-      id: purchase.packId,
-      name: purchase.packName,
-      packTitle: purchase.packName,
-      creatorId: pack.creatorId,
-      creatorName: pack.creatorName,
-      collectionName: pack.themeName || purchase.packName,
-      themeName: pack.themeName,
-      coverImageUrl: pack.coverImageUrl,
-      price: {
-        amount: pack.diamondCost,
-        currency: "SC",
-      },
-      diamondCost: pack.diamondCost,
-      collected: 0,
-      collectionTotal: pack.cardCount || 5,
-      accentColors: LIBRARY_ACCENT,
-      isAvailable: true,
-    });
-  }
-
   if (typeof document === "undefined") return null;
 
   return createPortal(
@@ -125,7 +92,7 @@ export function PackLibrary({
       {open ? (
         <motion.div
           key="pack-library"
-          className="pack-library-root fixed inset-0 z-[1100] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
+          className="pack-library-root fixed inset-0 z-[5150] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
           role="presentation"
           initial={reduce ? false : "hidden"}
           animate="visible"
@@ -145,18 +112,14 @@ export function PackLibrary({
             className="pack-library-panel relative z-[1] mx-auto mt-auto flex min-h-0 w-full max-w-[75rem] flex-1 flex-col overflow-hidden"
             role="dialog"
             aria-modal="true"
-            aria-label="Pack library"
+            aria-label="Search"
             variants={PANEL_VARIANTS}
           >
             <SearchScreen
               onCancel={onClose}
-              onOpenCreator={(id) => {
-                onClose();
-                openCreator(id);
-              }}
+              onOpenCreator={openCreator}
               onOpenPack={(pack) => {
-                onClose();
-                handleOpenPack(pack);
+                openPurchase(searchPackToPurchase(pack), "buy-pack");
               }}
             />
           </motion.div>

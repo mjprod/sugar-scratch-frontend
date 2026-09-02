@@ -8,10 +8,10 @@ import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { PackAddedToast } from "@/components/ui/PackAddedToast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearch } from "@/contexts/SearchContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { useTabNav } from "@/hooks/useTabNav";
-import { Paths } from "@/routes/Paths";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
 import {
@@ -46,6 +46,7 @@ export function AppLayout() {
     bumpInventoryRevision,
   } = useAuth();
   const { coins, diamonds, addCoins, setCoins, setDiamonds } = useWallet();
+  const { searchOpen, openSearch } = useSearch();
   const { activeTab: tab, requestTab } = useTabNav();
 
   useEffect(() => {
@@ -97,10 +98,7 @@ export function AppLayout() {
   const onPackPocket =
     location.pathname.startsWith("/pack-pocket") ||
     location.pathname.startsWith("/cart");
-  const onSearch =
-    location.pathname.startsWith("/search") ||
-    (location.pathname === Paths.home &&
-      new URLSearchParams(location.search).get("library") === "1");
+  const onSearch = searchOpen;
 
   const showTopUtility =
     !hideChrome &&
@@ -129,24 +127,6 @@ export function AppLayout() {
     };
   }, [guest, invalidateRemoteSession, setInboxUnread]);
 
-  const openSearch = () => {
-    // Stay on Home when already there; otherwise go Home and open the sheet.
-    if (
-      location.pathname === Paths.home ||
-      location.pathname === "/" ||
-      location.pathname === ""
-    ) {
-      navigate(
-        { pathname: Paths.home, search: "?library=1" },
-        { replace: true, state: { openPackLibrary: true } },
-      );
-      return;
-    }
-    navigate(Paths.homeSearch, {
-      state: { openPackLibrary: true, from: location.pathname },
-    });
-  };
-
   const mobileTrailing = (
     <div className="flex items-center gap-3">
       <PacksButton
@@ -159,7 +139,7 @@ export function AppLayout() {
         type="button"
         onClick={openSearch}
         aria-label="Search"
-        aria-current={onSearch ? "page" : undefined}
+        aria-pressed={onSearch}
         data-top-nav-target="search"
         className={[
           "inbox-utility-btn inbox-utility-btn--ghost relative grid size-7 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",

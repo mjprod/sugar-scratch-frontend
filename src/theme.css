@@ -2772,6 +2772,8 @@ body[data-theme="v8"] .hub-spotlight-invite-close {
 
 body[data-theme="v8"] .pack-library-root {
   pointer-events: auto;
+  /* Above liquid-glass chrome (5100), below the auth sheet (5200). */
+  z-index: 5150;
 }
 
 body[data-theme="v8"] .pack-library-overlay {
@@ -13486,6 +13488,33 @@ body[data-theme="v8"] .search-results {
   gap: 32px;
 }
 
+body[data-theme="v8"] .search-body {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+body[data-theme="v8"] .search-discovery {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+body[data-theme="v8"] .search-discovery-real {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+body[data-theme="v8"] .search-discovery-real.is-pending {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  overflow: hidden;
+}
+
 body[data-theme="v8"] .search-section {
   display: flex;
   flex-direction: column;
@@ -13863,19 +13892,48 @@ body[data-theme="v8"] .search-might-like {
 body[data-theme="v8"] .search-loading {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
 }
 
-body[data-theme="v8"] .search-skeleton-chips,
-body[data-theme="v8"] .search-skeleton-row {
-  height: 72px;
-  border-radius: 16px;
-  background: oklch(1 0 0 / 0.06);
+body[data-theme="v8"] .search-skeleton {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: oklch(1 0 0 / 0.08);
   animation: search-pulse 1.2s ease-in-out infinite;
 }
 
-body[data-theme="v8"] .search-skeleton-chips {
-  height: 36px;
+body[data-theme="v8"] .search-skeleton-title {
+  height: 16px;
+  border-radius: 6px;
+}
+
+body[data-theme="v8"] .search-skeleton-line {
+  border-radius: 6px;
+}
+
+body[data-theme="v8"] .search-chip.search-chip--skeleton {
+  pointer-events: none;
+  border-color: transparent;
+  background: oklch(1 0 0 / 0.08);
+  animation: search-pulse 1.2s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .search-creator-tile.is-skeleton,
+body[data-theme="v8"] .search-pack-card.is-skeleton {
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .search-pack-card.is-skeleton {
+  border-color: oklch(1 0 0 / 0.06);
+  background: oklch(1 0 0 / 0.03);
+}
+
+body[data-theme="v8"] .search-creator-tile.is-skeleton .search-creator-avatar,
+body[data-theme="v8"] .search-pack-card.is-skeleton .search-pack-art {
+  border: 0;
+  background: oklch(1 0 0 / 0.08);
+  animation: search-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes search-pulse {

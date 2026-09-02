@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   CreatorFeedCard,
   useVideoRegistry,
@@ -30,7 +29,7 @@ import {
   removeFeedFavourite,
   withFavouriteLikes,
 } from "@/services/feedFavourites";
-import { Paths } from "@/routes/Paths";
+import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const SNAP_MS = 220;
@@ -121,7 +120,7 @@ export function HomeFeedScreen({
   onOpenCreator?: (creatorId: string) => void;
   personalizationPrompt?: ReactNode;
 }) {
-  const navigate = useNavigate();
+  const { openSearch } = useSearch();
   const cached = readHomeFeedCache();
   const [items, setItems] = useState<HomeFeedCreator[]>(
     () => withFavouriteLikes(cached?.items ?? []),
@@ -1282,11 +1281,7 @@ export function HomeFeedScreen({
             className="hf-search-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Search"
             data-no-feed-drag
-            onClick={() =>
-              navigate(Paths.homeSearch, {
-                state: { openPackLibrary: true, from: Paths.discover },
-              })
-            }
+            onClick={openSearch}
           >
             <Search className="hf-search-icon" aria-hidden="true" />
           </button>
