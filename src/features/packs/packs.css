@@ -107,30 +107,28 @@
   -webkit-backface-visibility: hidden;
 }
 
-/* Soft outer bloom (DEFAULT_SWIPE_CIRCLE_DESKTOP pose). */
+/* Soft outer bloom (DEFAULT_SWIPE_CIRCLE_DESKTOP pose).
+ * Keep blur modest — large color-dodge discs under WebGL were a steady composite tax. */
 .packs-circle--bloom {
   width: 94dvw;
   height: 72dvw;
   bottom: -4dvw;
-  filter: blur(22px);
-  /* ~60% of previous strength (was 0.53). */
-  opacity: 0.318;
+  filter: blur(14px);
+  opacity: 0.28;
 }
 
 /*
  * Sharper, smaller core above the bloom.
- * Same API color; overlay blend punches a hotter center.
+ * Same API color; soft screen blend (no color-dodge) keeps the hot center cheaper.
  */
 .packs-circle--core {
   z-index: 1;
   width: 30dvw;
   height: 36dvw;
   bottom: -7dvw;
-  filter: blur(36px) hue-rotate(304deg);
-  /* ~60% of previous strength (was 1). */
-  opacity: 0.6;
-  mix-blend-mode: color-dodge;
-
+  filter: blur(18px) hue-rotate(304deg);
+  opacity: 0.42;
+  mix-blend-mode: screen;
 }
 
 @media (max-width: 767px) {
@@ -140,18 +138,17 @@
     width: 190dvw;
     height: 170dvw;
     bottom: -8dvw;
-    filter: blur(20px);
-    opacity: 0.3;
+    filter: blur(12px);
+    opacity: 0.26;
   }
 
   .packs-circle--core {
-
     width: 44dvw;
     height: 120dvw;
     bottom: -20dvw;
-    opacity: 0.3;
-    mix-blend-mode: color-dodge;
-    filter: blur(25px) hue-rotate(304deg);
+    opacity: 0.28;
+    mix-blend-mode: screen;
+    filter: blur(14px) hue-rotate(304deg);
   }
 }
 

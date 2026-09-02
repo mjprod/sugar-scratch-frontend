@@ -41,6 +41,8 @@ interface CacheEntry {
   liveTexture: CanvasTexture
   refCount: number
   playingCount: number
+  /** Restored by resumePausedVideoTextures after pauseAllVideoTextures. */
+  pausedPlayingCount: number
   isReady: boolean
   error: string | null
   frameId: number
@@ -393,6 +395,7 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
     liveTexture: live.texture,
     refCount: 0,
     playingCount: 0,
+    pausedPlayingCount: 0,
     isReady: false,
     error: null,
     frameId: 0,
@@ -515,6 +518,9 @@ export function clearVideoTextureCache(): VideoTextureCacheStats {
 /** Pause every cached video without disposing textures (tab hide / soft leave). */
 export function pauseAllVideoTextures() {
   for (const entry of cache.values()) {
+    if (entry.playingCount > 0) {
+      entry.pausedPlayingCount = entry.playingCount
+    }
     entry.playingCount = 0
     stopLoop(entry)
     try {
@@ -525,6 +531,23 @@ export function pauseAllVideoTextures() {
   }
 }
 
+/** Resume entries that were playing when pauseAllVideoTextures ran. */
+export function resumePausedVideoTextures() {
+  for (const entry of cache.values()) {
+    const resumeCount = entry.pausedPlayingCount
+    if (resumeCount <= 0) continue
+    entry.pausedPlayingCount = 0
+    entry.playingCount = resumeCount
+    void entry.video.play().catch(() => {
+      // Muted autoplay should work; fail gracefully if blocked.
+    })
+    if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      drawLiveFrame(entry)
+    }
+    startLoop(entry)
+  }
+}
+
 export function setVideoTexturePlaying(key: string, playing: boolean) {
   const entry = cache.get(key)
   if (!entry) {
@@ -532,6 +555,7 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
   }
 
   if (playing) {
+    entry.pausedPlayingCount = 0
     entry.playingCount += 1
     if (entry.playingCount === 1) {
       // Start live updates for the focused pack only.

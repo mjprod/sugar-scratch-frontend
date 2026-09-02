@@ -12,6 +12,7 @@ import {
 		  useRef,
 		  useState,
 		  type CSSProperties,
+		  type MutableRefObject,
 		  type ReactNode,
 		} from 'react'
 import type { Group, Object3D, PerspectiveCamera } from 'three'
@@ -21,8 +22,9 @@ import {
   cloneSceneWithMaterials,
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
 	  PACK_MODEL_URL,
-	  PACK_TEXTURE_SIZE,
 	  PACK_VIDEO_FIT_MODE,
+	  pauseAllVideoTextures,
+	  resolvePackTextureSize,
 	  resolveTargetMaterial,
   useVideoTexture,
   type VideoTextureTransform,
@@ -72,9 +74,13 @@ import {
 } from './types'
 
 // Keep the cover-flow light by mounting only nearby packs.
-// Mobile: 5 packs (center ± 2). Desktop: 10 packs (center ± 5).
+// Mobile: 5 packs (center ± 2). Desktop: 7 packs (center ± 3).
 const MAX_VISIBLE_OFFSET_MOBILE = 2
-const MAX_VISIBLE_OFFSET_DESKTOP = 5
+const MAX_VISIBLE_OFFSET_DESKTOP = 3
+/** Brief always-on boot so drei Html projects before switching to demand. */
+const FRAMELOOP_BOOT_MS = 450
+const FRAME_SETTLE_EPS = 0.00012
+type CoverFlowFrameLoop = 'always' | 'demand' | 'never'
 // Match reveal start pose scale (DEFAULT_PACK_TIMELINE.start.scale = 0.73).
 const FOCUS_SCALE = 0.73
 const SIDE_SCALE = 0.66
@@ -545,8 +551,9 @@ function CoverFlowPack({
 	  modelY,
 	  layout,
 	  textureTransform,
-	  centerTiltYaw,
-	  centerTiltPitch,
+	  centerTiltYawRef,
+	  centerTiltPitchRef,
+	  stageActive,
 	  isMobile,
 	  shortHudGlass,
 	  revealMode,
@@ -577,8 +584,10 @@ formatPrice,
 			  modelY: number
 			  layout: CoverFlowLayoutSettings
 			  textureTransform: VideoTextureTransform
-			  centerTiltYaw: number
-			  centerTiltPitch: number
+			  centerTiltYawRef: MutableRefObject<number>
+			  centerTiltPitchRef: MutableRefObject<number>
+			  /** False when hero is offscreen / tab hidden — freeze video + skip work. */
+			  stageActive: boolean
 			  isMobile: boolean
 			  /** Browser height < 550px — frosted glass behind pack HUD. */
 			  shortHudGlass: boolean
@@ -619,8 +628,7 @@ formatPrice,
   const isActiveRef = useRef(isActive)
   const hasActiveSelectionRef = useRef(hasActiveSelection)
   const layoutRef = useRef(layout)
-  const centerTiltYawRef = useRef(centerTiltYaw)
-  const centerTiltPitchRef = useRef(centerTiltPitch)
+  const stageActiveRef = useRef(stageActive)
   const isMobileRef = useRef(isMobile)
   const revealModeRef = useRef(revealMode)
   const isRevealHeroRef = useRef(isRevealHero)
@@ -738,12 +746,8 @@ formatPrice,
   }, [layout])
 
   useEffect(() => {
-    centerTiltYawRef.current = centerTiltYaw
-  }, [centerTiltYaw])
-
-  useEffect(() => {
-    centerTiltPitchRef.current = centerTiltPitch
-  }, [centerTiltPitch])
+    stageActiveRef.current = stageActive
+  }, [stageActive])
 
   useEffect(() => {
     isMobileRef.current = isMobile
@@ -1030,17 +1034,20 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
 	    }
 	  }, [isActive, revealMode, item.id, invalidate])
   // Hero keeps playing during open; others freeze.
+  const facePlaying =
+    stageActive &&
+    ((isCenter && (!hasActiveSelection || isActive)) ||
+      (isRevealHero && revealMode))
   const { texture } = useVideoTexture(
     item.videoUrl,
     item.fitMode || PACK_VIDEO_FIT_MODE,
     textureTransform,
     {
       flipY: true,
-      playing:
-        (isCenter && (!hasActiveSelection || isActive)) ||
-        (isRevealHero && revealMode),
-      textureSize: PACK_TEXTURE_SIZE,
+      playing: facePlaying,
+      textureSize: resolvePackTextureSize(isMobile),
       enabled: Boolean(item.videoUrl),
+      // Crisp stills for side packs — soft DOF reads as muddy at reduced texture sizes.
       soft: false,
     },
   )
@@ -1120,9 +1127,13 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
     })
   }
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!groupRef.current) {
       return
+    }
+
+    const requestFrame = () => {
+      state.invalidate()
     }
 
     const liveOffset = index - focusIndexRef.current
@@ -1179,7 +1190,10 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
         }
         groupRef.current.visible = true
 
-        if (t < 1) return
+        if (t < 1) {
+          requestFrame()
+          return
+        }
 
         openAnim.phase = 'spin'
         openAnim.startMs = performance.now()
@@ -1259,7 +1273,10 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
         }
         groupRef.current.visible = true
 
-        if (t < handoffT) return
+        if (t < handoffT) {
+          requestFrame()
+          return
+        }
 
         onOpenPackBehindFanRef.current?.()
         openAnim.phase = 'duck'
@@ -1328,7 +1345,10 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
         }
         groupRef.current.visible = true
 
-        if (t < 1) return
+        if (t < 1) {
+          requestFrame()
+          return
+        }
 
         const endDuck = sampleDuckInPose(openDuckInTimelineRef.current, 1)
         const endLocal = worldPoseToLocal(endDuck as PackPose, packsX, packsY)
@@ -1354,8 +1374,12 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
         openAnim.phase = 'idle'
         openHoldRef.current = true
         onOpenSequenceCompleteRef.current?.()
+        requestFrame()
         return
       }
+
+      requestFrame()
+      return
     }
 
     // Hold tucked pose after open finishes — freeze completely (no coverflow springs).
@@ -1411,6 +1435,7 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
       sideFadeRef.current = 1
       applyOpacity(1)
       seededRef.current = true
+      requestFrame()
       return
     }
 
@@ -1536,6 +1561,24 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
     applyOpacity(opacity)
     groupRef.current.visible =
       inRange && (isRevealHeroRef.current || opacity > 0.02)
+
+    const springBusy =
+      Math.abs(motion.vx) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vy) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vz) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vRotY) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vScale) > FRAME_SETTLE_EPS ||
+      Math.abs(hoverYawRef.current) > FRAME_SETTLE_EPS ||
+      Math.abs(appliedTiltRef.current - targetTouchTilt) > FRAME_SETTLE_EPS ||
+      Math.abs(appliedPitchRef.current - targetPitch) > FRAME_SETTLE_EPS ||
+      Math.abs(sideFadeRef.current - fadeTarget) > 0.002
+    // Center pack video + tilt need continuous uploads under frameloop=demand.
+    if (
+      springBusy ||
+      (isLiveCenter && stageActiveRef.current)
+    ) {
+      requestFrame()
+    }
   })
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
@@ -1558,6 +1601,7 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
     const normalizedX = MathUtils.clamp(localX / 0.9, -1, 1)
     // Only update the target; useFrame eases the visible yaw toward it.
     hoverYawTargetRef.current = normalizedX * MAX_HOVER_YAW
+    invalidate()
   }
 
   return (
@@ -1579,6 +1623,8 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
           return
         }
         isHoveredRef.current = false
+        hoverYawTargetRef.current = 0
+        invalidate()
         document.body.style.cursor = 'auto'
       }}
     >
@@ -1678,6 +1724,7 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                     {...ctaSize}
                     auroraPaused={isMobile}
                     glowOuterBloom="off"
+                    costIconAnimated={false}
                     label={buyLabel}
                     leadingIcon={buyLeadingIcon}
                     costAmount={formatPrice(item.price ?? 4.99)}
@@ -1797,8 +1844,9 @@ function CoverFlowScene({
 	  cameraSettings,
 	  layout,
 	  textureTransform,
-	  centerTiltYaw,
-	  centerTiltPitch,
+	  centerTiltYawRef,
+	  centerTiltPitchRef,
+	  stageActive,
 	  isMobile,
 	  shortHudGlass,
 	  revealMode,
@@ -1825,8 +1873,9 @@ formatPrice,
 			  cameraSettings: CoverFlowCameraSettings
 			  layout: CoverFlowLayoutSettings
 			  textureTransform: VideoTextureTransform
-			  centerTiltYaw: number
-			  centerTiltPitch: number
+			  centerTiltYawRef: MutableRefObject<number>
+			  centerTiltPitchRef: MutableRefObject<number>
+			  stageActive: boolean
 			  isMobile: boolean
 			  shortHudGlass: boolean
 			  revealMode: boolean
@@ -1877,8 +1926,9 @@ formatPrice,
 	              modelY={cameraSettings.modelY}
 	              layout={layout}
 	              textureTransform={textureTransform}
-	              centerTiltYaw={centerTiltYaw}
-	              centerTiltPitch={centerTiltPitch}
+	              centerTiltYawRef={centerTiltYawRef}
+	              centerTiltPitchRef={centerTiltPitchRef}
+	              stageActive={stageActive}
 	              isMobile={isMobile}
 	              shortHudGlass={shortHudGlass}
 	              revealMode={revealMode}
@@ -1986,11 +2036,14 @@ export function CoverFlowCarousel({
       setInternalSelectedId(null)
     })
   const stageRef = useRef<HTMLDivElement>(null)
+  const invalidateCanvasRef = useRef<(() => void) | null>(null)
+  const centerTiltYawRef = useRef(0)
+  const centerTiltPitchRef = useRef(0)
   const [focusIndex, setFocusIndex] = useState(0)
-  const [centerTiltYaw, setCenterTiltYaw] = useState(0)
-  const [centerTiltPitch, setCenterTiltPitch] = useState(0)
   const [gestureMode, setGestureMode] = useState<LiveGestureMode>('idle')
   const [, setLastGestureSpeed] = useState(0)
+  const [canvasActive, setCanvasActive] = useState(true)
+  const [frameLoop, setFrameLoop] = useState<CoverFlowFrameLoop>('always')
 const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
 	    isMobileViewport(),
 	  )
@@ -2196,8 +2249,10 @@ useEffect(() => {
       return
     }
     // Clear interactive tilt so open starts clean.
-    setCenterTiltYaw(0)
-    setCenterTiltPitch(0)
+    centerTiltYawRef.current = 0
+    invalidateCanvasRef.current?.()
+    centerTiltPitchRef.current = 0
+    invalidateCanvasRef.current?.()
     scrubTiltRef.current = 0
     setGestureMode('idle')
     gestureModeRef.current = 'idle'
@@ -2238,9 +2293,65 @@ useEffect(() => {
     focusIndexRef.current = focusIndex
   }, [focusIndex])
 
+  // Pause WebGL + pack videos when the hero is mostly offscreen or the tab is hidden.
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      return
+    }
+
+    let intersecting = true
+    const sync = () => {
+      const active =
+        intersecting &&
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible'
+      setCanvasActive(active)
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        intersecting =
+          Boolean(entry?.isIntersecting) &&
+          (entry?.intersectionRatio ?? 0) >= 0.2
+        sync()
+      },
+      { threshold: [0, 0.2, 0.5, 1] },
+    )
+    io.observe(el)
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => {
+      io.disconnect()
+      document.removeEventListener('visibilitychange', sync)
+    }
+  }, [items.length])
+
+  useEffect(() => {
+    if (!canvasActive) {
+      setFrameLoop('never')
+      pauseAllVideoTextures()
+      return
+    }
+
+    setFrameLoop('always')
+    const bootTimer = window.setTimeout(() => {
+      setFrameLoop('demand')
+      invalidateCanvasRef.current?.()
+    }, FRAMELOOP_BOOT_MS)
+    return () => {
+      window.clearTimeout(bootTimer)
+    }
+  }, [canvasActive])
+
   useEffect(() => {
     gestureModeRef.current = gestureMode
   }, [gestureMode])
+
+  useEffect(() => {
+    if (!canvasActive) return
+    invalidateCanvasRef.current?.()
+  }, [canvasActive, focusIndex, selectedId, revealMode])
 
   useEffect(() => {
     motionTiltEnabledRef.current = motionTiltOn
@@ -2249,7 +2360,8 @@ useEffect(() => {
       deviceTiltPitchRef.current = 0
       lastAppliedDeviceTiltRef.current = 0
       lastAppliedDevicePitchRef.current = 0
-      setCenterTiltPitch(0)
+      centerTiltPitchRef.current = 0
+      invalidateCanvasRef.current?.()
     }
   }, [motionTiltOn])
 
@@ -2289,8 +2401,10 @@ useEffect(() => {
       deviceTiltPitchRef.current = 0
       lastAppliedDeviceTiltRef.current = 0
       lastAppliedDevicePitchRef.current = 0
-      setCenterTiltYaw(0)
-      setCenterTiltPitch(0)
+      centerTiltYawRef.current = 0
+      invalidateCanvasRef.current?.()
+      centerTiltPitchRef.current = 0
+      invalidateCanvasRef.current?.()
       return
     }
 
@@ -2343,11 +2457,13 @@ useEffect(() => {
 
       if (yawChanged) {
         lastAppliedDeviceTiltRef.current = nextYaw
-        setCenterTiltYaw(nextYaw)
+        centerTiltYawRef.current = nextYaw
+        invalidateCanvasRef.current?.()
       }
       if (pitchChanged) {
         lastAppliedDevicePitchRef.current = nextPitch
-        setCenterTiltPitch(nextPitch)
+        centerTiltPitchRef.current = nextPitch
+        invalidateCanvasRef.current?.()
       }
     })
   }, [motionTiltOn, subscribeMotion])
@@ -2370,7 +2486,8 @@ useEffect(() => {
       const nextItem = items[nextIndex]
       const wasActive = selectedIdRef.current !== null
 
-      setCenterTiltYaw(0)
+      centerTiltYawRef.current = 0
+      invalidateCanvasRef.current?.()
       setFocusIndex(nextIndex)
 
       if (wasActive && nextItem && nextItem.id !== selectedIdRef.current) {
@@ -2668,7 +2785,8 @@ useEffect(() => {
       if (first) {
         // With motion tilt on, keep current phone yaw; otherwise reset for scrub start.
         if (!motionTiltEnabled) {
-          setCenterTiltYaw(0)
+          centerTiltYawRef.current = 0
+          invalidateCanvasRef.current?.()
         }
         scrubTiltRef.current = 0
         lastScrubXRef.current = mx
@@ -2693,8 +2811,10 @@ useEffect(() => {
           : 0
         lastAppliedDeviceTiltRef.current = restoredYaw
         lastAppliedDevicePitchRef.current = restoredPitch
-        setCenterTiltYaw(restoredYaw)
-        setCenterTiltPitch(restoredPitch)
+        centerTiltYawRef.current = restoredYaw
+        invalidateCanvasRef.current?.()
+        centerTiltPitchRef.current = restoredPitch
+        invalidateCanvasRef.current?.()
         setGestureMode(mode)
         gestureModeRef.current = mode
         if (mode === 'idle') {
@@ -2727,7 +2847,8 @@ useEffect(() => {
         }
         // Keep phone tilt if motion is enabled; otherwise clear scrub tilt.
         if (!motionTiltEnabledRef.current) {
-          setCenterTiltYaw(0)
+          centerTiltYawRef.current = 0
+          invalidateCanvasRef.current?.()
         }
         scrubTiltRef.current = 0
         finishGesture('deactivate')
@@ -2744,7 +2865,8 @@ useEffect(() => {
         setGestureMode('swipe')
         gestureModeRef.current = 'swipe'
         if (!motionTiltEnabled) {
-          setCenterTiltYaw(0)
+          centerTiltYawRef.current = 0
+          invalidateCanvasRef.current?.()
         }
         scrubTiltRef.current = 0
         return
@@ -2762,7 +2884,8 @@ useEffect(() => {
           if (fastEnoughToSwipe) {
             setGestureMode('swipe')
             gestureModeRef.current = 'swipe'
-            setCenterTiltYaw(0)
+            centerTiltYawRef.current = 0
+            invalidateCanvasRef.current?.()
             scrubTiltRef.current = 0
             return
           }
@@ -2775,7 +2898,8 @@ useEffect(() => {
             -1,
             1,
           )
-          setCenterTiltYaw(scrubTiltRef.current * MAX_HOVER_YAW)
+          centerTiltYawRef.current = scrubTiltRef.current * MAX_HOVER_YAW
+          invalidateCanvasRef.current?.()
           return
         }
 
@@ -2808,7 +2932,8 @@ useEffect(() => {
           (my > 0 && !selectedIdRef.current))
       ) {
         if (!motionTiltEnabled) {
-          setCenterTiltYaw(0)
+          centerTiltYawRef.current = 0
+          invalidateCanvasRef.current?.()
         }
         scrubTiltRef.current = 0
         setGestureMode('idle')
@@ -2828,7 +2953,8 @@ useEffect(() => {
           setGestureMode('swipe')
           gestureModeRef.current = 'swipe'
           if (!motionTiltEnabled) {
-            setCenterTiltYaw(0)
+            centerTiltYawRef.current = 0
+            invalidateCanvasRef.current?.()
           }
           scrubTiltRef.current = 0
           return
@@ -2858,7 +2984,8 @@ useEffect(() => {
             -1,
             1,
           )
-          setCenterTiltYaw(scrubTiltRef.current * MAX_HOVER_YAW)
+          centerTiltYawRef.current = scrubTiltRef.current * MAX_HOVER_YAW
+          invalidateCanvasRef.current?.()
         }
         return
       }
@@ -3012,18 +3139,18 @@ useEffect(() => {
 	              far: 40,
 	            }}
 	            dpr={[1, 1.5]}
-	            // Keep a short always-on loop so pack Html projects on first load
-	            // without waiting for hover/pointer invalidation.
-	            frameloop="always"
+	            // Boot briefly on always so Html projects; then demand + invalidate while animating/playing.
+	            frameloop={frameLoop}
 	            gl={{
 	              antialias: true,
 	              alpha: true,
 	              premultipliedAlpha: false,
 	            }}
-	            onCreated={({ gl, scene }) => {
+	            onCreated={({ gl, scene, invalidate }) => {
 	              // Keep the WebGL clear fully transparent so the CSS gradient is visible.
 	              scene.background = null
 	              gl.setClearColor(0x000000, 0)
+	              invalidateCanvasRef.current = invalidate
 	            }}
 	            style={{
 	              width: '100%',
@@ -3039,8 +3166,9 @@ useEffect(() => {
                 cameraSettings={cameraSettings}
                 layout={resolvedLayout}
                 textureTransform={textureTransform}
-                centerTiltYaw={centerTiltYaw}
-                centerTiltPitch={centerTiltPitch}
+                centerTiltYawRef={centerTiltYawRef}
+                centerTiltPitchRef={centerTiltPitchRef}
+                stageActive={canvasActive}
 isMobile={isMobileViewportActive}
 	                shortHudGlass={isShortHudGlass}
 	                revealMode={revealMode}
