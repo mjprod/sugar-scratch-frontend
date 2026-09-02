@@ -11,6 +11,18 @@ export type StoreBadge =
 
 export type StoreProductKind = "rewarded-ad" | "diamonds";
 
+export const COIN_EXCHANGE_OPTIONS = [
+  { id: "x100", diamonds: 100, coins: 100 },
+  { id: "x500", diamonds: 500, coins: 700 },
+  { id: "x1200", diamonds: 1200, coins: 1800 },
+  { id: "x2500", diamonds: 2500, coins: 4000 },
+  { id: "x5000", diamonds: 5000, coins: 8500 },
+] as const;
+
+export type CoinExchangeOption = (typeof COIN_EXCHANGE_OPTIONS)[number];
+
+export const DAILY_AD_LIMIT = 3;
+
 export type StoreProduct = {
   id: string;
   kind: StoreProductKind;

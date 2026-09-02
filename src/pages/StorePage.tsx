@@ -17,7 +17,7 @@ export function StorePage() {
     bumpInventoryRevision,
     setPurchasedPacks,
   } = useAuth();
-  const { addCoins, addDiamonds, refreshWallet } = useWallet();
+  const { addCoins, addDiamonds, coins, refreshWallet, spendCoins } = useWallet();
 
   async function onPackReward(
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -69,6 +69,12 @@ export function StorePage() {
 
   return (
     <StoreScreen
+      coinBalance={coins}
+      onCoinExchange={(diamonds, coinCost) => {
+        if (!spendCoins(coinCost)) return false;
+        addDiamonds(diamonds);
+        return true;
+      }}
       onBack={() => closeSecondary("store")}
       onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
         addDiamonds(gained);
