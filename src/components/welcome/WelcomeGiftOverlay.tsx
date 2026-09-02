@@ -28,7 +28,11 @@ function prefersReducedMotion() {
   );
 }
 
-export function WelcomeGiftOverlay() {
+export function WelcomeGiftOverlay({
+  onOpenChange,
+}: {
+  onOpenChange?: (open: boolean) => void;
+}) {
   const {
     authed,
     profile,
@@ -68,6 +72,10 @@ export function WelcomeGiftOverlay() {
       claimSlotRef.current?.querySelector("button")?.focus();
     }
   }, [open, exitPhase]);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
     if (phase !== "confirm" || exitPhase !== "idle") return;

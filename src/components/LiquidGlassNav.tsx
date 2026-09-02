@@ -91,39 +91,22 @@ function GuestCollectionIcon({
 }) {
   return (
     <svg
-      viewBox="0 0 20 20"
+      viewBox="4.8 5.6 10.3 9.4"
       className={className}
       aria-hidden="true"
     >
       <path
-        fill="oklch(1 0 0 / 0.2)"
-        d="M6 17.3c-.4 0-.7-.3-.7-.7v-1.5l2.2 2.2H6Zm2.5 0-3.2-3.2v-1.4l4.6 4.6H8.5ZM14.7 5.6l-2.8-2.8h2c.5 0 .8.4.8.8v2Z"
+        fill="currentColor"
+        d="M5.8 6.1s.4.7 1.2.9c-.7.3-1.1 1-1.2 1.7-.4-.3-.7-1 0-2.6Z"
       />
-      <rect
-        x="4.5"
-        y="1.9"
-        width="10.9"
-        height="16.2"
-        rx="1"
-        fill="none"
-        stroke="oklch(1 0 0 / 0.25)"
-        strokeMiterlimit={10}
-        strokeWidth="0.5"
+      <path
+        fill="currentColor"
+        d="M10.5 13.5l-.5.5-.5-.5c-1.9-1.7-3.1-2.8-3.1-4.2s.9-2 2-2 1.2.3 1.6.8c.4-.5 1-.8 1.6-.8 1.1 0 2 .9 2 2s-1.2 2.5-3.1 4.2Z"
       />
-      <g transform="translate(9.95 10) scale(0.8) translate(-9.95 -10)">
-        <path
-          fill="currentColor"
-          d="M5.8 6.1s.4.7 1.2.9c-.7.3-1.1 1-1.2 1.7-.4-.3-.7-1 0-2.6Z"
-        />
-        <path
-          fill="currentColor"
-          d="M10.5 13.5l-.5.5-.5-.5c-1.9-1.7-3.1-2.8-3.1-4.2s.9-2 2-2 1.2.3 1.6.8c.4-.5 1-.8 1.6-.8 1.1 0 2 .9 2 2s-1.2 2.5-3.1 4.2Z"
-        />
-        <path
-          fill="currentColor"
-          d="M14.2 8.8c0-.8-.5-1.4-1.2-1.8.4 0 .8-.4 1.3-.9 0 0 .9 1.7-.1 2.7Z"
-        />
-      </g>
+      <path
+        fill="currentColor"
+        d="M14.2 8.8c0-.8-.5-1.4-1.2-1.8.4 0 .8-.4 1.3-.9 0 0 .9 1.7-.1 2.7Z"
+      />
     </svg>
   );
 }

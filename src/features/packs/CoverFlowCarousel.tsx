@@ -660,9 +660,18 @@ formatPrice,
   })
   const [confirmingAdd, setConfirmingAdd] = useState(false)
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false)
+  const [buyConfirmLeaving, setBuyConfirmLeaving] = useState(false)
   const wasActiveAndEnabledRef = useRef(isActive && !buyDisabled)
   const visuallyDisabled = buyDisabled && !confirmingAdd
   const pocketDisabled = Boolean(addToPocketDisabled)
+
+  function closeBuyConfirm() {
+    setBuyConfirmOpen(false)
+    setBuyConfirmLeaving(
+      typeof window === 'undefined' ||
+        !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    )
+  }
 
   useEffect(() => {
     const wasActiveAndEnabled = wasActiveAndEnabledRef.current
@@ -688,7 +697,10 @@ formatPrice,
   }, [confirmingAdd])
 
   useEffect(() => {
-    if (!isActive) setBuyConfirmOpen(false)
+    if (!isActive) {
+      setBuyConfirmOpen(false)
+      setBuyConfirmLeaving(false)
+    }
   }, [isActive])
 
   useEffect(() => {
@@ -696,12 +708,18 @@ formatPrice,
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        setBuyConfirmOpen(false)
+        closeBuyConfirm()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [buyConfirmOpen])
+
+  useEffect(() => {
+    if (!buyConfirmLeaving) return
+    const timeout = window.setTimeout(() => setBuyConfirmLeaving(false), 400)
+    return () => window.clearTimeout(timeout)
+  }, [buyConfirmLeaving])
 
   useEffect(() => {
     focusIndexRef.current = focusIndex
@@ -1648,7 +1666,7 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
               <div
                 className={`coverflow-buy-pack-cta${
                   confirmingAdd ? ' is-confirming' : ''
-                }${buyConfirmOpen ? ' is-buy-confirm-open' : ''}`}
+                }${buyConfirmOpen || buyConfirmLeaving ? ' is-buy-confirm-open' : ''}`}
                 onAnimationEnd={(event) => {
                   if (event.animationName !== 'coverflow-buy-cta-confirm') return
                   setConfirmingAdd(false)
@@ -1667,7 +1685,9 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                     tabIndex={visuallyDisabled ? -1 : 0}
                     disabled={visuallyDisabled}
                     aria-disabled={visuallyDisabled || undefined}
-                    aria-expanded={confirmBuy ? buyConfirmOpen : undefined}
+                    aria-expanded={
+                      confirmBuy ? buyConfirmOpen || buyConfirmLeaving : undefined
+                    }
                     aria-controls={
                       confirmBuy
                         ? `coverflow-buy-confirm-${item.id}`
@@ -1677,19 +1697,30 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                       event.stopPropagation()
                       if (buyDisabled || confirmingAdd) return
                       if (confirmBuy) {
-                        setBuyConfirmOpen((open) => !open)
+                        if (buyConfirmOpen) closeBuyConfirm()
+                        else {
+                          setBuyConfirmLeaving(false)
+                          setBuyConfirmOpen(true)
+                        }
                         return
                       }
                       onBuy(item)
                     }}
                   />
-                  {confirmBuy && buyConfirmOpen ? (
+                  {confirmBuy && (buyConfirmOpen || buyConfirmLeaving) ? (
                     <div
                       id={`coverflow-buy-confirm-${item.id}`}
-                      className="coverflow-cart-remove-confirm coverflow-buy-confirm"
+                      className={`coverflow-cart-remove-confirm coverflow-buy-confirm${
+                        buyConfirmLeaving ? ' is-leaving' : ''
+                      }`}
                       role="dialog"
                       aria-label="Buy pack?"
                       aria-modal="false"
+                      onAnimationEnd={(event) => {
+                        if (event.target !== event.currentTarget) return
+                        if (event.animationName !== 'coverflow-confirm-leave') return
+                        setBuyConfirmLeaving(false)
+                      }}
                     >
                       <p className="coverflow-cart-remove-confirm__label">Buy</p>
                       <div className="coverflow-cart-remove-confirm__actions">
@@ -1699,7 +1730,7 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                           aria-label="Cancel buy"
                           onClick={(event) => {
                             event.stopPropagation()
-                            setBuyConfirmOpen(false)
+                            closeBuyConfirm()
                           }}
                         >
                           <X aria-hidden="true" strokeWidth={2.5} />
@@ -1712,7 +1743,7 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                           onClick={(event) => {
                             event.stopPropagation()
                             if (buyDisabled) return
-                            setBuyConfirmOpen(false)
+                            closeBuyConfirm()
                             onBuy(item)
                           }}
                         >

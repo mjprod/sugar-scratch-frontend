@@ -110,6 +110,7 @@ export function CreatorFeedCard({
     isFollowing(item.creatorId),
   );
   const reducedMotion = usePrefersReducedMotion();
+  const isMobileFeed = useIsMobileFeed();
   const cardRef = useRef<HTMLElement>(null);
   const likeBtnRef = useRef<HTMLButtonElement>(null);
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
@@ -168,6 +169,7 @@ export function CreatorFeedCard({
    * Warm neighbors stay in view during that transition — keep them live too.
    */
   const ctaMotionLive = (active || warm) && !reducedMotion;
+  const skipAurora = isMobileFeed || !ctaMotionLive;
 
   useEffect(() => {
     setMediaReady(false);
@@ -479,7 +481,7 @@ export function CreatorFeedCard({
               */
               glowOuterBloom={ctaMotionLive ? "lite" : "off"}
               glowAlwaysOn={ctaMotionLive}
-              auroraPaused={!ctaMotionLive}
+              auroraPaused={skipAurora}
               costIconAnimated={active && !reducedMotion}
               aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
               onClick={(e) => {
@@ -665,6 +667,21 @@ function gestureLayerBlocked() {
       '[aria-modal="true"], [role="dialog"][aria-modal="true"]',
     ),
   );
+}
+
+function useIsMobileFeed() {
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 980px)").matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 980px)");
+    const apply = () => setMobile(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return mobile;
 }
 
 function usePrefersReducedMotion() {

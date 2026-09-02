@@ -923,10 +923,19 @@ formatPrice,
 					}) {
 const groupRef = useRef<Group>(null)
 		  const modelRef = useRef<Group>(null)
-	  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
-	  const [isRemoving, setIsRemoving] = useState(false)
-	  const removeExitRef = useRef<RemoveExitState>(emptyRemoveExit())
-	  const onRemoveRef = useRef(onRemove)
+		  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
+		  const [removeConfirmLeaving, setRemoveConfirmLeaving] = useState(false)
+		  const [isRemoving, setIsRemoving] = useState(false)
+		  const removeExitRef = useRef<RemoveExitState>(emptyRemoveExit())
+		  const onRemoveRef = useRef(onRemove)
+
+		  function closeRemoveConfirm() {
+		    setRemoveConfirmOpen(false)
+		    setRemoveConfirmLeaving(
+		      typeof window === 'undefined' ||
+		        !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+		    )
+		  }
 	  // Cursor target vs displayed hover yaw — applied eases so leave isn't a snap.
 	  const hoverYawTargetRef = useRef(0)
 	  const hoverYawRef = useRef(0)
@@ -992,26 +1001,35 @@ useEffect(() => {
 	    onRemoveRef.current = onRemove
 	  }, [onRemove])
 
-	  useEffect(() => {
-	    if (!isActive && index !== focusIndex) setRemoveConfirmOpen(false)
-	  }, [focusIndex, index, isActive])
+		  useEffect(() => {
+		    if (!isActive && index !== focusIndex) {
+		      setRemoveConfirmOpen(false)
+		      setRemoveConfirmLeaving(false)
+		    }
+		  }, [focusIndex, index, isActive])
 
-	  useEffect(() => {
-	    if (!removeConfirmOpen) return
-	    const onKeyDown = (event: KeyboardEvent) => {
-	      if (event.key === 'Escape') {
-	        event.preventDefault()
-	        setRemoveConfirmOpen(false)
-	      }
-	    }
-	    window.addEventListener('keydown', onKeyDown)
-	    return () => window.removeEventListener('keydown', onKeyDown)
-	  }, [removeConfirmOpen])
+		  useEffect(() => {
+		    if (!removeConfirmOpen) return
+		    const onKeyDown = (event: KeyboardEvent) => {
+		      if (event.key === 'Escape') {
+		        event.preventDefault()
+		        closeRemoveConfirm()
+		      }
+		    }
+		    window.addEventListener('keydown', onKeyDown)
+		    return () => window.removeEventListener('keydown', onKeyDown)
+		  }, [removeConfirmOpen])
 
-		  function beginRemoveExit() {
-		    if (isRemoving || removeExitRef.current.phase !== 'idle') return
-		    setRemoveConfirmOpen(false)
-		    setIsRemoving(true)
+		  useEffect(() => {
+		    if (!removeConfirmLeaving) return
+		    const timeout = window.setTimeout(() => setRemoveConfirmLeaving(false), 400)
+		    return () => window.clearTimeout(timeout)
+		  }, [removeConfirmLeaving])
+
+			  function beginRemoveExit() {
+			    if (isRemoving || removeExitRef.current.phase !== 'idle') return
+			    closeRemoveConfirm()
+			    setIsRemoving(true)
 		    notifyCartRemoveIntent()
 	    const motion = motionRef.current
 	    removeExitRef.current = {
@@ -1040,22 +1058,33 @@ useEffect(() => {
 	          type="button"
 	          className="coverflow-cart-remove"
 	          aria-label={`Remove ${item.packName || item.girlName} from cart`}
-	          aria-expanded={removeConfirmOpen}
+	          aria-expanded={removeConfirmOpen || removeConfirmLeaving}
 	          aria-controls={`coverflow-cart-remove-confirm-${item.id}`}
 	          onClick={(event) => {
 	            event.stopPropagation()
-	            setRemoveConfirmOpen((open) => !open)
+	            if (removeConfirmOpen) closeRemoveConfirm()
+	            else {
+	              setRemoveConfirmLeaving(false)
+	              setRemoveConfirmOpen(true)
+	            }
 	          }}
 	        >
 	          <span aria-hidden="true">×</span>
 	        </button>
-	        {removeConfirmOpen ? (
+	        {removeConfirmOpen || removeConfirmLeaving ? (
 	          <div
 	            id={`coverflow-cart-remove-confirm-${item.id}`}
-	            className="coverflow-cart-remove-confirm"
+	            className={`coverflow-cart-remove-confirm${
+	              removeConfirmLeaving ? ' is-leaving' : ''
+	            }`}
 	            role="dialog"
 	            aria-label="Remove pack?"
 	            aria-modal="false"
+	            onAnimationEnd={(event) => {
+	              if (event.target !== event.currentTarget) return
+	              if (event.animationName !== 'coverflow-confirm-leave') return
+	              setRemoveConfirmLeaving(false)
+	            }}
 	          >
 	            <p className="coverflow-cart-remove-confirm__label">Remove</p>
 	            <div className="coverflow-cart-remove-confirm__actions">
@@ -1065,7 +1094,7 @@ useEffect(() => {
 	                aria-label="Cancel remove"
 	                onClick={(event) => {
 	                  event.stopPropagation()
-	                  setRemoveConfirmOpen(false)
+	                  closeRemoveConfirm()
 	                }}
 	              >
 	                <X aria-hidden="true" strokeWidth={2.5} />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { HomeFeedScreen } from "@/components/home/HomeFeedScreen";
 import { WelcomeGiftOverlay } from "@/components/welcome/WelcomeGiftOverlay";
@@ -11,11 +12,12 @@ export function HomeFeedPage() {
     openCreator,
     authed,
   } = useAuth();
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
 
   return (
     <>
       <HomeFeedScreen
-        active
+        active={!welcomeOpen}
         resumeLikeId={resumeLikeId}
         onResumeLikeConsumed={consumeResumeLike}
         onBuyPack={(pack) =>
@@ -34,7 +36,7 @@ export function HomeFeedPage() {
         }}
         onOpenCreator={openCreator}
       />
-      <WelcomeGiftOverlay />
+      <WelcomeGiftOverlay onOpenChange={setWelcomeOpen} />
     </>
   );
 }
