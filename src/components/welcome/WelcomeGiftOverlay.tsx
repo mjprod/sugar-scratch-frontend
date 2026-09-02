@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   claimWelcomeRewards,
-  clearWelcomeGiftState,
   finalizeWelcomeClaimRemote,
   hideWelcomeOverlayForSession,
   shouldShowWelcomeOverlay,
@@ -168,16 +167,6 @@ export function WelcomeGiftOverlay() {
     setPhase("confirm");
   }
 
-  function onDebugReset() {
-    clearWelcomeGiftState();
-    setProfile((d) => ({ ...d, welcomeClaimed: false }));
-    setPhase("offer");
-    setError(false);
-    setHeldForAccount(false);
-    setExitPhase("idle");
-    setOpen(true);
-  }
-
   // Don't mark CTA disabled during exit — disabled greys the gold button.
   const claimBusy = phase === "claiming" || phase === "confirm";
   const exitLocked = exitPhase !== "idle";
@@ -190,23 +179,10 @@ export function WelcomeGiftOverlay() {
   const panelExitClass = exitPhase === "panel" ? "is-exiting" : "";
   const ctaExitClass =
     exitPhase === "cta" || exitPhase === "panel" ? "is-exit-cta" : "";
-  const debugReset = (
-    <button
-      type="button"
-      className="welcome-gift-debug-reset"
-      onClick={onDebugReset}
-    >
-      welcome kicker reset
-    </button>
-  );
-
-  if (!open) {
-    return createPortal(debugReset, document.body);
-  }
+  if (!open) return null;
 
   return createPortal(
-    <>
-      <div
+    <div
         className={["welcome-gift-overlay", overlayExitClass].filter(Boolean).join(" ")}
         role="presentation"
       >
@@ -310,9 +286,7 @@ export function WelcomeGiftOverlay() {
             )}
           </div>
         </div>
-      </div>
-      {debugReset}
-    </>,
+      </div>,
     document.body,
   );
 }

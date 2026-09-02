@@ -413,6 +413,7 @@ export function CreatorFeedCard({
       ) : null}
 
       <div className={["hf-overlay", active ? "is-visible" : ""].join(" ")}>
+        <div className="hf-overlay-inner">
         <div className="hf-info">
           <div className="hf-name-row">
             {canOpenCreator ? (
@@ -524,6 +525,7 @@ export function CreatorFeedCard({
               {likeCountLabel}
             </span>
           </div>
+        </div>
         </div>
       </div>
     </article>
