@@ -5,29 +5,35 @@ type NoMatchOutcomeProps = {
   onComplete: () => void;
 };
 
-/* Keep in sync with the .no-match animation timings in game.css. */
+/* Entrance timing for .no-match__* in game.css; hold ends via TOTAL_MS. */
 const CONTENT_IN_MS = 780;
-const HOLD_MS = 2000;
-const FADE_MS = 300;
-const TOTAL_MS = CONTENT_IN_MS + HOLD_MS + FADE_MS;
+/** Per-card result hold before auto-advance to the next card. */
+export const CARD_NO_MATCH_RESULT_MS = 2000;
+const TOTAL_MS = CONTENT_IN_MS + CARD_NO_MATCH_RESULT_MS;
 
 /**
  * Resolved "this card produced nothing" beat. Sits over the scratched card so
  * the player still sees what they just played — an outcome, not an error modal.
- * Advances on its own so a dead card never costs the player a tap.
+ * Auto-advances after ~2s; navigation is handled by the parent.
  */
 export function NoMatchOutcome({ onComplete }: NoMatchOutcomeProps) {
+  const completedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => onCompleteRef.current(), TOTAL_MS);
+    completedRef.current = false;
+    const timer = window.setTimeout(() => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      onCompleteRef.current();
+    }, TOTAL_MS);
     return () => window.clearTimeout(timer);
   }, []);
 
   return (
     <div
-      className="no-match"
+      className="no-match no-match--manual"
       role="status"
       aria-live="polite"
       aria-label="No match. No symbol found on this card."

@@ -1024,18 +1024,18 @@ textarea:focus-visible {
 
 .scratch-frame-progress__track {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.16);
-  stroke-width: 1.5;
+  stroke: rgba(220, 120, 175, 0.52);
+  stroke-width: 2;
 }
 
 .scratch-frame-progress__progress {
   fill: none;
-  stroke-width: 2.5;
+  stroke-width: 3.5;
   stroke-linecap: round;
   stroke-dasharray: var(--frame-perimeter, 2000);
   stroke-dashoffset: var(--frame-dashoffset, 2000);
-  opacity: 0.95;
-  filter: drop-shadow(0 0 6px rgba(255, 155, 203, 0.5));
+  opacity: 1;
+  filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
   /* No delay: a delay restarts on every find, so fast scratching would stall the
      stroke and then jump. It has to chase the count in real time instead. */
   transition: stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
@@ -1048,7 +1048,7 @@ textarea:focus-visible {
 
 .scratch-frame-progress.is-almost .scratch-frame-progress__progress {
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(255, 155, 203, 0.45));
+  filter: drop-shadow(0 0 8px rgba(190, 50, 120, 0.65));
 }
 
 /* No match: the accumulated energy glows once, then drains back to the bare
@@ -1064,12 +1064,12 @@ textarea:focus-visible {
 
 @keyframes scratch-frame-settle {
   0% {
-    opacity: 0.95;
-    filter: drop-shadow(0 0 6px rgba(255, 155, 203, 0.5));
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
   }
   20% {
     opacity: 1;
-    filter: drop-shadow(0 0 14px rgba(255, 155, 203, 0.7));
+    filter: drop-shadow(0 0 12px rgba(190, 50, 120, 0.75));
   }
   100% {
     opacity: 0;
@@ -1086,12 +1086,12 @@ textarea:focus-visible {
 
 .scratch-frame-progress__sweep {
   fill: none;
-  stroke-width: 2.5;
+  stroke-width: 3.5;
   stroke-linecap: round;
   stroke-dasharray: var(--frame-perimeter, 2000);
   stroke-dashoffset: var(--frame-perimeter, 2000);
-  opacity: 0.95;
-  filter: drop-shadow(0 0 14px rgba(255, 214, 176, 0.75));
+  opacity: 1;
+  filter: drop-shadow(0 0 10px rgba(200, 90, 50, 0.7));
   animation: scratch-frame-sweep 760ms ease-out forwards;
 }
 
@@ -1173,15 +1173,15 @@ textarea:focus-visible {
 
 @keyframes scratch-frame-milestone-pulse {
   0% {
-    filter: drop-shadow(0 0 2px rgba(255, 155, 203, 0.2));
+    filter: drop-shadow(0 0 2px rgba(190, 50, 120, 0.35));
   }
 
   50% {
-    filter: drop-shadow(0 0 10px rgba(255, 155, 203, 0.45));
+    filter: drop-shadow(0 0 10px rgba(190, 50, 120, 0.65));
   }
 
   100% {
-    filter: drop-shadow(0 0 4px rgba(255, 155, 203, 0.25));
+    filter: drop-shadow(0 0 4px rgba(190, 50, 120, 0.45));
   }
 }
 
@@ -4115,6 +4115,18 @@ dd {
 .photo-scratch-prototype {
   grid-template-columns: minmax(280px, 340px) minmax(390px, 420px);
   max-width: 900px;
+}
+
+.photo-scratch-prototype.is-immersive {
+  display: block;
+  max-width: none;
+  margin: 0;
+}
+
+.photo-scratch-prototype.is-immersive .photo-scratch-panel,
+.photo-scratch-prototype.is-immersive .photo-scratch-controls,
+.photo-scratch-prototype.is-immersive .photo-scratch-settings {
+  display: none !important;
 }
 
 .photo-scratch-panel {

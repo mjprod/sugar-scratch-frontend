@@ -20,7 +20,6 @@ import {
   finishPhotoHand,
   isGameModeUrl,
   loadGameSession,
-  navigateTo,
   promoteCompletePhotoHand,
   recordPhotoCardResult,
   settleDonePhotoHand,
@@ -59,7 +58,7 @@ import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
-import { TopSymbolBar, TOP_BAR_SHOWCASE_MS, type TopBarPhase } from "../modules/TopSymbolBar";
+import { TopSymbolBar, type TopBarPhase } from "../modules/TopSymbolBar";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -82,6 +81,13 @@ const FRONT_LAYER_SRC = "/photo-scratch/foreground.png";
 const MESH_SRC = "/photo-scratch/mesh.json";
 
 type PhotoScratchCardEntry = CatalogPhotoCard;
+
+type CardFlowState = "ready" | "scratching" | "showing-result";
+type PackFlowState = "playing" | "complete";
+
+function isProductPhotoScratch(): boolean {
+  return isGameModeUrl() || Boolean(readCardIdFromLocation());
+}
 
 function readCardIdFromLocation(): string {
   if (typeof window === "undefined") return "";
@@ -776,8 +782,13 @@ export function PhotoScratch() {
     null,
   );
   const tryResolveGameRef = useRef<() => void>(() => undefined);
-  const advanceAfterScratchRef = useRef<() => void>(() => undefined);
+  const enterCardResultRef = useRef<() => void>(() => undefined);
+  const advanceAfterResultRef = useRef<() => void>(() => undefined);
   const completedCardIdsRef = useRef<string[]>([]);
+  /** Blocks scratch input while the next card is loading. */
+  const cardTransitionRef = useRef(false);
+  /** One completion resolve per card — reset when a new card begins. */
+  const scratchCompletionHandledRef = useRef(false);
   const applyScratchAtUvRef = useRef<
     (u: number, v: number, radius: number) => void
   >(() => {});
@@ -883,6 +894,8 @@ export function PhotoScratch() {
   );
   const autoScratchRef = useRef(autoScratch);
   autoScratchRef.current = autoScratch;
+  /** Auto-clear garment after all body symbols found — not the settings toggle. */
+  const finishAutoActiveRef = useRef(false);
   const revealedSymbolsRef = useRef(0);
   revealedSymbolsRef.current = revealedSymbols;
   const hasBodySymbolsRef = useRef(false);
@@ -910,6 +923,12 @@ export function PhotoScratch() {
   } | null>(null);
   const photoResultRef = useRef(photoResult);
   photoResultRef.current = photoResult;
+  const [cardFlowState, setCardFlowState] = useState<CardFlowState>("ready");
+  const cardFlowStateRef = useRef(cardFlowState);
+  cardFlowStateRef.current = cardFlowState;
+  const [packFlowState, setPackFlowState] = useState<PackFlowState>("playing");
+  const packFlowStateRef = useRef(packFlowState);
+  packFlowStateRef.current = packFlowState;
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [introActive, setIntroActive] = useState(false);
   const [introCover, setIntroCover] = useState(false);
@@ -1109,7 +1128,7 @@ export function PhotoScratch() {
     }, TOP_BAR_DOCK_MS);
   }
 
-  function applyMesh(mesh: TrackedMesh) {
+  function applyMesh(mesh: TrackedMesh, opts?: { resumeHand?: boolean }) {
     trackedMeshRef.current = mesh;
     trackedSampleRef.current = sampleTrackedMesh(mesh, 0);
     revealedPointsRef.current = Array.from(
@@ -1128,6 +1147,12 @@ export function PhotoScratch() {
     setClaimed(false);
     resetGameOutcome();
     resetMatchRound();
+    if (opts?.resumeHand) {
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+    }
     setRevealedSymbols(0);
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
@@ -1144,22 +1169,29 @@ export function PhotoScratch() {
     );
     setFlyingMatches([]);
     setHasBodySymbols(mesh.symbolPoints?.length === SYMBOL_POINT_COUNT);
+    finishAutoActiveRef.current = false;
+    revealedSymbolsRef.current = 0;
+    setCardFlowState("ready");
+    cardFlowStateRef.current = "ready";
     setAutoScratch((current) =>
       current.enabled ? { ...current, enabled: false } : current,
     );
   }
 
-  async function applyLoadedAssets(assets: {
-    back: HTMLImageElement;
-    mid: HTMLImageElement;
-    front: HTMLImageElement;
-    mesh: TrackedMesh;
-    label: string;
-  }) {
+  async function applyLoadedAssets(
+    assets: {
+      back: HTMLImageElement;
+      mid: HTMLImageElement;
+      front: HTMLImageElement;
+      mesh: TrackedMesh;
+      label: string;
+    },
+    opts?: { resumeHand?: boolean },
+  ) {
     backImageRef.current = assets.back;
     midImageRef.current = assets.mid;
     frontImageRef.current = assets.front;
-    applyMesh(assets.mesh);
+    applyMesh(assets.mesh, opts);
     marksRef.current = [];
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
@@ -1276,7 +1308,13 @@ export function PhotoScratch() {
     const entry = resolvePublishedEntry(index, cardId);
     const parentId = parentMotionCardId(entry?.id ?? cardId);
     const siblings = playlistForParent(index, parentId);
-    setPlaylist(siblings);
+    setPlaylist(
+      isGameModeUrl()
+        ? siblings
+        : entry
+          ? [entry]
+          : [{ id: cardId, label: cardId } as PhotoScratchCardEntry],
+    );
     setCompletedCardIds([]);
 
     if (entry) {
@@ -1445,14 +1483,22 @@ export function PhotoScratch() {
       );
 
       const autoSettings = autoScratchRef.current;
-      const huntComplete =
-        !hasBodySymbolsRef.current ||
-        revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
+      const productScratch = isProductPhotoScratch();
+      const autoActive =
+        !productScratch &&
+        (finishAutoActiveRef.current || autoSettings.enabled);
+      const huntComplete = hasBodySymbolsRef.current
+        ? revealedSymbolsRef.current >= SYMBOL_POINT_COUNT
+        : true;
       if (
-        autoSettings.enabled &&
+        autoActive &&
         huntComplete &&
         !isBodyScratchLocked() &&
         !introActiveRef.current &&
+        cardFlowStateRef.current !== "showing-result" &&
+        packFlowStateRef.current !== "complete" &&
+        !cardTransitionRef.current &&
+        !scratchCompletionHandledRef.current &&
         sample &&
         gameResultPendingRef.current === null &&
         !claimedRef.current
@@ -1547,13 +1593,22 @@ export function PhotoScratch() {
         revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
       const hideClothes =
         claimedRef.current ||
+        cardFlowStateRef.current === "showing-result" ||
+        packFlowStateRef.current === "complete" ||
         (canClaim &&
           isGarmentFullyRevealed(
             revealedCountRef.current,
             sampleCount,
             autoMode,
           ));
-      if (hideClothes && !claimedRef.current) {
+      if (
+        hideClothes &&
+        !claimedRef.current &&
+        cardFlowStateRef.current !== "showing-result" &&
+        packFlowStateRef.current !== "complete" &&
+        !cardTransitionRef.current &&
+        !scratchCompletionHandledRef.current
+      ) {
         claimedRef.current = true;
         setClaimed(true);
         tryResolveGameRef.current();
@@ -1715,9 +1770,22 @@ export function PhotoScratch() {
   }
 
   function applyScratchAtUv(u: number, v: number, radius: number) {
-    if (gameResultPendingRef.current !== null || claimedRef.current) return;
+    if (
+      gameResultPendingRef.current !== null ||
+      claimedRef.current ||
+      cardFlowStateRef.current === "showing-result" ||
+      packFlowStateRef.current === "complete" ||
+      cardTransitionRef.current ||
+      scratchCompletionHandledRef.current
+    ) {
+      return;
+    }
     if (isBodyScratchLocked()) {
       return;
+    }
+    if (cardFlowStateRef.current === "ready") {
+      setCardFlowState("scratching");
+      cardFlowStateRef.current = "scratching";
     }
 
     marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
@@ -1788,7 +1856,10 @@ export function PhotoScratch() {
         );
         pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
-        if (nextSymbolCount >= SYMBOL_POINT_COUNT) {
+        if (
+          nextSymbolCount >= SYMBOL_POINT_COUNT &&
+          !isProductPhotoScratch()
+        ) {
           beginFinishAutoScratch();
         }
       }
@@ -2026,14 +2097,19 @@ export function PhotoScratch() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
-    autoScratchRef.current = { ...autoScratchRef.current, enabled: true };
-    setAutoScratch((current) =>
-      current.enabled ? current : { ...current, enabled: true },
-    );
+    finishAutoActiveRef.current = true;
   }
 
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
+    if (scratchCompletionHandledRef.current) return;
+    if (
+      cardFlowStateRef.current === "showing-result" ||
+      packFlowStateRef.current === "complete" ||
+      cardTransitionRef.current
+    ) {
+      return;
+    }
     const sampleCount = revealSamplesRef.current.length;
     if (
       !isGarmentFullyRevealed(
@@ -2073,7 +2149,10 @@ export function PhotoScratch() {
     gameResultPendingRef.current = outcome;
     matchOutcomeRef.current = match;
     gameResultRef.current = outcome;
+    scratchCompletionHandledRef.current = true;
     setMatchOutcome(match);
+    finishAutoActiveRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) =>
       current.enabled ? { ...current, enabled: false } : current,
     );
@@ -2083,30 +2162,28 @@ export function PhotoScratch() {
       soundEnabledRef.current,
     );
     clearGameResultTimer();
-    // Don't hold the handoff for the full outcome sound — let it play under.
+    // Showcase top bar briefly, then enter per-card result (overlay handles ~2s hold).
     if (hasBodySymbolsRef.current) {
       setTopBarPhase("showcase");
       topBarPhaseRef.current = "showcase";
       const reduceMotion =
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const showcaseMs = reduceMotion
-        ? Math.min(advanceDelayMs, 300)
-        : TOP_BAR_SHOWCASE_MS;
+      const showcaseMs = reduceMotion ? 200 : Math.min(advanceDelayMs, 400);
       gameResultTimerRef.current = window.setTimeout(() => {
         gameResultTimerRef.current = null;
-        advanceAfterScratchRef.current();
+        enterCardResultRef.current();
       }, showcaseMs);
       return;
     }
     gameResultTimerRef.current = window.setTimeout(() => {
       gameResultTimerRef.current = null;
-      advanceAfterScratchRef.current();
-    }, Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS));
+      enterCardResultRef.current();
+    }, Math.min(advanceDelayMs, 300));
   }
   tryResolveGameRef.current = tryResolveGame;
 
-  function presentPhotoResult() {
+  function enterCardResult() {
     const finishedId = selectedCardId;
     if (!finishedId) {
       resetScratches();
@@ -2126,101 +2203,126 @@ export function PhotoScratch() {
 
     if (inGame) {
       recordPhotoCardResult(finishedId, diamonds);
-      const nextCompleted = completedCardIdsRef.current.includes(finishedId)
-        ? completedCardIdsRef.current
-        : [...completedCardIdsRef.current, finishedId];
-      completedCardIdsRef.current = nextCompleted;
-      setCompletedCardIds(nextCompleted);
-
-      const hasNext = playlist.some(
-        (entry) => entry.id !== finishedId && !nextCompleted.includes(entry.id),
-      );
-      // Settle phase → done before the per-card overlay so shell exit can't
-      // orphan an all-complete phase:"photo" session.
-      if (!hasNext) {
-        finishPhotoHand();
-      }
-
-      setPhotoResult({
-        win: diamonds > 0,
-        diamonds,
-        resultId: `${finishedId}:${diamonds}`,
-      });
-      return;
     }
 
-    finalizeScratchAdvance(finishedId);
+    setCardFlowState("showing-result");
+    cardFlowStateRef.current = "showing-result";
+    setPhotoResult({
+      win: diamonds > 0,
+      diamonds,
+      resultId: `${finishedId}:${diamonds}`,
+    });
   }
 
-  function afterPhotoResultPresentation() {
-    setPhotoResult(null);
-    const finishedId = selectedCardId;
-    if (!finishedId) return;
-
-    const session = loadGameSession();
-    if (session?.phase === "done") {
-      resetGameOutcome();
-      claimedRef.current = false;
-      setClaimed(false);
-      setSelectedCardId("");
-      setHandSummaryDiamonds(session.diamondTotal);
-      return;
-    }
-
-    finalizeScratchAdvance(finishedId);
+  function markCurrentCardCompleted(finishedId: string) {
+    if (completedCardIdsRef.current.includes(finishedId)) return;
+    const nextCompleted = [...completedCardIdsRef.current, finishedId];
+    completedCardIdsRef.current = nextCompleted;
+    setCompletedCardIds(nextCompleted);
   }
 
-  function finalizeScratchAdvance(finishedId: string) {
-    if (!completedCardIdsRef.current.includes(finishedId)) {
-      const nextCompleted = [...completedCardIdsRef.current, finishedId];
-      completedCardIdsRef.current = nextCompleted;
-      setCompletedCardIds(nextCompleted);
-    }
-    const session = loadGameSession();
-    const inGame =
-      isGameModeUrl() &&
-      (session?.phase === "photo" || session?.phase === "done");
-    const done = completedCardIdsRef.current;
-    const nextCard = playlist.find(
-      (entry) => entry.id !== finishedId && !done.includes(entry.id),
-    );
-    resetGameOutcome();
+  function resetScratchStateForNewCard(opts?: { resumeHand?: boolean }) {
+    clearGameResultTimer();
+    cardTransitionRef.current = true;
+    scratchCompletionHandledRef.current = false;
+    finishAutoActiveRef.current = false;
+    revealedSymbolsRef.current = 0;
+    autoPathIndexRef.current = 0;
+    autoPathProgressRef.current = 0;
+    gameResultPendingRef.current = null;
     claimedRef.current = false;
     setClaimed(false);
-    if (!nextCard) {
-      setSelectedCardId("");
-      if (inGame) {
-        const finished =
-          session?.phase === "done" ? session : finishPhotoHand();
-        if (finished) {
-          setHandSummaryDiamonds(finished.diamondTotal);
-        } else {
-          navigateTo("/game");
-        }
-      }
-      return;
+    setPhotoResult(null);
+    resetGameOutcome();
+    resetScratches();
+    setCardFlowState("ready");
+    cardFlowStateRef.current = "ready";
+    if (opts?.resumeHand) {
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
     }
-    setSelectedCardId(nextCard.id);
-    const url = new URL(window.location.href);
-    url.searchParams.set("card", nextCard.id);
-    if (inGame) url.searchParams.set("game", "1");
-    window.history.replaceState({}, "", url.toString());
+  }
+
+  function loadNextPackCard(nextCard: PhotoScratchCardEntry) {
+    const resumeHand =
+      isGameModeUrl() && completedCardIdsRef.current.length > 0;
+    resetScratchStateForNewCard({ resumeHand });
+
     void loadCardAssets(nextCard.id)
       .then((assets) => {
         revokeObjectUrls();
-        return applyLoadedAssets(assets);
+        setSelectedCardId(nextCard.id);
+        const url = new URL(window.location.href);
+        url.searchParams.set("card", nextCard.id);
+        if (isGameModeUrl()) url.searchParams.set("game", "1");
+        window.history.replaceState({}, "", url.toString());
+        return applyLoadedAssets(assets, { resumeHand });
       })
       .then(() => {
         armIntroForEntry(nextCard);
+        cardTransitionRef.current = false;
       })
       .catch((error) => {
+        cardTransitionRef.current = false;
         setLoadError(
           error instanceof Error ? error.message : "Failed to load next card",
         );
       });
   }
 
-  advanceAfterScratchRef.current = presentPhotoResult;
+  function advanceAfterResult() {
+    if (cardFlowStateRef.current !== "showing-result") return;
+    const finishedId = selectedCardId;
+    if (!finishedId) return;
+
+    setPhotoResult(null);
+    markCurrentCardCompleted(finishedId);
+
+    if (!isGameModeUrl()) {
+      resetGameOutcome();
+      claimedRef.current = false;
+      setClaimed(false);
+      setCardFlowState("ready");
+      cardFlowStateRef.current = "ready";
+      const params = new URLSearchParams(window.location.search);
+      const motionCardId = params.get("card")?.trim()
+        ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
+        : "";
+      navigateBackOr(
+        navigate,
+        collectionReturnHref(params.get("model")?.trim() || "", motionCardId),
+      );
+      return;
+    }
+
+    resetGameOutcome();
+    claimedRef.current = false;
+    setClaimed(false);
+    gameResultPendingRef.current = null;
+
+    const nextCard = playlist.find(
+      (entry) => !completedCardIdsRef.current.includes(entry.id),
+    );
+
+    if (!nextCard) {
+      const finished = finishPhotoHand() ?? loadGameSession();
+      setCardFlowState("ready");
+      cardFlowStateRef.current = "ready";
+      setPackFlowState("complete");
+      packFlowStateRef.current = "complete";
+      setSelectedCardId("");
+      cardTransitionRef.current = false;
+      setHandSummaryDiamonds(finished?.diamondTotal ?? 0);
+      return;
+    }
+
+    loadNextPackCard(nextCard);
+  }
+
+  enterCardResultRef.current = enterCardResult;
+  advanceAfterResultRef.current = advanceAfterResult;
 
   function resetScratches() {
     marksRef.current = [];
@@ -2258,6 +2360,10 @@ export function PhotoScratch() {
       () => false,
     );
     setFlyingMatches([]);
+    finishAutoActiveRef.current = false;
+    revealedSymbolsRef.current = 0;
+    scratchCompletionHandledRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
   }
 
@@ -2399,6 +2505,9 @@ export function PhotoScratch() {
     frameSettling;
   const autoScratchLocked =
     introActive ||
+    cardFlowState === "showing-result" ||
+    packFlowState === "complete" ||
+    cardTransitionRef.current ||
     (hasBodySymbols &&
       (!symbolsHuntComplete || topBarPhase === "center" || introGateActive));
   const remainingCards = playlist.filter(
@@ -2406,6 +2515,8 @@ export function PhotoScratch() {
   );
   const activePlaylistLabel =
     playlist.find((entry) => entry.id === selectedCardId)?.label ?? uploadLabel;
+  const immersive =
+    isGameModeUrl() || Boolean(readCardIdFromLocation());
 
   function leavePhotoScratchAfterHand() {
     setHandSummaryDiamonds(null);
@@ -2427,7 +2538,9 @@ export function PhotoScratch() {
 
   return (
     <main className="app-shell photo-scratch-page">
-      <section className="prototype photo-scratch-prototype">
+      <section
+        className={`prototype photo-scratch-prototype${immersive ? " is-immersive" : ""}`}
+      >
         <aside className="panel photo-scratch-panel">
           <header className="photo-scratch-header">
             <h1>
@@ -3000,13 +3113,13 @@ export function PhotoScratch() {
               key={photoResult.resultId}
               diamonds={photoResult.diamonds}
               resultId={photoResult.resultId}
-              onComplete={afterPhotoResultPresentation}
+              onComplete={advanceAfterResult}
             />
           ) : null}
           {photoResult && photoOutcome === "no-match" ? (
             <NoMatchOutcome
               key={photoResult.resultId}
-              onComplete={afterPhotoResultPresentation}
+              onComplete={advanceAfterResult}
             />
           ) : null}
           {handSummaryDiamonds != null ? (

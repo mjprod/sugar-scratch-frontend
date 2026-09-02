@@ -1493,6 +1493,9 @@ export function ScratchPrototype() {
   const [litTopSlots, setLitTopSlots] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
+  const [litSymbolSlots, setLitSymbolSlots] = useState<boolean[]>(() =>
+    Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
+  );
   const claimedTopSlotsRef = useRef<boolean[]>(
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
@@ -1538,6 +1541,8 @@ export function ScratchPrototype() {
   );
   const autoScratchRef = useRef(autoScratch);
   autoScratchRef.current = autoScratch;
+  /** Auto-clear garment after all body symbols found — not the settings toggle. */
+  const finishAutoActiveRef = useRef(false);
   const [cursorFx, setCursorFx] =
     useState<CursorFxSettings>(loadCursorFxSettings);
   const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
@@ -2171,13 +2176,15 @@ export function ScratchPrototype() {
         camera.y += (targetCamY - camera.y) * CHEST_SMOOTH;
 
         const autoSettings = autoScratchRef.current;
+        const autoActive =
+          finishAutoActiveRef.current || autoSettings.enabled;
         // Never auto-finish while body-symbol hunt is still in progress — otherwise a
         // persisted "enabled" flag (or premature toggle) wipes the dress before the player finds them all.
         const huntComplete =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
         if (
-          autoSettings.enabled &&
+          autoActive &&
           huntComplete &&
           !isBodyScratchLocked() &&
           trackedSample &&
@@ -2480,7 +2487,6 @@ export function ScratchPrototype() {
         if (isCancelled) return;
         setCards(loaded);
         setModels(loadedModels);
-        setCardsReady(true);
         const params = new URLSearchParams(window.location.search);
         const fromUrl = params.get("card")?.trim() || "";
         let modelFromUrl = params.get("model")?.trim() || "";
@@ -2588,7 +2594,10 @@ export function ScratchPrototype() {
             : ordered[0]!.id;
         setSelectedCardId(startId);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!isCancelled) setCardsReady(true);
+      });
     return () => {
       isCancelled = true;
     };
@@ -2734,6 +2743,9 @@ export function ScratchPrototype() {
     setProgress(0);
     setClaimed(false);
     setRevealedSymbols(0);
+    setLitSymbolSlots(
+      Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
+    );
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -2749,6 +2761,8 @@ export function ScratchPrototype() {
     );
     setFlyingCoins([]);
     setGameResult(null);
+    finishAutoActiveRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, card?.id, card?.mesh]);
@@ -2785,6 +2799,14 @@ export function ScratchPrototype() {
       : revealedSymbolCount(next, autoScratchRef.current.enabled);
     revealedSymbolsRef.current = nextSymbolCount;
     setRevealedSymbols(nextSymbolCount);
+    if (!hasBodySymbols && nextSymbolCount > 0) {
+      setLitSymbolSlots(
+        Array.from(
+          { length: SYMBOL_SLOT_COUNT },
+          (_, index) => index < nextSymbolCount,
+        ),
+      );
+    }
     if (hasBodySymbols && nextSymbolCount < SYMBOL_SLOT_COUNT) {
       setAutoScratch((current) =>
         current.enabled ? { ...current, enabled: false } : current,
@@ -3046,11 +3068,7 @@ export function ScratchPrototype() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
-    // Sync the ref immediately — setState alone would leave this frame's auto path off.
-    autoScratchRef.current = { ...autoScratchRef.current, enabled: true };
-    setAutoScratch((current) =>
-      current.enabled ? current : { ...current, enabled: true },
-    );
+    finishAutoActiveRef.current = true;
   }
 
   // Hold top-bar until theme intro + 3-2-1 finish and card clips have a frame.
@@ -3172,6 +3190,9 @@ export function ScratchPrototype() {
     setProgress(0);
     setClaimed(false);
     setRevealedSymbols(0);
+    setLitSymbolSlots(
+      Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
+    );
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -3186,6 +3207,8 @@ export function ScratchPrototype() {
       () => false,
     );
     setFlyingCoins([]);
+    finishAutoActiveRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
   }
   resetScratchRef.current = resetScratch;
@@ -3311,6 +3334,10 @@ export function ScratchPrototype() {
   function goToNextMotionCard() {
     const finishedId = selectedCardId;
     if (!finishedId) return;
+    finishAutoActiveRef.current = false;
+    revealedSymbolsRef.current = 0;
+    autoPathIndexRef.current = 0;
+    autoPathProgressRef.current = 0;
     clearPendingMotionResult();
     setMotionResult(null);
     const nextCompleted = completedCardIdsRef.current.includes(finishedId)
@@ -3529,6 +3556,8 @@ export function ScratchPrototype() {
     matchOutcomeRef.current = match;
     gameResultRef.current = outcome;
     setMatchOutcome(match);
+    finishAutoActiveRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) =>
       current.enabled ? { ...current, enabled: false } : current,
     );
@@ -3631,6 +3660,25 @@ export function ScratchPrototype() {
   ) {
     const stage = stageRef.current;
     if (!stage || nextCount <= prevCount) return;
+
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setLitSymbolSlots((prev) => {
+        const next = prev.slice();
+        let changed = false;
+        for (let slot = prevCount; slot < nextCount; slot += 1) {
+          if (!next[slot]) {
+            next[slot] = true;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      return;
+    }
+
     const stageRect = stage.getBoundingClientRect();
 
     const autoMode = autoScratchRef.current.enabled;
@@ -3653,7 +3701,15 @@ export function ScratchPrototype() {
     const coins: FlyingCoin[] = [];
     for (let slot = prevCount; slot < nextCount; slot += 1) {
       const slotEl = symbolSlotRefs.current[slot];
-      if (!slotEl) continue;
+      if (!slotEl) {
+        setLitSymbolSlots((prev) => {
+          if (prev[slot]) return prev;
+          const next = prev.slice();
+          next[slot] = true;
+          return next;
+        });
+        continue;
+      }
       const slotRect = slotEl.getBoundingClientRect();
       const toX = slotRect.left - stageRect.left + slotRect.width / 2;
       const toY = slotRect.top - stageRect.top + slotRect.height / 2;
@@ -3670,6 +3726,7 @@ export function ScratchPrototype() {
         midX,
         midY,
         delayMs: (slot - prevCount) * COIN_FLIGHT_STAGGER_MS,
+        topSlot: slot,
       });
     }
     if (coins.length > 0) {
@@ -3684,7 +3741,16 @@ export function ScratchPrototype() {
       if (coin && typeof coin.topSlot === "number" && coin.topSlot >= 0) {
         const slot = coin.topSlot;
         queueMicrotask(() => {
-          setLitTopSlots((prev) => {
+          if (useBodySymbolsRef.current) {
+            setLitTopSlots((prev) => {
+              if (prev[slot]) return prev;
+              const next = prev.slice();
+              next[slot] = true;
+              return next;
+            });
+            return;
+          }
+          setLitSymbolSlots((prev) => {
             if (prev[slot]) return prev;
             const next = prev.slice();
             next[slot] = true;
@@ -4375,40 +4441,47 @@ export function ScratchPrototype() {
 
   // Keep the playable stage mounted while the catalog loads so the dual-video
   // elements aren't torn down/recreated (cold decoder attach = lag + desync).
-  if (!cardsReady || !card) {
-    if (!cardsReady || activeModelId || gameMode) {
-      return (
-        <main className="app-shell">
-          <div className="prototype">
-            <div className="stage" aria-busy="true" />
-          </div>
-        </main>
-      );
-    }
+  if (!cardsReady) {
+    return (
+      <main className="app-shell">
+        <div className="prototype">
+          <div className="stage" aria-busy="true" />
+        </div>
+      </main>
+    );
+  }
+
+  if (!card) {
+    const missingCardCopy = playlistFinished
+      ? "All her motion cards are scratched — none left to repeat."
+      : gameMode
+        ? "Couldn't load this game hand. Try leaving and starting again from your pack."
+        : selectedCardId || singleCardIdRef.current
+          ? "This motion card isn't available right now. It may have been removed or belongs to another model."
+          : "This girl has no motion cards yet.";
     return (
       <main className="app-shell home-picker">
         <section className="home-picker-panel">
           <p className="eyebrow">Sugar Scratchie</p>
-          <h1>{activeModel?.label ?? "No cards"}</h1>
-          <p className="home-picker-copy">
-            {playlistFinished
-              ? "All her motion cards are scratched — none left to repeat."
-              : "This girl has no motion cards yet."}
-          </p>
+          <h1>{activeModel?.label ?? "Can't play this card"}</h1>
+          <p className="home-picker-copy">{missingCardCopy}</p>
           <div className="home-picker-links">
-            <button
-              type="button"
-              className="linkish"
-              onClick={() => {
-                setActiveModelId("");
-                setSelectedCardId("");
-                setCompletedCardIds([]);
-                completedCardIdsRef.current = [];
-              }}
-            >
-              Choose another girl
-            </button>
-            <a href="/dashboard/models">Models</a>
+            {!gameMode ? (
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => {
+                  setActiveModelId("");
+                  setSelectedCardId("");
+                  singleCardIdRef.current = "";
+                  setCompletedCardIds([]);
+                  completedCardIdsRef.current = [];
+                }}
+              >
+                Choose another girl
+              </button>
+            ) : null}
+            <a href="/collection">My Collection</a>
           </div>
         </section>
       </main>
@@ -4555,14 +4628,14 @@ export function ScratchPrototype() {
                   ref={(el) => {
                     symbolSlotRefs.current[index] = el;
                   }}
-                  className={`symbol-slot${index < revealedSymbols ? " is-revealed" : ""}`}
+                  className={`symbol-slot${litSymbolSlots[index] ? " is-revealed" : ""}`}
                   title={
-                    index < revealedSymbols
+                    litSymbolSlots[index]
                       ? SYMBOL_TYPES[typeId]?.label
                       : undefined
                   }
                 >
-                  {index < revealedSymbols ? (
+                  {litSymbolSlots[index] ? (
                     <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
                   ) : null}
                 </div>

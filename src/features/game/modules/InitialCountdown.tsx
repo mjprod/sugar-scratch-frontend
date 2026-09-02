@@ -206,6 +206,10 @@ export function InitialCountdown({
   const finishedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const audioStartedRef = useRef(false);
+  const countdownSessionRef = useRef(0);
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
   const [dotLottie, setDotLottie] = useState<DotLottie | null>(null);
   const [lottieFailed, setLottieFailed] = useState(false);
   const [step, setStep] = useState(0);
@@ -224,8 +228,21 @@ export function InitialCountdown({
     onCompleteRef.current();
   }, []);
 
+  const startCountdownAudioWithVisual = useCallback(() => {
+    if (!soundEnabledRef.current || audioStartedRef.current) return;
+    audioStartedRef.current = true;
+    const session = ++countdownPlaySession;
+    countdownSessionRef.current = session;
+    requestAnimationFrame(() => {
+      if (countdownPlaySession !== session) return;
+      void playCountdownSound().catch(() => undefined);
+    });
+  }, []);
+
   // Timer owns completion — do not finish from Lottie events.
   useEffect(() => {
+    audioStartedRef.current = false;
+    countdownSessionRef.current = 0;
     setStep(0);
     const stepMs = Math.floor(INITIAL_COUNTDOWN_MS / FALLBACK_LABELS.length);
     let current = 0;
@@ -242,6 +259,11 @@ export function InitialCountdown({
     return () => {
       window.clearInterval(id);
       window.clearTimeout(safetyId);
+      const session = countdownSessionRef.current;
+      if (session === 0) return;
+      window.setTimeout(() => {
+        if (countdownPlaySession === session) stopCountdownAudio();
+      }, 0);
     };
   }, [finish]);
 
@@ -249,6 +271,7 @@ export function InitialCountdown({
     if (!dotLottie) return;
     const kick = () => {
       void dotLottie.play();
+      startCountdownAudioWithVisual();
     };
     const onLoadError = () => setLottieFailed(true);
     dotLottie.addEventListener("load", kick);
@@ -258,21 +281,13 @@ export function InitialCountdown({
       dotLottie.removeEventListener("load", kick);
       dotLottie.removeEventListener("loadError", onLoadError);
     };
-  }, [dotLottie]);
+  }, [dotLottie, startCountdownAudioWithVisual]);
 
+  // Fallback path: audio starts when existing step 0 ("3") is shown.
   useEffect(() => {
-    if (!soundEnabled) return;
-    const session = ++countdownPlaySession;
-    void playCountdownSound().catch(() => undefined);
-
-    return () => {
-      // Defer stop so React StrictMode's immediate remount can take over the
-      // session — otherwise Safari's 3-2-1 is killed on the first effect pass.
-      window.setTimeout(() => {
-        if (countdownPlaySession === session) stopCountdownAudio();
-      }, 0);
-    };
-  }, [soundEnabled]);
+    if (!lottieFailed || step !== 0) return;
+    startCountdownAudioWithVisual();
+  }, [lottieFailed, step, startCountdownAudioWithVisual]);
 
   return (
     <div className="initial-countdown" aria-live="polite" aria-label="Get ready">
