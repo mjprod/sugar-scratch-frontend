@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
   type SyntheticEvent,
 } from "react";
@@ -69,7 +70,7 @@ function SearchReveal({
   className?: string;
   children: ReactNode;
   as?: "div" | "section";
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   id?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
