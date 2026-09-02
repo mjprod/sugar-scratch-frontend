@@ -1595,6 +1595,21 @@ h1 {
   pointer-events: auto;
 }
 
+@media (max-width: 980px) {
+  /* Skip aurora on mobile pack CTAs — solid plate, keep the orbiting stroke. */
+  .coverflow-buy-pack-cta .cta-button__inner {
+    background: oklch(0.224 0.034 74.22);
+  }
+
+  .coverflow-buy-pack-cta .cta-button__aurora,
+  .coverflow-buy-pack-cta .cta-button__aurora-fallback,
+  .coverflow-buy-pack-cta .cta-button__aurora-fallback::before,
+  .coverflow-buy-pack-cta .cta-button__aurora-fallback::after,
+  .coverflow-buy-pack-cta .cta-button__face {
+    display: none;
+  }
+}
+
 /* Reverse stagger on exit (active → inactive). */
 .coverflow-active-stack:not(.is-visible) .coverflow-active-pack-label {
   opacity: 0;
