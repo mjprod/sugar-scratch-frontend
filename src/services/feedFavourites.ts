@@ -58,7 +58,7 @@ export function addFeedFavourite(item: HomeFeedCreator) {
     creatorId: item.creatorId,
     creatorName: item.creatorName,
     packName: item.packName,
-    posterUrl: item.posterUrl,
+    posterUrl: item.swipePosterUrl || item.avatarUrl,
     videoUrl: item.videoUrl,
     mediaType: item.mediaType,
     savedAt: Date.now(),

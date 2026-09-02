@@ -17,6 +17,7 @@ export type HomeFeedCreator = {
   id: string;
   creatorId: string;
   creatorName: string;
+  avatarUrl: string;
   /** @deprecated Prefer packName + tags for feed overlay. */
   collectionName: string;
   /** @deprecated Prefer tags for feed overlay. */
@@ -26,7 +27,7 @@ export type HomeFeedCreator = {
   /** Up to 3 shown on the feed card — theme / style / availability. */
   tags: string[];
   mediaType: "video" | "image";
-  posterUrl: string;
+  swipePosterUrl: string;
   videoUrl?: string;
   diamondCost: number;
   liked: boolean;
@@ -50,20 +51,21 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     id: `hf-${profile.id}`,
     creatorId: profile.id,
     creatorName: profile.name,
+    avatarUrl: modelAvatarUrl(model) ?? "",
     collectionName: packName,
     description: profile.collectionLabel,
     packId: profile.id,
     packName,
     tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
     mediaType: videoUrl ? "video" : "image",
-    posterUrl: modelSwipePosterUrl(model) ?? modelAvatarUrl(model) ?? "",
+    swipePosterUrl: modelSwipePosterUrl(model) ?? modelAvatarUrl(model) ?? "",
     videoUrl,
     diamondCost: packUnitCost(profile.id),
   };
 }
 
 const PAGE_SIZE = 6;
-const FEED_CACHE_VERSION = 17;
+const FEED_CACHE_VERSION = 18;
 
 function shuffleCatalog<T>(items: T[]): T[] {
   const next = [...items];

@@ -140,7 +140,7 @@ export function CreatorFeedCard({
         type: "follow",
         creatorId,
         displayName: item.creatorName,
-        avatarUrl: item.posterUrl || "/img/placeholder.png",
+        avatarUrl: item.avatarUrl || "/img/placeholder.png",
       });
       return;
     }
@@ -155,7 +155,7 @@ export function CreatorFeedCard({
       id: creatorId,
       displayName: item.creatorName,
       username: "",
-      avatarUrl: item.posterUrl || "/img/placeholder.png",
+      avatarUrl: item.avatarUrl || "/img/placeholder.png",
       followedAt: Date.now(),
       hasUnseenActivity: false,
     });
@@ -332,9 +332,9 @@ export function CreatorFeedCard({
       <div className={["hf-media", active ? "is-active" : ""].join(" ")}>
         {item.mediaType === "video" && item.videoUrl ? (
           <>
-            {item.posterUrl ? (
+            {item.swipePosterUrl ? (
               <img
-                src={item.posterUrl}
+                src={item.swipePosterUrl}
                 alt=""
                 aria-hidden="true"
                 className="hf-media-el hf-media-poster"
