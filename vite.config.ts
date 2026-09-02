@@ -66,6 +66,27 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(rootDir, "./src"),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+manualChunks(id) {
+  const normalized = id.split(path.sep).join("/");
+  if (
+    normalized.includes("/node_modules/three/") ||
+    normalized.includes("/node_modules/@react-three/")
+  ) {
+    return "three";
+  }
+  if (normalized.includes("/node_modules/framer-motion/")) {
+    return "motion";
+  }
+  if (normalized.includes("/node_modules/@lottiefiles/")) {
+    return "lottie";
+  }
+}
+        },
+      },
+    },
     server: {
       // Default 0.0.0.0 so phones can hit https://<lan-ip>:5173 (mkcert workflow).
       // Override with VITE_DEV_HOST=localhost to bind loopback only.

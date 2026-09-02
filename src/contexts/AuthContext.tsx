@@ -231,7 +231,53 @@ type AuthContextValue = {
   verifyEmail: string;
 };
 
+/** Session flags only — feed cards subscribe here instead of the full bag. */
+type AuthSessionContextValue = {
+  authReady: boolean;
+  authed: boolean;
+  guest: boolean;
+  hasLoggedInBefore: boolean;
+  emailVerified: boolean;
+};
+
+/** Stable-ish action callbacks — separate so profile/inventory churn won't re-render cards. */
+type AuthActionsContextValue = {
+  requireAuth: (action: ProtectedAction) => boolean;
+  requestTab: (tab: AppTab) => void;
+  openStore: () => void;
+  openInbox: () => void;
+  openUnopenedPacks: () => void;
+  openCart: () => void;
+  addToCart: (pack: CartAddInput) => void;
+  openCreator: (id: string, themeId?: string) => void;
+  openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
+  openSettings: () => void;
+  openPasswordReset: () => void;
+  closeSecondary: (surface: SecondarySurfaceId) => void;
+  bumpInventoryRevision: () => void;
+  invalidatePackSync: () => void;
+  completeAuth: (result: AuthSuccessResult) => void;
+  dismissAuth: () => void;
+  onVerified: () => void;
+  onVerifyLater: () => void;
+  onEmailChanged: (email: string) => void;
+  notePackPurchaseSeed: (creatorName?: string) => void;
+  finishRecommendationAndResume: () => void;
+  setPendingAfterRecFromSwipe: (
+    liked: string[],
+    passed: string[],
+  ) => void;
+  logout: () => void;
+  restart: () => void;
+  setNavNotice: (msg: string) => void;
+  consumeResumeLike: () => void;
+  applyRecommendationDecision: (action: ProtectedAction | null) => void;
+  invalidateRemoteSession: () => void;
+};
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
+const AuthActionsContext = createContext<AuthActionsContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -824,6 +870,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const consumeResumeLike = useCallback(() => setResumeLikeId(null), []);
 
+  const sessionValue = useMemo<AuthSessionContextValue>(
+    () => ({
+      authReady,
+      authed,
+      guest,
+      hasLoggedInBefore: returningUser,
+      emailVerified,
+    }),
+    [authReady, authed, emailVerified, guest, returningUser],
+  );
+
+  const actionsValue = useMemo<AuthActionsContextValue>(
+    () => ({
+      requireAuth,
+      requestTab,
+      openStore,
+      openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
+      openCreator,
+      openPurchase,
+      openSettings,
+      openPasswordReset,
+      closeSecondary,
+      bumpInventoryRevision,
+      invalidatePackSync,
+      completeAuth,
+      dismissAuth,
+      onVerified,
+      onVerifyLater,
+      onEmailChanged,
+      notePackPurchaseSeed,
+      finishRecommendationAndResume,
+      setPendingAfterRecFromSwipe,
+      logout,
+      restart,
+      setNavNotice,
+      consumeResumeLike,
+      applyRecommendationDecision,
+      invalidateRemoteSession,
+    }),
+    [
+      addToCart,
+      applyRecommendationDecision,
+      bumpInventoryRevision,
+      closeSecondary,
+      completeAuth,
+      consumeResumeLike,
+      dismissAuth,
+      finishRecommendationAndResume,
+      invalidatePackSync,
+      invalidateRemoteSession,
+      logout,
+      notePackPurchaseSeed,
+      onEmailChanged,
+      onVerified,
+      onVerifyLater,
+      openCart,
+      openCreator,
+      openInbox,
+      openPasswordReset,
+      openPurchase,
+      openSettings,
+      openStore,
+      openUnopenedPacks,
+      requireAuth,
+      requestTab,
+      restart,
+      setPendingAfterRecFromSwipe,
+    ],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       authReady,
@@ -924,11 +1043,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthSessionContext.Provider value={sessionValue}>
+      <AuthActionsContext.Provider value={actionsValue}>
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+      </AuthActionsContext.Provider>
+    </AuthSessionContext.Provider>
+  );
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
+
+/** Session flags only — prefer this in feed cards / hot lists. */
+export function useAuthSession() {
+  const ctx = useContext(AuthSessionContext);
+  if (!ctx) throw new Error("useAuthSession must be used within AuthProvider");
+  return ctx;
+}
+
+/** Auth actions only — avoids re-renders from profile / inventory / sheet state. */
+export function useAuthActions() {
+  const ctx = useContext(AuthActionsContext);
+  if (!ctx) throw new Error("useAuthActions must be used within AuthProvider");
   return ctx;
 }

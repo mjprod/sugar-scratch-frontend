@@ -7,7 +7,11 @@ import {
   clearHomeFeedCache,
   feedPackLabel,
   feedVisibleTags,
+  FEED_PRELOAD_AUTO_CAP,
   fetchHomeFeedPage,
+  isFeedMountIndex,
+  isFeedPreloadAutoIndex,
+  isWarmFeedIndex,
   readHomeFeedCache,
   toPurchasePack,
   writeHomeFeedCache,
@@ -54,6 +58,32 @@ async function main() {
   }
   assert(feedPackLabel("Golden Hour Pack") === "Golden Hour", "strip Pack suffix");
   assert(feedPackLabel("Cyber Nights") === "Cyber Nights", "keep bare titles");
+
+  assert(isFeedMountIndex(0, 0), "active index mounts");
+  assert(isFeedMountIndex(1, 0), "warm ahead mounts");
+  assert(!isFeedMountIndex(3, 0), "far index does not mount");
+  assert(!isWarmFeedIndex(0, 0), "active is not warm-neighbor");
+  assert(isWarmFeedIndex(1, 0), "ahead neighbor is warm");
+  assert(isFeedPreloadAutoIndex(0, 0), "active gets preload=auto");
+  assert(
+    FEED_PRELOAD_AUTO_CAP >= 1 && FEED_PRELOAD_AUTO_CAP <= 2,
+    "preload auto capped to 1–2",
+  );
+
+  // Paginated pages must reuse the in-memory catalog (no reshuffle / re-seed).
+  clearHomeFeedCache();
+  const seeded = await fetchHomeFeedPage(null);
+  if (seeded.hasMore && seeded.nextCursor) {
+    const next = await fetchHomeFeedPage(seeded.nextCursor);
+    assert(next.items.length > 0 || !next.hasMore, "page 2 should slice catalog");
+    // Same shuffle order: page2 ids are offset continuations of page1 seeds.
+    if (seeded.items[0] && next.items[0]) {
+      assert(
+        next.items[0].id !== seeded.items[0].id,
+        "page 2 advances without rebuilding catalog",
+      );
+    }
+  }
 
   writeHomeFeedCache({
     items: page1.items,

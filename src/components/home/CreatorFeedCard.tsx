@@ -12,7 +12,7 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
 import {
   feedLikeCount,
   feedPackLabel,
@@ -84,6 +84,13 @@ export function CreatorFeedCard({
   active,
   /** Eager-buffer neighbor cards (next peek / previous) so they aren't black. */
   warm = false,
+  /**
+   * Full network preload. Cap at 1–2 concurrent across the feed; warm
+   * neighbors without this still mount but use preload="metadata".
+   */
+  eagerPreload = false,
+  /** Pause aurora / BorderGlow while the feed is scrubbing. */
+  feedScrolling = false,
   onLike,
   onEnsureLike,
   onBuy,
@@ -94,6 +101,8 @@ export function CreatorFeedCard({
   item: HomeFeedCreator;
   active: boolean;
   warm?: boolean;
+  eagerPreload?: boolean;
+  feedScrolling?: boolean;
   onLike: () => void;
   /** One-way Like for media double-tap. Return false when auth/modal blocks. */
   onEnsureLike: () => boolean;
@@ -102,7 +111,9 @@ export function CreatorFeedCard({
   videoRef: (node: HTMLVideoElement | null) => void;
   buyCta?: "squircleCTA" | "pillGoldCTA";
 }) {
-  const { requireAuth, authed } = useAuth();
+  // Session + actions only — avoid re-renders from profile / inventory / sheet.
+  const { authed } = useAuthSession();
+  const { requireAuth } = useAuthActions();
   const [burst, setBurst] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [heartBurst, setHeartBurst] = useState<HeartBurst | null>(null);
@@ -163,12 +174,12 @@ export function CreatorFeedCard({
     setFollowing(true);
   }
   /**
-   * Keep CTA shader motion alive across the mid-scroll handoff.
+   * Keep CTA shader motion alive across the mid-scroll handoff when settled.
    * `active` flips at ~50% slide travel (Math.round), so gating aurora on
    * active-only makes the leaving card drop WebGL particles/aurora too early.
-   * Warm neighbors stay in view during that transition — keep them live too.
+   * Warm neighbors stay live after settle; pause everything while scrubbing.
    */
-  const ctaMotionLive = (active || warm) && !reducedMotion;
+  const ctaMotionLive = (active || warm) && !reducedMotion && !feedScrolling;
   const skipAurora = isMobileFeed || !ctaMotionLive;
 
   useEffect(() => {
@@ -341,33 +352,36 @@ export function CreatorFeedCard({
                 aria-hidden="true"
                 className="hf-media-el hf-media-poster"
               />
-            ) : !mediaReady ? (
+            ) : !shouldBuffer || !mediaReady ? (
               <div
                 className="hf-media-el hf-media-poster hf-media-poster--idle"
                 aria-hidden="true"
               />
             ) : null}
-            <video
-              key={videoKey}
-              ref={videoRef}
-              src={item.videoUrl}
-              playsInline
-              muted
-              loop
-              autoPlay={active}
-              preload={shouldBuffer ? "auto" : "metadata"}
-              className={[
-                "hf-media-el hf-media-video",
-                mediaReady ? "is-ready" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onLoadStart={() => setMediaReady(false)}
-              onEmptied={() => setMediaReady(false)}
-              onLoadedData={(event) => markVideoReady(event.currentTarget)}
-              onCanPlay={(event) => markVideoReady(event.currentTarget)}
-              onPlaying={(event) => markVideoReady(event.currentTarget)}
-            />
+            {/* Far slides: poster only — avoid decoder / preload metadata cost. */}
+            {shouldBuffer ? (
+              <video
+                key={videoKey}
+                ref={videoRef}
+                src={item.videoUrl}
+                playsInline
+                muted
+                loop
+                autoPlay={active}
+                preload={eagerPreload ? "auto" : "metadata"}
+                className={[
+                  "hf-media-el hf-media-video",
+                  mediaReady ? "is-ready" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onLoadStart={() => setMediaReady(false)}
+                onEmptied={() => setMediaReady(false)}
+                onLoadedData={(event) => markVideoReady(event.currentTarget)}
+                onCanPlay={(event) => markVideoReady(event.currentTarget)}
+                onPlaying={(event) => markVideoReady(event.currentTarget)}
+              />
+            ) : null}
           </>
         ) : null}
         <div className="hf-media-shade" aria-hidden="true" />
@@ -474,8 +488,8 @@ export function CreatorFeedCard({
               strokeWidth={1}
               /*
                 Viewport-scoped motion:
-                - active + warm neighbors: aurora / particles / orbit
-                  (warm covers the ~50–100% scroll handoff on desktop)
+                - active + warm neighbors when settled: aurora / particles / orbit
+                - while scrubbing: pause CTA shaders (video decode already busy)
                 - far slides: static CTA only
                 - diamond Lottie stays active-only (heavier wasm loop)
               */
