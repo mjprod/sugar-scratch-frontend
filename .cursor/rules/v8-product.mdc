@@ -1,0 +1,27 @@
+---
+description: v8 product invariants — auth, buy, guest browse, pre-PR checks
+alwaysApply: true
+---
+
+# v8 product rules
+
+Before changing auth, recommendations, purchase, welcome, packs, or navigation:
+
+- Read **`old_app/src/v8/CHEATSHEET.md`** for auth / rec / buy rules.
+- Read **`VIBING.md`** for the pre-PR checklist (`npm run test`).
+
+## Do not break
+
+1. **Guest browse** — guests can explore home/discover without logging in.
+2. **Auth sheet on protected actions** — no intermediate full-page login; the sheet opens inline when a protected action needs a session.
+3. **Buy path skips Tinder** — pack/store purchase must not route through the Tinder swipe flow.
+
+## Scratch engine
+
+`src/features/game/scratch/` (`meshGeometry.ts`, `glRenderer.ts`) is vendored from the operator monorepo. Avoid editing unless coordinated; use `npm run sync:player-scratch` from the monorepo root after upstream changes.
+
+Game flow modules under `src/features/game/modules/` are in-repo — changes should keep `*.self-check.ts` passing.
+
+## CI
+
+`npm run test` = typecheck + all self-checks + build. Don't add Jest/Vitest/Playwright; extend `*.self-check.ts` instead.
