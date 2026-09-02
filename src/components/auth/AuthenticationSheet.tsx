@@ -135,7 +135,7 @@ export function AuthenticationSheet({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy]);
+  }, [open, busy, dismissWithAnticipation]);
 
   const title =
     mode === "create-account"
