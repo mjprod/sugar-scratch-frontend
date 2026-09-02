@@ -368,6 +368,7 @@
   border-radius: 6px;
   padding: 0.5rem 0.65rem;
   font: inherit;
+  font-size: max(1rem, 16px);
 }
 
 .prototype-controls__group-list {
@@ -416,7 +417,7 @@
   border-radius: 6px;
   padding: 0.4rem 0.5rem;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: max(1rem, 16px);
   min-width: 0;
   width: 100%;
 }
@@ -2543,7 +2544,7 @@
   background: oklch(0.144 0.009 262.99 / 0.9);
   color: oklch(0.976 0.006 264.53);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: max(1rem, 16px);
   padding: 0.55rem 0.65rem;
   resize: vertical;
 }

@@ -908,7 +908,7 @@ function PaymentGateway({
               disabled={submitting}
               onChange={(e) => setCardName(e.target.value)}
               placeholder="Jane Collector"
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-[15px] text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
             />
           </label>
 
@@ -925,7 +925,7 @@ function PaymentGateway({
               disabled={submitting}
               onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
               placeholder="4242 4242 4242 4242"
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-[15px] tracking-wide text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-base tracking-wide text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
             />
           </label>
 
@@ -943,7 +943,7 @@ function PaymentGateway({
                 disabled={submitting}
                 onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                 placeholder="MM/YY"
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-[15px] text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-base text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
               />
             </label>
             <label className="block">
@@ -961,7 +961,7 @@ function PaymentGateway({
                   setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
                 }
                 placeholder="123"
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-[15px] text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-base text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
               />
             </label>
           </div>

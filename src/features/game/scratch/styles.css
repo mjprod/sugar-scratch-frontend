@@ -47,6 +47,7 @@ body {
   border-radius: 8px;
   color: oklch(0.197 0.005 67.53);
   font: inherit;
+  font-size: max(1rem, 16px);
   font-weight: 700;
   min-width: 0;
   padding: 10px 12px;
@@ -59,7 +60,7 @@ body {
   border-radius: 8px;
   color: oklch(0.959 0.014 67.66);
   font:
-    12px ui-monospace,
+    max(1rem, 16px) ui-monospace,
     SFMono-Regular,
     Menlo,
     Consolas,
@@ -82,6 +83,7 @@ body {
   border-radius: 8px;
   color: oklch(0.197 0.005 67.53);
   font: inherit;
+  font-size: max(1rem, 16px);
   font-weight: 600;
   min-width: 0;
   padding: 10px 12px;
@@ -3476,7 +3478,7 @@ textarea:focus-visible {
     border: 1px solid oklch(1 0 0 / 0.45);
     border-radius: 999px;
     color: oklch(1 0 0);
-    font-size: 14px;
+    font-size: max(1rem, 16px);
     font-weight: 700;
   }
 

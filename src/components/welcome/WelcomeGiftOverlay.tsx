@@ -28,18 +28,11 @@ function prefersReducedMotion() {
   );
 }
 
-function resumeActiveFeedVideo() {
-  const video = document.querySelector<HTMLVideoElement>(
-    ".hf-media.is-active .hf-media-video",
-  );
-  if (!video) return;
-  video.muted = true;
-  void video.play().catch(() => {
-    /* poster still shows */
-  });
-}
-
-export function WelcomeGiftOverlay() {
+export function WelcomeGiftOverlay({
+  onOpenChange,
+}: {
+  onOpenChange?: (open: boolean) => void;
+}) {
   const {
     authed,
     profile,
@@ -60,7 +53,6 @@ export function WelcomeGiftOverlay() {
   const [error, setError] = useState(false);
   const [heldForAccount, setHeldForAccount] = useState(false);
   const [exitPhase, setExitPhase] = useState<ExitPhase>("idle");
-  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
@@ -82,14 +74,8 @@ export function WelcomeGiftOverlay() {
   }, [open, exitPhase]);
 
   useEffect(() => {
-    if (open) {
-      wasOpenRef.current = true;
-      return;
-    }
-    if (!wasOpenRef.current) return;
-    wasOpenRef.current = false;
-    resumeActiveFeedVideo();
-  }, [open]);
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
     if (phase !== "confirm" || exitPhase !== "idle") return;
@@ -144,7 +130,6 @@ export function WelcomeGiftOverlay() {
 
   async function onClaim() {
     if (phase !== "offer" || exitPhase !== "idle") return;
-    resumeActiveFeedVideo();
     setError(false);
     setHeldForAccount(false);
     setPhase("claiming");

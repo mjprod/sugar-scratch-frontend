@@ -72,3 +72,10 @@ body {
   margin: 0;
   overflow: hidden;
 }
+
+/* iOS zooms focused fields under 16px — 1rem / 16px floor. */
+input,
+textarea,
+select {
+  font-size: max(1rem, 16px);
+}
