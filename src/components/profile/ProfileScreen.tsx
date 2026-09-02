@@ -1,133 +1,257 @@
 import {
-  Bell,
+  Inbox,
   ChevronRight,
-  CreditCard,
-  Gem,
+  FileText,
   Globe2,
   HelpCircle,
+  Lock,
+  LogOut,
+  Pencil,
+  Receipt,
   Settings,
+  Smartphone,
   ShieldCheck,
   Sparkles,
-  Trophy,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { AppPageShell } from "@/components/AppPageShell";
+import { InboxUtilityBadge } from "@/components/InboxButton";
+import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
+import { useMotion } from "@/features/collection/hooks/useMotion";
+
+type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
 export function UserDashboardScreen({
   name,
+  username,
   avatar,
-  coins,
-  diamonds,
-  onSettings,
+  onLogout,
+  onOpenChangePassword,
+  onOpenEditProfile,
+  onOpenFollowing,
+  onOpenGameSettings,
+  onOpenInbox,
+  onOpenTransactionHistory,
+  onOpenGameHistory,
+  inboxUnreadCount = 0,
 }: {
   name: string;
+  username: string;
   avatar?: string | null;
-  coins: number;
-  diamonds: number;
-  onSettings: () => void;
+  onLogout: () => void;
+  onOpenChangePassword: () => void;
+  onOpenEditProfile: () => void;
+  onOpenFollowing?: () => void;
+  onOpenGameSettings?: () => void;
+  onOpenInbox?: () => void;
+  onOpenTransactionHistory?: () => void;
+  onOpenGameHistory?: () => void;
+  inboxUnreadCount?: number;
 }) {
   const [notice, setNotice] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [view, setView] = useState<ProfileView>("main");
+  const legalTitleId = useId();
+  const {
+    enabled: motionEnabled,
+    permission: motionPermission,
+    supported: motionSupported,
+    toggleEnabled: toggleMotionEnabled,
+  } = useMotion();
+  const tiltActive = motionEnabled && motionPermission === "granted";
+  const tiltLabel = !motionSupported
+    ? "Motion not supported"
+    : motionPermission === "denied"
+      ? "Motion permission denied"
+      : tiltActive
+        ? "Disable phone tilt"
+        : "Enable phone tilt";
+
+  const handle = (username || name || "collector")
+    .replace(/^@/, "")
+    .trim()
+    .toLowerCase();
 
   function open(label: string) {
+    if (label === "Change Password") {
+      onOpenChangePassword();
+      return;
+    }
+    if (label === "Following") {
+      onOpenFollowing?.();
+      return;
+    }
+    if (label === "Inbox") {
+      onOpenInbox?.();
+      return;
+    }
+    if (label === "Game Settings") {
+      onOpenGameSettings?.();
+      return;
+    }
+    if (label === "Transaction History") {
+      onOpenTransactionHistory?.();
+      return;
+    }
+    if (label === "Game History") {
+      onOpenGameHistory?.();
+      return;
+    }
+    if (label === "Privacy Policy") {
+      setView("legal-privacy");
+      return;
+    }
+    if (label === "Terms of Service") {
+      setView("legal-terms");
+      return;
+    }
     setNotice(`${label} opened in prototype`);
     window.setTimeout(() => setNotice(""), 1800);
   }
 
+  function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      onLogout();
+    } catch {
+      setLoggingOut(false);
+    }
+  }
+
+  if (view === "legal-terms" || view === "legal-privacy") {
+    return (
+      <AppPageShell aria-label="Profile" className="app-page-shell--profile">
+        <div className="settings-legal-panel">
+          <LegalDocPanel
+            kind={view === "legal-terms" ? "terms" : "privacy"}
+            titleId={legalTitleId}
+            onBack={() => setView("main")}
+          />
+        </div>
+      </AppPageShell>
+    );
+  }
+
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.3),transparent_42%),#151515] p-6 sm:p-8">
-          <div className="flex items-center gap-4">
-            <div className="grid size-20 place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[#A855F7] to-[#312E81] text-[30px] shadow-glow">
+    <AppPageShell aria-label="Profile" className="app-page-shell--profile">
+      <h1 className="profile-settings-title">Settings</h1>
+
+      <div className="profile-hero profile-card">
+        <div className="profile-hero-row">
+          <button
+            type="button"
+            className="profile-identity"
+            onClick={onOpenEditProfile}
+            aria-label="Edit profile"
+          >
+            <div className="profile-identity-avatar" aria-hidden="true">
               {avatar || "✨"}
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="inline-flex rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-[#D4AF37] uppercase">
-                Gold Member
-              </span>
-              <h1 className="mt-2 truncate text-[30px] font-bold tracking-[-0.03em]">
+            <div className="profile-identity-copy">
+              <p
+                className="profile-display-name"
+                title={name || "Collector"}
+              >
                 {name || "Collector"}
-              </h1>
-              <p className="text-[13px] text-white/45">@{(name || "collector").toLowerCase()}</p>
+              </p>
+              <p className="profile-username">@{handle || "collector"}</p>
+              <span className="profile-edit-link">
+                <Pencil className="size-3.5" aria-hidden="true" />
+                Edit Profile
+              </span>
             </div>
+          </button>
+
+          <div className="profile-hero-divider" aria-hidden="true" />
+
+          <div className="profile-hero-actions">
             <button
               type="button"
-              aria-label="Open Settings"
-              onClick={onSettings}
-              className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65"
+              aria-label={tiltLabel}
+              title={tiltLabel}
+              aria-pressed={tiltActive}
+              disabled={!motionSupported}
+              onClick={() => {
+                void toggleMotionEnabled();
+              }}
+              className={[
+                "profile-action-btn profile-action-btn--tilt",
+                tiltActive ? "is-active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              <Settings className="size-5" />
+              <Smartphone className="size-5 shrink-0" aria-hidden="true" />
+              <span className="profile-action-label">
+                {tiltActive ? "Tilt on" : "Tilt off"}
+              </span>
+            </button>
+            <span className="profile-action-sep" aria-hidden="true" />
+            <button
+              type="button"
+              aria-label={loggingOut ? "Logging out" : "Log out"}
+              onClick={handleLogout}
+              disabled={loggingOut}
+              aria-busy={loggingOut}
+              className="profile-action-btn profile-action-btn--logout"
+            >
+              <LogOut className="size-5 shrink-0" aria-hidden="true" />
+              <span className="profile-action-label">
+                {loggingOut ? "Logging out" : "Log out"}
+              </span>
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat icon={<Trophy className="size-4" />} label="Collection" value="128 / 240" />
-          <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
-          <Stat icon={<Gem className="size-4" />} label="Diamonds" value={diamonds.toString()} />
-          <Stat icon={<CreditCard className="size-4" />} label="Sugar Coins" value={coins.toString()} />
-        </div>
-
-        <div className="mt-4 rounded-[24px] border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37]">
-              <Trophy className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/45">Next progression reward</p>
-              <p className="mt-1 text-[15px] font-semibold">Exclusive Gold Foil Pack</p>
-            </div>
-            <span className="text-[12px] font-semibold text-[#D4AF37]">660 XP</span>
-          </div>
-        </div>
-
-        <div className="mt-7 grid gap-5 lg:grid-cols-2">
+      <div className="profile-menu-grid">
+        <div className="profile-menu-stack">
+          <MenuGroup
+            title="History"
+            items={[
+              { label: "Transaction History", icon: Receipt },
+              { label: "Game History", icon: Sparkles },
+            ]}
+            onOpen={open}
+          />
           <MenuGroup
             title="Profile & Account"
             items={[
-              { label: "Purchase History", icon: CreditCard },
-              { label: "Saved Packs", icon: Sparkles },
-              { label: "Notifications", icon: Bell },
-            ]}
-            onOpen={open}
-          />
-          <MenuGroup
-            title="Preferences & Support"
-            items={[
-              { label: "Language", icon: Globe2 },
-              { label: "Help Centre", icon: HelpCircle },
-              { label: "Privacy & Legal", icon: ShieldCheck },
+              { label: "Inbox", icon: Inbox, badgeCount: inboxUnreadCount },
+              { label: "Following", icon: Users },
+              { label: "Change Password", icon: Lock },
             ]}
             onOpen={open}
           />
         </div>
+        <MenuGroup
+          title="Preferences & Support"
+          items={[
+            { label: "Language", icon: Globe2 },
+            { label: "Game Settings", icon: Settings },
+            { label: "Help Centre", icon: HelpCircle },
+            { label: "Privacy Policy", icon: ShieldCheck },
+            { label: "Terms of Service", icon: FileText },
+          ]}
+          onOpen={open}
+        />
       </div>
+
+      <footer className="profile-site-footer" aria-label="Site">
+        <SiteSocialLinks />
+        <p className="home-site-footer-copy">© 2026 Sugar Scratch</p>
+      </footer>
 
       {notice ? (
         <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">
           {notice}
         </div>
       ) : null}
-    </section>
-  );
-}
-
-function Stat({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.04] p-4">
-      <div className="flex items-center gap-2 text-[#A78BFA]">
-        {icon}
-        <p className="text-[11px] text-white/45">{label}</p>
-      </div>
-      <p className="mt-3 text-[19px] font-semibold tabular-nums">{value}</p>
-    </div>
+    </AppPageShell>
   );
 }
 
@@ -137,15 +261,13 @@ function MenuGroup({
   onOpen,
 }: {
   title: string;
-  items: { label: string; icon: typeof Settings }[];
+  items: { label: string; icon: LucideIcon; badgeCount?: number }[];
   onOpen: (label: string) => void;
 }) {
   return (
-    <div>
-      <h2 className="mb-2 text-[12px] font-semibold tracking-[0.12em] text-white/40 uppercase">
-        {title}
-      </h2>
-      <div className="overflow-hidden rounded-[24px] border border-white/[0.08] bg-white/[0.03]">
+    <div className="profile-menu-group">
+      <h2 className="profile-menu-group-title">{title}</h2>
+      <div className="profile-menu-group-card">
         {items.map((item, index) => {
           const Icon = item.icon;
           return (
@@ -154,11 +276,18 @@ function MenuGroup({
               type="button"
               onClick={() => onOpen(item.label)}
               className={[
-                "flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-white/[0.05]",
-                index ? "border-t border-white/[0.06]" : "",
-              ].join(" ")}
+                "profile-menu-row",
+                index ? "is-divided" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              <Icon className="size-4 text-white/45" />
+              <span className="profile-menu-icon">
+                <Icon className="size-4 text-white/45" />
+                {item.badgeCount ? (
+                  <InboxUtilityBadge count={item.badgeCount} />
+                ) : null}
+              </span>
               <span className="flex-1 text-[14px]">{item.label}</span>
               <ChevronRight className="size-4 text-white/30" />
             </button>

@@ -3,7 +3,12 @@
  * Featured carousel · Continue Collecting · Category Leaderboard
  */
 
-import { CREATOR_PHOTOS, HOLO_PACKS, PACK_PHOTOS } from "./photos";
+import {
+  CREATOR_PHOTOS,
+  HOLO_PACKS,
+  MODEL_PACK_PHOTOS,
+  PACK_PHOTOS,
+} from "./photos";
 
 export type Price = {
   amount: number;
@@ -116,7 +121,10 @@ export type LeaderboardRow = {
   themeName: string;
   thumbnailUrl: string;
   purchaseCount: number;
+  /** @deprecated Prefer diamondCost for purchase surfaces. */
   price: Price;
+  /** Pack Diamond cost — same currency used by Purchase / Featured. */
+  diamondCost: number;
   category: Exclude<LeaderboardCategory, "all">;
 };
 
@@ -142,6 +150,52 @@ export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[
 ];
 
 const FEATURED: FeaturedPack[] = [
+  {
+    id: "juliana-police",
+    name: "Juliana Police Pack",
+    packTitle: "POLICE\nLINEUP",
+    creatorId: "julianaval",
+    creatorName: "Juliana",
+    collectionName: "JULIANA COLLECTION",
+    themeName: "Police",
+    coverImageUrl: MODEL_PACK_PHOTOS.julianaPolice,
+    price: { amount: 5.99, currency: "USD" },
+    diamondCost: 12,
+    collected: 4,
+    collectionTotal: 15,
+    isHot: true,
+    rarity: "ultra-rare",
+    accentColors: {
+      primary: "#60A5FA",
+      secondary: "#750029",
+      glow: "rgba(96, 165, 250, 0.28)",
+    },
+    rewardHint: "Complete theme for Replay Mode",
+    isAvailable: true,
+  },
+  {
+    id: "juliana-firegirl",
+    name: "Juliana Firegirl Pack",
+    packTitle: "FIRE\nGIRL",
+    creatorId: "julianaval",
+    creatorName: "Juliana",
+    collectionName: "JULIANA COLLECTION",
+    themeName: "Firegirl",
+    coverImageUrl: MODEL_PACK_PHOTOS.julianaFiregirl,
+    price: { amount: 5.99, currency: "USD" },
+    diamondCost: 12,
+    collected: 3,
+    collectionTotal: 15,
+    isNew: true,
+    rarity: "super-rare",
+    accentColors: {
+      primary: "#F87171",
+      secondary: "#FBBF24",
+      glow: "rgba(248, 113, 113, 0.28)",
+    },
+    rewardHint: "Unlock Photo Scratch rewards",
+    isAvailable: true,
+  },
   {
     id: "cyber-holo",
     name: "Cyber Girl Pack",
@@ -308,6 +362,54 @@ const CONTINUE: ContinueCollectingItem[] = [
   },
 ];
 
+const PACK_DIAMOND_COSTS: Record<string, number> = {
+  ep1: 50,
+  ep2: 70,
+  ep3: 40,
+  en1: 50,
+  en2: 60,
+  em1: 45,
+  eb1: 60,
+  eb2: 50,
+  al1: 80,
+  sw1: 30,
+  nl1: 40,
+};
+
+/** Shared Diamond cost for ranking / featured / purchase display. */
+export function diamondCostForPackId(packId: string, fallbackUsd?: number) {
+  const featured = FEATURED.find((pack) => pack.id === packId);
+  if (featured) return featured.diamondCost;
+  if (PACK_DIAMOND_COSTS[packId] != null) return PACK_DIAMOND_COSTS[packId];
+  if (fallbackUsd != null) return Math.max(1, Math.round(fallbackUsd * 10));
+  return 10;
+}
+
+function row(
+  rank: number,
+  packId: string,
+  packName: string,
+  creatorName: string,
+  themeName: string,
+  category: Exclude<LeaderboardCategory, "all">,
+  purchaseCount: number,
+  amount: number,
+): LeaderboardRow {
+  const diamondCost = diamondCostForPackId(packId, amount);
+  return {
+    rank,
+    packId,
+    packName,
+    creatorName,
+    themeName,
+    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
+    purchaseCount,
+    price: { amount: diamondCost, currency: "SC" },
+    diamondCost,
+    category,
+  };
+}
+
 const LEADERBOARD: LeaderboardRow[] = [
   row(1, "ep1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
   row(2, "ep2", "Teacher Deluxe Pack", "Luna", "Teacher", "teacher", 9102, 6.99),
@@ -321,29 +423,6 @@ const LEADERBOARD: LeaderboardRow[] = [
   row(1, "sw1", "Bonus Rush Pack", "Sam Chen", "Student", "student", 4300, 2.99),
   row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Student", "student", 6200, 3.99),
 ];
-
-function row(
-  rank: number,
-  packId: string,
-  packName: string,
-  creatorName: string,
-  themeName: string,
-  category: Exclude<LeaderboardCategory, "all">,
-  purchaseCount: number,
-  amount: number,
-): LeaderboardRow {
-  return {
-    rank,
-    packId,
-    packName,
-    creatorName,
-    themeName,
-    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
-    purchaseCount,
-    price: { amount, currency: "USD" },
-    category,
-  };
-}
 
 function wait(ms = 420) {
   return new Promise((r) => setTimeout(r, ms));

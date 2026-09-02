@@ -1,0 +1,587 @@
+.welcome-gift-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5200;
+  display: grid;
+  place-items: center;
+  padding: 20px 16px;
+  perspective: 1200px;
+  perspective-origin: 50% 40%;
+  animation: welcome-gift-fade 0.45s ease both;
+}
+
+.welcome-gift-overlay.is-exit-cta,
+.welcome-gift-overlay.is-exiting {
+  animation: none;
+  pointer-events: none;
+}
+
+.welcome-gift-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.62);
+  backdrop-filter: blur(8px) saturate(0.7);
+  -webkit-backdrop-filter: blur(8px) saturate(0.7);
+}
+
+.welcome-gift-overlay.is-exiting .welcome-gift-scrim {
+  /* Drop expensive blur while the panel is compositing the exit. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  animation: welcome-gift-scrim-exit 375ms cubic-bezier(0.55, 0.02, 0.78, 0.28) both;
+}
+
+/* Orbiting stroke angle — same motion model as red CTA stroke. */
+@property --welcome-stroke-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 45deg;
+}
+
+/* Animatable mid-stop for the panel fill (magenta band rises in a seamless loop). */
+@property --welcome-mid-stop {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 70%;
+}
+
+@keyframes welcome-stroke-orbit-angle {
+  to {
+    --welcome-stroke-angle: calc(var(--welcome-stroke-angle-start, 45deg) + 360deg);
+  }
+}
+
+/*
+  Mid color travels fully outside the box at both ends (-30% → 130%),
+  so the first/last frames are solid #090005 and the loop has no pop.
+  Gradient aims top-right; stop advances toward 100% so the band drifts that way.
+*/
+@keyframes welcome-mid-stop-rise {
+  from {
+    --welcome-mid-stop: -30%;
+  }
+
+  to {
+    --welcome-mid-stop: 130%;
+  }
+}
+
+.welcome-gift-panel {
+  --welcome-stroke: 1px;
+  --welcome-stroke-color: rgba(170, 8, 95, 0.42);
+  --welcome-stroke-a: #aa085f;
+  --welcome-stroke-b: #e00083;
+  --welcome-stroke-c: #eb6a00;
+  --welcome-stroke-cone: 28;
+  --welcome-stroke-angle: 45deg;
+  --welcome-stroke-angle-start: 45deg;
+  --welcome-stroke-orbit-duration: 5.14s;
+  --welcome-stroke-mesh-mix: 58%;
+  --welcome-mid-stop: 70%;
+  /* Opposite of prior 32deg travel: aim top-right, mid-stop advances up-right. */
+  --welcome-panel-fill: linear-gradient(
+    to top right,
+    #090005 0%,
+    #090005 max(0%, calc(var(--welcome-mid-stop) - 28%)),
+    #580136 var(--welcome-mid-stop),
+    #090005 min(100%, calc(var(--welcome-mid-stop) + 28%)),
+    #090005 100%
+  );
+
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(420px, 100%);
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 0px 28px;
+  border: 0;
+  border-radius: 32px;
+  background: var(--welcome-panel-fill);
+  box-shadow: 0 28px 64px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transform-origin: 50% 42%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  /* Rise in, then keep the mid-stop looping (separate animation names). */
+  animation:
+    welcome-gift-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both,
+    welcome-mid-stop-rise 7.5s linear 0.55s infinite;
+  /* Keep CTA border-glow bloom free to paint outside the panel box. */
+  overflow: visible;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/*
+  Close exit — one continuous keyframe (no class swap mid-flight).
+  Same coverflow discard timing: 95ms rise/scale, then 280ms drop + fade.
+  Per-segment easings via animation-timing-function on keyframes.
+*/
+.welcome-gift-panel.is-exiting {
+  /* Promote once; avoid thrashing will-change on/off. */
+  will-change: transform, opacity;
+  /* Blur + filter during transform is a common stutter source. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* Exit only — freeze mid-stop travel while the panel drops. */
+  animation: welcome-gift-exit 375ms linear both;
+}
+
+.welcome-gift-panel.is-exiting .welcome-gift-panel-stroke::after,
+.welcome-gift-panel.is-exiting .welcome-gift-shard,
+.welcome-gift-panel.is-exiting .welcome-gift-spark {
+  animation: none;
+}
+
+/*
+  Dedicated stroke node (not panel ::before/::after) so Claim CTA BorderGlow
+  stacking/blend is unaffected. Frost base + orbiting mesh ring.
+*/
+.welcome-gift-panel-stroke,
+.welcome-gift-panel-stroke::before,
+.welcome-gift-panel-stroke::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.welcome-gift-panel-stroke {
+  z-index: 0;
+  overflow: hidden;
+}
+
+.welcome-gift-panel-stroke::before,
+.welcome-gift-panel-stroke::after {
+  content: "";
+  border: var(--welcome-stroke) solid transparent;
+}
+
+.welcome-gift-panel-stroke::before {
+  background:
+    var(--welcome-panel-fill) padding-box,
+    linear-gradient(var(--welcome-stroke-color), var(--welcome-stroke-color)) border-box;
+}
+
+.welcome-gift-panel-stroke::after {
+  background:
+    var(--welcome-panel-fill) padding-box,
+    radial-gradient(at 80% 55%,
+      color-mix(in srgb, var(--welcome-stroke-b) var(--welcome-stroke-mesh-mix), transparent) 0px,
+      transparent 50%) border-box,
+    radial-gradient(at 69% 34%,
+      color-mix(in srgb, var(--welcome-stroke-a) var(--welcome-stroke-mesh-mix), transparent) 0px,
+      transparent 50%) border-box,
+    radial-gradient(at 8% 6%,
+      color-mix(in srgb, var(--welcome-stroke-c) var(--welcome-stroke-mesh-mix), transparent) 0px,
+      transparent 50%) border-box,
+    radial-gradient(at 41% 38%,
+      color-mix(in srgb, var(--welcome-stroke-b) calc(var(--welcome-stroke-mesh-mix) - 8%), transparent) 0px,
+      transparent 50%) border-box,
+    radial-gradient(at 86% 85%,
+      color-mix(in srgb, var(--welcome-stroke-a) calc(var(--welcome-stroke-mesh-mix) - 8%), transparent) 0px,
+      transparent 50%) border-box,
+    radial-gradient(at 82% 18%,
+      color-mix(in srgb, var(--welcome-stroke-c) calc(var(--welcome-stroke-mesh-mix) - 8%), transparent) 0px,
+      transparent 50%) border-box,
+    radial-gradient(at 51% 4%,
+      color-mix(in srgb, var(--welcome-stroke-b) calc(var(--welcome-stroke-mesh-mix) - 12%), transparent) 0px,
+      transparent 50%) border-box,
+    linear-gradient(var(--welcome-stroke-color), var(--welcome-stroke-color)) border-box;
+  opacity: 0.92;
+  -webkit-mask-image: conic-gradient(from var(--welcome-stroke-angle) at center,
+      #000 calc(var(--welcome-stroke-cone) * 1%),
+      transparent calc((var(--welcome-stroke-cone) + 15) * 1%),
+      transparent calc((100 - var(--welcome-stroke-cone) - 15) * 1%),
+      #000 calc((100 - var(--welcome-stroke-cone)) * 1%));
+  mask-image: conic-gradient(from var(--welcome-stroke-angle) at center,
+      #000 calc(var(--welcome-stroke-cone) * 1%),
+      transparent calc((var(--welcome-stroke-cone) + 15) * 1%),
+      transparent calc((100 - var(--welcome-stroke-cone) - 15) * 1%),
+      #000 calc((100 - var(--welcome-stroke-cone)) * 1%));
+  animation: welcome-stroke-orbit-angle var(--welcome-stroke-orbit-duration, 5.14s) linear infinite;
+}
+
+/* Keep copy/CTA above the stroke node without isolating the panel (CTA bloom needs free blend). */
+.welcome-gift-panel> :not(.welcome-gift-panel-stroke) {
+  position: relative;
+  z-index: 1;
+}
+
+.welcome-gift-panel>.welcome-gift-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 999px;
+  background: linear-gradient(180deg,
+      oklch(0.22 0 0 / 0.12) 0%,
+      oklch(0 0 0 / 0.06) 42%,
+      oklch(0.12 0 0 / 0.1) 100%);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  color: oklch(1 0 0 / 0.9);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 981px) {
+  .welcome-gift-panel>.welcome-gift-close {
+    width: 3.25rem;
+    height: 3.25rem;
+    font-size: 1.4rem;
+  }
+}
+
+.welcome-gift-kicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: rgb(255 255 255 / 0.75);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.welcome-gift-kicker-logo {
+  display: block;
+  height: 58px;
+  width: auto;
+  margin-top: -0.7rem;
+}
+
+.welcome-gift-headline {
+  margin: 10px 0 0;
+  max-width: 16ch;
+  color: oklch(0.89 0.14 82.15);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  font-size: clamp(1.7rem, 5vw, 2.15rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.welcome-gift-stage {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 416 / 380;
+  pointer-events: none;
+  user-select: none;
+  animation: welcome-gift-card 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.welcome-gift-card {
+  position: relative;
+  top: -18%;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+}
+
+.welcome-gift-shard {
+  position: absolute;
+  z-index: 2;
+  background: linear-gradient(135deg, #fff1c2, #e8c478 55%, #b8862d);
+  box-shadow: 0 0 8px rgb(232 196 120 / 0.65);
+  clip-path: polygon(18% 0, 100% 22%, 72% 100%, 0 68%);
+  opacity: 0.9;
+  pointer-events: none;
+  animation: welcome-gift-float 2.6s ease-in-out infinite;
+}
+
+.welcome-gift-spark {
+  position: absolute;
+  z-index: 2;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #f5e6b8;
+  box-shadow: 0 0 8px #f5e6b8;
+  pointer-events: none;
+  animation: welcome-gift-twinkle 1.8s ease-in-out infinite;
+}
+
+.welcome-gift-offer {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -6rem;
+  padding: 0 28px 4px;
+}
+
+.welcome-gift-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border: 1px solid oklch(0.89 0.14 82.15);
+  border-radius: 999px;
+  background: rgb(8 6 12 / 0.55);
+  box-shadow: 0 0 16px oklch(0.89 0.14 82.15 / 0.12);
+  color: oklch(0.89 0.14 82.15);
+  font-size: 1rem;
+  font-weight: 500;
+
+}
+
+.welcome-gift-pill-icon {
+  width: 14px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background:
+    linear-gradient(135deg, transparent 42%, currentColor 42% 48%, transparent 48%),
+    rgb(255 255 255 / 0.06);
+  opacity: 0.9;
+}
+
+.welcome-gift-cta {
+  position: relative;
+  z-index: 2;
+  width: min(280px, 100%);
+  height: 48px;
+  min-height: 48px;
+  margin-top: 2rem;
+  overflow: visible;
+  transform-origin: 50% 50%;
+}
+
+.welcome-gift-cta .cta-button-glow,
+.welcome-gift-cta .cta-button-glow--fill,
+.welcome-gift-cta .cta-button,
+.welcome-gift-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+.welcome-gift-cta .cta-button-glow>.border-glow-inner {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+  Beat 1 of close: gold CTA drops/fades first (no disabled grey).
+  Stays gold — pointer lock is on the overlay, not button[disabled].
+*/
+.welcome-gift-cta.is-exit-cta {
+  pointer-events: none;
+  animation: welcome-gift-cta-exit 150ms cubic-bezier(0.48, 0.04, 0.72, 0.12) both;
+}
+
+.welcome-gift-reassure.is-exit-cta {
+  animation: welcome-gift-cta-exit 150ms cubic-bezier(0.48, 0.04, 0.72, 0.12) both;
+}
+
+.welcome-gift-debug-reset {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 5300;
+  transform: translateX(-50%);
+  border: 1px dashed rgb(255 255 255 / 0.35);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.72);
+  color: rgb(255 255 255 / 0.82);
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.welcome-gift-debug-reset:hover {
+  border-color: rgb(232 196 120 / 0.55);
+  color: #fff;
+}
+
+.welcome-gift-hint,
+.welcome-gift-reassure {
+  margin: 14px 0 0;
+  color: color-mix(in oklab, var(--color-champagne, #e8c478) 72%, transparent);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.welcome-gift-reassure {
+  color: oklch(90.413% 0.10949 86.795);
+  font-size: .9rem;
+}
+
+.welcome-gift-hint {
+  min-height: 1.4em;
+  margin-top: 16px;
+  display: grid;
+  place-items: center;
+  color: rgb(255 255 255 / 0.5);
+  letter-spacing: 0.08em;
+}
+
+.welcome-gift-copy {
+  margin: 10px 0 0;
+  max-width: 28ch;
+  color: rgba(255 255 255 / 0.75);
+  font-size: 1rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.welcome-gift-error {
+  margin: 10px 0 0;
+  color: #ffb4b4;
+  font-size: 13px;
+  text-align: center;
+}
+
+.welcome-gift-confirm {
+  display: grid;
+  place-items: center;
+  margin-top: 16px;
+  min-height: 48px;
+  text-align: center;
+  animation: welcome-gift-rise 0.35s ease both;
+}
+
+.welcome-gift-confirm strong {
+  color: var(--color-champagne, #e8c478);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.welcome-gift-confirm span {
+  display: block;
+  margin-top: 4px;
+  color: rgb(255 255 255 / 0.62);
+  font-size: 13px;
+}
+
+@keyframes welcome-gift-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes welcome-gift-rise {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes welcome-gift-card {
+  from {
+    opacity: 0.6;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes welcome-gift-float {
+  50% {
+    transform: translateY(-6px) rotate(8deg);
+    opacity: 0.55;
+  }
+}
+
+@keyframes welcome-gift-twinkle {
+  50% {
+    opacity: 0.2;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes welcome-gift-cta-exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.94);
+  }
+}
+
+/* 0→25.3% = 95ms anticipation; 25.3→100% = 280ms drop (total 375ms). */
+@keyframes welcome-gift-exit {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(0deg);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  25.333% {
+    transform: translate3d(0, -7%, 0) scale(1.035) rotateX(0deg);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.48, 0.04, 0.72, 0.12);
+  }
+
+  /* Opacity lags the fall slightly (coverflow discard fade curve feel). */
+  42% {
+    opacity: 0.92;
+  }
+
+  100% {
+    transform: translate3d(0, 48vh, 0) scale(0.78) rotateX(16deg);
+    opacity: 0;
+  }
+}
+
+@keyframes welcome-gift-scrim-exit {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-gift-overlay,
+  .welcome-gift-panel,
+  .welcome-gift-panel-stroke::after,
+  .welcome-gift-stage,
+  .welcome-gift-shard,
+  .welcome-gift-spark,
+  .welcome-gift-cta.is-exit-cta,
+  .welcome-gift-reassure.is-exit-cta {
+    animation: none;
+  }
+
+  .welcome-gift-panel {
+    --welcome-mid-stop: 70%;
+  }
+
+  .welcome-gift-panel.is-exiting,
+  .welcome-gift-overlay.is-exiting .welcome-gift-scrim {
+    animation: none;
+  }
+}

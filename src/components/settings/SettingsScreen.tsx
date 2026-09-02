@@ -1,13 +1,24 @@
-import { LightScreen } from "@/components/PhoneShell";
-import { BackButton, HomeIndicator } from "@/components/ui";
+import {
+  Bell,
+  ChevronRight,
+  PlayCircle,
+  type LucideIcon,
+} from "lucide-react";
+import { AppPageShell } from "@/components/AppPageShell";
+import { SubpageHeader } from "@/components/SubpageHeader";
+import { SECONDARY_SURFACES } from "@/lib/navigation";
 
-const ROWS = [
-  { label: "Replay tutorials", hint: "Home · Scratch · My Bag" },
-  { label: "Redeem referral code", hint: "Optional creator rewards" },
-  { label: "Notifications", hint: "Coming soon" },
-  { label: "Privacy & terms", hint: "Legal" },
-] as const;
+type SettingsRow = {
+  label: string;
+  icon: LucideIcon;
+  iconTone: "pref" | "notify";
+  action: "replay" | "notifications";
+  interactive: boolean;
+};
 
+/**
+ * Settings — compact grouped utility surface (Sugar v8).
+ */
 export function SettingsScreen({
   onBack,
   onReplayTutorials,
@@ -15,38 +26,112 @@ export function SettingsScreen({
   onBack: () => void;
   onReplayTutorials: () => void;
 }) {
+  const meta = SECONDARY_SURFACES.settings;
+
+  const preferenceRows: SettingsRow[] = [
+    {
+      label: "Replay tutorials",
+      icon: PlayCircle,
+      iconTone: "pref",
+      action: "replay",
+      interactive: true,
+    },
+    {
+      label: "Notifications",
+      icon: Bell,
+      iconTone: "notify",
+      action: "notifications",
+      interactive: false,
+    },
+  ];
+
+  function handleRow(row: SettingsRow) {
+    if (!row.interactive) return;
+    if (row.action === "replay") {
+      onReplayTutorials();
+    }
+  }
+
   return (
-    <LightScreen>
-      <div className="flex flex-1 flex-col px-6 pt-12">
-        <BackButton onClick={onBack} />
-        <h1 className="mt-8 font-display text-[34px] font-semibold tracking-[-0.02em]">
-          Settings
-        </h1>
-        <p className="mt-2 text-[15px] text-ink-secondary">
-          Account preferences and support.
-        </p>
+    <AppPageShell
+      variant="secondary"
+      aria-label="Settings"
+      className="settings-page"
+    >
+      <SubpageHeader
+        title={meta.title}
+        onBack={onBack}
+        backLabel={meta.backLabel}
+      />
 
-        <ul className="mt-8 flex flex-col gap-2">
-          {ROWS.map((row) => (
-            <li key={row.label}>
-              <button
-                type="button"
-                onClick={row.label === "Replay tutorials" ? onReplayTutorials : undefined}
-                className="flex w-full items-center justify-between rounded-2xl border border-line bg-surface-raised px-4 py-3.5 text-left"
-              >
-                <span>
-                  <span className="block text-[15px] font-medium">{row.label}</span>
-                  <span className="mt-0.5 block text-[12px] text-ink-tertiary">{row.hint}</span>
-                </span>
-                <span className="text-ink-tertiary">›</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <div className="flex-1" />
-        <HomeIndicator />
+      <div className="settings-stack">
+        <SettingsGroup
+          id="settings-preferences"
+          label="Preferences"
+          rows={preferenceRows}
+          onSelect={handleRow}
+        />
+        <p className="settings-app-version">Sugar · v8</p>
       </div>
-    </LightScreen>
+    </AppPageShell>
+  );
+}
+
+function SettingsGroup({
+  id,
+  label,
+  rows,
+  onSelect,
+}: {
+  id: string;
+  label: string;
+  rows: SettingsRow[];
+  onSelect: (row: SettingsRow) => void;
+}) {
+  return (
+    <section className="settings-section" aria-labelledby={id}>
+      <h2 id={id} className="settings-section-label">
+        {label}
+      </h2>
+      <div className="settings-group-card">
+        {rows.map((row) => (
+          <SettingsRowButton key={row.label} row={row} onSelect={onSelect} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SettingsRowButton({
+  row,
+  onSelect,
+}: {
+  row: SettingsRow;
+  onSelect: (row: SettingsRow) => void;
+}) {
+  const Icon = row.icon;
+  const className = ["settings-row", row.interactive ? "" : "is-static"]
+    .filter(Boolean)
+    .join(" ");
+
+  if (!row.interactive) {
+    return (
+      <div className={className} aria-disabled="true">
+        <span className={`settings-row-icon is-${row.iconTone}`} aria-hidden="true">
+          <Icon className="size-4" />
+        </span>
+        <span className="settings-row-title">{row.label}</span>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" className={className} onClick={() => onSelect(row)}>
+      <span className={`settings-row-icon is-${row.iconTone}`} aria-hidden="true">
+        <Icon className="size-4" />
+      </span>
+      <span className="settings-row-title">{row.label}</span>
+      <ChevronRight className="settings-row-chevron" aria-hidden="true" />
+    </button>
   );
 }

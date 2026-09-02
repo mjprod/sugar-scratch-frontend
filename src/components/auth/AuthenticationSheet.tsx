@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Apple, Eye, EyeOff, Loader2, X } from "lucide-react";
+import { ChevronLeft, Loader2, X } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -8,16 +8,26 @@ import {
   type FormEvent,
 } from "react";
 import {
+  AUTH_PASSWORD_MIN_LENGTH,
   authFailureMessage,
   createAccountFailureMessage,
   forgotPasswordSuccessMessage,
   isValidAuthPassword,
+  loginWithEmail,
+  loginWithOAuth,
+  registerWithEmail,
+  requestPasswordReset,
   supportingCopyForTrigger,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
   type ProtectedActionType,
 } from "@/services/auth";
 import { isValidEmail } from "@/types/app";
+import { STUB_OAUTH_ENABLED } from "@/env";
+import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import iconApple from "@/assets/auth/iconApple.svg";
+import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
 
 /**
  * Spec-revised Authentication Sheet — Google, Apple, and email in one surface.
@@ -28,11 +38,16 @@ export function AuthenticationSheet({
   trigger,
   onDismiss,
   onSuccess,
+  initialMode = "login",
+  initialEmail = "",
 }: {
   open: boolean;
   trigger?: ProtectedActionType;
   onDismiss: () => void;
   onSuccess: (result: AuthSuccessResult) => void;
+  /** When opening for password management, start on forgot-password. */
+  initialMode?: AuthenticationSheetMode;
+  initialEmail?: string;
 }) {
   const reduce = useReducedMotion();
   const titleId = useId();
@@ -40,28 +55,33 @@ export function AuthenticationSheet({
   const [mode, setMode] = useState<AuthenticationSheetMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState<
     null | "google" | "apple" | "email"
   >(null);
-  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [consentError, setConsentError] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<null | "terms" | "privacy">(null);
+  const consentLabelId = useId();
+  const consentErrorId = useId();
 
   const busy = submitting !== null;
+  const passwordOk = isValidAuthPassword(password);
+  const canCreateAccount =
+    isValidEmail(email) && passwordOk && acceptedTerms;
 
   useEffect(() => {
     if (!open) return;
-    setMode("login");
-    setEmail("");
+    setMode(initialMode);
+    setEmail(initialEmail);
     setPassword("");
-    setConfirm("");
     setError("");
     setSubmitting(null);
     setShowPassword(false);
-    setShowConfirm(false);
-    setPasswordTouched(false);
+    setAcceptedTerms(false);
+    setConsentError(false);
+    setLegalDoc(null);
     const t = window.setTimeout(() => {
       panelRef.current
         ?.querySelector<HTMLElement>(
@@ -70,7 +90,7 @@ export function AuthenticationSheet({
         ?.focus();
     }, 40);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, [open, initialMode, initialEmail]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,11 +120,15 @@ export function AuthenticationSheet({
   async function finishSocial(provider: "Google" | "Apple") {
     setSubmitting(provider === "Google" ? "google" : "apple");
     setError("");
-    await wait(650);
-    onSuccess({
-      email: `${provider.toLowerCase()}@sugar.app`,
-      provider: provider === "Google" ? "google" : "apple",
-    });
+    try {
+      const kind = provider === "Google" ? "google" : "apple";
+      const emailAddr = `${kind}@sugar.app`;
+      const { user } = await loginWithOAuth(kind, emailAddr);
+      onSuccess({ email: user.email, provider: user.provider, user });
+    } catch {
+      setSubmitting(null);
+      setError(authFailureMessage());
+    }
   }
 
   async function submitLogin(e: FormEvent) {
@@ -119,13 +143,13 @@ export function AuthenticationSheet({
     }
     setSubmitting("email");
     setError("");
-    await wait(700);
-    if (email.trim().toLowerCase() === "fail@sugar.app") {
+    try {
+      const { user } = await loginWithEmail(email.trim(), password);
+      onSuccess({ email: user.email, provider: user.provider, user });
+    } catch {
       setSubmitting(null);
       setError(authFailureMessage());
-      return;
     }
-    onSuccess({ email: email.trim(), provider: "email" });
   }
 
   async function submitCreate(e: FormEvent) {
@@ -135,22 +159,24 @@ export function AuthenticationSheet({
       return;
     }
     if (!isValidAuthPassword(password)) {
-      setError("Use at least 12 characters.");
+      setError(`Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
+    if (!acceptedTerms) {
+      setConsentError(true);
+      setError("");
       return;
     }
     setSubmitting("email");
     setError("");
-    await wait(700);
-    if (email.trim().toLowerCase() === "taken@sugar.app") {
+    setConsentError(false);
+    try {
+      const { user } = await registerWithEmail(email.trim(), password);
+      onSuccess({ email: user.email, provider: user.provider, user });
+    } catch (error) {
       setSubmitting(null);
       setError(createAccountFailureMessage());
-      return;
     }
-    onSuccess({ email: email.trim(), provider: "email" });
   }
 
   async function submitForgot(e: FormEvent) {
@@ -161,7 +187,11 @@ export function AuthenticationSheet({
     }
     setSubmitting("email");
     setError("");
-    await wait(700);
+    try {
+      await requestPasswordReset(email.trim());
+    } catch {
+      /* always show the same copy */
+    }
     setSubmitting(null);
     setMode("reset-sent");
   }
@@ -171,8 +201,15 @@ export function AuthenticationSheet({
     setMode(next);
     setError("");
     setPassword("");
-    setConfirm("");
-    setPasswordTouched(false);
+    setShowPassword(false);
+    setAcceptedTerms(false);
+    setConsentError(false);
+    setLegalDoc(null);
+  }
+
+  function openLegalDoc(doc: "terms" | "privacy") {
+    if (busy) return;
+    setLegalDoc(doc);
   }
 
   return (
@@ -216,282 +253,406 @@ export function AuthenticationSheet({
 
             <AnimatePresence mode="wait">
               <motion.div
-                key={mode}
+                key={legalDoc ? `legal-${legalDoc}` : mode}
                 initial={reduce ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={reduce ? undefined : { opacity: 0 }}
                 transition={{ duration: 0.18 }}
                 className="auth7-sheet-body"
               >
-                <header className="auth7-sheet-head">
+                {legalDoc ? (
+                  <LegalDocPanel
+                    kind={legalDoc}
+                    titleId={titleId}
+                    onBack={() => setLegalDoc(null)}
+                  />
+                ) : (
+                  <>
+                    <header className="auth7-sheet-head">
                   {mode === "forgot-password" || mode === "reset-sent" ? (
                     <button
                       type="button"
                       className="auth7-sheet-back"
+                      aria-label="Back"
                       disabled={busy}
-                      onClick={() => switchMode("login")}
+                      onClick={() => {
+                        if (initialMode === "forgot-password") onDismiss();
+                        else switchMode("login");
+                      }}
                     >
-                      Back
+                      <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
                     </button>
                   ) : null}
-                  <h2 id={titleId} className="auth7-sheet-title">
-                    {title}
-                  </h2>
-                  <p className="auth7-sheet-copy">{subtitle}</p>
-                </header>
+                      <h2 id={titleId} className="auth7-sheet-title">
+                        {title}
+                      </h2>
+                      <p className="auth7-sheet-copy">{subtitle}</p>
+                    </header>
 
-                {mode === "reset-sent" ? (
-                  <button
-                    type="button"
-                    className="auth7-sheet-primary"
-                    onClick={() => switchMode("login")}
-                  >
-                    Back to Log In
-                  </button>
-                ) : mode === "forgot-password" ? (
-                  <form
-                    className="auth7-sheet-form"
-                    onSubmit={(e) => void submitForgot(e)}
-                    noValidate
-                  >
-                    <label className="auth7-field">
-                      <span className="auth7-label">Email</span>
-                      <input
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        className="auth7-input"
-                        value={email}
-                        placeholder="you@email.com"
-                        disabled={busy}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </label>
-                    {error ? (
-                      <p className="auth7-error" role="alert">
-                        {error}
-                      </p>
-                    ) : null}
-                    <button
-                      type="submit"
-                      className="auth7-sheet-primary"
-                      disabled={busy || !email}
-                    >
-                      {submitting === "email" ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        "Send Reset Link"
-                      )}
-                    </button>
-                  </form>
-                ) : (
-                  <>
-                    <div className="auth7-sheet-social">
-                      <button
-                        type="button"
-                        className="auth7-social-btn is-google"
-                        disabled={busy}
-                        onClick={() => void finishSocial("Google")}
-                      >
-                        {submitting === "google" ? (
-                          <Loader2
-                            className="size-4 animate-spin"
-                            aria-hidden
-                          />
-                        ) : (
-                          <GoogleMark />
-                        )}
-                        Continue with Google
-                      </button>
-                      <button
-                        type="button"
-                        className="auth7-social-btn"
-                        disabled={busy}
-                        onClick={() => void finishSocial("Apple")}
-                      >
-                        {submitting === "apple" ? (
-                          <Loader2
-                            className="size-4 animate-spin"
-                            aria-hidden
-                          />
-                        ) : (
-                          <Apple className="size-4" aria-hidden="true" />
-                        )}
-                        Continue with Apple
-                      </button>
-                    </div>
-
-                    <div className="auth7-sheet-divider" role="separator">
-                      <span>or</span>
-                    </div>
-
-                    <form
-                      className="auth7-sheet-form"
-                      onSubmit={(e) =>
-                        void (mode === "create-account"
-                          ? submitCreate(e)
-                          : submitLogin(e))
-                      }
-                      noValidate
-                    >
-                      <label className="auth7-field">
-                        <span className="auth7-label">Email</span>
-                        <input
-                          type="email"
-                          inputMode="email"
-                          autoComplete="email"
-                          className="auth7-input"
-                          value={email}
-                          placeholder="you@email.com"
-                          disabled={busy}
-                          onChange={(e) => setEmail(e.target.value)}
+                    {mode === "reset-sent" ? (
+                      <div className="auth7-sheet-primary">
+                        <CtaButton
+                          {...ctaButtonPropsFromTemplate("squircleCTA")}
+                          fillParent
+                          type="button"
+                          label={
+                            initialMode === "forgot-password"
+                              ? "Done"
+                              : "Back to Log In"
+                          }
+                          costAmount={null}
+                          fontSize={15}
+                          strokeWidth={1}
+                          onClick={() => {
+                            if (initialMode === "forgot-password") onDismiss();
+                            else switchMode("login");
+                          }}
                         />
-                      </label>
-
-                      <label className="auth7-field">
-                        <span className="auth7-label">Password</span>
-                        <span className="auth7-input-wrap">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            autoComplete={
-                              mode === "create-account"
-                                ? "new-password"
-                                : "current-password"
-                            }
-                            className="auth7-input has-toggle"
-                            value={password}
-                            placeholder="Password"
-                            disabled={busy}
-                            onChange={(e) => {
-                              setPassword(e.target.value);
-                              setPasswordTouched(true);
-                            }}
-                          />
-                          <button
-                            type="button"
-                            className="auth7-eye"
-                            aria-label={
-                              showPassword
-                                ? "Hide password"
-                                : "Show password"
-                            }
-                            onClick={() => setShowPassword((v) => !v)}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="size-4" aria-hidden />
-                            ) : (
-                              <Eye className="size-4" aria-hidden />
-                            )}
-                          </button>
-                        </span>
-                      </label>
-
-                      {mode === "create-account" &&
-                      (passwordTouched || password.length > 0) ? (
-                        <p className="auth7-hint">Use at least 12 characters.</p>
-                      ) : null}
-
-                      {mode === "create-account" ? (
+                      </div>
+                    ) : mode === "forgot-password" ? (
+                      <form
+                        className="auth7-sheet-form"
+                        onSubmit={(e) => void submitForgot(e)}
+                        noValidate
+                      >
                         <label className="auth7-field">
-                          <span className="auth7-label">Confirm Password</span>
-                          <span className="auth7-input-wrap">
-                            <input
-                              type={showConfirm ? "text" : "password"}
-                              autoComplete="new-password"
-                              className="auth7-input has-toggle"
-                              value={confirm}
-                              placeholder="Confirm password"
-                              disabled={busy}
-                              onChange={(e) => setConfirm(e.target.value)}
-                            />
-                            <button
-                              type="button"
-                              className="auth7-eye"
-                              aria-label={
-                                showConfirm
-                                  ? "Hide password"
-                                  : "Show password"
-                              }
-                              onClick={() => setShowConfirm((v) => !v)}
-                            >
-                              {showConfirm ? (
-                                <EyeOff className="size-4" aria-hidden />
-                              ) : (
-                                <Eye className="size-4" aria-hidden />
-                              )}
-                            </button>
-                          </span>
+                          <span className="auth7-label">Email</span>
+                          <input
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            className="auth7-input"
+                            value={email}
+                            placeholder="you@email.com"
+                            disabled={busy}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
                         </label>
-                      ) : (
-                        <div className="auth7-row-end">
+                        {error ? (
+                          <p className="auth7-error" role="alert">
+                            {error}
+                          </p>
+                        ) : null}
+                        <div className="auth7-sheet-primary">
+                          <CtaButton
+                            {...ctaButtonPropsFromTemplate("squircleCTA")}
+                            fillParent
+                            type="submit"
+                            label={
+                              submitting === "email"
+                                ? "Sending…"
+                                : "Send Reset Link"
+                            }
+                            costAmount={null}
+                            fontSize={15}
+                            strokeWidth={1}
+                            disabled={busy || !email}
+                          />
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        {STUB_OAUTH_ENABLED ? (
+                        <>
+                        <div className="auth7-sheet-social">
+                          <div className="auth7-social-btn is-google">
+                            <CtaButton
+                              {...ctaButtonPropsFromTemplate("squircleCTA")}
+                              fillParent
+                              type="button"
+                              label={
+                                submitting === "google"
+                                  ? "Connecting…"
+                                  : "Continue with Google"
+                              }
+                              leadingIcon={
+                                <img
+                                  src={iconGoogleNeutral}
+                                  alt=""
+                                  draggable={false}
+                                />
+                              }
+                              costAmount={null}
+                              fontSize={15}
+                              strokeWidth={1}
+                              disabled={busy}
+                              onClick={() => void finishSocial("Google")}
+                            />
+                          </div>
                           <button
                             type="button"
-                            className="auth7-text-link"
+                            className="auth7-social-btn"
                             disabled={busy}
-                            onClick={() => switchMode("forgot-password")}
+                            onClick={() => void finishSocial("Apple")}
                           >
-                            Forgot Password?
+                            {submitting === "apple" ? (
+                              <Loader2
+                                className="size-4 animate-spin"
+                                aria-hidden
+                              />
+                            ) : (
+                              <img
+                                src={iconApple}
+                                alt=""
+                                className="auth7-social-icon"
+                                draggable={false}
+                                aria-hidden="true"
+                              />
+                            )}
+                            Continue with Apple
                           </button>
                         </div>
-                      )}
 
-                      {error ? (
-                        <p className="auth7-error" role="alert">
-                          {error}
+                        <div className="auth7-sheet-divider" role="separator">
+                          <span>or</span>
+                        </div>
+                        </>
+                        ) : null}
+
+                        <form
+                          className="auth7-sheet-form"
+                          onSubmit={(e) =>
+                            void (mode === "create-account"
+                              ? submitCreate(e)
+                              : submitLogin(e))
+                          }
+                          noValidate
+                        >
+                          <label className="auth7-field">
+                            <span className="auth7-label">Email</span>
+                            <input
+                              type="email"
+                              inputMode="email"
+                              autoComplete="email"
+                              className="auth7-input"
+                              value={email}
+                              placeholder="you@email.com"
+                              disabled={busy}
+                              onChange={(e) => setEmail(e.target.value)}
+                            />
+                          </label>
+
+                          <div className="auth7-field">
+                            <label
+                              className="auth7-label"
+                              htmlFor="auth7-password"
+                            >
+                              Password
+                            </label>
+                            <span className="auth7-input-wrap">
+                              <input
+                                id="auth7-password"
+                                type={showPassword ? "text" : "password"}
+                                autoComplete={
+                                  mode === "create-account"
+                                    ? "new-password"
+                                    : "current-password"
+                                }
+                                className="auth7-input has-toggle"
+                                value={password}
+                                placeholder="Password"
+                                disabled={busy}
+                                onChange={(e) => setPassword(e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="auth7-show-toggle"
+                                aria-pressed={showPassword}
+                                aria-label={
+                                  showPassword
+                                    ? "Hide password"
+                                    : "Show password"
+                                }
+                                disabled={busy}
+                                onClick={() => setShowPassword((v) => !v)}
+                              >
+                                {showPassword ? "Hide" : "Show"}
+                              </button>
+                            </span>
+                          </div>
+
+                          {mode === "create-account" ? (
+                            <p
+                              className={[
+                                "auth7-pw-req",
+                                passwordOk ? "is-met" : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              aria-live="polite"
+                            >
+                              <span aria-hidden="true">
+                                {passwordOk ? "✓" : "○"}
+                              </span>
+                              At least {AUTH_PASSWORD_MIN_LENGTH} characters
+                            </p>
+                          ) : (
+                            <div className="auth7-row-end">
+                              <button
+                                type="button"
+                                className="auth7-text-link"
+                                disabled={busy}
+                                onClick={() => switchMode("forgot-password")}
+                              >
+                                Forgot Password?
+                              </button>
+                            </div>
+                          )}
+
+                          {mode === "create-account" ? (
+                            <div className="auth7-consent">
+                              <div
+                                className={[
+                                  "auth7-consent-row",
+                                  consentError ? "is-error" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                                onClick={(e) => {
+                                  if (busy) return;
+                                  if (
+                                    (e.target as HTMLElement).closest(
+                                      "[data-legal-link]",
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  setAcceptedTerms((v) => !v);
+                                  setConsentError(false);
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  role="checkbox"
+                                  aria-checked={acceptedTerms}
+                                  aria-labelledby={consentLabelId}
+                                  aria-invalid={consentError || undefined}
+                                  aria-describedby={
+                                    consentError ? consentErrorId : undefined
+                                  }
+                                  disabled={busy}
+                                  className="auth7-consent-box"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAcceptedTerms((v) => !v);
+                                    setConsentError(false);
+                                  }}
+                                >
+                                  {acceptedTerms ? (
+                                    <span
+                                      className="auth7-consent-tick"
+                                      aria-hidden
+                                    >
+                                      ✓
+                                    </span>
+                                  ) : null}
+                                </button>
+                                <p
+                                  id={consentLabelId}
+                                  className="auth7-consent-copy"
+                                >
+                                  I agree to the{" "}
+                                  <button
+                                    type="button"
+                                    data-legal-link
+                                    className="auth7-consent-link"
+                                    disabled={busy}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openLegalDoc("terms");
+                                    }}
+                                  >
+                                    Terms of Service
+                                  </button>{" "}
+                                  and{" "}
+                                  <button
+                                    type="button"
+                                    data-legal-link
+                                    className="auth7-consent-link"
+                                    disabled={busy}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openLegalDoc("privacy");
+                                    }}
+                                  >
+                                    Privacy Policy
+                                  </button>
+                                  .
+                                </p>
+                              </div>
+                              {consentError ? (
+                                <p
+                                  id={consentErrorId}
+                                  className="auth7-error auth7-consent-error"
+                                  role="alert"
+                                >
+                                  Please agree to the Terms of Service and
+                                  Privacy Policy to continue.
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          {error ? (
+                            <p className="auth7-error" role="alert">
+                              {error}
+                            </p>
+                          ) : null}
+
+                          <div className="auth7-sheet-primary">
+                            <CtaButton
+                              {...ctaButtonPropsFromTemplate("squircleCTA")}
+                              fillParent
+                              type="submit"
+                              label={
+                                submitting === "email"
+                                  ? "Working…"
+                                  : mode === "create-account"
+                                    ? "Create Account"
+                                    : "Continue"
+                              }
+                              costAmount={null}
+                              fontSize={15}
+                              strokeWidth={1}
+                              disabled={
+                                busy ||
+                                (mode === "create-account" && !canCreateAccount)
+                              }
+                            />
+                          </div>
+                        </form>
+
+                        <p className="auth7-switch">
+                          {mode === "create-account" ? (
+                            <>
+                              Already have an account?{" "}
+                              <button
+                                type="button"
+                                className="auth7-text-link is-strong"
+                                disabled={busy}
+                                onClick={() => switchMode("login")}
+                              >
+                                Log In
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              New to Sugar?{" "}
+                              <button
+                                type="button"
+                                className="auth7-text-link is-strong"
+                                disabled={busy}
+                                onClick={() => switchMode("create-account")}
+                              >
+                                Create Account
+                              </button>
+                            </>
+                          )}
                         </p>
-                      ) : null}
-
-                      <button
-                        type="submit"
-                        className="auth7-sheet-primary"
-                        disabled={busy}
-                      >
-                        {submitting === "email" ? (
-                          <Loader2
-                            className="size-4 animate-spin"
-                            aria-hidden
-                          />
-                        ) : mode === "create-account" ? (
-                          "Create Account"
-                        ) : (
-                          "Continue"
-                        )}
-                      </button>
-                    </form>
-
-                    <p className="auth7-switch">
-                      {mode === "create-account" ? (
-                        <>
-                          Already have an account?{" "}
-                          <button
-                            type="button"
-                            className="auth7-text-link is-strong"
-                            disabled={busy}
-                            onClick={() => switchMode("login")}
-                          >
-                            Log In
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          New to Sugar?{" "}
-                          <button
-                            type="button"
-                            className="auth7-text-link is-strong"
-                            disabled={busy}
-                            onClick={() => switchMode("create-account")}
-                          >
-                            Create Account
-                          </button>
-                        </>
-                      )}
-                    </p>
+                      </>
+                    )}
                   </>
                 )}
-
-                <p className="auth7-legal">
-                  By continuing you agree to Sugar&apos;s Terms and Privacy.
-                </p>
               </motion.div>
             </AnimatePresence>
           </motion.div>
@@ -501,29 +662,4 @@ export function AuthenticationSheet({
   );
 }
 
-function GoogleMark() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M9 7.2v3.6h5.1c-.2 1.2-.9 2.2-1.9 2.9l3 2.3c1.8-1.6 2.8-4 2.8-6.8 0-.7-.1-1.3-.2-1.9H9z"
-      />
-      <path
-        fill="#34A853"
-        d="M4 10.7l-.7.5-2.3 1.8C2.5 15.7 5.5 18 9 18c2.4 0 4.4-.8 5.9-2.1l-3-2.3c-.8.6-1.9.9-2.9.9-2.3 0-4.2-1.5-4.9-3.6z"
-      />
-      <path
-        fill="#4A90E2"
-        d="M1 5c-.6 1.2-1 2.5-1 4s.4 2.8 1 4l3.1-2.4C3.8 9.8 3.7 9.4 3.7 9c0-.4.1-.8.2-1.2z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.6C13.4.9 11.4 0 9 0 5.5 0 2.5 2.3 1 5.6L4.1 8C4.8 5.9 6.7 3.6 9 3.6z"
-      />
-    </svg>
-  );
-}
 
-function wait(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}

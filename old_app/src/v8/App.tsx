@@ -39,13 +39,16 @@ import {
   type OnboardingData,
   type Step,
 } from "./flow/types";
+import type { ScratchReadyGroup } from "./flow/collection";
 import type { PurchaseFlowPack } from "./flow/purchase";
+import { trackScratchEvent } from "./flow/readyToScratch";
 import { CollectionScreen } from "./screens/CollectionScreen";
 import { CreatorScreen } from "./screens/CreatorScreen";
 import { HomeFeedScreen } from "./screens/HomeFeedScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { HubScreen } from "./screens/HubScreen";
 import { LoadingScreen } from "./screens/LoadingScreen";
+import { InboxScreen } from "./screens/InboxScreen";
 import { PersonalizationCompleteScreen } from "./screens/PersonalizationCompleteScreen";
 import { PersonalizationSwipeScreen } from "./screens/PersonalizationSwipeScreen";
 import { RecommendationIntroScreen } from "./screens/RecommendationIntroScreen";
@@ -54,6 +57,8 @@ import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { StoreScreen } from "./screens/StoreScreen";
 import { UserDashboardScreen } from "./screens/UserDashboardScreen";
+import type { InboxMessage } from "./flow/inbox";
+import { resolveSecondaryBack } from "./flow/navigation";
 
 const initialData: OnboardingData = {
   email: "",
@@ -76,6 +81,7 @@ const PUBLIC_TABS: AppTab[] = ["home", "feed"];
 
 function actionNeedsVerifiedEmail(action: ProtectedAction) {
   if (action.type === "buy") return true;
+  if (action.type === "store") return true;
   if (action.type === "tab" && action.tab === "hub") return true;
   return false;
 }
@@ -87,18 +93,50 @@ function actionNeedsVerifiedEmail(action: ProtectedAction) {
 export default function V8App() {
   const [step, setStep] = useState<Step>(() => {
     try {
-      return new URLSearchParams(window.location.search).has("reset")
-        ? "reset-password"
-        : "loading";
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("reset")) return "reset-password";
+      const preview = params.get("preview");
+      if (
+        preview === "recommend-intro" ||
+        preview === "personalize-swipe" ||
+        preview === "personalize-complete"
+      ) {
+        return preview;
+      }
+      if (preview === "inbox") return "app";
+      return "loading";
     } catch {
       return "loading";
     }
   });
   const [data, setData] = useState<OnboardingData>(initialData);
-  const [tab, setTab] = useState<AppTab>("home");
-  const [overlay, setOverlay] = useState<AppOverlay>(null);
+  const [tab, setTab] = useState<AppTab>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("preview") === "inbox"
+        ? "hub"
+        : "home";
+    } catch {
+      return "home";
+    }
+  });
+  const [overlay, setOverlay] = useState<AppOverlay>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("preview") === "inbox"
+        ? "inbox"
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  /** Tab to restore when leaving a secondary overlay (Inbox / Store / Settings). */
+  const [overlayReturnTab, setOverlayReturnTab] = useState<AppTab | null>(null);
   const [creatorId, setCreatorId] = useState<string | null>(null);
   const [purchaseFlow, setPurchaseFlow] = useState<PurchaseFlowPack | null>(null);
+  const [purchaseReturn, setPurchaseReturn] = useState<{
+    tab: AppTab;
+    creatorId: string | null;
+  } | null>(null);
+  const [bagRevision, setBagRevision] = useState(0);
   const [purchasedPacks, setPurchasedPacks] = useState(0);
   const [navNotice, setNavNotice] = useState("");
   const [authed, setAuthed] = useState(() => isAuthenticated());
@@ -116,6 +154,27 @@ export default function V8App() {
 
   const go = useCallback((next: Step) => setStep(next), []);
   const guest = !authed;
+
+  function openPurchase(pack: PurchaseFlowPack) {
+    setPurchaseReturn({ tab, creatorId });
+    setPurchaseFlow(pack);
+  }
+
+  function bumpBag() {
+    setBagRevision((value) => value + 1);
+  }
+
+  function returnFromScratchDefer() {
+    setPurchaseFlow(null);
+    bumpBag();
+    if (purchaseReturn?.creatorId) {
+      setCreatorId(purchaseReturn.creatorId);
+      setTab(purchaseReturn.tab);
+      return;
+    }
+    setCreatorId(null);
+    setTab(purchaseReturn?.tab ?? "home");
+  }
 
   function finishRecommendationAndResume() {
     const deferred = pendingAfterRec;
@@ -151,7 +210,11 @@ export default function V8App() {
   }
 
   function isHighIntentForDefer(action: ProtectedAction) {
-    return action.type === "buy" || (action.type === "tab" && action.tab === "hub");
+    return (
+      action.type === "buy" ||
+      action.type === "store" ||
+      (action.type === "tab" && action.tab === "hub")
+    );
   }
 
   function applyUserFromEmail(email: string) {
@@ -172,7 +235,7 @@ export default function V8App() {
     if (!action) return;
     if (action.type === "buy") {
       if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
-      setPurchaseFlow(action.pack);
+      openPurchase(action.pack);
       return;
     }
     if (action.type === "like") {
@@ -181,16 +244,20 @@ export default function V8App() {
       return;
     }
     if (action.type === "scratch") {
+      openPurchase(action.pack);
+      return;
+    }
+    if (action.type === "store") {
+      setCreatorId(null);
+      setPurchaseFlow(null);
+      setOverlay("store");
       return;
     }
     if (action.type === "tab") {
       setTab(action.tab);
       setCreatorId(null);
       setOverlay(null);
-      if (action.tab === "hub") {
-        setPurchaseFlow(null);
-        setOverlay("store");
-      }
+      setPurchaseFlow(null);
     }
   }
 
@@ -253,11 +320,9 @@ export default function V8App() {
 
   function requestTab(next: AppTab) {
     if (PUBLIC_TABS.includes(next) || authed) {
-      if (next === "hub" && authed) {
-        requireAuth({ type: "tab", tab: "hub" });
-        return;
-      }
       setCreatorId(null);
+      setOverlay(null);
+      setOverlayReturnTab(null);
       setTab(next);
       return;
     }
@@ -265,10 +330,61 @@ export default function V8App() {
   }
 
   function openStore() {
-    if (!requireAuth({ type: "tab", tab: "hub" })) return;
+    if (!requireAuth({ type: "store" })) return;
+    setOverlayReturnTab(tab);
     setCreatorId(null);
     setPurchaseFlow(null);
     setOverlay("store");
+  }
+
+  function openInbox() {
+    if (!requireAuth({ type: "tab", tab: "hub" })) return;
+    setOverlayReturnTab(tab);
+    setCreatorId(null);
+    setPurchaseFlow(null);
+    setOverlay("inbox");
+  }
+
+  function closeSecondary(
+    surface: "inbox" | "store" | "settings",
+  ) {
+    const next = resolveSecondaryBack(overlayReturnTab, surface);
+    setOverlay(null);
+    setOverlayReturnTab(null);
+    setTab(next);
+  }
+
+  function handleInboxAction(message: InboxMessage, source: "row" | "cta") {
+    const cta = message.cta;
+    if (source === "cta" && cta) {
+      if (cta.action === "navigate" && cta.targetId === "store") {
+        openStore();
+        return;
+      }
+      if (cta.action === "open_pack" || cta.action === "view_pack") {
+        setOverlay(null);
+        requestTab("bag");
+        return;
+      }
+      if (cta.action === "view_reward") {
+        setOverlay(null);
+        setTab("hub");
+        return;
+      }
+    }
+    if (message.type === "creator_drop" && message.creatorId) {
+      setOverlay(null);
+      setCreatorId(message.creatorId);
+      return;
+    }
+    if (message.type === "payment_failure") {
+      openStore();
+      return;
+    }
+    if (message.type === "limited_expiring") {
+      setOverlay(null);
+      setTab("feed");
+    }
   }
 
   function restart() {
@@ -384,6 +500,7 @@ export default function V8App() {
               diamonds={data.diamonds}
               onClose={() => {
                 setPurchaseFlow(null);
+                bumpBag();
                 setTab("home");
                 // Abandoned high-intent buy — re-evaluate cold start via engine only
                 if (!isRecommendationInitialized()) {
@@ -402,58 +519,72 @@ export default function V8App() {
                   coins: current.coins + rewardCoins,
                 }));
                 setPurchasedPacks((count) => count + cards);
+                bumpBag();
                 notePackPurchaseSeed(purchaseFlow.creator);
               }}
               onGetDiamonds={() => {
                 setPurchaseFlow(null);
+                bumpBag();
                 if (!guest) openStore();
-                else requireAuth({ type: "tab", tab: "hub" });
+                else requireAuth({ type: "store" });
               }}
               onGoHome={() => {
                 setPurchaseFlow(null);
+                bumpBag();
+                setCreatorId(null);
                 setTab("home");
               }}
               onViewCollection={() => {
                 setPurchaseFlow(null);
+                bumpBag();
                 requestTab("bag");
               }}
               onGoMyBag={() => {
                 setPurchaseFlow(null);
+                bumpBag();
                 requestTab("bag");
               }}
+              onReturnContext={returnFromScratchDefer}
+              onInventoryChange={bumpBag}
             />
           ) : overlay === "settings" ? (
             <SettingsScreen
-              onBack={() => setOverlay(null)}
+              onBack={() => closeSecondary("settings")}
               onReplayTutorials={() => {
                 setTab("home");
                 setOverlay(null);
+                setOverlayReturnTab(null);
               }}
             />
-          ) : overlay === "store" ? (
+          ) : overlay === "inbox" ? (
             <>
-              <StoreScreen
+              <TopNav
                 coins={coins}
                 diamonds={data.diamonds}
-                avatar={data.avatar}
-                onBack={() => setOverlay(null)}
+                showBalances
+                activeTab={tab}
+                onTabChange={(next) => {
+                  setOverlay(null);
+                  setOverlayReturnTab(null);
+                  requestTab(next);
+                }}
                 onProfile={() => {
                   setOverlay(null);
+                  setOverlayReturnTab(null);
                   requestTab("profile");
                 }}
-                onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
-                  setData((current) => ({
-                    ...current,
-                    diamonds: current.diamonds + gained,
-                    coins: current.coins + gainedCoins,
-                  }));
-                }}
+                onOpenStore={openStore}
+              />
+              <InboxScreen
+                onBack={() => closeSecondary("inbox")}
+                onMessageAction={handleInboxAction}
               />
               <FooterNav
                 active={tab}
-                visible
+                visible={!authOpen}
                 onChange={(next) => {
                   setOverlay(null);
+                  setOverlayReturnTab(null);
                   requestTab(next);
                 }}
               />
@@ -480,30 +611,57 @@ export default function V8App() {
               />
               <FooterNav
                 active="bag"
-                visible
+                visible={!authOpen}
                 onChange={(next) => {
                   setCreatorId(null);
                   requestTab(next);
                 }}
               />
+              {overlay === "store" ? (
+                <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[#090909]">
+                  <StoreScreen
+                    coins={coins}
+                    diamonds={data.diamonds}
+                    avatar={data.avatar}
+                    onBack={() => closeSecondary("store")}
+                    onProfile={() => {
+                      setOverlay(null);
+                      setOverlayReturnTab(null);
+                      setCreatorId(null);
+                      requestTab("profile");
+                    }}
+                    onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
+                      setData((current) => ({
+                        ...current,
+                        diamonds: current.diamonds + gained,
+                        coins: current.coins + gainedCoins,
+                      }));
+                    }}
+                  />
+                </div>
+              ) : null}
             </>
           ) : (
             <>
               <TopNav
-                coins={guest ? 0 : coins}
-                diamonds={guest ? 0 : data.diamonds}
+                coins={guest ? null : coins}
+                diamonds={guest ? null : data.diamonds}
+                showBalances={!guest}
                 activeTab={tab}
                 onTabChange={requestTab}
                 onProfile={() => requestTab("profile")}
                 onSettings={() => {
                   if (guest) requireAuth({ type: "tab", tab: "profile" });
-                  else setOverlay("settings");
+                  else {
+                    setOverlayReturnTab(tab);
+                    setOverlay("settings");
+                  }
                 }}
                 onOpenStore={openStore}
                 onSearch={() => {
                   setNavNotice(
                     tab === "feed"
-                      ? "Browse search is ready"
+                      ? "Discover search is ready"
                       : "Collection search is ready",
                   );
                   window.setTimeout(() => setNavNotice(""), 1800);
@@ -515,11 +673,7 @@ export default function V8App() {
                 }
               >
                 <HomeFeedScreen
-                  coins={guest ? 0 : coins}
-                  diamonds={guest ? 0 : data.diamonds}
-                  avatar={guest ? null : data.avatar}
                   active={tab === "home"}
-                  guest={guest}
                   resumeLikeId={resumeLikeId}
                   onResumeLikeConsumed={() => setResumeLikeId(null)}
                   onBuyPack={(pack) => {
@@ -531,15 +685,9 @@ export default function V8App() {
                     requireAuth({ type: "like", feedItemId: id });
                     return false;
                   }}
-                  onProfile={() => requestTab("profile")}
-                  onOpenStore={openStore}
-                  onNotify={() => {
-                    if (guest) {
-                      requireAuth({ type: "tab", tab: "profile" });
-                      return;
-                    }
-                    setNavNotice("You're all caught up");
-                    window.setTimeout(() => setNavNotice(""), 1600);
+                  onOpenCreator={(id) => {
+                    noteCreatorEngagement(id);
+                    setCreatorId(id);
                   }}
                 />
               </div>
@@ -560,7 +708,7 @@ export default function V8App() {
                 />
               )}
               {tab === "hub" && !guest && (
-                <HubScreen onOpenStore={openStore} />
+                <HubScreen onOpenStore={openStore} onOpenInbox={openInbox} />
               )}
               {tab === "bag" && !guest && (
                 <CollectionScreen
@@ -572,7 +720,23 @@ export default function V8App() {
                       kind: "open-pack",
                     })
                   }
-                  onExplorePacks={() => setTab("home")}
+                  onScratchGroup={(group: ScratchReadyGroup) => {
+                    trackScratchEvent("Ready To Scratch Opened", {
+                      packId: group.id,
+                    });
+                    requireAuth({
+                      type: "scratch",
+                      pack: {
+                        packId: group.id,
+                        packName: group.collectionName,
+                        price: "",
+                        creator: group.creatorName,
+                        entry: "scratch",
+                      },
+                    });
+                  }}
+                  inventoryRevision={bagRevision}
+                  onExplorePacks={() => setTab("feed")}
                 />
               )}
               {tab === "profile" && !guest && (
@@ -581,12 +745,16 @@ export default function V8App() {
                   avatar={data.avatar}
                   coins={coins}
                   diamonds={data.diamonds}
-                  onSettings={() => setOverlay("settings")}
+                  onSettings={() => {
+                    setOverlayReturnTab(tab);
+                    setOverlay("settings");
+                  }}
+                  onLogout={logout}
                 />
               )}
               <FooterNav
                 active={tab}
-                visible
+                visible={!authOpen && overlay !== "store"}
                 onChange={requestTab}
                 bagBadge={
                   !guest &&
@@ -596,6 +764,36 @@ export default function V8App() {
                     : undefined
                 }
               />
+              {overlay === "store" ? (
+                <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[#090909]">
+                  <StoreScreen
+                    coins={coins}
+                    diamonds={data.diamonds}
+                    avatar={data.avatar}
+                    onBack={() => closeSecondary("store")}
+                    onProfile={() => {
+                      setOverlay(null);
+                      setOverlayReturnTab(null);
+                      requestTab("profile");
+                    }}
+                    onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
+                      setData((current) => ({
+                        ...current,
+                        diamonds: current.diamonds + gained,
+                        coins: current.coins + gainedCoins,
+                      }));
+                    }}
+                  />
+                  <FooterNav
+                    active={tab}
+                    visible={!authOpen}
+                    onChange={(next) => {
+                      setOverlay(null);
+                      requestTab(next);
+                    }}
+                  />
+                </div>
+              ) : null}
             </>
           )}
 
@@ -631,20 +829,6 @@ export default function V8App() {
             <div className="pointer-events-none absolute bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">
               {navNotice}
             </div>
-          ) : null}
-
-          {authed &&
-          !purchaseFlow &&
-          !overlay &&
-          !creatorId &&
-          tab === "profile" ? (
-            <button
-              type="button"
-              className="auth7-logout-fab"
-              onClick={logout}
-            >
-              Log out
-            </button>
           ) : null}
         </div>
       )}

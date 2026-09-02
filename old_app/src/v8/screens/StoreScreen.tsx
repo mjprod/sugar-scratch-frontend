@@ -8,7 +8,6 @@ import {
   Play,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   Store as StoreIcon,
   XCircle,
   Zap,
@@ -28,6 +27,8 @@ import {
   type StoreBadge,
   type StoreProduct,
 } from "../flow/store";
+import { CurrencyBalances } from "../components/CurrencyBalances";
+import { MobileDiamondBalance } from "../components/MobileDiamondBalance";
 
 type LoadState =
   | { status: "loading" }
@@ -51,11 +52,6 @@ type Flow =
       session?: PurchaseSession;
     }
   | { step: "ad-processing"; product: StoreProduct };
-
-function formatBalance(value: number | null) {
-  if (value == null || Number.isNaN(value)) return "--";
-  return value.toLocaleString();
-}
 
 /**
  * Store — Diamonds, rewarded ads, and third-party purchase flow.
@@ -305,8 +301,8 @@ export function StoreScreen({
           onProfile={onProfile}
         />
 
-        <header className="mt-5 px-1">
-          <h1 className="text-[32px] font-bold tracking-[-0.03em]">Store</h1>
+        <header className="mt-5 px-1 lg:mt-4">
+          <h1 className="hidden text-[32px] font-bold tracking-[-0.03em] lg:block">Store</h1>
           <p className="mt-1.5 text-[14px] text-white/55">
             Buy Diamonds and exclusive packs.
           </p>
@@ -436,50 +432,56 @@ function StoreTopNav({
   onProfile?: () => void;
 }) {
   return (
-    <header className="flex h-14 items-center gap-2">
-      <button
-        type="button"
-        onClick={onBack}
-        className="grid size-11 shrink-0 place-items-center rounded-full text-white/75 transition active:scale-95 hover:bg-white/10"
-        aria-label="Back"
-      >
-        <ChevronLeft className="size-5" />
-      </button>
-
-      <div
-        className="mx-auto flex min-h-11 items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.05] px-3.5"
-        aria-live="polite"
-      >
-        <span
-          className="flex items-center gap-1.5"
-          aria-label={`${formatBalance(coins)} Reward Points`}
+    <>
+      <header className="flex items-center gap-2 lg:hidden">
+        <button
+          type="button"
+          onClick={onBack}
+          className="subpage-back"
+          aria-label="Back"
         >
-          <Sparkles className="size-3.5 text-[#D4AF37]" aria-hidden="true" />
-          <span className="text-[13px] font-semibold tabular-nums">
-            {formatBalance(coins)}
-          </span>
-        </span>
-        <span className="h-3 w-px bg-white/15" aria-hidden="true" />
-        <span
-          className="flex items-center gap-1.5"
-          aria-label={`${formatBalance(diamonds)} Diamonds`}
-        >
-          <Gem className="size-3.5 text-sky-300" aria-hidden="true" />
-          <span className="text-[13px] font-semibold tabular-nums">
-            {formatBalance(diamonds)}
-          </span>
-        </span>
-      </div>
+          <ChevronLeft className="size-5" />
+        </button>
 
-      <button
-        type="button"
-        onClick={onProfile}
-        className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[16px] transition active:scale-95 hover:bg-white/10"
-        aria-label="Open Profile"
-      >
-        {avatar || "✨"}
-      </button>
-    </header>
+        <span className="min-w-0 flex-1 truncate text-[18px] font-bold">Store</span>
+
+        <MobileDiamondBalance balance={diamonds} standalone />
+
+        <button
+          type="button"
+          onClick={onProfile}
+          className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[16px] transition active:scale-95 hover:bg-white/10"
+          aria-label="Open Profile"
+        >
+          {avatar || "✨"}
+        </button>
+      </header>
+
+      <header className="mb-1 hidden items-center gap-3 lg:flex">
+        <button
+          type="button"
+          onClick={onBack}
+          className="subpage-back"
+          aria-label="Back"
+        >
+          <ChevronLeft className="size-5" />
+        </button>
+        <div
+          className="flex min-h-11 items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.05] px-3.5"
+          aria-live="polite"
+        >
+          <CurrencyBalances coins={coins} diamonds={diamonds} />
+        </div>
+        <button
+          type="button"
+          onClick={onProfile}
+          className="ml-auto grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[16px] transition hover:bg-white/10"
+          aria-label="Open Profile"
+        >
+          {avatar || "✨"}
+        </button>
+      </header>
+    </>
   );
 }
 

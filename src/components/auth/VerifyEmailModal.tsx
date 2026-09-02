@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 
 /**
  * Permission System — Email verification modal.
@@ -135,14 +136,19 @@ export function VerifyEmailModal({
                     placeholder="you@email.com"
                   />
                 </label>
-                <button
-                  type="button"
-                  className="auth7-sheet-primary"
-                  disabled={sending || !newEmail || !password}
-                  onClick={() => void changeEmail()}
-                >
-                  {sending ? "Sending…" : "Send New Verification"}
-                </button>
+                <div className="auth7-sheet-primary">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("squircleCTA")}
+                    fillParent
+                    type="button"
+                    label={sending ? "Sending…" : "Send New Verification"}
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    disabled={sending || !newEmail || !password}
+                    onClick={() => void changeEmail()}
+                  />
+                </div>
                 <button
                   type="button"
                   className="auth7-modal-cancel"
@@ -153,18 +159,25 @@ export function VerifyEmailModal({
               </div>
             ) : (
               <div className="auth7-modal-actions">
-                <button
-                  type="button"
-                  className="auth7-sheet-primary"
-                  disabled={sending}
-                  onClick={() => void sendVerify()}
-                >
-                  {sending
-                    ? "Sending…"
-                    : sent
-                      ? "Verified"
-                      : "Resend Email"}
-                </button>
+                <div className="auth7-sheet-primary">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("squircleCTA")}
+                    fillParent
+                    type="button"
+                    label={
+                      sending
+                        ? "Sending…"
+                        : sent
+                          ? "Verified"
+                          : "Resend Email"
+                    }
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    disabled={sending}
+                    onClick={() => void sendVerify()}
+                  />
+                </div>
                 <button
                   type="button"
                   className="auth7-text-link is-strong"

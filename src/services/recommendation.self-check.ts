@@ -21,7 +21,8 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 assert(!isValidAuthPassword("short"), "reject short");
-assert(isValidAuthPassword("twelvechars!"), "accept 12+");
+assert(!isValidAuthPassword("sevench"), "reject 7");
+assert(isValidAuthPassword("eightchr"), "accept 8+");
 assert(MIN_PERSONALIZATION_CARDS >= 6, "configurable card count");
 assert(
   RECOMMENDATION_CARDS.length >= MIN_PERSONALIZATION_CARDS,

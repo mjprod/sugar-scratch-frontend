@@ -18,11 +18,22 @@ export function PurchaseFlowPage() {
     applyRecommendationDecision,
     setPurchasedPacks,
     requestTab,
+    bumpInventoryRevision,
   } = useAuth();
-  const { diamonds, spendDiamonds, addCoins } = useWallet();
+  const { coins, diamonds, setDiamonds, setCoins, addCoins } = useWallet();
   const pack = (location.state as { pack?: PurchaseFlowPack } | null)?.pack;
+  const isTearOpenRoute =
+    location.pathname === Paths.purchaseTearOpen ||
+    packId === Paths.purchaseTearOpenSlug;
 
-  if (!pack || (packId && pack.packId !== packId)) {
+  if (
+    !pack ||
+    (isTearOpenRoute
+      ? pack.entry !== "cart-tear"
+      : packId
+        ? pack.packId !== packId
+        : false)
+  ) {
     return <Navigate to={Paths.home} replace />;
   }
 
@@ -30,25 +41,32 @@ export function PurchaseFlowPage() {
     <PurchaseFlow
       pack={pack}
       diamonds={diamonds}
+      coins={coins}
       onClose={() => {
         navigate(Paths.home);
         if (!isRecommendationInitialized()) {
           applyRecommendationDecision(null);
         }
       }}
-      onSpend={(n) => spendDiamonds(n)}
+      onWalletUpdate={(wallet) => {
+        setDiamonds(wallet.diamonds);
+        setCoins(wallet.coins);
+      }}
       onComplete={({ cards, coins: rewardCoins }) => {
-        addCoins(rewardCoins);
+        if (rewardCoins > 0) addCoins(rewardCoins);
         setPurchasedPacks((count) => count + cards);
         notePackPurchaseSeed(pack.creator);
+        bumpInventoryRevision();
       }}
       onGetDiamonds={() => {
         if (!guest) openStore();
-        else requireAuth({ type: "tab", tab: "hub" });
+        else requireAuth({ type: "store" });
       }}
       onGoHome={() => navigate(Paths.home)}
       onViewCollection={() => requestTab("bag")}
       onGoMyBag={() => requestTab("bag")}
+      onReturnContext={() => requestTab("bag")}
+      onInventoryChange={bumpInventoryRevision}
     />
   );
 }

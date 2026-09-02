@@ -1,0 +1,580 @@
+/* Pack-fan GAME hub — dark stage matching packs / reveal. */
+
+.stage-game-hub {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: oklch(0 0 0);
+  box-sizing: border-box;
+  --overlay-gradient-color-end: oklch(0.531 0.202 5.62);
+}
+
+.stage-game-hub .packs-circle {
+  /* Keep packs.css fixed glow; tint via hub CSS var. */
+  z-index: 0;
+}
+
+.game-hub-pack {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: stretch;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px 16px calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+.game-hub-pack__status {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: oklch(0.156 0.008 285.38 / 0.72);
+  color: oklch(1 0 0 / 0.78);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.game-hub-pack__error {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  max-width: min(90vw, 360px);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: oklch(0.376 0.133 16.11 / 0.85);
+  color: oklch(0.951 0.026 359.93);
+  font-size: 13px;
+  text-align: center;
+}
+
+.game-hub-pack__stage {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-hub-pack__idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+  max-width: 280px;
+}
+
+.game-hub-pack__idle-stack {
+  position: relative;
+  width: 120px;
+  height: 160px;
+}
+
+.game-hub-pack__idle-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  border: 1px solid oklch(1 0 0 / 0.35);
+  background:
+    linear-gradient(160deg, oklch(0.675 0.221 9.68 / 0.35), oklch(0.195 0.016 284.82 / 0.9));
+  box-shadow: 0 12px 40px oklch(0 0 0 / 0.45);
+}
+
+.game-hub-pack__idle-card--0 {
+  transform: rotate(-12deg) translateX(-18px);
+  opacity: 0.7;
+}
+
+.game-hub-pack__idle-card--1 {
+  transform: rotate(0deg);
+  opacity: 0.9;
+}
+
+.game-hub-pack__idle-card--2 {
+  transform: rotate(12deg) translateX(18px);
+  opacity: 0.75;
+}
+
+.game-hub-pack__idle p {
+  margin: 0;
+  color: oklch(1 0 0 / 0.65);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.game-hub-pack__fan {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.game-hub-pack__fan .reveal-stage__fan,
+.game-hub-pack__fan .fan-root {
+  pointer-events: auto;
+}
+
+.game-hub-pack__prizes,
+.game-hub-pack__tally {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 420px);
+  padding: 0 8px;
+  text-align: center;
+  animation: game-hub-pack-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.game-hub-pack__prizes {
+  gap: 16px;
+}
+
+.game-hub-pack__tally-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-hub-pack__tally-icon {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  filter: drop-shadow(0 16px 48px oklch(0.686 0.218 3.07 / 0.42));
+}
+
+.game-hub-pack__tally-icon .diamond-lottie {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+@keyframes game-hub-pack-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.game-hub-pack__kicker {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.game-hub-pack__owned {
+  margin: 0;
+  color: oklch(0.87 0.12 145);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.game-hub-pack__prizes h2 {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: clamp(22px, 5vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.game-hub-pack__prizes p {
+  margin: 0;
+  color: oklch(1 0 0 / 0.65);
+  font-size: 14px;
+}
+
+.game-hub-pack__tally-value {
+  margin: 0;
+  font-size: clamp(40px, 10vw, 56px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(180deg, oklch(1 0 0) 20%, oklch(0.686 0.218 3.07));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.game-hub-pack__prize-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.game-hub-pack__prize {
+  width: 88px;
+  aspect-ratio: 0.528;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  background: oklch(0.221 0.016 285.06);
+  opacity: 0;
+  transform: scale(0.86);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.game-hub-pack__prize.is-shown {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.game-hub-pack__prize-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.game-hub-pack__photo-layers {
+  position: absolute;
+  inset: 0;
+}
+
+.game-hub-pack__photo-layers img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-hub-pack__prize span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 6px;
+  background: linear-gradient(transparent, oklch(0 0 0 / 0.75));
+  color: oklch(1 0 0);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.game-hub-pack__strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.game-hub-pack__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.2);
+  background: oklch(0.195 0.016 284.82 / 0.8);
+  color: oklch(1 0 0);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.game-hub-pack__chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.game-hub-pack__cta {
+  position: absolute;
+  left: 50%;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(92vw, 320px);
+}
+
+.game-hub-pack__cta-primary {
+  width: 100%;
+  max-width: 280px;
+  height: 56px;
+}
+
+.game-hub-pack__secondary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+
+.game-hub-pack__link {
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.7);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.game-hub-pack__link:disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
+}
+
+.game-hub-pack__link--danger {
+  color: oklch(0.77 0.14 9.82 / 0.85);
+}
+
+@media (max-width: 700px) {
+  .game-hub-pack {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .game-hub-pack__cta {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Pack finished with zero photo cards. The stage's own packs-circle bloom
+   already supplies the dark background and bottom glow. */
+.pack-no-match {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 420px);
+  padding: 0 20px;
+  text-align: center;
+}
+
+/* Hub only: its CTA is absolutely positioned and eats the bottom ~160px of the
+   stage, so the stack needs bottom padding to sit clear of the button. The
+   photo-scratch summary keeps its CTA in flow and needs none. */
+.game-hub-pack__stage .pack-no-match {
+  padding-bottom: clamp(40px, 9cqh, 88px);
+}
+
+.pack-no-match__kicker {
+  /* Negative right margin cancels the trailing letter-space so the tracked
+     caps read as optically centred. */
+  margin: 0 -0.24em 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  animation: pack-no-match-in 320ms cubic-bezier(0.22, 0.8, 0.3, 1) 100ms both;
+}
+
+.pack-no-match__title {
+  margin: 18px 0 0;
+  color: #ffffff;
+  /* Capped so "Nothing Matched" stays on one line inside the 374px phone
+     frame, not just the wider hub column. */
+  font-size: clamp(26px, 7vw, 34px);
+  font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  animation: pack-no-match-in 320ms cubic-bezier(0.22, 0.8, 0.3, 1) 220ms both;
+}
+
+/* Own line: "Oops! Nothing / Matched" is an ugly break, and the pink word
+   carries the whole emotional read. */
+.pack-no-match__title-highlight {
+  display: block;
+  color: #f49bd2;
+}
+
+.pack-no-match__subtitle {
+  margin: 14px 0 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.4;
+  animation: pack-no-match-in 320ms cubic-bezier(0.22, 0.8, 0.3, 1) 320ms both;
+}
+
+.pack-no-match__art {
+  width: clamp(132px, 23cqh, 196px);
+  height: clamp(132px, 23cqh, 196px);
+  margin-top: 26px;
+  overflow: visible;
+  filter: drop-shadow(0 0 12px rgba(244, 155, 210, 0.22));
+  animation: pack-no-match-in 350ms cubic-bezier(0.22, 0.8, 0.3, 1) 420ms both;
+}
+
+.pack-no-match__lid,
+.pack-no-match__body {
+  fill: rgba(255, 255, 255, 0.02);
+  stroke: url(#pack-no-match-edge);
+  stroke-width: 2;
+}
+
+/* Lifts open as the pack lands, so the empty inside is what you notice. */
+.pack-no-match__lid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: rotate(-2.5deg);
+  animation: pack-no-match-lid 400ms cubic-bezier(0.22, 0.8, 0.3, 1) 420ms both;
+}
+
+.pack-no-match__mouth {
+  fill: none;
+  stroke: rgba(244, 155, 210, 0.35);
+  stroke-width: 1.5;
+}
+
+.pack-no-match__wordmark {
+  fill: rgba(255, 255, 255, 0.5);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-anchor: middle;
+}
+
+.pack-no-match__heart {
+  fill: none;
+  stroke: #f49bd2;
+  stroke-width: 2;
+  opacity: 0.7;
+}
+
+.pack-no-match__sparkle {
+  fill: #ffd9ef;
+  opacity: 0.2;
+  animation: pack-no-match-sparkle 3.2s ease-in-out infinite;
+}
+
+/* One centred row that wraps to two lines only when it has to — a fixed
+   two-line stack left the pill tall and lopsided beside the sparkle. */
+.pack-no-match__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 24px;
+  padding: 13px 20px;
+  border: 1px solid rgba(255, 120, 200, 0.35);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: 0 0 24px rgba(180, 40, 140, 0.06);
+  animation: pack-no-match-in 320ms cubic-bezier(0.22, 0.8, 0.3, 1) 650ms both;
+}
+
+.pack-no-match__note-spark {
+  flex: none;
+  color: #e9a0d3;
+  font-size: 12px;
+}
+
+.pack-no-match__note p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.pack-no-match__note-lead {
+  color: #e9a0d3;
+}
+
+.game-hub-pack__cta.is-no-match .game-hub-pack__cta-primary {
+  animation: pack-no-match-in 320ms cubic-bezier(0.22, 0.8, 0.3, 1) 820ms both;
+}
+
+.game-hub-pack__cta.is-no-match .game-hub-pack__link {
+  animation: pack-no-match-in 320ms cubic-bezier(0.22, 0.8, 0.3, 1) 950ms both;
+}
+
+@keyframes pack-no-match-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Rests slightly askew so the lid reads as lifted off, not just floating. */
+@keyframes pack-no-match-lid {
+  from {
+    transform: rotate(-6deg);
+  }
+  to {
+    transform: rotate(-2.5deg);
+  }
+}
+
+@keyframes pack-no-match-sparkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-no-match__kicker,
+  .pack-no-match__title,
+  .pack-no-match__subtitle,
+  .pack-no-match__art,
+  .pack-no-match__lid,
+  .pack-no-match__note,
+  .game-hub-pack__cta.is-no-match .game-hub-pack__cta-primary,
+  .game-hub-pack__cta.is-no-match .game-hub-pack__link {
+    animation: pack-no-match-fade 200ms ease-out both;
+  }
+
+  .pack-no-match__sparkle {
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+@keyframes pack-no-match-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

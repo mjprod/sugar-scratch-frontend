@@ -1,16 +1,28 @@
 /**
- * Creator Home Feed — immersive discovery cards + paginated demo service.
- * Active cards use portrait video clips so creators appear to move.
+ * Creator Home Feed — immersive discovery cards from `/api/models`.
+ * Active cards use each model's backend swipe video when present.
  */
+
+import {
+  loadModels,
+  profileFromModel,
+  type BackendModel,
+} from "./models";
+import { isFeedFavourite } from "./feedFavourites";
+import { loadPackCatalog, packUnitCost } from "./purchase";
 
 export type HomeFeedCreator = {
   id: string;
   creatorId: string;
   creatorName: string;
+  /** @deprecated Prefer packName + tags for feed overlay. */
   collectionName: string;
+  /** @deprecated Prefer tags for feed overlay. */
   description: string;
   packId: string;
   packName: string;
+  /** Up to 3 shown on the feed card — theme / style / availability. */
+  tags: string[];
   mediaType: "video" | "image";
   posterUrl: string;
   videoUrl?: string;
@@ -24,188 +36,139 @@ export type HomeFeedPage = {
   hasMore: boolean;
 };
 
-/** Mixkit portrait clips — people motion, free license, muted autoplay-friendly. */
-const PORTRAIT_CLIPS = [
-  {
-    video: "https://assets.mixkit.co/videos/51656/51656-720.mp4",
-    poster: "https://assets.mixkit.co/videos/51656/51656-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/41622/41622-720.mp4",
-    poster: "https://assets.mixkit.co/videos/41622/41622-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/32049/32049-720.mp4",
-    poster: "https://assets.mixkit.co/videos/32049/32049-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/34505/34505-720.mp4",
-    poster: "https://assets.mixkit.co/videos/34505/34505-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/34487/34487-720.mp4",
-    poster: "https://assets.mixkit.co/videos/34487/34487-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/40122/40122-720.mp4",
-    poster: "https://assets.mixkit.co/videos/40122/40122-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/43308/43308-720.mp4",
-    poster: "https://assets.mixkit.co/videos/43308/43308-thumb-720-0.jpg",
-  },
-  {
-    video: "https://assets.mixkit.co/videos/48534/48534-720.mp4",
-    poster: "https://assets.mixkit.co/videos/48534/48534-thumb-720-0.jpg",
-  },
-] as const;
+function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> {
+  const profile = profileFromModel(model);
+  const videoUrl = profile.swipeVideoUrl ?? undefined;
+  /** Prefer backend pack title over "{Creator} Collection". */
+  const packName =
+    model.cardPackName?.trim() ||
+    profile.packs[0]?.label?.trim() ||
+    profile.collectionLabel;
+  return {
+    id: `hf-${profile.id}`,
+    creatorId: profile.id,
+    creatorName: profile.name,
+    collectionName: packName,
+    description: profile.collectionLabel,
+    packId: profile.id,
+    packName,
+    tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
+    mediaType: videoUrl ? "video" : "image",
+    posterUrl: "",
+    videoUrl,
+    diamondCost: packUnitCost(profile.id),
+  };
+}
 
-const CATALOG: Omit<HomeFeedCreator, "liked">[] = [
-  {
-    id: "hf-ashley-golden",
-    creatorId: "ashley",
-    creatorName: "Ashley",
-    collectionName: "Golden Hour",
-    description: "Rooftop Collection",
-    packId: "ep1",
-    packName: "Golden Hour Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[0].poster,
-    videoUrl: PORTRAIT_CLIPS[0].video,
-    diamondCost: 10,
-  },
-  {
-    id: "hf-nancy-ritual",
-    creatorId: "nancy",
-    creatorName: "Nancy Allison",
-    collectionName: "Daily Ritual",
-    description: "Soft morning light and quiet routines.",
-    packId: "nl1",
-    packName: "Daily Drop Foil Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[1].poster,
-    videoUrl: PORTRAIT_CLIPS[1].video,
-    diamondCost: 8,
-  },
-  {
-    id: "hf-alex-neon",
-    creatorId: "alex",
-    creatorName: "Alex Rivera",
-    collectionName: "Neon Muse",
-    description: "City nights, chrome edges, electric pink.",
-    packId: "aa1",
-    packName: "Neon Muse Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[2].poster,
-    videoUrl: PORTRAIT_CLIPS[2].video,
-    diamondCost: 12,
-  },
-  {
-    id: "hf-emily-sunset",
-    creatorId: "emma",
-    creatorName: "Emily",
-    collectionName: "Sunset Glow",
-    description: "Warm beach haze and foil motion cards.",
-    packId: "eb1",
-    packName: "Sunset Glow Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[3].poster,
-    videoUrl: PORTRAIT_CLIPS[3].video,
-    diamondCost: 10,
-  },
-  {
-    id: "hf-sam-weekend",
-    creatorId: "sam",
-    creatorName: "Sam Chen",
-    collectionName: "Weekend Edit",
-    description: "Fast cuts, street energy, limited drops.",
-    packId: "sw1",
-    packName: "Bonus Rush Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[4].poster,
-    videoUrl: PORTRAIT_CLIPS[4].video,
-    diamondCost: 6,
-  },
-  {
-    id: "hf-nancy-champagne",
-    creatorId: "nancy",
-    creatorName: "Nancy Allison",
-    collectionName: "Champagne Hours",
-    description: "Evening glass, gold foil, exclusive themes.",
-    packId: "np1",
-    packName: "Champagne Foil Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[5].poster,
-    videoUrl: PORTRAIT_CLIPS[5].video,
-    diamondCost: 15,
-  },
-  {
-    id: "hf-emily-summer",
-    creatorId: "emma",
-    creatorName: "Emily",
-    collectionName: "Summer Nights",
-    description: "Limited rooftop set after dark.",
-    packId: "ep1",
-    packName: "After Class Foil Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[6].poster,
-    videoUrl: PORTRAIT_CLIPS[6].video,
-    diamondCost: 10,
-  },
-  {
-    id: "hf-alex-muse2",
-    creatorId: "alex",
-    creatorName: "Alex Rivera",
-    collectionName: "Afterglow",
-    description: "Motion previews from the studio floor.",
-    packId: "aa1",
-    packName: "Neon Muse Pack",
-    mediaType: "video",
-    posterUrl: PORTRAIT_CLIPS[7].poster,
-    videoUrl: PORTRAIT_CLIPS[7].video,
-    diamondCost: 12,
-  },
-];
+const PAGE_SIZE = 6;
+const FEED_CACHE_VERSION = 15;
 
-const PAGE_SIZE = 4;
-const FEED_CACHE_VERSION = 2;
+function shuffleCatalog<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = next[i]!;
+    next[i] = next[j]!;
+    next[j] = current;
+  }
+  return next;
+}
+
+function uniqueFeedItems(items: Omit<HomeFeedCreator, "liked">[]) {
+  const seen = new Set<string>();
+  const unique: Omit<HomeFeedCreator, "liked">[] = [];
+  for (const item of items) {
+    const key = item.videoUrl || `id:${item.creatorId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
+let shuffledCatalog: Omit<HomeFeedCreator, "liked">[] | null = null;
+
+/** Upcoming clips to keep buffered beyond the active one. */
+export const FEED_WARM_AHEAD = 2;
+/** Previous clip to keep buffered for a reverse swipe. */
+export const FEED_WARM_BEHIND = 1;
+
+export function isWarmFeedIndex(index: number, activeIndex: number) {
+  const resolved = activeIndex >= 0 ? activeIndex : 0;
+  if (index === resolved) return false;
+  return (
+    index >= resolved - FEED_WARM_BEHIND &&
+    index <= resolved + FEED_WARM_AHEAD
+  );
+}
+
+/** Display-only: drop trailing " Pack" from pack titles on the feed. */
+export function feedPackLabel(packName: string) {
+  return packName.replace(/\s+Pack$/i, "");
+}
+
+/** Cap visible feed tags at 3. */
+export function feedVisibleTags(tags: string[] | undefined) {
+  if (!tags?.length) return [];
+  return tags.slice(0, 3);
+}
+
+/**
+ * Stable pseudo like-count until a backend counter exists.
+ * Current-user like bumps the displayed total by 1.
+ */
+export function feedLikeCount(creatorId: string, liked: boolean): number {
+  const id = creatorId.trim() || "creator";
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const base = 180 + (hash >>> 0) % 12820; // 180–13000
+  return base + (liked ? 1 : 0);
+}
+
+export function formatFeedLikeCount(count: number): string {
+  if (count < 1000) return String(count);
+  if (count < 10_000) {
+    const tenths = Math.round(count / 100) / 10;
+    return `${tenths}k`.replace(/\.0k$/, "k");
+  }
+  return `${Math.round(count / 1000)}k`;
+}
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-let forceFailNext = false;
-
-export function __homeFeedForceFailNext() {
-  forceFailNext = true;
-}
-
 export async function fetchHomeFeedPage(
   cursor: string | null = null,
 ): Promise<HomeFeedPage> {
-  await wait(cursor ? 380 : 520);
-  if (forceFailNext) {
-    forceFailNext = false;
-    throw new Error("Unable to load creators.");
-  }
+  const [, models] = await Promise.all([
+    wait(cursor ? 380 : 520),
+    Promise.all([loadModels(), loadPackCatalog()]).then(([loaded]) => loaded),
+  ]);
 
+  if (cursor == null || !shuffledCatalog) {
+    shuffledCatalog = shuffleCatalog(uniqueFeedItems(models.map(feedItemFromModel)));
+  }
+  const catalog = shuffledCatalog;
   const start = cursor ? Number.parseInt(cursor, 10) : 0;
   const safeStart = Number.isFinite(start) && start >= 0 ? start : 0;
-  const items: HomeFeedCreator[] = [];
-
-  for (let i = 0; i < PAGE_SIZE; i++) {
-    const catalogIndex = (safeStart + i) % CATALOG.length;
+  const slice = catalog.slice(safeStart, safeStart + PAGE_SIZE);
+  const items: HomeFeedCreator[] = slice.map((seed, i) => {
     const pageIndex = safeStart + i;
-    const seed = CATALOG[catalogIndex]!;
-    items.push({
+    return {
       ...seed,
       id: `${seed.id}__${pageIndex}`,
-      liked: false,
-    });
-  }
+      liked: isFeedFavourite({
+        id: `${seed.id}__${pageIndex}`,
+      }),
+    };
+  });
 
-  const nextStart = safeStart + PAGE_SIZE;
-  const hasMore = nextStart < CATALOG.length * 6;
+  const nextStart = safeStart + items.length;
+  const hasMore = nextStart < catalog.length;
 
   return {
     items,
@@ -240,6 +203,7 @@ export function writeHomeFeedCache(
 
 export function clearHomeFeedCache() {
   feedCache = null;
+  shuffledCatalog = null;
 }
 
 export function toPurchasePack(item: HomeFeedCreator) {

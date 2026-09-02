@@ -1,22 +1,31 @@
 import { Heart } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { HomeFeedCreator } from "../../flow/creatorFeed";
+import {
+  feedPackLabel,
+  feedVisibleTags,
+  type HomeFeedCreator,
+} from "../../flow/creatorFeed";
 
 export function CreatorFeedCard({
   item,
   active,
   onLike,
   onBuy,
+  onOpenCreator,
   videoRef,
 }: {
   item: HomeFeedCreator;
   active: boolean;
   onLike: () => void;
   onBuy: () => void;
+  onOpenCreator?: (creatorId: string) => void;
   videoRef: (node: HTMLVideoElement | null) => void;
 }) {
   const [burst, setBurst] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
+  const tags = feedVisibleTags(item.tags);
+  const packLabel = feedPackLabel(item.packName);
+  const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
 
   function like() {
     onLike();
@@ -29,7 +38,7 @@ export function CreatorFeedCard({
   return (
     <article
       className="hf-card"
-      aria-label={`${item.creatorName} · ${item.collectionName}`}
+      aria-label={`${item.creatorName} · ${packLabel}`}
     >
       <div className={["hf-media", active ? "is-active" : ""].join(" ")}>
         {item.mediaType === "video" && item.videoUrl ? (
@@ -57,16 +66,40 @@ export function CreatorFeedCard({
 
       <div className={["hf-overlay", active ? "is-visible" : ""].join(" ")}>
         <div className="hf-info">
-          <h2 className="hf-creator">{item.creatorName}</h2>
-          <p className="hf-collection">{item.collectionName}</p>
-          <p className="hf-description">{item.description}</p>
+          {canOpenCreator ? (
+            <button
+              type="button"
+              className="hf-creator hf-creator--link"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenCreator?.(item.creatorId);
+              }}
+            >
+              {item.creatorName}
+            </button>
+          ) : (
+            <h2 className="hf-creator">{item.creatorName}</h2>
+          )}
+          <p className="hf-pack">{packLabel}</p>
+          {tags.length > 0 ? (
+            <ul className="hf-tags" aria-label="Pack tags">
+              {tags.map((tag) => (
+                <li key={tag} className="hf-tag">
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         <div className="hf-actions">
           <button
             type="button"
             className="hf-buy"
-            onClick={onBuy}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBuy();
+            }}
             aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
           >
             <span>Buy Pack</span>
@@ -84,7 +117,10 @@ export function CreatorFeedCard({
               .join(" ")}
             aria-label={item.liked ? "Unlike" : "Like"}
             aria-pressed={item.liked}
-            onClick={like}
+            onClick={(e) => {
+              e.stopPropagation();
+              like();
+            }}
           >
             <Heart
               className="hf-like-icon"

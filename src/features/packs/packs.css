@@ -1,0 +1,2190 @@
+/* Color token still used by circle gradients; fade is an opacity crossfade. */
+@property --overlay-gradient-color-end {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: oklch(0.216 0.028 230.24);
+}
+
+.stage-packs {
+  /* Fill app-stage (parent owns viewport size). */
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  display: block;
+  background: oklch(0 0 0);
+  z-index: 1;
+  box-sizing: border-box;
+}
+
+/*
+ * Dual glow stacks: true crossfade (base out + next in).
+ * Each stack is isolated so color-dodge cores only blend within their own
+ * bloom/core pair — stacking two color-dodge layers was flashing bright.
+ * Transitions only run during .is-glow-fading so handoff snaps don't reverse-fade.
+ */
+.packs-glow-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+  /* Contain mix-blend-mode: color-dodge to this stack only. */
+  isolation: isolate;
+  will-change: opacity;
+}
+
+.packs-glow-stack--base {
+  opacity: 1;
+}
+
+.packs-glow-stack--next {
+  opacity: 0;
+}
+
+/* prep: next is painted at 0 with no transition before the fade starts. */
+.stage-packs.is-glow-prep .packs-glow-stack--base {
+  opacity: 1;
+  transition: none;
+}
+
+.stage-packs.is-glow-prep .packs-glow-stack--next {
+  opacity: 0;
+  transition: none;
+}
+
+/* fading: equal-time out/in so midpoints stay ~constant brightness. */
+.stage-packs.is-glow-fading .packs-glow-stack--base,
+.stage-packs.is-glow-fading .packs-glow-stack--next {
+  transition: opacity 480ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stage-packs.is-glow-fading .packs-glow-stack--base {
+  opacity: 0;
+}
+
+.stage-packs.is-glow-fading .packs-glow-stack--next {
+  opacity: 1;
+}
+
+/* idle handoff: both stacks hold final opacities with transitions off. */
+.stage-packs:not(.is-glow-prep):not(.is-glow-fading) .packs-glow-stack--base,
+.stage-packs:not(.is-glow-prep):not(.is-glow-fading) .packs-glow-stack--next {
+  transition: none;
+}
+
+/*
+ * Bottom glow stack — soft bloom + tighter overlay core.
+ * Color uses the live model cardOverlayColorEnd via
+ * --overlay-gradient-color-end on the parent glow stack.
+ * Homepage swipe circles are not shared and stay untouched.
+ */
+.packs-circle {
+  position: absolute;
+  left: 50%;
+  /* Under coverflow chrome (shell z-index: 2); above stage black. */
+  z-index: 1;
+  translate: -50% 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+      color-mix(in oklab,
+        var(--overlay-gradient-color-end, oklch(0.216 0.028 230.24)) 95%,
+        transparent) 0%,
+      color-mix(in oklab,
+        var(--overlay-gradient-color-end, oklch(0.216 0.028 230.24)) 35%,
+        transparent) 42%,
+      color-mix(in oklab,
+        var(--overlay-gradient-color-end, oklch(0.216 0.028 230.24)) 0%,
+        transparent) 72%);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Soft outer bloom (DEFAULT_SWIPE_CIRCLE_DESKTOP pose). */
+.packs-circle--bloom {
+  width: 94dvw;
+  height: 72dvw;
+  bottom: -4dvw;
+  filter: blur(22px);
+  /* ~60% of previous strength (was 0.53). */
+  opacity: 0.318;
+}
+
+/*
+ * Sharper, smaller core above the bloom.
+ * Same API color; overlay blend punches a hotter center.
+ */
+.packs-circle--core {
+  z-index: 1;
+  width: 30dvw;
+  height: 36dvw;
+  bottom: -7dvw;
+  filter: blur(36px) hue-rotate(304deg);
+  /* ~60% of previous strength (was 1). */
+  opacity: 0.6;
+  mix-blend-mode: color-dodge;
+
+}
+
+@media (max-width: 767px) {
+
+  /* Mobile bloom pose (DEFAULT_SWIPE_CIRCLE_MOBILE). */
+  .packs-circle--bloom {
+    width: 190dvw;
+    height: 170dvw;
+    bottom: -8dvw;
+    filter: blur(20px);
+    opacity: 0.3;
+  }
+
+  .packs-circle--core {
+
+    width: 44dvw;
+    height: 120dvw;
+    bottom: -20dvw;
+    opacity: 0.3;
+    mix-blend-mode: color-dodge;
+    filter: blur(25px) hue-rotate(304deg);
+  }
+}
+
+.stage-packs .coverflow-shell {
+  position: absolute;
+  inset: 0;
+  /* Above packs-circle glow; keep shell clear so the glow shows through. */
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  display: block;
+  gap: 0;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+}
+
+/* Full-viewport 3D stage — no inset card frame.
+ * Stage fills the parent so canvas height === visible stage height.
+ * Pack labels use % bottoms projected from pack NDC (same space).
+ */
+.stage-packs .coverflow-stage {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  /* Transparent so .packs-circle (under shell) remains visible. */
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
+
+.stage-packs .coverflow-stage-backdrop {
+  /* Stage black lives on .stage-packs; keep backdrop clear for the glow. */
+  background: transparent;
+}
+
+.stage-packs .coverflow-tools-bar {
+  position: absolute;
+  left: 50%;
+  /* Nav is top on mobile; only reserve bottom space on desktop. */
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--stage-nav-clearance-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 8;
+  margin: 0;
+}
+
+.stage-packs .coverflow-tools-bar.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* Canvas host — full stage; no reveal mask while browsing. */
+.coverflow-stage__pack {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: transparent;
+  transition: none;
+}
+
+/* Only during open: layering + bottom fade like reveal page. */
+.coverflow-stage.is-revealing .coverflow-stage__pack {
+  z-index: 3;
+  -webkit-mask-image: linear-gradient(180deg, oklch(0 0 0) 0%, oklch(0 0 0) 62%, transparent 100%);
+  mask-image: linear-gradient(180deg, oklch(0 0 0) 0%, oklch(0 0 0) 62%, transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.coverflow-stage.is-revealing .coverflow-stage__pack.is-behind-fan {
+  z-index: 1;
+  transition: none;
+}
+
+.coverflow-stage.is-revealing .coverflow-stage__pack.is-blurred,
+.coverflow-stage.is-revealing .coverflow-stage__pack.is-behind-fan {
+  filter: blur(var(--pack-blur, 0px));
+  -webkit-filter: blur(var(--pack-blur, 0px));
+  will-change: filter;
+}
+
+.coverflow-stage__pack canvas {
+  background: transparent !important;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.coverflow-reveal-fan {
+  z-index: 2;
+}
+
+.coverflow-reveal-cta {
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.reveal-stage__cta.is-enter.coverflow-reveal-cta {
+  width: 100%;
+  max-width: 17rem;
+}
+
+.coverflow-reveal-cta .motion-reveal__continue,
+.coverflow-reveal-cta .cta-button-glow,
+.coverflow-reveal-cta .cta-button {
+  pointer-events: auto;
+}
+
+.coverflow-shell.is-revealing .coverflow-nav-chevron,
+.coverflow-stage.is-revealing .coverflow-active-action {
+  pointer-events: none;
+}
+
+/* Product: fixed compact phone/tilt control (was inheriting huge button chrome). */
+.stage-packs .coverflow-motion-toggle,
+.stage-packs .reset-button.coverflow-motion-toggle {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  padding: 0;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  background: oklch(0.189 0.012 254.12 / 0.55);
+  color: oklch(0.974 0.007 247.89);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  font-size: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.stage-packs .coverflow-motion-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.stage-packs .coverflow-motion-icon svg,
+.stage-packs .coverflow-motion-toggle svg {
+  width: 18px !important;
+  height: 18px !important;
+  display: block;
+}
+
+.packs-empty {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+}
+
+.packs-empty h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.packs-empty p {
+  margin: 0 0 8px;
+  opacity: 0.7;
+}
+
+/* Hide leftover editor chrome if any */
+.stage-packs .editor-page,
+.stage-packs .coverflow-caption {
+  display: none !important;
+}
+
+/* Enables animating the pack gradient color with transition. */
+@property --coverflow-gradient-color {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: oklch(0.34 0.097 133.87);
+}
+
+:root {
+  --ink-strong: oklch(0.249 0.034 246.14);
+  --ink-soft: oklch(0.396 0.044 246.59);
+  --panel: oklch(0.987 0.006 255.47 / 0.82);
+  --panel-strong: oklch(1 0 0 / 0.92);
+  --stroke: oklch(0.315 0.061 246.83 / 0.14);
+  --accent: oklch(0.54 0.095 215.01);
+  --accent-strong: oklch(0.447 0.079 215.47);
+  --error: oklch(0.516 0.167 25.21);
+  --bg-a: oklch(0.963 0.018 250.59);
+  --bg-b: oklch(0.977 0.028 88.75);
+  --bg-c: oklch(0.986 0.02 156.84);
+  --shadow:
+    0 24px 60px oklch(0.282 0.05 249.06 / 0.16),
+    0 6px 18px oklch(0.282 0.05 249.06 / 0.08);
+  --font-display: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Consolas', 'Menlo', monospace;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+  background:
+    radial-gradient(circle at 10% 10%, oklch(0.835 0.103 229.51 / 0.35), transparent 35%),
+    radial-gradient(circle at 92% 84%, oklch(0.865 0.116 75.55 / 0.33), transparent 30%),
+    linear-gradient(145deg, var(--bg-a), var(--bg-b) 45%, var(--bg-c));
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.layout {
+  width: min(1240px, calc(100% - 2.4rem));
+  margin: 1.2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.masthead {
+  border: 1px solid var(--stroke);
+  border-radius: 26px;
+  padding: 1.3rem 1.5rem;
+  background: linear-gradient(155deg, var(--panel-strong), oklch(1 0 0 / 0.55));
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  color: var(--accent-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  margin-bottom: 0.55rem;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.2vw, 2.8rem);
+  color: var(--ink-strong);
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin-top: 0.55rem;
+  max-width: 70ch;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 2fr) minmax(260px, 1fr);
+  gap: 1rem;
+}
+
+.viewer-shell,
+.controls-shell,
+.carousel-section {
+  border: 1px solid var(--stroke);
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.viewer-shell {
+  padding: 0.75rem;
+}
+
+.model-viewer {
+  width: 100%;
+  height: clamp(250px, 50vh, 540px);
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 0%, oklch(1 0 0 / 0.6), oklch(0.867 0.032 246.73 / 0.35)),
+    linear-gradient(155deg, oklch(0.26 0.043 243.85), oklch(0.366 0.042 246.55) 52%, oklch(0.32 0.047 238.76));
+  position: relative;
+}
+
+.model-viewer canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.viewer-error {
+  position: absolute;
+  left: 0.8rem;
+  bottom: 0.8rem;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  background: oklch(0.516 0.167 25.21 / 0.86);
+  color: oklch(1 0 0);
+  font-size: 0.8rem;
+}
+
+.controls-shell {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.mode-chip {
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  background: oklch(0.54 0.095 215.01 / 0.12);
+  border: 1px solid oklch(0.54 0.095 215.01 / 0.28);
+  color: var(--accent-strong);
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+
+.upload-button,
+.save-button,
+.secondary-button {
+  border-radius: 999px;
+  padding: 0.72rem 1rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  text-align: center;
+  transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.upload-button {
+  border: 1px solid oklch(0.54 0.095 215.01 / 0.35);
+  background: oklch(0.54 0.095 215.01 / 0.12);
+  color: var(--accent-strong);
+  cursor: pointer;
+}
+
+.upload-button:hover {
+  transform: translateY(-1px);
+  background: oklch(0.54 0.095 215.01 / 0.2);
+}
+
+.fit-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1px solid oklch(0.54 0.095 215.01 / 0.22);
+  border-radius: 12px;
+  background: oklch(1 0 0 / 0.76);
+}
+
+.fit-button {
+  min-height: 2.35rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.1;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.fit-button:hover {
+  background: oklch(0.54 0.095 215.01 / 0.1);
+}
+
+.fit-button[aria-pressed='true'] {
+  border-color: oklch(0.54 0.095 215.01 / 0.45);
+  background: oklch(0.54 0.095 215.01 / 0.18);
+  color: var(--accent-strong);
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 0.55rem;
+}
+
+.save-button {
+  border: none;
+  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
+  color: oklch(0.987 0.008 225.08);
+  cursor: pointer;
+}
+
+.save-button:hover {
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  border: 1px solid oklch(0.249 0.034 246.14 / 0.18);
+  background: oklch(1 0 0 / 0.84);
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  transform: translateY(-1px);
+  background: oklch(1 0 0);
+}
+
+.hidden-input {
+  display: none;
+}
+
+.status-box {
+  padding: 0.9rem;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: oklch(1 0 0 / 0.72);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.status-box strong {
+  color: var(--ink-strong);
+}
+
+.error-text {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.carousel-section {
+  background: oklch(0.189 0.012 254.12);
+  border-color: oklch(1 0 0 / 0.08);
+  padding: 1rem 1rem 1.15rem;
+  overflow: hidden;
+}
+
+.carousel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 0.75rem;
+}
+
+.carousel-heading h2 {
+  font-family: var(--font-display);
+  color: oklch(0.974 0.007 247.89);
+  font-size: 1.2rem;
+}
+
+.carousel-heading p {
+  color: oklch(0.907 0.019 242.98 / 0.72);
+  font-size: 0.9rem;
+}
+
+.coverflow-shell {
+  display: block;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.coverflow-nav {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
+  pointer-events: none;
+}
+
+.coverflow-nav-chevron {
+  --coverflow-chevron-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  --glass-bg-opacity: 0;
+  position: absolute;
+  top: 50%;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.05);
+  border-radius: 999px;
+  background: var(--coverflow-chevron-surface);
+  color: oklch(1 0 0 / 0.88);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateY(-50%);
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.coverflow-nav-chevron.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  background: var(--coverflow-chevron-surface);
+  border: 1px solid oklch(1 0 0 / 0.05);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+@supports (-webkit-touch-callout: none) {
+  .coverflow-nav-chevron.glass {
+    --tw-glass-filter: ;
+    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
+    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+  }
+}
+
+.coverflow-nav-chevron.is-left {
+  left: 0.75rem;
+}
+
+.coverflow-nav-chevron.is-right {
+  right: 0.75rem;
+}
+
+.coverflow-nav-chevron:hover:not(:disabled) {
+  border-color: oklch(1 0 0 / 0.1);
+  background: linear-gradient(
+    180deg,
+    oklch(0.26 0 0 / 0.18) 0%,
+    oklch(0 0 0 / 0.1) 42%,
+    oklch(0.16 0 0 / 0.16) 100%
+  );
+  color: oklch(1 0 0);
+}
+
+.coverflow-nav-chevron:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+.coverflow-nav-chevron:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.coverflow-chevron-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.coverflow-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  /* Custom gestures handle horizontal swipes/tilts; block browser pan. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  outline: none;
+  background: oklch(0 0 0);
+  isolation: isolate;
+  box-shadow: none;
+}
+
+.coverflow-stage-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* Product: solid black — no per-pack linear gradients. */
+  --coverflow-gradient-color: oklch(0 0 0);
+  background: oklch(0 0 0);
+  transition: none;
+}
+
+.coverflow-stage:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px oklch(1 0 0 / 0.05),
+    0 0 0 2px oklch(0.798 0.104 207.84 / 0.55);
+}
+
+.coverflow-stage canvas {
+  position: relative;
+  z-index: 1;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  background: transparent !important;
+}
+
+/* Desktop-only label under the centered 3D pack. */
+.coverflow-desktop-under-label {
+  position: absolute;
+  left: 50%;
+  z-index: 4;
+  transform: translate(-50%, 0);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: none;
+  text-align: center;
+  /* Wide enough for uppercase + letter-spaced collection names on one line. */
+  max-width: none;
+  width: max-content;
+  transition:
+    opacity 320ms ease,
+    transform 360ms ease,
+    filter 360ms ease;
+  will-change: opacity, transform, filter;
+}
+
+/* Inactive titles ~5% smaller than the active pack label. */
+.coverflow-desktop-under-label .coverflow-pack-label__collection {
+  font-size: 0.8075rem; /* 0.85 * 0.95 */
+}
+
+.coverflow-desktop-under-label .coverflow-pack-label__pack {
+  font-size: 0.741rem; /* 0.78 * 0.95 */
+}
+
+/* When the pack becomes active, this under-label fades up/away
+   so it doesn't compete with the Buy Pack label above the button. */
+.coverflow-desktop-under-label.is-active-hidden {
+  opacity: 0;
+  transform: translate(-50%, -18px);
+  filter: blur(6px);
+}
+
+/* Shared pack-label type: active + inactive use the same classes. */
+.coverflow-pack-label__collection,
+.coverflow-desktop-under-label-text,
+.coverflow-active-pack-label__collection {
+  margin: 0 auto 0.15rem;
+  color: oklch(1 0 0);
+  font-family: sans-serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
+  /* Keep "{Name} Collection" on a single line. */
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.coverflow-pack-label__pack,
+.coverflow-desktop-under-label-text-pack,
+.coverflow-active-pack-label__pack {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-family: sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
+  white-space: pre-line;
+}
+
+.coverflow-pack-label__price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22em;
+  margin: 0.12rem auto 0;
+  color: oklch(1 0 0);
+  font-family: sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.45);
+  white-space: nowrap;
+}
+
+.coverflow-pack-label__price-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.coverflow-pack-flag {
+  display: inline-block;
+  margin-right: 0.15rem;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.pack-style-controls {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.9fr) minmax(0, 1.4fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.flag-picker {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.flag-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: oklch(0.907 0.019 242.98 / 0.9);
+  font-size: 0.9rem;
+}
+
+.flag-picker-header strong {
+  font-size: 0.92rem;
+  line-height: 1.2;
+  font-weight: 650;
+}
+
+.flag-search-box {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: center;
+  min-height: 2.75rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 10px;
+  background: oklch(1 0 0 / 0.06);
+  padding: 0 0.55rem;
+}
+
+.flag-search-selected {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.flag-search-box input[type='search'] {
+  width: 100%;
+  min-height: 2.5rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: oklch(0.974 0.007 247.89);
+  font-size: 16px;
+}
+
+.flag-search-box input[type='search']::placeholder {
+  color: oklch(0.907 0.019 242.98 / 0.55);
+}
+
+.flag-search-results {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.2rem;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.4rem;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 12px;
+  background: oklch(0.189 0.012 254.12 / 0.96);
+  box-shadow: 0 14px 30px oklch(0 0 0 / 0.28);
+}
+
+.flag-search-result {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 2.3rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: oklch(0.974 0.007 247.89);
+  text-align: left;
+  padding: 0.3rem 0.45rem;
+  cursor: pointer;
+}
+
+.flag-search-result:hover,
+.flag-search-result.is-selected {
+  background: oklch(0.798 0.104 207.84 / 0.14);
+}
+
+.flag-search-empty {
+  margin: 0;
+  padding: 0.55rem 0.45rem;
+  color: oklch(0.907 0.019 242.98 / 0.7);
+  font-size: 0.86rem;
+}
+
+.background-color-control {
+  display: grid;
+  gap: 0.45rem;
+  color: oklch(0.907 0.019 242.98 / 0.9);
+  font-size: 0.9rem;
+}
+
+.background-color-control-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.background-color-control input[type='color'] {
+  width: 3rem;
+  height: 2.75rem;
+  padding: 0.15rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 10px;
+  background: oklch(1 0 0 / 0.06);
+}
+
+.background-color-control input[type='text'] {
+  min-height: 2.75rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 10px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(0.974 0.007 247.89);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  padding: 0 0.65rem;
+}
+
+@media (max-width: 980px) {
+  .pack-style-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Pack-attached HUD (drei Html) — screen-space size stays constant. */
+.coverflow-pack-html {
+  pointer-events: none !important;
+}
+
+.coverflow-pack-html > div {
+  pointer-events: none;
+  /* Keep rem-based type/CTA at a stable root size. */
+  font-size: 16px;
+}
+
+/*
+ * Short-height frosted glass (browser height < 550px).
+ * Glass lives on ::before so content filter animations stay independent.
+ * Class-driven (is-short-glass) so padding/opacity can ease instead of snapping.
+ */
+.coverflow-pack-html-label,
+.coverflow-active-stack--html {
+  position: relative;
+  isolation: isolate;
+  /* Reserve glass padding structure always so layout doesn't jump hard. */
+  border-radius: 16px;
+  padding: 0;
+  transition:
+    padding 420ms ease,
+    box-shadow 420ms ease,
+    gap 420ms ease;
+}
+
+.coverflow-pack-html-label::before,
+.coverflow-active-stack--html::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: oklch(0 0 0 / 0.58);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 10px 28px oklch(0 0 0 / 0.45),
+    inset 0 1px 0 oklch(1 0 0 / 0.08);
+  opacity: 0;
+  transform: scale(0.96);
+  -webkit-backdrop-filter: blur(0) saturate(1);
+  backdrop-filter: blur(0) saturate(1);
+  pointer-events: none;
+  transition:
+    opacity 480ms ease,
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 420ms ease,
+    -webkit-backdrop-filter 520ms ease,
+    backdrop-filter 520ms ease;
+}
+
+/* Animate glass in when short-height class is applied. */
+.coverflow-pack-html-label.is-short-glass,
+.coverflow-active-stack--html.is-short-glass {
+  padding: 0.55rem 0.85rem 0.65rem;
+}
+
+.coverflow-active-stack--html.is-short-glass {
+  padding: 0.65rem 0.9rem 0.75rem;
+  gap: var(--active-stack-gap, 0.85rem);
+}
+
+.coverflow-pack-html-label.is-short-glass::before,
+.coverflow-active-stack--html.is-short-glass::before {
+  opacity: 1;
+  transform: scale(1);
+  border-color: oklch(1 0 0 / 0.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+/* If the HUD itself is hidden, keep glass fully out. */
+.coverflow-pack-html-label:not(.is-visible)::before,
+.coverflow-pack-html-label.is-active-hidden::before,
+.coverflow-active-stack--html:not(.is-visible)::before {
+  opacity: 0;
+  transform: scale(0.96);
+  -webkit-backdrop-filter: blur(0) saturate(1);
+  backdrop-filter: blur(0) saturate(1);
+  transition-duration: 280ms;
+}
+
+/* Inactive / browse pack title + pack Nº
+   Timings/effects aligned with coverflow-active-stack (blur + soft rise). */
+.coverflow-pack-html-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: max-content;
+  max-width: none;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(14px);
+  transition:
+    opacity 480ms ease,
+    transform 520ms ease,
+    filter 520ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.coverflow-pack-html-label .coverflow-pack-label__collection,
+.coverflow-pack-html-label .coverflow-pack-label__pack,
+.coverflow-pack-html-label .coverflow-pack-label__price {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(10px);
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease,
+    filter 180ms ease;
+  will-change: opacity, transform, filter;
+}
+
+/* First load / focus / return-from-active enter — snappier soft settle. */
+.coverflow-pack-html-label.is-visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0.15rem);
+  transition:
+    opacity 360ms ease,
+    transform 380ms ease,
+    filter 380ms ease;
+  transition-delay: 20ms;
+}
+
+.coverflow-pack-html-label.is-visible .coverflow-pack-label__collection {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 360ms ease,
+    transform 380ms ease,
+    filter 380ms ease;
+  transition-delay: 30ms;
+}
+
+.coverflow-pack-html-label.is-visible .coverflow-pack-label__pack {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 320ms ease,
+    transform 340ms ease,
+    filter 340ms ease;
+  transition-delay: 70ms;
+}
+
+.coverflow-pack-html-label.is-visible .coverflow-pack-label__price {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 300ms ease,
+    transform 320ms ease,
+    filter 320ms ease;
+  transition-delay: 100ms;
+}
+
+/* Active / leave-center: fade up + blur out (mirrors active-stack exit). */
+.coverflow-pack-html-label.is-active-hidden,
+.coverflow-pack-html--browse.is-active-hidden .coverflow-pack-html-label {
+  opacity: 0;
+  transform: translateY(-14px);
+  filter: blur(8px);
+  transition:
+    opacity 420ms ease,
+    transform 480ms ease,
+    filter 480ms ease;
+  transition-delay: 0ms;
+}
+
+.coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__collection,
+.coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__pack,
+.coverflow-pack-html-label.is-active-hidden .coverflow-pack-label__price,
+.coverflow-pack-html--browse.is-active-hidden
+  .coverflow-pack-html-label
+  .coverflow-pack-label__collection,
+.coverflow-pack-html--browse.is-active-hidden
+  .coverflow-pack-html-label
+  .coverflow-pack-label__pack,
+.coverflow-pack-html--browse.is-active-hidden
+  .coverflow-pack-html-label
+  .coverflow-pack-label__price {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(-8px);
+  transition:
+    opacity 360ms ease,
+    transform 400ms ease,
+    filter 400ms ease;
+}
+
+/* Single unit: title + pack Nº + CTA, parented to the pack bottom. */
+.coverflow-active-stack {
+  position: relative;
+  left: auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--active-stack-gap, 1rem);
+  width: max-content;
+  max-width: none;
+  transform-origin: center top;
+  opacity: 0;
+  filter: blur(8px);
+  pointer-events: none;
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease,
+    filter 420ms ease;
+  will-change: opacity, transform, filter;
+}
+
+.coverflow-active-stack--html {
+  /* Html center anchors mid-content; nudge so stack sits under pack bottom. */
+  transform: translateY(calc(0.35rem + 12px));
+}
+
+.coverflow-active-stack--html.is-visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0.35rem);
+  transition:
+    opacity 520ms ease,
+    transform 520ms ease,
+    filter 520ms ease;
+  transition-delay: 40ms;
+}
+
+/* Exit path when is-visible is removed (active → inactive). */
+.coverflow-active-stack--html:not(.is-visible) {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(calc(0.35rem + 10px));
+  transition:
+    opacity 420ms ease,
+    transform 480ms ease,
+    filter 480ms ease;
+  transition-delay: 0ms;
+}
+
+.coverflow-active-pack-label {
+  position: relative;
+  left: auto;
+  z-index: 2;
+  margin: 0;
+  text-align: center;
+  max-width: none;
+  width: max-content;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(12px);
+  pointer-events: none;
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease,
+    filter 360ms ease;
+  transition-delay: 0ms;
+  will-change: opacity, transform, filter;
+}
+
+/* Hex CTA bloom uses large margins in the lab; collapse them under packs. */
+.coverflow-buy-pack-cta {
+  position: relative;
+  left: auto;
+  z-index: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  overflow: visible;
+  transform: translateY(10px);
+  transform-origin: center bottom;
+  pointer-events: none;
+  opacity: 0;
+  filter: blur(6px);
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease,
+    filter 360ms ease,
+    box-shadow 250ms ease;
+  transition-delay: 0ms;
+  will-change: opacity, transform, filter;
+}
+
+.coverflow-buy-pack-cta__primary {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Buy Pack confirm — same chrome as pack-pocket remove, anchored under the hex CTA. */
+.coverflow-buy-pack-cta .coverflow-buy-confirm {
+  top: calc(100% + 0.45rem);
+  z-index: 6;
+}
+
+/* Positive confirm (buy) — green check instead of destructive red. */
+.coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm {
+  border-color: oklch(0.72 0.17 145 / 0.5);
+  background: oklch(0.48 0.14 145 / 0.32);
+  color: oklch(0.9 0.12 145);
+}
+
+.coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm:hover {
+  background: oklch(0.52 0.15 145 / 0.44);
+  border-color: oklch(0.76 0.17 145 / 0.6);
+  color: oklch(0.94 0.1 145);
+}
+
+.coverflow-buy-pack-cta.is-buy-confirm-open {
+  z-index: 5;
+}
+
+/* White text control under the hex CTA — pocket affordance. */
+.coverflow-add-to-pocket {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: none;
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.85),
+    0 0 10px rgb(0 0 0 / 0.45);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.coverflow-add-to-pocket__icon {
+  width: 1.265em;
+  height: 1.265em;
+  flex-shrink: 0;
+  color: #ffffff;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
+}
+
+.coverflow-add-to-pocket__label {
+  color: #ffffff;
+  font-weight: 400;
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.85),
+    0 0 10px rgb(0 0 0 / 0.45);
+}
+
+.coverflow-active-stack.is-visible .coverflow-add-to-pocket {
+  pointer-events: auto;
+}
+
+.coverflow-add-to-pocket:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.coverflow-add-to-pocket:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.coverflow-add-to-pocket:disabled,
+.coverflow-add-to-pocket[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.coverflow-add-to-pocket:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 0.7);
+  outline-offset: 3px;
+  border-radius: 0.35rem;
+}
+
+.coverflow-buy-pack-cta .cta-button-glow,
+.coverflow-buy-pack-cta .cta-button-glow.cta-button-glow--hex {
+  margin: 0;
+}
+
+.coverflow-buy-pack-cta .cta-button {
+  pointer-events: none;
+}
+
+.coverflow-buy-pack-cta .cta-button__title-row {
+  gap: 0.32em;
+}
+
+.coverflow-buy-pack-cta .cta-button__leading-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+/* Compact hex height: tighten vertical rhythm so title + cost still fit. */
+.coverflow-buy-pack-cta .cta-button__label {
+  gap: 0.08em;
+}
+
+.coverflow-buy-pack-cta .cta-button--hex .cta-button__label {
+  gap: 0.06em;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.coverflow-buy-pack-cta .cta-button__cost {
+  font-size: 0.98em;
+}
+
+/*
+  In Pocket: black chrome (plate, aurora, stroke, glow) at 30%.
+  Title + checkmark stay fully opaque; diamond cost fades with the chrome.
+*/
+.coverflow-buy-pack-cta .cta-button:disabled,
+.coverflow-buy-pack-cta .cta-button.is-disabled,
+.coverflow-buy-pack-cta .cta-button-glow.is-disabled,
+.coverflow-buy-pack-cta .cta-button-glow:has(> .border-glow-inner .cta-button:disabled),
+.coverflow-buy-pack-cta .cta-button-glow:has(> .border-glow-inner .cta-button.is-disabled) {
+  filter: none;
+  opacity: 1;
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__inner,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__inner {
+  background: rgb(0 0 0 / 0.3);
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__face,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__face {
+  opacity: 0.3;
+  filter: grayscale(1) brightness(0);
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__label,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__label {
+  opacity: 1;
+}
+
+.coverflow-buy-pack-cta .cta-button:disabled .cta-button__cost,
+.coverflow-buy-pack-cta .cta-button.is-disabled .cta-button__cost {
+  opacity: 0.3;
+}
+
+.coverflow-buy-pack-cta .cta-button__inner,
+.coverflow-buy-pack-cta .cta-button__stroke,
+.coverflow-buy-pack-cta .cta-button__aurora,
+.coverflow-buy-pack-cta .cta-button__face,
+.coverflow-buy-pack-cta .cta-button__cost {
+  transition:
+    opacity 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    filter 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    background 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
+  Add Pack → In Pocket: anticipate (scale down), punch up, settle.
+  Gold chrome holds through the scale; In Pocket color eases in after.
+*/
+@keyframes coverflow-buy-cta-confirm {
+  0% {
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  16% {
+    transform: scale(0.9);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  52% {
+    transform: scale(1.1);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.coverflow-buy-pack-cta.is-confirming .cta-button-glow {
+  transform-origin: center center;
+  animation: coverflow-buy-cta-confirm 560ms both;
+}
+
+.coverflow-buy-pack-cta.is-confirming .cta-button {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverflow-buy-pack-cta.is-confirming .cta-button-glow {
+    animation: none;
+  }
+
+  .coverflow-buy-pack-cta .cta-button__inner,
+  .coverflow-buy-pack-cta .cta-button__stroke,
+  .coverflow-buy-pack-cta .cta-button__aurora,
+  .coverflow-buy-pack-cta .cta-button__face,
+  .coverflow-buy-pack-cta .cta-button__cost {
+    transition: none;
+  }
+}
+
+/* Staggered entrance inside the active stack: label first, then CTA. */
+.coverflow-active-stack.is-visible .coverflow-active-pack-label {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 680ms ease,
+    transform 680ms ease,
+    filter 680ms ease;
+  transition-delay: 90ms;
+}
+
+.coverflow-active-stack.is-visible .coverflow-buy-pack-cta {
+  pointer-events: auto;
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 520ms ease,
+    transform 520ms ease,
+    filter 520ms ease,
+    box-shadow 250ms ease;
+  transition-delay: 240ms;
+}
+
+.coverflow-active-stack.is-visible .coverflow-buy-pack-cta .cta-button {
+  pointer-events: auto;
+}
+
+/* Reverse stagger on exit (active → inactive). */
+.coverflow-active-stack:not(.is-visible) .coverflow-active-pack-label {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(8px);
+  transition:
+    opacity 360ms ease,
+    transform 400ms ease,
+    filter 400ms ease;
+  transition-delay: 40ms;
+}
+
+.coverflow-active-stack:not(.is-visible) .coverflow-buy-pack-cta {
+  pointer-events: none;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(10px);
+  transition:
+    opacity 320ms ease,
+    transform 360ms ease,
+    filter 360ms ease,
+    box-shadow 200ms ease;
+  transition-delay: 0ms;
+}
+
+	.coverflow-cart-remove-wrap {
+	  position: relative;
+	  z-index: 2;
+	  display: flex;
+	  flex-direction: column;
+	  align-items: center;
+	  margin-top: 0;
+	  pointer-events: auto;
+	}
+
+.coverflow-cart-remove {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.05);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  color: oklch(1 0 0 / 0.88);
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease,
+    transform 140ms ease;
+}
+
+.coverflow-cart-remove > span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.04em);
+}
+
+.coverflow-cart-remove:hover {
+  border-color: oklch(1 0 0 / 0.1);
+  background: linear-gradient(
+    180deg,
+    oklch(0.26 0 0 / 0.18) 0%,
+    oklch(0 0 0 / 0.1) 42%,
+    oklch(0.16 0 0 / 0.16) 100%
+  );
+  color: oklch(1 0 0);
+}
+
+.coverflow-cart-remove:active {
+  transform: scale(0.96);
+}
+
+.coverflow-cart-remove:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+.coverflow-cart-remove-confirm {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 7.5rem;
+  padding: 0.7rem 0.8rem 0.75rem;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 1.15rem;
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0 0 / 0.92) 0%,
+    oklch(0.12 0 0 / 0.94) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.1),
+    0 12px 28px oklch(0 0 0 / 0.42);
+  color: oklch(1 0 0 / 0.92);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.coverflow-cart-remove-confirm::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid oklch(1 0 0 / 0.1);
+  border-left: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(0.19 0 0 / 0.94);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.coverflow-cart-remove-confirm__label {
+  margin: 0;
+  color: oklch(1 0 0 / 0.78);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.coverflow-cart-remove-confirm__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.coverflow-cart-remove-confirm__btn {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.9);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms ease;
+}
+
+.coverflow-cart-remove-confirm__btn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.coverflow-cart-remove-confirm__btn:hover {
+  transform: scale(1.04);
+}
+
+.coverflow-cart-remove-confirm__btn:active {
+  transform: scale(0.96);
+}
+
+.coverflow-cart-remove-confirm__btn.is-confirm {
+  border-color: oklch(0.72 0.16 25 / 0.45);
+  background: oklch(0.48 0.14 25 / 0.28);
+  color: oklch(0.9 0.08 25);
+}
+
+.coverflow-cart-remove-confirm__btn.is-confirm:hover {
+  background: oklch(0.52 0.15 25 / 0.4);
+}
+
+.coverflow-cart-remove-confirm__btn.is-cancel {
+  border-color: oklch(1 0 0 / 0.16);
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.72);
+}
+
+.coverflow-cart-remove-confirm__btn.is-cancel:hover {
+  border-color: oklch(1 0 0 / 0.24);
+  background: oklch(1 0 0 / 0.14);
+  color: oklch(1 0 0 / 0.9);
+}
+
+.coverflow-cart-remove-confirm__btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+.cart-continue {
+  position: absolute;
+  right: 0;
+  bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  left: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.cart-continue > * {
+  pointer-events: auto;
+}
+
+.cart-continue__cta .cta-button__leading-icon {
+  width: auto;
+  height: auto;
+}
+
+.cart-continue__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.cart-continue__cost-amount {
+  font-size: 1em;
+}
+
+.coverflow-pack-html-label .coverflow-cart-remove-wrap,
+.coverflow-pack-html-label .coverflow-cart-remove,
+.coverflow-pack-html-label .coverflow-cart-remove-confirm {
+  pointer-events: auto;
+}
+
+.coverflow-active-stack.is-visible .coverflow-cart-remove-wrap,
+.coverflow-active-stack.is-visible .coverflow-cart-remove,
+.coverflow-active-stack.is-visible .coverflow-cart-remove-confirm {
+  pointer-events: auto;
+}
+
+@media (max-width: 980px) {
+				  /* Pack-pocket only: drop the 3D pack + X; leave .cart-continue put. */
+				  .stage-packs:has(.cart-continue) .coverflow-stage {
+				    translate: 0 10dvh;
+				  }
+
+		  /* Close control lives above the pack on mobile, not under the labels. */
+			  .coverflow-pack-html--remove {
+			    left: 50% !important;
+				    transform: translate3d(-50%, 6dvh, 0) !important;
+			    pointer-events: none !important;
+			  }
+
+	  .coverflow-pack-html--remove .coverflow-cart-remove-wrap {
+	    margin-top: 0;
+	    opacity: 0;
+	    filter: blur(8px);
+	    transform: translateY(10px);
+	    transition:
+	      opacity 360ms ease,
+	      transform 380ms ease,
+	      filter 380ms ease;
+	  }
+
+	  .coverflow-pack-html--remove.is-visible .coverflow-cart-remove-wrap {
+	    opacity: 1;
+	    filter: blur(0);
+	    transform: translateY(0);
+	  }
+
+		  .coverflow-pack-html--remove .coverflow-cart-remove-confirm {
+		    top: calc(100% + 0.55rem);
+		    bottom: auto;
+		  }
+
+		  .coverflow-pack-html--remove .coverflow-cart-remove-confirm::before {
+		    top: -6px;
+		    bottom: auto;
+		    transform: translateX(-50%) rotate(45deg);
+		  }
+
+	  /* Tighter vertical rhythm inside the shorter mobile hex CTA. */
+	  .coverflow-buy-pack-cta .cta-button__label {
+	    gap: 0.12em;
+	  }
+
+  .coverflow-buy-pack-cta .cta-button--hex .cta-button__label {
+    gap: 0.1em;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .coverflow-buy-pack-cta .cta-button__cost {
+    font-size: 1.05em;
+  }
+
+  /* Slightly smaller inactive titles on mobile pack HUD too. */
+  .coverflow-pack-html--browse .coverflow-pack-label__collection {
+    font-size: 0.8075rem;
+  }
+
+	  .coverflow-pack-html--browse .coverflow-pack-label__pack,
+	  .coverflow-pack-html--browse .coverflow-pack-label__price {
+	    font-size: 0.741rem;
+	  }
+
+		  /* Sit just under the pack, still above the bottom nav + Collection FAB. */
+		  .cart-continue {
+			    bottom: calc(8.5dvh + env(safe-area-inset-bottom, 0px));
+		  }
+	}
+
+/* Buy Pack button styles */
+.btn-180 {
+  border: 1px solid oklch(0.545 0.218 16.03);
+  padding: 8px 20px;
+  font-size: 14px;
+  text-transform: none;
+  border-radius: 60px;
+  outline: none;
+  transform: translateY(0px);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    inset 0 30px 30px -15px oklch(1 0 0 / 0.1),
+    inset 0 0 0 1px oklch(1 0 0 / 0.3),
+    inset 0 1px 20px oklch(0 0 0 / 0),
+    0 3px 0 oklch(0.45 0.18 16.47),
+    0 3px 2px oklch(0 0 0 / 0.2),
+    0 5px 10px oklch(0 0 0 / 0.1),
+    0 10px 20px oklch(0 0 0 / 0.1);
+  background: oklch(0.545 0.218 16.03);
+  color: white;
+  text-shadow: 0 1px 0 oklch(0 0 0 / 0.3);
+  transition: 250ms all;
+  font-family: Arial, Helvetica, sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+}
+
+.btn-180-label,
+.btn-180-price,
+.btn-180-price-new,
+.btn-180-price-old {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-180-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.btn-180-price-old {
+  opacity: 0.78;
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.btn-180-price-new {
+  font-weight: 800;
+}
+
+/* Light sweep clipped to the pill button shape.
+   Only starts when the pack is active / button is visible.
+   Sweep runs for ~1.8s, then waits 2.5s before the next pass. */
+.btn-180::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 95%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(110deg,
+      transparent 0%,
+      transparent 18%,
+      oklch(1 0 0 / 0.05) 36%,
+      oklch(1 0 0 / 0.2) 50%,
+      oklch(1 0 0 / 0.05) 64%,
+      transparent 82%,
+      transparent 100%);
+  transform: translateX(-160%) skewX(-18deg);
+  animation: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Start the first sweep when the active pack button becomes visible. */
+.coverflow-active-action.is-visible .btn-180::before {
+  animation: btn-180-sweep 4300ms linear infinite;
+}
+
+.btn-180>* {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes btn-180-sweep {
+  0% {
+    transform: translateX(-160%) skewX(-18deg);
+  }
+
+  /* ~1.8s of travel within the 4.3s cycle, then 2.5s pause */
+  41.8% {
+    transform: translateX(280%) skewX(-18deg);
+  }
+
+  41.9%,
+  100% {
+    transform: translateX(280%) skewX(-18deg);
+  }
+}
+
+.btn-180:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 16px 2px -15px oklch(0 0 0 / 0),
+    inset 0 0 0 1px oklch(1 0 0 / 0.15),
+    inset 0 1px 20px oklch(0 0 0 / 0.1),
+    0 0 0 oklch(0.641 0.25 13.45),
+    0 0 0 2px oklch(0.641 0.25 13.45),
+    0 0 0 oklch(0 0 0 / 0),
+    0 0 0 oklch(0 0 0 / 0);
+}
+
+.btn-180:active::before {
+  animation-play-state: paused;
+}
+
+.btn-180:disabled {
+  pointer-events: none;
+  opacity: 0.65;
+  color: oklch(0.593 0 0);
+  background: oklch(0.894 0 0);
+  box-shadow: none;
+  text-shadow: none;
+  border: none;
+}
+
+.btn-180:disabled::before {
+  display: none;
+}
+
+.coverflow-gesture-debug {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  color: oklch(0.907 0.019 242.98 / 0.8);
+  font-size: 0.8rem;
+}
+
+.coverflow-caption {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+  text-align: center;
+  min-height: 2.6rem;
+}
+
+.coverflow-tools-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.coverflow-tools-open {
+  min-height: 2.75rem;
+  padding-inline: 1.1rem;
+  font-size: 0.95rem;
+}
+
+.coverflow-motion-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  padding: 0;
+  line-height: 0;
+  font-size: 0;
+  border-radius: 999px;
+}
+
+.coverflow-motion-toggle.is-active {
+  border-color: oklch(0.798 0.104 207.84 / 0.55);
+  box-shadow: 0 0 0 1px oklch(0.798 0.104 207.84 / 0.25);
+  color: oklch(0.963 0.028 216.4);
+}
+
+.coverflow-motion-toggle.is-disabled-look {
+  opacity: 0.55;
+}
+
+.coverflow-motion-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.card-title {
+  font-family: var(--font-display);
+  color: oklch(0.974 0.007 247.89);
+  font-weight: 650;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(90vw, 42rem);
+}
+
+.card-subtitle {
+  font-size: 0.8rem;
+  color: oklch(0.907 0.019 242.98 / 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coverflow-empty {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  border: 1px dashed oklch(1 0 0 / 0.16);
+  background: oklch(1 0 0 / 0.03);
+  color: oklch(0.907 0.019 242.98 / 0.72);
+  padding: 1rem;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    width: calc(100% - 1.2rem);
+    margin: 0.6rem auto;
+  }
+
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .model-viewer {
+    height: min(64vh, 500px);
+  }
+
+  .fit-control {
+    grid-template-columns: 1fr;
+  }
+
+  /* Keep Update + New Pack side-by-side to avoid edit-mode layout shift. */
+  .action-row {
+    grid-template-columns: 1.2fr 1fr;
+  }
+
+  .coverflow-nav-chevron {
+    display: none;
+  }
+
+  .coverflow-stage {
+    height: 100%;
+    max-height: none;
+  }
+
+  .stage-packs .coverflow-stage {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+}

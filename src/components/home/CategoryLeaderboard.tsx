@@ -1,6 +1,7 @@
-import { ChevronRight, Play, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
-  formatPrice,
   LEADERBOARD_CATEGORIES,
   type LeaderboardCategory,
   type LeaderboardRow,
@@ -14,7 +15,6 @@ export function CategoryLeaderboard({
   onCategoryChange,
   onPlay,
   onOpen,
-  onViewFull,
 }: {
   category: LeaderboardCategory;
   rows: LeaderboardRow[];
@@ -22,7 +22,6 @@ export function CategoryLeaderboard({
   onCategoryChange: (c: LeaderboardCategory) => void;
   onPlay: (row: LeaderboardRow) => void;
   onOpen: (row: LeaderboardRow) => void;
-  onViewFull: () => void;
 }) {
   return (
     <section
@@ -35,16 +34,8 @@ export function CategoryLeaderboard({
             className="continue-collecting-heart"
             aria-hidden="true"
           />
-          <h2 className="continue-collecting-title">CATEGORY LEADERBOARD</h2>
+          <h2 className="continue-collecting-title">Top packs by purchase</h2>
         </div>
-        <button
-          type="button"
-          className="continue-collecting-see-all"
-          onClick={onViewFull}
-        >
-          SEE ALL
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </button>
       </div>
 
       <div
@@ -123,18 +114,29 @@ export function CategoryLeaderboard({
                 </p>
               </button>
               <div className="category-leaderboard-actions">
-                <span className="category-leaderboard-price">
-                  {formatPrice(row.price)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onPlay(row)}
-                  className="category-leaderboard-play"
-                  aria-label={`Play ${row.packName}`}
+                <span
+                  className="category-leaderboard-price"
+                  aria-label={`${row.diamondCost} Diamonds`}
                 >
-                  <Play className="size-3 fill-current" aria-hidden="true" />
-                  Play
-                </button>
+                  <DiamondLottie
+                    className="category-leaderboard-price-diamond shrink-0"
+                    size={14}
+                    aria-hidden
+                  />
+                  <span className="tabular-nums">{row.diamondCost}</span>
+                </span>
+                <div className="category-leaderboard-play">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("squircleCTA")}
+                    fillParent
+                    label="▶ Play"
+                    costAmount={null}
+                    fontSize={12}
+                    cornerRadius={999}
+                    aria-label={`Play ${row.packName}`}
+                    onClick={() => onPlay(row)}
+                  />
+                </div>
               </div>
             </div>
           ))

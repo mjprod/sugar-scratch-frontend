@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
+import { CalendarDays } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
-import { FeaturedCarousel } from "@/components/home/FeaturedCarousel";
+import { DiscoverReel } from "@/components/home/DiscoverReel";
+import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
+import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { PackLibrary } from "@/components/home/PackLibrary";
+import { PlaySteps } from "@/components/home/PlaySteps";
+import { SpotlightBanner } from "@/components/home/SpotlightBanner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
   fetchLeaderboard,
-  formatPrice,
   type ContinueCollectingItem,
   type FeaturedPack,
   type HomepageData,
@@ -15,6 +24,114 @@ import {
 } from "@/services/homepage";
 
 type PageStatus = "loading" | "loaded" | "error";
+
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3;
+}
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+function waitForNextPaint() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
+function destinationScrollTop(scroller: HTMLElement, target: HTMLElement) {
+  const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+  return (
+    scroller.scrollTop +
+    (target.getBoundingClientRect().top - scroller.getBoundingClientRect().top) -
+    margin
+  );
+}
+
+function scrollToDailyReward(target: HTMLElement, reduce: boolean) {
+  const scroller = target.closest<HTMLElement>("[data-page-scroll]");
+  if (!scroller) {
+    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    return () => { };
+  }
+
+  const stage =
+    scroller.querySelector<HTMLElement>(".home-page-inner") ?? scroller;
+  const dest = destinationScrollTop(scroller, target);
+  const start = scroller.scrollTop;
+  const pullPx = Math.min(40, Math.max(22, Math.abs(dest - start) * 0.08));
+
+  if (reduce || Math.abs(dest - start) < 2) {
+    scroller.scrollTop = dest;
+    return () => { };
+  }
+
+  let raf = 0;
+  let cancelled = false;
+  const previousTransform = stage.style.transform;
+  const previousWillChange = stage.style.willChange;
+
+  const clearStage = () => {
+    stage.style.transform = previousTransform;
+    stage.style.willChange = previousWillChange;
+  };
+
+  const runFrom = (now: number, duration: number, ease: (t: number) => number, apply: (u: number) => void) =>
+    new Promise<void>((resolve) => {
+      const tick = (frame: number) => {
+        if (cancelled) {
+          resolve();
+          return;
+        }
+        const u = Math.min(1, (frame - now) / duration);
+        apply(ease(u));
+        if (u < 1) {
+          raf = window.requestAnimationFrame(tick);
+          return;
+        }
+        resolve();
+      };
+      raf = window.requestAnimationFrame(tick);
+    });
+
+  stage.style.willChange = "transform";
+
+  void (async () => {
+    // Pull the page up first — real scroll if we can, overscroll transform if we're already at the top.
+    const canScrollUp = start > 1;
+    await runFrom(performance.now(), 320, easeInOutCubic, (u) => {
+      if (canScrollUp) {
+        scroller.scrollTop = start - pullPx * u;
+        return;
+      }
+      stage.style.transform = `translateY(${pullPx * u}px)`;
+    });
+    if (cancelled) return;
+    await new Promise((resolve) => window.setTimeout(resolve, 90));
+    if (cancelled) return;
+
+    const travelStart = scroller.scrollTop;
+    const travelDest = destinationScrollTop(scroller, target);
+    const startLift = canScrollUp ? 0 : pullPx;
+
+    await runFrom(performance.now(), 900, easeOutCubic, (u) => {
+      if (startLift) {
+        stage.style.transform = `translateY(${startLift * (1 - u)}px)`;
+      }
+      scroller.scrollTop = travelStart + (travelDest - travelStart) * u;
+    });
+
+    if (!cancelled) clearStage();
+  })();
+
+  return () => {
+    cancelled = true;
+    window.cancelAnimationFrame(raf);
+    clearStage();
+  };
+}
 
 /**
  * Homepage Spec 3.0 — holographic carousel · progression · leaderboard
@@ -26,6 +143,12 @@ export function HomeScreen({
   onRestart,
   onStartPlaying,
   onOpenCreator,
+  onClaimDaily,
+  onClaimAttempt,
+  onOpenCollection,
+  onLikeAttempt,
+  resumeLikeId = null,
+  onResumeLikeConsumed,
 }: {
   showTutorial?: boolean;
   onTutorialDone?: () => void;
@@ -36,9 +159,20 @@ export function HomeScreen({
     packName: string;
     price: string;
     creator: string;
+    characterId?: string;
+    themeName?: string;
   }) => void;
   onOpenCreator?: (creatorId: string) => void;
+  onClaimDaily?: (diamonds: number) => void;
+  onClaimAttempt?: () => boolean;
+  onOpenCollection?: (creatorId: string) => boolean;
+  onLikeAttempt?: (itemId: string) => boolean;
+  resumeLikeId?: string | null;
+  onResumeLikeConsumed?: () => void;
 }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { guest } = useAuth();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
   const [category, setCategory] = useState<LeaderboardCategory>("all");
@@ -46,8 +180,31 @@ export function HomeScreen({
   const [boardLoading, setBoardLoading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [heroReady, setHeroReady] = useState(false);
+
+  useMarkPageReady(status === "error" || heroReady);
+
+  // Search HUD / Discover → Home opens the pack-library search sheet.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const state = location.state as { openPackLibrary?: boolean } | null;
+    const shouldOpen =
+      params.get("library") === "1" || Boolean(state?.openPackLibrary);
+    if (!shouldOpen) return;
+
+    setLibraryOpen(true);
+
+    // Clear the flag so back/refresh doesn't keep reopening.
+    if (params.get("library") === "1" || state?.openPackLibrary) {
+      navigate(
+        { pathname: location.pathname, search: "" },
+        { replace: true, state: {} },
+      );
+    }
+  }, [location.pathname, location.search, location.state, navigate]);
 
   const load = useCallback(async () => {
+    setHeroReady(false);
     setStatus("loading");
     try {
       const data = await fetchHomepage();
@@ -63,6 +220,42 @@ export function HomeScreen({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const state = location.state as { scrollToDailyReward?: boolean } | null;
+    if (!state?.scrollToDailyReward || status !== "loaded") return;
+
+    // Desktop stays at the top of Home; mobile docks to the daily reward.
+    if (window.matchMedia("(min-width: 507px)").matches) {
+      navigate(location.pathname, { replace: true, state: {} });
+      return;
+    }
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let cancelled = false;
+    let cancelScroll = () => { };
+    let started = false;
+
+    void (async () => {
+      await waitForNextPaint();
+      const target = document.getElementById("daily-reward");
+      if (cancelled || !target || target.getBoundingClientRect().height < 2) return;
+
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      if (cancelled) return;
+
+      started = true;
+      cancelScroll = scrollToDailyReward(target, reduce);
+      navigate(location.pathname, { replace: true, state: {} });
+    })();
+
+    return () => {
+      cancelled = true;
+      // Clearing the route flag remounts this effect — don't abort a scroll
+      // that already started.
+      if (!started) cancelScroll();
+    };
+  }, [location.pathname, location.state, navigate, status]);
+
   async function changeCategory(next: LeaderboardCategory) {
     setCategory(next);
     setBoardLoading(true);
@@ -75,32 +268,47 @@ export function HomeScreen({
 
   function playPack(pack: {
     id: string;
+    foilId?: string;
     name: string;
     creatorName: string;
-    price: { amount: number; currency: "USD" | "SC" };
+    diamondCost: number;
+    themeName?: string;
   }) {
     onStartPlaying?.({
-      packId: pack.id,
+      packId: pack.foilId ?? pack.id,
       packName: pack.name,
-      price: formatPrice(pack.price),
+      themeName: pack.themeName,
+      price: String(pack.diamondCost),
       creator: pack.creatorName,
+      characterId: pack.id,
     });
   }
 
   function playFeatured(pack: FeaturedPack) {
-    playPack(pack);
+    const foilId = pack.id !== pack.creatorId ? pack.id : undefined;
+    playPack({
+      id: foilId ? pack.creatorId : pack.id,
+      foilId,
+      name: pack.name,
+      creatorName: pack.creatorName,
+      diamondCost: pack.diamondCost,
+      themeName: pack.themeName,
+    });
   }
 
   function playRow(row: LeaderboardRow) {
     playPack({
-      id: row.packId,
+      id: row.characterId ?? row.packId,
+      foilId: row.characterId ? row.packId : undefined,
       name: row.packName,
       creatorName: row.creatorName,
-      price: row.price,
+      diamondCost: row.diamondCost,
+      themeName: row.themeName,
     });
   }
 
   function openCollection(item: ContinueCollectingItem) {
+    if (onOpenCollection && !onOpenCollection(item.creatorId)) return;
     if (onOpenCreator) {
       onOpenCreator(item.creatorId);
       return;
@@ -113,16 +321,13 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12"
+        className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
       >
-        <div className="mx-auto h-[480px] w-[300px] animate-pulse rounded-[28px] bg-white/10 [clip-path:polygon(4%_1.5%,96%_1.5%,99%_6%,100%_48%,99%_94%,96%_98.5%,4%_98.5%,1%_94%,0%_52%,1%_6%)]" />
-        <div className="mx-auto flex gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="size-2 animate-pulse rounded-full bg-white/15" />
-          ))}
+        <div className="home-featured-coverflow is-loading" aria-hidden="true" />
+        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-6 px-5 lg:px-8">
+          <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
+          <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
         </div>
-        <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
-        <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
       </section>
     );
   }
@@ -131,19 +336,21 @@ export function HomeScreen({
     return (
       <section
         data-page-scroll
-        className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12"
+        className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
-        <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
-        <p className="max-w-xs text-center text-[13px] text-white/45">
-          Check your connection, then try again.
-        </p>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="mt-2 min-h-11 rounded-full bg-[#8B5CF6] px-5 py-2.5 text-[14px] font-semibold"
-        >
-          Retry
-        </button>
+        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-3 px-5 lg:px-8">
+          <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
+          <p className="max-w-xs text-center text-[13px] text-white/45">
+            Check your connection, then try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-[14px] font-semibold"
+          >
+            Retry
+          </button>
+        </div>
       </section>
     );
   }
@@ -151,7 +358,7 @@ export function HomeScreen({
   return (
     <section
       data-page-scroll
-      className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12"
+      className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
     >
       {showTutorial ? (
         <button
@@ -166,30 +373,30 @@ export function HomeScreen({
         className={[
           "relative",
           showTutorial
-            ? "z-30 rounded-[28px] ring-2 ring-[#EC4899] ring-offset-4 ring-offset-transparent [animation:tutorial-pulse_1.8s_ease-in-out_infinite]"
+            ? "z-30 ring-2 ring-[oklch(0.656_0.212_354.31)] ring-offset-4 ring-offset-transparent [animation:tutorial-pulse_1.8s_ease-in-out_infinite]"
             : "",
         ].join(" ")}
       >
-        <FeaturedCarousel
-          packs={home.featured}
-          onPlay={playFeatured}
-          onOpenDetail={playFeatured}
+        <FeaturedCoverFlow
+          featured={home.featured}
+          onPlay={playPack}
+          onReady={() => setHeroReady(true)}
         />
       </div>
 
       {showTutorial ? (
-        <div className="pointer-events-none relative z-40 mt-4 flex justify-center">
-          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[#EC4899]/40 bg-[#1a1018]/95 px-4 py-3 text-center shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-md">
-            <p className="text-[14px] font-medium text-[#F9A8D4]">
+        <div className="pointer-events-none relative z-40 mt-4 flex justify-center px-5 lg:px-8">
+          <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[oklch(0.656_0.212_354.31)]/40 bg-[oklch(0.19_0.022_333.66)]/95 px-4 py-3 text-center shadow-[0_16px_40px_oklch(0_0_0_/_0.45)] backdrop-blur-md">
+            <p className="text-[14px] font-medium text-[oklch(0.823_0.11_346.02)]">
               Swipe the carousel to discover featured packs.
             </p>
             <div className="mt-2 flex justify-center gap-4 text-[13px]">
-              <button type="button" className="text-[#F9A8D4]/70" onClick={onSkipTutorial}>
+              <button type="button" className="text-[oklch(0.823_0.11_346.02)]/70" onClick={onSkipTutorial}>
                 Skip tutorial
               </button>
               <button
                 type="button"
-                className="min-h-11 rounded-full bg-[#8B5CF6] px-4 font-semibold text-white"
+                className="min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-4 font-semibold text-white"
                 onClick={onTutorialDone}
               >
                 Got it
@@ -199,43 +406,137 @@ export function HomeScreen({
         </div>
       ) : null}
 
-      <div className="mt-6 flex justify-center">
+      {/*
+        Full-width scroll shell keeps the scrollbar on the viewport edge.
+        Content width is constrained by the inner wrapper (same as other pages).
+      */}
+      <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
+        <div className="home-view-all-packs mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setLibraryOpen(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              className="size-5 shrink-0"
+              aria-hidden="true"
+            >
+              <path
+                fill="currentColor"
+                d="M5.75 3h8.5A2.75 2.75 0 0 1 17 5.75v8.5A2.75 2.75 0 0 1 14.25 17h-4.129l-1-1h5.129A1.75 1.75 0 0 0 16 14.25v-8.5A1.75 1.75 0 0 0 14.25 4h-8.5A1.75 1.75 0 0 0 4 5.75v3.277a4.5 4.5 0 0 0-1 .23V5.75A2.75 2.75 0 0 1 5.75 3M9.5 14a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1zm-2-6.75a.75.75 0 1 1-1.5 0a.75.75 0 0 1 1.5 0m2-.25a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1zm-5 7c.786 0 1.512-.26 2.096-.697l2.55 2.55a.5.5 0 1 0 .708-.707l-2.55-2.55A3.5 3.5 0 1 0 4.5 17m0-1a2.5 2.5 0 1 1 0-5a2.5 2.5 0 0 1 0 5"
+              />
+            </svg>
+            View All Packs
+          </button>
+        </div>
+
+        {guest ? <PlaySteps /> : null}
+
+        <div className="hub-today-bento mt-8">
+          {onClaimDaily ? (
+            <section
+              className="hub-module hub-module--today"
+              aria-labelledby="daily-reward"
+            >
+              <DailyRewardHero
+                onClaimed={onClaimDaily}
+                onClaimAttempt={onClaimAttempt}
+              />
+            </section>
+          ) : null}
+
+          <aside className="hub-today-bento-reel" aria-label="Discover video reel">
+            <div className="hub-today-bento-reel-frame">
+              <DiscoverReel
+                onBuyPack={(pack) => onStartPlaying?.(pack)}
+                onLikeAttempt={onLikeAttempt}
+                onOpenCreator={onOpenCreator}
+                resumeLikeId={resumeLikeId}
+                onResumeLikeConsumed={onResumeLikeConsumed}
+              />
+            </div>
+          </aside>
+
+          <div className="hub-today-bento-stack">
+            {!guest ? (
+              <ContinueCollecting
+                items={home.continueCollecting}
+                onOpen={openCollection}
+                onSeeAllClick={() => setLibraryOpen(true)}
+              />
+            ) : null}
+
+            <section
+              className="continue-collecting hub-upcoming-card"
+              aria-labelledby="browse-upcoming-heading"
+            >
+              <div className="continue-collecting-header">
+                <div className="continue-collecting-title-row">
+                  <CalendarDays
+                    className="continue-collecting-heart"
+                    aria-hidden="true"
+                  />
+                  <h2
+                    id="browse-upcoming-heading"
+                    className="continue-collecting-title"
+                  >
+                    Upcoming Events
+                  </h2>
+                </div>
+              </div>
+              <div className="hub-upcoming-empty">
+                <span className="hub-upcoming-empty-icon" aria-hidden="true">
+                  <CalendarDays className="size-5" />
+                </span>
+                <div className="hub-upcoming-empty-copy">
+                  <p className="hub-upcoming-empty-title">No live events right now.</p>
+                  <p className="hub-upcoming-empty-sub">Check back tomorrow.</p>
+                </div>
+                <span className="hub-upcoming-empty-atmosphere" aria-hidden="true" />
+              </div>
+              <div className="hub-upcoming-notify-wrap">
+                <div className="hub-upcoming-notify">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("pillPurpleCTA")}
+                    fillParent
+                    label="Notify Me"
+                    costAmount={null}
+                    fontSize={14}
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <SpotlightBanner />
+
+      <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
+        <div>
+          <CategoryLeaderboard
+            category={category}
+            rows={board}
+            loading={boardLoading}
+            onCategoryChange={(c) => void changeCategory(c)}
+            onPlay={playRow}
+            onOpen={playRow}
+          />
+        </div>
+
         <button
           type="button"
-          onClick={() => setLibraryOpen(true)}
-          className="min-h-11 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B5CF6]"
+          onClick={onRestart}
+          className="mt-10 mb-2 text-center text-[12px] text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
         >
-          View All Packs
+          Restart prototype (clears first-visit flags)
         </button>
-      </div>
 
-      <div className="mt-10">
-        <ContinueCollecting
-          items={home.continueCollecting}
-          onOpen={openCollection}
-          onSeeAllClick={() => setLibraryOpen(true)}
-        />
+        <HomeSiteFooter />
       </div>
-
-      <div className="mt-10">
-        <CategoryLeaderboard
-          category={category}
-          rows={board}
-          loading={boardLoading}
-          onCategoryChange={(c) => void changeCategory(c)}
-          onPlay={playRow}
-          onOpen={playRow}
-          onViewFull={() => setLibraryOpen(true)}
-        />
-      </div>
-
-      <button
-        type="button"
-        onClick={onRestart}
-        className="mt-10 mb-2 text-center text-[12px] text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
-      >
-        Restart prototype (clears first-visit flags)
-      </button>
 
       {toast ? (
         <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[13px] text-white/85 backdrop-blur-md">
@@ -243,15 +544,14 @@ export function HomeScreen({
         </div>
       ) : null}
 
-      {libraryOpen ? (
-        <PackLibrary
-          onClose={() => setLibraryOpen(false)}
-          onPlay={(pack) => {
-            setLibraryOpen(false);
-            playFeatured(pack);
-          }}
-        />
-      ) : null}
+      <PackLibrary
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        onPlay={(pack) => {
+          setLibraryOpen(false);
+          playFeatured(pack);
+        }}
+      />
     </section>
   );
 }

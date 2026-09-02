@@ -16,7 +16,8 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 assert(!isValidAuthPassword("short"), "reject short");
-assert(isValidAuthPassword("twelvechars!"), "accept 12+");
+assert(!isValidAuthPassword("sevench"), "reject 7");
+assert(isValidAuthPassword("eightchr"), "accept 8+");
 assert(
   authFailureMessage() === "Incorrect email or password.",
   "neutral login failure",
@@ -37,6 +38,14 @@ assert(
 assert(
   triggerFromAction({ type: "like", feedItemId: "x" }) === "like-creator",
   "like trigger",
+);
+assert(
+  triggerFromAction({ type: "follow", creatorId: "c1" }) === "follow-creator",
+  "follow trigger",
+);
+assert(
+  supportingCopyForTrigger("follow-creator").includes("follow"),
+  "follow supporting copy",
 );
 
 console.log("auth.self-check: ok");

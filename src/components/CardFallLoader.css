@@ -1,0 +1,226 @@
+.card-fall-loader {
+  --card-duration: 5.4s;
+  --card-pink: oklch(0.639 0.256 9.90);
+  --card-gray: oklch(1 0 0 / 0.1);
+  position: relative;
+  width: min(400px, 92vw);
+  height: min(288px, 76vw);
+  perspective: 900px;
+}
+
+.card-fall-layer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38%;
+  aspect-ratio: 5 / 7;
+  transform-style: preserve-3d;
+  will-change: transform;
+  animation:
+    card-carousel-move var(--card-duration) linear infinite,
+    card-carousel-stack var(--card-duration) linear infinite,
+    card-carousel-focus var(--card-duration) linear infinite;
+}
+
+.card-fall-layer--b {
+  animation-delay: calc(var(--card-duration) / -3);
+}
+
+.card-fall-layer--c {
+  animation-delay: calc(var(--card-duration) * -2 / 3);
+}
+
+.card-fall-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.card-fall-layer--a .card-fall-svg {
+  transform: translate3d(0, calc(var(--mx) * -20px), 0);
+  transition: transform 100ms linear;
+}
+
+.card-fall-layer--b .card-fall-svg {
+  transform: translate3d(0, calc(var(--mx) * -38px), 0);
+  transition: transform 220ms linear;
+}
+
+.card-fall-layer--c .card-fall-svg {
+  transform: translate3d(0, calc(var(--mx) * -28px), 0);
+  transition: transform 340ms linear;
+}
+
+.card-fall-outline {
+  stroke: var(--card-pink);
+}
+
+.card-fall-mark,
+.card-fall-stripes {
+  fill: var(--card-pink);
+  overflow: visible;
+}
+
+.card-fall-layer .card-fall-outline {
+  animation: card-carousel-stroke var(--card-duration) linear infinite;
+}
+
+.card-fall-layer .card-fall-mark,
+.card-fall-layer .card-fall-stripes {
+  animation: card-carousel-fill var(--card-duration) linear infinite;
+}
+
+.card-fall-layer--b .card-fall-outline,
+.card-fall-layer--b .card-fall-mark,
+.card-fall-layer--b .card-fall-stripes {
+  animation-delay: calc(var(--card-duration) / -3);
+}
+
+.card-fall-layer--c .card-fall-outline,
+.card-fall-layer--c .card-fall-mark,
+.card-fall-layer--c .card-fall-stripes {
+  animation-delay: calc(var(--card-duration) * -2 / 3);
+}
+
+@keyframes card-carousel-move {
+  0%,
+  22% {
+    transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1);
+  }
+
+  33.333%,
+  55.333% {
+    transform: translate(-50%, -50%) translateX(76%) rotateY(-22deg) scale(0.7);
+  }
+
+  66.666%,
+  88.666% {
+    transform: translate(-50%, -50%) translateX(-76%) rotateY(22deg) scale(0.7);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes card-carousel-focus {
+  0%,
+  22% {
+    filter: blur(0);
+  }
+
+  33.333%,
+  55.333% {
+    filter: blur(3px);
+  }
+
+  66.666%,
+  88.666% {
+    filter: blur(3px);
+  }
+
+  100% {
+    filter: blur(0);
+  }
+}
+
+@keyframes card-carousel-stack {
+  0%,
+  27.7% {
+    z-index: 3;
+  }
+
+  27.8%,
+  61% {
+    z-index: 2;
+  }
+
+  61.1%,
+  94.3% {
+    z-index: 1;
+  }
+
+  94.4%,
+  100% {
+    z-index: 3;
+  }
+}
+
+@keyframes card-carousel-stroke {
+  0%,
+  24% {
+    stroke: var(--card-pink);
+  }
+
+  30%,
+  92% {
+    stroke: var(--card-gray);
+  }
+
+  100% {
+    stroke: var(--card-pink);
+  }
+}
+
+@keyframes card-carousel-fill {
+  0%,
+  24% {
+    fill: var(--card-pink);
+  }
+
+  30%,
+  92% {
+    fill: var(--card-gray);
+  }
+
+  100% {
+    fill: var(--card-pink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-fall-layer,
+  .card-fall-layer .card-fall-outline,
+  .card-fall-layer .card-fall-mark,
+  .card-fall-layer .card-fall-stripes {
+    animation: none;
+  }
+
+  .card-fall-layer--a .card-fall-svg,
+  .card-fall-layer--b .card-fall-svg,
+  .card-fall-layer--c .card-fall-svg {
+    transform: none;
+    transition: none;
+  }
+
+  .card-fall-layer--a {
+    transform: translate(-50%, -50%) scale(1);
+    filter: none;
+    z-index: 3;
+  }
+
+  .card-fall-layer--b {
+    transform: translate(-50%, -50%) translateX(76%) rotateY(-22deg) scale(0.7);
+    filter: blur(3px);
+    z-index: 2;
+  }
+
+  .card-fall-layer--c {
+    transform: translate(-50%, -50%) translateX(-76%) rotateY(22deg) scale(0.7);
+    filter: blur(3px);
+    z-index: 2;
+  }
+
+  .card-fall-layer--b .card-fall-outline,
+  .card-fall-layer--c .card-fall-outline {
+    stroke: var(--card-gray);
+  }
+
+  .card-fall-layer--b .card-fall-mark,
+  .card-fall-layer--c .card-fall-mark,
+  .card-fall-layer--b .card-fall-stripes,
+  .card-fall-layer--c .card-fall-stripes {
+    fill: var(--card-gray);
+  }
+}

@@ -1,4 +1,5 @@
 import { CREATOR_PHOTOS, HOLO_PACKS, PACK_PHOTOS } from "../lib/photos";
+import { apiFetch } from "../lib/api";
 
 export type UnopenedPack = {
   id: string;
@@ -7,6 +8,8 @@ export type UnopenedPack = {
   creatorId: string;
   count: number;
   coverUrl: string;
+  /** Product / catalog id used when resuming Open Pack. */
+  catalogPackId?: string;
 };
 
 export type ContinueCollecting = {
@@ -100,13 +103,6 @@ export const COLLECTION_SNAPSHOT = {
   creators: 5,
 };
 
-/** @deprecated Use COLLECTION_SNAPSHOT — kept for older imports. */
-export const COLLECTION_STATS = {
-  photoCards: COLLECTION_SNAPSHOT.photoCards,
-  motionCards: COLLECTION_SNAPSHOT.motionCards,
-  creators: COLLECTION_SNAPSHOT.creators,
-};
-
 export const UNOPENED_PACKS: UnopenedPack[] = [
   {
     id: "up1",
@@ -141,6 +137,7 @@ export type ScratchReadyGroup = {
   collectionName: string;
   count: number;
   coverUrl: string;
+  kind?: "motion" | "photo";
 };
 
 export const SCRATCH_READY_GROUPS: ScratchReadyGroup[] = [
@@ -185,6 +182,8 @@ export type CreatorProgress = CreatorSummary & {
   themesStarted: number;
   themesTotal: number;
   cta: "continue" | "view" | "claim";
+  /** Most recent / active theme label for this creator, when known. */
+  themeName?: string;
 };
 
 export const CREATOR_SUMMARIES: CreatorSummary[] = [
@@ -362,6 +361,276 @@ export function scratchReadyCount(detail: ThemeDetailData | null | undefined): n
   return detail.photoCards.filter((card) => card.isUnlocked && card.readyToScratch).length;
 }
 
+/** Strip pack/collection suffixes so "Police Pack" matches "police". */
+export function normalizeThemeKey(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/(pack|collection|theme)$/g, "");
+}
+
+const THEME_ALIASES: Record<string, string> = {
+  police: "police",
+  cop: "police",
+  policewoman: "police",
+  policewomen: "police",
+  summer: "summer",
+  sumnights: "summer",
+  summernights: "summer",
+  cyber: "cyber",
+  cybernights: "cyber",
+  midnight: "midnight",
+  midnightroom: "midnight",
+  office: "office",
+  officehours: "office",
+  nurse: "nurse",
+  teacher: "teacher",
+  gym: "gym",
+  firefighter: "fire",
+  firegirl: "fire",
+  fire: "fire",
+};
+
+export function canonicalThemeKey(value: string | null | undefined): string {
+  const key = normalizeThemeKey(value);
+  return THEME_ALIASES[key] ?? key;
+}
+
+/** Foil slot defaults when the API omits cardPackName (Juliana model packs). */
+const JULIANA_FOIL_THEME_BY_SLOT: Record<string, string> = {
+  "1": "Firegirl",
+  "2": "Gym",
+  "3": "Nurse",
+  "4": "Police",
+  "5": "Teacher",
+};
+
+/** Catalog / featured pack ids → theme display names. */
+const CATALOG_THEME_LABELS: Record<string, string> = {
+  cyber: "Cyber Nights",
+  "cyber-holo": "Cyber Nights",
+  "juliana-firegirl": "Firegirl",
+  "juliana-police": "Police",
+  "juliana-gym": "Gym",
+  "juliana-nurse": "Nurse",
+  "juliana-teacher": "Teacher",
+};
+
+const THEME_KEY_DISPLAY: Record<string, string> = {
+  cyber: "Cyber Nights",
+  summer: "Summer Nights",
+  police: "Police",
+  fire: "Firegirl",
+  firegirl: "Firegirl",
+  gym: "Gym",
+  nurse: "Nurse",
+  teacher: "Teacher",
+  midnight: "Midnight Room",
+  office: "Office Hours",
+};
+
+function isGenericPackLabel(value: string): boolean {
+  return /^pack\s*(?:n[ºo°.]?\s*)?\d+$/i.test(value.trim());
+}
+
+function tidyThemeLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+Pack$/i, "")
+    .replace(/\s·\s(?:Motion|Photos)$/i, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+/**
+ * Prefer a real collection theme over foil placeholders like "Pack 1".
+ * Used by My Collection / Ready to Reveal labels.
+ */
+export function resolveCollectionThemeLabel(input: {
+  themeName?: string | null;
+  packName?: string | null;
+  catalogPackId?: string | null;
+  creator?: string | null;
+}): string {
+  const candidates = [input.themeName, input.packName]
+    .map((value) => (value ?? "").trim())
+    .filter(Boolean);
+
+  for (const raw of candidates) {
+    if (isGenericPackLabel(raw)) continue;
+    const key = canonicalThemeKey(raw);
+    if (key && THEME_KEY_DISPLAY[key]) return THEME_KEY_DISPLAY[key];
+    const cleaned = tidyThemeLabel(raw);
+    if (cleaned && !isGenericPackLabel(cleaned)) return cleaned;
+  }
+
+  const creator = (input.creator ?? "").toLowerCase();
+  for (const raw of candidates) {
+    const slot = raw.match(/^pack\s*(?:n[ºo°.]?\s*)?(\d+)$/i)?.[1];
+    if (!slot) continue;
+    if (creator.includes("juliana")) {
+      const mapped = JULIANA_FOIL_THEME_BY_SLOT[slot];
+      if (mapped) return mapped;
+    }
+  }
+
+  const catalogId = (input.catalogPackId ?? "").trim().toLowerCase();
+  if (catalogId && CATALOG_THEME_LABELS[catalogId]) {
+    return CATALOG_THEME_LABELS[catalogId];
+  }
+  if (catalogId) {
+    for (const part of catalogId.split(/[-_/]+/)) {
+      const key = canonicalThemeKey(part);
+      if (key && THEME_KEY_DISPLAY[key]) return THEME_KEY_DISPLAY[key];
+    }
+  }
+
+  return "";
+}
+
+export function themesMatch(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const left = canonicalThemeKey(a);
+  const right = canonicalThemeKey(b);
+  return Boolean(left && right && left === right);
+}
+
+export function themeRefMatches(
+  value: string | null | undefined,
+  theme: Pick<ThemeCardData, "id" | "name">,
+): boolean {
+  return themesMatch(value, theme.id) || themesMatch(value, theme.name);
+}
+
+/** Map a static / URL theme id onto a live API theme id (name + alias aware). */
+export function matchLiveThemeId(
+  selectedThemeId: string,
+  liveThemes: Array<Pick<ThemeCardData, "id" | "name">>,
+  staticThemes: Array<Pick<ThemeCardData, "id" | "name">> = [],
+): string | undefined {
+  if (liveThemes.some((theme) => theme.id === selectedThemeId)) {
+    return selectedThemeId;
+  }
+  const selected = staticThemes.find((theme) => theme.id === selectedThemeId);
+  const wanted = [
+    canonicalThemeKey(selectedThemeId),
+    canonicalThemeKey(selected?.id),
+    canonicalThemeKey(selected?.name),
+  ].filter(Boolean);
+  const match = liveThemes.find((theme) => {
+    const keys = [canonicalThemeKey(theme.id), canonicalThemeKey(theme.name)];
+    return keys.some((key) => wanted.includes(key));
+  });
+  return match?.id;
+}
+
+export function findThemeDetail(
+  theme: Pick<ThemeCardData, "id" | "name"> | undefined,
+  themeDetails: Record<string, ThemeDetailData>,
+): ThemeDetailData | undefined {
+  if (!theme) return undefined;
+  const exact = themeDetails[theme.id];
+  if (exact) return exact;
+  const wanted = canonicalThemeKey(theme.id) || canonicalThemeKey(theme.name);
+  if (!wanted) return undefined;
+  return Object.values(themeDetails).find(
+    (detail) =>
+      canonicalThemeKey(detail.themeId) === wanted ||
+      canonicalThemeKey(detail.themeName) === wanted,
+  );
+}
+
+export function emptyThemeDetail(
+  theme: Pick<ThemeCardData, "id" | "name">,
+  seriesLabel = "Series",
+): ThemeDetailData {
+  return {
+    themeId: theme.id,
+    themeName: theme.name,
+    seriesLabel,
+    packName: `${theme.name} Pack`,
+    unopenedPacks: 0,
+    photoCards: [],
+    motionCards: [],
+  };
+}
+
+function withScratchReadySlots(
+  photoCards: PhotoCardSlot[],
+  scratchReady: number,
+): PhotoCardSlot[] {
+  if (scratchReady <= 0) {
+    return photoCards.map((card) => ({ ...card, readyToScratch: false }));
+  }
+  const ready: PhotoCardSlot[] = Array.from({ length: scratchReady }, (_, i) => ({
+    index: i + 1,
+    isUnlocked: true,
+    readyToScratch: true,
+  }));
+  const rest = photoCards
+    .filter((card) => !card.readyToScratch)
+    .map((card, i) => ({ ...card, index: scratchReady + i + 1, readyToScratch: false }));
+  return [...ready, ...rest];
+}
+
+/**
+ * Resolve CTA detail for a theme. Live inventory (when provided) overrides
+ * static mock packs / scratch-ready so API theme ids cannot collapse to buy.
+ */
+export function resolveThemeDetail(
+  theme: ThemeCardData | undefined,
+  themeDetails: Record<string, ThemeDetailData>,
+  live?: {
+    unopenedPacks: number;
+    scratchReady: number;
+    motionCards?: MotionCardSlot[];
+  } | null,
+): ThemeDetailData {
+  const fallback = emptyThemeDetail(
+    theme ?? { id: "", name: "Theme" },
+    "Series",
+  );
+  const base = findThemeDetail(theme, themeDetails) ?? fallback;
+  if (!live) return base;
+  return {
+    ...base,
+    themeId: theme?.id ?? base.themeId,
+    themeName: theme?.name ?? base.themeName,
+    packName: theme ? `${theme.name} Pack` : base.packName,
+    unopenedPacks: live.unopenedPacks,
+    photoCards: withScratchReadySlots(base.photoCards, live.scratchReady),
+    motionCards:
+      live.motionCards && live.motionCards.length > 0
+        ? live.motionCards
+        : base.motionCards,
+  };
+}
+
+export function countMatchingUnopened(
+  theme: Pick<ThemeCardData, "id" | "name"> | undefined,
+  packs: Array<{ themeName?: string; packName?: string }>,
+): number {
+  if (!theme) return 0;
+  return packs.filter(
+    (pack) =>
+      themeRefMatches(pack.themeName, theme) ||
+      themeRefMatches(pack.packName, theme),
+  ).length;
+}
+
+export function countMatchingScratchReady(
+  theme: Pick<ThemeCardData, "id" | "name"> | undefined,
+  groups: Array<{ collectionName?: string; count: number }>,
+): number {
+  if (!theme) return 0;
+  return groups
+    .filter((group) => themeRefMatches(group.collectionName, theme))
+    .reduce((sum, group) => sum + group.count, 0);
+}
+
 /**
  * Sticky CTA priority (one primary):
  * 1 scratch → 2 open-pack → 3 buy → 4 view → 5 claim
@@ -527,7 +796,19 @@ export function getCreatorPage(creatorId: string): CreatorPageData {
 }
 
 export function progressTone(pct: number) {
-  if (pct >= 100) return "bg-[#34D399]";
-  if (pct < 30) return "bg-[#F59E0B]";
-  return "bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]";
+  if (pct >= 100) return "bg-[oklch(0.773_0.153_163.22)]";
+  if (pct < 30) return "bg-[oklch(0.769_0.165_70.08)]";
+  return "bg-gradient-to-r from-[oklch(0.606_0.219_292.72)] to-[oklch(0.656_0.212_354.31)]";
+}
+
+export async function fetchMyCollection() {
+  return apiFetch<{
+    collectedCardCount: number;
+    summary: {
+      uniqueCards: number;
+      motionCards: number;
+      photoCards: number;
+      creators: number;
+    };
+  }>("/api/me/collection");
 }

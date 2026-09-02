@@ -1,3 +1,6 @@
+import { apiFetch, apiMutate } from "../lib/api";
+import { isDemoMode } from "../lib/demo";
+
 export type StoreBadge =
   | "FREE"
   | "Best Value"
@@ -17,7 +20,7 @@ export type StoreProduct = {
   priceLabel: string;
   /** Diamonds granted on success. */
   diamonds: number;
-  /** Reward points granted (rewarded ads). */
+  /** Bonus Sugar Coins granted with this product. */
   coins?: number;
   badge?: StoreBadge;
   /** Artwork URL — CSS fallback used when empty. */
@@ -86,17 +89,16 @@ const SESSION_KEY = "sugar.v8.storePurchase";
 const SESSION_TTL_MS = 1000 * 60 * 30;
 
 /**
- * ponytail: catalog is local mock data. Swap `fetchStoreProducts` for the
- * remote catalog; availability / prices stay controlled there.
+ * Fixture catalog for `?demo=1` only. Live store uses `/api/store/products`.
  */
 const CATALOG: StoreProduct[] = [
   {
     id: "ad-daily",
     kind: "rewarded-ad",
     title: "Watch Ad",
-    subtitle: "Earn 10 free Diamonds",
+    subtitle: "Earn 100 free Diamonds",
     priceLabel: "Free",
-    diamonds: 10,
+    diamonds: 100,
     coins: 5,
     badge: "FREE",
     order: 1,
@@ -108,6 +110,7 @@ const CATALOG: StoreProduct[] = [
     title: "100 Diamonds",
     priceLabel: "$3.99",
     diamonds: 100,
+    coins: 4000,
     order: 2,
     available: true,
   },
@@ -117,6 +120,7 @@ const CATALOG: StoreProduct[] = [
     title: "500 Diamonds",
     priceLabel: "$7.99",
     diamonds: 500,
+    coins: 8000,
     badge: "Popular",
     order: 3,
     available: true,
@@ -127,6 +131,7 @@ const CATALOG: StoreProduct[] = [
     title: "1200 Diamonds",
     priceLabel: "$19.99",
     diamonds: 1200,
+    coins: 20000,
     badge: "Best Value",
     order: 4,
     available: true,
@@ -137,6 +142,7 @@ const CATALOG: StoreProduct[] = [
     title: "2500 Diamonds",
     priceLabel: "$39.99",
     diamonds: 2500,
+    coins: 40000,
     badge: "Bonus",
     order: 5,
     available: true,
@@ -147,6 +153,7 @@ const CATALOG: StoreProduct[] = [
     title: "5000 Diamonds",
     priceLabel: "$69.99",
     diamonds: 5000,
+    coins: 70000,
     order: 6,
     available: true,
   },
@@ -162,9 +169,26 @@ function queryFlag(name: string): string | null {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+function normalizeProductCoins(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return Math.trunc(parsed);
+  }
+  return undefined;
+}
+
+function normalizeStoreProduct(product: StoreProduct): StoreProduct {
+  const coins = normalizeProductCoins(product.coins);
+  return coins === undefined ? product : { ...product, coins };
+}
+
 export function listAvailableProducts(source: StoreProduct[] = CATALOG): StoreProduct[] {
   return source
     .filter((product) => product.available)
+    .map(normalizeStoreProduct)
     .slice()
     .sort((a, b) => a.order - b.order);
 }
@@ -173,16 +197,43 @@ export function findStoreProduct(productId: string): StoreProduct | undefined {
   return CATALOG.find((product) => product.id === productId && product.available);
 }
 
-export async function fetchStoreProducts(): Promise<StoreLoadResult> {
-  await wait(420);
+/** Sync snapshot for initial UI paint. */
+function loadStoreCatalog(): StoreLoadResult {
   const mode = queryFlag("store");
   if (mode === "error") {
     return { status: "error", message: "Unable to load store items." };
   }
   if (mode === "empty") return { status: "empty" };
+  if (!isDemoMode()) {
+    return { status: "empty" };
+  }
   const products = listAvailableProducts();
   if (!products.length) return { status: "empty" };
   return { status: "ok", products };
+}
+
+export function peekStoreProducts(): StoreLoadResult {
+  return loadStoreCatalog();
+}
+
+export async function fetchStoreProducts(): Promise<StoreLoadResult> {
+  const mode = queryFlag("store");
+  if (mode === "error") {
+    return { status: "error", message: "Unable to load store items." };
+  }
+  if (mode === "empty") return { status: "empty" };
+  const remote = await apiFetch<{ products: StoreProduct[] }>("/api/store/products");
+  if (remote?.products) {
+    const products = listAvailableProducts(remote.products);
+    if (!products.length) return { status: "empty" };
+    return { status: "ok", products };
+  }
+  if (isDemoMode()) {
+    const products = listAvailableProducts();
+    if (!products.length) return { status: "empty" };
+    return { status: "ok", products };
+  }
+  return { status: "error", message: "Unable to load store items." };
 }
 
 function newSessionId() {
@@ -196,18 +247,30 @@ export async function createPurchaseSession(
   if (product.kind !== "diamonds") {
     throw new Error("Only paid products create a payment session.");
   }
-  await wait(1800);
-  const session: PurchaseSession = {
-    id: newSessionId(),
-    productId: product.id,
-    productTitle: product.title,
-    priceLabel: product.priceLabel,
-    diamonds: product.diamonds,
-    coins: product.coins ?? 0,
-    createdAt: Date.now(),
-  };
-  savePurchaseSession(session);
-  return session;
+  try {
+    const data = await apiMutate<{ session: PurchaseSession }>(
+      "/api/store/purchases",
+      {
+        method: "POST",
+        body: JSON.stringify({ product_id: product.id }),
+      },
+    );
+    savePurchaseSession(data.session);
+    return data.session;
+  } catch (error) {
+    if (!isDemoMode()) throw error;
+    const session: PurchaseSession = {
+      id: newSessionId(),
+      productId: product.id,
+      productTitle: product.title,
+      priceLabel: product.priceLabel,
+      diamonds: product.diamonds,
+      coins: product.coins ?? 0,
+      createdAt: Date.now(),
+    };
+    savePurchaseSession(session);
+    return session;
+  }
 }
 
 export function savePurchaseSession(session: PurchaseSession) {
@@ -310,6 +373,76 @@ export async function returnFromGateway(
     };
   }
 
+  try {
+    const verified = await apiMutate<{
+      status: VerifiedPaymentStatus | "closed";
+      session: PurchaseSession;
+      diamonds?: number;
+      coins?: number;
+      message?: string;
+    }>(`/api/store/purchases/${session.id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ outcome: resolved }),
+    });
+    if (verified.status === "confirmed") {
+      clearPurchaseSession();
+      return {
+        status: "confirmed",
+        session: { ...verified.session, credited: true },
+        diamonds: verified.diamonds ?? session.diamonds,
+        coins: verified.coins ?? session.coins,
+      };
+    }
+    if (verified.status === "pending") {
+      const next: PurchaseSession = {
+        ...updated,
+        ...verified.session,
+        verifiedStatus: "pending",
+      };
+      savePurchaseSession(next);
+      return { status: "pending", session: next };
+    }
+    if (verified.status === "cancelled") {
+      const next: PurchaseSession = { ...updated, verifiedStatus: "cancelled" };
+      clearPurchaseSession();
+      return { status: "cancelled", session: next };
+    }
+    if (verified.status === "closed") {
+      const next = { ...updated, verifiedStatus: undefined };
+      savePurchaseSession(next);
+      return { status: "closed", session: next };
+    }
+    const next: PurchaseSession = { ...updated, verifiedStatus: "failed" };
+    clearPurchaseSession();
+    return {
+      status: "failed",
+      session: next,
+      message:
+        verified.message ??
+        "Payment could not be verified. No Diamonds were added.",
+    };
+  } catch {
+    if (!isDemoMode()) {
+      const next: PurchaseSession = { ...updated, verifiedStatus: "failed" };
+      clearPurchaseSession();
+      return {
+        status: "failed",
+        session: next,
+        message: "Payment could not be verified. No Diamonds were added.",
+      };
+    }
+  }
+
+  if (!isDemoMode()) {
+    const next: PurchaseSession = { ...updated, verifiedStatus: "failed" };
+    clearPurchaseSession();
+    return {
+      status: "failed",
+      session: next,
+      message: "Payment could not be verified. No Diamonds were added.",
+    };
+  }
+
   const next: PurchaseSession = {
     ...updated,
     verifiedStatus: "confirmed",
@@ -350,16 +483,34 @@ export async function resumePurchaseSession(
 
 /** Rewarded ads never touch the payment gateway. */
 export async function claimRewardedAd(product: StoreProduct): Promise<AdClaimResult> {
-  await wait(900);
   if (queryFlag("store") === "fail") {
     return {
       status: "failed",
       message: "Reward could not be claimed. Please try again.",
     };
   }
-  return {
-    status: "success",
-    diamonds: product.diamonds,
-    coins: product.coins ?? 0,
-  };
+  try {
+    const data = await apiMutate<{
+      status: "success";
+      diamonds: number;
+      coins: number;
+    }>(`/api/store/ads/${product.id}/claim`, { method: "POST" });
+    return {
+      status: "success",
+      diamonds: data.diamonds,
+      coins: data.coins,
+    };
+  } catch {
+    if (isDemoMode()) {
+      return {
+        status: "success",
+        diamonds: product.diamonds,
+        coins: product.coins ?? 0,
+      };
+    }
+    return {
+      status: "failed",
+      message: "Reward could not be claimed. Please try again.",
+    };
+  }
 }

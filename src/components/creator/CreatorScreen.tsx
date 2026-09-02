@@ -1,115 +1,309 @@
-import { useMemo, useState } from "react";
-import { CollectionPlaceholder } from "@/components/collection/CollectionPlaceholder";
+import { useEffect, useMemo, useState } from "react";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Paths } from "@/routes/Paths";
+import { CreatorCollectionBrowse } from "@/components/creator/CreatorCollectionBrowse";
+import { CreatorCollectionsDiscovery } from "@/components/creator/CreatorCollectionsDiscovery";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
-import { SelectedThemeDetail } from "@/components/creator/SelectedThemeDetail";
-import { StatsBar } from "@/components/creator/StatsBar";
-import { StickyFooterCTA } from "@/components/creator/StickyFooterCTA";
-import { ThemeHeroCarousel } from "@/components/creator/ThemeHeroCarousel";
-import { ThemeSelector } from "@/components/creator/ThemeSelector";
-import { ViewModeToggle, type ViewMode } from "@/components/creator/ViewModeToggle";
-import { getCreatorPage, getStickyCtaMode } from "@/services/collection";
-import type { PurchaseFlowPack } from "@/services/purchase";
+import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
+import {
+  ViewModeToggle,
+  type ViewMode,
+} from "@/components/creator/ViewModeToggle";
+import { useAuth } from "@/contexts/AuthContext";
+import { CatalogProvider } from "@/shared/catalog/CatalogContext";
+import {
+  normalizeMediaUrl,
+  type BackendModel,
+} from "@/shared/backend/collection";
+import { modelDisplayName } from "@/shared/backend/modelProfile";
+import { formatSocialHandle } from "@/shared/catalog/characters";
+import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
+import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
+import {
+  matchLiveThemeId,
+  type ThemeCardData,
+} from "@/services/collection";
+import {
+  followCreator,
+  followedCreatorFromModel,
+  isFollowing,
+  unfollowCreator,
+} from "@/services/following";
+import {
+  loadPackCatalog,
+  packUnitCost,
+  type PurchaseFlowPack,
+} from "@/services/purchase";
+import "./creator-collection.css";
 
 /**
- * Creator Page V2 — {Creator}'s Scratches with Grid / Carousel theme modes.
+ * Creator Page V2 — {Creator}'s Scratches with Grid / Collection browse modes.
  */
 export function CreatorScreen({
   creatorId,
-  diamonds,
   onBack,
-  onOpenPack,
   onBuyPack,
 }: {
   creatorId: string;
-  diamonds: number;
   onBack: () => void;
-  onOpenPack: (pack: PurchaseFlowPack) => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
-  const page = useMemo(() => getCreatorPage(creatorId), [creatorId]);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [selectedThemeId, setSelectedThemeId] = useState(page.themes[0]?.id ?? "summer");
-  const [activeThemeIndex, setActiveThemeIndex] = useState(0);
-  const [isThemeDetailRevealed, setIsThemeDetailRevealed] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const [overlay, setOverlay] = useState<string | null>(null);
+  const [resolvedModel, setResolvedModel] = useState<BackendModel | null>(
+    null,
+  );
 
-  const focusedThemeId =
-    viewMode === "grid"
-      ? selectedThemeId
-      : (page.themes[activeThemeIndex]?.id ?? selectedThemeId);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      resolveModelIdForCreator(creatorId),
+      loadPackCatalog(),
+    ]).then(([{ model }]) => {
+      if (!cancelled) setResolvedModel(model);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorId]);
+
+  const preferredModelId = resolvedModel?.id ?? null;
+
+  return (
+    <CatalogProvider preferredModelId={preferredModelId}>
+      <CreatorScreenInner
+        creatorId={creatorId}
+        model={resolvedModel}
+        onBack={onBack}
+        onBuyPack={onBuyPack}
+      />
+    </CatalogProvider>
+  );
+}
+
+function titleCaseSlug(value: string): string {
+  const slug = value.trim();
+  if (!slug || !/^[a-z][a-z0-9_-]{0,63}$/i.test(slug)) return "";
+  return slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function CreatorScreenInner({
+  creatorId,
+  model,
+  onBack,
+  onBuyPack,
+}: {
+  creatorId: string;
+  model: BackendModel | null;
+  onBack: () => void;
+  onBuyPack: (pack: PurchaseFlowPack) => void;
+}) {
+  const modelId = model?.id ?? null;
+  const collection = useCreatorCollection(modelId);
+  useMarkPageReady(
+    !collection.loading ||
+      collection.themes.length > 0 ||
+      collection.cards.length > 0,
+  );
+  const navigate = useNavigate();
+  const { authed, requireAuth } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState<ViewMode>("carousel");
+  const [selectedThemeId, setSelectedThemeId] = useState(
+    () => searchParams.get("theme") || "",
+  );
+  const [featuredCardId, setFeaturedCardId] = useState<string | null>(
+    () => searchParams.get("card"),
+  );
+  const [toast, setToast] = useState<string | null>(null);
+  const followId = (model?.id ?? creatorId).trim();
+  const [following, setFollowing] = useState(() => isFollowing(followId));
+
+  useEffect(() => {
+    setFollowing(isFollowing(followId));
+  }, [followId, authed]);
+
+  const themes: ThemeCardData[] = useMemo(
+    () =>
+      collection.themes.map((theme) => ({
+        id: theme.id,
+        name: theme.name,
+        thumbnailUrl: theme.coverUrl,
+        // Guests browse catalog only — personal progress is API/session owned.
+        collected: authed ? theme.collected : 0,
+        total: theme.total,
+        progressColor: "pink" as const,
+      })),
+    [collection.themes, authed],
+  );
+
+  const usingLiveThemes = themes.length > 0;
+  const creatorName =
+    (model ? modelDisplayName(model) : "") ||
+    titleCaseSlug(creatorId) ||
+    creatorId;
+  const username =
+    formatSocialHandle(model?.label) ||
+    formatSocialHandle(creatorId) ||
+    "";
+  const creatorDescription = `${creatorName} brings confidence, charm, and energy to every moment. Explore her exclusive collections.`;
+  const themeTags = themes.map((entry) => entry.name).slice(0, 6);
+  const purchaseCreatorId = creatorId || model?.id || "";
+
+  useEffect(() => {
+    if (!usingLiveThemes) return;
+
+    const urlTheme = searchParams.get("theme");
+    const urlCard = searchParams.get("card");
+    const wantedId = urlTheme || selectedThemeId;
+
+    const themeFromCard = urlCard
+      ? themes.find((entry) =>
+          (collection.cardsByThemeId[entry.id] ?? []).some(
+            (card) => card.id === urlCard,
+          ),
+        )
+      : undefined;
+
+    const nextThemeId =
+      themeFromCard?.id ??
+      matchLiveThemeId(wantedId, themes) ??
+      themes[0]!.id;
+
+    const nextCardId =
+      urlCard &&
+      (collection.cardsByThemeId[nextThemeId] ?? []).some(
+        (card) => card.id === urlCard,
+      )
+        ? urlCard
+        : null;
+
+    if (nextThemeId !== selectedThemeId) {
+      setSelectedThemeId(nextThemeId);
+    }
+    if (nextCardId !== featuredCardId) {
+      setFeaturedCardId(nextCardId);
+    }
+    if (urlTheme !== nextThemeId || (urlCard ?? null) !== nextCardId) {
+      const next = new URLSearchParams(searchParams);
+      if (nextCardId) next.set("card", nextCardId);
+      else next.delete("card");
+      next.set("theme", nextThemeId);
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    themes,
+    usingLiveThemes,
+    selectedThemeId,
+    featuredCardId,
+    searchParams,
+    setSearchParams,
+    collection.cardsByThemeId,
+  ]);
 
   const theme =
-    page.themes.find((entry) => entry.id === focusedThemeId) ?? page.themes[0];
-  const detail = page.themeDetails[theme.id];
-  const ctaMode = getStickyCtaMode({
-    detail,
-    theme,
-    collected: theme.collected,
-    total: theme.total,
-  });
+    themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
+  const coverUrl =
+    (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
+    theme?.thumbnailUrl ||
+    "";
 
   function notice(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(null), 1800);
   }
 
-  function openOwnedPack() {
-    onOpenPack({
-      packId: `${page.creator.id}-${theme.id}-owned`,
-      packName: theme.name,
-      price: "Free",
-      creator: page.creator.name,
-      entry: "open",
-      unopenedPacks: detail.unopenedPacks,
-    });
+  function syncCardParam(cardId: string | null, themeId?: string) {
+    const next = new URLSearchParams(searchParams);
+    if (cardId) next.set("card", cardId);
+    else next.delete("card");
+    if (themeId) next.set("theme", themeId);
+    setSearchParams(next, { replace: true });
   }
 
-  function buyThemePack() {
-    if (diamonds < 10) {
-      notice("Not enough diamonds");
+  function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
+    const card = cardId.trim();
+    const playModel = playModelId.trim();
+    if (!card || !playModel) return;
+    syncCardParam(card, selectedThemeId);
+    navigate(
+      Paths.gamePlay(playModel, card, {
+        creatorId,
+        themeId: selectedThemeId,
+      }),
+    );
+  }
+
+  function handleToggleFollow() {
+    if (!authed) {
+      requireAuth({
+        type: "follow",
+        creatorId: followId || creatorId,
+        displayName: creatorName,
+        avatarUrl: coverUrl || "/img/placeholder.png",
+      });
       return;
     }
-    onBuyPack({
-      packId: `${page.creator.id}-${theme.id}-buy`,
-      packName: theme.name,
-      price: "10 ◆",
-      creator: page.creator.name,
-      entry: "purchase",
-    });
+
+    if (following) {
+      unfollowCreator(followId);
+      setFollowing(false);
+      notice(`Unfollowed ${creatorName}`);
+      return;
+    }
+
+    const fromModel = model ? followedCreatorFromModel(model) : null;
+    const entry =
+      fromModel ??
+      ({
+        id: followId || creatorId,
+        displayName: creatorName,
+        username: "",
+        avatarUrl: coverUrl || "/img/placeholder.png",
+        followedAt: Date.now(),
+        hasUnseenActivity: false,
+      } as const);
+
+    followCreator(entry);
+    setFollowing(true);
+    notice(`Following ${creatorName}`);
   }
 
   function switchMode(mode: ViewMode) {
     if (mode === viewMode) return;
-    if (mode === "carousel") {
-      const index = Math.max(
-        0,
-        page.themes.findIndex((entry) => entry.id === selectedThemeId),
-      );
-      setActiveThemeIndex(index);
-      setIsThemeDetailRevealed(false);
-    } else {
-      const id = page.themes[activeThemeIndex]?.id ?? selectedThemeId;
-      setSelectedThemeId(id);
-    }
+    setFeaturedCardId(null);
+    syncCardParam(null, selectedThemeId);
     setViewMode(mode);
   }
 
+  function buyThemePack(themeId: string) {
+    const packTheme =
+      themes.find((entry) => entry.id === themeId) ?? themes[0];
+    if (!packTheme) return;
+    const packId = `${purchaseCreatorId}-${packTheme.id}-buy`;
+    const cost = packUnitCost(packId);
+    onBuyPack({
+      packId,
+      packName: packTheme.name,
+      themeName: packTheme.name,
+      price: `${cost} ◆`,
+      creator: creatorName,
+      entry: "purchase",
+    });
+  }
+
   return (
-    <section
-      data-page-scroll
-      className={[
-        "cpv2-page",
-        ctaMode ? "has-sticky-cta" : "no-sticky-cta",
-      ].join(" ")}
-    >
+    <section data-page-scroll className="cpv2-page no-sticky-cta">
       <div className="cpv2-shell">
         <CreatorHeader
-          name={page.creator.name}
-          coverUrl={page.creator.coverUrl}
+          name={creatorName}
+          username={username}
+          coverUrl={coverUrl}
+          description={creatorDescription}
+          tags={themeTags}
           onBack={onBack}
+          following={following}
+          onToggleFollow={handleToggleFollow}
         />
-        <StatsBar stats={page.creator.stats} />
 
         <div className="cpv2-choose-row" id="cpv2-choose-theme">
           <h2 className="cpv2-choose-title">Choose a Theme</h2>
@@ -118,65 +312,49 @@ export function CreatorScreen({
 
         <div key={viewMode} className="cpv2-mode-panel">
           {viewMode === "grid" ? (
-            <>
-              <ThemeSelector
-                themes={page.themes}
-                selectedThemeId={selectedThemeId}
-                onSelect={setSelectedThemeId}
-              />
-              <SelectedThemeDetail
-                detail={detail}
-                collected={theme.collected}
-                total={theme.total}
-                onOpenPackShortcut={openOwnedPack}
-                onToast={notice}
-              />
-            </>
+            <CreatorCollectionsDiscovery
+              creatorId={purchaseCreatorId}
+              themes={themes}
+              selectedThemeId={theme?.id ?? selectedThemeId}
+              onSelectTheme={(id) => {
+                setSelectedThemeId(id);
+                syncCardParam(null, id);
+              }}
+              cardsByThemeId={collection.cardsByThemeId}
+              loading={collection.loading}
+              showPersonalProgress={authed}
+              onBuyPack={buyThemePack}
+              onOpenCollectedCard={(cardId) => {
+                setFeaturedCardId(cardId);
+                syncCardParam(cardId, selectedThemeId);
+              }}
+              onLockedCardHint={() => notice("Not collected yet")}
+            />
           ) : (
-            <>
-              <ThemeHeroCarousel
-                themes={page.themes}
-                activeIndex={activeThemeIndex}
-                onActiveIndexChange={setActiveThemeIndex}
-                onActivateFocused={() => setIsThemeDetailRevealed(true)}
-              />
-              {isThemeDetailRevealed ? (
-                <SelectedThemeDetail
-                  detail={detail}
-                  collected={theme.collected}
-                  total={theme.total}
-                  onOpenPackShortcut={openOwnedPack}
-                  onToast={notice}
-                />
-              ) : (
-                <p className="cpv2-reveal-hint">
-                  Tap the theme above to see its cards
-                </p>
-              )}
-            </>
+            <CreatorCollectionBrowse
+              modelId={collection.modelId}
+              focusCardId={searchParams.get("card")}
+              onPlayGame={handlePlayGame}
+              onViewCard={(name) => notice(`View ${name}`)}
+            />
           )}
         </div>
       </div>
 
-      <StickyFooterCTA
-        mode={ctaMode}
-        theme={theme}
-        detail={detail}
-        diamonds={diamonds}
-        onScratch={() => setOverlay("Scratch Flow")}
-        onOpenPack={openOwnedPack}
-        onBuy={buyThemePack}
-        onView={() => setOverlay("View Collection")}
-        onClaim={() => setOverlay("Claim Reward")}
-      />
-
       {toast ? <div className="cpv2-toast">{toast}</div> : null}
 
-      {overlay ? (
-        <CollectionPlaceholder
-          title={overlay}
-          detail={theme.name}
-          onClose={() => setOverlay(null)}
+      {viewMode === "grid" &&
+      featuredCardId &&
+      collection.modelId ? (
+        <FeaturedCardOverlay
+          modelId={collection.modelId}
+          cardId={featuredCardId}
+          onClose={() => {
+            setFeaturedCardId(null);
+            syncCardParam(null, selectedThemeId);
+          }}
+          onPlayGame={handlePlayGame}
+          onViewCard={(name) => notice(`View ${name}`)}
         />
       ) : null}
     </section>

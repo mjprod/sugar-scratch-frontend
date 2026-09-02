@@ -1,17 +1,11 @@
 import {
   Check,
-  ChevronLeft,
   Clock,
-  Gem,
   Loader2,
   Lock,
   Play,
   RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  Store as StoreIcon,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -26,14 +20,29 @@ import {
   type GatewayOutcome,
   type PurchaseSession,
   type StoreBadge,
+  type StoreLoadResult,
   type StoreProduct,
 } from "@/services/store";
+import { AppPageShell } from "@/components/AppPageShell";
+import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
+import { useAuth } from "@/contexts/AuthContext";
+import type { RedeemReward } from "@/services/redeem";
+import { CoinLottie } from "@/components/ui/CoinLottie";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 type LoadState =
   | { status: "loading" }
   | { status: "ok"; products: StoreProduct[] }
   | { status: "empty" }
   | { status: "error"; message: string };
+
+function packageCoinAmount(product: StoreProduct): number | null {
+  const coins = product.coins;
+  if (typeof coins !== "number" || !Number.isFinite(coins) || coins < 0) {
+    return null;
+  }
+  return Math.trunc(coins);
+}
 
 /** Paid purchase stages after product selection. */
 type Flow =
@@ -52,43 +61,48 @@ type Flow =
     }
   | { step: "ad-processing"; product: StoreProduct };
 
-function formatBalance(value: number | null) {
-  if (value == null || Number.isNaN(value)) return "--";
-  return value.toLocaleString();
-}
-
 /**
  * Store — Diamonds, rewarded ads, and third-party purchase flow.
  * Sugar never collects card details; payment runs on a simulated gateway.
  */
 export function StoreScreen({
-  coins,
-  diamonds,
-  avatar,
   onBack,
-  onProfile,
   onPurchaseSuccess,
+  onDiamondReward,
+  onPackReward,
+  onOpenPack,
 }: {
-  coins: number | null;
-  diamonds: number | null;
-  avatar?: string | null;
   onBack: () => void;
-  onProfile?: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
+  onDiamondReward?: (amount: number) => void;
+  onPackReward?: (
+    reward: Extract<RedeemReward, { type: "free_pack" }>,
+  ) =>
+    | { instanceId?: string }
+    | Promise<{ instanceId?: string }>;
+  onOpenPack?: (input: {
+    packId: string;
+    packName: string;
+    creator: string;
+    instanceId?: string;
+  }) => void;
 }) {
+  const { requireAuth } = useAuth();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [claimedAds, setClaimedAds] = useState<string[]>([]);
   const resumed = useRef(false);
   const locking = useRef(false);
 
-  const reload = useCallback(async () => {
-    setLoad({ status: "loading" });
-    const result = await fetchStoreProducts();
+  const applyCatalog = useCallback((result: StoreLoadResult) => {
     if (result.status === "ok") setLoad({ status: "ok", products: result.products });
     else if (result.status === "empty") setLoad({ status: "empty" });
     else setLoad({ status: "error", message: result.message });
   }, []);
+
+  const reload = useCallback(async () => {
+    applyCatalog(await fetchStoreProducts());
+  }, [applyCatalog]);
 
   useEffect(() => {
     void reload();
@@ -270,6 +284,8 @@ export function StoreScreen({
       void runRewardedAd(product);
       return;
     }
+    // Guests can browse Store; diamond checkout requires auth.
+    if (!requireAuth({ type: "store" })) return;
     setFlow({ step: "confirm", product });
   }
 
@@ -292,67 +308,41 @@ export function StoreScreen({
         : undefined;
 
   return (
-    <section
-      data-page-scroll
-      className="store-page relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#090909] pb-[calc(112px+env(safe-area-inset-bottom))]"
+    <AppPageShell
+      variant="secondary"
+      aria-label="Store"
+      className="store-page"
     >
-      <div className="mx-auto w-full max-w-[480px] px-4 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-3xl lg:px-6 lg:pt-6">
-        <StoreTopNav
-          coins={coins}
-          diamonds={diamonds}
-          avatar={avatar}
-          onBack={onBack}
-          onProfile={onProfile}
+      {load.status === "loading" ? <StoreSkeleton /> : null}
+
+      {load.status === "empty" ? (
+        <StateBlock
+          title="No products are currently available."
+          primary={{ label: "Refresh", onClick: () => void reload() }}
         />
+      ) : null}
 
-        <header className="mt-5 px-1">
-          <h1 className="text-[32px] font-bold tracking-[-0.03em]">Store</h1>
-          <p className="mt-1.5 text-[14px] text-white/55">
-            Buy Diamonds and exclusive packs.
-          </p>
-        </header>
+      {load.status === "error" ? (
+        <StateBlock
+          title={load.message || "Unable to load store items."}
+          primary={{ label: "Retry", onClick: () => void reload() }}
+          secondary={{ label: "Back", onClick: onBack }}
+        />
+      ) : null}
 
-        {load.status === "loading" ? <StoreSkeleton /> : null}
-
-        {load.status === "empty" ? (
-          <StateBlock
-            title="No products are currently available."
-            primary={{ label: "Refresh", onClick: () => void reload() }}
-          />
-        ) : null}
-
-        {load.status === "error" ? (
-          <StateBlock
-            title={load.message || "Unable to load store items."}
-            primary={{ label: "Retry", onClick: () => void reload() }}
-            secondary={{ label: "Back", onClick: onBack }}
-          />
-        ) : null}
-
-        {load.status === "ok" ? (
-          <>
-            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4">
-              {load.products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  claimed={claimedAds.includes(product.id)}
-                  processing={
-                    busy &&
-                    activeProductId === product.id &&
-                    (flow.step === "creating" ||
-                      flow.step === "verifying" ||
-                      flow.step === "ad-processing")
-                  }
-                  disabled={busy}
-                  onSelect={() => onSelect(product)}
-                />
-              ))}
-            </div>
-            <StoreInfo />
-          </>
-        ) : null}
-      </div>
+      {load.status === "ok" ? (
+        <StoreCatalog
+          products={load.products}
+          claimedAds={claimedAds}
+          busy={busy}
+          activeProductId={activeProductId}
+          flowStep={flow.step}
+          onSelect={onSelect}
+          onDiamondReward={onDiamondReward}
+          onPackReward={onPackReward}
+          onOpenPack={onOpenPack}
+        />
+      ) : null}
 
       {flow.step === "confirm" ? (
         <ConfirmModal
@@ -416,74 +406,102 @@ export function StoreScreen({
           retryLabel={flow.kind === "pending" ? "Check status" : "Try again"}
         />
       ) : null}
-    </section>
+    </AppPageShell>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-function StoreTopNav({
-  coins,
-  diamonds,
-  avatar,
-  onBack,
-  onProfile,
+function StoreCatalog({
+  products,
+  claimedAds,
+  busy,
+  activeProductId,
+  flowStep,
+  onSelect,
+  onDiamondReward,
+  onPackReward,
+  onOpenPack,
 }: {
-  coins: number | null;
-  diamonds: number | null;
-  avatar?: string | null;
-  onBack: () => void;
-  onProfile?: () => void;
+  products: StoreProduct[];
+  claimedAds: string[];
+  busy: boolean;
+  activeProductId?: string;
+  flowStep: Flow["step"];
+  onSelect: (product: StoreProduct) => void;
+  onDiamondReward?: (amount: number) => void;
+  onPackReward?: (
+    reward: Extract<RedeemReward, { type: "free_pack" }>,
+  ) =>
+    | { instanceId?: string }
+    | Promise<{ instanceId?: string }>;
+  onOpenPack?: (input: {
+    packId: string;
+    packName: string;
+    creator: string;
+    instanceId?: string;
+  }) => void;
 }) {
+  const ads = products.filter((p) => p.kind === "rewarded-ad");
+  const packs = products.filter((p) => p.kind === "diamonds");
+
+  function isProcessing(productId: string) {
+    return (
+      busy &&
+      activeProductId === productId &&
+      (flowStep === "creating" ||
+        flowStep === "verifying" ||
+        flowStep === "ad-processing")
+    );
+  }
+
   return (
-    <header className="flex h-14 items-center gap-2">
-      <button
-        type="button"
-        onClick={onBack}
-        className="grid size-11 shrink-0 place-items-center rounded-full text-white/75 transition active:scale-95 hover:bg-white/10"
-        aria-label="Back"
-      >
-        <ChevronLeft className="size-5" />
-      </button>
+    <div className="mt-6 flex flex-col gap-7">
+      {ads.map((product) => (
+        <WatchAdCard
+          key={product.id}
+          product={product}
+          claimed={claimedAds.includes(product.id)}
+          processing={isProcessing(product.id)}
+          disabled={busy}
+          onSelect={() => onSelect(product)}
+        />
+      ))}
 
-      <div
-        className="mx-auto flex min-h-11 items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.05] px-3.5"
-        aria-live="polite"
-      >
-        <span
-          className="flex items-center gap-1.5"
-          aria-label={`${formatBalance(coins)} Reward Points`}
+      <section aria-labelledby="buy-diamonds-heading">
+        <h2
+          id="buy-diamonds-heading"
+          className="text-[18px] font-bold tracking-[-0.02em]"
         >
-          <Sparkles className="size-3.5 text-[#D4AF37]" aria-hidden="true" />
-          <span className="text-[13px] font-semibold tabular-nums">
-            {formatBalance(coins)}
-          </span>
-        </span>
-        <span className="h-3 w-px bg-white/15" aria-hidden="true" />
-        <span
-          className="flex items-center gap-1.5"
-          aria-label={`${formatBalance(diamonds)} Diamonds`}
-        >
-          <Gem className="size-3.5 text-sky-300" aria-hidden="true" />
-          <span className="text-[13px] font-semibold tabular-nums">
-            {formatBalance(diamonds)}
-          </span>
-        </span>
-      </div>
+          Buy Diamonds
+        </h2>
+        <div className="store-packages mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-3.5 xl:grid-cols-5">
+          {packs.map((product) => (
+            <PackageCard
+              key={product.id}
+              product={product}
+              processing={isProcessing(product.id)}
+              disabled={busy}
+              onSelect={() => onSelect(product)}
+            />
+          ))}
+        </div>
+      </section>
 
-      <button
-        type="button"
-        onClick={onProfile}
-        className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[16px] transition active:scale-95 hover:bg-white/10"
-        aria-label="Open Profile"
-      >
-        {avatar || "✨"}
-      </button>
-    </header>
+      {onDiamondReward && onPackReward && onOpenPack ? (
+        <HubRedeemSection
+          onDiamondReward={onDiamondReward}
+          onPackReward={onPackReward}
+          onOpenPack={onOpenPack}
+        />
+      ) : null}
+
+      <StoreInfo />
+    </div>
   );
 }
 
-function ProductCard({
+function WatchAdCard({
   product,
   claimed,
   processing,
@@ -496,71 +514,119 @@ function ProductCard({
   disabled: boolean;
   onSelect: () => void;
 }) {
-  const unavailable = claimed && product.kind === "rewarded-ad";
+  const unavailable = claimed;
 
   return (
-    <article className="store-product relative flex flex-col overflow-hidden rounded-[22px] border border-white/[0.08] bg-[#141318]">
-      {product.badge && !unavailable ? <BadgeMark badge={product.badge} /> : null}
-      {unavailable ? <BadgeMark badge="FREE" muted label="Claimed" /> : null}
-
-      <div
-        className={[
-          "relative aspect-[4/5] w-full",
-          product.kind === "rewarded-ad" ? "store-art-ad" : "store-art-gems",
-        ].join(" ")}
-        style={
-          product.artworkUrl
-            ? { backgroundImage: `url(${product.artworkUrl})`, backgroundSize: "cover" }
-            : undefined
-        }
-        aria-hidden="true"
-      >
-        {!product.artworkUrl ? (
-          <div className="absolute inset-0 grid place-items-center">
-            {product.kind === "rewarded-ad" ? (
-              <Play className="size-10 text-white/80" strokeWidth={1.5} />
-            ) : (
-              <Gem className="size-12 text-sky-200/90" strokeWidth={1.4} />
-            )}
-          </div>
-        ) : null}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#141318] to-transparent" />
-      </div>
-
-      <div className="relative -mt-8 flex flex-1 flex-col px-3 pb-3 pt-1">
-        <h2 className="line-clamp-2 min-h-[2.5rem] text-[14px] leading-tight font-semibold tracking-[-0.01em]">
-          {product.title}
-        </h2>
-        {product.subtitle ? (
-          <p className="mt-0.5 line-clamp-1 text-[11px] text-white/45">{product.subtitle}</p>
+    <button
+      type="button"
+      disabled={disabled || unavailable}
+      aria-busy={processing}
+      onClick={onSelect}
+      className={[
+        "store-watch-ad flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-3.5 text-left transition",
+        unavailable
+          ? "cursor-not-allowed border-white/[0.06] bg-white/[0.03] opacity-60"
+          : "border-[oklch(0.711_0.203_357.66)]/25 bg-gradient-to-r from-[oklch(0.711_0.203_357.66)]/12 to-[oklch(0.593_0.265_300.18)]/12 hover:border-[oklch(0.711_0.203_357.66)]/40 active:scale-[0.99]",
+        "disabled:cursor-not-allowed",
+      ].join(" ")}
+    >
+      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[oklch(0.711_0.203_357.66)]/18 text-white">
+        {processing ? (
+          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
         ) : (
-          <p className="mt-0.5 text-[11px] text-white/35">
-            {product.diamonds.toLocaleString()} ◆
-          </p>
+          <Play className="size-5" strokeWidth={1.75} aria-hidden="true" />
         )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold tracking-[-0.01em]">
+          {product.title}
+        </span>
+        <span className="mt-0.5 block text-[13px] text-white/55">
+          {product.subtitle ?? `Earn ${product.diamonds} Diamonds`}
+        </span>
+      </span>
+      <span
+        className={[
+          "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-[0.06em] uppercase",
+          unavailable
+            ? "border-white/10 text-white/40"
+            : "border-emerald-400/35 bg-emerald-400/15 text-emerald-300",
+        ].join(" ")}
+      >
+        {unavailable ? "Claimed" : processing ? "…" : "FREE"}
+      </span>
+    </button>
+  );
+}
 
-        <button
-          type="button"
-          disabled={disabled || unavailable}
-          aria-busy={processing}
-          onClick={onSelect}
-          className={[
-            "mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-full text-[13px] font-semibold transition active:scale-[0.98]",
-            unavailable
-              ? "cursor-not-allowed bg-white/[0.06] text-white/35"
-              : product.kind === "rewarded-ad"
-                ? "bg-gradient-to-r from-[#FF6FA5] to-[#9B3DFF] text-white"
-                : "bg-white text-[#0a0a0f] hover:bg-white/90",
-            "disabled:cursor-not-allowed disabled:opacity-55",
-          ].join(" ")}
+function PackageCard({
+  product,
+  processing,
+  disabled,
+  onSelect,
+}: {
+  product: StoreProduct;
+  processing: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  const featured = product.badge === "Best Value";
+  const coinAmount = packageCoinAmount(product);
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-busy={processing}
+      onClick={onSelect}
+      className={[
+        "store-package relative flex flex-col items-center rounded-[18px] border px-3 pb-3.5 pt-3 text-center transition",
+        featured
+          ? "border-[oklch(0.711_0.203_357.66)]/40 bg-[oklch(0.2_0.017_307.52)] shadow-[0_0_24px_oklch(0.711_0.203_357.66_/_0.12)]"
+          : "border-white/[0.08] bg-[oklch(0.19_0.01_294.59)] hover:border-white/[0.16]",
+        "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55",
+      ].join(" ")}
+    >
+      {product.badge ? <BadgeMark badge={product.badge} /> : null}
+
+      <span className="mt-5 grid size-11 place-items-center rounded-full bg-sky-300/10">
+        {processing ? (
+          <Loader2 className="size-5 animate-spin text-sky-200" aria-hidden="true" />
+        ) : (
+          <DiamondLottie
+            className="store-package-diamond"
+            size={24}
+            aria-hidden
+          />
+        )}
+      </span>
+
+      <span className="mt-3 text-[26px] font-bold tabular-nums tracking-[-0.03em] leading-none">
+        {product.diamonds.toLocaleString()}
+      </span>
+      <span className="mt-1 text-[12px] font-medium text-white/50">Diamonds</span>
+
+      {coinAmount != null ? (
+        <span
+          className="store-package-coins mt-1.5 text-[12px] font-semibold tabular-nums text-white/70"
+          aria-label={`${coinAmount.toLocaleString()} coins`}
         >
-          {processing ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : null}
-          {unavailable ? "Claimed" : processing ? "Processing…" : product.priceLabel}
-        </button>
-      </div>
-    </article>
+          <CoinLottie
+            className="store-package-coin"
+            size={37}
+            style={{ width: 48, height: 48 }}
+            aria-hidden
+          />
+          <span className="store-package-coins-value">
+            {coinAmount.toLocaleString()}
+          </span>
+        </span>
+      ) : null}
+
+      <span className="mt-3 text-center text-[14px] font-semibold tabular-nums text-white/90">
+        {processing ? "Processing…" : product.priceLabel}
+      </span>
+    </button>
   );
 }
 
@@ -578,13 +644,13 @@ function BadgeMark({
     : badge === "FREE"
       ? "border-emerald-400/35 bg-emerald-400/15 text-emerald-300"
       : badge === "Best Value"
-        ? "border-[#D4AF37]/40 bg-[#D4AF37]/15 text-[#F5D78E]"
+        ? "border-[oklch(0.711_0.203_357.66)]/45 bg-[oklch(0.711_0.203_357.66)]/15 text-[oklch(0.808_0.127_352.48)]"
         : badge === "Popular"
           ? "border-sky-400/40 bg-sky-400/15 text-sky-300"
           : badge === "Limited Time"
-            ? "border-[#F87171]/40 bg-[#F87171]/15 text-[#FCA5A5]"
+            ? "border-[oklch(0.711_0.166_22.22)]/40 bg-[oklch(0.711_0.166_22.22)]/15 text-[oklch(0.808_0.103_19.57)]"
             : badge === "Bonus"
-              ? "border-[#C4B5FD]/40 bg-[#8B5CF6]/20 text-[#C4B5FD]"
+              ? "border-[oklch(0.811_0.101_293.57)]/40 bg-[oklch(0.606_0.219_292.72)]/20 text-[oklch(0.811_0.101_293.57)]"
               : "border-white/20 bg-white/10 text-white";
 
   return (
@@ -600,67 +666,36 @@ function BadgeMark({
 }
 
 function StoreInfo() {
-  const items = [
-    {
-      icon: Zap,
-      title: "Instant Delivery",
-      body: "Purchases are delivered immediately after successful payment.",
-    },
-    {
-      icon: ShieldCheck,
-      title: "Secure Checkout",
-      body: "All payments are securely processed through the platform.",
-    },
-    {
-      icon: StoreIcon,
-      title: "Official Store",
-      body: "Purchase Diamonds, packs, and exclusive offers.",
-    },
-  ] as const;
-
   return (
-    <section className="mt-10 mb-4 px-1" aria-label="Store information">
-      <h2 className="text-[12px] font-semibold tracking-[0.14em] text-white/40 uppercase">
-        Store information
-      </h2>
-      <ul className="mt-3 space-y-3">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <li
-              key={item.title}
-              className="flex gap-3 rounded-[18px] border border-white/[0.06] bg-white/[0.03] px-3.5 py-3"
-            >
-              <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-white/55">
-                <Icon className="size-4" aria-hidden="true" />
-              </span>
-              <span>
-                <span className="block text-[13px] font-semibold">{item.title}</span>
-                <span className="mt-0.5 block text-[12px] leading-relaxed text-white/45">
-                  {item.body}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <p
+      className="pb-2 text-center text-[12px] leading-relaxed text-white/40"
+      aria-label="Store information"
+    >
+      Secure payment
+      <span className="mx-1.5 text-white/20" aria-hidden="true">
+        ·
+      </span>
+      Instant delivery
+      <span className="mx-1.5 text-white/20" aria-hidden="true">
+        ·
+      </span>
+      Trusted checkout
+    </p>
   );
 }
 
 function StoreSkeleton() {
   return (
-    <div
-      className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3"
-      aria-busy="true"
-      aria-label="Loading store"
-    >
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="aspect-[3/4] animate-pulse rounded-[22px] bg-white/[0.06]"
-        />
-      ))}
+    <div className="mt-6 flex flex-col gap-7" aria-busy="true" aria-label="Loading store">
+      <div className="h-[72px] animate-pulse rounded-[18px] bg-white/[0.06]" />
+      <div className="store-packages grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-3.5 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[148px] animate-pulse rounded-[18px] bg-white/[0.06]"
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -683,7 +718,7 @@ function StateBlock({
       <button
         type="button"
         onClick={primary.onClick}
-        className="mt-6 h-12 min-w-[160px] rounded-full bg-[#8B5CF6] px-6 text-[14px] font-semibold transition active:scale-[0.98]"
+        className="mt-6 h-12 min-w-[160px] rounded-full bg-[oklch(0.606_0.219_292.72)] px-6 text-[14px] font-semibold transition active:scale-[0.98]"
       >
         {primary.label}
       </button>
@@ -723,7 +758,7 @@ function ConfirmModal({
       <button
         type="button"
         onClick={onConfirm}
-        className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[14px] font-semibold text-[#0a0a0f] transition active:scale-[0.98]"
+        className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[14px] font-semibold text-[oklch(0.147_0.011_285.01)] transition active:scale-[0.98]"
       >
         Continue to payment
       </button>
@@ -814,7 +849,7 @@ function PaymentGateway({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1100] flex flex-col overflow-y-auto bg-[#f4f6f8] text-[#0f172a]"
+      className="fixed inset-0 z-[1100] flex flex-col overflow-y-auto bg-[oklch(0.972_0.003_247.86)] text-[oklch(0.208_0.04_265.75)]"
       role="dialog"
       aria-modal="true"
       aria-label="Payment gateway"
@@ -945,7 +980,7 @@ function PaymentGateway({
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0f172a] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-55"
+            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[oklch(0.208_0.04_265.75)] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-55"
           >
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {submitting ? "Authorizing…" : `Pay ${session.priceLabel}`}
@@ -973,8 +1008,8 @@ function StatusOverlay({ title, body }: { title: string; body: string }) {
       role="status"
       aria-live="polite"
     >
-      <div className="flex flex-col items-center rounded-[24px] border border-white/10 bg-[#151318] px-8 py-7 text-center shadow-2xl">
-        <Loader2 className="size-8 animate-spin text-[#C4B5FD]" aria-hidden="true" />
+      <div className="flex flex-col items-center rounded-[24px] border border-white/10 bg-[oklch(0.191_0.01_303.57)] px-8 py-7 text-center shadow-2xl">
+        <Loader2 className="size-8 animate-spin text-[oklch(0.811_0.101_293.57)]" aria-hidden="true" />
         <p className="mt-4 text-[15px] font-semibold">{title}</p>
         <p className="mt-1 max-w-[240px] text-[12px] text-white/45">{body}</p>
       </div>
@@ -1011,7 +1046,7 @@ function ResultModal({
       ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
       : kind === "pending"
         ? "border-sky-400/30 bg-sky-400/10 text-sky-300"
-        : "border-[#F87171]/30 bg-[#F87171]/10 text-[#F87171]";
+        : "border-[oklch(0.711_0.166_22.22)]/30 bg-[oklch(0.711_0.166_22.22)]/10 text-[oklch(0.711_0.166_22.22)]";
 
   return (
     <ModalShell onDismiss={onContinue}>
@@ -1029,7 +1064,7 @@ function ResultModal({
         <button
           type="button"
           onClick={onContinue}
-          className="mt-6 h-12 w-full rounded-full bg-[#8B5CF6] text-[14px] font-semibold transition active:scale-[0.98]"
+          className="mt-6 h-12 w-full rounded-full bg-[oklch(0.606_0.219_292.72)] text-[14px] font-semibold transition active:scale-[0.98]"
         >
           Back to Store
         </button>
@@ -1039,7 +1074,7 @@ function ResultModal({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-6 h-12 w-full rounded-full bg-[#8B5CF6] text-[14px] font-semibold transition active:scale-[0.98]"
+              className="mt-6 h-12 w-full rounded-full bg-[oklch(0.606_0.219_292.72)] text-[14px] font-semibold transition active:scale-[0.98]"
             >
               {retryLabel}
             </button>
@@ -1077,7 +1112,7 @@ function ModalShell({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-[28px] border border-white/[0.1] bg-[#151318] p-6 text-center shadow-[0_24px_60px_rgba(0,0,0,0.55)]"
+        className="w-full max-w-sm rounded-[28px] border border-white/[0.1] bg-[oklch(0.191_0.01_303.57)] p-6 text-center shadow-[0_24px_60px_oklch(0_0_0_/_0.55)]"
       >
         {children}
       </div>

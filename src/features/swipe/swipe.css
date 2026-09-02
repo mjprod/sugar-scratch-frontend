@@ -1,0 +1,1072 @@
+.stage-swipe {
+  --card-aspect: 0.528421;
+  --card-w: min(66vw, 312px);
+  --card-h: calc(var(--card-w) / var(--card-aspect));
+  --brand: oklch(0.545 0.218 16.03);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  position: relative;
+  /* Fill app-stage exactly — same pattern as packs/reveal/collection. */
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  display: block;
+  box-sizing: border-box;
+}
+
+.main-layout {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  display: block;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.home {
+  /* Full-bleed fill of stage-swipe (match coverflow-shell / reveal-app). */
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-rows: 1fr;
+  justify-items: center;
+  align-content: stretch;
+  gap: 0;
+  box-sizing: border-box;
+}
+
+.home__stage {
+  position: relative;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  /* Start Again only dissolves the stage; footer stays put. */
+  transform-origin: center center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.stage-swipe .home,
+.stage-swipe .home__stage,
+.stage-swipe .swipe-deck-root {
+  box-sizing: border-box;
+}
+
+.home__footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 0.25rem;
+}
+
+.home__reset {
+  border: 1px solid oklch(1 0 0 / 0.18);
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(0.971 0.003 286.35);
+  border-radius: 999px;
+  padding: 0.7rem 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, transform 120ms ease;
+}
+
+.home__reset:active {
+  transform: scale(0.97);
+  background: oklch(1 0 0 / 0.12);
+}
+
+/* Deck */
+/* Fills home__stage so feedback can anchor to stage top-center. */
+.swipe-deck-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+}
+
+/*
+ * Bottom swipe-intent glow. Fixed to the viewport so Y (dvh) / size (vw)
+ * match the debug panel, independent of the card stage.
+ * Hidden at rest; opacity + OKLCH color track the swipe (yes / nope).
+ */
+.swipe-circle {
+  position: fixed;
+  left: 50%;
+  /* Sit only one layer above the page background — under deck + chrome. */
+  z-index: 1;
+  translate: -50% 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: opacity, filter, background;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.swipe-deck {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  touch-action: none;
+  /* Desktop drag shouldn't paint a blue media/text selection. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Outer wrapper at depth-1 locus; lips stay mounted (springed fade/recede). */
+.swipe-deck__stack-backs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform-origin: center center;
+  overflow: visible;
+  /* Own stacking context so lip z-order can't fight real slots. */
+  isolation: isolate;
+  /* GPU layer — avoids repaint flashes when real cards promote above. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.swipe-deck__stack-back {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Fill overridden by STACK_BACK_GRAYS per lip. */
+  background: oklch(0.297 0.005 280);
+  box-shadow: 0 2px 10px oklch(0 0 0 / 0.18);
+  transform-origin: center center;
+  pointer-events: none;
+  /* Opacity + pose are spring-driven (Time Machine dissolve) — no CSS transition. */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.swipe-deck.is-busy .swipe-deck__slot--front {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Lives inside .swipe-deck; springs in with the pack dissolve (same timing). */
+.swipe-deck--empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 0.35rem;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: oklch(1 0 0 / 0.04);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  transform-origin: center center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+}
+
+.swipe-deck__empty-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.swipe-deck__empty-sub {
+  margin: 0;
+  color: oklch(0.971 0.003 286.35 / 0.6);
+  font-size: 0.95rem;
+}
+
+.swipe-deck__start-again {
+  margin-top: 0.85rem;
+  border: 1px solid oklch(1 0 0 / 0.2);
+  background: oklch(0.545 0.218 16.03 / 0.92);
+  color: oklch(1 0 0);
+  border-radius: 999px;
+  padding: 0.72rem 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 160ms ease, transform 120ms ease, opacity 160ms ease;
+  pointer-events: auto;
+}
+
+.swipe-deck__start-again:hover {
+  background: oklch(0.593 0.23 14.94 / 0.98);
+}
+
+.swipe-deck__start-again:active {
+  transform: scale(0.97);
+}
+
+.swipe-deck__start-again:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+.swipe-deck__empty-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.swipe-deck__start-again--secondary {
+  margin-top: 0;
+  background: transparent;
+  border-color: oklch(1 0 0 / 0.28);
+  color: oklch(1 0 0 / 0.88);
+  font-weight: 700;
+}
+
+.swipe-deck__start-again--secondary:hover {
+  background: oklch(1 0 0 / 0.08);
+}
+
+.swipe-deck__continue {
+  min-width: 220px;
+}
+
+.swipe-deck__slot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  will-change: transform, opacity, filter;
+  /* Desktop: bottom-center pivot. Mobile overrides to center below. */
+  transform-origin: 50% 100%;
+  transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Avoid contain:paint — it can clip shadows and cause layer flashes on iOS. */
+  pointer-events: none;
+  /* Solid fill so nothing behind the stack peeks through during promote. */
+  background: transparent;
+}
+
+/* First-load yes/nope teaser: always hinge from bottom-center of the card. */
+.swipe-deck.is-hinting .swipe-deck__slot--front {
+  transform-origin: 50% 100%;
+}
+
+/* Fly-off card sits above the stack and never steals input. */
+.swipe-deck__slot--leaving {
+  pointer-events: none;
+}
+
+/* Leave keeps the same <video> node — freeze media fade so ready-class
+   transitions cannot flash opacity during the commit handoff. */
+.swipe-deck__slot--leaving .swipe-card__media video,
+.swipe-deck__slot--leaving .swipe-card__image {
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+.swipe-deck__slot--front {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+.swipe-deck__slot--front:active {
+  cursor: grabbing;
+}
+
+.swipe-deck__stamps {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Stage-level feedback layer (sibling of the card deck inside .swipe-deck-root). */
+.swipe-deck__burst {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Card shell (simplified fan-card) */
+.swipe-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(80% 60% at 50% 40%, oklch(1 0 0 / 0.04), transparent 70%),
+    oklch(0.186 0.016 284.72);
+  /*
+   * Static ambient only when the slot is NOT driving a tilt shadow.
+   * Top stack cards get animated opposite-direction lift shadows on the slot.
+   */
+  box-shadow:
+    0 18px 40px oklch(0 0 0 / 0.45),
+    0 2px 0 oklch(1 0 0 / 0.06) inset;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Desktop: block blue text/media highlight while still allowing drag/swipe. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+/*
+ * Face shell — no filter here. Grayscale lives on .swipe-deck__slot-face-media
+ * so the red multiply ::after stays full chroma.
+ */
+.swipe-deck__slot-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  /* Keep stamps free to paint outside the card. */
+  overflow: visible;
+  /* Multiply tint only blends with media inside the face, not the page. */
+  isolation: isolate;
+}
+
+/* Media + optional stamps — owns brightness / grayscale. */
+.swipe-deck__slot-face-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: visible;
+  will-change: filter;
+}
+
+/*
+ * NOPE color wash: media layer owns brightness/contrast/grayscale; this paints
+ * a solid color over it. Opacity = --nope-tint; blend = --nope-tint-blend.
+ * Sibling of filtered media so the wash keeps full chroma.
+ */
+.swipe-deck__slot-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--nope-tint-color, oklch(0.573 0.233 29.48));
+  opacity: var(--nope-tint, 0);
+  mix-blend-mode: var(--nope-tint-blend, multiply);
+  pointer-events: none;
+  z-index: 4;
+  will-change: opacity;
+}
+
+/* Slot owns the dynamic lift shadow — drop the card's static copy to avoid double. */
+.swipe-deck__slot--tilt-shadow .swipe-card {
+  box-shadow: none;
+}
+
+.swipe-deck__slot--tilt-shadow {
+  /* Shadow is painted on the rounded slot; keep overflow open so blur isn't clipped. */
+  overflow: visible;
+}
+
+.swipe-card__media {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.186 0.016 284.72);
+  /* Clip nudged media to the rounded card face. */
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/*
+ * Bottom rim light lives on the slot (sibling of the filtered face), not on
+ * .swipe-card__media — otherwise face filter / multiply tint wash the OKLCH color.
+ * --card-rim is progressive yes/nope from drag/leave X.
+ */
+.swipe-deck__slot::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Progressive with swipe: 0.5px rest → 1px full (set on slot). */
+  height: var(--card-rim-height, 0.5px);
+  border-radius: 0 0 inherit inherit;
+  background: var(--card-rim, transparent);
+  /*
+   * Progressive edge-fade from --card-rim-mask (set on the slot):
+   * yes end  → transparent 50% · black 80% · transparent 100%
+   * nope end → transparent 0% · black 20% · transparent 40%
+   */
+  -webkit-mask-image: var(
+    --card-rim-mask,
+    linear-gradient(to right, transparent 20%, black 50%, transparent 80%)
+  );
+  mask-image: var(
+    --card-rim-mask,
+    linear-gradient(to right, transparent 20%, black 50%, transparent 80%)
+  );
+  pointer-events: none;
+  z-index: 6;
+}
+
+.swipe-card__media video,
+.swipe-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  /* Hide until first frame is ready — kills black video flash. */
+  opacity: 0;
+  /* Longer ease so newly warmed under-cards fade in instead of popping. */
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Nudge art right so it sits clear of the identity strip (matches collection). */
+  -webkit-transform: translate3d(1.2rem, 0, 0);
+  transform: translate3d(1.2rem, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.swipe-card__media video.is-ready,
+.swipe-card__image.is-ready {
+  opacity: 1;
+}
+
+/* Shell stays solid while media fades — avoids seeing through to gray backs. */
+.swipe-card.is-loading .swipe-card__media {
+  background: oklch(0.186 0.016 284.72);
+}
+
+.swipe-card__image {
+  background-size: cover;
+  background-position: center;
+}
+
+/*
+ * Home swipe identity overlay — same HTML as collection/reveal, but:
+ *  - no card number
+ *  - shorter inset border so it clears the bottom meta bar
+ *  - slightly tighter strip/type scale for the taller swipe aspect
+ */
+.swipe-card > .card-face-overlay {
+  --overlay-strip-max-width: 4.1rem;
+  --overlay-pad-top: 1rem;
+  /* Keep name/flag above the bottom meta chrome. */
+  --overlay-pad-bottom: 8.35rem;
+  --overlay-gap: 0.4rem;
+  --overlay-name-font: clamp(1.15rem, 8.2cqi, 1.85rem);
+  --overlay-name-tracking: -1.6px;
+  --overlay-location-font: clamp(0.62rem, 3.6cqi, 1.15rem);
+  --overlay-location-tracking: -0.6px;
+  --overlay-flag-w: 1.45rem;
+  --overlay-flag-h: 0.95rem;
+  --overlay-flag-font: clamp(0.62rem, 3.8cqi, 0.85rem);
+  --overlay-border-width: 91%;
+  /* Shorter than collection (96.4%) so the frame sits above the meta bar. */
+  --overlay-border-height: 78.5%;
+  --overlay-border-radius: 12px;
+  --overlay-border-stroke: 2px solid oklch(1 0 0);
+  --overlay-text-gap: 0.45em;
+
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template: 1fr / 1fr;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  box-sizing: border-box;
+  isolation: isolate;
+  container-type: inline-size;
+  container-name: card-face;
+  transform: none;
+}
+
+/* Top-bias the inset frame — margin:auto would center into the meta bar. */
+.swipe-card > .card-face-overlay > .innerBorder {
+  align-self: start;
+  justify-self: center;
+  width: var(--overlay-border-width);
+  height: var(--overlay-border-height);
+  margin: 0.7rem 0 0;
+}
+
+.swipe-card > .card-face-overlay > .innerCardContent {
+  /* Strip still runs full face height; bottom pad clears the meta label. */
+  border-radius: inherit;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  max-width: 5.5rem;
+}
+
+.swipe-card__meta {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1.5rem 1rem 1.5rem 1rem;
+  border-radius: 1rem 1rem 0 0;
+  background: linear-gradient(0deg, oklch(0% 0 0 / 0.9), oklch(0% 0 0 / 0.8));
+  backdrop-filter: blur(5px);
+  /* Above identity overlay so the name bar stays readable. */
+  z-index: 4;
+  align-content: center;
+  gap: 0.15rem;
+  box-shadow: inset -1px 2px 1px -1px oklch(1 0 0 / 0.28), inset -3px 4px 8px -5px oklch(1 0 0 / 0.423);
+}
+
+.swipe-card__name {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: oklch(0.971 0.003 286.35);
+}
+
+.swipe-card__socialhandle {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: oklch(0.971 0.003 286.35 / 0.72);
+}
+
+@media (max-width: 380px) {
+  .swipe-card > .card-face-overlay {
+    --overlay-strip-max-width: 3.55rem;
+    --overlay-pad-bottom: 4.85rem;
+    --overlay-border-height: 77%;
+    --overlay-flag-w: 1.25rem;
+    --overlay-flag-h: 0.82rem;
+  }
+}
+
+/* Stamps (dotLottie feedback) */
+.swipe-stamp {
+  position: absolute;
+  top: 12%;
+  width: min(46%, 9.5rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 18px oklch(0 0 0 / 0.35));
+  will-change: transform, opacity;
+}
+
+.swipe-stamp__lottie {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* LIKE + NOPE share stage top-center anchoring / size; only the lottie asset differs. */
+.swipe-stamp--like,
+.swipe-stamp--nope {
+  top: 0;
+  left: 50%;
+  right: auto;
+  width: min(42%, 9.5rem);
+  margin-left: 0;
+  /* Horizontal center is translateX(-50%) in the JS/CSS transforms. */
+  transform-origin: center center;
+  /* Hard cut only — never fade the stamp container. */
+  transition: none;
+  opacity: 1;
+}
+
+/* Keep stamps anchored at stage top-center through commit/exit. */
+.swipe-deck__burst.is-finishing .swipe-stamp--like.swipe-stamp--committed,
+.swipe-deck__burst.is-finishing .swipe-stamp--nope.swipe-stamp--committed {
+  top: 0;
+  left: 50%;
+  right: auto;
+  width: min(42%, 9.5rem);
+  margin-left: 0;
+  transform-origin: center center;
+}
+
+.swipe-stamp--preview,
+.swipe-stamp.is-hidden {
+  transition: none;
+  animation: none !important;
+}
+
+/* Shared freeze-frame exit from the exact release pose. */
+.swipe-stamp--like.swipe-stamp--committed,
+.swipe-stamp--nope.swipe-stamp--committed {
+  transform-origin: center center;
+  animation: stamp-exit-fall 520ms cubic-bezier(0.33, 0.1, 0.25, 1) both;
+}
+
+@keyframes stamp-exit-fall {
+
+  /* Freeze-frame fall from the exact release pose — no lottie playback, no opacity pop-in. */
+  0% {
+    opacity: var(--stamp-opacity, 1);
+    filter: blur(var(--stamp-blur, 0px));
+    transform: translate3d(-50%, var(--stamp-y, 0dvh), 0) rotate(var(--stamp-rot, 12deg)) scale(var(--stamp-scale, 1));
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(var(--stamp-blur, 0px));
+    transform: translate3d(-50%, max(100dvh, calc(var(--stamp-y, 0dvh) + 30dvh)), 0) rotate(var(--stamp-rot, 14deg)) scale(var(--stamp-scale, 1));
+  }
+}
+
+/* Mobile card pivot (matches JS SWIPE_DESKTOP_MIN_WIDTH = 768). */
+@media (max-width: 767px) {
+  .swipe-deck__slot {
+    transform-origin: 50% 50%;
+  }
+}
+
+@media (max-width: 380px) {
+  .stage-swipe {
+    --card-w: min(72vw, 294px);
+  }
+
+  .home__title {
+    font-size: 1.5rem;
+  }
+}
+
+/* ── Stack-backs debug panel ─────────────────────────────────── */
+.sb-debug__fab {
+  position: fixed;
+  top: calc(0.85rem + var(--safe-top));
+  right: 0.85rem;
+  z-index: 95;
+  border: 1px solid oklch(1 0 0 / 0.2);
+  background: oklch(0.186 0.016 284.72 / 0.9);
+  color: oklch(0.971 0.003 286.35);
+  border-radius: 999px;
+  padding: 0.65rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px oklch(0 0 0 / 0.35);
+}
+
+/* Stack below other debug FABs when more than one is mounted. */
+.sb-debug__fab--nope {
+  top: calc(3.15rem + var(--safe-top));
+}
+
+.sb-debug__fab:active {
+  transform: scale(0.97);
+}
+
+/* Hide FAB while the drawer is open so it doesn't sit over controls. */
+body:has(.sb-debug.is-open) .sb-debug__fab {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sb-debug {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.sb-debug.is-open {
+  pointer-events: auto;
+}
+
+.sb-debug__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  /* Fully clear so the deck/glow stay visible while tuning. */
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.sb-debug.is-open .sb-debug__backdrop {
+  opacity: 1;
+}
+
+/* Right-side drawer so the deck stays visible under the controls. */
+.sb-debug__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: min(400px, 92vw);
+  max-height: none;
+  overflow: hidden;
+  border-radius: 0;
+  border: 0;
+  border-left: 1px solid oklch(1 0 0 / 0.14);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  color: oklch(0.971 0.003 286.35);
+  /* Keep labels readable over the live deck. */
+  text-shadow: 0 1px 2px oklch(0 0 0 / 0.85);
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding-bottom: var(--safe-bottom);
+  transform: translate3d(105%, 0, 0);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.sb-debug.is-open .sb-debug__panel {
+  transform: translate3d(0, 0, 0);
+  pointer-events: auto;
+}
+
+.sb-debug__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid oklch(1 0 0 / 0.12);
+  position: sticky;
+  top: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: 2;
+}
+
+.sb-debug__eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: oklch(0.971 0.003 286.35 / 0.5);
+  font-weight: 700;
+}
+
+.sb-debug__header h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.sb-debug__sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: oklch(0.971 0.003 286.35 / 0.62);
+  max-width: 28rem;
+  line-height: 1.4;
+}
+
+.sb-debug__btn {
+  border: 1px solid oklch(1 0 0 / 0.16);
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(0.971 0.003 286.35);
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sb-debug__btn--primary {
+  background: oklch(0.545 0.218 16.03 / 0.88);
+  border-color: oklch(1 0 0 / 0.12);
+}
+
+.sb-debug__body {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.75rem;
+  overflow: auto;
+  min-height: 0;
+}
+
+.sb-debug__card {
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 0.9rem;
+  padding: 0.85rem;
+  background: transparent;
+}
+
+.sb-debug__card h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.sb-debug__muted {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: oklch(0.971 0.003 286.35 / 0.48);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sb-debug__field {
+  display: grid;
+  gap: 0.18rem;
+  margin-bottom: 0.5rem;
+}
+
+.sb-debug__field:last-child {
+  margin-bottom: 0;
+}
+
+.sb-debug__field-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.sb-debug__field-label strong {
+  color: oklch(0.779 0.139 1.97);
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-debug__field input[type='range'] {
+  width: 100%;
+  accent-color: var(--brand);
+}
+
+.sb-debug__select,
+.sb-debug__hex {
+  width: 100%;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  background: oklch(0 0 0 / 0.35);
+  color: oklch(0.971 0.003 286.35);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.sb-debug__hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.sb-debug__select {
+  cursor: pointer;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, oklch(0.971 0.003 286.35 / 0.7) 50%),
+    linear-gradient(135deg, oklch(0.971 0.003 286.35 / 0.7) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 55%,
+    calc(100% - 11px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.6rem;
+}
+
+.sb-debug__select option {
+  background: oklch(0.186 0.016 284.72);
+  color: oklch(0.971 0.003 286.35);
+}
+
+/* Color row (hex + native picker, or OKLCH editors) */
+.sb-debug__color-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 0.15rem;
+}
+
+.sb-debug__color-row input[type='color'] {
+  width: 2.6rem;
+  height: 2.2rem;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sb-debug__color-row input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.sb-debug__color-row input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.3rem;
+}
+
+.sb-debug__swatch {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 0.65rem;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.25);
+}
+
+.sb-debug__hex-picker {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: oklch(0.971 0.003 286.35 / 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sb-debug__hex-picker input[type='color'] {
+  width: 2.6rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sb-debug__hex-picker input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.sb-debug__hex-picker input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.3rem;
+}
+
+.sb-debug__oklch-code {
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: oklch(0.779 0.139 1.97);
+  background: oklch(0 0 0 / 0.28);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-debug__footer {
+  padding: 0.85rem;
+  border-top: 1px solid oklch(1 0 0 / 0.12);
+  display: grid;
+  gap: 0.65rem;
+  background: transparent;
+}
+
+.sb-debug__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.sb-debug__code {
+  display: block;
+  width: 100%;
+  margin: 0;
+  max-height: 10rem;
+  overflow: auto;
+  border-radius: 0.65rem;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(0 0 0 / 0.35);
+  color: oklch(0.885 0.014 286.12);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  padding: 0.65rem 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  resize: vertical;
+  /* textarea (iOS long-press copy fallback) */
+  -webkit-user-select: text;
+  user-select: text;
+  box-sizing: border-box;
+}
+
+/* Desktop: keep deck fully readable — almost no dim, drawer only on the right. */
+@media (min-width: 768px) {
+  .sb-debug__backdrop {
+    background: transparent;
+  }
+
+  .sb-debug__panel {
+    width: min(380px, 34vw);
+  }
+}
+
+@media (max-width: 767px) {
+  .sb-debug__backdrop {
+    background: transparent;
+  }
+
+  .sb-debug__field input[type='range'] {
+    height: 2.4rem;
+  }
+}

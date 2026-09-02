@@ -1,9 +1,36 @@
 /**
  * Homepage Spec 3.0 (Sugar Specification 7) — demo data service.
  * Featured carousel · Continue Collecting · Category Leaderboard
+ *
+ * Featured + leaderboard stay local mocks; Continue Collecting is live
+ * from GET /api/models (+ card counts, local ledger progress).
  */
 
-import { CREATOR_PHOTOS, HOLO_PACKS, PACK_PHOTOS } from "../lib/photos";
+import {
+  CREATOR_PHOTOS,
+  HOLO_PACKS,
+  MODEL_PACK_PHOTOS,
+  PACK_PHOTOS,
+} from "../lib/photos";
+import { getCollectionPageState } from "./collectionState";
+import { isDemoMode } from "../lib/demo";
+import { canonicalThemeKey, resolveCollectionThemeLabel } from "./collection";
+import {
+  formatCollectionLabel,
+  loadModels,
+  modelDisplayName,
+  modelId,
+  normalizeMediaUrl,
+  profileFromModel,
+  type BackendModel,
+} from "./models";
+import {
+  fetchCards,
+  type BackendCard,
+} from "../shared/backend/collection";
+import { loadPackCatalog, packUnitCost } from "./purchase";
+
+const NEW_MODEL_WINDOW_SEC = 14 * 24 * 60 * 60;
 
 export type Price = {
   amount: number;
@@ -111,12 +138,17 @@ export type LeaderboardCategory =
 export type LeaderboardRow = {
   rank: number;
   packId: string;
+  /** Live foil rows: model id (`packId` is the foil slot id). */
+  characterId?: string;
   packName: string;
   creatorName: string;
   themeName: string;
   thumbnailUrl: string;
   purchaseCount: number;
+  /** @deprecated Prefer diamondCost for purchase surfaces. */
   price: Price;
+  /** Pack Diamond cost — same currency used by Purchase / Featured. */
+  diamondCost: number;
   category: Exclude<LeaderboardCategory, "all">;
 };
 
@@ -143,6 +175,52 @@ export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[
 
 const FEATURED: FeaturedPack[] = [
   {
+    id: "juliana-police",
+    name: "Juliana Police Pack",
+    packTitle: "POLICE\nLINEUP",
+    creatorId: "julianaval",
+    creatorName: "Juliana",
+    collectionName: "JULIANA COLLECTION",
+    themeName: "Police",
+    coverImageUrl: MODEL_PACK_PHOTOS.julianaPolice,
+    price: { amount: 5.99, currency: "USD" },
+    diamondCost: 12,
+    collected: 4,
+    collectionTotal: 15,
+    isHot: true,
+    rarity: "ultra-rare",
+    accentColors: {
+      primary: "oklch(0.714 0.143 254.62)",
+      secondary: "oklch(0.359 0.143 11.42)",
+      glow: "oklch(0.714 0.143 254.62 / 0.28)",
+    },
+    rewardHint: "Complete theme for Replay Mode",
+    isAvailable: true,
+  },
+  {
+    id: "juliana-firegirl",
+    name: "Juliana Firegirl Pack",
+    packTitle: "FIRE\nGIRL",
+    creatorId: "julianaval",
+    creatorName: "Juliana",
+    collectionName: "JULIANA COLLECTION",
+    themeName: "Firegirl",
+    coverImageUrl: MODEL_PACK_PHOTOS.julianaFiregirl,
+    price: { amount: 5.99, currency: "USD" },
+    diamondCost: 12,
+    collected: 3,
+    collectionTotal: 15,
+    isNew: true,
+    rarity: "super-rare",
+    accentColors: {
+      primary: "oklch(0.711 0.166 22.22)",
+      secondary: "oklch(0.837 0.164 84.43)",
+      glow: "oklch(0.711 0.166 22.22 / 0.28)",
+    },
+    rewardHint: "Unlock Photo Scratch rewards",
+    isAvailable: true,
+  },
+  {
     id: "cyber-holo",
     name: "Cyber Girl Pack",
     packTitle: "CYBER\nNIGHTS",
@@ -158,9 +236,9 @@ const FEATURED: FeaturedPack[] = [
     isNew: true,
     rarity: "super-rare",
     accentColors: {
-      primary: "#FFB356",
-      secondary: "#D641B1",
-      glow: "rgba(214, 65, 177, 0.28)",
+      primary: "oklch(0.822 0.14 69.05)",
+      secondary: "oklch(0.625 0.217 339.5)",
+      glow: "oklch(0.625 0.217 339.5 / 0.28)",
     },
     rewardHint: "Unlock Photo Scratch rewards",
     isAvailable: true,
@@ -182,9 +260,9 @@ const FEATURED: FeaturedPack[] = [
     rarity: "ultra-rare",
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 84).toISOString(),
     accentColors: {
-      primary: "#F5C669",
-      secondary: "#EC4899",
-      glow: "rgba(245, 198, 105, 0.28)",
+      primary: "oklch(0.85 0.123 82.79)",
+      secondary: "oklch(0.656 0.212 354.31)",
+      glow: "oklch(0.85 0.123 82.79 / 0.28)",
     },
     rewardHint: "Complete theme for Replay Mode",
     isAvailable: true,
@@ -206,9 +284,9 @@ const FEATURED: FeaturedPack[] = [
     isHot: true,
     rarity: "rare",
     accentColors: {
-      primary: "#60A5FA",
-      secondary: "#EC4899",
-      glow: "rgba(96, 165, 250, 0.28)",
+      primary: "oklch(0.714 0.143 254.62)",
+      secondary: "oklch(0.656 0.212 354.31)",
+      glow: "oklch(0.714 0.143 254.62 / 0.28)",
     },
     rewardHint: "Earn Diamond bonuses",
     isAvailable: true,
@@ -231,9 +309,9 @@ const FEATURED: FeaturedPack[] = [
     rarity: "ultra-rare",
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 36).toISOString(),
     accentColors: {
-      primary: "#F87171",
-      secondary: "#FBBF24",
-      glow: "rgba(248, 113, 113, 0.28)",
+      primary: "oklch(0.711 0.166 22.22)",
+      secondary: "oklch(0.837 0.164 84.43)",
+      glow: "oklch(0.711 0.166 22.22 / 0.28)",
     },
     rewardHint: "Near theme completion",
     isAvailable: true,
@@ -254,59 +332,333 @@ const FEATURED: FeaturedPack[] = [
     isTrending: true,
     rarity: "super-rare",
     accentColors: {
-      primary: "#C4B5FD",
-      secondary: "#F472B6",
-      glow: "rgba(196, 181, 253, 0.28)",
+      primary: "oklch(0.811 0.101 293.57)",
+      secondary: "oklch(0.725 0.175 349.76)",
+      glow: "oklch(0.811 0.101 293.57 / 0.28)",
     },
     rewardHint: "Motion Cards unlock Photos",
     isAvailable: true,
   },
 ];
 
-const CONTINUE: ContinueCollectingItem[] = [
-  {
-    creatorId: "sophia",
-    creatorName: "Ashley",
-    avatarUrl: CREATOR_PHOTOS.nancy.avatar,
-    collected: 63,
-    total: 100,
-    percent: 63,
-    rank: 9,
-  },
-  {
-    creatorId: "emily",
-    creatorName: "Emily",
-    avatarUrl: CREATOR_PHOTOS.emma.avatar,
-    collected: 52,
-    total: 100,
-    percent: 52,
-    isNew: true,
-  },
-  {
-    creatorId: "melisa",
-    creatorName: "Yuna",
-    avatarUrl: CREATOR_PHOTOS.sam.avatar,
-    collected: 41,
-    total: 100,
-    percent: 41,
-  },
-  {
-    creatorId: "lucy",
-    creatorName: "Mia",
-    avatarUrl: CREATOR_PHOTOS.alex.avatar,
-    collected: 28,
-    total: 100,
-    percent: 28,
-  },
-  {
-    creatorId: "emma",
-    creatorName: "Lisa",
-    avatarUrl: CREATOR_PHOTOS.emma.portrait,
-    collected: 17,
-    total: 100,
-    percent: 17,
-  },
-];
+function cardCountsByModel(cards: BackendCard[] | null): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const card of cards ?? []) {
+    const mid = card.model_id?.trim();
+    if (!mid) continue;
+    counts.set(mid, (counts.get(mid) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function isNewModel(model: BackendModel, nowSec: number): boolean {
+  const created = model.created_at;
+  if (typeof created !== "number" || !Number.isFinite(created)) return false;
+  return nowSec - created <= NEW_MODEL_WINDOW_SEC && nowSec >= created;
+}
+
+/** Same key purchases / reveals persist (`pack.creator` → slug). */
+function slugCreatorId(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
+}
+
+function normalizeCreatorKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+type LedgerProgress = { id: string; name: string; collected: number };
+
+/** Index ledger rows by id, display-name slug, and collapsed alphanumeric keys. */
+function indexLedgerProgress(creators: LedgerProgress[]) {
+  const index = new Map<string, LedgerProgress>();
+  const add = (raw: string, entry: LedgerProgress) => {
+    const key = raw.trim();
+    if (key && !index.has(key)) index.set(key, entry);
+    const normalized = normalizeCreatorKey(key);
+    if (normalized && !index.has(normalized)) index.set(normalized, entry);
+  };
+  for (const creator of creators) {
+    add(creator.id, creator);
+    add(creator.name, creator);
+    add(slugCreatorId(creator.name), creator);
+  }
+  return index;
+}
+
+function ledgerForModel(
+  ledgerByKey: Map<string, LedgerProgress>,
+  model: BackendModel,
+  id: string,
+  name: string,
+) {
+  const candidates = [
+    id,
+    slugCreatorId(name),
+    name,
+    model.label ?? "",
+    model.influencerName ?? "",
+  ];
+  for (const candidate of candidates) {
+    const exact = ledgerByKey.get(candidate.trim());
+    if (exact) return exact;
+    const normalized = normalizeCreatorKey(candidate);
+    if (normalized) {
+      const hit = ledgerByKey.get(normalized);
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
+/** Map CMS models → Continue Collecting strip items. */
+export function continueCollectingFromModels(
+  models: BackendModel[],
+  cards: BackendCard[] | null,
+): ContinueCollectingItem[] {
+  if (!models.length) return [];
+
+  const counts = cardCountsByModel(cards);
+  const ledgerByKey = indexLedgerProgress(
+    getCollectionPageState().continueCreators,
+  );
+  const nowSec = Date.now() / 1000;
+
+  const items = models.map((model, index) => {
+    const id = modelId(model, index);
+    const name = modelDisplayName(model);
+    const total = counts.get(id) ?? 0;
+    const ledger = ledgerForModel(ledgerByKey, model, id, name);
+    const collected =
+      total > 0
+        ? Math.min(total, Math.max(0, ledger?.collected ?? 0))
+        : 0;
+    const percent =
+      total > 0 ? Math.round((collected / total) * 100) : 0;
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const avatarUrl = avatarRaw
+      ? normalizeMediaUrl(avatarRaw)
+      : CREATOR_PHOTOS.emma.avatar;
+    return {
+      creatorId: id,
+      creatorName: name,
+      avatarUrl,
+      collected,
+      total,
+      percent,
+      isNew: isNewModel(model, nowSec),
+    } satisfies ContinueCollectingItem;
+  });
+
+  return items.sort((a, b) => {
+    if (b.percent !== a.percent) return b.percent - a.percent;
+    return a.creatorName.localeCompare(b.creatorName);
+  });
+}
+
+async function loadContinueCollecting(): Promise<ContinueCollectingItem[]> {
+  try {
+    const [models, cards] = await Promise.all([
+      loadModels().catch(() => [] as BackendModel[]),
+      fetchCards().catch(() => null),
+    ]);
+    return continueCollectingFromModels(models, cards);
+  } catch {
+    return [];
+  }
+}
+
+function themeToLeaderboardCategory(
+  themeName: string,
+): Exclude<LeaderboardCategory, "all"> {
+  const key = canonicalThemeKey(themeName);
+  const table: Record<string, Exclude<LeaderboardCategory, "all">> = {
+    teacher: "teacher",
+    nurse: "nurse",
+    maid: "maid",
+    bikini: "bikini",
+    office: "office",
+    student: "student",
+    police: "office",
+    firegirl: "student",
+    fire: "student",
+    gym: "student",
+  };
+  if (table[key]) return table[key];
+  for (const [needle, category] of Object.entries(table)) {
+    if (key.includes(needle)) return category;
+  }
+  return "student";
+}
+
+/** Map `/api/models` foil packs → leaderboard rows (live prototype). */
+export function leaderboardFromModels(
+  models: BackendModel[],
+): LeaderboardRow[] {
+  const rows: LeaderboardRow[] = [];
+
+  for (const model of models) {
+    const profile = profileFromModel(model);
+    const creatorName = profile.name;
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const thumbnailUrl = avatarRaw
+      ? normalizeMediaUrl(avatarRaw)
+      : CREATOR_PHOTOS.emma.avatar;
+    const created =
+      typeof model.created_at === "number" && Number.isFinite(model.created_at)
+        ? model.created_at
+        : 0;
+
+    for (const foil of profile.packs) {
+      const themeName =
+        resolveCollectionThemeLabel({
+          packName: foil.label,
+          catalogPackId: foil.id,
+          creator: creatorName,
+        }) || foil.label || creatorName;
+      const packName =
+        foil.label?.trim() && !/^pack\s/i.test(foil.label)
+          ? foil.label.trim()
+          : `${creatorName} Pack`;
+      const diamondCost = packUnitCost(profile.id);
+
+      rows.push({
+        rank: 0,
+        packId: foil.id,
+        characterId: profile.id,
+        packName,
+        creatorName,
+        themeName,
+        thumbnailUrl,
+        purchaseCount: Math.max(
+          100,
+          Math.round(created) + (foil.slot === 1 ? 500 : 200),
+        ),
+        price: { amount: diamondCost, currency: "SC" },
+        diamondCost,
+        category: themeToLeaderboardCategory(themeName),
+      });
+    }
+  }
+
+  return rows
+    .sort((a, b) => b.purchaseCount - a.purchaseCount)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+async function loadLeaderboard(): Promise<LeaderboardRow[]> {
+  try {
+    const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
+    return leaderboardFromModels(models);
+  } catch {
+    return [];
+  }
+}
+
+const LIVE_PACK_ACCENT = {
+  primary: "oklch(0.85 0.123 82.79)",
+  secondary: "oklch(0.656 0.212 354.31)",
+  glow: "oklch(0.85 0.123 82.79 / 0.22)",
+};
+
+/** Map `/api/models` foil packs → pack library cards (live prototype). */
+export function packLibraryFromModels(
+  models: BackendModel[],
+  cards: BackendCard[] | null = null,
+): FeaturedPack[] {
+  const packs: FeaturedPack[] = [];
+  const motionCounts = cardCountsByModel(cards);
+
+  for (const model of models) {
+    const profile = profileFromModel(model);
+    const creatorName = profile.name;
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const avatarCover = avatarRaw
+      ? normalizeMediaUrl(avatarRaw)
+      : CREATOR_PHOTOS.emma.avatar;
+    const diamondCost = packUnitCost(profile.id);
+    // Motion cards published for this model on `/api/cards`.
+    const motionCardCount = motionCounts.get(profile.id) ?? 0;
+
+    for (const foil of profile.packs) {
+      const themeName =
+        resolveCollectionThemeLabel({
+          packName: foil.label,
+          catalogPackId: foil.id,
+          creator: creatorName,
+        }) || foil.label || creatorName;
+      const name =
+        foil.label?.trim() && !/^pack\s/i.test(foil.label)
+          ? foil.label.trim()
+          : `${creatorName} Pack`;
+      // Prefer API pack-face media (video/image); avatar only as fallback.
+      const coverImageUrl = foil.videoUrl?.trim() || avatarCover;
+
+      packs.push({
+        id: foil.id,
+        name,
+        packTitle: name.toUpperCase(),
+        creatorId: profile.id,
+        creatorName,
+        collectionName: formatCollectionLabel(creatorName).toUpperCase(),
+        themeName,
+        coverImageUrl,
+        price: { amount: diamondCost, currency: "SC" },
+        diamondCost,
+        collected: 0,
+        collectionTotal: motionCardCount,
+        accentColors: LIVE_PACK_ACCENT,
+        isAvailable: true,
+      });
+    }
+  }
+
+  return packs;
+}
+
+async function loadPackLibrary(): Promise<FeaturedPack[]> {
+  try {
+    const [models, cards] = await Promise.all([
+      loadModels(),
+      fetchCards().catch(() => null),
+    ]);
+    await loadPackCatalog().catch(() => null);
+    return packLibraryFromModels(models, cards);
+  } catch {
+    return [];
+  }
+}
+
+/** Shared Diamond cost for ranking / featured / purchase display. */
+export function diamondCostForPackId(packId: string, fallbackUsd?: number) {
+  const featured = FEATURED.find((pack) => pack.id === packId);
+  if (featured) return featured.diamondCost;
+  return packUnitCost(packId, fallbackUsd);
+}
+
+function row(
+  rank: number,
+  packId: string,
+  packName: string,
+  creatorName: string,
+  themeName: string,
+  category: Exclude<LeaderboardCategory, "all">,
+  purchaseCount: number,
+  amount: number,
+): LeaderboardRow {
+  const diamondCost = diamondCostForPackId(packId, amount);
+  return {
+    rank,
+    packId,
+    packName,
+    creatorName,
+    themeName,
+    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
+    purchaseCount,
+    price: { amount: diamondCost, currency: "SC" },
+    diamondCost,
+    category,
+  };
+}
 
 const LEADERBOARD: LeaderboardRow[] = [
   row(1, "ep1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
@@ -322,67 +674,62 @@ const LEADERBOARD: LeaderboardRow[] = [
   row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Student", "student", 6200, 3.99),
 ];
 
-function row(
-  rank: number,
-  packId: string,
-  packName: string,
-  creatorName: string,
-  themeName: string,
-  category: Exclude<LeaderboardCategory, "all">,
-  purchaseCount: number,
-  amount: number,
-): LeaderboardRow {
-  return {
-    rank,
-    packId,
-    packName,
-    creatorName,
-    themeName,
-    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
-    purchaseCount,
-    price: { amount, currency: "USD" },
-    category,
-  };
-}
-
 function wait(ms = 420) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 export async function fetchHomepage(): Promise<HomepageData> {
-  await wait();
+  const continueCollecting = await loadContinueCollecting();
+  if (isDemoMode()) {
+    return {
+      featured: FEATURED,
+      continueCollecting,
+      leaderboard: LEADERBOARD,
+    };
+  }
   return {
-    featured: FEATURED,
-    continueCollecting: [...CONTINUE].sort((a, b) => b.percent - a.percent),
-    leaderboard: LEADERBOARD,
+    featured: [],
+    continueCollecting,
+    leaderboard: await loadLeaderboard(),
   };
+}
+
+function filterLeaderboardRows(
+  rows: LeaderboardRow[],
+  category: LeaderboardCategory,
+): LeaderboardRow[] {
+  const filtered =
+    category === "all"
+      ? [...rows].sort((a, b) => b.purchaseCount - a.purchaseCount)
+      : rows.filter((r) => r.category === category).sort((a, b) => a.rank - b.rank);
+  return filtered.map((row, index) =>
+    category === "all" ? { ...row, rank: index + 1 } : row,
+  );
 }
 
 export async function fetchLeaderboard(
   category: LeaderboardCategory,
 ): Promise<LeaderboardRow[]> {
-  await wait(280);
-  const rows =
-    category === "all"
-      ? [...LEADERBOARD].sort((a, b) => b.purchaseCount - a.purchaseCount)
-      : LEADERBOARD.filter((r) => r.category === category).sort(
-          (a, b) => a.rank - b.rank,
-        );
-  return rows.map((r, i) =>
-    category === "all" ? { ...r, rank: i + 1 } : r,
-  );
+  if (isDemoMode()) {
+    await wait(280);
+    return filterLeaderboardRows(LEADERBOARD, category);
+  }
+  return filterLeaderboardRows(await loadLeaderboard(), category);
 }
 
 export async function fetchPackLibrary(): Promise<FeaturedPack[]> {
+  if (!isDemoMode()) {
+    return loadPackLibrary();
+  }
   await wait(300);
   const defaults = {
     diamondCost: 8,
     collected: 0,
     collectionTotal: 15,
     accentColors: {
-      primary: "#F5C669",
-      secondary: "#EC4899",
-      glow: "rgba(245, 198, 105, 0.22)",
+      primary: "oklch(0.85 0.123 82.79)",
+      secondary: "oklch(0.656 0.212 354.31)",
+      glow: "oklch(0.85 0.123 82.79 / 0.22)",
     },
     isAvailable: true as const,
   };
@@ -425,110 +772,44 @@ export type FeedPreview = {
   packId: string;
   packName: string;
   posterUrl: string;
-  videoUrl: string;
+  videoUrl?: string;
   cardCount: number;
   diamondCost: number;
   limited?: boolean;
   liked: boolean;
 };
 
-const FEED_VIDEOS = [
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-  "https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-];
-
 export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
-  await wait(500);
-  return [
-    {
-      id: "pv1",
-      creatorId: "emma",
-      creatorName: "Emily",
-      creatorAvatar: CREATOR_PHOTOS.emma.avatar,
-      collectionName: "Summer Nights",
-      packId: "ep1",
-      packName: "After Class Foil Pack",
-      posterUrl: CREATOR_PHOTOS.emma.portrait,
-      videoUrl: FEED_VIDEOS[0],
-      cardCount: 12,
-      diamondCost: 10,
-      limited: true,
+  const [models] = await Promise.all([loadModels(), loadPackCatalog()]);
+  const shuffled = [...models];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = shuffled[i]!;
+    shuffled[i] = shuffled[j]!;
+    shuffled[j] = current;
+  }
+  return shuffled.map((model, index) => {
+    const id = modelId(model, index);
+    const name = modelDisplayName(model);
+    const avatarRaw = model.avatar?.trim() ?? "";
+    const avatarUrl = avatarRaw ? normalizeMediaUrl(avatarRaw) : "";
+    const videoUrl = model.swipeVideoUrl
+      ? normalizeMediaUrl(model.swipeVideoUrl)
+      : undefined;
+    const packName = model.cardPackName?.trim() || `${name} Collection`;
+    return {
+      id: `pv-${id}`,
+      creatorId: id,
+      creatorName: name,
+      creatorAvatar: avatarUrl,
+      collectionName: packName,
+      packId: id,
+      packName,
+      posterUrl: avatarUrl,
+      videoUrl,
+      cardCount: 0,
+      diamondCost: packUnitCost(id),
       liked: false,
-    },
-    {
-      id: "pv2",
-      creatorId: "nancy",
-      creatorName: "Nancy Allison",
-      creatorAvatar: CREATOR_PHOTOS.nancy.avatar,
-      collectionName: "Daily Ritual",
-      packId: "nl1",
-      packName: "Daily Drop Foil Pack",
-      posterUrl: CREATOR_PHOTOS.nancy.portrait,
-      videoUrl: FEED_VIDEOS[1],
-      cardCount: 10,
-      diamondCost: 8,
-      limited: true,
-      liked: true,
-    },
-    {
-      id: "pv3",
-      creatorId: "alex",
-      creatorName: "Alex Rivera",
-      creatorAvatar: CREATOR_PHOTOS.alex.avatar,
-      collectionName: "Neon Muse",
-      packId: "aa1",
-      packName: "Neon Muse Pack",
-      posterUrl: CREATOR_PHOTOS.alex.portrait,
-      videoUrl: FEED_VIDEOS[2],
-      cardCount: 15,
-      diamondCost: 12,
-      liked: false,
-    },
-    {
-      id: "pv4",
-      creatorId: "emma",
-      creatorName: "Emily",
-      creatorAvatar: CREATOR_PHOTOS.emma.avatar,
-      collectionName: "Sunset Glow",
-      packId: "eb1",
-      packName: "Sunset Glow Pack",
-      posterUrl: PACK_PHOTOS.eb1,
-      videoUrl: FEED_VIDEOS[3],
-      cardCount: 12,
-      diamondCost: 10,
-      limited: true,
-      liked: false,
-    },
-    {
-      id: "pv5",
-      creatorId: "sam",
-      creatorName: "Sam Chen",
-      creatorAvatar: CREATOR_PHOTOS.sam.avatar,
-      collectionName: "Weekend Edit",
-      packId: "sw1",
-      packName: "Bonus Rush Pack",
-      posterUrl: CREATOR_PHOTOS.sam.portrait,
-      videoUrl: FEED_VIDEOS[4],
-      cardCount: 8,
-      diamondCost: 6,
-      liked: false,
-    },
-    {
-      id: "pv6",
-      creatorId: "nancy",
-      creatorName: "Nancy Allison",
-      creatorAvatar: CREATOR_PHOTOS.nancy.avatar,
-      collectionName: "Champagne Hours",
-      packId: "np1",
-      packName: "Champagne Foil Pack",
-      posterUrl: PACK_PHOTOS.np1,
-      videoUrl: FEED_VIDEOS[0],
-      cardCount: 14,
-      diamondCost: 15,
-      liked: false,
-    },
-  ];
+    };
+  });
 }

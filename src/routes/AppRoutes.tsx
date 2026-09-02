@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -8,19 +8,34 @@ import { Paths } from "@/routes/Paths";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { CollectionPage } from "@/pages/CollectionPage";
 import { CreatorPage } from "@/pages/CreatorPage";
+import { GamePage } from "@/pages/GamePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
-import { LoadingPage } from "@/pages/LoadingPage";
+import { CoverFlowV2Page } from "@/pages/CoverFlowV2Page";
+import { PreLoaderPage } from "@/pages/PreLoaderPage";
+import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { ProfilePage } from "@/pages/ProfilePage";
+import { FollowingPage } from "@/pages/FollowingPage";
+import { GameSettingsPage } from "@/pages/GameSettingsPage";
 import { PurchaseFlowPage } from "@/pages/PurchaseFlowPage";
 import { RecCompletePage } from "@/pages/RecCompletePage";
+import { WelcomePage } from "@/pages/WelcomePage";
 import { RecIntroPage } from "@/pages/RecIntroPage";
 import { RecSwipePage } from "@/pages/RecSwipePage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { RewardsPage } from "@/pages/RewardsPage";
+import { ChangePasswordPage } from "@/pages/ChangePasswordPage";
+import { EditProfilePage } from "@/pages/EditProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StorePage } from "@/pages/StorePage";
+import { InboxPage } from "@/pages/InboxPage";
+import { CartPage } from "@/pages/CartPage";
+import { TransactionHistoryPage } from "@/pages/TransactionHistoryPage";
+import { GameHistoryPage } from "@/pages/GameHistoryPage";
+import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 
-const BOOT_KEY = "sugar.v8.bootShown";
+function GameCatalogRoute({ children }: { children: ReactNode }) {
+  return <CatalogProvider>{children}</CatalogProvider>;
+}
 
 function ResetQueryRedirect() {
   const location = useLocation();
@@ -28,7 +43,8 @@ function ResetQueryRedirect() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.has("reset") && location.pathname !== Paths.resetPassword) {
+    const needsReset = params.has("reset") || params.has("token");
+    if (needsReset && location.pathname !== Paths.resetPassword) {
       navigate(
         { pathname: Paths.resetPassword, search: location.search },
         { replace: true },
@@ -39,34 +55,20 @@ function ResetQueryRedirect() {
   return null;
 }
 
-function BootRedirect() {
-  const location = useLocation();
-  try {
-    const shown = sessionStorage.getItem(BOOT_KEY) === "1";
-    if (
-      !shown &&
-      location.pathname === Paths.home &&
-      !new URLSearchParams(location.search).has("reset")
-    ) {
-      return <Navigate to={Paths.loading} replace />;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 export function AppRoutes() {
   return (
     <>
       <ResetQueryRedirect />
-      <BootRedirect />
       <Routes>
         <Route
           path={Paths.loading}
+          element={<Navigate to={Paths.home} replace />}
+        />
+        <Route
+          path={Paths.preLoader}
           element={
-            <AppShell label="Loading">
-              <LoadingPage />
+            <AppShell label="Pre-loader">
+              <PreLoaderPage />
             </AppShell>
           }
         />
@@ -81,7 +83,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommend}
           element={
-            <OnboardShell badge="Recommend · Intro">
+            <OnboardShell badge="Recommend · Intro" intro>
               <RecIntroPage />
             </OnboardShell>
           }
@@ -89,7 +91,7 @@ export function AppRoutes() {
         <Route
           path={Paths.recommendSwipe}
           element={
-            <OnboardShell badge="Recommend · Swipe">
+            <OnboardShell swipe>
               <RecSwipePage />
             </OnboardShell>
           }
@@ -97,8 +99,16 @@ export function AppRoutes() {
         <Route
           path={Paths.recommendDone}
           element={
-            <OnboardShell badge="Recommend · Ready">
+            <OnboardShell>
               <RecCompletePage />
+            </OnboardShell>
+          }
+        />
+        <Route
+          path={Paths.welcome}
+          element={
+            <OnboardShell>
+              <WelcomePage />
             </OnboardShell>
           }
         />
@@ -110,8 +120,26 @@ export function AppRoutes() {
             </AppShell>
           }
         >
-          <Route index element={<HomeFeedPage />} />
-          <Route path="browse" element={<BrowsePage />} />
+          {/* Home nav → pack browse at root (guest + signed-in); Discover → feed */}
+          <Route index element={<BrowsePage />} />
+          <Route path="discover" element={<HomeFeedPage />} />
+          {/* Legacy paths → root Home */}
+          <Route path="browse" element={<Navigate to={Paths.home} replace />} />
+          <Route
+            path="loggedInHome"
+            element={<Navigate to={Paths.home} replace />}
+          />
+          {/* Search is the Home pack-library sheet — keep /search as a deep-link. */}
+          <Route
+            path="search"
+            element={
+              <Navigate
+                to={Paths.homeSearch}
+                replace
+                state={{ openPackLibrary: true }}
+              />
+            }
+          />
           <Route path="creator/:id" element={<CreatorPage />} />
           <Route
             path="collection"
@@ -138,12 +166,57 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="store"
+            path="profile/edit"
             element={
-              <SoftGate tab="hub">
-                <StorePage />
+              <SoftGate tab="profile">
+                <EditProfilePage />
               </SoftGate>
             }
+          />
+          <Route
+            path="profile/following"
+            element={
+              <SoftGate tab="profile">
+                <FollowingPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/game-settings"
+            element={
+              <SoftGate tab="profile">
+                <GameSettingsPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/transactions"
+            element={
+              <SoftGate tab="profile">
+                <TransactionHistoryPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="profile/game-history"
+            element={
+              <SoftGate tab="profile">
+                <GameHistoryPage />
+              </SoftGate>
+            }
+          />
+          <Route path="store" element={<StorePage />} />
+          <Route
+            path="profile/change-password"
+            element={
+              <SoftGate tab="profile">
+                <ChangePasswordPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="settings/change-password"
+            element={<Navigate to={Paths.changePassword} replace />}
           />
           <Route
             path="settings"
@@ -153,7 +226,68 @@ export function AppRoutes() {
               </SoftGate>
             }
           />
-          <Route path="purchase/:packId" element={<PurchaseFlowPage />} />
+          <Route
+            path="inbox"
+            element={
+              <SoftGate tab="profile" action={{ type: "inbox" }}>
+                <InboxPage />
+              </SoftGate>
+            }
+          />
+          <Route
+            path="pack-pocket"
+            element={
+              <SoftGate tab="feed" action={{ type: "cart" }}>
+                <CatalogProvider>
+                  <CartPage />
+                </CatalogProvider>
+              </SoftGate>
+            }
+          />
+          <Route
+            path="cart"
+            element={<Navigate to={Paths.packPocket} replace />}
+          />
+          <Route
+            path="purchase/tear-open"
+            element={
+              <CatalogProvider>
+                <PurchaseFlowPage />
+              </CatalogProvider>
+            }
+          />
+          <Route
+            path="purchase/:packId"
+            element={
+              <CatalogProvider>
+                <PurchaseFlowPage />
+              </CatalogProvider>
+            }
+          />
+          <Route
+            path="coverflow-v2"
+            element={
+              <CatalogProvider>
+                <CoverFlowV2Page />
+              </CatalogProvider>
+            }
+          />
+          <Route
+            path="game"
+            element={
+              <GameCatalogRoute>
+                <GamePage />
+              </GameCatalogRoute>
+            }
+          />
+          <Route
+            path="photo-scratch"
+            element={
+              <GameCatalogRoute>
+                <PhotoScratchPage />
+              </GameCatalogRoute>
+            }
+          />
         </Route>
 
         <Route path="*" element={<Navigate to={Paths.home} replace />} />

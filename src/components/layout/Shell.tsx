@@ -3,21 +3,17 @@ import { AnimatePresence, motion } from "framer-motion";
 
 export function AppShell({
   children,
-  label = "Sugar Scratch",
 }: {
   children: ReactNode;
+  /** @deprecated Dev-only label removed from production chrome. */
   label?: string;
 }) {
   return (
-    <div className="min-h-full w-full">
-      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10">
-        <div className="pointer-events-none sticky top-0 z-40 -mb-2 flex justify-end pt-2 sm:pt-3">
-          <span className="rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-medium tracking-[0.04em] text-white/40 backdrop-blur-md">
-            {label} · v8
-          </span>
-        </div>
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* Full-bleed app shell — page content owns horizontal padding / max-width. */}
+      <div className="flex min-h-0 w-full flex-1 flex-col">
         <div
-          className="relative flex min-h-[calc(100dvh-24px)] min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none lg:min-h-[calc(100dvh-40px)]"
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent shadow-none"
           aria-label="Sugar Scratch"
         >
           <Stage>{children}</Stage>
@@ -30,19 +26,61 @@ export function AppShell({
 export function OnboardShell({
   children,
   badge,
+  intro = false,
+  swipe = false,
 }: {
   children: ReactNode;
-  badge: string;
+  /** Optional step label — omit for production-facing screens. */
+  badge?: string;
+  /** Recommendation intro — compact card layout */
+  intro?: boolean;
+  /** Full-bleed incoming swipe stage */
+  swipe?: boolean;
 }) {
+  const header = (
+    <header className="auth7-onboard-header">
+      <span className="auth2-logo">
+        <img
+          src="/svg/logoSugarScratch.svg"
+          alt="Sugar Scratch"
+          className="auth2-logo-img h-7 w-auto"
+          draggable={false}
+        />
+      </span>
+      {badge ? <span className="auth7-onboard-badge">{badge}</span> : null}
+    </header>
+  );
+  const main = (
+    <div className="auth7-onboard-main">
+      {swipe ? children : <Stage>{children}</Stage>}
+    </div>
+  );
+
   return (
-    <div className="auth7-onboard-shell" aria-label="Personalization">
-      <header className="auth7-onboard-header">
-        <span className="auth2-logo">Sugar</span>
-        <span className="auth7-onboard-badge">{badge}</span>
-      </header>
-      <div className="auth7-onboard-main">
-        <Stage>{children}</Stage>
-      </div>
+    <div
+      className={[
+        "auth7-onboard-shell",
+        intro ? "auth7-onboard-shell--intro" : "",
+        swipe ? "auth7-onboard-shell--swipe" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-step={
+        intro ? "recommend-intro" : swipe ? "personalize-swipe" : undefined
+      }
+      aria-label="Personalization"
+    >
+      {intro ? (
+        <div className="auth7-intro-card">
+          {header}
+          {main}
+        </div>
+      ) : (
+        <>
+          {header}
+          {main}
+        </>
+      )}
     </div>
   );
 }

@@ -2,7 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -11,14 +13,20 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
   clearEmailVerified,
+  clearHasLoggedIn,
   createSession,
   destroySession,
+  fetchAuthSession,
   getAuthEmail,
-  isAuthenticated,
+  hasLoggedInBefore,
   isEmailVerified,
+  logoutRemote,
   markEmailVerified,
+  markEmailVerifiedRemote,
   needsEmailVerification,
+  type AuthenticationSheetMode,
   type AuthSuccessResult,
+  type AuthUser,
   type ProtectedAction,
 } from "@/services/auth";
 import {
@@ -30,10 +38,33 @@ import {
   setRecommendationSeedCreator,
 } from "@/services/recommendation";
 import { clearHomeFeedCache } from "@/services/creatorFeed";
-import type { PurchaseFlowPack } from "@/services/purchase";
+import { addPackToCart, type CartAddInput } from "@/services/cart";
+import { followCreator } from "@/services/following";
+import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
+import { clearPackInventory, syncMyPacks } from "@/services/packInventory";
+import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
+import { fulfillPendingWelcomeGift } from "@/services/welcome";
+import { resetPageReady } from "@/shared/ui/PageTransition";
 import type { AppTab, OnboardingData } from "@/types/app";
-import { Paths, pathForTab, PUBLIC_TABS } from "@/routes/Paths";
+import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
+import {
+  activateGameSessionForPack,
+  beginPhotoPhase,
+  firstMissingMotionCardId,
+  loadGameSession,
+  loadGameSessionForPack,
+  motionPlayHref,
+  photoPlayHref,
+} from "@/features/game/modules/gameSession";
+import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
+import {
+  resolveSecondaryBack,
+  SECONDARY_SURFACES,
+} from "@/lib/navigation";
+import { navigateBackOr } from "@/hooks/useGoBack";
+
+type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
 
 const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
   email: "",
@@ -52,24 +83,98 @@ const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
 
 function actionNeedsVerifiedEmail(action: ProtectedAction) {
   if (action.type === "buy") return true;
+  if (action.type === "store") return true;
   if (action.type === "tab" && action.tab === "hub") return true;
   return false;
 }
 
 function isHighIntentForDefer(action: ProtectedAction) {
   return (
-    action.type === "buy" || (action.type === "tab" && action.tab === "hub")
+    action.type === "buy" ||
+    action.type === "store" ||
+    (action.type === "tab" && action.tab === "hub")
   );
 }
 
+/** Profile soft-gates must not resume after first-run onboarding (Discover instead). */
+function isProfileOnboardingResume(action: ProtectedAction) {
+  if (action.type === "tab") return action.tab === "profile";
+  if (action.type !== "resume") return false;
+  const pathname = action.path.trim().split(/[?#]/)[0] ?? "";
+  return (
+    pathname === Paths.profile ||
+    pathname.startsWith(`${Paths.profile}/`) ||
+    pathname === Paths.settings ||
+    pathname.startsWith(`${Paths.settings}/`)
+  );
+}
+
+/** Mid-flow actions that should resume after login instead of going Home. */
+function shouldResumeAfterAuth(action: ProtectedAction | null) {
+  if (!action) return false;
+  return (
+    action.type === "buy" ||
+    action.type === "scratch" ||
+    action.type === "photo-scratch" ||
+    action.type === "store" ||
+    action.type === "like" ||
+    action.type === "follow" ||
+    action.type === "inbox" ||
+    action.type === "unopened-packs" ||
+    action.type === "cart" ||
+    action.type === "add-to-cart" ||
+    action.type === "collection" ||
+    action.type === "tab" ||
+    action.type === "resume" ||
+    action.type === "claim"
+  );
+}
+
+function applyRemoteUser(
+  user: AuthUser,
+  setters: {
+    setAuthed: Dispatch<SetStateAction<boolean>>;
+    setEmailVerified: Dispatch<SetStateAction<boolean>>;
+    setProfile: Dispatch<
+      SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
+    >;
+  },
+  opts?: { setAuthed?: boolean },
+) {
+  createSession(user.email, user.provider, user.id);
+  if (user.emailVerified) markEmailVerified();
+  else clearEmailVerified();
+  if (opts?.setAuthed !== false) {
+    setters.setAuthed(true);
+  }
+  setters.setEmailVerified(user.emailVerified);
+  setters.setProfile((prev) => ({
+    ...prev,
+    email: user.email,
+    username: user.username ?? prev.username,
+    displayName: user.displayName ?? prev.displayName,
+    avatar: user.avatarUrl,
+    genderInterest: user.genderInterest,
+    referralCode: user.referralCode || prev.referralCode,
+    welcomeClaimed: user.welcomeClaimed,
+    homeTutorialDone: user.homeTutorialDone,
+  }));
+}
+
 type AuthContextValue = {
+  /** False until the initial `/api/auth/session` probe finishes. */
+  authReady: boolean;
   authed: boolean;
   guest: boolean;
+  hasLoggedInBefore: boolean;
+  guestAuthLabel: "Sign in";
   profile: Omit<OnboardingData, "coins" | "diamonds">;
   setProfile: Dispatch<
     SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
   >;
   authOpen: boolean;
+  authSheetMode: AuthenticationSheetMode;
+  authSheetEmail: string;
   pending: ProtectedAction | null;
   emailVerified: boolean;
   verifyOpen: boolean;
@@ -80,9 +185,21 @@ type AuthContextValue = {
   requireAuth: (action: ProtectedAction) => boolean;
   requestTab: (tab: AppTab) => void;
   openStore: () => void;
-  openCreator: (id: string) => void;
+  openInbox: () => void;
+  openUnopenedPacks: () => void;
+  openCart: () => void;
+  addToCart: (pack: CartAddInput) => void;
+  openCreator: (id: string, themeId?: string) => void;
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
+  openPasswordReset: () => void;
+  closeSecondary: (surface: SecondarySurfaceId) => void;
+  inventoryRevision: number;
+  bumpInventoryRevision: () => void;
+  /** Drop in-flight login pack syncs before writing claim/purchase inventory. */
+  invalidatePackSync: () => void;
+  inboxUnread: number;
+  setInboxUnread: Dispatch<SetStateAction<number>>;
   completeAuth: (result: AuthSuccessResult) => void;
   dismissAuth: () => void;
   onVerified: () => void;
@@ -99,6 +216,7 @@ type AuthContextValue = {
   setNavNotice: (msg: string) => void;
   consumeResumeLike: () => void;
   applyRecommendationDecision: (action: ProtectedAction | null) => void;
+  invalidateRemoteSession: () => void;
   verifyEmail: string;
 };
 
@@ -106,9 +224,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const [authed, setAuthed] = useState(() => isAuthenticated());
+  const [authReady, setAuthReady] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [returningUser, setReturningUser] = useState(() => hasLoggedInBefore());
   const [profile, setProfile] = useState(initialProfile);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authSheetMode, setAuthSheetMode] =
+    useState<AuthenticationSheetMode>("login");
+  const [authSheetEmail, setAuthSheetEmail] = useState("");
   const [pending, setPending] = useState<ProtectedAction | null>(null);
   const [resumeLikeId, setResumeLikeId] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(() => isEmailVerified());
@@ -120,40 +243,267 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useState<ProtectedAction | null>(null);
   const [navNotice, setNavNotice] = useState("");
   const [purchasedPacks, setPurchasedPacks] = useState(0);
+  const [secondaryReturnTab, setSecondaryReturnTab] = useState<AppTab | null>(
+    null,
+  );
+  const [inventoryRevision, setInventoryRevision] = useState(0);
+  const [inboxUnread, setInboxUnread] = useState(0);
+
+  const bumpInventoryRevision = useCallback(() => {
+    setInventoryRevision((n) => n + 1);
+  }, []);
+
+  // Bumped on login/logout so stale in-flight auth/inventory sync cannot cross sessions.
+  const sessionSyncEpochRef = useRef(0);
+
+  const invalidatePackSync = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+  }, []);
+
+  useEffect(() => {
+    if (!authed || isDemoMode()) return;
+    const epoch = sessionSyncEpochRef.current;
+    let cancelled = false;
+    void syncMyPacks({
+      beforeWrite: () =>
+        !cancelled && epoch === sessionSyncEpochRef.current,
+    }).then((ok) => {
+      if (cancelled) return;
+      if (epoch !== sessionSyncEpochRef.current) return;
+      if (ok) bumpInventoryRevision();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, bumpInventoryRevision]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const epoch = sessionSyncEpochRef.current;
+    void fetchAuthSession()
+      .then((session) => {
+        if (cancelled) return;
+        // Ignore results from a probe that started before a local auth transition.
+        if (epoch !== sessionSyncEpochRef.current) return;
+
+        if (session.state === "unreachable") {
+          // Cookie may still be valid. Do not resume gated actions (authed stays false).
+          return;
+        }
+
+        if (session.authenticated && session.user) {
+          applyRemoteUser(session.user, {
+            setAuthed,
+            setEmailVerified,
+            setProfile,
+          });
+          return;
+        }
+
+        destroySession();
+        clearEmailVerified();
+        setAuthed(false);
+        setEmailVerified(false);
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const captureSecondaryReturn = useCallback(() => {
+    setSecondaryReturnTab(tabFromPathname(window.location.pathname));
+  }, []);
 
   const guest = !authed;
+  const guestAuthLabel = "Sign in" as const;
+
+  useEffect(() => {
+    if (guest) {
+      document.body.dataset.guest = "";
+    } else {
+      delete document.body.dataset.guest;
+    }
+    return () => {
+      delete document.body.dataset.guest;
+    };
+  }, [guest]);
 
   const resumePending = useCallback(
     (action: ProtectedAction | null) => {
-      if (!action) return;
+      if (!action || action.type === "session-expired") return;
+      if (action.type === "scratch") {
+        // Collection / auth resume is a user gesture — unlock 3-2-1 audio so
+        // ScratchPrototype can skip Tap-to-play and arm the countdown.
+        unlockCountdownSound();
+        const readyId = action.pack.instanceId ?? action.pack.packId;
+        // Pack-keyed only — resumeHref must not land in another pack's hand.
+        const packSession =
+          activateGameSessionForPack(readyId) ??
+          loadGameSessionForPack(readyId);
+        if (
+          packSession?.phase === "motion" &&
+          (!packSession.packScratch?.readyPackId ||
+            packSession.packScratch.readyPackId === readyId)
+        ) {
+          activateGameSessionForPack(readyId);
+          navigate(
+            motionPlayHref(
+              packSession,
+              firstMissingMotionCardId(packSession),
+            ),
+          );
+          return;
+        }
+        navigate(Paths.purchase(action.pack.packId), {
+          state: { pack: { ...action.pack, entry: "scratch" as const } },
+        });
+        return;
+      }
+      if (action.type === "photo-scratch") {
+        unlockCountdownSound();
+        const packId = action.packId?.trim();
+        const packSession =
+          packId && packId !== "session"
+            ? (activateGameSessionForPack(packId) ??
+              loadGameSessionForPack(packId))
+            : null;
+        if (
+          packSession &&
+          (packSession.phase === "photo_reveal" ||
+            packSession.phase === "photo") &&
+          (!packSession.packScratch?.readyPackId ||
+            !packId ||
+            packSession.packScratch.readyPackId === packId)
+        ) {
+          const started = beginPhotoPhase() ?? packSession;
+          navigate(photoPlayHref(started));
+          return;
+        }
+        if (!packId) {
+          const session = loadGameSession();
+          if (
+            session &&
+            (session.phase === "photo_reveal" || session.phase === "photo")
+          ) {
+            const started = beginPhotoPhase() ?? session;
+            navigate(photoPlayHref(started));
+            return;
+          }
+        }
+        navigate(Paths.collection);
+        return;
+      }
       if (action.type === "buy") {
         if (action.pack.creator) setRecommendationSeedCreator(action.pack.creator);
-        navigate(Paths.purchase(action.pack.packId), {
-          state: { pack: action.pack },
-        });
+        const isBuyPack =
+          action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
+        if (isBuyPack) clearOpening();
+        navigate(
+          action.pack.entry === "cart-tear"
+            ? Paths.purchaseTearOpen
+            : Paths.purchase(action.pack.packId),
+          {
+            state: {
+              pack: isBuyPack
+                ? { ...action.pack, entry: "purchase" as const }
+                : action.pack,
+            },
+          },
+        );
         return;
       }
       if (action.type === "like") {
         setResumeLikeId(action.feedItemId);
-        navigate(Paths.home);
+        navigate(Paths.discover);
         return;
       }
-      if (action.type === "scratch") return;
-      if (action.type === "tab") {
-        if (action.tab === "hub") {
-          navigate(Paths.store);
-          return;
+      if (action.type === "follow") {
+        // Apply follow after login. Stay on creator profiles; otherwise Discover.
+        followCreator({
+          id: action.creatorId,
+          displayName: action.displayName?.trim() || action.creatorId,
+          username: "",
+          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.png",
+          followedAt: Date.now(),
+          hasUnseenActivity: false,
+        });
+        if (!window.location.pathname.startsWith("/creator/")) {
+          navigate(Paths.discover);
         }
+        return;
+      }
+      if (action.type === "store") {
+        captureSecondaryReturn();
+        navigate(Paths.store);
+        return;
+      }
+      if (action.type === "inbox") {
+        captureSecondaryReturn();
+        navigate(Paths.inbox);
+        return;
+      }
+      if (action.type === "unopened-packs") {
+        navigate(Paths.collectionPacks);
+        return;
+      }
+      if (action.type === "cart") {
+        captureSecondaryReturn();
+        navigate(Paths.packPocket);
+        return;
+      }
+      if (action.type === "add-to-cart") {
+        addPackToCart(action.pack);
+        return;
+      }
+      if (action.type === "collection") {
+        noteCreatorEngagement(action.creatorId);
+        navigate(Paths.creator(action.creatorId));
+        return;
+      }
+      if (action.type === "resume") {
+        const target = action.path.trim();
+        if (target.startsWith("/")) {
+          navigate(target);
+        }
+        return;
+      }
+      if (action.type === "tab") {
         navigate(pathForTab(action.tab));
       }
     },
-    [navigate],
+    [captureSecondaryReturn, navigate],
+  );
+
+  const enterAfterOnboarding = useCallback(
+    (opts?: {
+      deferred?: ProtectedAction | null;
+      scrollToDailyReward?: boolean;
+    }) => {
+      // First-run / post-recommend always lands on Discover — not Profile.
+      // Soft-gate from /profile now queues { type: "resume", path } (or the
+      // older tab form); both would otherwise send new users back to Profile.
+      const deferred = opts?.deferred ?? null;
+      const resume =
+        deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
+
+      if (resume) {
+        navigate(Paths.discover);
+        window.setTimeout(() => resumePending(resume), 0);
+        return;
+      }
+      navigate(Paths.discover);
+    },
+    [navigate, resumePending],
   );
 
   const applyRecommendationDecision = useCallback(
     (pendingAction: ProtectedAction | null) => {
       const decision = evaluateRecommendationEligibility({
         pending: pendingAction,
+        authenticated: true,
       });
 
       if (decision.action === "launch-initialization") {
@@ -164,19 +514,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      resumePending(pendingAction);
+      if (shouldResumeAfterAuth(pendingAction)) {
+        resumePending(pendingAction);
+        return;
+      }
+
+      enterAfterOnboarding({ scrollToDailyReward: true });
     },
-    [navigate, resumePending],
+    [enterAfterOnboarding, navigate, resumePending],
   );
 
   const finishRecommendationAndResume = useCallback(() => {
     const deferred = pendingAfterRec;
     setPendingAfterRec(null);
-    navigate(Paths.home);
-    if (deferred) {
-      window.setTimeout(() => resumePending(deferred), 0);
-    }
-  }, [navigate, pendingAfterRec, resumePending]);
+    enterAfterOnboarding({
+      deferred,
+      scrollToDailyReward: !deferred,
+    });
+  }, [enterAfterOnboarding, pendingAfterRec]);
 
   function applyUserFromEmail(email: string) {
     const local = email.split("@")[0] || "collector";
@@ -195,7 +550,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requireAuth = useCallback(
     (action: ProtectedAction) => {
-      if (authed || isAuthenticated()) {
+      if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
           setVerifyPending(action);
           setVerifyOpen(true);
@@ -205,6 +560,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       setPending(action);
+      setAuthSheetMode("login");
+      setAuthSheetEmail("");
       setAuthOpen(true);
       return false;
     },
@@ -214,10 +571,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestTab = useCallback(
     (next: AppTab) => {
       if (PUBLIC_TABS.includes(next) || authed) {
-        if (next === "hub" && authed) {
-          requireAuth({ type: "tab", tab: "hub" });
-          return;
-        }
         navigate(pathForTab(next));
         return;
       }
@@ -227,14 +580,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const openStore = useCallback(() => {
-    if (!requireAuth({ type: "tab", tab: "hub" })) return;
+    captureSecondaryReturn();
     navigate(Paths.store);
-  }, [navigate, requireAuth]);
+  }, [captureSecondaryReturn, navigate]);
+
+  const openInbox = useCallback(() => {
+    if (!requireAuth({ type: "inbox" })) return;
+  }, [requireAuth]);
+
+  const openUnopenedPacks = useCallback(() => {
+    if (!requireAuth({ type: "unopened-packs" })) return;
+  }, [requireAuth]);
+
+  const openCart = useCallback(() => {
+    if (!requireAuth({ type: "cart" })) return;
+  }, [requireAuth]);
+
+  const addToCart = useCallback(
+    (pack: CartAddInput) => {
+      if (pack.creator) noteCreatorEngagement(pack.creator);
+      requireAuth({ type: "add-to-cart", pack });
+    },
+    [requireAuth],
+  );
 
   const openCreator = useCallback(
-    (id: string) => {
+    (id: string, themeId?: string) => {
       noteCreatorEngagement(id);
-      navigate(Paths.creator(id));
+      const query = themeId?.trim()
+        ? `?theme=${encodeURIComponent(themeId.trim())}`
+        : "";
+      navigate(`${Paths.creator(id)}${query}`);
     },
     [navigate],
   );
@@ -252,50 +628,103 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireAuth({ type: "tab", tab: "profile" });
       return;
     }
+    captureSecondaryReturn();
     navigate(Paths.settings);
-  }, [guest, navigate, requireAuth]);
+  }, [captureSecondaryReturn, guest, navigate, requireAuth]);
+
+  const openPasswordReset = useCallback(() => {
+    setPending(null);
+    setAuthSheetMode("forgot-password");
+    setAuthSheetEmail(getAuthEmail());
+    setAuthOpen(true);
+  }, []);
+
+  const closeSecondary = useCallback(
+    (surface: SecondarySurfaceId) => {
+      setSecondaryReturnTab(null);
+      // Prefer the real previous step (Discover → Creator → back, etc.).
+      navigateBackOr(navigate, pathForTab(resolveSecondaryBack(secondaryReturnTab, surface)));
+    },
+    [navigate, secondaryReturnTab],
+  );
 
   const completeAuth = useCallback(
     (result: AuthSuccessResult) => {
-      const wasUnresolved = !isRecommendationInitialized();
       const action = pending;
-      createSession(result.email, result.provider);
-      applyUserFromEmail(result.email);
+      sessionSyncEpochRef.current += 1;
+      setReturningUser(true);
+
+      const accountAlreadyClaimed = Boolean(result.user?.welcomeClaimed);
+
+      // Establish the local session first, but delay setAuthed(true) until any
+      // guest-deferred welcome claim finishes. That way the login pack sync
+      // (triggered by authed) cannot replace inventory with a pre-claim snapshot.
+      if (result.user) {
+        applyRemoteUser(
+          result.user,
+          { setAuthed, setEmailVerified, setProfile },
+          { setAuthed: false },
+        );
+      } else {
+        createSession(result.email, result.provider);
+        applyUserFromEmail(result.email);
+        setEmailVerified(isEmailVerified());
+        if (result.provider === "email" && !isRecommendationInitialized()) {
+          clearEmailVerified();
+          setEmailVerified(false);
+        }
+      }
+
       markEntered();
       markOnboardingDone();
       setAuthOpen(false);
-      setAuthed(true);
-      setEmailVerified(isEmailVerified());
-
-      if (result.provider === "email" && wasUnresolved) {
-        clearEmailVerified();
-        setEmailVerified(false);
-      }
-
+      setAuthSheetMode("login");
+      setAuthSheetEmail("");
       setPending(null);
-      window.setTimeout(() => {
-        if (
-          action &&
-          actionNeedsVerifiedEmail(action) &&
-          needsEmailVerification()
-        ) {
-          setVerifyPending(action);
-          setVerifyOpen(true);
-          return;
+
+      void (async () => {
+        try {
+          const welcome = await fulfillPendingWelcomeGift(accountAlreadyClaimed);
+          if (welcome.granted) {
+            setProfile((d) => ({
+              ...d,
+              welcomeClaimed: welcome.welcomeClaimed ?? true,
+            }));
+            setPurchasedPacks((n) => n + 1);
+            bumpInventoryRevision();
+          }
+        } finally {
+          // Start pack sync only after claim attempt so server wins with the gift.
+          setAuthed(true);
+          // Resume only after authed flips — SoftGate must see authed=true.
+          window.setTimeout(() => {
+            if (
+              action &&
+              actionNeedsVerifiedEmail(action) &&
+              needsEmailVerification()
+            ) {
+              setVerifyPending(action);
+              setVerifyOpen(true);
+              return;
+            }
+            applyRecommendationDecision(action);
+          }, 0);
         }
-        applyRecommendationDecision(action);
-      }, 0);
+      })();
     },
-    [applyRecommendationDecision, pending],
+    [applyRecommendationDecision, bumpInventoryRevision, pending],
   );
 
   const dismissAuth = useCallback(() => {
     setAuthOpen(false);
     setPending(null);
+    setAuthSheetMode("login");
+    setAuthSheetEmail("");
   }, []);
 
   const onVerified = useCallback(() => {
     markEmailVerified();
+    void markEmailVerifiedRemote();
     setEmailVerified(true);
     setVerifyOpen(false);
     const action = verifyPending;
@@ -327,27 +756,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const logout = useCallback(() => {
+  const invalidateRemoteSession = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
     destroySession();
+    clearEmailVerified();
+    clearPackInventory();
+    setAuthed(false);
+    setEmailVerified(false);
+    setInboxUnread(0);
+    setPending({ type: "session-expired" });
+    setAuthSheetMode("login");
+    setAuthSheetEmail("");
+    setAuthOpen(true);
+  }, []);
+
+  const logout = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+    void logoutRemote();
+    destroySession();
+    clearPackInventory();
     setAuthed(false);
     setPending(null);
     setAuthOpen(false);
     setVerifyOpen(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
-    navigate(Paths.home);
-    setNavNotice("Signed out — browsing as guest");
-    window.setTimeout(() => setNavNotice(""), 1800);
+    navigate(Paths.discover);
   }, [navigate]);
 
   const restart = useCallback(() => {
+    sessionSyncEpochRef.current += 1;
+    void logoutRemote();
     clearV8Session();
+    resetPageReady();
     clearRecommendationState();
     clearEmailVerified();
+    clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
+    clearPackInventory();
     setProfile(initialProfile);
     setAuthed(false);
+    setReturningUser(false);
     setEmailVerified(false);
     setVerifyOpen(false);
     setVerifyPending(null);
@@ -355,18 +805,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPurchasedPacks(0);
     setPending(null);
     setAuthOpen(false);
-    navigate(Paths.loading);
+    navigate(Paths.home);
   }, [navigate]);
 
   const consumeResumeLike = useCallback(() => setResumeLikeId(null), []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
+      authReady,
       authed,
       guest,
+      hasLoggedInBefore: returningUser,
+      guestAuthLabel,
       profile,
       setProfile,
       authOpen,
+      authSheetMode,
+      authSheetEmail,
       pending,
       emailVerified,
       verifyOpen,
@@ -377,9 +832,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireAuth,
       requestTab,
       openStore,
+      openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
       openCreator,
       openPurchase,
       openSettings,
+      openPasswordReset,
+      closeSecondary,
+      inventoryRevision,
+      bumpInventoryRevision,
+      invalidatePackSync,
+      inboxUnread,
+      setInboxUnread,
       completeAuth,
       dismissAuth,
       onVerified,
@@ -393,11 +859,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setNavNotice,
       consumeResumeLike,
       applyRecommendationDecision,
+      invalidateRemoteSession,
       verifyEmail: profile.email || getAuthEmail(),
     }),
     [
       applyRecommendationDecision,
       authOpen,
+      authReady,
+      authSheetEmail,
+      authSheetMode,
       authed,
       completeAuth,
       consumeResumeLike,
@@ -405,13 +875,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       emailVerified,
       finishRecommendationAndResume,
       guest,
+      guestAuthLabel,
+      invalidateRemoteSession,
       logout,
       navNotice,
       notePackPurchaseSeed,
       onEmailChanged,
       onVerified,
       onVerifyLater,
+      bumpInventoryRevision,
+      invalidatePackSync,
+      closeSecondary,
+      inboxUnread,
+      inventoryRevision,
       openCreator,
+      openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
+      openPasswordReset,
       openPurchase,
       openSettings,
       openStore,
@@ -420,6 +902,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       purchasedPacks,
       requireAuth,
       requestTab,
+      returningUser,
       restart,
       resumeLikeId,
       setPendingAfterRecFromSwipe,

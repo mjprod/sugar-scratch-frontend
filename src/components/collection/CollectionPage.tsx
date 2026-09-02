@@ -1,49 +1,145 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
-  type CollectionLibraryFilter,
-  type LibraryPreviewCard,
+  resolveCollectionThemeLabel,
   type ScratchReadyGroup,
   type UnopenedPack,
 } from "@/services/collection";
+import {
+  emptyCollectionPageState,
+  fetchCollectionPageStateRemote,
+  getCollectionPageState,
+  type CollectionPageState,
+} from "@/services/collectionState";
+import { isDemoMode } from "@/lib/demo";
+import { syncMyPacks } from "@/services/packInventory";
 import type { PurchaseFlowPack } from "@/services/purchase";
-import { CardLibraryPreview } from "./CardLibraryPreview";
-import { CollectionHeader } from "./CollectionHeader";
-import { CollectionPlaceholder } from "./CollectionPlaceholder";
+import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
+import { CollectionEmptyState } from "./CollectionEmptyState";
 import { CollectionSnapshot } from "./CollectionSnapshot";
-import { ContinueCollectingSection } from "./ContinueCollectingSection";
+import { MyCollectionSection } from "./MyCollectionSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
-type HubOverlay =
-  | { kind: "search" }
-  | { kind: "filter" }
-  | { kind: "library"; filter: CollectionLibraryFilter }
-  | { kind: "creators" }
-  | { kind: "card"; card: LibraryPreviewCard }
-  | { kind: "scratch"; group: ScratchReadyGroup }
-  | null;
-
 /**
- * Collection hub — achievement → ready-to-reveal → creator progress → library.
+ * Collection hub — Summary → Ready to Reveal → My Collection.
+ * Content comes from GET /api/me/collection (+ synced pack inventory). No fixture catalog.
  */
 export function CollectionPage({
   onOpenCreator,
   onOpenPack,
   onExplorePacks,
+  onScratchGroup,
+  inventoryRevision = 0,
 }: {
-  onOpenCreator: (creatorId: string) => void;
+  onOpenCreator: (creatorId: string, themeId?: string) => void;
   onOpenPack: (pack: PurchaseFlowPack) => void;
   onExplorePacks: () => void;
+  onScratchGroup?: (group: ScratchReadyGroup) => void;
+  inventoryRevision?: number;
 }) {
-  const [overlay, setOverlay] = useState<HubOverlay>(null);
+  const [searchParams] = useSearchParams();
+  const revealPacks = searchParams.get("reveal") === "packs";
+  const [state, setState] = useState<CollectionPageState>(() =>
+    emptyCollectionPageState(),
+  );
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setReady(false);
+
+    void (async () => {
+      // Keep pack shelf in sync with the server before reading local inventory.
+      if (!isDemoMode()) {
+        await syncMyPacks().catch(() => false);
+      }
+
+      const remote = isDemoMode()
+        ? null
+        : await fetchCollectionPageStateRemote().catch(() => null);
+
+      if (cancelled) return;
+
+      if (remote) {
+        // API owns summary + My Collection creators; merge live pack/scratch counts
+        // so Ready to Reveal stays consistent with local open/scratch shelves.
+        const local = getCollectionPageState();
+        setState({
+          ...remote,
+          unopenedPackCount: local.unopenedPackCount,
+          unscratchedCardCount: local.unscratchedCardCount,
+          hasUnopenedPacks: local.hasUnopenedPacks,
+          hasUnscratchedCards: local.hasUnscratchedCards,
+          hasPendingReveal: local.hasPendingReveal,
+          isTrueEmpty:
+            remote.isTrueEmpty &&
+            !local.hasUnopenedPacks &&
+            !local.hasUnscratchedCards,
+          hasEverPurchasedPack:
+            remote.hasEverPurchasedPack || local.hasEverPurchasedPack,
+          hasStartedCollection:
+            remote.hasStartedCollection || local.hasStartedCollection,
+        });
+      } else {
+        // API unavailable — inventory shelves only (synced packs / ready scratch).
+        // Do not surface fixture catalogs or stale demo creator rows.
+        const local = getCollectionPageState();
+        setState({
+          ...emptyCollectionPageState(),
+          unopenedPackCount: local.unopenedPackCount,
+          unscratchedCardCount: local.unscratchedCardCount,
+          hasUnopenedPacks: local.hasUnopenedPacks,
+          hasUnscratchedCards: local.hasUnscratchedCards,
+          hasPendingReveal: local.hasPendingReveal,
+          hasEverPurchasedPack: local.hasEverPurchasedPack,
+          hasStartedCollection: local.hasStartedCollection,
+          totalPurchasedPacks: local.totalPurchasedPacks,
+          isTrueEmpty: local.isTrueEmpty,
+        });
+      }
+      setReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inventoryRevision]);
+
+  const collectedCreators = useMemo(
+    () => state.continueCreators.filter((creator) => creator.collected > 0),
+    [state.continueCreators],
+  );
 
   function openPack(pack: UnopenedPack) {
+    const target = resolveUnopenedOpenTarget(pack);
+    const themeName =
+      resolveCollectionThemeLabel({
+        themeName: pack.name,
+        packName: pack.name,
+        catalogPackId: target.catalogPackId,
+        creator: pack.creator,
+      }) || pack.name;
     onOpenPack({
-      packId: pack.id,
+      packId: target.catalogPackId,
       packName: pack.name,
+      themeName,
       price: "Free",
       creator: pack.creator,
       entry: "open",
       unopenedPacks: pack.count,
+      instanceId: target.instanceId,
+      purchaseId: target.purchaseId,
+    });
+  }
+
+  function openScratch(group: ScratchReadyGroup) {
+    onScratchGroup?.(group);
+  }
+
+  function scrollTo(id: string) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
     });
   }
 
@@ -53,76 +149,62 @@ export function CollectionPage({
       className="collection-page flex min-h-0 flex-1 flex-col overflow-y-auto"
       style={
         {
-          "--bg-primary": "#070709",
-          "--accent-pink": "#ff5fa2",
+          "--bg-primary": "oklch(0.13 0.005 285.67)",
+          "--accent-pink": "oklch(0.711 0.203 357.66)",
         } as CSSProperties
       }
     >
-      <div className="collection-page-content">
-        <CollectionHeader
-          onSearch={() => setOverlay({ kind: "search" })}
-          onFilter={() => setOverlay({ kind: "filter" })}
-        />
+      <div className="collection-page-content page-container">
+        {!ready ? (
+          <header className="collection-page-intro">
+            <h1 className="collection-page-title">Collection</h1>
+            <p className="collection-empty-copy">Loading your collection…</p>
+          </header>
+        ) : state.isTrueEmpty && !revealPacks ? (
+          <CollectionEmptyState onExplorePacks={onExplorePacks} />
+        ) : state.isTrueEmpty && revealPacks ? (
+          <>
+            <header className="collection-page-intro">
+              <h1 className="collection-page-title">Your Collection</h1>
+            </header>
+            <ReadyToReveal
+              onOpenPack={openPack}
+              onScratch={openScratch}
+              onExplorePacks={onExplorePacks}
+              inventoryRevision={inventoryRevision}
+            />
+          </>
+        ) : (
+          <>
+            <header className="collection-page-intro">
+              <h1 className="collection-page-title">Collection</h1>
+            </header>
 
-        <CollectionSnapshot
-          onOpenLibrary={(filter) => setOverlay({ kind: "library", filter })}
-          onOpenCreators={() => setOverlay({ kind: "creators" })}
-        />
+            <CollectionSnapshot
+              summary={state.summary}
+              hasPendingReveal={state.hasPendingReveal}
+              onExplorePacks={onExplorePacks}
+              onFocusReadyToReveal={() => scrollTo("ready-heading")}
+              onOpenMyCollection={() => scrollTo("my-collection")}
+            />
 
-        <ReadyToReveal
-          onOpenPack={openPack}
-          onScratch={(group) => setOverlay({ kind: "scratch", group })}
-          onExplorePacks={onExplorePacks}
-        />
+            <ReadyToReveal
+              onOpenPack={openPack}
+              onScratch={openScratch}
+              onExplorePacks={onExplorePacks}
+              inventoryRevision={inventoryRevision}
+            />
 
-        <ContinueCollectingSection
-          onOpenCreator={onOpenCreator}
-          onViewAll={() => setOverlay({ kind: "creators" })}
-        />
-
-        <CardLibraryPreview
-          onViewAll={() => setOverlay({ kind: "library", filter: "all" })}
-          onOpenCard={(card) => setOverlay({ kind: "card", card })}
-        />
+            <MyCollectionSection
+              creators={collectedCreators}
+              hasPendingReveal={state.hasPendingReveal}
+              onOpenCreator={onOpenCreator}
+              onExplorePacks={onExplorePacks}
+              onFocusReadyToReveal={() => scrollTo("ready-heading")}
+            />
+          </>
+        )}
       </div>
-
-      {overlay ? (
-        <CollectionPlaceholder
-          title={overlayTitle(overlay)}
-          detail={overlayDetail(overlay)}
-          onClose={() => setOverlay(null)}
-        />
-      ) : null}
     </section>
   );
-}
-
-function overlayTitle(overlay: Exclude<HubOverlay, null>): string {
-  switch (overlay.kind) {
-    case "search":
-      return "Collection Search Overlay";
-    case "filter":
-      return "Collection Filter Sheet";
-    case "library":
-      return "Full Card Library";
-    case "creators":
-      return "Creator Collections List";
-    case "card":
-      return "Card Detail Viewer";
-    case "scratch":
-      return "Scratch Flow";
-  }
-}
-
-function overlayDetail(overlay: Exclude<HubOverlay, null>): string {
-  switch (overlay.kind) {
-    case "library":
-      return `Filter: ${overlay.filter === "all" ? "All collected cards" : overlay.filter}`;
-    case "card":
-      return `${overlay.card.name} · ${overlay.card.rarity}`;
-    case "scratch":
-      return `${overlay.group.creatorName} · ${overlay.group.collectionName} · ${overlay.group.count} ready`;
-    default:
-      return "This destination is wired for the interactive prototype.";
-  }
 }

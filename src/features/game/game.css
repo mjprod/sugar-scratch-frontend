@@ -1,0 +1,1186 @@
+/*
+ * Scratch play always uses a phone-shaped stage.
+ * Wide desktops: centered 390∶672 frame (max 430px). Real phones: full viewport.
+ * Canvas always covers that frame so intro / countdown / scratch share one box.
+ */
+.app-shell.app-shell--game,
+.app-shell.app-shell--game-hub {
+  background: oklch(0.131 0.01 285);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 701px) {
+  .app-shell.app-shell--game {
+    /* Fit inside the route outlet — avoid position:fixed inside Framer Motion
+       transform ancestors (clips / mis-centers the phone frame). */
+    --game-shell-w: min(430px, 100cqw, calc(100cqh * 390 / 672));
+    width: var(--game-shell-w);
+    height: min(100cqh, calc(var(--game-shell-w) * 672 / 390));
+    max-width: 430px;
+    max-height: 100%;
+    aspect-ratio: 390 / 672;
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    margin: auto;
+    flex: none;
+    align-self: center;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.08),
+      0 24px 80px oklch(0 0 0 / 0.55);
+  }
+}
+
+.stage-game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: oklch(0.184 0.005 67.5);
+  container-type: size;
+}
+
+/* Game / photo-scratch fill the outlet and center the phone frame on desktop. */
+.app-layout__immersive {
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+  background: oklch(0.131 0.01 285);
+}
+
+@media (max-width: 700px) {
+  .app-layout__immersive .app-shell.app-shell--game {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* Product embed: playable stage only — hide prototype chrome. */
+.stage-game .panel,
+.stage-game .mobile-controls-wrap,
+.stage-game .mobile-settings-sheet,
+.stage-game .mobile-sound-wrap,
+.stage-game .home-picker-links,
+.stage-game .mobile-game-badge,
+.stage-game .mobile-game-link {
+  display: none !important;
+}
+
+.stage-game > .app-shell {
+  min-height: 100%;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.stage-game > .app-shell.home-picker {
+  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stage-game .prototype {
+  display: block;
+  gap: 0;
+  margin: 0;
+  max-width: none;
+  height: 100%;
+}
+
+.stage-game .stage {
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  container-type: size;
+  background: oklch(0.184 0.005 67.5);
+}
+
+/* Cover only the stage picture — never UI canvases (foil flakes, coating).
+   A blanket `.stage > canvas` rule yanked the portaled flake layer to
+   cover-center, so flecks spawned at the finger then drew off-screen. */
+.stage-game .stage > canvas.game-stage-canvas,
+.stage-game .stage .game-stage-canvas-wrap {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%);
+  width: max(100cqw, calc(100cqh * 390 / 672)) !important;
+  height: max(100cqh, calc(100cqw * 672 / 390)) !important;
+  transition: transform var(--scratch-zoom-duration, 180ms)
+    var(--scratch-zoom-easing, ease-out);
+}
+
+/* Full-stage flake layer: stay inset:0 even if an older cover rule leaks. */
+.stage-game .stage > canvas.top-symbol-bar-particle-canvas {
+  position: absolute !important;
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  pointer-events: none !important;
+  z-index: 10 !important;
+}
+
+.stage-game .stage .game-stage-canvas-wrap .game-stage-canvas {
+  height: 100% !important;
+  left: auto !important;
+  max-height: none !important;
+  max-width: none !important;
+  position: relative !important;
+  top: auto !important;
+  transform: none !important;
+  width: 100% !important;
+}
+
+.stage-game__exit {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  z-index: 20;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.157 0.013 284.85 / 0.72);
+  color: oklch(1 0 0);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+
+.stage-game__exit:hover {
+  background: oklch(0.157 0.013 284.85 / 0.9);
+}
+
+.stage-game .motion-win-reveal__stage {
+  min-height: min(168px, 24cqh);
+  max-width: 100%;
+}
+
+.stage-game .motion-win-reveal__card {
+  width: min(108px, 21cqw);
+}
+
+.stage-game .motion-win-reveal__stage.is-count-1 .motion-win-reveal__card {
+  width: min(148px, 34cqw);
+}
+
+.stage-game .motion-win-reveal__stage.is-count-2 .motion-win-reveal__card,
+.stage-game .motion-win-reveal__stage.is-count-3 .motion-win-reveal__card {
+  width: min(96px, 19cqw);
+}
+
+.game-exit-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.game-exit-modal__scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: oklch(0.08 0.01 284 / 0.72);
+  backdrop-filter: blur(6px);
+  cursor: default;
+}
+
+.game-exit-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 320px);
+  padding: 24px 20px 20px;
+  border-radius: 20px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0.157 0.013 284.85 / 0.96);
+  box-shadow: 0 24px 64px oklch(0 0 0 / 0.45);
+  text-align: center;
+}
+
+.game-exit-modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: oklch(1 0 0);
+}
+
+.game-exit-modal__copy {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: oklch(1 0 0 / 0.62);
+}
+
+.game-exit-modal__exit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: oklch(1 0 0);
+  color: oklch(0.147 0.011 285.01);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.game-exit-modal__exit:active {
+  transform: scale(0.98);
+}
+
+.game-exit-modal__stay {
+  width: 100%;
+  height: 44px;
+  margin-top: 6px;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.62);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.game-exit-modal__stay:hover {
+  color: oklch(1 0 0 / 0.88);
+}
+
+.motion-win-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  pointer-events: auto;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.motion-win-reveal.is-minimizing,
+.motion-win-reveal.is-fading {
+  pointer-events: none;
+}
+
+.motion-win-reveal.is-minimizing .motion-win-reveal__backdrop {
+  animation: motion-win-backdrop-out 280ms ease-out forwards;
+}
+
+.motion-win-reveal.is-minimizing .motion-win-reveal__center {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes motion-win-backdrop-out {
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+  }
+}
+
+.motion-win-reveal.is-fading {
+  pointer-events: none;
+  animation: motion-win-fade-out 180ms ease-out forwards;
+}
+
+.motion-win-reveal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: motion-win-dim 140ms ease-out both;
+}
+
+.motion-win-reveal__glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(88%, 320px);
+  height: 240px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    oklch(0.85 0.12 85 / 0.28) 0%,
+    oklch(0.65 0.16 330 / 0.12) 42%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+.motion-win-reveal__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.motion-win-reveal__particles span {
+  --i: 0;
+  position: absolute;
+  left: calc(18% + var(--i) * 7%);
+  top: calc(28% + (var(--i) % 4) * 12%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: oklch(0.92 0.1 90 / 0.7);
+  opacity: 0;
+  animation: motion-win-spark 1.8s ease-in-out calc(var(--i) * 90ms) infinite;
+}
+
+.motion-win-reveal__particles span:nth-child(odd) {
+  background: oklch(0.78 0.16 330 / 0.65);
+}
+
+.motion-win-reveal__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2cqh, 14px);
+  padding:
+    max(48px, calc(12px + env(safe-area-inset-top, 0px)))
+    16px
+    max(56px, calc(12px + env(safe-area-inset-bottom, 0px)));
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.motion-win-reveal__header {
+  text-align: center;
+  animation: motion-win-header-in 200ms ease-out both;
+}
+
+.motion-win-reveal__won {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+}
+
+.motion-win-reveal__count {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.92);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.motion-win-reveal__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 168px;
+  perspective: 900px;
+  transition:
+    transform 260ms ease-in-out,
+    opacity 200ms ease-out;
+}
+
+.motion-win-reveal__stage.is-minimizing {
+  opacity: 0;
+  transform: translate(42%, -48%) scale(0.22);
+  pointer-events: none;
+}
+
+.motion-win-reveal__card {
+  --card-i: 0;
+  width: 108px;
+  aspect-ratio: 3 / 4;
+  opacity: 0;
+  transform: translateY(14px) scale(0.92);
+  transition:
+    opacity 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.motion-win-reveal__stage.is-count-1 .motion-win-reveal__card {
+  width: 148px;
+}
+
+.motion-win-reveal__card.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: calc(var(--card-i) * 40ms);
+}
+
+.motion-win-reveal__flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 200ms ease-in-out;
+}
+
+.motion-win-reveal__card.is-flipped .motion-win-reveal__flip {
+  transform: rotateY(180deg);
+}
+
+.motion-win-reveal__card.is-flipped {
+  animation: motion-win-card-pop 220ms ease-out;
+}
+
+.motion-win-reveal__face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  box-shadow:
+    0 10px 28px oklch(0 0 0 / 0.4),
+    0 0 0 1px oklch(0.85 0.1 85 / 0.18);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.motion-win-reveal__face--back {
+  background: oklch(0.18 0.02 285);
+}
+
+.motion-win-reveal__face--back img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.motion-win-reveal__face--front {
+  transform: rotateY(180deg);
+  background: oklch(0.16 0.01 285);
+}
+
+.motion-win-reveal__layers {
+  position: absolute;
+  inset: 0;
+}
+
+.motion-win-reveal__layers img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.motion-win-reveal__extra {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  color: oklch(1 0 0 / 0.7);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.motion-win-reveal__owned {
+  margin: 0;
+  color: oklch(0.87 0.12 145);
+  font-size: 13px;
+  font-weight: 600;
+  animation: motion-win-header-in 180ms ease-out both;
+}
+
+.motion-win-reveal__mini {
+  position: absolute;
+  top: max(52px, calc(12px + env(safe-area-inset-top, 0px)));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(6px) scale(0.9);
+  transition:
+    opacity 140ms ease-out,
+    transform 140ms ease-out;
+  pointer-events: none;
+}
+
+.motion-win-reveal__mini.is-shown {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.motion-win-reveal__mini-stack {
+  position: relative;
+  width: 36px;
+  height: 44px;
+}
+
+.motion-win-reveal__mini-card {
+  --i: 0;
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid oklch(1 0 0 / 0.28);
+  transform: translate(calc(var(--i) * 3px), calc(var(--i) * 3px));
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.35);
+}
+
+.motion-win-reveal__mini-new {
+  color: oklch(0.937 0.086 91.56);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.motion-win-reveal.is-reduced .motion-win-reveal__flip {
+  transition: none;
+}
+
+.motion-win-reveal.is-reduced .motion-win-reveal__particles {
+  display: none;
+}
+
+.photo-diamond-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  pointer-events: auto;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.photo-diamond-reveal.is-fading {
+  pointer-events: none;
+  animation: motion-win-fade-out 320ms ease-out forwards;
+}
+
+.photo-diamond-reveal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: motion-win-dim 320ms ease-out both;
+}
+
+.photo-diamond-reveal__glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(88%, 320px);
+  height: 240px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    oklch(0.78 0.14 330 / 0.32) 0%,
+    oklch(0.65 0.16 330 / 0.12) 42%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+.photo-diamond-reveal__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.photo-diamond-reveal__particles span {
+  --i: 0;
+  position: absolute;
+  left: calc(18% + var(--i) * 7%);
+  top: calc(28% + (var(--i) % 4) * 12%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: oklch(0.92 0.1 90 / 0.7);
+  opacity: 0;
+  animation: motion-win-spark 2.6s ease-in-out calc(var(--i) * 120ms) infinite;
+}
+
+.photo-diamond-reveal__particles span:nth-child(odd) {
+  background: oklch(0.78 0.16 330 / 0.65);
+}
+
+.photo-diamond-reveal__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 16px 88px;
+  box-sizing: border-box;
+}
+
+.photo-diamond-reveal__header {
+  text-align: center;
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.photo-diamond-reveal__won {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+}
+
+.photo-diamond-reveal__count {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.92);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.photo-diamond-reveal__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transform: scale(0.88);
+  transition:
+    opacity 420ms ease-out,
+    transform 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.photo-diamond-reveal__hero.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  animation: motion-win-card-pop 720ms ease-out both;
+}
+
+.photo-diamond-reveal__hero.is-minimizing {
+  transform: scale(0.72) translateY(-18px);
+  opacity: 0.35;
+  transition:
+    transform 420ms ease-in-out,
+    opacity 320ms ease-out;
+}
+
+.photo-diamond-reveal__icon {
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 22px oklch(0.78 0.16 330 / 0.45));
+}
+
+.photo-diamond-reveal__amount {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 0 24px oklch(0.78 0.16 330 / 0.35);
+}
+
+.photo-diamond-reveal__owned {
+  margin: 0;
+  color: oklch(1 0 0 / 0.72);
+  font-size: 13px;
+  font-weight: 600;
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.photo-diamond-reveal__mini {
+  position: absolute;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.157 0.013 284.85 / 0.92);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 360ms ease-out,
+    transform 360ms ease-out;
+  pointer-events: none;
+}
+
+.photo-diamond-reveal__mini.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.photo-diamond-reveal__mini-icon {
+  display: grid;
+  place-items: center;
+}
+
+.photo-diamond-reveal__mini-new {
+  color: oklch(0.937 0.086 91.56);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.photo-diamond-reveal.is-reduced .photo-diamond-reveal__particles {
+  display: none;
+}
+
+/* No match — a resolved card outcome. Dims the card just enough to read the
+   result while keeping the creator visible underneath. Staged entrance runs
+   200→780ms so the scratch has a beat to land before the verdict appears, then
+   it holds 2s and fades itself out; no tap needed to reach the next card.
+   Blocks pointer input meanwhile so stray strokes don't hit the next card. */
+.no-match {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+  animation: motion-win-fade-out 300ms ease-out 2780ms both;
+}
+
+.no-match__overlay {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.28);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  animation: no-match-overlay-in 200ms ease-out 200ms both;
+}
+
+.no-match__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 24px;
+}
+
+/* Readability halo — no card/modal chrome, the result floats on the card. */
+.no-match__content::before {
+  content: "";
+  position: absolute;
+  inset: -80px;
+  background: radial-gradient(
+    circle,
+    oklch(0.08 0.01 284 / 0.6) 0%,
+    oklch(0.08 0.01 284 / 0) 70%
+  );
+  pointer-events: none;
+  animation: no-match-overlay-in 200ms ease-out 200ms both;
+}
+
+.no-match__icon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  color: oklch(0.84 0.11 340);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 8px oklch(0.78 0.15 348 / 0.25));
+  animation: no-match-icon-in 200ms ease-out 280ms both;
+}
+
+.no-match__title {
+  position: relative;
+  margin: 14px 0 0;
+  color: oklch(0.84 0.11 340);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  animation: no-match-rise-in 220ms ease-out 360ms both;
+}
+
+.no-match__subtitle {
+  position: relative;
+  margin: 10px 0 0;
+  color: oklch(1 0 0 / 0.68);
+  font-size: 14px;
+  font-weight: 400;
+  animation: no-match-overlay-in 200ms ease-out 450ms both;
+}
+
+@keyframes no-match-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes no-match-icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+@keyframes no-match-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-win-dim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-win-header-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-win-card-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-win-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
+@keyframes motion-win-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.photo-hand-summary {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding:
+    calc(48px + env(safe-area-inset-top, 0px))
+    20px
+    calc(24px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  pointer-events: auto;
+  animation: photo-hand-summary-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.photo-hand-summary__backdrop {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.08 0.01 284 / 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.photo-hand-summary__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.photo-hand-summary__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.photo-hand-summary__title {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.photo-hand-summary__reward-wrap {
+  position: relative;
+  width: min(68vw, 220px);
+  height: min(68vw, 220px);
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 28px oklch(0.722 0.179 303.81 / 0.35));
+}
+
+.photo-hand-summary__reward-wrap.is-counting {
+  filter: drop-shadow(0 0 22px oklch(0.741 0.162 10.42 / 0.32));
+}
+
+.photo-hand-summary__reward-wrap.is-credited {
+  filter: drop-shadow(0 0 36px oklch(0.741 0.162 10.42 / 0.45));
+  animation: photo-hand-summary-credited 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.photo-hand-summary__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.photo-hand-summary__ring-track {
+  fill: none;
+  stroke: rgba(170, 8, 95, 0.28);
+  stroke-width: 5;
+}
+
+.photo-hand-summary__ring-progress {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 628.32;
+  stroke-dashoffset: 0;
+  transform-origin: center;
+}
+
+.photo-hand-summary__ring-progress.is-animating {
+  animation:
+    photo-hand-summary-ring-drain var(--photo-collect-countdown, 8s) linear forwards,
+    photo-hand-summary-ring-pulse 2.2s ease-in-out infinite;
+}
+
+.photo-hand-summary__ring-progress.is-complete {
+  stroke-dashoffset: 0;
+  animation: photo-hand-summary-ring-complete 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.photo-hand-summary__reward-wrap.is-credited .photo-hand-summary__ring-progress {
+  stroke-dashoffset: 0;
+}
+
+.photo-hand-summary__reward {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: game-hub-tally-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.photo-hand-summary__icon {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 16px 40px rgba(224, 0, 131, 0.45));
+}
+
+.photo-hand-summary__icon .diamond-lottie {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.photo-hand-summary__amount {
+  margin: 0;
+  font-size: clamp(40px, 12vw, 56px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(180deg, #ffe0e8 18%, #e00083 72%, #eb6a00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.photo-hand-summary__actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 280px);
+}
+
+.photo-hand-summary__cta-primary {
+  width: 100%;
+  height: 56px;
+}
+
+.photo-scratch-stage.is-hand-summary {
+  pointer-events: none;
+}
+
+.photo-scratch-stage.is-hand-summary .photo-hand-summary {
+  pointer-events: auto;
+}
+
+@keyframes photo-hand-summary-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes photo-hand-summary-credited {
+  from {
+    transform: scale(0.96);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes photo-hand-summary-ring-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 628.32;
+  }
+}
+
+@keyframes photo-hand-summary-ring-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(224, 0, 131, 0.35));
+  }
+  50% {
+    opacity: 0.94;
+    filter: drop-shadow(0 0 12px rgba(235, 106, 0, 0.55));
+  }
+}
+
+@keyframes photo-hand-summary-ring-complete {
+  from {
+    stroke-dashoffset: 628.32;
+    opacity: 0.85;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes game-hub-tally-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-hand-summary__ring-progress.is-animating {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .motion-win-reveal__backdrop,
+  .motion-win-reveal__header,
+  .motion-win-reveal__owned,
+  .motion-win-reveal__card,
+  .motion-win-reveal__flip,
+  .motion-win-reveal__stage,
+  .motion-win-reveal__mini,
+  .no-match__overlay,
+  .no-match__content::before,
+  .no-match__icon,
+  .no-match__title,
+  .no-match__subtitle,
+  .photo-diamond-reveal__backdrop,
+  .photo-diamond-reveal__header,
+  .photo-diamond-reveal__owned,
+  .photo-diamond-reveal__hero,
+  .photo-diamond-reveal__mini {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+

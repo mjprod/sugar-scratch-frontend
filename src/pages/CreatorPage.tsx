@@ -1,22 +1,27 @@
-import { useNavigate, useParams } from "react-router-dom";
-import { useWallet } from "@/contexts/WalletContext";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";
 import { CreatorScreen } from "@/components/creator/CreatorScreen";
 
 export function CreatorPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { openPurchase } = useAuth();
-  const { diamonds } = useWallet();
+  const goBack = useGoBack(Paths.home);
+  const { addToCart } = useAuth();
   if (!id) return null;
   return (
     <CreatorScreen
       creatorId={id}
-      diamonds={diamonds}
-      onBack={() => navigate(Paths.browse)}
-      onOpenPack={(pack) => openPurchase(pack, "open-pack")}
-      onBuyPack={(pack) => openPurchase(pack, "buy-pack")}
+      onBack={goBack}
+      onBuyPack={(pack) =>
+        addToCart({
+          packId: pack.packId,
+          packName: pack.packName,
+          creator: pack.creator,
+          characterId: pack.packId,
+          price: pack.price,
+        })
+      }
     />
   );
 }

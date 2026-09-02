@@ -20,7 +20,7 @@ export type Step =
 export type AppTab = "home" | "feed" | "hub" | "bag" | "profile";
 
 /** Full-screen destinations from Top Navigation (hide footer while open) */
-export type AppOverlay = "settings" | "store" | null;
+export type AppOverlay = "settings" | "store" | "inbox" | null;
 
 export type GenderInterest = "male" | "female" | "both";
 
@@ -74,7 +74,7 @@ export const SPLASH_SLIDES = [
   },
   {
     title: "Your collection awaits",
-    hook: "Browse, streak daily rewards, and chase the cards you want most.",
+    hook: "Discover, streak daily rewards, and chase the cards you want most.",
     cta: "Get started",
   },
 ] as const;

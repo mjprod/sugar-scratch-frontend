@@ -3,7 +3,7 @@
  * Auth never decides recommendation. This module is the sole launcher.
  */
 
-import { isAuthenticated, type ProtectedAction } from "./auth";
+import { type ProtectedAction } from "./auth";
 
 const STATUS_KEY = "sugar.v8.recommendationStatus";
 const DEFER_KEY = "sugar.v8.recommendationDeferredSession";
@@ -14,8 +14,6 @@ const ENGAGE_KEY = "sugar.v8.creatorEngage";
 
 /** Spec §34 — configurable card count. */
 export const MIN_PERSONALIZATION_CARDS = 6;
-/** @deprecated alias */
-export const MIN_PERSONALIZE_SWIPES = MIN_PERSONALIZATION_CARDS;
 
 export type RecommendationStatus =
   | "unknown"
@@ -139,11 +137,6 @@ export const RECOMMENDATION_CARDS: RecommendationCard[] = [
     tagline: "Portrait-first scratch cards",
   },
 ];
-
-/** @deprecated use RECOMMENDATION_CARDS */
-export const ONBOARD_CARDS = RECOMMENDATION_CARDS;
-/** @deprecated */
-export type OnboardCard = RecommendationCard;
 
 export function getRecommendationStatus(): RecommendationStatus {
   try {
@@ -312,11 +305,6 @@ export function orderedRecommendationCards(
   return [...primary, ...rest];
 }
 
-/** @deprecated */
-export function orderedPersonaCards(seed?: string) {
-  return orderedRecommendationCards(seed);
-}
-
 export function saveSwipePreferences(result: {
   liked: string[];
   passed: string[];
@@ -334,8 +322,10 @@ export function saveSwipePreferences(result: {
  */
 export function evaluateRecommendationEligibility(opts: {
   pending: ProtectedAction | null;
+  /** True only after this login / confirmed session, not leftover sessionStorage. */
+  authenticated: boolean;
 }): RecommendationDecision {
-  if (!isAuthenticated()) return { action: "none" };
+  if (!opts.authenticated) return { action: "none" };
 
   const status = getRecommendationStatus();
 

@@ -4,20 +4,37 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/copy-dotlottie-wasm.mjs",
+    "predev": "node scripts/copy-dotlottie-wasm.mjs",
+    "prebuild": "node scripts/copy-dotlottie-wasm.mjs",
     "dev": "vite",
+    "dev:host": "vite --host",
+    "dev:v8": "vite --config vite.old-app.config.ts",
+    "dev:v8:host": "vite --config vite.old-app.config.ts --host",
+    "certs": "node scripts/gen-dev-certs.mjs",
+    "fix:5173": "bash scripts/fix-5173.sh",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:ui": "aura-lint -f --theme src/index.css src/",
-    "self-check": "tsx src/services/auth.self-check.ts && tsx src/services/recommendation.self-check.ts && tsx src/services/collection.self-check.ts && tsx src/services/purchase.self-check.ts && tsx src/services/store.self-check.ts && tsx src/services/creatorFeed.self-check.ts",
+    "self-check": "tsx src/services/auth.self-check.ts && tsx src/services/recommendation.self-check.ts && tsx src/services/collection.self-check.ts && tsx src/shared/backend/collection.self-check.ts && tsx src/services/purchase.self-check.ts && SUGAR_DEMO=1 tsx src/services/store.self-check.ts && tsx src/services/creatorFeed.self-check.ts && tsx src/services/inbox.self-check.ts && tsx src/lib/navigation.self-check.ts && tsx src/services/packInventory.self-check.ts && tsx src/services/readyToScratch.self-check.ts && tsx src/services/collectionState.self-check.ts && tsx src/services/welcome.self-check.ts && tsx src/services/scratchTutorial.self-check.ts && tsx src/services/themeCompletionReward.self-check.ts",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.19.10",
+    "@lottiefiles/dotlottie-web": "0.78.1",
+    "@react-spring/web": "^10.1.2",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@use-gesture/react": "^10.3.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.539.0",
+    "ogl": "^1.0.11",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.8.0"
+    "react-router-dom": "^7.8.0",
+    "three": "^0.185.1",
+    "tw-glass": "^0.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -25,6 +42,8 @@
     "@types/node": "^26.1.2",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "@types/three": "^0.185.4",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^5.0.0",
     "aura-lint": "^1.1.5",
     "eslint": "^9.33.0",
@@ -36,5 +55,8 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2"
+  },
+  "overrides": {
+    "@lottiefiles/dotlottie-web": "0.78.1"
   }
 }

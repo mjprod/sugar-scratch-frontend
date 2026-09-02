@@ -1,48 +1,74 @@
 @import "tailwindcss";
+@import "tw-glass";
 @import "./theme.css";
+
+@font-face {
+  font-family: "CardOverlay";
+  src:
+    url("/font/cardOverlay.woff2") format("woff2"),
+    url("/font/cardOverlay.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Maytra";
+  src: url("/font/Maytra.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-card-overlay: "CardOverlay", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  --font-maytra: "Maytra", cursive;
+}
 
 @theme {
   --font-display: "Inter", system-ui, sans-serif;
 
-  --color-canvas: #090909;
-  --color-canvas-elevated: #151515;
-  --color-surface: #151515;
-  --color-surface-raised: #1a1a1a;
-  --color-surface-muted: #1f1f1f;
-  --color-surface-dark: #101010;
+  --color-canvas: oklch(0.14 0 0);
+  --color-canvas-elevated: oklch(0.196 0 0);
+  --color-surface: oklch(0.196 0 0);
+  --color-surface-raised: oklch(0.218 0 0);
+  --color-surface-muted: oklch(0.239 0 0);
+  --color-surface-dark: oklch(0.173 0 0);
 
-  --color-ink: #ffffff;
-  --color-ink-secondary: rgba(255, 255, 255, 0.72);
-  --color-ink-tertiary: rgba(255, 255, 255, 0.45);
-  --color-ink-inverse: #ffffff;
+  --color-ink: oklch(1 0 0);
+  --color-ink-secondary: oklch(1 0 0 / 0.72);
+  --color-ink-tertiary: oklch(1 0 0 / 0.45);
+  --color-ink-inverse: oklch(1 0 0);
 
-  --color-accent: #ec4899;
-  --color-accent-strong: #a855f7;
-  --color-brand: #8b5cf6;
-  --color-champagne: #d4af37;
-  --color-rose: #ec4899;
-  --color-berry: #8b5cf6;
-  --color-social: #2f80ed;
-  --color-danger: #ef4444;
-  --color-success: #34d399;
-  --color-like: #ec4899;
-  --color-nope: #34d399;
+  --color-accent: oklch(0.656 0.212 354.31);
+  --color-accent-strong: oklch(0.627 0.233 303.9);
+  --color-brand: oklch(0.606 0.219 292.72);
+  --color-champagne: oklch(0.767 0.139 91.06);
+  --color-rose: oklch(0.656 0.212 354.31);
+  --color-berry: oklch(0.606 0.219 292.72);
+  --color-social: oklch(0.609 0.182 257.29);
+  --color-danger: oklch(0.637 0.208 25.33);
+  --color-success: oklch(0.773 0.153 163.22);
+  --color-like: oklch(0.656 0.212 354.31);
+  --color-nope: oklch(0.773 0.153 163.22);
 
-  --color-line: rgba(255, 255, 255, 0.08);
-  --color-line-strong: rgba(255, 255, 255, 0.12);
+  --color-line: oklch(1 0 0 / 0.08);
+  --color-line-strong: oklch(1 0 0 / 0.12);
 
-  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.35);
-  --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.35);
-  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.35);
+  --shadow-card: 0 20px 60px oklch(0 0 0 / 0.35);
+  --shadow-float: 0 20px 60px oklch(0 0 0 / 0.35);
+  --shadow-soft: 0 8px 24px oklch(0 0 0 / 0.25);
+  --shadow-glow: 0 0 40px oklch(0.606 0.219 292.72 / 0.35);
 }
 
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100%;
 }
 
 body {
   margin: 0;
+  overflow: hidden;
 }

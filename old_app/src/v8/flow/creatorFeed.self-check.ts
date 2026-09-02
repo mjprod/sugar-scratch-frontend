@@ -5,6 +5,8 @@
 
 import {
   clearHomeFeedCache,
+  feedPackLabel,
+  feedVisibleTags,
   fetchHomeFeedPage,
   readHomeFeedCache,
   toPurchasePack,
@@ -24,8 +26,13 @@ async function main() {
 
   const first = page1.items[0]!;
   assert(first.creatorName.length > 0, "creator name required");
+  assert(first.creatorId.length > 0, "creator id required");
   assert(first.diamondCost > 0, "diamond cost required");
-  assert(first.description.length > 0, "description required");
+  assert(first.packName.length > 0, "pack name required");
+  assert(first.tags.length > 0, "tags required");
+  assert(feedVisibleTags(first.tags).length <= 3, "at most 3 visible tags");
+  assert(feedPackLabel("Golden Hour Pack") === "Golden Hour", "strip Pack suffix");
+  assert(feedPackLabel("Cyber Nights") === "Cyber Nights", "keep bare titles");
 
   const pack = toPurchasePack(first);
   assert(pack.packId === first.packId, "purchase pack id");

@@ -57,15 +57,39 @@ export function SiteShell({
   }
 
   if (ONBOARD_STEPS.has(step)) {
+    const isIntro = step === "recommend-intro";
     return (
-      <div className="auth7-onboard-shell" aria-label="Personalization">
-        <header className="auth7-onboard-header">
-          <span className="auth2-logo">Sugar</span>
-          <span className="auth7-onboard-badge">{STEP_LABEL[step]}</span>
-        </header>
-        <div className="auth7-onboard-main">
-          <Stage step={step}>{children}</Stage>
-        </div>
+      <div
+        className={[
+          "auth7-onboard-shell",
+          isIntro ? "auth7-onboard-shell--intro" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-step={step}
+        aria-label="Personalization"
+      >
+        {isIntro ? (
+          <div className="auth7-intro-card">
+            <header className="auth7-onboard-header">
+              <span className="auth2-logo">Sugar</span>
+              <span className="auth7-onboard-badge">{STEP_LABEL[step]}</span>
+            </header>
+            <div className="auth7-onboard-main">
+              <Stage step={step}>{children}</Stage>
+            </div>
+          </div>
+        ) : (
+          <>
+            <header className="auth7-onboard-header">
+              <span className="auth2-logo">Sugar</span>
+              <span className="auth7-onboard-badge">{STEP_LABEL[step]}</span>
+            </header>
+            <div className="auth7-onboard-main">
+              <Stage step={step}>{children}</Stage>
+            </div>
+          </>
+        )}
       </div>
     );
   }

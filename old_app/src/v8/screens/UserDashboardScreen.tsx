@@ -5,12 +5,14 @@ import {
   Gem,
   Globe2,
   HelpCircle,
+  LogOut,
   Settings,
   ShieldCheck,
   Sparkles,
   Trophy,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { AppPageShell } from "../components/AppPageShell";
 
 export function UserDashboardScreen({
   name,
@@ -18,88 +20,102 @@ export function UserDashboardScreen({
   coins,
   diamonds,
   onSettings,
+  onLogout,
 }: {
   name: string;
   avatar?: string | null;
   coins: number;
   diamonds: number;
   onSettings: () => void;
+  onLogout: () => void;
 }) {
   const [notice, setNotice] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
 
   function open(label: string) {
     setNotice(`${label} opened in prototype`);
     window.setTimeout(() => setNotice(""), 1800);
   }
 
+  function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      onLogout();
+    } catch {
+      setLoggingOut(false);
+    }
+  }
+
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[88px] pb-[calc(112px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.3),transparent_42%),#151515] p-6 sm:p-8">
-          <div className="flex items-center gap-4">
-            <div className="grid size-20 place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[#A855F7] to-[#312E81] text-[30px] shadow-glow">
-              {avatar || "✨"}
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="inline-flex rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-[#D4AF37] uppercase">
-                Gold Member
-              </span>
-              <h1 className="mt-2 truncate text-[30px] font-bold tracking-[-0.03em]">
-                {name || "Collector"}
-              </h1>
-              <p className="text-[13px] text-white/45">@{(name || "collector").toLowerCase()}</p>
-            </div>
-            <button
-              type="button"
-              aria-label="Open Settings"
-              onClick={onSettings}
-              className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65"
-            >
-              <Settings className="size-5" />
-            </button>
+    <AppPageShell aria-label="Profile" className="app-page-shell--profile">
+      <div className="rounded-[32px] border border-white/[0.08] bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.3),transparent_42%),#151515] p-6 sm:p-8">
+        <div className="flex items-center gap-4">
+          <div className="grid size-20 place-items-center rounded-full border border-white/15 bg-gradient-to-br from-[#A855F7] to-[#312E81] text-[30px] shadow-glow">
+            {avatar || "✨"}
           </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat icon={<Trophy className="size-4" />} label="Collection" value="128 / 240" />
-          <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
-          <Stat icon={<Gem className="size-4" />} label="Diamonds" value={diamonds.toString()} />
-          <Stat icon={<CreditCard className="size-4" />} label="Sugar Coins" value={coins.toString()} />
-        </div>
-
-        <div className="mt-4 rounded-[24px] border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37]">
-              <Trophy className="size-5" />
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-[#D4AF37] uppercase">
+              Gold Member
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/45">Next progression reward</p>
-              <p className="mt-1 text-[15px] font-semibold">Exclusive Gold Foil Pack</p>
-            </div>
-            <span className="text-[12px] font-semibold text-[#D4AF37]">660 XP</span>
+            <h1 className="mt-2 truncate text-[30px] font-bold tracking-[-0.03em]">
+              {name || "Collector"}
+            </h1>
+            <p className="text-[13px] text-white/45">
+              @{(name || "collector").toLowerCase()}
+            </p>
           </div>
+          <button
+            type="button"
+            aria-label="Open Settings"
+            onClick={onSettings}
+            className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/65"
+          >
+            <Settings className="size-5" />
+          </button>
         </div>
+      </div>
 
-        <div className="mt-7 grid gap-5 lg:grid-cols-2">
-          <MenuGroup
-            title="Profile & Account"
-            items={[
-              { label: "Purchase History", icon: CreditCard },
-              { label: "Saved Packs", icon: Sparkles },
-              { label: "Notifications", icon: Bell },
-            ]}
-            onOpen={open}
-          />
-          <MenuGroup
-            title="Preferences & Support"
-            items={[
-              { label: "Language", icon: Globe2 },
-              { label: "Help Centre", icon: HelpCircle },
-              { label: "Privacy & Legal", icon: ShieldCheck },
-            ]}
-            onOpen={open}
-          />
-        </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat icon={<Trophy className="size-4" />} label="Collection" value="128 / 240" />
+        <Stat icon={<Sparkles className="size-4" />} label="Packs opened" value="46" />
+        <Stat icon={<Gem className="size-4" />} label="Diamonds" value={diamonds.toString()} />
+        <Stat icon={<Sparkles className="size-4" />} label="Sugar Coins" value={coins.toString()} />
+      </div>
+
+      <div className="mt-7 grid gap-5 lg:grid-cols-2">
+        <MenuGroup
+          title="Profile & Account"
+          items={[
+            { label: "Purchase History", icon: CreditCard },
+            { label: "Saved Packs", icon: Sparkles },
+            { label: "Notifications", icon: Bell },
+          ]}
+          onOpen={open}
+        />
+        <MenuGroup
+          title="Preferences & Support"
+          items={[
+            { label: "Language", icon: Globe2 },
+            { label: "Help Centre", icon: HelpCircle },
+            { label: "Privacy & Legal", icon: ShieldCheck },
+          ]}
+          onOpen={open}
+        />
+      </div>
+
+      <div className="mt-10 flex flex-col gap-4">
+        <button
+          type="button"
+          className="settings-logout-btn"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          aria-busy={loggingOut}
+        >
+          <LogOut className="size-4 shrink-0" aria-hidden="true" strokeWidth={2} />
+          {loggingOut ? "Logging Out..." : "Log Out"}
+        </button>
+        <p className="settings-app-version">App · v8</p>
       </div>
 
       {notice ? (
@@ -107,7 +123,7 @@ export function UserDashboardScreen({
           {notice}
         </div>
       ) : null}
-    </section>
+    </AppPageShell>
   );
 }
 
@@ -116,7 +132,7 @@ function Stat({
   label,
   value,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }) {

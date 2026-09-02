@@ -29,9 +29,9 @@ assert(
 );
 assert(
   RECOMMENDATION_CARDS.some(
-    (c) => c.name === "Emily" && c.theme === "Cyber Nights",
+    (c) => c.name === "Juliana" && c.theme === "Buenos Aires",
   ),
-  "emily cyber",
+  "juliana card",
 );
 assert(
   RECOMMENDATION_CARDS.some(
