@@ -2793,7 +2793,7 @@ body[data-theme="v8"] .pack-library-panel {
   border: 1px solid oklch(1 0 0 / 0.08);
   border-radius: 2rem;
   padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
-  background: transparent;
+  background: oklch(0 0 0 / 0.26);
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.08),
     0 -8px 32px oklch(0 0 0 / 0.4);
@@ -7499,13 +7499,15 @@ body[data-theme="v8"] .hf-page--embed .hf-overlay.is-visible {
   padding: 14px 14px 12px;
 }
 
-body[data-theme="v8"] .hf-page--embed .hf-overlay {
-  --hf-overlay-enter: 10px;
-  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+body[data-theme="v8"] .hf-page--embed .hf-overlay-inner {
+  transform: translate3d(0, 10px, 0);
+  transition:
+    opacity 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-body[data-theme="v8"] .hf-page--embed .hf-overlay.is-visible {
-  --hf-overlay-enter: 0px;
+body[data-theme="v8"] .hf-page--embed .hf-overlay.is-visible .hf-overlay-inner {
+  transform: translate3d(0, 0, 0);
 }
 
 body[data-theme="v8"] .hf-page--embed .hf-creator {
@@ -7592,21 +7594,24 @@ body[data-theme="v8"] .hf-follow {
   justify-content: center;
   min-height: 32px;
   padding: 0 12px;
-  border: 1px solid oklch(1 0 0 / 0.16);
+  border: 1px solid oklch(1 0 0 / 0.92);
   border-radius: 999px;
-  background: oklch(0.606 0.219 292.72);
+  background: oklch(0 0 0 / 0.28);
   color: oklch(1 0 0);
   font-family: inherit;
   font-size: 12px;
   font-weight: 650;
   line-height: 1;
   cursor: pointer;
-  backdrop-filter: blur(10px) saturate(1.15);
-  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+}
+
+body[data-theme="v8"] .hf-follow:hover {
+  background: oklch(0 0 0 / 0.4);
 }
 
 body[data-theme="v8"] .hf-follow.is-following {
-  background: oklch(0.156 0.008 285.38 / 0.55);
+  border-color: oklch(1 0 0 / 0.45);
+  background: oklch(0 0 0 / 0.28);
   color: oklch(1 0 0 / 0.88);
 }
 
@@ -7873,7 +7878,6 @@ body[data-theme="v8"] .hf-media-shade {
 
 body[data-theme="v8"] .hf-overlay {
   --hf-parallax-y: 0px;
-  --hf-overlay-enter: 6px;
   /*
     Mobile dock is ~96px tall + safe-area (see .nav-test-dock-wrap).
     Lift creator chrome above the liquid-glass bottom nav.
@@ -7883,28 +7887,32 @@ body[data-theme="v8"] .hf-overlay {
   position: absolute;
   inset: auto 0 0 0;
   z-index: 2;
+  padding: 20px 16px var(--hf-overlay-bottom-clearance);
+  /* Scroll-driven lag only (JS sets --hf-parallax-y). */
+  transform: translate3d(0, var(--hf-parallax-y), 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform;
+}
+
+body[data-theme="v8"] .hf-overlay-inner {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: 12px;
-  padding: 20px 16px var(--hf-overlay-bottom-clearance);
   opacity: 0.88;
-  /* Enter offset + scroll-driven lag (JS sets --hf-parallax-y). */
-  transform: translate3d(
-    0,
-    calc(var(--hf-parallax-y) + var(--hf-overlay-enter)),
-    0
-  );
+  transform: translate3d(0, 8px, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   will-change: transform, opacity;
-  /* Opacity only — transform is rAF-driven (CSS transition would fight it). */
-  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-body[data-theme="v8"] .hf-overlay.is-visible {
-  --hf-overlay-enter: 0px;
+body[data-theme="v8"] .hf-overlay.is-visible .hf-overlay-inner {
   opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 /*
@@ -8330,7 +8338,11 @@ body[data-theme="v8"] .hf-loading-more {
 
   body[data-theme="v8"] .hf-overlay {
     --hf-parallax-y: 0px !important;
-    --hf-overlay-enter: 0px;
+  }
+
+  body[data-theme="v8"] .hf-overlay-inner {
+    transform: none;
+    opacity: 1;
     transition: none;
   }
 
@@ -8868,6 +8880,12 @@ body[data-theme="v8"] .auth2-card .auth2-embed .px-6 {
   padding-right: 0;
 }
 
+body[data-theme="v8"] .auth2-card .auth2-embed .pt-12,
+body[data-theme="v8"] .auth2-card .auth2-embed .text-ink-secondary {
+  position: relative;
+  top: -1.3rem;
+}
+
 body[data-theme="v8"] .auth2-card .auth2-embed .pt-12 {
   padding-top: 4px;
 }
@@ -8876,6 +8894,8 @@ body[data-theme="v8"] .auth2-card .auth2-embed h1,
 body[data-theme="v8"] .auth2-card .auth2-embed .font-display {
   color: oklch(1 0 0);
   font-size: 26px !important;
+  top: -20px;
+  position: relative;
 }
 
 body[data-theme="v8"] .auth2-card .auth2-embed .text-ink-secondary,
@@ -8935,12 +8955,12 @@ body[data-theme="v8"] .auth7-sheet-panel {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 100%;
+  max-width: 94dvw;
   max-height: 92dvh;
-  margin: 0;
-  padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  margin: 0 auto 2rem;
+  padding: 2rem;
   border: 1px solid oklch(1 0 0 / 0.12);
-  border-radius: 28px 28px 0 0;
+  border-radius: 28px;
   background: oklch(0.156 0.008 285.38 / 0.97);
   box-shadow: 0 -16px 48px oklch(0 0 0 / 0.5);
   overflow: auto;
@@ -8952,7 +8972,9 @@ body[data-theme="v8"] .auth7-sheet-panel {
 @media (min-width: 768px) {
   body[data-theme="v8"] .auth7-sheet-panel {
     width: min(480px, calc(100vw - 48px));
+    max-width: 100%;
     max-height: none;
+    margin: 0;
     border-radius: 24px;
     padding: 12px 24px 28px;
     box-shadow: 0 28px 72px oklch(0 0 0 / 0.55);
@@ -8962,35 +8984,68 @@ body[data-theme="v8"] .auth7-sheet-panel {
     -webkit-overflow-scrolling: auto;
   }
 
+  body[data-theme="v8"] .auth7-sheet-chrome {
+    margin: -12px -24px 0;
+  }
+
   body[data-theme="v8"] .auth7-sheet-handle {
     display: none;
   }
 
   body[data-theme="v8"] .auth7-sheet-close {
-    top: 12px;
-    right: 12px;
+    top: 0.7rem;
+    right: 0.9rem;
   }
 }
 
+body[data-theme="v8"] .auth7-sheet-chrome {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin: -2rem -2rem 12px;
+  flex-shrink: 0;
+}
+
 body[data-theme="v8"] .auth7-sheet-handle {
+  position: relative;
+  width: 96px;
+  height: 44px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+body[data-theme="v8"] .auth7-sheet-handle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 42px;
   height: 4px;
-  margin: 0 auto 10px;
+  margin-left: -21px;
+  margin-top: -2px;
   border-radius: 999px;
   background: oklch(1 0 0 / 0.22);
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .auth7-sheet-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
-  display: grid;
+  top: 0.7rem;
+  right: 0.9rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.15);
+  border-radius: 50%;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
   cursor: pointer;
@@ -9526,17 +9581,17 @@ body[data-theme="v8"] .auth7-legal {
 /* Mobile-only Create Account / auth sheet density — desktop (≥768) unchanged */
 @media (max-width: 767px) {
   body[data-theme="v8"] .auth7-sheet-panel {
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px));
-    padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 2rem);
+    padding: 2rem;
   }
 
-  body[data-theme="v8"] .auth7-sheet-handle {
-    margin-bottom: 6px;
+  body[data-theme="v8"] .auth7-sheet-chrome {
+    margin: -2rem -2rem 8px;
   }
 
   body[data-theme="v8"] .auth7-sheet-close {
-    top: 4px;
-    right: 4px;
+    top: 0.7rem;
+    right: 0.9rem;
   }
 
   body[data-theme="v8"] .auth7-sheet-body {
@@ -13473,15 +13528,20 @@ body[data-theme="v8"] .search-bar-clear:hover {
 body[data-theme="v8"] .search-cancel {
   display: grid;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   padding: 0;
-  border: 0;
+  border: 1px solid oklch(1 0 0 / 0.22);
   border-radius: 999px;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
   cursor: pointer;
+}
+
+body[data-theme="v8"] .search-cancel svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 body[data-theme="v8"] .search-cancel:hover {

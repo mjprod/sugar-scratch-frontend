@@ -5,10 +5,15 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const src = resolve(
+const nested = resolve(
+  here,
+  '../node_modules/@lottiefiles/dotlottie-react/node_modules/@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm',
+)
+const hoisted = resolve(
   here,
   '../node_modules/@lottiefiles/dotlottie-web/dist/dotlottie-player.wasm',
 )
+const src = existsSync(nested) ? nested : hoisted
 const destDir = resolve(here, '../public/wasm')
 const dest = resolve(destDir, 'dotlottie-player.wasm')
 

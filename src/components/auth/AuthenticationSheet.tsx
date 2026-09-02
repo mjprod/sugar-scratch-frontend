@@ -1,4 +1,12 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useDragControls,
+  useMotionValue,
+  useReducedMotion,
+  type PanInfo,
+} from "framer-motion";
 import { ChevronLeft, Loader2, X } from "lucide-react";
 import {
   useEffect,
@@ -6,6 +14,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
@@ -28,6 +37,13 @@ import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import iconApple from "@/assets/auth/iconApple.svg";
 import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
+
+const APPLE_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const ANTICIPATE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const DROP_EASE: [number, number, number, number] = [0.48, 0.04, 0.72, 0.12];
+
+const DRAG_DISMISS_PX = 88;
+const DRAG_FLICK_VY = 640;
 
 /**
  * Spec-revised Authentication Sheet — Google, Apple, and email in one surface.
@@ -52,6 +68,12 @@ export function AuthenticationSheet({
   const reduce = useReducedMotion();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
+  const panelY = useMotionValue(0);
+  const panelOpacity = useMotionValue(1);
+  const panelScale = useMotionValue(1);
+  const closing = useRef(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [mode, setMode] = useState<AuthenticationSheetMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,6 +95,20 @@ export function AuthenticationSheet({
 
   useEffect(() => {
     if (!open) return;
+    closing.current = false;
+    setIsClosing(false);
+    if (reduce) {
+      panelY.set(0);
+      panelOpacity.set(1);
+      panelScale.set(1);
+    } else {
+      panelY.set(36);
+      panelOpacity.set(0);
+      panelScale.set(0.96);
+      void animate(panelY, 0, { duration: 0.55, ease: APPLE_EASE });
+      void animate(panelOpacity, 1, { duration: 0.55, ease: APPLE_EASE });
+      void animate(panelScale, 1, { duration: 0.55, ease: APPLE_EASE });
+    }
     setMode(initialMode);
     setEmail(initialEmail);
     setPassword("");
@@ -95,11 +131,11 @@ export function AuthenticationSheet({
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !busy) onDismiss();
+      if (e.key === "Escape" && !busy) dismissWithAnticipation();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onDismiss]);
+  }, [open, busy, dismissWithAnticipation]);
 
   const title =
     mode === "create-account"
@@ -212,6 +248,82 @@ export function AuthenticationSheet({
     setLegalDoc(doc);
   }
 
+  function startHandleDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (busy || reduce || closing.current) return;
+    dragControls.start(event);
+  }
+
+  function fadeDownFromCurrent() {
+    if (closing.current) return;
+    closing.current = true;
+    setIsClosing(true);
+    const fromY = panelY.get();
+    const dropTo = Math.max(fromY + 320, window.innerHeight * 0.55);
+    void Promise.all([
+      animate(panelY, dropTo, { duration: 0.28, ease: DROP_EASE }),
+      animate(panelOpacity, 0, { duration: 0.28, ease: DROP_EASE }),
+      animate(panelScale, 0.92, { duration: 0.28, ease: DROP_EASE }),
+    ]).then(() => onDismiss());
+  }
+
+  function dismissWithAnticipation() {
+    if (busy || closing.current) return;
+    if (reduce) {
+      onDismiss();
+      return;
+    }
+    closing.current = true;
+    setIsClosing(true);
+    void (async () => {
+      await Promise.all([
+        animate(panelY, -28, { duration: 0.095, ease: ANTICIPATE_EASE }),
+        animate(panelScale, 1.035, { duration: 0.095, ease: ANTICIPATE_EASE }),
+      ]);
+      if (!closing.current) return;
+      const fromY = panelY.get();
+      await Promise.all([
+        animate(panelY, Math.max(fromY + 320, window.innerHeight * 0.55), {
+          duration: 0.28,
+          ease: DROP_EASE,
+        }),
+        animate(panelOpacity, 0, { duration: 0.28, ease: DROP_EASE }),
+        animate(panelScale, 0.78, { duration: 0.28, ease: DROP_EASE }),
+      ]);
+      onDismiss();
+    })();
+  }
+
+  function onHandleDrag(_: unknown, info: PanInfo) {
+    const dy = Math.max(0, info.offset.y);
+    panelOpacity.set(Math.max(0.35, 1 - dy / 420));
+  }
+
+  function onHandleDragEnd(_: unknown, info: PanInfo) {
+    if (busy || closing.current) return;
+    if (info.offset.y > DRAG_DISMISS_PX || info.velocity.y > DRAG_FLICK_VY) {
+      fadeDownFromCurrent();
+      return;
+    }
+    void animate(panelY, 0, {
+      type: "spring",
+      stiffness: 420,
+      damping: 38,
+      mass: 0.8,
+    });
+    void animate(panelOpacity, 1, {
+      type: "spring",
+      stiffness: 420,
+      damping: 38,
+      mass: 0.8,
+    });
+    void animate(panelScale, 1, {
+      type: "spring",
+      stiffness: 420,
+      damping: 38,
+      mass: 0.8,
+    });
+  }
+
   return (
     <AnimatePresence>
       {open ? (
@@ -223,10 +335,10 @@ export function AuthenticationSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0 : 0.22 }}
-            disabled={busy}
+            transition={{ duration: reduce ? 0 : 0.28, ease: DROP_EASE }}
+            disabled={busy || isClosing}
             onClick={() => {
-              if (!busy) onDismiss();
+              if (!busy) dismissWithAnticipation();
             }}
           />
           <motion.div
@@ -235,21 +347,32 @@ export function AuthenticationSheet({
             aria-modal="true"
             aria-labelledby={titleId}
             className="auth7-sheet-panel"
-            initial={reduce ? false : { opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? undefined : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            style={{ y: panelY, opacity: panelOpacity, scale: panelScale }}
+            drag={reduce || busy || isClosing ? false : "y"}
+            dragControls={dragControls}
+            dragListener={false}
+            dragMomentum={false}
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0.08, bottom: 0.18 }}
+            onDrag={onHandleDrag}
+            onDragEnd={onHandleDragEnd}
           >
-            <div className="auth7-sheet-handle" aria-hidden="true" />
-            <button
-              type="button"
-              className="auth7-sheet-close"
-              aria-label="Close"
-              disabled={busy}
-              onClick={onDismiss}
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
+            <div className="auth7-sheet-chrome">
+              <div
+                className="auth7-sheet-handle"
+                aria-hidden="true"
+                onPointerDown={startHandleDrag}
+              />
+              <button
+                type="button"
+                className="auth7-sheet-close"
+                aria-label="Close"
+                disabled={busy || isClosing}
+                onClick={dismissWithAnticipation}
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
 
             <AnimatePresence mode="wait">
               <motion.div
@@ -637,7 +760,7 @@ export function AuthenticationSheet({
                             </>
                           ) : (
                             <>
-                              New to Sugar?{" "}
+                              New to Sugar Scratch?{" "}
                               <button
                                 type="button"
                                 className="auth7-text-link is-strong"
