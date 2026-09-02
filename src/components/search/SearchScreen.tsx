@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentPropsWithoutRef,
   type ReactNode,
   type SyntheticEvent,
 } from "react";
@@ -61,24 +60,34 @@ function SearchReveal({
   className,
   children,
   as = "div",
-  ...rest
+  style,
+  id,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-hidden": ariaHidden,
 }: {
   className?: string;
   children: ReactNode;
   as?: "div" | "section";
-} & Omit<ComponentPropsWithoutRef<"div">, "children" | "className">) {
+  style?: React.CSSProperties;
+  id?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-hidden"?: boolean;
+}) {
+  const motionProps = {
+    className,
+    variants: SEARCH_ITEM,
+    style,
+    id,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-hidden": ariaHidden,
+  };
   if (as === "section") {
-    return (
-      <motion.section className={className} variants={SEARCH_ITEM} {...rest}>
-        {children}
-      </motion.section>
-    );
+    return <motion.section {...motionProps}>{children}</motion.section>;
   }
-  return (
-    <motion.div className={className} variants={SEARCH_ITEM} {...rest}>
-      {children}
-    </motion.div>
-  );
+  return <motion.div {...motionProps}>{children}</motion.div>;
 }
 
 export function SearchScreen({

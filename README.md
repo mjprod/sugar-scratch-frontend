@@ -63,10 +63,13 @@ Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/au
 |--------|---------|
 | `npm run dev` | Vite dev server (HTTPS) |
 | `npm run certs` | Regenerate `.certs/` with mkcert (localhost + LAN IPs) |
+| `npm run test` | **Pre-PR gate:** typecheck + all self-checks + build |
 | `npm run build` | Typecheck + production build |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run self-check` | Auth + recommendation invariant checks |
+| `npm run self-check` | Offline invariant checks (`*.self-check.ts`) |
 | `npm run lint:ui` | aura-lint against theme tokens |
+
+See **`VIBING.md`** for a short contributor checklist (auth/buy rules, phone smoke test).
 
 ## Structure
 

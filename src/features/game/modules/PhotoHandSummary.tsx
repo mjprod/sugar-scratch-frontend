@@ -222,7 +222,7 @@ export function PhotoHandSummary({
             costAmount={null}
             fontSize={15}
             strokeWidth={1}
-            onClick={finishHand}
+            onClick={() => finishHand()}
           />
         </div>
       </div>
