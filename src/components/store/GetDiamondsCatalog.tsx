@@ -26,6 +26,16 @@ const TRUST_ITEMS = [
   { icon: Check, label: "Trusted checkout" },
 ] as const;
 
+/** Keep in sync with StoreScreen `Flow["step"]`. */
+export type GetDiamondsFlowStep =
+  | "idle"
+  | "confirm"
+  | "creating"
+  | "gateway"
+  | "verifying"
+  | "result"
+  | "ad-processing";
+
 export function GetDiamondsCatalog({
   products,
   coinBalance,
@@ -45,10 +55,10 @@ export function GetDiamondsCatalog({
   adClaimsToday: number;
   busy: boolean;
   activeProductId?: string;
-  flowStep: string;
+  flowStep: GetDiamondsFlowStep;
   exchangingId?: string | null;
   onSelect: (product: StoreProduct) => void;
-  onCoinExchange: (diamonds: number, coins: number) => boolean;
+  onCoinExchange: (diamonds: number, coins: number) => boolean | Promise<boolean>;
   onDiamondReward?: (amount: number) => void;
   onPackReward?: (
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -313,19 +323,21 @@ function ExchangePanel({
   coinBalance: number;
   exchangingId?: string | null;
   disabled: boolean;
-  onExchange: (diamonds: number, coins: number) => boolean;
+  onExchange: (diamonds: number, coins: number) => boolean | Promise<boolean>;
 }) {
   const [message, setMessage] = useState<string | null>(null);
 
-  function handleExchange(diamonds: number, coins: number) {
+  async function handleExchange(diamonds: number, coins: number) {
     setMessage(null);
     if (coinBalance < coins) {
       setMessage("Not enough Sugar Coins.");
       return;
     }
-    const ok = onExchange(diamonds, coins);
+    const ok = await onExchange(diamonds, coins);
     if (ok) {
       setMessage(`+${diamonds} Diamonds added ✦`);
+    } else {
+      setMessage("Couldn't complete exchange. Try again.");
     }
   }
 

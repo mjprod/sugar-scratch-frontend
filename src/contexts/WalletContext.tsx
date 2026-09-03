@@ -78,8 +78,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const spendCoins = useCallback((n: number) => {
+    if (!Number.isFinite(n) || n <= 0) return false;
     if (coinsRef.current < n) return false;
-    setCoins(coinsRef.current - n);
+    // Update the ref immediately so a second sync call can't double-spend
+    // before React re-renders.
+    coinsRef.current -= n;
+    setCoins(coinsRef.current);
     return true;
   }, []);
 

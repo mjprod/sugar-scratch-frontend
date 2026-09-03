@@ -25,7 +25,6 @@ import {
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
 import { GetDiamondsCatalog } from "@/components/store/GetDiamondsCatalog";
-import "@/components/store/GetDiamondsScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import type { RedeemReward } from "@/services/redeem";
 
@@ -292,17 +291,23 @@ export function StoreScreen({
     setFlow({ step: "idle" });
   }
 
-  function handleCoinExchange(diamonds: number, coins: number) {
+  async function handleCoinExchange(diamonds: number, coins: number) {
     if (busy || locking.current) return false;
     const option = COIN_EXCHANGE_OPTIONS.find(
       (entry) => entry.diamonds === diamonds && entry.coins === coins,
     );
     if (!option) return false;
+    locking.current = true;
     setExchangingId(option.id);
+    // Yield so React can paint “Exchanging…” before the sync wallet update.
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 0);
+    });
     try {
       return onCoinExchange(diamonds, coins);
     } finally {
       setExchangingId(null);
+      locking.current = false;
     }
   }
 
