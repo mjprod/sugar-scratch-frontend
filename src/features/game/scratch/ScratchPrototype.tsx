@@ -73,6 +73,16 @@ import {
 import { PackProgress } from "../modules/PackProgress";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
+  createFabricAlphaCache,
+  createSymbolScratchProbeCache,
+  isSymbolNearStroke,
+  needsFabricAlphaSample,
+  readCachedFabricAlpha,
+  readCachedSymbolScratchAmount,
+  writeCachedFabricAlpha,
+  writeCachedSymbolScratchAmount,
+} from "../modules/scratchProbeCache";
+import {
   fetchCatalogMotionCards,
 } from "../shared/catalog";
 import {
@@ -1548,6 +1558,14 @@ export function ScratchPrototype() {
   const finishAutoActiveRef = useRef(false);
   const [cursorFx, setCursorFx] =
     useState<CursorFxSettings>(loadCursorFxSettings);
+  const cursorFxRef = useRef(cursorFx);
+  cursorFxRef.current = cursorFx;
+  /** Bumped each rAF — fabric/symbol GPU probes run at most once per frame. */
+  const probeFrameIdRef = useRef(0);
+  const fabricAlphaCacheRef = useRef(createFabricAlphaCache());
+  const symbolScratchProbeCacheRef = useRef(
+    createSymbolScratchProbeCache(SYMBOL_SLOT_COUNT),
+  );
   const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
     ParticleType[]
   >([]);
@@ -2128,6 +2146,7 @@ export function ScratchPrototype() {
         if (cancelled) return;
         const active = ensureRenderer();
         if (!active) return;
+        probeFrameIdRef.current += 1;
         const now = performance.now();
         const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
         lastFrameTime = now;
@@ -3945,22 +3964,39 @@ export function ScratchPrototype() {
       const newlyRevealed: number[] = [];
       const revealedBefore = revealedPointsRef.current.slice();
       const renderer = glRendererRef.current;
+      const probeFrame = probeFrameIdRef.current;
+      const symbolProbeCache = symbolScratchProbeCacheRef.current;
       for (let index = 0; index < bodyPoints.length; index += 1) {
         if (revealedPointsRef.current[index]) continue;
-        const distance = Math.hypot(
-          u - bodyPoints[index].u,
-          v - bodyPoints[index].v,
-        );
-        if (distance > SYMBOL_REVEAL_UV_RADIUS) continue;
-        // Must have actually punched the clothing at this UV — proximity alone
-        // used to pop icons on top of still-blue foil.
         if (
-          !renderer ||
-          renderer.scratchAmountAt(bodyPoints[index].u, bodyPoints[index].v) <
-            SYMBOL_SCRATCH_REVEAL_THRESHOLD
+          !isSymbolNearStroke(
+            u,
+            v,
+            bodyPoints[index].u,
+            bodyPoints[index].v,
+            SYMBOL_REVEAL_UV_RADIUS,
+          )
         ) {
           continue;
         }
+        // Must have actually punched the clothing at this UV — proximity alone
+        // used to pop icons on top of still-blue foil. At most one GPU sample
+        // per slot per rAF (auto-scratch can stamp many times in one frame).
+        if (!renderer) continue;
+        let amount = readCachedSymbolScratchAmount(
+          symbolProbeCache,
+          probeFrame,
+          index,
+        );
+        if (amount === null) {
+          amount = writeCachedSymbolScratchAmount(
+            symbolProbeCache,
+            probeFrame,
+            index,
+            renderer.scratchAmountAt(bodyPoints[index].u, bodyPoints[index].v),
+          );
+        }
+        if (amount < SYMBOL_SCRATCH_REVEAL_THRESHOLD) continue;
         revealedPointsRef.current[index] = true;
         newlyRevealed.push(index);
       }
@@ -4070,9 +4106,22 @@ export function ScratchPrototype() {
     if (applied) lastScratchWorldRef.current = point;
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
-    const fabricAlpha =
-      glRendererRef.current?.foregroundAlphaAt(point.x, point.y) ?? -1;
-    const onFabric = fabricAlpha < 0 || fabricAlpha >= CURSOR_FX_MESH_ALPHA_MIN;
+    // Fabric alpha is only for fairy-dust spawn gating. Skip readPixels when
+    // dust is off; when on, sample at most once per rAF.
+    let onFabric = true;
+    if (needsFabricAlphaSample(cursorFxRef.current.fairyDust)) {
+      const probeFrame = probeFrameIdRef.current;
+      const fabricCache = fabricAlphaCacheRef.current;
+      let fabricAlpha = readCachedFabricAlpha(fabricCache, probeFrame);
+      if (fabricAlpha === null) {
+        fabricAlpha = writeCachedFabricAlpha(
+          fabricCache,
+          probeFrame,
+          glRendererRef.current?.foregroundAlphaAt(point.x, point.y) ?? -1,
+        );
+      }
+      onFabric = fabricAlpha < 0 || fabricAlpha >= CURSOR_FX_MESH_ALPHA_MIN;
+    }
     const onMesh = applied && uvAtPointer !== null && onFabric;
     setCursorOnMesh((prev) => (prev === onMesh ? prev : onMesh));
   }
