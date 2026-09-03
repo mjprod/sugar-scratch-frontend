@@ -19,6 +19,7 @@ export {
   isTexturableMaterial,
   resolveTargetMaterial,
   stripPackFaceAlbedo,
+  uniquifyMeshMaterial,
   type TexturableMaterial,
 } from './materials'
 

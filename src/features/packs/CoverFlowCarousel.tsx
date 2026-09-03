@@ -15,19 +15,20 @@ import {
 		  type MutableRefObject,
 		  type ReactNode,
 		} from 'react'
-import type { Group, Object3D, PerspectiveCamera } from 'three'
+import type { Group, Mesh, Object3D, PerspectiveCamera } from 'three'
 import { Box3, Group as ThreeGroup, MathUtils, Vector3 } from 'three'
 import {
   applyPackFaceMaterial,
   cloneSceneWithMaterials,
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
-	  PACK_MODEL_URL,
-	  PACK_VIDEO_FIT_MODE,
-	  pauseAllVideoTextures,
-	  resolvePackTextureSize,
-	  resolveTargetMaterial,
-  useVideoTexture,
-  type VideoTextureTransform,
+		  PACK_MODEL_URL,
+		  PACK_VIDEO_FIT_MODE,
+		  pauseAllVideoTextures,
+		  resolvePackTextureSize,
+		  resolveTargetMaterial,
+		  uniquifyMeshMaterial,
+	  useVideoTexture,
+	  type VideoTextureTransform,
 } from '@/shared/pack3d'
 import {
   ownerIdFromPackId,
@@ -816,13 +817,14 @@ formatPrice,
       }
       if (groupRef.current) {
         groupRef.current.traverse((object) => {
-          const mesh = object as { isMesh?: boolean; material?: any }
+          const mesh = object as Mesh
           if (!mesh.isMesh) return
-          const materials = Array.isArray(mesh.material)
+          const slots = Array.isArray(mesh.material)
             ? mesh.material
             : [mesh.material]
-          for (const material of materials) {
-            if (!material || !('opacity' in material)) continue
+          for (const slot of slots) {
+            if (!slot || !('opacity' in slot)) continue
+            const material = uniquifyMeshMaterial(mesh, slot)
             material.transparent = false
             material.opacity = 1
             material.depthWrite = true
@@ -1111,15 +1113,17 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
   const applyOpacity = (opacity: number) => {
     opacityRef.current = opacity
     if (!groupRef.current) return
+    const fade = opacity < 0.999
     groupRef.current.traverse((object) => {
-      const mesh = object as { isMesh?: boolean; material?: any }
+      const mesh = object as Mesh
       if (!mesh.isMesh) return
-      const materials = Array.isArray(mesh.material)
+      const slots = Array.isArray(mesh.material)
         ? mesh.material
         : [mesh.material]
-      for (const material of materials) {
-        if (!material || !('opacity' in material)) continue
-        material.transparent = opacity < 0.999
+      for (const slot of slots) {
+        if (!slot || !('opacity' in slot)) continue
+        const material = fade ? uniquifyMeshMaterial(mesh, slot) : slot
+        material.transparent = fade
         material.opacity = opacity
         material.depthWrite = opacity > 0.95
         material.needsUpdate = true
