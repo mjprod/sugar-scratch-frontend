@@ -350,7 +350,11 @@ export function HomeScreen({
             : "",
         ].join(" ")}
       >
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <div className="home-featured-coverflow is-loading" aria-hidden="true" />
+          }
+        >
           <FeaturedCoverFlow
             featured={home.featured}
             onPlay={playPack}
@@ -425,13 +429,15 @@ export function HomeScreen({
 
           <aside className="hub-today-bento-reel" aria-label="Discover video reel">
             <div className="hub-today-bento-reel-frame">
-              <DiscoverReel
-                onBuyPack={(pack) => onStartPlaying?.(pack)}
-                onLikeAttempt={onLikeAttempt}
-                onOpenCreator={onOpenCreator}
-                resumeLikeId={resumeLikeId}
-                onResumeLikeConsumed={onResumeLikeConsumed}
-              />
+              {heroReady ? (
+                <DiscoverReel
+                  onBuyPack={(pack) => onStartPlaying?.(pack)}
+                  onLikeAttempt={onLikeAttempt}
+                  onOpenCreator={onOpenCreator}
+                  resumeLikeId={resumeLikeId}
+                  onResumeLikeConsumed={onResumeLikeConsumed}
+                />
+              ) : null}
             </div>
           </aside>
 

@@ -74,7 +74,7 @@ export const SQUIRCLE_CTA: CtaTemplate = {
   values: {
     label: "Start Playing",
     costAmount: "",
-    /** Marker — CtaButton maps this to DiamondLottie. */
+    /** Marker — CtaButton maps this to the static diamond mark. */
     costIcon: "💎",
     shape: "squircle",
     width: 292,

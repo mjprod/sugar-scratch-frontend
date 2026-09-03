@@ -270,6 +270,7 @@ type AuthActionsContextValue = {
   logout: () => void;
   restart: () => void;
   setNavNotice: (msg: string) => void;
+  setPurchasedPacks: Dispatch<SetStateAction<number>>;
   consumeResumeLike: () => void;
   applyRecommendationDecision: (action: ProtectedAction | null) => void;
   invalidateRemoteSession: () => void;
@@ -908,6 +909,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       restart,
       setNavNotice,
+      setPurchasedPacks,
       consumeResumeLike,
       applyRecommendationDecision,
       invalidateRemoteSession,
@@ -939,7 +941,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireAuth,
       requestTab,
       restart,
+      setNavNotice,
       setPendingAfterRecFromSwipe,
+      setPurchasedPacks,
     ],
   );
 

@@ -8,15 +8,15 @@ import {
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
   PACK_MODEL_URL,
-  PACK_TEXTURE_SIZE,
   PACK_VIDEO_FIT_MODE,
   makeVideoTextureCacheKey,
   preloadVideoTexture,
+  resolvePackTextureSize,
   subscribeVideoTextureReady,
 } from "@/lib/pack3d";
 import { isDemoMode } from "@/lib/demo";
@@ -272,15 +272,15 @@ export function FeaturedCoverFlow({
   onPlay: (pack: FeaturedCoverFlowPlayTarget) => void;
   onReady?: () => void;
 }) {
+  const { authed } = useAuthSession();
   const {
-    authed,
     openPurchase,
     openStore,
     requireAuth,
     bumpInventoryRevision,
     setPurchasedPacks,
     setNavNotice,
-  } = useAuth();
+  } = useAuthActions();
   const { diamonds, coins, setDiamonds, setCoins } = useWallet();
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [models, setModels] = useState<BackendModel[] | null>(null);
@@ -372,7 +372,7 @@ export function FeaturedCoverFlow({
       fitMode: first.fitMode || PACK_VIDEO_FIT_MODE,
       textureTransform: first.textureTransform || DEFAULT_VIDEO_TEXTURE_TRANSFORM,
       flipY: true,
-      textureSize: PACK_TEXTURE_SIZE,
+      textureSize: resolvePackTextureSize(isMobileViewport),
     };
     const release = preloadVideoTexture(input);
     const unsubscribe = subscribeVideoTextureReady(
@@ -384,7 +384,7 @@ export function FeaturedCoverFlow({
       unsubscribe();
       release();
     };
-  }, [catalog]);
+  }, [catalog, isMobileViewport]);
 
   const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
     const base = isMobileViewport

@@ -3,7 +3,11 @@ export {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
   PACK_MODEL_URL,
   PACK_TEXTURE_SIZE,
+  PACK_TEXTURE_SIZE_DESKTOP,
+  PACK_TEXTURE_SIZE_MOBILE,
+  PACK_TEXTURE_SIZE_MOBILE_SIDE,
   PACK_VIDEO_FIT_MODE,
+  resolvePackTextureSize,
   type ModelRotation,
   type VideoFitMode,
   type VideoTextureTransform,
@@ -16,6 +20,7 @@ export {
   isTexturableMaterial,
   resolveTargetMaterial,
   stripPackFaceAlbedo,
+  uniquifyMeshMaterial,
   type TexturableMaterial,
 } from './materials'
 
@@ -48,6 +53,7 @@ export {
   pauseAllVideoTextures,
   preloadVideoTexture,
   releaseVideoTexture,
+  resumePausedVideoTextures,
   setVideoTexturePlaying,
   subscribeVideoTextureReady,
   type VideoTextureCacheKeyInput,

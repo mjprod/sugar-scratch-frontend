@@ -28,15 +28,17 @@ import {
   Vector3,
 } from 'three'
 import {
-  applyPackFaceMaterial,
-  cloneSceneWithMaterials,
-  DEFAULT_VIDEO_TEXTURE_TRANSFORM,
-	  PACK_TEXTURE_SIZE,
-	  PACK_VIDEO_FIT_MODE,
-	  resolveTargetMaterial,
-  useVideoTexture,
-  type VideoTextureTransform,
-} from '@/shared/pack3d'
+		  applyPackFaceMaterial,
+		  cloneSceneWithMaterials,
+		  DEFAULT_VIDEO_TEXTURE_TRANSFORM,
+			  PACK_VIDEO_FIT_MODE,
+			  pauseAllVideoTextures,
+			  resolvePackTextureSize,
+			  resolveTargetMaterial,
+			  uniquifyMeshMaterial,
+		  useVideoTexture,
+		  type VideoTextureTransform,
+	} from '@/shared/pack3d'
 import {
   ownerIdFromPackId,
   parsePackId,
@@ -101,6 +103,10 @@ const PACK_MODEL_URL_V2 = '/assets/CardPack2-min.glb'
 // Mobile: 5 packs (center ± 2). Desktop: 10 packs (center ± 5).
 const MAX_VISIBLE_OFFSET_MOBILE = 2
 const MAX_VISIBLE_OFFSET_DESKTOP = 5
+/** Brief always-on boot so drei Html projects before switching to demand. */
+const FRAMELOOP_BOOT_MS = 450
+const FRAME_SETTLE_EPS = 0.00012
+type CoverFlowFrameLoop = 'always' | 'demand' | 'never'
 // Match reveal start pose scale (DEFAULT_PACK_TIMELINE.start.scale = 0.73).
 const FOCUS_SCALE = 0.73
 const SIDE_SCALE = 0.66
@@ -857,18 +863,19 @@ function TearLottieHud({
 }
 
 function CoverFlowPack({
-	  item,
-	  index,
-	  focusIndex,
-	  isActive,
-	  hasActiveSelection,
-	  modelY,
-	  layout,
-	  textureTransform,
-	  centerTiltYaw,
-	  centerTiltPitch,
-	  isMobile,
-	  shortHudGlass,
+		  item,
+		  index,
+		  focusIndex,
+		  isActive,
+		  hasActiveSelection,
+		  modelY,
+		  layout,
+		  textureTransform,
+		  centerTiltYaw,
+		  centerTiltPitch,
+		  stageActive,
+		  isMobile,
+		  shortHudGlass,
 	  revealMode,
 	  isRevealHero,
 	  playOpenSequence,
@@ -893,19 +900,20 @@ formatPrice,
 					  isActive: boolean
 					  hasActiveSelection: boolean
 					  modelY: number
-					  layout: CoverFlowLayoutSettings
-					  textureTransform: VideoTextureTransform
-					  centerTiltYaw: number
-					  centerTiltPitch: number
-					  isMobile: boolean
-					  /** Browser height < 550px — frosted glass behind pack HUD. */
-					  shortHudGlass: boolean
-					  /** True while any pack open sequence is running. */
-					  revealMode: boolean
-					  /** This pack is the one being opened. */
-					  isRevealHero: boolean
-					  playOpenSequence: boolean
-				  packsX: number
+						  layout: CoverFlowLayoutSettings
+						  textureTransform: VideoTextureTransform
+						  centerTiltYaw: number
+						  centerTiltPitch: number
+						  stageActive: boolean
+						  isMobile: boolean
+						  /** Browser height < 550px — frosted glass behind pack HUD. */
+						  shortHudGlass: boolean
+						  /** True while any pack open sequence is running. */
+						  revealMode: boolean
+						  /** This pack is the one being opened. */
+						  isRevealHero: boolean
+						  playOpenSequence: boolean
+					  packsX: number
 				  packsY: number
 				  openTimeline: PackTimeline
 				  openDuckInTimeline: DuckInTimeline
@@ -921,9 +929,10 @@ formatPrice,
 					  /** Browse-only surfaces: never apply shared tear pose to the lid. */
 					  lockCardTopClosed?: boolean
 					}) {
-const groupRef = useRef<Group>(null)
-		  const modelRef = useRef<Group>(null)
-		  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
+	const groupRef = useRef<Group>(null)
+			  const modelRef = useRef<Group>(null)
+			  const invalidate = useThree((state) => state.invalidate)
+			  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
 		  const [removeConfirmLeaving, setRemoveConfirmLeaving] = useState(false)
 		  const [isRemoving, setIsRemoving] = useState(false)
 		  const removeExitRef = useRef<RemoveExitState>(emptyRemoveExit())
@@ -951,6 +960,7 @@ const groupRef = useRef<Group>(null)
   const layoutRef = useRef(layout)
   const centerTiltYawRef = useRef(centerTiltYaw)
   const centerTiltPitchRef = useRef(centerTiltPitch)
+  const stageActiveRef = useRef(stageActive)
   const isMobileRef = useRef(isMobile)
   const revealModeRef = useRef(revealMode)
   const isRevealHeroRef = useRef(isRevealHero)
@@ -1047,9 +1057,10 @@ useEffect(() => {
 	    motion.vz = 0
 	    motion.vRotY = 0
 	    motion.vScale = 0
-	    hoverYawTargetRef.current = 0
-	    hoverYawRef.current = 0
-	  }
+    hoverYawTargetRef.current = 0
+    hoverYawRef.current = 0
+    invalidate()
+  }
 
 	  const removeControl =
 	    onRemove && !isRemoving ? (
@@ -1133,6 +1144,10 @@ useEffect(() => {
   }, [centerTiltPitch])
 
   useEffect(() => {
+    stageActiveRef.current = stageActive
+  }, [stageActive])
+
+  useEffect(() => {
     isMobileRef.current = isMobile
   }, [isMobile])
 
@@ -1200,13 +1215,14 @@ useEffect(() => {
       if (groupRef.current) {
         groupRef.current.traverse((object) => {
           if (isUnderObject(object, cardTop)) return
-          const mesh = object as { isMesh?: boolean; material?: any }
+          const mesh = object as Mesh
           if (!mesh.isMesh) return
-          const materials = Array.isArray(mesh.material)
+          const slots = Array.isArray(mesh.material)
             ? mesh.material
             : [mesh.material]
-          for (const material of materials) {
-            if (!material || !('opacity' in material)) continue
+          for (const slot of slots) {
+            if (!slot || !('opacity' in slot)) continue
+            const material = uniquifyMeshMaterial(mesh, slot)
             material.transparent = false
             material.opacity = 1
             material.depthWrite = true
@@ -1244,12 +1260,13 @@ useEffect(() => {
       lastBlurRef.current = -1
       openHoldRef.current = false
       wasPlayingOpenRef.current = true
+      invalidate()
       return
     }
     if (!playOpenSequence) {
       wasPlayingOpenRef.current = false
     }
-  }, [isRevealHero, playOpenSequence, item.modelRotation.x, item.modelRotation.y, item.modelRotation.z])
+  }, [invalidate, isRevealHero, playOpenSequence, item.modelRotation.x, item.modelRotation.y, item.modelRotation.z])
 
   const offset = index - focusIndex
   const isCenter = offset === 0
@@ -1311,9 +1328,8 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
 	  const [activeHudMounted, setActiveHudMounted] = useState(
 	    () => isActive && !revealMode,
 	  )
-	  const [activeHudVisible, setActiveHudVisible] = useState(false)
-	  const invalidate = useThree((state) => state.invalidate)
-	  // First centered appearance can animate in immediately; return-from-active waits a beat.
+		  const [activeHudVisible, setActiveHudVisible] = useState(false)
+		  // First centered appearance can animate in immediately; return-from-active waits a beat.
 	  const browseEverVisibleRef = useRef(false)
 
 	  // Match CSS exit durations so unmount doesn't cut transitions short.
@@ -1430,16 +1446,18 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
 	    }
 	  }, [isActive, revealMode, item.id, invalidate])
   // Hero keeps playing during open; others freeze.
+  const facePlaying =
+    stageActive &&
+    ((isCenter && (!hasActiveSelection || isActive)) ||
+      (isRevealHero && revealMode))
   const { texture } = useVideoTexture(
     item.videoUrl,
     item.fitMode || PACK_VIDEO_FIT_MODE,
     textureTransform,
     {
       flipY: true,
-      playing:
-        (isCenter && (!hasActiveSelection || isActive)) ||
-        (isRevealHero && revealMode),
-      textureSize: PACK_TEXTURE_SIZE,
+      playing: facePlaying,
+      textureSize: resolvePackTextureSize(isMobile, offset),
       enabled: Boolean(item.videoUrl),
       soft: false,
     },
@@ -1568,17 +1586,19 @@ useLayoutEffect(() => {
   const applyOpacity = (opacity: number) => {
     opacityRef.current = opacity
     if (!groupRef.current) return
+    const fade = opacity < 0.999
     groupRef.current.traverse((object) => {
       // Hero lid is driven by the tear pose; side packs fade lid + body together.
       if (cardTop && isUnderObject(object, cardTop)) return
-      const mesh = object as { isMesh?: boolean; material?: any }
+      const mesh = object as Mesh
       if (!mesh.isMesh) return
-      const materials = Array.isArray(mesh.material)
+      const slots = Array.isArray(mesh.material)
         ? mesh.material
         : [mesh.material]
-      for (const material of materials) {
-        if (!material || !('opacity' in material)) continue
-        material.transparent = opacity < 0.999
+      for (const slot of slots) {
+        if (!slot || !('opacity' in slot)) continue
+        const material = fade ? uniquifyMeshMaterial(mesh, slot) : slot
+        material.transparent = fade
         material.opacity = opacity
         material.depthWrite = opacity > 0.95
         material.needsUpdate = true
@@ -1591,14 +1611,18 @@ useLayoutEffect(() => {
     }
   }
 
-useFrame((_, delta) => {
-	    if (!groupRef.current) {
-	      return
-	    }
+useFrame((state, delta) => {
+		    if (!groupRef.current) {
+		      return
+		    }
 
-	    const liveOffset = index - focusIndexRef.current
-	    const isLiveCenter = liveOffset === 0
-	    const dt = Math.min(delta, 1 / 30)
+		    const requestFrame = () => {
+		      state.invalidate()
+		    }
+
+		    const liveOffset = index - focusIndexRef.current
+		    const isLiveCenter = liveOffset === 0
+		    const dt = Math.min(delta, 1 / 30)
 
 	    // ---- Cart remove exit: rise (anticipation), then drop out ----
 	    if (removeExitRef.current.phase !== 'idle') {
@@ -1643,11 +1667,14 @@ useFrame((_, delta) => {
 	            MathUtils.degToRad(modelRot.z),
 	          )
 	        }
-	        groupRef.current.visible = true
+		        groupRef.current.visible = true
 
-	        if (t < 1) return
+		        if (t < 1) {
+		          requestFrame()
+		          return
+		        }
 
-	        exit.phase = 'drop'
+		        exit.phase = 'drop'
 	        exit.startMs = performance.now()
 	        exit.fromX = motion.x
 	        exit.fromY = motion.y
@@ -1683,11 +1710,14 @@ useFrame((_, delta) => {
 	            MathUtils.degToRad(modelRot.z),
 	          )
 	        }
-	        groupRef.current.visible = opacityRef.current > 0.02
+		        groupRef.current.visible = opacityRef.current > 0.02
 
-	        if (t < 1) return
+		        if (t < 1) {
+		          requestFrame()
+		          return
+		        }
 
-	        exit.phase = 'idle'
+		        exit.phase = 'idle'
 	        groupRef.current.visible = false
 	        onRemoveRef.current?.(item)
 	        return
@@ -1744,7 +1774,10 @@ useFrame((_, delta) => {
         }
         groupRef.current.visible = true
 
-        if (t < 1) return
+        if (t < 1) {
+          requestFrame()
+          return
+        }
 
         openAnim.phase = 'spin'
         openAnim.startMs = performance.now()
@@ -1824,7 +1857,10 @@ useFrame((_, delta) => {
         }
         groupRef.current.visible = true
 
-        if (t < handoffT) return
+        if (t < handoffT) {
+          requestFrame()
+          return
+        }
 
         onOpenPackBehindFanRef.current?.()
         openAnim.phase = 'duck'
@@ -1893,7 +1929,10 @@ useFrame((_, delta) => {
         }
         groupRef.current.visible = true
 
-        if (t < 1) return
+        if (t < 1) {
+          requestFrame()
+          return
+        }
 
         const endDuck = sampleDuckInPose(openDuckInTimelineRef.current, 1)
         const endLocal = worldPoseToLocal(endDuck as PackPose, packsX, packsY)
@@ -1919,8 +1958,12 @@ useFrame((_, delta) => {
         openAnim.phase = 'idle'
         openHoldRef.current = true
         onOpenSequenceCompleteRef.current?.()
+        requestFrame()
         return
       }
+
+      requestFrame()
+      return
     }
 
     // Hold tucked pose after open finishes — freeze completely (no coverflow springs).
@@ -2101,6 +2144,23 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
     applyOpacity(opacity)
     groupRef.current.visible =
       inRange && (isRevealHeroRef.current || opacity > 0.02)
+
+    const springBusy =
+      Math.abs(motion.vx) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vy) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vz) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vRotY) > FRAME_SETTLE_EPS ||
+      Math.abs(motion.vScale) > FRAME_SETTLE_EPS ||
+      Math.abs(hoverYawRef.current) > FRAME_SETTLE_EPS ||
+      Math.abs(appliedTiltRef.current - targetTouchTilt) > FRAME_SETTLE_EPS ||
+      Math.abs(appliedPitchRef.current - targetPitch) > FRAME_SETTLE_EPS ||
+      Math.abs(sideFadeRef.current - fadeTarget) > 0.002
+    if (
+      springBusy ||
+      (isLiveCenter && stageActiveRef.current)
+    ) {
+      requestFrame()
+    }
   })
 
 const handleClick = (event: ThreeEvent<MouseEvent>) => {
@@ -2123,6 +2183,7 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
     const normalizedX = MathUtils.clamp(localX / 0.9, -1, 1)
     // Only update the target; useFrame eases the visible yaw toward it.
     hoverYawTargetRef.current = normalizedX * MAX_HOVER_YAW
+    invalidate()
   }
 
   return (
@@ -2144,6 +2205,8 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
           return
         }
         isHoveredRef.current = false
+        hoverYawTargetRef.current = 0
+        invalidate()
         document.body.style.cursor = 'auto'
       }}
     >
@@ -2300,13 +2363,14 @@ function CoverFlowScene({
 	  selectedId,
 	  cameraSettings,
 	  layout,
-	  textureTransform,
-	  centerTiltYaw,
-	  centerTiltPitch,
-	  isMobile,
-	  shortHudGlass,
-	  revealMode,
-	  revealingPackId,
+		  textureTransform,
+		  centerTiltYaw,
+		  centerTiltPitch,
+		  stageActive,
+		  isMobile,
+		  shortHudGlass,
+		  revealMode,
+		  revealingPackId,
 	  revealPlaySequence,
 	  revealTimeline,
 	  revealDuckInTimeline,
@@ -2326,13 +2390,14 @@ formatPrice,
 					  selectedId: string | null
 					  cameraSettings: CoverFlowCameraSettings
 					  layout: CoverFlowLayoutSettings
-					  textureTransform: VideoTextureTransform
-					  centerTiltYaw: number
-					  centerTiltPitch: number
-					  isMobile: boolean
-					  shortHudGlass: boolean
-					  revealMode: boolean
-					  revealingPackId: string | null
+						  textureTransform: VideoTextureTransform
+						  centerTiltYaw: number
+						  centerTiltPitch: number
+						  stageActive: boolean
+						  isMobile: boolean
+						  shortHudGlass: boolean
+						  revealMode: boolean
+						  revealingPackId: string | null
 						  revealPlaySequence: boolean
 						  revealTimeline: PackTimeline
 						  revealDuckInTimeline: DuckInTimeline
@@ -2377,9 +2442,10 @@ formatPrice,
 	              modelY={cameraSettings.modelY}
 	              layout={layout}
 	              textureTransform={textureTransform}
-	              centerTiltYaw={centerTiltYaw}
-	              centerTiltPitch={centerTiltPitch}
-	              isMobile={isMobile}
+		              centerTiltYaw={centerTiltYaw}
+		              centerTiltPitch={centerTiltPitch}
+		              stageActive={stageActive}
+		              isMobile={isMobile}
 	              shortHudGlass={shortHudGlass}
 	              revealMode={revealMode}
 	              isRevealHero={Boolean(isRevealHero)}
@@ -2493,11 +2559,14 @@ export function CoverFlowCarouselV2({
       setInternalSelectedId(null)
     })
   const stageRef = useRef<HTMLDivElement>(null)
+  const invalidateCanvasRef = useRef<(() => void) | null>(null)
   const [focusIndex, setFocusIndex] = useState(0)
   const [centerTiltYaw, setCenterTiltYaw] = useState(0)
   const [centerTiltPitch, setCenterTiltPitch] = useState(0)
   const [gestureMode, setGestureMode] = useState<LiveGestureMode>('idle')
   const [, setLastGestureSpeed] = useState(0)
+  const [canvasActive, setCanvasActive] = useState(true)
+  const [frameLoop, setFrameLoop] = useState<CoverFlowFrameLoop>('always')
 const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
 	    isMobileViewport(),
 	  )
@@ -2844,8 +2913,63 @@ useEffect(() => {
   }, [focusIndex])
 
   useEffect(() => {
+    const el = stageRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      return
+    }
+
+    let intersecting = true
+    const sync = () => {
+      const active =
+        intersecting &&
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible'
+      setCanvasActive(active)
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        intersecting =
+          Boolean(entry?.isIntersecting) &&
+          (entry?.intersectionRatio ?? 0) >= 0.35
+        sync()
+      },
+      { threshold: [0, 0.35, 0.5, 1] },
+    )
+    io.observe(el)
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => {
+      io.disconnect()
+      document.removeEventListener('visibilitychange', sync)
+    }
+  }, [items.length])
+
+  useEffect(() => {
+    if (!canvasActive) {
+      setFrameLoop('never')
+      pauseAllVideoTextures()
+      return
+    }
+
+    setFrameLoop('always')
+    const bootTimer = window.setTimeout(() => {
+      setFrameLoop('demand')
+      invalidateCanvasRef.current?.()
+    }, FRAMELOOP_BOOT_MS)
+    return () => {
+      window.clearTimeout(bootTimer)
+    }
+  }, [canvasActive])
+
+  useEffect(() => {
     gestureModeRef.current = gestureMode
   }, [gestureMode])
+
+  useEffect(() => {
+    if (!canvasActive) return
+    invalidateCanvasRef.current?.()
+  }, [canvasActive, centerTiltPitch, centerTiltYaw, focusIndex, selectedId, revealMode])
 
   useEffect(() => {
     motionTiltEnabledRef.current = motionTiltOn
@@ -3632,20 +3756,20 @@ useEffect(() => {
 	              near: 0.1,
 	              far: 40,
 	            }}
-	            dpr={[1, 1.5]}
-	            // Keep a short always-on loop so pack Html projects on first load
-	            // without waiting for hover/pointer invalidation.
-	            frameloop="always"
-	            gl={{
-	              antialias: true,
-	              alpha: true,
-	              premultipliedAlpha: false,
-	            }}
-	            onCreated={({ gl, scene }) => {
-	              // Keep the WebGL clear fully transparent so the CSS gradient is visible.
-	              scene.background = null
-	              gl.setClearColor(0x000000, 0)
-	            }}
+		            dpr={isMobileViewportActive ? [1, 1.25] : [1, 1.5]}
+		            // Boot briefly on always so Html projects; then demand + invalidate while animating/playing.
+		            frameloop={frameLoop}
+		            gl={{
+		              antialias: !isMobileViewportActive,
+		              alpha: true,
+		              premultipliedAlpha: false,
+		            }}
+		            onCreated={({ gl, scene, invalidate }) => {
+		              // Keep the WebGL clear fully transparent so the CSS gradient is visible.
+		              scene.background = null
+		              gl.setClearColor(0x000000, 0)
+		              invalidateCanvasRef.current = invalidate
+		            }}
 	            style={{
 	              width: '100%',
 	              height: '100%',
@@ -3662,6 +3786,7 @@ useEffect(() => {
                 textureTransform={textureTransform}
                 centerTiltYaw={centerTiltYaw}
                 centerTiltPitch={centerTiltPitch}
+                stageActive={canvasActive}
 isMobile={isMobileViewportActive}
 	                shortHudGlass={isShortHudGlass}
 	                revealMode={revealMode}

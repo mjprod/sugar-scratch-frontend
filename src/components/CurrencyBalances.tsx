@@ -23,6 +23,9 @@ export function CurrencyBalances({
       <DiamondLottie
         className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
         size={14}
+        animated
+        loop
+        autoplay
         aria-hidden
       />
       <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">

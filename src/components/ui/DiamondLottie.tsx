@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const DIAMOND_LOTTIE_SRC = "/lottie/lottieDiamond.lottie";
+export const DIAMOND_MARK_WEBP = "/images/diamond_min.webp";
+export const DIAMOND_MARK_PNG = "/images/diamond_min.png";
 
 type DiamondLottieProps = {
   className?: string;
@@ -12,13 +14,29 @@ type DiamondLottieProps = {
   autoplay?: boolean;
   /** Playback multiplier. Default 1.25. */
   speed?: number;
+  /** Mount the wasm player. Default false — static WebP/PNG mark. */
+  animated?: boolean;
   style?: CSSProperties;
   "aria-hidden"?: boolean | "true" | "false";
 };
 
+function StaticDiamondMark() {
+  return (
+    <picture>
+      <source srcSet={DIAMOND_MARK_WEBP} type="image/webp" />
+      <img
+        src={DIAMOND_MARK_PNG}
+        alt=""
+        draggable={false}
+        style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+      />
+    </picture>
+  );
+}
+
 /**
- * Inline diamond mark powered by public/lottie/lottieDiamond.lottie.
- * Drop-in replacement for the 💎 emoji in currency / cost UI.
+ * Inline diamond mark. Decorative icons use WebP (PNG fallback);
+ * pass `animated` for the looping Lottie (top nav).
  */
 export function DiamondLottie({
   className,
@@ -26,10 +44,10 @@ export function DiamondLottie({
   loop = true,
   autoplay = true,
   speed = 1.25,
+  animated = false,
   style,
   "aria-hidden": ariaHidden = true,
 }: DiamondLottieProps) {
-  // Scale mark ~30% larger than the surrounding text size, keep square.
   const edge =
     typeof size === "number" ? `${size * 1.3}px` : `calc(${size} * 1.3)`;
 
@@ -48,14 +66,18 @@ export function DiamondLottie({
       }}
       aria-hidden={ariaHidden}
     >
-      <DotLottieReact
-        src={DIAMOND_LOTTIE_SRC}
-        autoplay={autoplay}
-        loop={loop}
-        speed={speed}
-        renderConfig={lottieRenderConfig()}
-        style={{ width: "100%", height: "100%" }}
-      />
+      {animated ? (
+        <DotLottieReact
+          src={DIAMOND_LOTTIE_SRC}
+          autoplay={autoplay}
+          loop={loop}
+          speed={speed}
+          renderConfig={lottieRenderConfig()}
+          style={{ width: "100%", height: "100%" }}
+        />
+      ) : (
+        <StaticDiamondMark />
+      )}
     </span>
   );
 }
