@@ -1457,7 +1457,7 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
     {
       flipY: true,
       playing: facePlaying,
-      textureSize: resolvePackTextureSize(isMobile),
+      textureSize: resolvePackTextureSize(isMobile, offset),
       enabled: Boolean(item.videoUrl),
       soft: false,
     },

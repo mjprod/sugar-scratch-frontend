@@ -33,11 +33,19 @@ export const PACK_MODEL_URL = '/assets/card2.glb'
 
 export const PACK_VIDEO_FIT_MODE: VideoFitMode = 'contain'
 export const PACK_TEXTURE_SIZE_DESKTOP = 768
-export const PACK_TEXTURE_SIZE_MOBILE = 512
+export const PACK_TEXTURE_SIZE_MOBILE = 640
+export const PACK_TEXTURE_SIZE_MOBILE_SIDE = 192
 /** Legacy alias. Prefer `resolvePackTextureSize` for coverflow. */
 export const PACK_TEXTURE_SIZE = PACK_TEXTURE_SIZE_DESKTOP
 
 /** Viewport-tiered pack face canvas size (home / coverflow). */
-export function resolvePackTextureSize(isMobile: boolean): number {
-  return isMobile ? PACK_TEXTURE_SIZE_MOBILE : PACK_TEXTURE_SIZE_DESKTOP
+export function resolvePackTextureSize(
+  isMobile: boolean,
+  offset = 0,
+): number {
+  if (!isMobile) return PACK_TEXTURE_SIZE_DESKTOP
+  // Center + immediate neighbors stay 640 so a swipe doesn't decode 192→640 on land.
+  return Math.abs(offset) <= 1
+    ? PACK_TEXTURE_SIZE_MOBILE
+    : PACK_TEXTURE_SIZE_MOBILE_SIDE
 }
