@@ -83,6 +83,10 @@ import {
   writeCachedSymbolScratchAmount,
 } from "../modules/scratchProbeCache";
 import {
+  createThrottledUiClock,
+  shouldPublishThrottledUi,
+} from "../modules/scratchUiThrottle";
+import {
   fetchCatalogMotionCards,
 } from "../shared/catalog";
 import {
@@ -1566,6 +1570,10 @@ export function ScratchPrototype() {
   const symbolScratchProbeCacheRef = useRef(
     createSymbolScratchProbeCache(SYMBOL_SLOT_COUNT),
   );
+  /** Live progress is in progressRef; React state publishes ≤1 / UI interval. */
+  const progressUiClockRef = useRef(createThrottledUiClock());
+  const publishedProgressRef = useRef(0);
+  const cursorOnMeshRef = useRef(false);
   const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
     ParticleType[]
   >([]);
@@ -1586,6 +1594,44 @@ export function ScratchPrototype() {
   const tryResolveGameRef = useRef<() => void>(() => undefined);
   const resetScratchRef = useRef<() => void>(() => undefined);
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
+
+  /** Ref holds live progress; React `progress` publishes ≤1 / UI interval (flush on stroke end). */
+  function publishProgressUi(force = false) {
+    const next = progressRef.current;
+    if (
+      !force &&
+      next === publishedProgressRef.current &&
+      progressUiClockRef.current.lastPublishAt !== 0
+    ) {
+      return;
+    }
+    if (
+      !shouldPublishThrottledUi(
+        progressUiClockRef.current,
+        performance.now(),
+        UI_STATE_UPDATE_INTERVAL_MS,
+        force,
+      )
+    ) {
+      return;
+    }
+    if (next === publishedProgressRef.current && !force) return;
+    publishedProgressRef.current = next;
+    setProgress(next);
+  }
+
+  function publishCursorOnMesh(onMesh: boolean) {
+    cursorOnMeshRef.current = onMesh;
+    setCursorOnMesh((prev) => (prev === onMesh ? prev : onMesh));
+  }
+
+  function endScratchStroke() {
+    drawingRef.current = false;
+    setIsScratching(false);
+    publishProgressUi(true);
+    publishCursorOnMesh(false);
+    lastScratchWorldRef.current = null;
+  }
   // Phones hide the side panel, so the scratch-zoom config lives behind a gear
   // button that opens this sheet.
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
@@ -2777,7 +2823,8 @@ export function ScratchPrototype() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     resetMatchRound();
-    setProgress(0);
+    publishedProgressRef.current = 0;
+    publishProgressUi(true);
     setClaimed(false);
     setRevealedSymbols(0);
     setLitSymbolSlots(
@@ -2828,7 +2875,8 @@ export function ScratchPrototype() {
     revealedCountRef.current = revealed.reduce((n, r) => n + (r ? 1 : 0), 0);
     const next = samples.length ? revealedCountRef.current / samples.length : 0;
     progressRef.current = next;
-    setProgress(next);
+    publishedProgressRef.current = next;
+    publishProgressUi(true);
     const hasBodySymbols =
       trackedMesh?.symbolPoints?.length === SYMBOL_SLOT_COUNT;
     const nextSymbolCount = hasBodySymbols
@@ -3224,7 +3272,8 @@ export function ScratchPrototype() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     resetMatchRound();
-    setProgress(0);
+    publishedProgressRef.current = 0;
+    publishProgressUi(true);
     setClaimed(false);
     setRevealedSymbols(0);
     setLitSymbolSlots(
@@ -3957,7 +4006,7 @@ export function ScratchPrototype() {
       ? revealedCountRef.current / samples.length
       : 0;
     progressRef.current = nextProgress;
-    setProgress(nextProgress);
+    publishProgressUi(false);
     const autoMode = autoScratchRef.current.enabled;
     if (useBodySymbolsRef.current && trackedMeshRef.current?.symbolPoints) {
       const bodyPoints = trackedMeshRef.current.symbolPoints;
@@ -4061,6 +4110,7 @@ export function ScratchPrototype() {
     ) {
       claimedRef.current = true;
       setClaimed(true);
+      publishProgressUi(true);
     }
     tryResolveGame();
   }
@@ -4123,7 +4173,7 @@ export function ScratchPrototype() {
       onFabric = fabricAlpha < 0 || fabricAlpha >= CURSOR_FX_MESH_ALPHA_MIN;
     }
     const onMesh = applied && uvAtPointer !== null && onFabric;
-    setCursorOnMesh((prev) => (prev === onMesh ? prev : onMesh));
+    publishCursorOnMesh(onMesh);
   }
 
   function setVideoTime(time: number) {
@@ -4879,25 +4929,16 @@ export function ScratchPrototype() {
               addScratch(event.clientX, event.clientY);
             }}
             onPointerUp={() => {
-              drawingRef.current = false;
-              setIsScratching(false);
-              setCursorOnMesh(false);
-              lastScratchWorldRef.current = null;
+              endScratchStroke();
               clearScratchZoom();
             }}
             onPointerLeave={() => {
-              drawingRef.current = false;
-              setIsScratching(false);
-              setCursorOnMesh(false);
-              lastScratchWorldRef.current = null;
+              endScratchStroke();
               hoverPointRef.current = null;
               clearScratchZoom();
             }}
             onPointerCancel={() => {
-              drawingRef.current = false;
-              setIsScratching(false);
-              setCursorOnMesh(false);
-              lastScratchWorldRef.current = null;
+              endScratchStroke();
               hoverPointRef.current = null;
               clearScratchZoom();
             }}
