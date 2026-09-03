@@ -1,13 +1,27 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
 import { normalizeMediaUrl } from "@/services/models";
-import type { VideoFitMode, VideoTextureTransform } from './assets'
+import {
+  PACK_TEXTURE_SIZE_MOBILE_SIDE,
+  type VideoFitMode,
+  type VideoTextureTransform,
+} from './assets'
 import {
   getPackStageVideoFilter,
   subscribePackStageLook,
 } from './packStageLook'
 
 const PLAYING_FRAME_INTERVAL_MS = 1000 / 30
+const DESKTOP_PLAYING_FRAME_INTERVAL_MS = 1000 / 60
+const COVERFLOW_MOBILE_QUERY = '(max-width: 980px)'
 const IDLE_EVICT_MS = 45_000
+
+let playingFrameIntervalMs = PLAYING_FRAME_INTERVAL_MS
+
+function syncPlayingFrameInterval(isMobile: boolean) {
+  playingFrameIntervalMs = isMobile
+    ? PLAYING_FRAME_INTERVAL_MS
+    : DESKTOP_PLAYING_FRAME_INTERVAL_MS
+}
 
 export interface VideoTextureCacheKeyInput {
   videoUrl: string
@@ -203,6 +217,12 @@ if (typeof window !== 'undefined') {
     lastFilter = next
     redrawAllEntriesForGrade()
   })
+
+  const mobileMedia = window.matchMedia(COVERFLOW_MOBILE_QUERY)
+  syncPlayingFrameInterval(mobileMedia.matches)
+  mobileMedia.addEventListener('change', (event) => {
+    syncPlayingFrameInterval(event.matches)
+  })
 }
 
 function copyLiveToStill(entry: CacheEntry) {
@@ -229,7 +249,7 @@ function startLoop(entry: CacheEntry) {
     }
 
     if (
-      now - entry.lastDrawAt >= PLAYING_FRAME_INTERVAL_MS &&
+      now - entry.lastDrawAt >= playingFrameIntervalMs &&
       entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
     ) {
       drawLiveFrame(entry)
@@ -408,7 +428,12 @@ export function releaseVideoTexture(key: string) {
       // ignore
     }
 
-    // Keep decoded stills around so scrolling back is instant.
+    // Keep cheap side stills around so scrolling back is instant.
+    // Drop 640/768 canvases as soon as a pack leaves center/neighbor.
+    if (entry.textureSize > PACK_TEXTURE_SIZE_MOBILE_SIDE) {
+      destroyEntry(entry)
+      return
+    }
     entry.evictTimer = window.setTimeout(() => {
       if (entry.refCount === 0) {
         destroyEntry(entry)
@@ -458,9 +483,7 @@ export function clearVideoTextureCache(): VideoTextureCacheStats {
 /** Pause every cached video without disposing textures (tab hide / soft leave). */
 export function pauseAllVideoTextures() {
   for (const entry of cache.values()) {
-    if (entry.playingCount > 0) {
-      entry.pausedPlayingCount = entry.playingCount
-    }
+    entry.pausedPlayingCount = entry.playingCount
     entry.playingCount = 0
     stopLoop(entry)
     try {
