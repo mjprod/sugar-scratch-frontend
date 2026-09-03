@@ -2317,10 +2317,10 @@ useEffect(() => {
       ([entry]) => {
         intersecting =
           Boolean(entry?.isIntersecting) &&
-          (entry?.intersectionRatio ?? 0) >= 0.2
+          (entry?.intersectionRatio ?? 0) >= 0.35
         sync()
       },
-      { threshold: [0, 0.2, 0.5, 1] },
+      { threshold: [0, 0.35, 0.5, 1] },
     )
     io.observe(el)
     document.addEventListener('visibilitychange', sync)

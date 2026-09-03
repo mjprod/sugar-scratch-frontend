@@ -350,7 +350,11 @@ export function HomeScreen({
             : "",
         ].join(" ")}
       >
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <div className="home-featured-coverflow is-loading" aria-hidden="true" />
+          }
+        >
           <FeaturedCoverFlow
             featured={home.featured}
             onPlay={playPack}
