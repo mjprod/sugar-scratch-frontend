@@ -1,6 +1,7 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
 import { normalizeMediaUrl } from "@/services/models";
 import {
+  PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR,
   type VideoFitMode,
   type VideoTextureTransform,
 } from './assets'
@@ -13,11 +14,17 @@ const PLAYING_FRAME_INTERVAL_MS = 1000 / 30
 const DESKTOP_PLAYING_FRAME_INTERVAL_MS = 1000 / 60
 const COVERFLOW_MOBILE_QUERY = '(max-width: 980px)'
 /** iOS Jetsams ~2GB if paused pack-face decoders pile up while swiping. */
-const MAX_LIVE_DECODERS = 1
+const MAX_LIVE_DECODERS_MOBILE = 1
 
 let playingFrameIntervalMs = PLAYING_FRAME_INTERVAL_MS
+let mobileCoverflowViewport = false
+
+function isMobileCoverflowViewport() {
+  return mobileCoverflowViewport
+}
 
 function syncPlayingFrameInterval(isMobile: boolean) {
+  mobileCoverflowViewport = isMobile
   playingFrameIntervalMs = isMobile
     ? PLAYING_FRAME_INTERVAL_MS
     : DESKTOP_PLAYING_FRAME_INTERVAL_MS
@@ -124,9 +131,10 @@ function drawVideoToContext(
   context: CanvasRenderingContext2D,
   texture: CanvasTexture,
 ) {
-  const { video, textureSize, fitMode, textureTransform } = entry
+  const { video, fitMode, textureTransform } = entry
+  const textureSize = context.canvas.width
 
-  if (video.videoWidth === 0 || video.videoHeight === 0) {
+  if (textureSize <= 1 || video.videoWidth === 0 || video.videoHeight === 0) {
     return
   }
 
@@ -194,6 +202,7 @@ function drawLiveFrame(entry: CacheEntry) {
 }
 
 function drawStillFrame(entry: CacheEntry) {
+  restoreStillCanvas(entry)
   drawVideoToContext(entry, entry.stillContext, entry.stillTexture)
 }
 
@@ -225,9 +234,30 @@ if (typeof window !== 'undefined') {
   })
 }
 
+function stillCanvasSize(textureSize: number) {
+  return isMobileCoverflowViewport()
+    ? PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR
+    : textureSize
+}
+
+function restoreStillCanvas(entry: CacheEntry) {
+  const size = stillCanvasSize(entry.textureSize)
+  if (entry.stillCanvas.width !== size || entry.stillCanvas.height !== size) {
+    entry.stillCanvas.width = size
+    entry.stillCanvas.height = size
+  }
+}
+
 function copyLiveToStill(entry: CacheEntry) {
   if (entry.liveCanvas.width <= 1) return
-  entry.stillContext.drawImage(entry.liveCanvas, 0, 0)
+  restoreStillCanvas(entry)
+  entry.stillContext.drawImage(
+    entry.liveCanvas,
+    0,
+    0,
+    entry.stillCanvas.width,
+    entry.stillCanvas.height,
+  )
   entry.stillTexture.needsUpdate = true
 }
 
@@ -316,23 +346,26 @@ function attachDecoder(entry: CacheEntry) {
   entry.video.load()
 }
 
+function teardownOffscreen(entry: CacheEntry) {
+  entry.playingCount = 0
+  detachDecoder(entry)
+  freeCanvas(entry.liveCanvas)
+}
+
 function capLiveDecoders(keep: CacheEntry) {
+  if (!isMobileCoverflowViewport()) {
+    return
+  }
   let playing = 0
   for (const entry of cache.values()) {
     if (entry.playingCount > 0) playing += 1
   }
-  if (playing < MAX_LIVE_DECODERS) {
+  if (playing < MAX_LIVE_DECODERS_MOBILE) {
     return
   }
   for (const entry of cache.values()) {
     if (entry === keep || entry.playingCount <= 0) continue
-    if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      drawLiveFrame(entry)
-      copyLiveToStill(entry)
-    }
-    entry.playingCount = 0
-    detachDecoder(entry)
-    freeCanvas(entry.liveCanvas)
+    teardownOffscreen(entry)
   }
 }
 
@@ -363,7 +396,7 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
     return existing
   }
 
-  const still = createCanvasTexture(input.textureSize, input.flipY)
+  const still = createCanvasTexture(stillCanvasSize(input.textureSize), input.flipY)
   const live = createCanvasTexture(1, input.flipY)
 
   const resolvedVideoUrl = resolveVideoTextureUrl(input.videoUrl)
@@ -504,13 +537,11 @@ export function clearVideoTextureCache(): VideoTextureCacheStats {
 export function pauseAllVideoTextures() {
   for (const entry of cache.values()) {
     entry.pausedPlayingCount = entry.playingCount
-    entry.playingCount = 0
     if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       drawLiveFrame(entry)
       copyLiveToStill(entry)
     }
-    detachDecoder(entry)
-    freeCanvas(entry.liveCanvas)
+    teardownOffscreen(entry)
   }
 }
 
@@ -564,8 +595,7 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
       drawLiveFrame(entry)
       copyLiveToStill(entry)
     }
-    detachDecoder(entry)
-    freeCanvas(entry.liveCanvas)
+    teardownOffscreen(entry)
   }
 }
 

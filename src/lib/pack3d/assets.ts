@@ -35,6 +35,7 @@ export const PACK_VIDEO_FIT_MODE: VideoFitMode = 'contain'
 export const PACK_TEXTURE_SIZE_DESKTOP = 768
 export const PACK_TEXTURE_SIZE_MOBILE = 640
 export const PACK_TEXTURE_SIZE_MOBILE_SIDE = 192
+export const PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR = 96
 /** Legacy alias. Prefer `resolvePackTextureSize` for coverflow. */
 export const PACK_TEXTURE_SIZE = PACK_TEXTURE_SIZE_DESKTOP
 
