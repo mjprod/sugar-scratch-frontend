@@ -29,12 +29,6 @@ interface CacheEntry {
   stillCanvas: HTMLCanvasElement
   stillContext: CanvasRenderingContext2D
   stillTexture: CanvasTexture
-  // Soft still for unselected packs when another pack is active (cheap DOF look).
-  softCanvas: HTMLCanvasElement
-  softContext: CanvasRenderingContext2D
-  softTexture: CanvasTexture
-  softScratch: HTMLCanvasElement
-  softScratchContext: CanvasRenderingContext2D
   // Live canvas used only while at least one consumer is playing.
   liveCanvas: HTMLCanvasElement
   liveContext: CanvasRenderingContext2D
@@ -187,7 +181,6 @@ function drawLiveFrame(entry: CacheEntry) {
 
 function drawStillFrame(entry: CacheEntry) {
   drawVideoToContext(entry, entry.stillContext, entry.stillTexture)
-  updateSoftStill(entry)
 }
 
 /** Re-grade cached stills/live frames when PackStageDebug video sliders change. */
@@ -197,7 +190,7 @@ function redrawAllEntriesForGrade() {
     if (entry.playingCount > 0) {
       drawLiveFrame(entry)
     }
-    // Always refresh still + soft so off-center packs pick up the grade.
+    // Always refresh stills so off-center packs pick up the grade.
     drawStillFrame(entry)
   }
 }
@@ -215,42 +208,6 @@ if (typeof window !== 'undefined') {
 function copyLiveToStill(entry: CacheEntry) {
   entry.stillContext.drawImage(entry.liveCanvas, 0, 0)
   entry.stillTexture.needsUpdate = true
-  updateSoftStill(entry)
-}
-
-function updateSoftStill(entry: CacheEntry) {
-  const { softContext, softScratchContext, softScratch, stillCanvas, softTexture, textureSize } =
-    entry
-
-  // Cheap "depth of field": downscale then upscale. Very GPU/CPU light on Safari.
-  softScratchContext.clearRect(0, 0, softScratch.width, softScratch.height)
-  softScratchContext.drawImage(
-    stillCanvas,
-    0,
-    0,
-    textureSize,
-    textureSize,
-    0,
-    0,
-    softScratch.width,
-    softScratch.height,
-  )
-
-  softContext.clearRect(0, 0, textureSize, textureSize)
-  softContext.imageSmoothingEnabled = true
-  softContext.imageSmoothingQuality = 'low'
-  softContext.drawImage(
-    softScratch,
-    0,
-    0,
-    softScratch.width,
-    softScratch.height,
-    0,
-    0,
-    textureSize,
-    textureSize,
-  )
-  softTexture.needsUpdate = true
 }
 
 function stopLoop(entry: CacheEntry) {
@@ -324,16 +281,13 @@ function destroyEntry(entry: CacheEntry) {
 
   try {
     entry.stillTexture.dispose()
-    entry.softTexture.dispose()
     entry.liveTexture.dispose()
   } catch {
     // ignore
   }
 
   freeCanvas(entry.stillCanvas)
-  freeCanvas(entry.softCanvas)
   freeCanvas(entry.liveCanvas)
-  freeCanvas(entry.softScratch)
 
   cache.delete(entry.key)
 }
@@ -350,16 +304,7 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
   }
 
   const still = createCanvasTexture(input.textureSize, input.flipY)
-  const soft = createCanvasTexture(input.textureSize, input.flipY)
   const live = createCanvasTexture(input.textureSize, input.flipY)
-  const softScratch = document.createElement('canvas')
-  // Very small intermediate canvas creates a soft blur when scaled back up.
-  softScratch.width = Math.max(16, Math.round(input.textureSize / 12))
-  softScratch.height = Math.max(16, Math.round(input.textureSize / 12))
-  const softScratchContext = softScratch.getContext('2d', { alpha: false })
-  if (!softScratchContext) {
-    throw new Error('Canvas context is not available in this browser.')
-  }
 
   const resolvedVideoUrl = resolveVideoTextureUrl(input.videoUrl)
 
@@ -385,11 +330,6 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
     stillCanvas: still.canvas,
     stillContext: still.context,
     stillTexture: still.texture,
-    softCanvas: soft.canvas,
-    softContext: soft.context,
-    softTexture: soft.texture,
-    softScratch,
-    softScratchContext,
     liveCanvas: live.canvas,
     liveContext: live.context,
     liveTexture: live.texture,
@@ -407,7 +347,7 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
 
   const handleLoadedData = () => {
     entry.isReady = true
-    // Seed still/soft/live so focused/unfocused packs have content immediately.
+    // Seed still/live so focused/unfocused packs have content immediately.
     drawStillFrame(entry)
     drawLiveFrame(entry)
     for (const listener of entry.readyListeners) {
@@ -585,21 +525,14 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
 export function getVideoTextureForPlayback(
   key: string,
   playing: boolean,
-  soft = false,
+  _soft = false,
 ): CanvasTexture | null {
   const entry = cache.get(key)
   if (!entry) {
     return null
   }
 
-  // Critical:
-  // - focused/playing pack uses live texture
-  // - unselected packs can use soft still (cheap DOF look)
-  // - otherwise crisp still
-  if (playing) {
-    return entry.liveTexture
-  }
-  return soft ? entry.softTexture : entry.stillTexture
+  return playing ? entry.liveTexture : entry.stillTexture
 }
 
 export function subscribeVideoTextureReady(

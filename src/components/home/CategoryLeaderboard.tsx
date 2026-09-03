@@ -1,5 +1,6 @@
 import { Trophy } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   LEADERBOARD_CATEGORIES,
   type LeaderboardCategory,
@@ -117,12 +118,11 @@ export function CategoryLeaderboard({
                   className="category-leaderboard-price"
                   aria-label={`${row.diamondCost} Diamonds`}
                 >
-                  <span
+                  <DiamondLottie
                     className="category-leaderboard-price-diamond shrink-0"
+                    size={14}
                     aria-hidden
-                  >
-                    💎
-                  </span>
+                  />
                   <span className="tabular-nums">{row.diamondCost}</span>
                 </span>
                 <div className="category-leaderboard-play">

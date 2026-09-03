@@ -3138,14 +3138,14 @@ useEffect(() => {
 	              near: 0.1,
 	              far: 40,
 	            }}
-	            dpr={[1, 1.5]}
-	            // Boot briefly on always so Html projects; then demand + invalidate while animating/playing.
-	            frameloop={frameLoop}
-	            gl={{
-	              antialias: true,
-	              alpha: true,
-	              premultipliedAlpha: false,
-	            }}
+		            dpr={isMobileViewportActive ? [1, 1.25] : [1, 1.5]}
+		            // Boot briefly on always so Html projects; then demand + invalidate while animating/playing.
+		            frameloop={frameLoop}
+		            gl={{
+		              antialias: !isMobileViewportActive,
+		              alpha: true,
+		              premultipliedAlpha: false,
+		            }}
 	            onCreated={({ gl, scene, invalidate }) => {
 	              // Keep the WebGL clear fully transparent so the CSS gradient is visible.
 	              scene.background = null

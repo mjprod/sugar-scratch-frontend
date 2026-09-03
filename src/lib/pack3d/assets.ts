@@ -32,10 +32,10 @@ export const DEFAULT_MODEL_ROTATION: ModelRotation = {
 export const PACK_MODEL_URL = '/assets/card2.glb'
 
 export const PACK_VIDEO_FIT_MODE: VideoFitMode = 'contain'
-/** Legacy / reveal max. Prefer `resolvePackTextureSize` for coverflow. */
-export const PACK_TEXTURE_SIZE = 1024
 export const PACK_TEXTURE_SIZE_DESKTOP = 768
 export const PACK_TEXTURE_SIZE_MOBILE = 512
+/** Legacy alias. Prefer `resolvePackTextureSize` for coverflow. */
+export const PACK_TEXTURE_SIZE = PACK_TEXTURE_SIZE_DESKTOP
 
 /** Viewport-tiered pack face canvas size (home / coverflow). */
 export function resolvePackTextureSize(isMobile: boolean): number {

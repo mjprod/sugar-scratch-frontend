@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CanvasTexture } from 'three'
-import type { VideoFitMode, VideoTextureTransform } from './assets'
+import { PACK_TEXTURE_SIZE_DESKTOP, type VideoFitMode, type VideoTextureTransform } from './assets'
 import {
   acquireVideoTexture,
   getVideoTextureForPlayback,
@@ -10,7 +10,7 @@ import {
   subscribeVideoTextureReady,
 } from './videoTextureCache'
 
-const DEFAULT_TEXTURE_SIZE = 1024
+const DEFAULT_TEXTURE_SIZE = PACK_TEXTURE_SIZE_DESKTOP
 
 interface VideoTextureOptions {
   flipY?: boolean
