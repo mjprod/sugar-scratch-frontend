@@ -100,8 +100,8 @@ import {
 const PACK_MODEL_URL_V2 = '/assets/CardPack2-min.glb'
 
 // Keep the cover-flow light by mounting only nearby packs.
-// Mobile: 5 packs (center ± 2). Desktop: 10 packs (center ± 5).
-const MAX_VISIBLE_OFFSET_MOBILE = 2
+// Mobile: 3 packs (center ± 1). Desktop: 10 packs (center ± 5).
+const MAX_VISIBLE_OFFSET_MOBILE = 1
 const MAX_VISIBLE_OFFSET_DESKTOP = 5
 /** Brief always-on boot so drei Html projects before switching to demand. */
 const FRAMELOOP_BOOT_MS = 450
@@ -1541,25 +1541,30 @@ useLayoutEffect(() => {
 	      layout,
 	      isMobile,
 	    )
-	    groupRef.current.position.set(target.x, target.y, target.z)
-	    groupRef.current.rotation.x = 0
-	    groupRef.current.rotation.y = target.rotY
-	    groupRef.current.scale.setScalar(target.scale)
-	    groupRef.current.visible = true
-	    motionRef.current = {
-	      x: target.x,
-	      y: target.y,
-	      z: target.z,
-	      rotY: target.rotY,
-	      scale: target.scale,
-	      vx: 0,
-	      vy: 0,
-	      vz: 0,
-	      vRotY: 0,
-	      vScale: 0,
-	    }
-	    sideFadeRef.current = 1
-	    seededRef.current = true
+    groupRef.current.position.set(target.x, target.y, target.z)
+    groupRef.current.rotation.x = 0
+    groupRef.current.rotation.y = target.rotY
+    groupRef.current.scale.setScalar(target.scale)
+    motionRef.current = {
+      x: target.x,
+      y: target.y,
+      z: target.z,
+      rotY: target.rotY,
+      scale: target.scale,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      vRotY: 0,
+      vScale: 0,
+    }
+    const seedOffset = Math.abs(index - focusIndex)
+    const seedVisible = isMobile
+      ? MAX_VISIBLE_OFFSET_MOBILE
+      : MAX_VISIBLE_OFFSET_DESKTOP
+    sideFadeRef.current =
+      seedOffset <= seedVisible && !(revealMode && !isRevealHero) ? 1 : 0
+    groupRef.current.visible = sideFadeRef.current > 0.02
+    seededRef.current = true
 	    invalidate()
 	  }, [
 	    focusIndex,
@@ -2016,8 +2021,17 @@ useFrame((state, delta) => {
           MathUtils.degToRad(item.modelRotation.z),
         )
       }
-      sideFadeRef.current = 1
-      applyOpacity(1)
+      const seedVisible = isMobileRef.current
+        ? MAX_VISIBLE_OFFSET_MOBILE
+        : MAX_VISIBLE_OFFSET_DESKTOP
+      sideFadeRef.current =
+        Math.abs(liveOffset) <= seedVisible &&
+        !(revealModeRef.current && !isRevealHeroRef.current)
+          ? 1
+          : 0
+      applyOpacity(sideFadeRef.current)
+      groupRef.current.visible =
+        isRevealHeroRef.current || sideFadeRef.current > 0.02
       seededRef.current = true
       return
     }
@@ -2128,22 +2142,21 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
       )
     }
 
-    // Side packs fade out during reveal; hero stays fully opaque.
+    // Reveal ducks side packs; browse fades packs at the visible edge instead of popping.
+    const maxVisibleOffset = isMobileRef.current
+      ? MAX_VISIBLE_OFFSET_MOBILE
+      : MAX_VISIBLE_OFFSET_DESKTOP
+    const inRange = Math.abs(liveOffset) <= maxVisibleOffset
     const fadeTarget =
-      revealModeRef.current && !isRevealHeroRef.current ? 0 : 1
+      revealModeRef.current && !isRevealHeroRef.current ? 0 : inRange ? 1 : 0
     sideFadeRef.current = MathUtils.lerp(
       sideFadeRef.current,
       fadeTarget,
       1 - Math.exp(-8 * delta),
     )
-    const maxVisibleOffset = isMobileRef.current
-      ? MAX_VISIBLE_OFFSET_MOBILE
-      : MAX_VISIBLE_OFFSET_DESKTOP
-    const inRange = Math.abs(liveOffset) <= maxVisibleOffset
     const opacity = sideFadeRef.current
     applyOpacity(opacity)
-    groupRef.current.visible =
-      inRange && (isRevealHeroRef.current || opacity > 0.02)
+    groupRef.current.visible = isRevealHeroRef.current || opacity > 0.02
 
     const springBusy =
       Math.abs(motion.vx) > FRAME_SETTLE_EPS ||
