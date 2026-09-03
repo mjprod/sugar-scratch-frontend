@@ -927,7 +927,10 @@ const CHEST_ANCHOR_UV = { x: 0.5, y: 0.4 };
 const CHEST_TARGET_UV = { x: 0.5, y: 0.4 };
 const CHEST_FOLLOW_STRENGTH = 0.7;
 const CHEST_CAM_MAX = Math.min(0.05, PRESENT_ZOOM - 1);
-const CHEST_SMOOTH = 0.08;
+/** Slightly snappier than 0.08 so follow doesn't feel laggy behind the mesh. */
+const CHEST_SMOOTH = 0.14;
+/** Snap when within ~0.5px — stops asymptotic drip without stepping the pan. */
+const CHEST_CAM_EPS = 1 / CANVAS_WIDTH;
 
 // Show a pulsar on one unfound body mark at a time once this many (or fewer)
 // remain, but only after the player has been idle for HINT_IDLE_MS. Hold each
@@ -2147,7 +2150,9 @@ export function ScratchPrototype() {
         const videoTime = bottomVideo?.currentTime ?? time;
 
         // Subtle chest-follow camera: pan toward keeping the chest anchor at its
-        // target framing point, clamped + smoothed.
+        // target framing point, clamped + smoothed. Sample every frame for a
+        // continuous pan; GarmentGLRenderer's ~0.5px dirty eps skips sub-pixel
+        // presents so this doesn't defeat frame-skip on high-Hz displays.
         const camera = cameraRef.current;
         let targetCamX = 0;
         let targetCamY = 0;
@@ -2172,8 +2177,21 @@ export function ScratchPrototype() {
             CHEST_CAM_MAX,
           );
         }
-        camera.x += (targetCamX - camera.x) * CHEST_SMOOTH;
-        camera.y += (targetCamY - camera.y) * CHEST_SMOOTH;
+        {
+          const dx = targetCamX - camera.x;
+          const dy = targetCamY - camera.y;
+          if (Math.abs(dx) <= CHEST_CAM_EPS && Math.abs(dy) <= CHEST_CAM_EPS) {
+            camera.x = targetCamX;
+            camera.y = targetCamY;
+          } else {
+            const nextX = camera.x + dx * CHEST_SMOOTH;
+            const nextY = camera.y + dy * CHEST_SMOOTH;
+            camera.x =
+              Math.abs(targetCamX - nextX) <= CHEST_CAM_EPS ? targetCamX : nextX;
+            camera.y =
+              Math.abs(targetCamY - nextY) <= CHEST_CAM_EPS ? targetCamY : nextY;
+          }
+        }
 
         const autoSettings = autoScratchRef.current;
         const autoActive =

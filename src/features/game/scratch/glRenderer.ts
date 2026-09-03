@@ -1141,10 +1141,14 @@ export class GarmentGLRenderer {
       !hideForeground &&
       !!foregroundVideo &&
       this.isVideoFramePending(this.fgTex, foregroundVideo);
+    // ~0.5 CSS px in NDC. Ignores sub-pixel chest-follow drip (the old 1e-4
+    // eps forced a full composite every rAF on 120 Hz displays) without
+    // stepping the pan the way a coarser clock did.
+    const camEps = 1 / Math.max(this.width, 1);
     const camMoved =
-      Math.abs(camX - this.lastPresentedCam.x) > 1e-4 ||
-      Math.abs(camY - this.lastPresentedCam.y) > 1e-4 ||
-      Math.abs(zoom - this.lastPresentedZoom) > 1e-4;
+      Math.abs(camX - this.lastPresentedCam.x) > camEps ||
+      Math.abs(camY - this.lastPresentedCam.y) > camEps ||
+      Math.abs(zoom - this.lastPresentedZoom) > camEps;
     const needsDraw =
       !this.hasPresentedFrame ||
       this.scratchDirty ||
