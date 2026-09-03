@@ -21,6 +21,7 @@ type WalletContextValue = {
   addCoins: (n: number) => void;
   addDiamonds: (n: number) => void;
   spendDiamonds: (n: number) => void;
+  spendCoins: (n: number) => boolean;
   resetWallet: () => void;
   refreshWallet: () => Promise<void>;
 };
@@ -34,6 +35,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const { authed } = useAuth();
   const [coins, setCoins] = useState(INITIAL_COINS);
   const [diamonds, setDiamonds] = useState(INITIAL_DIAMONDS);
+  const coinsRef = useRef(coins);
+  coinsRef.current = coins;
   const authedRef = useRef(authed);
   const walletEpochRef = useRef(0);
   authedRef.current = authed;
@@ -74,6 +77,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setDiamonds((d) => Math.max(0, d - n));
   }, []);
 
+  const spendCoins = useCallback((n: number) => {
+    if (!Number.isFinite(n) || n <= 0) return false;
+    if (coinsRef.current < n) return false;
+    // Update the ref immediately so a second sync call can't double-spend
+    // before React re-renders.
+    coinsRef.current -= n;
+    setCoins(coinsRef.current);
+    return true;
+  }, []);
+
   const resetWallet = useCallback(() => {
     walletEpochRef.current += 1;
     setCoins(INITIAL_COINS);
@@ -90,10 +103,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       addCoins,
       addDiamonds,
       spendDiamonds,
+      spendCoins,
       resetWallet,
       refreshWallet,
     }),
-    [addCoins, addDiamonds, coins, diamonds, refreshWallet, resetWallet, spendDiamonds],
+    [addCoins, addDiamonds, coins, diamonds, refreshWallet, resetWallet, spendCoins, spendDiamonds],
   );
 
   return (

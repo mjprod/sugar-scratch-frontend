@@ -16,10 +16,12 @@ type HubRedeemState =
 
 /** Inline Hub utility — code entry visible without expand/navigation. */
 export function HubRedeemSection({
+  heading = "Redeem a Code",
   onDiamondReward,
   onPackReward,
   onOpenPack,
 }: {
+  heading?: string;
   onDiamondReward: (amount: number) => void;
   onPackReward: (
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -80,7 +82,7 @@ export function HubRedeemSection({
         className="hub-section-label hub-section-label--redeem"
       >
         <Ticket className="size-3.5" aria-hidden="true" />
-        Redeem a Code
+        {heading}
       </h2>
 
       <div className="hub-redeem-card">
