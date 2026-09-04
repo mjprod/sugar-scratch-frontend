@@ -2,8 +2,10 @@ import {
   buildFoilOpeningSession,
   buildOpeningSession,
   cartCheckoutIdempotencyKey,
+  clampBuyPackQuantity,
   clearOpening,
   freshRevealIds,
+  linearPackTotalCost,
   nextUnscratchedIndex,
   packCost,
   packUnitCost,
@@ -29,6 +31,9 @@ assert(single.cards.length === 3, "single-pack card count");
 assert(bundle.diamondCost === unit * 3, "bundle cost");
 assert(bundle.cards.length === 5, "bundle card count");
 assert(bundle.cards.at(-1)?.rarity === "Ultra Rare", "bundle rarity order");
+assert(clampBuyPackQuantity(0) === 1, "qty floor");
+assert(clampBuyPackQuantity(99) === 10, "qty ceiling");
+assert(linearPackTotalCost("ep1", 3) === unit * 3, "linear qty cost");
 
 const foil = buildFoilOpeningSession(
   [{ id: "foil-1", label: "Foil", videoUrl: "https://example.com/foil.mp4" }],
