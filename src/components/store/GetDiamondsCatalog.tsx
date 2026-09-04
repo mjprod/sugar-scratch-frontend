@@ -356,7 +356,7 @@ function ExchangePanel({
         <div className="get-diamonds-exchange__balance">
           Your Balance
           <div className="get-diamonds-exchange__balance-value">
-            <CoinLottie size={18} aria-hidden />
+            <CoinLottie size={28} aria-hidden />
             {coinBalance.toLocaleString()}
           </div>
         </div>

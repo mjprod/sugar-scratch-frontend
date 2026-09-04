@@ -881,10 +881,12 @@ export function TopSymbolBar({
           >
             <GameSymbolIcon
               typeId={typeId}
-              size={28}
-              // Slot pop / match reactivate scale past 1.2× — render sharper
-              // than the 28px CSS box so those beats stay crisp.
-              pixelScale={1.3}
+              // Center / showcase slots are a fixed 44px; fill them. Docked
+              // slots can shrink on narrow stages, so stay at 28 there.
+              size={phase === "docked" ? 28 : 40}
+              // Retina + CSS pulse/enter scales — render the backing store
+              // ahead of those transforms so the icons stay crisp.
+              pixelScale={phase === "docked" ? 2 : 2.5}
               // Only animate during the center foil reveal. Docked / showcase
               // use CSS (dormant desat, pulse) — keeps DotLottie workers frozen
               // for the whole hunt, which is the long expensive stretch.

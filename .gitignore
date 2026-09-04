@@ -37,3 +37,8 @@ _incoming/
 
 # Local mkcert HTTPS pair (regenerate with: npm run certs)
 certs/
+
+# Headless Chrome leftovers (never part of the app)
+.chrome-foil/
+.foilshot.png
+.foilshot *.png

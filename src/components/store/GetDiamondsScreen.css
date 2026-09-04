@@ -578,9 +578,9 @@ body[data-theme="v8"] .get-diamonds-exchange__balance-value {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #ffc44d;
 }

@@ -219,6 +219,28 @@ textarea:focus-visible {
   -webkit-user-select: none;
 }
 
+/* Top-row states share the row with the game shell's pause button (40px at
+   left:12px). Inset past it and take the slot size from --game-symbol-slot so
+   the button can never cover a symbol; the bar then centres in the remaining
+   band via margin-inline:auto. Mid-screen phases (center / showcase) sit at
+   top:50% nowhere near the button, so they keep full width and stay centred on
+   the stage. Slots don't shrink or wrap, so the size has to come from the
+   variable — insets alone would just let the bar overflow back under the
+   button. Ceiling: the slot is left unclamped so the row always fits, which
+   means the 28px icons start clipping once the stage drops under ~297px. */
+.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
+  left: 60px;
+  right: 12px;
+  max-width: calc(100% - 72px);
+  gap: 5px;
+  padding: 9px;
+}
+
+.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .symbol-slot {
+  width: var(--game-symbol-slot, 44px);
+  height: var(--game-symbol-slot, 44px);
+}
+
 /* Pack session progress — card stack, bottom-left (separate from symbol objective). */
 .pack-progress {
   position: absolute;
@@ -1588,7 +1610,9 @@ textarea:focus-visible {
   animation-fill-mode: both;
 }
 
-/* Body match: light 2.5D — one glow plate + paused symbol (no blend modes). */
+/* Body match: light 2.5D — one glow plate + paused symbol (no blend modes).
+   Only the in-place anticipation is CSS; MatchFlight drops this animation and
+   drives the travel arc per frame from there. */
 .flying-coin.is-match-fly {
   z-index: 12;
   width: 42px;
@@ -1598,11 +1622,15 @@ textarea:focus-visible {
   box-shadow: none;
   perspective: 760px;
   perspective-origin: 50% 42%;
-  animation-name: matchFly;
+  animation-name: matchAnticipate;
+  animation-duration: var(--match-anticipate-ms);
+  animation-delay: var(--match-delay-ms);
   animation-timing-function: cubic-bezier(0.22, 0.9, 0.28, 1);
 }
 
-/* Virtual camera / rig — orbits so layered planes parallax. */
+/* Virtual camera / rig — orbits so layered planes parallax. Spans both phases,
+   so it takes the sequence duration rather than inheriting the parent's (which
+   now only covers the anticipation, and gets cleared for the travel). */
 .flying-coin.is-match-fly .flying-coin-spin {
   position: relative;
   display: grid;
@@ -1613,8 +1641,8 @@ textarea:focus-visible {
   will-change: transform;
   animation-name: matchFlySpin;
   animation-timing-function: cubic-bezier(0.28, 0.15, 0.3, 1);
-  animation-duration: inherit;
-  animation-delay: inherit;
+  animation-duration: var(--match-sequence-ms);
+  animation-delay: var(--match-delay-ms);
   animation-fill-mode: both;
 }
 
@@ -1662,8 +1690,9 @@ textarea:focus-visible {
   );
   z-index: -1;
   pointer-events: none;
-  animation: matchFlyGlow 1250ms cubic-bezier(0.22, 0.9, 0.28, 1) both;
-  animation-delay: inherit;
+  animation: matchFlyGlow var(--match-sequence-ms)
+    cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  animation-delay: var(--match-delay-ms);
 }
 
 @keyframes coinFly {
@@ -1738,50 +1767,80 @@ textarea:focus-visible {
   }
 }
 
-@keyframes matchFly {
+/* Anticipation only — stays put at the find and hands off at scale 1, which is
+   where MatchFlight's travel picks the scale up. Timings are the old combined
+   matchFly 0→46% rescaled over the anticipation's own duration. */
+@keyframes matchAnticipate {
   /* Appear + surge toward camera — transform/opacity only (no CSS filter). */
   0% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
       translate(-50%, -50%) scale(0.35);
     opacity: 0;
   }
-  7% {
+  15% {
     opacity: 1;
     transform: translate(var(--coin-from-x), var(--coin-from-y))
       translate(-50%, -50%) scale(1.05);
   }
-  18% {
+  39% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
       translate(-50%, -50%) scale(2.2);
   }
   /* Settle and hold in front. */
-  30% {
+  65% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
       translate(-50%, -50%) scale(1.78);
   }
-  40% {
+  87% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
       translate(-50%, -50%) scale(1.72);
     opacity: 1;
   }
-  /* Anticipation squash, then launch upward. */
-  46% {
+  /* Gather itself for the launch. */
+  100% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(1.42);
-  }
-  68% {
-    transform: translate(var(--coin-mid-x), var(--coin-mid-y))
-      translate(-50%, -50%) scale(1.08);
+      translate(-50%, -50%) scale(1);
     opacity: 1;
   }
-  88% {
-    transform: translate(var(--coin-to-x), var(--coin-to-y))
-      translate(-50%, -50%) scale(0.55);
-    opacity: 0.95;
+}
+
+/* Comet tail. Dots are siblings of the icon, not children — once dropped they
+   stay where they were spawned instead of following it. */
+.match-trail {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.match-trail-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  /* Reward gold, not the symbol's own colour — reads as energy, not a copy. */
+  background: radial-gradient(
+    circle,
+    oklch(0.928 0.103 92.71) 0%,
+    oklch(0.898 0.124 88.45 / 0.7) 55%,
+    transparent 75%
+  );
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: matchTrailFade var(--match-trail-ms) ease-out forwards;
+}
+
+@keyframes matchTrailFade {
+  0% {
+    transform: translate(var(--dot-x), var(--dot-y)) translate(-50%, -50%)
+      scale(1);
+    opacity: 0.85;
   }
   100% {
-    transform: translate(var(--coin-to-x), var(--coin-to-y))
-      translate(-50%, -50%) scale(0.32);
+    transform: translate(var(--dot-x), var(--dot-y)) translate(-50%, -50%)
+      scale(0.3);
     opacity: 0;
   }
 }
@@ -1795,7 +1854,8 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flying-coin {
+  .flying-coin,
+  .match-trail {
     display: none;
   }
 }

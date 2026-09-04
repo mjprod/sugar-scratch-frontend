@@ -3,8 +3,9 @@ import type { CSSProperties } from "react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const DIAMOND_LOTTIE_SRC = "/lottie/lottieDiamond.lottie";
-export const DIAMOND_MARK_WEBP = "/images/diamond_min.webp";
-export const DIAMOND_MARK_PNG = "/images/diamond_min.png";
+/** Still mark — 512² export from the Lottie (was a 31² thumbnail). */
+export const DIAMOND_MARK_WEBP = "/images/diamond_min.webp?v=512";
+export const DIAMOND_MARK_PNG = "/images/diamond_min.png?v=512";
 
 type DiamondLottieProps = {
   className?: string;
