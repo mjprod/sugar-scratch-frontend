@@ -88,6 +88,18 @@ import {
 } from "../modules/scratchUiThrottle";
 import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
 import {
+  createVideoSyncState,
+  decideVideoSync,
+  shortestMediaDrift,
+  type VideoSyncState,
+} from "../modules/videoSync";
+import {
+  celebrateParticleBoost,
+  crossedProgressMilestone,
+  CURSOR_FX_CELEBRATE_MS,
+  resolveCursorFxDeviceProfile,
+} from "../modules/cursorFxCelebrate";
+import {
   fetchCatalogMotionCards,
 } from "../shared/catalog";
 import {
@@ -834,7 +846,7 @@ function loadAutoScratchSettings(): AutoScratchSettings {
   }
 }
 
-const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v7";
+const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v8";
 const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx",
   "sugar-scratchie:cursor-fx-v1",
@@ -843,6 +855,7 @@ const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx-v4",
   "sugar-scratchie:cursor-fx-v5",
   "sugar-scratchie:cursor-fx-v6",
+  "sugar-scratchie:cursor-fx-v7",
 ];
 
 type CursorFxSettings = {
@@ -853,12 +866,30 @@ type CursorFxSettings = {
   fadeSpeed: number;
 };
 
+function detectCursorFxDeviceProfile() {
+  if (typeof window === "undefined") {
+    return resolveCursorFxDeviceProfile({
+      reducedMotion: false,
+      coarsePointer: false,
+      narrowViewport: false,
+    });
+  }
+  return resolveCursorFxDeviceProfile({
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)")
+      .matches,
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    narrowViewport: window.matchMedia("(max-width: 700px)").matches,
+  });
+}
+
+const CURSOR_FX_DEVICE = detectCursorFxDeviceProfile();
+
 const CURSOR_FX_DEFAULTS: CursorFxSettings = {
-  fairyDust: true,
-  particleSize: 64,
-  particleCount: 5,
+  fairyDust: CURSOR_FX_DEVICE.fairyDust,
+  particleSize: CURSOR_FX_DEVICE.particleSize,
+  particleCount: CURSOR_FX_DEVICE.particleCount,
   gravity: 0.1,
-  // Slightly longer life so a scratch leaves a denser coin trail.
+  // Slightly longer life so a celebrate burst leaves a denser coin trail.
   fadeSpeed: 0.96,
 };
 
@@ -959,30 +990,11 @@ const HINT_PULSE_GAP_MS = 1600;
 // get its current canvas-pixel location (the mesh UV grid is regular 0..1).
 // sampleMeshUvToWorld lives in meshGeometry.ts
 
-// Drift past this (seconds) is a genuine discontinuity (loop wrap) and is
-// corrected immediately with a hard seek. Seeks stall the decoder, and on
-// Safari, whose currentTime is coarse, a low threshold makes us seek constantly
-// (every stale reading crosses it) which reads as continuous lag — so keep it
-// high.
-const HARD_SEEK_DRIFT = 0.45;
-
-// Smaller but persistent drift (a startup offset between the two play() calls,
-// a decode stall, tab-suspend catch-up) is closed with a rare one-shot seek:
-// drift must hold past SOFT_SEEK_DRIFT for SOFT_SEEK_CONFIRM_MS before we act,
-// and corrections are spaced by SOFT_SEEK_COOLDOWN_MS so a single stale
-// currentTime reading (Safari updates at ~4 Hz) can't cause a seek storm.
-// 0.05s catches a 2-frame offset at 24fps (2×0.042=0.083s) and at 30fps
-// (2×0.033=0.067s), which 0.09s would silently ignore.
-// 150ms confirm is long enough to outlast one Safari polling interval (~250ms)
-// while still snapping within the first visible loop.
-const SOFT_SEEK_DRIFT = 0.05;
-const SOFT_SEEK_CONFIRM_MS = 150;
-const SOFT_SEEK_COOLDOWN_MS = 2000;
-
-const videoSyncState = new WeakMap<
-  HTMLVideoElement,
-  { driftSince: number; lastSeekAt: number }
->();
+// Dual-clip sync: prefer tolerating 1–2 frames over seeking. Loop wrap used to
+// look like an ~duration discontinuity and fire an immediate hard seek (the
+// multi-hundred-ms hitch). Shortest-path drift + cooldown on every seek softens
+// that; see modules/videoSync.ts.
+const videoSyncState = new WeakMap<HTMLVideoElement, VideoSyncState>();
 
 function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
   if (source.paused && !target.paused) {
@@ -1007,43 +1019,30 @@ function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
   if (target.seeking) return;
 
   // Let the foreground free-run at 1×. Continuously steering playbackRate
-  // knocks Safari's video decoder off its smooth-decode path, which starves the
-  // foreground to a few fps and makes it fall behind — the opposite of what the
-  // steering is trying to do. Corrections below are seeks only, and rare.
+  // knocks Safari's video decoder off its smooth-decode path.
   if (target.playbackRate !== 1) target.playbackRate = 1;
 
   const targetTime = foregroundTimeFromBottom(source, target);
-  const drift = targetTime - target.currentTime;
+  const duration = target.duration;
+  const actualTime = target.currentTime;
+  const drift = shortestMediaDrift(targetTime, actualTime, duration);
   const now = performance.now();
   let state = videoSyncState.get(target);
   if (!state) {
-    state = { driftSince: 0, lastSeekAt: 0 };
+    state = createVideoSyncState();
     videoSyncState.set(target, state);
   }
 
-  // A genuine discontinuity (loop wrap): snap immediately.
-  if (Math.abs(drift) > HARD_SEEK_DRIFT) {
+  const decision = decideVideoSync({
+    drift,
+    now,
+    state,
+    desiredTime: targetTime,
+    actualTime,
+    duration,
+  });
+  if (decision.action === "seek") {
     target.currentTime = targetTime;
-    state.driftSince = 0;
-    state.lastSeekAt = now;
-    return;
-  }
-
-  // Sub-wrap drift: require it to persist before correcting, and never correct
-  // more often than the cooldown, so coarse/stale readings can't cause a storm.
-  if (Math.abs(drift) > SOFT_SEEK_DRIFT) {
-    if (state.driftSince === 0) {
-      state.driftSince = now;
-    } else if (
-      now - state.driftSince >= SOFT_SEEK_CONFIRM_MS &&
-      now - state.lastSeekAt >= SOFT_SEEK_COOLDOWN_MS
-    ) {
-      target.currentTime = targetTime;
-      state.driftSince = 0;
-      state.lastSeekAt = now;
-    }
-  } else {
-    state.driftSince = 0;
   }
 }
 
@@ -1565,6 +1564,12 @@ export function ScratchPrototype() {
     useState<CursorFxSettings>(loadCursorFxSettings);
   const cursorFxRef = useRef(cursorFx);
   cursorFxRef.current = cursorFx;
+  /** Live progress for celebrate milestones (independent of throttled React progress). */
+  const celebrateProgressRef = useRef(0);
+  const celebrateUntilRef = useRef(0);
+  const celebrateTimerRef = useRef<number | null>(null);
+  const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
+  const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
   /** Bumped each rAF — fabric/symbol GPU probes run at most once per frame. */
   const probeFrameIdRef = useRef(0);
   const fabricAlphaCacheRef = useRef(createFabricAlphaCache());
@@ -1632,6 +1637,45 @@ export function ScratchPrototype() {
     publishProgressUi(true);
     publishCursorOnMesh(false);
     lastScratchWorldRef.current = null;
+  }
+
+  function clearCelebrateTimer() {
+    if (celebrateTimerRef.current !== null) {
+      window.clearTimeout(celebrateTimerRef.current);
+      celebrateTimerRef.current = null;
+    }
+  }
+
+  /** Arm fairy-dust for a short win window when scratch progress crosses +10%. */
+  function maybeCelebrateScratchProgress(nextProgress: number) {
+    if (!cursorFxRef.current.fairyDust) {
+      celebrateProgressRef.current = nextProgress;
+      return;
+    }
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      celebrateProgressRef.current = nextProgress;
+      return;
+    }
+    const crossed = crossedProgressMilestone(
+      celebrateProgressRef.current,
+      nextProgress,
+    );
+    celebrateProgressRef.current = nextProgress;
+    if (crossed == null) return;
+
+    celebrateUntilRef.current = performance.now() + CURSOR_FX_CELEBRATE_MS;
+    setCursorFxCelebrate(true);
+    setCursorFxBurstNonce((n) => n + 1);
+    clearCelebrateTimer();
+    celebrateTimerRef.current = window.setTimeout(() => {
+      celebrateTimerRef.current = null;
+      if (performance.now() >= celebrateUntilRef.current) {
+        setCursorFxCelebrate(false);
+      }
+    }, CURSOR_FX_CELEBRATE_MS + 40);
   }
   // Phones hide the side panel, so the scratch-zoom config lives behind a gear
   // button that opens this sheet.
@@ -2812,6 +2856,9 @@ export function ScratchPrototype() {
     revealedRef.current = [];
     revealedCountRef.current = 0;
     progressRef.current = 0;
+    celebrateProgressRef.current = 0;
+    clearCelebrateTimer();
+    setCursorFxCelebrate(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -2878,6 +2925,7 @@ export function ScratchPrototype() {
     const next = samples.length ? revealedCountRef.current / samples.length : 0;
     progressRef.current = next;
     publishedProgressRef.current = next;
+    celebrateProgressRef.current = next;
     publishProgressUi(true);
     const hasBodySymbols =
       trackedMesh?.symbolPoints?.length === SYMBOL_SLOT_COUNT;
@@ -3213,10 +3261,20 @@ export function ScratchPrototype() {
     !introCover &&
     (!useBodySymbols ||
       (topBarPhase !== "center" && !introGateActive && !symbolsHuntComplete));
-  // Also require an active stroke that actually hit the mesh — coins stay
-  // glued to fabric, not the empty canvas around it.
+  // Win-feel trail: spawn only during the brief celebrate window after each
+  // +10% scratched (not a continuous trail for the whole stroke).
   const cursorFxSpawnActive =
-    cursorFxPlayWindow && isScratching && cursorOnMesh;
+    cursorFxPlayWindow &&
+    cursorFxCelebrate &&
+    isScratching &&
+    cursorOnMesh;
+  const cursorFxSpawnCount = cursorFxCelebrate
+    ? celebrateParticleBoost(cursorFx.particleCount)
+    : cursorFx.particleCount;
+
+  useEffect(() => {
+    return () => clearCelebrateTimer();
+  }, []);
 
   // Drop a persisted/stale auto-scratch enable while the hunt is still locked.
   useEffect(() => {
@@ -3261,6 +3319,9 @@ export function ScratchPrototype() {
     );
     revealedCountRef.current = 0;
     progressRef.current = 0;
+    celebrateProgressRef.current = 0;
+    clearCelebrateTimer();
+    setCursorFxCelebrate(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -4009,6 +4070,7 @@ export function ScratchPrototype() {
       : 0;
     progressRef.current = nextProgress;
     publishProgressUi(false);
+    maybeCelebrateScratchProgress(nextProgress);
     const autoMode = autoScratchRef.current.enabled;
     if (useBodySymbolsRef.current && trackedMeshRef.current?.symbolPoints) {
       const bodyPoints = trackedMeshRef.current.symbolPoints;
@@ -4630,11 +4692,14 @@ export function ScratchPrototype() {
               element={cursorHost}
               particleTypes={cursorFxParticleTypes}
               particleSize={cursorFx.particleSize}
-              particleCount={cursorFx.particleCount}
+              particleCount={cursorFxSpawnCount}
               gravity={cursorFx.gravity}
               fadeSpeed={cursorFx.fadeSpeed}
               initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
               spawnEnabled={cursorFxSpawnActive}
+              maxDevicePixelRatio={CURSOR_FX_DEVICE.maxOverlayDpr}
+              burstNonce={cursorFxBurstNonce}
+              burstCount={celebrateParticleBoost(cursorFx.particleCount) * 2}
             />
           ) : null}
           {glError ? (
