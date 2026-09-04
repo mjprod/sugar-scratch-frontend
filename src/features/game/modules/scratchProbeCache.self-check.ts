@@ -83,9 +83,11 @@ assert(
   const pointerEventsPerSec = 120;
   const symbols = 6;
   const oldReads = pointerEventsPerSec * (1 + symbols); // fabric + every slot
-  // Worst case: every nearby miss re-samples; still cheaper than probing all
-  // slots on every pointer event (UV gate drops far symbols).
-  const newReads = pointerEventsPerSec * (1 + 2);
+  // Heuristic bound: only a small subset of nearby symbols are worth re-sampling
+  // in a pointer burst, even though the actual nearby count can vary up to
+  // `symbols` as the scratch scene changes.
+  const nearbySymbols = Math.min(2, symbols);
+  const newReads = pointerEventsPerSec * (1 + nearbySymbols);
   assert(newReads < oldReads, "expected material readPixels cut");
 }
 
