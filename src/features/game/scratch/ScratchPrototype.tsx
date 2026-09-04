@@ -86,6 +86,7 @@ import {
   createThrottledUiClock,
   shouldPublishThrottledUi,
 } from "../modules/scratchUiThrottle";
+import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
 import {
   fetchCatalogMotionCards,
 } from "../shared/catalog";
@@ -2397,8 +2398,9 @@ export function ScratchPrototype() {
           hideForeground,
           chromaKeyRef.current,
           PRESENT_ZOOM,
-          // Body hunt (docked bar): half-rate bottom uploads; FG stays full rate.
-          useBodySymbolsRef.current && topBarPhaseRef.current === "docked",
+          // Session-wide: half-rate bottom underlay; FG stays full rate for glue.
+          // Renderer also clears the flag when hideForeground (claimed).
+          shouldHalfRateBottomUploads(hideForeground),
         );
 
         // Skip body-marker transforms while the intro countdown covers the stage —

@@ -806,7 +806,7 @@ export class GarmentGLRenderer {
       return;
     }
 
-    // Hunt-phase knob: keep FG at full clip fps, but only push every other
+    // Session-wide: keep FG at full clip fps, but only push every other
     // bottom frame to the GPU (~25% less upload traffic with two videos).
     // First frame / size change always uploads so the texture stays valid.
     if (
