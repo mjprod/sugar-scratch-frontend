@@ -12,6 +12,11 @@
 // Scratches live in a persistent UV-space texture painted by `paintScratch`,
 // so a hole rides the same patch of fabric the mesh tracks.
 
+import {
+  copyMeshPositions,
+  meshPositionsNeedUpload,
+} from "../modules/meshUploadDirty";
+
 type Pt = { x: number; y: number };
 
 export type GLMeshSample = {
@@ -288,6 +293,9 @@ export class GarmentGLRenderer {
   private lineBuf: WebGLBuffer;
   /** Reused mesh uploads — avoid allocating ~7KB typed arrays every frame. */
   private meshPosScratch: Float32Array | null = null;
+  /** Last positions uploaded to `meshPosBuf` — skip SubData when unchanged. */
+  private meshPosUploaded: Float32Array | null = null;
+  private meshPosHasUpload = false;
   private meshUvScratch: Float32Array | null = null;
   private meshIndexScratch: Uint16Array | null = null;
   private meshUvUploadedFor: Pt[] | null = null;
@@ -506,6 +514,8 @@ export class GarmentGLRenderer {
     this.meshUvUploadedFor = null;
     this.meshIndexCacheCount = 0;
     this.meshPosBufBytes = 0;
+    this.meshPosHasUpload = false;
+    this.meshPosUploaded = null;
     this.meshIndexLayoutKey = "";
     this.meshIndexAllVisible = false;
     this.hasPresentedFrame = false;
@@ -806,7 +816,7 @@ export class GarmentGLRenderer {
       return;
     }
 
-    // Hunt-phase knob: keep FG at full clip fps, but only push every other
+    // Session-wide: keep FG at full clip fps, but only push every other
     // bottom frame to the GPU (~25% less upload traffic with two videos).
     // First frame / size change always uploads so the texture stays valid.
     if (
@@ -1141,10 +1151,14 @@ export class GarmentGLRenderer {
       !hideForeground &&
       !!foregroundVideo &&
       this.isVideoFramePending(this.fgTex, foregroundVideo);
+    // ~0.5 CSS px in NDC. Ignores sub-pixel chest-follow drip (the old 1e-4
+    // eps forced a full composite every rAF on 120 Hz displays) without
+    // stepping the pan the way a coarser clock did.
+    const camEps = 1 / Math.max(this.width, 1);
     const camMoved =
-      Math.abs(camX - this.lastPresentedCam.x) > 1e-4 ||
-      Math.abs(camY - this.lastPresentedCam.y) > 1e-4 ||
-      Math.abs(zoom - this.lastPresentedZoom) > 1e-4;
+      Math.abs(camX - this.lastPresentedCam.x) > camEps ||
+      Math.abs(camY - this.lastPresentedCam.y) > camEps ||
+      Math.abs(zoom - this.lastPresentedZoom) > camEps;
     const needsDraw =
       !this.hasPresentedFrame ||
       this.scratchDirty ||
@@ -1302,12 +1316,21 @@ export class GarmentGLRenderer {
       pos[i * 2 + 1] = sample.verts[i].y;
     }
     const bytes = n * 2 * 4;
+    const needPosUpload =
+      !this.meshPosHasUpload ||
+      bytes > this.meshPosBufBytes ||
+      meshPositionsNeedUpload(pos, this.meshPosUploaded, n);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, this.meshPosBuf);
-    if (bytes > this.meshPosBufBytes) {
-      gl.bufferData(gl.ARRAY_BUFFER, pos.subarray(0, n * 2), gl.DYNAMIC_DRAW);
-      this.meshPosBufBytes = bytes;
-    } else {
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, pos.subarray(0, n * 2));
+    if (needPosUpload) {
+      if (bytes > this.meshPosBufBytes) {
+        gl.bufferData(gl.ARRAY_BUFFER, pos.subarray(0, n * 2), gl.DYNAMIC_DRAW);
+        this.meshPosBufBytes = bytes;
+      } else {
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, pos.subarray(0, n * 2));
+      }
+      this.meshPosUploaded = copyMeshPositions(this.meshPosUploaded, pos, n);
+      this.meshPosHasUpload = true;
     }
 
     // UVs are static for a given mesh — upload once.
