@@ -78,7 +78,6 @@ import {
   isSymbolNearStroke,
   needsFabricAlphaSample,
   readCachedFabricAlpha,
-  invalidateCachedSymbolScratchAmount,
   readCachedSymbolScratchAmount,
   writeCachedFabricAlpha,
   writeCachedSymbolScratchAmount,
@@ -1603,24 +1602,24 @@ export function ScratchPrototype() {
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
 
   /** Ref holds live progress; React `progress` publishes ≤1 / UI interval (flush on stroke end). */
-function publishProgressUi(force = false) {
-  const next = progressRef.current;
-  if (!force && next === publishedProgressRef.current) return;
+  function publishProgressUi(force = false) {
+    const next = progressRef.current;
+    if (!force && next === publishedProgressRef.current) return;
 
-  if (
-    !shouldPublishThrottledUi(
-      progressUiClockRef.current,
-      performance.now(),
-      UI_STATE_UPDATE_INTERVAL_MS,
-      force,
-    )
-  ) {
-    return;
+    if (
+      !shouldPublishThrottledUi(
+        progressUiClockRef.current,
+        performance.now(),
+        UI_STATE_UPDATE_INTERVAL_MS,
+        force,
+      )
+    ) {
+      return;
+    }
+
+    publishedProgressRef.current = next;
+    setProgress(next);
   }
-
-  publishedProgressRef.current = next;
-  setProgress(next);
-}
 
   function publishCursorOnMesh(onMesh: boolean) {
     cursorOnMeshRef.current = onMesh;
@@ -4042,29 +4041,6 @@ function publishProgressUi(force = false) {
     marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
     glRendererRef.current?.paintScratch(u, v, radius);
 
-    // Later stamps in this rAF may punch the same mark further. Drop any
-    // below-threshold probe for nearby slots so finalize can re-sample.
-    if (useBodySymbolsRef.current && trackedMeshRef.current?.symbolPoints) {
-      const bodyPoints = trackedMeshRef.current.symbolPoints;
-      const symbolProbeCache = symbolScratchProbeCacheRef.current;
-      const probeFrame = probeFrameIdRef.current;
-      for (let index = 0; index < bodyPoints.length; index += 1) {
-        if (revealedPointsRef.current[index]) continue;
-        if (
-          !isSymbolNearStroke(
-            u,
-            v,
-            bodyPoints[index].u,
-            bodyPoints[index].v,
-            SYMBOL_REVEAL_UV_RADIUS,
-          )
-        ) {
-          continue;
-        }
-        invalidateCachedSymbolScratchAmount(symbolProbeCache, probeFrame, index);
-      }
-    }
-
     const samples = revealSamplesRef.current;
     const revealed = revealedRef.current;
     for (let i = 0; i < samples.length; i += 1) {
@@ -4112,13 +4088,15 @@ function publishProgressUi(force = false) {
           continue;
         }
         // Must have actually punched the clothing at this UV — proximity alone
-        // used to pop icons on top of still-blue foil. At most one GPU sample
-        // per slot per rAF (auto-scratch can stamp many times in one frame).
+        // used to pop icons on top of still-blue foil. Reuse a same-frame GPU
+        // sample only once it already meets the reveal threshold — a miss must
+        // not stick after later stamps in this rAF add more paint.
         if (!renderer) continue;
         let amount = readCachedSymbolScratchAmount(
           symbolProbeCache,
           probeFrame,
           index,
+          SYMBOL_SCRATCH_REVEAL_THRESHOLD,
         );
         if (amount === null) {
           amount = writeCachedSymbolScratchAmount(
