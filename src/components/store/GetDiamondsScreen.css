@@ -128,45 +128,42 @@ body[data-theme="v8"] .get-diamonds-ambient__sparkle {
   }
 }
 
-/* Hero */
+/* Hero — full-bleed art behind copy */
 body[data-theme="v8"] .get-diamonds-hero {
   position: relative;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 16px;
-  align-items: center;
-  padding: 16px 20px;
+  display: block;
+  min-height: 180px;
+  padding: 28px 28px;
   border-radius: 18px;
   border: none;
-  background:
-    linear-gradient(
-      120deg,
-      rgba(18, 11, 30, 0.94),
-      rgba(31, 10, 42, 0.88)
-    );
+  background: #120b1e;
   overflow: hidden;
+  isolation: isolate;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 48px rgba(0, 0, 0, 0.28);
 }
 
+/* Soft left scrim so title stays readable over the photo */
 body[data-theme="v8"] .get-diamonds-hero::after {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   background: linear-gradient(
-    105deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    transparent 34%,
-    transparent 66%,
-    rgba(255, 95, 168, 0.08) 100%
+    90deg,
+    rgba(12, 6, 22, 0.88) 0%,
+    rgba(12, 6, 22, 0.55) 38%,
+    rgba(12, 6, 22, 0.18) 62%,
+    transparent 100%
   );
 }
 
 body[data-theme="v8"] .get-diamonds-hero__copy-block {
   position: relative;
   z-index: 2;
+  max-width: 420px;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__title {
@@ -187,24 +184,26 @@ body[data-theme="v8"] .get-diamonds-hero__copy {
   max-width: 420px;
   font-size: 13px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 body[data-theme="v8"] .get-diamonds-hero__visual {
-  position: relative;
-  z-index: 1;
-  height: 148px;
-  max-height: 148px;
-  border-radius: 14px;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  height: auto;
+  max-height: none;
+  border-radius: inherit;
   overflow: hidden;
   isolation: isolate;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__aurora {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.72;
+  opacity: 0.45;
   mix-blend-mode: screen;
 }
 
@@ -215,9 +214,9 @@ body[data-theme="v8"] .get-diamonds-hero__art-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 62% center;
-  opacity: 0.92;
-  mask-image: linear-gradient(to left, black 58%, transparent 100%);
+  object-position: 70% center;
+  opacity: 1;
+  mask-image: none;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__sheen {
@@ -685,19 +684,28 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   }
 
   body[data-theme="v8"] .get-diamonds-hero {
-    grid-template-columns: 1fr;
-    padding: 14px 16px;
+    min-height: 168px;
+    padding: 22px 18px;
+  }
+
+  body[data-theme="v8"] .get-diamonds-hero::after {
+    background: linear-gradient(
+      180deg,
+      rgba(12, 6, 22, 0.72) 0%,
+      rgba(12, 6, 22, 0.35) 45%,
+      rgba(12, 6, 22, 0.55) 100%
+    );
   }
 
   body[data-theme="v8"] .get-diamonds-hero__visual {
-    height: 120px;
-    max-height: 120px;
-    order: 2;
+    height: auto;
+    max-height: none;
+    order: unset;
   }
 
   body[data-theme="v8"] .get-diamonds-hero__art-img {
-    object-position: center 40%;
-    mask-image: linear-gradient(to top, black 72%, transparent 100%);
+    object-position: 65% center;
+    mask-image: none;
   }
 
   body[data-theme="v8"] .get-diamonds-packages {
