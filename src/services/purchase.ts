@@ -425,7 +425,15 @@ export function commitLinearPurchaseIdempotencyKey(
   packId: string,
   quantity: number,
 ) {
-  clearLinearPurchaseIdempotencyKey(packId, quantity);
+  const q = clampBuyPackQuantity(quantity);
+  clearLinearPurchaseIdempotencyKey(packId, q);
+  // qty 1|5 delegates to submitPurchase (legacy session keys).
+  // Other quantities may fall back to N× qty-1, which also writes the legacy qty-1 key.
+  if (q === 1 || q === 5) {
+    clearPurchaseIdempotencyKey(packId, q);
+  } else {
+    clearPurchaseIdempotencyKey(packId, 1);
+  }
 }
 
 function isInsufficientPurchaseError(error: unknown): boolean {
@@ -523,7 +531,11 @@ async function purchaseLinearAsSingles(
   const instances: PackInstanceApi[] = [];
   let diamondCost = 0;
   for (let i = 0; i < q; i++) {
-    const result = await submitPurchase(1, diamonds, packId, undefined, coins);
+    // Fresh Idempotency-Key each iteration — reusing the legacy qty-1 session
+    // key would make buys 2..N look like retries of the first purchase.
+    const singleKey = `pack-buy-linear-single:${packId}:${i}:${newIdempotencyToken()}`;
+    const result = await submitPurchase(1, diamonds, packId, singleKey, coins);
+    clearPurchaseIdempotencyKey(packId, 1);
     diamonds = result.wallet.diamonds;
     coins = result.wallet.coins;
     diamondCost += result.diamondCost;
