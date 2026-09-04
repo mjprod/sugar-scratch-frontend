@@ -31,10 +31,54 @@ const BUY_PACK_CTA_SIZE_MOBILE = {
   strokeWidth: 2,
 };
 
+/** Matches MobileCssCarousel.css dual-stack opacity transition. */
+const GLOW_FADE_MS = 640;
+const DEFAULT_GLOW = "oklch(0.798 0.104 207.84)";
+
+type GlowPhase = "idle" | "prep" | "fading";
+
 function prefersReducedMotion() {
   return (
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+function glowColorForItem(item: Iteration | undefined) {
+  return (
+    item?.backgroundColor ||
+    item?.overlayColorEnd ||
+    item?.overlayColorStart ||
+    DEFAULT_GLOW
+  );
+}
+
+function PackGlowStacks({
+  baseColor,
+  nextColor,
+}: {
+  baseColor: string;
+  nextColor: string;
+}) {
+  return (
+    <>
+      <div
+        className="packs-glow-stack packs-glow-stack--base"
+        aria-hidden="true"
+        style={{ ["--overlay-gradient-color-end" as string]: baseColor }}
+      >
+        <div className="packs-circle packs-circle--bloom" />
+        <div className="packs-circle packs-circle--core" />
+      </div>
+      <div
+        className="packs-glow-stack packs-glow-stack--next"
+        aria-hidden="true"
+        style={{ ["--overlay-gradient-color-end" as string]: nextColor }}
+      >
+        <div className="packs-circle packs-circle--bloom" />
+        <div className="packs-circle packs-circle--core" />
+      </div>
+    </>
   );
 }
 
@@ -244,10 +288,92 @@ export function MobileCssCarousel({
   const [confirmingAdd, setConfirmingAdd] = useState(false);
   const buyConfirmOpenRef = useRef(false);
   const buyConfirmLeavingRef = useRef(false);
+  const initialGlow = glowColorForItem(items[0]);
+  const [baseGlow, setBaseGlow] = useState(initialGlow);
+  const [nextGlow, setNextGlow] = useState(initialGlow);
+  const [glowPhase, setGlowPhase] = useState<GlowPhase>("idle");
+  const glowTargetRef = useRef(initialGlow);
+  const glowPhaseRef = useRef<GlowPhase>("idle");
+  const baseGlowRef = useRef(initialGlow);
+  const nextGlowRef = useRef(initialGlow);
+  const glowFadeTimerRef = useRef(0);
+  const glowRafRef = useRef(0);
   onReadyRef.current = onReady;
   const activeItem = items[activeIndex];
   buyConfirmOpenRef.current = buyConfirmOpen;
   buyConfirmLeavingRef.current = buyConfirmLeaving;
+  glowPhaseRef.current = glowPhase;
+  baseGlowRef.current = baseGlow;
+  nextGlowRef.current = nextGlow;
+
+  const clearGlowTimers = useCallback(() => {
+    window.clearTimeout(glowFadeTimerRef.current);
+    window.cancelAnimationFrame(glowRafRef.current);
+    glowFadeTimerRef.current = 0;
+    glowRafRef.current = 0;
+  }, []);
+
+  const snapGlow = useCallback(
+    (color: string) => {
+      clearGlowTimers();
+      glowTargetRef.current = color;
+      glowPhaseRef.current = "idle";
+      baseGlowRef.current = color;
+      nextGlowRef.current = color;
+      setBaseGlow(color);
+      setNextGlow(color);
+      setGlowPhase("idle");
+    },
+    [clearGlowTimers],
+  );
+
+  const fadeGlowTo = useCallback(
+    (color: string) => {
+      if (prefersReducedMotion()) {
+        snapGlow(color);
+        return;
+      }
+
+      const phase = glowPhaseRef.current;
+      if (color === glowTargetRef.current && phase !== "idle") return;
+      if (color === baseGlowRef.current && phase === "idle") return;
+
+      clearGlowTimers();
+
+      // Mid-crossfade: lock in the incoming color as the new base, then restart.
+      if (phase === "fading") {
+        const locked = nextGlowRef.current;
+        baseGlowRef.current = locked;
+        setBaseGlow(locked);
+      }
+
+      glowTargetRef.current = color;
+      nextGlowRef.current = color;
+      setNextGlow(color);
+      glowPhaseRef.current = "prep";
+      setGlowPhase("prep");
+
+      // Double rAF so the next stack paints at opacity 0 before fading in.
+      glowRafRef.current = window.requestAnimationFrame(() => {
+        glowRafRef.current = window.requestAnimationFrame(() => {
+          if (glowTargetRef.current !== color) return;
+          glowPhaseRef.current = "fading";
+          setGlowPhase("fading");
+          glowFadeTimerRef.current = window.setTimeout(() => {
+            if (glowTargetRef.current !== color) return;
+            baseGlowRef.current = color;
+            nextGlowRef.current = color;
+            glowPhaseRef.current = "idle";
+            setBaseGlow(color);
+            setNextGlow(color);
+            setGlowPhase("idle");
+            glowFadeTimerRef.current = 0;
+          }, GLOW_FADE_MS);
+        });
+      });
+    },
+    [clearGlowTimers, snapGlow],
+  );
 
   function closeBuyConfirm() {
     // Already closed or mid-leave — don't restart leave/enter.
@@ -349,9 +475,19 @@ export function MobileCssCarousel({
       setBuyConfirmOpen(false);
       setBuyConfirmLeaving(false);
       syncMedia(next);
+      fadeGlowTo(glowColorForItem(items[next]));
     },
-    [syncMedia],
+    [fadeGlowTo, items, syncMedia],
   );
+
+  useEffect(() => {
+    return () => clearGlowTimers();
+  }, [clearGlowTimers]);
+
+  // Catalog swap / first paint — snap to the focused pack color.
+  useEffect(() => {
+    snapGlow(glowColorForItem(items[0]));
+  }, [items, snapGlow]);
 
   function onSwiper(swiper: SwiperClass) {
     swiperRef.current = swiper;
@@ -461,97 +597,107 @@ export function MobileCssCarousel({
     }
   }
 
+  const stageGlowClass =
+    glowPhase === "prep"
+      ? " is-glow-prep"
+      : glowPhase === "fading"
+        ? " is-glow-fading"
+        : "";
+
   return (
-    <div
-      ref={shellRef}
-      className="mobile-css-carousel-shell"
-      onPointerUp={handleShellPointerUp}
-    >
-      <Swiper
-        className="mobile-css-carousel"
-        modules={[EffectCoverflow]}
-        effect="coverflow"
-        grabCursor
-        centeredSlides
-        slidesPerView="auto"
-        spaceBetween={-72}
-        speed={720}
-        resistanceRatio={0.85}
-        watchSlidesProgress
-        coverflowEffect={{
-          rotate: 38,
-          stretch: -88,
-          depth: 80,
-          scale: 0.9,
-          modifier: 1,
-          slideShadows: false,
-        }}
-        onSwiper={onSwiper}
-        onProgress={applySlideDim}
-        onSetTranslate={(swiper) => {
-          applySlideDim(swiper);
-          markReady(swiper);
-        }}
-        onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
-        preventClicks={false}
-        preventClicksPropagation={false}
-        noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-add-to-pocket, .coverflow-cart-remove-confirm, .cta-button"
+    <div className={`stage-packs mobile-css-carousel-stage${stageGlowClass}`}>
+      <PackGlowStacks baseColor={baseGlow} nextColor={nextGlow} />
+      <div
+        ref={shellRef}
+        className="mobile-css-carousel-shell"
+        onPointerUp={handleShellPointerUp}
       >
-        {items.map((item, index) => {
-          const pocketed = isPackInCart(item.id, item.characterId);
-          void pocketTick;
-          const isActive = index === activeIndex;
-          const keepVideo =
-            Boolean(item.videoUrl) &&
-            Math.abs(index - activeIndex) <= VIDEO_KEEP_DISTANCE;
-          return (
-            <SwiperSlide key={item.id}>
-              <div className="mobile-css-carousel__pack">
-                {keepVideo ? (
-                  <video
-                    ref={(node) => {
-                      videosRef.current[index] = node;
+        <Swiper
+          className="mobile-css-carousel"
+          modules={[EffectCoverflow]}
+          effect="coverflow"
+          grabCursor
+          centeredSlides
+          slidesPerView="auto"
+          spaceBetween={-72}
+          speed={720}
+          resistanceRatio={0.85}
+          watchSlidesProgress
+          coverflowEffect={{
+            rotate: 38,
+            stretch: -88,
+            depth: 80,
+            scale: 0.9,
+            modifier: 1,
+            slideShadows: false,
+          }}
+          onSwiper={onSwiper}
+          onProgress={applySlideDim}
+          onSetTranslate={(swiper) => {
+            applySlideDim(swiper);
+            markReady(swiper);
+          }}
+          onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
+          preventClicks={false}
+          preventClicksPropagation={false}
+          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-add-to-pocket, .coverflow-cart-remove-confirm, .cta-button"
+        >
+          {items.map((item, index) => {
+            const pocketed = isPackInCart(item.id, item.characterId);
+            void pocketTick;
+            const isActive = index === activeIndex;
+            const keepVideo =
+              Boolean(item.videoUrl) &&
+              Math.abs(index - activeIndex) <= VIDEO_KEEP_DISTANCE;
+            return (
+              <SwiperSlide key={item.id}>
+                <div className="mobile-css-carousel__pack">
+                  {keepVideo ? (
+                    <video
+                      ref={(node) => {
+                        videosRef.current[index] = node;
+                      }}
+                      src={item.videoUrl}
+                      muted
+                      loop
+                      playsInline
+                      preload={isActive ? "auto" : "metadata"}
+                      onLoadedData={() => {
+                        const swiper = swiperRef.current;
+                        if (swiper) markReady(swiper);
+                        if (isActive) {
+                          const video = videosRef.current[index];
+                          void video?.play().catch(() => {});
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <div className="mobile-css-carousel__dim" aria-hidden="true" />
+                </div>
+                {isActive ? (
+                  <PackSlideHud
+                    item={item}
+                    active
+                    pocketed={pocketed}
+                    buyConfirmOpen={buyConfirmOpen}
+                    buyConfirmLeaving={buyConfirmLeaving}
+                    confirmingAdd={confirmingAdd}
+                    onToggleBuyConfirm={toggleBuyConfirm}
+                    onCloseBuyConfirm={closeBuyConfirm}
+                    onConfirmBuy={closeBuyConfirm}
+                    onAddToPocket={addActiveToPocket}
+                    onBuyConfirmLeaveEnd={() => {
+                      buyConfirmLeavingRef.current = false;
+                      setBuyConfirmLeaving(false);
                     }}
-                    src={item.videoUrl}
-                    muted
-                    loop
-                    playsInline
-                    preload={isActive ? "auto" : "metadata"}
-                    onLoadedData={() => {
-                      const swiper = swiperRef.current;
-                      if (swiper) markReady(swiper);
-                      if (isActive) {
-                        const video = videosRef.current[index];
-                        void video?.play().catch(() => {});
-                      }
-                    }}
+                    onConfirmingAddEnd={() => setConfirmingAdd(false)}
                   />
                 ) : null}
-                <div className="mobile-css-carousel__dim" aria-hidden="true" />
-              </div>
-              {isActive ? (
-                <PackSlideHud
-                  item={item}
-                  active
-                  pocketed={pocketed}
-                  buyConfirmOpen={buyConfirmOpen}
-                  buyConfirmLeaving={buyConfirmLeaving}
-                  confirmingAdd={confirmingAdd}
-                  onToggleBuyConfirm={toggleBuyConfirm}
-                  onCloseBuyConfirm={closeBuyConfirm}
-                  onConfirmBuy={closeBuyConfirm}
-                  onAddToPocket={addActiveToPocket}
-                  onBuyConfirmLeaveEnd={() => {
-                    buyConfirmLeavingRef.current = false;
-                    setBuyConfirmLeaving(false);
-                  }}
-                  onConfirmingAddEnd={() => setConfirmingAdd(false)}
-                />
-              ) : null}
-            </SwiperSlide>
-          );
-        })}
-      </Swiper>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
+      </div>
     </div>
   );
 }

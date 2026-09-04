@@ -1,5 +1,32 @@
+/* Same stage + bottom glow pose as 3D packs; carousel chrome sits above circles. */
+.mobile-css-carousel-stage.stage-packs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Circles sit near the bottom edge; allow bloom to paint past the stage. */
+  overflow: visible;
+}
+
+/* Half the last pass — readable without overpowering the packs. */
+.mobile-css-carousel-stage .packs-circle--bloom {
+  opacity: 0.29;
+  filter: blur(12px);
+}
+
+.mobile-css-carousel-stage .packs-circle--core {
+  opacity: 0.31;
+  filter: blur(14px) hue-rotate(304deg);
+}
+
+/* Slightly slower than the shared 480ms packs fade. */
+.mobile-css-carousel-stage.is-glow-fading .packs-glow-stack--base,
+.mobile-css-carousel-stage.is-glow-fading .packs-glow-stack--next {
+  transition: opacity 640ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .mobile-css-carousel-shell {
   position: relative;
+  z-index: 2;
   width: 100%;
   user-select: none;
   -webkit-user-select: none;
