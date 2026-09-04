@@ -58,11 +58,12 @@ function iterationsFromModels(models: BackendModel[]): Iteration[] {
 /** Isolated playground: Swiper coverflow pack videos on mobile. */
 export function MobileCarouselPage() {
   const [items, setItems] = useState<Iteration[] | null>(null);
+  const [carouselReady, setCarouselReady] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(
     isMobileCoverflowViewport,
   );
 
-  useMarkPageReady(items !== null);
+  useMarkPageReady(carouselReady);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -98,10 +99,10 @@ export function MobileCarouselPage() {
 
   return (
     <section
-      className="absolute inset-0 z-0 flex min-h-0 flex-col justify-center overflow-hidden bg-[oklch(0.14_0_0)]"
+      className="absolute inset-0 z-0 flex min-h-0 flex-col justify-center overflow-visible bg-[oklch(0.14_0_0)]"
       aria-label="Mobile carousel"
     >
-      <MobileCssCarousel items={items} />
+      <MobileCssCarousel items={items} onReady={() => setCarouselReady(true)} />
     </section>
   );
 }
