@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -127,9 +126,6 @@ export function GetDiamondsCatalog({
             <Gift className="size-4" aria-hidden="true" />
             Earn Diamonds for Free
           </h2>
-          <p className="get-diamonds-section__desc">
-            Play, watch and exchange to earn Diamonds.
-          </p>
         </header>
         <div className="get-diamonds-earn">
           {adProduct ? (
@@ -325,20 +321,9 @@ function ExchangePanel({
   disabled: boolean;
   onExchange: (diamonds: number, coins: number) => boolean | Promise<boolean>;
 }) {
-  const [message, setMessage] = useState<string | null>(null);
-
   async function handleExchange(diamonds: number, coins: number) {
-    setMessage(null);
-    if (coinBalance < coins) {
-      setMessage("Not enough Sugar Coins.");
-      return;
-    }
-    const ok = await onExchange(diamonds, coins);
-    if (ok) {
-      setMessage(`+${diamonds} Diamonds added ✦`);
-    } else {
-      setMessage("Couldn't complete exchange. Try again.");
-    }
+    if (coinBalance < coins) return;
+    await onExchange(diamonds, coins);
   }
 
   return (
@@ -346,12 +331,9 @@ function ExchangePanel({
       <div className="get-diamonds-exchange__head">
         <div>
           <h3 className="get-diamonds-section__title">
-            <CoinLottie size={16} aria-hidden />
-            Exchange Sugar Coins
+            <CoinLottie size={40} aria-hidden />
+            Exchange Sugar Coins for Diamonds
           </h3>
-          <p className="get-diamonds-section__desc">
-            Use your Sugar Coins to exchange for Diamonds.
-          </p>
         </div>
         <div className="get-diamonds-exchange__balance">
           Your Balance
@@ -365,28 +347,58 @@ function ExchangePanel({
         {COIN_EXCHANGE_OPTIONS.map((option) => {
           const canAfford = coinBalance >= option.coins;
           const busy = exchangingId === option.id;
+          const missing = Math.max(option.coins - coinBalance, 0);
+          const ariaLabel = canAfford
+            ? `Exchange ${option.coins} Sugar Coins for ${option.diamonds} Diamonds`
+            : `Requires ${option.coins} Sugar Coins for ${option.diamonds} Diamonds. Need ${missing} more Sugar Coins.`;
           return (
-            <div key={option.id} className="get-diamonds-exchange-card">
-              <p className="get-diamonds-exchange-card__diamonds">
-                <DiamondLottie size={16} aria-hidden />
-                {option.diamonds.toLocaleString()}
-              </p>
-              <p className="get-diamonds-exchange-card__coins">
-                <CoinLottie size={14} aria-hidden />
-                {option.coins.toLocaleString()}
-              </p>
+            <div
+              key={option.id}
+              className={[
+                "get-diamonds-exchange-card",
+                canAfford ? "is-affordable" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <div className="get-diamonds-exchange-card__reward">
+                <DiamondLottie size={26} aria-hidden />
+                <span className="get-diamonds-exchange-card__amount">
+                  {option.diamonds.toLocaleString()}
+                </span>
+                <span className="get-diamonds-exchange-card__unit">
+                  Diamonds
+                </span>
+              </div>
               <button
                 type="button"
                 className={[
                   "get-diamonds-exchange-card__btn",
                   canAfford ? "is-active" : "",
-                ].join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 disabled={disabled || !canAfford || busy}
-                aria-label={`Exchange ${option.coins} Sugar Coins for ${option.diamonds} Diamonds`}
+                aria-label={ariaLabel}
                 onClick={() => handleExchange(option.diamonds, option.coins)}
               >
-                {busy ? "Exchanging…" : canAfford ? "Exchange" : "Not enough"}
+                {busy ? (
+                  "Exchanging…"
+                ) : (
+                  <>
+                    <CoinLottie size={28} aria-hidden />
+                    {option.coins.toLocaleString()}
+                  </>
+                )}
               </button>
+              <p
+                className="get-diamonds-exchange-card__need"
+                aria-hidden={canAfford || missing <= 0}
+              >
+                {!canAfford && missing > 0
+                  ? `Need ${missing.toLocaleString()} more`
+                  : "\u00a0"}
+              </p>
             </div>
           );
         })}
@@ -395,15 +407,6 @@ function ExchangePanel({
         <Info className="size-3.5 shrink-0" aria-hidden="true" />
         Sugar Coins can be earned from gameplay, daily rewards, and events.
       </p>
-      {message ? (
-        <p
-          className="get-diamonds-exchange__hint"
-          role="status"
-          aria-live="polite"
-        >
-          {message}
-        </p>
-      ) : null}
     </div>
   );
 }
