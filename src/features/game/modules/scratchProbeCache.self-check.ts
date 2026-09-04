@@ -5,6 +5,7 @@
 import {
   createFabricAlphaCache,
   createSymbolScratchProbeCache,
+  invalidateCachedSymbolScratchAmount,
   isSymbolNearStroke,
   needsFabricAlphaSample,
   readCachedFabricAlpha,
@@ -51,6 +52,33 @@ assert(!needsFabricAlphaSample(false), "fairy dust off → skip fabric readPixel
   );
 }
 
+{
+  // Same-frame stamp A caches below threshold; stamp B paints more foil — must
+  // invalidate so stamp B re-probes instead of skipping the reveal.
+  const cache = createSymbolScratchProbeCache(6);
+  writeCachedSymbolScratchAmount(cache, 1, 0, 0.4);
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 0) === 0.4,
+    "precondition: below-threshold cached",
+  );
+  invalidateCachedSymbolScratchAmount(cache, 1, 0);
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 0) === null,
+    "invalidate after paint forces re-probe",
+  );
+  writeCachedSymbolScratchAmount(cache, 1, 0, 0.7);
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 0) === 0.7,
+    "second stamp can cross reveal threshold",
+  );
+  // Wrong frame is a no-op (next read will roll the frame).
+  invalidateCachedSymbolScratchAmount(cache, 99, 0);
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 0) === 0.7,
+    "invalidate ignores other frames",
+  );
+}
+
 assert(
   isSymbolNearStroke(0.5, 0.5, 0.52, 0.5, 0.06),
   "near symbol passes UV gate",
@@ -60,7 +88,8 @@ assert(
   "far symbol skips GPU sample",
 );
 
-// Budget: 1 fabric + ≤6 symbols per frame beats unbounded pointer×slot reads.
+// Budget: UV gate + invalidate-on-paint beats unbounded pointer×slot reads.
+// Worst case still caps far-slot probes; near-slot may re-sample after paint.
 {
   const pointerEventsPerSec = 120;
   const symbols = 6;
@@ -74,7 +103,8 @@ console.log(
   JSON.stringify(
     {
       ok: true,
-      policy: "1 fabric + 1 scratchAmountAt/slot per rAF; UV gate; skip fabric if !fairyDust",
+      policy:
+        "1 fabric/rAF; symbol UV gate + cache with invalidate-on-nearby-paint",
     },
     null,
     2,

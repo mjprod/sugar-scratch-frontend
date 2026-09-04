@@ -78,6 +78,7 @@ import {
   isSymbolNearStroke,
   needsFabricAlphaSample,
   readCachedFabricAlpha,
+  invalidateCachedSymbolScratchAmount,
   readCachedSymbolScratchAmount,
   writeCachedFabricAlpha,
   writeCachedSymbolScratchAmount,
@@ -4040,6 +4041,29 @@ function publishProgressUi(force = false) {
 
     marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
     glRendererRef.current?.paintScratch(u, v, radius);
+
+    // Later stamps in this rAF may punch the same mark further. Drop any
+    // below-threshold probe for nearby slots so finalize can re-sample.
+    if (useBodySymbolsRef.current && trackedMeshRef.current?.symbolPoints) {
+      const bodyPoints = trackedMeshRef.current.symbolPoints;
+      const symbolProbeCache = symbolScratchProbeCacheRef.current;
+      const probeFrame = probeFrameIdRef.current;
+      for (let index = 0; index < bodyPoints.length; index += 1) {
+        if (revealedPointsRef.current[index]) continue;
+        if (
+          !isSymbolNearStroke(
+            u,
+            v,
+            bodyPoints[index].u,
+            bodyPoints[index].v,
+            SYMBOL_REVEAL_UV_RADIUS,
+          )
+        ) {
+          continue;
+        }
+        invalidateCachedSymbolScratchAmount(symbolProbeCache, probeFrame, index);
+      }
+    }
 
     const samples = revealSamplesRef.current;
     const revealed = revealedRef.current;
