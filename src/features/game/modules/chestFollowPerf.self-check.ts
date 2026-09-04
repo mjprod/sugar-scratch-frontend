@@ -1,6 +1,6 @@
 /**
  * Offline invariants for chest-follow / GL dirty-eps perf patch.
- * Run: npx tsx src/features/game/scratch/chestFollowPerf.self-check.ts
+ * Run: npx tsx src/features/game/modules/chestFollowPerf.self-check.ts
  */
 const CANVAS_WIDTH = 390;
 const OLD_EPS = 1e-4;

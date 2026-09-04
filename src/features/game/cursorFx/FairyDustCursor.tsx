@@ -25,7 +25,7 @@ interface FairyDustCursorProps {
     min: number;
     max: number;
   };
-  /** When false, no new particles spawn; existing ones keep fading out. */
+  /** When false, pointer-move spawning is disabled; bursts can still emit particles. */
   spawnEnabled?: boolean;
   /** Cap overlay backing-store DPR (use 1 on phones). */
   maxDevicePixelRatio?: number;

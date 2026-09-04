@@ -1604,13 +1604,8 @@ export function ScratchPrototype() {
   /** Ref holds live progress; React `progress` publishes ≤1 / UI interval (flush on stroke end). */
   function publishProgressUi(force = false) {
     const next = progressRef.current;
-    if (
-      !force &&
-      next === publishedProgressRef.current &&
-      progressUiClockRef.current.lastPublishAt !== 0
-    ) {
-      return;
-    }
+    if (!force && next === publishedProgressRef.current) return;
+
     if (
       !shouldPublishThrottledUi(
         progressUiClockRef.current,
@@ -1621,7 +1616,7 @@ export function ScratchPrototype() {
     ) {
       return;
     }
-    if (next === publishedProgressRef.current && !force) return;
+
     publishedProgressRef.current = next;
     setProgress(next);
   }
