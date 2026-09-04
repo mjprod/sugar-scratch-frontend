@@ -30,6 +30,7 @@ assert(!needsFabricAlphaSample(false), "fairy dust off → skip fabric readPixel
 
 {
   const cache = createSymbolScratchProbeCache(6);
+  const revealAt = 0.55;
   assert(
     readCachedSymbolScratchAmount(cache, 1, 0) === null,
     "cold symbol cache misses",
@@ -38,12 +39,29 @@ assert(!needsFabricAlphaSample(false), "fairy dust off → skip fabric readPixel
   writeCachedSymbolScratchAmount(cache, 1, 1, 0.9);
   assert(
     readCachedSymbolScratchAmount(cache, 1, 0) === 0.4,
-    "same-frame symbol reuse",
+    "same-frame reuse when no threshold is required",
+  );
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 0, revealAt) === null,
+    "below-threshold sample is not durable in the same frame",
+  );
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 1, revealAt) === 0.9,
+    "already-clear sample can be reused",
   );
   assert(
     readCachedSymbolScratchAmount(cache, 1, 2) === null,
     "unprobed slot still misses",
   );
+
+  // Fast swipe: first pointer event this rAF is only 40% clear; later stamps
+  // punch through. Re-sampling must be allowed so the icon can pop.
+  writeCachedSymbolScratchAmount(cache, 1, 0, 0.7);
+  assert(
+    readCachedSymbolScratchAmount(cache, 1, 0, revealAt) === 0.7,
+    "later same-frame sample after more paint is reusable",
+  );
+
   // New frame clears prior samples so a later stamp can re-check reveal.
   assert(
     readCachedSymbolScratchAmount(cache, 2, 0) === null,
@@ -60,21 +78,23 @@ assert(
   "far symbol skips GPU sample",
 );
 
-// Budget: 1 fabric + ≤6 symbols per frame beats unbounded pointer×slot reads.
+// Budget: UV gate + skip fabric when dust is off still beats pointer×every-slot.
 {
   const pointerEventsPerSec = 120;
   const symbols = 6;
   const oldReads = pointerEventsPerSec * (1 + symbols); // fabric + every slot
-  const newReads = 60 * (1 + symbols); // ~rAF fabric+symbols worst case
+  // Worst case: every nearby miss re-samples; still cheaper than probing all
+  // slots on every pointer event (UV gate drops far symbols).
+  const newReads = pointerEventsPerSec * (1 + 2);
   assert(newReads < oldReads, "expected material readPixels cut");
-  assert(newReads <= oldReads * 0.55, "≈ half the GPU probes at 120Hz input");
 }
 
 console.log(
   JSON.stringify(
     {
       ok: true,
-      policy: "1 fabric + 1 scratchAmountAt/slot per rAF; UV gate; skip fabric if !fairyDust",
+      policy:
+        "1 fabric/rAF; UV gate; below-threshold symbol samples are not reused",
     },
     null,
     2,

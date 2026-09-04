@@ -4093,13 +4093,15 @@ export function ScratchPrototype() {
           continue;
         }
         // Must have actually punched the clothing at this UV — proximity alone
-        // used to pop icons on top of still-blue foil. At most one GPU sample
-        // per slot per rAF (auto-scratch can stamp many times in one frame).
+        // used to pop icons on top of still-blue foil. Reuse a same-frame GPU
+        // sample only once it already meets the reveal threshold — a miss must
+        // not stick after later stamps in this rAF add more paint.
         if (!renderer) continue;
         let amount = readCachedSymbolScratchAmount(
           symbolProbeCache,
           probeFrame,
           index,
+          SYMBOL_SCRATCH_REVEAL_THRESHOLD,
         );
         if (amount === null) {
           amount = writeCachedSymbolScratchAmount(
