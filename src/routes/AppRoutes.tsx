@@ -24,6 +24,11 @@ const CoverFlowV2Page = lazy(() =>
     default: m.CoverFlowV2Page,
   })),
 );
+const MobileCarouselPage = lazy(() =>
+  import("@/pages/MobileCarouselPage").then((m) => ({
+    default: m.MobileCarouselPage,
+  })),
+);
 const PreLoaderPage = lazy(() =>
   import("@/pages/PreLoaderPage").then((m) => ({ default: m.PreLoaderPage })),
 );
@@ -340,6 +345,14 @@ export function AppRoutes() {
               element={
                 <CatalogProvider>
                   <CoverFlowV2Page />
+                </CatalogProvider>
+              }
+            />
+            <Route
+              path="mobile-carousel"
+              element={
+                <CatalogProvider>
+                  <MobileCarouselPage />
                 </CatalogProvider>
               }
             />
