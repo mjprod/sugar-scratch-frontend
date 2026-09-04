@@ -1602,29 +1602,24 @@ export function ScratchPrototype() {
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
 
   /** Ref holds live progress; React `progress` publishes ≤1 / UI interval (flush on stroke end). */
-  function publishProgressUi(force = false) {
-    const next = progressRef.current;
-    if (
-      !force &&
-      next === publishedProgressRef.current &&
-      progressUiClockRef.current.lastPublishAt !== 0
-    ) {
-      return;
-    }
-    if (
-      !shouldPublishThrottledUi(
-        progressUiClockRef.current,
-        performance.now(),
-        UI_STATE_UPDATE_INTERVAL_MS,
-        force,
-      )
-    ) {
-      return;
-    }
-    if (next === publishedProgressRef.current && !force) return;
-    publishedProgressRef.current = next;
-    setProgress(next);
+function publishProgressUi(force = false) {
+  const next = progressRef.current;
+  if (!force && next === publishedProgressRef.current) return;
+
+  if (
+    !shouldPublishThrottledUi(
+      progressUiClockRef.current,
+      performance.now(),
+      UI_STATE_UPDATE_INTERVAL_MS,
+      force,
+    )
+  ) {
+    return;
   }
+
+  publishedProgressRef.current = next;
+  setProgress(next);
+}
 
   function publishCursorOnMesh(onMesh: boolean) {
     cursorOnMeshRef.current = onMesh;
