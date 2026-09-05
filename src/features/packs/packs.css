@@ -1334,10 +1334,109 @@ h1 {
   place-items: center;
 }
 
-/* Buy Pack confirm — same chrome as pack-pocket remove, anchored under the hex CTA. */
+/* Buy Pack confirm — open ABOVE the hex CTA so homepage bottom mask/clip
+   does not swallow the taller qty dialog. */
 .coverflow-buy-pack-cta .coverflow-buy-confirm {
-  top: calc(100% + 0.45rem);
+  top: auto;
+  bottom: calc(100% + 0.45rem);
   z-index: 6;
+  min-width: 8.75rem;
+  transform-origin: bottom center;
+  animation-name: coverflow-buy-confirm-enter;
+}
+
+.coverflow-buy-pack-cta .coverflow-buy-confirm.is-leaving {
+  animation-name: coverflow-buy-confirm-leave;
+}
+
+@keyframes coverflow-buy-confirm-enter {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.84);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  16% {
+    opacity: 0.75;
+    transform: translateX(-50%) translateY(11px) scale(0.76);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  58% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes coverflow-buy-confirm-leave {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.78);
+  }
+}
+
+.coverflow-buy-confirm__qty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.coverflow-buy-confirm__qty-btn {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.9);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease,
+    transform 120ms ease;
+}
+
+.coverflow-buy-confirm__qty-btn svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.coverflow-buy-confirm__qty-btn:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.12);
+  transform: scale(1.04);
+}
+
+.coverflow-buy-confirm__qty-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.coverflow-buy-confirm__qty-value {
+  min-width: 1.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: oklch(1 0 0 / 0.95);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Positive confirm (buy) — green check instead of destructive red. */

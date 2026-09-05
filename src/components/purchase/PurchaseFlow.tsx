@@ -830,7 +830,10 @@ export function PurchaseFlow({
     const currentId =
       instanceId ??
       openResume?.instanceId ??
-      peekUnopenedInstance(pack.packId)?.instanceId;
+      pack.tearInstanceIds?.[0] ??
+      peekUnopenedInstance(pack.packId)?.instanceId ??
+      (purchaseId ? nextUnopenedInPurchase(purchaseId)?.instanceId : null) ??
+      null;
     if (!currentId) {
       setStage("opening-interrupted");
       return;
@@ -844,20 +847,49 @@ export function PurchaseFlow({
       const live = sessionRef.current;
 
       if (authed && !isDemoMode() && !isLocalPackInstanceId(currentId)) {
-        const result = await openPackInstance(currentId);
-        upsertInstancesFromApi([result.instance]);
-        openingIdRef.current = result.openingId;
-        opened = getPackInstance(currentId);
-        next = live?.foilFaceUrl
-          ? {
-              ...result.session,
-              foilFaceUrl: live.foilFaceUrl,
-              foilLabel: live.foilLabel,
-            }
-          : result.session;
-        scratchedIds = result.scratched;
-        scratchedIds.forEach((id) => awardedIds.current.add(id));
-        serverRevealCardIdsRef.current = next.cards.map((card) => card.id);
+        try {
+          const result = await openPackInstance(currentId);
+          upsertInstancesFromApi([
+            { ...result.instance, status: "opened" },
+          ]);
+          openingIdRef.current = result.openingId;
+          opened =
+            getPackInstance(currentId) ?? markPackOpened(currentId) ?? opened;
+          next = live?.foilFaceUrl
+            ? {
+                ...result.session,
+                foilFaceUrl: live.foilFaceUrl,
+                foilLabel: live.foilLabel,
+              }
+            : result.session;
+          scratchedIds = result.scratched;
+          scratchedIds.forEach((id) => awardedIds.current.add(id));
+          serverRevealCardIdsRef.current = next.cards.map((card) => card.id);
+        } catch {
+          // Soft-continue after a paid purchase — open API blips shouldn't
+          // dead-end the tear (pack stays owned locally as opened).
+          if (!getPackInstance(currentId)) {
+            upsertInstancesFromApi([
+              {
+                instanceId: currentId,
+                catalogPackId: pack.packId,
+                packName: pack.packName,
+                creator: pack.creator,
+                themeName: pack.themeName ?? pack.packName,
+                coverUrl: "",
+                status: "unopened",
+                purchaseId:
+                  purchaseId ?? pack.purchaseId ?? `local-${currentId}`,
+                savedAt: Date.now(),
+              },
+            ]);
+          }
+          opened = markPackOpened(currentId) ?? getPackInstance(currentId);
+          next = live?.foilFaceUrl
+            ? live
+            : live ?? buildOpeningSession(1, currentId);
+          scratchedIds = [];
+        }
       } else {
         opened = markPackOpened(currentId);
         next = live?.foilFaceUrl
@@ -865,6 +897,9 @@ export function PurchaseFlow({
           : live ?? buildOpeningSession(1, currentId);
       }
 
+      if (!opened || opened.status !== "opened") {
+        opened = markPackOpened(currentId);
+      }
       if (!opened || opened.status !== "opened") {
         tearLocked.current = false;
         setStage("opening-interrupted");

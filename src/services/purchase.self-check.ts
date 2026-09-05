@@ -2,8 +2,11 @@ import {
   buildFoilOpeningSession,
   buildOpeningSession,
   cartCheckoutIdempotencyKey,
+  clampBuyPackQuantity,
   clearOpening,
+  commitLinearPurchaseIdempotencyKey,
   freshRevealIds,
+  linearPackTotalCost,
   nextUnscratchedIndex,
   packCost,
   packUnitCost,
@@ -29,6 +32,9 @@ assert(single.cards.length === 3, "single-pack card count");
 assert(bundle.diamondCost === unit * 3, "bundle cost");
 assert(bundle.cards.length === 5, "bundle card count");
 assert(bundle.cards.at(-1)?.rarity === "Ultra Rare", "bundle rarity order");
+assert(clampBuyPackQuantity(0) === 1, "qty floor");
+assert(clampBuyPackQuantity(99) === 10, "qty ceiling");
+assert(linearPackTotalCost("ep1", 3) === unit * 3, "linear qty cost");
 
 const foil = buildFoilOpeningSession(
   [{ id: "foil-1", label: "Foil", videoUrl: "https://example.com/foil.mp4" }],
@@ -193,6 +199,43 @@ assert(
     "julianaval-pack",
   ) === "julianaval-pack",
   "exact catalog id is preserved",
+);
+
+/* Linear commit must drop both linear and legacy 1|5 session keys. */
+const session = new Map<string, string>();
+(globalThis as { sessionStorage?: unknown }).sessionStorage = {
+  getItem: (key: string) => session.get(key) ?? null,
+  setItem: (key: string, value: string) => void session.set(key, value),
+  removeItem: (key: string) => void session.delete(key),
+};
+session.set("sugar.purchase.idempotency.linear:ep1:1", "stale-linear-1");
+session.set("sugar.v8.packBuyIdempotency:ep1:1", "stale-legacy-1");
+commitLinearPurchaseIdempotencyKey("ep1", 1);
+assert(
+  !session.has("sugar.purchase.idempotency.linear:ep1:1"),
+  "commit clears linear qty-1 key",
+);
+assert(
+  !session.has("sugar.v8.packBuyIdempotency:ep1:1"),
+  "commit clears legacy qty-1 key after 1-pack linear buy",
+);
+
+session.set("sugar.purchase.idempotency.linear:ep1:5", "stale-linear-5");
+session.set("sugar.v8.packBuyIdempotency:ep1:5", "stale-legacy-5");
+commitLinearPurchaseIdempotencyKey("ep1", 5);
+assert(
+  !session.has("sugar.purchase.idempotency.linear:ep1:5") &&
+    !session.has("sugar.v8.packBuyIdempotency:ep1:5"),
+  "commit clears linear + legacy keys after 5-pack linear buy",
+);
+
+session.set("sugar.purchase.idempotency.linear:ep1:3", "stale-linear-3");
+session.set("sugar.v8.packBuyIdempotency:ep1:1", "stale-legacy-1-from-singles");
+commitLinearPurchaseIdempotencyKey("ep1", 3);
+assert(
+  !session.has("sugar.purchase.idempotency.linear:ep1:3") &&
+    !session.has("sugar.v8.packBuyIdempotency:ep1:1"),
+  "commit clears singles-fallback legacy qty-1 key for N≠1,5",
 );
 
 console.log("v8 purchase flow self-check passed");

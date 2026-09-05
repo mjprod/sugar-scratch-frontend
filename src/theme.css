@@ -569,37 +569,40 @@ body[data-theme="v8"] .home-featured-coverflow {
   height: min(72dvh, 760px);
   min-height: 520px;
   overflow: hidden;
+  /* Keep CTA / buy-confirm zone opaque; soft fade only at the very bottom. */
   -webkit-mask-image: linear-gradient(
     180deg,
     #000 0%,
-    #000 72%,
+    #000 86%,
     transparent 100%
   );
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
 }
 
 @media (max-width: 1023px) {
   body[data-theme="v8"] .home-featured-coverflow {
+    /* Clear floating top nav — packs were crowding the chrome on phone widths. */
+    box-sizing: border-box;
+    padding-top: calc(
+      var(--app-top-nav-float-inset, 12px) + var(--app-top-nav-height, 56px) +
+        10px
+    );
     height: min(78dvh, 780px);
     min-height: 560px;
     -webkit-mask-image: linear-gradient(
       180deg,
       #000 0%,
-      #000 76%,
+      #000 88%,
       transparent 100%
     );
-    mask-image: linear-gradient(180deg, #000 0%, #000 76%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 88%, transparent 100%);
   }
 
-  body[data-theme="v8"] .home-view-all-packs {
-	    margin-top: -5.5rem;
+  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
+    touch-action: pan-y;
+    /* Was -4dvh (pulled packs into the nav). Keep flush with the padded stage. */
+    translate: 0 0;
   }
-
-	  /* Let the page scroller keep vertical pans; carousel only takes X. */
-	  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
-	    touch-action: pan-y;
-	    translate: 0 -4dvh;
-	  }
 }
 
 body[data-theme="v8"] .home-featured-coverflow.is-loading {
@@ -611,12 +614,6 @@ body[data-theme="v8"] .home-featured-coverflow.is-loading {
   body[data-theme="v8"] .home-page-inner--after-hero {
     margin-top: -1rem;
   }
-}
-
-/* Above the cover-flow canvas; below floating TopNav (--app-top-nav-z-index: 30). */
-body[data-theme="v8"] .home-view-all-packs {
-  position: relative;
-  z-index: 20;
 }
 
 /* Homepage-only site footer (pack browse /) — desktop only. */

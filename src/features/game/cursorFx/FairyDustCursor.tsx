@@ -25,8 +25,14 @@ interface FairyDustCursorProps {
     min: number;
     max: number;
   };
-  /** When false, no new particles spawn; existing ones keep fading out. */
+  /** When false, pointer-move spawning is disabled; bursts can still emit particles. */
   spawnEnabled?: boolean;
+  /** Cap overlay backing-store DPR (use 1 on phones). */
+  maxDevicePixelRatio?: number;
+  /** Bump to force a one-shot burst at the last pointer (or canvas center). */
+  burstNonce?: number;
+  /** Particles to emit on burst (defaults to particleCount * 3). */
+  burstCount?: number;
 }
 
 interface Particle {
@@ -188,10 +194,17 @@ function FairyDustCursorImpl({
   fadeSpeed = 0.94,
   initialVelocity = DEFAULT_INITIAL_VELOCITY,
   spawnEnabled = true,
+  maxDevicePixelRatio,
+  burstNonce = 0,
+  burstCount,
 }: FairyDustCursorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const hasPointerRef = useRef(false);
+  const pendingBurstRef = useRef(0);
+  const lastBurstNonceRef = useRef(0);
+  const flushBurstApiRef = useRef<() => void>(() => undefined);
   const lottieCacheRef = useRef<Map<string, LottieCacheEntry>>(new Map());
   const lottieSourceCacheRef = useRef<Map<string | ArrayBuffer, Promise<HTMLCanvasElement[]>>>(new Map());
   const glyphCacheRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
@@ -211,6 +224,7 @@ function FairyDustCursorImpl({
     fadeSpeed,
     initialVelocity,
     spawnEnabled,
+    maxDevicePixelRatio,
   });
   configRef.current = {
     colors,
@@ -220,6 +234,7 @@ function FairyDustCursorImpl({
     fadeSpeed,
     initialVelocity,
     spawnEnabled,
+    maxDevicePixelRatio,
   };
 
   const resolvedTypes = useMemo(
@@ -304,7 +319,12 @@ function FairyDustCursorImpl({
     if (!context) return;
 
     const { width, height } = canvasSize;
-    const overlayDpr = lottieDevicePixelRatio();
+    const screenDpr = lottieDevicePixelRatio();
+    const dprCap = configRef.current.maxDevicePixelRatio;
+    const overlayDpr =
+      dprCap != null && Number.isFinite(dprCap)
+        ? Math.max(1, Math.min(dprCap, screenDpr))
+        : screenDpr;
     const bufferWidth = Math.max(1, Math.round(width * overlayDpr));
     const bufferHeight = Math.max(1, Math.round(height * overlayDpr));
     if (canvas.width !== bufferWidth) canvas.width = bufferWidth;
@@ -454,12 +474,13 @@ function FairyDustCursorImpl({
       animationFrameId = requestAnimationFrame(animate);
     };
 
-    const spawn = (x: number, y: number) => {
+    const spawn = (x: number, y: number, countOverride?: number) => {
       const types = typesRef.current;
       if (types.length === 0) return;
 
       const { colors: palette, particleCount: count, initialVelocity: velocity } = configRef.current;
-      const spawnCount = Math.min(count, MAX_PARTICLES - particles.length);
+      const want = countOverride ?? count;
+      const spawnCount = Math.min(want, MAX_PARTICLES - particles.length);
 
       for (let i = 0; i < spawnCount; i += 1) {
         const type = types[Math.floor(Math.random() * types.length)];
@@ -483,8 +504,23 @@ function FairyDustCursorImpl({
       if (spawnCount > 0) ensureRunning();
     };
 
+    const flushPendingBurst = () => {
+      const pending = pendingBurstRef.current;
+      if (pending <= 0) return;
+      pendingBurstRef.current = 0;
+      const x = hasPointerRef.current ? lastPosRef.current.x : width * 0.5;
+      const y = hasPointerRef.current ? lastPosRef.current.y : height * 0.4;
+      spawn(x, y, pending);
+    };
+
     const spawnIfMoved = (x: number, y: number) => {
-      if (!configRef.current.spawnEnabled) return;
+      hasPointerRef.current = true;
+      flushPendingBurst();
+      if (!configRef.current.spawnEnabled) {
+        lastPosRef.current.x = x;
+        lastPosRef.current.y = y;
+        return;
+      }
       const dx = x - lastPosRef.current.x;
       const dy = y - lastPosRef.current.y;
       if (dx * dx + dy * dy <= SPAWN_DISTANCE_SQ) return;
@@ -519,14 +555,27 @@ function FairyDustCursorImpl({
 
     targetElement.addEventListener("mousemove", handleMouseMove);
     targetElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    flushBurstApiRef.current = flushPendingBurst;
     if (particles.length > 0) ensureRunning();
+    flushPendingBurst();
 
     return () => {
+      flushBurstApiRef.current = () => undefined;
       targetElement.removeEventListener("mousemove", handleMouseMove);
       targetElement.removeEventListener("touchmove", handleTouchMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [element, canvasSize]);
+  }, [element, canvasSize, maxDevicePixelRatio]);
+
+  useEffect(() => {
+    if (!burstNonce || burstNonce === lastBurstNonceRef.current) return;
+    lastBurstNonceRef.current = burstNonce;
+    const count =
+      burstCount ??
+      Math.min(MAX_PARTICLES, Math.max(1, (configRef.current.particleCount || 1) * 3));
+    pendingBurstRef.current = count;
+    flushBurstApiRef.current();
+  }, [burstNonce, burstCount]);
 
   return (
     <canvas
