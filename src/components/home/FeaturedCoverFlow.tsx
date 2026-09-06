@@ -36,12 +36,13 @@ import {
 } from "@/services/packInventory";
 import {
   PurchaseError,
-  commitPurchaseIdempotencyKey,
+  clampBuyPackQuantity,
+  commitLinearPurchaseIdempotencyKey,
+  linearPackTotalCost,
   loadPackCatalog,
-  packCost,
   packUnitCost,
   resolvePurchasePackId,
-  submitPurchase,
+  submitLinearPackPurchase,
   type CatalogPackProduct,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
@@ -449,10 +450,11 @@ export function FeaturedCoverFlow({
   );
 
   const handleBuyPack = useCallback(
-    async (item: Iteration) => {
+    async (item: Iteration, quantity = 1) => {
       if (buyingRef.current) return;
       const target = resolveTarget(item);
       if (!target) return;
+      const qty = clampBuyPackQuantity(quantity);
 
       // Guest / email-verify gate only. When already authed+verified, skip
       // requireAuth — it would resumePending and navigate before purchase.
@@ -498,10 +500,11 @@ export function FeaturedCoverFlow({
           }
         }
 
-        const cost =
-          packCost(1, purchasePackId) ||
+        const unit =
+          packUnitCost(purchasePackId) ||
           target.diamondCost ||
           packUnitCost(target.id);
+        const cost = linearPackTotalCost(purchasePackId, qty) || unit * qty;
 
         if (cost > diamonds) {
           setNavNotice("Not enough diamonds to buy this pack.");
@@ -537,12 +540,12 @@ export function FeaturedCoverFlow({
           packName;
 
         let purchaseId = "";
-        let instanceId = "";
+        let instanceIds: string[] = [];
         let diamondCost = cost;
 
         if (authed && !isDemoMode()) {
-          const result = await submitPurchase(
-            1,
+          const result = await submitLinearPackPurchase(
+            qty,
             diamonds,
             purchasePackId,
             undefined,
@@ -551,9 +554,13 @@ export function FeaturedCoverFlow({
           setDiamonds(result.wallet.diamonds);
           setCoins(result.wallet.coins);
           const owned = upsertInstancesFromApi(result.instances);
-          instanceId =
-            result.instances[0]?.instanceId ?? owned[0]?.instanceId ?? "";
-          if (!instanceId) {
+          instanceIds = result.instances
+            .map((pack) => pack.instanceId)
+            .filter(Boolean);
+          if (!instanceIds.length && owned[0]?.instanceId) {
+            instanceIds = [owned[0].instanceId];
+          }
+          if (!instanceIds.length) {
             throw new PurchaseError("failed", "Pack ownership failed.");
           }
           purchaseId = result.purchaseId;
@@ -563,10 +570,10 @@ export function FeaturedCoverFlow({
             packId: purchasePackId,
             packName: result.instances[0]?.packName || packName,
             creatorName: result.instances[0]?.creator || creatorName,
-            quantity: result.instances.length || 1,
+            quantity: result.instances.length || qty,
             diamondCost,
           });
-          commitPurchaseIdempotencyKey(purchasePackId, 1);
+          commitLinearPurchaseIdempotencyKey(purchasePackId, qty);
         } else {
           purchaseId = `coverflow-${Date.now().toString(36)}`;
           const created = addUnopenedFromPurchase({
@@ -574,11 +581,11 @@ export function FeaturedCoverFlow({
             catalogPackId: purchasePackId,
             packName,
             creator: creatorName,
-            count: 1,
+            count: qty,
             themeName,
           });
-          instanceId = created[0]?.instanceId ?? "";
-          if (!instanceId) {
+          instanceIds = created.map((pack) => pack.instanceId).filter(Boolean);
+          if (!instanceIds.length) {
             throw new PurchaseError("failed", "Pack ownership failed.");
           }
           if (cost > 0) {
@@ -589,13 +596,13 @@ export function FeaturedCoverFlow({
             packId: purchasePackId,
             packName,
             creatorName,
-            quantity: 1,
+            quantity: qty,
             diamondCost: cost,
           });
         }
 
         bumpInventoryRevision();
-        setPurchasedPacks((count) => count + 1);
+        setPurchasedPacks((count) => count + qty);
 
         openPurchase(
           {
@@ -605,10 +612,10 @@ export function FeaturedCoverFlow({
             creator: creatorName,
             themeName,
             entry: "cart-tear",
-            unopenedPacks: 1,
-            instanceId,
+            unopenedPacks: instanceIds.length,
+            instanceId: instanceIds[0],
             purchaseId,
-            tearInstanceIds: [instanceId],
+            tearInstanceIds: instanceIds,
             cartFoils: [
               {
                 id: foil?.id || target.foilId || item.id,
@@ -697,8 +704,8 @@ export function FeaturedCoverFlow({
           confirmBuy
           buyDisabled={buying}
           addToPocketDisabled={addedToPocket}
-          onBuy={(item) => {
-            void handleBuyPack(item);
+          onBuy={(item, quantity) => {
+            void handleBuyPack(item, quantity);
           }}
           onAddToPocket={handleAddToPocket}
         />
