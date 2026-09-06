@@ -27,6 +27,14 @@ const PEEL_LOTTIE_PAUSE_MS = 1800;
 const PEEL_LOTTIE_CYCLE_MS = PEEL_LOTTIE_DURATION_MS + PEEL_LOTTIE_PAUSE_MS;
 /** Beat after foil clears before the bar flies up to dock. */
 const CLEAR_CELEBRATE_MS = 420;
+/** Retina backing store — same texture, more canvas pixels. */
+const FOIL_CANVAS_MAX_DPR = 3;
+
+/** Same tile scale as before; motif height ≈ bar height. */
+function foilPatternScale(canvasHeight: number, textureHeight: number) {
+  if (textureHeight <= 0) return 1;
+  return Math.max((canvasHeight / textureHeight) * 1.15, 0.01);
+}
 
 // Flying foil flakes on scratch — colored by sampling the scratch coating.
 // Sized in CSS pixels (converted with DPR at spawn) so they stay small on
@@ -143,7 +151,7 @@ function sampleScratchTextureColor(
       Math.floor(Math.random() * FLAKE_FALLBACK_COLORS.length)
     ];
   }
-  const scale = Math.max((canvasHeight / tex.naturalHeight) * 1.15, 1);
+  const scale = foilPatternScale(canvasHeight, tex.naturalHeight);
   const sx =
     (((px / scale) % tex.naturalWidth) + tex.naturalWidth) % tex.naturalWidth;
   const sy =
@@ -198,6 +206,8 @@ function paintBarCoating(canvas: CoatingCanvas): boolean {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.clearRect(0, 0, w, h);
 
   // Fully opaque base — continuous foil across the whole pill.
@@ -208,7 +218,7 @@ function paintBarCoating(canvas: CoatingCanvas): boolean {
   if (scratchTextureReady && tex && tex.naturalWidth > 0) {
     const pattern = ctx.createPattern(tex, "repeat");
     if (pattern) {
-      const scale = Math.max((h / tex.naturalHeight) * 1.15, 1);
+      const scale = foilPatternScale(h, tex.naturalHeight);
       pattern.setTransform(new DOMMatrix().scale(scale, scale));
       ctx.fillStyle = pattern;
       ctx.fillRect(0, 0, w, h);
@@ -234,11 +244,34 @@ function paintBarCoating(canvas: CoatingCanvas): boolean {
     });
   }
 
-  const hi = ctx.createLinearGradient(0, 0, 0, h * 0.4);
-  hi.addColorStop(0, "oklch(1 0 0 / 0.2)");
-  hi.addColorStop(1, "oklch(1 0 0 / 0)");
-  ctx.fillStyle = hi;
+  // Shine on top of the crest tile — soft-light so embossing stays readable.
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  const catchLight = ctx.createLinearGradient(0, 0, 0, h);
+  catchLight.addColorStop(0, "oklch(1 0 0 / 0.55)");
+  catchLight.addColorStop(0.28, "oklch(1 0 0 / 0.18)");
+  catchLight.addColorStop(0.55, "oklch(1 0 0 / 0)");
+  catchLight.addColorStop(1, "oklch(0.75 0.02 85 / 0.12)");
+  ctx.fillStyle = catchLight;
   ctx.fillRect(0, 0, w, h);
+
+  const gloss = ctx.createLinearGradient(0, 0, w, h);
+  gloss.addColorStop(0, "oklch(1 0 0 / 0)");
+  gloss.addColorStop(0.42, "oklch(1 0 0 / 0)");
+  gloss.addColorStop(0.62, "oklch(1 0 0 / 0.35)");
+  gloss.addColorStop(0.78, "oklch(0.95 0.04 90 / 0.2)");
+  gloss.addColorStop(1, "oklch(1 0 0 / 0)");
+  ctx.fillStyle = gloss;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // Specular rim — thin highlight, not a wash.
+  const rim = ctx.createLinearGradient(0, 0, 0, h * 0.35);
+  rim.addColorStop(0, "oklch(1 0 0 / 0.28)");
+  rim.addColorStop(1, "oklch(1 0 0 / 0)");
+  ctx.fillStyle = rim;
+  ctx.fillRect(0, 0, w, h);
+
   return true;
 }
 
@@ -423,7 +456,7 @@ export function TopSymbolBar({
     s.setProperty("pointer-events", "none", "important");
     s.setProperty("z-index", "10", "important");
     s.setProperty("display", "block", "important");
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(FOIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
     flakeDprRef.current = dpr;
     const nextW = Math.max(1, Math.round(cssW * dpr));
     const nextH = Math.max(1, Math.round(cssH * dpr));
@@ -449,7 +482,7 @@ export function TopSymbolBar({
     const cssH = Math.max(1, Math.round(rect.height));
     if (cssW < 40 || cssH < 20) return false;
 
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(FOIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
     const nextW = Math.max(1, Math.round(cssW * dpr));
     const nextH = Math.max(1, Math.round(cssH * dpr));
 
@@ -590,7 +623,7 @@ export function TopSymbolBar({
       coatingHeight: number,
       count = FLAKE_COUNT_PER_SCRATCH,
     ) => {
-      flakeDprRef.current = Math.min(2, window.devicePixelRatio || 1);
+      flakeDprRef.current = Math.min(FOIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
       const dpr = flakeDprRef.current;
       const sizePx = FLAKE_BASE_SIZE_CSS * dpr;
       for (let i = 0; i < count; i += 1) {
@@ -881,10 +914,12 @@ export function TopSymbolBar({
           >
             <GameSymbolIcon
               typeId={typeId}
-              size={28}
-              // Slot pop / match reactivate scale past 1.2× — render sharper
-              // than the 28px CSS box so those beats stay crisp.
-              pixelScale={1.3}
+              // Center / showcase slots are a fixed 44px; fill them. Docked
+              // slots can shrink on narrow stages, so stay at 28 there.
+              size={phase === "docked" ? 28 : 40}
+              // Retina + CSS pulse/enter scales — render the backing store
+              // ahead of those transforms so the icons stay crisp.
+              pixelScale={phase === "docked" ? 2 : 2.5}
               // Only animate during the center foil reveal. Docked / showcase
               // use CSS (dormant desat, pulse) — keeps DotLottie workers frozen
               // for the whole hunt, which is the long expensive stretch.

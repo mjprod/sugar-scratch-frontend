@@ -1,8 +1,13 @@
 import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import {
+  getGameAudioPrefs,
+  setSoundEffectEnabled,
+  subscribeGameAudioPrefs,
+} from "@/services/gameAudioPrefs";
 import {
   fetchCatalogPhotoCards,
   type CatalogPhotoCard,
@@ -14,6 +19,7 @@ import {
   type ImageLayerCameras,
 } from "./glRenderer";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { MatchFlight } from "../modules/MatchFlight";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
@@ -102,7 +108,6 @@ const SCRATCH_RADIUS = 0.045;
 const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
 const MANUAL_SCRATCH_MAX_POINTS = 40;
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
-const SOUND_STORAGE_KEY = "sugar-scratchie:sound";
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
 const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
@@ -166,14 +171,11 @@ type FlyingMatch = {
   fromY: number;
   toX: number;
   toY: number;
-  midX: number;
-  midY: number;
   delayMs: number;
   bodyIndex: number;
   topSlot: number;
 };
 
-const MATCH_FLIGHT_DURATION_MS = 1250;
 const MATCH_FLIGHT_STAGGER_MS = 90;
 
 function clamp(value: number, lo: number, hi: number) {
@@ -245,17 +247,7 @@ function playlistForGameSession(
   return ordered;
 }
 
-function loadSoundEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const raw = localStorage.getItem(SOUND_STORAGE_KEY);
-    if (!raw) return true;
-    const parsed = JSON.parse(raw) as { enabled?: boolean };
-    return parsed.enabled ?? true;
-  } catch {
-    return true;
-  }
-}
+const loadSoundEnabled = () => getGameAudioPrefs().soundEffect;
 
 function loadAutoScratchSettings(): AutoScratchSettings {
   if (typeof window === "undefined") return AUTO_SCRATCH_DEFAULTS;
@@ -2028,8 +2020,6 @@ export function PhotoScratch() {
         fromY: from.y,
         toX,
         toY,
-        midX: from.x + (toX - from.x) * 0.28,
-        midY: Math.min(from.y - 28, toY + (from.y - toY) * 0.55) - 36,
         delayMs: flightIndex * MATCH_FLIGHT_STAGGER_MS,
         bodyIndex,
         topSlot,
@@ -2071,11 +2061,9 @@ export function PhotoScratch() {
   }
 
   function updateSoundEnabled(enabled: boolean) {
-    if (enabled) {
-      ensureSymbolAudio(symbolAudioRef.current);
-      unlockCountdownSound();
-    }
-    setSoundEnabled(enabled);
+    // Store write → synchronous notify → the subscription above unlocks audio
+    // and mirrors the flag into local state.
+    setSoundEffectEnabled(enabled);
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
@@ -2411,16 +2399,22 @@ export function PhotoScratch() {
     };
   }, [introActive, introVideoUrl, soundEnabled]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        SOUND_STORAGE_KEY,
-        JSON.stringify({ enabled: soundEnabled }),
-      );
-    } catch {
-      // Ignore storage write failures (e.g. private mode / quota).
-    }
-  }, [soundEnabled]);
+  // The pause overlay and profile settings write the same store, so follow it
+  // rather than owning the flag. Notifications are synchronous, which keeps the
+  // unlock below inside the click that flipped the switch — Safari requires
+  // AudioContext work to happen in a user gesture.
+  useEffect(
+    () =>
+      subscribeGameAudioPrefs(() => {
+        const next = getGameAudioPrefs().soundEffect;
+        if (next) {
+          ensureSymbolAudio(symbolAudioRef.current);
+          unlockCountdownSound();
+        }
+        setSoundEnabled(next);
+      }),
+    [],
+  );
 
   useEffect(() => {
     try {
@@ -3042,42 +3036,16 @@ export function PhotoScratch() {
               </div>
             ) : null}
             {flyingMatches.map((coin) => (
-              <div
+              <MatchFlight
                 key={coin.id}
-                className="flying-coin is-match-fly"
-                style={
-                  {
-                    "--coin-from-x": `${coin.fromX}px`,
-                    "--coin-from-y": `${coin.fromY}px`,
-                    "--coin-mid-x": `${coin.midX}px`,
-                    "--coin-mid-y": `${coin.midY}px`,
-                    "--coin-to-x": `${coin.toX}px`,
-                    "--coin-to-y": `${coin.toY}px`,
-                    animationDuration: `${MATCH_FLIGHT_DURATION_MS}ms`,
-                    animationDelay: `${coin.delayMs}ms`,
-                  } as CSSProperties
-                }
-                onAnimationEnd={(event) => {
-                  if (event.target !== event.currentTarget) return;
-                  removeFlyingMatch(coin.id);
-                }}
-                aria-hidden="true"
-              >
-                <span className="flying-coin-spin">
-                  <span
-                    className="flying-coin-plane flying-coin-plane--back"
-                    aria-hidden="true"
-                  />
-                  <span className="flying-coin-face flying-coin-plane flying-coin-plane--mid">
-                    <GameSymbolIcon
-                      typeId={coin.typeId}
-                      size={34}
-                      pixelScale={2.2}
-                      paused
-                    />
-                  </span>
-                </span>
-              </div>
+                typeId={coin.typeId}
+                fromX={coin.fromX}
+                fromY={coin.fromY}
+                toX={coin.toX}
+                toY={coin.toY}
+                delayMs={coin.delayMs}
+                onArrive={() => removeFlyingMatch(coin.id)}
+              />
             ))}
           </div>
           {playlist.length > 1 &&

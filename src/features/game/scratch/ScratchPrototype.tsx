@@ -1,5 +1,10 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
+import {
+  getGameAudioPrefs,
+  setSoundEffectEnabled,
+  subscribeGameAudioPrefs,
+} from "@/services/gameAudioPrefs";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
@@ -19,6 +24,7 @@ import {
 } from "../cursorFx/FairyDustCursor";
 import { loadLottieUrlSource } from "../cursorFx/loadLottieSource";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { MatchFlight } from "../modules/MatchFlight";
 import {
   InitialCountdown,
   isCountdownSoundUnlocked,
@@ -339,8 +345,10 @@ type FlyingCoin = {
   fromY: number;
   toX: number;
   toY: number;
-  midX: number;
-  midY: number;
+  /** Waypoint for the plain `coinFly` keyframe. Match flights compute their
+      own bezier control point, so they leave these unset. */
+  midX?: number;
+  midY?: number;
   delayMs: number;
   /** Body-hunt match flight: source body index + destination top slot. */
   bodyIndex?: number;
@@ -349,7 +357,6 @@ type FlyingCoin = {
 
 const COIN_FLIGHT_DURATION_MS = 620;
 const COIN_FLIGHT_STAGGER_MS = 80;
-const MATCH_FLIGHT_DURATION_MS = 1250;
 const MATCH_FLIGHT_STAGGER_MS = 90;
 // A card pairs the reveal (bottom) video, the green-screen foreground video, and
 // the tracked mesh generated from that foreground. Switching cards swaps all
@@ -466,7 +473,6 @@ const UI_STATE_UPDATE_INTERVAL_MS = 250;
 const INTRO_REVEAL_MS = 380;
 const SCRATCH_ZOOM_STORAGE_KEY = "sugar-scratchie:scratch-zoom-v2";
 const LEGACY_SCRATCH_ZOOM_STORAGE_KEYS = ["sugar-scratchie:scratch-zoom"];
-const SOUND_STORAGE_KEY = "sugar-scratchie:sound";
 // Slightly larger than the manual brush so a scratch that covers the mark counts.
 /** Skip GPU sample when the stroke is nowhere near the symbol. */
 const SYMBOL_REVEAL_UV_RADIUS = 0.06;
@@ -720,17 +726,7 @@ function scratchZoomEasing(bounce: boolean) {
   return bounce ? "cubic-bezier(0.34, 1.56, 0.64, 1)" : "ease-out";
 }
 
-function loadSoundEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const raw = localStorage.getItem(SOUND_STORAGE_KEY);
-    if (!raw) return true;
-    const parsed = JSON.parse(raw) as { enabled?: boolean };
-    return parsed.enabled ?? true;
-  } catch {
-    return true;
-  }
-}
+const loadSoundEnabled = () => getGameAudioPrefs().soundEffect;
 
 // Rect-taking variant, for callers that project several points per frame: the
 // two getBoundingClientRect reads are identical for every point, so hoisting
@@ -3138,12 +3134,22 @@ export function ScratchPrototype() {
     };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(
-      SOUND_STORAGE_KEY,
-      JSON.stringify({ enabled: soundEnabled }),
-    );
-  }, [soundEnabled]);
+  // The pause overlay and profile settings write the same store, so follow it
+  // rather than owning the flag. Notifications are synchronous, which keeps the
+  // unlock below inside the click that flipped the switch — Safari requires
+  // AudioContext work to happen in a user gesture.
+  useEffect(
+    () =>
+      subscribeGameAudioPrefs(() => {
+        const next = getGameAudioPrefs().soundEffect;
+        if (next) {
+          ensureSymbolAudio(symbolAudioRef.current);
+          unlockCountdownSound();
+        }
+        setSoundEnabled(next);
+      }),
+    [],
+  );
 
   function syncScratchZoomTransition(
     canvas: HTMLCanvasElement,
@@ -3282,11 +3288,9 @@ export function ScratchPrototype() {
   }, [autoScratchLocked, autoScratch.enabled]);
 
   function updateSoundEnabled(enabled: boolean) {
-    if (enabled) {
-      ensureSymbolAudio(symbolAudioRef.current);
-      unlockCountdownSound();
-    }
-    setSoundEnabled(enabled);
+    // Store write → synchronous notify → the subscription above unlocks audio
+    // and mirrors the flag into local state.
+    setSoundEffectEnabled(enabled);
   }
 
   function isPhoneLayout() {
@@ -3998,9 +4002,6 @@ export function ScratchPrototype() {
       const slotRect = slotEl.getBoundingClientRect();
       const toX = slotRect.left - stageRect.left + slotRect.width / 2;
       const toY = slotRect.top - stageRect.top + slotRect.height / 2;
-      // Arc hangs near the find, then rises hard into the slot.
-      const midX = from.x + (toX - from.x) * 0.28;
-      const midY = Math.min(from.y - 28, toY + (from.y - toY) * 0.55) - 36;
       coins.push({
         id: (coinIdRef.current += 1),
         typeId,
@@ -4008,8 +4009,6 @@ export function ScratchPrototype() {
         fromY: from.y,
         toX,
         toY,
-        midX,
-        midY,
         delayMs: flightIndex * MATCH_FLIGHT_STAGGER_MS,
         bodyIndex,
         topSlot,
@@ -4878,8 +4877,8 @@ export function ScratchPrototype() {
                     {
                       "--coin-from-x": `${coin.fromX}px`,
                       "--coin-from-y": `${coin.fromY}px`,
-                      "--coin-mid-x": `${coin.midX}px`,
-                      "--coin-mid-y": `${coin.midY}px`,
+                      "--coin-mid-x": `${coin.midX ?? coin.fromX}px`,
+                      "--coin-mid-y": `${coin.midY ?? coin.fromY}px`,
                       "--coin-to-x": `${coin.toX}px`,
                       "--coin-to-y": `${coin.toY}px`,
                       animationDuration: `${COIN_FLIGHT_DURATION_MS}ms`,
@@ -4893,42 +4892,16 @@ export function ScratchPrototype() {
                 </div>
               ))
             : flyingCoins.map((coin) => (
-                <div
+                <MatchFlight
                   key={coin.id}
-                  className="flying-coin is-match-fly"
-                  style={
-                    {
-                      "--coin-from-x": `${coin.fromX}px`,
-                      "--coin-from-y": `${coin.fromY}px`,
-                      "--coin-mid-x": `${coin.midX}px`,
-                      "--coin-mid-y": `${coin.midY}px`,
-                      "--coin-to-x": `${coin.toX}px`,
-                      "--coin-to-y": `${coin.toY}px`,
-                      animationDuration: `${MATCH_FLIGHT_DURATION_MS}ms`,
-                      animationDelay: `${coin.delayMs}ms`,
-                    } as CSSProperties
-                  }
-                  onAnimationEnd={(event) => {
-                    if (event.target !== event.currentTarget) return;
-                    removeFlyingCoin(coin.id);
-                  }}
-                  aria-hidden="true"
-                >
-                  <span className="flying-coin-spin">
-                    <span
-                      className="flying-coin-plane flying-coin-plane--back"
-                      aria-hidden="true"
-                    />
-                    <span className="flying-coin-face flying-coin-plane flying-coin-plane--mid">
-                      <GameSymbolIcon
-                        typeId={coin.typeId}
-                        size={34}
-                        pixelScale={2.2}
-                        paused
-                      />
-                    </span>
-                  </span>
-                </div>
+                  typeId={coin.typeId}
+                  fromX={coin.fromX}
+                  fromY={coin.fromY}
+                  toX={coin.toX}
+                  toY={coin.toY}
+                  delayMs={coin.delayMs}
+                  onArrive={() => removeFlyingCoin(coin.id)}
+                />
               ))}
           <video
             ref={bottomVideoRef}

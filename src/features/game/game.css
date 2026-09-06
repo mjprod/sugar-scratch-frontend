@@ -50,6 +50,15 @@
   overflow: hidden;
   background: oklch(0.184 0.005 67.5);
   container-type: size;
+  /* Symbol-bar slot size for the top row, shared with .symbol-bar in
+     features/game/scratch/styles.css. Full 44px while the stage is wide enough
+     for the bar to sit beside the pause button, shrinking just enough to stay
+     clear below that. 117px = the row's fixed cost: 40px button + 12px button
+     margin + 8px clearance + 12px bar margin + 5 gaps of 5px + 18px bar
+     padding + 2px border.
+     Never read this on .stage-game itself — cqw would resolve against the
+     parent container, not the stage. */
+  --game-symbol-slot: min(44px, calc((100cqw - 117px) / 6));
 }
 
 /* Game / photo-scratch fill the outlet and center the phone frame on desktop. */
@@ -163,25 +172,41 @@
   width: 100% !important;
 }
 
-.stage-game__exit {
+.stage-game__pause {
   position: absolute;
-  top: calc(12px + env(safe-area-inset-top, 0px));
+  /* Sit on the symbol bar's centre line. The bar starts at the same
+     max(12px, safe-area) and is slot + 18px padding + 2px border tall, so
+     centring a 40px button on it offsets by half the difference. */
+  top: calc(
+    max(12px, env(safe-area-inset-top, 0px)) +
+      (var(--game-symbol-slot) + 20px - 40px) / 2
+  );
   left: 12px;
   z-index: 20;
+  display: grid;
+  place-items: center;
   width: 40px;
   height: 40px;
   border-radius: 50%;
   border: 1px solid oklch(1 0 0 / 0.14);
   background: oklch(0.157 0.013 284.85 / 0.72);
   color: oklch(1 0 0);
-  font-size: 22px;
   line-height: 1;
   cursor: pointer;
   backdrop-filter: blur(12px);
 }
 
-.stage-game__exit:hover {
+.stage-game__pause:hover {
   background: oklch(0.157 0.013 284.85 / 0.9);
+}
+
+.stage-game__pause:active {
+  transform: scale(0.96);
+}
+
+.stage-game__pause:focus-visible {
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
+  outline-offset: 2px;
 }
 
 .stage-game .motion-win-reveal__stage {
@@ -202,83 +227,213 @@
   width: min(96px, 19cqw);
 }
 
-.game-exit-modal {
+.game-pause {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  /* Above the glass nav host (5000–5100) and the auth sheet (5200). */
+  z-index: 5300;
   display: grid;
   place-items: center;
   padding: 24px;
 }
 
-.game-exit-modal__scrim {
+.game-pause__scrim {
   position: absolute;
   inset: 0;
   border: 0;
-  background: oklch(0.08 0.01 284 / 0.72);
+  /* Lighter than a plain dim: the panel's glass samples through this, and a
+     near-opaque scrim would crush the rose plate to flat black. */
+  background: oklch(0.08 0.01 284 / 0.6);
   backdrop-filter: blur(6px);
   cursor: default;
 }
 
-.game-exit-modal__panel {
+/* Same rose glass plate as the top nav (.nav-test-top / .top-nav-mobile):
+   tw-glass classes supply the frost, this supplies the gradient and rim. */
+.game-pause__panel {
+  --top-nav-surface: linear-gradient(
+    180deg,
+    oklch(0.316 0.126 12.15) 0%,
+    oklch(0.635 0.254 16.01 / 0.161) 10%,
+    oklch(0 0 0 / 0.361) 20%,
+    oklch(0.467 0.187 14.78 / 0.341) 100%
+  );
+  /* Kills the white tw-glass fill so the rose plate reads. */
+  --glass-bg-opacity: 0;
   position: relative;
   z-index: 1;
   width: min(100%, 320px);
-  padding: 24px 20px 20px;
-  border-radius: 20px;
-  border: 1px solid oklch(1 0 0 / 0.12);
-  background: oklch(0.157 0.013 284.85 / 0.96);
-  box-shadow: 0 24px 64px oklch(0 0 0 / 0.45);
+  padding: 20px 18px 16px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--top-nav-surface);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+/* Beat the tw-glass .glass-surface utility, as the nav does. */
+.game-pause__panel.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  background: var(--top-nav-surface);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+/* iOS Safari drops the filter stack when SVG displacement is in it. */
+@supports (-webkit-touch-callout: none) {
+  .game-pause__panel.glass {
+    --tw-glass-filter: ;
+    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
+    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
+  }
+}
+
+@supports not
+  ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .game-pause__panel.glass.glass-surface {
+    background: linear-gradient(
+      180deg,
+      oklch(0.316 0.126 12.15) 0%,
+      oklch(0.261 0.104 10.45) 45%,
+      oklch(0.141 0.057 0.87) 100%
+    );
+  }
+}
+
+.game-pause__title {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-align: center;
+  color: oklch(0.971 0.003 286.35 / 0.92);
 }
 
-.game-exit-modal__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: oklch(1 0 0);
+.game-pause__rows {
+  display: grid;
+  gap: 2px;
 }
 
-.game-exit-modal__copy {
-  margin: 10px 0 0;
+.game-pause__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding-inline: 4px;
+}
+
+.game-pause__row-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  color: oklch(1 0 0 / 0.55);
+}
+
+.game-pause__row-label {
+  flex: 1;
   font-size: 13px;
-  line-height: 1.45;
-  color: oklch(1 0 0 / 0.62);
+  font-weight: 600;
+  color: oklch(0.971 0.003 286.35 / 0.9);
 }
 
-.game-exit-modal__exit {
+.game-pause__switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.08);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.game-pause__switch.is-on {
+  border-color: oklch(0.779 0.139 1.41 / 0.6);
+  background: oklch(0.639 0.256 9.9 / 0.55);
+}
+
+.game-pause__switch-knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: oklch(1 0 0 / 0.85);
+  transform: translateY(-50%);
+  transition:
+    left 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 160ms ease;
+}
+
+.game-pause__switch.is-on .game-pause__switch-knob {
+  left: 21px;
+  background: oklch(1 0 0);
+}
+
+.game-pause__resume {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 48px;
-  margin-top: 20px;
-  border: 0;
-  border-radius: 999px;
-  background: oklch(1 0 0);
-  color: oklch(0.147 0.011 285.01);
+  height: 44px;
+  margin-top: 16px;
+  border: 1px solid oklch(0.779 0.139 1.41 / 0.5);
+  border-radius: 12px;
+  background: oklch(0.639 0.256 9.9 / 0.42);
+  color: oklch(0.995 0.002 286 / 0.96);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
 }
 
-.game-exit-modal__exit:active {
+.game-pause__resume:hover {
+  background: oklch(0.639 0.256 9.9 / 0.55);
+}
+
+.game-pause__resume:active {
   transform: scale(0.98);
 }
 
-.game-exit-modal__stay {
+.game-pause__leave {
   width: 100%;
-  height: 44px;
+  height: 40px;
   margin-top: 6px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
-  color: oklch(1 0 0 / 0.62);
+  color: oklch(1 0 0 / 0.55);
   font-size: 13px;
   cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
 }
 
-.game-exit-modal__stay:hover {
-  color: oklch(1 0 0 / 0.88);
+.game-pause__leave:hover {
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.85);
+}
+
+.game-pause__switch:focus-visible,
+.game-pause__resume:focus-visible,
+.game-pause__leave:focus-visible {
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
+  outline-offset: 2px;
 }
 
 .motion-win-reveal {

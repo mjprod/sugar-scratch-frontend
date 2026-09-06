@@ -1,4 +1,4 @@
-import { Check, Gift, Info, Loader2, Ticket } from "lucide-react";
+import { Check, Gift, Loader2, Ticket } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
@@ -115,9 +115,7 @@ export function HubRedeemSection({
               }
             }}
             aria-invalid={error ? true : undefined}
-            aria-describedby={
-              error ? "hub-redeem-error" : "hub-redeem-hint"
-            }
+            aria-describedby={error ? "hub-redeem-error" : undefined}
             className="hub-redeem-input"
           />
           <button
@@ -140,12 +138,7 @@ export function HubRedeemSection({
           <p id="hub-redeem-error" role="alert" className="hub-redeem-error">
             {error}
           </p>
-        ) : (
-          <p id="hub-redeem-hint" className="hub-redeem-hint">
-            <Info className="size-3.5 shrink-0" aria-hidden="true" />
-            Codes are not case-sensitive.
-          </p>
-        )}
+        ) : null}
 
         {state.status === "success" ? (
           <HubRedeemSuccess

@@ -433,8 +433,7 @@ function StoreSkeleton() {
   return (
     <div className="get-diamonds-stack" aria-busy="true" aria-label="Loading store">
       <div className="get-diamonds-hero">
-        <div className="h-[72px] animate-pulse rounded-[10px] bg-white/[0.06]" />
-        <div className="get-diamonds-hero__visual h-[148px] animate-pulse rounded-[14px] bg-white/[0.06]" />
+        <div className="h-[72px] max-w-[280px] animate-pulse rounded-[10px] bg-white/[0.08]" />
       </div>
       <div className="get-diamonds-packages">
         {Array.from({ length: 5 }).map((_, i) => (

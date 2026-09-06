@@ -128,45 +128,42 @@ body[data-theme="v8"] .get-diamonds-ambient__sparkle {
   }
 }
 
-/* Hero */
+/* Hero — full-bleed art behind copy */
 body[data-theme="v8"] .get-diamonds-hero {
   position: relative;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 16px;
-  align-items: center;
-  padding: 16px 20px;
+  display: block;
+  min-height: 180px;
+  padding: 28px 28px;
   border-radius: 18px;
   border: none;
-  background:
-    linear-gradient(
-      120deg,
-      rgba(18, 11, 30, 0.94),
-      rgba(31, 10, 42, 0.88)
-    );
+  background: #120b1e;
   overflow: hidden;
+  isolation: isolate;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 48px rgba(0, 0, 0, 0.28);
 }
 
+/* Soft left scrim so title stays readable over the photo */
 body[data-theme="v8"] .get-diamonds-hero::after {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   background: linear-gradient(
-    105deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    transparent 34%,
-    transparent 66%,
-    rgba(255, 95, 168, 0.08) 100%
+    90deg,
+    rgba(12, 6, 22, 0.88) 0%,
+    rgba(12, 6, 22, 0.55) 38%,
+    rgba(12, 6, 22, 0.18) 62%,
+    transparent 100%
   );
 }
 
 body[data-theme="v8"] .get-diamonds-hero__copy-block {
   position: relative;
   z-index: 2;
+  max-width: 420px;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__title {
@@ -187,24 +184,26 @@ body[data-theme="v8"] .get-diamonds-hero__copy {
   max-width: 420px;
   font-size: 13px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 body[data-theme="v8"] .get-diamonds-hero__visual {
-  position: relative;
-  z-index: 1;
-  height: 148px;
-  max-height: 148px;
-  border-radius: 14px;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  height: auto;
+  max-height: none;
+  border-radius: inherit;
   overflow: hidden;
   isolation: isolate;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__aurora {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.72;
+  opacity: 0.45;
   mix-blend-mode: screen;
 }
 
@@ -215,9 +214,9 @@ body[data-theme="v8"] .get-diamonds-hero__art-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 62% center;
-  opacity: 0.92;
-  mask-image: linear-gradient(to left, black 58%, transparent 100%);
+  object-position: 70% center;
+  opacity: 1;
+  mask-image: none;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__sheen {
@@ -578,9 +577,9 @@ body[data-theme="v8"] .get-diamonds-exchange__balance-value {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #ffc44d;
 }
@@ -596,57 +595,112 @@ body[data-theme="v8"] .get-diamonds-exchange-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 8px;
-  border-radius: 10px;
+  justify-content: flex-start;
+  min-height: 100%;
+  padding: 18px 10px 14px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: rgba(255, 255, 255, 0.025);
   text-align: center;
+  transition: border-color 0.15s ease;
 }
 
-body[data-theme="v8"] .get-diamonds-exchange-card__diamonds {
-  display: inline-flex;
+body[data-theme="v8"] .get-diamonds-exchange-card.is-affordable {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+body[data-theme="v8"] .get-diamonds-exchange-card__reward {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 4px;
-  font-size: 16px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .get-diamonds-exchange-card__amount {
+  margin: 0;
+  font-size: 22px;
   font-weight: 700;
+  line-height: 1.1;
   color: #ffffff;
+  letter-spacing: -0.01em;
 }
 
-body[data-theme="v8"] .get-diamonds-exchange-card__coins {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  font-size: 10px;
-  color: #ffc44d;
+body[data-theme="v8"] .get-diamonds-exchange-card__unit {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
 }
 
 body[data-theme="v8"] .get-diamonds-exchange-card__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
-  height: 32px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 50, 150, 0.45);
-  background: rgba(255, 50, 150, 0.08);
-  color: #ff8ec4;
-  font-size: 11px;
+  height: 38px;
+  margin-top: 18px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 13px;
   font-weight: 650;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease,
+    transform 0.1s ease,
+    opacity 0.14s ease;
 }
 
 body[data-theme="v8"] .get-diamonds-exchange-card__btn.is-active {
   border-color: transparent;
   background: linear-gradient(100deg, #e72b7b, #ae1f78);
   color: #ffffff;
+  box-shadow: 0 6px 18px rgba(174, 31, 120, 0.28);
+}
+
+body[data-theme="v8"] .get-diamonds-exchange-card__btn.is-active:hover:not(:disabled) {
+  background: linear-gradient(100deg, #f03688, #c02588);
+  box-shadow: 0 8px 22px rgba(174, 31, 120, 0.38);
+  transform: translateY(-1px);
+}
+
+body[data-theme="v8"] .get-diamonds-exchange-card__btn.is-active:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 body[data-theme="v8"] .get-diamonds-exchange-card__btn:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
+}
+
+body[data-theme="v8"] .get-diamonds-exchange-card__btn:not(.is-active):disabled {
+  opacity: 0.55;
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(255, 196, 77, 0.55);
+  box-shadow: none;
 }
 
 body[data-theme="v8"] .get-diamonds-exchange-card__btn.is-active:disabled {
   opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+body[data-theme="v8"] .get-diamonds-exchange-card__need {
+  margin: 8px 0 0;
+  min-height: 1.2em;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.38);
 }
 
 body[data-theme="v8"] .get-diamonds-exchange__hint {
@@ -665,8 +719,26 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem {
 
 body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(20, 16, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(180, 120, 220, 0.08) 100%
+    );
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    0 12px 36px rgba(0, 0, 0, 0.28);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
+    background: rgba(28, 18, 40, 0.88);
+  }
 }
 
 @media (max-width: 1023px) {
@@ -685,19 +757,28 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   }
 
   body[data-theme="v8"] .get-diamonds-hero {
-    grid-template-columns: 1fr;
-    padding: 14px 16px;
+    min-height: 168px;
+    padding: 22px 18px;
+  }
+
+  body[data-theme="v8"] .get-diamonds-hero::after {
+    background: linear-gradient(
+      180deg,
+      rgba(12, 6, 22, 0.72) 0%,
+      rgba(12, 6, 22, 0.35) 45%,
+      rgba(12, 6, 22, 0.55) 100%
+    );
   }
 
   body[data-theme="v8"] .get-diamonds-hero__visual {
-    height: 120px;
-    max-height: 120px;
-    order: 2;
+    height: auto;
+    max-height: none;
+    order: unset;
   }
 
   body[data-theme="v8"] .get-diamonds-hero__art-img {
-    object-position: center 40%;
-    mask-image: linear-gradient(to top, black 72%, transparent 100%);
+    object-position: 65% center;
+    mask-image: none;
   }
 
   body[data-theme="v8"] .get-diamonds-packages {
