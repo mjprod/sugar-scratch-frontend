@@ -54,6 +54,18 @@ export function MatchFlight({
   }, [onArrive]);
 
   useEffect(() => {
+    // CSS already hides the coin/trail under reduced-motion — skip rAF + DOM
+    // trail work and just resolve the flight after the stagger delay.
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      const timer = window.setTimeout(() => {
+        onArriveRef.current();
+      }, delayMs);
+      return () => window.clearTimeout(timer);
+    }
+
     const from: Point = { x: fromX, y: fromY };
     const to: Point = { x: toX, y: toY };
     const control = flightControlPoint(from, to);

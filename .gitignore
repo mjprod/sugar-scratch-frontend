@@ -40,5 +40,4 @@ certs/
 
 # Headless Chrome leftovers (never part of the app)
 .chrome-foil/
-.foilshot.png
-.foilshot *.png
+.foilshot*.png
