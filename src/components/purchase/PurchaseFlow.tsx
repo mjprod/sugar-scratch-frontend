@@ -1247,7 +1247,7 @@ export function PurchaseFlow({
     setSavingLater(true);
     void persistCurrentAndLeave(from).then((ok) => {
       setSavingLater(false);
-      if (ok) setStage("saved");
+      if (ok) leaveSaved();
     });
   }
 
@@ -1742,7 +1742,7 @@ export function PurchaseFlow({
                 onClick={() => scratchLater("decision")}
                 disabled={savingLater}
               >
-                Save for Later
+                Save to Collection
               </button>
               {readyPackCount > 1 ? (
                 <button
@@ -2537,7 +2537,7 @@ function MotionRevealStage({
             onClick={onSaveLater}
             disabled={launching}
           >
-            Save for Later
+            Save to Collection
           </button>
           {onSaveAndOpenNext ? (
             <button

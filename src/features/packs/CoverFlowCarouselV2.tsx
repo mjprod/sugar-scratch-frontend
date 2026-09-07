@@ -2532,7 +2532,7 @@ export function CoverFlowCarouselV2({
   onRevealSaveLater,
   onRevealSaveAndOpenNext,
   revealContinueLabel = 'Play now',
-  revealSaveLaterLabel = 'Save for Later',
+  revealSaveLaterLabel = 'Save to Collection',
   revealSaveAndOpenNextLabel = 'Save for later and open another',
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
