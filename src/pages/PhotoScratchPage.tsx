@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
-import { GameExitConfirmModal } from "@/features/game/GameExitConfirmModal";
+import { GamePauseButton } from "@/features/game/GamePauseButton";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
@@ -19,7 +19,6 @@ import "@/features/game/game.css";
 export function PhotoScratchPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   const { addDiamonds } = useWallet();
   const { bumpInventoryRevision } = useAuth();
 
@@ -46,7 +45,13 @@ export function PhotoScratchPage() {
   const model = searchParams.get("model")?.trim() || "";
   const gameMode = searchParams.get("game") === "1";
 
-  function leaveGameForCollection() {
+  // Leave from the pause overlay — progress is saved, so no second confirm.
+  function leaveGame() {
+    if (!gameMode) {
+      const motionCardId = card ? motionCardIdFromPhotoScratchId(card) : "";
+      navigate(collectionReturnHref(model, motionCardId));
+      return;
+    }
     const session = loadGameSession();
     // TOTAL WIN / last-card overlay: settle credit + collection before leaving.
     if (
@@ -62,39 +67,15 @@ export function PhotoScratchPage() {
     } else {
       persistGameProgress();
     }
-    setExitConfirmOpen(false);
     navigate(Paths.collection);
   }
 
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
-        <button
-          type="button"
-          className="stage-game__exit"
-          data-tutorial-target="collection"
-          aria-label={gameMode ? "Leave game" : "Back to collection"}
-          onClick={() => {
-            if (gameMode) {
-              setExitConfirmOpen(true);
-              return;
-            }
-            const motionCardId = card
-              ? motionCardIdFromPhotoScratchId(card)
-              : "";
-            navigate(collectionReturnHref(model, motionCardId));
-          }}
-        >
-          ‹
-        </button>
+        <GamePauseButton onLeave={leaveGame} />
         <PhotoScratch key={card || "default"} />
         <FirstPlayTutorial scene="foil" />
-        <GameExitConfirmModal
-          open={exitConfirmOpen}
-          copy="Your progress is saved. Continue scratching whenever you're ready."
-          onStay={() => setExitConfirmOpen(false)}
-          onExit={leaveGameForCollection}
-        />
       </div>
     </div>
   );

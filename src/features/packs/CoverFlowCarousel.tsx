@@ -2,7 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
-import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Minus, Plus, X } from 'lucide-react'
 import {
 		  Suspense,
 		  useCallback,
@@ -74,6 +74,10 @@ import {
   formatPackPrice,
   type Iteration,
 } from './types'
+import {
+  BUY_PACK_MAX_QUANTITY,
+  clampBuyPackQuantity,
+} from '@/services/purchase'
 
 // Keep the cover-flow light by mounting only nearby packs.
 // Mobile: 3 packs (center ± 1). Desktop: 7 packs (center ± 3).
@@ -383,7 +387,7 @@ interface CoverFlowCarouselProps {
   /** Fires when the centered coverflow pack changes (browse or select). */
   onFocusChange?: (item: Iteration | null, index: number) => void
   /** Product CTA when the focused pack is active (Buy Pack — may confirm first). */
-  onBuy?: (item: Iteration) => void
+  onBuy?: (item: Iteration, quantity?: number) => void
   /**
    * Homepage: secondary text control under Buy Pack.
    * Keeps the existing Pack Pocket add flow separate from purchase.
@@ -612,7 +616,7 @@ formatPrice,
 			  onOpenPackBehindFan?: () => void
 			  onOpenPackBlurChange?: (blurPx: number) => void
 				  formatPrice: (price: number) => string
-					  onBuy?: (item: Iteration) => void
+					  onBuy?: (item: Iteration, quantity?: number) => void
 					  onAddToPocket?: (item: Iteration) => void
 					  buyLabel: string
 					  buyLeadingIcon?: ReactNode
@@ -679,9 +683,12 @@ formatPrice,
   const [holdNeighborFace, setHoldNeighborFace] = useState(
     () => !evictOffCenterVideo || Math.abs(index - focusIndex) <= 1,
   )
+  const [buyQuantity, setBuyQuantity] = useState(1)
   const wasActiveAndEnabledRef = useRef(isActive && !buyDisabled)
   const visuallyDisabled = buyDisabled && !confirmingAdd
   const pocketDisabled = Boolean(addToPocketDisabled)
+  const unitPrice = item.price ?? 4.99
+  const confirmTotal = unitPrice * buyQuantity
 
   function closeBuyConfirm() {
     setBuyConfirmOpen(false)
@@ -689,6 +696,12 @@ formatPrice,
       typeof window === 'undefined' ||
         !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     )
+  }
+
+  function openBuyConfirm() {
+    setBuyQuantity(1)
+    setBuyConfirmLeaving(false)
+    setBuyConfirmOpen(true)
   }
 
   useEffect(() => {
@@ -718,6 +731,7 @@ formatPrice,
     if (!isActive) {
       setBuyConfirmOpen(false)
       setBuyConfirmLeaving(false)
+      setBuyQuantity(1)
     }
   }, [isActive])
 
@@ -1762,7 +1776,11 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                     costIconAnimated={false}
                     label={buyLabel}
                     leadingIcon={buyLeadingIcon}
-                    costAmount={formatPrice(item.price ?? 4.99)}
+                    costAmount={formatPrice(
+                      buyConfirmOpen || buyConfirmLeaving
+                        ? confirmTotal
+                        : unitPrice,
+                    )}
                     className="coverflow-buy-pack-cta__button"
                     tabIndex={visuallyDisabled ? -1 : 0}
                     disabled={visuallyDisabled}
@@ -1780,10 +1798,7 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                       if (buyDisabled || confirmingAdd) return
                       if (confirmBuy) {
                         if (buyConfirmOpen) closeBuyConfirm()
-                        else {
-                          setBuyConfirmLeaving(false)
-                          setBuyConfirmOpen(true)
-                        }
+                        else openBuyConfirm()
                         return
                       }
                       onBuy(item)
@@ -1800,11 +1815,54 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                       aria-modal="false"
                       onAnimationEnd={(event) => {
                         if (event.target !== event.currentTarget) return
-                        if (event.animationName !== 'coverflow-confirm-leave') return
+                        if (
+                          event.animationName !== 'coverflow-confirm-leave' &&
+                          event.animationName !== 'coverflow-buy-confirm-leave'
+                        ) {
+                          return
+                        }
                         setBuyConfirmLeaving(false)
                       }}
                     >
                       <p className="coverflow-cart-remove-confirm__label">Buy</p>
+                      <div
+                        className="coverflow-buy-confirm__qty"
+                        role="group"
+                        aria-label="Pack quantity"
+                      >
+                        <button
+                          type="button"
+                          className="coverflow-buy-confirm__qty-btn"
+                          aria-label="Decrease pack quantity"
+                          disabled={buyDisabled || buyQuantity <= 1}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setBuyQuantity((q) => clampBuyPackQuantity(q - 1))
+                          }}
+                        >
+                          <Minus aria-hidden="true" strokeWidth={2.5} />
+                        </button>
+                        <span
+                          className="coverflow-buy-confirm__qty-value"
+                          aria-live="polite"
+                        >
+                          {buyQuantity}
+                        </span>
+                        <button
+                          type="button"
+                          className="coverflow-buy-confirm__qty-btn"
+                          aria-label="Increase pack quantity"
+                          disabled={
+                            buyDisabled || buyQuantity >= BUY_PACK_MAX_QUANTITY
+                          }
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setBuyQuantity((q) => clampBuyPackQuantity(q + 1))
+                          }}
+                        >
+                          <Plus aria-hidden="true" strokeWidth={2.5} />
+                        </button>
+                      </div>
                       <div className="coverflow-cart-remove-confirm__actions">
                         <button
                           type="button"
@@ -1820,13 +1878,14 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                         <button
                           type="button"
                           className="coverflow-cart-remove-confirm__btn is-confirm"
-                          aria-label="Confirm buy"
+                          aria-label={`Confirm buy ${buyQuantity}`}
                           disabled={buyDisabled}
                           onClick={(event) => {
                             event.stopPropagation()
                             if (buyDisabled) return
+                            const qty = buyQuantity
                             closeBuyConfirm()
-                            onBuy(item)
+                            onBuy(item, qty)
                           }}
                         >
                           <Check aria-hidden="true" strokeWidth={2.5} />
@@ -1925,7 +1984,7 @@ formatPrice,
 			  onRevealPackBehindFan?: () => void
 			  onRevealPackBlurChange?: (blurPx: number) => void
 				  formatPrice: (price: number) => string
-					  onBuy?: (item: Iteration) => void
+					  onBuy?: (item: Iteration, quantity?: number) => void
 					  onAddToPocket?: (item: Iteration) => void
 					  buyLabel: string
 					  buyLeadingIcon?: ReactNode

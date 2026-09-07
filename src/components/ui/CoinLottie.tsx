@@ -18,6 +18,8 @@ type CoinLottieProps = {
 
 /**
  * Inline coin mark powered by the media-proxied cursor-fx Diamond Coin Lottie.
+ * The source art has a large transparent margin — scale + clip so the coin fills
+ * the requested box instead of looking padded.
  */
 export function CoinLottie({
   className,
@@ -42,6 +44,7 @@ export function CoinLottie({
         flex: "0 0 auto",
         lineHeight: 0,
         verticalAlign: "middle",
+        overflow: "hidden",
         ...style,
       }}
       aria-hidden={ariaHidden}
@@ -52,7 +55,12 @@ export function CoinLottie({
         loop={loop}
         speed={speed}
         renderConfig={lottieRenderConfig()}
-        style={{ width: "100%", height: "100%" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: "scale(1.38)",
+          transformOrigin: "center",
+        }}
       />
     </span>
   );

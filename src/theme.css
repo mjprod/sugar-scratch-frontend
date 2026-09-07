@@ -569,37 +569,45 @@ body[data-theme="v8"] .home-featured-coverflow {
   height: min(72dvh, 760px);
   min-height: 520px;
   overflow: hidden;
+  /* Keep CTA / buy-confirm zone opaque; soft fade only at the very bottom. */
   -webkit-mask-image: linear-gradient(
     180deg,
     #000 0%,
-    #000 72%,
+    #000 86%,
     transparent 100%
   );
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 86%, transparent 100%);
 }
 
 @media (max-width: 1023px) {
   body[data-theme="v8"] .home-featured-coverflow {
+    /* Clear floating top nav — packs were crowding the chrome on phone widths. */
+    box-sizing: border-box;
+    padding-top: calc(
+      var(--app-top-nav-float-inset, 12px) + var(--app-top-nav-height, 56px) +
+        10px
+    );
     height: min(78dvh, 780px);
     min-height: 560px;
     -webkit-mask-image: linear-gradient(
       180deg,
       #000 0%,
-      #000 76%,
+      #000 88%,
       transparent 100%
     );
-    mask-image: linear-gradient(180deg, #000 0%, #000 76%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 88%, transparent 100%);
   }
 
   body[data-theme="v8"] .home-view-all-packs {
-		    margin-top: -5.5rem;
+    margin-top: -5.5rem;
   }
 
-	  /* Let the page scroller keep vertical pans; carousel only takes X. */
-	  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
-	    touch-action: pan-y;
-	    translate: 0 -4dvh;
-	  }
+  /* Let the page scroller keep vertical pans; carousel only takes X. */
+  body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
+    touch-action: pan-y;
+    /* Was -4dvh (pulled packs into the nav). Keep flush with the padded stage. */
+    translate: 0 0;
+  }
 
   body[data-theme="v8"] .home-featured-coverflow[data-coverflow="mobile-swiper"] {
     display: flex;
@@ -638,12 +646,6 @@ body[data-theme="v8"] .home-featured-coverflow.is-loading {
   body[data-theme="v8"] .home-page-inner--after-hero {
     margin-top: -1rem;
   }
-}
-
-/* Above the cover-flow canvas; below floating TopNav (--app-top-nav-z-index: 30). */
-body[data-theme="v8"] .home-view-all-packs {
-  position: relative;
-  z-index: 20;
 }
 
 /* Homepage-only site footer (pack browse /) — desktop only. */
@@ -2661,7 +2663,7 @@ body[data-theme="v8"] .hub-spotlight-band-cta .cta-button-glow>.border-glow-inne
   }
 
   body[data-theme="v8"] .hub-spotlight-band-cta .cta-button__title::after {
-    content: "Invite Them";
+    content: "Tell Us Who";
     font-size: 14px;
   }
 }
@@ -2669,52 +2671,230 @@ body[data-theme="v8"] .hub-spotlight-band-cta .cta-button-glow>.border-glow-inne
 body[data-theme="v8"] .hub-spotlight-invite {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 5400;
   display: grid;
-  place-items: center;
+  place-items: end center;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   pointer-events: auto;
+}
+
+@media (min-width: 640px) {
+  body[data-theme="v8"] .hub-spotlight-invite {
+    place-items: center;
+    padding: 24px;
+  }
 }
 
 body[data-theme="v8"] .hub-spotlight-invite-backdrop {
   position: absolute;
   inset: 0;
   border: 0;
-  background: oklch(0 0 0 / 0.55);
+  background: oklch(0 0 0 / 0.62);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   cursor: pointer;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-backdrop:disabled {
+  cursor: default;
 }
 
 body[data-theme="v8"] .hub-spotlight-invite-card {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 16px;
-  min-width: min(280px, calc(100vw - 40px));
-  padding: 22px 24px 18px;
-  border: 1px solid oklch(1 0 0 / 0.12);
-  border-radius: 18px;
-  background: oklch(0.18 0.02 300 / 0.96);
-  box-shadow: 0 24px 60px oklch(0 0 0 / 0.45);
-  text-align: center;
+  gap: 14px;
+  width: min(420px, 100%);
+  max-height: min(88dvh, 720px);
+  overflow: auto;
+  padding: 22px 18px 18px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 22px 22px 18px 18px;
+  background:
+    linear-gradient(
+      160deg,
+      oklch(1 0 0 / 0.1) 0%,
+      oklch(0.18 0.02 300 / 0.94) 42%,
+      oklch(0.14 0.02 300 / 0.96) 100%
+    );
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.16),
+    0 24px 60px oklch(0 0 0 / 0.5);
+  text-align: left;
 }
 
-body[data-theme="v8"] .hub-spotlight-invite-card p {
+@media (min-width: 640px) {
+  body[data-theme="v8"] .hub-spotlight-invite-card {
+    border-radius: 20px;
+    padding: 24px 22px 20px;
+  }
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-copy {
+  display: grid;
+  gap: 8px;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-title {
   margin: 0;
   color: #fff;
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-desc {
+  margin: 0;
+  color: oklch(1 0 0 / 0.62);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.45;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-form {
+  display: grid;
+  gap: 8px;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-label {
+  margin-top: 6px;
+  color: oklch(1 0 0 / 0.72);
+  font-size: 12px;
   font-weight: 600;
 }
 
-body[data-theme="v8"] .hub-spotlight-invite-close {
-  justify-self: center;
-  min-height: 36px;
-  padding: 0 16px;
+body[data-theme="v8"] .hub-spotlight-invite-optional {
+  color: oklch(1 0 0 / 0.4);
+  font-weight: 500;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-input,
+body[data-theme="v8"] .hub-spotlight-invite-textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(0 0 0 / 0.28);
+  padding: 0 14px;
+  font-size: max(1rem, 16px);
+  font-weight: 500;
+  color: oklch(1 0 0);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-input {
+  height: 44px;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-textarea {
+  min-height: 88px;
+  padding: 12px 14px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-input::placeholder,
+body[data-theme="v8"] .hub-spotlight-invite-textarea::placeholder {
+  color: oklch(1 0 0 / 0.35);
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-input:focus,
+body[data-theme="v8"] .hub-spotlight-invite-textarea:focus {
+  border-color: oklch(0.711 0.203 357.66 / 0.55);
+  box-shadow: 0 0 0 3px oklch(0.711 0.203 357.66 / 0.16);
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-input.is-invalid {
+  border-color: oklch(0.72 0.16 25);
+  box-shadow: 0 0 0 3px oklch(0.72 0.16 25 / 0.18);
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-input:disabled,
+body[data-theme="v8"] .hub-spotlight-invite-textarea:disabled {
+  opacity: 0.7;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-error {
+  margin: -2px 0 2px;
+  color: oklch(0.808 0.103 19.57);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
   border: 0;
   border-radius: 999px;
-  background: oklch(1 0 0 / 0.1);
+  background: linear-gradient(100deg, #e72b7b, #ae1f78);
   color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 650;
   cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    filter 0.14s ease,
+    opacity 0.14s ease;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-submit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-submit:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-cancel {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: color 0.14s ease;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-cancel:hover:not(:disabled) {
+  color: oklch(1 0 0 / 0.85);
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-success {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+  padding: 8px 4px 2px;
+}
+
+body[data-theme="v8"] .hub-spotlight-invite-success .hub-spotlight-invite-submit {
+  margin-top: 8px;
 }
 
 @media (max-width: 640px) {
@@ -3441,9 +3621,27 @@ body[data-theme="v8"] .hub-redeem {
 
 body[data-theme="v8"] .hub-redeem-card {
   border-radius: 18px;
-  border: 1px solid oklch(1 0 0 / 0.07);
-  background: oklch(1 0 0 / 0.03);
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background:
+    linear-gradient(
+      135deg,
+      oklch(1 0 0 / 0.12) 0%,
+      oklch(1 0 0 / 0.04) 48%,
+      oklch(1 0 0 / 0.07) 100%
+    );
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  backdrop-filter: blur(18px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.18),
+    inset 0 -1px 0 oklch(0 0 0 / 0.12),
+    0 12px 36px oklch(0 0 0 / 0.22);
   padding: 14px;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body[data-theme="v8"] .hub-redeem-card {
+    background: oklch(0.22 0.02 300 / 0.92);
+  }
 }
 
 body[data-theme="v8"] .hub-redeem-lead {
@@ -3543,16 +3741,6 @@ body[data-theme="v8"] .hub-redeem-input:focus-visible {
   body[data-theme="v8"] .hub-redeem-submit {
     flex: 1 1 100%;
   }
-}
-
-body[data-theme="v8"] .hub-redeem-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: oklch(1 0 0 / 0.4);
 }
 
 body[data-theme="v8"] .hub-redeem-error {

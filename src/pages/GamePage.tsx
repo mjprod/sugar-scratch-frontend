@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
-import { GameExitConfirmModal } from "@/features/game/GameExitConfirmModal";
+import { GamePauseButton } from "@/features/game/GamePauseButton";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
@@ -16,7 +16,6 @@ import "@/features/packs/packs.css";
 function ScratchGameEmbed() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   // Mark embed before ScratchPrototype mounts so zoom stays off on first paint.
   useLayoutEffect(() => {
@@ -43,47 +42,26 @@ function ScratchGameEmbed() {
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
 
-  function leaveGameForCollection() {
-    persistGameProgress();
-    setExitConfirmOpen(false);
-    navigate(Paths.collection);
+  // Leave from the pause overlay — progress is saved, so no second confirm.
+  function leaveGame() {
+    if (gameMode) {
+      persistGameProgress();
+      navigate(Paths.collection);
+      return;
+    }
+    if (playlistMode) {
+      navigate(Paths.home);
+      return;
+    }
+    navigate(collectionReturnHref(model, card));
   }
 
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
-        <button
-          type="button"
-          className="stage-game__exit"
-          data-tutorial-target="collection"
-          aria-label={
-            gameMode
-              ? "Leave game"
-              : playlistMode
-                ? "Back to home"
-                : "Back to collection"
-          }
-          onClick={() => {
-            if (gameMode) {
-              setExitConfirmOpen(true);
-              return;
-            }
-            if (playlistMode) {
-              navigate(Paths.home);
-              return;
-            }
-            navigate(collectionReturnHref(model, card));
-          }}
-        >
-          ‹
-        </button>
+        <GamePauseButton onLeave={leaveGame} />
         <ScratchPrototype />
         <FirstPlayTutorial scene="foil" />
-        <GameExitConfirmModal
-          open={exitConfirmOpen}
-          onStay={() => setExitConfirmOpen(false)}
-          onExit={leaveGameForCollection}
-        />
       </div>
     </div>
   );

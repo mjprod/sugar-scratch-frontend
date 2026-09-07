@@ -29,7 +29,7 @@ export type HomeCoverFlowViewProps = {
   onSelect: (id: string) => void;
   onDeselect: () => void;
   onFocusChange: (item: Iteration | null) => void;
-  onBuy: (item: Iteration) => void;
+  onBuy: (item: Iteration, quantity?: number) => void;
   onAddToPocket: (item: Iteration) => void;
 };
 
