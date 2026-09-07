@@ -13,6 +13,7 @@ import {
   resolvePurchasePackId,
   restoreOpening,
   saveOpening,
+  isJulianaCoverflowBuyAb,
 } from "./purchase.ts";
 import {
   clearPackInventory,
@@ -200,6 +201,17 @@ assert(
   ) === "julianaval-pack",
   "exact catalog id is preserved",
 );
+
+assert(isJulianaCoverflowBuyAb("julianaval"), "julianaval is juliana A/B");
+assert(isJulianaCoverflowBuyAb("julianaval-1"), "juliana foil is juliana A/B");
+assert(
+  isJulianaCoverflowBuyAb("julianaval-pack"),
+  "juliana catalog pack is juliana A/B",
+);
+assert(isJulianaCoverflowBuyAb("Juliana"), "display name is juliana A/B");
+assert(!isJulianaCoverflowBuyAb("glauca"), "glauca is not juliana A/B");
+assert(!isJulianaCoverflowBuyAb("Rosa Ryyti"), "rosa is not juliana A/B");
+assert(!isJulianaCoverflowBuyAb(""), "empty id is not juliana A/B");
 
 /* Linear commit must drop both linear and legacy 1|5 session keys. */
 const session = new Map<string, string>();

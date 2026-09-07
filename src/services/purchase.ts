@@ -162,6 +162,28 @@ export function packUnitCost(packId = "pack", fallbackUsd?: number) {
 /** Coverflow / Buy Pack — linear per-pack pricing, capped at 10. */
 export const BUY_PACK_MAX_QUANTITY = 10;
 
+/**
+ * A/B coverflow buy path for Juliana packs.
+ * Juliana: Buy Pack + Add to Pocket on HUD, with the legacy inline qty confirm.
+ * Everyone else: Buy Pack only → opens BuyPackQuantityModal.
+ */
+export function isJulianaCoverflowBuyAb(
+  candidate: string | null | undefined,
+): boolean {
+  const id = (candidate ?? "").trim().toLowerCase();
+  if (!id) return false;
+  if (
+    id === "julianaval" ||
+    id === "julianaval-pack" ||
+    id.startsWith("julianaval-")
+  ) {
+    return true;
+  }
+  // Display-name / handle fallback (e.g. "Juliana", "@julianaval").
+  const compact = id.replace(/[^a-z0-9]/g, "");
+  return compact === "juliana" || compact.startsWith("julianaval");
+}
+
 export function clampBuyPackQuantity(quantity: number): number {
   const n = Math.floor(quantity);
   if (!Number.isFinite(n) || n < 1) return 1;
