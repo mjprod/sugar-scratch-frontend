@@ -259,39 +259,31 @@ function PackPocketIcon({ className }: { className?: string }) {
   );
 }
 
-/** iOS Safari hard-caps concurrent decoders; keep active + previous only. */
-const VIDEO_BUFFER_LIMIT = 2;
-
-function nextVideoKeep(prevKeep: number[], nextActive: number): number[] {
-  if (prevKeep[0] === nextActive) {
-    return prevKeep.slice(0, VIDEO_BUFFER_LIMIT);
-  }
-  const keep = [nextActive];
-  for (const index of prevKeep) {
-    if (index === nextActive) continue;
-    keep.push(index);
-    if (keep.length >= VIDEO_BUFFER_LIMIT) break;
-  }
-  return keep;
+/**
+ * One live decoder only: the focused slide.
+ * Neighbors stay on posters — strongest iOS page-memory win.
+ * (Keep helper takes prev for call-site symmetry if we raise the limit later.)
+ */
+function nextVideoKeep(_prevKeep: number[], nextActive: number): number[] {
+  return Number.isFinite(nextActive) ? [nextActive] : [];
 }
 
 /**
- * One keep-set pack video.
+ * Active-slide pack video. Mounted only while this index is the sole keep slot.
  *
- * Never call removeAttribute("src")/load() on this element. React Strict Mode
- * remounts with the same src prop and will NOT re-apply it, leaving
- * networkState=0 forever (live repro: src=null, zero mp4 requests). Leaving the
- * keep set unmounts this node entirely, which is enough for iOS decoder release.
+ * src discard rules (iOS + React Strict Mode):
+ * - Never blank src while the node may remount with the same props (Strict Mode
+ *   cleanup→remount): React will not re-apply an unchanged src prop.
+ * - On real leave-keep-set unmount, pause immediately, then blank src only after
+ *   a macrotask if the element is still disconnected (definitely discarded).
  */
 function PackFaceVideo({
   src,
   poster,
-  active,
   onReady,
 }: {
   src: string;
   poster?: string;
-  active: boolean;
   onReady?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -307,14 +299,9 @@ function PackFaceVideo({
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
 
-    // Guarantee src is attached even if a prior owner blanked the element.
+    // Re-attach if a deferred discard won a race (should be rare).
     if (video.getAttribute("src") !== src) {
       video.src = src;
-    }
-
-    if (!active) {
-      video.pause();
-      return;
     }
 
     let cancelled = false;
@@ -333,27 +320,35 @@ function PackFaceVideo({
       video.removeEventListener("loadeddata", play);
       video.removeEventListener("canplay", play);
       video.pause();
+
+      // Hard discard only once the node is truly gone (not Strict Mode bounce).
+      const el = video;
+      window.setTimeout(() => {
+        if (el.isConnected) return;
+        if (!el.getAttribute("src") && !el.currentSrc) return;
+        el.removeAttribute("src");
+        try {
+          el.load();
+        } catch {
+          /* ignore */
+        }
+      }, 0);
     };
-  }, [active, src]);
+  }, [src]);
 
   return (
     <video
       ref={videoRef}
-      className={
-        active
-          ? "mobile-css-carousel__video is-active"
-          : "mobile-css-carousel__video"
-      }
+      className="mobile-css-carousel__video is-active"
       src={src}
       poster={poster}
       muted
       loop
       playsInline
-      autoPlay={active}
-      preload={active ? "auto" : "metadata"}
+      autoPlay
+      preload="auto"
       onLoadedData={() => {
         onReady?.();
-        if (!active) return;
         const video = videoRef.current;
         if (!video) return;
         video.muted = true;
@@ -375,9 +370,13 @@ export function MobileCssCarousel({
   const onReadyRef = useRef(onReady);
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  /** Indices with a live <video> element. Always includes active; max 2. */
+  const activeIndexRef = useRef(0);
+  /** Live decoder slots. Active-only while visible; emptied on background. */
   const [videoKeep, setVideoKeep] = useState<number[]>(() => [0]);
   const videoKeepRef = useRef<number[]>([0]);
+  const pageVisibleRef = useRef(
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  );
   const [pocketTick, setPocketTick] = useState(0);
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false);
   const [buyConfirmLeaving, setBuyConfirmLeaving] = useState(false);
@@ -396,6 +395,7 @@ export function MobileCssCarousel({
   const glowRafRef = useRef(0);
   onReadyRef.current = onReady;
   const activeItem = items[activeIndex];
+  activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
   buyConfirmLeavingRef.current = buyConfirmLeaving;
   glowPhaseRef.current = glowPhase;
@@ -550,19 +550,26 @@ export function MobileCssCarousel({
     });
   }, []);
 
+  const applyKeep = useCallback((keep: number[]) => {
+    videoKeepRef.current = keep;
+    setVideoKeep(keep);
+  }, []);
+
   const syncPlayback = useCallback(
     (next: number) => {
-      const keep = nextVideoKeep(videoKeepRef.current, next);
-      videoKeepRef.current = keep;
+      activeIndexRef.current = next;
       setActiveIndex(next);
-      setVideoKeep(keep);
+      // Background: no decoder at all. Foreground: active slide only.
+      applyKeep(
+        pageVisibleRef.current ? nextVideoKeep(videoKeepRef.current, next) : [],
+      );
       buyConfirmOpenRef.current = false;
       buyConfirmLeavingRef.current = false;
       setBuyConfirmOpen(false);
       setBuyConfirmLeaving(false);
       fadeGlowTo(glowColorForItem(items[next]));
     },
-    [fadeGlowTo, items],
+    [applyKeep, fadeGlowTo, items],
   );
 
   useEffect(() => {
@@ -572,11 +579,37 @@ export function MobileCssCarousel({
   // Catalog swap / first paint — snap to the focused pack color + reset decoder set.
   useEffect(() => {
     readySent.current = false;
-    videoKeepRef.current = [0];
     setActiveIndex(0);
-    setVideoKeep([0]);
+    applyKeep(pageVisibleRef.current ? [0] : []);
     snapGlow(glowColorForItem(items[0]));
-  }, [items, snapGlow]);
+  }, [applyKeep, items, snapGlow]);
+
+  // Tab hide / bfcache: drop the only decoder so iOS can reclaim page memory.
+  useEffect(() => {
+    function releaseDecoders() {
+      pageVisibleRef.current = false;
+      applyKeep([]);
+    }
+
+    function restoreDecoders() {
+      pageVisibleRef.current = true;
+      applyKeep(nextVideoKeep([], activeIndexRef.current));
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "hidden") releaseDecoders();
+      else restoreDecoders();
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", releaseDecoders);
+    window.addEventListener("pageshow", restoreDecoders);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", releaseDecoders);
+      window.removeEventListener("pageshow", restoreDecoders);
+    };
+  }, [applyKeep]);
 
   // Warm poster bitmaps before any pack video decoder starts.
   useEffect(() => {
@@ -740,10 +773,10 @@ export function MobileCssCarousel({
             const pocketed = isPackInCart(item.id, item.characterId);
             void pocketTick;
             const isActive = index === activeIndex;
+            // Mount video only for the active keep slot — poster everywhere else.
             const keepVideo =
               Boolean(item.videoUrl) && videoKeep.includes(index);
-            const near =
-              Math.abs(index - activeIndex) <= 2 || videoKeep.includes(index);
+            const near = Math.abs(index - activeIndex) <= 2;
             return (
               <SwiperSlide key={item.id}>
                 <div className="mobile-css-carousel__pack">
@@ -762,13 +795,12 @@ export function MobileCssCarousel({
                     />
                   ) : null}
                   {keepVideo ? (
-                    // Stable key = pack id only. Do NOT remount on active/held flips:
-                    // remount + unload thrash was aborting every mp4 fetch on iOS.
+                    // key=pack id: stable for this slide's lifetime in keep-set.
+                    // Unmount happens only when index leaves keep-set (or background).
                     <PackFaceVideo
                       key={item.id}
                       src={item.videoUrl}
                       poster={item.posterUrl || undefined}
-                      active={isActive}
                       onReady={() => {
                         const swiper = swiperRef.current;
                         if (swiper) markReady(swiper);

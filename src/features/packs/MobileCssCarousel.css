@@ -90,18 +90,12 @@
   z-index: 0;
 }
 
-/* Active video paints above the poster. Keep it fully opaque so WebKit decodes. */
+/* Single active decoder paints above the poster. Neighbors are poster-only. */
 .mobile-css-carousel__pack video,
 .mobile-css-carousel__video {
   position: absolute;
   inset: 0;
   z-index: 1;
-}
-
-/* Held previous decoder stays mounted (warm) but hidden under the poster. */
-.mobile-css-carousel__video:not(.is-active) {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 /* Dim inactive slides without filter:brightness (Safari GPU/decode cost). */
