@@ -35,6 +35,8 @@ export type SearchPack = {
   creatorName: string;
   themeName: string;
   coverImageUrl: string;
+  /** API pack-face poster; used for static tiles / under video. */
+  posterUrl?: string;
   diamondCost: number;
   cardCount: number;
 };
@@ -84,6 +86,7 @@ function packsFromFeatured(featured: FeaturedPack[]): SearchPack[] {
     creatorName: pack.creatorName,
     themeName: pack.themeName,
     coverImageUrl: pack.coverImageUrl,
+    posterUrl: pack.posterUrl?.trim() || undefined,
     diamondCost: pack.diamondCost,
     cardCount: pack.collectionTotal || 0,
   }));

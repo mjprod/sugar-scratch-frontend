@@ -13817,6 +13817,7 @@ body[data-theme="v8"] .search-pack-grid .search-pack-card {
 }
 
 body[data-theme="v8"] .search-pack-art {
+  position: relative;
   width: 72px;
   flex-shrink: 0;
   border-radius: 10px;
@@ -13831,6 +13832,12 @@ body[data-theme="v8"] .search-pack-art video {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Poster under live video so tiles paint before the decoder starts. */
+body[data-theme="v8"] .search-pack-art img + video {
+  position: absolute;
+  inset: 0;
 }
 
 body[data-theme="v8"] .search-pack-meta {
