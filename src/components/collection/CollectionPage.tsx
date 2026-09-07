@@ -46,7 +46,8 @@ export function CollectionPage({
 
   useEffect(() => {
     let cancelled = false;
-    setReady(false);
+    // Do not flip ready→false on inventory refresh — collapsing the page
+    // shell snaps mobile scroll back to the top.
 
     void (async () => {
       // Keep pack shelf in sync with the server before reading local inventory.
@@ -156,10 +157,7 @@ export function CollectionPage({
     >
       <div className="collection-page-content page-container">
         {!ready ? (
-          <header className="collection-page-intro">
-            <h1 className="collection-page-title">Collection</h1>
-            <p className="collection-empty-copy">Loading your collection…</p>
-          </header>
+          <CollectionPageSkeleton />
         ) : state.isTrueEmpty && !revealPacks ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
         ) : state.isTrueEmpty && revealPacks ? (
@@ -206,5 +204,85 @@ export function CollectionPage({
         )}
       </div>
     </section>
+  );
+}
+
+function SkeletonBar({
+  className,
+  width,
+  height,
+}: {
+  className?: string;
+  width?: number | string;
+  height?: number | string;
+}) {
+  return (
+    <span
+      className={["search-skeleton", className].filter(Boolean).join(" ")}
+      style={{ width, height }}
+      aria-hidden="true"
+    />
+  );
+}
+
+/** Fixed-height first-load shell — same pulse language as search overlay. */
+function CollectionPageSkeleton() {
+  return (
+    <div className="collection-page-skeleton" aria-busy="true" aria-live="polite">
+      <header className="collection-page-intro">
+        <SkeletonBar className="search-skeleton-title" width={148} height={28} />
+      </header>
+
+      <div className="collection-snapshot is-skeleton" aria-hidden="true">
+        <SkeletonBar className="search-skeleton-line" width={120} height={14} />
+        <div className="collection-snapshot-metrics">
+          {Array.from({ length: 3 }, (_, index) => (
+            <span key={index} className="collection-snapshot-metric is-skeleton">
+              <SkeletonBar className="search-skeleton-line" width={36} height={22} />
+              <SkeletonBar className="search-skeleton-line" width={64} height={12} />
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <section className="collection-section ready-reveal is-skeleton" aria-hidden="true">
+        <SkeletonBar className="search-skeleton-title" width={156} height={20} />
+        <div className="collection-h-row collection-page-skeleton-row">
+          {Array.from({ length: 3 }, (_, index) => (
+            <span key={index} className="ready-reveal-tile is-skeleton">
+              <SkeletonBar className="ready-reveal-tile-art-btn" />
+              <span className="ready-reveal-tile-body">
+                <SkeletonBar className="search-skeleton-line" width="70%" height={12} />
+                <SkeletonBar className="search-skeleton-line" width="48%" height={12} />
+                <SkeletonBar className="ready-reveal-tile-action is-skeleton" height={36} />
+              </span>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section
+        id="my-collection"
+        className="collection-section my-collection is-skeleton"
+        aria-label="My Collection loading"
+      >
+        <div className="my-collection-head">
+          <SkeletonBar className="search-skeleton-title" width={140} height={20} />
+        </div>
+        <div className="my-collection-creator-row" role="presentation">
+          {Array.from({ length: 4 }, (_, index) => (
+            <span key={index} className="my-collection-creator-card is-skeleton">
+              <span className="my-collection-creator-art">
+                <SkeletonBar className="my-collection-creator-art-fill" />
+              </span>
+              <span className="my-collection-creator-meta">
+                <SkeletonBar className="search-skeleton-line" width="78%" height={13} />
+                <SkeletonBar className="search-skeleton-line" width="52%" height={12} />
+              </span>
+            </span>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }

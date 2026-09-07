@@ -364,15 +364,11 @@ export function SearchScreen({
                           Packs ({visiblePacks.length})
                         </h2>
                       </div>
-                      <div className="search-pack-grid">
-                        {visiblePacks.map((pack) => (
-                          <PackCard
-                            key={pack.id}
-                            pack={pack}
-                            onOpen={() => onOpenPack(pack)}
-                          />
-                        ))}
-                      </div>
+                      <SearchPackMediaList
+                        packs={visiblePacks}
+                        className="search-pack-grid"
+                        onOpenPack={onOpenPack}
+                      />
                     </SearchReveal>
                   ) : null}
                 </>
@@ -400,9 +396,132 @@ function discoveryMediaIds(catalog: SearchCatalog) {
     if (creator.avatarUrl.trim()) ids.push(`creator:${creator.id}`);
   }
   for (const pack of catalog.trendingPacks) {
-    if (pack.coverImageUrl.trim()) ids.push(`pack:${pack.id}`);
+    const cover = pack.coverImageUrl.trim();
+    const poster = pack.posterUrl?.trim() ?? "";
+    if (cover || poster) ids.push(`pack:${pack.id}`);
   }
   return ids;
+}
+
+/** Max live pack-face decoders in search lists (memory budget). */
+const SEARCH_PACK_LIVE_VIDEOS = 2;
+
+function packHasVideo(pack: SearchPack) {
+  const cover = pack.coverImageUrl?.trim() ?? "";
+  return Boolean(cover && isVideoSrc(cover));
+}
+
+/**
+ * Keep only the N most-visible pack videos mounted. Scrolling in new cards
+ * mounts/plays them and unmounts the previous live set (poster stays).
+ */
+function useLiveSearchPackVideos(
+  rootRef: { current: HTMLElement | null },
+  packs: SearchPack[],
+  enabled: boolean,
+) {
+  const videoOrder = useMemo(
+    () => packs.filter(packHasVideo).map((pack) => pack.id),
+    [packs],
+  );
+  const videoOrderKey = videoOrder.join("\0");
+  const [liveIds, setLiveIds] = useState<Set<string>>(
+    () => new Set(videoOrder.slice(0, SEARCH_PACK_LIVE_VIDEOS)),
+  );
+
+  useEffect(() => {
+    const nextSeed = new Set(videoOrder.slice(0, SEARCH_PACK_LIVE_VIDEOS));
+    setLiveIds((prev) => {
+      if (
+        prev.size === nextSeed.size &&
+        [...nextSeed].every((id) => prev.has(id))
+      ) {
+        return prev;
+      }
+      return nextSeed;
+    });
+  }, [videoOrderKey]); // eslint-disable-line react-hooks/exhaustive-deps -- key tracks order
+
+  useEffect(() => {
+    if (!enabled || videoOrder.length === 0) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const root = rootRef.current;
+    const ratios = new Map<string, number>();
+    let raf = 0;
+
+    const publish = () => {
+      raf = 0;
+      const ranked = videoOrder
+        .filter((id) => (ratios.get(id) ?? 0) > 0.08)
+        .sort(
+          (a, b) => (ratios.get(b) ?? 0) - (ratios.get(a) ?? 0),
+        )
+        .slice(0, SEARCH_PACK_LIVE_VIDEOS);
+      // If nothing intersects yet (first layout), keep the seed first-N.
+      const next =
+        ranked.length > 0
+          ? ranked
+          : videoOrder.slice(0, SEARCH_PACK_LIVE_VIDEOS);
+      setLiveIds((prev) => {
+        if (
+          prev.size === next.length &&
+          next.every((id) => prev.has(id))
+        ) {
+          return prev;
+        }
+        return new Set(next);
+      });
+    };
+
+    const schedule = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(publish);
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.searchPackId;
+          if (!id) continue;
+          ratios.set(
+            id,
+            entry.isIntersecting ? entry.intersectionRatio : 0,
+          );
+        }
+        schedule();
+      },
+      {
+        root: root ?? null,
+        threshold: [0, 0.08, 0.25, 0.5, 0.75, 1],
+        // Slight horizontal lead so the next card mounts just before fully on-screen.
+        rootMargin: root ? "0px 48px 0px 48px" : "64px 0px",
+      },
+    );
+
+    const allowed = new Set(videoOrder);
+    const scope: ParentNode = root ?? document;
+    const nodes = scope.querySelectorAll<HTMLElement>("[data-search-pack-id]");
+    nodes.forEach((node) => {
+      const id = node.dataset.searchPackId;
+      if (!id || !allowed.has(id)) return;
+      if (root && !root.contains(node)) return;
+      // Viewport mode (no root): still require the node is under our list host.
+      if (!root) {
+        const host = rootRef.current;
+        if (host && !host.contains(node)) return;
+      }
+      io.observe(node);
+    });
+
+    schedule();
+    return () => {
+      window.cancelAnimationFrame(raf);
+      io.disconnect();
+    };
+  }, [enabled, rootRef, videoOrder, videoOrderKey]);
+
+  return liveIds;
 }
 
 function SkeletonBar({
@@ -719,18 +838,16 @@ function DefaultDiscovery({
               prevLabel="Previous packs"
               nextLabel="Next packs"
             />
-            <div ref={packsScroll.scrollRef} className="search-pack-scroll">
-              {packs.map((pack) => (
-                <PackCard
-                  key={pack.id}
-                  pack={pack}
-                  wide
-                  onOpen={() => onOpenPack(pack)}
-                  onArtReady={() => onMediaReady(`pack:${pack.id}`)}
-                  inert={!showLoaded}
-                />
-              ))}
-            </div>
+            <SearchPackMediaList
+              packs={packs}
+              wide
+              className="search-pack-scroll"
+              scrollRef={packsScroll.scrollRef}
+              onOpenPack={onOpenPack}
+              onArtReady={(packId) => onMediaReady(`pack:${packId}`)}
+              inert={!showLoaded}
+              enabled={showLoaded}
+            />
           </section>
         ) : null}
       </DiscoverySlot>
@@ -828,16 +945,14 @@ function EmptyResults({
             prevLabel="Previous packs"
             nextLabel="Next packs"
           />
-          <div ref={packsScroll.scrollRef} className="search-pack-scroll">
-            {suggestPacks.map((pack) => (
-              <PackCard
-                key={pack.id}
-                pack={pack}
-                wide
-                onOpen={() => onOpenPack(pack)}
-              />
-            ))}
-          </div>
+          <SearchPackMediaList
+            packs={suggestPacks}
+            wide
+            className="search-pack-scroll"
+            scrollRef={packsScroll.scrollRef}
+            onOpenPack={onOpenPack}
+            enabled
+          />
         </SearchReveal>
       ) : null}
     </>
@@ -900,26 +1015,82 @@ function CreatorResultRow({
   );
 }
 
+function SearchPackMediaList({
+  packs,
+  onOpenPack,
+  className,
+  wide = false,
+  scrollRef,
+  onArtReady,
+  inert = false,
+  enabled = true,
+}: {
+  packs: SearchPack[];
+  onOpenPack: (pack: SearchPack) => void;
+  className: string;
+  wide?: boolean;
+  scrollRef?: { current: HTMLDivElement | null };
+  onArtReady?: (packId: string) => void;
+  inert?: boolean;
+  enabled?: boolean;
+}) {
+  const localRef = useRef<HTMLDivElement | null>(null);
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      localRef.current = node;
+      if (scrollRef) scrollRef.current = node;
+    },
+    [scrollRef],
+  );
+  const rootRef = scrollRef ?? localRef;
+  const liveEnabled = enabled && !inert;
+  const liveIds = useLiveSearchPackVideos(rootRef, packs, liveEnabled);
+
+  return (
+    <div ref={setRef} className={className}>
+      {packs.map((pack) => (
+        <PackCard
+          key={pack.id}
+          pack={pack}
+          wide={wide}
+          onOpen={() => onOpenPack(pack)}
+          onArtReady={onArtReady ? () => onArtReady(pack.id) : undefined}
+          inert={inert}
+          autoplayVideo={liveEnabled && liveIds.has(pack.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
 function PackCard({
   pack,
   onOpen,
   wide = false,
   onArtReady,
   inert = false,
+  autoplayVideo = false,
 }: {
   pack: SearchPack;
   onOpen: () => void;
   wide?: boolean;
   onArtReady?: () => void;
   inert?: boolean;
+  /** Mount + autoplay decoder; false keeps API poster only. */
+  autoplayVideo?: boolean;
 }) {
-  const art = pack.coverImageUrl?.trim() ?? "";
+  const cover = pack.coverImageUrl?.trim() ?? "";
+  const poster = pack.posterUrl?.trim() ?? "";
+  const coverIsVideo = cover ? isVideoSrc(cover) : false;
+  const playVideo = coverIsVideo && autoplayVideo;
+  const imageSrc = poster || (!coverIsVideo ? cover : "");
   const markReady = onArtReady
     ? (_event?: SyntheticEvent) => onArtReady()
     : undefined;
   return (
     <button
       type="button"
+      data-search-pack-id={pack.id}
       className={["search-pack-card", wide ? "is-wide" : ""]
         .filter(Boolean)
         .join(" ")}
@@ -927,38 +1098,63 @@ function PackCard({
       tabIndex={inert ? -1 : undefined}
     >
       <span className="search-pack-art">
-        {art ? (
-          isVideoSrc(art) ? (
-            <video
-              src={art}
-              muted
-              loop
-              playsInline
-              autoPlay
-              preload="auto"
-              aria-hidden="true"
-              onLoadedData={markReady}
-              onCanPlay={markReady}
-              onError={markReady}
-              ref={(node) => {
-                if (!node || !onArtReady) return;
-                if (node.readyState >= 2) onArtReady();
-              }}
-            />
-          ) : (
-            <img
-              src={art}
-              alt=""
-              loading="eager"
-              decoding="async"
-              onLoad={markReady}
-              onError={markReady}
-              ref={(node) => {
-                if (!node || !onArtReady) return;
-                if (node.complete) onArtReady();
-              }}
-            />
-          )
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt=""
+            loading="eager"
+            decoding="async"
+            onLoad={markReady}
+            onError={markReady}
+            ref={(node) => {
+              if (!node || !onArtReady) return;
+              if (node.complete) onArtReady();
+            }}
+          />
+        ) : null}
+        {playVideo ? (
+          <video
+            key={cover}
+            src={cover}
+            poster={poster || undefined}
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+            aria-hidden="true"
+            onLoadedData={markReady}
+            onCanPlay={markReady}
+            onError={markReady}
+            ref={(node) => {
+              if (!node) return;
+              node.muted = true;
+              void node.play().catch(() => {});
+              if (!onArtReady) return;
+              if (node.readyState >= 2) onArtReady();
+            }}
+          />
+        ) : null}
+        {!imageSrc && !playVideo && coverIsVideo ? (
+          // No poster from API and not in the live budget — static first frame only.
+          <video
+            src={cover}
+            muted
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+            onLoadedData={(event) => {
+              const video = event.currentTarget;
+              try {
+                video.pause();
+                if (video.currentTime < 0.05) video.currentTime = 0.001;
+              } catch {
+                /* ignore seek failures */
+              }
+              markReady?.(event);
+            }}
+            onError={markReady}
+          />
         ) : null}
       </span>
       <span className="search-pack-meta">

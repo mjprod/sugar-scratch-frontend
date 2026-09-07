@@ -49,6 +49,8 @@ export type FeaturedPack = {
   collectionName: string;
   themeName: string;
   coverImageUrl: string;
+  /** API pack-face still; prefer over decoding video for list tiles. */
+  posterUrl?: string;
   price: Price;
   diamondCost: number;
   collected: number;
@@ -592,8 +594,10 @@ export function packLibraryFromModels(
         foil.label?.trim() && !/^pack\s/i.test(foil.label)
           ? foil.label.trim()
           : `${creatorName} Pack`;
-      // Prefer API pack-face media (video/image); avatar only as fallback.
-      const coverImageUrl = foil.videoUrl?.trim() || avatarCover;
+      const videoUrl = foil.videoUrl?.trim() || "";
+      const posterUrl = foil.posterUrl?.trim() || "";
+      // Prefer pack-face video when present (motion tiles); poster / avatar fallback.
+      const coverImageUrl = videoUrl || posterUrl || avatarCover;
 
       packs.push({
         id: foil.id,
@@ -604,6 +608,7 @@ export function packLibraryFromModels(
         collectionName: formatCollectionLabel(creatorName).toUpperCase(),
         themeName,
         coverImageUrl,
+        posterUrl: posterUrl || undefined,
         price: { amount: diamondCost, currency: "SC" },
         diamondCost,
         collected: 0,

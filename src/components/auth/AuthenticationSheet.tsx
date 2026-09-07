@@ -20,13 +20,15 @@ import {
   AUTH_PASSWORD_MIN_LENGTH,
   authFailureMessage,
   createAccountFailureMessage,
+  duplicateEmailMessage,
   forgotPasswordSuccessMessage,
+  isDuplicateEmailRegisterError,
   isValidAuthPassword,
   loginWithEmail,
   loginWithOAuth,
   registerWithEmail,
   requestPasswordReset,
-  supportingCopyForTrigger,
+  requestVerificationEmail,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
   type ProtectedActionType,
@@ -51,7 +53,6 @@ const DRAG_FLICK_VY = 640;
  */
 export function AuthenticationSheet({
   open,
-  trigger,
   onDismiss,
   onSuccess,
   initialMode = "login",
@@ -90,8 +91,15 @@ export function AuthenticationSheet({
 
   const busy = submitting !== null;
   const passwordOk = isValidAuthPassword(password);
-  const canCreateAccount =
-    isValidEmail(email) && passwordOk && acceptedTerms;
+  const emailOk = isValidEmail(email);
+  const emailFormatError =
+    email.trim().length > 0 && !emailOk
+      ? "Enter a valid email address."
+      : "";
+  const canLogin = emailOk && password.length > 0;
+  const canCreateAccount = emailOk && passwordOk && acceptedTerms;
+  const canSubmitPrimary =
+    mode === "create-account" ? canCreateAccount : canLogin;
 
   useEffect(() => {
     if (!open) return;
@@ -135,23 +143,48 @@ export function AuthenticationSheet({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, dismissWithAnticipation]);
+  }, [open, busy]);
+
+  // ONB-006: keep keyboard focus inside the sheet while open.
+  useEffect(() => {
+    if (!open) return;
+    const root = panelRef.current;
+    if (!root) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab" || !root) return;
+      const focusables = [
+        ...root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusables.length === 0) return;
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    root.addEventListener("keydown", onKeyDown);
+    return () => root.removeEventListener("keydown", onKeyDown);
+  }, [open, mode, busy, legalDoc]);
 
   const title =
     mode === "create-account"
-      ? "Create Your Sugar Account"
+      ? "Create Account"
       : mode === "forgot-password" || mode === "reset-sent"
         ? "Reset Your Password"
-        : "Continue Your Journey";
+        : "Log In";
 
   const subtitle =
-    mode === "create-account"
-      ? "Save your collection and continue your journey."
-      : mode === "forgot-password"
-        ? "Enter your email and we’ll send password-reset instructions."
-        : mode === "reset-sent"
-          ? forgotPasswordSuccessMessage()
-          : supportingCopyForTrigger(trigger);
+    mode === "forgot-password"
+      ? "Enter your email and we’ll send password-reset instructions."
+      : mode === "reset-sent"
+        ? forgotPasswordSuccessMessage()
+        : "";
 
   async function finishSocial(provider: "Google" | "Apple") {
     setSubmitting(provider === "Google" ? "google" : "apple");
@@ -160,7 +193,12 @@ export function AuthenticationSheet({
       const kind = provider === "Google" ? "google" : "apple";
       const emailAddr = `${kind}@sugar.app`;
       const { user } = await loginWithOAuth(kind, emailAddr);
-      onSuccess({ email: user.email, provider: user.provider, user });
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -181,7 +219,12 @@ export function AuthenticationSheet({
     setError("");
     try {
       const { user } = await loginWithEmail(email.trim(), password);
-      onSuccess({ email: user.email, provider: user.provider, user });
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "login",
+      });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -208,10 +251,20 @@ export function AuthenticationSheet({
     setConsentError(false);
     try {
       const { user } = await registerWithEmail(email.trim(), password);
-      onSuccess({ email: user.email, provider: user.provider, user });
-    } catch (error) {
+      await requestVerificationEmail();
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "register",
+      });
+    } catch (err) {
       setSubmitting(null);
-      setError(createAccountFailureMessage());
+      setError(
+        isDuplicateEmailRegisterError(err)
+          ? duplicateEmailMessage()
+          : createAccountFailureMessage(),
+      );
     }
   }
 
@@ -363,6 +416,20 @@ export function AuthenticationSheet({
                 aria-hidden="true"
                 onPointerDown={startHandleDrag}
               />
+              {mode === "forgot-password" || mode === "reset-sent" ? (
+                <button
+                  type="button"
+                  className="auth7-sheet-back"
+                  aria-label="Back"
+                  disabled={busy || isClosing}
+                  onClick={() => {
+                    if (initialMode === "forgot-password") onDismiss();
+                    else switchMode("login");
+                  }}
+                >
+                  <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="auth7-sheet-close"
@@ -392,24 +459,12 @@ export function AuthenticationSheet({
                 ) : (
                   <>
                     <header className="auth7-sheet-head">
-                  {mode === "forgot-password" || mode === "reset-sent" ? (
-                    <button
-                      type="button"
-                      className="auth7-sheet-back"
-                      aria-label="Back"
-                      disabled={busy}
-                      onClick={() => {
-                        if (initialMode === "forgot-password") onDismiss();
-                        else switchMode("login");
-                      }}
-                    >
-                      <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  ) : null}
                       <h2 id={titleId} className="auth7-sheet-title">
                         {title}
                       </h2>
-                      <p className="auth7-sheet-copy">{subtitle}</p>
+                      {subtitle ? (
+                        <p className="auth7-sheet-copy">{subtitle}</p>
+                      ) : null}
                     </header>
 
                     {mode === "reset-sent" ? (
@@ -551,9 +606,20 @@ export function AuthenticationSheet({
                               value={email}
                               placeholder="you@email.com"
                               disabled={busy}
-                              onChange={(e) => setEmail(e.target.value)}
+                              aria-invalid={emailFormatError ? true : undefined}
+                              onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (error === "Enter a valid email address.") {
+                                  setError("");
+                                }
+                              }}
                             />
                           </label>
+                          {emailFormatError ? (
+                            <p className="auth7-error" role="alert">
+                              {emailFormatError}
+                            </p>
+                          ) : null}
 
                           <div className="auth7-field">
                             <label
@@ -716,7 +782,7 @@ export function AuthenticationSheet({
                             </div>
                           ) : null}
 
-                          {error ? (
+                          {error && error !== emailFormatError ? (
                             <p className="auth7-error" role="alert">
                               {error}
                             </p>
@@ -737,10 +803,7 @@ export function AuthenticationSheet({
                               costAmount={null}
                               fontSize={15}
                               strokeWidth={1}
-                              disabled={
-                                busy ||
-                                (mode === "create-account" && !canCreateAccount)
-                              }
+                              disabled={busy || !canSubmitPrimary}
                             />
                           </div>
                         </form>

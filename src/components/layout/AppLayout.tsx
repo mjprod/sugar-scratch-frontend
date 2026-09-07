@@ -36,8 +36,7 @@ export function AppLayout() {
     completeAuth,
     dismissAuth,
     onVerified,
-    onVerifyLater,
-    onEmailChanged,
+    onVerifyBackToCreateAccount,
     verifyEmail,
     inboxUnread,
     setInboxUnread,
@@ -216,8 +215,7 @@ export function AppLayout() {
       <VerifyEmailModal
         open={verifyOpen}
         email={verifyEmail}
-        onLater={onVerifyLater}
-        onEmailChanged={onEmailChanged}
+        onBack={onVerifyBackToCreateAccount}
         onVerified={onVerified}
       />
 

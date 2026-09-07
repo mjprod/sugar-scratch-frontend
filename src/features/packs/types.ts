@@ -48,6 +48,8 @@ export interface Iteration {
   modelSource: AssetSource;
   modelUrl: string;
   videoUrl: string;
+  /** Pack-face still from the API; used before the video is attached. */
+  posterUrl?: string;
   createdAt: number;
   videoSource: AssetSource;
   fitMode: VideoFitMode;
@@ -94,6 +96,7 @@ export type PackItem = {
   modelUrl: string;
   modelName: string;
   videoUrl: string;
+  posterUrl?: string;
   price: number;
   originalPrice?: number | null;
   girlName: string;
@@ -119,6 +122,7 @@ export function packItemToIteration(item: PackItem): Iteration {
     modelAnchor: { ...DEFAULT_MODEL_ROTATION_ANCHOR },
     modelRotation: { ...DEFAULT_MODEL_ROTATION },
     videoUrl: item.videoUrl,
+    posterUrl: item.posterUrl?.trim() || undefined,
     videoSource: "bundled",
     fitMode: PACK_VIDEO_FIT_MODE,
     textureTransform: { ...DEFAULT_VIDEO_TEXTURE_TRANSFORM },

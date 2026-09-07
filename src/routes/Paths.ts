@@ -77,6 +77,7 @@ export const Paths = {
   welcome: "/welcome",
   resetPassword: "/reset-password",
   coverflowV2: "/coverflow-v2",
+  mobileCarousel: "/mobile-carousel",
 } as const;
 
 /** Tabs guests can open without auth (Store is browseable; purchase still gates). */

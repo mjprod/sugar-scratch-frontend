@@ -35,6 +35,9 @@ export function WelcomeGiftOverlay({
 }) {
   const {
     authed,
+    authOpen,
+    emailVerified,
+    verifyOpen,
     profile,
     bumpInventoryRevision,
     invalidatePackSync,
@@ -55,6 +58,12 @@ export function WelcomeGiftOverlay({
   const [exitPhase, setExitPhase] = useState<ExitPhase>("idle");
 
   useEffect(() => {
+    // Never interrupt create-account / verify — gift only after email is verified.
+    const waitingOnEmailVerify = authed && !emailVerified;
+    if (authOpen || verifyOpen || waitingOnEmailVerify) {
+      setOpen(false);
+      return;
+    }
     if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
       setExitPhase("idle");
       setOpen(true);
@@ -64,8 +73,14 @@ export function WelcomeGiftOverlay({
       setExitPhase("idle");
       setOpen(false);
     }
-    // Re-check on auth so a failed signup fulfill (pending cleared) can reopen.
-  }, [authed, skip, profile.welcomeClaimed]);
+  }, [
+    authOpen,
+    authed,
+    emailVerified,
+    verifyOpen,
+    skip,
+    profile.welcomeClaimed,
+  ]);
 
   useEffect(() => {
     if (open && exitPhase === "idle") {

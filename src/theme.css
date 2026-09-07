@@ -598,16 +598,57 @@ body[data-theme="v8"] .home-featured-coverflow {
     mask-image: linear-gradient(180deg, #000 0%, #000 88%, transparent 100%);
   }
 
+  body[data-theme="v8"] .home-view-all-packs {
+    margin-top: -5.5rem;
+  }
+
+  /* Let the page scroller keep vertical pans; carousel only takes X. */
   body[data-theme="v8"] .home-featured-coverflow .coverflow-stage {
     touch-action: pan-y;
     /* Was -4dvh (pulled packs into the nav). Keep flush with the padded stage. */
     translate: 0 0;
+  }
+
+  body[data-theme="v8"] .home-featured-coverflow[data-coverflow="mobile-swiper"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  body[data-theme="v8"]
+    .home-featured-coverflow[data-coverflow="mobile-swiper"]
+    .mobile-css-carousel-stage {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    translate: 0 -1rem;
+  }
+
+  body[data-theme="v8"]
+    .home-featured-coverflow[data-coverflow="mobile-swiper"]
+    .mobile-css-carousel-shell,
+  body[data-theme="v8"]
+    .home-featured-coverflow[data-coverflow="mobile-swiper"]
+    .mobile-css-carousel.swiper {
+    touch-action: pan-y;
   }
 }
 
 body[data-theme="v8"] .home-featured-coverflow.is-loading {
   background: oklch(1 0 0 / 0.06);
   animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* Pull daily reward / today bento closer to the hero on mobile.
+   Own stacking context so pack glows / elevated HUD can't wash out the banner. */
+body[data-theme="v8"] .home-page-inner--after-hero {
+  position: relative;
+  z-index: 2;
+  isolation: isolate;
+  margin-top: -2rem;
 }
 
 @media (min-width: 1024px) {
@@ -2046,6 +2087,13 @@ body[data-theme="v8"] .category-leaderboard-tab.is-active {
   box-shadow: 0 6px 16px oklch(0.669 0.23 6.08 / 0.22);
 }
 
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .category-leaderboard-tab.is-active {
+    position: relative;
+    top: -3rem;
+  }
+}
+
 body[data-theme="v8"] .category-leaderboard-tab:hover:not(.is-active) {
   color: oklch(1 0 0);
   border-color: oklch(1 0 0 / 0.14);
@@ -3041,18 +3089,21 @@ body[data-theme="v8"] .hub-section-label--redeem {
 /* -------- Level 1: Daily Reward stage -------- */
 body[data-theme="v8"] .hub-daily-hero {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas: "stage body actions";
   align-items: center;
   gap: 16px 20px;
   overflow: hidden;
+  isolation: isolate;
   border-radius: 24px;
   border: 1px solid oklch(0.656 0.212 354.31 / 0.22);
   background:
     radial-gradient(ellipse at 50% 42%, oklch(0.656 0.212 354.31 / 0.26), transparent 55%),
     radial-gradient(ellipse at 12% 90%, oklch(0.639 0.256 9.90 / 0.16), transparent 48%),
     linear-gradient(160deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
+  background-color: oklch(0.156 0.015 354.31);
   padding: 16px 16px 14px;
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.06),
@@ -5076,6 +5127,7 @@ body[data-theme="v8"] .ready-reveal-tile:hover .ready-reveal-tile-art-img {
 }
 
 body[data-theme="v8"] .ready-reveal-tile-art-btn {
+  position: relative;
   display: block;
   width: 100%;
   margin: 0;
@@ -5102,7 +5154,16 @@ body[data-theme="v8"] .ready-reveal-tile-art-img {
   transition: transform 220ms ease;
 }
 
-body[data-theme="v8"] video.ready-reveal-tile-art-img {
+/* Poster under live video — off-screen tiles stay poster-only. */
+body[data-theme="v8"] .ready-reveal-tile-art-btn > img.ready-reveal-tile-art-img {
+  position: absolute;
+  inset: 0;
+}
+
+body[data-theme="v8"] video.ready-reveal-tile-art-img,
+body[data-theme="v8"] .ready-reveal-tile-art-video {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
 }
 
@@ -5406,6 +5467,8 @@ body[data-theme="v8"] .my-collection-creator-row {
   overflow-x: auto;
   padding: 2px 2px 10px;
   margin: 0 0 14px;
+  /* Fixed height so theme/catalog loads don't reflow page scroll. */
+  min-height: 214px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -5418,6 +5481,8 @@ body[data-theme="v8"] .my-collection-creator-row::-webkit-scrollbar {
 body[data-theme="v8"] .my-collection-creator-card {
   flex: 0 0 auto;
   width: 132px;
+  height: 201px;
+  box-sizing: border-box;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
@@ -5439,26 +5504,42 @@ body[data-theme="v8"] .my-collection-creator-card.is-selected {
   background: oklch(0.711 0.203 357.66 / 0.08);
 }
 
+body[data-theme="v8"] .my-collection-creator-card.is-skeleton {
+  pointer-events: none;
+  border-color: oklch(1 0 0 / 0.06);
+  background: oklch(1 0 0 / 0.03);
+}
+
 body[data-theme="v8"] .my-collection-creator-art {
+  position: relative;
   display: block;
+  flex: 0 0 auto;
+  width: 100%;
   aspect-ratio: 3 / 4;
   overflow: hidden;
   border-radius: 11px;
   background: oklch(0.162 0.01 285.17);
 }
 
-body[data-theme="v8"] .my-collection-creator-art img {
+body[data-theme="v8"] .my-collection-creator-art img,
+body[data-theme="v8"] .my-collection-creator-art-fill {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+body[data-theme="v8"] .my-collection-creator-art-fill {
+  border-radius: inherit;
+}
+
 body[data-theme="v8"] .my-collection-creator-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
+  min-height: 34px;
   padding: 0 2px 2px;
 }
 
@@ -5467,6 +5548,7 @@ body[data-theme="v8"] .my-collection-creator-name {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5475,7 +5557,51 @@ body[data-theme="v8"] .my-collection-creator-name {
 body[data-theme="v8"] .my-collection-creator-count {
   color: oklch(1 0 0 / 0.55);
   font-size: 12px;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
+}
+
+body[data-theme="v8"] .collection-page-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-height: 70dvh;
+}
+
+body[data-theme="v8"] .collection-page-skeleton .collection-snapshot.is-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 148px;
+  padding: 18px 16px;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 18px;
+  background: oklch(0.201 0.018 289.78 / 0.6);
+}
+
+body[data-theme="v8"] .collection-page-skeleton .collection-snapshot-metric.is-skeleton {
+  gap: 8px;
+  pointer-events: none;
+  border-color: transparent;
+  background: transparent;
+}
+
+body[data-theme="v8"] .collection-page-skeleton-row {
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+body[data-theme="v8"] .ready-reveal-tile.is-skeleton {
+  pointer-events: none;
+  min-height: 268px;
+}
+
+body[data-theme="v8"] .ready-reveal-tile-action.is-skeleton {
+  display: block;
+  width: 100%;
+  border-radius: 999px;
 }
 
 body[data-theme="v8"] .my-collection-preview {
@@ -5659,8 +5785,13 @@ body[data-theme="v8"] .my-collection-preview-lock {
     width: 100%;
   }
 
+  body[data-theme="v8"] .my-collection-creator-row {
+    min-height: 201px;
+  }
+
   body[data-theme="v8"] .my-collection-creator-card {
     width: 118px;
+    height: 188px;
   }
 
   body[data-theme="v8"] .my-collection-preview-card {
@@ -9392,6 +9523,17 @@ body[data-theme="v8"] .auth7-legal-doc {
   margin-bottom: 20px;
 }
 
+body[data-theme="v8"] .auth7-sheet-panel:has(.auth7-sheet-back) .auth7-sheet-head {
+  /* Title sits under the absolute back/close row, not beside it. */
+  padding-left: 0;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-sheet-panel:has(.auth7-sheet-back) .auth7-sheet-head {
+    padding-top: 48px;
+  }
+}
+
 body[data-theme="v8"] .auth7-legal-doc {
   padding-right: 0;
   margin-bottom: 0;
@@ -9480,16 +9622,33 @@ body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc {
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
-  display: grid;
+  position: absolute;
+  top: 0.7rem;
+  left: 0.9rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
-  place-items: center start;
-  margin: 0 0 8px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
   cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-sheet-back:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-sheet-back {
+    top: 1.7rem;
+    left: 0.9rem;
+  }
 }
 
 body[data-theme="v8"] .auth7-sheet-title {
@@ -9736,6 +9895,14 @@ body[data-theme="v8"] .auth7-text-link {
 body[data-theme="v8"] .auth7-text-link.is-strong {
   color: oklch(0.757 0.168 353.61);
   font-weight: 600;
+}
+
+body[data-theme="v8"] .auth7-text-link:disabled,
+body[data-theme="v8"] .auth7-text-link.is-strong:disabled {
+  color: oklch(1 0 0 / 0.32);
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 body[data-theme="v8"] .auth7-hint {
@@ -14088,6 +14255,7 @@ body[data-theme="v8"] .search-pack-grid .search-pack-card {
 }
 
 body[data-theme="v8"] .search-pack-art {
+  position: relative;
   width: 72px;
   flex-shrink: 0;
   border-radius: 10px;
@@ -14102,6 +14270,12 @@ body[data-theme="v8"] .search-pack-art video {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Poster under live video so tiles paint before the decoder starts. */
+body[data-theme="v8"] .search-pack-art img + video {
+  position: absolute;
+  inset: 0;
 }
 
 body[data-theme="v8"] .search-pack-meta {
