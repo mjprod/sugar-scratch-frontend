@@ -296,6 +296,7 @@ const DeckItem = memo(function DeckItem({
           overlay={card.overlay}
           src={card.mediaUrl}
           mediaType={card.mediaType}
+          poster={card.posterUrl}
           back={card.backUrl}
           backMediaType={card.backMediaType}
           effect={effect}

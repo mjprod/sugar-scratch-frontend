@@ -76,6 +76,8 @@ export type BackendCard = {
   photo_scratch_done: number
   theme_id?: string | null
   trailer?: string | null
+  trailerPoster?: string | null
+  motionPoster?: string | null
 }
 
 /** One published motion card usable in the pack-open fan. */
@@ -120,6 +122,10 @@ export type BackendCollectionCard = {
   videoUrl: string
   /** Collection trailer preview when uploaded (preferred card-face media). */
   trailerUrl?: string | null
+  /** Still first-frame poster for the trailer face. */
+  trailerPosterUrl?: string | null
+  /** Still first-frame poster for the motion clip face. */
+  motionPosterUrl?: string | null
   photoScratchDone: number
   /** Fixed 10-slot grid (empty string = unfilled). */
   photoUrls: string[]
@@ -785,11 +791,19 @@ function normalizeCollectionGroup(
       const trailerUrl = card.trailerUrl
         ? normalizeMediaUrl(card.trailerUrl)
         : ''
+      const trailerPosterUrl = card.trailerPosterUrl
+        ? normalizeMediaUrl(card.trailerPosterUrl)
+        : ''
+      const motionPosterUrl = card.motionPosterUrl
+        ? normalizeMediaUrl(card.motionPosterUrl)
+        : ''
       const videoUrl = normalizeMediaUrl(card.videoUrl || '')
       return {
         id: card.id,
         label: (card.label || card.id).trim(),
         trailerUrl: trailerUrl || null,
+        trailerPosterUrl: trailerPosterUrl || null,
+        motionPosterUrl: motionPosterUrl || null,
         videoUrl: trailerUrl || videoUrl,
         photoScratchDone: Math.max(
           0,
@@ -1080,6 +1094,8 @@ export async function fetchCollectionCatalogLegacy(
               const photoUrls =
                 photosByCardId.get(card.id) ?? emptyPhotoUrls()
               const trailerUrl = normalizeMediaUrl(card.trailer ?? '')
+              const trailerPosterUrl = normalizeMediaUrl(card.trailerPoster ?? '')
+              const motionPosterUrl = normalizeMediaUrl(card.motionPoster ?? '')
               const motionUrl =
                 normalizeMediaUrl(card.foreground) ||
                 normalizeMediaUrl(card.background)
@@ -1087,6 +1103,8 @@ export async function fetchCollectionCatalogLegacy(
                 id: card.id,
                 label: card.label,
                 trailerUrl: trailerUrl || null,
+                trailerPosterUrl: trailerPosterUrl || null,
+                motionPosterUrl: motionPosterUrl || null,
                 // Prefer trailer for collection face; fall back to motion clips.
                 videoUrl: trailerUrl || motionUrl,
                 photoScratchDone: Math.max(
