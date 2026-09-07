@@ -509,7 +509,7 @@ export function GameHub() {
                 className="game-hub-pack__link reveal-replay"
                 onClick={savePhotoCardsForLater}
               >
-                Save for Later
+                Save to Collection
               </button>
             </>
           ) : null}

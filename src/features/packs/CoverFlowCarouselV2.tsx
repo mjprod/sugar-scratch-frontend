@@ -141,14 +141,14 @@ const OPEN_DUCK_DEPTH_BLUR_PX = 9
 const OPEN_DUCK_BLUR_LEAD_IN_MS = 47
 const OPEN_DUCK_BLUR_FULL_AT = 1
 
-// --- Cart remove exit: slight rise (anticipation), then drop out ---
+// --- Cart remove exit: slight settle (anticipation), then fly up and out ---
 const REMOVE_ANTICIPATION_MS = 95
 const REMOVE_DROP_MS = 280
-const REMOVE_ANTICIPATION_Y = 0.07
+const REMOVE_ANTICIPATION_Y = -0.04
 const REMOVE_ANTICIPATION_SCALE = 1.035
-const REMOVE_DROP_Y = -1.85
+const REMOVE_DROP_Y = 2.05
 const REMOVE_DROP_SCALE = 0.78
-const REMOVE_DROP_ROT_X_DEG = 16
+const REMOVE_DROP_ROT_X_DEG = -14
 
 type OpenAnimPhase = 'idle' | 'anticipation' | 'spin' | 'duck'
 type RemoveExitPhase = 'idle' | 'anticipation' | 'drop'
@@ -893,6 +893,7 @@ formatPrice,
 					  hideActiveCta = false,
 					  tearHud,
 					  lockCardTopClosed = false,
+					  registerRemoveTrigger,
 					}: {
 					  item: Iteration
 					  index: number
@@ -928,6 +929,11 @@ formatPrice,
 					  tearHud?: ReactNode
 					  /** Browse-only surfaces: never apply shared tear pose to the lid. */
 					  lockCardTopClosed?: boolean
+					  /** Pack Pocket: swipe-up runs remove exit via this registry. */
+					  registerRemoveTrigger?: (
+					    id: string,
+					    trigger: (() => void) | null,
+					  ) => void
 					}) {
 	const groupRef = useRef<Group>(null)
 			  const modelRef = useRef<Group>(null)
@@ -1061,6 +1067,17 @@ useEffect(() => {
     hoverYawRef.current = 0
     invalidate()
   }
+
+  // Pack Pocket: swipe-up confirms remove and runs the drop exit.
+  useEffect(() => {
+    if (!registerRemoveTrigger || !onRemove) return
+    const trigger = () => {
+      if (isRemoving || removeExitRef.current.phase !== 'idle') return
+      beginRemoveExit()
+    }
+    registerRemoveTrigger(item.id, trigger)
+    return () => registerRemoveTrigger(item.id, null)
+  }, [item.id, onRemove, registerRemoveTrigger, isRemoving])
 
 	  const removeControl =
 	    onRemove && !isRemoving ? (
@@ -1629,7 +1646,7 @@ useFrame((state, delta) => {
 		    const isLiveCenter = liveOffset === 0
 		    const dt = Math.min(delta, 1 / 30)
 
-	    // ---- Cart remove exit: rise (anticipation), then drop out ----
+	    // ---- Cart remove exit: slight settle, then fly up and fade ----
 	    if (removeExitRef.current.phase !== 'idle') {
 	      const exit = removeExitRef.current
 	      const motion = motionRef.current
@@ -1687,20 +1704,20 @@ useFrame((state, delta) => {
 	        exit.fromScale = motion.scale
 	        exit.fromRotY = motion.rotY
 	        exit.fromOpacity = opacityRef.current
-	        // Fall through into drop this frame.
+	        // Fall through into fly-up this frame.
 	      }
 
 	      if (exit.phase === 'drop') {
 	        const t = clamp01((performance.now() - exit.startMs) / REMOVE_DROP_MS)
-	        const fall = easeAppleDrop(t)
-	        // Opacity lags a touch so the pack stays readable while it starts falling.
+	        const rise = easeAppleDrop(t)
+	        // Opacity lags a touch so the pack stays readable while it starts rising.
 	        const fade = cubicBezierEase(0.55, 0.02, 0.78, 0.28, t)
 	        motion.x = exit.fromX
-	        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_DROP_Y, fall)
+	        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_DROP_Y, rise)
 	        motion.z = exit.fromZ
-	        motion.scale = lerp(exit.fromScale, exit.fromScale * REMOVE_DROP_SCALE, fall)
+	        motion.scale = lerp(exit.fromScale, exit.fromScale * REMOVE_DROP_SCALE, rise)
 	        motion.rotY = exit.fromRotY
-	        modelRot.x = item.modelRotation.x + REMOVE_DROP_ROT_X_DEG * fall
+	        modelRot.x = item.modelRotation.x + REMOVE_DROP_ROT_X_DEG * rise
 	        modelRot.y = item.modelRotation.y
 	        modelRot.z = item.modelRotation.z
 	        applyOpacity(lerp(exit.fromOpacity, 0, fade))
@@ -2397,6 +2414,7 @@ formatPrice,
 					  hideActiveCta = false,
 					  tearHud,
 					  lockCardTopClosed = false,
+					  registerRemoveTrigger,
 					}: {
 					  items: Iteration[]
 					  focusIndex: number
@@ -2424,6 +2442,10 @@ formatPrice,
 					  hideActiveCta?: boolean
 					  tearHud?: ReactNode
 					  lockCardTopClosed?: boolean
+					  registerRemoveTrigger?: (
+					    id: string,
+					    trigger: (() => void) | null,
+					  ) => void
 					}) {
 	  const hasActiveSelection = selectedId !== null
 
@@ -2483,6 +2505,7 @@ formatPrice={formatPrice}
 		              hideActiveCta={hideActiveCta}
 		              tearHud={index === focusIndex ? tearHud : undefined}
 		              lockCardTopClosed={lockCardTopClosed}
+		              registerRemoveTrigger={registerRemoveTrigger}
 		            />
 	          )
 	        })}
@@ -2545,11 +2568,21 @@ export function CoverFlowCarouselV2({
   onRevealSaveLater,
   onRevealSaveAndOpenNext,
   revealContinueLabel = 'Play now',
-  revealSaveLaterLabel = 'Save for Later',
+  revealSaveLaterLabel = 'Save to Collection',
   revealSaveAndOpenNextLabel = 'Save for later and open another',
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
+  const packRemoveTriggersRef = useRef(new Map<string, () => void>())
+  const registerRemoveTrigger = useCallback(
+    (id: string, trigger: (() => void) | null) => {
+      if (trigger) packRemoveTriggersRef.current.set(id, trigger)
+      else packRemoveTriggersRef.current.delete(id)
+    },
+    [],
+  )
+  const onRemoveRef = useRef(onRemove)
+  onRemoveRef.current = onRemove
 
   // Controlled when parent passes selectedId (including null = deselected).
   // Don't use `??` with a defaulted prop — null would fall back to stale internal state
@@ -3633,7 +3666,7 @@ useEffect(() => {
         return
       }
 
-      // Swipe up to activate (same result as tap).
+      // Swipe up: Pack Pocket remove (when onRemove is set); otherwise activate.
       // use-gesture: negative Y is up.
       const isUpwardActivate =
         vertical &&
@@ -3642,10 +3675,22 @@ useEffect(() => {
         (swipeY < 0 ||
           verticalSpeed >= ACTIVATE_UP_VELOCITY ||
           absY >= ACTIVATE_UP_DISTANCE_PX * 1.35)
-      if (isUpwardActivate && !disableSwipeDownDeactivateRef.current) {
-        commitActivate('activate')
-        event?.preventDefault?.()
-        return
+      if (isUpwardActivate) {
+        const focused = itemsRef.current[focusIndexRef.current]
+        if (onRemoveRef.current && focused) {
+          const trigger = packRemoveTriggersRef.current.get(focused.id)
+          if (trigger) {
+            trigger()
+            finishGesture('activate')
+            event?.preventDefault?.()
+            return
+          }
+        }
+        if (!disableSwipeDownDeactivateRef.current) {
+          commitActivate('activate')
+          event?.preventDefault?.()
+          return
+        }
       }
 
       // Swipe down while active returns the pack to default.
@@ -3823,6 +3868,7 @@ isMobile={isMobileViewportActive}
 	                hideActiveCta={hideActiveCta}
 	                tearHud={tearHud}
 	                lockCardTopClosed={disablePackOpenReveal}
+	                registerRemoveTrigger={registerRemoveTrigger}
 	              />
             </Suspense>
           </Canvas>

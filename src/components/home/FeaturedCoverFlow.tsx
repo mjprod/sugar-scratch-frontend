@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { DesktopCoverFlow, HOME_COVERFLOW_CAMERA } from "@/components/home/DesktopCoverFlow";
-import { MobileCoverFlow } from "@/components/home/MobileCoverFlow";
 import {
+  CoverFlowCarousel,
+  DEFAULT_COVERFLOW_CAMERA,
   MOBILE_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
+import { BuyPackQuantityModal } from "@/components/home/BuyPackQuantityModal";
 import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
@@ -43,6 +44,7 @@ import {
   packUnitCost,
   resolvePurchasePackId,
   submitLinearPackPurchase,
+  isJulianaCoverflowBuyAb,
   type CatalogPackProduct,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
@@ -73,6 +75,19 @@ function isMobileCoverflowViewport() {
     window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
   );
 }
+
+/** Desktop homepage hero — locked from center debug. */
+const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
+  ...DEFAULT_COVERFLOW_CAMERA,
+  packsX: 0.015,
+  packsY: -1.25,
+  modelY: -0.02,
+  cameraX: 0.11,
+  cameraY: 0.27,
+  cameraZ: 5.9,
+  lookAtY: 0.1,
+  fov: 36,
+};
 
 function defaultHeroDebug(isMobile: boolean): HeroDebugState {
   const camera = isMobile ? MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
@@ -154,7 +169,6 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           modelUrl: PACK_MODEL_URL,
           modelName: "card2.glb",
           videoUrl: foil.videoUrl,
-          posterUrl: foil.posterUrl,
           price: diamondCost,
           girlName: profile.name,
           packNumber: foil.slot === 1 ? 101 : 102,
@@ -213,6 +227,20 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
   }
 
   return { items, playById };
+}
+
+function iterationIsJuliana(
+  item: Iteration,
+  target: FeaturedCoverFlowPlayTarget | null,
+) {
+  return (
+    isJulianaCoverflowBuyAb(item.characterId) ||
+    isJulianaCoverflowBuyAb(item.id) ||
+    isJulianaCoverflowBuyAb(target?.id) ||
+    isJulianaCoverflowBuyAb(target?.foilId) ||
+    isJulianaCoverflowBuyAb(item.girlName) ||
+    isJulianaCoverflowBuyAb(target?.creatorName)
+  );
 }
 
 function HeroDebugField({
@@ -286,6 +314,8 @@ export function FeaturedCoverFlow({
   const [copyLabel, setCopyLabel] = useState("Copy");
   const [addedToPocket, setAddedToPocket] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [qtyModalItem, setQtyModalItem] = useState<Iteration | null>(null);
+  const [qtyModalQuantity, setQtyModalQuantity] = useState(1);
   const buyingRef = useRef(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -350,8 +380,7 @@ export function FeaturedCoverFlow({
   }, [items, selectedId]);
 
   useEffect(() => {
-    // Mobile uses the Swiper CSS carousel; it reports ready itself.
-    if (!catalog || isMobileViewport) return;
+    if (!catalog) return;
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -362,7 +391,7 @@ export function FeaturedCoverFlow({
       fitMode: first.fitMode || PACK_VIDEO_FIT_MODE,
       textureTransform: first.textureTransform || DEFAULT_VIDEO_TEXTURE_TRANSFORM,
       flipY: true,
-      textureSize: resolvePackTextureSize(false),
+      textureSize: resolvePackTextureSize(isMobileViewport),
     };
     const release = preloadVideoTexture(input);
     const unsubscribe = subscribeVideoTextureReady(
@@ -429,11 +458,26 @@ export function FeaturedCoverFlow({
   );
 
   const handleAddToPocket = useCallback(
-    (item: Iteration) => {
+    (
+      item: Iteration,
+      quantity = 1,
+      options?: { allowDuplicates?: boolean },
+    ) => {
       const target = resolveTarget(item);
       if (!target) return;
-      if (isPackInCart(item.id, target.foilId, target.id)) return;
-      onPlay(target);
+      const qty = clampBuyPackQuantity(quantity);
+      const allowDuplicates = options?.allowDuplicates === true;
+      // HUD Juliana: skip if already pocketed (single add). Modal always adds qty lines.
+      if (
+        !allowDuplicates &&
+        qty === 1 &&
+        isPackInCart(item.id, target.foilId, target.id)
+      ) {
+        return;
+      }
+      for (let i = 0; i < qty; i += 1) {
+        onPlay(target);
+      }
     },
     [onPlay, resolveTarget],
   );
@@ -651,6 +695,21 @@ export function FeaturedCoverFlow({
     ],
   );
 
+  useEffect(() => {
+    if (!qtyModalItem) return;
+    if (selectedId !== qtyModalItem.id) {
+      setQtyModalItem(null);
+    }
+  }, [selectedId, qtyModalItem]);
+
+  const qtyModalTarget = qtyModalItem ? resolveTarget(qtyModalItem) : null;
+  const qtyModalUnitPrice = qtyModalItem
+    ? qtyModalTarget?.diamondCost ||
+      packUnitCost(qtyModalItem.characterId || qtyModalItem.id) ||
+      qtyModalItem.price ||
+      0
+    : 0;
+
   if (!catalog) {
     return (
       <div
@@ -662,48 +721,94 @@ export function FeaturedCoverFlow({
 
   if (!items.length) return null;
 
-  if (isMobileViewport) {
-    return (
-      <MobileCoverFlow
-        items={items}
-        selectedId={selectedId}
-        glow={glow}
-        buying={buying}
-        addedToPocket={addedToPocket}
-        onSelect={setSelectedId}
-        onDeselect={() => setSelectedId(null)}
-        onFocusChange={(item) => {
-          setGlow(item?.backgroundColor || DEFAULT_GLOW);
-        }}
-        onBuy={(item, quantity) => {
-          void handleBuyPack(item, quantity);
-        }}
-        onAddToPocket={handleAddToPocket}
-        onReady={() => onReadyRef.current?.()}
-      />
-    );
-  }
+  const focusedIsJuliana = focusedItem
+    ? iterationIsJuliana(focusedItem, resolveTarget(focusedItem))
+    : false;
 
   return (
-    <>
-      <DesktopCoverFlow
-        items={items}
-        selectedId={selectedId}
-        glow={glow}
-        buying={buying}
-        addedToPocket={addedToPocket}
-        cameraSettings={cameraSettings}
-        showCenterGuide={HERO_DEBUG_ENABLED && debugOpen}
-        onSelect={setSelectedId}
-        onDeselect={() => setSelectedId(null)}
-        onFocusChange={(item) => {
-          setGlow(item?.backgroundColor || DEFAULT_GLOW);
-        }}
-        onBuy={(item, quantity) => {
-          void handleBuyPack(item, quantity);
-        }}
-        onAddToPocket={handleAddToPocket}
-      />
+    <div
+      className="home-featured-coverflow"
+      style={{
+        ["--overlay-gradient-color-end" as string]: glow,
+      }}
+    >
+      <div className="stage-packs">
+        <div
+          className="packs-glow-stack packs-glow-stack--base"
+          aria-hidden="true"
+        >
+          <div className="packs-circle packs-circle--bloom" />
+          <div className="packs-circle packs-circle--core" />
+        </div>
+        <CoverFlowCarousel
+          items={items}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onDeselect={() => {
+            setSelectedId(null);
+            setQtyModalItem(null);
+          }}
+          cameraSettings={cameraSettings}
+          onFocusChange={(item) => {
+            setGlow(item?.backgroundColor || DEFAULT_GLOW);
+            if (qtyModalItem && item?.id !== qtyModalItem.id) {
+              setQtyModalItem(null);
+            }
+          }}
+          formatPrice={(price) => String(price)}
+          disableSwipeDownDeactivate
+          disableWheelPaging
+          buyLabel="Buy Pack"
+          buyDisabled={buying}
+          addToPocketDisabled={addedToPocket}
+          /* Juliana A/B: legacy HUD — Buy + Pocket + inline qty confirm. */
+          confirmBuy={focusedIsJuliana}
+          onAddToPocket={focusedIsJuliana ? handleAddToPocket : undefined}
+          onBuy={(item, quantity) => {
+            if (iterationIsJuliana(item, resolveTarget(item))) {
+              void handleBuyPack(item, quantity ?? 1);
+              return;
+            }
+            /* Rosa / others: Buy Pack opens the quantity modal. */
+            setQtyModalQuantity(1);
+            setQtyModalItem(item);
+          }}
+        />
+        {qtyModalItem ? (
+          <BuyPackQuantityModal
+            packTitle={
+              qtyModalTarget?.name ||
+              qtyModalItem.packName ||
+              qtyModalItem.girlName ||
+              "Pack"
+            }
+            unitPrice={qtyModalUnitPrice}
+            quantity={qtyModalQuantity}
+            buyDisabled={buying}
+            formatPrice={(price) => String(price)}
+            onQuantityChange={setQtyModalQuantity}
+            onClose={() => setQtyModalItem(null)}
+            onBuy={() => {
+              const item = qtyModalItem;
+              const qty = qtyModalQuantity;
+              setQtyModalItem(null);
+              void handleBuyPack(item, qty);
+            }}
+            onAddToPocket={() => {
+              const item = qtyModalItem;
+              const qty = qtyModalQuantity;
+              setQtyModalItem(null);
+              handleAddToPocket(item, qty, { allowDuplicates: true });
+            }}
+          />
+        ) : null}
+        {HERO_DEBUG_ENABLED && debugOpen ? (
+          <div className="coverflow-center-guide" aria-hidden="true">
+            <span className="coverflow-center-guide__line" />
+            <span className="coverflow-center-guide__label">center</span>
+          </div>
+        ) : null}
+      </div>
       {HERO_DEBUG_ENABLED && typeof document !== "undefined"
         ? createPortal(
             <aside
@@ -845,6 +950,6 @@ export function FeaturedCoverFlow({
             document.body,
           )
         : null}
-    </>
+    </div>
   );
 }
