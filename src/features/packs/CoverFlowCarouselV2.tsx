@@ -440,9 +440,9 @@ const CHEVRON_HOLD_REPEAT_MS = 90
 // Hovering a chevron for this long starts auto-cycling in that direction.
 const CHEVRON_HOVER_HOLD_MS = 500
 
-/** Packs hex CTA size — compact height so secondary text controls fit under it. */
-const BUY_PACK_CTA_SIZE_DESKTOP = { width: 187, height: 48, fontSize: 12, strokeWidth: 2 }
-const BUY_PACK_CTA_SIZE_MOBILE = { width: 176, height: 42, fontSize: 13, strokeWidth: 2 }
+/** Packs hex CTA size — taller shell with vertically centered title + cost. */
+	const BUY_PACK_CTA_SIZE_DESKTOP = { width: 187, height: 70, fontSize: 12, strokeWidth: 2 }
+	const BUY_PACK_CTA_SIZE_MOBILE = { width: 176, height: 60, fontSize: 13, strokeWidth: 2 }
 
 /** Local-space bottom-center of the pack mesh (after model rotation, scale 1). */
 type PackLocalBottom = {

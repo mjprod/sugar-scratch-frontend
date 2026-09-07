@@ -2,7 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
-import { Check, ChevronLeft, ChevronRight, Minus, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
 		  Suspense,
 		  useCallback,
@@ -74,10 +74,7 @@ import {
   formatPackPrice,
   type Iteration,
 } from './types'
-import {
-  BUY_PACK_MAX_QUANTITY,
-  clampBuyPackQuantity,
-} from '@/services/purchase'
+import { CoverflowBuyConfirm } from './CoverflowBuyConfirm'
 
 // Keep the cover-flow light by mounting only nearby packs.
 // Mobile: 3 packs (center ± 1). Desktop: 7 packs (center ± 3).
@@ -342,35 +339,8 @@ const CHEVRON_HOLD_REPEAT_MS = 90
 const CHEVRON_HOVER_HOLD_MS = 500
 
 /** Packs hex CTA size — compact height so the pocket text control fits under it. */
-const BUY_PACK_CTA_SIZE_DESKTOP = { width: 187, height: 48, fontSize: 12, strokeWidth: 2 }
-const BUY_PACK_CTA_SIZE_MOBILE = { width: 176, height: 42, fontSize: 13, strokeWidth: 2 }
-
-/** Pack Pocket mark used on the coverflow text control. */
-function PackPocketIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <g
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
-      >
-        {/* Pocket outline */}
-        <path d="M4.8 3h14.4c.477 0 .935.199 1.273.553S21 4.388 21 4.89v6.667c0 2.504-.948 4.907-2.636 6.678S14.387 21 12 21a8.6 8.6 0 0 1-3.444-.719a9 9 0 0 1-2.92-2.047C3.948 16.463 3 14.06 3 11.556V4.889c0-.501.19-.982.527-1.336A1.76 1.76 0 0 1 4.8 3" />
-        {/* Cross instead of down chevron — nudged 1px up */}
-        <path d="M12 7.75v6.5" />
-        <path d="M8.75 11h6.5" />
-      </g>
-    </svg>
-  )
-}
+const BUY_PACK_CTA_SIZE_DESKTOP = { width: 187, height: 70, fontSize: 12, strokeWidth: 2 }
+const BUY_PACK_CTA_SIZE_MOBILE = { width: 176, height: 60, fontSize: 13, strokeWidth: 2 }
 
 /** Local-space bottom-center of the pack mesh (after model rotation, scale 1). */
 type PackLocalBottom = {
@@ -1805,123 +1775,39 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                     }}
                   />
                   {confirmBuy && (buyConfirmOpen || buyConfirmLeaving) ? (
-                    <div
+                    <CoverflowBuyConfirm
                       id={`coverflow-buy-confirm-${item.id}`}
-                      className={`coverflow-cart-remove-confirm coverflow-buy-confirm${
-                        buyConfirmLeaving ? ' is-leaving' : ''
-                      }`}
-                      role="dialog"
-                      aria-label="Buy pack?"
-                      aria-modal="false"
-                      onAnimationEnd={(event) => {
-                        if (event.target !== event.currentTarget) return
-                        if (
-                          event.animationName !== 'coverflow-confirm-leave' &&
-                          event.animationName !== 'coverflow-buy-confirm-leave'
-                        ) {
-                          return
-                        }
-                        setBuyConfirmLeaving(false)
+                      leaving={buyConfirmLeaving}
+                      quantity={buyQuantity}
+                      onQuantityChange={setBuyQuantity}
+                      disabled={buyDisabled}
+                      onCancel={closeBuyConfirm}
+                      onConfirm={(qty) => {
+                        closeBuyConfirm()
+                        onBuy(item, qty)
                       }}
-                    >
-                      <p className="coverflow-cart-remove-confirm__label">Buy</p>
-                      <div
-                        className="coverflow-buy-confirm__qty"
-                        role="group"
-                        aria-label="Pack quantity"
-                      >
-                        <button
-                          type="button"
-                          className="coverflow-buy-confirm__qty-btn"
-                          aria-label="Decrease pack quantity"
-                          disabled={buyDisabled || buyQuantity <= 1}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setBuyQuantity((q) => clampBuyPackQuantity(q - 1))
-                          }}
-                        >
-                          <Minus aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                        <span
-                          className="coverflow-buy-confirm__qty-value"
-                          aria-live="polite"
-                        >
-                          {buyQuantity}
-                        </span>
-                        <button
-                          type="button"
-                          className="coverflow-buy-confirm__qty-btn"
-                          aria-label="Increase pack quantity"
-                          disabled={
-                            buyDisabled || buyQuantity >= BUY_PACK_MAX_QUANTITY
-                          }
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setBuyQuantity((q) => clampBuyPackQuantity(q + 1))
-                          }}
-                        >
-                          <Plus aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                      </div>
-                      <div className="coverflow-cart-remove-confirm__actions">
-                        <button
-                          type="button"
-                          className="coverflow-cart-remove-confirm__btn is-cancel"
-                          aria-label="Cancel buy"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            closeBuyConfirm()
-                          }}
-                        >
-                          <X aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                        <button
-                          type="button"
-                          className="coverflow-cart-remove-confirm__btn is-confirm"
-                          aria-label={`Confirm buy ${buyQuantity}`}
-                          disabled={buyDisabled}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            if (buyDisabled) return
-                            const qty = buyQuantity
-                            closeBuyConfirm()
-                            onBuy(item, qty)
-                          }}
-                        >
-                          <Check aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                      </div>
-                    </div>
+                      onLeaveEnd={() => setBuyConfirmLeaving(false)}
+                      onAddToPocket={
+                        onAddToPocket
+                          ? () => {
+                              if (pocketDisabled) return
+                              if (
+                                typeof window === 'undefined' ||
+                                !window.matchMedia(
+                                  '(prefers-reduced-motion: reduce)',
+                                ).matches
+                              ) {
+                                setConfirmingAdd(true)
+                              }
+                              onAddToPocket(item)
+                            }
+                          : undefined
+                      }
+                      pocketDisabled={pocketDisabled}
+                      pocketLabel={pocketDisabled ? 'In Pocket' : 'Add to Pocket'}
+                    />
                   ) : null}
                 </div>
-                {onAddToPocket ? (
-                  <button
-                    type="button"
-                    className="coverflow-add-to-pocket"
-                    tabIndex={pocketDisabled ? -1 : 0}
-                    disabled={pocketDisabled}
-                    aria-disabled={pocketDisabled || undefined}
-                    aria-label={
-                      pocketDisabled ? 'Already in Pack Pocket' : 'Add to Pocket'
-                    }
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      if (pocketDisabled) return
-                      if (
-                        typeof window === 'undefined' ||
-                        !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-                      ) {
-                        setConfirmingAdd(true)
-                      }
-                      onAddToPocket(item)
-                    }}
-                  >
-                    <PackPocketIcon className="coverflow-add-to-pocket__icon" />
-                    <span className="coverflow-add-to-pocket__label">
-                      {pocketDisabled ? 'In Pocket' : 'Add to Pocket'}
-                    </span>
-                  </button>
-                ) : null}
               </div>
 			            ) : null}
 	          </div>

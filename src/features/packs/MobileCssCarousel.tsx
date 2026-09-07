@@ -5,7 +5,6 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Check, X } from "lucide-react";
 import { EffectCoverflow } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperClass } from "swiper/types";
@@ -18,6 +17,7 @@ import {
   isPackInCart,
   subscribeCart,
 } from "@/services/cart";
+import { CoverflowBuyConfirm } from "@/features/packs/CoverflowBuyConfirm";
 import { formatPackPrice, type Iteration } from "@/features/packs/types";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
@@ -26,7 +26,7 @@ import "./MobileCssCarousel.css";
 
 const BUY_PACK_CTA_SIZE_MOBILE = {
   width: 176,
-  height: 42,
+  height: 60,
   fontSize: 13,
   strokeWidth: 2,
 };
@@ -88,10 +88,12 @@ function PackSlideHud({
   pocketed,
   buyConfirmOpen,
   buyConfirmLeaving,
+  buyQuantity,
   confirmingAdd,
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
+  onBuyQuantityChange,
   onAddToPocket,
   onBuyConfirmLeaveEnd,
   onConfirmingAddEnd,
@@ -101,10 +103,12 @@ function PackSlideHud({
   pocketed: boolean;
   buyConfirmOpen: boolean;
   buyConfirmLeaving: boolean;
+  buyQuantity: number;
   confirmingAdd: boolean;
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
-  onConfirmBuy: () => void;
+  onConfirmBuy: (quantity: number) => void;
+  onBuyQuantityChange: (quantity: number) => void;
   onAddToPocket: () => void;
   onBuyConfirmLeaveEnd: () => void;
   onConfirmingAddEnd: () => void;
@@ -160,7 +164,10 @@ function PackSlideHud({
             glowOuterBloom="off"
             costIconAnimated={false}
             label="Buy Pack"
-            costAmount={formatPackPrice(item.price ?? 4.99)}
+            costAmount={formatPackPrice(
+              (item.price ?? 4.99) *
+                (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
+            )}
             className="coverflow-buy-pack-cta__button"
             tabIndex={revealed ? 0 : -1}
             aria-expanded={buyConfirmOpen || buyConfirmLeaving}
@@ -171,91 +178,22 @@ function PackSlideHud({
             }}
           />
           {buyConfirmOpen || buyConfirmLeaving ? (
-            <div
+            <CoverflowBuyConfirm
               id={`coverflow-buy-confirm-${item.id}`}
-              className={`coverflow-cart-remove-confirm coverflow-buy-confirm${
-                buyConfirmLeaving ? " is-leaving" : ""
-              }`}
-              role="dialog"
-              aria-label="Buy pack?"
-              aria-modal="false"
-              onAnimationEnd={(event) => {
-                if (event.target !== event.currentTarget) return;
-                if (event.animationName !== "coverflow-confirm-leave") return;
-                onBuyConfirmLeaveEnd();
-              }}
-            >
-              <p className="coverflow-cart-remove-confirm__label">Buy</p>
-              <div className="coverflow-cart-remove-confirm__actions">
-                <button
-                  type="button"
-                  className="coverflow-cart-remove-confirm__btn is-cancel"
-                  aria-label="Cancel buy"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onCloseBuyConfirm();
-                  }}
-                >
-                  <X aria-hidden="true" strokeWidth={2.5} />
-                </button>
-                <button
-                  type="button"
-                  className="coverflow-cart-remove-confirm__btn is-confirm"
-                  aria-label="Confirm buy"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onConfirmBuy();
-                  }}
-                >
-                  <Check aria-hidden="true" strokeWidth={2.5} />
-                </button>
-              </div>
-            </div>
+              leaving={buyConfirmLeaving}
+              quantity={buyQuantity}
+              onQuantityChange={onBuyQuantityChange}
+              onCancel={onCloseBuyConfirm}
+              onConfirm={onConfirmBuy}
+              onLeaveEnd={onBuyConfirmLeaveEnd}
+              onAddToPocket={onAddToPocket}
+              pocketDisabled={pocketed}
+              pocketLabel={pocketed ? "In Pocket" : "Add to Pocket"}
+            />
           ) : null}
         </div>
-        <button
-          type="button"
-          className="coverflow-add-to-pocket"
-          tabIndex={revealed ? 0 : -1}
-          disabled={pocketed}
-          aria-disabled={pocketed || undefined}
-          aria-label={pocketed ? "Already in Pack Pocket" : "Add to Pocket"}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddToPocket();
-          }}
-        >
-          <PackPocketIcon className="coverflow-add-to-pocket__icon" />
-          <span className="coverflow-add-to-pocket__label">
-            {pocketed ? "In Pocket" : "Add to Pocket"}
-          </span>
-        </button>
       </div>
     </div>
-  );
-}
-
-function PackPocketIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <g
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
-      >
-        <path d="M4.8 3h14.4c.477 0 .935.199 1.273.553S21 4.388 21 4.89v6.667c0 2.504-.948 4.907-2.636 6.678S14.387 21 12 21a8.6 8.6 0 0 1-3.444-.719a9 9 0 0 1-2.92-2.047C3.948 16.463 3 14.06 3 11.556V4.889c0-.501.19-.982.527-1.336A1.76 1.76 0 0 1 4.8 3" />
-        <path d="M12 7.75v6.5" />
-        <path d="M8.75 11h6.5" />
-      </g>
-    </svg>
   );
 }
 
@@ -369,7 +307,7 @@ export function MobileCssCarousel({
   items: Iteration[];
   onReady?: () => void;
   /** Home / purchase buy path. When omitted, confirm only closes (playground). */
-  onBuy?: (item: Iteration) => void;
+  onBuy?: (item: Iteration, quantity?: number) => void;
   /** Home pocket path. When omitted, adds directly to the pack cart. */
   onAddToPocket?: (item: Iteration) => void;
   onFocusChange?: (item: Iteration | null) => void;
@@ -394,9 +332,11 @@ export function MobileCssCarousel({
   const [pocketTick, setPocketTick] = useState(0);
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false);
   const [buyConfirmLeaving, setBuyConfirmLeaving] = useState(false);
+  const [buyQuantity, setBuyQuantity] = useState(1);
   const [confirmingAdd, setConfirmingAdd] = useState(false);
   const buyConfirmOpenRef = useRef(false);
   const buyConfirmLeavingRef = useRef(false);
+  const buyQuantityRef = useRef(1);
   const initialGlow = glowColorForItem(items[0]);
   const [baseGlow, setBaseGlow] = useState(initialGlow);
   const [nextGlow, setNextGlow] = useState(initialGlow);
@@ -415,6 +355,7 @@ export function MobileCssCarousel({
   activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
   buyConfirmLeavingRef.current = buyConfirmLeaving;
+  buyQuantityRef.current = buyQuantity;
   glowPhaseRef.current = glowPhase;
   baseGlowRef.current = baseGlow;
   nextGlowRef.current = nextGlow;
@@ -507,6 +448,8 @@ export function MobileCssCarousel({
     if (buyConfirmOpenRef.current || buyConfirmLeavingRef.current) return;
     buyConfirmLeavingRef.current = false;
     buyConfirmOpenRef.current = true;
+    buyQuantityRef.current = 1;
+    setBuyQuantity(1);
     setBuyConfirmLeaving(false);
     setBuyConfirmOpen(true);
   }
@@ -517,11 +460,11 @@ export function MobileCssCarousel({
     else openBuyConfirm();
   }
 
-  function confirmActiveBuy() {
+  function confirmActiveBuy(quantity = buyQuantityRef.current) {
     if (buyDisabledRef.current) return;
     const item = items[activeIndexRef.current];
     closeBuyConfirm();
-    if (item) onBuyRef.current?.(item);
+    if (item) onBuyRef.current?.(item, quantity);
   }
 
   function addActiveToPocket() {
@@ -601,8 +544,10 @@ export function MobileCssCarousel({
       );
       buyConfirmOpenRef.current = false;
       buyConfirmLeavingRef.current = false;
+      buyQuantityRef.current = 1;
       setBuyConfirmOpen(false);
       setBuyConfirmLeaving(false);
+      setBuyQuantity(1);
       fadeGlowTo(glowColorForItem(items[next]));
     },
     [applyKeep, fadeGlowTo, items],
@@ -725,7 +670,7 @@ export function MobileCssCarousel({
     if (
       origin instanceof Element &&
       origin.closest(
-        ".cta-button, .coverflow-buy-pack-cta__button, .coverflow-add-to-pocket, .coverflow-buy-confirm, .coverflow-cart-remove-confirm",
+        ".cta-button, .coverflow-buy-pack-cta__button, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .coverflow-buy-confirm__pocket",
       )
     ) {
       return;
@@ -738,7 +683,7 @@ export function MobileCssCarousel({
     const x = event.clientX;
     const y = event.clientY;
     const targets = active.querySelectorAll<HTMLElement>(
-      ".coverflow-buy-confirm .is-confirm, .coverflow-buy-confirm .is-cancel, .coverflow-buy-pack-cta__button, .coverflow-add-to-pocket",
+      ".coverflow-buy-confirm .is-confirm, .coverflow-buy-confirm .is-cancel, .coverflow-buy-pack-cta__button, .coverflow-buy-confirm__pocket",
     );
     for (const el of targets) {
       const r = el.getBoundingClientRect();
@@ -757,7 +702,7 @@ export function MobileCssCarousel({
         toggleBuyConfirm();
         return;
       }
-      if (el.classList.contains("coverflow-add-to-pocket")) {
+      if (el.classList.contains("coverflow-buy-confirm__pocket")) {
         addActiveToPocket();
         return;
       }
@@ -807,7 +752,7 @@ export function MobileCssCarousel({
           onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-add-to-pocket, .coverflow-cart-remove-confirm, .cta-button"
+          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button"
         >
           {items.map((item, index) => {
             const pocketed = isPackInCart(item.id, item.characterId);
@@ -856,10 +801,12 @@ export function MobileCssCarousel({
                     pocketed={pocketed}
                     buyConfirmOpen={buyConfirmOpen}
                     buyConfirmLeaving={buyConfirmLeaving}
+                    buyQuantity={buyQuantity}
                     confirmingAdd={confirmingAdd}
                     onToggleBuyConfirm={toggleBuyConfirm}
                     onCloseBuyConfirm={closeBuyConfirm}
                     onConfirmBuy={confirmActiveBuy}
+                    onBuyQuantityChange={setBuyQuantity}
                     onAddToPocket={addActiveToPocket}
                     onBuyConfirmLeaveEnd={() => {
                       buyConfirmLeavingRef.current = false;

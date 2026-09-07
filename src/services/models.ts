@@ -271,6 +271,24 @@ export function packFaceVideoFromModel(
   return foil?.videoUrl ?? optionalMedia(model.packFaceVideoUrl);
 }
 
+/** API pack-face still for inventory tiles (cheap under / before the decoder). */
+export function packFacePosterFromModel(
+  model: BackendModel | null | undefined,
+  hints: {
+    packId?: string | null;
+    packName?: string | null;
+    themeName?: string | null;
+  } = {},
+): string | null {
+  if (!model) return null;
+  const foil = foilForInventoryHints(model, hints);
+  return (
+    foil?.posterUrl?.trim() ||
+    optionalMedia(model.packFacePosterUrl) ||
+    null
+  );
+}
+
 export function modelAvatarUrl(model: BackendModel | null | undefined) {
   return optionalMedia(model?.avatar);
 }

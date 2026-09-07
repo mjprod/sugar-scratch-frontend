@@ -111,7 +111,8 @@
 .mobile-css-carousel__hud {
   position: absolute;
   left: 50%;
-  bottom: 4.15rem;
+  /* Mobile CSS carousel only — keep 3D coverflow stack untouched. */
+  bottom: 4.9rem;
   z-index: 30;
   touch-action: manipulation;
   width: max-content;
@@ -137,13 +138,8 @@
 }
 
 .mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button-glow,
-.mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button,
-.mobile-css-carousel__hud .coverflow-add-to-pocket {
+.mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button {
   pointer-events: auto;
   position: relative;
   z-index: 31;
-}
-
-.mobile-css-carousel__hud .coverflow-buy-confirm {
-  z-index: 40;
 }
