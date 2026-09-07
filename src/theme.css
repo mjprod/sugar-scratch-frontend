@@ -9408,6 +9408,17 @@ body[data-theme="v8"] .auth7-legal-doc {
   margin-bottom: 20px;
 }
 
+body[data-theme="v8"] .auth7-sheet-panel:has(.auth7-sheet-back) .auth7-sheet-head {
+  /* Title sits under the absolute back/close row, not beside it. */
+  padding-left: 0;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-sheet-panel:has(.auth7-sheet-back) .auth7-sheet-head {
+    padding-top: 48px;
+  }
+}
+
 body[data-theme="v8"] .auth7-legal-doc {
   padding-right: 0;
   margin-bottom: 0;
@@ -9496,16 +9507,33 @@ body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc {
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
-  display: grid;
+  position: absolute;
+  top: 0.7rem;
+  left: 0.9rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
-  place-items: center start;
-  margin: 0 0 8px;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
   cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-sheet-back:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-sheet-back {
+    top: 1.7rem;
+    left: 0.9rem;
+  }
 }
 
 body[data-theme="v8"] .auth7-sheet-title {
@@ -9752,6 +9780,14 @@ body[data-theme="v8"] .auth7-text-link {
 body[data-theme="v8"] .auth7-text-link.is-strong {
   color: oklch(0.757 0.168 353.61);
   font-weight: 600;
+}
+
+body[data-theme="v8"] .auth7-text-link:disabled,
+body[data-theme="v8"] .auth7-text-link.is-strong:disabled {
+  color: oklch(1 0 0 / 0.32);
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 body[data-theme="v8"] .auth7-hint {

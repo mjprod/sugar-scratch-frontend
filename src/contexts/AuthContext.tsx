@@ -215,6 +215,7 @@ type AuthContextValue = {
   dismissAuth: () => void;
   onVerified: () => void;
   onVerifyLater: () => void;
+  onVerifyBackToCreateAccount: () => void;
   onEmailChanged: (email: string) => void;
   notePackPurchaseSeed: (creatorName?: string) => void;
   finishRecommendationAndResume: () => void;
@@ -260,6 +261,7 @@ type AuthActionsContextValue = {
   dismissAuth: () => void;
   onVerified: () => void;
   onVerifyLater: () => void;
+  onVerifyBackToCreateAccount: () => void;
   onEmailChanged: (email: string) => void;
   notePackPurchaseSeed: (creatorName?: string) => void;
   finishRecommendationAndResume: () => void;
@@ -709,6 +711,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeAuth = useCallback(
     (result: AuthSuccessResult) => {
       const action = pending;
+      const openedFromRegister = result.source === "register";
       sessionSyncEpochRef.current += 1;
       setReturningUser(true);
 
@@ -756,11 +759,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthed(true);
           // Resume only after authed flips — SoftGate must see authed=true.
           window.setTimeout(() => {
-            if (
-              action &&
-              actionNeedsVerifiedEmail(action) &&
-              needsEmailVerification()
-            ) {
+            const needsVerify =
+              needsEmailVerification() &&
+              (openedFromRegister ||
+                (action != null && actionNeedsVerifiedEmail(action)));
+            if (needsVerify) {
               setVerifyPending(action);
               setVerifyOpen(true);
               return;
@@ -792,8 +795,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const onVerifyLater = useCallback(() => {
     setVerifyOpen(false);
+    const action = verifyPending;
     setVerifyPending(null);
-  }, []);
+    // Registration always opens verify; Later still resumes non-purchase journeys.
+    if (!action || !actionNeedsVerifiedEmail(action)) {
+      window.setTimeout(() => applyRecommendationDecision(action), 0);
+    }
+  }, [applyRecommendationDecision, verifyPending]);
+
+  const onVerifyBackToCreateAccount = useCallback(() => {
+    const action = verifyPending;
+    const email = profile.email || getAuthEmail();
+    setVerifyOpen(false);
+    setVerifyPending(null);
+
+    // Drop the unverified session so create-account can be submitted again.
+    sessionSyncEpochRef.current += 1;
+    void logoutRemote();
+    destroySession();
+    clearEmailVerified();
+    setAuthed(false);
+    setEmailVerified(false);
+
+    setPending(action);
+    setAuthSheetEmail(email);
+    setAuthSheetMode("create-account");
+    setAuthOpen(true);
+  }, [profile.email, verifyPending]);
 
   const onEmailChanged = useCallback((email: string) => {
     setProfile((d) => ({ ...d, email }));
@@ -902,6 +930,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dismissAuth,
       onVerified,
       onVerifyLater,
+      onVerifyBackToCreateAccount,
       onEmailChanged,
       notePackPurchaseSeed,
       finishRecommendationAndResume,
@@ -930,6 +959,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onEmailChanged,
       onVerified,
       onVerifyLater,
+      onVerifyBackToCreateAccount,
       openCart,
       openCreator,
       openInbox,
@@ -987,6 +1017,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dismissAuth,
       onVerified,
       onVerifyLater,
+      onVerifyBackToCreateAccount,
       onEmailChanged,
       notePackPurchaseSeed,
       finishRecommendationAndResume,
@@ -1020,6 +1051,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onEmailChanged,
       onVerified,
       onVerifyLater,
+      onVerifyBackToCreateAccount,
       bumpInventoryRevision,
       invalidatePackSync,
       closeSecondary,
