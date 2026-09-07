@@ -361,13 +361,27 @@ function PackFaceVideo({
 export function MobileCssCarousel({
   items,
   onReady,
+  onBuy,
+  onAddToPocket,
+  onFocusChange,
+  buyDisabled = false,
 }: {
   items: Iteration[];
   onReady?: () => void;
+  /** Home / purchase buy path. When omitted, confirm only closes (playground). */
+  onBuy?: (item: Iteration) => void;
+  /** Home pocket path. When omitted, adds directly to the pack cart. */
+  onAddToPocket?: (item: Iteration) => void;
+  onFocusChange?: (item: Iteration | null) => void;
+  buyDisabled?: boolean;
 }) {
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const onReadyRef = useRef(onReady);
+  const onBuyRef = useRef(onBuy);
+  const onAddToPocketRef = useRef(onAddToPocket);
+  const onFocusChangeRef = useRef(onFocusChange);
+  const buyDisabledRef = useRef(buyDisabled);
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
@@ -394,13 +408,20 @@ export function MobileCssCarousel({
   const glowFadeTimerRef = useRef(0);
   const glowRafRef = useRef(0);
   onReadyRef.current = onReady;
-  const activeItem = items[activeIndex];
+  onBuyRef.current = onBuy;
+  onAddToPocketRef.current = onAddToPocket;
+  onFocusChangeRef.current = onFocusChange;
+  buyDisabledRef.current = buyDisabled;
   activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
   buyConfirmLeavingRef.current = buyConfirmLeaving;
   glowPhaseRef.current = glowPhase;
   baseGlowRef.current = baseGlow;
   nextGlowRef.current = nextGlow;
+
+  useEffect(() => {
+    onFocusChangeRef.current?.(items[activeIndex] ?? null);
+  }, [activeIndex, items]);
 
   const clearGlowTimers = useCallback(() => {
     window.clearTimeout(glowFadeTimerRef.current);
@@ -482,6 +503,7 @@ export function MobileCssCarousel({
   }
 
   function openBuyConfirm() {
+    if (buyDisabledRef.current) return;
     if (buyConfirmOpenRef.current || buyConfirmLeavingRef.current) return;
     buyConfirmLeavingRef.current = false;
     buyConfirmOpenRef.current = true;
@@ -490,29 +512,43 @@ export function MobileCssCarousel({
   }
 
   function toggleBuyConfirm() {
+    if (buyDisabledRef.current) return;
     if (buyConfirmOpenRef.current) closeBuyConfirm();
     else openBuyConfirm();
   }
 
+  function confirmActiveBuy() {
+    if (buyDisabledRef.current) return;
+    const item = items[activeIndexRef.current];
+    closeBuyConfirm();
+    if (item) onBuyRef.current?.(item);
+  }
+
   function addActiveToPocket() {
-    if (!activeItem) return;
-    if (isPackInCart(activeItem.id, activeItem.characterId)) return;
+    const item = items[activeIndexRef.current];
+    if (!item) return;
+    if (isPackInCart(item.id, item.characterId)) return;
     if (!prefersReducedMotion()) setConfirmingAdd(true);
+    const external = onAddToPocketRef.current;
+    if (external) {
+      external(item);
+      return;
+    }
     addPackToCart({
-      packId: activeItem.id,
-      packName: activeItem.packName || activeItem.name,
-      creator: activeItem.girlName,
-      characterId: activeItem.characterId,
-      price: activeItem.price,
-      videoUrl: activeItem.videoUrl,
-      packNumber: activeItem.packNumber,
-      flagEmoji: activeItem.flagEmoji,
-      flagSvgUrl: activeItem.flagSvgUrl,
-      city: activeItem.city,
-      country: activeItem.country,
-      overlayColorStart: activeItem.overlayColorStart,
-      overlayColorEnd: activeItem.overlayColorEnd,
-      backgroundColor: activeItem.backgroundColor,
+      packId: item.id,
+      packName: item.packName || item.name,
+      creator: item.girlName,
+      characterId: item.characterId,
+      price: item.price,
+      videoUrl: item.videoUrl,
+      packNumber: item.packNumber,
+      flagEmoji: item.flagEmoji,
+      flagSvgUrl: item.flagSvgUrl,
+      city: item.city,
+      country: item.country,
+      overlayColorStart: item.overlayColorStart,
+      overlayColorEnd: item.overlayColorEnd,
+      backgroundColor: item.backgroundColor,
     });
   }
 
@@ -709,7 +745,11 @@ export function MobileCssCarousel({
       if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
       event.preventDefault();
       event.stopPropagation();
-      if (el.classList.contains("is-confirm") || el.classList.contains("is-cancel")) {
+      if (el.classList.contains("is-confirm")) {
+        confirmActiveBuy();
+        return;
+      }
+      if (el.classList.contains("is-cancel")) {
         closeBuyConfirm();
         return;
       }
@@ -819,7 +859,7 @@ export function MobileCssCarousel({
                     confirmingAdd={confirmingAdd}
                     onToggleBuyConfirm={toggleBuyConfirm}
                     onCloseBuyConfirm={closeBuyConfirm}
-                    onConfirmBuy={closeBuyConfirm}
+                    onConfirmBuy={confirmActiveBuy}
                     onAddToPocket={addActiveToPocket}
                     onBuyConfirmLeaveEnd={() => {
                       buyConfirmLeavingRef.current = false;

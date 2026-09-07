@@ -349,7 +349,8 @@ export function FeaturedCoverFlow({
   }, [items, selectedId]);
 
   useEffect(() => {
-    if (!catalog) return;
+    // Mobile uses the Swiper CSS carousel; it reports ready itself.
+    if (!catalog || isMobileViewport) return;
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -360,7 +361,7 @@ export function FeaturedCoverFlow({
       fitMode: first.fitMode || PACK_VIDEO_FIT_MODE,
       textureTransform: first.textureTransform || DEFAULT_VIDEO_TEXTURE_TRANSFORM,
       flipY: true,
-      textureSize: resolvePackTextureSize(isMobileViewport),
+      textureSize: resolvePackTextureSize(false),
     };
     const release = preloadVideoTexture(input);
     const unsubscribe = subscribeVideoTextureReady(
@@ -654,11 +655,31 @@ export function FeaturedCoverFlow({
 
   if (!items.length) return null;
 
-  const CoverFlowView = isMobileViewport ? MobileCoverFlow : DesktopCoverFlow;
+  if (isMobileViewport) {
+    return (
+      <MobileCoverFlow
+        items={items}
+        selectedId={selectedId}
+        glow={glow}
+        buying={buying}
+        addedToPocket={addedToPocket}
+        onSelect={setSelectedId}
+        onDeselect={() => setSelectedId(null)}
+        onFocusChange={(item) => {
+          setGlow(item?.backgroundColor || DEFAULT_GLOW);
+        }}
+        onBuy={(item) => {
+          void handleBuyPack(item);
+        }}
+        onAddToPocket={handleAddToPocket}
+        onReady={() => onReadyRef.current?.()}
+      />
+    );
+  }
 
   return (
     <>
-      <CoverFlowView
+      <DesktopCoverFlow
         items={items}
         selectedId={selectedId}
         glow={glow}
