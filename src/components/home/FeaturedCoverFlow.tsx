@@ -153,6 +153,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           modelUrl: PACK_MODEL_URL,
           modelName: "card2.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: diamondCost,
           girlName: profile.name,
           packNumber: foil.slot === 1 ? 101 : 102,

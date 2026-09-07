@@ -63,7 +63,8 @@
   z-index: 5 !important;
 }
 
-.mobile-css-carousel .swiper-slide video {
+.mobile-css-carousel .swiper-slide video,
+.mobile-css-carousel__poster {
   display: block;
   width: 100%;
   height: 100%;
@@ -80,6 +81,27 @@
   height: 100%;
   overflow: hidden;
   background: #111;
+}
+
+/* Poster is the cheap base layer under the video. */
+.mobile-css-carousel__poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Active video paints above the poster. Keep it fully opaque so WebKit decodes. */
+.mobile-css-carousel__pack video,
+.mobile-css-carousel__video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Held previous decoder stays mounted (warm) but hidden under the poster. */
+.mobile-css-carousel__video:not(.is-active) {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Dim inactive slides without filter:brightness (Safari GPU/decode cost). */

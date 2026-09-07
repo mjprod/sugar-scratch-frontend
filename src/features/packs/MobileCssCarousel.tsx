@@ -259,14 +259,108 @@ function PackPocketIcon({ className }: { className?: string }) {
   );
 }
 
-/** Keep decoders only for active ± this many slides (iOS Safari page memory). */
-const VIDEO_KEEP_DISTANCE = 1;
+/** iOS Safari hard-caps concurrent decoders; keep active + previous only. */
+const VIDEO_BUFFER_LIMIT = 2;
 
-function unloadVideo(video: HTMLVideoElement) {
-  video.pause();
-  if (!video.getAttribute("src") && !video.currentSrc) return;
-  video.removeAttribute("src");
-  video.load();
+function nextVideoKeep(prevKeep: number[], nextActive: number): number[] {
+  if (prevKeep[0] === nextActive) {
+    return prevKeep.slice(0, VIDEO_BUFFER_LIMIT);
+  }
+  const keep = [nextActive];
+  for (const index of prevKeep) {
+    if (index === nextActive) continue;
+    keep.push(index);
+    if (keep.length >= VIDEO_BUFFER_LIMIT) break;
+  }
+  return keep;
+}
+
+/**
+ * One keep-set pack video.
+ *
+ * Never call removeAttribute("src")/load() on this element. React Strict Mode
+ * remounts with the same src prop and will NOT re-apply it, leaving
+ * networkState=0 forever (live repro: src=null, zero mp4 requests). Leaving the
+ * keep set unmounts this node entirely, which is enough for iOS decoder release.
+ */
+function PackFaceVideo({
+  src,
+  poster,
+  active,
+  onReady,
+}: {
+  src: string;
+  poster?: string;
+  active: boolean;
+  onReady?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
+    // Guarantee src is attached even if a prior owner blanked the element.
+    if (video.getAttribute("src") !== src) {
+      video.src = src;
+    }
+
+    if (!active) {
+      video.pause();
+      return;
+    }
+
+    let cancelled = false;
+    const play = () => {
+      if (cancelled || videoRef.current !== video) return;
+      video.muted = true;
+      void video.play().catch(() => {});
+    };
+
+    video.addEventListener("loadeddata", play);
+    video.addEventListener("canplay", play);
+    play();
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadeddata", play);
+      video.removeEventListener("canplay", play);
+      video.pause();
+    };
+  }, [active, src]);
+
+  return (
+    <video
+      ref={videoRef}
+      className={
+        active
+          ? "mobile-css-carousel__video is-active"
+          : "mobile-css-carousel__video"
+      }
+      src={src}
+      poster={poster}
+      muted
+      loop
+      playsInline
+      autoPlay={active}
+      preload={active ? "auto" : "metadata"}
+      onLoadedData={() => {
+        onReady?.();
+        if (!active) return;
+        const video = videoRef.current;
+        if (!video) return;
+        video.muted = true;
+        void video.play().catch(() => {});
+      }}
+    />
+  );
 }
 
 export function MobileCssCarousel({
@@ -276,12 +370,14 @@ export function MobileCssCarousel({
   items: Iteration[];
   onReady?: () => void;
 }) {
-  const videosRef = useRef<Array<HTMLVideoElement | null>>([]);
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const onReadyRef = useRef(onReady);
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  /** Indices with a live <video> element. Always includes active; max 2. */
+  const [videoKeep, setVideoKeep] = useState<number[]>(() => [0]);
+  const videoKeepRef = useRef<number[]>([0]);
   const [pocketTick, setPocketTick] = useState(0);
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false);
   const [buyConfirmLeaving, setBuyConfirmLeaving] = useState(false);
@@ -420,10 +516,13 @@ export function MobileCssCarousel({
     });
   }
 
-  const activeVideoReady = useCallback(() => {
-    const video = videosRef.current[activeIndex];
-    return video != null && video.readyState >= 2;
-  }, [activeIndex]);
+  const activeSurfaceReady = useCallback(() => {
+    const item = items[activeIndex];
+    // Poster is enough for first paint — don't block the page on a decoder.
+    if (item?.posterUrl) return true;
+    if (!item?.videoUrl) return true;
+    return false;
+  }, [activeIndex, items]);
 
   const neighborOnScreen = useCallback((swiper: SwiperClass) => {
     const next = swiper.slides[swiper.activeIndex + 1] as HTMLElement | undefined;
@@ -435,11 +534,11 @@ export function MobileCssCarousel({
   const markReady = useCallback(
     (swiper: SwiperClass) => {
       if (readySent.current) return;
-      if (!neighborOnScreen(swiper) || !activeVideoReady()) return;
+      if (!neighborOnScreen(swiper) || !activeSurfaceReady()) return;
       readySent.current = true;
       onReadyRef.current?.();
     },
-    [activeVideoReady, neighborOnScreen],
+    [activeSurfaceReady, neighborOnScreen],
   );
 
   const applySlideDim = useCallback((swiper: SwiperClass) => {
@@ -451,47 +550,52 @@ export function MobileCssCarousel({
     });
   }, []);
 
-  const syncMedia = useCallback((next: number) => {
-    videosRef.current.forEach((video, index) => {
-      if (!video) return;
-      const distance = Math.abs(index - next);
-      if (distance > VIDEO_KEEP_DISTANCE) {
-        unloadVideo(video);
-        return;
-      }
-      if (distance === 0) {
-        void video.play().catch(() => {});
-        return;
-      }
-      video.pause();
-    });
-  }, []);
-
   const syncPlayback = useCallback(
     (next: number) => {
+      const keep = nextVideoKeep(videoKeepRef.current, next);
+      videoKeepRef.current = keep;
       setActiveIndex(next);
+      setVideoKeep(keep);
       buyConfirmOpenRef.current = false;
       buyConfirmLeavingRef.current = false;
       setBuyConfirmOpen(false);
       setBuyConfirmLeaving(false);
-      syncMedia(next);
       fadeGlowTo(glowColorForItem(items[next]));
     },
-    [fadeGlowTo, items, syncMedia],
+    [fadeGlowTo, items],
   );
 
   useEffect(() => {
     return () => clearGlowTimers();
   }, [clearGlowTimers]);
 
-  // Catalog swap / first paint — snap to the focused pack color.
+  // Catalog swap / first paint — snap to the focused pack color + reset decoder set.
   useEffect(() => {
+    readySent.current = false;
+    videoKeepRef.current = [0];
+    setActiveIndex(0);
+    setVideoKeep([0]);
     snapGlow(glowColorForItem(items[0]));
   }, [items, snapGlow]);
 
+  // Warm poster bitmaps before any pack video decoder starts.
+  useEffect(() => {
+    const warmers = items
+      .map((item) => item.posterUrl)
+      .filter((src): src is string => Boolean(src))
+      .map((src) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        return img;
+      });
+    return () => {
+      for (const img of warmers) img.src = "";
+    };
+  }, [items]);
+
   function onSwiper(swiper: SwiperClass) {
     swiperRef.current = swiper;
-    videosRef.current.length = items.length;
     syncPlayback(swiper.activeIndex);
     applySlideDim(swiper);
     swiper.update();
@@ -508,20 +612,10 @@ export function MobileCssCarousel({
     return () => window.clearTimeout(id);
   }, [items]);
 
-  // Re-sync after React commits src attach/detach for the keep window.
   useEffect(() => {
-    syncMedia(activeIndex);
     const swiper = swiperRef.current;
     if (swiper) markReady(swiper);
-  }, [activeIndex, items, markReady, syncMedia]);
-
-  useEffect(() => {
-    return () => {
-      videosRef.current.forEach((video) => {
-        if (video) unloadVideo(video);
-      });
-    };
-  }, []);
+  }, [activeIndex, items, markReady, videoKeep]);
 
   useEffect(() => subscribeCart(() => setPocketTick((n) => n + 1)), []);
 
@@ -647,28 +741,37 @@ export function MobileCssCarousel({
             void pocketTick;
             const isActive = index === activeIndex;
             const keepVideo =
-              Boolean(item.videoUrl) &&
-              Math.abs(index - activeIndex) <= VIDEO_KEEP_DISTANCE;
+              Boolean(item.videoUrl) && videoKeep.includes(index);
+            const near =
+              Math.abs(index - activeIndex) <= 2 || videoKeep.includes(index);
             return (
               <SwiperSlide key={item.id}>
                 <div className="mobile-css-carousel__pack">
-                  {keepVideo ? (
-                    <video
-                      ref={(node) => {
-                        videosRef.current[index] = node;
-                      }}
-                      src={item.videoUrl}
-                      muted
-                      loop
-                      playsInline
-                      preload={isActive ? "auto" : "metadata"}
-                      onLoadedData={() => {
+                  {item.posterUrl ? (
+                    <img
+                      className="mobile-css-carousel__poster"
+                      src={item.posterUrl}
+                      alt=""
+                      draggable={false}
+                      decoding="async"
+                      loading={near ? "eager" : "lazy"}
+                      onLoad={() => {
                         const swiper = swiperRef.current;
                         if (swiper) markReady(swiper);
-                        if (isActive) {
-                          const video = videosRef.current[index];
-                          void video?.play().catch(() => {});
-                        }
+                      }}
+                    />
+                  ) : null}
+                  {keepVideo ? (
+                    // Stable key = pack id only. Do NOT remount on active/held flips:
+                    // remount + unload thrash was aborting every mp4 fetch on iOS.
+                    <PackFaceVideo
+                      key={item.id}
+                      src={item.videoUrl}
+                      poster={item.posterUrl || undefined}
+                      active={isActive}
+                      onReady={() => {
+                        const swiper = swiperRef.current;
+                        if (swiper) markReady(swiper);
                       }}
                     />
                   ) : null}

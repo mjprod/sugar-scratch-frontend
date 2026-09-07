@@ -36,6 +36,7 @@ function iterationsFromModels(models: BackendModel[]): Iteration[] {
           modelUrl: PACK_MODEL_URL,
           modelName: "CardPack2-min.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: packUnitCost(profile.id),
           girlName: profile.name,
           packNumber: foil.slot === 1 ? 101 : 102,
