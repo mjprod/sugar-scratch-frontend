@@ -150,7 +150,10 @@ function parsePhotoPayload(data: PhotoPayload): CatalogPhotoCard[] {
   return cards;
 }
 
-export async function fetchCatalogMotionCards(): Promise<CatalogMotionCard[]> {
+let motionCatalogPromise: Promise<CatalogMotionCard[]> | null = null;
+let photoCatalogPromise: Promise<CatalogPhotoCard[]> | null = null;
+
+async function loadCatalogMotionCards(): Promise<CatalogMotionCard[]> {
   try {
     const data = await api<CardsPayload>("/api/cards");
     const cards = parseMotionPayload(data);
@@ -167,7 +170,7 @@ export async function fetchCatalogMotionCards(): Promise<CatalogMotionCard[]> {
   }
 }
 
-export async function fetchCatalogPhotoCards(): Promise<CatalogPhotoCard[]> {
+async function loadCatalogPhotoCards(): Promise<CatalogPhotoCard[]> {
   try {
     const data = await api<PhotoPayload>("/api/photo-scratch");
     const cards = parsePhotoPayload(data);
@@ -182,4 +185,19 @@ export async function fetchCatalogPhotoCards(): Promise<CatalogPhotoCard[]> {
   } catch {
     return [];
   }
+}
+
+/** Page-lifetime memo — settle/enrich callers share one in-flight fetch. */
+export function fetchCatalogMotionCards(): Promise<CatalogMotionCard[]> {
+  if (!motionCatalogPromise) {
+    motionCatalogPromise = loadCatalogMotionCards();
+  }
+  return motionCatalogPromise;
+}
+
+export function fetchCatalogPhotoCards(): Promise<CatalogPhotoCard[]> {
+  if (!photoCatalogPromise) {
+    photoCatalogPromise = loadCatalogPhotoCards();
+  }
+  return photoCatalogPromise;
 }
