@@ -95,23 +95,23 @@ export function VerifyEmailModal({
           >
             <div className="auth7-sheet-chrome">
               <div className="auth7-sheet-handle" aria-hidden="true" />
+              <button
+                type="button"
+                className="auth7-sheet-back"
+                aria-label="Back to create account"
+                disabled={busy}
+                onClick={onBack}
+              >
+                <ChevronLeft
+                  className="size-5"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </button>
             </div>
 
             <div className="auth7-sheet-body">
               <header className="auth7-sheet-head">
-                <button
-                  type="button"
-                  className="auth7-sheet-back"
-                  aria-label="Back to create account"
-                  disabled={busy}
-                  onClick={onBack}
-                >
-                  <ChevronLeft
-                    className="size-5"
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
-                </button>
                 <h2 id={titleId} className="auth7-sheet-title">
                   Verify Your Email
                 </h2>

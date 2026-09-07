@@ -382,6 +382,20 @@ export function AuthenticationSheet({
                 aria-hidden="true"
                 onPointerDown={startHandleDrag}
               />
+              {mode === "forgot-password" || mode === "reset-sent" ? (
+                <button
+                  type="button"
+                  className="auth7-sheet-back"
+                  aria-label="Back"
+                  disabled={busy || isClosing}
+                  onClick={() => {
+                    if (initialMode === "forgot-password") onDismiss();
+                    else switchMode("login");
+                  }}
+                >
+                  <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="auth7-sheet-close"
@@ -411,20 +425,6 @@ export function AuthenticationSheet({
                 ) : (
                   <>
                     <header className="auth7-sheet-head">
-                  {mode === "forgot-password" || mode === "reset-sent" ? (
-                    <button
-                      type="button"
-                      className="auth7-sheet-back"
-                      aria-label="Back"
-                      disabled={busy}
-                      onClick={() => {
-                        if (initialMode === "forgot-password") onDismiss();
-                        else switchMode("login");
-                      }}
-                    >
-                      <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  ) : null}
                       <h2 id={titleId} className="auth7-sheet-title">
                         {title}
                       </h2>
