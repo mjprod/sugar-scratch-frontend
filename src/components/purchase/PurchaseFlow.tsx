@@ -985,8 +985,10 @@ export function PurchaseFlow({
       const card = session.cards.find((entry) => entry.id === cardId);
       recordGameReveal({
         cardId,
-        cardName: card?.rarity ? `${card.rarity} Card` : "Card",
-        cardImageUrl: card?.faceUrl,
+        cardName:
+          session.foilLabel?.trim() ||
+          (card?.rarity ? `${card.rarity} Card` : "Card"),
+        cardImageUrl: card?.faceUrl || session.foilFaceUrl,
         packInstanceId: historyIds.packInstanceId,
         packId: historyIds.packId,
         packName: pack.packName,
@@ -1245,7 +1247,7 @@ export function PurchaseFlow({
     setSavingLater(true);
     void persistCurrentAndLeave(from).then((ok) => {
       setSavingLater(false);
-      if (ok) setStage("saved");
+      if (ok) leaveSaved();
     });
   }
 
@@ -1740,7 +1742,7 @@ export function PurchaseFlow({
                 onClick={() => scratchLater("decision")}
                 disabled={savingLater}
               >
-                Save for Later
+                Save to Collection
               </button>
               {readyPackCount > 1 ? (
                 <button
@@ -2535,7 +2537,7 @@ function MotionRevealStage({
             onClick={onSaveLater}
             disabled={launching}
           >
-            Save for Later
+            Save to Collection
           </button>
           {onSaveAndOpenNext ? (
             <button

@@ -260,6 +260,8 @@
 .coverflow-reveal-cta {
   z-index: 10;
   pointer-events: auto;
+  /* Sit lower under the fan so Scratch Now / Save stay clear of cards. */
+  --cta-play-y: 12dvh;
 }
 
 .reveal-stage__cta.is-enter.coverflow-reveal-cta {
@@ -1466,6 +1468,51 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.coverflow-buy-confirm__pocket {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.85rem;
+  margin: 0.1rem 0 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.92);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms ease;
+}
+
+.coverflow-buy-confirm__pocket:hover {
+  background: oklch(1 0 0 / 0.14);
+  border-color: oklch(1 0 0 / 0.24);
+  color: oklch(1 0 0);
+  transform: scale(1.02);
+}
+
+.coverflow-buy-confirm__pocket:active {
+  transform: scale(0.98);
+}
+
+.coverflow-buy-confirm__pocket:focus-visible {
+  outline: 2px solid oklch(1 0 0 / 0.55);
+  outline-offset: 2px;
+}
+
 /* Positive confirm (buy) — green check instead of destructive red. */
 .coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm {
   border-color: oklch(0.88 0.25 151.94);
@@ -1653,6 +1700,184 @@ h1 {
   outline: 2px solid rgb(255 255 255 / 0.7);
   outline-offset: 3px;
   border-radius: 0.35rem;
+}
+
+/* Juliana A/B — quantity modal (Buy Pack + Add to Pocket). */
+.buy-pack-qty-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top, 0px))
+    max(1rem, env(safe-area-inset-right, 0px))
+    max(1rem, env(safe-area-inset-bottom, 0px))
+    max(1rem, env(safe-area-inset-left, 0px));
+}
+
+.buy-pack-qty-modal__scrim {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: oklch(0.1 0.01 300 / 0.72);
+  cursor: pointer;
+}
+
+.buy-pack-qty-modal__panel {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(100%, 20.5rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1.35rem 1.25rem 1.15rem;
+  border-radius: 1.15rem;
+  color: oklch(1 0 0 / 0.95);
+}
+
+/* Beat tw-glass .glass-surface so the dialog stays readable over pack art. */
+.buy-pack-qty-modal__panel.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  background: oklch(0.17 0.018 300 / 0.96);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow:
+    0 24px 48px oklch(0 0 0 / 0.55),
+    inset 0 1px 0 oklch(1 0 0 / 0.14);
+}
+
+.buy-pack-qty-modal__close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.82);
+  cursor: pointer;
+}
+
+.buy-pack-qty-modal__close:hover {
+  background: oklch(1 0 0 / 0.14);
+}
+
+.buy-pack-qty-modal__title {
+  margin: 0.15rem 1.75rem 0;
+  max-width: 100%;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.buy-pack-qty-modal__subtitle {
+  margin: 0;
+  color: oklch(1 0 0 / 0.62);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.buy-pack-qty-modal__qty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.buy-pack-qty-modal__qty-btn {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.92);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    opacity 140ms ease,
+    transform 120ms ease;
+}
+
+.buy-pack-qty-modal__qty-btn:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.12);
+  transform: scale(1.04);
+}
+
+.buy-pack-qty-modal__qty-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.buy-pack-qty-modal__qty-value {
+  min-width: 2rem;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.buy-pack-qty-modal__buy {
+  width: 100%;
+  height: 3.1rem;
+}
+
+.buy-pack-qty-modal__buy .cta-button-glow,
+.buy-pack-qty-modal__buy .cta-button {
+  width: 100%;
+  height: 100%;
+}
+
+.buy-pack-qty-modal__buy .cta-button__label {
+  gap: 0.12em;
+}
+
+.buy-pack-qty-modal__buy .cta-button__title {
+  font-size: 0.95em;
+  letter-spacing: 0.01em;
+}
+
+.buy-pack-qty-modal__buy .cta-button__cost {
+  gap: 0.2em;
+  font-size: 0.88em;
+}
+
+.buy-pack-qty-modal__buy .cta-button__cost-icon {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.buy-pack-qty-modal__pocket {
+  appearance: none;
+  margin: 0.15rem 0 0;
+  padding: 0.35rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: oklch(1 0 0 / 0.78);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.buy-pack-qty-modal__pocket:hover:not(:disabled) {
+  color: oklch(1 0 0 / 0.95);
 }
 
 .coverflow-buy-pack-cta .cta-button-glow,

@@ -51,32 +51,32 @@ type SecondaryHeart = {
   depth: HeartDepth;
 };
 
-/** Wide double-tap spread — inner / mid / outer rings (asymmetric). */
+/** Double-tap spread — compact rings so pieces stay in-frame. */
 const MEDIA_SECONDARY_POOL: SecondaryHeart[] = [
   /* Inner */
-  { dx: -70, dy: -56, sizePx: 48, delayMs: 18, opacity: 0.9, depth: "fg" },
-  { dx: 74, dy: -44, sizePx: 44, delayMs: 32, opacity: 0.86, depth: "fg" },
-  { dx: -36, dy: 66, sizePx: 40, delayMs: 46, opacity: 0.82, depth: "mid" },
+  { dx: -48, dy: -40, sizePx: 28, delayMs: 18, opacity: 0.9, depth: "fg" },
+  { dx: 52, dy: -32, sizePx: 26, delayMs: 32, opacity: 0.86, depth: "fg" },
+  { dx: -26, dy: 46, sizePx: 24, delayMs: 46, opacity: 0.82, depth: "mid" },
   /* Mid */
-  { dx: -138, dy: -118, sizePx: 56, delayMs: 40, opacity: 0.8, depth: "mid" },
-  { dx: 152, dy: -98, sizePx: 50, delayMs: 58, opacity: 0.78, depth: "mid" },
-  { dx: -158, dy: 48, sizePx: 46, delayMs: 72, opacity: 0.74, depth: "mid" },
-  { dx: 142, dy: 78, sizePx: 54, delayMs: 86, opacity: 0.76, depth: "mid" },
+  { dx: -92, dy: -78, sizePx: 32, delayMs: 40, opacity: 0.8, depth: "mid" },
+  { dx: 100, dy: -66, sizePx: 30, delayMs: 58, opacity: 0.78, depth: "mid" },
+  { dx: -104, dy: 34, sizePx: 28, delayMs: 72, opacity: 0.74, depth: "mid" },
+  { dx: 94, dy: 52, sizePx: 30, delayMs: 86, opacity: 0.76, depth: "mid" },
   /* Outer */
-  { dx: -198, dy: -168, sizePx: 34, delayMs: 64, opacity: 0.56, depth: "bg" },
-  { dx: 212, dy: -150, sizePx: 30, delayMs: 80, opacity: 0.52, depth: "bg" },
-  { dx: -18, dy: -220, sizePx: 36, delayMs: 50, opacity: 0.58, depth: "bg" },
-  { dx: 188, dy: 132, sizePx: 32, delayMs: 100, opacity: 0.48, depth: "bg" },
-  { dx: -176, dy: 148, sizePx: 28, delayMs: 112, opacity: 0.46, depth: "bg" },
+  { dx: -128, dy: -110, sizePx: 22, delayMs: 64, opacity: 0.56, depth: "bg" },
+  { dx: 136, dy: -98, sizePx: 20, delayMs: 80, opacity: 0.52, depth: "bg" },
+  { dx: -12, dy: -140, sizePx: 22, delayMs: 50, opacity: 0.58, depth: "bg" },
+  { dx: 120, dy: 88, sizePx: 20, delayMs: 100, opacity: 0.48, depth: "bg" },
+  { dx: -114, dy: 96, sizePx: 18, delayMs: 112, opacity: 0.46, depth: "bg" },
 ];
 
-/** Button burst — moderate primary + noticeably wider small satellites. */
+/** Button burst — compact primary + short-range satellites (stay in-frame). */
 const BUTTON_SECONDARIES: SecondaryHeart[] = [
-  { dx: -62, dy: -74, sizePx: 28, delayMs: 16, opacity: 0.8, depth: "fg" },
-  { dx: 68, dy: -58, sizePx: 24, delayMs: 30, opacity: 0.72, depth: "mid" },
-  { dx: -78, dy: 30, sizePx: 22, delayMs: 44, opacity: 0.6, depth: "bg" },
-  { dx: 76, dy: 40, sizePx: 26, delayMs: 58, opacity: 0.66, depth: "mid" },
-  { dx: 6, dy: -92, sizePx: 20, delayMs: 36, opacity: 0.55, depth: "bg" },
+  { dx: -42, dy: -50, sizePx: 20, delayMs: 16, opacity: 0.8, depth: "fg" },
+  { dx: 46, dy: -40, sizePx: 18, delayMs: 30, opacity: 0.72, depth: "mid" },
+  { dx: -52, dy: 22, sizePx: 16, delayMs: 44, opacity: 0.6, depth: "bg" },
+  { dx: 50, dy: 28, sizePx: 18, delayMs: 58, opacity: 0.66, depth: "mid" },
+  { dx: 4, dy: -62, sizePx: 14, delayMs: 36, opacity: 0.55, depth: "bg" },
 ];
 
 export function CreatorFeedCard({
