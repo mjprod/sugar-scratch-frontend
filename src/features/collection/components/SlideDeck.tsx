@@ -207,14 +207,20 @@ const DeckItem = memo(function DeckItem({
    * parent `setFaceReady(false)` reset — so a false reset would never hear
    * a second `true` (ready stays true, callback deps do not change).
    */
-  const posterReady = Boolean(card.posterUrl?.trim())
-  const faceMediaKey = `${card.id}\0${card.mediaUrl}\0${card.mediaType}\0${card.posterUrl ?? ''}`
-  const [faceReady, setFaceReady] = useState(posterReady)
+  const posterUrlTrimmed = card.posterUrl?.trim() ?? ''
+  const posterReady = posterUrlTrimmed.length > 0
+  const faceMediaKey = `${card.id}\0${card.mediaUrl}\0${card.mediaType}\0${posterUrlTrimmed}`
+  const [faceReadyState, setFaceReady] = useState(posterReady)
   const [faceMediaKeySeen, setFaceMediaKeySeen] = useState(faceMediaKey)
-  if (faceMediaKeySeen !== faceMediaKey) {
+
+  const faceReady =
+    faceMediaKeySeen !== faceMediaKey ? posterReady : faceReadyState
+
+  useEffect(() => {
+    if (faceMediaKeySeen === faceMediaKey) return
     setFaceMediaKeySeen(faceMediaKey)
     setFaceReady(posterReady)
-  }
+  }, [faceMediaKey, faceMediaKeySeen, posterReady])
 
   const handleFaceMediaReady = useCallback(
     (ready: boolean) => {
