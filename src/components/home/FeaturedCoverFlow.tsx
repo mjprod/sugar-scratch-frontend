@@ -675,8 +675,8 @@ export function FeaturedCoverFlow({
         onFocusChange={(item) => {
           setGlow(item?.backgroundColor || DEFAULT_GLOW);
         }}
-        onBuy={(item) => {
-          void handleBuyPack(item);
+        onBuy={(item, quantity) => {
+          void handleBuyPack(item, quantity);
         }}
         onAddToPocket={handleAddToPocket}
         onReady={() => onReadyRef.current?.()}

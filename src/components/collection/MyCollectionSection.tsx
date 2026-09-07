@@ -40,7 +40,8 @@ export function MyCollectionSection({
   const models = useModels();
 
   const creatorIds = useMemo(() => creators.map((c) => c.id), [creators]);
-  const { themesByCreator } = useCreatorsCollectedThemes(creatorIds);
+  const { themesByCreator, ready: themesReady } =
+    useCreatorsCollectedThemes(creatorIds);
 
   const sortedCreators = useMemo(() => {
     if (sort === "oldest") {
@@ -252,7 +253,39 @@ export function MyCollectionSection({
         </FilterSheet>
       ) : null}
 
-      {visibleCreators.length === 0 ? (
+      {!themesReady ? (
+        <div
+          className="my-collection-creator-row is-skeleton"
+          role="status"
+          aria-label="Loading creators"
+          aria-busy="true"
+        >
+          {Array.from(
+            { length: Math.max(2, Math.min(creators.length || 4, 4)) },
+            (_, index) => (
+              <span
+                key={index}
+                className="my-collection-creator-card is-skeleton"
+                aria-hidden="true"
+              >
+                <span className="my-collection-creator-art">
+                  <span className="search-skeleton my-collection-creator-art-fill" />
+                </span>
+                <span className="my-collection-creator-meta">
+                  <span
+                    className="search-skeleton search-skeleton-line"
+                    style={{ width: "78%", height: 13 }}
+                  />
+                  <span
+                    className="search-skeleton search-skeleton-line"
+                    style={{ width: "52%", height: 12 }}
+                  />
+                </span>
+              </span>
+            ),
+          )}
+        </div>
+      ) : visibleCreators.length === 0 ? (
         <div className="collection-empty-panel">
           <h3 className="collection-empty-title">No collections found</h3>
           <p className="collection-empty-copy">
@@ -269,57 +302,57 @@ export function MyCollectionSection({
           ) : null}
         </div>
       ) : (
-        <>
-          <div
-            className="my-collection-creator-row"
-            role="list"
-            aria-label="Creators"
-          >
-            {visibleCreators.map((creator) => {
-              const count = liveCollectedCount(
-                themesByCreator[creator.id],
-                creator.collected,
-              );
-              return (
-                <button
-                  key={creator.id}
-                  type="button"
-                  className="my-collection-creator-card"
-                  onClick={() =>
-                    onOpenCreator(
-                      creator.id,
-                      themeFilter !== "all" ? themeFilter : undefined,
-                    )
-                  }
-                >
-                  <span className="my-collection-creator-art">
-                    <img
-                      src={
-                        modelAvatarUrl(
-                          matchModel(models, {
-                            packId: creator.id,
-                            name: creator.name,
-                          }),
-                        ) ||
-                        creator.avatarUrl ||
-                        creator.coverUrl
-                      }
-                      alt=""
-                    />
+        <div
+          className="my-collection-creator-row"
+          role="list"
+          aria-label="Creators"
+        >
+          {visibleCreators.map((creator) => {
+            const count = liveCollectedCount(
+              themesByCreator[creator.id],
+              creator.collected,
+            );
+            return (
+              <button
+                key={creator.id}
+                type="button"
+                className="my-collection-creator-card"
+                onClick={() =>
+                  onOpenCreator(
+                    creator.id,
+                    themeFilter !== "all" ? themeFilter : undefined,
+                  )
+                }
+              >
+                <span className="my-collection-creator-art">
+                  <img
+                    src={
+                      modelAvatarUrl(
+                        matchModel(models, {
+                          packId: creator.id,
+                          name: creator.name,
+                        }),
+                      ) ||
+                      creator.avatarUrl ||
+                      creator.coverUrl
+                    }
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </span>
+                <span className="my-collection-creator-meta">
+                  <span className="my-collection-creator-name">
+                    {creator.name}
                   </span>
-                  <span className="my-collection-creator-meta">
-                    <span className="my-collection-creator-name">
-                      {creator.name}
-                    </span>
-                    <span className="my-collection-creator-count">
-                      {count} {count === 1 ? "Card" : "Cards"}
-                    </span>
+                  <span className="my-collection-creator-count">
+                    {count} {count === 1 ? "Card" : "Cards"}
                   </span>
-                </button>
-              );
-            })}
-          </div>
-        </>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
     </section>
   );

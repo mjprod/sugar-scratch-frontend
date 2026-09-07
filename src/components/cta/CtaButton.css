@@ -389,6 +389,9 @@
 }
 
 .cta-button--hex>.cta-button__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   clip-path: shape(from 0 50%,
       line to var(--cta-inner-tip) 0,
       hline to calc(100% - var(--cta-inner-tip)),
@@ -443,7 +446,9 @@
 }
 
 .cta-button--hex .cta-button__label {
-  /* Keep copy clear of the pointed tips. */
+  /* Keep copy clear of the pointed tips and vertically centered. */
+  box-sizing: border-box;
+  height: 100%;
   padding: 0 calc(var(--cta-tip) * 0.55 + 12px);
   gap: 0.22em;
 }
