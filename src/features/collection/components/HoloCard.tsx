@@ -385,7 +385,7 @@ export default function HoloCard({
   const [loading, setLoading] = useState(true)
   /** Fall back to placeholder art when video src is missing or fails. */
   const [frontMediaFailed, setFrontMediaFailed] = useState(false)
-  /** Keep video invisible until a real frame is decoded (poster is unreliable). */
+/** Keep video invisible until a real frame is decoded (poster can be shown before the first decoded frame). */
   const [frontVideoReady, setFrontVideoReady] = useState(false)
   const frontMediaUrl = (src ?? '').trim()
   const facePosterUrl = (poster ?? '').trim()
