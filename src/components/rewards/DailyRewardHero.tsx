@@ -64,6 +64,15 @@ export function DailyRewardHero({
       )}
       aria-labelledby="hub-daily-title"
     >
+      {!claimed ? (
+        <div className="hub-daily-ready-row">
+          <span className="hub-daily-ready-chip">
+            <span className="hub-daily-ready-dot" aria-hidden="true" />
+            Ready
+          </span>
+        </div>
+      ) : null}
+
       <div className="hub-daily-stage" aria-hidden="true">
         <span className="hub-daily-stage-bloom" />
         <span className="hub-daily-stage-particle is-a">
@@ -89,12 +98,6 @@ export function DailyRewardHero({
           <h3 id="hub-daily-title" className="hub-daily-hero-title">
             Daily Reward
           </h3>
-          {!claimed ? (
-            <span className="hub-daily-ready-chip">
-              <span className="hub-daily-ready-dot" aria-hidden="true" />
-              Ready
-            </span>
-          ) : null}
         </div>
 
         {claimed ? (

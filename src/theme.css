@@ -2444,7 +2444,6 @@ body[data-theme="v8"] .hub-module {
 }
 
 body[data-theme="v8"] .hub-module--today {
-  grid-column: 1 / -1;
   width: 100%;
   margin-top: 0;
 }
@@ -2463,15 +2462,24 @@ body[data-theme="v8"] .hub-today-bento-stack {
   gap: 16px;
 }
 
+/* Mobile: stack Daily + Upcoming. Desktop: side-by-side under Continue Collecting. */
+body[data-theme="v8"] .hub-today-bento-pair {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 16px;
+}
+
 body[data-theme="v8"] .hub-today-bento-reel {
   display: none;
 }
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .hub-today-bento {
-    /* Reel left, Continue Collecting + Upcoming Events right */
+    /* Reel left; Continue Collecting over Daily | Events right */
     grid-template-columns: 1fr 1.75fr;
-    grid-template-rows: auto minmax(40rem, auto);
+    grid-template-rows: minmax(40rem, auto);
     gap: 16px 20px;
   }
 
@@ -2481,6 +2489,14 @@ body[data-theme="v8"] .hub-today-bento-reel {
     flex-direction: column;
     gap: 16px;
     min-height: 40rem;
+  }
+
+  body[data-theme="v8"] .hub-today-bento-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 16px;
+    min-height: 0;
   }
 
   body[data-theme="v8"] .hub-today-bento-reel {
@@ -2525,7 +2541,6 @@ body[data-theme="v8"] .hub-today-bento-reel-frame .hf-frame {
   }
 
   body[data-theme="v8"] .hub-module--today {
-    grid-column: 1 / -1;
     margin-top: 0;
   }
 }
@@ -2544,6 +2559,14 @@ body[data-theme="v8"] .hub-spotlight-band {
   isolation: isolate;
   contain: paint;
   background: #12060c;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-spotlight-band {
+    min-height: 38rem;
+    height: 38rem;
+    margin-top: 6rem;
+  }
 }
 
 body[data-theme="v8"] .hub-spotlight-band-layer {
@@ -3092,7 +3115,9 @@ body[data-theme="v8"] .hub-daily-hero {
   z-index: 1;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "stage body actions";
+  grid-template-areas:
+    "badge badge badge"
+    "stage body actions";
   align-items: center;
   gap: 16px 20px;
   overflow: hidden;
@@ -3108,6 +3133,14 @@ body[data-theme="v8"] .hub-daily-hero {
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.06),
     0 18px 36px oklch(0 0 0 / 0.32);
+}
+
+body[data-theme="v8"] .hub-daily-ready-row {
+  display: flex;
+  grid-area: badge;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 body[data-theme="v8"] .hub-daily-hero.is-claimed {
@@ -3239,11 +3272,16 @@ body[data-theme="v8"] .hub-daily-hero-cta .cta-button-glow>.border-glow-inner {
   body[data-theme="v8"] .hub-daily-hero {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
+      "badge"
       "stage"
       "body"
       "actions";
     justify-items: center;
     text-align: center;
+  }
+
+  body[data-theme="v8"] .hub-daily-ready-row {
+    justify-content: center;
   }
 
   body[data-theme="v8"] .hub-daily-hero-body,
@@ -3375,15 +3413,48 @@ body[data-theme="v8"] .hub-daily-stage-gift {
 }
 
 @media (min-width: 1024px) {
+  /* Column card — pairs with Upcoming Events under Continue Collecting. */
   body[data-theme="v8"] .hub-daily-hero {
-    gap: 16px 24px;
-    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "badge"
+      "stage"
+      "body"
+      "actions";
+    justify-items: center;
+    align-content: space-between;
+    gap: 12px;
+    min-height: 100%;
+    height: 100%;
     border-radius: 28px;
-    padding: 18px 24px;
+    padding: 18px 20px 16px;
+    text-align: center;
     background:
-      radial-gradient(ellipse at 8% 50%, oklch(0.656 0.212 354.31 / 0.28), transparent 52%),
-      radial-gradient(ellipse at 92% 85%, oklch(0.639 0.256 9.90 / 0.18), transparent 48%),
-      linear-gradient(160deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
+      radial-gradient(ellipse at 50% 18%, oklch(0.656 0.212 354.31 / 0.28), transparent 52%),
+      radial-gradient(ellipse at 50% 95%, oklch(0.639 0.256 9.90 / 0.16), transparent 48%),
+      linear-gradient(180deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
+  }
+
+  body[data-theme="v8"] .hub-module--today {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+  }
+
+  body[data-theme="v8"] .hub-module--today .hub-daily-hero {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  body[data-theme="v8"] .hub-daily-ready-row {
+    justify-content: flex-end;
+  }
+
+  body[data-theme="v8"] .hub-daily-hero-body,
+  body[data-theme="v8"] .hub-daily-hero-head {
+    align-items: center;
+    width: 100%;
   }
 
   body[data-theme="v8"] .hub-daily-hero-body {
@@ -3394,11 +3465,17 @@ body[data-theme="v8"] .hub-daily-stage-gift {
     position: static;
   }
 
+  body[data-theme="v8"] .hub-daily-hero-head {
+    justify-content: center;
+  }
+
   body[data-theme="v8"] .hub-daily-hero-actions {
-    flex-flow: row nowrap;
+    flex-flow: column nowrap;
     align-items: center;
-    justify-content: flex-end;
-    white-space: nowrap;
+    justify-content: center;
+    width: 100%;
+    gap: 10px;
+    white-space: normal;
   }
 
   body[data-theme="v8"] .hub-daily-stage {
@@ -3407,23 +3484,28 @@ body[data-theme="v8"] .hub-daily-stage-gift {
   }
 
   body[data-theme="v8"] .hub-daily-hero-title {
-    font-size: 28px;
+    font-size: 22px;
   }
 
   body[data-theme="v8"] .hub-daily-hero-copy {
-    margin-top: 8px;
-    font-size: 15px;
+    margin-top: 6px;
+    font-size: 14px;
+    text-align: center;
   }
 
   body[data-theme="v8"] .hub-daily-hero-cta {
-    flex: 0 0 240px;
-    width: 240px;
-    margin-top: 0;
+    flex: 0 0 auto;
+    width: min(100%, 11.5rem);
+    max-width: 11.5rem;
+    height: 2.5rem;
+    min-height: 2.5rem;
+    margin: 0 auto;
   }
 
   body[data-theme="v8"] .hub-daily-hero-reset {
-    justify-content: flex-start;
+    justify-content: center;
     margin-top: 0;
+    white-space: normal;
   }
 
   body[data-theme="v8"] .hub-daily-hero-sub {
@@ -3814,6 +3896,43 @@ body[data-theme="v8"] .hub-upcoming-card {
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  /* Matches Daily Reward column in the pair row. */
+  body[data-theme="v8"] .hub-upcoming-card {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  body[data-theme="v8"] .hub-upcoming-card .continue-collecting-header {
+    margin-bottom: 12px;
+  }
+
+  body[data-theme="v8"] .hub-upcoming-empty {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: center;
+    padding: 14px;
+  }
+
+  body[data-theme="v8"] .hub-upcoming-notify-wrap {
+    flex: 0 0 auto;
+    margin-top: 14px;
+    min-height: 0;
+    height: auto;
+  }
+
+  body[data-theme="v8"] .hub-module--today {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+  }
 }
 
 body[data-theme="v8"] .hub-upcoming-notify-wrap {
