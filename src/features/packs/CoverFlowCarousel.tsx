@@ -389,8 +389,13 @@ interface CoverFlowCarouselProps {
   /**
    * Homepage: secondary text control under Buy Pack.
    * Keeps the existing Pack Pocket add flow separate from purchase.
+   * Optional quantity / allowDuplicates match the qty modal + inline confirm.
    */
-  onAddToPocket?: (item: Iteration) => void
+  onAddToPocket?: (
+    item: Iteration,
+    quantity?: number,
+    options?: { allowDuplicates?: boolean },
+  ) => void
   /** Label for the focused-pack CTA. Defaults to Buy Pack. */
   buyLabel?: string
   /** Optional mark left of the CTA title. */
@@ -611,7 +616,11 @@ formatPrice,
 			  onOpenPackBlurChange?: (blurPx: number) => void
 				  formatPrice: (price: number) => string
 					  onBuy?: (item: Iteration, quantity?: number) => void
-					  onAddToPocket?: (item: Iteration) => void
+					  onAddToPocket?: (
+					    item: Iteration,
+					    quantity?: number,
+					    options?: { allowDuplicates?: boolean },
+					  ) => void
 					  buyLabel: string
 					  buyLeadingIcon?: ReactNode
 					  buyDisabled?: boolean
@@ -1860,10 +1869,24 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                           <Check aria-hidden="true" strokeWidth={2.5} />
                         </button>
                       </div>
+                      {onAddToPocket ? (
+                        <button
+                          type="button"
+                          className="coverflow-buy-confirm__pocket"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            const qty = buyQuantity
+                            closeBuyConfirm()
+                            onAddToPocket(item, qty, { allowDuplicates: true })
+                          }}
+                        >
+                          + Add to Pocket
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
-                {onAddToPocket ? (
+                {onAddToPocket && !confirmBuy ? (
                   <button
                     type="button"
                     className="coverflow-add-to-pocket"
@@ -1952,7 +1975,11 @@ formatPrice,
 			  onRevealPackBlurChange?: (blurPx: number) => void
 				  formatPrice: (price: number) => string
 					  onBuy?: (item: Iteration, quantity?: number) => void
-					  onAddToPocket?: (item: Iteration) => void
+					  onAddToPocket?: (
+					    item: Iteration,
+					    quantity?: number,
+					    options?: { allowDuplicates?: boolean },
+					  ) => void
 					  buyLabel: string
 					  buyLeadingIcon?: ReactNode
 					  buyDisabled?: boolean

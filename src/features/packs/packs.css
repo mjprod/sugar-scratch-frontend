@@ -1441,6 +1441,51 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.coverflow-buy-confirm__pocket {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.85rem;
+  margin: 0.1rem 0 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.92);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms ease;
+}
+
+.coverflow-buy-confirm__pocket:hover {
+  background: oklch(1 0 0 / 0.14);
+  border-color: oklch(1 0 0 / 0.24);
+  color: oklch(1 0 0);
+  transform: scale(1.02);
+}
+
+.coverflow-buy-confirm__pocket:active {
+  transform: scale(0.98);
+}
+
+.coverflow-buy-confirm__pocket:focus-visible {
+  outline: 2px solid oklch(1 0 0 / 0.55);
+  outline-offset: 2px;
+}
+
 /* Positive confirm (buy) — green check instead of destructive red. */
 .coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm {
   border-color: oklch(0.88 0.25 151.94);
