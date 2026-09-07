@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DesktopCoverFlow, HOME_COVERFLOW_CAMERA } from "@/components/home/DesktopCoverFlow";
+import { MobileCoverFlow } from "@/components/home/MobileCoverFlow";
 import {
-  CoverFlowCarousel,
-  DEFAULT_COVERFLOW_CAMERA,
   MOBILE_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
 } from "@/features/packs/CoverFlowCarousel";
@@ -73,19 +73,6 @@ function isMobileCoverflowViewport() {
     window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
   );
 }
-
-/** Desktop homepage hero — locked from center debug. */
-const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
-  ...DEFAULT_COVERFLOW_CAMERA,
-  packsX: 0.015,
-  packsY: -1.25,
-  modelY: -0.02,
-  cameraX: 0.11,
-  cameraY: 0.27,
-  cameraZ: 5.9,
-  lookAtY: 0.1,
-  fov: 36,
-};
 
 function defaultHeroDebug(isMobile: boolean): HeroDebugState {
   const camera = isMobile ? MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
@@ -167,6 +154,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           modelUrl: PACK_MODEL_URL,
           modelName: "card2.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: diamondCost,
           girlName: profile.name,
           packNumber: foil.slot === 1 ? 101 : 102,
@@ -362,7 +350,8 @@ export function FeaturedCoverFlow({
   }, [items, selectedId]);
 
   useEffect(() => {
-    if (!catalog) return;
+    // Mobile uses the Swiper CSS carousel; it reports ready itself.
+    if (!catalog || isMobileViewport) return;
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -373,7 +362,7 @@ export function FeaturedCoverFlow({
       fitMode: first.fitMode || PACK_VIDEO_FIT_MODE,
       textureTransform: first.textureTransform || DEFAULT_VIDEO_TEXTURE_TRANSFORM,
       flipY: true,
-      textureSize: resolvePackTextureSize(isMobileViewport),
+      textureSize: resolvePackTextureSize(false),
     };
     const release = preloadVideoTexture(input);
     const unsubscribe = subscribeVideoTextureReady(
@@ -673,49 +662,48 @@ export function FeaturedCoverFlow({
 
   if (!items.length) return null;
 
+  if (isMobileViewport) {
+    return (
+      <MobileCoverFlow
+        items={items}
+        selectedId={selectedId}
+        glow={glow}
+        buying={buying}
+        addedToPocket={addedToPocket}
+        onSelect={setSelectedId}
+        onDeselect={() => setSelectedId(null)}
+        onFocusChange={(item) => {
+          setGlow(item?.backgroundColor || DEFAULT_GLOW);
+        }}
+        onBuy={(item) => {
+          void handleBuyPack(item);
+        }}
+        onAddToPocket={handleAddToPocket}
+        onReady={() => onReadyRef.current?.()}
+      />
+    );
+  }
+
   return (
-    <div
-      className="home-featured-coverflow"
-      style={{
-        ["--overlay-gradient-color-end" as string]: glow,
-      }}
-    >
-      <div className="stage-packs">
-        <div
-          className="packs-glow-stack packs-glow-stack--base"
-          aria-hidden="true"
-        >
-          <div className="packs-circle packs-circle--bloom" />
-          <div className="packs-circle packs-circle--core" />
-        </div>
-        <CoverFlowCarousel
-          items={items}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onDeselect={() => setSelectedId(null)}
-          cameraSettings={cameraSettings}
-          onFocusChange={(item) => {
-            setGlow(item?.backgroundColor || DEFAULT_GLOW);
-          }}
-          formatPrice={(price) => String(price)}
-          disableSwipeDownDeactivate
-          disableWheelPaging
-          buyLabel="Buy Pack"
-          confirmBuy
-          buyDisabled={buying}
-          addToPocketDisabled={addedToPocket}
-          onBuy={(item, quantity) => {
-            void handleBuyPack(item, quantity);
-          }}
-          onAddToPocket={handleAddToPocket}
-        />
-        {HERO_DEBUG_ENABLED && debugOpen ? (
-          <div className="coverflow-center-guide" aria-hidden="true">
-            <span className="coverflow-center-guide__line" />
-            <span className="coverflow-center-guide__label">center</span>
-          </div>
-        ) : null}
-      </div>
+    <>
+      <DesktopCoverFlow
+        items={items}
+        selectedId={selectedId}
+        glow={glow}
+        buying={buying}
+        addedToPocket={addedToPocket}
+        cameraSettings={cameraSettings}
+        showCenterGuide={HERO_DEBUG_ENABLED && debugOpen}
+        onSelect={setSelectedId}
+        onDeselect={() => setSelectedId(null)}
+        onFocusChange={(item) => {
+          setGlow(item?.backgroundColor || DEFAULT_GLOW);
+        }}
+        onBuy={(item, quantity) => {
+          void handleBuyPack(item, quantity);
+        }}
+        onAddToPocket={handleAddToPocket}
+      />
       {HERO_DEBUG_ENABLED && typeof document !== "undefined"
         ? createPortal(
             <aside
@@ -857,6 +845,6 @@ export function FeaturedCoverFlow({
             document.body,
           )
         : null}
-    </div>
+    </>
   );
 }

@@ -21,8 +21,9 @@ import {
   applyPackFaceMaterial,
   cloneSceneWithMaterials,
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
-		  PACK_MODEL_URL,
-		  PACK_VIDEO_FIT_MODE,
+			  PACK_MODEL_URL,
+			  PACK_TEXTURE_SIZE_MOBILE,
+			  PACK_VIDEO_FIT_MODE,
 		  pauseAllVideoTextures,
 		  resolvePackTextureSize,
 		  resolveTargetMaterial,
@@ -79,9 +80,10 @@ import {
 } from '@/services/purchase'
 
 // Keep the cover-flow light by mounting only nearby packs.
-// Mobile: 5 packs (center ± 2). Desktop: 7 packs (center ± 3).
-const MAX_VISIBLE_OFFSET_MOBILE = 2
+// Mobile: 3 packs (center ± 1). Desktop: 7 packs (center ± 3).
+const MAX_VISIBLE_OFFSET_MOBILE = 1
 const MAX_VISIBLE_OFFSET_DESKTOP = 3
+const MOBILE_FACE_FADE_MS = 280
 /** Brief always-on boot so drei Html projects before switching to demand. */
 const FRAMELOOP_BOOT_MS = 450
 const FRAME_SETTLE_EPS = 0.00012
@@ -419,6 +421,8 @@ interface CoverFlowCarouselProps {
   disableSwipeDownDeactivate?: boolean
   /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
   disableWheelPaging?: boolean
+  /** Homepage mobile: only the centered pack keeps a decoder/canvas. */
+  evictOffCenterVideo?: boolean
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -559,11 +563,12 @@ function CoverFlowPack({
 	  centerTiltYawRef,
 	  centerTiltPitchRef,
 	  stageActive,
-	  isMobile,
-	  shortHudGlass,
-	  revealMode,
-	  isRevealHero,
-	  playOpenSequence,
+		  isMobile,
+		  shortHudGlass,
+		  evictOffCenterVideo,
+		  revealMode,
+		  isRevealHero,
+		  playOpenSequence,
 	  packsX,
 	  packsY,
 	  openTimeline,
@@ -592,12 +597,13 @@ formatPrice,
 			  centerTiltYawRef: MutableRefObject<number>
 			  centerTiltPitchRef: MutableRefObject<number>
 			  /** False when hero is offscreen / tab hidden — freeze video + skip work. */
-			  stageActive: boolean
-			  isMobile: boolean
-			  /** Browser height < 550px — frosted glass behind pack HUD. */
-			  shortHudGlass: boolean
-			  /** True while any pack open sequence is running. */
-			  revealMode: boolean
+				  stageActive: boolean
+				  isMobile: boolean
+				  /** Browser height < 550px — frosted glass behind pack HUD. */
+				  shortHudGlass: boolean
+				  evictOffCenterVideo: boolean
+				  /** True while any pack open sequence is running. */
+				  revealMode: boolean
 			  /** This pack is the one being opened. */
 			  isRevealHero: boolean
 			  playOpenSequence: boolean
@@ -674,6 +680,9 @@ formatPrice,
   const [confirmingAdd, setConfirmingAdd] = useState(false)
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false)
   const [buyConfirmLeaving, setBuyConfirmLeaving] = useState(false)
+  const [holdNeighborFace, setHoldNeighborFace] = useState(
+    () => !evictOffCenterVideo || Math.abs(index - focusIndex) <= 1,
+  )
   const [buyQuantity, setBuyQuantity] = useState(1)
   const wasActiveAndEnabledRef = useRef(isActive && !buyDisabled)
   const visuallyDisabled = buyDisabled && !confirmingAdd
@@ -747,6 +756,22 @@ formatPrice,
   useEffect(() => {
     focusIndexRef.current = focusIndex
   }, [focusIndex])
+
+  useEffect(() => {
+    if (!evictOffCenterVideo) {
+      setHoldNeighborFace(true)
+      return
+    }
+    if (Math.abs(index - focusIndex) <= 1) {
+      setHoldNeighborFace(true)
+      return
+    }
+    const timeout = window.setTimeout(
+      () => setHoldNeighborFace(false),
+      MOBILE_FACE_FADE_MS,
+    )
+    return () => window.clearTimeout(timeout)
+  }, [evictOffCenterVideo, focusIndex, index])
 
   useEffect(() => {
     isActiveRef.current = isActive
@@ -1061,8 +1086,10 @@ const ctaSize = isMobile ? BUY_PACK_CTA_SIZE_MOBILE : BUY_PACK_CTA_SIZE_DESKTOP
     {
       flipY: true,
       playing: facePlaying,
-      textureSize: resolvePackTextureSize(isMobile, offset),
-      enabled: Boolean(item.videoUrl),
+      textureSize: evictOffCenterVideo
+        ? PACK_TEXTURE_SIZE_MOBILE
+        : resolvePackTextureSize(isMobile, offset),
+      enabled: Boolean(item.videoUrl) && (!evictOffCenterVideo || holdNeighborFace),
       // Crisp stills for side packs — soft DOF reads as muddy at reduced texture sizes.
       soft: false,
     },
@@ -1082,25 +1109,30 @@ const scene = useMemo(() => cloneSceneWithMaterials(gltf.scene), [gltf.scene])
 	      layout,
 	      isMobile,
 	    )
-	    groupRef.current.position.set(target.x, target.y, target.z)
-	    groupRef.current.rotation.x = 0
-	    groupRef.current.rotation.y = target.rotY
-	    groupRef.current.scale.setScalar(target.scale)
-	    groupRef.current.visible = true
-	    motionRef.current = {
-	      x: target.x,
-	      y: target.y,
-	      z: target.z,
-	      rotY: target.rotY,
-	      scale: target.scale,
-	      vx: 0,
-	      vy: 0,
-	      vz: 0,
-	      vRotY: 0,
-	      vScale: 0,
-	    }
-	    sideFadeRef.current = 1
-	    seededRef.current = true
+    groupRef.current.position.set(target.x, target.y, target.z)
+    groupRef.current.rotation.x = 0
+    groupRef.current.rotation.y = target.rotY
+    groupRef.current.scale.setScalar(target.scale)
+    motionRef.current = {
+      x: target.x,
+      y: target.y,
+      z: target.z,
+      rotY: target.rotY,
+      scale: target.scale,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      vRotY: 0,
+      vScale: 0,
+    }
+    const seedOffset = Math.abs(index - focusIndex)
+    const seedVisible = isMobile
+      ? MAX_VISIBLE_OFFSET_MOBILE
+      : MAX_VISIBLE_OFFSET_DESKTOP
+    sideFadeRef.current =
+      seedOffset <= seedVisible && !(revealMode && !isRevealHero) ? 1 : 0
+    groupRef.current.visible = sideFadeRef.current > 0.02
+    seededRef.current = true
 	    invalidate()
 	  }, [
 	    focusIndex,
@@ -1563,22 +1595,21 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
       )
     }
 
-    // Side packs fade out during reveal; hero stays fully opaque.
+    // Reveal ducks side packs; browse fades packs at the visible edge instead of popping.
+    const maxVisibleOffset = isMobileRef.current
+      ? MAX_VISIBLE_OFFSET_MOBILE
+      : MAX_VISIBLE_OFFSET_DESKTOP
+    const inRange = Math.abs(liveOffset) <= maxVisibleOffset
     const fadeTarget =
-      revealModeRef.current && !isRevealHeroRef.current ? 0 : 1
+      revealModeRef.current && !isRevealHeroRef.current ? 0 : inRange ? 1 : 0
     sideFadeRef.current = MathUtils.lerp(
       sideFadeRef.current,
       fadeTarget,
       1 - Math.exp(-8 * delta),
     )
-    const maxVisibleOffset = isMobileRef.current
-      ? MAX_VISIBLE_OFFSET_MOBILE
-      : MAX_VISIBLE_OFFSET_DESKTOP
-    const inRange = Math.abs(liveOffset) <= maxVisibleOffset
     const opacity = sideFadeRef.current
     applyOpacity(opacity)
-    groupRef.current.visible =
-      inRange && (isRevealHeroRef.current || opacity > 0.02)
+    groupRef.current.visible = isRevealHeroRef.current || opacity > 0.02
 
     const springBusy =
       Math.abs(motion.vx) > FRAME_SETTLE_EPS ||
@@ -1909,11 +1940,12 @@ function CoverFlowScene({
 	  textureTransform,
 	  centerTiltYawRef,
 	  centerTiltPitchRef,
-	  stageActive,
-	  isMobile,
-	  shortHudGlass,
-	  revealMode,
-	  revealingPackId,
+		  stageActive,
+		  isMobile,
+		  shortHudGlass,
+		  evictOffCenterVideo,
+		  revealMode,
+		  revealingPackId,
 	  revealPlaySequence,
 	  revealTimeline,
 	  revealDuckInTimeline,
@@ -1938,10 +1970,11 @@ formatPrice,
 			  textureTransform: VideoTextureTransform
 			  centerTiltYawRef: MutableRefObject<number>
 			  centerTiltPitchRef: MutableRefObject<number>
-			  stageActive: boolean
-			  isMobile: boolean
-			  shortHudGlass: boolean
-			  revealMode: boolean
+				  stageActive: boolean
+				  isMobile: boolean
+				  shortHudGlass: boolean
+				  evictOffCenterVideo: boolean
+				  revealMode: boolean
 			  revealingPackId: string | null
 			  revealPlaySequence: boolean
 			  revealTimeline: PackTimeline
@@ -1991,10 +2024,11 @@ formatPrice,
 	              textureTransform={textureTransform}
 	              centerTiltYawRef={centerTiltYawRef}
 	              centerTiltPitchRef={centerTiltPitchRef}
-	              stageActive={stageActive}
-	              isMobile={isMobile}
-	              shortHudGlass={shortHudGlass}
-	              revealMode={revealMode}
+		              stageActive={stageActive}
+		              isMobile={isMobile}
+		              shortHudGlass={shortHudGlass}
+		              evictOffCenterVideo={evictOffCenterVideo}
+		              revealMode={revealMode}
 	              isRevealHero={Boolean(isRevealHero)}
 	              playOpenSequence={Boolean(isRevealHero && revealPlaySequence)}
 	              packsX={cameraSettings.packsX}
@@ -2074,6 +2108,7 @@ export function CoverFlowCarousel({
   layout: layoutProp,
   disableSwipeDownDeactivate = false,
   disableWheelPaging = false,
+  evictOffCenterVideo = false,
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
@@ -3231,10 +3266,11 @@ useEffect(() => {
                 textureTransform={textureTransform}
                 centerTiltYawRef={centerTiltYawRef}
                 centerTiltPitchRef={centerTiltPitchRef}
-                stageActive={canvasActive}
-isMobile={isMobileViewportActive}
-	                shortHudGlass={isShortHudGlass}
-	                revealMode={revealMode}
+	                stageActive={canvasActive}
+	isMobile={isMobileViewportActive}
+		                shortHudGlass={isShortHudGlass}
+		                evictOffCenterVideo={evictOffCenterVideo}
+		                revealMode={revealMode}
 	                revealingPackId={revealingPackId}
 	                revealPlaySequence={sequence.playSequence}
 	                revealTimeline={revealTimeline}

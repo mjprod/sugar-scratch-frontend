@@ -20,6 +20,8 @@ export type BackendModel = {
   cardPackName2?: string | null;
   packFaceVideoUrl?: string | null;
   packFaceVideoUrl2?: string | null;
+  packFacePosterUrl?: string | null;
+  packFacePosterUrl2?: string | null;
   swipeVideoUrl?: string | null;
   swipePosterUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
@@ -33,6 +35,8 @@ export type FoilPack = {
   id: string;
   label: string;
   videoUrl: string;
+  /** Still frame for the pack face; cheap to paint before the video decoder runs. */
+  posterUrl?: string;
 };
 
 export type ModelProfile = {
@@ -172,6 +176,8 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
   const id = modelId(model);
   const face1 = optionalMedia(model.packFaceVideoUrl);
   const face2 = optionalMedia(model.packFaceVideoUrl2);
+  const poster1 = optionalMedia(model.packFacePosterUrl) ?? undefined;
+  const poster2 = optionalMedia(model.packFacePosterUrl2) ?? undefined;
   const packs: FoilPack[] = [];
   if (face1) {
     packs.push({
@@ -179,6 +185,7 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
       id: `${id}-1`,
       label: optionalString(model.cardPackName) ?? "Pack 1",
       videoUrl: face1,
+      posterUrl: poster1,
     });
   }
   if (face2) {
@@ -187,6 +194,7 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
       id: `${id}-2`,
       label: optionalString(model.cardPackName2) ?? "Pack 2",
       videoUrl: face2,
+      posterUrl: poster2,
     });
   }
   return packs;

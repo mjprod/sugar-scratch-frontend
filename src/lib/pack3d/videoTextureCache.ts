@@ -1,7 +1,7 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
 import { normalizeMediaUrl } from "@/services/models";
 import {
-  PACK_TEXTURE_SIZE_MOBILE_SIDE,
+  PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR,
   type VideoFitMode,
   type VideoTextureTransform,
 } from './assets'
@@ -13,11 +13,18 @@ import {
 const PLAYING_FRAME_INTERVAL_MS = 1000 / 30
 const DESKTOP_PLAYING_FRAME_INTERVAL_MS = 1000 / 60
 const COVERFLOW_MOBILE_QUERY = '(max-width: 980px)'
-const IDLE_EVICT_MS = 45_000
+/** iOS Jetsams ~2GB if paused pack-face decoders pile up while swiping. */
+const MAX_LIVE_DECODERS_MOBILE = 1
 
 let playingFrameIntervalMs = PLAYING_FRAME_INTERVAL_MS
+let mobileCoverflowViewport = false
+
+function isMobileCoverflowViewport() {
+  return mobileCoverflowViewport
+}
 
 function syncPlayingFrameInterval(isMobile: boolean) {
+  mobileCoverflowViewport = isMobile
   playingFrameIntervalMs = isMobile
     ? PLAYING_FRAME_INTERVAL_MS
     : DESKTOP_PLAYING_FRAME_INTERVAL_MS
@@ -57,7 +64,7 @@ interface CacheEntry {
   lastDrawAt: number
   readyListeners: Set<() => void>
   errorListeners: Set<(message: string) => void>
-  evictTimer: number | null
+  decoderAttached: boolean
 }
 
 const cache = new Map<string, CacheEntry>()
@@ -124,9 +131,10 @@ function drawVideoToContext(
   context: CanvasRenderingContext2D,
   texture: CanvasTexture,
 ) {
-  const { video, textureSize, fitMode, textureTransform } = entry
+  const { video, fitMode, textureTransform } = entry
+  const textureSize = context.canvas.width
 
-  if (video.videoWidth === 0 || video.videoHeight === 0) {
+  if (textureSize <= 1 || video.videoWidth === 0 || video.videoHeight === 0) {
     return
   }
 
@@ -194,6 +202,7 @@ function drawLiveFrame(entry: CacheEntry) {
 }
 
 function drawStillFrame(entry: CacheEntry) {
+  restoreStillCanvas(entry)
   drawVideoToContext(entry, entry.stillContext, entry.stillTexture)
 }
 
@@ -225,8 +234,30 @@ if (typeof window !== 'undefined') {
   })
 }
 
+function stillCanvasSize(textureSize: number) {
+  return isMobileCoverflowViewport()
+    ? PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR
+    : textureSize
+}
+
+function restoreStillCanvas(entry: CacheEntry) {
+  const size = stillCanvasSize(entry.textureSize)
+  if (entry.stillCanvas.width !== size || entry.stillCanvas.height !== size) {
+    entry.stillCanvas.width = size
+    entry.stillCanvas.height = size
+  }
+}
+
 function copyLiveToStill(entry: CacheEntry) {
-  entry.stillContext.drawImage(entry.liveCanvas, 0, 0)
+  if (entry.liveCanvas.width <= 1) return
+  restoreStillCanvas(entry)
+  entry.stillContext.drawImage(
+    entry.liveCanvas,
+    0,
+    0,
+    entry.stillCanvas.width,
+    entry.stillCanvas.height,
+  )
   entry.stillTexture.needsUpdate = true
 }
 
@@ -270,34 +301,86 @@ function freeCanvas(canvas: HTMLCanvasElement) {
   ctx?.clearRect(0, 0, 1, 1)
 }
 
-function destroyEntry(entry: CacheEntry) {
+function detachDecoder(entry: CacheEntry) {
   stopLoop(entry)
-
-  if (entry.evictTimer !== null) {
-    window.clearTimeout(entry.evictTimer)
-    entry.evictTimer = null
-  }
-
-  entry.playingCount = 0
-  entry.refCount = 0
-  entry.readyListeners.clear()
-  entry.errorListeners.clear()
-
   try {
     entry.video.pause()
   } catch {
     // ignore
   }
-  // Detach media thoroughly so the browser can drop the decoder / demuxer.
+  if (!entry.decoderAttached && !entry.video.getAttribute('src')) {
+    return
+  }
+  entry.decoderAttached = false
   try {
     entry.video.removeAttribute('src')
     entry.video.removeAttribute('srcObject')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(entry.video as any).srcObject = null
+    entry.video.srcObject = null
     entry.video.load()
   } catch {
     // ignore
   }
+}
+
+function restoreLiveCanvas(entry: CacheEntry) {
+  if (entry.liveCanvas.width !== entry.textureSize) {
+    entry.liveCanvas.width = entry.textureSize
+    entry.liveCanvas.height = entry.textureSize
+  }
+  if (entry.stillCanvas.width > 1) {
+    entry.liveContext.drawImage(
+      entry.stillCanvas,
+      0,
+      0,
+      entry.textureSize,
+      entry.textureSize,
+    )
+  } else {
+    entry.liveContext.fillStyle = '#040608'
+    entry.liveContext.fillRect(0, 0, entry.textureSize, entry.textureSize)
+  }
+  entry.liveTexture.needsUpdate = true
+}
+
+function attachDecoder(entry: CacheEntry) {
+  if (entry.decoderAttached) {
+    return
+  }
+  entry.video.preload = 'auto'
+  entry.video.src = entry.videoUrl
+  entry.decoderAttached = true
+  entry.video.load()
+}
+
+function teardownOffscreen(entry: CacheEntry) {
+  entry.playingCount = 0
+  detachDecoder(entry)
+  freeCanvas(entry.liveCanvas)
+}
+
+function capLiveDecoders(keep: CacheEntry) {
+  if (!isMobileCoverflowViewport()) {
+    return
+  }
+  let playing = 0
+  for (const entry of cache.values()) {
+    if (entry.playingCount > 0) playing += 1
+  }
+  if (playing < MAX_LIVE_DECODERS_MOBILE) {
+    return
+  }
+  for (const entry of cache.values()) {
+    if (entry === keep || entry.playingCount <= 0) continue
+    teardownOffscreen(entry)
+  }
+}
+
+function destroyEntry(entry: CacheEntry) {
+  entry.playingCount = 0
+  entry.refCount = 0
+  entry.readyListeners.clear()
+  entry.errorListeners.clear()
+  detachDecoder(entry)
 
   try {
     entry.stillTexture.dispose()
@@ -316,25 +399,20 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
   const key = makeVideoTextureCacheKey(input)
   const existing = cache.get(key)
   if (existing) {
-    if (existing.evictTimer !== null) {
-      window.clearTimeout(existing.evictTimer)
-      existing.evictTimer = null
-    }
     return existing
   }
 
-  const still = createCanvasTexture(input.textureSize, input.flipY)
-  const live = createCanvasTexture(input.textureSize, input.flipY)
+  const still = createCanvasTexture(stillCanvasSize(input.textureSize), input.flipY)
+  const live = createCanvasTexture(1, input.flipY)
 
   const resolvedVideoUrl = resolveVideoTextureUrl(input.videoUrl)
 
   const video = document.createElement('video')
-  video.src = resolvedVideoUrl
   video.muted = true
   video.loop = true
   video.autoplay = false
   video.playsInline = true
-  video.preload = 'auto'
+  video.preload = 'none'
   video.crossOrigin = 'anonymous'
   video.setAttribute('playsinline', 'true')
   video.setAttribute('webkit-playsinline', 'true')
@@ -362,20 +440,27 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
     lastDrawAt: 0,
     readyListeners: new Set(),
     errorListeners: new Set(),
-    evictTimer: null,
+    decoderAttached: false,
   }
 
   const handleLoadedData = () => {
+    if (!entry.decoderAttached) return
     entry.isReady = true
-    // Seed still/live so focused/unfocused packs have content immediately.
+    entry.error = null
     drawStillFrame(entry)
-    drawLiveFrame(entry)
+    if (entry.playingCount > 0) {
+      restoreLiveCanvas(entry)
+      drawLiveFrame(entry)
+    } else {
+      detachDecoder(entry)
+    }
     for (const listener of entry.readyListeners) {
       listener()
     }
   }
 
   const handleError = () => {
+    if (!entry.decoderAttached) return
     entry.error = 'Could not load the selected video file.'
     for (const listener of entry.errorListeners) {
       listener(entry.error)
@@ -384,7 +469,6 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
 
   video.addEventListener('loadeddata', handleLoadedData)
   video.addEventListener('error', handleError)
-  video.load()
 
   cache.set(key, entry)
   return entry
@@ -393,12 +477,9 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
 export function acquireVideoTexture(input: VideoTextureCacheKeyInput): CacheEntry {
   const entry = ensureEntry(input)
   entry.refCount += 1
-
-  if (entry.evictTimer !== null) {
-    window.clearTimeout(entry.evictTimer)
-    entry.evictTimer = null
+  if (!entry.isReady) {
+    attachDecoder(entry)
   }
-
   return entry
 }
 
@@ -418,27 +499,8 @@ export function releaseVideoTexture(key: string) {
   }
 
   entry.refCount = Math.max(0, entry.refCount - 1)
-
   if (entry.refCount === 0) {
-    entry.playingCount = 0
-    stopLoop(entry)
-    try {
-      entry.video.pause()
-    } catch {
-      // ignore
-    }
-
-    // Keep cheap side stills around so scrolling back is instant.
-    // Drop 640/768 canvases as soon as a pack leaves center/neighbor.
-    if (entry.textureSize > PACK_TEXTURE_SIZE_MOBILE_SIDE) {
-      destroyEntry(entry)
-      return
-    }
-    entry.evictTimer = window.setTimeout(() => {
-      if (entry.refCount === 0) {
-        destroyEntry(entry)
-      }
-    }, IDLE_EVICT_MS)
+    destroyEntry(entry)
   }
 }
 
@@ -464,9 +526,6 @@ export function getVideoTextureCacheStats(): VideoTextureCacheStats {
 
 /**
  * Immediately destroy every cached pack video + canvas texture.
- * Use when leaving GPU-heavy routes (e.g. /packs) so decoded video frames
- * and WebGL-related canvas bitmaps don't linger for IDLE_EVICT_MS.
- *
  * Safe to call even if some entries still have refs — those consumers should
  * already be unmounting; force-clear prioritizes memory recovery.
  */
@@ -480,17 +539,15 @@ export function clearVideoTextureCache(): VideoTextureCacheStats {
   return before
 }
 
-/** Pause every cached video without disposing textures (tab hide / soft leave). */
+/** Pause every cached video and drop decoders (tab hide / offscreen hero). */
 export function pauseAllVideoTextures() {
   for (const entry of cache.values()) {
     entry.pausedPlayingCount = entry.playingCount
-    entry.playingCount = 0
-    stopLoop(entry)
-    try {
-      entry.video.pause()
-    } catch {
-      // ignore
+    if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      drawLiveFrame(entry)
+      copyLiveToStill(entry)
     }
+    teardownOffscreen(entry)
   }
 }
 
@@ -500,6 +557,9 @@ export function resumePausedVideoTextures() {
     const resumeCount = entry.pausedPlayingCount
     if (resumeCount <= 0) continue
     entry.pausedPlayingCount = 0
+    capLiveDecoders(entry)
+    restoreLiveCanvas(entry)
+    attachDecoder(entry)
     entry.playingCount = resumeCount
     void entry.video.play().catch(() => {
       // Muted autoplay should work; fail gracefully if blocked.
@@ -521,7 +581,9 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
     entry.pausedPlayingCount = 0
     entry.playingCount += 1
     if (entry.playingCount === 1) {
-      // Start live updates for the focused pack only.
+      capLiveDecoders(entry)
+      restoreLiveCanvas(entry)
+      attachDecoder(entry)
       void entry.video.play().catch(() => {
         // Muted autoplay should work in modern browsers, but we fail gracefully.
       })
@@ -535,13 +597,11 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
 
   entry.playingCount = Math.max(0, entry.playingCount - 1)
   if (entry.playingCount === 0) {
-    // Freeze current frame into the still texture used by non-focused packs.
     if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       drawLiveFrame(entry)
       copyLiveToStill(entry)
     }
-    entry.video.pause()
-    stopLoop(entry)
+    teardownOffscreen(entry)
   }
 }
 
