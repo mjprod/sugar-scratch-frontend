@@ -20,13 +20,15 @@ import {
   AUTH_PASSWORD_MIN_LENGTH,
   authFailureMessage,
   createAccountFailureMessage,
+  duplicateEmailMessage,
   forgotPasswordSuccessMessage,
+  isDuplicateEmailRegisterError,
   isValidAuthPassword,
   loginWithEmail,
   loginWithOAuth,
   registerWithEmail,
   requestPasswordReset,
-  supportingCopyForTrigger,
+  requestVerificationEmail,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
   type ProtectedActionType,
@@ -51,7 +53,6 @@ const DRAG_FLICK_VY = 640;
  */
 export function AuthenticationSheet({
   open,
-  trigger,
   onDismiss,
   onSuccess,
   initialMode = "login",
@@ -139,19 +140,17 @@ export function AuthenticationSheet({
 
   const title =
     mode === "create-account"
-      ? "Create Your Sugar Account"
+      ? "Create Account"
       : mode === "forgot-password" || mode === "reset-sent"
         ? "Reset Your Password"
-        : "Continue Your Journey";
+        : "Log In";
 
   const subtitle =
-    mode === "create-account"
-      ? "Save your collection and continue your journey."
-      : mode === "forgot-password"
-        ? "Enter your email and we’ll send password-reset instructions."
-        : mode === "reset-sent"
-          ? forgotPasswordSuccessMessage()
-          : supportingCopyForTrigger(trigger);
+    mode === "forgot-password"
+      ? "Enter your email and we’ll send password-reset instructions."
+      : mode === "reset-sent"
+        ? forgotPasswordSuccessMessage()
+        : "";
 
   async function finishSocial(provider: "Google" | "Apple") {
     setSubmitting(provider === "Google" ? "google" : "apple");
@@ -160,7 +159,12 @@ export function AuthenticationSheet({
       const kind = provider === "Google" ? "google" : "apple";
       const emailAddr = `${kind}@sugar.app`;
       const { user } = await loginWithOAuth(kind, emailAddr);
-      onSuccess({ email: user.email, provider: user.provider, user });
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -181,7 +185,12 @@ export function AuthenticationSheet({
     setError("");
     try {
       const { user } = await loginWithEmail(email.trim(), password);
-      onSuccess({ email: user.email, provider: user.provider, user });
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "login",
+      });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -208,10 +217,20 @@ export function AuthenticationSheet({
     setConsentError(false);
     try {
       const { user } = await registerWithEmail(email.trim(), password);
-      onSuccess({ email: user.email, provider: user.provider, user });
-    } catch (error) {
+      await requestVerificationEmail();
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "register",
+      });
+    } catch (err) {
       setSubmitting(null);
-      setError(createAccountFailureMessage());
+      setError(
+        isDuplicateEmailRegisterError(err)
+          ? duplicateEmailMessage()
+          : createAccountFailureMessage(),
+      );
     }
   }
 
@@ -409,7 +428,9 @@ export function AuthenticationSheet({
                       <h2 id={titleId} className="auth7-sheet-title">
                         {title}
                       </h2>
-                      <p className="auth7-sheet-copy">{subtitle}</p>
+                      {subtitle ? (
+                        <p className="auth7-sheet-copy">{subtitle}</p>
+                      ) : null}
                     </header>
 
                     {mode === "reset-sent" ? (

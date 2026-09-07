@@ -80,6 +80,8 @@ export type AuthSuccessResult = {
   provider: AuthProvider;
   /** Server user from login/register/oauth when available. */
   user?: AuthUser;
+  /** Which auth entry produced this session. */
+  source?: "login" | "register" | "oauth";
 };
 
 export function isAuthenticated() {
@@ -210,6 +212,27 @@ export async function markEmailVerifiedRemote() {
   }
 }
 
+/** Ask the server to (re)send the verification email for the current session. */
+export async function requestVerificationEmail() {
+  try {
+    await apiMutate("/api/auth/verify-email/send", { method: "POST" });
+  } catch {
+    /* ignore — modal still explains the email was requested */
+  }
+}
+
+/** Confirm the email with the one-time code from the verification message. */
+export async function confirmVerificationCode(code: string) {
+  return apiMutate<{ ok: boolean }>("/api/auth/verify-email/confirm", {
+    method: "POST",
+    body: JSON.stringify({ code: code.trim() }),
+  });
+}
+
+export function verificationCodeFailureMessage() {
+  return "That code is invalid or has expired. Try again or resend.";
+}
+
 export function createSession(
   email: string,
   provider: AuthProvider = "email",
@@ -308,7 +331,25 @@ export function createAccountFailureMessage() {
 }
 
 export function duplicateEmailMessage() {
-  return createAccountFailureMessage();
+  return "An account with this email already exists.";
+}
+
+/** True when /api/auth/register failed because the email is taken. */
+export function isDuplicateEmailRegisterError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  const hay =
+    `${error.message} ${typeof error.body === "string" ? error.body : JSON.stringify(error.body ?? "")}`.toLowerCase();
+  if (error.status === 409) return true;
+  if (error.status === 400 || error.status === 422) {
+    return (
+      hay.includes("already") ||
+      hay.includes("exist") ||
+      hay.includes("taken") ||
+      hay.includes("duplicate") ||
+      hay.includes("registered")
+    );
+  }
+  return false;
 }
 
 export function forgotPasswordSuccessMessage() {

@@ -9655,6 +9655,14 @@ body[data-theme="v8"] .auth7-text-link.is-strong {
   font-weight: 600;
 }
 
+body[data-theme="v8"] .auth7-text-link:disabled,
+body[data-theme="v8"] .auth7-text-link.is-strong:disabled {
+  color: oklch(1 0 0 / 0.32);
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 body[data-theme="v8"] .auth7-hint {
   margin: -4px 0 0;
   color: oklch(1 0 0 / 0.45);
