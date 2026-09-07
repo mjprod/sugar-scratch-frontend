@@ -328,7 +328,13 @@ function restoreLiveCanvas(entry: CacheEntry) {
     entry.liveCanvas.height = entry.textureSize
   }
   if (entry.stillCanvas.width > 1) {
-    entry.liveContext.drawImage(entry.stillCanvas, 0, 0)
+    entry.liveContext.drawImage(
+      entry.stillCanvas,
+      0,
+      0,
+      entry.textureSize,
+      entry.textureSize,
+    )
   } else {
     entry.liveContext.fillStyle = '#040608'
     entry.liveContext.fillRect(0, 0, entry.textureSize, entry.textureSize)
