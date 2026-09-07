@@ -12,6 +12,8 @@ import {
   isValidAuthPassword,
   supportingCopyForTrigger,
   triggerFromAction,
+  verificationCodeFailureMessage,
+  verificationSendFailureMessage,
 } from "./auth";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -37,6 +39,14 @@ assert(
 assert(
   duplicateEmailMessage() === "An account with this email already exists.",
   "duplicate email copy",
+);
+assert(
+  verificationCodeFailureMessage().includes("invalid or has expired"),
+  "verify code failure copy",
+);
+assert(
+  verificationSendFailureMessage().includes("Couldn't send"),
+  "verify send failure copy",
 );
 assert(
   isDuplicateEmailRegisterError(

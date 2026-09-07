@@ -213,24 +213,48 @@ export async function markEmailVerifiedRemote() {
 }
 
 /** Ask the server to (re)send the verification email for the current session. */
-export async function requestVerificationEmail() {
+export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
   try {
-    await apiMutate("/api/auth/verify-email/send", { method: "POST" });
+    const result = await apiMutate<{ ok?: boolean }>(
+      "/api/auth/verify-email/send",
+      { method: "POST" },
+    );
+    if (result && typeof result === "object" && result.ok === false) {
+      return { ok: false };
+    }
+    return { ok: true };
   } catch {
-    /* ignore — modal still explains the email was requested */
+    return { ok: false };
   }
 }
 
 /** Confirm the email with the one-time code from the verification message. */
-export async function confirmVerificationCode(code: string) {
-  return apiMutate<{ ok: boolean }>("/api/auth/verify-email/confirm", {
-    method: "POST",
-    body: JSON.stringify({ code: code.trim() }),
-  });
+export async function confirmVerificationCode(
+  code: string,
+): Promise<{ ok: boolean }> {
+  try {
+    const result = await apiMutate<{ ok?: boolean }>(
+      "/api/auth/verify-email/confirm",
+      {
+        method: "POST",
+        body: JSON.stringify({ code: code.trim() }),
+      },
+    );
+    if (result && typeof result === "object" && result.ok === false) {
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export function verificationCodeFailureMessage() {
   return "That code is invalid or has expired. Try again or resend.";
+}
+
+export function verificationSendFailureMessage() {
+  return "Couldn't send a verification code. Please try again.";
 }
 
 export function createSession(

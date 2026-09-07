@@ -91,8 +91,15 @@ export function AuthenticationSheet({
 
   const busy = submitting !== null;
   const passwordOk = isValidAuthPassword(password);
-  const canCreateAccount =
-    isValidEmail(email) && passwordOk && acceptedTerms;
+  const emailOk = isValidEmail(email);
+  const emailFormatError =
+    email.trim().length > 0 && !emailOk
+      ? "Enter a valid email address."
+      : "";
+  const canLogin = emailOk && password.length > 0;
+  const canCreateAccount = emailOk && passwordOk && acceptedTerms;
+  const canSubmitPrimary =
+    mode === "create-account" ? canCreateAccount : canLogin;
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +143,34 @@ export function AuthenticationSheet({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, dismissWithAnticipation]);
+  }, [open, busy]);
+
+  // ONB-006: keep keyboard focus inside the sheet while open.
+  useEffect(() => {
+    if (!open) return;
+    const root = panelRef.current;
+    if (!root) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab" || !root) return;
+      const focusables = [
+        ...root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusables.length === 0) return;
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    root.addEventListener("keydown", onKeyDown);
+    return () => root.removeEventListener("keydown", onKeyDown);
+  }, [open, mode, busy, legalDoc]);
 
   const title =
     mode === "create-account"
@@ -572,9 +606,20 @@ export function AuthenticationSheet({
                               value={email}
                               placeholder="you@email.com"
                               disabled={busy}
-                              onChange={(e) => setEmail(e.target.value)}
+                              aria-invalid={emailFormatError ? true : undefined}
+                              onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (error === "Enter a valid email address.") {
+                                  setError("");
+                                }
+                              }}
                             />
                           </label>
+                          {emailFormatError ? (
+                            <p className="auth7-error" role="alert">
+                              {emailFormatError}
+                            </p>
+                          ) : null}
 
                           <div className="auth7-field">
                             <label
@@ -737,7 +782,7 @@ export function AuthenticationSheet({
                             </div>
                           ) : null}
 
-                          {error ? (
+                          {error && error !== emailFormatError ? (
                             <p className="auth7-error" role="alert">
                               {error}
                             </p>
@@ -758,10 +803,7 @@ export function AuthenticationSheet({
                               costAmount={null}
                               fontSize={15}
                               strokeWidth={1}
-                              disabled={
-                                busy ||
-                                (mode === "create-account" && !canCreateAccount)
-                              }
+                              disabled={busy || !canSubmitPrimary}
                             />
                           </div>
                         </form>

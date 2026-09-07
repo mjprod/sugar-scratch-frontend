@@ -1,11 +1,12 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   confirmVerificationCode,
   requestVerificationEmail,
   verificationCodeFailureMessage,
+  verificationSendFailureMessage,
 } from "@/services/auth";
 
 /**
@@ -26,6 +27,7 @@ export function VerifyEmailModal({
 }) {
   const reduce = useReducedMotion();
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
   const [sending, setSending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -54,12 +56,52 @@ export function VerifyEmailModal({
     return () => window.clearTimeout(id);
   }, [resendCooldown]);
 
+  // ONB-006: keep keyboard focus inside the verify sheet while open.
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab" || !panel) return;
+      const focusables = [
+        ...panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusables.length === 0) return;
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    panel.addEventListener("keydown", onKeyDown);
+    const t = window.setTimeout(() => {
+      panel
+        .querySelector<HTMLElement>("input:not([disabled]), button:not([disabled])")
+        ?.focus();
+    }, 40);
+    return () => {
+      panel.removeEventListener("keydown", onKeyDown);
+      window.clearTimeout(t);
+    };
+  }, [open, busy, resendCooldown]);
+
   async function resendCode() {
     if (resendLocked) return;
     setSending(true);
     setError("");
-    await requestVerificationEmail();
+    const { ok } = await requestVerificationEmail();
     setSending(false);
+    if (!ok) {
+      setError(verificationSendFailureMessage());
+      return;
+    }
     setResendCooldown(45);
   }
 
@@ -69,21 +111,27 @@ export function VerifyEmailModal({
     if (!trimmed || busy) return;
     setSubmitting(true);
     setError("");
-    try {
-      await confirmVerificationCode(trimmed);
-      onVerified();
-    } catch {
+    const { ok } = await confirmVerificationCode(trimmed);
+    if (!ok) {
       setError(verificationCodeFailureMessage());
       setSubmitting(false);
+      return;
     }
+    onVerified();
   }
 
   return (
     <AnimatePresence>
       {open ? (
         <div className="auth7-sheet-root" role="presentation">
-          <div className="auth7-sheet-backdrop" aria-hidden="true" />
+          <button
+            type="button"
+            className="auth7-sheet-backdrop"
+            aria-label="Verification required"
+            disabled
+          />
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
