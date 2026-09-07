@@ -985,8 +985,10 @@ export function PurchaseFlow({
       const card = session.cards.find((entry) => entry.id === cardId);
       recordGameReveal({
         cardId,
-        cardName: card?.rarity ? `${card.rarity} Card` : "Card",
-        cardImageUrl: card?.faceUrl,
+        cardName:
+          session.foilLabel?.trim() ||
+          (card?.rarity ? `${card.rarity} Card` : "Card"),
+        cardImageUrl: card?.faceUrl || session.foilFaceUrl,
         packInstanceId: historyIds.packInstanceId,
         packId: historyIds.packId,
         packName: pack.packName,

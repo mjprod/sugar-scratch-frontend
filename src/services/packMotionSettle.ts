@@ -1,8 +1,11 @@
+import { catalogMotionIdFromRevealId } from "@/features/game/modules/session";
 import {
   loadGameSession,
   saveGameSession,
+  themeForMotionCard,
   type GameSession,
 } from "@/features/game/modules/gameSession";
+import { fetchCatalogMotionCards } from "@/features/game/shared/catalog";
 import { recordRevealedCards } from "@/services/collectionState";
 import { packHistoryIds, recordGameReveal } from "@/services/gameHistory";
 import { revealPackCard } from "@/services/purchase";
@@ -58,7 +61,7 @@ function slugCreatorId(creator: string) {
   return creator.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-function appendGameHistoryFromSettle(
+async function appendGameHistoryFromSettle(
   session: GameSession,
   motionCardId: string,
   openingId: string,
@@ -74,10 +77,30 @@ function appendGameHistoryFromSettle(
   const revealSessionId = packScratch.serverOpeningId
     ? `${packScratch.serverOpeningId}:${openingId}`
     : `${packScratch.readyPackId}:${openingId}`;
+
+  let cardName = card?.rarity ? `${card.rarity} Card` : "Card";
+  let cardImageUrl = card?.faceUrl;
+  try {
+    const motionId = catalogMotionIdFromRevealId(motionCardId);
+    const motion = (await fetchCatalogMotionCards()).find(
+      (entry) => entry.id === motionCardId || entry.id === motionId,
+    );
+    if (motion) {
+      cardName = motion.label;
+      cardImageUrl = motion.bottom || motion.foreground || cardImageUrl;
+    } else {
+      const theme = themeForMotionCard(session, motionCardId)?.trim();
+      if (theme) cardName = theme;
+    }
+  } catch {
+    const theme = themeForMotionCard(session, motionCardId)?.trim();
+    if (theme) cardName = theme;
+  }
+
   recordGameReveal({
     cardId: motionCardId || openingId,
-    cardName: card?.rarity ? `${card.rarity} Card` : "Card",
-    cardImageUrl: card?.faceUrl,
+    cardName,
+    cardImageUrl,
     packInstanceId: historyIds.packInstanceId,
     packId: historyIds.packId,
     packName: packScratch.packName,
@@ -121,7 +144,7 @@ export async function settlePackMotionCard(
       const openingCard = packScratch.openingSession.cards.find(
         (entry) => entry.id === openingId,
       );
-      appendGameHistoryFromSettle(
+      await appendGameHistoryFromSettle(
         session,
         motionCardId,
         openingId,
@@ -154,7 +177,7 @@ export async function settlePackMotionCard(
     creatorName: packScratch.creator,
     themeName: packScratch.themeName || packScratch.packName,
   });
-  appendGameHistoryFromSettle(session, motionCardId, openingId, coins);
+  await appendGameHistoryFromSettle(session, motionCardId, openingId, coins);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(

@@ -7782,26 +7782,47 @@ body[data-theme="v8"] .hf-follow {
   align-items: center;
   justify-content: center;
   min-height: 32px;
+  min-width: 5.5rem;
   padding: 0 12px;
   border: 1px solid oklch(1 0 0 / 0.92);
   border-radius: 999px;
-  background: oklch(0 0 0 / 0.28);
+  background: oklch(1 0 0 / 0.12);
   color: oklch(1 0 0);
   font-family: inherit;
   font-size: 12px;
   font-weight: 650;
   line-height: 1;
   cursor: pointer;
+  box-shadow: none;
+  filter: none;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
 }
 
 body[data-theme="v8"] .hf-follow:hover {
-  background: oklch(0 0 0 / 0.4);
+  background: oklch(1 0 0 / 0.2);
+  border-color: oklch(1 0 0);
 }
 
+body[data-theme="v8"] .hf-follow:active {
+  transform: scale(0.97);
+}
+
+/* Already following — quieter chip so Buy Pack stays the only primary CTA. */
 body[data-theme="v8"] .hf-follow.is-following {
+  border-color: oklch(1 0 0 / 0.28);
+  background: oklch(0 0 0 / 0.32);
+  color: oklch(1 0 0 / 0.62);
+  font-weight: 550;
+}
+
+body[data-theme="v8"] .hf-follow.is-following:hover {
   border-color: oklch(1 0 0 / 0.45);
-  background: oklch(0 0 0 / 0.28);
-  color: oklch(1 0 0 / 0.88);
+  background: oklch(0 0 0 / 0.42);
+  color: oklch(1 0 0 / 0.85);
 }
 
 body[data-theme="v8"] .hf-follow:focus-visible {
@@ -8370,20 +8391,29 @@ body[data-theme="v8"] .hf-heart-burst-piece.is-secondary {
   animation-delay: var(--hf-hd, 0ms);
 }
 
-/* Moderate primary — impact comes from spread, not centre size */
+/* Media double-tap — smaller primary + softer scale so it stays in-frame */
 body[data-theme="v8"] .hf-heart-burst--media .hf-heart-burst-piece.is-primary {
-  width: clamp(100px, calc(var(--hf-card-w, 390px) * 0.32), 150px);
-  height: clamp(100px, calc(var(--hf-card-w, 390px) * 0.32), 150px);
-}
-
-body[data-theme="v8"] .hf-heart-burst--button .hf-heart-burst-piece.is-primary {
-  width: clamp(60px, calc(var(--hf-card-w, 390px) * 0.18), 90px);
-  height: clamp(60px, calc(var(--hf-card-w, 390px) * 0.18), 90px);
+  width: clamp(52px, calc(var(--hf-card-w, 390px) * 0.14), 68px);
+  height: clamp(52px, calc(var(--hf-card-w, 390px) * 0.14), 68px);
+  animation-name: hf-burst-primary-media;
   animation-duration: 700ms;
 }
 
+body[data-theme="v8"] .hf-heart-burst--media .hf-heart-burst-piece.is-secondary {
+  animation-name: hf-burst-secondary-media;
+  animation-duration: 820ms;
+}
+
+body[data-theme="v8"] .hf-heart-burst--button .hf-heart-burst-piece.is-primary {
+  width: clamp(40px, calc(var(--hf-card-w, 390px) * 0.11), 52px);
+  height: clamp(40px, calc(var(--hf-card-w, 390px) * 0.11), 52px);
+  animation-name: hf-burst-primary-button;
+  animation-duration: 640ms;
+}
+
 body[data-theme="v8"] .hf-heart-burst--button .hf-heart-burst-piece.is-secondary {
-  animation-duration: 850ms;
+  animation-name: hf-burst-secondary-button;
+  animation-duration: 760ms;
 }
 
 body[data-theme="v8"] .hf-heart-burst.is-reduced .hf-heart-burst-piece.is-primary {
@@ -8408,15 +8438,62 @@ body[data-theme="v8"] .hf-heart-burst.is-reduced .hf-heart-burst-piece.is-second
   }
   30% {
     opacity: 1;
-    transform: translate(-50%, -50%) translateY(0) scale(3);
+    transform: translate(-50%, -50%) translateY(0) scale(1.7);
   }
   68% {
     opacity: 1;
-    transform: translate(-50%, -50%) translateY(-8px) scale(3);
+    transform: translate(-50%, -50%) translateY(-8px) scale(1.55);
   }
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) translateY(-16px) scale(0.98);
+  }
+}
+
+@keyframes hf-burst-primary-media {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.72);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  32% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-2px) scale(1.65);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-8px) scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-14px) scale(0.94);
+  }
+}
+
+/* Button-tap primary — lower peak scale so it stays inside the card near the like control. */
+@keyframes hf-burst-primary-button {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.72);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  34% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-2px) scale(1.55);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-6px) scale(1.45);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-10px) scale(0.92);
   }
 }
 
@@ -8429,13 +8506,51 @@ body[data-theme="v8"] .hf-heart-burst.is-reduced .hf-heart-burst-piece.is-second
     opacity: var(--hf-ho, 0.7);
     transform: translate(-50%, -50%)
       translate(calc(var(--hf-hx, 0px) * 0.22), calc(var(--hf-hy, 0px) * 0.22))
-      scale(3);
+      scale(1.4);
   }
   100% {
     opacity: 0;
     transform: translate(-50%, -50%)
       translate(var(--hf-hx, 0px), calc(var(--hf-hy, 0px) - 18px))
       scale(0.94);
+  }
+}
+
+@keyframes hf-burst-secondary-media {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  14% {
+    opacity: var(--hf-ho, 0.7);
+    transform: translate(-50%, -50%)
+      translate(calc(var(--hf-hx, 0px) * 0.26), calc(var(--hf-hy, 0px) * 0.26))
+      scale(1.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%)
+      translate(var(--hf-hx, 0px), calc(var(--hf-hy, 0px) - 12px))
+      scale(0.9);
+  }
+}
+
+@keyframes hf-burst-secondary-button {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  14% {
+    opacity: var(--hf-ho, 0.7);
+    transform: translate(-50%, -50%)
+      translate(calc(var(--hf-hx, 0px) * 0.28), calc(var(--hf-hy, 0px) * 0.28))
+      scale(1.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%)
+      translate(var(--hf-hx, 0px), calc(var(--hf-hy, 0px) - 10px))
+      scale(0.9);
   }
 }
 
