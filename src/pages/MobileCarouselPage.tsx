@@ -64,7 +64,7 @@ export function MobileCarouselPage() {
     isMobileCoverflowViewport,
   );
 
-  useMarkPageReady(carouselReady);
+  useMarkPageReady(!isMobileViewport || carouselReady);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
