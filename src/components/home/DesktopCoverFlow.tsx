@@ -26,11 +26,17 @@ export type HomeCoverFlowViewProps = {
   addedToPocket: boolean;
   cameraSettings?: CoverFlowCameraSettings;
   showCenterGuide?: boolean;
+  /** Juliana A/B: legacy HUD confirm path. */
+  confirmBuy?: boolean;
   onSelect: (id: string) => void;
   onDeselect: () => void;
   onFocusChange: (item: Iteration | null) => void;
   onBuy: (item: Iteration, quantity?: number) => void;
-  onAddToPocket: (item: Iteration) => void;
+  onAddToPocket?: (
+    item: Iteration,
+    quantity?: number,
+    options?: { allowDuplicates?: boolean },
+  ) => void;
 };
 
 export function DesktopCoverFlow({
@@ -41,6 +47,7 @@ export function DesktopCoverFlow({
   addedToPocket,
   cameraSettings,
   showCenterGuide = false,
+  confirmBuy = true,
   onSelect,
   onDeselect,
   onFocusChange,
@@ -74,7 +81,7 @@ export function DesktopCoverFlow({
           disableSwipeDownDeactivate
           disableWheelPaging
           buyLabel="Buy Pack"
-          confirmBuy
+          confirmBuy={confirmBuy}
           buyDisabled={buying}
           addToPocketDisabled={addedToPocket}
           onBuy={onBuy}
