@@ -12,6 +12,7 @@ import {
   isValidAuthPassword,
   supportingCopyForTrigger,
   triggerFromAction,
+  resendCooldownLabel,
   verificationCodeFailureMessage,
   verificationSendFailureMessage,
 } from "./auth";
@@ -44,8 +45,11 @@ assert(
   verificationCodeFailureMessage().includes("invalid or has expired"),
   "verify code failure copy",
 );
+assert(resendCooldownLabel(0) === "Resend", "idle resend label");
+assert(resendCooldownLabel(45) === "Resend in 45s", "cooldown resend label");
+assert(resendCooldownLabel(1) === "Resend in 1s", "cooldown 1s label");
 assert(
-  verificationSendFailureMessage().includes("Couldn't send"),
+  verificationSendFailureMessage().includes("technical issue"),
   "verify send failure copy",
 );
 assert(

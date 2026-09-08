@@ -215,7 +215,9 @@ type AuthContextValue = {
   dismissAuth: () => void;
   onVerified: () => void;
   onVerifyLater: () => void;
-  onVerifyBackToCreateAccount: () => void;
+  onVerifyBack: () => void;
+  /** True when verify was opened from Create Account (affects back affordance). */
+  verifyFromRegister: boolean;
   onEmailChanged: (email: string) => void;
   notePackPurchaseSeed: (creatorName?: string) => void;
   finishRecommendationAndResume: () => void;
@@ -261,7 +263,7 @@ type AuthActionsContextValue = {
   dismissAuth: () => void;
   onVerified: () => void;
   onVerifyLater: () => void;
-  onVerifyBackToCreateAccount: () => void;
+  onVerifyBack: () => void;
   onEmailChanged: (email: string) => void;
   notePackPurchaseSeed: (creatorName?: string) => void;
   finishRecommendationAndResume: () => void;
@@ -296,6 +298,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [resumeLikeId, setResumeLikeId] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(() => isEmailVerified());
   const [verifyOpen, setVerifyOpen] = useState(false);
+  /** True only when verify opened right after Create Account (back → recreate). */
+  const [verifyFromRegister, setVerifyFromRegister] = useState(false);
   const [verifyPending, setVerifyPending] = useState<ProtectedAction | null>(
     null,
   );
@@ -612,6 +616,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (action: ProtectedAction) => {
       if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
+          setVerifyFromRegister(false);
           setVerifyPending(action);
           setVerifyOpen(true);
           return false;
@@ -764,6 +769,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               (openedFromRegister ||
                 (action != null && actionNeedsVerifiedEmail(action)));
             if (needsVerify) {
+              setVerifyFromRegister(openedFromRegister);
               setVerifyPending(action);
               setVerifyOpen(true);
               return;
@@ -788,6 +794,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void markEmailVerifiedRemote();
     setEmailVerified(true);
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     const action = verifyPending;
     setVerifyPending(null);
     window.setTimeout(() => applyRecommendationDecision(action), 0);
@@ -795,6 +802,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const onVerifyLater = useCallback(() => {
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     const action = verifyPending;
     setVerifyPending(null);
     // Registration always opens verify; Later still resumes non-purchase journeys.
@@ -803,10 +811,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applyRecommendationDecision, verifyPending]);
 
-  const onVerifyBackToCreateAccount = useCallback(() => {
+  /**
+   * Back on verify sheet:
+   * - After Create Account → drop unverified session, reopen create sheet.
+   * - Already signed in (login / gated action) → close sheet only; stay authed.
+   */
+  const onVerifyBack = useCallback(() => {
+    if (!verifyFromRegister) {
+      onVerifyLater();
+      return;
+    }
+
     const action = verifyPending;
     const email = profile.email || getAuthEmail();
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     setVerifyPending(null);
 
     // Drop the unverified session so create-account can be submitted again.
@@ -821,7 +840,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthSheetEmail(email);
     setAuthSheetMode("create-account");
     setAuthOpen(true);
-  }, [profile.email, verifyPending]);
+  }, [onVerifyLater, profile.email, verifyFromRegister, verifyPending]);
 
   const onEmailChanged = useCallback((email: string) => {
     setProfile((d) => ({ ...d, email }));
@@ -867,6 +886,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPending(null);
     setAuthOpen(false);
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
     navigate(Paths.discover);
@@ -889,6 +909,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setReturningUser(false);
     setEmailVerified(false);
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
     setPurchasedPacks(0);
@@ -930,7 +951,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dismissAuth,
       onVerified,
       onVerifyLater,
-      onVerifyBackToCreateAccount,
+      onVerifyBack,
       onEmailChanged,
       notePackPurchaseSeed,
       finishRecommendationAndResume,
@@ -959,7 +980,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onEmailChanged,
       onVerified,
       onVerifyLater,
-      onVerifyBackToCreateAccount,
+      onVerifyBack,
       openCart,
       openCreator,
       openInbox,
@@ -992,6 +1013,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pending,
       emailVerified,
       verifyOpen,
+      verifyFromRegister,
       resumeLikeId,
       navNotice,
       purchasedPacks,
@@ -1017,7 +1039,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dismissAuth,
       onVerified,
       onVerifyLater,
-      onVerifyBackToCreateAccount,
+      onVerifyBack,
       onEmailChanged,
       notePackPurchaseSeed,
       finishRecommendationAndResume,
@@ -1051,7 +1073,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onEmailChanged,
       onVerified,
       onVerifyLater,
-      onVerifyBackToCreateAccount,
+      onVerifyBack,
       bumpInventoryRevision,
       invalidatePackSync,
       closeSecondary,
@@ -1076,6 +1098,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resumeLikeId,
       setPendingAfterRecFromSwipe,
       verifyOpen,
+      verifyFromRegister,
     ],
   );
 

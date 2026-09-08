@@ -2,6 +2,7 @@ import {
   DotLottieReact,
   type DotLottie,
 } from "@lottiefiles/dotlottie-react";
+import { Bell } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import {
   countCartPacks,
@@ -21,7 +22,7 @@ const REMOVED_LOTTIE_MS = 780;
 
 /**
  * Global HUD utility control — cart for packs to open (TopNav / mobile utility).
- * Unread inbox count uses {@link InboxUtilityBadge} on the Profile icon.
+ * Unread inbox count uses {@link InboxUtilityBadge} on {@link NotificationBellButton}.
  */
 export function InboxUtilityBadge({
   count = 0,
@@ -193,8 +194,9 @@ export const PacksButton = forwardRef<
 
   const surfaceClasses =
     "inbox-utility-btn relative grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95";
+  // AC23: ≥44×44 touch target; icon stays visually compact inside.
   const ghostClasses =
-    "inbox-utility-btn inbox-utility-btn--ghost relative grid size-7 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95";
+    "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95";
 
   const ariaLabel =
     packCount > 0
@@ -237,7 +239,7 @@ export const PacksButton = forwardRef<
           style={{ width: "100%", height: "100%" }}
         />
       </span>
-      <CartOutlineIcon className="inbox-utility-icon h-full w-full" />
+      <CartOutlineIcon className="inbox-utility-icon h-7 w-7" />
       <InboxUtilityBadge
         key={bumpId}
         count={packCount}
@@ -247,3 +249,40 @@ export const PacksButton = forwardRef<
     </button>
   );
 });
+
+/** Header notification bell — unread badge when count ≥ 1 (AC15–18). */
+export function NotificationBellButton({
+  unreadCount = 0,
+  onOpen,
+  className = "",
+  active = false,
+}: {
+  unreadCount?: number;
+  onOpen: () => void;
+  className?: string;
+  active?: boolean;
+}) {
+  const ariaLabel =
+    unreadCount > 0
+      ? `Notifications, ${unreadCount} unread`
+      : "Notifications";
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={ariaLabel}
+      aria-current={active ? "page" : undefined}
+      className={[
+        "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+        active ? "is-active" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <Bell className="h-7 w-7" strokeWidth={1.5} aria-hidden="true" />
+      <InboxUtilityBadge count={unreadCount} />
+    </button>
+  );
+}

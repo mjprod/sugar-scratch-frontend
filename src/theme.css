@@ -747,13 +747,14 @@ body[data-theme="v8"] .profile-site-footer {
   align-items: center;
   gap: 14px;
   margin-top: 1.75rem;
-  margin-bottom: 0.25rem;
-  padding: 24px 8px 4px;
+  margin-bottom: 0;
+  padding: 24px 8px 8px;
   border-top: 1px solid oklch(1 0 0 / 0.08);
   text-align: center;
 }
 
-@media (min-width: 1024px) {
+/* Hide with bottom dock — desktop uses home-site-footer instead. */
+@media (min-width: 769px) {
   body[data-theme="v8"] .profile-site-footer {
     display: none;
   }
@@ -2288,7 +2289,7 @@ body[data-theme="v8"] .store-page-desc {
   max-width: 36rem;
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.store-page {
     padding-top: var(--app-diamond-offset);
     padding-bottom: 48px;
@@ -2300,7 +2301,7 @@ body[data-theme="v8"] .store-page-desc {
     padding-top: var(--app-diamond-offset);
     padding-bottom: var(
       --app-footer-offset,
-      calc(112px + env(safe-area-inset-bottom, 0px))
+      calc(2.75rem + 96px + 16px + env(safe-area-inset-bottom, 0px))
     );
   }
 }
@@ -4426,7 +4427,7 @@ body[data-theme="v8"] .collection-page {
 body[data-theme="v8"] .collection-page-content {
   /* Clear sticky TopNav, then give the title room to breathe. */
   padding-top: calc(var(--app-diamond-offset, 12px) + 16px);
-  padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
+  padding-bottom: var(--app-footer-offset, calc(2.75rem + 96px + 16px + env(safe-area-inset-bottom, 0px)));
   box-sizing: border-box;
   display: flex;
   flex: 1 0 auto;
@@ -6376,7 +6377,7 @@ body[data-theme="v8"] .cpv2-shell {
 }
 
 /* Creator profile: back button clears floating desktop nav. */
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,
   body[data-theme="v8"][data-liquid-nav="to-desktop"] .cpv2-shell {
     padding-top: var(--app-diamond-offset);
@@ -7793,7 +7794,7 @@ body[data-theme="v8"] .hf-stepper-icon {
   height: 2.5rem;
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .hf-page {
     --hf-bottom-clearance: 24px;
     --hf-next-peek: 0px;
@@ -10995,7 +10996,7 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
   gap: 16px;
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
     padding-top: max(12px, env(safe-area-inset-top, 0px));
     padding-bottom: 48px;
@@ -11021,7 +11022,7 @@ body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
   body[data-theme="v8"] .app-page-shell.settings-page {
     padding-bottom: var(
       --app-footer-offset,
-      calc(112px + env(safe-area-inset-bottom, 0px))
+      calc(2.75rem + 96px + 16px + env(safe-area-inset-bottom, 0px))
     );
   }
 }
@@ -12664,7 +12665,7 @@ body[data-theme="v8"] .inbox-page .app-page-shell-inner {
 }
 
 /* Desktop Inbox sits below the liquid top nav so Back + filter stay visible. */
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page {
     padding-top: var(--app-diamond-offset);
     padding-bottom: 48px;
@@ -12687,9 +12688,9 @@ body[data-theme="v8"] .inbox-page .app-page-shell-inner {
 }
 
 /* Mobile Inbox keeps the liquid bottom dock — clear the footer chrome. */
-@media (max-width: 506px) {
+@media (max-width: 768.98px) {
   body[data-theme="v8"] .app-page-shell.inbox-page {
-    padding-bottom: var(--app-footer-offset, calc(112px + env(safe-area-inset-bottom, 0px)));
+    padding-bottom: var(--app-footer-offset, calc(2.75rem + 96px + 16px + env(safe-area-inset-bottom, 0px)));
   }
 }
 
@@ -13194,7 +13195,8 @@ body[data-theme="v8"] {
   --app-page-top-gap: 12px;
   /* Content safe offset — pages set padding-top to this; backgrounds may still underlap. */
   --app-diamond-offset: 12px;
-  --app-footer-offset: calc(112px + env(safe-area-inset-bottom, 0px));
+  /* Dock wrap fade (2.75rem) + 96px dock + gap — keep scroll content above glass. */
+  --app-footer-offset: calc(2.75rem + 96px + 16px + env(safe-area-inset-bottom, 0px));
   /*
    * Primary CTA face — matches hf-buy / squircleCTA static aurora fallback
    * (deep rose base + magenta/pink/amber mesh). Use on plain buttons that
@@ -13756,7 +13758,7 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
     }
   }
 
-  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (507px+). */
+  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (769px+). */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
     margin-top: 5%;
     margin-bottom: 0;
@@ -13814,7 +13816,7 @@ body[data-theme="v8"] .app-page-shell-inner {
   margin-inline: auto;
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-page-shell--primary {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
@@ -13895,7 +13897,7 @@ body[data-theme="v8"] .app-page-shell--profile .profile-display-name {
   color: oklch(1 0 0);
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-page-shell--profile {
     padding-top: var(--app-diamond-offset);
   }
@@ -14013,7 +14015,7 @@ body[data-theme="v8"] .pack-added-toast__copy {
   }
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .pack-added-toast-stack {
     left: auto;
     right: max(16px, calc((100% - min(var(--app-content-max, 80rem), calc(100% - 32px))) / 2));

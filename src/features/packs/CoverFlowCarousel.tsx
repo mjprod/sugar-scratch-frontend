@@ -2,7 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
-import { Check, ChevronLeft, ChevronRight, Minus, Plus, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
 		  Suspense,
 		  useCallback,
@@ -73,10 +73,8 @@ import {
   formatPackPrice,
   type Iteration,
 } from './types'
-import {
-  BUY_PACK_MAX_QUANTITY,
-  clampBuyPackQuantity,
-} from '@/services/purchase'
+import { CoverflowBuyConfirm } from '@/features/packs/CoverflowBuyConfirm'
+import { clampBuyPackQuantity } from '@/services/purchase'
 
 // Keep the cover-flow light by mounting only nearby packs.
 // Mobile: 5 packs (center ± 2). Desktop: 7 packs (center ± 3).
@@ -1724,7 +1722,10 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	              activeHudVisible ? ' is-visible' : ''
 	            }${shortHudGlass ? ' is-short-glass' : ''}`}
 	            style={{ ['--active-stack-gap' as string]: '1rem' }}
-	            aria-hidden={!activeHudVisible}
+	            // Hide from a11y/tab only while exiting — never aria-hidden while Buy Pack is shown.
+	            {...(activeHudVisible
+	              ? {}
+	              : { 'aria-hidden': true as const, inert: true })}
 	          >
 	            <div className="coverflow-active-pack-label">
 	              <p className="coverflow-pack-label__collection">
@@ -1783,107 +1784,36 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
                     }}
                   />
                   {confirmBuy && (buyConfirmOpen || buyConfirmLeaving) ? (
-                    <div
+                    <CoverflowBuyConfirm
                       id={`coverflow-buy-confirm-${item.id}`}
-                      className={`coverflow-cart-remove-confirm coverflow-buy-confirm${
-                        buyConfirmLeaving ? ' is-leaving' : ''
-                      }`}
-                      role="dialog"
-                      aria-label="Buy pack?"
-                      aria-modal="false"
-                      onAnimationEnd={(event) => {
-                        if (event.target !== event.currentTarget) return
-                        if (
-                          event.animationName !== 'coverflow-confirm-leave' &&
-                          event.animationName !== 'coverflow-buy-confirm-leave'
-                        ) {
-                          return
-                        }
-                        setBuyConfirmLeaving(false)
+                      leaving={buyConfirmLeaving}
+                      quantity={buyQuantity}
+                      disabled={buyDisabled}
+                      onQuantityChange={(qty) =>
+                        setBuyQuantity(clampBuyPackQuantity(qty))
+                      }
+                      onCancel={closeBuyConfirm}
+                      onConfirm={(qty) => {
+                        closeBuyConfirm()
+                        onBuy(item, qty)
                       }}
-                    >
-                      <p className="coverflow-cart-remove-confirm__label">Buy</p>
-                      <div
-                        className="coverflow-buy-confirm__qty"
-                        role="group"
-                        aria-label="Pack quantity"
-                      >
-                        <button
-                          type="button"
-                          className="coverflow-buy-confirm__qty-btn"
-                          aria-label="Decrease pack quantity"
-                          disabled={buyDisabled || buyQuantity <= 1}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setBuyQuantity((q) => clampBuyPackQuantity(q - 1))
-                          }}
-                        >
-                          <Minus aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                        <span
-                          className="coverflow-buy-confirm__qty-value"
-                          aria-live="polite"
-                        >
-                          {buyQuantity}
-                        </span>
-                        <button
-                          type="button"
-                          className="coverflow-buy-confirm__qty-btn"
-                          aria-label="Increase pack quantity"
-                          disabled={
-                            buyDisabled || buyQuantity >= BUY_PACK_MAX_QUANTITY
-                          }
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setBuyQuantity((q) => clampBuyPackQuantity(q + 1))
-                          }}
-                        >
-                          <Plus aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                      </div>
-                      <div className="coverflow-cart-remove-confirm__actions">
-                        <button
-                          type="button"
-                          className="coverflow-cart-remove-confirm__btn is-cancel"
-                          aria-label="Cancel buy"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            closeBuyConfirm()
-                          }}
-                        >
-                          <X aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                        <button
-                          type="button"
-                          className="coverflow-cart-remove-confirm__btn is-confirm"
-                          aria-label={`Confirm buy ${buyQuantity}`}
-                          disabled={buyDisabled}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            if (buyDisabled) return
-                            const qty = buyQuantity
-                            closeBuyConfirm()
-                            onBuy(item, qty)
-                          }}
-                        >
-                          <Check aria-hidden="true" strokeWidth={2.5} />
-                        </button>
-                      </div>
-                      {onAddToPocket ? (
-                        <button
-                          type="button"
-                          className="coverflow-buy-confirm__pocket"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            const qty = buyQuantity
-                            closeBuyConfirm()
-                            onAddToPocket(item, qty, { allowDuplicates: true })
-                          }}
-                        >
-                          + Add to Pocket
-                        </button>
-                      ) : null}
-                    </div>
+                      onLeaveEnd={() => setBuyConfirmLeaving(false)}
+                      onAddToPocket={
+                        onAddToPocket
+                          ? () => {
+                              const qty = buyQuantity
+                              closeBuyConfirm()
+                              onAddToPocket(item, qty, {
+                                allowDuplicates: true,
+                              })
+                            }
+                          : undefined
+                      }
+                      pocketDisabled={pocketDisabled}
+                      pocketLabel={
+                        pocketDisabled ? 'In Pocket' : 'Add to Pocket'
+                      }
+                    />
                   ) : null}
                 </div>
                 {onAddToPocket && !confirmBuy ? (
@@ -2660,8 +2590,17 @@ useEffect(() => {
 
       if (key === 'Enter' || key === 'Return') {
         if (!hasSelection || !focused) return
-        // Homepage Buy Pack uses an anchored confirm dialog — don't skip it.
-        if (confirmBuyRef.current || buyDisabledRef.current) return
+        if (buyDisabledRef.current) return
+        // Homepage Buy Pack uses an anchored confirm — move focus onto the CTA
+        // so Tab / Enter can open the qty dialog (CTA lives in drei Html overlay).
+        if (confirmBuyRef.current) {
+          event.preventDefault()
+          const buyButton = document.querySelector<HTMLElement>(
+            '.coverflow-pack-html--active.is-visible .coverflow-buy-pack-cta__button:not(:disabled)',
+          )
+          buyButton?.focus()
+          return
+        }
         event.preventDefault()
         onBuyRef.current?.(focused)
       }
@@ -3199,7 +3138,7 @@ useEffect(() => {
         className={`coverflow-stage gesture-${gestureMode}${revealMode ? ' is-revealing' : ''
           }`}
         {...(revealMode ? {} : stageDragBindings)}
-        role="listbox"
+        role="region"
         aria-label="Card pack cover flow"
         tabIndex={0}
       >

@@ -25,6 +25,10 @@ export type ContinueCollectingSectionProps = {
   onCardClick?: (id: string) => void;
   /** @deprecated use onCardClick */
   onOpen?: (item: ContinueCollectingItem) => void;
+  /** Header mark — defaults to filled heart. */
+  icon?: ReactNode;
+  /** Accessible name for the section landmark. */
+  ariaLabel?: string;
 };
 
 function progressColor(percent: number): string {
@@ -56,6 +60,8 @@ export function ContinueCollectingSection({
   onSeeAllClick,
   onCardClick,
   onOpen,
+  icon,
+  ariaLabel,
 }: ContinueCollectingSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -102,14 +108,19 @@ export function ContinueCollectingSection({
   if (!items.length) return null;
 
   return (
-    <section className="continue-collecting" aria-label="Continue collecting">
+    <section
+      className="continue-collecting"
+      aria-label={ariaLabel ?? title.toLowerCase()}
+    >
       <div className="continue-collecting-header">
         <div className="continue-collecting-title-row">
-          <Heart
-            className="continue-collecting-heart"
-            fill="currentColor"
-            aria-hidden="true"
-          />
+          {icon ?? (
+            <Heart
+              className="continue-collecting-heart"
+              fill="currentColor"
+              aria-hidden="true"
+            />
+          )}
           <h2 className="continue-collecting-title">{title}</h2>
         </div>
         {onSeeAllClick ? (
@@ -198,7 +209,8 @@ function CollectionCard({
   );
   const color = progressColor(percent);
   const showRank = card.rank != null && !card.isNew;
-  const showNew = Boolean(card.isNew) && card.rank == null;
+  // Just Drop In / unread: always show NEW when flagged (even at 0%).
+  const showNew = Boolean(card.isNew);
 
   return (
     <button

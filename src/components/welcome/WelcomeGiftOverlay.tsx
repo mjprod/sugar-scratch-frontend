@@ -58,13 +58,13 @@ export function WelcomeGiftOverlay({
   const [exitPhase, setExitPhase] = useState<ExitPhase>("idle");
 
   useEffect(() => {
-    // Never interrupt create-account / verify — gift only after email is verified.
+    // Guests browse freely — gift only after sign-in + verified email.
     const waitingOnEmailVerify = authed && !emailVerified;
-    if (authOpen || verifyOpen || waitingOnEmailVerify) {
+    if (!authed || authOpen || verifyOpen || waitingOnEmailVerify) {
       setOpen(false);
       return;
     }
-    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
+    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed, authed)) {
       setExitPhase("idle");
       setOpen(true);
       return;

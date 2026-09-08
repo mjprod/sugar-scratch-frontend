@@ -259,6 +259,8 @@ type HoloCardProps = {
   effect: HoloEffect
   foil?: string
   mask?: string
+  /** Still poster for the front video face (Safari / loading). */
+  poster?: string
   back?: string
   backMediaType?: MediaType
   fullBleed?: boolean
@@ -303,6 +305,7 @@ export default function HoloCard({
   effect,
   foil = '',
   mask = '',
+  poster = '',
   back = '/img/SugarScratch.png',
   backMediaType = 'image',
   fullBleed = true,
@@ -382,9 +385,10 @@ export default function HoloCard({
   const [loading, setLoading] = useState(true)
   /** Fall back to placeholder art when video src is missing or fails. */
   const [frontMediaFailed, setFrontMediaFailed] = useState(false)
-  /** Keep video invisible until a real frame is decoded (poster is unreliable). */
+/** Keep video invisible until a real frame is decoded (poster can be shown before the first decoded frame). */
   const [frontVideoReady, setFrontVideoReady] = useState(false)
   const frontMediaUrl = (src ?? '').trim()
+  const facePosterUrl = (poster ?? '').trim()
   const showFrontVideo =
     mediaType === 'video' && Boolean(frontMediaUrl) && !frontMediaFailed
   // Never use a failed video URL as an <img>/CSS background — fall back to placeholder.
@@ -392,18 +396,18 @@ export default function HoloCard({
     ? frontMediaUrl
     : mediaType === 'image' && frontMediaUrl && !frontMediaFailed
       ? frontMediaUrl
-      : PLACEHOLDER_MEDIA_URL
-  const frontPlaceholderUrl = PLACEHOLDER_MEDIA_URL
+      : facePosterUrl || PLACEHOLDER_MEDIA_URL
+  const frontPlaceholderUrl = facePosterUrl || PLACEHOLDER_MEDIA_URL
   /** Identity strip only after real face media is visible — not over the placeholder. */
   const showFaceOverlay =
     Boolean(overlay) &&
     (showFrontVideo
-      ? frontVideoReady
-      : frontDisplayUrl !== frontPlaceholderUrl)
+      ? frontVideoReady || Boolean(facePosterUrl)
+      : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL)
   const faceMediaReady =
     showFrontVideo
-      ? frontVideoReady
-      : frontDisplayUrl !== frontPlaceholderUrl
+      ? frontVideoReady || Boolean(facePosterUrl)
+      : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL
 
   useEffect(() => {
     onFaceMediaReady?.(faceMediaReady)
@@ -2165,6 +2169,7 @@ export default function HoloCard({
                   frontVideoReady ? 'is-media-ready' : 'is-media-loading'
                 }
                 src={frontDisplayUrl}
+                poster={facePosterUrl || undefined}
                 autoPlay
                 muted
                 loop
@@ -2191,7 +2196,7 @@ export default function HoloCard({
                 width={251}
                 height={475}
               />
-            ) : frontDisplayUrl !== frontPlaceholderUrl ? (
+            ) : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL ? (
               // Background-image face: no <img> for iOS long-press "Save Image".
               <div
                 className="card__media card__media--image"

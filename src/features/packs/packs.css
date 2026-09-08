@@ -1453,6 +1453,11 @@ h1 {
   transform: scale(1.04);
 }
 
+.coverflow-buy-confirm__qty-btn:focus-visible {
+  outline: 2px solid oklch(1 0 0 / 0.55);
+  outline-offset: 2px;
+}
+
 .coverflow-buy-confirm__qty-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;

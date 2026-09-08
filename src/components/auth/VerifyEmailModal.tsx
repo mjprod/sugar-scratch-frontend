@@ -5,6 +5,7 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   confirmVerificationCode,
   requestVerificationEmail,
+  resendCooldownLabel,
   verificationCodeFailureMessage,
   verificationSendFailureMessage,
 } from "@/services/auth";
@@ -17,17 +18,21 @@ import {
 export function VerifyEmailModal({
   open,
   email,
+  fromRegister = false,
   onBack,
   onVerified,
 }: {
   open: boolean;
   email: string;
+  /** After Create Account: back returns to create. After login: back dismisses. */
+  fromRegister?: boolean;
   onBack: () => void;
   onVerified: () => void;
 }) {
   const reduce = useReducedMotion();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const initialSendStartedRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -44,7 +49,23 @@ export function VerifyEmailModal({
       setSubmitting(false);
       setCode("");
       setError("");
+      initialSendStartedRef.current = false;
     }
+  }, [open]);
+
+  // AC-VE-002: on first open, send once. Lock Resend while in flight; no cooldown yet.
+  useEffect(() => {
+    if (!open) return;
+    if (initialSendStartedRef.current) return;
+    initialSendStartedRef.current = true;
+    setSending(true);
+    void requestVerificationEmail()
+      .then(({ ok }) => {
+        if (!ok) setError(verificationSendFailureMessage());
+      })
+      .finally(() => {
+        setSending(false);
+      });
   }, [open]);
 
   useEffect(() => {
@@ -56,7 +77,20 @@ export function VerifyEmailModal({
     return () => window.clearTimeout(id);
   }, [resendCooldown]);
 
+  // Initial focus once when the sheet opens — never on cooldown ticks.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      panelRef.current
+        ?.querySelector<HTMLElement>("input:not([disabled])")
+        ?.focus();
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   // ONB-006: keep keyboard focus inside the verify sheet while open.
+  // Query focusables on each Tab so disabled/resend state stays live without
+  // re-running (and re-focusing) every cooldown second.
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
@@ -81,28 +115,23 @@ export function VerifyEmailModal({
       }
     }
     panel.addEventListener("keydown", onKeyDown);
-    const t = window.setTimeout(() => {
-      panel
-        .querySelector<HTMLElement>("input:not([disabled]), button:not([disabled])")
-        ?.focus();
-    }, 40);
-    return () => {
-      panel.removeEventListener("keydown", onKeyDown);
-      window.clearTimeout(t);
-    };
-  }, [open, busy, resendCooldown]);
+    return () => panel.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   async function resendCode() {
     if (resendLocked) return;
     setSending(true);
     setError("");
-    const { ok } = await requestVerificationEmail();
-    setSending(false);
-    if (!ok) {
-      setError(verificationSendFailureMessage());
-      return;
+    try {
+      const { ok } = await requestVerificationEmail();
+      if (!ok) {
+        setError(verificationSendFailureMessage());
+        return;
+      }
+      setResendCooldown(45);
+    } finally {
+      setSending(false);
     }
-    setResendCooldown(45);
   }
 
   async function submitCode(e: FormEvent) {
@@ -146,7 +175,9 @@ export function VerifyEmailModal({
               <button
                 type="button"
                 className="auth7-sheet-back"
-                aria-label="Back to create account"
+                aria-label={
+                  fromRegister ? "Back to create account" : "Close verification"
+                }
                 disabled={busy}
                 onClick={onBack}
               >
@@ -215,7 +246,9 @@ export function VerifyEmailModal({
                     disabled={resendLocked}
                     onClick={() => void resendCode()}
                   >
-                    {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : "Resend"}
+                    {sending
+                      ? "Sending…"
+                      : resendCooldownLabel(resendCooldown)}
                   </button>
                 </p>
               </form>

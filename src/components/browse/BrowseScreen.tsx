@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Sparkles } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
@@ -15,6 +15,7 @@ import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
   fetchLeaderboard,
+  splitContinueCollectingItems,
   type ContinueCollectingItem,
   type HomepageData,
   type LeaderboardCategory,
@@ -210,7 +211,7 @@ export function HomeScreen({
     if (!state?.scrollToDailyReward || status !== "loaded") return;
 
     // Desktop stays at the top of Home; mobile docks to the daily reward.
-    if (window.matchMedia("(min-width: 507px)").matches) {
+    if (window.matchMedia("(min-width: 769px)").matches) {
       navigate(location.pathname, { replace: true, state: {} });
       return;
     }
@@ -328,6 +329,10 @@ export function HomeScreen({
     );
   }
 
+  const { continueCollecting, justDropIn } = splitContinueCollectingItems(
+    home.continueCollecting,
+  );
+
   return (
     <section
       data-page-scroll
@@ -409,11 +414,27 @@ export function HomeScreen({
 
           <div className="hub-today-bento-stack">
             {!guest ? (
-              <ContinueCollecting
-                items={home.continueCollecting}
-                onOpen={openCollection}
-                onSeeAllClick={openSearch}
-              />
+              <>
+                <ContinueCollecting
+                  title="CONTINUE COLLECTING"
+                  items={continueCollecting}
+                  onOpen={openCollection}
+                  onSeeAllClick={openSearch}
+                />
+                <ContinueCollecting
+                  title="JUST DROP IN"
+                  ariaLabel="Just drop in"
+                  icon={
+                    <Sparkles
+                      className="continue-collecting-heart"
+                      aria-hidden="true"
+                    />
+                  }
+                  items={justDropIn}
+                  onOpen={openCollection}
+                  onSeeAllClick={openSearch}
+                />
+              </>
             ) : null}
 
             <div className="hub-today-bento-pair">

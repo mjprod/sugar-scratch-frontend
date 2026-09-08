@@ -32,6 +32,11 @@ export type CardConfig = {
   name: string
   mediaType: MediaType
   mediaUrl: string
+  /**
+   * Still first-frame poster for the front face (trailer or motion clip).
+   * Shown under/alongside the video so Safari and loading states aren't blank.
+   */
+  posterUrl?: string
   backMediaType: MediaType
   backUrl: string
   effectIndex: number
@@ -94,6 +99,7 @@ export function createCard(
       (partial.mediaType === 'image'
         ? PLACEHOLDER_MEDIA_URL
         : DEFAULT_MEDIA_URL),
+    posterUrl: partial.posterUrl?.trim() || undefined,
     backMediaType: partial.backMediaType ?? 'image',
     backUrl: partial.backUrl ?? DEFAULT_BACK_URL,
     effectIndex: partial.effectIndex ?? DEFAULT_EFFECT_INDEX,

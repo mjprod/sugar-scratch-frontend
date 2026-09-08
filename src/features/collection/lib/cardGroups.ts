@@ -601,10 +601,14 @@ export function createBackendDeck(
     return group.cards.map((card, slot) => {
       const overlay =
         lookup?.overlayForGroup?.(group) ?? lookup?.overlay ?? undefined
+      const trailer = card.trailerUrl?.trim() || ''
       const mediaUrl =
-        (card.trailerUrl && card.trailerUrl.trim()) ||
-        (card.videoUrl && card.videoUrl.trim()) ||
-        ''
+        trailer || (card.videoUrl && card.videoUrl.trim()) || ''
+      const posterUrl = (
+        trailer
+          ? card.trailerPosterUrl?.trim() || ''
+          : card.motionPosterUrl?.trim() || ''
+      )
       const hasMedia = Boolean(mediaUrl)
       // Catalog browse lists every published card as a preview. Ownership only
       // comes from buying/opening packs — until that ledger is wired per card,
@@ -618,6 +622,7 @@ export function createBackendDeck(
         modelId: group.modelId,
         mediaType: hasMedia ? 'video' : 'image',
         mediaUrl: hasMedia ? mediaUrl : PLACEHOLDER_MEDIA_URL,
+        posterUrl: posterUrl || undefined,
         videoCardCount: 0,
         photoFilledCount: Math.max(
           0,
