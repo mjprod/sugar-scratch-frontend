@@ -3,7 +3,10 @@ import { Search } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
-import { PacksButton } from "@/components/InboxButton";
+import {
+  NotificationBellButton,
+  PacksButton,
+} from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { PackAddedToast } from "@/components/ui/PackAddedToast";
@@ -33,6 +36,7 @@ export function AppLayout() {
     navNotice,
     openStore,
     openCart,
+    openInbox,
     completeAuth,
     dismissAuth,
     onVerified,
@@ -58,6 +62,7 @@ export function AppLayout() {
 
   const isPurchase = location.pathname.startsWith("/purchase");
   const isTearOpen = location.pathname.startsWith("/purchase/tear-open");
+  const onInbox = location.pathname.startsWith("/inbox");
 
   useEffect(() => {
     function onPackOpeningReward(event: Event) {
@@ -129,12 +134,6 @@ export function AppLayout() {
 
   const mobileTrailing = (
     <div className="flex items-center gap-3">
-      <PacksButton
-        onOpen={openCart}
-        variant="ghost"
-        active={onPackPocket}
-        data-top-nav-target="pack-pocket"
-      />
       <button
         type="button"
         onClick={openSearch}
@@ -142,14 +141,28 @@ export function AppLayout() {
         aria-pressed={onSearch}
         data-top-nav-target="search"
         className={[
-          "inbox-utility-btn inbox-utility-btn--ghost relative grid size-7 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+          // AC23: ≥44×44 touch target
+          "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
           onSearch ? "is-active" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
-        <Search className="size-full" strokeWidth={1.5} aria-hidden="true" />
+        <Search className="h-7 w-7" strokeWidth={1.5} aria-hidden="true" />
       </button>
+      <PacksButton
+        onOpen={openCart}
+        variant="ghost"
+        active={onPackPocket}
+        data-top-nav-target="pack-pocket"
+      />
+      {!guest ? (
+        <NotificationBellButton
+          unreadCount={inboxUnread}
+          onOpen={openInbox}
+          active={onInbox}
+        />
+      ) : null}
     </div>
   );
 
@@ -196,10 +209,13 @@ export function AppLayout() {
           onTabChange={requestTab}
           coins={guest ? null : coins}
           diamonds={guest ? null : diamonds}
-          onOpenStore={showTopUtility ? openStore : undefined}
-          onOpenUnopenedPacks={showTopUtility ? openCart : undefined}
-          inboxUnreadCount={inboxUnread}
+          // Desktop top bar stays on creator (no primary tab selected); keep
+          // Store / Pack Pocket / Search wired even when mobile HUD is hidden.
+          onOpenStore={openStore}
+          onOpenUnopenedPacks={openCart}
+          onOpenSearch={openSearch}
           packsActive={onPackPocket}
+          searchActive={onSearch}
           hideDock={isPurchase && !isTearOpen}
         />
       ) : null}

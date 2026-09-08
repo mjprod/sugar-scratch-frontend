@@ -106,7 +106,7 @@
   outline-offset: 2px;
 }
 
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.game-settings-page {
     padding-top: var(--app-diamond-offset);
     padding-bottom: 48px;

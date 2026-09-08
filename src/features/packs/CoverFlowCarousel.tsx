@@ -1722,7 +1722,10 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
 	              activeHudVisible ? ' is-visible' : ''
 	            }${shortHudGlass ? ' is-short-glass' : ''}`}
 	            style={{ ['--active-stack-gap' as string]: '1rem' }}
-	            aria-hidden={!activeHudVisible}
+	            // Hide from a11y/tab only while exiting — never aria-hidden while Buy Pack is shown.
+	            {...(activeHudVisible
+	              ? {}
+	              : { 'aria-hidden': true as const, inert: true })}
 	          >
 	            <div className="coverflow-active-pack-label">
 	              <p className="coverflow-pack-label__collection">
@@ -2587,8 +2590,17 @@ useEffect(() => {
 
       if (key === 'Enter' || key === 'Return') {
         if (!hasSelection || !focused) return
-        // Homepage Buy Pack uses an anchored confirm dialog — don't skip it.
-        if (confirmBuyRef.current || buyDisabledRef.current) return
+        if (buyDisabledRef.current) return
+        // Homepage Buy Pack uses an anchored confirm — move focus onto the CTA
+        // so Tab / Enter can open the qty dialog (CTA lives in drei Html overlay).
+        if (confirmBuyRef.current) {
+          event.preventDefault()
+          const buyButton = document.querySelector<HTMLElement>(
+            '.coverflow-pack-html--active.is-visible .coverflow-buy-pack-cta__button:not(:disabled)',
+          )
+          buyButton?.focus()
+          return
+        }
         event.preventDefault()
         onBuyRef.current?.(focused)
       }
@@ -3126,7 +3138,7 @@ useEffect(() => {
         className={`coverflow-stage gesture-${gestureMode}${revealMode ? ' is-revealing' : ''
           }`}
         {...(revealMode ? {} : stageDragBindings)}
-        role="listbox"
+        role="region"
         aria-label="Card pack cover flow"
         tabIndex={0}
       >

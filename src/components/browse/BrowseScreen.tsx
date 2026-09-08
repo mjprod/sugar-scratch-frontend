@@ -211,7 +211,7 @@ export function HomeScreen({
     if (!state?.scrollToDailyReward || status !== "loaded") return;
 
     // Desktop stays at the top of Home; mobile docks to the daily reward.
-    if (window.matchMedia("(min-width: 507px)").matches) {
+    if (window.matchMedia("(min-width: 769px)").matches) {
       navigate(location.pathname, { replace: true, state: {} });
       return;
     }

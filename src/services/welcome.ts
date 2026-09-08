@@ -1,7 +1,8 @@
 /**
  * Welcome gift — independent of first-play tutorial.
+ * Overlay is signed-in only; guests browse without it.
  * Overlay may hide for the session; only Claim marks it claimed.
- * Guests persist pending intent only; the starter pack is granted after signup
+ * Deferred pending intent (if any) is granted after signup
  * via POST /api/me/welcome/claim (or local demo grant).
  */
 
@@ -71,10 +72,14 @@ function isSessionHidden() {
 }
 
 /**
- * Show overlay when unclaimed and not closed this session.
- * A guest deferred claim keeps CLAIMED unset so a failed signup fulfill can recover.
+ * Show overlay when signed-in, unclaimed, and not closed this session.
+ * Guests browse without the gift modal (claim runs after signup if pending).
  */
-export function shouldShowWelcomeOverlay(accountClaimed = false) {
+export function shouldShowWelcomeOverlay(
+  accountClaimed = false,
+  authed = true,
+) {
+  if (!authed) return false;
   if (hasPendingWelcomeGift()) return false;
   return isWelcomeGiftEligible(accountClaimed) && !isSessionHidden();
 }

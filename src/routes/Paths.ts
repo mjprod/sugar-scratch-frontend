@@ -102,7 +102,7 @@ export function pathForTab(tab: AppTab): string {
   }
 }
 
-export function tabFromPathname(pathname: string): AppTab {
+export function tabFromPathname(pathname: string): AppTab | null {
   // Discover feed
   if (pathname.startsWith("/discover")) return "home";
   // Home browse + search
@@ -113,12 +113,12 @@ export function tabFromPathname(pathname: string): AppTab {
   ) {
     return "feed";
   }
-  // Collection hub + a girl's collection page
-  if (
-    pathname.startsWith("/collection") ||
-    pathname.startsWith("/creator")
-  ) {
+  // Collection hub only — creator profile is secondary and selects nothing.
+  if (pathname.startsWith("/collection")) {
     return "bag";
+  }
+  if (pathname.startsWith("/creator")) {
+    return null;
   }
   if (pathname.startsWith("/rewards") || pathname.startsWith("/store")) {
     return "hub";

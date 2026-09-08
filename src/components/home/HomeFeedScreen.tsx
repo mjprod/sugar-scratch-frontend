@@ -808,6 +808,22 @@ export function HomeFeedScreen({
     });
   }, [active, loopSlides, videoRefs, viewIndex]);
 
+  // Keep keyboard focus on the parked slide when the loop advances.
+  useEffect(() => {
+    if (!active) return;
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement)) return;
+    const slide = focused.closest(".hf-slide");
+    if (!slide || !slide.hasAttribute("inert")) return;
+    const next =
+      scrollerRef.current
+        ?.closest(".hf-page")
+        ?.querySelector<HTMLElement>(
+          '.hf-slide:not([inert]) button, .hf-slide:not([inert]) a, .hf-stepper-btn, .hf-search-btn',
+        ) ?? null;
+    next?.focus();
+  }, [active, viewIndex]);
+
   const go = useCallback(
     (delta: number) => {
       const root = scrollerRef.current;
@@ -1266,6 +1282,7 @@ export function HomeFeedScreen({
             aria-label="Previous creator"
             data-no-feed-drag
             disabled={
+              !loopEnabled &&
               items.findIndex((item) => item.id === activeId) <= 0
             }
             onClick={() => {
@@ -1281,8 +1298,9 @@ export function HomeFeedScreen({
             aria-label="Next creator"
             data-no-feed-drag
             disabled={
+              !loopEnabled &&
               items.findIndex((item) => item.id === activeId) >=
-              items.length - 1
+                items.length - 1
             }
             onClick={() => {
               markFeedActivityRef.current();
@@ -1386,7 +1404,15 @@ export function HomeFeedScreen({
                   isFeedPreloadAutoIndex(slide.logicalIndex, resolvedActiveIndex);
 
                 return (
-                  <div key={slide.key} className="hf-slide">
+                  <div
+                    key={slide.key}
+                    className="hf-slide"
+                    // Loop clones + neighbors stay out of Tab order; only the
+                    // parked slide is keyboard-reachable so Tab can leave the feed.
+                    {...(active && index === viewIndex
+                      ? {}
+                      : { inert: true, "aria-hidden": true as const })}
+                  >
                     <CreatorFeedCard
                       item={slide.item}
                       active={active && index === viewIndex}

@@ -537,11 +537,13 @@ export function MobileDiamondUtility({
           <span className="flex-1" aria-hidden />
         )}
         <div className="top-nav-mobile-utils flex items-center gap-1.5">
-          <CurrencyBalances
-            coins={coins ?? null}
-            diamonds={balance}
-            onOpenStore={onOpenStore}
-          />
+          {!guest ? (
+            <CurrencyBalances
+              coins={coins ?? null}
+              diamonds={balance}
+              onOpenStore={onOpenStore}
+            />
+          ) : null}
           {trailing ? (
             <div
               ref={trailingRef}

@@ -4,6 +4,7 @@
  * elevating the whole hero host (which washed out the banner background).
  */
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -47,6 +48,9 @@ const LEAVE_ANIMATIONS = new Set([
   "coverflow-buy-confirm-leave",
 ]);
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 type FixedBox = {
   top: number;
   left: number;
@@ -82,6 +86,15 @@ function resolveAnchor(
   fallback: HTMLElement | null,
 ) {
   return anchorRef?.current ?? fallback;
+}
+
+function dialogFocusables(dialog: HTMLElement) {
+  return [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
+    (el) =>
+      el.getAttribute("aria-disabled") !== "true" &&
+      // Fixed-position dialogs often have offsetParent === null — use client rects.
+      el.getClientRects().length > 0,
+  );
 }
 
 export function CoverflowBuyConfirm({
@@ -166,6 +179,76 @@ export function CoverflowBuyConfirm({
     };
   }, [anchorRef, leaving, quantity]);
 
+  // Keyboard: move focus into the portaled dialog, trap Tab, Escape cancels.
+  useEffect(() => {
+    if (leaving) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    // Wait until the dialog is measured (pointer-events restored) so focus sticks.
+    let tries = 0;
+    let raf = 0;
+    const focusWhenReady = () => {
+      const focusables = dialogFocusables(dialog);
+      if (focusables.length > 0) {
+        focusables[0]?.focus();
+        return;
+      }
+      if (tries++ < 20) {
+        raf = window.requestAnimationFrame(focusWhenReady);
+      }
+    };
+    raf = window.requestAnimationFrame(focusWhenReady);
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        onCancel();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusables = dialogFocusables(dialog);
+      if (focusables.length === 0) return;
+
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      const active = document.activeElement;
+
+      if (!(active instanceof Node) || !dialog.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKeyDown, true);
+      if (
+        previouslyFocused &&
+        typeof previouslyFocused.focus === "function" &&
+        document.contains(previouslyFocused)
+      ) {
+        previouslyFocused.focus();
+      }
+    };
+  }, [leaving, onCancel]);
+
   function handleLeaveEnd(event: ReactAnimationEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
     if (!LEAVE_ANIMATIONS.has(event.animationName)) return;
@@ -207,7 +290,7 @@ export function CoverflowBuyConfirm({
         .join(" ")}
       role="dialog"
       aria-label="Buy pack?"
-      aria-modal="false"
+      aria-modal="true"
       style={style}
       onAnimationEnd={handleLeaveEnd}
     >
