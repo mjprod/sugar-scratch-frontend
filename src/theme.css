@@ -12569,7 +12569,7 @@ body[data-theme="v8"] .inbox-page .app-page-shell-inner {
 }
 
 /* Mobile Inbox keeps the liquid bottom dock — clear the footer chrome. */
-@media (max-width: 506px) {
+@media (max-width: 768.98px) {
   body[data-theme="v8"] .app-page-shell.inbox-page {
     padding-bottom: var(--app-footer-offset, calc(2.75rem + 96px + 16px + env(safe-area-inset-bottom, 0px)));
   }

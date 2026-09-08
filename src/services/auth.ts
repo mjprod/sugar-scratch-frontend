@@ -228,16 +228,11 @@ export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
   }
 }
 
-/** Temporary QA code accepted client-side. Remove before shipping real email codes. */
-export const TEMP_VERIFICATION_CODE = "000";
-
 /** Confirm the email with the one-time code from the verification message. */
 export async function confirmVerificationCode(
   code: string,
 ): Promise<{ ok: boolean }> {
   const trimmed = code.trim();
-  // ponytail: temp local bypass for QA — remove with TEMP_VERIFICATION_CODE.
-  if (trimmed === TEMP_VERIFICATION_CODE) return { ok: true };
 
   try {
     const result = await apiMutate<{ ok?: boolean }>(

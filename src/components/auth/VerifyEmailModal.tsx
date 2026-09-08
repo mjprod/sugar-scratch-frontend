@@ -53,14 +53,19 @@ export function VerifyEmailModal({
     }
   }, [open]);
 
-  // AC-VE-002: on first open, send once. Do not lock Resend or start cooldown.
+  // AC-VE-002: on first open, send once. Lock Resend while in flight; no cooldown yet.
   useEffect(() => {
     if (!open) return;
     if (initialSendStartedRef.current) return;
     initialSendStartedRef.current = true;
-    void requestVerificationEmail().then(({ ok }) => {
-      if (!ok) setError(verificationSendFailureMessage());
-    });
+    setSending(true);
+    void requestVerificationEmail()
+      .then(({ ok }) => {
+        if (!ok) setError(verificationSendFailureMessage());
+      })
+      .finally(() => {
+        setSending(false);
+      });
   }, [open]);
 
   useEffect(() => {

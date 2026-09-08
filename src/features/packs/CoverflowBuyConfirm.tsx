@@ -292,7 +292,6 @@ export function CoverflowBuyConfirm({
         .join(" ")}
       role="dialog"
       aria-label="Buy pack?"
-      aria-modal="true"
       style={style}
       onAnimationEnd={handleLeaveEnd}
     >

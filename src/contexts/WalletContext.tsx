@@ -31,9 +31,6 @@ const WalletContext = createContext<WalletContextValue | null>(null);
 const INITIAL_COINS = 0;
 const INITIAL_DIAMONDS = 0;
 
-/** Temporary broke-state override — HUD diamonds stay 0. Flip to false to restore live balance. */
-const FORCE_EMPTY_DIAMONDS = true;
-
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { authed } = useAuth();
   const [coins, setCoins] = useState(INITIAL_COINS);
@@ -53,7 +50,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (!data || epoch !== walletEpochRef.current || !authedRef.current) {
       return;
     }
-    setDiamonds(FORCE_EMPTY_DIAMONDS ? 0 : data.diamonds);
+    setDiamonds(data.diamonds);
     setCoins(data.coins);
   }, []);
 
