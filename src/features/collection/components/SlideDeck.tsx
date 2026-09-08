@@ -206,10 +206,15 @@ const DeckItem = memo(function DeckItem({
    * paint when a poster exists, and this child's effect runs *before* a
    * parent `setFaceReady(false)` reset — so a false reset would never hear
    * a second `true` (ready stays true, callback deps do not change).
+   *
+   * Do not put `posterUrl` in the media key. Clearing a poster while the
+   * decoded video / still image is already ready keeps HoloCard's
+   * `faceMediaReady` true, so its one-shot effect never re-fires — a reset
+   * to `posterReady === false` would leave captions stuck on LOADING.
+   * Poster add/clear is driven by HoloCard's callback instead.
    */
-  const posterUrlTrimmed = card.posterUrl?.trim() ?? ''
-  const posterReady = posterUrlTrimmed.length > 0
-  const faceMediaKey = `${card.id}\0${card.mediaUrl}\0${card.mediaType}\0${posterUrlTrimmed}`
+  const posterReady = Boolean(card.posterUrl?.trim())
+  const faceMediaKey = `${card.id}\0${card.mediaUrl}\0${card.mediaType}`
   const [faceReadyState, setFaceReady] = useState(posterReady)
   const [faceMediaKeySeen, setFaceMediaKeySeen] = useState(faceMediaKey)
 
