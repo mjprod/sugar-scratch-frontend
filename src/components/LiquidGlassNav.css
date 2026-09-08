@@ -68,7 +68,7 @@
  *  - desktop: top liquid nav [logo | tabs | balances/cart]
  *  - to-desktop / to-mobile: staged so HUDs don't overlap mid-handoff
  *
- * Fallback without JS attribute still uses the 507px MQ.
+ * Fallback without JS attribute still uses the 769px MQ.
  *
  * NOTE: .top-nav-mobile already uses transform: translateX(-50%) for centering.
  * Handoff motion only animates opacity/filter/visibility so we don't fight that.
@@ -131,7 +131,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Fallback when data-liquid-nav isn't set yet (SSR / first paint) */
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"]:not([data-liquid-nav]) .app-layout--hud .top-nav-mobile {
     display: none !important;
   }
@@ -177,14 +177,14 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   gap: 0.75rem;
 }
 
-/* Cart utility — same active treatment as Profile (bubble owns chrome). */
+/* Cart / bell utilities — AC23 ≥44×44; icon stays visually compact inside. */
 .nav-test-top-utils .inbox-utility-btn--ghost {
   position: relative;
   z-index: 1;
-  width: 1.75rem;
-  height: 1.75rem;
-  min-width: 1.75rem;
-  min-height: 1.75rem;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 10px;
   color: oklch(1 0 0 / 0.55);
 }
@@ -214,14 +214,15 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Icon-only Profile — sits after cart. Guest mode adds a Log in label. */
+/* Icon-only Profile — sits after bell. Guest mode adds a Log in label. */
 .nav-test-top-profile {
   position: relative;
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  /* AC23: ≥44×44 touch target */
+  width: 44px;
+  height: 44px;
   margin: 0;
   padding: 0;
   border: 1px solid transparent;
@@ -713,11 +714,11 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /*
- * Compact top nav densifies after the chrome swap (507px)
+ * Compact top nav densifies after the chrome swap (769px)
  * and stays icon-only until 990px, where labeled tabs fit.
- * Below 507px stays bottom dock + mobile HUD — no top-nav label band.
+ * Below 769px stays bottom dock + mobile HUD — no top-nav label band.
  */
-@media (min-width: 507px) and (max-width: 989px) {
+@media (min-width: 769px) and (max-width: 989px) {
   .nav-test-top {
     gap: 8px;
     padding-inline: 10px 8px;
@@ -764,8 +765,8 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   }
 }
 
-/* Very narrow desktop: smaller logo / balance type after the swap */
-@media (min-width: 507px) and (max-width: 560px) {
+/* Narrow tablet desktop: smaller logo / balance type after the swap */
+@media (min-width: 769px) and (max-width: 900px) {
   .nav-test-top-brand-logo {
     height: 1.85rem;
   }
@@ -776,7 +777,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Logged-in compact bar: give utils more room than the logo. */
-@media (min-width: 507px) and (max-width: 679px) {
+@media (min-width: 769px) and (max-width: 900px) {
   body:not([data-guest]) .nav-test-top {
     grid-template-columns: 0.3fr auto 1fr;
   }
@@ -984,10 +985,10 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /*
- * Hard swap at 507px. JS `.is-desktop` can lag a few pixels
+ * Hard swap at 769px. JS `.is-desktop` can lag a few pixels
  * (scrollbar / matchMedia), so CSS owns the chrome below this width.
  */
-@media (max-width: 506.98px) {
+@media (max-width: 768.98px) {
   .nav-test.is-desktop .nav-test-top,
   .nav-test.is-handoff-to-desktop .nav-test-top,
   .nav-test.is-handoff-to-mobile .nav-test-top {

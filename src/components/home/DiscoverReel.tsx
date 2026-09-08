@@ -336,6 +336,21 @@ export function DiscoverReel({
     });
   }, [activeId, desktop, inView, videoRefs]);
 
+  // If the focused control was on a slide that just went inert, move focus to
+  // the new active card (or stepper) so Tab doesn't get stuck.
+  useEffect(() => {
+    if (!desktop || !inView) return;
+    const activeEl = document.activeElement;
+    if (!(activeEl instanceof HTMLElement)) return;
+    const slide = activeEl.closest(".hf-slide");
+    if (!slide || !slide.hasAttribute("inert")) return;
+    const next =
+      rootRef.current?.querySelector<HTMLElement>(
+        '.hf-slide:not([inert]) button, .hf-slide:not([inert]) a, .hf-stepper-btn',
+      ) ?? null;
+    next?.focus();
+  }, [activeId, desktop, inView]);
+
   const go = useCallback(
     (delta: number) => {
       const root = scrollerRef.current;
@@ -399,8 +414,7 @@ export function DiscoverReel({
       if (!root) return;
       const { slideHeight } = getSlideMetrics(root);
       if (slideHeight <= 0) return;
-      const index = Math.round(root.scrollTop / slideHeight);
-      if (index >= items.length - 1) return;
+      // Wrap — same infinite loop as drag / stepper.
       go(1);
     }, AUTO_ADVANCE_MS);
 
@@ -680,6 +694,8 @@ export function DiscoverReel({
       ref={rootRef}
       className={["hf-page", "hf-page--embed", live ? "is-active" : "is-inactive"].join(" ")}
       aria-label="Discover video reel"
+      // Off-screen embed: skip the whole reel in Tab order.
+      {...(!live ? { inert: true, "aria-hidden": true as const } : {})}
     >
       <div className="hf-stage">
         {status === "loaded" && items.length > 1 ? (
@@ -689,11 +705,7 @@ export function DiscoverReel({
               className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Previous creator"
               data-no-feed-drag
-              disabled={resolvedActiveIndex <= 0}
-              onClick={() => {
-                if (resolvedActiveIndex <= 0) return;
-                goFromUser(-1);
-              }}
+              onClick={() => goFromUser(-1)}
             >
               <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
             </button>
@@ -702,11 +714,7 @@ export function DiscoverReel({
               className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Next creator"
               data-no-feed-drag
-              disabled={resolvedActiveIndex >= items.length - 1}
-              onClick={() => {
-                if (resolvedActiveIndex >= items.length - 1) return;
-                goFromUser(1);
-              }}
+              onClick={() => goFromUser(1)}
             >
               <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
             </button>
@@ -769,12 +777,21 @@ export function DiscoverReel({
                   const mountVideo = isFeedMountIndex(index, resolvedActiveIndex);
                   const eagerPreload =
                     live && isFeedPreloadAutoIndex(index, resolvedActiveIndex);
+                  const slideActive = live && item.id === activeId;
 
                   return (
-                    <div key={item.id} className="hf-slide">
+                    <div
+                      key={item.id}
+                      className="hf-slide"
+                      // Infinite reel: only the visible card is a Tab stop; use
+                      // stepper / arrows to change creators, then Tab leaves the section.
+                      {...(slideActive
+                        ? {}
+                        : { inert: true, "aria-hidden": true as const })}
+                    >
                       <CreatorFeedCard
                         item={item}
-                        active={live && item.id === activeId}
+                        active={slideActive}
                         warm={mountVideo}
                         eagerPreload={eagerPreload}
                         feedScrolling={feedScrolling || !live}

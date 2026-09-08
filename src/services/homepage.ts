@@ -162,6 +162,23 @@ export type HomepageData = {
   leaderboard: LeaderboardRow[];
 };
 
+/** Split strip: in-progress vs never-collected creators. */
+export function splitContinueCollectingItems(items: ContinueCollectingItem[]): {
+  continueCollecting: ContinueCollectingItem[];
+  justDropIn: ContinueCollectingItem[];
+} {
+  const continueCollecting: ContinueCollectingItem[] = [];
+  const justDropIn: ContinueCollectingItem[] = [];
+  for (const item of items) {
+    if (item.collected > 0) {
+      continueCollecting.push({ ...item, isNew: false });
+    } else {
+      justDropIn.push({ ...item, isNew: true });
+    }
+  }
+  return { continueCollecting, justDropIn };
+}
+
 export function formatPrice(price: Price) {
   if (price.currency === "SC") return `${price.amount} SC`;
   return `$${price.amount.toFixed(2)}`;

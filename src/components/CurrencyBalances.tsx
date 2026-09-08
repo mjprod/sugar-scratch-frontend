@@ -10,13 +10,26 @@ export function CurrencyBalances({
 }: {
   coins: number | null;
   diamonds: number | null;
-  /** Diamond tap → Store. Omit when already on Store. */
+  /** Coin or Diamond tap → Store. Omit when already on Store. */
   onOpenStore?: () => void;
   /** Subtle contextual highlight while Store is open. */
   storeActive?: boolean;
 }) {
   const coinLabel = formatBalance(coins);
   const diamondLabel = formatBalance(diamonds);
+
+  const coinInner = (
+    <>
+      <CoinLottie
+        className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
+        size={36}
+        aria-hidden
+      />
+      <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
+        {coinLabel}
+      </span>
+    </>
+  );
 
   const diamondInner = (
     <>
@@ -34,8 +47,8 @@ export function CurrencyBalances({
     </>
   );
 
-  const diamondClass = [
-    "top-nav-resource inline-flex min-h-9 items-center gap-1.5 rounded-md px-1.5",
+  const actionClass = [
+    "top-nav-resource inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-1.5",
     storeActive ? "top-nav-resource--store-active" : "",
     onOpenStore ? "top-nav-resource--action transition active:scale-95" : "",
   ]
@@ -44,34 +57,38 @@ export function CurrencyBalances({
 
   return (
     <div
-      className="top-nav-resources flex min-w-0 shrink-0 items-center gap-4"
+      className="top-nav-resources flex min-w-0 shrink-0 items-center gap-2"
       aria-live="polite"
     >
-      <div
-        className="top-nav-resource inline-flex items-center gap-1.5"
-        aria-label={`${coinLabel} Sugar Coins`}
-      >
-        <CoinLottie
-          className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
-          size={36}
-          aria-hidden
-        />
-        <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
-          {coinLabel}
+      {onOpenStore ? (
+        <button
+          type="button"
+          onClick={onOpenStore}
+          aria-label={`${coinLabel} Sugar Coins, open Store`}
+          className={actionClass}
+        >
+          {coinInner}
+        </button>
+      ) : (
+        <span
+          className={actionClass}
+          aria-label={`${coinLabel} Sugar Coins`}
+        >
+          {coinInner}
         </span>
-      </div>
+      )}
       {onOpenStore ? (
         <button
           type="button"
           onClick={onOpenStore}
           aria-label={`${diamondLabel} Diamonds, open Store`}
-          className={diamondClass}
+          className={actionClass}
         >
           {diamondInner}
         </button>
       ) : (
         <span
-          className={diamondClass}
+          className={actionClass}
           aria-label={`${diamondLabel} Diamonds`}
           aria-current={storeActive ? "page" : undefined}
         >
@@ -82,7 +99,8 @@ export function CurrencyBalances({
   );
 }
 
+/** AC12/AC13 — HUD balance text: "0", "--", or en-US thousands (e.g. "5,133"). */
 export function formatBalance(value: number | null) {
   if (value == null || Number.isNaN(value)) return "--";
-  return value.toLocaleString();
+  return value.toLocaleString("en-US");
 }

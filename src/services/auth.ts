@@ -232,12 +232,14 @@ export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
 export async function confirmVerificationCode(
   code: string,
 ): Promise<{ ok: boolean }> {
+  const trimmed = code.trim();
+
   try {
     const result = await apiMutate<{ ok?: boolean }>(
       "/api/auth/verify-email/confirm",
       {
         method: "POST",
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: trimmed }),
       },
     );
     if (result && typeof result === "object" && result.ok === false) {
@@ -254,7 +256,13 @@ export function verificationCodeFailureMessage() {
 }
 
 export function verificationSendFailureMessage() {
-  return "Couldn't send a verification code. Please try again.";
+  return "We’re having a technical issue right now. Please try again in a little while.";
+}
+
+/** AC-VE-003/005: idle "Resend"; cooldown "Resend in {X}s". */
+export function resendCooldownLabel(secondsRemaining: number): string {
+  if (secondsRemaining > 0) return `Resend in ${secondsRemaining}s`;
+  return "Resend";
 }
 
 export function createSession(

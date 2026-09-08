@@ -36,7 +36,8 @@ const session = new Map<string, string>();
 process.env.SUGAR_DEMO = "1";
 
 assert(isWelcomeGiftEligible(), "starts eligible");
-assert(shouldShowWelcomeOverlay(), "overlay starts visible");
+assert(shouldShowWelcomeOverlay(), "overlay starts visible when authed");
+assert(!shouldShowWelcomeOverlay(false, false), "guest never sees overlay");
 assert(!isWelcomeGiftClaimed(), "not claimed");
 
 hideWelcomeOverlayForSession();
