@@ -194,6 +194,7 @@ export function CoverflowBuyConfirm({
     let tries = 0;
     let raf = 0;
     const focusWhenReady = () => {
+      if (!dialog) return;
       const focusables = dialogFocusables(dialog);
       if (focusables.length > 0) {
         focusables[0]?.focus();
@@ -213,6 +214,7 @@ export function CoverflowBuyConfirm({
         return;
       }
       if (event.key !== "Tab") return;
+      if (!dialog) return;
 
       const focusables = dialogFocusables(dialog);
       if (focusables.length === 0) return;

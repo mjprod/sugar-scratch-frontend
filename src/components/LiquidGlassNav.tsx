@@ -24,7 +24,6 @@ import {
   DESKTOP_MIN_PX,
   DESKTOP_PRIMARY_LABELS,
   MOBILE_DOCK_LABELS,
-  NAV_LABEL_MIN_PX,
 } from "@/lib/navChrome";
 import "./LiquidGlassNav.css";
 
