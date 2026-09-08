@@ -28,7 +28,6 @@ import {
   loginWithOAuth,
   registerWithEmail,
   requestPasswordReset,
-  requestVerificationEmail,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
   type ProtectedActionType,
@@ -251,7 +250,6 @@ export function AuthenticationSheet({
     setConsentError(false);
     try {
       const { user } = await registerWithEmail(email.trim(), password);
-      await requestVerificationEmail();
       onSuccess({
         email: user.email,
         provider: user.provider,

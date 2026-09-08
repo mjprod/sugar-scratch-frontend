@@ -11,7 +11,9 @@ import {
   isDuplicateEmailRegisterError,
   isValidAuthPassword,
   supportingCopyForTrigger,
+  TEMP_VERIFICATION_CODE,
   triggerFromAction,
+  resendCooldownLabel,
   verificationCodeFailureMessage,
   verificationSendFailureMessage,
 } from "./auth";
@@ -45,7 +47,14 @@ assert(
   "verify code failure copy",
 );
 assert(
-  verificationSendFailureMessage().includes("Couldn't send"),
+  TEMP_VERIFICATION_CODE === "000",
+  "temp verify code is 000",
+);
+assert(resendCooldownLabel(0) === "Resend", "idle resend label");
+assert(resendCooldownLabel(45) === "Resend in 45s", "cooldown resend label");
+assert(resendCooldownLabel(1) === "Resend in 1s", "cooldown 1s label");
+assert(
+  verificationSendFailureMessage().includes("technical issue"),
   "verify send failure copy",
 );
 assert(
