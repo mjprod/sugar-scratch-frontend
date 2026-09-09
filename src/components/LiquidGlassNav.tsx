@@ -1503,12 +1503,10 @@ export function LiquidGlassNav({
                 );
               }
 
-              const showInboxBadge =
-                tab.id === "profile" && authed && inboxUnread > 0;
-              const itemLabel =
-                showInboxBadge
-                  ? `${tab.label}, ${inboxUnread} unread`
-                  : tab.label;
+              const showInboxBadge = tab.id === "profile" && authed;
+              const itemLabel = showInboxBadge
+                ? `${tab.label}, ${inboxUnread} unread`
+                : tab.label;
 
               return (
                 <button
@@ -1538,7 +1536,11 @@ export function LiquidGlassNav({
                       aria-hidden="true"
                     />
                     {showInboxBadge ? (
-                      <InboxUtilityBadge count={inboxUnread} tone="inbox" />
+                      <InboxUtilityBadge
+                        count={inboxUnread}
+                        tone="inbox"
+                        showZero
+                      />
                     ) : null}
                   </span>
                   <span className="nav-test-dock-label">{tab.label}</span>
