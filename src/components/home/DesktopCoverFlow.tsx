@@ -9,7 +9,7 @@ import type { Iteration } from "@/features/packs/types";
 export const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   ...DEFAULT_COVERFLOW_CAMERA,
   packsX: 0.015,
-  packsY: -1.25,
+  packsY: -1.0,
   modelY: -0.02,
   cameraX: 0.11,
   cameraY: 0.27,

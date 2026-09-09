@@ -2494,10 +2494,15 @@ body[data-theme="v8"] .hub-today-bento-reel {
 
   body[data-theme="v8"] .hub-today-bento-pair {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 16px;
     min-height: 0;
+  }
+
+  /* Two columns only when Upcoming Events is present beside Daily Reward. */
+  body[data-theme="v8"] .hub-today-bento-pair:has(.hub-upcoming-card) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   body[data-theme="v8"] .hub-today-bento-reel {

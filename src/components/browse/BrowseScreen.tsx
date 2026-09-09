@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { CalendarDays, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
@@ -450,47 +449,6 @@ export function HomeScreen({
                   />
                 </section>
               ) : null}
-
-              <section
-                className="continue-collecting hub-upcoming-card"
-                aria-labelledby="browse-upcoming-heading"
-              >
-                <div className="continue-collecting-header">
-                  <div className="continue-collecting-title-row">
-                    <CalendarDays
-                      className="continue-collecting-heart"
-                      aria-hidden="true"
-                    />
-                    <h2
-                      id="browse-upcoming-heading"
-                      className="continue-collecting-title"
-                    >
-                      Upcoming Events
-                    </h2>
-                  </div>
-                </div>
-                <div className="hub-upcoming-empty">
-                  <span className="hub-upcoming-empty-icon" aria-hidden="true">
-                    <CalendarDays className="size-5" />
-                  </span>
-                  <div className="hub-upcoming-empty-copy">
-                    <p className="hub-upcoming-empty-title">No live events right now.</p>
-                    <p className="hub-upcoming-empty-sub">Check back tomorrow.</p>
-                  </div>
-                  <span className="hub-upcoming-empty-atmosphere" aria-hidden="true" />
-                </div>
-                <div className="hub-upcoming-notify-wrap">
-                  <div className="hub-upcoming-notify">
-                    <CtaButton
-                      {...ctaButtonPropsFromTemplate("pillPurpleCTA")}
-                      fillParent
-                      label="Notify Me"
-                      costAmount={null}
-                      fontSize={14}
-                    />
-                  </div>
-                </div>
-              </section>
             </div>
           </div>
         </div>
