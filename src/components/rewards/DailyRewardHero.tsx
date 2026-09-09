@@ -129,7 +129,7 @@ export function DailyRewardHero({
             </p>
             <div className="hub-daily-hero-cta">
               <CtaButton
-                {...ctaButtonPropsFromTemplate("pillBlackCTA")}
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
                 fillParent
                 label={claiming ? "Claiming…" : "Claim Reward"}
                 costAmount={null}

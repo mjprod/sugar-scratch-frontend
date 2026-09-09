@@ -81,6 +81,8 @@ export function HomeSiteFooter() {
                   <LegalDocPanel
                     kind={legal}
                     titleId={legalTitleId}
+                    variant="page"
+                    backLabel="Back"
                     onBack={() => setLegal(null)}
                   />
                 </div>

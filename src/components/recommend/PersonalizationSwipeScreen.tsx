@@ -36,6 +36,12 @@ export function PersonalizationSwipeScreen({
   const [deck, setDeck] = useState<SwipeCardData[]>([]);
   const [productReady, setProductReady] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
+  /**
+   * Mount the live deck only after the stage is visible.
+   * iOS rejects muted autoplay for <video> created under opacity:0, and then
+   * will not start until a user gesture — which matched "plays only after touch".
+   */
+  const [deckMounted, setDeckMounted] = useState(false);
   useMarkPageReady(productReady && mediaReady);
   const [liked, setLiked] = useState<string[]>([]);
   const [passed, setPassed] = useState<string[]>([]);
@@ -72,6 +78,7 @@ export function PersonalizationSwipeScreen({
 
   useEffect(() => {
     setMediaReady(false);
+    setDeckMounted(false);
   }, [deckSignature]);
 
   const handleMediaReady = useCallback(() => setMediaReady(true), []);
@@ -90,11 +97,37 @@ export function PersonalizationSwipeScreen({
     else setPassed((prev) => [...prev, id]);
   }, []);
 
+  // Snap stage fully visible first, then mount videos on the next frames so
+  // WebKit never evaluates autoplay against an opacity-0 ancestor.
   const stageStyle = useSpring({
     opacity: mediaReady ? 1 : 0,
     scale: mediaReady ? 1 : STACK_DISSOLVE_SCALE,
     config: STACK_DISSOLVE_SPRING,
+    immediate: mediaReady,
   });
+
+  useEffect(() => {
+    if (!mediaReady) {
+      setDeckMounted(false);
+      return;
+    }
+
+    let cancelled = false;
+    let outer = 0;
+    let inner = 0;
+
+    outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        if (!cancelled) setDeckMounted(true);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(outer);
+      window.cancelAnimationFrame(inner);
+    };
+  }, [mediaReady]);
 
   if (!productReady) return null;
 
@@ -116,13 +149,15 @@ export function PersonalizationSwipeScreen({
                   pointerEvents: mediaReady ? "auto" : "none",
                 }}
               >
-                <SwipeDeck
-                  key={deckSignature}
-                  initialCards={deck}
-                  playSwipeHint={mediaReady}
-                  onSwipe={handleSwipe}
-                  onEmpty={() => onContinue(snapshot())}
-                />
+                {deckMounted ? (
+                  <SwipeDeck
+                    key={deckSignature}
+                    initialCards={deck}
+                    playSwipeHint
+                    onSwipe={handleSwipe}
+                    onEmpty={() => onContinue(snapshot())}
+                  />
+                ) : null}
               </animated.div>
             </div>
           </div>

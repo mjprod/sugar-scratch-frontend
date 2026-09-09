@@ -56,6 +56,10 @@ export function createSwipeDeckFromModels(
     const name = modelDisplayName(model);
     const swipeUrl =
       optionalApiMediaUrl(model.swipeVideoUrl) || DEFAULT_SWIPE_VIDEO_URL;
+    const posterUrl =
+      optionalApiMediaUrl(model.swipePosterUrl) ||
+      optionalApiMediaUrl(model.avatar) ||
+      undefined;
     const handleRaw =
       optionalApiString(model.label) ?? optionalApiString(model.id);
     const handle = handleRaw ? formatSocialHandle(handleRaw) : "";
@@ -69,6 +73,7 @@ export function createSwipeDeckFromModels(
       socialhandle: handle,
       mediaType: "video" as const,
       mediaUrl: swipeUrl,
+      posterUrl,
       backUrl: CARD_BACK_URL,
       overlay: {
         name,

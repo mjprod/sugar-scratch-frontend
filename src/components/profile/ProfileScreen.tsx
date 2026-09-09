@@ -123,12 +123,20 @@ export function UserDashboardScreen({
   }
 
   if (view === "legal-terms" || view === "legal-privacy") {
+    const legalKind = view === "legal-terms" ? "terms" : "privacy";
     return (
-      <AppPageShell aria-label="Profile" className="app-page-shell--profile">
+      <AppPageShell
+        aria-label={
+          legalKind === "terms" ? "Terms of Service" : "Privacy Policy"
+        }
+        className="app-page-shell--profile"
+      >
         <div className="settings-legal-panel">
           <LegalDocPanel
-            kind={view === "legal-terms" ? "terms" : "privacy"}
+            kind={legalKind}
             titleId={legalTitleId}
+            variant="page"
+            backLabel="Back to Profile"
             onBack={() => setView("main")}
           />
         </div>
@@ -284,8 +292,8 @@ function MenuGroup({
             >
               <span className="profile-menu-icon">
                 <Icon className="size-4 text-white/45" />
-                {item.badgeCount ? (
-                  <InboxUtilityBadge count={item.badgeCount} />
+                {item.badgeCount != null ? (
+                  <InboxUtilityBadge count={item.badgeCount} showZero />
                 ) : null}
               </span>
               <span className="flex-1 text-[14px]">{item.label}</span>

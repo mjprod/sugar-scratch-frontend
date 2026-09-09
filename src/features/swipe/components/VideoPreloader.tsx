@@ -3,80 +3,60 @@ import type { SwipeCardData } from '../constants/cards'
 
 type VideoPreloaderProps = {
   cards: SwipeCardData[]
-  /** Fires once unique video URLs are warm enough (or immediately if none). */
+  /** Fires once stack posters are warm enough (or immediately if none). */
   onReady?: () => void
 }
 
-function waitForVideoReady(video: HTMLVideoElement, timeoutMs = 4000) {
+function waitForImageReady(url: string, timeoutMs = 4000) {
   return new Promise<void>((resolve) => {
     let settled = false
     const finish = () => {
       if (settled) return
       settled = true
       window.clearTimeout(timer)
-      video.removeEventListener('loadeddata', finish)
-      video.removeEventListener('canplay', finish)
-      video.removeEventListener('error', finish)
       resolve()
     }
 
     const timer = window.setTimeout(finish, timeoutMs)
-
-    // Already decodable / cached.
-    if (video.readyState >= 2) {
-      finish()
-      return
-    }
-
-    video.addEventListener('loadeddata', finish, { once: true })
-    video.addEventListener('canplay', finish, { once: true })
-    video.addEventListener('error', finish, { once: true })
+    const image = new Image()
+    image.decoding = 'async'
+    image.onload = finish
+    image.onerror = finish
+    image.src = url
+    if (image.complete) finish()
   })
 }
 
 /**
- * Warms the browser media cache for upcoming videos so stack entries
- * don't flash black while the first frame decodes.
+ * Warms stack posters only.
+ *
+ * Do NOT off-DOM preload the active video URLs — a second hidden decoder for the
+ * same src races the on-screen <video> on iOS and leaves first-land paused until
+ * a touch. The mounted SwipeCard elements own decode + autoplay themselves.
  */
 export function VideoPreloader({ cards, onReady }: VideoPreloaderProps) {
   useEffect(() => {
     let cancelled = false
 
-    const urls = [
-      ...new Set(
-        cards
-          .filter((card) => card.mediaType === 'video')
-          .map((card) => card.mediaUrl),
-      ),
-    ]
-
-    const videos = urls.map((url) => {
-      const video = document.createElement('video')
-      video.muted = true
-      video.preload = 'auto'
-      video.playsInline = true
-      video.setAttribute('playsinline', '')
-      video.src = url
-      // Kick off fetch/decode without attaching to the DOM.
-      video.load()
-      return video
-    })
+    const posterUrls = new Set<string>()
+    for (const card of cards) {
+      const poster = card.posterUrl?.trim()
+      if (poster) posterUrls.add(poster)
+    }
 
     void (async () => {
-      if (videos.length === 0) {
+      const urls = [...posterUrls]
+      if (urls.length === 0) {
         if (!cancelled) onReady?.()
         return
       }
-      await Promise.all(videos.map((video) => waitForVideoReady(video)))
+
+      await Promise.all(urls.map((url) => waitForImageReady(url)))
       if (!cancelled) onReady?.()
     })()
 
     return () => {
       cancelled = true
-      for (const video of videos) {
-        video.removeAttribute('src')
-        video.load()
-      }
     }
   }, [cards, onReady])
 

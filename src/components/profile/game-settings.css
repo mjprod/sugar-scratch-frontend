@@ -119,6 +119,6 @@
 
 @media (max-width: 1023px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.game-settings-page {
-    padding-top: var(--app-diamond-offset);
+    padding-top: calc(var(--app-diamond-offset) + 1rem);
   }
 }
