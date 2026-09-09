@@ -219,8 +219,8 @@ export function VerifyEmailModal({
                     className="auth7-input"
                     value={code}
                     disabled={busy}
-                    maxLength={6}
                     onChange={(e) =>
+                      // Cap after stripping so formatted pastes (e.g. "123-456") keep all digits.
                       setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                     }
                     placeholder="Enter code"
