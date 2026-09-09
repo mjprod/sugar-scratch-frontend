@@ -219,7 +219,6 @@ export function VerifyEmailModal({
                     className="auth7-input"
                     value={code}
                     disabled={busy}
-                    maxLength={6}
                     onChange={(e) =>
                       setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                     }
