@@ -224,10 +224,14 @@ export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
       return { ok: false };
     }
     return { ok: true };
-  } catch {
-    // Mail providers can deliver even when the HTTP response is flaky/timed out.
-    // Avoid blocking the user from typing the code they already received.
-    return { ok: true };
+  } catch (error) {
+    // Timeouts can mean the mail was queued but the HTTP response never
+    // arrived — fail open so the user can still enter a code they received.
+    // Real network/HTTP failures should surface so we don't start cooldown.
+    const timedOut =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    return { ok: timedOut };
   }
 }
 

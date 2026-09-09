@@ -50,7 +50,7 @@ export function ResetPasswordScreen({
       setError(resetPasswordFailureMessage());
       return;
     }
-    if (!isValidAuthPassword(password)) {
+    if (!passwordOk) {
       setError(`Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
