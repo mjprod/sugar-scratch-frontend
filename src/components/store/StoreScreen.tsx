@@ -432,8 +432,10 @@ export function StoreScreen({
 function StoreSkeleton() {
   return (
     <div className="get-diamonds-stack" aria-busy="true" aria-label="Loading store">
-      <div className="get-diamonds-hero">
-        <div className="h-[72px] max-w-[280px] animate-pulse rounded-[10px] bg-white/[0.08]" />
+      <div className="get-diamonds-hero-band">
+        <div className="get-diamonds-hero get-diamonds-hero--band">
+          <div className="h-[72px] max-w-[280px] animate-pulse rounded-[10px] bg-white/[0.08]" />
+        </div>
       </div>
       <div className="get-diamonds-packages">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -753,9 +755,11 @@ function PaymentGateway({
 }
 
 function StatusOverlay({ title, body }: { title: string; body: string }) {
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="absolute inset-0 z-40 grid place-items-center bg-black/55 px-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[1100] grid place-items-center bg-black/55 px-6 backdrop-blur-[2px]"
       role="status"
       aria-live="polite"
     >
@@ -764,7 +768,8 @@ function StatusOverlay({ title, body }: { title: string; body: string }) {
         <p className="mt-4 text-[15px] font-semibold">{title}</p>
         <p className="mt-1 max-w-[240px] text-[12px] text-white/45">{body}</p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -855,11 +860,18 @@ function ModalShell({
       if (event.key === "Escape") onDismiss();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onDismiss]);
 
-  return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-black/70 px-6 backdrop-blur-sm">
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/70 px-6 backdrop-blur-sm">
       <div
         role="dialog"
         aria-modal="true"
@@ -867,6 +879,7 @@ function ModalShell({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
