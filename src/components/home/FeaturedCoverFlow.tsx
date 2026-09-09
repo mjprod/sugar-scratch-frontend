@@ -320,6 +320,13 @@ export function FeaturedCoverFlow({
     return () => media.removeEventListener("change", apply);
   }, []);
 
+  // Desktop-only qty modal — drop stale state if the viewport flips to mobile.
+  useEffect(() => {
+    if (!isMobileViewport) return;
+    setQtyModalItem(null);
+    setQtyModalQuantity(1);
+  }, [isMobileViewport]);
+
   useEffect(() => {
     if (!HERO_DEBUG_ENABLED || typeof window === "undefined") return;
     window.localStorage.setItem(HERO_DEBUG_STORAGE_KEY, JSON.stringify(debug));
