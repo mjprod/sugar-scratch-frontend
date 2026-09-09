@@ -12671,7 +12671,7 @@ body[data-theme="v8"] .inbox-utility-added-fx {
   top: 50%;
   width: 2.45rem;
   height: 2.45rem;
-  transform: translate(-50%, -50%);
+  transform: translate(calc(-50% - 3px), -50%);
   pointer-events: none;
 }
 
@@ -13233,8 +13233,8 @@ body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge,
 body[data-theme="v8"] .nav-test-top-profile .inbox-utility-badge,
 body[data-theme="v8"] .nav-test-dock-icon-wrap .inbox-utility-badge,
 body[data-theme="v8"] .top-nav-profile .inbox-utility-badge {
-  top: 2px;
-  right: 2px;
+  top: 5px;
+  right: 9px;
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
@@ -13248,8 +13248,8 @@ body[data-theme="v8"] .nav-test-dock-icon-wrap .inbox-utility-badge {
 }
 
 body[data-theme="v8"] .nav-test-top-utils .inbox-utility-btn--ghost .inbox-utility-badge {
-  top: -2px;
-  right: -3px;
+  top: 1px;
+  right: 4px;
 }
 
 /* Desktop utility Profile — sole Profile entry (no text tab). */
@@ -13419,7 +13419,7 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
 
   body[data-theme="v8"] .top-nav-mobile .inbox-utility-btn--ghost .inbox-utility-badge {
     top: -4px;
-    right: -4px;
+    right: -7px;
   }
 
   /* Pack Pocket + Search: ~10% smaller hit targets on mobile HUD. */
@@ -13431,7 +13431,7 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
   }
 
   body[data-theme="v8"] .top-nav-mobile .inbox-utility-added-fx {
-    transform: translate(calc(-50%), calc(-50% + 2px));
+    transform: translate(calc(-50% - 0.5px), calc(-50% + 2px));
   }
 
   body[data-theme="v8"] .top-nav-mobile .top-nav-resource,

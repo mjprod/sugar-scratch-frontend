@@ -1277,19 +1277,6 @@ export function LiquidGlassNav({
               />
             </div>
           ) : null}
-          {authed && onOpenUnopenedPacks ? (
-            <PacksButton
-              ref={topCartRef}
-              onOpen={onOpenUnopenedPacks}
-              variant="ghost"
-              active={packsActive || topDragHoverTab === "cart"}
-              className={
-                isDraggingTopBubble && topDragHoverTab === "cart"
-                  ? "is-drag-target"
-                  : ""
-              }
-            />
-          ) : null}
           {onOpenSearch ? (
             <button
               type="button"
@@ -1306,6 +1293,19 @@ export function LiquidGlassNav({
             >
               <Search className="h-7 w-7" strokeWidth={1.5} aria-hidden="true" />
             </button>
+          ) : null}
+          {authed && onOpenUnopenedPacks ? (
+            <PacksButton
+              ref={topCartRef}
+              onOpen={onOpenUnopenedPacks}
+              variant="ghost"
+              active={packsActive || topDragHoverTab === "cart"}
+              className={
+                isDraggingTopBubble && topDragHoverTab === "cart"
+                  ? "is-drag-target"
+                  : ""
+              }
+            />
           ) : null}
           <button
             ref={topProfileRef}
