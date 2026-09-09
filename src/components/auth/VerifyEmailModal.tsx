@@ -53,11 +53,13 @@ export function VerifyEmailModal({
     }
   }, [open]);
 
-  // AC-VE-002: on first open, send once. Lock Resend while in flight; no cooldown yet.
+  // AC-VE-002: on first open, send once — unless register already sent a code.
+  // Lock Resend while in flight; no cooldown yet.
   useEffect(() => {
     if (!open) return;
     if (initialSendStartedRef.current) return;
     initialSendStartedRef.current = true;
+    if (fromRegister) return;
     setSending(true);
     void requestVerificationEmail()
       .then(({ ok }) => {
@@ -66,7 +68,7 @@ export function VerifyEmailModal({
       .finally(() => {
         setSending(false);
       });
-  }, [open]);
+  }, [open, fromRegister]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -217,7 +219,10 @@ export function VerifyEmailModal({
                     className="auth7-input"
                     value={code}
                     disabled={busy}
-                    onChange={(e) => setCode(e.target.value)}
+                    maxLength={6}
+                    onChange={(e) =>
+                      setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
                     placeholder="Enter code"
                   />
                 </label>

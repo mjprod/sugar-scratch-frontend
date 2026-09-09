@@ -204,14 +204,6 @@ export function resetPasswordFailureMessage() {
   return "This reset link is invalid or has expired. Request a new one.";
 }
 
-export async function markEmailVerifiedRemote() {
-  try {
-    await apiMutate("/api/auth/verify-email/mark", { method: "POST" });
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Ask the server to (re)send the verification email for the current session. */
 export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
   try {
