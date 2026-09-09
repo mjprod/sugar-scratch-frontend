@@ -13,6 +13,7 @@ export function EditProfilePage() {
         displayName: profile.displayName || profile.username || "",
         username: profile.username || "",
         avatar: profile.avatar,
+        email: profile.email || "",
       }}
       onBack={() => navigate(Paths.profile)}
       onSaved={(next) => {

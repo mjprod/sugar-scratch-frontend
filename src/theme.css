@@ -11130,6 +11130,16 @@ body[data-theme="v8"] .edit-profile-username-input {
   padding-left: 28px !important;
 }
 
+body[data-theme="v8"] .edit-profile-email-input {
+  color: oklch(1 0 0 / 0.72);
+  cursor: default;
+}
+
+body[data-theme="v8"] .edit-profile-email-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 body[data-theme="v8"] .edit-profile-cta {
   position: relative;
   z-index: 1;

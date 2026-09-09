@@ -24,6 +24,7 @@ export type EditProfileValues = {
   displayName: string;
   username: string;
   avatar: string | null;
+  email: string;
 };
 
 export function EditProfileScreen({
@@ -33,10 +34,11 @@ export function EditProfileScreen({
 }: {
   initial: EditProfileValues;
   onBack: () => void;
-  onSaved: (next: EditProfileValues) => void;
+  onSaved: (next: Omit<EditProfileValues, "email">) => void;
 }) {
   const nameId = useId();
   const usernameId = useId();
+  const emailId = useId();
   const discardTitleId = useId();
 
   const [displayName, setDisplayName] = useState(initial.displayName);
@@ -46,6 +48,7 @@ export function EditProfileScreen({
   const [avatar, setAvatar] = useState<string | null>(
     initial.avatar || AVATAR_OPTIONS[0],
   );
+  const email = initial.email.trim();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [nameError, setNameError] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -106,7 +109,7 @@ export function EditProfileScreen({
         setFormError(updateProfileErrorMessage());
         return;
       }
-      const saved: EditProfileValues = {
+      const saved = {
         displayName: result.user?.displayName ?? nextName,
         username: result.user?.username ?? nextUsername,
         avatar: result.user?.avatarUrl ?? avatar,
@@ -263,6 +266,28 @@ export function EditProfileScreen({
                 {usernameError}
               </p>
             ) : null}
+          </div>
+
+          <div className="auth7-field">
+            <label className="auth7-label" htmlFor={emailId}>
+              Email
+            </label>
+            <span className="auth7-input-wrap">
+              <input
+                id={emailId}
+                type="email"
+                className="auth7-input edit-profile-email-input"
+                value={email || "—"}
+                readOnly
+                tabIndex={0}
+                autoComplete="email"
+                aria-describedby={`${emailId}-hint`}
+                aria-readonly="true"
+              />
+            </span>
+            <p id={`${emailId}-hint`} className="edit-profile-hint">
+              Your account email.
+            </p>
           </div>
 
           {formError ? (
