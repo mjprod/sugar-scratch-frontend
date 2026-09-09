@@ -123,12 +123,20 @@ export function UserDashboardScreen({
   }
 
   if (view === "legal-terms" || view === "legal-privacy") {
+    const legalKind = view === "legal-terms" ? "terms" : "privacy";
     return (
-      <AppPageShell aria-label="Profile" className="app-page-shell--profile">
+      <AppPageShell
+        aria-label={
+          legalKind === "terms" ? "Terms of Service" : "Privacy Policy"
+        }
+        className="app-page-shell--profile"
+      >
         <div className="settings-legal-panel">
           <LegalDocPanel
-            kind={view === "legal-terms" ? "terms" : "privacy"}
+            kind={legalKind}
             titleId={legalTitleId}
+            variant="page"
+            backLabel="Back to Profile"
             onBack={() => setView("main")}
           />
         </div>

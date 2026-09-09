@@ -419,6 +419,17 @@ body[data-theme="v8"] .get-diamonds-package {
     transform 160ms ease;
 }
 
+/* Mobile/iOS: prevent long-press text highlight on store cards. */
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .get-diamonds-page,
+  body[data-theme="v8"] .get-diamonds-package,
+  body[data-theme="v8"] .get-diamonds-package * {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
 body[data-theme="v8"] .get-diamonds-package:hover {
   border-color: rgba(255, 70, 160, 0.35);
   transform: translateY(-2px);

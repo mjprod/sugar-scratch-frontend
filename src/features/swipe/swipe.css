@@ -475,6 +475,19 @@
   -webkit-backface-visibility: hidden;
 }
 
+/* Poster stays under the video so promote can crossfade decoder → still. */
+.swipe-card__media > .swipe-card__image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.swipe-card__media > video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
 .swipe-card__media video.is-ready,
 .swipe-card__image.is-ready {
   opacity: 1;

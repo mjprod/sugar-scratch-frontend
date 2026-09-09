@@ -6,6 +6,7 @@ import {
   TERMS_TITLE,
   type LegalBlock,
 } from "@/content/legalDocs";
+import { SubpageHeader } from "@/components/SubpageHeader";
 
 type LegalDocKind = "terms" | "privacy";
 
@@ -14,20 +15,45 @@ export function LegalDocPanel({
   kind,
   titleId,
   onBack,
+  /** `page` uses the shared inner-page header; `sheet` keeps auth chrome. */
+  variant = "sheet",
+  backLabel = "Back",
 }: {
   kind: LegalDocKind;
   titleId?: string;
   onBack: () => void;
+  variant?: "sheet" | "page";
+  backLabel?: string;
 }) {
   const title = kind === "terms" ? TERMS_TITLE : PRIVACY_TITLE;
   const blocks = kind === "terms" ? TERMS_BLOCKS : PRIVACY_BLOCKS;
+
+  if (variant === "page") {
+    return (
+      <div className="auth7-legal-doc auth7-legal-doc--page">
+        <SubpageHeader
+          title={title}
+          onBack={onBack}
+          backLabel={backLabel}
+        />
+        <div
+          id={titleId}
+          className="auth7-legal-body"
+          role="region"
+          aria-label={title}
+        >
+          {blocks.map(renderBlock)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth7-legal-doc">
       <button
         type="button"
         className="auth7-sheet-back"
-        aria-label="Back"
+        aria-label={backLabel}
         onClick={onBack}
       >
         <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />

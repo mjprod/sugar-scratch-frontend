@@ -57,6 +57,9 @@ type StackSlotProps = {
   card: SwipeCardData
   depth: number
   isFront: boolean
+  /** Mount a <video> decoder (front + one warm neighbor). */
+  mountVideo?: boolean
+  /** Actually call play() — front / leaving flyer only. */
   playing: boolean
   /**
    * Idle front-card tilt (deg). Only applied at depth 0; behind cards stay flat
@@ -223,6 +226,7 @@ export function StackSlot({
   card,
   depth,
   isFront,
+  mountVideo = playing,
   playing,
   restRot = SWIPE_REST_ROTATION,
   drag,
@@ -407,7 +411,7 @@ export function StackSlot({
         */}
         <animated.div className="swipe-deck__slot-face-media" style={{ filter }}>
           {stamps}
-          <SwipeCard card={card} playing={playing} />
+          <SwipeCard card={card} mountVideo={mountVideo} playing={playing} />
         </animated.div>
       </animated.div>
     </animated.div>
