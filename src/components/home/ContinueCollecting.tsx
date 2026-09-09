@@ -63,6 +63,8 @@ export function ContinueCollectingSection({
   icon,
   ariaLabel,
 }: ContinueCollectingSectionProps) {
+  const hideProgress =
+    title.trim().toUpperCase() !== "CONTINUE COLLECTING";
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -154,6 +156,7 @@ export function ContinueCollectingSection({
                 <CollectionCard
                   key={card.id}
                   card={card}
+                  hideProgress={hideProgress}
                   onClick={() => {
                     onCardClick?.(card.id);
                     onOpen?.(item);
@@ -200,9 +203,11 @@ export function ContinueCollecting(props: ContinueCollectingSectionProps) {
 function CollectionCard({
   card,
   onClick,
+  hideProgress = false,
 }: {
   card: CollectionCardData;
   onClick: () => void;
+  hideProgress?: boolean;
 }) {
   const percent = Math.round(
     (card.progressCurrent / Math.max(1, card.progressTotal)) * 100,
@@ -217,10 +222,14 @@ function CollectionCard({
       type="button"
       className="continue-collecting-card"
       onClick={onClick}
-      aria-label={`${card.creatorName}, ${percent}% collected, ${card.progressCurrent} of ${card.progressTotal}`}
+      aria-label={
+        hideProgress
+          ? card.creatorName
+          : `${card.creatorName}, ${percent}% collected, ${card.progressCurrent} of ${card.progressTotal}`
+      }
     >
       <div className="continue-collecting-avatar-wrap">
-        <ProgressRing percent={percent} color={color}>
+        <ProgressRing percent={hideProgress ? 0 : percent} color={color}>
           <img
             src={card.avatarUrl}
             alt=""
@@ -236,24 +245,35 @@ function CollectionCard({
         {showNew ? <span className="continue-collecting-new">NEW</span> : null}
       </div>
 
-      <span
-        className="continue-collecting-dot"
-        style={{ background: color }}
-        aria-hidden="true"
-      />
+      {!hideProgress ? (
+        <span
+          className="continue-collecting-dot"
+          style={{ background: color }}
+          aria-hidden="true"
+        />
+      ) : null}
 
       <div className="continue-collecting-meta">
         <span className="continue-collecting-name">{card.creatorName}</span>
-        <span
-          className="continue-collecting-pct"
-          style={{ color: percent >= 60 ? "oklch(0.669 0.23 6.08)" : "oklch(1 0 0 / 0.92)" }}
-        >
-          {percent}%
-        </span>
+        {!hideProgress ? (
+          <span
+            className="continue-collecting-pct"
+            style={{
+              color:
+                percent >= 60
+                  ? "oklch(0.669 0.23 6.08)"
+                  : "oklch(1 0 0 / 0.92)",
+            }}
+          >
+            {percent}%
+          </span>
+        ) : null}
       </div>
-      <p className="continue-collecting-fraction">
-        {card.progressCurrent} / {card.progressTotal}
-      </p>
+      {!hideProgress ? (
+        <p className="continue-collecting-fraction">
+          {card.progressCurrent} / {card.progressTotal}
+        </p>
+      ) : null}
     </button>
   );
 }

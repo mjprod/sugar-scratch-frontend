@@ -12,7 +12,8 @@ import {
   MODEL_PACK_PHOTOS,
   PACK_PHOTOS,
 } from "../lib/photos";
-import { getCollectionPageState } from "./collectionState";
+import { getCollectionPageState, fetchCollectionPageStateRemote } from "./collectionState";
+import type { CreatorProgress } from "./collection";
 import { isDemoMode } from "../lib/demo";
 import { canonicalThemeKey, resolveCollectionThemeLabel } from "./collection";
 import {
@@ -389,14 +390,20 @@ function normalizeCreatorKey(value: string) {
 
 type LedgerProgress = { id: string; name: string; collected: number };
 
-/** Index ledger rows by id, display-name slug, and collapsed alphanumeric keys. */
+/** Index ledger rows by id, display-name slug, and collapsed alphanumeric keys.
+ * When keys collide, keep the row with more collected cards.
+ */
 function indexLedgerProgress(creators: LedgerProgress[]) {
   const index = new Map<string, LedgerProgress>();
   const add = (raw: string, entry: LedgerProgress) => {
     const key = raw.trim();
-    if (key && !index.has(key)) index.set(key, entry);
-    const normalized = normalizeCreatorKey(key);
-    if (normalized && !index.has(normalized)) index.set(normalized, entry);
+    const consider = (k: string) => {
+      if (!k) return;
+      const prev = index.get(k);
+      if (!prev || entry.collected > prev.collected) index.set(k, entry);
+    };
+    consider(key);
+    consider(normalizeCreatorKey(key));
   };
   for (const creator of creators) {
     add(creator.id, creator);
@@ -435,13 +442,15 @@ function ledgerForModel(
 export function continueCollectingFromModels(
   models: BackendModel[],
   cards: BackendCard[] | null,
+  remoteCreators?: CreatorProgress[] | null,
 ): ContinueCollectingItem[] {
   if (!models.length) return [];
 
   const counts = cardCountsByModel(cards);
-  const ledgerByKey = indexLedgerProgress(
-    getCollectionPageState().continueCreators,
-  );
+  const ledgerByKey = indexLedgerProgress([
+    ...(remoteCreators ?? []),
+    ...getCollectionPageState().continueCreators,
+  ]);
   const nowSec = Date.now() / 1000;
 
   const items = models.map((model, index) => {
@@ -449,12 +458,12 @@ export function continueCollectingFromModels(
     const name = modelDisplayName(model);
     const total = counts.get(id) ?? 0;
     const ledger = ledgerForModel(ledgerByKey, model, id, name);
-    const collected =
-      total > 0
-        ? Math.min(total, Math.max(0, ledger?.collected ?? 0))
-        : 0;
+    const collected = Math.max(0, ledger?.collected ?? 0);
+    const capped =
+      total > 0 ? Math.min(total, collected) : collected;
+    const resolvedTotal = total > 0 ? total : capped;
     const percent =
-      total > 0 ? Math.round((collected / total) * 100) : 0;
+      resolvedTotal > 0 ? Math.round((capped / resolvedTotal) * 100) : 0;
     const avatarRaw = model.avatar?.trim() ?? "";
     const avatarUrl = avatarRaw
       ? normalizeMediaUrl(avatarRaw)
@@ -463,8 +472,8 @@ export function continueCollectingFromModels(
       creatorId: id,
       creatorName: name,
       avatarUrl,
-      collected,
-      total,
+      collected: capped,
+      total: resolvedTotal,
       percent,
       isNew: isNewModel(model, nowSec),
     } satisfies ContinueCollectingItem;
@@ -478,11 +487,16 @@ export function continueCollectingFromModels(
 
 async function loadContinueCollecting(): Promise<ContinueCollectingItem[]> {
   try {
-    const [models, cards] = await Promise.all([
+    const [models, cards, remote] = await Promise.all([
       loadModels().catch(() => [] as BackendModel[]),
       fetchCards().catch(() => null),
+      fetchCollectionPageStateRemote().catch(() => null),
     ]);
-    return continueCollectingFromModels(models, cards);
+    return continueCollectingFromModels(
+      models,
+      cards,
+      remote?.continueCreators ?? null,
+    );
   } catch {
     return [];
   }

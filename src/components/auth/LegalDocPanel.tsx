@@ -1,4 +1,5 @@
 import { ChevronLeft } from "lucide-react";
+import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   PRIVACY_BLOCKS,
   PRIVACY_TITLE,
@@ -14,13 +15,35 @@ export function LegalDocPanel({
   kind,
   titleId,
   onBack,
+  variant = "sheet",
+  backLabel = "Back",
 }: {
   kind: LegalDocKind;
   titleId?: string;
   onBack: () => void;
+  /** `sheet` = auth modal chrome; `page` = SubpageHeader like Settings / Edit Profile. */
+  variant?: "sheet" | "page";
+  backLabel?: string;
 }) {
   const title = kind === "terms" ? TERMS_TITLE : PRIVACY_TITLE;
   const blocks = kind === "terms" ? TERMS_BLOCKS : PRIVACY_BLOCKS;
+  const body = (
+    <div className="auth7-legal-body">{blocks.map(renderBlock)}</div>
+  );
+
+  if (variant === "page") {
+    return (
+      <div className="settings-legal-doc">
+        <SubpageHeader
+          title={title}
+          titleId={titleId}
+          onBack={onBack}
+          backLabel={backLabel}
+        />
+        {body}
+      </div>
+    );
+  }
 
   return (
     <div className="auth7-legal-doc">
@@ -35,7 +58,7 @@ export function LegalDocPanel({
       <h2 id={titleId} className="auth7-sheet-title">
         {title}
       </h2>
-      <div className="auth7-legal-body">{blocks.map(renderBlock)}</div>
+      {body}
     </div>
   );
 }

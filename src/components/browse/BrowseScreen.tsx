@@ -420,19 +420,21 @@ export function HomeScreen({
                   onOpen={openCollection}
                   onSeeAllClick={openSearch}
                 />
-                <ContinueCollecting
-                  title="JUST DROP IN"
-                  ariaLabel="Just drop in"
-                  icon={
-                    <Sparkles
-                      className="continue-collecting-heart"
-                      aria-hidden="true"
-                    />
-                  }
-                  items={justDropIn}
-                  onOpen={openCollection}
-                  onSeeAllClick={openSearch}
-                />
+                {continueCollecting.length === 0 ? (
+                  <ContinueCollecting
+                    title="JUST DROP IN"
+                    ariaLabel="Just drop in"
+                    icon={
+                      <Sparkles
+                        className="continue-collecting-heart"
+                        aria-hidden="true"
+                      />
+                    }
+                    items={justDropIn}
+                    onOpen={openCollection}
+                    onSeeAllClick={openSearch}
+                  />
+                ) : null}
               </>
             ) : null}
 

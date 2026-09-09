@@ -657,7 +657,7 @@ body[data-theme="v8"] .home-page-inner--after-hero {
   }
 }
 
-/* Homepage-only site footer (pack browse /) — desktop only. */
+/* Homepage site footer — show when bottom dock is hidden (desktop ≥769px). */
 body[data-theme="v8"] .home-site-footer {
   display: none;
   flex-direction: column;
@@ -670,7 +670,7 @@ body[data-theme="v8"] .home-site-footer {
   text-align: center;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .home-site-footer {
     display: flex;
   }
@@ -760,12 +760,12 @@ body[data-theme="v8"] .profile-site-footer {
   }
 }
 
-/* Host for homepage legal — content uses Profile shell/panel styles.
- * Above liquid-glass nav/dock (5000/5010) and auth sheet (5200). */
+/* Host for homepage legal — below liquid-glass nav/dock (5000/5010)
+ * so top nav stays visible and usable. Above page content. */
 body[data-theme="v8"] .home-legal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 5300;
+  z-index: 4900;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2086,13 +2086,6 @@ body[data-theme="v8"] .category-leaderboard-tab.is-active {
   background: oklch(0.669 0.23 6.08 / 0.18);
   color: oklch(1 0 0);
   box-shadow: 0 6px 16px oklch(0.669 0.23 6.08 / 0.22);
-}
-
-@media (max-width: 1023px) {
-  body[data-theme="v8"] .category-leaderboard-tab.is-active {
-    position: relative;
-    top: -3rem;
-  }
 }
 
 body[data-theme="v8"] .category-leaderboard-tab:hover:not(.is-active) {
@@ -9738,12 +9731,23 @@ body[data-theme="v8"] .auth7-legal-ul li + li {
 body[data-theme="v8"] .settings-legal-panel .auth7-legal-body {
   max-height: none;
   flex: 1;
+  margin-top: 12px;
+  /* Match .subpage-header padding-inline so copy lines up with the back button. */
+  padding-inline: 12px;
   padding-bottom: 48px;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc {
   flex: 1;
   min-height: 0;
+}
+
+body[data-theme="v8"] .settings-legal-doc {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
@@ -11185,7 +11189,11 @@ body[data-theme="v8"] .settings-info-body {
 }
 
 body[data-theme="v8"] .settings-legal-panel {
-  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
 }
 
 body[data-theme="v8"] .settings-utility-card {

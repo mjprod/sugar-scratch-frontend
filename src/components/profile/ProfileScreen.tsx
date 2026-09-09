@@ -127,8 +127,10 @@ export function UserDashboardScreen({
       <AppPageShell aria-label="Profile" className="app-page-shell--profile">
         <div className="settings-legal-panel">
           <LegalDocPanel
+            variant="page"
             kind={view === "legal-terms" ? "terms" : "privacy"}
             titleId={legalTitleId}
+            backLabel="Back to Settings"
             onBack={() => setView("main")}
           />
         </div>
