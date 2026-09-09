@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
-import { PacksButton } from "@/components/InboxButton";
+import { InboxUtilityBadge, PacksButton } from "@/components/InboxButton";
 import { BorderGlow } from "@/components/ui/BorderGlow";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AppTab } from "@/types/app";
@@ -399,7 +399,7 @@ export function LiquidGlassNav({
   searchActive = false,
   hideDock = false,
 }: LiquidGlassNavProps) {
-  const { authed, guestAuthLabel } = useAuth();
+  const { authed, guestAuthLabel, inboxUnread } = useAuth();
   const desktopTabs = useMemo(
     () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
     [authed],
@@ -1277,19 +1277,6 @@ export function LiquidGlassNav({
               />
             </div>
           ) : null}
-          {authed && onOpenUnopenedPacks ? (
-            <PacksButton
-              ref={topCartRef}
-              onOpen={onOpenUnopenedPacks}
-              variant="ghost"
-              active={packsActive || topDragHoverTab === "cart"}
-              className={
-                isDraggingTopBubble && topDragHoverTab === "cart"
-                  ? "is-drag-target"
-                  : ""
-              }
-            />
-          ) : null}
           {onOpenSearch ? (
             <button
               type="button"
@@ -1306,6 +1293,19 @@ export function LiquidGlassNav({
             >
               <Search className="h-7 w-7" strokeWidth={1.5} aria-hidden="true" />
             </button>
+          ) : null}
+          {authed && onOpenUnopenedPacks ? (
+            <PacksButton
+              ref={topCartRef}
+              onOpen={onOpenUnopenedPacks}
+              variant="ghost"
+              active={packsActive || topDragHoverTab === "cart"}
+              className={
+                isDraggingTopBubble && topDragHoverTab === "cart"
+                  ? "is-drag-target"
+                  : ""
+              }
+            />
           ) : null}
           <button
             ref={topProfileRef}
@@ -1503,6 +1503,11 @@ export function LiquidGlassNav({
                 );
               }
 
+              const showInboxBadge = tab.id === "profile" && authed;
+              const itemLabel = showInboxBadge
+                ? `${tab.label}, ${inboxUnread} unread`
+                : tab.label;
+
               return (
                 <button
                   key={tab.id}
@@ -1518,7 +1523,7 @@ export function LiquidGlassNav({
                     .filter(Boolean)
                     .join(" ")}
                   aria-current={isActive ? "page" : undefined}
-                  aria-label={tab.label}
+                  aria-label={itemLabel}
                   tabIndex={dockTabIndex}
                   onClick={() => selectTab(tab.id)}
                 >
@@ -1530,6 +1535,13 @@ export function LiquidGlassNav({
                       fillOpacity={isActive || isDragTarget ? 0.2 : 0}
                       aria-hidden="true"
                     />
+                    {showInboxBadge ? (
+                      <InboxUtilityBadge
+                        count={inboxUnread}
+                        tone="inbox"
+                        showZero
+                      />
+                    ) : null}
                   </span>
                   <span className="nav-test-dock-label">{tab.label}</span>
                 </button>

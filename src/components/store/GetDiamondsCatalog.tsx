@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -17,7 +18,8 @@ import {
   type StoreProduct,
 } from "@/services/store";
 import "./GetDiamondsScreen.css";
-import { GetDiamondsHeroVisual } from "@/components/store/GetDiamondsHeroVisual";
+
+const STORE_SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
 
 const TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure payment" },
@@ -93,7 +95,7 @@ export function GetDiamondsCatalog({
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--b" />
         <span className="get-diamonds-ambient__sparkle" />
       </div>
-      <GetDiamondsHero />
+      <GetDiamondsHeroBand />
 
       <section aria-labelledby="buy-cash-heading">
         <header className="get-diamonds-section__head">
@@ -159,20 +161,50 @@ export function GetDiamondsCatalog({
   );
 }
 
-function GetDiamondsHero() {
+function GetDiamondsHeroBand() {
   return (
-    <header className="get-diamonds-hero">
-      <div className="get-diamonds-hero__copy-block">
-        <h1 className="get-diamonds-hero__title">
-          Get Diamonds <span className="get-diamonds-hero__accent">✦</span>
-        </h1>
-        <p className="get-diamonds-hero__copy">
-          Diamonds are used to buy Motion Card Packs and unlock exclusive
-          rewards.
-        </p>
+    <div className="get-diamonds-hero-band">
+      <header className="get-diamonds-hero get-diamonds-hero--band">
+        <div className="get-diamonds-hero__copy-block">
+          <h1 className="get-diamonds-hero__title">
+            Get Diamonds <span className="get-diamonds-hero__accent">✦</span>
+          </h1>
+          <p className="get-diamonds-hero__copy">
+            Diamonds are used to buy Motion Card Packs and unlock exclusive
+            rewards.
+          </p>
+        </div>
+      </header>
+      <span className="get-diamonds-hero-band__sheen" aria-hidden="true" />
+      <div className="get-diamonds-hero-band__glow-wrap" aria-hidden="true">
+        <img
+          className="get-diamonds-hero-band__glow"
+          src="/images/store/glowCircle1x.webp"
+          srcSet="/images/store/glowCircle1x.webp 1x, /images/store/glowCircle2x.webp 2x"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
       </div>
-      <GetDiamondsHeroVisual />
-    </header>
+      <div className="get-diamonds-hero-band__float-wrap" aria-hidden="true">
+        <img
+          className="get-diamonds-hero-band__float"
+          src="/images/store/floatingDiamonds.webp"
+          srcSet="/images/store/floatingDiamonds.webp 1x, /images/store/floatingDiamonds2x.webp 2x"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <img
+        className="get-diamonds-hero-band__woman"
+        src="/images/store/diamondWoman1x.webp"
+        srcSet="/images/store/diamondWoman1x.webp 1x, /images/store/diamondWoman2x.webp 2x"
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
   );
 }
 
@@ -248,16 +280,35 @@ function PackageCard({
         </p>
       ) : null}
       <p className="get-diamonds-package__price">{product.priceLabel}</p>
-      <button
-        type="button"
-        className="get-diamonds-package__buy"
-        disabled={disabled}
-        aria-busy={processing}
-        aria-label={`Buy ${product.diamonds} Diamonds`}
-        onClick={onBuy}
-      >
-        {processing ? "Processing…" : "Buy"}
-      </button>
+      {featured ? (
+        <div className="get-diamonds-package__buy">
+          <CtaButton
+            {...STORE_SQUIRCLE_CTA}
+            fillParent
+            type="button"
+            label={processing ? "Processing…" : "Buy"}
+            costAmount={null}
+            fontSize={15}
+            cornerRadius={999}
+            strokeWidth={1}
+            disabled={disabled}
+            aria-busy={processing}
+            aria-label={`Buy ${product.diamonds} Diamonds`}
+            onClick={onBuy}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="get-diamonds-package__buy get-diamonds-package__buy--outline"
+          disabled={disabled}
+          aria-busy={processing}
+          aria-label={`Buy ${product.diamonds} Diamonds`}
+          onClick={onBuy}
+        >
+          {processing ? "Processing…" : "Buy"}
+        </button>
+      )}
     </article>
   );
 }
@@ -275,37 +326,34 @@ function WatchAdPanel({
 }) {
   return (
     <div className="get-diamonds-watch-ad">
-      <span className="get-diamonds-watch-ad__play" aria-hidden="true">
-        <Play className="size-5" fill="currentColor" />
-      </span>
-      <h3 className="get-diamonds-watch-ad__title">Watch Ad</h3>
-      <p className="get-diamonds-watch-ad__copy">
-        Earn free Diamonds by watching short ads.
-      </p>
-      <p className="get-diamonds-watch-ad__reward">
-        +{product.diamonds}
-        <DiamondLottie size={28} aria-hidden />
-      </p>
-      <button
-        type="button"
-        className="get-diamonds-watch-ad__cta"
-        disabled={disabled}
-        aria-busy={processing}
-        aria-label={`Watch an ad for ${product.diamonds} Diamonds`}
-        onClick={onWatch}
-      >
-        {processing ? (
-          <>
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Loading ad…
-          </>
-        ) : (
-          <>
-            <Play className="size-4" aria-hidden="true" fill="currentColor" />
-            Watch Ad
-          </>
-        )}
-      </button>
+      <div className="get-diamonds-watch-ad__body">
+        <span className="get-diamonds-watch-ad__play" aria-hidden="true">
+          <Play className="size-5" fill="currentColor" />
+        </span>
+        <h3 className="get-diamonds-watch-ad__title">Watch Ad</h3>
+        <p className="get-diamonds-watch-ad__copy">
+          Earn free Diamonds by watching short ads.
+        </p>
+        <p className="get-diamonds-watch-ad__reward">
+          +{product.diamonds}
+          <DiamondLottie size={28} aria-hidden />
+        </p>
+      </div>
+      <div className="get-diamonds-watch-ad__cta">
+        <CtaButton
+          {...STORE_SQUIRCLE_CTA}
+          fillParent
+          type="button"
+          label={processing ? "Loading ad…" : "▶ Watch Ad"}
+          costAmount={null}
+          fontSize={14}
+          cornerRadius={999}
+          disabled={disabled}
+          aria-busy={processing}
+          aria-label={`Watch an ad for ${product.diamonds} Diamonds`}
+          onClick={onWatch}
+        />
+      </div>
     </div>
   );
 }
@@ -370,27 +418,32 @@ function ExchangePanel({
                   Diamonds
                 </span>
               </div>
-              <button
-                type="button"
+              <div
                 className={[
                   "get-diamonds-exchange-card__btn",
                   canAfford ? "is-active" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                disabled={disabled || !canAfford || busy}
-                aria-label={ariaLabel}
-                onClick={() => handleExchange(option.diamonds, option.coins)}
               >
-                {busy ? (
-                  "Exchanging…"
-                ) : (
-                  <>
-                    <CoinLottie size={28} aria-hidden />
-                    {option.coins.toLocaleString()}
-                  </>
-                )}
-              </button>
+                <CtaButton
+                  {...STORE_SQUIRCLE_CTA}
+                  fillParent
+                  type="button"
+                  label={
+                    busy ? "Exchanging…" : option.coins.toLocaleString()
+                  }
+                  costAmount={null}
+                  leadingIcon={
+                    busy ? undefined : <CoinLottie size={22} aria-hidden />
+                  }
+                  fontSize={13}
+                  cornerRadius={999}
+                  disabled={disabled || !canAfford || busy}
+                  aria-label={ariaLabel}
+                  onClick={() => handleExchange(option.diamonds, option.coins)}
+                />
+              </div>
               <p
                 className="get-diamonds-exchange-card__need"
                 aria-hidden={canAfford || missing <= 0}

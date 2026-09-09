@@ -15,13 +15,13 @@ export function LegalDocPanel({
   kind,
   titleId,
   onBack,
+  /** `sheet` = auth modal chrome; `page` = SubpageHeader like Settings / Edit Profile. */
   variant = "sheet",
   backLabel = "Back",
 }: {
   kind: LegalDocKind;
   titleId?: string;
   onBack: () => void;
-  /** `sheet` = auth modal chrome; `page` = SubpageHeader like Settings / Edit Profile. */
   variant?: "sheet" | "page";
   backLabel?: string;
 }) {
@@ -50,7 +50,7 @@ export function LegalDocPanel({
       <button
         type="button"
         className="auth7-sheet-back"
-        aria-label="Back"
+        aria-label={backLabel}
         onClick={onBack}
       >
         <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />

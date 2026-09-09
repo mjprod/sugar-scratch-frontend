@@ -141,14 +141,14 @@ const OPEN_DUCK_DEPTH_BLUR_PX = 9
 const OPEN_DUCK_BLUR_LEAD_IN_MS = 47
 const OPEN_DUCK_BLUR_FULL_AT = 1
 
-// --- Cart remove exit: slight settle (anticipation), then fly up and out ---
-const REMOVE_ANTICIPATION_MS = 95
-const REMOVE_DROP_MS = 280
-const REMOVE_ANTICIPATION_Y = -0.04
-const REMOVE_ANTICIPATION_SCALE = 1.035
-const REMOVE_DROP_Y = 2.05
-const REMOVE_DROP_SCALE = 0.78
-const REMOVE_DROP_ROT_X_DEG = -14
+// --- Cart remove exit: brief lift (anticipation), then drop down and out ---
+	const REMOVE_ANTICIPATION_MS = 120
+	const REMOVE_DROP_MS = 340
+	const REMOVE_ANTICIPATION_Y = 0.07
+	const REMOVE_ANTICIPATION_SCALE = 1.045
+	const REMOVE_DROP_Y = -2.35
+	const REMOVE_DROP_SCALE = 0.8
+	const REMOVE_DROP_ROT_X_DEG = 16
 
 type OpenAnimPhase = 'idle' | 'anticipation' | 'spin' | 'duck'
 type RemoveExitPhase = 'idle' | 'anticipation' | 'drop'
@@ -302,9 +302,9 @@ function easeAppleOut(t: number) {
   return cubicBezierEase(0.16, 1, 0.3, 1, t)
 }
 
-/** Apple-like dismiss drop — light hold, then decisive acceleration (custom). */
+/** Apple-like dismiss drop — soft takeoff, then decisive downward commit. */
 function easeAppleDrop(t: number) {
-  return cubicBezierEase(0.48, 0.04, 0.72, 0.12, t)
+  return cubicBezierEase(0.32, 0.0, 0.67, 0.0, t)
 }
 
 /** Convert reveal world pose into coverflow local space (packs group origin). */
@@ -1646,105 +1646,110 @@ useFrame((state, delta) => {
 		    const isLiveCenter = liveOffset === 0
 		    const dt = Math.min(delta, 1 / 30)
 
-	    // ---- Cart remove exit: slight settle, then fly up and fade ----
-	    if (removeExitRef.current.phase !== 'idle') {
-	      const exit = removeExitRef.current
-	      const motion = motionRef.current
-	      const modelRot = modelRotRef.current
+// ---- Cart remove exit: brief lift, then drop down and fade ----
+		    if (removeExitRef.current.phase !== 'idle') {
+		      const exit = removeExitRef.current
+		      const motion = motionRef.current
+		      const modelRot = modelRotRef.current
 
-	      motion.vx = 0
-	      motion.vy = 0
-	      motion.vz = 0
-	      motion.vRotY = 0
-	      motion.vScale = 0
-	      hoverYawTargetRef.current = 0
-	      hoverYawRef.current = 0
+		      motion.vx = 0
+		      motion.vy = 0
+		      motion.vz = 0
+		      motion.vRotY = 0
+		      motion.vScale = 0
+		      hoverYawTargetRef.current = 0
+		      hoverYawRef.current = 0
 
-	      if (exit.phase === 'anticipation') {
-	        const t = clamp01(
-	          (performance.now() - exit.startMs) / REMOVE_ANTICIPATION_MS,
-	        )
-	        const wind = easeAppleOut(t)
-	        motion.x = exit.fromX
-	        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_ANTICIPATION_Y, wind)
-	        motion.z = exit.fromZ
-	        motion.scale = lerp(
-	          exit.fromScale,
-	          exit.fromScale * REMOVE_ANTICIPATION_SCALE,
-	          wind,
-	        )
-	        motion.rotY = exit.fromRotY
-	        modelRot.x = item.modelRotation.x
-	        modelRot.y = item.modelRotation.y
-	        modelRot.z = item.modelRotation.z
-	        applyOpacity(exit.fromOpacity)
+		      if (exit.phase === 'anticipation') {
+		        const t = clamp01(
+		          (performance.now() - exit.startMs) / REMOVE_ANTICIPATION_MS,
+		        )
+		        // Soft Apple ease-out lift before the commit.
+		        const wind = easeAppleOut(t)
+		        motion.x = exit.fromX
+		        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_ANTICIPATION_Y, wind)
+		        motion.z = exit.fromZ
+		        motion.scale = lerp(
+		          exit.fromScale,
+		          exit.fromScale * REMOVE_ANTICIPATION_SCALE,
+		          wind,
+		        )
+		        motion.rotY = exit.fromRotY
+		        modelRot.x = item.modelRotation.x
+		        modelRot.y = item.modelRotation.y
+		        modelRot.z = item.modelRotation.z
+		        applyOpacity(exit.fromOpacity)
 
-	        groupRef.current.position.set(motion.x, motion.y, motion.z)
-	        groupRef.current.rotation.set(0, motion.rotY, 0)
-	        groupRef.current.scale.setScalar(motion.scale)
-	        if (modelRef.current) {
-	          modelRef.current.rotation.set(
-	            MathUtils.degToRad(modelRot.x),
-	            MathUtils.degToRad(modelRot.y),
-	            MathUtils.degToRad(modelRot.z),
-	          )
-	        }
-		        groupRef.current.visible = true
-
-		        if (t < 1) {
-		          requestFrame()
-		          return
+		        groupRef.current.position.set(motion.x, motion.y, motion.z)
+		        groupRef.current.rotation.set(0, motion.rotY, 0)
+		        groupRef.current.scale.setScalar(motion.scale)
+		        if (modelRef.current) {
+		          modelRef.current.rotation.set(
+		            MathUtils.degToRad(modelRot.x),
+		            MathUtils.degToRad(modelRot.y),
+		            MathUtils.degToRad(modelRot.z),
+		          )
 		        }
+			        groupRef.current.visible = true
 
-		        exit.phase = 'drop'
-	        exit.startMs = performance.now()
-	        exit.fromX = motion.x
-	        exit.fromY = motion.y
-	        exit.fromZ = motion.z
-	        exit.fromScale = motion.scale
-	        exit.fromRotY = motion.rotY
-	        exit.fromOpacity = opacityRef.current
-	        // Fall through into fly-up this frame.
-	      }
+			        if (t < 1) {
+			          requestFrame()
+			          return
+			        }
 
-	      if (exit.phase === 'drop') {
-	        const t = clamp01((performance.now() - exit.startMs) / REMOVE_DROP_MS)
-	        const rise = easeAppleDrop(t)
-	        // Opacity lags a touch so the pack stays readable while it starts rising.
-	        const fade = cubicBezierEase(0.55, 0.02, 0.78, 0.28, t)
-	        motion.x = exit.fromX
-	        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_DROP_Y, rise)
-	        motion.z = exit.fromZ
-	        motion.scale = lerp(exit.fromScale, exit.fromScale * REMOVE_DROP_SCALE, rise)
-	        motion.rotY = exit.fromRotY
-	        modelRot.x = item.modelRotation.x + REMOVE_DROP_ROT_X_DEG * rise
-	        modelRot.y = item.modelRotation.y
-	        modelRot.z = item.modelRotation.z
-	        applyOpacity(lerp(exit.fromOpacity, 0, fade))
+			        exit.phase = 'drop'
+		        exit.startMs = performance.now()
+		        exit.fromX = motion.x
+		        exit.fromY = motion.y
+		        exit.fromZ = motion.z
+		        exit.fromScale = motion.scale
+		        exit.fromRotY = motion.rotY
+		        exit.fromOpacity = opacityRef.current
+		        // Fall through into the downward drop this frame.
+		      }
 
-	        groupRef.current.position.set(motion.x, motion.y, motion.z)
-	        groupRef.current.rotation.set(0, motion.rotY, 0)
-	        groupRef.current.scale.setScalar(motion.scale)
-	        if (modelRef.current) {
-	          modelRef.current.rotation.set(
-	            MathUtils.degToRad(modelRot.x),
-	            MathUtils.degToRad(modelRot.y),
-	            MathUtils.degToRad(modelRot.z),
-	          )
-	        }
-		        groupRef.current.visible = opacityRef.current > 0.02
+		      if (exit.phase === 'drop') {
+		        const t = clamp01((performance.now() - exit.startMs) / REMOVE_DROP_MS)
+		        const drop = easeAppleDrop(t)
+		        // Opacity lags so the pack stays readable as it starts falling.
+		        const fade = cubicBezierEase(0.55, 0.0, 0.8, 0.2, t)
+		        motion.x = exit.fromX
+		        motion.y = lerp(exit.fromY, exit.fromY + REMOVE_DROP_Y, drop)
+		        motion.z = exit.fromZ
+		        motion.scale = lerp(
+		          exit.fromScale,
+		          exit.fromScale * REMOVE_DROP_SCALE,
+		          drop,
+		        )
+		        motion.rotY = exit.fromRotY
+		        modelRot.x = item.modelRotation.x + REMOVE_DROP_ROT_X_DEG * drop
+		        modelRot.y = item.modelRotation.y
+		        modelRot.z = item.modelRotation.z
+		        applyOpacity(lerp(exit.fromOpacity, 0, fade))
 
-		        if (t < 1) {
-		          requestFrame()
-		          return
+		        groupRef.current.position.set(motion.x, motion.y, motion.z)
+		        groupRef.current.rotation.set(0, motion.rotY, 0)
+		        groupRef.current.scale.setScalar(motion.scale)
+		        if (modelRef.current) {
+		          modelRef.current.rotation.set(
+		            MathUtils.degToRad(modelRot.x),
+		            MathUtils.degToRad(modelRot.y),
+		            MathUtils.degToRad(modelRot.z),
+		          )
 		        }
+			        groupRef.current.visible = opacityRef.current > 0.02
 
-		        exit.phase = 'idle'
-	        groupRef.current.visible = false
-	        onRemoveRef.current?.(item)
-	        return
-	      }
-	    }
+			        if (t < 1) {
+			          requestFrame()
+			          return
+			        }
+
+			        exit.phase = 'idle'
+		        groupRef.current.visible = false
+		        onRemoveRef.current?.(item)
+		        return
+		      }
+		    }
 
 	    // ---- Hero open sequence: same pack, spin/duck in place ----
 	    if (isRevealHeroRef.current && openAnimRef.current.phase !== 'idle') {

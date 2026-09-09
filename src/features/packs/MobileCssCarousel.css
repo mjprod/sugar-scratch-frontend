@@ -28,6 +28,7 @@
   position: relative;
   z-index: 2;
   width: 100%;
+  margin-top: -6rem;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

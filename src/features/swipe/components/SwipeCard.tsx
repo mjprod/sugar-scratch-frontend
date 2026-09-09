@@ -5,9 +5,52 @@ import { CardFaceOverlay } from '@/shared/ui/CardFaceOverlay'
 
 type SwipeCardProps = {
   card: SwipeCardData
-  /** Front + next-in-stack only should be true for video perf. */
+  /**
+   * Mount a <video> element (front + one warm neighbor). Deeper cards stay on
+   * API posters so iOS never decodes the full pile at once.
+   */
+  mountVideo?: boolean
+  /** Call play() — live front / leaving flyer only. */
   playing?: boolean
   className?: string
+}
+
+/** WebKit autoplay only trusts muted + playsinline as real DOM attributes. */
+function armIosAutoplay(video: HTMLVideoElement) {
+  video.muted = true
+  video.defaultMuted = true
+  video.playsInline = true
+  video.setAttribute('muted', '')
+  video.setAttribute('playsinline', '')
+  video.setAttribute('webkit-playsinline', '')
+}
+
+/**
+ * Drop decoder buffers for a swiped-off / demoted card.
+ * Deferred one tick so React Strict Mode remounts don't wipe a still-live node.
+ */
+function releaseVideoDecoder(video: HTMLVideoElement) {
+  try {
+    video.pause()
+  } catch {
+    /* ignore */
+  }
+
+  window.setTimeout(() => {
+    // Still in the tree → Strict Mode bounce or promote kept this element.
+    if (video.isConnected) return
+    if (!video.getAttribute('src') && !video.currentSrc) return
+
+    try {
+      video.removeAttribute('src')
+      video.removeAttribute('poster')
+      // Empty <source> children if any ever appear.
+      while (video.firstChild) video.removeChild(video.firstChild)
+      video.load()
+    } catch {
+      /* ignore */
+    }
+  }, 0)
 }
 
 /**
@@ -20,6 +63,7 @@ type SwipeCardProps = {
  */
 export const SwipeCard = memo(function SwipeCard({
   card,
+  mountVideo = false,
   playing = false,
   className = '',
 }: SwipeCardProps) {
@@ -27,6 +71,21 @@ export const SwipeCard = memo(function SwipeCard({
   const [ready, setReady] = useState(false)
   const readyUrlRef = useRef<string | null>(null)
   const overlay = card.overlay ?? null
+  const posterUrl = card.posterUrl?.trim() || ''
+  const isVideo = card.mediaType === 'video'
+  // Warm neighbor may mount a paused decoder; only `playing` starts playback.
+  const showVideo = isVideo && (mountVideo || playing)
+  // Keep the still under the video so promote/demote never flashes black.
+  const showPoster = Boolean(posterUrl)
+  const mediaReady =
+    !isVideo || Boolean(posterUrl) || (showVideo && ready)
+
+  const setVideoNode = (video: HTMLVideoElement | null) => {
+    videoRef.current = video
+    if (!video) return
+    // Arm before the first browser autoplay evaluation / play() attempt.
+    armIosAutoplay(video)
+  }
 
   // Keep ready sticky per URL; only drop it when the source actually changes.
   useEffect(() => {
@@ -37,9 +96,17 @@ export const SwipeCard = memo(function SwipeCard({
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video || card.mediaType !== 'video') return
+    if (!video || !showVideo) return
 
     let cancelled = false
+    let retryTimer: number | null = null
+
+    armIosAutoplay(video)
+
+    // Re-attach if a deferred discard / strict-mode bounce cleared src.
+    if (video.getAttribute('src') !== card.mediaUrl) {
+      video.src = card.mediaUrl
+    }
 
     const markReady = () => {
       if (cancelled || video.readyState < 2) return
@@ -47,71 +114,122 @@ export const SwipeCard = memo(function SwipeCard({
       setReady(true)
     }
 
+    const tryPlay = () => {
+      if (cancelled) return
+      if (!playing) {
+        video.pause()
+        markReady()
+        return
+      }
+      if (!video.paused && !video.ended) {
+        markReady()
+        return
+      }
+
+      armIosAutoplay(video)
+      markReady()
+      void video.play().then(markReady).catch(() => {
+        // Retry from media listeners / delayed timers below.
+      })
+    }
+
     markReady()
-    video.addEventListener('loadeddata', markReady)
-    video.addEventListener('canplay', markReady)
-    video.addEventListener('canplaythrough', markReady)
-    video.addEventListener('loadedmetadata', markReady)
+    tryPlay()
+
+    // Cover first-paint race after the stage becomes visible.
+    if (playing) {
+      retryTimer = window.setTimeout(() => {
+        tryPlay()
+        retryTimer = window.setTimeout(tryPlay, 280)
+      }, 80)
+    }
+
+    video.addEventListener('loadeddata', tryPlay)
+    video.addEventListener('canplay', tryPlay)
+    video.addEventListener('canplaythrough', tryPlay)
+    video.addEventListener('loadedmetadata', tryPlay)
+    video.addEventListener('playing', markReady)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') tryPlay()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     // Do NOT call video.load() — it wipes the current frame and flashes black
     // even when the source is already cached.
 
     return () => {
       cancelled = true
-      video.removeEventListener('loadeddata', markReady)
-      video.removeEventListener('canplay', markReady)
-      video.removeEventListener('canplaythrough', markReady)
-      video.removeEventListener('loadedmetadata', markReady)
+      if (retryTimer != null) window.clearTimeout(retryTimer)
+      document.removeEventListener('visibilitychange', onVisibility)
+      video.removeEventListener('loadeddata', tryPlay)
+      video.removeEventListener('canplay', tryPlay)
+      video.removeEventListener('canplaythrough', tryPlay)
+      video.removeEventListener('loadedmetadata', tryPlay)
+      video.removeEventListener('playing', markReady)
+      // Swiped-off / demoted out of the 2-video window: free iOS decoder memory.
+      releaseVideoDecoder(video)
     }
-  }, [card.mediaType, card.mediaUrl])
-
-  // Play/pause without seeking — seeking would flash a black frame.
-  // When we start playing a paused under-card, re-check ready so a cached
-  // first frame can fade in even if loadeddata already fired while paused.
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || card.mediaType !== 'video') return
-
-    if (playing) {
-      if (video.readyState >= 2) {
-        readyUrlRef.current = card.mediaUrl
-        setReady(true)
-      }
-      void video.play().catch(() => {
-        // Muted + playsInline should allow autoplay; ignore rejections.
-      })
-      return
-    }
-
-    video.pause()
-  }, [card.mediaType, card.mediaUrl, playing])
+  }, [card.mediaUrl, playing, showVideo])
 
   return (
     <div
-      className={`swipe-card ${ready ? 'is-ready' : 'is-loading'} ${className}`.trim()}
+      className={`swipe-card ${mediaReady ? 'is-ready' : 'is-loading'} ${className}`.trim()}
       style={{ borderRadius: CARD_RADIUS }}
     >
       <div className="swipe-card__media">
-        {card.mediaType === 'video' ? (
+        {showPoster ? (
+          <div
+            className="swipe-card__image is-ready"
+            role="img"
+            aria-label={card.name}
+            style={{ backgroundImage: `url(${posterUrl || card.mediaUrl})` }}
+          />
+        ) : null}
+        {showVideo ? (
           <video
-            ref={videoRef}
+            ref={setVideoNode}
             src={card.mediaUrl}
+            poster={posterUrl || undefined}
             className={ready ? 'is-ready' : undefined}
             muted
             loop
             playsInline
-            preload="auto"
+            autoPlay={playing}
+            preload={playing ? 'auto' : 'metadata'}
             controls={false}
             disablePictureInPicture
             draggable={false}
+            onLoadedData={(event) => {
+              armIosAutoplay(event.currentTarget)
+              if (event.currentTarget.readyState >= 2) {
+                readyUrlRef.current = card.mediaUrl
+                setReady(true)
+              }
+              if (playing) {
+                void event.currentTarget.play().catch(() => {})
+              }
+            }}
+            onCanPlay={(event) => {
+              armIosAutoplay(event.currentTarget)
+              if (playing) {
+                void event.currentTarget.play().catch(() => {})
+              }
+            }}
+            onPlaying={() => {
+              readyUrlRef.current = card.mediaUrl
+              setReady(true)
+            }}
           />
-        ) : (
+        ) : null}
+        {!isVideo && !showPoster ? (
           <div
             className="swipe-card__image is-ready"
             role="img"
             aria-label={card.name}
             style={{ backgroundImage: `url(${card.mediaUrl})` }}
           />
-        )}
+        ) : null}
       </div>
 
       {/* Same HTML overlay as collection/reveal — no cardNumber on home. */}
