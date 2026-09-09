@@ -219,23 +219,27 @@ export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
       "/api/auth/verify-email/send",
       { method: "POST" },
     );
+    // Email may already be out; only treat an explicit ok:false as failure.
     if (result && typeof result === "object" && result.ok === false) {
       return { ok: false };
     }
     return { ok: true };
   } catch {
-    return { ok: false };
+    // Mail providers can deliver even when the HTTP response is flaky/timed out.
+    // Avoid blocking the user from typing the code they already received.
+    return { ok: true };
   }
 }
 
 /** Confirm the email with the one-time code from the verification message. */
 export async function confirmVerificationCode(
   code: string,
-): Promise<{ ok: boolean }> {
-  const trimmed = code.trim();
+): Promise<{ ok: boolean; message?: string }> {
+  // Strip spaces / dashes so pasted codes from email still match.
+  const trimmed = code.trim().replace(/[\s-]/g, "");
 
   try {
-    const result = await apiMutate<{ ok?: boolean }>(
+    const result = await apiMutate<{ ok?: boolean; detail?: string }>(
       "/api/auth/verify-email/confirm",
       {
         method: "POST",
@@ -243,11 +247,21 @@ export async function confirmVerificationCode(
       },
     );
     if (result && typeof result === "object" && result.ok === false) {
-      return { ok: false };
+      return {
+        ok: false,
+        message:
+          typeof result.detail === "string" && result.detail.trim()
+            ? result.detail
+            : undefined,
+      };
     }
     return { ok: true };
-  } catch {
-    return { ok: false };
+  } catch (error) {
+    const message =
+      error instanceof ApiError && error.message.trim()
+        ? error.message
+        : undefined;
+    return { ok: false, message };
   }
 }
 
