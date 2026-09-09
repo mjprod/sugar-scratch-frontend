@@ -3,10 +3,7 @@ import { Search } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
-import {
-  NotificationBellButton,
-  PacksButton,
-} from "@/components/InboxButton";
+import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { PackAddedToast } from "@/components/ui/PackAddedToast";
@@ -36,14 +33,12 @@ export function AppLayout() {
     navNotice,
     openStore,
     openCart,
-    openInbox,
     completeAuth,
     dismissAuth,
     onVerified,
     onVerifyBack,
     verifyFromRegister,
     verifyEmail,
-    inboxUnread,
     setInboxUnread,
     invalidateRemoteSession,
     setPurchasedPacks,
@@ -62,7 +57,6 @@ export function AppLayout() {
 
   const isPurchase = location.pathname.startsWith("/purchase");
   const isTearOpen = location.pathname.startsWith("/purchase/tear-open");
-  const onInbox = location.pathname.startsWith("/inbox");
 
   useEffect(() => {
     function onPackOpeningReward(event: Event) {
@@ -156,13 +150,6 @@ export function AppLayout() {
         active={onPackPocket}
         data-top-nav-target="pack-pocket"
       />
-      {!guest ? (
-        <NotificationBellButton
-          unreadCount={inboxUnread}
-          onOpen={openInbox}
-          active={onInbox}
-        />
-      ) : null}
     </div>
   );
 
