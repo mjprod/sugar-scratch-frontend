@@ -211,23 +211,31 @@ export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
       "/api/auth/verify-email/send",
       { method: "POST" },
     );
+    // Email may already be out; only treat an explicit ok:false as failure.
     if (result && typeof result === "object" && result.ok === false) {
       return { ok: false };
     }
     return { ok: true };
-  } catch {
-    return { ok: false };
+  } catch (error) {
+    // Timeouts can mean the mail was queued but the HTTP response never
+    // arrived — fail open so the user can still enter a code they received.
+    // Real network/HTTP failures should surface so we don't start cooldown.
+    const timedOut =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    return { ok: timedOut };
   }
 }
 
 /** Confirm the email with the one-time code from the verification message. */
 export async function confirmVerificationCode(
   code: string,
-): Promise<{ ok: boolean }> {
-  const trimmed = code.trim();
-
+): Promise<{ ok: boolean; message?: string }> {
+  // Strip spaces / dashes so pasted codes from email still match.
+  const trimmed = code.trim().replace(/[\s-]/g, "");
+  if (!trimmed) return { ok: false, message: "Enter the verification code." };
   try {
-    const result = await apiMutate<{ ok?: boolean }>(
+    const result = await apiMutate<{ ok?: boolean; detail?: string }>(
       "/api/auth/verify-email/confirm",
       {
         method: "POST",
@@ -235,11 +243,21 @@ export async function confirmVerificationCode(
       },
     );
     if (result && typeof result === "object" && result.ok === false) {
-      return { ok: false };
+      return {
+        ok: false,
+        message:
+          typeof result.detail === "string" && result.detail.trim()
+            ? result.detail
+            : undefined,
+      };
     }
     return { ok: true };
-  } catch {
-    return { ok: false };
+  } catch (error) {
+    const message =
+      error instanceof ApiError && error.message.trim()
+        ? error.message
+        : undefined;
+    return { ok: false, message };
   }
 }
 

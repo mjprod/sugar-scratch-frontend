@@ -142,9 +142,9 @@ export function VerifyEmailModal({
     if (!trimmed || busy) return;
     setSubmitting(true);
     setError("");
-    const { ok } = await confirmVerificationCode(trimmed);
+    const { ok, message } = await confirmVerificationCode(trimmed);
     if (!ok) {
-      setError(verificationCodeFailureMessage());
+      setError(message?.trim() || verificationCodeFailureMessage());
       setSubmitting(false);
       return;
     }
