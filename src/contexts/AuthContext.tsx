@@ -22,7 +22,6 @@ import {
   isEmailVerified,
   logoutRemote,
   markEmailVerified,
-  markEmailVerifiedRemote,
   needsEmailVerification,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
@@ -790,8 +789,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const onVerified = useCallback(() => {
+    // Confirm already set email_verified_at on the server; mirror locally.
     markEmailVerified();
-    void markEmailVerifiedRemote();
     setEmailVerified(true);
     setVerifyOpen(false);
     setVerifyFromRegister(false);
