@@ -237,7 +237,7 @@ export async function confirmVerificationCode(
 ): Promise<{ ok: boolean; message?: string }> {
   // Strip spaces / dashes so pasted codes from email still match.
   const trimmed = code.trim().replace(/[\s-]/g, "");
-
+  if (!trimmed) return { ok: false, message: "Enter the verification code." };
   try {
     const result = await apiMutate<{ ok?: boolean; detail?: string }>(
       "/api/auth/verify-email/confirm",
