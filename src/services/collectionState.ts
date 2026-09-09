@@ -290,6 +290,17 @@ function mergeStartedCreators(
   return creators;
 }
 
+/** True when the player has no packs / cards / continue progress yet. */
+export function isNewUserForHomepageHero(): boolean {
+  const s = getCollectionPageState();
+  return (
+    s.totalPurchasedPacks === 0 &&
+    s.collectedCardCount === 0 &&
+    s.continueCreators.length === 0 &&
+    s.unscratchedCardCount === 0
+  );
+}
+
 /** Live Collection page visibility + summary inputs. */
 export function getCollectionPageState(): CollectionPageState {
   const owned = countOwnedPacks();

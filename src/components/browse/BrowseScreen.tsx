@@ -1,16 +1,17 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
+import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { isNewUserForHomepageHero } from "@/services/collectionState";
 import {
   fetchHomepage,
   fetchLeaderboard,
@@ -185,6 +186,7 @@ export function HomeScreen({
   const [boardLoading, setBoardLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [heroReady, setHeroReady] = useState(false);
+  const isNewUser = isNewUserForHomepageHero();
 
   useMarkPageReady(status === "error" || heroReady);
 
@@ -394,9 +396,16 @@ export function HomeScreen({
         Content width is constrained by the inner wrapper (same as other pages).
       */}
       <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
-        {guest ? <PlaySteps /> : null}
+        {isNewUser || guest ? <PlaySteps /> : null}
 
-        <div className="hub-today-bento mt-8">
+        {onClaimDaily ? (
+          <PlayerWelcomeBar
+            onClaimed={onClaimDaily}
+            onClaimAttempt={onClaimAttempt}
+          />
+        ) : null}
+
+        <div className="hub-today-bento mt-4">
           <aside className="hub-today-bento-reel" aria-label="Discover video reel">
             <div className="hub-today-bento-reel-frame">
               {heroReady ? (
@@ -437,21 +446,6 @@ export function HomeScreen({
                 ) : null}
               </>
             ) : null}
-
-            <div className="hub-today-bento-pair">
-              {onClaimDaily ? (
-                <section
-                  id="daily-reward"
-                  className="hub-module hub-module--today"
-                  aria-labelledby="hub-daily-title"
-                >
-                  <DailyRewardHero
-                    onClaimed={onClaimDaily}
-                    onClaimAttempt={onClaimAttempt}
-                  />
-                </section>
-              ) : null}
-            </div>
           </div>
         </div>
       </div>
