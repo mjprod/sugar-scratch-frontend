@@ -193,7 +193,6 @@ export const SwipeCard = memo(function SwipeCard({
             poster={posterUrl || undefined}
             className={ready ? 'is-ready' : undefined}
             muted
-            defaultMuted
             loop
             playsInline
             autoPlay={playing}
