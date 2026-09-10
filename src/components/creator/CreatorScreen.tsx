@@ -206,9 +206,11 @@ function CreatorScreenInner({
     (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
     theme?.thumbnailUrl ||
     "";
-  // Prefer uploaded landscape cover for the top hero; fall back to avatar.
+  // Prefer uploaded landscape cover for the top hero; fall back to avatar/theme, then placeholder.
   const coverUrl =
-    (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") || avatarUrl;
+    (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
+    avatarUrl ||
+    "/img/placeholder.png";
 
   function notice(message: string) {
     setToast(message);
