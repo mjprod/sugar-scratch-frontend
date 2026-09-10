@@ -627,13 +627,12 @@ body[data-theme="v8"] .home-featured-coverflow.is-loading {
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-/* Pull daily reward / today bento closer to the hero on mobile.
-   Own stacking context so pack glows / elevated HUD can't wash out the banner. */
+/* Pull daily reward closer to the hero — keep in sync with hub-home-stack margin. */
 body[data-theme="v8"] .home-page-inner--after-hero {
   position: relative;
   z-index: 2;
   isolation: isolate;
-  margin-top: -2rem;
+  margin-top: 16px;
 }
 
 @media (max-width: 1023px) {
@@ -644,11 +643,11 @@ body[data-theme="v8"] .home-page-inner--after-hero {
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .home-page-inner--after-hero {
-    margin-top: -1rem;
+    margin-top: 16px;
   }
 }
 
-/* Homepage-only site footer (pack browse /) — desktop only. */
+/* Homepage site footer — show when bottom dock is hidden (desktop ≥769px). */
 body[data-theme="v8"] .home-site-footer {
   display: none;
   flex-direction: column;
@@ -661,7 +660,7 @@ body[data-theme="v8"] .home-site-footer {
   text-align: center;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .home-site-footer {
     display: flex;
   }
@@ -751,12 +750,12 @@ body[data-theme="v8"] .profile-site-footer {
   }
 }
 
-/* Host for homepage legal — content uses Profile shell/panel styles.
- * Above liquid-glass nav/dock (5000/5010) and auth sheet (5200). */
+/* Host for homepage legal — below liquid-glass nav/dock (5000/5010)
+ * so top nav stays visible and usable. Above page content. */
 body[data-theme="v8"] .home-legal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 5300;
+  z-index: 4900;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2079,13 +2078,6 @@ body[data-theme="v8"] .category-leaderboard-tab.is-active {
   box-shadow: 0 6px 16px oklch(0.669 0.23 6.08 / 0.22);
 }
 
-@media (max-width: 1023px) {
-  body[data-theme="v8"] .category-leaderboard-tab.is-active {
-    position: relative;
-    top: -3rem;
-  }
-}
-
 body[data-theme="v8"] .category-leaderboard-tab:hover:not(.is-active) {
   color: oklch(1 0 0);
   border-color: oklch(1 0 0 / 0.14);
@@ -2483,10 +2475,15 @@ body[data-theme="v8"] .hub-today-bento-reel {
 
   body[data-theme="v8"] .hub-today-bento-pair {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 16px;
     min-height: 0;
+  }
+
+  /* Two columns only when Upcoming Events is present beside Daily Reward. */
+  body[data-theme="v8"] .hub-today-bento-pair:has(.hub-upcoming-card) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   body[data-theme="v8"] .hub-today-bento-reel {
@@ -3921,6 +3918,300 @@ body[data-theme="v8"] .hub-upcoming-card {
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
+  }
+}
+
+/* -------- Player Welcome Bar (homepage status / daily reward) -------- */
+body[data-theme="v8"] .player-welcome-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  width: 100%;
+  min-height: 84px;
+  box-sizing: border-box;
+  padding: 16px 24px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(
+    110deg,
+    rgba(24, 20, 31, 0.98) 0%,
+    rgba(17, 16, 24, 0.98) 60%,
+    rgba(35, 15, 29, 0.96) 100%
+  );
+}
+
+body[data-theme="v8"] .player-welcome-greeting {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .player-welcome-copy {
+  min-width: 0;
+}
+
+body[data-theme="v8"] .player-welcome-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: #ffffff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .player-welcome-subtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+body[data-theme="v8"] .player-welcome-reward {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 18px;
+}
+
+body[data-theme="v8"] .player-welcome-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .player-welcome-gift {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 10px rgba(255, 55, 145, 0.35));
+}
+
+body[data-theme="v8"] .player-welcome-gift__box {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 1px;
+  height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, oklch(0.72 0.2 350), oklch(0.58 0.22 350));
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.22);
+}
+
+body[data-theme="v8"] .player-welcome-gift__box::before,
+body[data-theme="v8"] .player-welcome-gift__lid::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, oklch(0.95 0.06 95), oklch(0.86 0.12 88));
+}
+
+body[data-theme="v8"] .player-welcome-gift__box::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 5px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, oklch(0.95 0.06 95), oklch(0.86 0.12 88));
+}
+
+body[data-theme="v8"] .player-welcome-gift__lid {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 9px;
+  height: 7px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, oklch(0.78 0.19 350), oklch(0.62 0.22 350));
+  box-shadow: 0 1px 0 oklch(0.42 0.16 350 / 0.35);
+}
+
+body[data-theme="v8"] .player-welcome-gift__bow {
+  position: absolute;
+  left: 50%;
+  top: 1px;
+  width: 14px;
+  height: 9px;
+  transform: translateX(-50%);
+}
+
+body[data-theme="v8"] .player-welcome-gift__bow::before,
+body[data-theme="v8"] .player-welcome-gift__bow::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50% 50% 50% 0;
+  background: radial-gradient(circle at 35% 35%, oklch(0.95 0.08 95), oklch(0.84 0.14 88) 70%);
+}
+
+body[data-theme="v8"] .player-welcome-gift__bow::before {
+  left: 0;
+  transform: rotate(-40deg);
+}
+
+body[data-theme="v8"] .player-welcome-gift__bow::after {
+  right: 0;
+  transform: rotate(40deg) scaleX(-1);
+}
+
+body[data-theme="v8"] .player-welcome-claim {
+  height: 42px;
+  min-height: 42px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff3286 0%, #f0006b 100%);
+  box-shadow: 0 5px 18px rgba(255, 20, 110, 0.22);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+body[data-theme="v8"] .player-welcome-claim:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 22px rgba(255, 20, 110, 0.32);
+}
+
+body[data-theme="v8"] .player-welcome-claim:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+body[data-theme="v8"] .player-welcome-claim:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+body[data-theme="v8"] .player-welcome-claimed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+body[data-theme="v8"] .player-welcome-claimed-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+body[data-theme="v8"] .player-welcome-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .player-welcome-burst {
+  position: absolute;
+  right: 24px;
+  top: -6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: oklch(0.9 0.09 95);
+  pointer-events: none;
+  animation: player-welcome-burst 900ms ease forwards;
+}
+
+@keyframes player-welcome-burst {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+body[data-theme="v8"] .player-welcome-error {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 12px;
+  color: oklch(0.78 0.14 25);
+}
+
+@media (max-width: 1024px) {
+  body[data-theme="v8"] .player-welcome-bar {
+    gap: 16px;
+    padding: 14px 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  body[data-theme="v8"] .player-welcome-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 14px 16px;
+  }
+
+  body[data-theme="v8"] .player-welcome-subtitle {
+    display: none;
+  }
+
+  body[data-theme="v8"] .player-welcome-reward {
+    justify-content: flex-end;
+  }
+
+  body[data-theme="v8"] .player-welcome-claimed {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  body[data-theme="v8"] .player-welcome-claim {
+    height: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .player-welcome-claim {
+    transition: none;
+  }
+
+  body[data-theme="v8"] .player-welcome-burst {
+    animation: none;
+    opacity: 0;
   }
 }
 
@@ -9716,8 +10007,11 @@ body[data-theme="v8"] .auth7-legal-ul li+li {
 body[data-theme="v8"] .settings-legal-panel .auth7-legal-body {
   max-height: none;
   flex: 1;
-  margin-top: 0;
+  margin-top: 12px;
+  /* Match .subpage-header padding-inline so copy lines up with the back button. */
+  padding-inline: 12px;
   padding-bottom: 48px;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc {
@@ -9725,20 +10019,11 @@ body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc {
   min-height: 0;
 }
 
-body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc--page {
-  position: relative;
+body[data-theme="v8"] .settings-legal-doc {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-/* In-page header (not sticky/floating overlay) — same model as Following/Inbox. */
-body[data-theme="v8"] .settings-legal-panel .auth7-legal-doc--page .subpage-header {
-  position: static;
-  top: auto;
-  z-index: auto;
-  margin-inline: 0;
-  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .auth7-sheet-back {
@@ -10822,6 +11107,16 @@ body[data-theme="v8"] .edit-profile-username-input {
   padding-left: 28px !important;
 }
 
+body[data-theme="v8"] .edit-profile-email-input {
+  color: oklch(1 0 0 / 0.72);
+  cursor: default;
+}
+
+body[data-theme="v8"] .edit-profile-email-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 body[data-theme="v8"] .edit-profile-cta {
   position: relative;
   z-index: 1;
@@ -11172,6 +11467,10 @@ body[data-theme="v8"] .settings-info-body {
 }
 
 body[data-theme="v8"] .settings-legal-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
   margin-top: 0;
 }
 

@@ -1,4 +1,5 @@
 import { ChevronLeft } from "lucide-react";
+import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   PRIVACY_BLOCKS,
   PRIVACY_TITLE,
@@ -6,7 +7,6 @@ import {
   TERMS_TITLE,
   type LegalBlock,
 } from "@/content/legalDocs";
-import { SubpageHeader } from "@/components/SubpageHeader";
 
 type LegalDocKind = "terms" | "privacy";
 
@@ -15,7 +15,7 @@ export function LegalDocPanel({
   kind,
   titleId,
   onBack,
-  /** `page` uses the shared inner-page header; `sheet` keeps auth chrome. */
+  /** `sheet` = auth modal chrome; `page` = SubpageHeader like Settings / Edit Profile. */
   variant = "sheet",
   backLabel = "Back",
 }: {
@@ -27,23 +27,20 @@ export function LegalDocPanel({
 }) {
   const title = kind === "terms" ? TERMS_TITLE : PRIVACY_TITLE;
   const blocks = kind === "terms" ? TERMS_BLOCKS : PRIVACY_BLOCKS;
+  const body = (
+    <div className="auth7-legal-body">{blocks.map(renderBlock)}</div>
+  );
 
   if (variant === "page") {
     return (
-      <div className="auth7-legal-doc auth7-legal-doc--page">
+      <div className="settings-legal-doc">
         <SubpageHeader
           title={title}
+          titleId={titleId}
           onBack={onBack}
           backLabel={backLabel}
         />
-        <div
-          id={titleId}
-          className="auth7-legal-body"
-          role="region"
-          aria-label={title}
-        >
-          {blocks.map(renderBlock)}
-        </div>
+        {body}
       </div>
     );
   }
@@ -61,7 +58,7 @@ export function LegalDocPanel({
       <h2 id={titleId} className="auth7-sheet-title">
         {title}
       </h2>
-      <div className="auth7-legal-body">{blocks.map(renderBlock)}</div>
+      {body}
     </div>
   );
 }

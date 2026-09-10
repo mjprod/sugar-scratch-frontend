@@ -133,10 +133,10 @@ export function UserDashboardScreen({
       >
         <div className="settings-legal-panel">
           <LegalDocPanel
+            variant="page"
             kind={legalKind}
             titleId={legalTitleId}
-            variant="page"
-            backLabel="Back to Profile"
+            backLabel="Back to Settings"
             onBack={() => setView("main")}
           />
         </div>

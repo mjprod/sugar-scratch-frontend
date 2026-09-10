@@ -1,11 +1,15 @@
 import { Facebook, Instagram } from "lucide-react";
-import { SITE_SOCIAL } from "@/content/siteSocial";
+import { SITE_SOCIAL, type SiteSocialId } from "@/content/siteSocial";
+import type { ComponentType } from "react";
 
-const ICONS = {
+const ICONS: Record<
+  SiteSocialId,
+  ComponentType<{ className?: string }>
+> = {
   facebook: Facebook,
   instagram: Instagram,
   discord: DiscordIcon,
-} as const;
+};
 
 export function SiteSocialLinks({
   linkClassName = "home-site-footer-social-link",

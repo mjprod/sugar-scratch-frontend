@@ -1,16 +1,22 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 
 type LegalKind = "terms" | "privacy";
 
-/** Desktop-only homepage footer. Mobile uses Profile instead. */
+/** Homepage footer when bottom dock is hidden; mobile uses Profile instead. */
 export function HomeSiteFooter() {
+  const location = useLocation();
   const [legal, setLegal] = useState<LegalKind | null>(null);
   const legalTitleId = useId();
   const open = legal !== null;
+
+  useEffect(() => {
+    setLegal(null);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,7 +76,6 @@ export function HomeSiteFooter() {
               aria-modal="true"
               aria-labelledby={legalTitleId}
             >
-              {/* Same shell + panel as Profile legal view */}
               <AppPageShell
                 aria-label={
                   legal === "terms" ? "Terms of Service" : "Privacy Policy"
@@ -79,10 +84,10 @@ export function HomeSiteFooter() {
               >
                 <div className="settings-legal-panel">
                   <LegalDocPanel
+                    variant="page"
                     kind={legal}
                     titleId={legalTitleId}
-                    variant="page"
-                    backLabel="Back"
+                    backLabel="Back to Home"
                     onBack={() => setLegal(null)}
                   />
                 </div>

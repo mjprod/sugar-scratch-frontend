@@ -7,11 +7,13 @@ import type { ReactNode } from "react";
  */
 export function SubpageHeader({
   title,
+  titleId,
   onBack,
   backLabel = "Back",
   trailing,
 }: {
   title?: string;
+  titleId?: string;
   onBack: () => void;
   /** Accessible name — prefer contextual “Back to …”. */
   backLabel?: string;
@@ -28,7 +30,9 @@ export function SubpageHeader({
         <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
       </button>
       {title ? (
-        <h1 className="subpage-title">{title}</h1>
+        <h1 id={titleId} className="subpage-title">
+          {title}
+        </h1>
       ) : (
         <span className="subpage-title-spacer" aria-hidden="true" />
       )}
