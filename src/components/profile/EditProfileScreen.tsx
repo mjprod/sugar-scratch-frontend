@@ -277,9 +277,9 @@ export function EditProfileScreen({
                 id={emailId}
                 type="email"
                 className="auth7-input edit-profile-email-input"
-                value={email || "—"}
+                value={email}
+                placeholder="—"
                 readOnly
-                tabIndex={0}
                 autoComplete="email"
                 aria-describedby={`${emailId}-hint`}
                 aria-readonly="true"
