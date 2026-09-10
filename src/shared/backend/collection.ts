@@ -62,6 +62,8 @@ export type BackendModel = {
   swipeVideoUrl?: string | null
   /** Still first-frame poster for swipe / recommend faces. */
   swipePosterUrl?: string | null
+  /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
+  coverUrl?: string | null
   /** theme_id → public URL for model×theme collection avatar. */
   theme_avatars?: Record<string, string> | null
   /** Freeform labels for dashboard filtering. */
@@ -497,6 +499,7 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
     packFaceVideoUrl2: model.packFaceVideoUrl2,
     swipeVideoUrl: model.swipeVideoUrl,
     swipePosterUrl: model.swipePosterUrl,
+    coverUrl: model.coverUrl ?? null,
     theme_avatars: model.theme_avatars,
     tags: model.tags,
   }

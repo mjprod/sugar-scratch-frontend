@@ -202,10 +202,13 @@ function CreatorScreenInner({
 
   const theme =
     themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
-  const coverUrl =
+  const avatarUrl =
     (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
     theme?.thumbnailUrl ||
     "";
+  // Prefer uploaded landscape cover for the top hero; fall back to avatar.
+  const coverUrl =
+    (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") || avatarUrl;
 
   function notice(message: string) {
     setToast(message);
@@ -239,7 +242,7 @@ function CreatorScreenInner({
         type: "follow",
         creatorId: followId || creatorId,
         displayName: creatorName,
-        avatarUrl: coverUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.png",
       });
       return;
     }
@@ -258,7 +261,7 @@ function CreatorScreenInner({
         id: followId || creatorId,
         displayName: creatorName,
         username: "",
-        avatarUrl: coverUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.png",
         followedAt: Date.now(),
         hasUnseenActivity: false,
       } as const);
