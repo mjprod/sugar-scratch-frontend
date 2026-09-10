@@ -24,6 +24,8 @@ export type BackendModel = {
   packFacePosterUrl2?: string | null;
   swipeVideoUrl?: string | null;
   swipePosterUrl?: string | null;
+  /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
+  coverUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
   tags?: string[];
 };
@@ -291,6 +293,10 @@ export function packFacePosterFromModel(
 
 export function modelAvatarUrl(model: BackendModel | null | undefined) {
   return optionalMedia(model?.avatar);
+}
+
+export function modelCoverUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.coverUrl);
 }
 
 export function modelSwipePosterUrl(model: BackendModel | null | undefined) {
