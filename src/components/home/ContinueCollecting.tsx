@@ -29,6 +29,8 @@ export type ContinueCollectingSectionProps = {
   icon?: ReactNode;
   /** Accessible name for the section landmark. */
   ariaLabel?: string;
+  /** When true, hides progress rings, percentage and fraction from cards. */
+  hideProgress?: boolean;
 };
 
 function progressColor(percent: number): string {
@@ -62,9 +64,8 @@ export function ContinueCollectingSection({
   onOpen,
   icon,
   ariaLabel,
+  hideProgress = false,
 }: ContinueCollectingSectionProps) {
-  const hideProgress =
-    title.trim().toUpperCase() !== "CONTINUE COLLECTING";
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);

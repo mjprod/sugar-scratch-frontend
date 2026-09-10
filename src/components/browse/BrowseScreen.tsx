@@ -433,6 +433,7 @@ export function HomeScreen({
                   <ContinueCollecting
                     title="JUST DROP IN"
                     ariaLabel="Just drop in"
+                    hideProgress
                     icon={
                       <Sparkles
                         className="continue-collecting-heart"
