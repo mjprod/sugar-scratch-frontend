@@ -50,15 +50,23 @@
   overflow: hidden;
   background: oklch(0.184 0.005 67.5);
   container-type: size;
+  /* Pause + docked symbol bar share this top inset (safe-area + ~1.5dvh drop). */
+  --game-top-hud: calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh);
   /* Symbol-bar slot size for the top row, shared with .symbol-bar in
-     features/game/scratch/styles.css. Full 44px while the stage is wide enough
-     for the bar to sit beside the pause button, shrinking just enough to stay
-     clear below that. 117px = the row's fixed cost: 40px button + 12px button
-     margin + 8px clearance + 12px bar margin + 5 gaps of 5px + 18px bar
-     padding + 2px border.
+     features/game/scratch/styles.css. Shrinks so 6 icons + tight gaps fit
+     inside the centered pill without clipping. Fixed cost ≈ pause clear
+     both sides (~56×2) + 5 gaps of 3px + bar padding 16px ≈ 143px.
      Never read this on .stage-game itself — cqw would resolve against the
      parent container, not the stage. */
-  --game-symbol-slot: min(44px, calc((100cqw - 117px) / 6));
+  --game-symbol-slot: min(40px, calc((100cqw - 143px) / 6));
+  /* Docked middle pill is always exactly 6 slots — reserve this width even
+     before TopSymbolBar mounts so pause/mute don't jump when the bar appears. */
+  --game-top-bar-gap: 3px;
+  --game-top-bar-pad-x: 8px;
+  --game-top-bar-width: calc(
+    (6 * var(--game-symbol-slot)) + (5 * var(--game-top-bar-gap)) +
+      (2 * var(--game-top-bar-pad-x))
+  );
 }
 
 /* Game / photo-scratch fill the outlet and center the phone frame on desktop. */
@@ -70,6 +78,12 @@
 }
 
 @media (max-width: 700px) {
+  .app-layout__immersive {
+    /* Prefer dynamic viewport so iOS toolbar show/hide doesn't leave dead space. */
+    min-height: 100dvh;
+    height: 100%;
+  }
+
   .app-layout__immersive .app-shell.app-shell--game {
     width: 100%;
     height: 100%;
@@ -78,6 +92,12 @@
     aspect-ratio: auto;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .stage-game {
+    /* Keep stage chrome clear of the home indicator / browser chrome. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
   }
 }
 
@@ -172,28 +192,76 @@
   width: 100% !important;
 }
 
-.stage-game__pause {
+/*
+ * Top HUD chrome: 3 columns so the pause button is flex-centered in the
+ * gutter between the frame edge and the middle symbol bar on every width.
+ *   [ pause gutter | symbol bar | mirror gutter ]
+ */
+.stage-game__top-chrome {
   position: absolute;
-  /* Sit on the symbol bar's centre line. The bar starts at the same
-     max(12px, safe-area) and is slot + 18px padding + 2px border tall, so
-     centring a 40px button on it offsets by half the difference. */
-  top: calc(
-    max(12px, env(safe-area-inset-top, 0px)) +
-      (var(--game-symbol-slot) + 20px - 40px) / 2
-  );
-  left: 12px;
+  top: var(--game-top-hud, calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(93dvw, calc(100% - 2 * max(8px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px))));
+  max-width: 93dvw;
   z-index: 20;
+  display: grid;
+  /* Fixed middle track = 6-slot pill. Side gutters share the leftover evenly
+     so pause/mute stay put whether the bar has mounted yet or not. */
+  grid-template-columns:
+    minmax(48px, 1fr)
+    var(--game-top-bar-width, 256px)
+    minmax(48px, 1fr);
+  align-items: center;
+  pointer-events: none;
+}
+
+.stage-game__top-chrome-side {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 40px;
+}
+
+.stage-game__top-chrome-side.is-start,
+.stage-game__top-chrome-side.is-end {
+  justify-content: center;
+}
+
+.stage-game__top-chrome-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--game-top-bar-width, 256px);
+  min-width: var(--game-top-bar-width, 256px);
+  max-width: var(--game-top-bar-width, 256px);
+  pointer-events: none;
+}
+
+.stage-game__top-chrome-center > * {
+  pointer-events: auto;
+}
+
+.stage-game__pause {
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: 1;
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
+  flex: 0 0 40px;
   border-radius: 50%;
   border: 1px solid oklch(1 0 0 / 0.14);
-  background: oklch(0.157 0.013 284.85 / 0.72);
+  background: oklch(0.157 0.013 284.85 / 0.9);
   color: oklch(1 0 0);
   line-height: 1;
   cursor: pointer;
-  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .stage-game__pause:hover {
@@ -207,6 +275,51 @@
 .stage-game__pause:focus-visible {
   outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
   outline-offset: 2px;
+}
+
+/* Right top chrome: coin over amount (column), home-nav coin mark. */
+.stage-game__coin-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 40px;
+  min-height: 44px;
+  padding: 5px 8px 6px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 140 220 / 0.35);
+  background:
+    linear-gradient(
+      180deg,
+      rgb(90 30 70 / 0.92),
+      rgb(28 10 28 / 0.96)
+    );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    inset 0 -1px 0 rgb(255 80 180 / 0.12),
+    0 6px 16px rgb(0 0 0 / 0.35);
+  color: #fff;
+  pointer-events: none;
+  user-select: none;
+}
+
+.stage-game__coin-pill-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  line-height: 0;
+}
+
+.stage-game__coin-pill-value {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  min-width: 1.25ch;
+  text-align: center;
 }
 
 .stage-game .motion-win-reveal__stage {

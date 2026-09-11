@@ -196,8 +196,30 @@ textarea:focus-visible {
 }
 
 .symbol-bar {
+  /* Tunable plate + separate border ring (lab debug can mask each). */
+  --bar-tint: rgb(0 0 0 / 40%);
+  --bar-image-opacity: 1;
+  --bar-mix-blend: hard-light;
+  --bar-bg-blend: normal;
+  /* White = keep layer, black/transparent = fade. */
+  --bar-bg-mask: linear-gradient(
+    166deg,
+    rgb(255 255 255 / 0.5) 0%,
+    rgb(255 255 255 / 0.72) 100%
+  );
+  --bar-border-mask: linear-gradient(
+    166deg,
+    rgb(255 255 255 / 0.75) 0%,
+    transparent 34%,
+    rgb(255 255 255 / 0.35) 100%
+  );
+  --bar-border-color: #fff;
+  --bar-border-width: 1px;
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
+  top: var(
+    --game-top-hud,
+    calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+  );
   left: 0;
   right: 0;
   z-index: 6;
@@ -210,35 +232,127 @@ textarea:focus-visible {
   margin-inline: auto;
   padding: 6px 10px;
   border-radius: 999px;
-  background: oklch(0.184 0.005 67.5 / 0.62);
-  border: 1px solid oklch(1 0 0 / 0.28);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  overflow: hidden;
+  isolation: isolate;
+  /* Real CSS border removed — stroke is a separate ::after ring. */
+  background: transparent;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Top-row states share the row with the game shell's pause button (40px at
-   left:12px). Inset past it and take the slot size from --game-symbol-slot so
-   the button can never cover a symbol; the bar then centres in the remaining
-   band via margin-inline:auto. Mid-screen phases (center / showcase) sit at
-   top:50% nowhere near the button, so they keep full width and stay centred on
-   the stage. Slots don't shrink or wrap, so the size has to come from the
-   variable — insets alone would just let the bar overflow back under the
-   button. Ceiling: the slot is left unclamped so the row always fits, which
-   means the 28px icons start clipping once the stage drops under ~297px. */
-.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
-  left: 60px;
-  right: 12px;
-  max-width: calc(100% - 72px);
-  gap: 5px;
-  padding: 9px;
+/* Frosted / tint plate — independent from the border ring. */
+.symbol-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-color: var(--bar-tint);
+  background-image: url("/images/frostedglass.webp");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-blend-mode: var(--bar-bg-blend);
+  opacity: var(--bar-image-opacity);
+  mix-blend-mode: var(--bar-mix-blend);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 20%),
+    inset 0 -1px 0 rgb(255 130 210 / 12%);
+  -webkit-mask-image: var(--bar-bg-mask);
+  mask-image: var(--bar-bg-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
 }
 
-.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .symbol-slot {
-  width: var(--game-symbol-slot, 44px);
-  height: var(--game-symbol-slot, 44px);
+/* Border ring only — can be masked without touching the bg image. */
+.symbol-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  border: var(--bar-border-width) solid var(--bar-border-color);
+  box-sizing: border-box;
+  -webkit-mask-image: var(--bar-border-mask);
+  mask-image: var(--bar-border-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+.symbol-bar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Top match UI + every nested node — no glass blur over the stage canvas. */
+.symbol-bar *,
+.top-symbol-bar,
+.top-symbol-bar *,
+.symbol-slot,
+.symbol-slot * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Docked bar inside top-chrome center cell: flow layout, not absolute.
+   Center cell is already sized to exactly 6 slots — fill it, don't grow. */
+.stage-game__top-chrome-center .symbol-bar:not(.is-phase-center):not(.is-phase-showcase),
+.stage-game__top-chrome-center .top-symbol-bar.is-phase-docked {
+  --bar-icon-gap: var(--game-top-bar-gap, 3px);
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  transform: none !important;
+  animation: none !important;
+  gap: var(--bar-icon-gap);
+  padding: 7px var(--game-top-bar-pad-x, 8px);
+  overflow: hidden;
+}
+
+/* Fallback if a docked bar is still stage-absolute (non-chrome hosts). */
+.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
+  --bar-side-clear: calc(12px + 40px + clamp(3px, 1.1cqw, 6px));
+  --bar-icon-gap: var(--game-top-bar-gap, 3px);
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  width: var(--game-top-bar-width, fit-content);
+  max-width: min(
+    var(--game-top-bar-width, 100%),
+    calc(100% - (2 * var(--bar-side-clear)))
+  );
+  margin-inline: auto;
+  gap: var(--bar-icon-gap);
+  padding: 7px var(--game-top-bar-pad-x, 8px);
+  overflow: hidden;
+}
+
+.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .symbol-slot,
+.top-symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .top-symbol-slot {
+  width: var(--game-symbol-slot, 40px);
+  height: var(--game-symbol-slot, 40px);
+  flex: 0 0 var(--game-symbol-slot, 40px);
 }
 
 /* Pack session progress — card stack, bottom-left (separate from symbol objective). */
@@ -541,7 +655,6 @@ textarea:focus-visible {
     transform: scale(1.28);
     filter: brightness(1.45);
     border-color: oklch(0.93 0.092 90.65 / 0.95);
-    background: oklch(0.907 0.106 86.69 / 0.28);
   }
   100% {
     transform: scale(1);
@@ -550,16 +663,28 @@ textarea:focus-visible {
 }
 
 .top-symbol-bar.is-phase-docked {
-  top: max(12px, env(safe-area-inset-top));
+  /* When not in top-chrome (fallback), keep absolute dock placement. */
+  top: var(
+    --game-top-hud,
+    calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+  );
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  width: var(--game-top-bar-width, fit-content);
+  max-width: var(--game-top-bar-width, calc(100% - 32px));
+  margin-inline: auto;
   transform: translateY(0) scale(1);
+  gap: var(--game-top-bar-gap, 3px);
+  padding: 7px var(--game-top-bar-pad-x, 8px);
   pointer-events: none;
   cursor: default;
-  /* Keyframes own the fly — don't fight the center→dock transition. */
   transition: none;
-  animation: top-bar-dock-fly 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  box-shadow:
-    0 8px 24px oklch(0 0 0 / 0.35),
-    0 0 0 1px oklch(1 0 0 / 0.12);
+  animation: none;
+  background: transparent;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
+  overflow: hidden;
 }
 
 @keyframes top-bar-dock-fly {
@@ -567,7 +692,6 @@ textarea:focus-visible {
     top: 50%;
     transform: translateY(-50%) scale(1.06);
     box-shadow:
-      0 0 0 1px oklch(0.898 0.124 88.45 / 0.7),
       0 18px 48px oklch(0 0 0 / 0.5),
       0 0 48px oklch(0.865 0.116 75.55 / 0.35);
   }
@@ -575,37 +699,58 @@ textarea:focus-visible {
     transform: translateY(-58%) scale(0.86);
   }
   100% {
-    top: max(12px, env(safe-area-inset-top));
+    top: var(
+      --game-top-hud,
+      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+    );
     transform: translateY(0) scale(1);
-    box-shadow:
-      0 8px 24px oklch(0 0 0 / 0.35),
-      0 0 0 1px oklch(1 0 0 / 0.12);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
   }
 }
 
-/* After dock: cascade right→left into grayscale via keyframed filter. */
+/* After dock: cascade right→left into grayscale on the ICON only.
+   Slot plate stays solid black — never wash the circle fill. */
 .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant {
-  filter: saturate(0) brightness(1.25);
-  opacity: 0.45;
+  filter: none;
+  opacity: 1;
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation: none;
+}
+
+.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant .game-symbol-lottie {
+  filter: saturate(0) brightness(1.05);
+  opacity: 1;
   animation: top-bar-slot-go-dormant 520ms cubic-bezier(0.33, 1, 0.4, 1) both;
 }
 
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(6) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(6)
+  .game-symbol-lottie {
   animation-delay: 380ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(5) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(5)
+  .game-symbol-lottie {
   animation-delay: 440ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(4) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(4)
+  .game-symbol-lottie {
   animation-delay: 500ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(3) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(3)
+  .game-symbol-lottie {
   animation-delay: 560ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(2) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(2)
+  .game-symbol-lottie {
   animation-delay: 620ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(1) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(1)
+  .game-symbol-lottie {
   animation-delay: 680ms;
 }
 
@@ -616,33 +761,36 @@ textarea:focus-visible {
     opacity: 1;
   }
   45% {
-    filter: saturate(0.35) brightness(1.12);
+    filter: saturate(0.35) brightness(1.08);
     transform: scale(0.9) translateX(-6px);
   }
   100% {
-    filter: saturate(0) brightness(1.25);
+    filter: saturate(0) brightness(1.05);
     transform: scale(1) translateX(0);
-    opacity: 0.45;
+    opacity: 1;
   }
 }
 
-/* Found on her body — full color again with a match pop. */
+/* Found on her body — full color again with a match pop (icon only). */
 .top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched {
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation: none;
+}
+
+.top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched .game-symbol-lottie {
   animation: top-bar-slot-reactivate 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
 @keyframes top-bar-slot-reactivate {
   0% {
-    filter: saturate(0) brightness(1.25);
+    filter: saturate(0) brightness(1.05);
     transform: scale(1);
-    opacity: 0.45;
+    opacity: 1;
   }
   42% {
     filter: saturate(1) brightness(1.4);
     transform: scale(1.26);
     opacity: 1;
-    border-color: oklch(0.93 0.092 90.65 / 0.95);
-    background: oklch(0.907 0.106 86.69 / 0.28);
   }
   100% {
     filter: none;
@@ -664,9 +812,8 @@ textarea:focus-visible {
   animation: top-bar-showcase-fly 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
   box-shadow:
     0 18px 48px oklch(0 0 0 / 0.55),
-    0 0 0 1px oklch(0.898 0.124 88.45 / 0.55),
     0 0 52px oklch(0.865 0.116 75.55 / 0.35);
-  border-color: oklch(0.898 0.124 88.45 / 0.75);
+  border: 0 !important;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -693,33 +840,60 @@ textarea:focus-visible {
 }
 
 .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-dormant {
-  filter: saturate(0) brightness(1.25);
-  opacity: 0.45;
+  filter: none;
+  opacity: 1;
+  background: var(--symbol-slot-fill, #a74479) !important;
   animation: none;
+}
+
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-dormant
+  .game-symbol-lottie {
+  filter: saturate(0) brightness(1.05);
+  opacity: 1;
 }
 
 .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing {
   filter: none;
   opacity: 1;
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation: none;
+}
+
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing
+  .game-symbol-lottie {
   animation: top-bar-slot-found-pulse 700ms ease-in-out 720ms infinite;
 }
 
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(1) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(1)
+  .game-symbol-lottie {
   animation-delay: 720ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(2) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(2)
+  .game-symbol-lottie {
   animation-delay: 780ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(3) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(3)
+  .game-symbol-lottie {
   animation-delay: 840ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(4) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(4)
+  .game-symbol-lottie {
   animation-delay: 900ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(5) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(5)
+  .game-symbol-lottie {
   animation-delay: 960ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(6) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(6)
+  .game-symbol-lottie {
   animation-delay: 1020ms;
 }
 
@@ -728,16 +902,12 @@ textarea:focus-visible {
   100% {
     transform: scale(1);
     filter: brightness(1);
-    border-color: oklch(0.907 0.106 86.69 / 0.75);
-    background: oklch(0.884 0.12 83.38 / 0.16);
-    box-shadow: 0 0 0 0 oklch(0.863 0.133 80.39 / 0.35);
+    opacity: 1;
   }
   50% {
     transform: scale(1.22);
     filter: brightness(1.35);
-    border-color: oklch(0.941 0.085 93.01);
-    background: oklch(0.907 0.106 86.69 / 0.38);
-    box-shadow: 0 0 22px 4px oklch(0.863 0.133 80.39 / 0.55);
+    opacity: 1;
   }
 }
 
@@ -749,16 +919,22 @@ textarea:focus-visible {
   justify-content: center;
   width: 44px;
   height: 44px;
+  flex-shrink: 0;
+  background: var(--symbol-slot-fill, #a74479) !important;
   pointer-events: none;
   touch-action: none;
 }
 
 .top-symbol-bar.is-scratchable .top-symbol-slot {
-  border-color: oklch(1 0 0 / 0.2);
-  background: oklch(0.13 0.004 69.83 / 0.98);
+  border-color: rgb(255 255 255 / 0.3);
+  background: var(--symbol-slot-fill, #a74479) !important;
 }
 
 .top-symbol-bar.is-phase-docked .top-symbol-slot {
+  width: var(--game-symbol-slot, 40px);
+  height: var(--game-symbol-slot, 40px);
+  flex: 0 0 var(--game-symbol-slot, 40px);
+  background: var(--symbol-slot-fill, #a74479) !important;
   pointer-events: none;
   cursor: default;
 }
@@ -885,14 +1061,16 @@ textarea:focus-visible {
 }
 
 .symbol-slot {
+  /* Lab-tuned plate from HSBA picker. */
+  --symbol-slot-fill: hsla(360 34% 12% / 0.31);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 33px;
   height: 33px;
   border-radius: 50%;
-  border: 1px solid oklch(1 0 0 / 0.22);
-  background: oklch(1 0 0 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.3);
+  background: var(--symbol-slot-fill) !important;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -972,8 +1150,9 @@ textarea:focus-visible {
 }
 
 .symbol-slot.is-revealed {
-  background: oklch(1 0 0 / 0.14);
-  border-color: oklch(1 0 0 / 0.45);
+  /* Keep gradient plate — only the icon animates on reveal. */
+  background: var(--symbol-slot-fill, #a74479) !important;
+  border-color: rgb(255 255 255 / 0.3);
   animation: symbolReveal 280ms cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
@@ -1023,16 +1202,40 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
-/* Continuous frame progress — outer card stroke (symbol hunt). */
-/* inset must stay 0 — `.stage` clips overflow, so a negative inset would
-   cut the whole stroke off (the frame lives just inside the card edge). */
+/* Continuous frame progress — outer card stroke (symbol hunt).
+   Keep the stroke inside the stage (positive insets only — negative would
+   clip under overflow:hidden). On phones, lift the bottom edge above the
+   iOS browser chrome with safe-area + a small dvh-based toolbar clearance. */
 .scratch-frame-progress {
+  --frame-inset-x: max(4px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --frame-inset-top: max(4px, env(safe-area-inset-top, 0px));
+  /* Base bottom pad; mobile boosts this further below. */
+  --frame-inset-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+  /* 0 = top-left start; 0..1 travels clockwise around the frame. */
+  --frame-start: 0.178;
   position: absolute;
-  inset: 0;
+  top: var(--frame-inset-top);
+  right: var(--frame-inset-x);
+  bottom: var(--frame-inset-bottom);
+  left: var(--frame-inset-x);
   z-index: 7;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
   pointer-events: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+  .scratch-frame-progress {
+    /* Safari bottom chrome often sits above the CSS safe-area alone.
+       Add a responsive pad from dvh so the stroke clears the toolbar. */
+    --frame-inset-bottom: max(
+      12px,
+      calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6dvh, 56px))
+    );
+    --frame-inset-top: max(8px, env(safe-area-inset-top, 0px));
+    --frame-inset-x: max(6px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  }
 }
 
 .scratch-frame-progress__svg,
@@ -1054,7 +1257,7 @@ textarea:focus-visible {
 
 .scratch-frame-progress__track {
   fill: none;
-  stroke: rgba(220, 120, 175, 0.52);
+  stroke: rgb(255 255 255 / 0.3);
   stroke-width: 2;
 }
 
@@ -1062,13 +1265,27 @@ textarea:focus-visible {
   fill: none;
   stroke-width: 3.5;
   stroke-linecap: round;
-  stroke-dasharray: var(--frame-perimeter, 2000);
-  stroke-dashoffset: var(--frame-dashoffset, 2000);
+  stroke-linejoin: round;
+  /* Dash geometry is set as SVG attributes from ScratchFrameProgress
+     (strokeDasharray / strokeDashoffset) so lab start origin always applies. */
   opacity: 1;
   filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
-  /* No delay: a delay restarts on every find, so fast scratching would stall the
-     stroke and then jump. It has to chase the count in real time instead. */
-  transition: stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
+  transition:
+    stroke-dasharray 260ms cubic-bezier(0.22, 0.8, 0.3, 1),
+    stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* Full ring: continuous closed stroke — no dash ends / no join gap.
+   Works even when --frame-start is non-zero (start slider / locked offset). */
+.scratch-frame-progress.is-complete .scratch-frame-progress__progress,
+.scratch-frame-progress__progress.is-ring-closed,
+.scratch-frame-progress__sweep.is-ring-closed {
+  stroke-dasharray: none !important;
+  stroke-dashoffset: 0 !important;
+  stroke-linecap: butt !important;
+  stroke-linejoin: round !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 .scratch-frame-progress.is-milestone-4 .scratch-frame-progress__progress,
@@ -1118,8 +1335,9 @@ textarea:focus-visible {
   fill: none;
   stroke-width: 3.5;
   stroke-linecap: round;
-  stroke-dasharray: var(--frame-perimeter, 2000);
-  stroke-dashoffset: var(--frame-perimeter, 2000);
+  stroke-linejoin: round;
+  stroke-dasharray: 0 1;
+  stroke-dashoffset: calc(0px - var(--frame-start, 0));
   opacity: 1;
   filter: drop-shadow(0 0 10px rgba(200, 90, 50, 0.7));
   animation: scratch-frame-sweep 760ms ease-out forwards;
@@ -1153,10 +1371,10 @@ textarea:focus-visible {
   gap: 2px;
   padding: 7px 10px;
   border-radius: 11px;
-  background: rgba(10, 8, 15, 0.72);
+  background: rgba(10, 8, 15, 0.9);
   border: 1px solid rgba(255, 170, 220, 0.25);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   pointer-events: none;
   animation: scratch-feedback-in 200ms ease-out both;
 }
@@ -1217,11 +1435,14 @@ textarea:focus-visible {
 
 @keyframes scratch-frame-sweep {
   from {
-    stroke-dashoffset: var(--frame-perimeter, 2000);
+    stroke-dasharray: 0 1;
+    stroke-dashoffset: calc(0px - var(--frame-start, 0));
   }
 
   to {
-    stroke-dashoffset: 0;
+    /* visible 1, gap 0 — full ring with no hole */
+    stroke-dasharray: 1 0;
+    stroke-dashoffset: calc(0px - var(--frame-start, 0));
   }
 }
 
@@ -1492,14 +1713,24 @@ textarea:focus-visible {
 
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant,
   .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-dormant {
-    filter: saturate(0) brightness(1.25) !important;
-    opacity: 0.45 !important;
+    filter: none !important;
+    opacity: 1 !important;
+    background: var(--symbol-slot-fill, #a74479) !important;
+  }
+
+  .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant .game-symbol-lottie,
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-dormant
+    .game-symbol-lottie {
+    filter: saturate(0) brightness(1.05) !important;
+    opacity: 1 !important;
   }
 
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched,
   .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched {
     filter: none !important;
     opacity: 1;
+    background: var(--symbol-slot-fill, #a74479) !important;
   }
 
   .stage.is-bar-phase .game-stage-canvas-wrap::after {
@@ -2158,10 +2389,22 @@ textarea:focus-visible {
 
 @media (max-width: 700px) {
   .symbol-bar {
-    top: max(12px, env(safe-area-inset-top));
+    top: var(
+      --game-top-hud,
+      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+    );
     max-width: calc(100% - 32px);
     gap: 4px;
     padding: 5px 8px;
+  }
+
+  .symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
+    --bar-side-clear: calc(12px + 40px + clamp(2px, 1cqw, 5px));
+    left: 0;
+    right: 0;
+    width: fit-content;
+    max-width: min(100%, calc(100% - (2 * var(--bar-side-clear))));
+    margin-inline: auto;
   }
 
   .top-symbol-bar {
@@ -2169,13 +2412,24 @@ textarea:focus-visible {
     padding: 8px 12px;
   }
 
+  .top-symbol-bar.is-phase-docked {
+    top: var(
+      --game-top-hud,
+      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+    );
+    gap: 2px;
+    padding: 6px 7px;
+  }
+
   .top-symbol-bar .top-symbol-slot {
     width: 40px;
     height: 40px;
   }
 
-  .top-symbol-bar.is-phase-docked {
-    top: max(12px, env(safe-area-inset-top));
+  .top-symbol-bar.is-phase-docked .top-symbol-slot {
+    width: var(--game-symbol-slot, 36px);
+    height: var(--game-symbol-slot, 36px);
+    flex: 0 0 var(--game-symbol-slot, 36px);
   }
 
   .symbol-slot {
@@ -3489,7 +3743,7 @@ textarea:focus-visible {
     max-width: min(58vw, 220px);
     padding: 8px 12px;
     border-radius: 999px;
-    background: oklch(0.184 0.005 67.5 / 0.78);
+    background: oklch(0.184 0.005 67.5 / 0.92);
     color: oklch(0.937 0.086 91.56);
     font-size: 12px;
     font-weight: 800;
@@ -3500,8 +3754,8 @@ textarea:focus-visible {
     overflow: hidden;
     text-overflow: ellipsis;
     border: 1px solid oklch(0.907 0.106 86.69 / 0.28);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .mobile-game-link {
@@ -3680,15 +3934,15 @@ dd {
   transform: translateX(-50%);
   padding: 4px 10px;
   border-radius: 999px;
-  background: oklch(0.184 0.005 67.5 / 0.55);
+  background: oklch(0.184 0.005 67.5 / 0.9);
   color: oklch(1 0 0 / 0.92);
   font:
     600 12px/1.2 system-ui,
     sans-serif;
   letter-spacing: 0.04em;
   pointer-events: none;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .body-symbol-marker {

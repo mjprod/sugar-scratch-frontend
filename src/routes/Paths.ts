@@ -46,6 +46,8 @@ export const Paths = {
   purchaseTearOpen: "/purchase/tear-open",
   purchaseTearOpenSlug: "tear-open",
   game: "/game",
+  /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
+  gameUi: "/game-ui",
   photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
   gamePlay: (

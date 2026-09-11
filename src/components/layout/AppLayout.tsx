@@ -92,6 +92,7 @@ export function AppLayout() {
     location.pathname.startsWith("/recommend") ||
     location.pathname.startsWith("/welcome") ||
     location.pathname.startsWith("/game") ||
+    location.pathname.startsWith("/game-ui") ||
     location.pathname.startsWith("/photo-scratch");
 
   const onPackPocket =

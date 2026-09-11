@@ -4,17 +4,20 @@ import {
   useId,
   useRef,
   useState,
-  type CSSProperties,
 } from "react";
 import {
   feedbackLabel,
   FRAME_H,
   FRAME_RX,
   FRAME_W,
-  roundedRectPerimeter,
+  roundedRectPath,
   energyTrailPath,
   type NormalizedPoint,
 } from "./scratchFrameGeometry";
+import {
+  getFrameStartLabState,
+  subscribeFrameStartLab,
+} from "./frameStartLab";
 
 export type SymbolDiscoveryBatch = {
   key: number;
@@ -40,7 +43,14 @@ type ScratchFrameProgressProps = {
 const FRAME_INSET = 4;
 const RECT_W = FRAME_W - FRAME_INSET * 2;
 const RECT_H = FRAME_H - FRAME_INSET * 2;
-const PERIMETER = roundedRectPerimeter(RECT_W, RECT_H, FRAME_RX);
+/** Top-left start, clockwise — matches how progress should grow around the card. */
+const FRAME_PATH = roundedRectPath(
+  FRAME_INSET,
+  FRAME_INSET,
+  RECT_W,
+  RECT_H,
+  FRAME_RX,
+);
 /* Keep in sync with the matching CSS durations in scratch/styles.css. */
 const TRAIL_MS = 420;
 const SWEEP_MS = 760;
@@ -72,10 +82,34 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
   const processedBatchKeys = useRef(new Set<number>());
   const trailIdRef = useRef(0);
   const feedbackTimerRef = useRef<number | null>(null);
+  const [lab, setLab] = useState(getFrameStartLabState);
 
-  // Frame growth is the CSS transition on stroke-dashoffset (260ms, no delay).
-  const dashOffset =
-    PERIMETER * (1 - (total > 0 ? Math.min(1, found / total) : 0));
+  useEffect(() => subscribeFrameStartLab(() => setLab(getFrameStartLabState())), []);
+
+  // pathLength=1. Visible arc = progress; gap = rest.
+  // Lab START panel can override progress so start-origin rotation is visible
+  // before any symbols are found.
+  const liveProgress = total > 0 ? Math.min(1, found / total) : 0;
+  const labPreviewing = lab.previewOpen && lab.previewProgress > 0;
+  const progress = labPreviewing ? lab.previewProgress : liveProgress;
+  const solidRing = progress >= 1;
+  const dashProgress = solidRing
+    ? 1
+    : Math.min(1, progress + (progress > 0.9 ? 0.01 : 0));
+  // Rotate origin clockwise from top-left. Apply as real SVG attrs (not only CSS vars).
+  const frameStart = lab.start;
+  const progressStroke = solidRing
+    ? {
+        strokeDasharray: "none",
+        strokeDashoffset: 0,
+        strokeLinecap: "butt" as const,
+      }
+    : {
+        // Two values required — a single number becomes "n n" and leaves a hole.
+        strokeDasharray: `${dashProgress} ${Math.max(0, 1 - dashProgress)}`,
+        strokeDashoffset: -frameStart,
+        strokeLinecap: "round" as const,
+      };
 
   useEffect(() => {
     if (!active) return;
@@ -120,7 +154,9 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 
   // `found === 0` also resets: the frame stays mounted across the no-match
   // settle, so a card handoff can happen without `active` ever going false.
+  // Don't wipe while the lab START panel is forcing a preview arc.
   useEffect(() => {
+    if (labPreviewing) return;
     if (!active || found === 0) {
       processedBatchKeys.current.clear();
       setTrails([]);
@@ -128,7 +164,7 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
       setCompleteSweep(false);
       setCompletePulse(false);
     }
-  }, [active, found]);
+  }, [active, found, labPreviewing]);
 
   useEffect(() => {
     return () => {
@@ -140,11 +176,11 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 
   const frameClass = [
     "scratch-frame-progress",
-    settling ? "is-settling" : "",
-    found >= total ? "is-complete" : "",
-    found === 4 ? "is-milestone-4" : "",
-    found === 8 ? "is-milestone-8" : "",
-    found === 11 ? "is-almost" : "",
+    settling && !labPreviewing ? "is-settling" : "",
+    solidRing || (found >= total && !labPreviewing) ? "is-complete" : "",
+    !labPreviewing && found === 4 ? "is-milestone-4" : "",
+    !labPreviewing && found === 8 ? "is-milestone-8" : "",
+    !labPreviewing && found === 11 ? "is-almost" : "",
     completeSweep ? "is-sweeping" : "",
     completePulse ? "is-pulsing" : "",
   ]
@@ -177,44 +213,37 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
             <stop offset="100%" stopColor="#7050D8" />
           </linearGradient>
         </defs>
-        <rect
+        <path
           className="scratch-frame-progress__track"
-          x={FRAME_INSET}
-          y={FRAME_INSET}
-          width={RECT_W}
-          height={RECT_H}
-          rx={FRAME_RX}
-          ry={FRAME_RX}
+          d={FRAME_PATH}
+          pathLength={1}
           vectorEffect="non-scaling-stroke"
         />
-        <rect
-          className="scratch-frame-progress__progress"
-          x={FRAME_INSET}
-          y={FRAME_INSET}
-          width={RECT_W}
-          height={RECT_H}
-          rx={FRAME_RX}
-          ry={FRAME_RX}
+        <path
+          className={[
+            "scratch-frame-progress__progress",
+            solidRing ? "is-ring-closed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          d={FRAME_PATH}
+          pathLength={1}
           stroke={`url(#${uid}-progress-gradient)`}
           vectorEffect="non-scaling-stroke"
-          style={
-            {
-              "--frame-perimeter": PERIMETER,
-              "--frame-dashoffset": dashOffset,
-            } as CSSProperties
-          }
+          strokeDasharray={progressStroke.strokeDasharray}
+          strokeDashoffset={progressStroke.strokeDashoffset}
+          strokeLinecap={progressStroke.strokeLinecap}
         />
         {completeSweep ? (
-          <rect
-            className="scratch-frame-progress__sweep"
-            x={FRAME_INSET}
-            y={FRAME_INSET}
-            width={RECT_W}
-            height={RECT_H}
-            rx={FRAME_RX}
-            ry={FRAME_RX}
+          <path
+            className="scratch-frame-progress__sweep is-ring-closed"
+            d={FRAME_PATH}
+            pathLength={1}
             stroke={`url(#${uid}-progress-gradient)`}
             vectorEffect="non-scaling-stroke"
+            strokeDasharray="none"
+            strokeDashoffset={0}
+            strokeLinecap="butt"
           />
         ) : null}
       </svg>

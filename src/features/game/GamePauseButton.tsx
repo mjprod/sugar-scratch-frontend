@@ -17,6 +17,9 @@ const NAV_GLASS =
  * Pause control for the scratch stage: opens an overlay with the audio
  * switches plus resume / leave. The overlay covers the stage and swallows
  * input, so the game is effectively suspended while it is open.
+ *
+ * Layout: sit inside `.stage-game__top-chrome-side` so the button is flex-
+ * centered in the gutter between the frame edge and the middle symbol bar.
  */
 export function GamePauseButton({ onLeave }: { onLeave: () => void }) {
   const [open, setOpen] = useState(false);
