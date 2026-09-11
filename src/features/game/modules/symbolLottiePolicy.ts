@@ -1,28 +1,28 @@
 /**
  * DotLottie / symbol-worker quieting + preload (Phase 7).
- * Safari timelines showed thousands of worker `message` events and mid-game
- * `.lottie` fetches during scratch.
+ *
+ * Early Phase 7 forced main-thread (`preferStatic`) icons on coarse pointers to
+ * cut Safari worker `message` traffic — those icons looked soft/broken on
+ * phones vs the OffscreenCanvas worker path. Prefer the worker everywhere
+ * OffscreenCanvas exists; keep preload so Tap-to-play does not fetch mid-hunt.
  */
 
 export function shouldPreferStaticSymbolLottie(opts: {
   coarsePointer: boolean;
 }): boolean {
-  return opts.coarsePointer;
+  void opts.coarsePointer;
+  return false;
 }
 
-/**
- * Freeze workers while the player is actively scratching the garment, and on
- * coarse pointers keep icons static (first frame) even outside a stroke.
- */
+/** Only honor an explicit pause (e.g. matched / flight). Never freeze for scratch. */
 export function shouldFreezeSymbolLottie(opts: {
   basePaused: boolean;
   coarsePointer: boolean;
   isScratching: boolean;
 }): boolean {
-  if (opts.basePaused) return true;
-  if (opts.coarsePointer) return true;
-  if (opts.isScratching) return true;
-  return false;
+  void opts.coarsePointer;
+  void opts.isScratching;
+  return opts.basePaused;
 }
 
 /** Fetch symbol (and related) lottie URLs into HTTP cache before Tap to play. */

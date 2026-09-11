@@ -64,6 +64,8 @@ export function decideVideoSync(opts: {
   desiredTime?: number;
   actualTime?: number;
   duration?: number;
+  /** Phase 9: suppress soft seeks while the finger is down (hard still allowed). */
+  isScratching?: boolean;
   hardDriftS?: number;
   softDriftS?: number;
   confirmMs?: number;
@@ -99,6 +101,11 @@ export function decideVideoSync(opts: {
     state.driftSince = 0;
     state.lastSeekAt = now;
     return { action: "seek", reason: "hard" };
+  }
+
+  // Soft seeks while scratching hitch Safari mid-stroke; wait for pointer-up.
+  if (opts.isScratching) {
+    return { action: "none" };
   }
 
   if (abs > soft) {

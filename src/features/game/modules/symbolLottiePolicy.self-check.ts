@@ -13,37 +13,29 @@ function assert(cond: boolean, message: string): void {
 }
 
 assert(
-  shouldPreferStaticSymbolLottie({ coarsePointer: true }),
-  "coarse prefers static",
+  !shouldPreferStaticSymbolLottie({ coarsePointer: true }),
+  "coarse uses worker icons (sharp OffscreenCanvas path)",
 );
 assert(
   !shouldPreferStaticSymbolLottie({ coarsePointer: false }),
-  "fine pointer may use workers",
+  "fine uses worker icons",
 );
 
-assert(
-  shouldFreezeSymbolLottie({
-    basePaused: false,
-    coarsePointer: false,
-    isScratching: true,
-  }),
-  "freeze while scratching",
-);
-assert(
-  shouldFreezeSymbolLottie({
-    basePaused: false,
-    coarsePointer: true,
-    isScratching: false,
-  }),
-  "freeze on coarse always",
-);
 assert(
   !shouldFreezeSymbolLottie({
     basePaused: false,
     coarsePointer: false,
+    isScratching: true,
+  }),
+  "do not freeze while scratching",
+);
+assert(
+  !shouldFreezeSymbolLottie({
+    basePaused: false,
+    coarsePointer: true,
     isScratching: false,
   }),
-  "desktop idle may animate",
+  "coarse may animate",
 );
 assert(
   shouldFreezeSymbolLottie({
@@ -59,7 +51,7 @@ void preloadLottieUrls(["", "/missing.lottie", "/missing.lottie"]).then(() => {
     JSON.stringify(
       {
         ok: true,
-        policy: "coarse/static + freeze-while-scratching; preload best-effort",
+        policy: "worker icons on all pointers; freeze only when basePaused; preload",
       },
       null,
       2,

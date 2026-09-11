@@ -22,14 +22,14 @@ Scratch game (`/game`) frame-cost work. Prefer `*.self-check.ts` + `npm run test
 **Do:**
 1. Coalesce pointer/touch moves → one densified scratch apply per rAF (`scratchInputCoalesce.ts`).
 2. Fixed marks ring buffer — no per-stamp `[...].slice(-180)` (`scratchMarksRing.ts`).
-3. Quiet DotLottie on coarse pointer: prefer non-worker icons, freeze while scratching / always on coarse; skip peel lottie; preload symbol URLs on Tap to play (`symbolLottiePolicy.ts`, `GameSymbolIcon`, `TopSymbolBar`).
+3. Quiet DotLottie: preload on Tap to play; **worker icons on phones too** (preferStatic-on-coarse was reverted — looked soft). Freeze only when `basePaused`.
 4. Game WebGL `pixelRatio` via `resolveGameCanvasPixelRatio` — coarse ≤1.5, fine ≤2 (was locked to 1; Safari looked soft).
 5. Keep move path free of `setState` (pending ref only until rAF / pointer-up).
 
 **Done when:**
 - [x] Move path notes pending; rAF / stroke-end applies once
 - [x] Marks ring mutates in place
-- [x] Coarse pointer freezes/static symbols + preload on entry
+- [x] Symbol preload on entry; sharp worker icons (no preferStatic-on-coarse)
 - [x] Game canvas DPR capped (coarse 1.5 / fine 2) — not full phone 3×
 - [x] Self-checks wired into `npm run self-check`
 
@@ -50,6 +50,27 @@ Scratch game (`/game`) frame-cost work. Prefer `*.self-check.ts` + `npm run test
 - [x] Idle background stays full clip fps
 - [x] Phone scratch uses half-rate underlay
 - [x] Camera pan paused during stroke
+- [x] Self-checks wired
+
+---
+
+## Phase 9 — Stamp + foil budget
+
+**Why:** After Phases 1–8, Safari still paid for up to 40 densified paints/rAF, a 3× foil 2D canvas, body-marker DOM mid-stroke, soft video seeks during scratch, and fairy-dust `readPixels`/spawn on the stroke path.
+
+**Do:**
+1. Coarse stamp budget: densify ≤12 points, larger path step; auto ≤12/frame + fill 16 (`scratchStampBudget.ts`).
+2. Foil bar canvas DPR coarse ≤1.5 / fine ≤2 (`foilCanvasPixelRatio.ts`, `TopSymbolBar`).
+3. Freeze body markers while scratching — **reverted** (symbols looked stuck on the body); markers stay live.
+4. Suppress soft video seeks while scratching (`videoSync` `isScratching`).
+5. Coarse fairy dust: spawn only after pointer-up; skip fabric probe mid-stroke (`fairyDustSpawnPolicy.ts`).
+6. Symbol Lottie: worker path on mobile (preferStatic-on-coarse reverted — looked soft); freeze only when `basePaused`.
+
+**Done when:**
+- [x] Coarse finger scratch ≤ ~12 paints/rAF
+- [x] Foil overlay DPR ≤1.5 on phones
+- [x] Soft seeks suppressed during stroke; body markers stay live
+- [x] Fairy dust does not `readPixels`/spawn mid-stroke on coarse
 - [x] Self-checks wired
 
 ---

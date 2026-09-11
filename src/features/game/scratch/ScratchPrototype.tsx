@@ -82,7 +82,6 @@ import {
   createFabricAlphaCache,
   createSymbolScratchProbeCache,
   isSymbolNearStroke,
-  needsFabricAlphaSample,
   readCachedFabricAlpha,
   readCachedSymbolScratchAmount,
   writeCachedFabricAlpha,
@@ -110,8 +109,16 @@ import {
   createThrottledUiClock,
   shouldPublishThrottledUi,
 } from "../modules/scratchUiThrottle";
-import { shouldUpdateChestFollow } from "../modules/chestFollowGate";
+import { shouldUpdateBodyMarkers, shouldUpdateChestFollow } from "../modules/chestFollowGate";
+import {
+  shouldSampleFabricAlpha,
+  shouldSpawnFairyDust,
+} from "../modules/fairyDustSpawnPolicy";
 import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
+import {
+  resolveAutoScratchBudget,
+  resolveManualScratchBudget,
+} from "../modules/scratchStampBudget";
 import {
   createVideoSyncState,
   decideVideoSync,
@@ -813,15 +820,11 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
 
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
 const SCRATCH_RADIUS = 0.045;
-// Max canvas-space step between manual scratch stamps so fast swipes stay continuous.
-const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
-const MANUAL_SCRATCH_MAX_POINTS = 40;
+// Densify / auto stamp caps live in scratchStampBudget (Phase 9 coarse vs fine).
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
 // Step along each ↘ stroke (top-left → bottom-right) so brush circles overlap.
 const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
-const AUTO_SCRATCH_FILL_BATCH = 36;
-const AUTO_SCRATCH_MAX_PER_FRAME = 32;
 
 type AutoScratchSettings = {
   enabled: boolean;
@@ -1005,7 +1008,11 @@ const HINT_PULSE_GAP_MS = 1600;
 // that; see modules/videoSync.ts.
 const videoSyncState = new WeakMap<HTMLVideoElement, VideoSyncState>();
 
-function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
+function syncVideoTime(
+  source: HTMLVideoElement,
+  target: HTMLVideoElement,
+  opts?: { isScratching?: boolean },
+) {
   if (source.paused && !target.paused) {
     target.pause();
   }
@@ -1049,6 +1056,7 @@ function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
     desiredTime: targetTime,
     actualTime,
     duration,
+    isScratching: opts?.isScratching,
   });
   if (decision.action === "seek") {
     target.currentTime = targetTime;
@@ -2337,6 +2345,9 @@ export function ScratchPrototype() {
         const huntComplete =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        const autoBudget = resolveAutoScratchBudget({
+          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+        });
         if (
           autoActive &&
           huntComplete &&
@@ -2351,7 +2362,7 @@ export function ScratchPrototype() {
             while (
               autoPathProgressRef.current >= 1 &&
               autoPathIndexRef.current < path.length &&
-              scratched < AUTO_SCRATCH_MAX_PER_FRAME
+              scratched < autoBudget.maxPerFrame
             ) {
               autoPathProgressRef.current -= 1;
               const pt = path[autoPathIndexRef.current];
@@ -2382,7 +2393,7 @@ export function ScratchPrototype() {
             let filled = 0;
             for (
               let i = 0;
-              i < samples.length && filled < AUTO_SCRATCH_FILL_BATCH;
+              i < samples.length && filled < autoBudget.fillBatch;
               i += 1
             ) {
               if (revealed[i]) continue;
@@ -2406,7 +2417,9 @@ export function ScratchPrototype() {
           bottomVideo.readyState >= 2 &&
           foregroundVideo.readyState >= 2
         ) {
-          syncVideoTime(bottomVideo, foregroundVideo);
+          syncVideoTime(bottomVideo, foregroundVideo, {
+            isScratching: drawingRef.current,
+          });
         }
 
         if (bottomVideo) {
@@ -2483,6 +2496,7 @@ export function ScratchPrototype() {
         const stage = stageRef.current;
         const canvas = canvasRef.current;
         if (
+          shouldUpdateBodyMarkers({ isScratching: drawingRef.current }) &&
           !showIntroCountdownRef.current &&
           bodyPoints &&
           bodyPoints.length === SYMBOL_SLOT_COUNT &&
@@ -3301,13 +3315,15 @@ export function ScratchPrototype() {
     !introCover &&
     (!useBodySymbols ||
       (topBarPhase !== "center" && !introGateActive && !symbolsHuntComplete));
-  // Win-feel trail: spawn only during the brief celebrate window after each
-  // +10% scratched (not a continuous trail for the whole stroke).
-  const cursorFxSpawnActive =
-    cursorFxPlayWindow &&
-    cursorFxCelebrate &&
-    isScratching &&
-    cursorOnMesh;
+  // Win-feel trail: celebrate window after each +10%. Fine pointer spawns while
+  // scratching on mesh; coarse defers spawn until pointer-up (Phase 9).
+  const cursorFxSpawnActive = shouldSpawnFairyDust({
+    playWindow: cursorFxPlayWindow,
+    celebrate: cursorFxCelebrate,
+    isScratching,
+    cursorOnMesh,
+    coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+  });
   const cursorFxSpawnCount = cursorFxCelebrate
     ? celebrateParticleBoost(cursorFx.particleCount)
     : cursorFx.particleCount;
@@ -4227,13 +4243,16 @@ export function ScratchPrototype() {
     if (!trackedSample) return;
 
     const last = lastScratchWorldRef.current;
+    const manualBudget = resolveManualScratchBudget({
+      coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+    });
     const strokePoints =
       last !== null
         ? densifyStrokeSegment(
             last,
             point,
-            MANUAL_SCRATCH_PATH_STEP,
-            MANUAL_SCRATCH_MAX_POINTS,
+            manualBudget.pathStep,
+            manualBudget.maxPoints,
           )
         : [point];
 
@@ -4257,9 +4276,15 @@ export function ScratchPrototype() {
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
     // Fabric alpha is only for fairy-dust spawn gating. Skip readPixels when
-    // dust is off; when on, sample at most once per rAF.
+    // dust is off or coarse mid-stroke (Phase 9 defers spawn to pointer-up).
     let onFabric = true;
-    if (needsFabricAlphaSample(cursorFxRef.current.fairyDust)) {
+    if (
+      shouldSampleFabricAlpha({
+        fairyDust: cursorFxRef.current.fairyDust,
+        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+        isScratching: drawingRef.current,
+      })
+    ) {
       const probeFrame = probeFrameIdRef.current;
       const fabricCache = fabricAlphaCacheRef.current;
       let fabricAlpha = readCachedFabricAlpha(fabricCache, probeFrame);
