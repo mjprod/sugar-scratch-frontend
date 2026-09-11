@@ -63,9 +63,13 @@
      before TopSymbolBar mounts so pause/mute don't jump when the bar appears. */
   --game-top-bar-gap: 3px;
   --game-top-bar-pad-x: 8px;
+  --game-top-bar-pad-y: 7px;
   --game-top-bar-width: calc(
     (6 * var(--game-symbol-slot)) + (5 * var(--game-top-bar-gap)) +
       (2 * var(--game-top-bar-pad-x))
+  );
+  --game-top-bar-height: calc(
+    var(--game-symbol-slot) + (2 * var(--game-top-bar-pad-y))
   );
 }
 
@@ -214,6 +218,8 @@
     var(--game-top-bar-width, 256px)
     minmax(48px, 1fr);
   align-items: center;
+  /* Match docked pill height so pause/mute center against the stage-absolute bar. */
+  min-height: var(--game-top-bar-height, 54px);
   pointer-events: none;
 }
 
@@ -221,7 +227,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  min-height: 40px;
+  min-height: var(--game-top-bar-height, 54px);
 }
 
 .stage-game__top-chrome-side.is-start,

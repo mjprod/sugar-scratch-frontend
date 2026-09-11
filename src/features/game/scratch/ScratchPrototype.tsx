@@ -1517,13 +1517,16 @@ export function ScratchPrototype({
   const themeIntroByKeyRef = useRef<Map<string, string>>(new Map());
   const [themeIntrosReady, setThemeIntrosReady] = useState(false);
   /** True once we've decided whether to show a hand-start intro (or skipped it). */
-  const [handStartIntroResolved, setHandStartIntroResolved] = useState(false);
+  const [handStartIntroResolved, setHandStartIntroResolved] = useState(
+    () => skipToPlay,
+  );
   /**
    * Don't unlock the scratch bar until the card clips have a frame.
    * Avoids the black stage that shows if the bar appears while Safari is still
    * attaching decoders after the theme intro.
+   * Lab skipToPlay can show chrome immediately — video readiness still gates play.
    */
-  const [gameVideosReady, setGameVideosReady] = useState(false);
+  const [gameVideosReady, setGameVideosReady] = useState(() => skipToPlay);
   /**
    * Cold refresh has no audio gesture — wait for Tap to play so theme-intro
    * autoplay + game-clip play() land inside a user gesture (otherwise the
@@ -3335,6 +3338,10 @@ export function ScratchPrototype({
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
+  // load). Keep this separate from matchStartUnlocked so scratch stays gated.
+  const topChromeBarReady =
+    topBarPhase === "docked" && (skipToPlay || matchStartUnlocked);
   const symbolsHuntComplete =
     useBodySymbols && revealedSymbols >= SYMBOL_SLOT_COUNT;
   const huntPhase = resolveHuntPhase({
@@ -4943,8 +4950,11 @@ export function ScratchPrototype({
               <div className="photo-scratch-intro-ring" />
             </div>
           ) : null}
-          {/* Top chrome: pause flex-centered between frame edge and middle bar.
-              Center cell always reserves the 6-slot pill width so sides don't jump. */}
+          {/* Top chrome: pause | fixed 6-slot track | mute.
+              Body-match bar is stage-absolute (center foil → dock fly →
+              showcase) so one instance keeps reveal state + fly animation.
+              Center cell is a spacer only — still reserves the docked width
+              so pause/mute never jump when the bar appears or docks. */}
           <div
             className={`stage-game__top-chrome${
               topBarPhase === "docked" ? " is-docked" : ""
@@ -4953,65 +4963,51 @@ export function ScratchPrototype({
             <div className="stage-game__top-chrome-side is-start">
               {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
             </div>
-            <div className="stage-game__top-chrome-center">
-              {matchStartUnlocked && topBarPhase === "docked" ? (
-                useBodySymbols || skipToPlay ? (
-                  /* Body-match bar (and lab skipToPlay): always 6 top slots.
-                     Mount before mesh resolves so the reserved center never
-                     swaps from empty → 12-slot legacy → 6-slot bar. */
-                  <TopSymbolBar
-                    symbols={topSymbols}
-                    phase={topBarPhase}
-                    roundKey={topBarRound}
-                    matchedSlots={litTopSlots}
-                    slotElsOutRef={topBarSlotElsRef}
-                    forceRevealed={skipToPlay}
-                    onAllRevealed={onTopBarAllRevealed}
-                  />
-                ) : (
-                  /* Legacy foil path: always 6 top slots (never body 12). */
-                  <div
-                    className={`symbol-bar${
-                      revealedSymbols >= TOP_SYMBOL_COUNT
-                        ? " is-symbols-complete"
-                        : ""
-                    }${claimed ? " is-fully-revealed" : ""}`}
-                    aria-label="Game symbols"
-                  >
-                    {topSymbols
-                      .slice(0, TOP_SYMBOL_COUNT)
-                      .map((typeId, index) => (
-                        <div
-                          key={index}
-                          ref={(el) => {
-                            symbolSlotRefs.current[index] = el;
-                          }}
-                          className={`symbol-slot${
-                            litSymbolSlots[index] ? " is-revealed" : ""
-                          }`}
-                          title={
-                            litSymbolSlots[index]
-                              ? SYMBOL_TYPES[typeId]?.label
-                              : undefined
-                          }
-                        >
-                          {litSymbolSlots[index] ? (
-                            <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
-                          ) : null}
-                        </div>
-                      ))}
-                  </div>
-                )
+            <div className="stage-game__top-chrome-center" aria-hidden="true">
+              {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
+                /* Legacy foil path: always 6 top slots (never body 12). */
+                <div
+                  className={`symbol-bar${
+                    revealedSymbols >= TOP_SYMBOL_COUNT
+                      ? " is-symbols-complete"
+                      : ""
+                  }${claimed ? " is-fully-revealed" : ""}`}
+                  aria-label="Game symbols"
+                >
+                  {topSymbols
+                    .slice(0, TOP_SYMBOL_COUNT)
+                    .map((typeId, index) => (
+                      <div
+                        key={index}
+                        ref={(el) => {
+                          symbolSlotRefs.current[index] = el;
+                        }}
+                        className={`symbol-slot${
+                          litSymbolSlots[index] ? " is-revealed" : ""
+                        }`}
+                        title={
+                          litSymbolSlots[index]
+                            ? SYMBOL_TYPES[typeId]?.label
+                            : undefined
+                        }
+                      >
+                        {litSymbolSlots[index] ? (
+                          <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
+                        ) : null}
+                      </div>
+                    ))}
+                </div>
               ) : null}
             </div>
             <div className="stage-game__top-chrome-side is-end">
               <StageMuteButton />
             </div>
           </div>
-          {/* Center / showcase phases stay stage-absolute (mid-screen fly). */}
-          {useBodySymbols &&
-          matchStartUnlocked &&
-          topBarPhase !== "docked" ? (
+          {/* One TopSymbolBar for the whole match sequence:
+              center (scratch foil) → docked (fly to top) → showcase. */}
+          {(useBodySymbols || skipToPlay) &&
+          (topChromeBarReady ||
+            (matchStartUnlocked && topBarPhase !== "docked")) ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}

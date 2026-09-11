@@ -326,7 +326,7 @@ textarea:focus-visible {
   transform: none !important;
   animation: none !important;
   gap: var(--bar-icon-gap);
-  padding: 7px var(--game-top-bar-pad-x, 8px);
+  padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
   overflow: hidden;
 }
 
@@ -344,7 +344,7 @@ textarea:focus-visible {
   );
   margin-inline: auto;
   gap: var(--bar-icon-gap);
-  padding: 7px var(--game-top-bar-pad-x, 8px);
+  padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
   overflow: hidden;
 }
 
@@ -663,47 +663,58 @@ textarea:focus-visible {
 }
 
 .top-symbol-bar.is-phase-docked {
-  /* When not in top-chrome (fallback), keep absolute dock placement. */
+  /* Stage-absolute dock: same 6-slot width as the chrome center spacer so
+     pause/mute gutters stay put while this bar flies mid → top.
+     Override .symbol-bar left/right/margin so centering is left:50% only. */
+  position: absolute !important;
   top: var(
     --game-top-hud,
     calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
-  );
-  left: 0;
-  right: 0;
+  ) !important;
+  left: 50% !important;
+  right: auto !important;
   box-sizing: border-box;
-  width: var(--game-top-bar-width, fit-content);
-  max-width: var(--game-top-bar-width, calc(100% - 32px));
-  margin-inline: auto;
-  transform: translateY(0) scale(1);
+  width: var(--game-top-bar-width, fit-content) !important;
+  max-width: min(var(--game-top-bar-width, 100%), calc(100% - 32px)) !important;
+  margin: 0 !important;
+  transform: translateX(-50%) translateY(0) scale(1);
   gap: var(--game-top-bar-gap, 3px);
-  padding: 7px var(--game-top-bar-pad-x, 8px);
+  padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
   pointer-events: none;
   cursor: default;
+  /* Keep width/gap/pad transitions off — size is locked to 6 slots. */
   transition: none;
-  animation: none;
+  animation: top-bar-dock-fly 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
   background: transparent;
   border: 0 !important;
   box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
   overflow: hidden;
+  z-index: 9;
+}
+
+/* Lab / skip-to-play lands already docked — no mid→top fly on first paint. */
+.top-symbol-bar.is-phase-docked.is-force-revealed {
+  animation: none;
 }
 
 @keyframes top-bar-dock-fly {
   0% {
     top: 50%;
-    transform: translateY(-50%) scale(1.06);
+    /* Mid-screen foil is larger (44px slots); scale down into docked 6-slot pill. */
+    transform: translateX(-50%) translateY(-50%) scale(1.18);
     box-shadow:
       0 18px 48px oklch(0 0 0 / 0.5),
       0 0 48px oklch(0.865 0.116 75.55 / 0.35);
   }
   42% {
-    transform: translateY(-58%) scale(0.86);
+    transform: translateX(-50%) translateY(-58%) scale(0.94);
   }
   100% {
     top: var(
       --game-top-hud,
       calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
     );
-    transform: translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1);
     box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
   }
 }
@@ -2417,8 +2428,11 @@ textarea:focus-visible {
       --game-top-hud,
       calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
     );
-    gap: 2px;
-    padding: 6px 7px;
+    /* Keep the locked 6-slot geometry; only tighten slightly on narrow phones. */
+    gap: var(--game-top-bar-gap, 3px);
+    padding: 6px var(--game-top-bar-pad-x, 8px);
+    width: var(--game-top-bar-width, fit-content);
+    max-width: min(var(--game-top-bar-width, 100%), calc(100% - 24px));
   }
 
   .top-symbol-bar .top-symbol-slot {
