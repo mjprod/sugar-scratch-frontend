@@ -167,6 +167,7 @@ export function GameSymbolIcon({
   size = 24,
   paused = false,
   pixelScale = 1,
+  preferStatic = false,
 }: {
   typeId: number;
   size?: number;
@@ -182,6 +183,11 @@ export function GameSymbolIcon({
    * play again (e.g. a top slot that just matched).
    */
   paused?: boolean;
+  /**
+   * Prefer main-thread DotLottie (no OffscreenCanvas worker). Used on coarse
+   * pointers so Safari isn’t flooded with worker `message` events mid-scratch.
+   */
+  preferStatic?: boolean;
 }) {
   const entry = SYMBOL_TYPES[typeId] ?? SYMBOL_TYPES[0];
   const [player, setPlayer] = useState<DotLottie | null>(null);
@@ -233,7 +239,7 @@ export function GameSymbolIcon({
     turn.setReady(true);
   }, [player, paused]);
 
-  if (SUPPORTS_OFFSCREEN) {
+  if (SUPPORTS_OFFSCREEN && !preferStatic) {
     return (
       <WorkerSymbolIcon
         key={entry.src}

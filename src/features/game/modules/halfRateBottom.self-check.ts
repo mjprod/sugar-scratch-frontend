@@ -1,5 +1,5 @@
 /**
- * Offline invariants for half-rate bottom video uploads.
+ * Offline invariants for bottom video uploads (Phase 8).
  * Run: npx tsx src/features/game/modules/halfRateBottom.self-check.ts
  */
 import { shouldHalfRateBottomUploads } from "./halfRateBottom";
@@ -9,31 +9,43 @@ function assert(cond: boolean, message: string): void {
 }
 
 assert(
-  shouldHalfRateBottomUploads(false),
-  "half-rate while FG composited",
+  !shouldHalfRateBottomUploads({
+    hideForeground: false,
+    isScratching: false,
+    coarsePointer: true,
+  }),
+  "idle phone: full-rate underlay",
 );
 assert(
-  !shouldHalfRateBottomUploads(true),
-  "full-rate bottom after FG hide",
+  shouldHalfRateBottomUploads({
+    hideForeground: false,
+    isScratching: true,
+    coarsePointer: true,
+  }),
+  "scratching phone: half-rate underlay",
 );
-
-// Two 30fps clips → ~45 bottom+FG uploads/s instead of ~60 while FG visible.
-{
-  const clipFps = 30;
-  const fullBoth = clipFps * 2;
-  const halfBottom = clipFps + clipFps / 2;
-  assert(halfBottom < fullBoth, "fewer GPU uploads with half-rate bottom");
-  assert(
-    halfBottom / fullBoth <= 0.76,
-    "≈25% less upload traffic with two videos",
-  );
-}
+assert(
+  !shouldHalfRateBottomUploads({
+    hideForeground: false,
+    isScratching: true,
+    coarsePointer: false,
+  }),
+  "desktop scratch: full-rate underlay",
+);
+assert(
+  !shouldHalfRateBottomUploads({
+    hideForeground: true,
+    isScratching: true,
+    coarsePointer: true,
+  }),
+  "after FG hide: full-rate bottom",
+);
 
 console.log(
   JSON.stringify(
     {
       ok: true,
-      policy: "half-rate bottom for whole playable session; full-rate after FG hide",
+      policy: "half-rate bottom only while scratching on coarse; else full-rate",
     },
     null,
     2,

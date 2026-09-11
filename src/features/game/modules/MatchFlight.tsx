@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 
 import { GameSymbolIcon } from "./GameSymbolIcon";
+import { shouldPreferStaticSymbolLottie } from "./symbolLottiePolicy";
 import {
   MATCH_ANTICIPATION_MS,
   MATCH_SEQUENCE_MS,
@@ -15,6 +16,12 @@ import {
   quadraticBezier,
   type Point,
 } from "./matchFlightPath";
+
+const PREFER_STATIC_SYMBOLS =
+  typeof window !== "undefined" &&
+  shouldPreferStaticSymbolLottie({
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+  });
 
 type MatchFlightProps = {
   typeId: number;
@@ -153,7 +160,13 @@ export function MatchFlight({
             aria-hidden="true"
           />
           <span className="flying-coin-face flying-coin-plane flying-coin-plane--mid">
-            <GameSymbolIcon typeId={typeId} size={34} pixelScale={2.2} paused />
+            <GameSymbolIcon
+              typeId={typeId}
+              size={34}
+              pixelScale={2.2}
+              preferStatic={PREFER_STATIC_SYMBOLS}
+              paused
+            />
           </span>
         </span>
       </div>

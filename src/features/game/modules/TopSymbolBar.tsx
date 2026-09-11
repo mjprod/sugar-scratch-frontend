@@ -98,6 +98,12 @@ type TopSymbolBarProps = {
   matchedSlots?: boolean[];
   /** Optional mirror of slot DOM nodes for fly-to-slot animations. */
   slotElsOutRef?: MutableRefObject<(HTMLDivElement | null)[]>;
+  /** Force symbol lotties onto first frame (iOS scratch / coarse pointer). */
+  freezeSymbols?: boolean;
+  /** Skip worker-backed symbol players (coarse pointer). */
+  preferStaticSymbols?: boolean;
+  /** Hide decorative peel lottie (coarse pointer / reduced motion). */
+  quietDecorativeLottie?: boolean;
 };
 
 let scratchTexture: HTMLImageElement | null = null;
@@ -341,6 +347,9 @@ export function TopSymbolBar({
   forceRevealed = false,
   matchedSlots,
   slotElsOutRef,
+  freezeSymbols = false,
+  preferStaticSymbols = false,
+  quietDecorativeLottie = false,
 }: TopSymbolBarProps) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
@@ -920,10 +929,16 @@ export function TopSymbolBar({
               // Retina + CSS pulse/enter scales — render the backing store
               // ahead of those transforms so the icons stay crisp.
               pixelScale={phase === "docked" ? 2 : 2.5}
+              preferStatic={preferStaticSymbols}
               // Only animate during the center foil reveal. Docked / showcase
               // use CSS (dormant desat, pulse) — keeps DotLottie workers frozen
               // for the whole hunt, which is the long expensive stretch.
-              paused={!revealed || dormant || phase !== "center"}
+              paused={
+                freezeSymbols ||
+                !revealed ||
+                dormant ||
+                phase !== "center"
+              }
             />
           </div>
         );
@@ -935,7 +950,7 @@ export function TopSymbolBar({
           aria-hidden="true"
         />
       ) : null}
-      {showCoating ? (
+      {showCoating && !quietDecorativeLottie ? (
         <div
           className={`lottie-clipper${peelHidden ? " is-faded" : ""}`}
           aria-hidden="true"

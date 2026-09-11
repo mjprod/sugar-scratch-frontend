@@ -89,9 +89,28 @@ import {
   writeCachedSymbolScratchAmount,
 } from "../modules/scratchProbeCache";
 import {
+  clearPendingScratchMove,
+  createScratchInputCoalesce,
+  notePendingScratchMove,
+  takePendingScratchMove,
+} from "../modules/scratchInputCoalesce";
+import {
+  clearScratchMarks,
+  createScratchMarksRing,
+  pushScratchMark,
+  scratchMarksSome,
+} from "../modules/scratchMarksRing";
+import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
+import {
+  preloadLottieUrls,
+  shouldFreezeSymbolLottie,
+  shouldPreferStaticSymbolLottie,
+} from "../modules/symbolLottiePolicy";
+import {
   createThrottledUiClock,
   shouldPublishThrottledUi,
 } from "../modules/scratchUiThrottle";
+import { shouldUpdateChestFollow } from "../modules/chestFollowGate";
 import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
 import {
   createVideoSyncState,
@@ -328,12 +347,6 @@ function DebugHud() {
     </div>
   );
 }
-
-type ScratchMark = {
-  u: number;
-  v: number;
-  radius: number;
-};
 
 // A coin that animates from the scratch origin up to a symbol slot in the top
 // bar each time a new symbol ("coin") is earned. Positions are stage-relative
@@ -1229,7 +1242,8 @@ export function ScratchPrototype() {
   /** After claim, FG is paused + rVFC-unhooked so it stops decoding. */
   const fgParkedRef = useRef(false);
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
-  const marksRef = useRef<ScratchMark[]>([]);
+  const marksRef = useRef(createScratchMarksRing());
+  const scratchInputCoalesceRef = useRef(createScratchInputCoalesce());
   const hoverPointRef = useRef<Vec2 | null>(null);
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const drawingRef = useRef(false);
@@ -1593,6 +1607,9 @@ export function ScratchPrototype() {
   const applyScratchAtUvRef = useRef<
     (u: number, v: number, radius: number, worldPoint?: Vec2 | null) => void
   >(() => undefined);
+  const addScratchRef = useRef<(clientX: number, clientY: number) => void>(
+    () => undefined,
+  );
   const tryResolveGameRef = useRef<() => void>(() => undefined);
   const resetScratchRef = useRef<() => void>(() => undefined);
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
@@ -1623,6 +1640,8 @@ export function ScratchPrototype() {
   }
 
   function endScratchStroke() {
+    const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
+    if (pending) addScratchRef.current(pending.x, pending.y);
     drawingRef.current = false;
     setIsScratching(false);
     publishProgressUi(true);
@@ -1751,6 +1770,8 @@ export function ScratchPrototype() {
     unlockCountdownSound();
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
+    // Warm symbol lottie HTTP cache before hunt workers spin up (Phase 7).
+    void preloadLottieUrls(SYMBOL_TYPES.map((entry) => entry.src));
     // Flush so the intro <video> mounts inside this user gesture — async
     // effect play() is often aborted (readyState 0 / background-media pause).
     flushSync(() => {
@@ -2210,7 +2231,14 @@ export function ScratchPrototype() {
       const canvas = canvasRef.current;
       if (!canvas) return null;
       try {
-        renderer = new GarmentGLRenderer(canvas, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const pixelRatio = resolveGameCanvasPixelRatio({
+          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+          devicePixelRatio:
+            typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+        });
+        renderer = new GarmentGLRenderer(canvas, CANVAS_WIDTH, CANVAS_HEIGHT, {
+          pixelRatio,
+        });
         glRendererRef.current = renderer;
         setGlError(null);
         return renderer;
@@ -2229,6 +2257,15 @@ export function ScratchPrototype() {
         const active = ensureRenderer();
         if (!active) return;
         probeFrameIdRef.current += 1;
+        // One densified scratch apply per rAF while the finger moves (Phase 7).
+        if (drawingRef.current) {
+          const pending = takePendingScratchMove(
+            scratchInputCoalesceRef.current,
+          );
+          if (pending) addScratchRef.current(pending.x, pending.y);
+        } else {
+          clearPendingScratchMove(scratchInputCoalesceRef.current);
+        }
         const now = performance.now();
         const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
         lastFrameTime = now;
@@ -2251,13 +2288,13 @@ export function ScratchPrototype() {
         const videoTime = bottomVideo?.currentTime ?? time;
 
         // Subtle chest-follow camera: pan toward keeping the chest anchor at its
-        // target framing point, clamped + smoothed. Sample every frame for a
-        // continuous pan; GarmentGLRenderer's ~0.5px dirty eps skips sub-pixel
-        // presents so this doesn't defeat frame-skip on high-Hz displays.
+        // target framing point, clamped + smoothed. Freeze while the finger is
+        // down (Phase 8) so camMoved doesn't force extra GL presents during scratch.
         const camera = cameraRef.current;
-        let targetCamX = 0;
-        let targetCamY = 0;
-        if (trackedSample) {
+        if (
+          shouldUpdateChestFollow({ isScratching: drawingRef.current }) &&
+          trackedSample
+        ) {
           const chest = sampleMeshUvToWorld(
             trackedSample,
             CHEST_ANCHOR_UV.x,
@@ -2267,18 +2304,16 @@ export function ScratchPrototype() {
           const targetPy = CANVAS_HEIGHT * CHEST_TARGET_UV.y;
           const shiftX = (targetPx - chest.x) * CHEST_FOLLOW_STRENGTH;
           const shiftY = (targetPy - chest.y) * CHEST_FOLLOW_STRENGTH;
-          targetCamX = clampValue(
+          const targetCamX = clampValue(
             shiftX / (CANVAS_WIDTH / 2),
             -CHEST_CAM_MAX,
             CHEST_CAM_MAX,
           );
-          targetCamY = clampValue(
+          const targetCamY = clampValue(
             -shiftY / (CANVAS_HEIGHT / 2),
             -CHEST_CAM_MAX,
             CHEST_CAM_MAX,
           );
-        }
-        {
           const dx = targetCamX - camera.x;
           const dy = targetCamY - camera.y;
           if (Math.abs(dx) <= CHEST_CAM_EPS && Math.abs(dy) <= CHEST_CAM_EPS) {
@@ -2433,9 +2468,12 @@ export function ScratchPrototype() {
           hideForeground,
           chromaKeyRef.current,
           PRESENT_ZOOM,
-          // Session-wide: half-rate bottom underlay; FG stays full rate for glue.
-          // Renderer also clears the flag when hideForeground (claimed).
-          shouldHalfRateBottomUploads(hideForeground),
+          // Phase 8: half-rate underlay only while scratching on coarse pointers.
+          shouldHalfRateBottomUploads({
+            hideForeground,
+            isScratching: drawingRef.current,
+            coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+          }),
         );
 
         // Skip body-marker transforms while the intro countdown covers the stage —
@@ -2837,7 +2875,7 @@ export function ScratchPrototype() {
       return;
     }
     setSelectedMeshFile(card.mesh);
-    marksRef.current = [];
+    clearScratchMarks(marksRef.current);
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
     if (!cardTransitionActiveRef.current) {
@@ -2907,7 +2945,8 @@ export function ScratchPrototype() {
     const samples = buildRevealSamples(trackedMesh);
     revealSamplesRef.current = samples;
     const revealed = samples.map((p) =>
-      marksRef.current.some(
+      scratchMarksSome(
+        marksRef.current,
         (m) => Math.hypot((m.u - p.x) / m.radius, (m.v - p.y) / m.radius) <= 1,
       ),
     );
@@ -3309,7 +3348,8 @@ export function ScratchPrototype() {
   }
 
   function resetScratch() {
-    marksRef.current = [];
+    clearScratchMarks(marksRef.current);
+    clearPendingScratchMove(scratchInputCoalesceRef.current);
     lastScratchWorldRef.current = null;
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
@@ -4037,7 +4077,7 @@ export function ScratchPrototype() {
 
     if (finalize) huntHintActivityAtRef.current = performance.now();
 
-    marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
+    pushScratchMark(marksRef.current, u, v, radius);
     glRendererRef.current?.paintScratch(u, v, radius);
 
     const samples = revealSamplesRef.current;
@@ -4235,6 +4275,7 @@ export function ScratchPrototype() {
     const onMesh = applied && uvAtPointer !== null && onFabric;
     publishCursorOnMesh(onMesh);
   }
+  addScratchRef.current = addScratch;
 
   function setVideoTime(time: number) {
     const bottomVideo = bottomVideoRef.current;
@@ -4788,6 +4829,17 @@ export function ScratchPrototype() {
               matchedSlots={litTopSlots}
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
+              freezeSymbols={shouldFreezeSymbolLottie({
+                basePaused: false,
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                isScratching,
+              })}
+              preferStaticSymbols={shouldPreferStaticSymbolLottie({
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+              })}
+              quietDecorativeLottie={shouldPreferStaticSymbolLottie({
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+              })}
             />
           ) : null}
           <ScratchFrameProgress
@@ -4816,7 +4868,18 @@ export function ScratchPrototype() {
                   }
                 >
                   {litSymbolSlots[index] ? (
-                    <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
+                    <GameSymbolIcon
+                      typeId={typeId}
+                      pixelScale={1.2}
+                      preferStatic={shouldPreferStaticSymbolLottie({
+                        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                      })}
+                      paused={shouldFreezeSymbolLottie({
+                        basePaused: false,
+                        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                        isScratching,
+                      })}
+                    />
                   ) : null}
                 </div>
               ))}
@@ -4850,6 +4913,9 @@ export function ScratchPrototype() {
                         typeId={typeId}
                         size={BODY_SYMBOL_ICON_PX}
                         pixelScale={1.2}
+                        preferStatic={shouldPreferStaticSymbolLottie({
+                          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                        })}
                         paused
                       />
                     </span>
@@ -4888,7 +4954,13 @@ export function ScratchPrototype() {
                   onAnimationEnd={() => removeFlyingCoin(coin.id)}
                   aria-hidden="true"
                 >
-                  <GameSymbolIcon typeId={coin.typeId} pixelScale={1.15} />
+                  <GameSymbolIcon
+                    typeId={coin.typeId}
+                    pixelScale={1.15}
+                    preferStatic={shouldPreferStaticSymbolLottie({
+                      coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                    })}
+                  />
                 </div>
               ))
             : flyingCoins.map((coin) => (
@@ -4943,6 +5015,7 @@ export function ScratchPrototype() {
               drawingRef.current = true;
               setIsScratching(true);
               lastScratchWorldRef.current = null;
+              clearPendingScratchMove(scratchInputCoalesceRef.current);
               lastPointerClientRef.current = {
                 x: event.clientX,
                 y: event.clientY,
@@ -4963,7 +5036,12 @@ export function ScratchPrototype() {
                 event.clientY,
               );
               if (!drawingRef.current) return;
-              addScratch(event.clientX, event.clientY);
+              // Coalesce to one densified apply per rAF (Phase 7).
+              notePendingScratchMove(
+                scratchInputCoalesceRef.current,
+                event.clientX,
+                event.clientY,
+              );
             }}
             onPointerUp={() => {
               endScratchStroke();
