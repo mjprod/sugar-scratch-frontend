@@ -219,7 +219,8 @@
  */
 .stage-game__top-chrome {
   --game-top-chrome-gap: 8px;
-  --game-top-status-height: 34px;
+  /* Match pack-progress pill height so toasts don't shrink after cards-left leaves. */
+  --game-top-status-height: 45px;
   position: absolute;
   top: var(--game-top-hud, calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh));
   left: 50%;
@@ -258,7 +259,9 @@
   align-items: stretch;
   width: 92%;
   max-width: 92%;
-  min-height: var(--game-top-status-height, 34px);
+  /* Keep row tall even when cards-left unmounts so toast height stays stable. */
+  min-height: var(--game-top-status-height, 45px);
+  height: var(--game-top-status-height, 45px);
   align-self: center;
   margin-inline: auto;
 }
@@ -295,10 +298,11 @@
   align-items: stretch;
   justify-content: flex-start;
   min-width: 0;
-  min-height: var(--game-top-status-height, 34px);
+  min-height: var(--game-top-status-height, 45px);
   height: 100%;
 }
 
+.stage-game__top-chrome-status-cards .pack-progress-shell,
 .stage-game__top-chrome-status-cards .pack-progress {
   width: max-content;
   max-width: 100%;
@@ -314,7 +318,7 @@
   align-items: stretch;
   justify-content: flex-end;
   min-width: 0;
-  min-height: var(--game-top-status-height, 34px);
+  min-height: var(--game-top-status-height, 45px);
   height: 100%;
   pointer-events: none;
 }
@@ -476,81 +480,13 @@
   color: oklch(0.971 0.003 286.35 / 0.92);
 }
 
-.game-pause__rows {
-  display: grid;
-  gap: 2px;
-}
-
-.game-pause__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding-inline: 4px;
-}
-
-.game-pause__row-icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  color: oklch(1 0 0 / 0.55);
-}
-
-.game-pause__row-label {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  color: oklch(0.971 0.003 286.35 / 0.9);
-}
-
-.game-pause__switch {
-  position: relative;
-  flex: none;
-  width: 44px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid oklch(1 0 0 / 0.14);
-  border-radius: 999px;
-  background: oklch(1 0 0 / 0.08);
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease;
-}
-
-.game-pause__switch.is-on {
-  border-color: oklch(0.779 0.139 1.41 / 0.6);
-  background: oklch(0.639 0.256 9.9 / 0.55);
-}
-
-.game-pause__switch-knob {
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: oklch(1 0 0 / 0.85);
-  transform: translateY(-50%);
-  transition:
-    left 160ms cubic-bezier(0.22, 1, 0.36, 1),
-    background 160ms ease;
-}
-
-.game-pause__switch.is-on .game-pause__switch-knob {
-  left: 21px;
-  background: oklch(1 0 0);
-}
-
 .game-pause__resume {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 44px;
-  margin-top: 16px;
+  margin-top: 4px;
   border: 1px solid oklch(0.779 0.139 1.41 / 0.5);
   border-radius: 12px;
   background: oklch(0.639 0.256 9.9 / 0.42);
@@ -591,7 +527,6 @@
   color: oklch(1 0 0 / 0.85);
 }
 
-.game-pause__switch:focus-visible,
 .game-pause__resume:focus-visible,
 .game-pause__leave:focus-visible {
   outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);

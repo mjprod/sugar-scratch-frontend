@@ -355,6 +355,71 @@ textarea:focus-visible {
   flex: 0 0 var(--game-symbol-slot, 40px);
 }
 
+/* Shell so cards-left can exit without fighting the pill layout.
+   Same Apple anticipate → overshoot settle as the found toast. */
+.pack-progress-shell {
+  display: inline-flex;
+  max-width: 100%;
+  transform-origin: top center;
+  animation: pack-progress-enter 480ms both;
+}
+
+.pack-progress-shell.is-leaving {
+  animation: pack-progress-leave 360ms both;
+  pointer-events: none;
+}
+
+@keyframes pack-progress-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.84);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  16% {
+    opacity: 0.75;
+    transform: translateY(-11px) scale(0.76);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  58% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pack-progress-leave {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(5px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.78);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-progress-shell,
+  .pack-progress-shell.is-leaving {
+    animation: none !important;
+  }
+}
+
 /* Pack session progress — pink pill, status row under pause. */
 .pack-progress {
   position: relative;
@@ -1336,7 +1401,7 @@ textarea:focus-visible {
   justify-content: center;
   gap: 2px;
   height: 100%;
-  min-height: 100%;
+  min-height: var(--game-top-status-height, 45px);
   width: max-content;
   min-width: 3.25rem;
   max-width: 100%;

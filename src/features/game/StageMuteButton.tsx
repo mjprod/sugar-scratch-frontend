@@ -2,23 +2,26 @@ import { useEffect, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import {
   getGameAudioPrefs,
+  setBackgroundMusicEnabled,
   setSoundEffectEnabled,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 
 /**
  * Right top-chrome control: same pill as pause, mute symbol.
- * Toggles game SFX prefs used by the scratch stage.
+ * Toggles both SFX and background music together (pause popup no longer has rows).
  */
 export function StageMuteButton() {
-  const [soundOn, setSoundOn] = useState(
-    () => getGameAudioPrefs().soundEffect,
-  );
+  const [soundOn, setSoundOn] = useState(() => {
+    const prefs = getGameAudioPrefs();
+    return prefs.soundEffect || prefs.backgroundMusic;
+  });
 
   useEffect(
     () =>
       subscribeGameAudioPrefs(() => {
-        setSoundOn(getGameAudioPrefs().soundEffect);
+        const prefs = getGameAudioPrefs();
+        setSoundOn(prefs.soundEffect || prefs.backgroundMusic);
       }),
     [],
   );
@@ -26,6 +29,7 @@ export function StageMuteButton() {
   function toggle() {
     const next = !soundOn;
     setSoundEffectEnabled(next);
+    setBackgroundMusicEnabled(next);
     setSoundOn(next);
   }
 

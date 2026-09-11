@@ -1460,6 +1460,9 @@ export function ScratchPrototype({
   // videos compete with Lottie for the main thread. Flips twice per stroke, not
   // per move, so it does not add render churn to the drag itself.
   const [isScratching, setIsScratching] = useState(false);
+  /** Cards-left pill: visible until first scratch touch, then animates out. */
+  const [packProgressShown, setPackProgressShown] = useState(true);
+  const [packProgressLeaving, setPackProgressLeaving] = useState(false);
   /** True only while the active stroke maps onto the deforming mesh. */
   const [cursorOnMesh, setCursorOnMesh] = useState(false);
   const [claimed, setClaimed] = useState(false);
@@ -1991,6 +1994,9 @@ export function ScratchPrototype({
 
   function resetMatchRound() {
     clearIntroDockTimer();
+    // New card / round: bring cards-left back until the first scratch touch.
+    setPackProgressShown(true);
+    setPackProgressLeaving(false);
     setTopSymbols(buildTopSymbols());
     if (skipToPlay) {
       // Lab stays in docked hunt UI across card resets.
@@ -4991,19 +4997,40 @@ export function ScratchPrototype({
             {/* Status row: [ cards-left 1fr | notifications 2fr ] */}
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
-                {skipToPlay ? (
-                  /* Lab always shows pack-progress for layout. */
-                  <PackProgress current={1} total={5} />
-                ) : modelCards.length > 1 &&
-                  completedCardIds.length < modelCards.length &&
-                  hasPlayableCard ? (
-                  <PackProgress
-                    current={
-                      motionResult?.current ??
-                      Math.min(completedCardIds.length + 1, modelCards.length)
-                    }
-                    total={modelCards.length}
-                  />
+                {packProgressShown &&
+                (skipToPlay ||
+                  (modelCards.length > 1 &&
+                    completedCardIds.length < modelCards.length &&
+                    hasPlayableCard)) ? (
+                  <div
+                    className={[
+                      "pack-progress-shell",
+                      packProgressLeaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={() => {
+                      if (!packProgressLeaving) return;
+                      setPackProgressShown(false);
+                      setPackProgressLeaving(false);
+                    }}
+                  >
+                    {skipToPlay ? (
+                      /* Lab always shows pack-progress for layout. */
+                      <PackProgress current={1} total={5} />
+                    ) : (
+                      <PackProgress
+                        current={
+                          motionResult?.current ??
+                          Math.min(
+                            completedCardIds.length + 1,
+                            modelCards.length,
+                          )
+                        }
+                        total={modelCards.length}
+                      />
+                    )}
+                  </div>
                 ) : null}
               </div>
               <div
@@ -5154,6 +5181,10 @@ export function ScratchPrototype({
                 void foregroundVideo.play().catch(() => undefined);
               drawingRef.current = true;
               setIsScratching(true);
+              // First scratch touch: animate cards-left away for this card.
+              if (packProgressShown && !packProgressLeaving) {
+                setPackProgressLeaving(true);
+              }
               lastScratchWorldRef.current = null;
               lastPointerClientRef.current = {
                 x: event.clientX,

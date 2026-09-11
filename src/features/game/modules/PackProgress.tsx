@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
-const CARD_COUNTDOWN_LOTTIE_SRC = "/lotties/lottieCardCountdown.lottie";
+/** Assets live in public/lottie (singular) — /lotties/* falls through to SPA HTML. */
+const CARD_COUNTDOWN_LOTTIE_SRC = "/lottie/lottieCardCountdown.lottie";
 const CARD_LOTTIE_SIZE = 28;
 
 type PackProgressProps = {
@@ -12,10 +13,9 @@ type PackProgressProps = {
 
 /** Compact pack-progress pill — status-row HUD. Card lottie plays on new card. */
 export function PackProgress({ current, total }: PackProgressProps) {
-  // Remount DotLottie only when the card index advances so intro mounts stay still.
+  // Remount DotLottie only when the card index advances so idle mounts stay still.
   const [playKey, setPlayKey] = useState(0);
   const prevCurrentRef = useRef<number | null>(null);
-  const playerRef = useRef<DotLottie | null>(null);
 
   useEffect(() => {
     const prev = prevCurrentRef.current;
@@ -48,42 +48,40 @@ export function PackProgress({ current, total }: PackProgressProps) {
       <span className="pack-progress__icon" aria-hidden="true">
         <DotLottieReact
           key={`card-countdown-${playKey}`}
-          src={CARD_COUNTDOWN_LOTTIE_SRC}
+          // Absolute URL — relative paths can fail inside the lottie worker.
+          src={
+            typeof window !== "undefined"
+              ? new URL(CARD_COUNTDOWN_LOTTIE_SRC, window.location.href).href
+              : CARD_COUNTDOWN_LOTTIE_SRC
+          }
           autoplay={shouldPlay}
           loop={false}
           width={CARD_LOTTIE_SIZE}
           height={CARD_LOTTIE_SIZE}
           className="pack-progress__lottie"
-          renderConfig={lottieRenderConfig({ extraScale: 1.25 })}
-          dotLottieRefCallback={(instance) => {
-            playerRef.current = instance;
+          renderConfig={lottieRenderConfig({
+            extraScale: 1.25,
+            autoResize: false,
+          })}
+          dotLottieRefCallback={(instance: DotLottie | null) => {
             if (!instance) return;
-            // Idle mount: force frame 0 so the icon isn't blank before play.
-            if (!shouldPlay) {
+            const paintFirstFrame = () => {
               try {
-                instance.setFrame(0);
-                instance.pause();
+                // stop() renders frame 0 — needed so idle icons aren't blank.
+                void instance.stop();
+                if (!shouldPlay) instance.pause();
               } catch {
                 /* player may not be ready yet */
               }
-              const onLoad = () => {
-                try {
-                  instance.setFrame(0);
-                  instance.pause();
-                } catch {
-                  /* ignore */
-                }
-              };
-              instance.addEventListener("load", onLoad);
-              // If already loaded, paint immediately.
-              onLoad();
-            }
+            };
+            instance.addEventListener("load", paintFirstFrame);
+            paintFirstFrame();
           }}
         />
       </span>
       <div className="pack-progress__copy">
         <p className="pack-progress__remain">
-          {isFinal ? "FINAL CARD" : `${remaining} LEFT`}
+          {isFinal ? "FINAL CARD" : `${remaining} Left`}
         </p>
         <p className="pack-progress__pos">
           Card {current} of {total}

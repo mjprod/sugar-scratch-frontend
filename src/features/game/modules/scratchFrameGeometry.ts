@@ -55,7 +55,7 @@ export function feedbackLabel(found: number, total: number): {
     return { primary: `${total} / ${total}`, secondary: "Found" };
   }
   if (found === total - 1) {
-    return { primary: "✦ One left", secondary: "" };
+    return { primary: "Only one left!", secondary: "" };
   }
   if (found === 10) {
     return { primary: "Almost there…", secondary: "" };

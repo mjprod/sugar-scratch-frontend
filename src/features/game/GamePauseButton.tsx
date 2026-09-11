@@ -1,18 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Music2, Pause, Volume2 } from "lucide-react";
-
-import {
-  getGameAudioPrefs,
-  setBackgroundMusicEnabled,
-  setSoundEffectEnabled,
-  subscribeGameAudioPrefs,
-} from "@/services/gameAudioPrefs";
+import { Pause } from "lucide-react";
 
 /**
- * Pause control for the scratch stage: opens an overlay with the audio
- * switches plus resume / leave. The overlay covers the stage and swallows
- * input, so the game is effectively suspended while it is open.
+ * Pause control for the scratch stage: opens an overlay with resume / leave.
+ * Audio is controlled by the stage mute button (SFX + BGM together).
  *
  * Layout: sit inside `.stage-game__top-chrome-side` so the button is flex-
  * centered in the gutter between the frame edge and the middle symbol bar.
@@ -49,12 +41,6 @@ function GamePauseModal({
 }) {
   const titleId = useId();
   const resumeRef = useRef<HTMLButtonElement>(null);
-  const [prefs, setPrefs] = useState(getGameAudioPrefs);
-
-  useEffect(
-    () => subscribeGameAudioPrefs(() => setPrefs(getGameAudioPrefs())),
-    [],
-  );
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -88,20 +74,6 @@ function GamePauseModal({
         <h2 id={titleId} className="game-pause__title">
           Paused
         </h2>
-        <div className="game-pause__rows">
-          <PauseAudioRow
-            icon={Music2}
-            label="Background Music"
-            checked={prefs.backgroundMusic}
-            onChange={setBackgroundMusicEnabled}
-          />
-          <PauseAudioRow
-            icon={Volume2}
-            label="Sound Effect"
-            checked={prefs.soundEffect}
-            onChange={setSoundEffectEnabled}
-          />
-        </div>
         <button
           ref={resumeRef}
           type="button"
@@ -116,38 +88,5 @@ function GamePauseModal({
       </div>
     </div>,
     document.body,
-  );
-}
-
-function PauseAudioRow({
-  icon: Icon,
-  label,
-  checked,
-  onChange,
-}: {
-  icon: typeof Volume2;
-  label: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <div className="game-pause__row">
-      <span className="game-pause__row-icon" aria-hidden="true">
-        <Icon size={16} strokeWidth={2} />
-      </span>
-      <span className="game-pause__row-label">{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        className={["game-pause__switch", checked ? "is-on" : ""]
-          .filter(Boolean)
-          .join(" ")}
-        onClick={() => onChange(!checked)}
-      >
-        <span className="game-pause__switch-knob" aria-hidden="true" />
-      </button>
-    </div>
   );
 }
