@@ -4,30 +4,22 @@ import {
   useId,
   useRef,
   useState,
+  type CSSProperties,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   feedbackLabel,
   FRAME_H,
   FRAME_RX,
   FRAME_W,
   roundedRectPath,
-  energyTrailPath,
   type NormalizedPoint,
 } from "./scratchFrameGeometry";
-import {
-  getFrameStartLabState,
-  subscribeFrameStartLab,
-} from "./frameStartLab";
 
 export type SymbolDiscoveryBatch = {
   key: number;
   positions: NormalizedPoint[];
   foundAfter: number;
-};
-
-type ActiveTrail = {
-  id: number;
-  d: string;
 };
 
 type ScratchFrameProgressProps = {
@@ -52,11 +44,21 @@ const FRAME_PATH = roundedRectPath(
   FRAME_RX,
 );
 /* Keep in sync with the matching CSS durations in scratch/styles.css. */
-const TRAIL_MS = 420;
 const SWEEP_MS = 760;
 const PULSE_MS = 280;
 const FEEDBACK_SHOW_MS = 1600;
 const FEEDBACK_FADE_MS = 250;
+/** Baked start origin (clockwise from top-left). */
+const FRAME_START = 0.178;
+
+/** Tuned progress gradient + track (no live color lab). */
+const PROGRESS_STOPS = [
+  { offset: 0, color: "#ff0073" },
+  { offset: 45, color: "#ff7c5c" },
+  { offset: 75, color: "#ff0073" },
+  { offset: 100, color: "#ff7c5c" },
+] as const;
+const PROGRESS_TRACK = "rgb(255 255 255 / 0.3)";
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -72,7 +74,6 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 }: ScratchFrameProgressProps) {
   const uid = useId().replace(/:/g, "");
   const reducedMotion = prefersReducedMotion();
-  const [trails, setTrails] = useState<ActiveTrail[]>([]);
   const [feedback, setFeedback] = useState<{
     found: number;
     fading: boolean;
@@ -80,24 +81,14 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
   const [completeSweep, setCompleteSweep] = useState(false);
   const [completePulse, setCompletePulse] = useState(false);
   const processedBatchKeys = useRef(new Set<number>());
-  const trailIdRef = useRef(0);
   const feedbackTimerRef = useRef<number | null>(null);
-  const [lab, setLab] = useState(getFrameStartLabState);
-
-  useEffect(() => subscribeFrameStartLab(() => setLab(getFrameStartLabState())), []);
 
   // pathLength=1. Visible arc = progress; gap = rest.
-  // Lab START panel can override progress so start-origin rotation is visible
-  // before any symbols are found.
-  const liveProgress = total > 0 ? Math.min(1, found / total) : 0;
-  const labPreviewing = lab.previewOpen && lab.previewProgress > 0;
-  const progress = labPreviewing ? lab.previewProgress : liveProgress;
+  const progress = total > 0 ? Math.min(1, found / total) : 0;
   const solidRing = progress >= 1;
   const dashProgress = solidRing
     ? 1
     : Math.min(1, progress + (progress > 0.9 ? 0.01 : 0));
-  // Rotate origin clockwise from top-left. Apply as real SVG attrs (not only CSS vars).
-  const frameStart = lab.start;
   const progressStroke = solidRing
     ? {
         strokeDasharray: "none",
@@ -107,7 +98,7 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
     : {
         // Two values required — a single number becomes "n n" and leaves a hole.
         strokeDasharray: `${dashProgress} ${Math.max(0, 1 - dashProgress)}`,
-        strokeDashoffset: -frameStart,
+        strokeDashoffset: -FRAME_START,
         strokeLinecap: "round" as const,
       };
 
@@ -128,43 +119,27 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 
       if (reducedMotion) continue;
 
-      for (const pos of batch.positions) {
-        const id = (trailIdRef.current += 1);
-        const d = energyTrailPath(pos);
-        setTrails((current) => [...current, { id, d }]);
-        window.setTimeout(() => {
-          setTrails((current) => current.filter((trail) => trail.id !== id));
-        }, TRAIL_MS + 80);
-      }
-
       if (batch.foundAfter === total) {
-        const sweepAt = TRAIL_MS + 180;
-        window.setTimeout(() => setCompleteSweep(true), sweepAt);
+        setCompleteSweep(true);
         window.setTimeout(() => {
           setCompleteSweep(false);
           setCompletePulse(true);
-        }, sweepAt + SWEEP_MS);
-        window.setTimeout(
-          () => setCompletePulse(false),
-          sweepAt + SWEEP_MS + PULSE_MS,
-        );
+        }, SWEEP_MS);
+        window.setTimeout(() => setCompletePulse(false), SWEEP_MS + PULSE_MS);
       }
     }
   }, [active, batches, reducedMotion, total]);
 
   // `found === 0` also resets: the frame stays mounted across the no-match
   // settle, so a card handoff can happen without `active` ever going false.
-  // Don't wipe while the lab START panel is forcing a preview arc.
   useEffect(() => {
-    if (labPreviewing) return;
     if (!active || found === 0) {
       processedBatchKeys.current.clear();
-      setTrails([]);
       setFeedback(null);
       setCompleteSweep(false);
       setCompletePulse(false);
     }
-  }, [active, found, labPreviewing]);
+  }, [active, found]);
 
   useEffect(() => {
     return () => {
@@ -176,11 +151,13 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 
   const frameClass = [
     "scratch-frame-progress",
-    settling && !labPreviewing ? "is-settling" : "",
-    solidRing || (found >= total && !labPreviewing) ? "is-complete" : "",
-    !labPreviewing && found === 4 ? "is-milestone-4" : "",
-    !labPreviewing && found === 8 ? "is-milestone-8" : "",
-    !labPreviewing && found === 11 ? "is-almost" : "",
+    // White track can stay on; colored arc is hidden until progress moves.
+    progress <= 0 && !settling ? "is-empty" : "is-active",
+    settling ? "is-settling" : "",
+    solidRing || found >= total ? "is-complete" : "",
+    found === 4 ? "is-milestone-4" : "",
+    found === 8 ? "is-milestone-8" : "",
+    found === 11 ? "is-almost" : "",
     completeSweep ? "is-sweeping" : "",
     completePulse ? "is-pulsing" : "",
   ]
@@ -191,8 +168,43 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
     ? feedbackLabel(feedback.found, total)
     : null;
 
+  // Prefer the status-row notifications cell; fall back to body if missing.
+  const toastHost =
+    typeof document !== "undefined"
+      ? document.querySelector<HTMLElement>("[data-progress-toast-slot]")
+      : null;
+
+  const feedbackNode =
+    feedback && feedbackCopy ? (
+      <div
+        className={[
+          "scratch-frame-progress__feedback",
+          feedback.fading ? "is-fading" : "",
+          feedbackCopy.primary.startsWith("Almost there")
+            ? "is-almost-there"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        role="status"
+        aria-live="polite"
+      >
+        <strong>{feedbackCopy.primary}</strong>
+        {feedbackCopy.secondary ? <span>{feedbackCopy.secondary}</span> : null}
+      </div>
+    ) : null;
+
   return (
-    <div className={frameClass} aria-hidden="true">
+    <div
+      className={frameClass}
+      aria-hidden="true"
+      style={
+        {
+          ["--frame-start" as string]: String(FRAME_START),
+          ["--frame-progress-track" as string]: PROGRESS_TRACK,
+        } as CSSProperties
+      }
+    >
       <svg
         className="scratch-frame-progress__svg"
         viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
@@ -207,10 +219,13 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
             x2={FRAME_W}
             y2={FRAME_H}
           >
-            <stop offset="0%" stopColor="#E8589A" />
-            <stop offset="45%" stopColor="#E08848" />
-            <stop offset="75%" stopColor="#B858D8" />
-            <stop offset="100%" stopColor="#7050D8" />
+            {PROGRESS_STOPS.map((stop, index) => (
+              <stop
+                key={index}
+                offset={`${stop.offset}%`}
+                stopColor={stop.color}
+              />
+            ))}
           </linearGradient>
         </defs>
         <path
@@ -248,39 +263,11 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
         ) : null}
       </svg>
 
-      <svg
-        className="scratch-frame-progress__energy"
-        viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
-        preserveAspectRatio="none"
-      >
-        {trails.map((trail) => (
-          <path
-            key={trail.id}
-            className="scratch-frame-progress__trail"
-            d={trail.d}
-            /* Normalized so a short trail (symbol near an edge) travels at the
-               same readable speed as a long one from the middle of the card. */
-            pathLength={1}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
-
-      {feedback && feedbackCopy ? (
-        <div
-          className={[
-            "scratch-frame-progress__feedback",
-            feedback.fading ? "is-fading" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          role="status"
-          aria-live="polite"
-        >
-          <strong>{feedbackCopy.primary}</strong>
-          {feedbackCopy.secondary ? <span>{feedbackCopy.secondary}</span> : null}
-        </div>
-      ) : null}
+      {feedbackNode
+        ? toastHost
+          ? createPortal(feedbackNode, toastHost)
+          : feedbackNode
+        : null}
     </div>
   );
 });

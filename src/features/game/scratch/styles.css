@@ -355,148 +355,125 @@ textarea:focus-visible {
   flex: 0 0 var(--game-symbol-slot, 40px);
 }
 
-/* Pack session progress — card stack, bottom-left (separate from symbol objective). */
+/* Pack session progress — pink pill, status row under pause. */
 .pack-progress {
-  position: absolute;
-  bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  left: max(12px, env(safe-area-inset-left, 0px));
-  z-index: 7;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: min(52vw, 168px);
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  max-width: min(58vw, 188px);
+  margin: 0;
+  padding: 7px 14px 7px 10px;
+  border-radius: 0.5rem;
+  border: 1.5px solid rgb(255 255 255 / 0.5);
+  background: rgb(0 0 0 / 0.6);
+  box-shadow: none;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-.pack-progress__stack {
-  position: relative;
-  flex-shrink: 0;
-  width: 24px;
-  height: 30px;
-  animation: pack-progress-stack-shift 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.pack-progress__card {
-  --offset: calc(var(--i) * 3px);
+/* Fallback if a host still places pack-progress as a free stage HUD. */
+.stage > .pack-progress {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 22px;
-  border: 1px solid oklch(1 0 0 / 0.34);
-  border-radius: 3px;
-  background: oklch(0.196 0.008 285 / 0.52);
-  box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.08),
-    0 0 8px oklch(0 0 0 / 0.28);
-  transform: translate(var(--offset), var(--offset));
+  top: calc(
+    var(--game-top-hud, calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)) +
+      var(--game-top-bar-height, 54px) + var(--game-top-chrome-gap, 8px)
+  );
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: auto;
+  bottom: auto;
+  z-index: 7;
+}
+
+.pack-progress__icon {
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.pack-progress__lottie {
+  display: block;
+  width: 28px;
+  height: 28px;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.pack-progress__lottie canvas {
+  display: block;
+  width: 28px !important;
+  height: 28px !important;
+  max-width: none;
+  max-height: none;
+  /* Cancel any stage canvas centering rules. */
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
 }
 
 .pack-progress__copy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
+  text-align: left;
 }
 
 .pack-progress__remain {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: block;
   margin: 0;
-  color: oklch(0.937 0.086 91.56);
+  color: rgb(255 255 255 / 0.96);
   font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  line-height: 1.15;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
   white-space: nowrap;
+  text-align: left;
+  text-shadow: none;
+  filter: none;
 }
 
 .pack-progress__pos {
   margin: 0;
-  color: oklch(1 0 0 / 0.5);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  line-height: 1.25;
+  color: rgb(190 175 190 / 0.9);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: 1.15;
   white-space: nowrap;
-}
-
-.pack-progress__spark {
-  color: oklch(0.955 0.11 91.56);
-  font-size: 11px;
-  line-height: 1;
-  animation: pack-progress-spark 1.35s ease-in-out 2;
-}
-
-.pack-progress.is-final {
-  animation: pack-progress-final-enter 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  text-align: left;
 }
 
 .pack-progress.is-final .pack-progress__remain {
-  text-shadow: 0 0 12px oklch(0.937 0.086 91.56 / 0.35);
-}
-
-@keyframes pack-progress-stack-shift {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  38% {
-    transform: translateY(-5px);
-  }
-
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes pack-progress-final-enter {
-  0% {
-    opacity: 0.72;
-    transform: translateY(-3px);
-  }
-
-  45% {
-    filter: drop-shadow(0 0 10px oklch(0.937 0.086 91.56 / 0.42));
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    filter: none;
-  }
-}
-
-@keyframes pack-progress-spark {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(0.92);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
+  color: rgb(255 255 255 / 0.96);
 }
 
 @media (max-width: 360px) {
-  .pack-progress__pos {
-    display: none;
+  .pack-progress {
+    gap: 8px;
+    padding: 6px 12px 6px 8px;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .pack-progress__stack,
-  .pack-progress.is-final,
-  .pack-progress__spark {
-    animation: none;
+  .pack-progress__pos {
+    font-size: 9px;
   }
 }
 
@@ -1249,26 +1226,18 @@ textarea:focus-visible {
   }
 }
 
-.scratch-frame-progress__svg,
-.scratch-frame-progress__energy {
+.scratch-frame-progress__svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-}
-
-.scratch-frame-progress__energy {
-  z-index: 4;
-}
-
-.scratch-frame-progress__svg {
   z-index: 2;
 }
 
 .scratch-frame-progress__track {
   fill: none;
-  stroke: rgb(255 255 255 / 0.3);
+  stroke: var(--frame-progress-track, rgb(255 255 255 / 0.3));
   stroke-width: 2;
 }
 
@@ -1277,10 +1246,9 @@ textarea:focus-visible {
   stroke-width: 3.5;
   stroke-linecap: round;
   stroke-linejoin: round;
-  /* Dash geometry is set as SVG attributes from ScratchFrameProgress
-     (strokeDasharray / strokeDashoffset) so lab start origin always applies. */
+  /* Dash geometry is set as SVG attributes from ScratchFrameProgress. */
   opacity: 1;
-  filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
+  filter: none;
   transition:
     stroke-dasharray 260ms cubic-bezier(0.22, 0.8, 0.3, 1),
     stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
@@ -1306,11 +1274,10 @@ textarea:focus-visible {
 
 .scratch-frame-progress.is-almost .scratch-frame-progress__progress {
   opacity: 1;
-  filter: drop-shadow(0 0 8px rgba(190, 50, 120, 0.65));
+  filter: none;
 }
 
-/* No match: the accumulated energy glows once, then drains back to the bare
-   track. Settling, never a red flash or a break. */
+/* No match: accumulated energy drains back to the bare track. */
 .scratch-frame-progress.is-settling .scratch-frame-progress__progress {
   transition: none;
   animation: scratch-frame-settle 600ms ease-out forwards;
@@ -1323,15 +1290,12 @@ textarea:focus-visible {
 @keyframes scratch-frame-settle {
   0% {
     opacity: 1;
-    filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
   }
   20% {
     opacity: 1;
-    filter: drop-shadow(0 0 12px rgba(190, 50, 120, 0.75));
   }
   100% {
     opacity: 0;
-    filter: drop-shadow(0 0 0 rgba(255, 155, 203, 0));
   }
 }
 
@@ -1350,7 +1314,7 @@ textarea:focus-visible {
   stroke-dasharray: 0 1;
   stroke-dashoffset: calc(0px - var(--frame-start, 0));
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(200, 90, 50, 0.7));
+  filter: none;
   animation: scratch-frame-sweep 760ms ease-out forwards;
 }
 
@@ -1358,89 +1322,78 @@ textarea:focus-visible {
   animation: scratch-frame-complete-pulse 280ms ease-out;
 }
 
-/* Comet segment on a pathLength=1 path — dash values are fractions of the
-   trail, so travel speed reads the same however far the symbol is from an edge. */
-.scratch-frame-progress__trail {
-  fill: none;
-  stroke: rgba(255, 226, 238, 0.95);
-  stroke-width: 3;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 8px rgba(255, 155, 203, 0.85));
-  stroke-dasharray: 0.32 1;
-  stroke-dashoffset: 0.32;
-  animation: scratch-energy-trail 420ms cubic-bezier(0.4, 0.1, 0.35, 1) forwards;
-}
-
 .scratch-frame-progress__feedback {
-  position: absolute;
-  right: 16px;
-  bottom: 18px;
+  /* Lives in status-row notifications cell — fill parent height. */
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
   z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
   gap: 2px;
-  padding: 7px 10px;
-  border-radius: 11px;
-  background: rgba(10, 8, 15, 0.9);
+  height: 100%;
+  min-height: 100%;
+  width: max-content;
+  min-width: 3.25rem;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.6);
   border: 1px solid rgba(255, 170, 220, 0.25);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   pointer-events: none;
-  animation: scratch-feedback-in 200ms ease-out both;
+  text-align: right;
+  transform: none;
+  transform-origin: top center;
+  /* Same Apple anticipate → overshoot settle as homepage anchored dialogs. */
+  animation: scratch-feedback-in 480ms both;
+  box-sizing: border-box;
 }
 
 .scratch-frame-progress__feedback.is-fading {
-  animation: scratch-feedback-out 250ms ease-in forwards;
+  animation: scratch-feedback-out 360ms both;
 }
 
 .scratch-frame-progress__feedback strong {
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   line-height: 1.1;
   color: rgba(255, 255, 255, 0.95);
+  text-align: right;
+}
+
+.scratch-frame-progress__feedback.is-almost-there strong {
+  font-weight: 500;
 }
 
 .scratch-frame-progress__feedback span {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   opacity: 0.65;
   color: rgba(255, 255, 255, 0.85);
-}
-
-@keyframes scratch-energy-trail {
-  0% {
-    stroke-dashoffset: 0.32;
-    opacity: 0;
-  }
-
-  12% {
-    opacity: 1;
-  }
-
-  78% {
-    opacity: 1;
-  }
-
-  100% {
-    stroke-dashoffset: -1;
-    opacity: 0;
-  }
+  text-align: right;
 }
 
 @keyframes scratch-frame-milestone-pulse {
   0% {
-    filter: drop-shadow(0 0 2px rgba(190, 50, 120, 0.35));
+    opacity: 0.85;
   }
 
   50% {
-    filter: drop-shadow(0 0 10px rgba(190, 50, 120, 0.65));
+    opacity: 1;
   }
 
   100% {
-    filter: drop-shadow(0 0 4px rgba(190, 50, 120, 0.45));
+    opacity: 0.9;
   }
 }
 
@@ -1474,22 +1427,48 @@ textarea:focus-visible {
   }
 }
 
+/* Mirrors coverflow-buy-confirm-enter / coverflow-confirm-enter (homepage). */
 @keyframes scratch-feedback-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(-8px) scale(0.84);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   }
 
-  to {
+  16% {
+    opacity: 0.75;
+    transform: translateY(-11px) scale(0.76);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  58% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(4px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes scratch-feedback-out {
-  to {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(5px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(-10px) scale(0.78);
   }
 }
 
@@ -1524,12 +1503,19 @@ textarea:focus-visible {
     transition: stroke-dashoffset 120ms linear;
   }
 
-  .scratch-frame-progress__trail,
   .scratch-frame-progress__sweep,
   .scratch-frame-progress.is-pulsing .scratch-frame-progress__progress,
   .scratch-frame-progress.is-milestone-4 .scratch-frame-progress__progress,
-  .scratch-frame-progress.is-milestone-8 .scratch-frame-progress__progress {
+  .scratch-frame-progress.is-milestone-8 .scratch-frame-progress__progress,
+  .scratch-frame-progress__feedback,
+  .scratch-frame-progress__feedback.is-fading {
     animation: none !important;
+  }
+
+  .scratch-frame-progress__feedback,
+  .scratch-frame-progress__feedback.is-fading {
+    opacity: 1;
+    transform: none;
   }
 
   .body-symbol-marker.is-symbol-pop {
@@ -1759,9 +1745,7 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   cursor: pointer;
-  background: oklch(0.125 0.006 51.81 / 0.72);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  background: oklch(0.125 0.006 51.81 / 0.82);
 }
 
 .match-audio-gate-label {

@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
-import { GameUiFrameStartDebug } from "@/pages/GameUiFrameStartDebug";
 import { Paths } from "@/routes/Paths";
 import { markScratchTutorialCompleted } from "@/services/scratchTutorial";
 import "@/features/game/game.css";
@@ -80,9 +79,7 @@ export function GameUiPage() {
           skipToPlay
           onLeave={leaveGame}
         />
-        {/* Lab only — progress frame start position slider. */}
-        <GameUiFrameStartDebug />
-      </div>
+        </div>
     </div>
   );
 }

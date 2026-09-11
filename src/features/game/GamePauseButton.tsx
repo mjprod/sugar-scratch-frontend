@@ -9,10 +9,6 @@ import {
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 
-/** Same tw-glass stack the top navigation bar uses, so the panel matches it. */
-const NAV_GLASS =
-  "glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface";
-
 /**
  * Pause control for the scratch stage: opens an overlay with the audio
  * switches plus resume / leave. The overlay covers the stage and swallows
@@ -20,6 +16,7 @@ const NAV_GLASS =
  *
  * Layout: sit inside `.stage-game__top-chrome-side` so the button is flex-
  * centered in the gutter between the frame edge and the middle symbol bar.
+ * Panel is solid (no backdrop-filter / glass).
  */
 export function GamePauseButton({ onLeave }: { onLeave: () => void }) {
   const [open, setOpen] = useState(false);
@@ -83,7 +80,7 @@ function GamePauseModal({
         onClick={onResume}
       />
       <div
-        className={`game-pause__panel ${NAV_GLASS}`}
+        className="game-pause__panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

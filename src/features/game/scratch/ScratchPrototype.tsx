@@ -36,10 +36,6 @@ import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
-import {
-  isFrameStartPreviewActive,
-  subscribeFrameStartLab,
-} from "../modules/frameStartLab";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageMuteButton } from "../StageMuteButton";
 import {
@@ -3364,18 +3360,7 @@ export function ScratchPrototype({
   // Keep the frame mounted through the no-match beat so its energy can drain
   // instead of vanishing with the rest of the gameplay HUD.
   const frameSettling = useBodySymbols && motionOutcome === "no-match";
-  // Lab START panel keeps the progress frame mounted while dialing start.
-  const [frameStartPreview, setFrameStartPreview] = useState(
-    isFrameStartPreviewActive,
-  );
-  useEffect(() => {
-    setFrameStartPreview(isFrameStartPreviewActive());
-    return subscribeFrameStartLab(() => {
-      setFrameStartPreview(isFrameStartPreviewActive());
-    });
-  }, []);
   const frameProgressActive =
-    frameStartPreview ||
     (useBodySymbols &&
       matchStartUnlocked &&
       !introGateActive &&
@@ -4950,57 +4935,81 @@ export function ScratchPrototype({
               <div className="photo-scratch-intro-ring" />
             </div>
           ) : null}
-          {/* Top chrome: pause | fixed 6-slot track | mute.
-              Body-match bar is stage-absolute (center foil → dock fly →
-              showcase) so one instance keeps reveal state + fly animation.
-              Center cell is a spacer only — still reserves the docked width
-              so pause/mute never jump when the bar appears or docks. */}
+          {/* Top chrome — two rows:
+                row 1: pause | icon-bar track | mute
+                row 2: blank | progress toast slot | cards left
+              Body-match bar is stage-absolute (center foil → dock fly). */}
           <div
             className={`stage-game__top-chrome${
               topBarPhase === "docked" ? " is-docked" : ""
             }`}
           >
-            <div className="stage-game__top-chrome-side is-start">
-              {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+            <div className="stage-game__top-chrome-row is-controls">
+              <div className="stage-game__top-chrome-side is-start">
+                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+              </div>
+              <div className="stage-game__top-chrome-center" aria-hidden="true">
+                {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
+                  /* Legacy foil path: always 6 top slots (never body 12). */
+                  <div
+                    className={`symbol-bar${
+                      revealedSymbols >= TOP_SYMBOL_COUNT
+                        ? " is-symbols-complete"
+                        : ""
+                    }${claimed ? " is-fully-revealed" : ""}`}
+                    aria-label="Game symbols"
+                  >
+                    {topSymbols
+                      .slice(0, TOP_SYMBOL_COUNT)
+                      .map((typeId, index) => (
+                        <div
+                          key={index}
+                          ref={(el) => {
+                            symbolSlotRefs.current[index] = el;
+                          }}
+                          className={`symbol-slot${
+                            litSymbolSlots[index] ? " is-revealed" : ""
+                          }`}
+                          title={
+                            litSymbolSlots[index]
+                              ? SYMBOL_TYPES[typeId]?.label
+                              : undefined
+                          }
+                        >
+                          {litSymbolSlots[index] ? (
+                            <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
+                          ) : null}
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="stage-game__top-chrome-side is-end">
+                <StageMuteButton />
+              </div>
             </div>
-            <div className="stage-game__top-chrome-center" aria-hidden="true">
-              {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
-                /* Legacy foil path: always 6 top slots (never body 12). */
-                <div
-                  className={`symbol-bar${
-                    revealedSymbols >= TOP_SYMBOL_COUNT
-                      ? " is-symbols-complete"
-                      : ""
-                  }${claimed ? " is-fully-revealed" : ""}`}
-                  aria-label="Game symbols"
-                >
-                  {topSymbols
-                    .slice(0, TOP_SYMBOL_COUNT)
-                    .map((typeId, index) => (
-                      <div
-                        key={index}
-                        ref={(el) => {
-                          symbolSlotRefs.current[index] = el;
-                        }}
-                        className={`symbol-slot${
-                          litSymbolSlots[index] ? " is-revealed" : ""
-                        }`}
-                        title={
-                          litSymbolSlots[index]
-                            ? SYMBOL_TYPES[typeId]?.label
-                            : undefined
-                        }
-                      >
-                        {litSymbolSlots[index] ? (
-                          <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
-                        ) : null}
-                      </div>
-                    ))}
-                </div>
-              ) : null}
-            </div>
-            <div className="stage-game__top-chrome-side is-end">
-              <StageMuteButton />
+            {/* Status row: [ cards-left 1fr | notifications 2fr ] */}
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
+                {skipToPlay ? (
+                  /* Lab always shows pack-progress for layout. */
+                  <PackProgress current={1} total={5} />
+                ) : modelCards.length > 1 &&
+                  completedCardIds.length < modelCards.length &&
+                  hasPlayableCard ? (
+                  <PackProgress
+                    current={
+                      motionResult?.current ??
+                      Math.min(completedCardIds.length + 1, modelCards.length)
+                    }
+                    total={modelCards.length}
+                  />
+                ) : null}
+              </div>
+              <div
+                className="stage-game__top-chrome-status-notes"
+                data-progress-toast-slot="1"
+              />
             </div>
           </div>
           {/* One TopSymbolBar for the whole match sequence:
@@ -5236,17 +5245,6 @@ export function ScratchPrototype({
               )}
             </button>
           </div>
-          {modelCards.length > 1 &&
-          completedCardIds.length < modelCards.length &&
-          hasPlayableCard ? (
-            <PackProgress
-              current={
-                motionResult?.current ??
-                Math.min(completedCardIds.length + 1, modelCards.length)
-              }
-              total={modelCards.length}
-            />
-          ) : null}
           {/* Phones hide the dev panel, so surface compact controls on the stage
               itself. Hidden on desktop where the panel is used. */}
           <div className="mobile-controls-wrap">

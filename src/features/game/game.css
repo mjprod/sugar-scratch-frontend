@@ -41,6 +41,22 @@
   }
 }
 
+/*
+ * Game stage: never use backdrop-filter. Popups, chrome, overlays, and any
+ * nested glass utility must stay solid / image-based — no frosted sampling.
+ */
+.stage-game,
+.stage-game *,
+.stage-game *::before,
+.stage-game *::after,
+.game-pause,
+.game-pause *,
+.game-pause *::before,
+.game-pause *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 .stage-game {
   position: relative;
   width: 100%;
@@ -197,11 +213,13 @@
 }
 
 /*
- * Top HUD chrome: 3 columns so the pause button is flex-centered in the
- * gutter between the frame edge and the middle symbol bar on every width.
- *   [ pause gutter | symbol bar | mirror gutter ]
+ * Top HUD chrome — two rows:
+ *   row 1 controls: [ pause | icon bar | mute ]  (3-col grid)
+ *   row 2 status:   [ cards-left 1fr | notifications 2fr ]
  */
 .stage-game__top-chrome {
+  --game-top-chrome-gap: 8px;
+  --game-top-status-height: 34px;
   position: absolute;
   top: var(--game-top-hud, calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh));
   left: 50%;
@@ -210,24 +228,46 @@
   width: min(93dvw, calc(100% - 2 * max(8px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px))));
   max-width: 93dvw;
   z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--game-top-chrome-gap);
+  pointer-events: none;
+}
+
+.stage-game__top-chrome-row {
   display: grid;
-  /* Fixed middle track = 6-slot pill. Side gutters share the leftover evenly
-     so pause/mute stay put whether the bar has mounted yet or not. */
+  align-items: center;
+  pointer-events: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.stage-game__top-chrome-row.is-controls {
   grid-template-columns:
     minmax(48px, 1fr)
     var(--game-top-bar-width, 256px)
     minmax(48px, 1fr);
-  align-items: center;
-  /* Match docked pill height so pause/mute center against the stage-absolute bar. */
   min-height: var(--game-top-bar-height, 54px);
-  pointer-events: none;
+}
+
+.stage-game__top-chrome-row.is-status {
+  /* [ cards-left | notifications ] */
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  align-items: stretch;
+  width: 92%;
+  max-width: 92%;
+  min-height: var(--game-top-status-height, 34px);
+  align-self: center;
+  margin-inline: auto;
 }
 
 .stage-game__top-chrome-side {
   display: flex;
   align-items: center;
   min-width: 0;
-  min-height: var(--game-top-bar-height, 54px);
+  min-height: inherit;
 }
 
 .stage-game__top-chrome-side.is-start,
@@ -247,6 +287,47 @@
 
 .stage-game__top-chrome-center > * {
   pointer-events: auto;
+}
+
+/* Status left: cards-left pill. */
+.stage-game__top-chrome-status-cards {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: var(--game-top-status-height, 34px);
+  height: 100%;
+}
+
+.stage-game__top-chrome-status-cards .pack-progress {
+  width: max-content;
+  max-width: 100%;
+  height: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Status right: find / progress notifications (toast portal host).
+   ALMOST THERE + ONE LEFT (and all find toasts) fill this cell's height. */
+.stage-game__top-chrome-status-notes {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  min-width: 0;
+  min-height: var(--game-top-status-height, 34px);
+  height: 100%;
+  pointer-events: none;
+}
+
+.stage-game__top-chrome-status-notes .scratch-frame-progress__feedback {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: max-content;
+  min-width: 3.25rem;
+  max-width: 100%;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .stage-game__pause {
@@ -360,25 +441,19 @@
   position: absolute;
   inset: 0;
   border: 0;
-  /* Lighter than a plain dim: the panel's glass samples through this, and a
-     near-opaque scrim would crush the rose plate to flat black. */
-  background: oklch(0.08 0.01 284 / 0.6);
-  backdrop-filter: blur(6px);
+  /* Solid dim only — no backdrop-filter on the game page. */
+  background: oklch(0.08 0.01 284 / 0.72);
   cursor: default;
 }
 
-/* Same rose glass plate as the top nav (.nav-test-top / .top-nav-mobile):
-   tw-glass classes supply the frost, this supplies the gradient and rim. */
+/* Solid rose panel (no glass / backdrop-filter). */
 .game-pause__panel {
   --top-nav-surface: linear-gradient(
     180deg,
     oklch(0.316 0.126 12.15) 0%,
-    oklch(0.635 0.254 16.01 / 0.161) 10%,
-    oklch(0 0 0 / 0.361) 20%,
-    oklch(0.467 0.187 14.78 / 0.341) 100%
+    oklch(0.261 0.104 10.45) 45%,
+    oklch(0.141 0.057 0.87) 100%
   );
-  /* Kills the white tw-glass fill so the rose plate reads. */
-  --glass-bg-opacity: 0;
   position: relative;
   z-index: 1;
   width: min(100%, 320px);
@@ -390,38 +465,6 @@
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.12),
     0 8px 24px oklch(0 0 0 / 0.28);
-}
-
-/* Beat the tw-glass .glass-surface utility, as the nav does. */
-.game-pause__panel.glass.glass-surface {
-  --glass-bg-opacity: 0;
-  background: var(--top-nav-surface);
-  border: 1px solid oklch(1 0 0 / 0.1);
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.12),
-    0 8px 24px oklch(0 0 0 / 0.28);
-}
-
-/* iOS Safari drops the filter stack when SVG displacement is in it. */
-@supports (-webkit-touch-callout: none) {
-  .game-pause__panel.glass {
-    --tw-glass-filter: ;
-    --tw-backdrop-blur: blur(var(--tw-glass-blur, 4px));
-    -webkit-backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
-    backdrop-filter: blur(4px) saturate(1.5) brightness(0.35);
-  }
-}
-
-@supports not
-  ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .game-pause__panel.glass.glass-surface {
-    background: linear-gradient(
-      180deg,
-      oklch(0.316 0.126 12.15) 0%,
-      oklch(0.261 0.104 10.45) 45%,
-      oklch(0.141 0.057 0.87) 100%
-    );
-  }
 }
 
 .game-pause__title {
@@ -582,8 +625,6 @@
 @keyframes motion-win-backdrop-out {
   to {
     opacity: 0;
-    backdrop-filter: blur(0);
-    -webkit-backdrop-filter: blur(0);
   }
 }
 
@@ -595,9 +636,7 @@
 .motion-win-reveal__backdrop {
   position: absolute;
   inset: 0;
-  background: oklch(0.08 0.01 284 / 0.62);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: oklch(0.08 0.01 284 / 0.72);
   animation: motion-win-dim 140ms ease-out both;
 }
 
