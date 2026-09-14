@@ -58,7 +58,13 @@ const PROGRESS_STOPS = [
   { offset: 75, color: "#ff0073" },
   { offset: 100, color: "#ff7c5c" },
 ] as const;
-const PROGRESS_TRACK = "rgb(255 255 255 / 0.3)";
+/** Pre-progress frame border — soft gold gradient (matches reward gold). */
+const TRACK_STOPS = [
+  { offset: 0, color: "oklch(0.928 0.103 92.71 / 0.55)" },
+  { offset: 35, color: "oklch(0.898 0.124 88.45 / 0.42)" },
+  { offset: 70, color: "oklch(0.82 0.13 75 / 0.5)" },
+  { offset: 100, color: "oklch(0.928 0.103 92.71 / 0.55)" },
+] as const;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -201,7 +207,6 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
       style={
         {
           ["--frame-start" as string]: String(FRAME_START),
-          ["--frame-progress-track" as string]: PROGRESS_TRACK,
         } as CSSProperties
       }
     >
@@ -211,6 +216,22 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
         preserveAspectRatio="none"
       >
         <defs>
+          <linearGradient
+            id={`${uid}-track-gradient`}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="0"
+            x2={FRAME_W}
+            y2={FRAME_H}
+          >
+            {TRACK_STOPS.map((stop, index) => (
+              <stop
+                key={index}
+                offset={`${stop.offset}%`}
+                stopColor={stop.color}
+              />
+            ))}
+          </linearGradient>
           <linearGradient
             id={`${uid}-progress-gradient`}
             gradientUnits="userSpaceOnUse"
@@ -232,6 +253,7 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
           className="scratch-frame-progress__track"
           d={FRAME_PATH}
           pathLength={1}
+          stroke={`url(#${uid}-track-gradient)`}
           vectorEffect="non-scaling-stroke"
         />
         <path
