@@ -36,6 +36,8 @@ import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
+import { GamePauseButton } from "../GamePauseButton";
+import { StageMuteButton } from "../StageMuteButton";
 import {
   TOP_BAR_SHOWCASE_MS,
   TopSymbolBar,
@@ -428,6 +430,7 @@ const DEFAULT_CARDS: Card[] = [
     foreground: "/cards/juliana_1/foreground.mp4",
     mesh: "juliana_1.json",
     chromaKey: false,
+    model_id: "julianaval",
   },
   {
     id: "juliana_2",
@@ -436,6 +439,7 @@ const DEFAULT_CARDS: Card[] = [
     foreground: "/cards/juliana_2/foreground.mp4",
     mesh: "juliana_2.json",
     chromaKey: false,
+    model_id: "julianaval",
   },
   {
     id: "chinese_1",
@@ -1221,7 +1225,18 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
   return sparse;
 }
 
-export function ScratchPrototype() {
+export function ScratchPrototype({
+  skipToPlay = false,
+  onLeave,
+}: {
+  /**
+   * Lab/sandbox: skip intro video + foil bar scratch + countdown.
+   * Open already in hunt play with the symbol bar docked at the top.
+   */
+  skipToPlay?: boolean;
+  /** When set, pause control is rendered in the top chrome left gutter. */
+  onLeave?: () => void;
+} = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   // FairyDust must paint in stage space: the product embed wraps play in a
@@ -1272,34 +1287,60 @@ export function ScratchPrototype() {
   const cameraRef = useRef({ x: 0, y: 0 });
   const [meshFiles, setMeshFiles] = useState<string[]>([]);
   const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [cardsReady, setCardsReady] = useState(false);
-  useMarkPageReady(cardsReady);
-  const [selectedMeshFile, setSelectedMeshFile] = useState(
-    DEFAULT_CARDS[1].mesh,
+  const [models, setModels] = useState<ModelInfo[]>(() =>
+    skipToPlay
+      ? [{ id: "julianaval", label: "Juliana", avatar: null }]
+      : [],
   );
-  const [meshReloadToken, setMeshReloadToken] = useState(0);
-  const [activeModelId, setActiveModelId] = useState(() => {
-    if (typeof window === "undefined") return "";
+  // Lab is ready immediately from DEFAULT_CARDS — no API wait for mobile preview.
+  const [cardsReady, setCardsReady] = useState(() => skipToPlay);
+  useMarkPageReady(cardsReady);
+  const [selectedMeshFile, setSelectedMeshFile] = useState(() => {
+    if (!skipToPlay) return DEFAULT_CARDS[1].mesh;
+    if (typeof window === "undefined") return "juliana_1.json";
+    const fromUrl =
+      new URLSearchParams(window.location.search).get("card")?.trim() ||
+      "juliana_1";
     return (
-      new URLSearchParams(window.location.search).get("model")?.trim() || ""
+      DEFAULT_CARDS.find((entry) => entry.id === fromUrl)?.mesh ??
+      "juliana_1.json"
+    );
+  });
+  const [meshReloadToken, setMeshReloadToken] = useState(0);
+  /** Lab only: bump to force the same card to fully reset after a find. */
+  const [labRestartToken, setLabRestartToken] = useState(0);
+  const [activeModelId, setActiveModelId] = useState(() => {
+    if (typeof window === "undefined") return skipToPlay ? "julianaval" : "";
+    return (
+      new URLSearchParams(window.location.search).get("model")?.trim() ||
+      (skipToPlay ? "julianaval" : "")
     );
   });
   const [selectedCardId, setSelectedCardId] = useState(() => {
-    if (typeof window === "undefined") return "";
+    if (typeof window === "undefined") return skipToPlay ? "juliana_1" : "";
     return (
-      new URLSearchParams(window.location.search).get("card")?.trim() || ""
+      new URLSearchParams(window.location.search).get("card")?.trim() ||
+      (skipToPlay ? "juliana_1" : "")
     );
   });
   /** StageNav / bare /game → full model hand. Collection Play Game omits playlist=1. */
   const [playlistMode, setPlaylistMode] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (skipToPlay) return false;
     return new URLSearchParams(window.location.search).get("playlist") === "1";
   });
   /** Locked card for single-play so clearing selectedCardId doesn't empty the hand. */
   const singleCardIdRef = useRef(
     (() => {
-      if (typeof window === "undefined") return "";
+      if (typeof window === "undefined") {
+        return skipToPlay ? "juliana_1" : "";
+      }
+      if (skipToPlay) {
+        return (
+          new URLSearchParams(window.location.search).get("card")?.trim() ||
+          "juliana_1"
+        );
+      }
       const params = new URLSearchParams(window.location.search);
       if (params.get("playlist") === "1" || isGameModeUrl()) return "";
       return params.get("card")?.trim() || "";
@@ -1442,6 +1483,9 @@ export function ScratchPrototype() {
   // videos compete with Lottie for the main thread. Flips twice per stroke, not
   // per move, so it does not add render churn to the drag itself.
   const [isScratching, setIsScratching] = useState(false);
+  /** Cards-left pill: visible until first scratch touch, then animates out. */
+  const [packProgressShown, setPackProgressShown] = useState(true);
+  const [packProgressLeaving, setPackProgressLeaving] = useState(false);
   /** True only while the active stroke maps onto the deforming mesh. */
   const [cursorOnMesh, setCursorOnMesh] = useState(false);
   const [claimed, setClaimed] = useState(false);
@@ -1452,7 +1496,9 @@ export function ScratchPrototype() {
   );
   const matchOutcomeRef = useRef<MatchGameOutcome | null>(null);
   const [topSymbols, setTopSymbols] = useState(buildTopSymbols);
-  const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>("center");
+  const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>(() =>
+    skipToPlay ? "docked" : "center",
+  );
   const [topBarRound, setTopBarRound] = useState(0);
   /** Locks body scratch / video from dock through countdown end. */
   const [introGateActive, setIntroGateActive] = useState(false);
@@ -1493,13 +1539,16 @@ export function ScratchPrototype() {
   const themeIntroByKeyRef = useRef<Map<string, string>>(new Map());
   const [themeIntrosReady, setThemeIntrosReady] = useState(false);
   /** True once we've decided whether to show a hand-start intro (or skipped it). */
-  const [handStartIntroResolved, setHandStartIntroResolved] = useState(false);
+  const [handStartIntroResolved, setHandStartIntroResolved] = useState(
+    () => skipToPlay,
+  );
   /**
    * Don't unlock the scratch bar until the card clips have a frame.
    * Avoids the black stage that shows if the bar appears while Safari is still
    * attaching decoders after the theme intro.
+   * Lab skipToPlay can show chrome immediately — video readiness still gates play.
    */
-  const [gameVideosReady, setGameVideosReady] = useState(false);
+  const [gameVideosReady, setGameVideosReady] = useState(() => skipToPlay);
   /**
    * Cold refresh has no audio gesture — wait for Tap to play so theme-intro
    * autoplay + game-clip play() land inside a user gesture (otherwise the
@@ -1507,6 +1556,8 @@ export function ScratchPrototype() {
    */
   const [entryReady, setEntryReady] = useState(() => {
     if (typeof window === "undefined") return false;
+    // Lab opens straight into play — no Tap-to-play gate.
+    if (skipToPlay) return true;
     if (!loadSoundEnabled()) return true;
     return isCountdownSoundUnlocked();
   });
@@ -1888,9 +1939,6 @@ export function ScratchPrototype() {
   function armStartIntro(themeKey: string) {
     if (handStartIntroDoneRef.current) return;
     handStartIntroDoneRef.current = true;
-    const url = themeKey
-      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
-      : "";
     clearIntroDockTimer();
     clearIntroFadeTimer();
     setShowIntroCountdown(false);
@@ -1899,6 +1947,28 @@ export function ScratchPrototype() {
     handStartCountdownOverIntroRef.current = false;
     setIntroLeaving(false);
     introLeavingRef.current = false;
+
+    // Lab: jump straight to hunt play with the match bar already docked.
+    if (skipToPlay) {
+      setIntroVideoUrl("");
+      setIntroActive(false);
+      introActiveRef.current = false;
+      setIntroCover(false);
+      introCoverRef.current = false;
+      setHandStartIntroResolved(true);
+      handCountdownDoneRef.current = true;
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setGameVideosReady(false);
+      requestAnimationFrame(() => kickGameVideos());
+      return;
+    }
+
+    const url = themeKey
+      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
+      : "";
     // Always park game clips until intro/countdown finish — playlist used to
     // start with gameVideosReady=true and immediately dissolve the cover.
     setGameVideosReady(false);
@@ -1954,19 +2024,33 @@ export function ScratchPrototype() {
 
   function resetMatchRound() {
     clearIntroDockTimer();
+    // New card / round: bring cards-left back until the first scratch touch.
+    setPackProgressShown(true);
+    setPackProgressLeaving(false);
     setTopSymbols(buildTopSymbols());
-    setTopBarPhase("center");
-    topBarPhaseRef.current = "center";
-    // Card-load effect runs after armHandStartIntro in the same commit. Don't
-    // wipe a hand-start 3-2-1 that was just armed (or the over-intro flag stays
-    // set and the post-dock countdown is skipped forever).
-    const preserveHandStartCountdown =
-      handStartCountdownOverIntroRef.current || handStartCountdownPending;
-    if (!preserveHandStartCountdown) {
+    if (skipToPlay) {
+      // Lab stays in docked hunt UI across card resets.
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
       setIntroGateActive(false);
       introGateActiveRef.current = false;
       setShowIntroCountdown(false);
       showIntroCountdownRef.current = false;
+      handCountdownDoneRef.current = true;
+    } else {
+      setTopBarPhase("center");
+      topBarPhaseRef.current = "center";
+      // Card-load effect runs after armHandStartIntro in the same commit. Don't
+      // wipe a hand-start 3-2-1 that was just armed (or the over-intro flag stays
+      // set and the post-dock countdown is skipped forever).
+      const preserveHandStartCountdown =
+        handStartCountdownOverIntroRef.current || handStartCountdownPending;
+      if (!preserveHandStartCountdown) {
+        setIntroGateActive(false);
+        introGateActiveRef.current = false;
+        setShowIntroCountdown(false);
+        showIntroCountdownRef.current = false;
+      }
     }
     setTopBarRound((n) => n + 1);
     setSessionSymbols(buildBodySymbols());
@@ -2655,6 +2739,41 @@ export function ScratchPrototype() {
 
   useEffect(() => {
     let isCancelled = false;
+
+    // Lab /game-ui: never wait on API/auth. Mount local DEFAULT_CARDS + mesh
+    // immediately so phones can preview without a session or media key.
+    if (skipToPlay) {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get("card")?.trim() || "juliana_1";
+      const modelFromUrl = params.get("model")?.trim() || "julianaval";
+      const labCards = DEFAULT_CARDS.map((entry) =>
+        entry.id.startsWith("juliana")
+          ? { ...entry, model_id: entry.model_id ?? "julianaval" }
+          : entry,
+      );
+      const labCard =
+        labCards.find((entry) => entry.id === fromUrl) ??
+        labCards.find((entry) => entry.id === "juliana_1") ??
+        labCards[0]!;
+      setCards(labCards);
+      setModels([
+        {
+          id: modelFromUrl,
+          label: "Juliana",
+          avatar: null,
+        },
+      ]);
+      singleCardIdRef.current = labCard.id;
+      setPlaylistMode(false);
+      setActiveModelId(modelFromUrl);
+      setSelectedCardId(labCard.id);
+      setSelectedMeshFile(labCard.mesh);
+      setCardsReady(true);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
     Promise.all([loadCards(), fetchModels()])
       .then(([loaded, loadedModels]) => {
         if (isCancelled) return;
@@ -2774,7 +2893,7 @@ export function ScratchPrototype() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [skipToPlay]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !cardsReady) return;
@@ -2942,7 +3061,7 @@ export function ScratchPrototype() {
     autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCardId, card?.id, card?.mesh]);
+  }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
@@ -3014,9 +3133,14 @@ export function ScratchPrototype() {
   }, [trackedMesh]);
 
   useEffect(() => {
+    // Stage (and its <video> nodes) only mount after cardsReady. Without this
+    // dep, skip-to-play never toggles introActive so the first null-ref run
+    // never retries and the stage stays black.
+    if (!cardsReady || !card) return;
+
     const bottomVideo = bottomVideoRef.current;
     const foregroundVideo = foregroundVideoRef.current;
-    if (!bottomVideo || !foregroundVideo || !card) return;
+    if (!bottomVideo || !foregroundVideo) return;
 
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
@@ -3101,7 +3225,7 @@ export function ScratchPrototype() {
         // ignore
       }
     };
-  }, [card?.id, card?.bottom, card?.foreground, introActive]);
+  }, [cardsReady, card?.id, card?.bottom, card?.foreground, introActive]);
 
   // Mobile browsers (notably iOS Safari) will suspend a second, simultaneously
   // playing <video> after a few seconds to save power — which here drops the
@@ -3270,6 +3394,10 @@ export function ScratchPrototype() {
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
+  // load). Keep this separate from matchStartUnlocked so scratch stays gated.
+  const topChromeBarReady =
+    topBarPhase === "docked" && (skipToPlay || matchStartUnlocked);
   const symbolsHuntComplete =
     useBodySymbols && revealedSymbols >= SYMBOL_SLOT_COUNT;
   const huntPhase = resolveHuntPhase({
@@ -3455,9 +3583,37 @@ export function ScratchPrototype() {
     }
   }
 
+  /** /game-ui lab: after symbols are found, replay this card instead of leaving. */
+  function restartCurrentCardLab() {
+    if (!skipToPlay) return;
+    finishAutoActiveRef.current = false;
+    clearGameResultTimer();
+    if (gameResultLeaveTimerRef.current !== null) {
+      window.clearTimeout(gameResultLeaveTimerRef.current);
+      gameResultLeaveTimerRef.current = null;
+    }
+    clearPendingMotionResult();
+    setMotionResult(null);
+    setPackRevealFailed(false);
+    setPackRevealRetrying(false);
+    packRevealBlockedRef.current = false;
+    cardTransitionActiveRef.current = false;
+    cardTransitionHandoffRef.current = false;
+    setCardTransition(null);
+    setCardTransitionReady(false);
+    // Keep the same card selected; token forces the card-load reset effect.
+    setLabRestartToken((n) => n + 1);
+    requestAnimationFrame(() => kickGameVideos());
+  }
+
   async function presentMotionResult() {
     const finishedId = selectedCardId;
     if (!finishedId) return;
+    // Lab: never advance / navigate — loop the same card for UI testing.
+    if (skipToPlay) {
+      restartCurrentCardLab();
+      return;
+    }
     if (completedCardIdsRef.current.includes(finishedId)) return;
     const match = matchOutcomeRef.current ?? matchOutcome;
     const result =
@@ -3630,6 +3786,11 @@ export function ScratchPrototype() {
   }
 
   async function advanceAfterScratch() {
+    // Lab: same-card loop — never leave /game-ui after a find.
+    if (skipToPlay) {
+      restartCurrentCardLab();
+      return;
+    }
     const finishedId = selectedCardId;
     if (!finishedId || completedCardIdsRef.current.includes(finishedId)) return;
     if (cardTransitionActiveRef.current) return;
@@ -4864,13 +5025,116 @@ export function ScratchPrototype() {
               <div className="photo-scratch-intro-ring" />
             </div>
           ) : null}
-          {useBodySymbols && matchStartUnlocked ? (
+          {/* Top chrome — two rows:
+                row 1: pause | icon-bar track | mute
+                row 2: blank | progress toast slot | cards left
+              Body-match bar is stage-absolute (center foil → dock fly). */}
+          <div
+            className={`stage-game__top-chrome${
+              topBarPhase === "docked" ? " is-docked" : ""
+            }`}
+          >
+            <div className="stage-game__top-chrome-row is-controls">
+              <div className="stage-game__top-chrome-side is-start">
+                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+              </div>
+              <div className="stage-game__top-chrome-center">
+                {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
+                  /* Legacy foil path: always 6 top slots (never body 12). */
+                  <div
+                    className={`symbol-bar${
+                      revealedSymbols >= TOP_SYMBOL_COUNT
+                        ? " is-symbols-complete"
+                        : ""
+                    }${claimed ? " is-fully-revealed" : ""}`}
+                    aria-label="Game symbols"
+                  >
+                    {topSymbols
+                      .slice(0, TOP_SYMBOL_COUNT)
+                      .map((typeId, index) => (
+                        <div
+                          key={index}
+                          ref={(el) => {
+                            symbolSlotRefs.current[index] = el;
+                          }}
+                          className={`symbol-slot${
+                            litSymbolSlots[index] ? " is-revealed" : ""
+                          }`}
+                          title={
+                            litSymbolSlots[index]
+                              ? SYMBOL_TYPES[typeId]?.label
+                              : undefined
+                          }
+                        >
+                          {litSymbolSlots[index] ? (
+                            <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
+                          ) : null}
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="stage-game__top-chrome-side is-end">
+                <StageMuteButton />
+              </div>
+            </div>
+            {/* Status row: [ cards-left 1fr | notifications 2fr ] */}
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
+                {packProgressShown &&
+                (skipToPlay ||
+                  (modelCards.length > 1 &&
+                    completedCardIds.length < modelCards.length &&
+                    hasPlayableCard)) ? (
+                  <div
+                    className={[
+                      "pack-progress-shell",
+                      packProgressLeaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={() => {
+                      if (!packProgressLeaving) return;
+                      setPackProgressShown(false);
+                      setPackProgressLeaving(false);
+                    }}
+                  >
+                    {skipToPlay ? (
+                      /* Lab always shows pack-progress for layout. */
+                      <PackProgress current={1} total={5} />
+                    ) : (
+                      <PackProgress
+                        current={
+                          motionResult?.current ??
+                          Math.min(
+                            completedCardIds.length + 1,
+                            modelCards.length,
+                          )
+                        }
+                        total={modelCards.length}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="stage-game__top-chrome-status-notes"
+                data-progress-toast-slot="1"
+              />
+            </div>
+          </div>
+          {/* One TopSymbolBar for the whole match sequence:
+              center (scratch foil) → docked (fly to top) → showcase. */}
+          {(useBodySymbols || skipToPlay) &&
+          (topChromeBarReady ||
+            (matchStartUnlocked && topBarPhase !== "docked")) ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
               slotElsOutRef={topBarSlotElsRef}
+              forceRevealed={skipToPlay}
               onAllRevealed={onTopBarAllRevealed}
               freezeSymbols={shouldFreezeSymbolLottie({
                 basePaused: false,
@@ -4892,42 +5156,6 @@ export function ScratchPrototype() {
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
-          {!useBodySymbols && matchStartUnlocked ? (
-            <div
-              className={`symbol-bar${revealedSymbols >= SYMBOL_SLOT_COUNT ? " is-symbols-complete" : ""}${claimed ? " is-fully-revealed" : ""}`}
-              aria-label="Game symbols"
-            >
-              {sessionSymbols.map((typeId, index) => (
-                <div
-                  key={index}
-                  ref={(el) => {
-                    symbolSlotRefs.current[index] = el;
-                  }}
-                  className={`symbol-slot${litSymbolSlots[index] ? " is-revealed" : ""}`}
-                  title={
-                    litSymbolSlots[index]
-                      ? SYMBOL_TYPES[typeId]?.label
-                      : undefined
-                  }
-                >
-                  {litSymbolSlots[index] ? (
-                    <GameSymbolIcon
-                      typeId={typeId}
-                      pixelScale={1.2}
-                      preferStatic={shouldPreferStaticSymbolLottie({
-                        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
-                      })}
-                      paused={shouldFreezeSymbolLottie({
-                        basePaused: false,
-                        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
-                        isScratching,
-                      })}
-                    />
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : null}
           {showIntroCountdown ? (
             <InitialCountdown
               onComplete={onIntroCountdownComplete}
@@ -5057,6 +5285,10 @@ export function ScratchPrototype() {
                 void foregroundVideo.play().catch(() => undefined);
               drawingRef.current = true;
               setIsScratching(true);
+              // First scratch touch: animate cards-left away for this card.
+              if (packProgressShown && !packProgressLeaving) {
+                setPackProgressLeaving(true);
+              }
               lastScratchWorldRef.current = null;
               clearPendingScratchMove(scratchInputCoalesceRef.current);
               lastPointerClientRef.current = {
@@ -5154,17 +5386,6 @@ export function ScratchPrototype() {
               )}
             </button>
           </div>
-          {modelCards.length > 1 &&
-          completedCardIds.length < modelCards.length &&
-          hasPlayableCard ? (
-            <PackProgress
-              current={
-                motionResult?.current ??
-                Math.min(completedCardIds.length + 1, modelCards.length)
-              }
-              total={modelCards.length}
-            />
-          ) : null}
           {/* Phones hide the dev panel, so surface compact controls on the stage
               itself. Hidden on desktop where the panel is used. */}
           <div className="mobile-controls-wrap">

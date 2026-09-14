@@ -6,13 +6,13 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   feedbackLabel,
   FRAME_H,
   FRAME_RX,
   FRAME_W,
-  roundedRectPerimeter,
-  energyTrailPath,
+  roundedRectPath,
   type NormalizedPoint,
 } from "./scratchFrameGeometry";
 
@@ -20,11 +20,6 @@ export type SymbolDiscoveryBatch = {
   key: number;
   positions: NormalizedPoint[];
   foundAfter: number;
-};
-
-type ActiveTrail = {
-  id: number;
-  d: string;
 };
 
 type ScratchFrameProgressProps = {
@@ -40,13 +35,36 @@ type ScratchFrameProgressProps = {
 const FRAME_INSET = 4;
 const RECT_W = FRAME_W - FRAME_INSET * 2;
 const RECT_H = FRAME_H - FRAME_INSET * 2;
-const PERIMETER = roundedRectPerimeter(RECT_W, RECT_H, FRAME_RX);
+/** Top-left start, clockwise — matches how progress should grow around the card. */
+const FRAME_PATH = roundedRectPath(
+  FRAME_INSET,
+  FRAME_INSET,
+  RECT_W,
+  RECT_H,
+  FRAME_RX,
+);
 /* Keep in sync with the matching CSS durations in scratch/styles.css. */
-const TRAIL_MS = 420;
 const SWEEP_MS = 760;
 const PULSE_MS = 280;
 const FEEDBACK_SHOW_MS = 1600;
-const FEEDBACK_FADE_MS = 250;
+const FEEDBACK_FADE_MS = 360;
+/** Baked start origin (clockwise from top-left). */
+const FRAME_START = 0.178;
+
+/** Tuned progress gradient + track (no live color lab). */
+const PROGRESS_STOPS = [
+  { offset: 0, color: "#ff0073" },
+  { offset: 45, color: "#ff7c5c" },
+  { offset: 75, color: "#ff0073" },
+  { offset: 100, color: "#ff7c5c" },
+] as const;
+/** Pre-progress frame border — soft gold gradient (matches reward gold). */
+const TRACK_STOPS = [
+  { offset: 0, color: "oklch(0.928 0.103 92.71 / 0.55)" },
+  { offset: 35, color: "oklch(0.898 0.124 88.45 / 0.42)" },
+  { offset: 70, color: "oklch(0.82 0.13 75 / 0.5)" },
+  { offset: 100, color: "oklch(0.928 0.103 92.71 / 0.55)" },
+] as const;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -62,7 +80,6 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 }: ScratchFrameProgressProps) {
   const uid = useId().replace(/:/g, "");
   const reducedMotion = prefersReducedMotion();
-  const [trails, setTrails] = useState<ActiveTrail[]>([]);
   const [feedback, setFeedback] = useState<{
     found: number;
     fading: boolean;
@@ -70,12 +87,26 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
   const [completeSweep, setCompleteSweep] = useState(false);
   const [completePulse, setCompletePulse] = useState(false);
   const processedBatchKeys = useRef(new Set<number>());
-  const trailIdRef = useRef(0);
   const feedbackTimerRef = useRef<number | null>(null);
 
-  // Frame growth is the CSS transition on stroke-dashoffset (260ms, no delay).
-  const dashOffset =
-    PERIMETER * (1 - (total > 0 ? Math.min(1, found / total) : 0));
+  // pathLength=1. Visible arc = progress; gap = rest.
+  const progress = total > 0 ? Math.min(1, found / total) : 0;
+  const solidRing = progress >= 1;
+  const dashProgress = solidRing
+    ? 1
+    : Math.min(1, progress + (progress > 0.9 ? 0.01 : 0));
+  const progressStroke = solidRing
+    ? {
+        strokeDasharray: "none",
+        strokeDashoffset: 0,
+        strokeLinecap: "butt" as const,
+      }
+    : {
+        // Two values required — a single number becomes "n n" and leaves a hole.
+        strokeDasharray: `${dashProgress} ${Math.max(0, 1 - dashProgress)}`,
+        strokeDashoffset: -FRAME_START,
+        strokeLinecap: "round" as const,
+      };
 
   useEffect(() => {
     if (!active) return;
@@ -94,26 +125,13 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 
       if (reducedMotion) continue;
 
-      for (const pos of batch.positions) {
-        const id = (trailIdRef.current += 1);
-        const d = energyTrailPath(pos);
-        setTrails((current) => [...current, { id, d }]);
-        window.setTimeout(() => {
-          setTrails((current) => current.filter((trail) => trail.id !== id));
-        }, TRAIL_MS + 80);
-      }
-
       if (batch.foundAfter === total) {
-        const sweepAt = TRAIL_MS + 180;
-        window.setTimeout(() => setCompleteSweep(true), sweepAt);
+        setCompleteSweep(true);
         window.setTimeout(() => {
           setCompleteSweep(false);
           setCompletePulse(true);
-        }, sweepAt + SWEEP_MS);
-        window.setTimeout(
-          () => setCompletePulse(false),
-          sweepAt + SWEEP_MS + PULSE_MS,
-        );
+        }, SWEEP_MS);
+        window.setTimeout(() => setCompletePulse(false), SWEEP_MS + PULSE_MS);
       }
     }
   }, [active, batches, reducedMotion, total]);
@@ -123,7 +141,6 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
   useEffect(() => {
     if (!active || found === 0) {
       processedBatchKeys.current.clear();
-      setTrails([]);
       setFeedback(null);
       setCompleteSweep(false);
       setCompletePulse(false);
@@ -140,8 +157,10 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
 
   const frameClass = [
     "scratch-frame-progress",
+    // White track can stay on; colored arc is hidden until progress moves.
+    progress <= 0 && !settling ? "is-empty" : "is-active",
     settling ? "is-settling" : "",
-    found >= total ? "is-complete" : "",
+    solidRing || found >= total ? "is-complete" : "",
     found === 4 ? "is-milestone-4" : "",
     found === 8 ? "is-milestone-8" : "",
     found === 11 ? "is-almost" : "",
@@ -155,14 +174,64 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
     ? feedbackLabel(feedback.found, total)
     : null;
 
+  // Prefer the status-row notifications cell; fall back to body if missing.
+  const toastHost =
+    typeof document !== "undefined"
+      ? document.querySelector<HTMLElement>("[data-progress-toast-slot]")
+      : null;
+
+  const feedbackNode =
+    feedback && feedbackCopy ? (
+      <div
+        className={[
+          "scratch-frame-progress__feedback",
+          feedback.fading ? "is-fading" : "",
+          feedbackCopy.primary.startsWith("Almost there")
+            ? "is-almost-there"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        role="status"
+        aria-live="polite"
+      >
+        <strong>{feedbackCopy.primary}</strong>
+        {feedbackCopy.secondary ? <span>{feedbackCopy.secondary}</span> : null}
+      </div>
+    ) : null;
+
   return (
-    <div className={frameClass} aria-hidden="true">
+    <div
+      className={frameClass}
+      aria-hidden="true"
+      style={
+        {
+          ["--frame-start" as string]: String(FRAME_START),
+        } as CSSProperties
+      }
+    >
       <svg
         className="scratch-frame-progress__svg"
         viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
         preserveAspectRatio="none"
       >
         <defs>
+          <linearGradient
+            id={`${uid}-track-gradient`}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="0"
+            x2={FRAME_W}
+            y2={FRAME_H}
+          >
+            {TRACK_STOPS.map((stop, index) => (
+              <stop
+                key={index}
+                offset={`${stop.offset}%`}
+                stopColor={stop.color}
+              />
+            ))}
+          </linearGradient>
           <linearGradient
             id={`${uid}-progress-gradient`}
             gradientUnits="userSpaceOnUse"
@@ -171,87 +240,56 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
             x2={FRAME_W}
             y2={FRAME_H}
           >
-            <stop offset="0%" stopColor="#E8589A" />
-            <stop offset="45%" stopColor="#E08848" />
-            <stop offset="75%" stopColor="#B858D8" />
-            <stop offset="100%" stopColor="#7050D8" />
+            {PROGRESS_STOPS.map((stop, index) => (
+              <stop
+                key={index}
+                offset={`${stop.offset}%`}
+                stopColor={stop.color}
+              />
+            ))}
           </linearGradient>
         </defs>
-        <rect
+        <path
           className="scratch-frame-progress__track"
-          x={FRAME_INSET}
-          y={FRAME_INSET}
-          width={RECT_W}
-          height={RECT_H}
-          rx={FRAME_RX}
-          ry={FRAME_RX}
+          d={FRAME_PATH}
+          pathLength={1}
+          stroke={`url(#${uid}-track-gradient)`}
           vectorEffect="non-scaling-stroke"
         />
-        <rect
-          className="scratch-frame-progress__progress"
-          x={FRAME_INSET}
-          y={FRAME_INSET}
-          width={RECT_W}
-          height={RECT_H}
-          rx={FRAME_RX}
-          ry={FRAME_RX}
+        <path
+          className={[
+            "scratch-frame-progress__progress",
+            solidRing ? "is-ring-closed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          d={FRAME_PATH}
+          pathLength={1}
           stroke={`url(#${uid}-progress-gradient)`}
           vectorEffect="non-scaling-stroke"
-          style={
-            {
-              "--frame-perimeter": PERIMETER,
-              "--frame-dashoffset": dashOffset,
-            } as CSSProperties
-          }
+          strokeDasharray={progressStroke.strokeDasharray}
+          strokeDashoffset={progressStroke.strokeDashoffset}
+          strokeLinecap={progressStroke.strokeLinecap}
         />
         {completeSweep ? (
-          <rect
-            className="scratch-frame-progress__sweep"
-            x={FRAME_INSET}
-            y={FRAME_INSET}
-            width={RECT_W}
-            height={RECT_H}
-            rx={FRAME_RX}
-            ry={FRAME_RX}
+          <path
+            className="scratch-frame-progress__sweep is-ring-closed"
+            d={FRAME_PATH}
+            pathLength={1}
             stroke={`url(#${uid}-progress-gradient)`}
             vectorEffect="non-scaling-stroke"
+            strokeDasharray="none"
+            strokeDashoffset={0}
+            strokeLinecap="butt"
           />
         ) : null}
       </svg>
 
-      <svg
-        className="scratch-frame-progress__energy"
-        viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
-        preserveAspectRatio="none"
-      >
-        {trails.map((trail) => (
-          <path
-            key={trail.id}
-            className="scratch-frame-progress__trail"
-            d={trail.d}
-            /* Normalized so a short trail (symbol near an edge) travels at the
-               same readable speed as a long one from the middle of the card. */
-            pathLength={1}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
-
-      {feedback && feedbackCopy ? (
-        <div
-          className={[
-            "scratch-frame-progress__feedback",
-            feedback.fading ? "is-fading" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          role="status"
-          aria-live="polite"
-        >
-          <strong>{feedbackCopy.primary}</strong>
-          {feedbackCopy.secondary ? <span>{feedbackCopy.secondary}</span> : null}
-        </div>
-      ) : null}
+      {feedbackNode
+        ? toastHost
+          ? createPortal(feedbackNode, toastHost)
+          : feedbackNode
+        : null}
     </div>
   );
 });

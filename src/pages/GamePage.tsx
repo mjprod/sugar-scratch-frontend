@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
-import { GamePauseButton } from "@/features/game/GamePauseButton";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
@@ -59,8 +58,7 @@ function ScratchGameEmbed() {
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
-        <GamePauseButton onLeave={leaveGame} />
-        <ScratchPrototype />
+        <ScratchPrototype onLeave={leaveGame} />
         <FirstPlayTutorial scene="foil" />
       </div>
     </div>

@@ -196,8 +196,30 @@ textarea:focus-visible {
 }
 
 .symbol-bar {
+  /* Tunable plate + separate border ring. */
+  --bar-tint: rgb(0 0 0 / 31%);
+  --bar-image-opacity: 1;
+  --bar-mix-blend: normal;
+  --bar-bg-blend: multiply;
+  /* White = keep layer, black/transparent = fade. */
+  --bar-bg-mask: linear-gradient(
+    146deg,
+    rgb(255 255 255 / 0.78) 0%,
+    rgb(255 255 255 / 0.88) 100%
+  );
+  --bar-border-mask: linear-gradient(
+    165deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.12) 34%,
+    rgb(255 255 255 / 0.4) 100%
+  );
+  --bar-border-color: #f99d76;
+  --bar-border-width: 1px;
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
+  top: var(
+    --game-top-hud,
+    calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+  );
   left: 0;
   right: 0;
   z-index: 6;
@@ -210,179 +232,434 @@ textarea:focus-visible {
   margin-inline: auto;
   padding: 6px 10px;
   border-radius: 999px;
-  background: oklch(0.184 0.005 67.5 / 0.62);
-  border: 1px solid oklch(1 0 0 / 0.28);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  overflow: hidden;
+  isolation: isolate;
+  /* Real CSS border removed — stroke is a separate ::after ring. */
+  background: transparent;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Top-row states share the row with the game shell's pause button (40px at
-   left:12px). Inset past it and take the slot size from --game-symbol-slot so
-   the button can never cover a symbol; the bar then centres in the remaining
-   band via margin-inline:auto. Mid-screen phases (center / showcase) sit at
-   top:50% nowhere near the button, so they keep full width and stay centred on
-   the stage. Slots don't shrink or wrap, so the size has to come from the
-   variable — insets alone would just let the bar overflow back under the
-   button. Ceiling: the slot is left unclamped so the row always fits, which
-   means the 28px icons start clipping once the stage drops under ~297px. */
-.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
-  left: 60px;
-  right: 12px;
-  max-width: calc(100% - 72px);
-  gap: 5px;
-  padding: 9px;
-}
-
-.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .symbol-slot {
-  width: var(--game-symbol-slot, 44px);
-  height: var(--game-symbol-slot, 44px);
-}
-
-/* Pack session progress — card stack, bottom-left (separate from symbol objective). */
-.pack-progress {
+/* Frosted / tint plate — independent from the border ring. */
+.symbol-bar::before {
+  content: "";
   position: absolute;
-  bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  left: max(12px, env(safe-area-inset-left, 0px));
-  z-index: 7;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: min(52vw, 168px);
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
   pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.pack-progress__stack {
-  position: relative;
-  flex-shrink: 0;
-  width: 24px;
-  height: 30px;
-  animation: pack-progress-stack-shift 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.pack-progress__card {
-  --offset: calc(var(--i) * 3px);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 22px;
-  border: 1px solid oklch(1 0 0 / 0.34);
-  border-radius: 3px;
-  background: oklch(0.196 0.008 285 / 0.52);
+  background-color: var(--bar-tint);
+  background-image: url("/images/frostedglass.webp");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-blend-mode: var(--bar-bg-blend);
+  opacity: var(--bar-image-opacity);
+  mix-blend-mode: var(--bar-mix-blend);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.08),
-    0 0 8px oklch(0 0 0 / 0.28);
-  transform: translate(var(--offset), var(--offset));
+    inset 0 1px 0 rgb(255 255 255 / 20%),
+    inset 0 -1px 0 rgb(255 130 210 / 12%);
+  -webkit-mask-image: var(--bar-bg-mask);
+  mask-image: var(--bar-bg-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+/* Border ring only — can be masked without touching the bg image. */
+.symbol-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  border: var(--bar-border-width) solid var(--bar-border-color);
+  box-sizing: border-box;
+  -webkit-mask-image: var(--bar-border-mask);
+  mask-image: var(--bar-border-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+/* Lab outline: show plate (::before) vs border (::after) bounds while tuning. */
+html[data-bar-plate-outline="1"] .symbol-bar::before {
+  outline: 1px dashed oklch(0.85 0.18 145 / 0.95);
+  outline-offset: -1px;
+}
+html[data-bar-plate-outline="1"] .symbol-bar::after {
+  outline: 1px dashed oklch(0.82 0.16 55 / 0.95);
+  outline-offset: -2px;
+}
+
+.symbol-bar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Top match UI + every nested node — no glass blur over the stage canvas. */
+.symbol-bar *,
+.top-symbol-bar,
+.top-symbol-bar *,
+.symbol-slot,
+.symbol-slot * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Docked bar inside top-chrome center cell: flow layout, not absolute.
+   Center cell is already sized to exactly 6 slots — fill it, don't grow. */
+.stage-game__top-chrome-center .symbol-bar:not(.is-phase-center):not(.is-phase-showcase),
+.stage-game__top-chrome-center .top-symbol-bar.is-phase-docked {
+  --bar-icon-gap: var(--game-top-bar-gap, 3px);
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  transform: none !important;
+  animation: none !important;
+  gap: var(--bar-icon-gap);
+  padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
+  overflow: hidden;
+}
+
+/* Fallback if a docked bar is still stage-absolute (non-chrome hosts). */
+.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
+  --bar-side-clear: calc(12px + 40px + clamp(3px, 1.1cqw, 6px));
+  --bar-icon-gap: var(--game-top-bar-gap, 3px);
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  width: var(--game-top-bar-width, fit-content);
+  max-width: min(
+    var(--game-top-bar-width, 100%),
+    calc(100% - (2 * var(--bar-side-clear)))
+  );
+  margin-inline: auto;
+  gap: var(--bar-icon-gap);
+  padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
+  overflow: hidden;
+}
+
+.symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .symbol-slot,
+.top-symbol-bar:not(.is-phase-center):not(.is-phase-showcase) .top-symbol-slot {
+  width: var(--game-symbol-slot, 40px);
+  height: var(--game-symbol-slot, 40px);
+  flex: 0 0 var(--game-symbol-slot, 40px);
+}
+
+/* Shell so cards-left can exit without fighting the pill layout.
+   Same Apple anticipate → overshoot settle as the found toast. */
+.pack-progress-shell {
+  display: inline-flex;
+  max-width: 100%;
+  transform-origin: top center;
+  animation: pack-progress-enter 480ms both;
+}
+
+.pack-progress-shell.is-leaving {
+  animation: pack-progress-leave 360ms both;
+  pointer-events: none;
+}
+
+@keyframes pack-progress-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.84);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  16% {
+    opacity: 0.75;
+    transform: translateY(-11px) scale(0.76);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  58% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pack-progress-leave {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(5px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.78);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-progress-shell,
+  .pack-progress-shell.is-leaving {
+    animation: none !important;
+  }
+}
+
+/* Pack session progress — cards-left pill, status row under pause.
+   Plate (::before) + border ring (::after) split like .symbol-bar so each
+   can take its own mask-image. */
+.pack-progress {
+  --pp-tint: rgb(0 0 0 / 81%);
+  --pp-image-opacity: 0.99;
+  --pp-mix-blend: normal;
+  --pp-bg-blend: multiply;
+  --pp-bg-mask: linear-gradient(
+    95deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.65) 100%
+  );
+  --pp-border-mask: linear-gradient(
+    156deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.12) 34%,
+    rgb(255 255 255 / 0.4) 100%
+  );
+  --pp-border-color: #f99d76;
+  --pp-border-width: 1px;
+  /* Per-corner radius — host + ::before plate + ::after border all share these.
+     Debug sets --pp-radius as a full shorthand so all three stay in sync. */
+  --pp-radius-tl: 4px;
+  --pp-radius-tr: 11px;
+  --pp-radius-br: 11px;
+  --pp-radius-bl: 20px;
+  --pp-radius: 4px 11px 11px 20px;
+  /* Lottie art scale — layout slot stays 28×28; transform only. */
+  --pp-lottie-scale: 1.75;
+  --pp-lottie-x: 3px;
+  --pp-lottie-y: -2px;
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  max-width: min(58vw, 188px);
+  margin: 0;
+  padding: 7px 14px 7px 10px;
+  border-radius: var(--pp-radius);
+  overflow: hidden;
+  isolation: isolate;
+  /* Real CSS border removed — stroke is a separate ::after ring. */
+  border: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Frosted / tint plate — independent from the border ring. */
+.pack-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--pp-radius);
+  pointer-events: none;
+  background-color: var(--pp-tint);
+  background-image: url("/images/frostedglass.webp");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-blend-mode: var(--pp-bg-blend);
+  opacity: var(--pp-image-opacity);
+  mix-blend-mode: var(--pp-mix-blend);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 16%),
+    inset 0 -1px 0 rgb(255 130 210 / 10%);
+  -webkit-mask-image: var(--pp-bg-mask);
+  mask-image: var(--pp-bg-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+/* Border ring only — mask without touching the plate. */
+.pack-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: var(--pp-radius);
+  pointer-events: none;
+  border: var(--pp-border-width) solid var(--pp-border-color);
+  box-sizing: border-box;
+  -webkit-mask-image: var(--pp-border-mask);
+  mask-image: var(--pp-border-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+.pack-progress > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-pp-plate-outline="1"] .pack-progress::before {
+  outline: 1px dashed oklch(0.85 0.18 145 / 0.95);
+  outline-offset: -1px;
+}
+
+html[data-pp-plate-outline="1"] .pack-progress::after {
+  outline: 1px dashed oklch(0.82 0.16 55 / 0.95);
+  outline-offset: -2px;
+}
+
+/* Fallback if a host still places pack-progress as a free stage HUD. */
+.stage > .pack-progress {
+  position: absolute;
+  top: calc(
+    var(--game-top-hud, calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)) +
+      var(--game-top-bar-height, 54px) + var(--game-top-chrome-gap, 8px)
+  );
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: auto;
+  bottom: auto;
+  z-index: 7;
+}
+
+.pack-progress__icon {
+  /* Fixed layout slot — scaled lottie can overflow without growing the badge. */
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  line-height: 0;
+}
+
+.pack-progress__lottie {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  line-height: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) translate(var(--pp-lottie-x), var(--pp-lottie-y))
+    scale(var(--pp-lottie-scale));
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.pack-progress__lottie canvas {
+  display: block;
+  width: 28px !important;
+  height: 28px !important;
+  max-width: none;
+  max-height: none;
+  /* Cancel any stage canvas centering rules. */
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+html[data-pp-lottie-outline="1"] .pack-progress__icon {
+  outline: 1px dashed oklch(0.85 0.18 145 / 0.95);
+  outline-offset: 1px;
 }
 
 .pack-progress__copy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1px;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
+  text-align: left;
 }
 
 .pack-progress__remain {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: block;
   margin: 0;
-  color: oklch(0.937 0.086 91.56);
+  color: rgb(255 255 255 / 0.96);
   font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  line-height: 1.15;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
   white-space: nowrap;
+  text-align: left;
+  text-shadow: none;
+  filter: none;
 }
 
 .pack-progress__pos {
   margin: 0;
-  color: oklch(1 0 0 / 0.5);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  line-height: 1.25;
+  color: rgb(190 175 190 / 0.9);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: 1.15;
   white-space: nowrap;
-}
-
-.pack-progress__spark {
-  color: oklch(0.955 0.11 91.56);
-  font-size: 11px;
-  line-height: 1;
-  animation: pack-progress-spark 1.35s ease-in-out 2;
-}
-
-.pack-progress.is-final {
-  animation: pack-progress-final-enter 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  text-align: left;
 }
 
 .pack-progress.is-final .pack-progress__remain {
-  text-shadow: 0 0 12px oklch(0.937 0.086 91.56 / 0.35);
-}
-
-@keyframes pack-progress-stack-shift {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  38% {
-    transform: translateY(-5px);
-  }
-
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes pack-progress-final-enter {
-  0% {
-    opacity: 0.72;
-    transform: translateY(-3px);
-  }
-
-  45% {
-    filter: drop-shadow(0 0 10px oklch(0.937 0.086 91.56 / 0.42));
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    filter: none;
-  }
-}
-
-@keyframes pack-progress-spark {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(0.92);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
+  color: rgb(255 255 255 / 0.96);
 }
 
 @media (max-width: 360px) {
-  .pack-progress__pos {
-    display: none;
+  .pack-progress {
+    gap: 8px;
+    padding: 6px 12px 6px 8px;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .pack-progress__stack,
-  .pack-progress.is-final,
-  .pack-progress__spark {
-    animation: none;
+  .pack-progress__pos {
+    font-size: 9px;
   }
 }
 
@@ -541,7 +818,6 @@ textarea:focus-visible {
     transform: scale(1.28);
     filter: brightness(1.45);
     border-color: oklch(0.93 0.092 90.65 / 0.95);
-    background: oklch(0.907 0.106 86.69 / 0.28);
   }
   100% {
     transform: scale(1);
@@ -550,62 +826,105 @@ textarea:focus-visible {
 }
 
 .top-symbol-bar.is-phase-docked {
-  top: max(12px, env(safe-area-inset-top));
-  transform: translateY(0) scale(1);
+  /* Stage-absolute dock: same 6-slot width as the chrome center spacer so
+     pause/mute gutters stay put while this bar flies mid → top.
+     Override .symbol-bar left/right/margin so centering is left:50% only. */
+  position: absolute !important;
+  top: var(
+    --game-top-hud,
+    calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+  ) !important;
+  left: 50% !important;
+  right: auto !important;
+  box-sizing: border-box;
+  width: var(--game-top-bar-width, fit-content) !important;
+  max-width: min(var(--game-top-bar-width, 100%), calc(100% - 32px)) !important;
+  margin: 0 !important;
+  transform: translateX(-50%) translateY(0) scale(1);
+  gap: var(--game-top-bar-gap, 3px);
+  padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
   pointer-events: none;
   cursor: default;
-  /* Keyframes own the fly — don't fight the center→dock transition. */
+  /* Keep width/gap/pad transitions off — size is locked to 6 slots. */
   transition: none;
   animation: top-bar-dock-fly 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  box-shadow:
-    0 8px 24px oklch(0 0 0 / 0.35),
-    0 0 0 1px oklch(1 0 0 / 0.12);
+  background: transparent;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
+  overflow: hidden;
+  z-index: 9;
+}
+
+/* Lab / skip-to-play lands already docked — no mid→top fly on first paint. */
+.top-symbol-bar.is-phase-docked.is-force-revealed {
+  animation: none;
 }
 
 @keyframes top-bar-dock-fly {
   0% {
     top: 50%;
-    transform: translateY(-50%) scale(1.06);
+    /* Mid-screen foil is larger (44px slots); scale down into docked 6-slot pill. */
+    transform: translateX(-50%) translateY(-50%) scale(1.18);
     box-shadow:
-      0 0 0 1px oklch(0.898 0.124 88.45 / 0.7),
       0 18px 48px oklch(0 0 0 / 0.5),
       0 0 48px oklch(0.865 0.116 75.55 / 0.35);
   }
   42% {
-    transform: translateY(-58%) scale(0.86);
+    transform: translateX(-50%) translateY(-58%) scale(0.94);
   }
   100% {
-    top: max(12px, env(safe-area-inset-top));
-    transform: translateY(0) scale(1);
-    box-shadow:
-      0 8px 24px oklch(0 0 0 / 0.35),
-      0 0 0 1px oklch(1 0 0 / 0.12);
+    top: var(
+      --game-top-hud,
+      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+    );
+    transform: translateX(-50%) translateY(0) scale(1);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
   }
 }
 
-/* After dock: cascade right→left into grayscale via keyframed filter. */
+/* After dock: cascade right→left into grayscale on the ICON only.
+   Slot plate stays solid black — never wash the circle fill. */
 .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant {
-  filter: saturate(0) brightness(1.25);
-  opacity: 0.45;
+  filter: none;
+  opacity: 1;
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation: none;
+}
+
+.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant .game-symbol-lottie {
+  filter: saturate(0) brightness(1.05);
+  opacity: 1;
   animation: top-bar-slot-go-dormant 520ms cubic-bezier(0.33, 1, 0.4, 1) both;
 }
 
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(6) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(6)
+  .game-symbol-lottie {
   animation-delay: 380ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(5) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(5)
+  .game-symbol-lottie {
   animation-delay: 440ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(4) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(4)
+  .game-symbol-lottie {
   animation-delay: 500ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(3) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(3)
+  .game-symbol-lottie {
   animation-delay: 560ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(2) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(2)
+  .game-symbol-lottie {
   animation-delay: 620ms;
 }
-.top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant:nth-child(1) {
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-dormant:nth-child(1)
+  .game-symbol-lottie {
   animation-delay: 680ms;
 }
 
@@ -616,33 +935,36 @@ textarea:focus-visible {
     opacity: 1;
   }
   45% {
-    filter: saturate(0.35) brightness(1.12);
+    filter: saturate(0.35) brightness(1.08);
     transform: scale(0.9) translateX(-6px);
   }
   100% {
-    filter: saturate(0) brightness(1.25);
+    filter: saturate(0) brightness(1.05);
     transform: scale(1) translateX(0);
-    opacity: 0.45;
+    opacity: 1;
   }
 }
 
-/* Found on her body — full color again with a match pop. */
+/* Found on her body — full color again with a match pop (icon only). */
 .top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched {
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation: none;
+}
+
+.top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched .game-symbol-lottie {
   animation: top-bar-slot-reactivate 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
 @keyframes top-bar-slot-reactivate {
   0% {
-    filter: saturate(0) brightness(1.25);
+    filter: saturate(0) brightness(1.05);
     transform: scale(1);
-    opacity: 0.45;
+    opacity: 1;
   }
   42% {
     filter: saturate(1) brightness(1.4);
     transform: scale(1.26);
     opacity: 1;
-    border-color: oklch(0.93 0.092 90.65 / 0.95);
-    background: oklch(0.907 0.106 86.69 / 0.28);
   }
   100% {
     filter: none;
@@ -664,9 +986,8 @@ textarea:focus-visible {
   animation: top-bar-showcase-fly 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
   box-shadow:
     0 18px 48px oklch(0 0 0 / 0.55),
-    0 0 0 1px oklch(0.898 0.124 88.45 / 0.55),
     0 0 52px oklch(0.865 0.116 75.55 / 0.35);
-  border-color: oklch(0.898 0.124 88.45 / 0.75);
+  border: 0 !important;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -693,33 +1014,60 @@ textarea:focus-visible {
 }
 
 .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-dormant {
-  filter: saturate(0) brightness(1.25);
-  opacity: 0.45;
+  filter: none;
+  opacity: 1;
+  background: var(--symbol-slot-fill, #a74479) !important;
   animation: none;
+}
+
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-dormant
+  .game-symbol-lottie {
+  filter: saturate(0) brightness(1.05);
+  opacity: 1;
 }
 
 .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing {
   filter: none;
   opacity: 1;
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation: none;
+}
+
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing
+  .game-symbol-lottie {
   animation: top-bar-slot-found-pulse 700ms ease-in-out 720ms infinite;
 }
 
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(1) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(1)
+  .game-symbol-lottie {
   animation-delay: 720ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(2) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(2)
+  .game-symbol-lottie {
   animation-delay: 780ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(3) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(3)
+  .game-symbol-lottie {
   animation-delay: 840ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(4) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(4)
+  .game-symbol-lottie {
   animation-delay: 900ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(5) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(5)
+  .game-symbol-lottie {
   animation-delay: 960ms;
 }
-.top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing:nth-child(6) {
+.top-symbol-bar.is-phase-showcase
+  .top-symbol-slot.is-matched.is-pulsing:nth-child(6)
+  .game-symbol-lottie {
   animation-delay: 1020ms;
 }
 
@@ -728,16 +1076,12 @@ textarea:focus-visible {
   100% {
     transform: scale(1);
     filter: brightness(1);
-    border-color: oklch(0.907 0.106 86.69 / 0.75);
-    background: oklch(0.884 0.12 83.38 / 0.16);
-    box-shadow: 0 0 0 0 oklch(0.863 0.133 80.39 / 0.35);
+    opacity: 1;
   }
   50% {
     transform: scale(1.22);
     filter: brightness(1.35);
-    border-color: oklch(0.941 0.085 93.01);
-    background: oklch(0.907 0.106 86.69 / 0.38);
-    box-shadow: 0 0 22px 4px oklch(0.863 0.133 80.39 / 0.55);
+    opacity: 1;
   }
 }
 
@@ -749,16 +1093,22 @@ textarea:focus-visible {
   justify-content: center;
   width: 44px;
   height: 44px;
+  flex-shrink: 0;
+  background: var(--symbol-slot-fill, #a74479) !important;
   pointer-events: none;
   touch-action: none;
 }
 
 .top-symbol-bar.is-scratchable .top-symbol-slot {
-  border-color: oklch(1 0 0 / 0.2);
-  background: oklch(0.13 0.004 69.83 / 0.98);
+  border-color: rgb(255 255 255 / 0.3);
+  background: var(--symbol-slot-fill, #a74479) !important;
 }
 
 .top-symbol-bar.is-phase-docked .top-symbol-slot {
+  width: var(--game-symbol-slot, 40px);
+  height: var(--game-symbol-slot, 40px);
+  flex: 0 0 var(--game-symbol-slot, 40px);
+  background: var(--symbol-slot-fill, #a74479) !important;
   pointer-events: none;
   cursor: default;
 }
@@ -885,14 +1235,16 @@ textarea:focus-visible {
 }
 
 .symbol-slot {
+  /* Lab-tuned plate from HSBA picker. */
+  --symbol-slot-fill: hsla(360 34% 12% / 0.31);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 33px;
   height: 33px;
   border-radius: 50%;
-  border: 1px solid oklch(1 0 0 / 0.22);
-  background: oklch(1 0 0 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.3);
+  background: var(--symbol-slot-fill) !important;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -928,8 +1280,9 @@ textarea:focus-visible {
 }
 
 .symbol-bar.is-symbols-complete:not(.is-fully-revealed) {
-  border-color: oklch(0.898 0.124 88.45 / 0.75);
-  box-shadow: 0 0 0 1px oklch(0.898 0.124 88.45 / 0.35);
+  /* No gold completion ring on the top bar plate. */
+  border-color: transparent;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
 }
 
 .mobile-reset.is-symbols-complete:not(:disabled) {
@@ -972,8 +1325,9 @@ textarea:focus-visible {
 }
 
 .symbol-slot.is-revealed {
-  background: oklch(1 0 0 / 0.14);
-  border-color: oklch(1 0 0 / 0.45);
+  /* Keep gradient plate — only the icon animates on reveal. */
+  background: var(--symbol-slot-fill, #a74479) !important;
+  border-color: rgb(255 255 255 / 0.3);
   animation: symbolReveal 280ms cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
@@ -1023,38 +1377,65 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
-/* Continuous frame progress — outer card stroke (symbol hunt). */
-/* inset must stay 0 — `.stage` clips overflow, so a negative inset would
-   cut the whole stroke off (the frame lives just inside the card edge). */
+/* Continuous frame progress — outer card stroke (symbol hunt).
+   Keep the stroke inside the stage (positive insets only — negative would
+   clip under overflow:hidden). On phones, lift the bottom edge above the
+   iOS browser chrome with safe-area + a small dvh-based toolbar clearance. */
 .scratch-frame-progress {
+  --frame-inset-x: max(4px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  --frame-inset-top: max(4px, env(safe-area-inset-top, 0px));
+  /* Base bottom pad; mobile boosts this further below. */
+  --frame-inset-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+  /* 0 = top-left start; 0..1 travels clockwise around the frame. */
+  --frame-start: 0.178;
   position: absolute;
-  inset: 0;
+  top: var(--frame-inset-top);
+  right: var(--frame-inset-x);
+  bottom: var(--frame-inset-bottom);
+  left: var(--frame-inset-x);
   z-index: 7;
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
   pointer-events: none;
+  box-sizing: border-box;
 }
 
-.scratch-frame-progress__svg,
-.scratch-frame-progress__energy {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.scratch-frame-progress__energy {
-  z-index: 4;
+@media (max-width: 700px) {
+  .scratch-frame-progress {
+    /* Safari bottom chrome often sits above the CSS safe-area alone.
+       Add a responsive pad from dvh so the stroke clears the toolbar. */
+    --frame-inset-bottom: max(
+      12px,
+      calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6dvh, 56px))
+    );
+    --frame-inset-top: max(8px, env(safe-area-inset-top, 0px));
+    --frame-inset-x: max(6px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  }
 }
 
 .scratch-frame-progress__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
   z-index: 2;
+  -webkit-mask-image: linear-gradient(
+    248deg,
+    #000 10%,
+    #00000029 57%,
+    #000 90%
+  );
+  mask-image: linear-gradient(248deg, #000 10%, #00000029 57%, #000 90%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .scratch-frame-progress__track {
   fill: none;
-  stroke: rgba(220, 120, 175, 0.52);
+  /* Stroke color comes from the gold track gradient in ScratchFrameProgress. */
   stroke-width: 2;
 }
 
@@ -1062,13 +1443,26 @@ textarea:focus-visible {
   fill: none;
   stroke-width: 3.5;
   stroke-linecap: round;
-  stroke-dasharray: var(--frame-perimeter, 2000);
-  stroke-dashoffset: var(--frame-dashoffset, 2000);
+  stroke-linejoin: round;
+  /* Dash geometry is set as SVG attributes from ScratchFrameProgress. */
   opacity: 1;
-  filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
-  /* No delay: a delay restarts on every find, so fast scratching would stall the
-     stroke and then jump. It has to chase the count in real time instead. */
-  transition: stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
+  filter: none;
+  transition:
+    stroke-dasharray 260ms cubic-bezier(0.22, 0.8, 0.3, 1),
+    stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* Full ring: continuous closed stroke — no dash ends / no join gap.
+   Works even when --frame-start is non-zero (start slider / locked offset). */
+.scratch-frame-progress.is-complete .scratch-frame-progress__progress,
+.scratch-frame-progress__progress.is-ring-closed,
+.scratch-frame-progress__sweep.is-ring-closed {
+  stroke-dasharray: none !important;
+  stroke-dashoffset: 0 !important;
+  stroke-linecap: butt !important;
+  stroke-linejoin: round !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 .scratch-frame-progress.is-milestone-4 .scratch-frame-progress__progress,
@@ -1078,11 +1472,10 @@ textarea:focus-visible {
 
 .scratch-frame-progress.is-almost .scratch-frame-progress__progress {
   opacity: 1;
-  filter: drop-shadow(0 0 8px rgba(190, 50, 120, 0.65));
+  filter: none;
 }
 
-/* No match: the accumulated energy glows once, then drains back to the bare
-   track. Settling, never a red flash or a break. */
+/* No match: accumulated energy drains back to the bare track. */
 .scratch-frame-progress.is-settling .scratch-frame-progress__progress {
   transition: none;
   animation: scratch-frame-settle 600ms ease-out forwards;
@@ -1095,15 +1488,12 @@ textarea:focus-visible {
 @keyframes scratch-frame-settle {
   0% {
     opacity: 1;
-    filter: drop-shadow(0 0 5px rgba(190, 50, 120, 0.55));
   }
   20% {
     opacity: 1;
-    filter: drop-shadow(0 0 12px rgba(190, 50, 120, 0.75));
   }
   100% {
     opacity: 0;
-    filter: drop-shadow(0 0 0 rgba(255, 155, 203, 0));
   }
 }
 
@@ -1118,10 +1508,11 @@ textarea:focus-visible {
   fill: none;
   stroke-width: 3.5;
   stroke-linecap: round;
-  stroke-dasharray: var(--frame-perimeter, 2000);
-  stroke-dashoffset: var(--frame-perimeter, 2000);
+  stroke-linejoin: round;
+  stroke-dasharray: 0 1;
+  stroke-dashoffset: calc(0px - var(--frame-start, 0));
   opacity: 1;
-  filter: drop-shadow(0 0 10px rgba(200, 90, 50, 0.7));
+  filter: none;
   animation: scratch-frame-sweep 760ms ease-out forwards;
 }
 
@@ -1129,99 +1520,185 @@ textarea:focus-visible {
   animation: scratch-frame-complete-pulse 280ms ease-out;
 }
 
-/* Comet segment on a pathLength=1 path — dash values are fractions of the
-   trail, so travel speed reads the same however far the symbol is from an edge. */
-.scratch-frame-progress__trail {
-  fill: none;
-  stroke: rgba(255, 226, 238, 0.95);
-  stroke-width: 3;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 8px rgba(255, 155, 203, 0.85));
-  stroke-dasharray: 0.32 1;
-  stroke-dashoffset: 0.32;
-  animation: scratch-energy-trail 420ms cubic-bezier(0.4, 0.1, 0.35, 1) forwards;
-}
-
 .scratch-frame-progress__feedback {
-  position: absolute;
-  right: 16px;
-  bottom: 18px;
+  /* Lives in status-row notifications cell — fill parent height.
+     Plate (::before) + border (::after) split like .pack-progress. */
+  --toast-tint: rgb(0 0 0 / 60%);
+  --toast-image-opacity: 0.99;
+  --toast-mix-blend: normal;
+  --toast-bg-blend: multiply;
+  --toast-bg-mask: linear-gradient(
+    95deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.65) 100%
+  );
+  --toast-border-mask: linear-gradient(
+    156deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.12) 34%,
+    rgb(255 255 255 / 0.4) 100%
+  );
+  --toast-border-color: #f99d76;
+  --toast-border-width: 1px;
+  --toast-radius-tl: 4px;
+  --toast-radius-tr: 11px;
+  --toast-radius-br: 11px;
+  --toast-radius-bl: 20px;
+  --toast-radius: 4px 11px 11px 20px;
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
   z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
   gap: 2px;
-  padding: 7px 10px;
-  border-radius: 11px;
-  background: rgba(10, 8, 15, 0.72);
-  border: 1px solid rgba(255, 170, 220, 0.25);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  height: 100%;
+  min-height: var(--game-top-status-height, 45px);
+  width: max-content;
+  min-width: 3.25rem;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: var(--toast-radius);
+  overflow: hidden;
+  isolation: isolate;
+  border: 0 !important;
+  background: transparent;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
   pointer-events: none;
-  animation: scratch-feedback-in 200ms ease-out both;
+  text-align: right;
+  transform: none;
+  transform-origin: top center;
+  /* Same Apple anticipate → overshoot settle as homepage anchored dialogs. */
+  animation: scratch-feedback-in 480ms both;
+  box-sizing: border-box;
+}
+
+.scratch-frame-progress__feedback::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--toast-radius);
+  pointer-events: none;
+  background-color: var(--toast-tint);
+  background-image: url("/images/frostedglass.webp");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-blend-mode: var(--toast-bg-blend);
+  opacity: var(--toast-image-opacity);
+  mix-blend-mode: var(--toast-mix-blend);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 16%),
+    inset 0 -1px 0 rgb(255 130 210 / 10%);
+  -webkit-mask-image: var(--toast-bg-mask);
+  mask-image: var(--toast-bg-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+.scratch-frame-progress__feedback::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: var(--toast-radius);
+  pointer-events: none;
+  border: var(--toast-border-width) solid var(--toast-border-color);
+  box-sizing: border-box;
+  -webkit-mask-image: var(--toast-border-mask);
+  mask-image: var(--toast-border-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+.scratch-frame-progress__feedback > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::before {
+  outline: 1px dashed oklch(0.85 0.18 145 / 0.95);
+  outline-offset: -1px;
+}
+
+html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
+  outline: 1px dashed oklch(0.82 0.16 55 / 0.95);
+  outline-offset: -2px;
 }
 
 .scratch-frame-progress__feedback.is-fading {
-  animation: scratch-feedback-out 250ms ease-in forwards;
+  animation: scratch-feedback-out 360ms both;
+}
+
+/* Lab pin: keep toast visible while tuning (no enter/exit loop). */
+.scratch-frame-progress__feedback.is-lab-pinned {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
 }
 
 .scratch-frame-progress__feedback strong {
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
   line-height: 1.1;
   color: rgba(255, 255, 255, 0.95);
+  text-align: right;
+}
+
+.scratch-frame-progress__feedback.is-almost-there strong {
+  font-weight: 500;
 }
 
 .scratch-frame-progress__feedback span {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   opacity: 0.65;
   color: rgba(255, 255, 255, 0.85);
-}
-
-@keyframes scratch-energy-trail {
-  0% {
-    stroke-dashoffset: 0.32;
-    opacity: 0;
-  }
-
-  12% {
-    opacity: 1;
-  }
-
-  78% {
-    opacity: 1;
-  }
-
-  100% {
-    stroke-dashoffset: -1;
-    opacity: 0;
-  }
+  text-align: right;
 }
 
 @keyframes scratch-frame-milestone-pulse {
   0% {
-    filter: drop-shadow(0 0 2px rgba(190, 50, 120, 0.35));
+    opacity: 0.85;
   }
 
   50% {
-    filter: drop-shadow(0 0 10px rgba(190, 50, 120, 0.65));
+    opacity: 1;
   }
 
   100% {
-    filter: drop-shadow(0 0 4px rgba(190, 50, 120, 0.45));
+    opacity: 0.9;
   }
 }
 
 @keyframes scratch-frame-sweep {
   from {
-    stroke-dashoffset: var(--frame-perimeter, 2000);
+    stroke-dasharray: 0 1;
+    stroke-dashoffset: calc(0px - var(--frame-start, 0));
   }
 
   to {
-    stroke-dashoffset: 0;
+    /* visible 1, gap 0 — full ring with no hole */
+    stroke-dasharray: 1 0;
+    stroke-dashoffset: calc(0px - var(--frame-start, 0));
   }
 }
 
@@ -1242,22 +1719,48 @@ textarea:focus-visible {
   }
 }
 
+/* Mirrors coverflow-buy-confirm-enter / coverflow-confirm-enter (homepage). */
 @keyframes scratch-feedback-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(-8px) scale(0.84);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   }
 
-  to {
+  16% {
+    opacity: 0.75;
+    transform: translateY(-11px) scale(0.76);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  58% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(4px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 @keyframes scratch-feedback-out {
-  to {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(5px) scale(1.06);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(-10px) scale(0.78);
   }
 }
 
@@ -1292,12 +1795,19 @@ textarea:focus-visible {
     transition: stroke-dashoffset 120ms linear;
   }
 
-  .scratch-frame-progress__trail,
   .scratch-frame-progress__sweep,
   .scratch-frame-progress.is-pulsing .scratch-frame-progress__progress,
   .scratch-frame-progress.is-milestone-4 .scratch-frame-progress__progress,
-  .scratch-frame-progress.is-milestone-8 .scratch-frame-progress__progress {
+  .scratch-frame-progress.is-milestone-8 .scratch-frame-progress__progress,
+  .scratch-frame-progress__feedback,
+  .scratch-frame-progress__feedback.is-fading {
     animation: none !important;
+  }
+
+  .scratch-frame-progress__feedback,
+  .scratch-frame-progress__feedback.is-fading {
+    opacity: 1;
+    transform: none;
   }
 
   .body-symbol-marker.is-symbol-pop {
@@ -1492,14 +2002,24 @@ textarea:focus-visible {
 
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant,
   .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-dormant {
-    filter: saturate(0) brightness(1.25) !important;
-    opacity: 0.45 !important;
+    filter: none !important;
+    opacity: 1 !important;
+    background: var(--symbol-slot-fill, #a74479) !important;
+  }
+
+  .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant .game-symbol-lottie,
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-dormant
+    .game-symbol-lottie {
+    filter: saturate(0) brightness(1.05) !important;
+    opacity: 1 !important;
   }
 
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched,
   .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched {
     filter: none !important;
     opacity: 1;
+    background: var(--symbol-slot-fill, #a74479) !important;
   }
 
   .stage.is-bar-phase .game-stage-canvas-wrap::after {
@@ -1517,9 +2037,7 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   cursor: pointer;
-  background: oklch(0.125 0.006 51.81 / 0.72);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  background: oklch(0.125 0.006 51.81 / 0.82);
 }
 
 .match-audio-gate-label {
@@ -2158,10 +2676,22 @@ textarea:focus-visible {
 
 @media (max-width: 700px) {
   .symbol-bar {
-    top: max(12px, env(safe-area-inset-top));
+    top: var(
+      --game-top-hud,
+      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+    );
     max-width: calc(100% - 32px);
     gap: 4px;
     padding: 5px 8px;
+  }
+
+  .symbol-bar:not(.is-phase-center):not(.is-phase-showcase) {
+    --bar-side-clear: calc(12px + 40px + clamp(2px, 1cqw, 5px));
+    left: 0;
+    right: 0;
+    width: fit-content;
+    max-width: min(100%, calc(100% - (2 * var(--bar-side-clear))));
+    margin-inline: auto;
   }
 
   .top-symbol-bar {
@@ -2169,13 +2699,27 @@ textarea:focus-visible {
     padding: 8px 12px;
   }
 
+  .top-symbol-bar.is-phase-docked {
+    top: var(
+      --game-top-hud,
+      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
+    );
+    /* Keep the locked 6-slot geometry; only tighten slightly on narrow phones. */
+    gap: var(--game-top-bar-gap, 3px);
+    padding: 6px var(--game-top-bar-pad-x, 8px);
+    width: var(--game-top-bar-width, fit-content);
+    max-width: min(var(--game-top-bar-width, 100%), calc(100% - 24px));
+  }
+
   .top-symbol-bar .top-symbol-slot {
     width: 40px;
     height: 40px;
   }
 
-  .top-symbol-bar.is-phase-docked {
-    top: max(12px, env(safe-area-inset-top));
+  .top-symbol-bar.is-phase-docked .top-symbol-slot {
+    width: var(--game-symbol-slot, 36px);
+    height: var(--game-symbol-slot, 36px);
+    flex: 0 0 var(--game-symbol-slot, 36px);
   }
 
   .symbol-slot {
@@ -3489,7 +4033,7 @@ textarea:focus-visible {
     max-width: min(58vw, 220px);
     padding: 8px 12px;
     border-radius: 999px;
-    background: oklch(0.184 0.005 67.5 / 0.78);
+    background: oklch(0.184 0.005 67.5 / 0.92);
     color: oklch(0.937 0.086 91.56);
     font-size: 12px;
     font-weight: 800;
@@ -3500,8 +4044,8 @@ textarea:focus-visible {
     overflow: hidden;
     text-overflow: ellipsis;
     border: 1px solid oklch(0.907 0.106 86.69 / 0.28);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .mobile-game-link {
@@ -3680,15 +4224,15 @@ dd {
   transform: translateX(-50%);
   padding: 4px 10px;
   border-radius: 999px;
-  background: oklch(0.184 0.005 67.5 / 0.55);
+  background: oklch(0.184 0.005 67.5 / 0.9);
   color: oklch(1 0 0 / 0.92);
   font:
     600 12px/1.2 system-ui,
     sans-serif;
   letter-spacing: 0.04em;
   pointer-events: none;
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .body-symbol-marker {

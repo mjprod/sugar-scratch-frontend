@@ -900,7 +900,7 @@ export function TopSymbolBar({
         revealedCount >= TOP_SYMBOL_COUNT ? " is-symbols-complete" : ""
       }${showCoating ? " is-scratchable" : ""}${
         clearedBurst ? " is-cleared" : ""
-      }`}
+      }${forceRevealed ? " is-force-revealed" : ""}`}
       aria-label="Match symbols — scratch to reveal"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

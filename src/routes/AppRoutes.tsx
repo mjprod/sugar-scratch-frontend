@@ -19,6 +19,9 @@ const CreatorPage = lazy(() =>
 const GamePage = lazy(() =>
   import("@/pages/GamePage").then((m) => ({ default: m.GamePage })),
 );
+const GameUiPage = lazy(() =>
+  import("@/pages/GameUiPage").then((m) => ({ default: m.GameUiPage })),
+);
 const CoverFlowV2Page = lazy(() =>
   import("@/pages/CoverFlowV2Page").then((m) => ({
     default: m.CoverFlowV2Page,
@@ -361,6 +364,14 @@ export function AppRoutes() {
               element={
                 <GameCatalogRoute>
                   <GamePage />
+                </GameCatalogRoute>
+              }
+            />
+            <Route
+              path="game-ui"
+              element={
+                <GameCatalogRoute>
+                  <GameUiPage />
                 </GameCatalogRoute>
               }
             />
