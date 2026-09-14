@@ -79,6 +79,7 @@ import {
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import { PackProgress } from "../modules/PackProgress";
+import { StageCoinCount } from "../StageCoinCount";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   createFabricAlphaCache,
@@ -5173,6 +5174,26 @@ export function ScratchPrototype({
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
+
+          {/* Bottom HUD: [ coin count | Sugar Scratch logo ] — always on. */}
+          <div className="stage-game__bottom-chrome">
+            <div className="stage-game__bottom-chrome-row is-status">
+              <div className="stage-game__bottom-chrome-status-cards">
+                <div className="stage-game__cards-left">
+                  <StageCoinCount />
+                </div>
+              </div>
+              <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
+                <img
+                  src="/svg/logoSugarScratch.svg"
+                  alt=""
+                  className="stage-game__bottom-chrome-logo"
+                  draggable={false}
+                  decoding="async"
+                />
+              </div>
+            </div>
+          </div>
           {showIntroCountdown ? (
             <InitialCountdown
               onComplete={onIntroCountdownComplete}
