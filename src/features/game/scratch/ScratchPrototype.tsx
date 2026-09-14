@@ -81,6 +81,7 @@ import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   createFabricAlphaCache,
   createSymbolScratchProbeCache,
+  isSymbolNearAnyStroke,
   isSymbolNearStroke,
   readCachedFabricAlpha,
   readCachedSymbolScratchAmount,
@@ -4084,6 +4085,7 @@ export function ScratchPrototype() {
     radius: number,
     worldPoint?: Vec2 | null,
     finalize = true,
+    strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
   ) {
     if (gameResultPendingRef.current !== null) return;
     if (packRevealBlockedRef.current) return;
@@ -4131,15 +4133,21 @@ export function ScratchPrototype() {
       const symbolProbeCache = symbolScratchProbeCacheRef.current;
       for (let index = 0; index < bodyPoints.length; index += 1) {
         if (revealedPointsRef.current[index]) continue;
-        if (
-          !isSymbolNearStroke(
-            u,
-            v,
-            bodyPoints[index].u,
-            bodyPoints[index].v,
-            SYMBOL_REVEAL_UV_RADIUS,
-          )
-        ) {
+        const nearStroke = strokeUvs
+          ? isSymbolNearAnyStroke(
+              strokeUvs,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+              SYMBOL_REVEAL_UV_RADIUS,
+            )
+          : isSymbolNearStroke(
+              u,
+              v,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+              SYMBOL_REVEAL_UV_RADIUS,
+            );
+        if (!nearStroke) {
           continue;
         }
         // Must have actually punched the clothing at this UV — proximity alone
@@ -4256,18 +4264,27 @@ export function ScratchPrototype() {
           )
         : [point];
 
-    let applied = false;
+    // Map first so we finalize the last *on-mesh* stamp. A coalesced swipe
+    // often ends off the garment; finalizing `strokePoints.at(-1)` skipped
+    // symbol probes even when an intermediate stamp punched a mark.
+    const appliedUvs: { u: number; v: number }[] = [];
     for (let i = 0; i < strokePoints.length; i += 1) {
-      const strokePoint = strokePoints[i];
-      const uv = trackedWorldToUv(trackedSample, strokePoint);
+      const uv = trackedWorldToUv(trackedSample, strokePoints[i]);
       if (!uv) continue;
-      const isLast = i === strokePoints.length - 1;
+      appliedUvs.push({ u: uv.x, v: uv.y });
+    }
+
+    let applied = false;
+    for (let i = 0; i < appliedUvs.length; i += 1) {
+      const uv = appliedUvs[i];
+      const isLast = i === appliedUvs.length - 1;
       applyScratchAtUv(
-        uv.x,
-        uv.y,
+        uv.u,
+        uv.v,
         SCRATCH_RADIUS,
         isLast ? point : null,
         isLast,
+        isLast ? appliedUvs : undefined,
       );
       applied = true;
     }
