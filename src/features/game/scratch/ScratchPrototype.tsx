@@ -4954,7 +4954,7 @@ export function ScratchPrototype({
               <div className="stage-game__top-chrome-side is-start">
                 {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
               </div>
-              <div className="stage-game__top-chrome-center" aria-hidden="true">
+              <div className="stage-game__top-chrome-center">
                 {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
                   /* Legacy foil path: always 6 top slots (never body 12). */
                   <div
