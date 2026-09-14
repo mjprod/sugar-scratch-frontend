@@ -201,10 +201,7 @@ export const ScratchFrameProgress = memo(function ScratchFrameProgress({
     ) : null;
 
   return (
-    <div
-      className={frameClass}
-      aria-hidden="true"
-      style={
+      aria-hidden={toastHost ? "true" : undefined}
         {
           ["--frame-start" as string]: String(FRAME_START),
         } as CSSProperties
