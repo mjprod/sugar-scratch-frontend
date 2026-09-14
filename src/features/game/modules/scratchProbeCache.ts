@@ -79,10 +79,7 @@ export function isSymbolNearAnyStroke(
 ): boolean {
   for (let i = 0; i < strokes.length; i += 1) {
     const stroke = strokes[i];
-    if (
-      stroke &&
-      isSymbolNearStroke(stroke.u, stroke.v, symbolU, symbolV, radius)
-    ) {
+    if (isSymbolNearStroke(stroke.u, stroke.v, symbolU, symbolV, radius)) {
       return true;
     }
   }
