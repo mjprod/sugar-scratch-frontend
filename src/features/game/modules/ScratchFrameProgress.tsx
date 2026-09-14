@@ -47,7 +47,7 @@ const FRAME_PATH = roundedRectPath(
 const SWEEP_MS = 760;
 const PULSE_MS = 280;
 const FEEDBACK_SHOW_MS = 1600;
-const FEEDBACK_FADE_MS = 250;
+const FEEDBACK_FADE_MS = 360;
 /** Baked start origin (clockwise from top-left). */
 const FRAME_START = 0.178;
 
