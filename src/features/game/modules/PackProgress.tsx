@@ -5,6 +5,9 @@ import { lottieRenderConfig } from "@/utils/lottieRender";
 /** Assets live in public/lottie (singular) — /lotties/* falls through to SPA HTML. */
 const CARD_COUNTDOWN_LOTTIE_SRC = "/lottie/lottieCardCountdown.lottie";
 const CARD_LOTTIE_SIZE = 28;
+/** Keep in sync with `.pack-progress` `--pp-lottie-scale` in scratch/styles.css.
+ *  CSS transform enlarges the canvas after paint — boost DPR so the vector stays crisp. */
+const CARD_LOTTIE_CSS_SCALE = 1.75;
 
 type PackProgressProps = {
   current: number;
@@ -60,7 +63,7 @@ export function PackProgress({ current, total }: PackProgressProps) {
           height={CARD_LOTTIE_SIZE}
           className="pack-progress__lottie"
           renderConfig={lottieRenderConfig({
-            extraScale: 1.25,
+            extraScale: CARD_LOTTIE_CSS_SCALE,
             autoResize: false,
           })}
           dotLottieRefCallback={(instance: DotLottie | null) => {

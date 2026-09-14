@@ -196,9 +196,7 @@ textarea:focus-visible {
 }
 
 .symbol-bar {
-  /* Tunable plate + separate border ring.
-     Defaults live here; /game-ui TopBarPlateDebug overrides the same
-     custom props on matching .symbol-bar nodes. */
+  /* Tunable plate + separate border ring. */
   --bar-tint: rgb(0 0 0 / 31%);
   --bar-image-opacity: 1;
   --bar-mix-blend: normal;
@@ -434,7 +432,7 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
 
 /* Pack session progress — cards-left pill, status row under pause.
    Plate (::before) + border ring (::after) split like .symbol-bar so each
-   can take its own mask-image. /game-ui PackProgressPlateDebug tunes vars. */
+   can take its own mask-image. */
 .pack-progress {
   --pp-tint: rgb(0 0 0 / 81%);
   --pp-image-opacity: 0.99;
@@ -460,6 +458,10 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   --pp-radius-br: 11px;
   --pp-radius-bl: 20px;
   --pp-radius: 4px 11px 11px 20px;
+  /* Lottie art scale — layout slot stays 28×28; transform only. */
+  --pp-lottie-scale: 1.75;
+  --pp-lottie-x: 3px;
+  --pp-lottie-y: -2px;
   position: relative;
   top: auto;
   right: auto;
@@ -565,22 +567,31 @@ html[data-pp-plate-outline="1"] .pack-progress::after {
 }
 
 .pack-progress__icon {
+  /* Fixed layout slot — scaled lottie can overflow without growing the badge. */
   position: relative;
   flex: 0 0 28px;
   width: 28px;
   height: 28px;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
   line-height: 0;
 }
 
 .pack-progress__lottie {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   display: block;
   width: 28px;
   height: 28px;
+  margin: 0;
   line-height: 0;
   pointer-events: none;
+  transform: translate(-50%, -50%) translate(var(--pp-lottie-x), var(--pp-lottie-y))
+    scale(var(--pp-lottie-scale));
+  transform-origin: center center;
+  will-change: transform;
 }
 
 .pack-progress__lottie canvas {
@@ -594,6 +605,11 @@ html[data-pp-plate-outline="1"] .pack-progress::after {
   left: auto !important;
   top: auto !important;
   transform: none !important;
+}
+
+html[data-pp-lottie-outline="1"] .pack-progress__icon {
+  outline: 1px dashed oklch(0.85 0.18 145 / 0.95);
+  outline-offset: 1px;
 }
 
 .pack-progress__copy {
@@ -1495,8 +1511,7 @@ html[data-pp-plate-outline="1"] .pack-progress::after {
 
 .scratch-frame-progress__feedback {
   /* Lives in status-row notifications cell — fill parent height.
-     Plate (::before) + border (::after) split like .pack-progress.
-     /game-ui PackProgressPlateDebug can pin + tune --toast-* vars. */
+     Plate (::before) + border (::after) split like .pack-progress. */
   --toast-tint: rgb(0 0 0 / 60%);
   --toast-image-opacity: 0.99;
   --toast-mix-blend: normal;

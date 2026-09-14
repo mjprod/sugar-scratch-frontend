@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { PackProgressPlateDebug } from "@/features/game/PackProgressPlateDebug";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { Paths } from "@/routes/Paths";
@@ -81,7 +80,6 @@ export function GameUiPage() {
           onLeave={leaveGame}
         />
       </div>
-      <PackProgressPlateDebug />
     </div>
   );
 }
