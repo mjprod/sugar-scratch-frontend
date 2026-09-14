@@ -22,3 +22,16 @@ export function shouldAutoplayCardCountdown(playKey: number): boolean {
 export function shouldFreezeCardCountdownOnLoad(shouldPlay: boolean): boolean {
   return !shouldPlay;
 }
+
+/**
+ * Once-per-instance claim for DotLottie load/play wiring.
+ * Inline `dotLottieRefCallback`s change identity each render; without this,
+ * re-invokes stack `load` listeners and can restart a finished one-shot.
+ */
+export function claimPackProgressLottieHook(state: {
+  __packProgressHooked?: boolean;
+}): boolean {
+  if (state.__packProgressHooked) return false;
+  state.__packProgressHooked = true;
+  return true;
+}

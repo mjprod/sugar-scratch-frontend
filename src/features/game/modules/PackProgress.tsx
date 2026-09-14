@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
+  claimPackProgressLottieHook,
   initialCardCountdownPlayKey,
   shouldAutoplayCardCountdown,
   shouldFreezeCardCountdownOnLoad,
@@ -77,6 +78,14 @@ export function PackProgress({ current, total }: PackProgressProps) {
           })}
           dotLottieRefCallback={(instance: DotLottie | null) => {
             if (!instance) return;
+            // Inline callback identity changes every render; DotLottieReact may
+            // re-invoke us. Guard so we don't stack load listeners or call
+            // play() again after a finished one-shot while the pill stays up.
+            const anyInstance = instance as unknown as {
+              __packProgressHooked?: boolean;
+            };
+            if (!claimPackProgressLottieHook(anyInstance)) return;
+
             if (freezeOnLoad) {
               const paintFirstFrame = () => {
                 try {
