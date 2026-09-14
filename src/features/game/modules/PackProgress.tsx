@@ -77,7 +77,13 @@ export function PackProgress({ current, total }: PackProgressProps) {
                 /* player may not be ready yet */
               }
             };
-            instance.addEventListener("load", paintFirstFrame);
+            const anyInstance = instance as unknown as {
+              __packProgressHooked?: boolean;
+            };
+            if (!anyInstance.__packProgressHooked) {
+              anyInstance.__packProgressHooked = true;
+              instance.addEventListener("load", paintFirstFrame);
+            }
             paintFirstFrame();
           }}
         />
