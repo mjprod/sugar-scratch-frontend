@@ -1522,11 +1522,12 @@ export function ScratchPrototype({
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
   const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const introFadeTimerRef = useRef<number | null>(null);
-  const handStartIntroDoneRef = useRef(false);
+  /** Lab skipToPlay: already past intro — keep in sync with handStartIntroResolved. */
+  const handStartIntroDoneRef = useRef(skipToPlay);
   /** True when 3-2-1 already played over the hand-start theme intro. */
   const handStartCountdownOverIntroRef = useRef(false);
   /** One 3-2-1 per hand — later cards skip straight to play after the top bar. */
-  const handCountdownDoneRef = useRef(false);
+  const handCountdownDoneRef = useRef(skipToPlay);
   /**
    * Resume after Save & Exit mid win-reveal: don't arm intro/countdown on the
    * finished card under the restored overlay. Clear once selectedCardId moves on.
@@ -1811,6 +1812,8 @@ export function ScratchPrototype({
   }
 
   function isBodyScratchLocked() {
+    // Lab opens in docked hunt play — never gate on theme intro / fetchThemes.
+    if (skipToPlay) return false;
     if (!entryReadyRef.current) return true;
     if (introActiveRef.current || introCoverRef.current) return true;
     // Themes still loading / intro not armed yet for this visit.
@@ -2036,6 +2039,7 @@ export function ScratchPrototype({
       introGateActiveRef.current = false;
       setShowIntroCountdown(false);
       showIntroCountdownRef.current = false;
+      handStartIntroDoneRef.current = true;
       handCountdownDoneRef.current = true;
     } else {
       setTopBarPhase("center");
@@ -2124,6 +2128,16 @@ export function ScratchPrototype({
   );
 
   useEffect(() => {
+    // Lab /game-ui: local cards only — never wait on fetchThemes or reset
+    // intro-done (that left isBodyScratchLocked true until the network returned).
+    if (skipToPlay) {
+      handStartIntroDoneRef.current = true;
+      handCountdownDoneRef.current = true;
+      setHandStartIntroResolved(true);
+      themeIntroByKeyRef.current = new Map();
+      setThemeIntrosReady(true);
+      return;
+    }
     // Product shell opens /game?model&card without ?game=1 — still load theme
     // intros so the clip + 3-2-1 can arm. Hub game-mode uses the same map.
     if (!gameMode && !activeModelId) {
@@ -2160,7 +2174,7 @@ export function ScratchPrototype({
     return () => {
       cancelled = true;
     };
-  }, [gameMode, activeModelId]);
+  }, [gameMode, activeModelId, skipToPlay]);
 
   useEffect(() => {
     if (
@@ -3066,11 +3080,13 @@ export function ScratchPrototype({
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
   // wiping the countdown before the first paint).
+  // Lab skipToPlay: arm immediately (themeIntrosReady is sync-true; no network).
   useEffect(() => {
     if (gameMode) return;
-    if (!entryReady || !card || !themeIntrosReady) return;
+    if (!entryReady || !card) return;
+    if (!skipToPlay && !themeIntrosReady) return;
     armStartIntro(themeKeyForCard(card));
-  }, [gameMode, entryReady, themeIntrosReady, card?.id]);
+  }, [gameMode, entryReady, themeIntrosReady, card?.id, skipToPlay]);
 
   // Rebuild the reveal sample grid whenever the mesh changes, recomputing which
   // samples are already revealed from the current marks (usually empty after a
