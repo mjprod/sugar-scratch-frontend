@@ -33,9 +33,26 @@ export function GameUiPage() {
     setSearchParams(next, { replace: true });
   }, [model, card, searchParams, setSearchParams]);
 
-  // Lab skips first-play tutorial overlays.
+  // Lab skips first-play tutorial overlays (avoid persisting this outside the lab).
   useEffect(() => {
+    let prev: string | null = null;
+    try {
+      prev = localStorage.getItem("sugar.v8.scratchTutorialCompleted");
+    } catch {
+      /* ignore */
+    }
     markScratchTutorialCompleted();
+    return () => {
+      try {
+        if (prev === null) {
+          localStorage.removeItem("sugar.v8.scratchTutorialCompleted");
+        } else {
+          localStorage.setItem("sugar.v8.scratchTutorialCompleted", prev);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
   }, []);
 
   // Mark embed before ScratchPrototype mounts so zoom stays off on first paint.
