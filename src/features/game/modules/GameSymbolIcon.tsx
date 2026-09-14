@@ -184,8 +184,9 @@ export function GameSymbolIcon({
    */
   paused?: boolean;
   /**
-   * Prefer main-thread DotLottie (no OffscreenCanvas worker). Used on coarse
-   * pointers so Safari isn’t flooded with worker `message` events mid-scratch.
+   * Prefer main-thread DotLottie (no OffscreenCanvas worker).
+   * This is an opt-in escape hatch for environments where the worker path is
+   * problematic; the default policy may still prefer worker-backed rendering.
    */
   preferStatic?: boolean;
 }) {
