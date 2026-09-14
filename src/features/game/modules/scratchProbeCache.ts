@@ -68,6 +68,25 @@ export function isSymbolNearStroke(
 }
 
 /**
+ * Coalesced / densified strokes only finalize once. A symbol under an
+ * intermediate stamp (or when the pointer ends off-mesh) must still count.
+ */
+export function isSymbolNearAnyStroke(
+  strokes: ReadonlyArray<{ u: number; v: number }>,
+  symbolU: number,
+  symbolV: number,
+  radius: number,
+): boolean {
+  for (let i = 0; i < strokes.length; i += 1) {
+    const stroke = strokes[i];
+    if (isSymbolNearStroke(stroke.u, stroke.v, symbolU, symbolV, radius)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Cached amount for this slot/frame, or null if the caller should GPU-sample.
  * Entering a new frame clears all slot samples.
  *

@@ -36,6 +36,8 @@ import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
+import { GamePauseButton } from "../GamePauseButton";
+import { StageMuteButton } from "../StageMuteButton";
 import {
   TOP_BAR_SHOWCASE_MS,
   TopSymbolBar,
@@ -81,18 +83,45 @@ import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   createFabricAlphaCache,
   createSymbolScratchProbeCache,
+  isSymbolNearAnyStroke,
   isSymbolNearStroke,
-  needsFabricAlphaSample,
   readCachedFabricAlpha,
   readCachedSymbolScratchAmount,
   writeCachedFabricAlpha,
   writeCachedSymbolScratchAmount,
 } from "../modules/scratchProbeCache";
 import {
+  clearPendingScratchMove,
+  createScratchInputCoalesce,
+  notePendingScratchMove,
+  takePendingScratchMove,
+} from "../modules/scratchInputCoalesce";
+import {
+  clearScratchMarks,
+  createScratchMarksRing,
+  pushScratchMark,
+  scratchMarksSome,
+} from "../modules/scratchMarksRing";
+import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
+import {
+  preloadLottieUrls,
+  shouldFreezeSymbolLottie,
+  shouldPreferStaticSymbolLottie,
+} from "../modules/symbolLottiePolicy";
+import {
   createThrottledUiClock,
   shouldPublishThrottledUi,
 } from "../modules/scratchUiThrottle";
+import { shouldUpdateBodyMarkers, shouldUpdateChestFollow } from "../modules/chestFollowGate";
+import {
+  shouldSampleFabricAlpha,
+  shouldSpawnFairyDust,
+} from "../modules/fairyDustSpawnPolicy";
 import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
+import {
+  resolveAutoScratchBudget,
+  resolveManualScratchBudget,
+} from "../modules/scratchStampBudget";
 import {
   createVideoSyncState,
   decideVideoSync,
@@ -329,12 +358,6 @@ function DebugHud() {
   );
 }
 
-type ScratchMark = {
-  u: number;
-  v: number;
-  radius: number;
-};
-
 // A coin that animates from the scratch origin up to a symbol slot in the top
 // bar each time a new symbol ("coin") is earned. Positions are stage-relative
 // pixels; the CSS keyframe arcs the coin from `from*` to `to*`.
@@ -407,6 +430,7 @@ const DEFAULT_CARDS: Card[] = [
     foreground: "/cards/juliana_1/foreground.mp4",
     mesh: "juliana_1.json",
     chromaKey: false,
+    model_id: "julianaval",
   },
   {
     id: "juliana_2",
@@ -415,6 +439,7 @@ const DEFAULT_CARDS: Card[] = [
     foreground: "/cards/juliana_2/foreground.mp4",
     mesh: "juliana_2.json",
     chromaKey: false,
+    model_id: "julianaval",
   },
   {
     id: "chinese_1",
@@ -800,15 +825,11 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
 
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
 const SCRATCH_RADIUS = 0.045;
-// Max canvas-space step between manual scratch stamps so fast swipes stay continuous.
-const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
-const MANUAL_SCRATCH_MAX_POINTS = 40;
+// Densify / auto stamp caps live in scratchStampBudget (Phase 9 coarse vs fine).
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
 // Step along each ↘ stroke (top-left → bottom-right) so brush circles overlap.
 const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
-const AUTO_SCRATCH_FILL_BATCH = 36;
-const AUTO_SCRATCH_MAX_PER_FRAME = 32;
 
 type AutoScratchSettings = {
   enabled: boolean;
@@ -992,7 +1013,11 @@ const HINT_PULSE_GAP_MS = 1600;
 // that; see modules/videoSync.ts.
 const videoSyncState = new WeakMap<HTMLVideoElement, VideoSyncState>();
 
-function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
+function syncVideoTime(
+  source: HTMLVideoElement,
+  target: HTMLVideoElement,
+  opts?: { isScratching?: boolean },
+) {
   if (source.paused && !target.paused) {
     target.pause();
   }
@@ -1036,6 +1061,7 @@ function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
     desiredTime: targetTime,
     actualTime,
     duration,
+    isScratching: opts?.isScratching,
   });
   if (decision.action === "seek") {
     target.currentTime = targetTime;
@@ -1199,7 +1225,18 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
   return sparse;
 }
 
-export function ScratchPrototype() {
+export function ScratchPrototype({
+  skipToPlay = false,
+  onLeave,
+}: {
+  /**
+   * Lab/sandbox: skip intro video + foil bar scratch + countdown.
+   * Open already in hunt play with the symbol bar docked at the top.
+   */
+  skipToPlay?: boolean;
+  /** When set, pause control is rendered in the top chrome left gutter. */
+  onLeave?: () => void;
+} = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   // FairyDust must paint in stage space: the product embed wraps play in a
@@ -1229,7 +1266,8 @@ export function ScratchPrototype() {
   /** After claim, FG is paused + rVFC-unhooked so it stops decoding. */
   const fgParkedRef = useRef(false);
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
-  const marksRef = useRef<ScratchMark[]>([]);
+  const marksRef = useRef(createScratchMarksRing());
+  const scratchInputCoalesceRef = useRef(createScratchInputCoalesce());
   const hoverPointRef = useRef<Vec2 | null>(null);
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const drawingRef = useRef(false);
@@ -1249,34 +1287,60 @@ export function ScratchPrototype() {
   const cameraRef = useRef({ x: 0, y: 0 });
   const [meshFiles, setMeshFiles] = useState<string[]>([]);
   const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [cardsReady, setCardsReady] = useState(false);
-  useMarkPageReady(cardsReady);
-  const [selectedMeshFile, setSelectedMeshFile] = useState(
-    DEFAULT_CARDS[1].mesh,
+  const [models, setModels] = useState<ModelInfo[]>(() =>
+    skipToPlay
+      ? [{ id: "julianaval", label: "Juliana", avatar: null }]
+      : [],
   );
-  const [meshReloadToken, setMeshReloadToken] = useState(0);
-  const [activeModelId, setActiveModelId] = useState(() => {
-    if (typeof window === "undefined") return "";
+  // Lab is ready immediately from DEFAULT_CARDS — no API wait for mobile preview.
+  const [cardsReady, setCardsReady] = useState(() => skipToPlay);
+  useMarkPageReady(cardsReady);
+  const [selectedMeshFile, setSelectedMeshFile] = useState(() => {
+    if (!skipToPlay) return DEFAULT_CARDS[1].mesh;
+    if (typeof window === "undefined") return "juliana_1.json";
+    const fromUrl =
+      new URLSearchParams(window.location.search).get("card")?.trim() ||
+      "juliana_1";
     return (
-      new URLSearchParams(window.location.search).get("model")?.trim() || ""
+      DEFAULT_CARDS.find((entry) => entry.id === fromUrl)?.mesh ??
+      "juliana_1.json"
+    );
+  });
+  const [meshReloadToken, setMeshReloadToken] = useState(0);
+  /** Lab only: bump to force the same card to fully reset after a find. */
+  const [labRestartToken, setLabRestartToken] = useState(0);
+  const [activeModelId, setActiveModelId] = useState(() => {
+    if (typeof window === "undefined") return skipToPlay ? "julianaval" : "";
+    return (
+      new URLSearchParams(window.location.search).get("model")?.trim() ||
+      (skipToPlay ? "julianaval" : "")
     );
   });
   const [selectedCardId, setSelectedCardId] = useState(() => {
-    if (typeof window === "undefined") return "";
+    if (typeof window === "undefined") return skipToPlay ? "juliana_1" : "";
     return (
-      new URLSearchParams(window.location.search).get("card")?.trim() || ""
+      new URLSearchParams(window.location.search).get("card")?.trim() ||
+      (skipToPlay ? "juliana_1" : "")
     );
   });
   /** StageNav / bare /game → full model hand. Collection Play Game omits playlist=1. */
   const [playlistMode, setPlaylistMode] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (skipToPlay) return false;
     return new URLSearchParams(window.location.search).get("playlist") === "1";
   });
   /** Locked card for single-play so clearing selectedCardId doesn't empty the hand. */
   const singleCardIdRef = useRef(
     (() => {
-      if (typeof window === "undefined") return "";
+      if (typeof window === "undefined") {
+        return skipToPlay ? "juliana_1" : "";
+      }
+      if (skipToPlay) {
+        return (
+          new URLSearchParams(window.location.search).get("card")?.trim() ||
+          "juliana_1"
+        );
+      }
       const params = new URLSearchParams(window.location.search);
       if (params.get("playlist") === "1" || isGameModeUrl()) return "";
       return params.get("card")?.trim() || "";
@@ -1419,6 +1483,9 @@ export function ScratchPrototype() {
   // videos compete with Lottie for the main thread. Flips twice per stroke, not
   // per move, so it does not add render churn to the drag itself.
   const [isScratching, setIsScratching] = useState(false);
+  /** Cards-left pill: visible until first scratch touch, then animates out. */
+  const [packProgressShown, setPackProgressShown] = useState(true);
+  const [packProgressLeaving, setPackProgressLeaving] = useState(false);
   /** True only while the active stroke maps onto the deforming mesh. */
   const [cursorOnMesh, setCursorOnMesh] = useState(false);
   const [claimed, setClaimed] = useState(false);
@@ -1429,7 +1496,9 @@ export function ScratchPrototype() {
   );
   const matchOutcomeRef = useRef<MatchGameOutcome | null>(null);
   const [topSymbols, setTopSymbols] = useState(buildTopSymbols);
-  const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>("center");
+  const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>(() =>
+    skipToPlay ? "docked" : "center",
+  );
   const [topBarRound, setTopBarRound] = useState(0);
   /** Locks body scratch / video from dock through countdown end. */
   const [introGateActive, setIntroGateActive] = useState(false);
@@ -1453,11 +1522,12 @@ export function ScratchPrototype() {
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
   const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const introFadeTimerRef = useRef<number | null>(null);
-  const handStartIntroDoneRef = useRef(false);
+  /** Lab skipToPlay: already past intro — keep in sync with handStartIntroResolved. */
+  const handStartIntroDoneRef = useRef(skipToPlay);
   /** True when 3-2-1 already played over the hand-start theme intro. */
   const handStartCountdownOverIntroRef = useRef(false);
   /** One 3-2-1 per hand — later cards skip straight to play after the top bar. */
-  const handCountdownDoneRef = useRef(false);
+  const handCountdownDoneRef = useRef(skipToPlay);
   /**
    * Resume after Save & Exit mid win-reveal: don't arm intro/countdown on the
    * finished card under the restored overlay. Clear once selectedCardId moves on.
@@ -1468,15 +1538,19 @@ export function ScratchPrototype() {
   const [handStartCountdownPending, setHandStartCountdownPending] =
     useState(false);
   const themeIntroByKeyRef = useRef<Map<string, string>>(new Map());
-  const [themeIntrosReady, setThemeIntrosReady] = useState(false);
+  /** Lab skipToPlay never fetches themes — ready immediately. */
+  const [themeIntrosReady, setThemeIntrosReady] = useState(() => skipToPlay);
   /** True once we've decided whether to show a hand-start intro (or skipped it). */
-  const [handStartIntroResolved, setHandStartIntroResolved] = useState(false);
+  const [handStartIntroResolved, setHandStartIntroResolved] = useState(
+    () => skipToPlay,
+  );
   /**
    * Don't unlock the scratch bar until the card clips have a frame.
    * Avoids the black stage that shows if the bar appears while Safari is still
    * attaching decoders after the theme intro.
+   * Lab skipToPlay can show chrome immediately — video readiness still gates play.
    */
-  const [gameVideosReady, setGameVideosReady] = useState(false);
+  const [gameVideosReady, setGameVideosReady] = useState(() => skipToPlay);
   /**
    * Cold refresh has no audio gesture — wait for Tap to play so theme-intro
    * autoplay + game-clip play() land inside a user gesture (otherwise the
@@ -1484,6 +1558,8 @@ export function ScratchPrototype() {
    */
   const [entryReady, setEntryReady] = useState(() => {
     if (typeof window === "undefined") return false;
+    // Lab opens straight into play — no Tap-to-play gate.
+    if (skipToPlay) return true;
     if (!loadSoundEnabled()) return true;
     return isCountdownSoundUnlocked();
   });
@@ -1593,6 +1669,9 @@ export function ScratchPrototype() {
   const applyScratchAtUvRef = useRef<
     (u: number, v: number, radius: number, worldPoint?: Vec2 | null) => void
   >(() => undefined);
+  const addScratchRef = useRef<(clientX: number, clientY: number) => void>(
+    () => undefined,
+  );
   const tryResolveGameRef = useRef<() => void>(() => undefined);
   const resetScratchRef = useRef<() => void>(() => undefined);
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
@@ -1623,6 +1702,8 @@ export function ScratchPrototype() {
   }
 
   function endScratchStroke() {
+    const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
+    if (pending) addScratchRef.current(pending.x, pending.y);
     drawingRef.current = false;
     setIsScratching(false);
     publishProgressUi(true);
@@ -1732,6 +1813,8 @@ export function ScratchPrototype() {
   }
 
   function isBodyScratchLocked() {
+    // Lab opens in docked hunt play — never gate on theme intro / fetchThemes.
+    if (skipToPlay) return false;
     if (!entryReadyRef.current) return true;
     if (introActiveRef.current || introCoverRef.current) return true;
     // Themes still loading / intro not armed yet for this visit.
@@ -1751,6 +1834,8 @@ export function ScratchPrototype() {
     unlockCountdownSound();
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
+    // Warm symbol lottie HTTP cache before hunt workers spin up (Phase 7).
+    void preloadLottieUrls(SYMBOL_TYPES.map((entry) => entry.src));
     // Flush so the intro <video> mounts inside this user gesture — async
     // effect play() is often aborted (readyState 0 / background-media pause).
     flushSync(() => {
@@ -1858,9 +1943,6 @@ export function ScratchPrototype() {
   function armStartIntro(themeKey: string) {
     if (handStartIntroDoneRef.current) return;
     handStartIntroDoneRef.current = true;
-    const url = themeKey
-      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
-      : "";
     clearIntroDockTimer();
     clearIntroFadeTimer();
     setShowIntroCountdown(false);
@@ -1869,6 +1951,28 @@ export function ScratchPrototype() {
     handStartCountdownOverIntroRef.current = false;
     setIntroLeaving(false);
     introLeavingRef.current = false;
+
+    // Lab: jump straight to hunt play with the match bar already docked.
+    if (skipToPlay) {
+      setIntroVideoUrl("");
+      setIntroActive(false);
+      introActiveRef.current = false;
+      setIntroCover(false);
+      introCoverRef.current = false;
+      setHandStartIntroResolved(true);
+      handCountdownDoneRef.current = true;
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setGameVideosReady(false);
+      requestAnimationFrame(() => kickGameVideos());
+      return;
+    }
+
+    const url = themeKey
+      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
+      : "";
     // Always park game clips until intro/countdown finish — playlist used to
     // start with gameVideosReady=true and immediately dissolve the cover.
     setGameVideosReady(false);
@@ -1924,19 +2028,34 @@ export function ScratchPrototype() {
 
   function resetMatchRound() {
     clearIntroDockTimer();
+    // New card / round: bring cards-left back until the first scratch touch.
+    setPackProgressShown(true);
+    setPackProgressLeaving(false);
     setTopSymbols(buildTopSymbols());
-    setTopBarPhase("center");
-    topBarPhaseRef.current = "center";
-    // Card-load effect runs after armHandStartIntro in the same commit. Don't
-    // wipe a hand-start 3-2-1 that was just armed (or the over-intro flag stays
-    // set and the post-dock countdown is skipped forever).
-    const preserveHandStartCountdown =
-      handStartCountdownOverIntroRef.current || handStartCountdownPending;
-    if (!preserveHandStartCountdown) {
+    if (skipToPlay) {
+      // Lab stays in docked hunt UI across card resets.
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
       setIntroGateActive(false);
       introGateActiveRef.current = false;
       setShowIntroCountdown(false);
       showIntroCountdownRef.current = false;
+      handStartIntroDoneRef.current = true;
+      handCountdownDoneRef.current = true;
+    } else {
+      setTopBarPhase("center");
+      topBarPhaseRef.current = "center";
+      // Card-load effect runs after armHandStartIntro in the same commit. Don't
+      // wipe a hand-start 3-2-1 that was just armed (or the over-intro flag stays
+      // set and the post-dock countdown is skipped forever).
+      const preserveHandStartCountdown =
+        handStartCountdownOverIntroRef.current || handStartCountdownPending;
+      if (!preserveHandStartCountdown) {
+        setIntroGateActive(false);
+        introGateActiveRef.current = false;
+        setShowIntroCountdown(false);
+        showIntroCountdownRef.current = false;
+      }
     }
     setTopBarRound((n) => n + 1);
     setSessionSymbols(buildBodySymbols());
@@ -2010,6 +2129,16 @@ export function ScratchPrototype() {
   );
 
   useEffect(() => {
+    // Lab /game-ui: local cards only — never wait on fetchThemes or reset
+    // intro-done (that left isBodyScratchLocked true until the network returned).
+    if (skipToPlay) {
+      handStartIntroDoneRef.current = true;
+      handCountdownDoneRef.current = true;
+      setHandStartIntroResolved(true);
+      themeIntroByKeyRef.current = new Map();
+      setThemeIntrosReady(true);
+      return;
+    }
     // Product shell opens /game?model&card without ?game=1 — still load theme
     // intros so the clip + 3-2-1 can arm. Hub game-mode uses the same map.
     if (!gameMode && !activeModelId) {
@@ -2046,7 +2175,7 @@ export function ScratchPrototype() {
     return () => {
       cancelled = true;
     };
-  }, [gameMode, activeModelId]);
+  }, [gameMode, activeModelId, skipToPlay]);
 
   useEffect(() => {
     if (
@@ -2210,7 +2339,14 @@ export function ScratchPrototype() {
       const canvas = canvasRef.current;
       if (!canvas) return null;
       try {
-        renderer = new GarmentGLRenderer(canvas, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const pixelRatio = resolveGameCanvasPixelRatio({
+          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+          devicePixelRatio:
+            typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+        });
+        renderer = new GarmentGLRenderer(canvas, CANVAS_WIDTH, CANVAS_HEIGHT, {
+          pixelRatio,
+        });
         glRendererRef.current = renderer;
         setGlError(null);
         return renderer;
@@ -2229,6 +2365,15 @@ export function ScratchPrototype() {
         const active = ensureRenderer();
         if (!active) return;
         probeFrameIdRef.current += 1;
+        // One densified scratch apply per rAF while the finger moves (Phase 7).
+        if (drawingRef.current) {
+          const pending = takePendingScratchMove(
+            scratchInputCoalesceRef.current,
+          );
+          if (pending) addScratchRef.current(pending.x, pending.y);
+        } else {
+          clearPendingScratchMove(scratchInputCoalesceRef.current);
+        }
         const now = performance.now();
         const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
         lastFrameTime = now;
@@ -2251,13 +2396,13 @@ export function ScratchPrototype() {
         const videoTime = bottomVideo?.currentTime ?? time;
 
         // Subtle chest-follow camera: pan toward keeping the chest anchor at its
-        // target framing point, clamped + smoothed. Sample every frame for a
-        // continuous pan; GarmentGLRenderer's ~0.5px dirty eps skips sub-pixel
-        // presents so this doesn't defeat frame-skip on high-Hz displays.
+        // target framing point, clamped + smoothed. Freeze while the finger is
+        // down (Phase 8) so camMoved doesn't force extra GL presents during scratch.
         const camera = cameraRef.current;
-        let targetCamX = 0;
-        let targetCamY = 0;
-        if (trackedSample) {
+        if (
+          shouldUpdateChestFollow({ isScratching: drawingRef.current }) &&
+          trackedSample
+        ) {
           const chest = sampleMeshUvToWorld(
             trackedSample,
             CHEST_ANCHOR_UV.x,
@@ -2267,18 +2412,16 @@ export function ScratchPrototype() {
           const targetPy = CANVAS_HEIGHT * CHEST_TARGET_UV.y;
           const shiftX = (targetPx - chest.x) * CHEST_FOLLOW_STRENGTH;
           const shiftY = (targetPy - chest.y) * CHEST_FOLLOW_STRENGTH;
-          targetCamX = clampValue(
+          const targetCamX = clampValue(
             shiftX / (CANVAS_WIDTH / 2),
             -CHEST_CAM_MAX,
             CHEST_CAM_MAX,
           );
-          targetCamY = clampValue(
+          const targetCamY = clampValue(
             -shiftY / (CANVAS_HEIGHT / 2),
             -CHEST_CAM_MAX,
             CHEST_CAM_MAX,
           );
-        }
-        {
           const dx = targetCamX - camera.x;
           const dy = targetCamY - camera.y;
           if (Math.abs(dx) <= CHEST_CAM_EPS && Math.abs(dy) <= CHEST_CAM_EPS) {
@@ -2302,6 +2445,9 @@ export function ScratchPrototype() {
         const huntComplete =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        const autoBudget = resolveAutoScratchBudget({
+          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+        });
         if (
           autoActive &&
           huntComplete &&
@@ -2316,7 +2462,7 @@ export function ScratchPrototype() {
             while (
               autoPathProgressRef.current >= 1 &&
               autoPathIndexRef.current < path.length &&
-              scratched < AUTO_SCRATCH_MAX_PER_FRAME
+              scratched < autoBudget.maxPerFrame
             ) {
               autoPathProgressRef.current -= 1;
               const pt = path[autoPathIndexRef.current];
@@ -2347,7 +2493,7 @@ export function ScratchPrototype() {
             let filled = 0;
             for (
               let i = 0;
-              i < samples.length && filled < AUTO_SCRATCH_FILL_BATCH;
+              i < samples.length && filled < autoBudget.fillBatch;
               i += 1
             ) {
               if (revealed[i]) continue;
@@ -2371,7 +2517,9 @@ export function ScratchPrototype() {
           bottomVideo.readyState >= 2 &&
           foregroundVideo.readyState >= 2
         ) {
-          syncVideoTime(bottomVideo, foregroundVideo);
+          syncVideoTime(bottomVideo, foregroundVideo, {
+            isScratching: drawingRef.current,
+          });
         }
 
         if (bottomVideo) {
@@ -2433,9 +2581,12 @@ export function ScratchPrototype() {
           hideForeground,
           chromaKeyRef.current,
           PRESENT_ZOOM,
-          // Session-wide: half-rate bottom underlay; FG stays full rate for glue.
-          // Renderer also clears the flag when hideForeground (claimed).
-          shouldHalfRateBottomUploads(hideForeground),
+          // Phase 8: half-rate underlay only while scratching on coarse pointers.
+          shouldHalfRateBottomUploads({
+            hideForeground,
+            isScratching: drawingRef.current,
+            coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+          }),
         );
 
         // Skip body-marker transforms while the intro countdown covers the stage —
@@ -2445,6 +2596,7 @@ export function ScratchPrototype() {
         const stage = stageRef.current;
         const canvas = canvasRef.current;
         if (
+          shouldUpdateBodyMarkers({ isScratching: drawingRef.current }) &&
           !showIntroCountdownRef.current &&
           bodyPoints &&
           bodyPoints.length === SYMBOL_SLOT_COUNT &&
@@ -2602,6 +2754,41 @@ export function ScratchPrototype() {
 
   useEffect(() => {
     let isCancelled = false;
+
+    // Lab /game-ui: never wait on API/auth. Mount local DEFAULT_CARDS + mesh
+    // immediately so phones can preview without a session or media key.
+    if (skipToPlay) {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get("card")?.trim() || "juliana_1";
+      const modelFromUrl = params.get("model")?.trim() || "julianaval";
+      const labCards = DEFAULT_CARDS.map((entry) =>
+        entry.id.startsWith("juliana")
+          ? { ...entry, model_id: entry.model_id ?? "julianaval" }
+          : entry,
+      );
+      const labCard =
+        labCards.find((entry) => entry.id === fromUrl) ??
+        labCards.find((entry) => entry.id === "juliana_1") ??
+        labCards[0]!;
+      setCards(labCards);
+      setModels([
+        {
+          id: modelFromUrl,
+          label: "Juliana",
+          avatar: null,
+        },
+      ]);
+      singleCardIdRef.current = labCard.id;
+      setPlaylistMode(false);
+      setActiveModelId(modelFromUrl);
+      setSelectedCardId(labCard.id);
+      setSelectedMeshFile(labCard.mesh);
+      setCardsReady(true);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
     Promise.all([loadCards(), fetchModels()])
       .then(([loaded, loadedModels]) => {
         if (isCancelled) return;
@@ -2721,7 +2908,7 @@ export function ScratchPrototype() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [skipToPlay]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !cardsReady) return;
@@ -2837,7 +3024,7 @@ export function ScratchPrototype() {
       return;
     }
     setSelectedMeshFile(card.mesh);
-    marksRef.current = [];
+    clearScratchMarks(marksRef.current);
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
     if (!cardTransitionActiveRef.current) {
@@ -2889,16 +3076,18 @@ export function ScratchPrototype() {
     autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCardId, card?.id, card?.mesh]);
+  }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
   // wiping the countdown before the first paint).
+  // Lab skipToPlay: arm immediately (themeIntrosReady is sync-true; no network).
   useEffect(() => {
     if (gameMode) return;
-    if (!entryReady || !card || !themeIntrosReady) return;
+    if (!entryReady || !card) return;
+    if (!skipToPlay && !themeIntrosReady) return;
     armStartIntro(themeKeyForCard(card));
-  }, [gameMode, entryReady, themeIntrosReady, card?.id]);
+  }, [gameMode, entryReady, themeIntrosReady, card?.id, skipToPlay]);
 
   // Rebuild the reveal sample grid whenever the mesh changes, recomputing which
   // samples are already revealed from the current marks (usually empty after a
@@ -2907,7 +3096,8 @@ export function ScratchPrototype() {
     const samples = buildRevealSamples(trackedMesh);
     revealSamplesRef.current = samples;
     const revealed = samples.map((p) =>
-      marksRef.current.some(
+      scratchMarksSome(
+        marksRef.current,
         (m) => Math.hypot((m.u - p.x) / m.radius, (m.v - p.y) / m.radius) <= 1,
       ),
     );
@@ -2960,9 +3150,14 @@ export function ScratchPrototype() {
   }, [trackedMesh]);
 
   useEffect(() => {
+    // Stage (and its <video> nodes) only mount after cardsReady. Without this
+    // dep, skip-to-play never toggles introActive so the first null-ref run
+    // never retries and the stage stays black.
+    if (!cardsReady || !card) return;
+
     const bottomVideo = bottomVideoRef.current;
     const foregroundVideo = foregroundVideoRef.current;
-    if (!bottomVideo || !foregroundVideo || !card) return;
+    if (!bottomVideo || !foregroundVideo) return;
 
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
@@ -3047,7 +3242,7 @@ export function ScratchPrototype() {
         // ignore
       }
     };
-  }, [card?.id, card?.bottom, card?.foreground, introActive]);
+  }, [cardsReady, card?.id, card?.bottom, card?.foreground, introActive]);
 
   // Mobile browsers (notably iOS Safari) will suspend a second, simultaneously
   // playing <video> after a few seconds to save power — which here drops the
@@ -3216,6 +3411,10 @@ export function ScratchPrototype() {
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
+  // load). Keep this separate from matchStartUnlocked so scratch stays gated.
+  const topChromeBarReady =
+    topBarPhase === "docked" && (skipToPlay || matchStartUnlocked);
   const symbolsHuntComplete =
     useBodySymbols && revealedSymbols >= SYMBOL_SLOT_COUNT;
   const huntPhase = resolveHuntPhase({
@@ -3262,13 +3461,15 @@ export function ScratchPrototype() {
     !introCover &&
     (!useBodySymbols ||
       (topBarPhase !== "center" && !introGateActive && !symbolsHuntComplete));
-  // Win-feel trail: spawn only during the brief celebrate window after each
-  // +10% scratched (not a continuous trail for the whole stroke).
-  const cursorFxSpawnActive =
-    cursorFxPlayWindow &&
-    cursorFxCelebrate &&
-    isScratching &&
-    cursorOnMesh;
+  // Win-feel trail: celebrate window after each +10%. Fine pointer spawns while
+  // scratching on mesh; coarse defers spawn until pointer-up (Phase 9).
+  const cursorFxSpawnActive = shouldSpawnFairyDust({
+    playWindow: cursorFxPlayWindow,
+    celebrate: cursorFxCelebrate,
+    isScratching,
+    cursorOnMesh,
+    coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+  });
   const cursorFxSpawnCount = cursorFxCelebrate
     ? celebrateParticleBoost(cursorFx.particleCount)
     : cursorFx.particleCount;
@@ -3309,7 +3510,8 @@ export function ScratchPrototype() {
   }
 
   function resetScratch() {
-    marksRef.current = [];
+    clearScratchMarks(marksRef.current);
+    clearPendingScratchMove(scratchInputCoalesceRef.current);
     lastScratchWorldRef.current = null;
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
@@ -3398,9 +3600,37 @@ export function ScratchPrototype() {
     }
   }
 
+  /** /game-ui lab: after symbols are found, replay this card instead of leaving. */
+  function restartCurrentCardLab() {
+    if (!skipToPlay) return;
+    finishAutoActiveRef.current = false;
+    clearGameResultTimer();
+    if (gameResultLeaveTimerRef.current !== null) {
+      window.clearTimeout(gameResultLeaveTimerRef.current);
+      gameResultLeaveTimerRef.current = null;
+    }
+    clearPendingMotionResult();
+    setMotionResult(null);
+    setPackRevealFailed(false);
+    setPackRevealRetrying(false);
+    packRevealBlockedRef.current = false;
+    cardTransitionActiveRef.current = false;
+    cardTransitionHandoffRef.current = false;
+    setCardTransition(null);
+    setCardTransitionReady(false);
+    // Keep the same card selected; token forces the card-load reset effect.
+    setLabRestartToken((n) => n + 1);
+    requestAnimationFrame(() => kickGameVideos());
+  }
+
   async function presentMotionResult() {
     const finishedId = selectedCardId;
     if (!finishedId) return;
+    // Lab: never advance / navigate — loop the same card for UI testing.
+    if (skipToPlay) {
+      restartCurrentCardLab();
+      return;
+    }
     if (completedCardIdsRef.current.includes(finishedId)) return;
     const match = matchOutcomeRef.current ?? matchOutcome;
     const result =
@@ -3573,6 +3803,11 @@ export function ScratchPrototype() {
   }
 
   async function advanceAfterScratch() {
+    // Lab: same-card loop — never leave /game-ui after a find.
+    if (skipToPlay) {
+      restartCurrentCardLab();
+      return;
+    }
     const finishedId = selectedCardId;
     if (!finishedId || completedCardIdsRef.current.includes(finishedId)) return;
     if (cardTransitionActiveRef.current) return;
@@ -4028,6 +4263,7 @@ export function ScratchPrototype() {
     radius: number,
     worldPoint?: Vec2 | null,
     finalize = true,
+    strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
   ) {
     if (gameResultPendingRef.current !== null) return;
     if (packRevealBlockedRef.current) return;
@@ -4037,7 +4273,7 @@ export function ScratchPrototype() {
 
     if (finalize) huntHintActivityAtRef.current = performance.now();
 
-    marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
+    pushScratchMark(marksRef.current, u, v, radius);
     glRendererRef.current?.paintScratch(u, v, radius);
 
     const samples = revealSamplesRef.current;
@@ -4075,15 +4311,21 @@ export function ScratchPrototype() {
       const symbolProbeCache = symbolScratchProbeCacheRef.current;
       for (let index = 0; index < bodyPoints.length; index += 1) {
         if (revealedPointsRef.current[index]) continue;
-        if (
-          !isSymbolNearStroke(
-            u,
-            v,
-            bodyPoints[index].u,
-            bodyPoints[index].v,
-            SYMBOL_REVEAL_UV_RADIUS,
-          )
-        ) {
+        const nearStroke = strokeUvs
+          ? isSymbolNearAnyStroke(
+              strokeUvs,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+              SYMBOL_REVEAL_UV_RADIUS,
+            )
+          : isSymbolNearStroke(
+              u,
+              v,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+              SYMBOL_REVEAL_UV_RADIUS,
+            );
+        if (!nearStroke) {
           continue;
         }
         // Must have actually punched the clothing at this UV — proximity alone
@@ -4187,28 +4429,41 @@ export function ScratchPrototype() {
     if (!trackedSample) return;
 
     const last = lastScratchWorldRef.current;
+    const manualBudget = resolveManualScratchBudget({
+      coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+    });
     const strokePoints =
       last !== null
         ? densifyStrokeSegment(
             last,
             point,
-            MANUAL_SCRATCH_PATH_STEP,
-            MANUAL_SCRATCH_MAX_POINTS,
+            manualBudget.pathStep,
+            manualBudget.maxPoints,
           )
         : [point];
 
-    let applied = false;
+    // Map first so we finalize the last *on-mesh* stamp. A coalesced swipe
+    // often ends off the garment; finalizing `strokePoints.at(-1)` skipped
+    // symbol probes even when an intermediate stamp punched a mark.
+    const appliedStamps: { u: number; v: number; worldPoint: Vec2 }[] = [];
     for (let i = 0; i < strokePoints.length; i += 1) {
       const strokePoint = strokePoints[i];
       const uv = trackedWorldToUv(trackedSample, strokePoint);
       if (!uv) continue;
-      const isLast = i === strokePoints.length - 1;
+      appliedStamps.push({ u: uv.x, v: uv.y, worldPoint: strokePoint });
+    }
+
+    let applied = false;
+    for (let i = 0; i < appliedStamps.length; i += 1) {
+      const stamp = appliedStamps[i];
+      const isLast = i === appliedStamps.length - 1;
       applyScratchAtUv(
-        uv.x,
-        uv.y,
+        stamp.u,
+        stamp.v,
         SCRATCH_RADIUS,
-        isLast ? point : null,
+        isLast ? stamp.worldPoint : null,
         isLast,
+        isLast ? appliedStamps : undefined,
       );
       applied = true;
     }
@@ -4217,9 +4472,15 @@ export function ScratchPrototype() {
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
     // Fabric alpha is only for fairy-dust spawn gating. Skip readPixels when
-    // dust is off; when on, sample at most once per rAF.
+    // dust is off or coarse mid-stroke (Phase 9 defers spawn to pointer-up).
     let onFabric = true;
-    if (needsFabricAlphaSample(cursorFxRef.current.fairyDust)) {
+    if (
+      shouldSampleFabricAlpha({
+        fairyDust: cursorFxRef.current.fairyDust,
+        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+        isScratching: drawingRef.current,
+      })
+    ) {
       const probeFrame = probeFrameIdRef.current;
       const fabricCache = fabricAlphaCacheRef.current;
       let fabricAlpha = readCachedFabricAlpha(fabricCache, probeFrame);
@@ -4235,6 +4496,7 @@ export function ScratchPrototype() {
     const onMesh = applied && uvAtPointer !== null && onFabric;
     publishCursorOnMesh(onMesh);
   }
+  addScratchRef.current = addScratch;
 
   function setVideoTime(time: number) {
     const bottomVideo = bottomVideoRef.current;
@@ -4780,14 +5042,128 @@ export function ScratchPrototype() {
               <div className="photo-scratch-intro-ring" />
             </div>
           ) : null}
-          {useBodySymbols && matchStartUnlocked ? (
+          {/* Top chrome — two rows:
+                row 1: pause | icon-bar track | mute
+                row 2: blank | progress toast slot | cards left
+              Body-match bar is stage-absolute (center foil → dock fly). */}
+          <div
+            className={`stage-game__top-chrome${
+              topBarPhase === "docked" ? " is-docked" : ""
+            }`}
+          >
+            <div className="stage-game__top-chrome-row is-controls">
+              <div className="stage-game__top-chrome-side is-start">
+                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+              </div>
+              <div className="stage-game__top-chrome-center">
+                {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
+                  /* Legacy foil path: always 6 top slots (never body 12). */
+                  <div
+                    className={`symbol-bar${
+                      revealedSymbols >= TOP_SYMBOL_COUNT
+                        ? " is-symbols-complete"
+                        : ""
+                    }${claimed ? " is-fully-revealed" : ""}`}
+                    aria-label="Game symbols"
+                  >
+                    {topSymbols
+                      .slice(0, TOP_SYMBOL_COUNT)
+                      .map((typeId, index) => (
+                        <div
+                          key={index}
+                          ref={(el) => {
+                            symbolSlotRefs.current[index] = el;
+                          }}
+                          className={`symbol-slot${
+                            litSymbolSlots[index] ? " is-revealed" : ""
+                          }`}
+                          title={
+                            litSymbolSlots[index]
+                              ? SYMBOL_TYPES[typeId]?.label
+                              : undefined
+                          }
+                        >
+                          {litSymbolSlots[index] ? (
+                            <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
+                          ) : null}
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="stage-game__top-chrome-side is-end">
+                <StageMuteButton />
+              </div>
+            </div>
+            {/* Status row: [ cards-left 1fr | notifications 2fr ] */}
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
+                {packProgressShown &&
+                (skipToPlay ||
+                  (modelCards.length > 1 &&
+                    completedCardIds.length < modelCards.length &&
+                    hasPlayableCard)) ? (
+                  <div
+                    className={[
+                      "pack-progress-shell",
+                      packProgressLeaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={() => {
+                      if (!packProgressLeaving) return;
+                      setPackProgressShown(false);
+                      setPackProgressLeaving(false);
+                    }}
+                  >
+                    {skipToPlay ? (
+                      /* Lab always shows pack-progress for layout. */
+                      <PackProgress current={1} total={5} />
+                    ) : (
+                      <PackProgress
+                        current={
+                          motionResult?.current ??
+                          Math.min(
+                            completedCardIds.length + 1,
+                            modelCards.length,
+                          )
+                        }
+                        total={modelCards.length}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="stage-game__top-chrome-status-notes"
+                data-progress-toast-slot="1"
+              />
+            </div>
+          </div>
+          {/* One TopSymbolBar for the whole match sequence:
+              center (scratch foil) → docked (fly to top) → showcase. */}
+          {(useBodySymbols || skipToPlay) &&
+          (topChromeBarReady ||
+            (matchStartUnlocked && topBarPhase !== "docked")) ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
               slotElsOutRef={topBarSlotElsRef}
+              forceRevealed={skipToPlay}
               onAllRevealed={onTopBarAllRevealed}
+              freezeSymbols={shouldFreezeSymbolLottie({
+                basePaused: false,
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                isScratching,
+              })}
+              preferStaticSymbols={shouldPreferStaticSymbolLottie({
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+              })}
+              quietDecorativeLottie={shouldPreferStaticSymbolLottie({
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+              })}
             />
           ) : null}
           <ScratchFrameProgress
@@ -4797,31 +5173,6 @@ export function ScratchPrototype() {
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
-          {!useBodySymbols && matchStartUnlocked ? (
-            <div
-              className={`symbol-bar${revealedSymbols >= SYMBOL_SLOT_COUNT ? " is-symbols-complete" : ""}${claimed ? " is-fully-revealed" : ""}`}
-              aria-label="Game symbols"
-            >
-              {sessionSymbols.map((typeId, index) => (
-                <div
-                  key={index}
-                  ref={(el) => {
-                    symbolSlotRefs.current[index] = el;
-                  }}
-                  className={`symbol-slot${litSymbolSlots[index] ? " is-revealed" : ""}`}
-                  title={
-                    litSymbolSlots[index]
-                      ? SYMBOL_TYPES[typeId]?.label
-                      : undefined
-                  }
-                >
-                  {litSymbolSlots[index] ? (
-                    <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : null}
           {showIntroCountdown ? (
             <InitialCountdown
               onComplete={onIntroCountdownComplete}
@@ -4850,6 +5201,9 @@ export function ScratchPrototype() {
                         typeId={typeId}
                         size={BODY_SYMBOL_ICON_PX}
                         pixelScale={1.2}
+                        preferStatic={shouldPreferStaticSymbolLottie({
+                          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                        })}
                         paused
                       />
                     </span>
@@ -4888,7 +5242,13 @@ export function ScratchPrototype() {
                   onAnimationEnd={() => removeFlyingCoin(coin.id)}
                   aria-hidden="true"
                 >
-                  <GameSymbolIcon typeId={coin.typeId} pixelScale={1.15} />
+                  <GameSymbolIcon
+                    typeId={coin.typeId}
+                    pixelScale={1.15}
+                    preferStatic={shouldPreferStaticSymbolLottie({
+                      coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                    })}
+                  />
                 </div>
               ))
             : flyingCoins.map((coin) => (
@@ -4942,7 +5302,12 @@ export function ScratchPrototype() {
                 void foregroundVideo.play().catch(() => undefined);
               drawingRef.current = true;
               setIsScratching(true);
+              // First scratch touch: animate cards-left away for this card.
+              if (packProgressShown && !packProgressLeaving) {
+                setPackProgressLeaving(true);
+              }
               lastScratchWorldRef.current = null;
+              clearPendingScratchMove(scratchInputCoalesceRef.current);
               lastPointerClientRef.current = {
                 x: event.clientX,
                 y: event.clientY,
@@ -4963,7 +5328,12 @@ export function ScratchPrototype() {
                 event.clientY,
               );
               if (!drawingRef.current) return;
-              addScratch(event.clientX, event.clientY);
+              // Coalesce to one densified apply per rAF (Phase 7).
+              notePendingScratchMove(
+                scratchInputCoalesceRef.current,
+                event.clientX,
+                event.clientY,
+              );
             }}
             onPointerUp={() => {
               endScratchStroke();
@@ -5033,17 +5403,6 @@ export function ScratchPrototype() {
               )}
             </button>
           </div>
-          {modelCards.length > 1 &&
-          completedCardIds.length < modelCards.length &&
-          hasPlayableCard ? (
-            <PackProgress
-              current={
-                motionResult?.current ??
-                Math.min(completedCardIds.length + 1, modelCards.length)
-              }
-              total={modelCards.length}
-            />
-          ) : null}
           {/* Phones hide the dev panel, so surface compact controls on the stage
               itself. Hidden on desktop where the panel is used. */}
           <div className="mobile-controls-wrap">

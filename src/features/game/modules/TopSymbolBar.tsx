@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import { GameSymbolIcon } from "./GameSymbolIcon";
+import { resolveFoilCanvasPixelRatio } from "./foilCanvasPixelRatio";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
 
 const BRUSH_RADIUS_CSS = 12;
@@ -27,8 +28,14 @@ const PEEL_LOTTIE_PAUSE_MS = 1800;
 const PEEL_LOTTIE_CYCLE_MS = PEEL_LOTTIE_DURATION_MS + PEEL_LOTTIE_PAUSE_MS;
 /** Beat after foil clears before the bar flies up to dock. */
 const CLEAR_CELEBRATE_MS = 420;
-/** Retina backing store — same texture, more canvas pixels. */
-const FOIL_CANVAS_MAX_DPR = 3;
+
+function foilCanvasDpr(): number {
+  if (typeof window === "undefined") return 1;
+  return resolveFoilCanvasPixelRatio({
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    devicePixelRatio: window.devicePixelRatio || 1,
+  });
+}
 
 /** Same tile scale as before; motif height ≈ bar height. */
 function foilPatternScale(canvasHeight: number, textureHeight: number) {
@@ -98,6 +105,12 @@ type TopSymbolBarProps = {
   matchedSlots?: boolean[];
   /** Optional mirror of slot DOM nodes for fly-to-slot animations. */
   slotElsOutRef?: MutableRefObject<(HTMLDivElement | null)[]>;
+  /** Force symbol lotties onto first frame (iOS scratch / coarse pointer). */
+  freezeSymbols?: boolean;
+  /** Skip worker-backed symbol players (coarse pointer). */
+  preferStaticSymbols?: boolean;
+  /** Hide decorative peel lottie (coarse pointer / reduced motion). */
+  quietDecorativeLottie?: boolean;
 };
 
 let scratchTexture: HTMLImageElement | null = null;
@@ -341,6 +354,9 @@ export function TopSymbolBar({
   forceRevealed = false,
   matchedSlots,
   slotElsOutRef,
+  freezeSymbols = false,
+  preferStaticSymbols = false,
+  quietDecorativeLottie = false,
 }: TopSymbolBarProps) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
@@ -456,7 +472,7 @@ export function TopSymbolBar({
     s.setProperty("pointer-events", "none", "important");
     s.setProperty("z-index", "10", "important");
     s.setProperty("display", "block", "important");
-    const dpr = Math.min(FOIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
+    const dpr = foilCanvasDpr();
     flakeDprRef.current = dpr;
     const nextW = Math.max(1, Math.round(cssW * dpr));
     const nextH = Math.max(1, Math.round(cssH * dpr));
@@ -482,7 +498,7 @@ export function TopSymbolBar({
     const cssH = Math.max(1, Math.round(rect.height));
     if (cssW < 40 || cssH < 20) return false;
 
-    const dpr = Math.min(FOIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
+    const dpr = foilCanvasDpr();
     const nextW = Math.max(1, Math.round(cssW * dpr));
     const nextH = Math.max(1, Math.round(cssH * dpr));
 
@@ -623,7 +639,7 @@ export function TopSymbolBar({
       coatingHeight: number,
       count = FLAKE_COUNT_PER_SCRATCH,
     ) => {
-      flakeDprRef.current = Math.min(FOIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
+      flakeDprRef.current = foilCanvasDpr();
       const dpr = flakeDprRef.current;
       const sizePx = FLAKE_BASE_SIZE_CSS * dpr;
       for (let i = 0; i < count; i += 1) {
@@ -884,7 +900,7 @@ export function TopSymbolBar({
         revealedCount >= TOP_SYMBOL_COUNT ? " is-symbols-complete" : ""
       }${showCoating ? " is-scratchable" : ""}${
         clearedBurst ? " is-cleared" : ""
-      }`}
+      }${forceRevealed ? " is-force-revealed" : ""}`}
       aria-label="Match symbols — scratch to reveal"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -920,10 +936,16 @@ export function TopSymbolBar({
               // Retina + CSS pulse/enter scales — render the backing store
               // ahead of those transforms so the icons stay crisp.
               pixelScale={phase === "docked" ? 2 : 2.5}
+              preferStatic={preferStaticSymbols}
               // Only animate during the center foil reveal. Docked / showcase
               // use CSS (dormant desat, pulse) — keeps DotLottie workers frozen
               // for the whole hunt, which is the long expensive stretch.
-              paused={!revealed || dormant || phase !== "center"}
+              paused={
+                freezeSymbols ||
+                !revealed ||
+                dormant ||
+                phase !== "center"
+              }
             />
           </div>
         );
@@ -935,7 +957,7 @@ export function TopSymbolBar({
           aria-hidden="true"
         />
       ) : null}
-      {showCoating ? (
+      {showCoating && !quietDecorativeLottie ? (
         <div
           className={`lottie-clipper${peelHidden ? " is-faded" : ""}`}
           aria-hidden="true"

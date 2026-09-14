@@ -5,6 +5,7 @@
 import {
   createFabricAlphaCache,
   createSymbolScratchProbeCache,
+  isSymbolNearAnyStroke,
   isSymbolNearStroke,
   needsFabricAlphaSample,
   readCachedFabricAlpha,
@@ -77,6 +78,32 @@ assert(
   !isSymbolNearStroke(0.5, 0.5, 0.8, 0.5, 0.06),
   "far symbol skips GPU sample",
 );
+
+// Coalesced rAF apply: last client point is past the symbol (or off-mesh),
+// but an intermediate densified stamp punched it.
+{
+  const stamps = [
+    { u: 0.2, v: 0.5 },
+    { u: 0.5, v: 0.5 },
+    { u: 0.85, v: 0.5 },
+  ];
+  assert(
+    !isSymbolNearStroke(0.85, 0.5, 0.5, 0.5, 0.06),
+    "endpoint-only gate misses a symbol the swipe crossed",
+  );
+  assert(
+    isSymbolNearAnyStroke(stamps, 0.5, 0.5, 0.06),
+    "any-stamp gate finds the intermediate punch",
+  );
+  assert(
+    !isSymbolNearAnyStroke(stamps, 0.5, 0.9, 0.06),
+    "any-stamp gate still skips a far symbol",
+  );
+  assert(
+    !isSymbolNearAnyStroke([], 0.5, 0.5, 0.06),
+    "empty stroke list is not near anything",
+  );
+}
 
 // Budget: UV gate + skip fabric when dust is off still beats pointer×every-slot.
 {

@@ -43,6 +43,7 @@ export const SURFACE_KIND: Record<string, NavSurfaceKind> = {
   creator: "secondary",
   "purchase-flow": "immersive",
   game: "immersive",
+  "game-ui": "immersive",
   "photo-scratch": "immersive",
   "recommend-intro": "immersive",
   "personalize-swipe": "immersive",

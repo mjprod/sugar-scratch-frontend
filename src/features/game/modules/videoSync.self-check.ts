@@ -96,6 +96,55 @@ assert(SOFT_SEEK_DRIFT_S >= 2 / 30, "soft band tolerates ≥2 frames @ 30fps");
   assert(after.action === "seek" && after.reason === "hard", "hard seek after cooldown");
 }
 
+{
+  const state = createVideoSyncState();
+  assert(
+    decideVideoSync({
+      drift: 0.12,
+      now: 2000,
+      state,
+      isScratching: true,
+    }).action === "none",
+    "soft suppressed while scratching",
+  );
+  assert(
+    decideVideoSync({
+      drift: 0.12,
+      now: 3000,
+      state,
+      isScratching: true,
+    }).action === "none",
+    "soft still suppressed mid-stroke",
+  );
+  const softAfter = decideVideoSync({
+    drift: 0.12,
+    now: 4000,
+    state,
+    isScratching: false,
+  });
+  assert(softAfter.action === "none", "soft confirm starts after stroke");
+  const softFire = decideVideoSync({
+    drift: 0.12,
+    now: 4000 + 250,
+    state,
+    isScratching: false,
+  });
+  assert(
+    softFire.action === "seek" && softFire.reason === "soft",
+    "soft seeks after stroke once confirmed",
+  );
+  const hardWhileScratch = decideVideoSync({
+    drift: 1.0,
+    now: 4000 + SEEK_COOLDOWN_MS + 100,
+    state: createVideoSyncState(),
+    isScratching: true,
+  });
+  assert(
+    hardWhileScratch.action === "seek" && hardWhileScratch.reason === "hard",
+    "hard seek still allowed while scratching",
+  );
+}
+
 console.log(
   JSON.stringify(
     {
@@ -103,7 +152,8 @@ console.log(
       SOFT_SEEK_DRIFT_S,
       HARD_SEEK_DRIFT_S,
       SEEK_COOLDOWN_MS,
-      policy: "wrapped drift + loop-edge wait + cooldown on all seeks",
+      policy:
+        "wrapped drift + loop-edge wait + cooldown; soft suppressed while scratching",
     },
     null,
     2,

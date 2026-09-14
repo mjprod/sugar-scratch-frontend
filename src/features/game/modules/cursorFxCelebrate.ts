@@ -14,6 +14,8 @@ export type CursorFxDeviceProfile = {
   particleCount: number;
   /** Cap FairyDust overlay canvas DPR (1 on phone / coarse pointer). */
   maxOverlayDpr: number;
+  /** True when `(pointer: coarse)` matched at profile resolve time. */
+  coarsePointer: boolean;
 };
 
 export function progressMilestoneIndex(
@@ -47,6 +49,7 @@ export function resolveCursorFxDeviceProfile(opts: {
       particleSize: 40,
       particleCount: 2,
       maxOverlayDpr: 1,
+      coarsePointer: opts.coarsePointer,
     };
   }
   const mobile = opts.coarsePointer || opts.narrowViewport;
@@ -56,6 +59,7 @@ export function resolveCursorFxDeviceProfile(opts: {
       particleSize: 48,
       particleCount: 3,
       maxOverlayDpr: 1,
+      coarsePointer: opts.coarsePointer,
     };
   }
   return {
@@ -63,6 +67,7 @@ export function resolveCursorFxDeviceProfile(opts: {
     particleSize: 64,
     particleCount: 5,
     maxOverlayDpr: 2,
+    coarsePointer: opts.coarsePointer,
   };
 }
 
