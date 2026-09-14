@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
+import {
+  initialCardCountdownPlayKey,
+  shouldAutoplayCardCountdown,
+  shouldFreezeCardCountdownOnLoad,
+} from "./packProgressLottiePolicy";
 
 /** Assets live in public/lottie (singular) — /lotties/* falls through to SPA HTML. */
 const CARD_COUNTDOWN_LOTTIE_SRC = "/lottie/lottieCardCountdown.lottie";
@@ -17,7 +22,11 @@ type PackProgressProps = {
 /** Compact pack-progress pill — status-row HUD. Card lottie plays on new card. */
 export function PackProgress({ current, total }: PackProgressProps) {
   // Remount DotLottie only when the card index advances so idle mounts stay still.
-  const [playKey, setPlayKey] = useState(0);
+  // Mid-pack HUD remounts (stage hides the pill after first scratch) start with
+  // playKey > 0 so the transition still runs.
+  const [playKey, setPlayKey] = useState(() =>
+    initialCardCountdownPlayKey(current),
+  );
   const prevCurrentRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -32,8 +41,8 @@ export function PackProgress({ current, total }: PackProgressProps) {
   if (total <= 0 || current < 1 || current > total) return null;
   const remaining = total - current;
   const isFinal = remaining === 0;
-  // playKey > 0 means a card transition already happened this mount.
-  const shouldPlay = playKey > 0;
+  const shouldPlay = shouldAutoplayCardCountdown(playKey);
+  const freezeOnLoad = shouldFreezeCardCountdownOnLoad(shouldPlay);
 
   return (
     <div
@@ -68,23 +77,31 @@ export function PackProgress({ current, total }: PackProgressProps) {
           })}
           dotLottieRefCallback={(instance: DotLottie | null) => {
             if (!instance) return;
-            const paintFirstFrame = () => {
+            if (freezeOnLoad) {
+              const paintFirstFrame = () => {
+                try {
+                  // stop() renders frame 0 — needed so idle icons aren't blank.
+                  void instance.stop();
+                  instance.pause();
+                } catch {
+                  /* player may not be ready yet */
+                }
+              };
+              instance.addEventListener("load", paintFirstFrame);
+              paintFirstFrame();
+              return;
+            }
+            // Play path: do not stop() — that cancels autoplay. Reinforce play
+            // after load in case the player raced past the autoplay flag.
+            const ensurePlay = () => {
               try {
-                // stop() renders frame 0 — needed so idle icons aren't blank.
-                void instance.stop();
-                if (!shouldPlay) instance.pause();
+                void instance.play();
               } catch {
                 /* player may not be ready yet */
               }
             };
-            const anyInstance = instance as unknown as {
-              __packProgressHooked?: boolean;
-            };
-            if (!anyInstance.__packProgressHooked) {
-              anyInstance.__packProgressHooked = true;
-              instance.addEventListener("load", paintFirstFrame);
-            }
-            paintFirstFrame();
+            instance.addEventListener("load", ensurePlay);
+            ensurePlay();
           }}
         />
       </span>
