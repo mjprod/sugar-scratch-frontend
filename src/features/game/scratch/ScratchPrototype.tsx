@@ -1538,7 +1538,8 @@ export function ScratchPrototype({
   const [handStartCountdownPending, setHandStartCountdownPending] =
     useState(false);
   const themeIntroByKeyRef = useRef<Map<string, string>>(new Map());
-  const [themeIntrosReady, setThemeIntrosReady] = useState(false);
+  /** Lab skipToPlay never fetches themes — ready immediately. */
+  const [themeIntrosReady, setThemeIntrosReady] = useState(() => skipToPlay);
   /** True once we've decided whether to show a hand-start intro (or skipped it). */
   const [handStartIntroResolved, setHandStartIntroResolved] = useState(
     () => skipToPlay,
