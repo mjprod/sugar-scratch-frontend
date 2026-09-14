@@ -4285,12 +4285,7 @@ export function ScratchPrototype() {
         SCRATCH_RADIUS,
         isLast ? stamp.worldPoint : null,
         isLast,
-        isLast
-          ? appliedStamps.map(({ u, v }) => ({
-              u,
-              v,
-            }))
-          : undefined,
+        isLast ? appliedStamps : undefined,
       );
       applied = true;
     }
