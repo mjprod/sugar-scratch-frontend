@@ -4267,24 +4267,30 @@ export function ScratchPrototype() {
     // Map first so we finalize the last *on-mesh* stamp. A coalesced swipe
     // often ends off the garment; finalizing `strokePoints.at(-1)` skipped
     // symbol probes even when an intermediate stamp punched a mark.
-    const appliedUvs: { u: number; v: number }[] = [];
+    const appliedStamps: { u: number; v: number; worldPoint: Vec2 }[] = [];
     for (let i = 0; i < strokePoints.length; i += 1) {
-      const uv = trackedWorldToUv(trackedSample, strokePoints[i]);
+      const strokePoint = strokePoints[i];
+      const uv = trackedWorldToUv(trackedSample, strokePoint);
       if (!uv) continue;
-      appliedUvs.push({ u: uv.x, v: uv.y });
+      appliedStamps.push({ u: uv.x, v: uv.y, worldPoint: strokePoint });
     }
 
     let applied = false;
-    for (let i = 0; i < appliedUvs.length; i += 1) {
-      const uv = appliedUvs[i];
-      const isLast = i === appliedUvs.length - 1;
+    for (let i = 0; i < appliedStamps.length; i += 1) {
+      const stamp = appliedStamps[i];
+      const isLast = i === appliedStamps.length - 1;
       applyScratchAtUv(
-        uv.u,
-        uv.v,
+        stamp.u,
+        stamp.v,
         SCRATCH_RADIUS,
-        isLast ? point : null,
+        isLast ? stamp.worldPoint : null,
         isLast,
-        isLast ? appliedUvs : undefined,
+        isLast
+          ? appliedStamps.map(({ u, v }) => ({
+              u,
+              v,
+            }))
+          : undefined,
       );
       applied = true;
     }
