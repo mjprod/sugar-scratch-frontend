@@ -16,7 +16,7 @@ import {
   type AnimationEvent,
   type CSSProperties,
 } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import {
   FairyDustCursor,
   fairyDustPerf,
@@ -1315,6 +1315,14 @@ export function ScratchPrototype({
   const [meshReloadToken, setMeshReloadToken] = useState(0);
   /** Lab only: bump to force the same card to fully reset after a find. */
   const [labRestartToken, setLabRestartToken] = useState(0);
+  /**
+   * /game-ui lab: TopSymbolBar normally force-reveals + docks for hunt UI.
+   * Set false while iterating the center foil scratch → dock sequence.
+   */
+  const [labTopBarForceRevealed, setLabTopBarForceRevealed] = useState(
+    () => skipToPlay,
+  );
+  const labDockPreviewTimerRef = useRef<number | null>(null);
   const [activeModelId, setActiveModelId] = useState(() => {
     if (typeof window === "undefined") return skipToPlay ? "julianaval" : "";
     return (
@@ -2166,9 +2174,77 @@ export function ScratchPrototype({
     }, dockMs);
   }
 
+  function clearLabDockPreviewTimer() {
+    if (labDockPreviewTimerRef.current !== null) {
+      window.clearTimeout(labDockPreviewTimerRef.current);
+      labDockPreviewTimerRef.current = null;
+    }
+  }
+
+  /** /game-ui: center foil bar with scratch-to-reveal icons. */
+  function labShowFoilScratchBar() {
+    if (!skipToPlay) return;
+    clearLabDockPreviewTimer();
+    clearIntroDockTimer();
+    setShowIntroCountdown(false);
+    showIntroCountdownRef.current = false;
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    setLabTopBarForceRevealed(false);
+    setTopBarPhase("center");
+    topBarPhaseRef.current = "center";
+    setTopBarRound((n) => n + 1);
+  }
+
+  /**
+   * /game-ui: replay center → top dock flight (icons already revealed).
+   * Two-frame center paint so the dock CSS transition has a real from-state.
+   */
+  function labPlayDockToTop() {
+    if (!skipToPlay) return;
+    clearLabDockPreviewTimer();
+    clearIntroDockTimer();
+    setShowIntroCountdown(false);
+    showIntroCountdownRef.current = false;
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    setLabTopBarForceRevealed(true);
+    setTopBarPhase("center");
+    topBarPhaseRef.current = "center";
+    setTopBarRound((n) => n + 1);
+    labDockPreviewTimerRef.current = window.setTimeout(() => {
+      labDockPreviewTimerRef.current = null;
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+    }, 48);
+  }
+
+  /** /game-ui: back to normal lab hunt chrome (docked + force-revealed). */
+  function labResetTopBarHunt() {
+    if (!skipToPlay) return;
+    clearLabDockPreviewTimer();
+    clearIntroDockTimer();
+    setShowIntroCountdown(false);
+    showIntroCountdownRef.current = false;
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    setLabTopBarForceRevealed(true);
+    setTopBarPhase("docked");
+    topBarPhaseRef.current = "docked";
+    setTopBarRound((n) => n + 1);
+  }
+
   function onTopBarAllRevealed() {
     setTopBarPhase("docked");
     topBarPhaseRef.current = "docked";
+    // Lab foil sequence: land docked with icons locked in; no countdown gate.
+    if (skipToPlay) {
+      setLabTopBarForceRevealed(true);
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+      clearIntroDockTimer();
+      return;
+    }
     setIntroGateActive(true);
     introGateActiveRef.current = true;
     clearIntroDockTimer();
@@ -3576,6 +3652,7 @@ export function ScratchPrototype({
     return () => {
       clearCelebrateTimer();
       clearCoinBadgeIdleTimer();
+      clearLabDockPreviewTimer();
     };
   }, []);
 
@@ -5042,8 +5119,8 @@ export function ScratchPrototype({
           className={`stage${gameResult ? " is-game-over" : ""}${
             topBarPhase === "showcase" ? " is-showcase-phase" : ""
           }${
-            useBodySymbols &&
-            matchStartUnlocked &&
+            ((useBodySymbols && matchStartUnlocked) ||
+              (skipToPlay && !labTopBarForceRevealed)) &&
             topBarPhase === "center" &&
             !introGateActive
               ? " is-bar-phase"
@@ -5251,14 +5328,17 @@ export function ScratchPrototype({
               center (scratch foil) → docked (fly to top) → showcase. */}
           {(useBodySymbols || skipToPlay) &&
           (topChromeBarReady ||
-            (matchStartUnlocked && topBarPhase !== "docked")) ? (
+            (matchStartUnlocked && topBarPhase !== "docked") ||
+            (skipToPlay && topBarPhase === "center")) ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
               slotElsOutRef={topBarSlotElsRef}
-              forceRevealed={skipToPlay}
+              forceRevealed={
+                skipToPlay ? labTopBarForceRevealed : false
+              }
               onAllRevealed={onTopBarAllRevealed}
               freezeSymbols={shouldFreezeSymbolLottie({
                 basePaused: false,
@@ -5271,6 +5351,15 @@ export function ScratchPrototype({
               quietDecorativeLottie={shouldPreferStaticSymbolLottie({
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
               })}
+            />
+          ) : null}
+          {skipToPlay ? (
+            <TopBarSequenceLabPanel
+              phase={topBarPhase}
+              forceRevealed={labTopBarForceRevealed}
+              onShowFoilScratch={labShowFoilScratchBar}
+              onPlayDockToTop={labPlayDockToTop}
+              onResetHunt={labResetTopBarHunt}
             />
           ) : null}
           <ScratchFrameProgress
@@ -5815,5 +5904,105 @@ export function ScratchPrototype({
         </aside>
       </section>
     </main>
+  );
+}
+
+type TopBarSequenceLabPanelProps = {
+  phase: TopBarPhase;
+  forceRevealed: boolean;
+  onShowFoilScratch: () => void;
+  onPlayDockToTop: () => void;
+  onResetHunt: () => void;
+};
+
+/** /game-ui only — step the foil scratch → dock sequence. */
+function TopBarSequenceLabPanel({
+  phase,
+  forceRevealed,
+  onShowFoilScratch,
+  onPlayDockToTop,
+  onResetHunt,
+}: TopBarSequenceLabPanelProps) {
+  const [open, setOpen] = useState(true);
+
+  if (typeof document === "undefined") return null;
+
+  const modeLabel =
+    phase === "center" && !forceRevealed
+      ? "foil scratch"
+      : phase === "center" && forceRevealed
+        ? "center (pre-dock)"
+        : phase === "docked"
+          ? "docked top"
+          : phase;
+
+  return createPortal(
+    <aside
+      className={["home-hero-debug", "home-hero-debug--center", open ? "" : "is-collapsed"]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="Top bar sequence lab"
+    >
+      <div className="home-hero-debug__head">
+        <p className="home-hero-debug__title">Top bar sequence</p>
+        <div className="home-hero-debug__actions">
+          <button
+            type="button"
+            className="home-hero-debug__btn"
+            onClick={() => setOpen((current) => !current)}
+          >
+            {open ? "Hide" : "Show"}
+          </button>
+        </div>
+      </div>
+      {open ? (
+        <div className="home-hero-debug__body">
+          <p className="home-hero-debug__hint">
+            Iterate foil scratch → dock without running the full intro. Phase:{" "}
+            <strong>{modeLabel}</strong>
+          </p>
+          <div className="home-hero-debug__section">
+            <p className="home-hero-debug__section-title">Reveal icons</p>
+            <div className="home-hero-debug__actions" style={{ flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="home-hero-debug__btn"
+                onClick={onShowFoilScratch}
+              >
+                Show foil scratch bar
+              </button>
+            </div>
+            <p className="home-hero-debug__hint">
+              Centers the bar with foil coating. Scratch the icons, then it
+              auto-docks after clear.
+            </p>
+          </div>
+          <div className="home-hero-debug__section">
+            <p className="home-hero-debug__section-title">Dock flight</p>
+            <div className="home-hero-debug__actions" style={{ flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="home-hero-debug__btn"
+                onClick={onPlayDockToTop}
+              >
+                Play dock to top
+              </button>
+              <button
+                type="button"
+                className="home-hero-debug__btn"
+                onClick={onResetHunt}
+              >
+                Reset docked hunt
+              </button>
+            </div>
+            <p className="home-hero-debug__hint">
+              Replays the bar flying from center into the top chrome (icons
+              already revealed).
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </aside>,
+    document.body,
   );
 }
