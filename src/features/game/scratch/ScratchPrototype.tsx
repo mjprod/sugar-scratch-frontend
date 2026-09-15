@@ -1252,7 +1252,7 @@ export function ScratchPrototype({
   onLeave?: () => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins, setCoins, setDiamonds } = useWallet();
+  const { addCoins } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
@@ -1842,15 +1842,9 @@ export function ScratchPrototype({
       setCoinAwardFlash(award);
       setCoinPopNonce((n) => n + 1);
       // Persist only with a server-issued hand — forged client ids are rejected.
+      // Do not merge the persist wallet snapshot (see scratchCoinReward).
       if (authed && handId) {
-        persistScratchCoins(
-          { handId, milestone: crossed, cardId },
-          (wallet) => {
-            // Server rolls the real amount; trust wallet over optimistic local roll.
-            setCoins(wallet.coins);
-            setDiamonds(wallet.diamonds);
-          },
-        );
+        persistScratchCoins({ handId, milestone: crossed, cardId, amount: award });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();
