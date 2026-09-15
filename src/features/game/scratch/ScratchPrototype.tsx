@@ -5378,15 +5378,7 @@ export function ScratchPrototype({
               })}
             />
           ) : null}
-          {skipToPlay ? (
-            <TopBarSequenceLabPanel
-              phase={topBarPhase}
-              forceRevealed={labTopBarForceRevealed}
-              onShowFoilScratch={labShowFoilScratchBar}
-              onPlayDockToTop={labPlayDockToTop}
-              onResetHunt={labResetTopBarHunt}
-            />
-          ) : null}
+          {/* Top bar sequence lab panel hidden — controls kept for future debug. */}
           <ScratchFrameProgress
             active={frameProgressActive}
             found={revealedSymbols}
