@@ -1442,7 +1442,8 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 /* Continuous frame progress — outer card stroke (symbol hunt).
    Keep the stroke inside the stage (positive insets only — negative would
    clip under overflow:hidden). On phones, lift the bottom edge above the
-   iOS browser chrome with safe-area + a small dvh-based toolbar clearance. */
+   iOS browser chrome with safe-area + a small dvh-based toolbar clearance.
+   Android Chrome overrides below (html[data-game-android]). */
 .scratch-frame-progress {
   --frame-inset-x: max(4px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   --frame-inset-top: max(4px, env(safe-area-inset-top, 0px));
@@ -1472,6 +1473,16 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
     );
     --frame-inset-top: max(8px, env(safe-area-inset-top, 0px));
     --frame-inset-x: max(6px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  }
+
+  /* Android Chrome: toolbar ≠ safe-area — floor a real clearance. */
+  html[data-game-android="1"] .scratch-frame-progress {
+    --frame-inset-bottom: max(
+      48px,
+      env(safe-area-inset-bottom, 0px),
+      calc(env(safe-area-inset-bottom, 0px) + 24px),
+      calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6svh, 56px))
+    );
   }
 }
 
@@ -4023,6 +4034,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    /* Safari / iOS original: full dynamic viewport. */
     height: 100dvh;
     left: 0;
     position: fixed;
@@ -4055,6 +4067,33 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     transition: transform var(--scratch-zoom-duration, 180ms)
       var(--scratch-zoom-easing, ease-out);
     width: max(100dvw, 100dvh * 390 / 672);
+  }
+
+  /* Android Chrome only — size to visualViewport (see AppLayout). */
+  html[data-game-android="1"] .app-shell:not(.home-picker):not(.photo-scratch-page) {
+    min-height: var(--game-vv-height, 100svh);
+    height: var(--game-vv-height, 100svh);
+    max-height: var(--game-vv-height, 100svh);
+  }
+
+  html[data-game-android="1"] .app-shell.home-picker {
+    min-height: var(--game-vv-height, 100svh);
+  }
+
+  html[data-game-android="1"] .stage {
+    height: var(--game-vv-height, 100svh);
+    max-height: var(--game-vv-height, 100svh);
+    top: var(--game-vv-top, 0px);
+  }
+
+  html[data-game-android="1"] .stage canvas.photo-scratch-fg-layer {
+    height: max(var(--game-vv-height, 100svh), 100dvw * 672 / 390);
+    width: max(100dvw, var(--game-vv-height, 100svh) * 390 / 672);
+  }
+
+  html[data-game-android="1"] .stage .game-stage-canvas-wrap {
+    height: max(var(--game-vv-height, 100svh), 100dvw * 672 / 390);
+    width: max(100dvw, var(--game-vv-height, 100svh) * 390 / 672);
   }
 
   .stage .game-stage-canvas-wrap .game-stage-canvas {
