@@ -79,6 +79,7 @@ import {
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import { PackProgress } from "../modules/PackProgress";
+import { rollSparkleCoin } from "../modules/sparkleCoinAward";
 import { StageCoinCount } from "../StageCoinCount";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
@@ -1643,6 +1644,8 @@ export function ScratchPrototype({
   const celebrateTimerRef = useRef<number | null>(null);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
   const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
+  /** Display-only coin awards from 10% scratch milestones (not wallet). */
+  const [sparkleDelta, setSparkleDelta] = useState(0);
   /** Bumped each rAF — fabric/symbol GPU probes run at most once per frame. */
   const probeFrameIdRef = useRef(0);
   const fabricAlphaCacheRef = useRef(createFabricAlphaCache());
@@ -1719,25 +1722,30 @@ export function ScratchPrototype({
     }
   }
 
-  /** Arm fairy-dust for a short win window when scratch progress crosses +10%. */
+  /** 10% progress beat: award coins always; arm fairy-dust when FX allows. */
   function maybeCelebrateScratchProgress(nextProgress: number) {
-    if (!cursorFxRef.current.fairyDust) {
-      celebrateProgressRef.current = nextProgress;
-      return;
-    }
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      celebrateProgressRef.current = nextProgress;
-      return;
-    }
     const crossed = crossedProgressMilestone(
       celebrateProgressRef.current,
       nextProgress,
     );
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
+
+    // Defer badge work so the dust burst paints this frame first.
+    const award = rollSparkleCoin();
+    queueMicrotask(() => {
+      setSparkleDelta((d) => d + award);
+    });
+
+    let reducedMotion = false;
+    try {
+      reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      reducedMotion = false;
+    }
+    if (!cursorFxRef.current.fairyDust || reducedMotion) return;
 
     celebrateUntilRef.current = performance.now() + CURSOR_FX_CELEBRATE_MS;
     setCursorFxCelebrate(true);
@@ -3038,6 +3046,7 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
+    setSparkleDelta(0);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3524,6 +3533,7 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
+    setSparkleDelta(0);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -5180,7 +5190,7 @@ export function ScratchPrototype({
             <div className="stage-game__bottom-chrome-row is-status">
               <div className="stage-game__bottom-chrome-status-cards">
                 <div className="stage-game__cards-left">
-                  <StageCoinCount />
+                  <StageCoinCount sessionDelta={sparkleDelta} />
                 </div>
               </div>
               <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
