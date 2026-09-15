@@ -1751,9 +1751,14 @@ export function ScratchPrototype({
 
   function showCoinBadge() {
     clearCoinBadgeIdleTimer();
-    if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) {
+    const wasShown = coinBadgeShownRef.current;
+    const wasLeaving = coinBadgeLeavingRef.current;
+    if (!wasShown || wasLeaving) {
       setCoinBadgeEnterKey((k) => k + 1);
     }
+    // Sync refs immediately so same-tick callers (e.g. milestone microtask) see the updated state.
+    coinBadgeLeavingRef.current = false;
+    coinBadgeShownRef.current = true;
     setCoinBadgeLeaving(false);
     setCoinBadgeShown(true);
   }
