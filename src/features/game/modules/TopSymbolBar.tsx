@@ -19,9 +19,9 @@ const SLOT_REVEAL_THRESHOLD = 0.55;
 const SCRATCH_TEXTURE_URL = "/scratch/scratchTexture.jpg";
 const BRUSH_STEP_RATIO = 0.35;
 /** Decorative peel cue on the left edge of the centered scratch bar. */
-const PEEL_LOTTIE_SRC = "/lotties/Peel.lottie";
+const PEEL_LOTTIE_SRC = "/lottie/peelv2.lottie";
 const PEEL_LOTTIE_WIDTH = 52;
-/** Peel.lottie is 180 frames @ 60fps (see public/lotties/Peel.lottie). */
+/** peelv2.lottie is 180 frames @ 60fps (public/lottie/peelv2.lottie). */
 const PEEL_LOTTIE_DURATION_MS = Math.round((180 / 60) * 1000);
 /** Hold the last frame this long before remounting for the next play. */
 const PEEL_LOTTIE_PAUSE_MS = 1800;
