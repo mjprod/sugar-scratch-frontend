@@ -88,7 +88,10 @@ import {
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { persistScratchCoins } from "@/services/scratchCoinReward";
+import {
+  persistScratchCoins,
+  startScratchHand,
+} from "@/services/scratchCoinReward";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   createFabricAlphaCache,
@@ -1252,12 +1255,9 @@ export function ScratchPrototype({
   const { addCoins } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  /** Idempotency scope for scratch sparkle awards (new UUID per card/hand reset). */
-  const handIdRef = useRef(
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `hand-${Date.now()}`,
-  );
+  /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
+  const handIdRef = useRef("");
+  const handStartGenRef = useRef(0);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -1813,10 +1813,14 @@ export function ScratchPrototype({
     setCoinBadgeLeaving(false);
   }
 
-  function newScratchHandId() {
-    return typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `hand-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  function beginScratchHand(cardId?: string | null) {
+    handIdRef.current = "";
+    if (!authed) return;
+    const gen = ++handStartGenRef.current;
+    void startScratchHand(cardId || undefined).then((result) => {
+      if (gen !== handStartGenRef.current) return;
+      if (result?.handId) handIdRef.current = result.handId;
+    });
   }
 
   /** 10% progress beat: credit wallet coins; arm fairy-dust when FX allows. */
@@ -1837,8 +1841,10 @@ export function ScratchPrototype({
       addCoins(award);
       setCoinAwardFlash(award);
       setCoinPopNonce((n) => n + 1);
-      if (authed) {
-        persistScratchCoins({ amount: award, handId, milestone: crossed, cardId });
+      // Persist only with a server-issued hand — forged client ids are rejected.
+      // Do not merge the persist wallet snapshot (see scratchCoinReward).
+      if (authed && handId) {
+        persistScratchCoins({ handId, milestone: crossed, cardId, amount: award });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();
@@ -3155,7 +3161,7 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    handIdRef.current = newScratchHandId();
+    beginScratchHand(card.id);
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
@@ -3651,7 +3657,7 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    handIdRef.current = newScratchHandId();
+    beginScratchHand(selectedCardId);
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();

@@ -5,6 +5,8 @@ import { useWallet } from "@/contexts/WalletContext";
 /** Static coin mark — still frame (no Lottie runtime / canvas). */
 const COIN_WEBP_SRC = "/images/coin.webp";
 const COUNT_BASE_MS = 720;
+/** How long the +N chip / value pop stay when CSS animations are disabled. */
+const REDUCED_MOTION_FLASH_MS = 900;
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
@@ -64,7 +66,16 @@ export function StageCoinCount({
     } catch {
       reduced = false;
     }
-    if (reduced) return;
+    // Reduced-motion CSS sets award/value animations to `none`, so
+    // onAnimationEnd never fires — clear flash/pop on a timer instead.
+    if (reduced) {
+      if (awardAmount <= 0) return;
+      const timer = window.setTimeout(() => {
+        setFlashAward(0);
+        setValuePopping(false);
+      }, REDUCED_MOTION_FLASH_MS);
+      return () => window.clearTimeout(timer);
+    }
 
     const img = coinImgRef.current;
     if (!img) return;
