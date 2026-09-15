@@ -2,8 +2,11 @@
  * Scratch coin persist — client wallet must not merge the server snapshot.
  * Run: npx tsx src/services/scratchCoinReward.self-check.ts
  */
-import { nextWalletAfterScratchPersist } from "./scratchCoinReward.ts";
+import { nextWalletAfterScratchPersist, persistScratchCoins } from "./scratchCoinReward.ts";
 
+// Compile-time guard: persistScratchCoins must not accept an applyWallet callback argument.
+// @ts-expect-error persistScratchCoins should have exactly one argument
+type _PersistScratchCoinsSecondArg = Parameters<typeof persistScratchCoins>[1];
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
