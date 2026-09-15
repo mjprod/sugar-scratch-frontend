@@ -762,7 +762,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: none !important;
   transition: none !important;
   opacity: 1 !important;
-  filter: none !important;
+  /* filter is set inline by the rAF tween (motion blur) — do not force none. */
   z-index: 12;
 }
 

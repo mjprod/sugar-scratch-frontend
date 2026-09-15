@@ -28,10 +28,10 @@ const PEEL_LOTTIE_PAUSE_MS = 1800;
 const PEEL_LOTTIE_CYCLE_MS = PEEL_LOTTIE_DURATION_MS + PEEL_LOTTIE_PAUSE_MS;
 /** Beat after foil clears before the bar flies up to dock. */
 const CLEAR_CELEBRATE_MS = 420;
-/** Center → top climb duration (rAF pixel tween). */
-const DOCK_FLY_MS = 250;
+/** Center → top climb duration (rAF pixel tween, includes anticipation). */
+const DOCK_FLY_MS = 280;
 /** Peak CSS blur during dock climb (px) — light motion-blur read. */
-const DOCK_FLY_BLUR_PX = 6;
+const DOCK_FLY_BLUR_PX = 14;
 
 function foilCanvasDpr(): number {
   if (typeof window === "undefined") return 1;
@@ -745,11 +745,27 @@ export function TopSymbolBar({
 
         const elapsed = now - t0;
         const t = Math.min(1, elapsed / durationMs);
-        // Linear climb over the full measured dy (the t0→top path to animate).
-        const ty = dy * t;
-        const scale = 1 + (0.84 - 1) * t;
-        // Soft motion-blur envelope: 0 → peak mid-flight → 0 at land.
-        const blur = DOCK_FLY_BLUR_PX * Math.sin(Math.PI * t);
+        // 0–22%: anticipation opposite travel (dip + grow).
+        // 22–100%: climb full measured dy with soft ease-in-out.
+        let ty: number;
+        let scale: number;
+        let blur: number;
+        if (t < 0.22) {
+          const u = t / 0.22;
+          // ease-out into the dip
+          const e = 1 - (1 - u) * (1 - u);
+          ty = 14 * e;
+          scale = 1 + 0.08 * e;
+          blur = DOCK_FLY_BLUR_PX * 0.25 * u;
+        } else {
+          const u = (t - 0.22) / 0.78;
+          // smoothstep climb
+          const e = u * u * (3 - 2 * u);
+          ty = 14 + (dy - 14) * e;
+          scale = 1.08 + (0.84 - 1.08) * e;
+          // blur peaks mid-climb then clears for land
+          blur = DOCK_FLY_BLUR_PX * Math.sin(Math.PI * u);
+        }
         node.style.transform = `translateX(-50%) translateY(${ty}px) scale(${scale})`;
         node.style.filter = `blur(${blur.toFixed(2)}px)`;
         node.style.opacity = "1";
