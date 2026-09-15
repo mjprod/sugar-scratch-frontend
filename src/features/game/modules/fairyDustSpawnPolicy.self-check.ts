@@ -12,14 +12,14 @@ function assert(cond: boolean, message: string): void {
 }
 
 assert(
-  !shouldSpawnFairyDust({
+  shouldSpawnFairyDust({
     playWindow: true,
     celebrate: true,
     isScratching: true,
     cursorOnMesh: true,
     coarsePointer: true,
   }),
-  "coarse: no spawn while scratching",
+  "coarse: celebrate spawns while scratching",
 );
 assert(
   shouldSpawnFairyDust({
@@ -40,6 +40,16 @@ assert(
     coarsePointer: false,
   }),
   "fine: spawn while scratching on mesh",
+);
+assert(
+  !shouldSpawnFairyDust({
+    playWindow: true,
+    celebrate: false,
+    isScratching: true,
+    cursorOnMesh: true,
+    coarsePointer: true,
+  }),
+  "coarse: no spawn outside celebrate",
 );
 assert(
   !shouldSampleFabricAlpha({
@@ -70,7 +80,7 @@ console.log(
   JSON.stringify(
     {
       ok: true,
-      policy: "coarse defer spawn to post-stroke; skip fabric probe mid-scratch",
+      policy: "coarse celebrate spawns mid-stroke; skip fabric probe mid-scratch",
     },
     null,
     2,

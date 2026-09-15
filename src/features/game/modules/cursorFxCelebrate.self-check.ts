@@ -52,7 +52,8 @@ assert(
     narrowViewport: true,
   });
   assert(mobile.maxOverlayDpr === 1, "mobile overlay DPR capped");
-  assert(mobile.particleCount < desktop.particleCount, "mobile fewer particles");
+  assert(mobile.particleSize >= desktop.particleSize, "mobile particles at least as large");
+  assert(mobile.particleCount >= desktop.particleCount, "mobile celebrate density matches desktop");
 
   const reduced = resolveCursorFxDeviceProfile({
     reducedMotion: true,
@@ -63,13 +64,15 @@ assert(
 }
 
 assert(celebrateParticleBoost(5) >= 5, "boost does not shrink");
-assert(celebrateParticleBoost(5) <= 12, "boost hard-capped");
+assert(celebrateParticleBoost(5) <= 18, "boost hard-capped");
+assert(celebrateParticleBoost(6) >= 12, "mobile base boosts to a dense burst");
 
 console.log(
   JSON.stringify(
     {
       ok: true,
-      policy: "celebrate ~1.1s each 10% scratched; mobile DPR=1; reduced-motion off",
+      policy:
+        "celebrate ~1.1s desktop / ~2.4s coarse each 10%; mobile larger particles; reduced-motion off",
     },
     null,
     2,

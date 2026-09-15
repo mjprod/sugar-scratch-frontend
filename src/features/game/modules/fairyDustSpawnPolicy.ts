@@ -1,7 +1,7 @@
 /**
  * Fairy-dust spawn / fabric-probe policy (Phase 9).
- * On coarse pointers, celebrate may arm mid-stroke but particles spawn only
- * after pointer-up — avoids a second full-stage canvas + readPixels during scratch.
+ * Coarse pointers skip fabric readPixels mid-scratch, but celebrate trails
+ * still spawn while the finger is down so the 10% win-feel isn't missed.
  */
 
 export function shouldSpawnFairyDust(opts: {
@@ -12,7 +12,8 @@ export function shouldSpawnFairyDust(opts: {
   coarsePointer: boolean;
 }): boolean {
   if (!opts.playWindow || !opts.celebrate) return false;
-  if (opts.coarsePointer) return !opts.isScratching;
+  // Celebrate window: spawn on both fine + coarse (including mid-stroke).
+  if (opts.coarsePointer) return true;
   return opts.isScratching && opts.cursorOnMesh;
 }
 
