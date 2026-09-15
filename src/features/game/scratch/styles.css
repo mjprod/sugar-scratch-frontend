@@ -4244,9 +4244,9 @@ dd {
   align-items: center;
   justify-content: center;
   /* Keep in sync with BODY_SYMBOL_ICON_PX in ScratchPrototype / PhotoScratch. */
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
   border: none;
   background: transparent;
   overflow: hidden;
