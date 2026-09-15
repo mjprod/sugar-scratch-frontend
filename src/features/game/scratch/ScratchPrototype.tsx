@@ -1249,7 +1249,7 @@ export function ScratchPrototype({
   onLeave?: () => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins, setCoins, setDiamonds } = useWallet();
+  const { addCoins } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Idempotency scope for scratch sparkle awards (new UUID per card/hand reset). */
@@ -1838,14 +1838,7 @@ export function ScratchPrototype({
       setCoinAwardFlash(award);
       setCoinPopNonce((n) => n + 1);
       if (authed) {
-        persistScratchCoins(
-          { amount: award, handId, milestone: crossed, cardId },
-          (wallet) => {
-            // Monotonic: a slower earlier milestone response must not wipe a later award.
-            setCoins((c) => Math.max(c, wallet.coins));
-            setDiamonds(wallet.diamonds);
-          },
-        );
+        persistScratchCoins({ amount: award, handId, milestone: crossed, cardId });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();

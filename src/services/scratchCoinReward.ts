@@ -1,6 +1,10 @@
 /**
  * Scratch sparkle coin awards — optimistic local credit + server persist.
  * Amount is rolled client-side (80–100); server clamps and idempotents per hand/milestone.
+ *
+ * Persist is fire-and-forget. Do not merge the response wallet into client
+ * state — a stale snapshot wipes locally-credited diamonds, can re-credit
+ * spent coins, and can leak a balance across logout / account switch.
  */
 
 import { apiMutate } from "../lib/api";
@@ -8,10 +12,12 @@ import { apiMutate } from "../lib/api";
 export const SCRATCH_COIN_MIN = 80;
 export const SCRATCH_COIN_MAX = 100;
 
+export type ScratchWallet = { diamonds: number; coins: number };
+
 export type ScratchCoinClaimResult = {
   ok: true;
   coins: number;
-  wallet: { diamonds: number; coins: number };
+  wallet: ScratchWallet;
 };
 
 export type ScratchCoinClaimBody = {
@@ -20,6 +26,21 @@ export type ScratchCoinClaimBody = {
   milestone: number;
   cardId?: string;
 };
+
+/**
+ * Client wallet after a scratch-coin persist response.
+ * Always keeps the local balances: optimistic addCoins is the HUD credit,
+ * and refreshWallet is the later source of truth.
+ */
+export function nextWalletAfterScratchPersist(
+  local: ScratchWallet,
+  remote: ScratchWallet | null | undefined,
+  opts: { authed: boolean },
+): ScratchWallet {
+  // Remote snapshots are never merged — see module doc.
+  if (!opts.authed || !remote) return local;
+  return local;
+}
 
 /** Persist a milestone award. Callers should optimistic-addCoins first. */
 export async function claimScratchCoins(
@@ -38,12 +59,7 @@ export async function claimScratchCoins(
   }
 }
 
-/** Fire-and-forget persist; applies wallet via callback when the server responds. */
-export function persistScratchCoins(
-  body: ScratchCoinClaimBody,
-  applyWallet: (wallet: { diamonds: number; coins: number }) => void,
-): void {
-  void claimScratchCoins(body).then((result) => {
-    if (result?.wallet) applyWallet(result.wallet);
-  });
+/** Fire-and-forget persist. Does not write the response into the client wallet. */
+export function persistScratchCoins(body: ScratchCoinClaimBody): void {
+  void claimScratchCoins(body);
 }
