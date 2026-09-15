@@ -379,6 +379,22 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   pointer-events: none;
 }
 
+/* Bottom-left coin badge: rise from below, leave straight down. */
+.pack-progress-shell--bottom-left {
+  transform-origin: center bottom;
+  animation: pack-progress-enter-bl 420ms both;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.pack-progress-shell--bottom-left.is-leaving {
+  transform-origin: center bottom;
+  animation: pack-progress-leave-bl 380ms both;
+  pointer-events: none;
+}
+
 @keyframes pack-progress-enter {
   0% {
     opacity: 0;
@@ -423,9 +439,54 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   }
 }
 
+@keyframes pack-progress-enter-bl {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.88);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.05);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/*
+ * Exit straight down from center bottom.
+ * Hold a clearer up-anticipation (~28%) so the wind-up reads, then one smooth drop.
+ */
+@keyframes pack-progress-leave-bl {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  /* Stronger / longer anticipate opposite the exit (up + grow). */
+  28% {
+    opacity: 1;
+    transform: translateY(-7px) scale(1.08);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.84);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pack-progress-shell,
-  .pack-progress-shell.is-leaving {
+  .pack-progress-shell.is-leaving,
+  .pack-progress-shell--bottom-left,
+  .pack-progress-shell--bottom-left.is-leaving {
     animation: none !important;
   }
 }
@@ -1540,11 +1601,12 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   );
   --toast-border-color: #f99d76;
   --toast-border-width: 1px;
-  --toast-radius-tl: 4px;
+  /* Symmetric plate now that the toast is horizontally centered. */
+  --toast-radius-tl: 11px;
   --toast-radius-tr: 11px;
   --toast-radius-br: 11px;
-  --toast-radius-bl: 20px;
-  --toast-radius: 4px 11px 11px 20px;
+  --toast-radius-bl: 11px;
+  --toast-radius: 11px;
   position: relative;
   top: auto;
   left: auto;
@@ -1553,7 +1615,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   gap: 2px;
   height: 100%;
@@ -1570,7 +1632,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   pointer-events: none;
-  text-align: right;
+  text-align: center;
   transform: none;
   transform-origin: top center;
   /* Same Apple anticipate → overshoot settle as homepage anchored dialogs. */
@@ -1658,7 +1720,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   text-transform: none;
   line-height: 1.1;
   color: rgba(255, 255, 255, 0.95);
-  text-align: right;
+  text-align: center;
 }
 
 .scratch-frame-progress__feedback.is-almost-there strong {
@@ -1672,7 +1734,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   text-transform: none;
   opacity: 0.65;
   color: rgba(255, 255, 255, 0.85);
-  text-align: right;
+  text-align: center;
 }
 
 @keyframes scratch-frame-milestone-pulse {
@@ -4244,9 +4306,9 @@ dd {
   align-items: center;
   justify-content: center;
   /* Keep in sync with BODY_SYMBOL_ICON_PX in ScratchPrototype / PhotoScratch. */
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
   border: none;
   background: transparent;
   overflow: hidden;

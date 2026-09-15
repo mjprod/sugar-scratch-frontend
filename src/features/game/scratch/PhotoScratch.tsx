@@ -151,7 +151,7 @@ const SYMBOL_REVEAL_UV_RADIUS = 0.06;
 const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
  * upscale a soft canvas. */
-const BODY_SYMBOL_ICON_PX = 36;
+const BODY_SYMBOL_ICON_PX = 44;
 
 // Ring one unfound mark at a time once the player is idle and either only a few
 // remain or the garment already reads as finished. The garment threshold is the

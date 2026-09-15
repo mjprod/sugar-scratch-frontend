@@ -253,10 +253,12 @@
 }
 
 .stage-game__top-chrome-row.is-status {
-  /* [ cards-left | notifications ] */
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  /* Toast centered; cards-left overlays start edge when shown. */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
   align-items: stretch;
+  position: relative;
   width: 92%;
   max-width: 92%;
   /* Keep row tall even when cards-left unmounts so toast height stays stable. */
@@ -292,14 +294,20 @@
   pointer-events: auto;
 }
 
-/* Status left: cards-left pill. */
+/* Cards-left: start edge overlay (gone before find toasts typically show). */
 .stage-game__top-chrome-status-cards {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   align-items: stretch;
   justify-content: flex-start;
   min-width: 0;
   min-height: var(--game-top-status-height, 45px);
   height: 100%;
+  pointer-events: none;
 }
 
 .stage-game__top-chrome-status-cards .pack-progress-shell,
@@ -311,16 +319,17 @@
   box-sizing: border-box;
 }
 
-/* Status right: find / progress notifications (toast portal host).
-   ALMOST THERE + ONE LEFT (and all find toasts) fill this cell's height. */
+/* Find / progress notifications — horizontal center of the status row. */
 .stage-game__top-chrome-status-notes {
   display: flex;
   align-items: stretch;
-  justify-content: flex-end;
+  justify-content: center;
+  width: 100%;
   min-width: 0;
   min-height: var(--game-top-status-height, 45px);
   height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
 
 .stage-game__top-chrome-status-notes .scratch-frame-progress__feedback {
@@ -332,6 +341,378 @@
   height: 100%;
   min-height: 100%;
   box-sizing: border-box;
+}
+
+.stage-game__bottom-chrome {
+  /* Match .scratch-frame-progress horizontal inset (see scratch/styles.css). */
+  --frame-inset-x: max(
+    4px,
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px)
+  );
+  /* Frame bottom + lift so the pill sits just above the stroke. */
+  --cards-left-inset-bottom: calc(
+    max(4px, env(safe-area-inset-bottom, 0px)) + 14px
+  );
+  --bottom-chrome-h: var(--game-top-status-height, 45px);
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: var(--cards-left-inset-bottom);
+  transform: translateX(-50%);
+  /* Progress border width − 1.75rem. */
+  width: calc(100% - (2 * var(--frame-inset-x)) - 1.75rem);
+  max-width: calc(100% - (2 * var(--frame-inset-x)) - 1.75rem);
+  height: var(--bottom-chrome-h);
+  max-height: var(--bottom-chrome-h);
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  /* Visible so the brand logo can sit 2× without clipping; row box stays fixed. */
+  overflow: visible;
+  /* Pass all touches through so scrubbing isn't blocked by HUD chrome. */
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  box-sizing: border-box;
+}
+
+.stage-game__bottom-chrome-row {
+  display: grid;
+  align-items: center;
+  pointer-events: none;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
+.stage-game__bottom-chrome-row.is-status {
+  /* Full chrome width: [ cards-left | brand logo ]. */
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  height: var(--bottom-chrome-h);
+  min-height: var(--bottom-chrome-h);
+  max-height: var(--bottom-chrome-h);
+  align-self: stretch;
+  margin-inline: 0;
+  overflow: visible;
+}
+
+.stage-game__bottom-chrome-status-cards {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 0;
+  height: var(--bottom-chrome-h);
+  max-height: var(--bottom-chrome-h);
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stage-game__bottom-chrome-brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: center;
+  min-width: 0;
+  height: var(--bottom-chrome-h);
+  max-height: var(--bottom-chrome-h);
+  /* Let the 2× logo paint past the row without expanding layout. */
+  overflow: visible;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.stage-game__bottom-chrome-logo {
+  display: block;
+  /* 1.5× the prior 44px (2×) mark — row height stays --bottom-chrome-h. */
+  height: 66px;
+  width: auto;
+  max-width: min(126dvw, 444px);
+  object-fit: contain;
+  object-position: right center;
+  opacity: 0.92;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
+  transform: translate(-4px, -13px);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+}
+
+@media (max-width: 700px) {
+  .stage-game__bottom-chrome {
+    /* Same mobile frame inset as .scratch-frame-progress. */
+    --frame-inset-x: max(
+      6px,
+      env(safe-area-inset-left, 0px),
+      env(safe-area-inset-right, 0px)
+    );
+    --cards-left-inset-bottom: calc(
+      max(
+        12px,
+        calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6dvh, 56px))
+      ) + 14px
+    );
+  }
+}
+
+/*
+ * Bottom-left host — fixed to bottom chrome height.
+ * Holds the coin count-up pill (same frosted plate as pack-progress).
+ */
+.stage-game__cards-left {
+  display: block;
+  flex: 0 0 auto;
+  align-self: center;
+  width: max-content;
+  max-width: 100%;
+  height: var(--bottom-chrome-h);
+  max-height: var(--bottom-chrome-h);
+  min-height: 0;
+  margin: 0;
+  /* Coin mark may overhang 2×; keep layout height locked. */
+  overflow: visible;
+  box-sizing: border-box;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Coin count-up — gold frosted plate + tunable overlay hue.
+   Defaults live here; lab debug writes the same vars as inline styles on
+   .stage-game / .stage-game__coin-count so they always win. */
+.stage-game__coin-count {
+  --coin-overlay-hue: 59;
+  --coin-overlay-sat: 100%;
+  --coin-overlay-light: 19%;
+  --coin-overlay-alpha: 0.71;
+  --pp-tint: hsl(
+    var(--coin-overlay-hue) var(--coin-overlay-sat) var(--coin-overlay-light) /
+      var(--coin-overlay-alpha)
+  );
+  --pp-image-opacity: 0.99;
+  --pp-mix-blend: normal;
+  --pp-bg-blend: multiply;
+  --pp-bg-mask: linear-gradient(
+    95deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.65) 100%
+  );
+  --pp-border-mask: linear-gradient(
+    156deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.12) 34%,
+    rgb(255 255 255 / 0.4) 100%
+  );
+  --pp-border-color: #f99d76;
+  --pp-border-width: 1px;
+  --pp-radius-tl: 11px;
+  --pp-radius-tr: 11px;
+  --pp-radius-br: 4px;
+  --pp-radius-bl: 16px;
+  --pp-radius: 11px 11px 4px 16px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  height: var(--bottom-chrome-h) !important;
+  max-height: var(--bottom-chrome-h) !important;
+  min-height: 0 !important;
+  margin: 0;
+  padding: 0 16px 0 12px;
+  border-radius: var(--pp-radius);
+  /* Visible so the 2× coin can overhang without clipping soft edges. */
+  overflow: visible;
+  isolation: isolate;
+  border: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  box-sizing: border-box;
+}
+
+.stage-game__coin-count::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--pp-radius);
+  pointer-events: none;
+  background-color: var(--pp-tint);
+  background-image: url("/images/frostedglassgold.webp");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-blend-mode: var(--pp-bg-blend);
+  opacity: var(--pp-image-opacity);
+  mix-blend-mode: var(--pp-mix-blend);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 18%),
+    inset 0 -1px 0 hsl(var(--coin-overlay-hue) 70% 40% / 0.18);
+  -webkit-mask-image: var(--pp-bg-mask);
+  mask-image: var(--pp-bg-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+.stage-game__coin-count::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: var(--pp-radius);
+  pointer-events: none;
+  border: var(--pp-border-width) solid var(--pp-border-color);
+  box-sizing: border-box;
+  -webkit-mask-image: var(--pp-border-mask);
+  mask-image: var(--pp-border-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+.stage-game__coin-count > * {
+  position: relative;
+  z-index: 1;
+}
+
+.stage-game__coin-count-icon {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  line-height: 0;
+}
+
+.stage-game__coin-count-img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  transform-origin: center center;
+  /* Stay visible at rest — pop only while .is-popping (no remount). */
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Anticipate → overshoot 1.2 → settle. Toggled in JS without unmounting img. */
+.stage-game__coin-count-img.is-popping {
+  animation: coin-count-img-pop 560ms ease-out;
+}
+
+@keyframes coin-count-img-pop {
+  0% {
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  /* Anticipation: pull back smaller before the pop. */
+  18% {
+    transform: scale(0.72);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Overshoot. */
+  58% {
+    transform: scale(1.2);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-game__coin-count-img.is-popping {
+    animation: none !important;
+  }
+}
+
+.stage-game__coin-count-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.stage-game__coin-count-value {
+  display: block;
+  margin: 0;
+  color: rgb(255 255 255 / 0.96);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.stage-game__coin-count-label {
+  margin: 0;
+  color: rgb(190 175 190 / 0.9);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-transform: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
 }
 
 .stage-game__pause {

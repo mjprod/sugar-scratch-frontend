@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type AnimationEvent,
   type CSSProperties,
 } from "react";
 import { flushSync } from "react-dom";
@@ -79,6 +80,11 @@ import {
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import { PackProgress } from "../modules/PackProgress";
+import {
+  COIN_BADGE_IDLE_HIDE_MS,
+  rollSparkleCoin,
+} from "../modules/sparkleCoinAward";
+import { StageCoinCount } from "../StageCoinCount";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   createFabricAlphaCache,
@@ -506,7 +512,7 @@ const SYMBOL_REVEAL_UV_RADIUS = 0.06;
 const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
  * upscale a soft canvas. */
-const BODY_SYMBOL_ICON_PX = 36;
+const BODY_SYMBOL_ICON_PX = 44;
 
 type ScratchZoomSettings = {
   enabled: boolean;
@@ -1642,6 +1648,21 @@ export function ScratchPrototype({
   const celebrateTimerRef = useRef<number | null>(null);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
   const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
+  /** Display-only coin awards from 10% scratch milestones (not wallet). */
+  const [sparkleDelta, setSparkleDelta] = useState(0);
+  /** Bumps StageCoinCount scale-pop on each crossedProgressMilestone. */
+  const [coinPopNonce, setCoinPopNonce] = useState(0);
+  /** Bottom coin badge visibility — idle-hides after ~2s without scrub. */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(true);
+  const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
+  /** Remount shell so enter-bl replays when re-showing from hidden. */
+  const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
+  const coinBadgeShownRef = useRef(coinBadgeShown);
+  const coinBadgeLeavingRef = useRef(coinBadgeLeaving);
+  const isScratchingRef = useRef(false);
+  const coinBadgeIdleTimerRef = useRef<number | null>(null);
+  coinBadgeShownRef.current = coinBadgeShown;
+  coinBadgeLeavingRef.current = coinBadgeLeaving;
   /** Bumped each rAF — fabric/symbol GPU probes run at most once per frame. */
   const probeFrameIdRef = useRef(0);
   const fabricAlphaCacheRef = useRef(createFabricAlphaCache());
@@ -1705,10 +1726,13 @@ export function ScratchPrototype({
     const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
     if (pending) addScratchRef.current(pending.x, pending.y);
     drawingRef.current = false;
+    isScratchingRef.current = false;
     setIsScratching(false);
     publishProgressUi(true);
     publishCursorOnMesh(false);
     lastScratchWorldRef.current = null;
+    // Stroke ended — start 2s idle hide if badge is visible.
+    scheduleCoinBadgeIdleHide();
   }
 
   function clearCelebrateTimer() {
@@ -1718,25 +1742,93 @@ export function ScratchPrototype({
     }
   }
 
-  /** Arm fairy-dust for a short win window when scratch progress crosses +10%. */
+  function clearCoinBadgeIdleTimer() {
+    if (coinBadgeIdleTimerRef.current !== null) {
+      window.clearTimeout(coinBadgeIdleTimerRef.current);
+      coinBadgeIdleTimerRef.current = null;
+    }
+  }
+
+  function showCoinBadge() {
+    clearCoinBadgeIdleTimer();
+    const wasShown = coinBadgeShownRef.current;
+    const wasLeaving = coinBadgeLeavingRef.current;
+    if (!wasShown || wasLeaving) {
+      setCoinBadgeEnterKey((k) => k + 1);
+    }
+    // Sync refs immediately so same-tick callers (e.g. milestone microtask) see the updated state.
+    coinBadgeLeavingRef.current = false;
+    coinBadgeShownRef.current = true;
+    setCoinBadgeLeaving(false);
+    setCoinBadgeShown(true);
+  }
+
+  function beginCoinBadgeIdleLeave() {
+    if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
+    if (isScratchingRef.current) return;
+
+    let reduced = false;
+    try {
+      reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      reduced = false;
+    }
+    if (reduced) {
+      setCoinBadgeShown(false);
+      setCoinBadgeLeaving(false);
+      return;
+    }
+    setCoinBadgeLeaving(true);
+  }
+
+  function scheduleCoinBadgeIdleHide() {
+    clearCoinBadgeIdleTimer();
+    if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
+    coinBadgeIdleTimerRef.current = window.setTimeout(() => {
+      coinBadgeIdleTimerRef.current = null;
+      if (isScratchingRef.current) return;
+      beginCoinBadgeIdleLeave();
+    }, COIN_BADGE_IDLE_HIDE_MS);
+  }
+
+  function onCoinBadgeLeaveEnd(event: AnimationEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (!coinBadgeLeavingRef.current) return;
+    const name = event.animationName || "";
+    if (name && !name.includes("pack-progress-leave-bl")) return;
+    setCoinBadgeShown(false);
+    setCoinBadgeLeaving(false);
+  }
+
+  /** 10% progress beat: award coins always; arm fairy-dust when FX allows. */
   function maybeCelebrateScratchProgress(nextProgress: number) {
-    if (!cursorFxRef.current.fairyDust) {
-      celebrateProgressRef.current = nextProgress;
-      return;
-    }
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      celebrateProgressRef.current = nextProgress;
-      return;
-    }
     const crossed = crossedProgressMilestone(
       celebrateProgressRef.current,
       nextProgress,
     );
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
+
+    // Defer badge work so the dust burst paints this frame first.
+    const award = rollSparkleCoin();
+    queueMicrotask(() => {
+      showCoinBadge();
+      setSparkleDelta((d) => d + award);
+      setCoinPopNonce((n) => n + 1);
+      // Milestone counts as activity — restart idle hide clock.
+      huntHintActivityAtRef.current = performance.now();
+      scheduleCoinBadgeIdleHide();
+    });
+
+    let reducedMotion = false;
+    try {
+      reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      reducedMotion = false;
+    }
+    if (!cursorFxRef.current.fairyDust || reducedMotion) return;
 
     celebrateUntilRef.current = performance.now() + CURSOR_FX_CELEBRATE_MS;
     setCursorFxCelebrate(true);
@@ -3037,6 +3129,12 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
+    setSparkleDelta(0);
+    setCoinPopNonce(0);
+    clearCoinBadgeIdleTimer();
+    setCoinBadgeLeaving(false);
+    setCoinBadgeShown(true);
+    setCoinBadgeEnterKey((k) => k + 1);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3475,7 +3573,10 @@ export function ScratchPrototype({
     : cursorFx.particleCount;
 
   useEffect(() => {
-    return () => clearCelebrateTimer();
+    return () => {
+      clearCelebrateTimer();
+      clearCoinBadgeIdleTimer();
+    };
   }, []);
 
   // Drop a persisted/stale auto-scratch enable while the hunt is still locked.
@@ -3523,6 +3624,12 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
+    setSparkleDelta(0);
+    setCoinPopNonce(0);
+    clearCoinBadgeIdleTimer();
+    setCoinBadgeLeaving(false);
+    setCoinBadgeShown(true);
+    setCoinBadgeEnterKey((k) => k + 1);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -5173,6 +5280,42 @@ export function ScratchPrototype({
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
+
+          {/* Bottom HUD: [ coin count | Sugar Scratch logo ]. Badge idle-hides. */}
+          <div className="stage-game__bottom-chrome">
+            <div className="stage-game__bottom-chrome-row is-status">
+              <div className="stage-game__bottom-chrome-status-cards">
+                {coinBadgeShown ? (
+                  <div
+                    key={coinBadgeEnterKey}
+                    className={[
+                      "stage-game__cards-left",
+                      "pack-progress-shell",
+                      "pack-progress-shell--bottom-left",
+                      coinBadgeLeaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={onCoinBadgeLeaveEnd}
+                  >
+                    <StageCoinCount
+                      sessionDelta={sparkleDelta}
+                      popNonce={coinPopNonce}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
+                <img
+                  src="/svg/logoSugarScratch.svg"
+                  alt=""
+                  className="stage-game__bottom-chrome-logo"
+                  draggable={false}
+                  decoding="async"
+                />
+              </div>
+            </div>
+          </div>
           {showIntroCountdown ? (
             <InitialCountdown
               onComplete={onIntroCountdownComplete}
@@ -5301,7 +5444,10 @@ export function ScratchPrototype({
               if (!fgParkedRef.current && foregroundVideo?.paused)
                 void foregroundVideo.play().catch(() => undefined);
               drawingRef.current = true;
+              isScratchingRef.current = true;
               setIsScratching(true);
+              // Scrubbing again: bring coin badge back if it idle-hid.
+              showCoinBadge();
               // First scratch touch: animate cards-left away for this card.
               if (packProgressShown && !packProgressLeaving) {
                 setPackProgressLeaving(true);
