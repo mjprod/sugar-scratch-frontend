@@ -383,11 +383,16 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
 .pack-progress-shell--bottom-left {
   transform-origin: center bottom;
   animation: pack-progress-enter-bl 420ms both;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .pack-progress-shell--bottom-left.is-leaving {
   transform-origin: center bottom;
   animation: pack-progress-leave-bl 380ms both;
+  pointer-events: none;
 }
 
 @keyframes pack-progress-enter {

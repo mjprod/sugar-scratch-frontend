@@ -372,7 +372,12 @@
   justify-content: center;
   /* Visible so the brand logo can sit 2× without clipping; row box stays fixed. */
   overflow: visible;
+  /* Pass all touches through so scrubbing isn't blocked by HUD chrome. */
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
   box-sizing: border-box;
 }
 
@@ -411,6 +416,9 @@
   height: var(--bottom-chrome-h);
   max-height: var(--bottom-chrome-h);
   overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .stage-game__bottom-chrome-brand {
@@ -424,6 +432,9 @@
   /* Let the 2× logo paint past the row without expanding layout. */
   overflow: visible;
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .stage-game__bottom-chrome-logo {
@@ -439,6 +450,8 @@
   transform: translate(-4px, -13px);
   user-select: none;
   -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
   pointer-events: none;
 }
 
@@ -477,6 +490,9 @@
   overflow: visible;
   box-sizing: border-box;
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -536,6 +552,8 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
   box-sizing: border-box;
 }
 
@@ -614,6 +632,8 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
   transform-origin: center center;
   /* Stay visible at rest — pop only while .is-popping (no remount). */
   opacity: 1;
@@ -662,6 +682,9 @@
   gap: 1px;
   min-width: 0;
   text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
 }
 
 .stage-game__coin-count-value {
@@ -673,6 +696,9 @@
   letter-spacing: 0.02em;
   line-height: 1.05;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
 }
 
 .stage-game__coin-count-label {
@@ -684,6 +710,9 @@
   line-height: 1.05;
   white-space: nowrap;
   text-transform: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
 }
 
 .stage-game__pause {
