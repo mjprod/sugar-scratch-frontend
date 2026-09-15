@@ -44,11 +44,10 @@ export type ScratchCoinClaimBody = {
  */
 export function nextWalletAfterScratchPersist(
   local: ScratchWallet,
-  remote: ScratchWallet | null | undefined,
-  opts: { authed: boolean },
+  _remote: ScratchWallet | null | undefined,
+  _opts: { authed: boolean },
 ): ScratchWallet {
   // Remote snapshots are never merged — see module doc.
-  if (!opts.authed || !remote) return local;
   return local;
 }
 
