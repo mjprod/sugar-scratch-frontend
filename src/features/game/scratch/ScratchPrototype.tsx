@@ -1234,6 +1234,8 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
 export function ScratchPrototype({
   skipToPlay = false,
   onLeave,
+  onFirstProgressMilestone,
+  onRevealedSymbolsChange,
 }: {
   /**
    * Lab/sandbox: skip intro video + foil bar scratch + countdown.
@@ -1242,6 +1244,13 @@ export function ScratchPrototype({
   skipToPlay?: boolean;
   /** When set, pause control is rendered in the top chrome left gutter. */
   onLeave?: () => void;
+  /**
+   * Fires once the first time crossedProgressMilestone returns a band
+   * (10% scratch progress). Used by /game-ui lab bonus diamond.
+   */
+  onFirstProgressMilestone?: () => void;
+  /** Body/foil icons found so far (0…SYMBOL_SLOT_COUNT). Lab bonus diamond lock. */
+  onRevealedSymbolsChange?: (count: number) => void;
 } = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -1581,6 +1590,12 @@ export function ScratchPrototype({
   entryReadyRef.current = entryReady;
   const [sessionSymbols, setSessionSymbols] = useState(buildSessionSymbols);
   const [revealedSymbols, setRevealedSymbols] = useState(0);
+  const onRevealedSymbolsChangeRef = useRef(onRevealedSymbolsChange);
+  onRevealedSymbolsChangeRef.current = onRevealedSymbolsChange;
+  const publishRevealedSymbols = useCallback((count: number) => {
+    setRevealedSymbols(count);
+    onRevealedSymbolsChangeRef.current?.(count);
+  }, []);
   const [frameDiscoveryBatches, setFrameDiscoveryBatches] = useState<
     SymbolDiscoveryBatch[]
   >([]);
@@ -1652,6 +1667,8 @@ export function ScratchPrototype({
   cursorFxRef.current = cursorFx;
   /** Live progress for celebrate milestones (independent of throttled React progress). */
   const celebrateProgressRef = useRef(0);
+  /** Ensures onFirstProgressMilestone runs only once per mount. */
+  const firstProgressMilestoneFiredRef = useRef(false);
   const celebrateUntilRef = useRef(0);
   const celebrateTimerRef = useRef<number | null>(null);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
@@ -1816,6 +1833,14 @@ export function ScratchPrototype({
     );
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
+
+    if (
+      onFirstProgressMilestone &&
+      !firstProgressMilestoneFiredRef.current
+    ) {
+      firstProgressMilestoneFiredRef.current = true;
+      onFirstProgressMilestone();
+    }
 
     // Defer badge work so the dust burst paints this frame first.
     const award = rollSparkleCoin();
@@ -2197,8 +2222,8 @@ export function ScratchPrototype({
   }
 
   /**
-   * /game-ui: replay center → top dock flight (icons already revealed).
-   * Two-frame center paint so the dock CSS transition has a real from-state.
+   * /game-ui: center → top dock fly (translate + scale, no fade).
+   * Park fully at center first so the fly starts at mid-screen, not already up.
    */
   function labPlayDockToTop() {
     if (!skipToPlay) return;
@@ -2211,12 +2236,12 @@ export function ScratchPrototype({
     setLabTopBarForceRevealed(true);
     setTopBarPhase("center");
     topBarPhaseRef.current = "center";
-    setTopBarRound((n) => n + 1);
+    // Hold center long enough for layout + icons before arming the fly.
     labDockPreviewTimerRef.current = window.setTimeout(() => {
       labDockPreviewTimerRef.current = null;
       setTopBarPhase("docked");
       topBarPhaseRef.current = "docked";
-    }, 48);
+    }, 280);
   }
 
   /** /game-ui: back to normal lab hunt chrome (docked + force-revealed). */
@@ -3227,7 +3252,7 @@ export function ScratchPrototype({
     publishedProgressRef.current = 0;
     publishProgressUi(true);
     setClaimed(false);
-    setRevealedSymbols(0);
+    publishRevealedSymbols(0);
     setLitSymbolSlots(
       Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
     );
@@ -3288,7 +3313,7 @@ export function ScratchPrototype({
       ? revealedPointsRef.current.filter(Boolean).length
       : revealedSymbolCount(next, autoScratchRef.current.enabled);
     revealedSymbolsRef.current = nextSymbolCount;
-    setRevealedSymbols(nextSymbolCount);
+    publishRevealedSymbols(nextSymbolCount);
     if (!hasBodySymbols && nextSymbolCount > 0) {
       setLitSymbolSlots(
         Array.from(
@@ -3723,7 +3748,7 @@ export function ScratchPrototype({
     publishedProgressRef.current = 0;
     publishProgressUi(true);
     setClaimed(false);
-    setRevealedSymbols(0);
+    publishRevealedSymbols(0);
     setLitSymbolSlots(
       Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
     );
@@ -4539,7 +4564,7 @@ export function ScratchPrototype({
         const nextSymbolCount =
           revealedPointsRef.current.filter(Boolean).length;
         revealedSymbolsRef.current = nextSymbolCount;
-        setRevealedSymbols(nextSymbolCount);
+        publishRevealedSymbols(nextSymbolCount);
         setBodyRevealed(revealedPointsRef.current.slice());
         setBodyFindHits((prev) => {
           const next = applyBodyFindHits(
@@ -4571,7 +4596,7 @@ export function ScratchPrototype({
       if (nextSymbolCount !== revealedSymbolsRef.current) {
         const prevCount = revealedSymbolsRef.current;
         revealedSymbolsRef.current = nextSymbolCount;
-        setRevealedSymbols(nextSymbolCount);
+        publishRevealedSymbols(nextSymbolCount);
         playNewSymbolNotes(
           symbolAudioRef.current,
           prevCount,

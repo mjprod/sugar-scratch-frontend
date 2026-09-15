@@ -8,7 +8,7 @@ import {
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import { GameSymbolIcon } from "./GameSymbolIcon";
 import { resolveFoilCanvasPixelRatio } from "./foilCanvasPixelRatio";
@@ -28,6 +28,10 @@ const PEEL_LOTTIE_PAUSE_MS = 1800;
 const PEEL_LOTTIE_CYCLE_MS = PEEL_LOTTIE_DURATION_MS + PEEL_LOTTIE_PAUSE_MS;
 /** Beat after foil clears before the bar flies up to dock. */
 const CLEAR_CELEBRATE_MS = 420;
+/** Center → top climb duration (rAF pixel tween). */
+const DOCK_FLY_MS = 250;
+/** Peak CSS blur during dock climb (px) — light motion-blur read. */
+const DOCK_FLY_BLUR_PX = 6;
 
 function foilCanvasDpr(): number {
   if (typeof window === "undefined") return 1;
@@ -390,6 +394,61 @@ export function TopSymbolBar({
   const [stageEl, setStageEl] = useState<HTMLElement | null>(null);
   /** Only mount the flake canvas once scratching starts — never during idle/load. */
   const [flakesActive, setFlakesActive] = useState(false);
+  /**
+   * Dock fly: keep center layout; WAAPI pure-px translateY+scale (opacity 1);
+   * settle docked only after WAAPI finishes.
+   */
+  const [dockExiting, setDockExiting] = useState(false);
+  const prevPhaseRef = useRef<TopBarPhase>(phase);
+  /** Last center-phase bar rect (viewport coords). */
+  const centerBarRectRef = useRef<DOMRect | null>(null);
+  /** Bumps so a cancelled/stale rAF fly can't clear a newer one. */
+  const dockFlyGenRef = useRef(0);
+  const dockRafRef = useRef<number | null>(null);
+
+  function clearDockInlineStyles(el: HTMLElement | null) {
+    if (!el) return;
+    el.style.top = "";
+    el.style.left = "";
+    el.style.right = "";
+    el.style.marginLeft = "";
+    el.style.marginRight = "";
+    el.style.transform = "";
+    el.style.opacity = "";
+    el.style.filter = "";
+    el.style.willChange = "";
+  }
+
+  function cancelDockAnim() {
+    dockFlyGenRef.current += 1;
+    if (dockRafRef.current != null) {
+      cancelAnimationFrame(dockRafRef.current);
+      dockRafRef.current = null;
+    }
+    clearDockInlineStyles(barRef.current);
+  }
+
+  /** Docked chrome top Y in viewport coordinates. */
+  function dockTargetViewportY(el: HTMLElement): number {
+    const stage = el.closest(".stage");
+    const stageTop =
+      stage instanceof HTMLElement ? stage.getBoundingClientRect().top : 0;
+    const approx =
+      Math.max(12, 0) +
+      (typeof window !== "undefined" ? window.innerHeight * 0.015 : 8);
+    try {
+      const host = el.closest(".stage-game") ?? document.documentElement;
+      const raw = getComputedStyle(host as Element)
+        .getPropertyValue("--game-top-hud")
+        .trim();
+      if (raw.endsWith("px")) {
+        return stageTop + (parseFloat(raw) || approx);
+      }
+    } catch {
+      /* use approx */
+    }
+    return stageTop + approx;
+  }
 
   const slots = symbols.slice(0, TOP_SYMBOL_COUNT);
   while (slots.length < TOP_SYMBOL_COUNT) slots.push(0);
@@ -537,6 +596,13 @@ export function TopSymbolBar({
     setPeelHidden(false);
     setPeelPlayKey(0);
     setFlakesActive(false);
+    // Don't kill an in-flight center→dock climb on forceRevealed/symbols churn.
+    if (dockRafRef.current == null) {
+      cancelDockAnim();
+      setDockExiting(false);
+      prevPhaseRef.current = phase;
+    }
+    centerBarRectRef.current = null;
     drawingRef.current = false;
     lastPtRef.current = null;
     paintedRef.current = false;
@@ -549,7 +615,174 @@ export function TopSymbolBar({
     flakeLastTsRef.current = null;
     const pc = particleCanvasRef.current;
     if (pc) pc.getContext("2d")?.clearRect(0, 0, pc.width, pc.height);
+    // phase intentionally omitted: dock fly is handled below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- round/symbols/force only
   }, [symbols, forceRevealed, roundKey]);
+
+  // Sample center bar while centered (mid-screen only).
+  useLayoutEffect(() => {
+    if (phase !== "center" && !dockExiting) return;
+    const el = barRef.current;
+    if (!el) return;
+    if (!el.classList.contains("is-phase-center") && !dockExiting) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 8 && rect.height > 8 && rect.top > 80) {
+      centerBarRectRef.current = DOMRect.fromRect(rect);
+    }
+  });
+
+  // Center → docked: one rAF pixel climb. Gen-guarded; never cancelled by re-render.
+  useLayoutEffect(() => {
+    const prev = prevPhaseRef.current;
+
+    if (phase === "docked" && prev === "center") {
+      let reduced = false;
+      try {
+        reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      } catch {
+        reduced = false;
+      }
+      if (reduced) {
+        cancelDockAnim();
+        setDockExiting(false);
+        prevPhaseRef.current = "docked";
+        return;
+      }
+
+      // Already flying — do not re-enter or cancel.
+      if (dockRafRef.current != null) return;
+
+      const el = barRef.current;
+      if (!el) {
+        prevPhaseRef.current = "docked";
+        return;
+      }
+
+      const live = el.getBoundingClientRect();
+      const stored = centerBarRectRef.current;
+      const origin =
+        live.width > 8 && live.height > 8 && live.top > 60
+          ? live
+          : stored && stored.height > 8 && stored.top > 60
+            ? stored
+            : null;
+      if (!origin) {
+        prevPhaseRef.current = "docked";
+        return;
+      }
+
+      const stage = el.closest(".stage");
+      const stageTop =
+        stage instanceof HTMLElement ? stage.getBoundingClientRect().top : 0;
+      const startTopPx = origin.top - stageTop;
+      const dy = dockTargetViewportY(el) - origin.top;
+      // Hold prevPhaseRef at "center" for visualPhase until finish.
+      const gen = ++dockFlyGenRef.current;
+      const durationMs = DOCK_FLY_MS;
+      const t0 = performance.now();
+      // Hold the DOM node in the closure — barRef can be briefly null on re-render
+      // and a `if (!barRef.current) return` was aborting the climb at ~200ms.
+      const node = el;
+
+      setDockExiting(true);
+
+      node.style.top = `${startTopPx}px`;
+      node.style.left = "50%";
+      node.style.right = "auto";
+      node.style.marginLeft = "0";
+      node.style.marginRight = "0";
+      node.style.willChange = "transform, filter";
+      node.style.opacity = "1";
+      node.style.filter = "blur(0px)";
+      node.style.transform = "translateX(-50%) translateY(0px) scale(1)";
+      node.dataset.dockFly = "1";
+      node.dataset.dockFlyDy = String(Math.round(dy));
+      node.dataset.dockFlyDur = String(durationMs);
+
+      const finishFly = () => {
+        if (dockFlyGenRef.current !== gen) return;
+        if (dockRafRef.current != null) {
+          cancelAnimationFrame(dockRafRef.current);
+          dockRafRef.current = null;
+        }
+        delete node.dataset.dockFly;
+        delete node.dataset.dockFlyDy;
+        delete node.dataset.dockFlyDur;
+        delete node.dataset.dockFlyT;
+        delete node.dataset.dockFlyElapsed;
+
+        // Handoff without flash:
+        // 1) Pin the bar at the docked rest pose with inline styles still on.
+        // 2) flip visualPhase → docked (is-phase-docked) in the same turn.
+        // 3) ONLY THEN drop fly styles. Clearing while still is-phase-center
+        //    painted the bar back at mid-screen for one frame (the flash).
+        const stage = node.closest(".stage");
+        const stageTop =
+          stage instanceof HTMLElement
+            ? stage.getBoundingClientRect().top
+            : 0;
+        const dockTopPx = Math.max(0, dockTargetViewportY(node) - stageTop);
+        node.style.top = `${dockTopPx}px`;
+        node.style.left = "50%";
+        node.style.right = "auto";
+        node.style.marginLeft = "0";
+        node.style.marginRight = "0";
+        node.style.transform = "translateX(-50%) translateY(0) scale(1)";
+        node.style.opacity = "1";
+        node.style.filter = "blur(0px)";
+        node.style.willChange = "auto";
+
+        prevPhaseRef.current = "docked";
+        flushSync(() => {
+          setDockExiting(false);
+        });
+        // DOM now has is-phase-docked; safe to release fly overrides.
+        clearDockInlineStyles(node);
+      };
+
+      const tick = (now: number) => {
+        if (dockFlyGenRef.current !== gen) return;
+
+        const elapsed = now - t0;
+        const t = Math.min(1, elapsed / durationMs);
+        // Linear climb over the full measured dy (the t0→top path to animate).
+        const ty = dy * t;
+        const scale = 1 + (0.84 - 1) * t;
+        // Soft motion-blur envelope: 0 → peak mid-flight → 0 at land.
+        const blur = DOCK_FLY_BLUR_PX * Math.sin(Math.PI * t);
+        node.style.transform = `translateX(-50%) translateY(${ty}px) scale(${scale})`;
+        node.style.filter = `blur(${blur.toFixed(2)}px)`;
+        node.style.opacity = "1";
+        node.dataset.dockFlyT = t.toFixed(3);
+        node.dataset.dockFlyElapsed = String(Math.round(elapsed));
+
+        if (t < 1) {
+          dockRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+        finishFly();
+      };
+      dockRafRef.current = requestAnimationFrame(tick);
+      return;
+    }
+
+    // Leaving docked/center fly path — only cancel when going back to a non-dock phase.
+    if (phase === "center" || phase === "showcase") {
+      prevPhaseRef.current = phase;
+      if (dockRafRef.current != null || dockExiting) {
+        cancelDockAnim();
+        setDockExiting(false);
+      }
+      return;
+    }
+
+    if (phase === "docked" && prevPhaseRef.current === "docked") {
+      // Settled docked; nothing to do.
+      return;
+    }
+
+    prevPhaseRef.current = phase;
+  }, [phase]);
 
   useLayoutEffect(() => {
     const stage = barRef.current?.closest(".stage");
@@ -558,6 +791,7 @@ export function TopSymbolBar({
 
   useEffect(() => {
     return () => {
+      cancelDockAnim();
       if (flakeRafRef.current !== null)
         cancelAnimationFrame(flakeRafRef.current);
     };
@@ -892,15 +1126,27 @@ export function TopSymbolBar({
       ? (barRef.current.closest(".stage") as HTMLElement)
       : null);
 
+  // Keep center layout for the WHOLE fly — including the first paint after
+  // parent sets phase=docked (dockExiting state hasn't committed yet).
+  // prevPhaseRef is only advanced in the dock layout effect, so it still
+  // reads "center" on that first docked render.
+  const visualPhase: TopBarPhase =
+    dockExiting || (phase === "docked" && prevPhaseRef.current === "center")
+      ? "center"
+      : phase;
+  const settleDocked = visualPhase === "docked";
+
   return (
     <div
       ref={barRef}
       data-tutorial-target="foil"
-      className={`symbol-bar top-symbol-bar is-phase-${phase}${
+      className={`symbol-bar top-symbol-bar is-phase-${visualPhase}${
         revealedCount >= TOP_SYMBOL_COUNT ? " is-symbols-complete" : ""
       }${showCoating ? " is-scratchable" : ""}${
-        clearedBurst ? " is-cleared" : ""
-      }${forceRevealed ? " is-force-revealed" : ""}`}
+        clearedBurst && !dockExiting ? " is-cleared" : ""
+      }${forceRevealed ? " is-force-revealed" : ""}${
+        dockExiting ? " is-dock-exiting" : ""
+      }`}
       aria-label="Match symbols — scratch to reveal"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -909,10 +1155,11 @@ export function TopSymbolBar({
       style={{ touchAction: "none" }}
     >
       {slots.map((typeId, index) => {
-        const revealed = revealedMask[index] || forceRevealed || phase === "showcase";
+        const revealed =
+          revealedMask[index] || forceRevealed || phase === "showcase";
         const matched = Boolean(matchedSlots?.[index]);
         const dormant =
-          (phase === "docked" || phase === "showcase") && revealed && !matched;
+          (settleDocked || phase === "showcase") && revealed && !matched;
         const pulsing = phase === "showcase" && matched;
         return (
           <div
@@ -930,12 +1177,9 @@ export function TopSymbolBar({
           >
             <GameSymbolIcon
               typeId={typeId}
-              // Center / showcase slots are a fixed 44px; fill them. Docked
-              // slots can shrink on narrow stages, so stay at 28 there.
-              size={phase === "docked" ? 28 : 40}
-              // Retina + CSS pulse/enter scales — render the backing store
-              // ahead of those transforms so the icons stay crisp.
-              pixelScale={phase === "docked" ? 2 : 2.5}
+              // 28px when first revealed (center) and when docked.
+              size={28}
+              pixelScale={2}
               preferStatic={preferStaticSymbols}
               // Only animate during the center foil reveal. Docked / showcase
               // use CSS (dormant desat, pulse) — keeps DotLottie workers frozen
@@ -944,7 +1188,7 @@ export function TopSymbolBar({
                 freezeSymbols ||
                 !revealed ||
                 dormant ||
-                phase !== "center"
+                visualPhase !== "center"
               }
             />
           </div>
