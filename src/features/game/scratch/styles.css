@@ -379,6 +379,17 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   pointer-events: none;
 }
 
+/* Bottom-left coin badge: rise from below, leave straight down. */
+.pack-progress-shell--bottom-left {
+  transform-origin: center bottom;
+  animation: pack-progress-enter-bl 420ms both;
+}
+
+.pack-progress-shell--bottom-left.is-leaving {
+  transform-origin: center bottom;
+  animation: pack-progress-leave-bl 380ms both;
+}
+
 @keyframes pack-progress-enter {
   0% {
     opacity: 0;
@@ -423,9 +434,54 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   }
 }
 
+@keyframes pack-progress-enter-bl {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.88);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  22% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.05);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/*
+ * Exit straight down from center bottom.
+ * Hold a clearer up-anticipation (~28%) so the wind-up reads, then one smooth drop.
+ */
+@keyframes pack-progress-leave-bl {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+
+  /* Stronger / longer anticipate opposite the exit (up + grow). */
+  28% {
+    opacity: 1;
+    transform: translateY(-7px) scale(1.08);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.84);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pack-progress-shell,
-  .pack-progress-shell.is-leaving {
+  .pack-progress-shell.is-leaving,
+  .pack-progress-shell--bottom-left,
+  .pack-progress-shell--bottom-left.is-leaving {
     animation: none !important;
   }
 }

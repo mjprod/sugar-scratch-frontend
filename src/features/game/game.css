@@ -606,39 +606,41 @@
   user-select: none;
   -webkit-user-select: none;
   transform-origin: center center;
-  /* Anticipate → overshoot 1.2 → settle. Remounted on each coin increase. */
-  animation: coin-count-img-pop 560ms both;
+  /* Stay visible at rest — pop only while .is-popping (no remount). */
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Anticipate → overshoot 1.2 → settle. Toggled in JS without unmounting img. */
+.stage-game__coin-count-img.is-popping {
+  animation: coin-count-img-pop 560ms ease-out;
 }
 
 @keyframes coin-count-img-pop {
   0% {
-    opacity: 1;
     transform: scale(1);
     animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   }
 
   /* Anticipation: pull back smaller before the pop. */
   18% {
-    opacity: 1;
     transform: scale(0.72);
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   /* Overshoot. */
   58% {
-    opacity: 1;
     transform: scale(1.2);
     animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   100% {
-    opacity: 1;
     transform: scale(1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage-game__coin-count-img {
+  .stage-game__coin-count-img.is-popping {
     animation: none !important;
   }
 }

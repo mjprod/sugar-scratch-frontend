@@ -18,27 +18,35 @@ function countDurationMs(from: number, to: number) {
 export type StageCoinCountProps = {
   /** Optional display offset above wallet coins (e.g. in-card awards). */
   sessionDelta?: number;
+  /**
+   * Bump on each 10% progress milestone so the coin mark CSS-pops in sync
+   * with crossedProgressMilestone (not only when the count target changes).
+   */
+  popNonce?: number;
 };
 
 /**
  * Bottom-left HUD: static coin mark + live total with count-up.
  * Floor = wallet coins; sessionDelta is additive display only.
- * Coin mark CSS-pops once on increase (no multi-pop / award machinery).
+ * Coin mark CSS-pops when popNonce advances — same DOM img (no remount flash).
  */
-export function StageCoinCount({ sessionDelta = 0 }: StageCoinCountProps) {
+export function StageCoinCount({
+  sessionDelta = 0,
+  popNonce = 0,
+}: StageCoinCountProps) {
   const { coins } = useWallet();
   const target = Math.max(0, coins) + Math.max(0, sessionDelta);
   const [display, setDisplay] = useState(target);
   const displayRef = useRef(target);
   const animRef = useRef<number | null>(null);
-  /** Remount img to restart CSS scale pop on increase only. */
-  const [coinPopKey, setCoinPopKey] = useState(0);
-  const prevTargetRef = useRef(target);
+  const coinImgRef = useRef<HTMLImageElement | null>(null);
+  const prevPopNonceRef = useRef(popNonce);
 
+  // Restart scale-pop on the same img node (avoids key-remount blank frame).
   useEffect(() => {
-    const prev = prevTargetRef.current;
-    prevTargetRef.current = target;
-    if (target <= prev) return;
+    const prev = prevPopNonceRef.current;
+    prevPopNonceRef.current = popNonce;
+    if (popNonce === prev || popNonce <= 0) return;
 
     let reduced = false;
     try {
@@ -46,8 +54,16 @@ export function StageCoinCount({ sessionDelta = 0 }: StageCoinCountProps) {
     } catch {
       reduced = false;
     }
-    if (!reduced) setCoinPopKey((n) => n + 1);
-  }, [target]);
+    if (reduced) return;
+
+    const img = coinImgRef.current;
+    if (!img) return;
+
+    img.classList.remove("is-popping");
+    // Force reflow so the next add restarts the CSS animation.
+    void img.offsetWidth;
+    img.classList.add("is-popping");
+  }, [popNonce]);
 
   useEffect(() => {
     const from = displayRef.current;
@@ -111,7 +127,7 @@ export function StageCoinCount({ sessionDelta = 0 }: StageCoinCountProps) {
     >
       <span className="stage-game__coin-count-icon" aria-hidden="true">
         <img
-          key={coinPopKey}
+          ref={coinImgRef}
           className="stage-game__coin-count-img"
           src={COIN_WEBP_SRC}
           alt=""
@@ -119,6 +135,10 @@ export function StageCoinCount({ sessionDelta = 0 }: StageCoinCountProps) {
           height={22}
           draggable={false}
           decoding="async"
+          onAnimationEnd={(e) => {
+            if (e.target !== coinImgRef.current) return;
+            coinImgRef.current?.classList.remove("is-popping");
+          }}
         />
       </span>
       <div className="stage-game__coin-count-copy">
