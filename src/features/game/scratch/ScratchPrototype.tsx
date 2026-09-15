@@ -1258,6 +1258,8 @@ export function ScratchPrototype({
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
   const handIdRef = useRef("");
   const handStartGenRef = useRef(0);
+  /** Tracks prior auth so we only re-request a hand on false → true. */
+  const prevAuthedForHandRef = useRef(authed);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -1815,6 +1817,8 @@ export function ScratchPrototype({
 
   function beginScratchHand(cardId?: string | null) {
     handIdRef.current = "";
+    // Session may still be resolving on first paint — leave hand empty and let
+    // the auth-retry effect start once `authed` becomes true.
     if (!authed) return;
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
@@ -3208,6 +3212,18 @@ export function ScratchPrototype({
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
+
+  // Card-switch may call beginScratchHand while the session is still resolving
+  // (`authed` false → early return, empty handId). Without a retry, milestones
+  // still addCoins locally but never persist, so credits vanish on refresh.
+  useEffect(() => {
+    const wasAuthed = prevAuthedForHandRef.current;
+    prevAuthedForHandRef.current = authed;
+    if (!authed || wasAuthed) return;
+    if (!card?.id) return;
+    beginScratchHand(card.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- false→true only; card switches already start a hand
+  }, [authed, card?.id]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
