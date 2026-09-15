@@ -2,13 +2,13 @@
  * Pack-progress card-countdown Lottie play policy.
  *
  * Stage HUD unmounts the pill after the first scratch, then remounts it on the
- * next card. That remount must still autoplay — treating every mount as a
- * static first paint leaves the transition animation dead.
+ * next card. Any time the cards-left badge mounts (including card 1), the
+ * countdown should autoplay once (`loop={false}` in PackProgress).
  */
 
-/** Idle first-card mount stays still; mid-pack remounts (current > 1) play. */
-export function initialCardCountdownPlayKey(current: number): number {
-  return current > 1 ? 1 : 0;
+/** playKey > 0 → autoplay on mount. current is unused; kept for call-site stability. */
+export function initialCardCountdownPlayKey(_current: number): number {
+  return 1;
 }
 
 export function shouldAutoplayCardCountdown(playKey: number): boolean {
