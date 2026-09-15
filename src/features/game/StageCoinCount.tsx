@@ -119,12 +119,10 @@ export function StageCoinCount({
   const label = formatBalance(display);
 
   return (
-    <div
-      className="stage-game__coin-count"
-      role="status"
-      aria-live="polite"
-      aria-label={`${label} coins`}
-    >
+    <div className="stage-game__coin-count">
+      <span className="visually-hidden" aria-live="polite">
+        {formatBalance(target)} coins
+      </span>
       <span className="stage-game__coin-count-icon" aria-hidden="true">
         <img
           ref={coinImgRef}
