@@ -876,7 +876,7 @@ function loadAutoScratchSettings(): AutoScratchSettings {
   }
 }
 
-const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v9";
+const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v11";
 const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx",
   "sugar-scratchie:cursor-fx-v1",
@@ -887,6 +887,8 @@ const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx-v6",
   "sugar-scratchie:cursor-fx-v7",
   "sugar-scratchie:cursor-fx-v8",
+  "sugar-scratchie:cursor-fx-v9",
+  "sugar-scratchie:cursor-fx-v10",
 ];
 
 type CursorFxSettings = {
@@ -3618,7 +3620,10 @@ export function ScratchPrototype({
     coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
   });
   const cursorFxSpawnCount = cursorFxCelebrate
-    ? celebrateParticleBoost(cursorFx.particleCount)
+    ? celebrateParticleBoost(
+        cursorFx.particleCount,
+        CURSOR_FX_DEVICE.coarsePointer,
+      )
     : cursorFx.particleCount;
 
   useEffect(() => {
@@ -5114,7 +5119,12 @@ export function ScratchPrototype({
               spawnEnabled={cursorFxSpawnActive}
               maxDevicePixelRatio={CURSOR_FX_DEVICE.maxOverlayDpr}
               burstNonce={cursorFxBurstNonce}
-              burstCount={celebrateParticleBoost(cursorFx.particleCount) * 2}
+              burstCount={
+                celebrateParticleBoost(
+                  cursorFx.particleCount,
+                  CURSOR_FX_DEVICE.coarsePointer,
+                ) * (CURSOR_FX_DEVICE.coarsePointer ? 1 : 2)
+              }
             />
           ) : null}
           {glError ? (

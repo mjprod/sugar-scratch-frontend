@@ -58,9 +58,9 @@ export function resolveCursorFxDeviceProfile(opts: {
   if (mobile) {
     return {
       fairyDust: true,
-      // Larger / denser so 10% bursts read on small screens.
-      particleSize: 72,
-      particleCount: 6,
+      // Minimal trail — phones struggle with Lottie particle draw calls.
+      particleSize: 40,
+      particleCount: 1,
       maxOverlayDpr: 1,
       coarsePointer: opts.coarsePointer,
     };
@@ -74,8 +74,15 @@ export function resolveCursorFxDeviceProfile(opts: {
   };
 }
 
-export function celebrateParticleBoost(baseCount: number): number {
-  return Math.min(18, Math.max(baseCount, Math.round(baseCount * 2.2)));
+/** Mild boost on celebrate; coarse stays tiny for frame budget. */
+export function celebrateParticleBoost(
+  baseCount: number,
+  coarsePointer = false,
+): number {
+  if (coarsePointer) {
+    return Math.min(2, Math.max(1, baseCount));
+  }
+  return Math.min(12, Math.max(baseCount, Math.round(baseCount * 1.6)));
 }
 
 export function celebrateDurationMs(coarsePointer: boolean): number {
