@@ -1596,11 +1596,12 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   );
   --toast-border-color: #f99d76;
   --toast-border-width: 1px;
-  --toast-radius-tl: 4px;
+  /* Symmetric plate now that the toast is horizontally centered. */
+  --toast-radius-tl: 11px;
   --toast-radius-tr: 11px;
   --toast-radius-br: 11px;
-  --toast-radius-bl: 20px;
-  --toast-radius: 4px 11px 11px 20px;
+  --toast-radius-bl: 11px;
+  --toast-radius: 11px;
   position: relative;
   top: auto;
   left: auto;
@@ -1609,7 +1610,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   gap: 2px;
   height: 100%;
@@ -1626,7 +1627,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   pointer-events: none;
-  text-align: right;
+  text-align: center;
   transform: none;
   transform-origin: top center;
   /* Same Apple anticipate → overshoot settle as homepage anchored dialogs. */
@@ -1714,7 +1715,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   text-transform: none;
   line-height: 1.1;
   color: rgba(255, 255, 255, 0.95);
-  text-align: right;
+  text-align: center;
 }
 
 .scratch-frame-progress__feedback.is-almost-there strong {
@@ -1728,7 +1729,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   text-transform: none;
   opacity: 0.65;
   color: rgba(255, 255, 255, 0.85);
-  text-align: right;
+  text-align: center;
 }
 
 @keyframes scratch-frame-milestone-pulse {

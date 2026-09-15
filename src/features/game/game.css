@@ -253,10 +253,12 @@
 }
 
 .stage-game__top-chrome-row.is-status {
-  /* [ cards-left | notifications ] — top badge on for layout compare with bottom. */
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  /* Toast centered; cards-left overlays start edge when shown. */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
   align-items: stretch;
+  position: relative;
   width: 92%;
   max-width: 92%;
   /* Keep row tall even when cards-left unmounts so toast height stays stable. */
@@ -292,14 +294,20 @@
   pointer-events: auto;
 }
 
-/* Status left: cards-left pill (compare with bottom coin badge). */
+/* Cards-left: start edge overlay (gone before find toasts typically show). */
 .stage-game__top-chrome-status-cards {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
   display: flex;
   align-items: stretch;
   justify-content: flex-start;
   min-width: 0;
   min-height: var(--game-top-status-height, 45px);
   height: 100%;
+  pointer-events: none;
 }
 
 .stage-game__top-chrome-status-cards .pack-progress-shell,
@@ -311,16 +319,17 @@
   box-sizing: border-box;
 }
 
-/* Status right: find / progress notifications (toast portal host).
-   ALMOST THERE + ONE LEFT (and all find toasts) fill this cell's height. */
+/* Find / progress notifications — horizontal center of the status row. */
 .stage-game__top-chrome-status-notes {
   display: flex;
   align-items: stretch;
-  justify-content: flex-end;
+  justify-content: center;
+  width: 100%;
   min-width: 0;
   min-height: var(--game-top-status-height, 45px);
   height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
 
 .stage-game__top-chrome-status-notes .scratch-frame-progress__feedback {
