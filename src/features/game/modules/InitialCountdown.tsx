@@ -33,9 +33,31 @@ let countdownHtmlAudio: HTMLAudioElement | null = null;
 let countdownPlaySession = 0;
 /** True after a user gesture unlocked audio this page lifetime (cleared on refresh). */
 let countdownSoundUnlocked = false;
+/**
+ * Visual countdown still running — audio may be stopped by mute, but unmute
+ * must be able to resume from elapsed time inside the click gesture.
+ */
+let countdownSessionActive = false;
+let countdownSessionStartedAt = 0;
+/**
+ * Invalidates in-flight playCountdownSound awaits so a later mute cannot be
+ * undone when an earlier unmute's async play() finally resolves.
+ */
+let countdownAudioGeneration = 0;
 
 export function isCountdownSoundUnlocked() {
   return countdownSoundUnlocked;
+}
+
+export function isCountdownAudioSessionActive() {
+  return countdownSessionActive;
+}
+
+/** True while 3-2-1 SFX is actually coming out of the speakers. */
+export function isCountdownAudioPlaying() {
+  if (countdownSource) return true;
+  const html = countdownHtmlAudio;
+  return Boolean(html && !html.paused && !html.ended);
 }
 
 function countdownSoundUrl() {
@@ -92,7 +114,7 @@ async function ensureCountdownBuffer() {
   return countdownBufferPromise;
 }
 
-function stopCountdownAudio() {
+function stopCountdownSources() {
   if (countdownSource) {
     try {
       countdownSource.stop();
@@ -115,6 +137,35 @@ function stopCountdownAudio() {
       // ignore
     }
   }
+}
+
+/** Stop any in-flight 3-2-1 SFX (Web Audio source and HTMLAudio fallback). */
+export function stopCountdownAudio() {
+  // Bump first so any awaiting playCountdownSound bails before restarting.
+  countdownAudioGeneration += 1;
+  stopCountdownSources();
+}
+
+/** End the visual countdown session — unmute will no longer resume SFX. */
+export function endCountdownAudioSession() {
+  countdownSessionActive = false;
+  countdownSessionStartedAt = 0;
+  stopCountdownAudio();
+}
+
+/**
+ * Resume 3-2-1 SFX from elapsed visual time. Must run inside a user gesture
+ * (mute button unmute) — a useEffect play() is blocked on Safari.
+ */
+export function resumeCountdownAudioIfActive() {
+  if (!countdownSessionActive) return;
+  const elapsedSec = Math.max(
+    0,
+    (performance.now() - countdownSessionStartedAt) / 1000,
+  );
+  const maxSec = INITIAL_COUNTDOWN_MS / 1000;
+  if (elapsedSec >= maxSec - 0.05) return;
+  void playCountdownSound(elapsedSec).catch(() => undefined);
 }
 
 /**
@@ -148,8 +199,15 @@ export function unlockCountdownSound() {
 }
 
 /** Start (or restart) the 3-2-1 SFX via Web Audio, with HTMLAudio fallback. */
-export async function playCountdownSound() {
-  stopCountdownAudio();
+export async function playCountdownSound(offsetSec = 0) {
+  const gen = ++countdownAudioGeneration;
+  stopCountdownSources();
+
+  const startAt = Math.max(0, offsetSec);
+  if (!countdownSessionActive) {
+    countdownSessionActive = true;
+    countdownSessionStartedAt = performance.now() - startAt * 1000;
+  }
 
   const ctx = getCountdownContext();
   if (ctx) {
@@ -160,9 +218,12 @@ export async function playCountdownSound() {
         // Still suspended without a gesture — fall through to HTML / reject.
       }
     }
+    if (gen !== countdownAudioGeneration) return;
     if (ctx.state === "running") {
       const buffer = await ensureCountdownBuffer();
+      if (gen !== countdownAudioGeneration) return;
       if (buffer) {
+        if (startAt >= buffer.duration) return;
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(ctx.destination);
@@ -170,22 +231,26 @@ export async function playCountdownSound() {
         source.onended = () => {
           if (countdownSource === source) countdownSource = null;
         };
-        source.start(0);
+        source.start(0, startAt);
         return;
       }
     }
   }
 
+  if (gen !== countdownAudioGeneration) return;
   const html = getCountdownHtmlAudio();
   if (!html) throw new Error("Countdown audio unavailable");
   html.muted = false;
   html.volume = 1;
   try {
-    html.currentTime = 0;
+    html.currentTime = startAt;
   } catch {
     // ignore
   }
   await html.play();
+  if (gen !== countdownAudioGeneration) {
+    stopCountdownSources();
+  }
 }
 
 type InitialCountdownProps = {
@@ -224,25 +289,36 @@ export function InitialCountdown({
   const finish = useCallback(() => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-    stopCountdownAudio();
+    endCountdownAudioSession();
     onCompleteRef.current();
   }, []);
 
   const startCountdownAudioWithVisual = useCallback(() => {
     if (!soundEnabledRef.current || audioStartedRef.current) return;
+    // Cold refresh: prefs may be "on" but there is no user gesture yet.
+    // Playing here makes the mute icon (still locked) lie — wait for unlock.
+    if (!countdownSoundUnlocked) return;
     audioStartedRef.current = true;
     const session = ++countdownPlaySession;
     countdownSessionRef.current = session;
     requestAnimationFrame(() => {
       if (countdownPlaySession !== session) return;
-      void playCountdownSound().catch(() => undefined);
+      void playCountdownSound(0).catch(() => undefined);
     });
   }, []);
 
   // Timer owns completion — do not finish from Lottie events.
+  // Arm the audio session with the visual so unmute can resume even when the
+  // first autoplay SFX attempt failed (cold refresh, no gesture yet).
   useEffect(() => {
     audioStartedRef.current = false;
     countdownSessionRef.current = 0;
+    finishedRef.current = false;
+    countdownSessionActive = true;
+    countdownSessionStartedAt = performance.now();
+    // Prefs can be on after refresh while the mute icon is still locked — do
+    // not let a leftover/autoplay SFX run under a muted icon.
+    if (!countdownSoundUnlocked) stopCountdownAudio();
     setStep(0);
     const stepMs = Math.floor(INITIAL_COUNTDOWN_MS / FALLBACK_LABELS.length);
     let current = 0;
@@ -260,9 +336,12 @@ export function InitialCountdown({
       window.clearInterval(id);
       window.clearTimeout(safetyId);
       const session = countdownSessionRef.current;
-      if (session === 0) return;
+      if (session === 0) {
+        endCountdownAudioSession();
+        return;
+      }
       window.setTimeout(() => {
-        if (countdownPlaySession === session) stopCountdownAudio();
+        if (countdownPlaySession === session) endCountdownAudioSession();
       }, 0);
     };
   }, [finish]);
@@ -288,6 +367,12 @@ export function InitialCountdown({
     if (!lottieFailed || step !== 0) return;
     startCountdownAudioWithVisual();
   }, [lottieFailed, step, startCountdownAudioWithVisual]);
+
+  // Stage mute mid-countdown: keep the visual, silence the SFX immediately.
+  // Unmute resume is handled in the click gesture via resumeCountdownAudioIfActive.
+  useEffect(() => {
+    if (!soundEnabled) stopCountdownAudio();
+  }, [soundEnabled]);
 
   return (
     <div className="initial-countdown" aria-live="polite" aria-label="Get ready">
