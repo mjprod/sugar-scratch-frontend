@@ -1557,15 +1557,12 @@ export function ScratchPrototype({
   const introLeavingRef = useRef(false);
   introLeavingRef.current = introLeaving;
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
-  const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
-    const prev = introVideoElRef.current;
-    introVideoElRef.current = el;
-    if (el) {
-      bindThemeIntroVideo(el);
-    } else if (prev) {
-      unbindThemeIntroVideo(prev);
-    }
-  }, []);
+const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+  const prev = introVideoElRef.current;
+  if (prev && prev !== el) unbindThemeIntroVideo(prev);
+  introVideoElRef.current = el;
+  if (el) bindThemeIntroVideo(el);
+}, []);
   const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const introFadeTimerRef = useRef<number | null>(null);
   /** Lab skipToPlay: already past intro — keep in sync with handStartIntroResolved. */
