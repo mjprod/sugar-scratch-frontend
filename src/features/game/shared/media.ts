@@ -55,32 +55,202 @@ export function waitForVideoCanPlay(
 }
 
 /**
+ * Live mute/unmute for an already-playing theme intro.
+ *
+ * After sound has been unlocked by a user gesture, mute with volume=0 only —
+ * flipping muted=true mid-clip breaks WebKit unmute for the rest of the clip.
+ *
+ * Without a gesture (cold refresh), never clear muted — unmuted autoplay is
+ * blocked and the intro would stall / get dismissed.
+ */
+const INTRO_SOUND_UNLOCKED = "data-intro-sound-unlocked";
+
+export type ThemeIntroSoundOptions = {
+  /** True when called from a click/tap — allowed to clear muted for autoplay. */
+  forceUnmute?: boolean;
+};
+
+function introSoundUnlocked(video: HTMLVideoElement) {
+  return video.hasAttribute(INTRO_SOUND_UNLOCKED);
+}
+
+function remuteForAutoplay(video: HTMLVideoElement) {
+  video.volume = 1;
+  video.muted = true;
+  video.defaultMuted = true;
+  video.setAttribute("muted", "");
+  video.removeAttribute(INTRO_SOUND_UNLOCKED);
+}
+
+export function setThemeIntroSound(
+  video: HTMLVideoElement,
+  wantSound: boolean,
+  options?: ThemeIntroSoundOptions,
+): void {
+  if (wantSound) {
+    video.volume = 1;
+    const canUnmute =
+      options?.forceUnmute === true || introSoundUnlocked(video);
+    if (!canUnmute) {
+      // Pref says sound on, but no gesture yet — stay muted so autoplay works.
+      video.muted = true;
+      video.defaultMuted = true;
+      video.setAttribute("muted", "");
+      return;
+    }
+    video.muted = false;
+    video.defaultMuted = false;
+    video.removeAttribute("muted");
+    video.setAttribute(INTRO_SOUND_UNLOCKED, "1");
+    return;
+  }
+  video.volume = 0;
+  // Soft-mute only once audio has been unlocked. Never flip muted back to true.
+  if (introSoundUnlocked(video) || !video.muted) {
+    video.muted = false;
+    video.defaultMuted = false;
+    video.removeAttribute("muted");
+  }
+}
+
+/** Currently mounted theme-intro <video>, if any. */
+let boundThemeIntroVideo: HTMLVideoElement | null = null;
+
+/**
+ * Bumped on every user mute/unmute so in-flight playThemeIntro awaits do not
+ * re-assert muted=true over the user's choice.
+ */
+let themeIntroSoundEpoch = 0;
+
+export function bindThemeIntroVideo(video: HTMLVideoElement | null) {
+  if (!video) return;
+  // Ensure first paint can autoplay before JS kick runs.
+  if (!introSoundUnlocked(video)) {
+    video.muted = true;
+    video.defaultMuted = true;
+    video.setAttribute("muted", "");
+  }
+  boundThemeIntroVideo = video;
+}
+
+export function unbindThemeIntroVideo(video?: HTMLVideoElement | null) {
+  if (video && boundThemeIntroVideo && video !== boundThemeIntroVideo) return;
+  boundThemeIntroVideo = null;
+}
+
+function resolveIntroVideo(): HTMLVideoElement | null {
+  return (
+    boundThemeIntroVideo ??
+    (typeof document !== "undefined"
+      ? document.querySelector<HTMLVideoElement>(
+          ".photo-scratch-intro-media video",
+        )
+      : null)
+  );
+}
+
+/**
+ * True when the intro is on screen but still autoplay-muted (no user gesture
+ * unlock yet). Prefs may say "sound on" while nothing is audible.
+ */
+export function introNeedsGestureUnlock(): boolean {
+  const video = resolveIntroVideo();
+  if (!video) return false;
+  return video.muted && !introSoundUnlocked(video);
+}
+
+/** True when the theme intro clip is producing audible output. */
+export function introVideoIsAudible() {
+  const video = resolveIntroVideo();
+  if (!video || video.paused || video.ended) return false;
+  return !video.muted && video.volume > 0;
+}
+
+/**
+ * Apply mute pref to the live intro element. Safe to call from the mute
+ * button click (same gesture) even if React refs/subscribers lag.
+ */
+export function applyBoundThemeIntroSound(wantSound: boolean) {
+  themeIntroSoundEpoch += 1;
+  const video = resolveIntroVideo();
+  if (!video) return;
+  boundThemeIntroVideo = video;
+  setThemeIntroSound(video, wantSound, { forceUnmute: true });
+  if (!wantSound) return;
+  // Clearing muted often pauses the element — resume inside this same gesture.
+  void video.play().catch(() => undefined);
+}
+
+/**
  * Kick a theme-intro clip. Starts muted (allowed without a user gesture on
  * Android/iOS — e.g. F5 / post-fetch mount), then tries to unmute when sound
  * is enabled.
+ *
+ * `wantSound` may be a getter so mute flips during await are respected —
+ * otherwise a late unmute can undo a user mute mid-intro.
  *
  * Waits for canplay and retries — calling play() at readyState 0 often rejects
  * (AbortError / background-media pause) and must not tear down the overlay.
  */
 export async function playThemeIntro(
   video: HTMLVideoElement,
-  wantSound: boolean,
+  wantSound: boolean | (() => boolean),
 ): Promise<ThemeIntroPlayback> {
+  const soundWanted = () =>
+    typeof wantSound === "function" ? wantSound() : wantSound;
+  const epochAtStart = themeIntroSoundEpoch;
+
   video.playsInline = true;
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
 
-  video.muted = true;
-  video.setAttribute("muted", "");
+  // Already running (or user already unlocked sound) — never re-enter the
+  // muted=true autoplay path; that permanently breaks WebKit unmute.
+  if ((!video.paused && video.readyState >= 2) || introSoundUnlocked(video)) {
+    const unlocked = introSoundUnlocked(video);
+    setThemeIntroSound(video, soundWanted(), { forceUnmute: unlocked });
+    if (video.paused) {
+      try {
+        await video.play();
+      } catch {
+        // Never remute after the user unlocked — keep waiting for a gesture play.
+        if (!introSoundUnlocked(video)) {
+          remuteForAutoplay(video);
+          void video.play().catch(() => undefined);
+        }
+      }
+    }
+    return {
+      muted: video.muted || video.volume === 0,
+      playing: !video.paused,
+    };
+  }
+
+  remuteForAutoplay(video);
 
   const ready = await waitForVideoCanPlay(video);
   if (!ready) return { muted: true, playing: false };
+  if (themeIntroSoundEpoch !== epochAtStart || introSoundUnlocked(video)) {
+    setThemeIntroSound(video, soundWanted(), {
+      forceUnmute: introSoundUnlocked(video),
+    });
+    return {
+      muted: video.muted || video.volume === 0,
+      playing: !video.paused,
+    };
+  }
 
   let playing = false;
   for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (themeIntroSoundEpoch !== epochAtStart || introSoundUnlocked(video)) {
+      setThemeIntroSound(video, soundWanted(), {
+        forceUnmute: introSoundUnlocked(video),
+      });
+      playing = !video.paused;
+      break;
+    }
     try {
-      video.muted = true;
-      video.setAttribute("muted", "");
+      remuteForAutoplay(video);
       await video.play();
       if (!video.paused) {
         playing = true;
@@ -94,27 +264,13 @@ export async function playThemeIntro(
 
   if (!playing) return { muted: true, playing: false };
 
-  if (!wantSound) return { muted: true, playing: true };
-
-  video.muted = false;
-  video.removeAttribute("muted");
-  try {
-    if (video.paused) await video.play();
-  } catch {
-    video.muted = true;
-    video.setAttribute("muted", "");
-    void video.play().catch(() => undefined);
-    return { muted: true, playing: !video.paused };
-  }
-
-  if (video.paused) {
-    video.muted = true;
-    video.setAttribute("muted", "");
-    void video.play().catch(() => undefined);
-    return { muted: true, playing: !video.paused };
-  }
-
-  return { muted: video.muted, playing: true };
+  // Apply mute pref without force-unmute. Cold refresh has no gesture — clearing
+  // muted here pauses the clip. Sound is enabled from the mute button / entry tap.
+  setThemeIntroSound(video, soundWanted());
+  return {
+    muted: video.muted || video.volume === 0,
+    playing: true,
+  };
 }
 
 export function releaseMediaElement(el: HTMLMediaElement | null | undefined) {
