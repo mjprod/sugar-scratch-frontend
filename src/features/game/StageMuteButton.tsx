@@ -54,12 +54,15 @@ export function StageMuteButton() {
     [],
   );
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setSoundOn(audibleSoundOn());
-    }, 200);
-    return () => window.clearInterval(id);
-  }, []);
+useEffect(() => {
+  const id = window.setInterval(() => {
+    setSoundOn((prev) => {
+      const next = audibleSoundOn();
+      return next === prev ? prev : next;
+    });
+  }, 200);
+  return () => window.clearInterval(id);
+}, []);
 
   function toggle() {
     // If audio is already playing, the first tap must mute — even when the
