@@ -27,7 +27,7 @@ const DIAMOND_SIZE_PX = 144;
  */
 const DIAMOND_LOTTIE_EXTRA_SCALE = 1.5;
 /** Keep away from edges + chrome so the hit target stays tappable. */
-const MARGIN_PCT = 12;
+const MARGIN_PCT = 25;
 /** How often the wander picks a new target (ms). */
 const WANDER_RETARGET_MS = 280;
 /** Max pct-point step per second toward the current target. */
