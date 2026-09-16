@@ -128,6 +128,7 @@ import {
 import { shouldUpdateBodyMarkers, shouldUpdateChestFollow } from "../modules/chestFollowGate";
 import {
   shouldSampleFabricAlpha,
+  fairyDustSpawnMinDistancePx,
   shouldSpawnFairyDust,
 } from "../modules/fairyDustSpawnPolicy";
 import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
@@ -5117,6 +5118,9 @@ export function ScratchPrototype({
               fadeSpeed={cursorFx.fadeSpeed}
               initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
               spawnEnabled={cursorFxSpawnActive}
+              spawnMinDistance={fairyDustSpawnMinDistancePx(
+                CURSOR_FX_DEVICE.coarsePointer,
+              )}
               maxDevicePixelRatio={CURSOR_FX_DEVICE.maxOverlayDpr}
               burstNonce={cursorFxBurstNonce}
               burstCount={

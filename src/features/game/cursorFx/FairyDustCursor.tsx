@@ -33,6 +33,8 @@ interface FairyDustCursorProps {
   burstNonce?: number;
   /** Particles to emit on burst (defaults to particleCount * 3). */
   burstCount?: number;
+  /** Pointer must travel this far (px) in one move to emit a trail coin. */
+  spawnMinDistance?: number;
 }
 
 interface Particle {
@@ -75,7 +77,7 @@ const MIN_VISIBLE_ALPHA = 0.02;
 // rarely bites; if someone cranked fade/count it thins the trail before the
 // 2D drawImage loop eats the frame budget.
 const MAX_PARTICLES = 250;
-const SPAWN_DISTANCE_SQ = 1;
+const DEFAULT_SPAWN_MIN_DISTANCE = 14;
 
 /** Live cursor-FX cost counters for the debug HUD / settings panel. */
 export type FairyDustPerfStats = {
@@ -197,6 +199,7 @@ function FairyDustCursorImpl({
   maxDevicePixelRatio,
   burstNonce = 0,
   burstCount,
+  spawnMinDistance = DEFAULT_SPAWN_MIN_DISTANCE,
 }: FairyDustCursorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -225,6 +228,7 @@ function FairyDustCursorImpl({
     initialVelocity,
     spawnEnabled,
     maxDevicePixelRatio,
+    spawnMinDistance,
   });
   configRef.current = {
     colors,
@@ -235,6 +239,7 @@ function FairyDustCursorImpl({
     initialVelocity,
     spawnEnabled,
     maxDevicePixelRatio,
+    spawnMinDistance,
   };
 
   const resolvedTypes = useMemo(
@@ -516,16 +521,13 @@ function FairyDustCursorImpl({
     const spawnIfMoved = (x: number, y: number) => {
       hasPointerRef.current = true;
       flushPendingBurst();
-      if (!configRef.current.spawnEnabled) {
-        lastPosRef.current.x = x;
-        lastPosRef.current.y = y;
-        return;
-      }
       const dx = x - lastPosRef.current.x;
       const dy = y - lastPosRef.current.y;
-      if (dx * dx + dy * dy <= SPAWN_DISTANCE_SQ) return;
       lastPosRef.current.x = x;
       lastPosRef.current.y = y;
+      if (!configRef.current.spawnEnabled) return;
+      const min = configRef.current.spawnMinDistance ?? DEFAULT_SPAWN_MIN_DISTANCE;
+      if (dx * dx + dy * dy < min * min) return;
       spawn(x, y);
     };
 

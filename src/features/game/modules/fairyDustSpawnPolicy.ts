@@ -27,3 +27,17 @@ export function shouldSampleFabricAlpha(opts: {
   if (opts.coarsePointer && opts.isScratching) return false;
   return true;
 }
+
+/** Pixels the pointer must travel in one move before a trail coin emits. */
+export function fairyDustSpawnMinDistancePx(coarsePointer: boolean): number {
+  return coarsePointer ? 40 : 14;
+}
+
+export function shouldSpawnFairyDustForMove(
+  dx: number,
+  dy: number,
+  minDistancePx: number,
+): boolean {
+  const min = Math.max(0, minDistancePx);
+  return dx * dx + dy * dy >= min * min;
+}
