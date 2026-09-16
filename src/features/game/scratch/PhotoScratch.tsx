@@ -727,15 +727,12 @@ export function PhotoScratch() {
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
-  const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
-    const prev = introVideoElRef.current;
-    introVideoElRef.current = el;
-    if (el) {
-      bindThemeIntroVideo(el);
-    } else if (prev) {
-      unbindThemeIntroVideo(prev);
-    }
-  }, []);
+const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+  const prev = introVideoElRef.current;
+  if (prev && prev !== el) unbindThemeIntroVideo(prev);
+  introVideoElRef.current = el;
+  if (el) bindThemeIntroVideo(el);
+}, []);
   const fgRendererRef = useRef<GarmentGLRenderer | null>(null);
   const trackedMeshRef = useRef<TrackedMesh | null>(null);
   const trackedSampleRef = useRef<TrackedMeshSample | null>(null);
