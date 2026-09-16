@@ -769,8 +769,6 @@ export function TopSymbolBar({
         node.style.transform = `translateX(-50%) translateY(${ty}px) scale(${scale})`;
         node.style.filter = `blur(${blur.toFixed(2)}px)`;
         node.style.opacity = "1";
-        node.dataset.dockFlyT = t.toFixed(3);
-        node.dataset.dockFlyElapsed = String(Math.round(elapsed));
 
         if (t < 1) {
           dockRafRef.current = requestAnimationFrame(tick);
