@@ -1360,10 +1360,9 @@ h1 {
 .coverflow-buy-confirm__header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 0.5rem;
   width: 100%;
-  min-height: 1.85rem;
 }
 
 .coverflow-buy-confirm__action-row {
@@ -1390,7 +1389,7 @@ h1 {
   min-width: 0;
   min-height: 2.35rem;
   height: 2.35rem;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.25rem;
   border: 1px solid oklch(1 0 0 / 0.14);
   border-radius: 999px;
   background: oklch(1 0 0 / 0.05);
@@ -1556,12 +1555,12 @@ h1 {
   justify-content: center;
   box-sizing: border-box;
   width: 100%;
-  min-height: 1.85rem;
+  min-height: 2.35rem;
   margin: 0.1rem 0 0;
   padding: 0.35rem 0.65rem;
-  border: 1px solid oklch(1 0 0 / 0.16);
+  border: none;
   border-radius: 999px;
-  background: oklch(1 0 0 / 0.08);
+  background: none;
   color: oklch(1 0 0 / 0.92);
   font: inherit;
   font-size: 0.72rem;
@@ -1650,10 +1649,10 @@ h1 {
   justify-content: center;
   gap: 0.4em;
   width: 100%;
-  min-height: 2.15rem;
+  min-height: 2.35rem;
   margin: 0;
   padding: 0.4rem 0.75rem;
-  border: 1px solid oklch(1 0 0 / 0.22);
+  border: none;
   border-radius: 999px;
   background: none;
   color: oklch(1 0 0 / 0.92);
@@ -2423,7 +2422,6 @@ h1 {
   width: 2.35rem;
   height: 2.35rem;
   min-width: 2.35rem;
-  max-width: 2.35rem;
   min-height: 2.35rem;
   margin: 0;
   padding: 0;
@@ -2433,9 +2431,10 @@ h1 {
 
 .coverflow-buy-confirm__action-row.has-qty
   .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn {
-  /* Keep circle sized to the row height, not stretched to 1fr width. */
-  width: 2.35rem;
+  width: 100%;
+  min-width: 0;
   height: 2.35rem;
+  aspect-ratio: auto;
 }
 
 .coverflow-buy-confirm__action-row.is-buy-only
@@ -2459,36 +2458,73 @@ h1 {
   transform: scale(0.96);
 }
 
-/* Header close — circle outline, no fill. */
+/* Header close — circle outline, no fill. Staggered after dialog enter. */
 .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn,
 .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel {
-  position: static;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
+  position: relative;
   width: 1.85rem;
   height: 1.85rem;
   min-width: 1.85rem;
   padding: 0;
-  border: 1px solid oklch(1 0 0 / 0.28);
+  border: 1px solid oklch(1 0 0 / 0.14);
   border-radius: 999px;
-  background: transparent;
-  background-color: transparent;
+  background: linear-gradient(180deg, oklch(0.2 0 0 / 0.72) 0%, oklch(0.12 0 0 / 0.94) 100%);
   box-shadow: none;
   color: oklch(1 0 0 / 0.78);
+  margin-top: -24px;
+  right: -26px;
+  opacity: 0;
+  transform: scale(0.72);
+  transform-origin: center;
+  /* Dialog enter is 480ms — start close at 260ms. */
+  animation: coverflow-buy-confirm-close-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) 260ms both;
+}
+
+.coverflow-buy-confirm.is-leaving
+  .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn,
+.coverflow-buy-confirm.is-leaving
+  .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes coverflow-buy-confirm-close-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.58);
+    animation-timing-function: cubic-bezier(0.22, 0.9, 0.32, 1);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.14);
+    animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn,
+  .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn:hover,
 .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel:hover {
   border-color: oklch(1 0 0 / 0.42);
-  background: transparent;
-  background-color: transparent;
+  background: linear-gradient(180deg, oklch(0.28 0 0 / 0.88) 0%, oklch(0.16 0 0 / 0.96) 100%);
   color: oklch(1 0 0 / 0.95);
   transform: scale(1.06);
 }
 
 .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn:active {
-  background: transparent;
+  background: linear-gradient(180deg, oklch(0.16 0 0 / 0.9) 0%, oklch(0.1 0 0 / 0.98) 100%);
   transform: scale(0.96);
 }
 
