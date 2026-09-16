@@ -507,14 +507,16 @@
     );
   }
 
-  /* Android Chrome: toolbar is not safe-area — floor clearance + vv height. */
+  /*
+   * Android: vv-sized stage already clears the Chrome toolbar. Keep the same
+   * frame→pill lift as iOS (+14px), with a modest inset matching the frame.
+   */
   html[data-game-android="1"] .stage-game__bottom-chrome {
     --cards-left-inset-bottom: calc(
       max(
-        48px,
+        12px,
         env(safe-area-inset-bottom, 0px),
-        calc(env(safe-area-inset-bottom, 0px) + 24px),
-        calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6svh, 56px))
+        calc(env(safe-area-inset-bottom, 0px) + clamp(12px, 2.5svh, 20px))
       ) + 14px
     );
   }

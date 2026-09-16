@@ -1475,13 +1475,15 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
     --frame-inset-x: max(6px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   }
 
-  /* Android Chrome: toolbar ≠ safe-area — floor a real clearance. */
+  /*
+   * Android: stage is already pinned to visualViewport, so don't re-add a
+   * large toolbar floor (that double-pads). Match iOS optical spacing.
+   */
   html[data-game-android="1"] .scratch-frame-progress {
     --frame-inset-bottom: max(
-      48px,
+      12px,
       env(safe-area-inset-bottom, 0px),
-      calc(env(safe-area-inset-bottom, 0px) + 24px),
-      calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6svh, 56px))
+      calc(env(safe-area-inset-bottom, 0px) + clamp(12px, 2.5svh, 20px))
     );
   }
 }
