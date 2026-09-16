@@ -79,7 +79,14 @@ import {
   type TrackedMeshSample,
   type Vec2,
 } from "./meshGeometry";
-import { playThemeIntro, releaseMediaElement, setThemeIntroSound, bindThemeIntroVideo, unbindThemeIntroVideo, applyBoundThemeIntroSound } from "../shared/media";
+import {
+  applyBoundThemeIntroSound,
+  bindThemeIntroVideo,
+  playThemeIntro,
+  releaseMediaElement,
+  setThemeIntroSound,
+  unbindThemeIntroVideo,
+} from "../shared/media";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 
