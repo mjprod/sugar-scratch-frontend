@@ -33,6 +33,8 @@ import {
   TOP_BAR_DOCK_MS,
   TOP_BAR_DOCK_NEXT_CARD_MS,
   unlockCountdownSound,
+  resumeCountdownAudioIfActive,
+  stopCountdownAudio,
 } from "../modules/InitialCountdown";
 import {
   ScratchFrameProgress,
@@ -156,6 +158,10 @@ import {
   loadVideoSrc,
   playThemeIntro,
   releaseMediaElement,
+  setThemeIntroSound,
+  bindThemeIntroVideo,
+  unbindThemeIntroVideo,
+  applyBoundThemeIntroSound,
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import {
@@ -1545,8 +1551,6 @@ export function ScratchPrototype({
   const [introCover, setIntroCover] = useState(false);
   /** Crossfading the frozen intro out over the live game stage. */
   const [introLeaving, setIntroLeaving] = useState(false);
-  /** Starts muted for autoplay policy; may unmute after playThemeIntro succeeds. */
-  const [introMuted, setIntroMuted] = useState(true);
   const introActiveRef = useRef(false);
   introActiveRef.current = introActive;
   const introCoverRef = useRef(false);
@@ -1554,6 +1558,12 @@ export function ScratchPrototype({
   const introLeavingRef = useRef(false);
   introLeavingRef.current = introLeaving;
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
+const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+  const prev = introVideoElRef.current;
+  if (prev && prev !== el) unbindThemeIntroVideo(prev);
+  introVideoElRef.current = el;
+  if (el) bindThemeIntroVideo(el);
+}, []);
   const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const introFadeTimerRef = useRef<number | null>(null);
   /** Lab skipToPlay: already past intro — keep in sync with handStartIntroResolved. */
@@ -1966,7 +1976,6 @@ export function ScratchPrototype({
     setIntroCover(false);
     introCoverRef.current = false;
     setIntroVideoUrl("");
-    setIntroMuted(true);
   }
 
   function isBodyScratchLocked() {
@@ -2003,11 +2012,19 @@ export function ScratchPrototype({
     });
     const video = introVideoElRef.current;
     if (video && introActiveRef.current) {
-      void playThemeIntro(video, soundEnabled).then((result) => {
-        if (!introActiveRef.current) return;
-        if (!result.playing) return;
-        setIntroMuted(result.muted);
-      });
+      void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+        (result) => {
+          if (!introActiveRef.current) return;
+          if (!result.playing) return;
+          // Entry tap is a user gesture — safe to unmute if sound pref is on.
+          setThemeIntroSound(video, getGameAudioPrefs().soundEffect, {
+            forceUnmute: true,
+          });
+          if (getGameAudioPrefs().soundEffect) {
+            void video.play().catch(() => undefined);
+          }
+        },
+      );
     }
   }
 
@@ -2072,6 +2089,7 @@ export function ScratchPrototype({
 
     // Free the intro decoder before attaching the game pair (Safari).
     if (intro) releaseMediaElement(intro);
+    unbindThemeIntroVideo(intro);
     setIntroActive(false);
     introActiveRef.current = false;
     setIntroVideoUrl("");
@@ -2382,9 +2400,12 @@ export function ScratchPrototype({
   // Game clips stay unloaded while introActive (Safari can't decode three
   // videos). On end we hold the last intro frame as a cover until the game
   // pair has a frame, then crossfade the overlay away.
+  //
+  // Do NOT depend on soundEnabled here — mute/unmute must only adjust volume
+  // via the prefs subscriber. Re-running this effect calls playThemeIntro,
+  // which forces muted=true and can permanently silence the clip.
   useEffect(() => {
     if (!introActive || !introVideoUrl) {
-      setIntroMuted(true);
       return;
     }
     let cancelled = false;
@@ -2393,15 +2414,17 @@ export function ScratchPrototype({
     const kick = () => {
       const video = introVideoElRef.current;
       if (!video) return false;
-      void playThemeIntro(video, soundEnabled).then((result) => {
-        if (cancelled) return;
-        if (!result.playing) {
-          // Keep the cover — autoPlay / a later gesture kick may still start.
-          // Only the 20s safety timer / onError tears the overlay down.
-          return;
-        }
-        setIntroMuted(result.muted);
-      });
+      void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+        (result) => {
+          if (cancelled) return;
+          if (!result.playing) {
+            // Keep the cover — autoPlay / a later gesture kick may still start.
+            // Only the 20s safety timer / onError tears the overlay down.
+            return;
+          }
+          setThemeIntroSound(video, getGameAudioPrefs().soundEffect);
+        },
+      );
       return true;
     };
 
@@ -2411,12 +2434,13 @@ export function ScratchPrototype({
       });
     }
 
-    // Chrome may pause "background" media mid-intro — keep nudging play while
-    // the overlay is supposed to be running.
+    // Chrome may pause "background" muted media mid-intro — nudge play only
+    // while still muted. Unmuted resume needs a user gesture; a failed play()
+    // here after the mute button unmutes leaves the intro stuck paused.
     const onPause = () => {
       if (cancelled || !introActiveRef.current) return;
       const video = introVideoElRef.current;
-      if (!video || video.ended) return;
+      if (!video || video.ended || !video.muted) return;
       void video.play().catch(() => undefined);
     };
     const videoEl = introVideoElRef.current;
@@ -2432,7 +2456,7 @@ export function ScratchPrototype({
       window.clearTimeout(safetyId);
       videoEl?.removeEventListener("pause", onPause);
     };
-  }, [introActive, introVideoUrl, soundEnabled]);
+  }, [introActive, introVideoUrl]);
 
   // Once the intro has ended and game clips have a frame, run the reveal.
   useEffect(() => {
@@ -3521,10 +3545,18 @@ export function ScratchPrototype({
     () =>
       subscribeGameAudioPrefs(() => {
         const next = getGameAudioPrefs().soundEffect;
+        // Keep the ref in sync inside this click before any async intro
+        // callbacks read it — otherwise a late playThemeIntro then() can
+        // undo the mute/unmute the user just chose.
+        soundEnabledRef.current = next;
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          resumeCountdownAudioIfActive();
+        } else {
+          stopCountdownAudio();
         }
+        applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
     [],
@@ -3679,8 +3711,13 @@ export function ScratchPrototype({
   }, [autoScratchLocked, autoScratch.enabled]);
 
   function updateSoundEnabled(enabled: boolean) {
-    // Store write → synchronous notify → the subscription above unlocks audio
-    // and mirrors the flag into local state.
+    applyBoundThemeIntroSound(enabled);
+    if (enabled) {
+      unlockCountdownSound();
+      resumeCountdownAudioIfActive();
+    } else {
+      stopCountdownAudio();
+    }
     setSoundEffectEnabled(enabled);
   }
 
@@ -5228,9 +5265,8 @@ export function ScratchPrototype({
               <div className="photo-scratch-intro-media">
                 {introActive && introVideoUrl ? (
                   <video
-                    ref={introVideoElRef}
+                    ref={setIntroVideoEl}
                     autoPlay
-                    muted={introMuted}
                     playsInline
                     preload="auto"
                     src={introVideoUrl}

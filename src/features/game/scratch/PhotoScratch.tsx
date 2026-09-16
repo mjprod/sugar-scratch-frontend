@@ -1,5 +1,5 @@
 import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
@@ -60,6 +60,8 @@ import {
   isCountdownSoundUnlocked,
   TOP_BAR_DOCK_MS,
   unlockCountdownSound,
+  resumeCountdownAudioIfActive,
+  stopCountdownAudio,
 } from "../modules/InitialCountdown";
 import {
   ScratchFrameProgress,
@@ -78,7 +80,15 @@ import {
   type TrackedMeshSample,
   type Vec2,
 } from "./meshGeometry";
-import { playThemeIntro, releaseMediaElement } from "../shared/media";
+import {
+  applyBoundThemeIntroSound,
+  bindThemeIntroVideo,
+  playThemeIntro,
+  releaseMediaElement,
+  retryThemeIntroPlayback,
+  setThemeIntroSound,
+  unbindThemeIntroVideo,
+} from "../shared/media";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 
@@ -725,7 +735,13 @@ export function PhotoScratch() {
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const introVideoElRef = useRef<HTMLVideoElement>(null);
+  const introVideoElRef = useRef<HTMLVideoElement | null>(null);
+const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+  const prev = introVideoElRef.current;
+  if (prev && prev !== el) unbindThemeIntroVideo(prev);
+  introVideoElRef.current = el;
+  if (el) bindThemeIntroVideo(el);
+}, []);
   const fgRendererRef = useRef<GarmentGLRenderer | null>(null);
   const trackedMeshRef = useRef<TrackedMesh | null>(null);
   const trackedSampleRef = useRef<TrackedMeshSample | null>(null);
@@ -926,8 +942,6 @@ export function PhotoScratch() {
   const [introActive, setIntroActive] = useState(false);
   const [introCover, setIntroCover] = useState(false);
   const [introLeaving, setIntroLeaving] = useState(false);
-  /** Starts muted for autoplay policy; may unmute after playThemeIntro succeeds. */
-  const [introMuted, setIntroMuted] = useState(true);
   const introActiveRef = useRef(false);
   introActiveRef.current = introActive;
   const introCoverRef = useRef(false);
@@ -1042,6 +1056,7 @@ export function PhotoScratch() {
     }
     const intro = introVideoElRef.current;
     if (intro) releaseMediaElement(intro);
+    unbindThemeIntroVideo(intro);
     const freeze = introFreezeCanvasRef.current;
     if (freeze) {
       freeze.width = 0;
@@ -1065,6 +1080,7 @@ export function PhotoScratch() {
     }
     const captured = captureIntroFreezeFrame();
     if (intro) releaseMediaElement(intro);
+    unbindThemeIntroVideo(intro);
     setIntroActive(false);
     introActiveRef.current = false;
     setIntroVideoUrl("");
@@ -2072,8 +2088,13 @@ export function PhotoScratch() {
   }
 
   function updateSoundEnabled(enabled: boolean) {
-    // Store write → synchronous notify → the subscription above unlocks audio
-    // and mirrors the flag into local state.
+    applyBoundThemeIntroSound(enabled);
+    if (enabled) {
+      unlockCountdownSound();
+      resumeCountdownAudioIfActive();
+    } else {
+      stopCountdownAudio();
+    }
     setSoundEffectEnabled(enabled);
   }
 
@@ -2385,22 +2406,30 @@ export function PhotoScratch() {
 
   // Android/iOS block unmuted autoplay after refresh or async mount — kick
   // playback with a muted fallback so the intro still runs.
+  //
+  // Do NOT depend on soundEnabled here — mute/unmute must only adjust volume
+  // via the prefs subscriber. Re-running this effect calls playThemeIntro,
+  // which forces muted=true and can permanently silence the clip.
   useEffect(() => {
     if (!introActive || !introVideoUrl) {
-      setIntroMuted(true);
       return;
     }
     const video = introVideoElRef.current;
     if (!video) return;
     let cancelled = false;
-    void playThemeIntro(video, soundEnabled).then((result) => {
-      if (cancelled) return;
-      if (!result.playing) {
-        dismissIntro();
-        return;
-      }
-      setIntroMuted(result.muted);
-    });
+    void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+      (result) => {
+        if (cancelled) return;
+        if (!result.playing) {
+          // Keep trying autoplay — do not tear down on cold-refresh failure.
+          // Never flip muted=true after a gesture unlock (WebKit stays silent).
+          retryThemeIntroPlayback(video);
+          return;
+        }
+        // Never force-unmute here — that needs a user gesture after refresh.
+        setThemeIntroSound(video, getGameAudioPrefs().soundEffect);
+      },
+    );
     const safetyId = window.setTimeout(() => {
       if (!cancelled && introActiveRef.current) dismissIntro();
     }, 20_000);
@@ -2408,7 +2437,7 @@ export function PhotoScratch() {
       cancelled = true;
       window.clearTimeout(safetyId);
     };
-  }, [introActive, introVideoUrl, soundEnabled]);
+  }, [introActive, introVideoUrl]);
 
   // The pause overlay and profile settings write the same store, so follow it
   // rather than owning the flag. Notifications are synchronous, which keeps the
@@ -2418,10 +2447,15 @@ export function PhotoScratch() {
     () =>
       subscribeGameAudioPrefs(() => {
         const next = getGameAudioPrefs().soundEffect;
+        soundEnabledRef.current = next;
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          resumeCountdownAudioIfActive();
+        } else {
+          stopCountdownAudio();
         }
+        applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
     [],
@@ -2937,9 +2971,8 @@ export function PhotoScratch() {
               <div className="photo-scratch-intro-media">
                 {introActive && introVideoUrl ? (
                   <video
-                    ref={introVideoElRef}
+                    ref={setIntroVideoEl}
                     autoPlay
-                    muted={introMuted}
                     playsInline
                     preload="auto"
                     src={introVideoUrl}
