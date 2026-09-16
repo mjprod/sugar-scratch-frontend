@@ -5,6 +5,8 @@ import { useWallet } from "@/contexts/WalletContext";
 /** Static coin mark — still frame (no Lottie runtime / canvas). */
 const COIN_WEBP_SRC = "/images/coin.webp";
 const COUNT_BASE_MS = 720;
+/** How long the +N chip / value pop stay when CSS animations are disabled. */
+const REDUCED_MOTION_FLASH_MS = 900;
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
@@ -16,23 +18,26 @@ function countDurationMs(from: number, to: number) {
 }
 
 export type StageCoinCountProps = {
-  /** Optional display offset above wallet coins (e.g. in-card awards). */
+  /** Optional display offset above wallet coins (legacy / tests). */
   sessionDelta?: number;
   /**
    * Bump on each 10% progress milestone so the coin mark CSS-pops in sync
    * with crossedProgressMilestone (not only when the count target changes).
    */
   popNonce?: number;
+  /** Coins just awarded on this milestone — drives the floating +N chip. */
+  awardAmount?: number;
 };
 
 /**
  * Bottom-left HUD: static coin mark + live total with count-up.
- * Floor = wallet coins; sessionDelta is additive display only.
+ * Floor = wallet coins; sessionDelta is an optional additive overlay.
  * Coin mark CSS-pops when popNonce advances — same DOM img (no remount flash).
  */
 export function StageCoinCount({
   sessionDelta = 0,
   popNonce = 0,
+  awardAmount = 0,
 }: StageCoinCountProps) {
   const { coins } = useWallet();
   const target = Math.max(0, coins) + Math.max(0, sessionDelta);
@@ -41,6 +46,8 @@ export function StageCoinCount({
   const animRef = useRef<number | null>(null);
   const coinImgRef = useRef<HTMLImageElement | null>(null);
   const prevPopNonceRef = useRef(popNonce);
+  const [flashAward, setFlashAward] = useState(0);
+  const [valuePopping, setValuePopping] = useState(false);
 
   // Restart scale-pop on the same img node (avoids key-remount blank frame).
   useEffect(() => {
@@ -48,13 +55,27 @@ export function StageCoinCount({
     prevPopNonceRef.current = popNonce;
     if (popNonce === prev || popNonce <= 0) return;
 
+    if (awardAmount > 0) {
+      setFlashAward(awardAmount);
+      setValuePopping(true);
+    }
+
     let reduced = false;
     try {
       reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     } catch {
       reduced = false;
     }
-    if (reduced) return;
+    // Reduced-motion CSS sets award/value animations to `none`, so
+    // onAnimationEnd never fires — clear flash/pop on a timer instead.
+    if (reduced) {
+      if (awardAmount <= 0) return;
+      const timer = window.setTimeout(() => {
+        setFlashAward(0);
+        setValuePopping(false);
+      }, REDUCED_MOTION_FLASH_MS);
+      return () => window.clearTimeout(timer);
+    }
 
     const img = coinImgRef.current;
     if (!img) return;
@@ -63,7 +84,7 @@ export function StageCoinCount({
     // Force reflow so the next add restarts the CSS animation.
     void img.offsetWidth;
     img.classList.add("is-popping");
-  }, [popNonce]);
+  }, [popNonce, awardAmount]);
 
   useEffect(() => {
     const from = displayRef.current;
@@ -122,6 +143,7 @@ export function StageCoinCount({
     <div className="stage-game__coin-count">
       <span className="visually-hidden" aria-live="polite">
         {formatBalance(target)} coins
+        {flashAward > 0 ? `, plus ${flashAward}` : ""}
       </span>
       <span className="stage-game__coin-count-icon" aria-hidden="true">
         <img
@@ -140,9 +162,37 @@ export function StageCoinCount({
         />
       </span>
       <div className="stage-game__coin-count-copy">
-        <p className="stage-game__coin-count-value tabular-nums">{label}</p>
+        <p
+          className={[
+            "stage-game__coin-count-value",
+            "tabular-nums",
+            valuePopping ? "is-popping" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onAnimationEnd={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (!e.animationName.includes("coin-count-value-pop")) return;
+            setValuePopping(false);
+          }}
+        >
+          {label}
+        </p>
         <p className="stage-game__coin-count-label">Coins</p>
       </div>
+      {flashAward > 0 ? (
+        <span
+          key={`${popNonce}-${flashAward}`}
+          className="stage-game__coin-count-award"
+          aria-hidden="true"
+          onAnimationEnd={(e) => {
+            if (e.target !== e.currentTarget) return;
+            setFlashAward(0);
+          }}
+        >
+          +{flashAward}
+        </span>
+      ) : null}
     </div>
   );
 }

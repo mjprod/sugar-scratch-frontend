@@ -7,6 +7,8 @@
 export const CURSOR_FX_MILESTONE = 0.1;
 /** How long spawn stays armed after a milestone (ms). */
 export const CURSOR_FX_CELEBRATE_MS = 1100;
+/** Longer arm on phones — finger often stays down past the 10% beat. */
+export const CURSOR_FX_CELEBRATE_MS_COARSE = 2400;
 
 export type CursorFxDeviceProfile = {
   fairyDust: boolean;
@@ -56,8 +58,9 @@ export function resolveCursorFxDeviceProfile(opts: {
   if (mobile) {
     return {
       fairyDust: true,
-      particleSize: 48,
-      particleCount: 3,
+      // Minimal trail — phones struggle with Lottie particle draw calls.
+      particleSize: 40,
+      particleCount: 1,
       maxOverlayDpr: 1,
       coarsePointer: opts.coarsePointer,
     };
@@ -71,6 +74,17 @@ export function resolveCursorFxDeviceProfile(opts: {
   };
 }
 
-export function celebrateParticleBoost(baseCount: number): number {
+/** Mild boost on celebrate; coarse stays tiny for frame budget. */
+export function celebrateParticleBoost(
+  baseCount: number,
+  coarsePointer = false,
+): number {
+  if (coarsePointer) {
+    return Math.min(2, Math.max(1, baseCount));
+  }
   return Math.min(12, Math.max(baseCount, Math.round(baseCount * 1.6)));
+}
+
+export function celebrateDurationMs(coarsePointer: boolean): number {
+  return coarsePointer ? CURSOR_FX_CELEBRATE_MS_COARSE : CURSOR_FX_CELEBRATE_MS;
 }

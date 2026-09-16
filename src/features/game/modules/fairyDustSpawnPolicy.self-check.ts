@@ -3,8 +3,10 @@
  * Run: npx tsx src/features/game/modules/fairyDustSpawnPolicy.self-check.ts
  */
 import {
+  fairyDustSpawnMinDistancePx,
   shouldSampleFabricAlpha,
   shouldSpawnFairyDust,
+  shouldSpawnFairyDustForMove,
 } from "./fairyDustSpawnPolicy";
 
 function assert(cond: boolean, message: string): void {
@@ -12,14 +14,14 @@ function assert(cond: boolean, message: string): void {
 }
 
 assert(
-  !shouldSpawnFairyDust({
+  shouldSpawnFairyDust({
     playWindow: true,
     celebrate: true,
     isScratching: true,
     cursorOnMesh: true,
     coarsePointer: true,
   }),
-  "coarse: no spawn while scratching",
+  "coarse: celebrate spawns while scratching",
 );
 assert(
   shouldSpawnFairyDust({
@@ -40,6 +42,16 @@ assert(
     coarsePointer: false,
   }),
   "fine: spawn while scratching on mesh",
+);
+assert(
+  !shouldSpawnFairyDust({
+    playWindow: true,
+    celebrate: false,
+    isScratching: true,
+    cursorOnMesh: true,
+    coarsePointer: true,
+  }),
+  "coarse: no spawn outside celebrate",
 );
 assert(
   !shouldSampleFabricAlpha({
@@ -65,12 +77,24 @@ assert(
   }),
   "dust off: never sample",
 );
+assert(
+  !shouldSpawnFairyDustForMove(2, 2, fairyDustSpawnMinDistancePx(true)),
+  "coarse: same-spot jitter does not spawn",
+);
+assert(
+  shouldSpawnFairyDustForMove(40, 0, fairyDustSpawnMinDistancePx(true)),
+  "coarse: a real swipe still spawns",
+);
+assert(
+  !shouldSpawnFairyDustForMove(3, 1, fairyDustSpawnMinDistancePx(false)),
+  "fine: sub-threshold move does not spawn",
+);
 
 console.log(
   JSON.stringify(
     {
       ok: true,
-      policy: "coarse defer spawn to post-stroke; skip fabric probe mid-scratch",
+      policy: "coarse celebrate mid-stroke; same-spot jitter does not trail",
     },
     null,
     2,

@@ -429,8 +429,8 @@
 }
 
 .stage-game__bottom-chrome-row.is-status {
-  /* Full chrome width: [ cards-left | brand logo ]. */
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* Coin badge keeps intrinsic width; brand fills leftover and may shrink. */
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -447,11 +447,16 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  min-width: 0;
+  /* Never collapse under the brand logo — that was clipping the coin digits. */
+  flex: 0 0 auto;
+  min-width: max-content;
   min-height: 0;
   height: var(--bottom-chrome-h);
   max-height: var(--bottom-chrome-h);
-  overflow: hidden;
+  /* Visible so +N award chip and coin pop aren't clipped on narrow phones. */
+  overflow: visible;
+  position: relative;
+  z-index: 2;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -463,10 +468,13 @@
   justify-content: flex-end;
   align-self: center;
   min-width: 0;
+  max-width: 100%;
   height: var(--bottom-chrome-h);
   max-height: var(--bottom-chrome-h);
   /* Let the 2× logo paint past the row without expanding layout. */
-  overflow: visible;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -478,7 +486,7 @@
   /* 1.5× the prior 44px (2×) mark — row height stays --bottom-chrome-h. */
   height: 66px;
   width: auto;
-  max-width: min(126dvw, 444px);
+  max-width: min(48%, 180px);
   object-fit: contain;
   object-position: right center;
   opacity: 0.92;
@@ -505,6 +513,12 @@
         calc(env(safe-area-inset-bottom, 0px) + clamp(20px, 6dvh, 56px))
       ) + 14px
     );
+  }
+
+  .stage-game__bottom-chrome-logo {
+    height: 44px;
+    max-width: min(38vw, 120px);
+    transform: translate(0, -6px);
   }
 
   /*
@@ -749,6 +763,26 @@
   user-select: none;
   -webkit-user-select: none;
   pointer-events: none;
+  transform-origin: left center;
+}
+
+.stage-game__coin-count-value.is-popping {
+  animation: coin-count-value-pop 520ms ease-out;
+}
+
+@keyframes coin-count-value-pop {
+  0% {
+    transform: scale(1);
+    color: rgb(255 255 255 / 0.96);
+  }
+  35% {
+    transform: scale(1.18);
+    color: #ffe566;
+  }
+  100% {
+    transform: scale(1);
+    color: rgb(255 255 255 / 0.96);
+  }
 }
 
 .stage-game__coin-count-label {
@@ -763,6 +797,79 @@
   user-select: none;
   -webkit-user-select: none;
   pointer-events: none;
+}
+
+/* Floating +N on each 10% sparkle award. */
+.stage-game__coin-count-award {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  z-index: 3;
+  transform: translate(-50%, -100%);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgb(20 14 8 / 0.82);
+  border: 1px solid rgb(249 157 118 / 0.55);
+  color: #ffe566;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+  animation: coin-count-award-float 1.35s ease-out forwards;
+}
+
+@keyframes coin-count-award-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -70%) scale(0.85);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -110%) scale(1.08);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -150%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -190%) scale(0.96);
+  }
+}
+
+@media (max-width: 700px) {
+  .stage-game__coin-count {
+    gap: 9px;
+    padding: 0 14px 0 11px;
+  }
+
+  .stage-game__coin-count-value {
+    font-size: 15px;
+  }
+
+  .stage-game__coin-count-label {
+    font-size: 10px;
+  }
+
+  .stage-game__coin-count-award {
+    font-size: 13px;
+    padding: 3px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-game__coin-count-value.is-popping,
+  .stage-game__coin-count-award {
+    animation: none !important;
+  }
+
+  .stage-game__coin-count-award {
+    opacity: 1;
+    transform: translate(-50%, -120%);
+  }
 }
 
 .stage-game__pause {

@@ -81,10 +81,17 @@ import {
 } from "../modules/matchGame";
 import { PackProgress } from "../modules/PackProgress";
 import {
+  COIN_BADGE_AWARD_HOLD_MS,
   COIN_BADGE_IDLE_HIDE_MS,
   rollSparkleCoin,
 } from "../modules/sparkleCoinAward";
 import { StageCoinCount } from "../StageCoinCount";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
+import {
+  persistScratchCoins,
+  startScratchHand,
+} from "@/services/scratchCoinReward";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
   createFabricAlphaCache,
@@ -121,6 +128,7 @@ import {
 import { shouldUpdateBodyMarkers, shouldUpdateChestFollow } from "../modules/chestFollowGate";
 import {
   shouldSampleFabricAlpha,
+  fairyDustSpawnMinDistancePx,
   shouldSpawnFairyDust,
 } from "../modules/fairyDustSpawnPolicy";
 import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
@@ -135,9 +143,9 @@ import {
   type VideoSyncState,
 } from "../modules/videoSync";
 import {
+  celebrateDurationMs,
   celebrateParticleBoost,
   crossedProgressMilestone,
-  CURSOR_FX_CELEBRATE_MS,
   resolveCursorFxDeviceProfile,
 } from "../modules/cursorFxCelebrate";
 import {
@@ -869,7 +877,7 @@ function loadAutoScratchSettings(): AutoScratchSettings {
   }
 }
 
-const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v8";
+const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v11";
 const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx",
   "sugar-scratchie:cursor-fx-v1",
@@ -879,6 +887,9 @@ const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx-v5",
   "sugar-scratchie:cursor-fx-v6",
   "sugar-scratchie:cursor-fx-v7",
+  "sugar-scratchie:cursor-fx-v8",
+  "sugar-scratchie:cursor-fx-v9",
+  "sugar-scratchie:cursor-fx-v10",
 ];
 
 type CursorFxSettings = {
@@ -941,12 +952,12 @@ function loadCursorFxSettings(): CursorFxSettings {
       particleSize: clampValue(
         Number(parsed.particleSize) || CURSOR_FX_DEFAULTS.particleSize,
         10,
-        64,
+        96,
       ),
       particleCount: clampValue(
         Number(parsed.particleCount) || CURSOR_FX_DEFAULTS.particleCount,
         1,
-        8,
+        12,
       ),
       gravity: clampValue(
         Number(parsed.gravity) || CURSOR_FX_DEFAULTS.gravity,
@@ -1252,8 +1263,15 @@ export function ScratchPrototype({
   /** Body/foil icons found so far (0…SYMBOL_SLOT_COUNT). Lab bonus diamond lock. */
   onRevealedSymbolsChange?: (count: number) => void;
 } = {}) {
+  const { authed } = useAuth();
+  const { addCoins } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
+  const handIdRef = useRef("");
+  const handStartGenRef = useRef(0);
+  /** Tracks prior auth so we only re-request a hand on false → true. */
+  const prevAuthedForHandRef = useRef(authed);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -1665,10 +1683,10 @@ export function ScratchPrototype({
   const celebrateTimerRef = useRef<number | null>(null);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
   const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
-  /** Display-only coin awards from 10% scratch milestones (not wallet). */
-  const [sparkleDelta, setSparkleDelta] = useState(0);
   /** Bumps StageCoinCount scale-pop on each crossedProgressMilestone. */
   const [coinPopNonce, setCoinPopNonce] = useState(0);
+  /** Last 10% award amount — floating +N chip on StageCoinCount. */
+  const [coinAwardFlash, setCoinAwardFlash] = useState(0);
   /** Bottom coin badge visibility — idle-hides after ~2s without scrub. */
   const [coinBadgeShown, setCoinBadgeShown] = useState(true);
   const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
@@ -1798,14 +1816,14 @@ export function ScratchPrototype({
     setCoinBadgeLeaving(true);
   }
 
-  function scheduleCoinBadgeIdleHide() {
+  function scheduleCoinBadgeIdleHide(holdMs = COIN_BADGE_IDLE_HIDE_MS) {
     clearCoinBadgeIdleTimer();
     if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
     coinBadgeIdleTimerRef.current = window.setTimeout(() => {
       coinBadgeIdleTimerRef.current = null;
       if (isScratchingRef.current) return;
       beginCoinBadgeIdleLeave();
-    }, COIN_BADGE_IDLE_HIDE_MS);
+    }, holdMs);
   }
 
   function onCoinBadgeLeaveEnd(event: AnimationEvent<HTMLDivElement>) {
@@ -1817,7 +1835,19 @@ export function ScratchPrototype({
     setCoinBadgeLeaving(false);
   }
 
-  /** 10% progress beat: award coins always; arm fairy-dust when FX allows. */
+  function beginScratchHand(cardId?: string | null) {
+    handIdRef.current = "";
+    // Session may still be resolving on first paint — leave hand empty and let
+    // the auth-retry effect start once `authed` becomes true.
+    if (!authed) return;
+    const gen = ++handStartGenRef.current;
+    void startScratchHand(cardId || undefined).then((result) => {
+      if (gen !== handStartGenRef.current) return;
+      if (result?.handId) handIdRef.current = result.handId;
+    });
+  }
+
+  /** 10% progress beat: credit wallet coins; arm fairy-dust when FX allows. */
   function maybeCelebrateScratchProgress(nextProgress: number) {
     const crossed = crossedProgressMilestone(
       celebrateProgressRef.current,
@@ -1836,13 +1866,21 @@ export function ScratchPrototype({
 
     // Defer badge work so the dust burst paints this frame first.
     const award = rollSparkleCoin();
+    const handId = handIdRef.current;
+    const cardId = selectedCardId || undefined;
     queueMicrotask(() => {
       showCoinBadge();
-      setSparkleDelta((d) => d + award);
+      addCoins(award);
+      setCoinAwardFlash(award);
       setCoinPopNonce((n) => n + 1);
-      // Milestone counts as activity — restart idle hide clock.
+      // Persist only with a server-issued hand — forged client ids are rejected.
+      // Do not merge the persist wallet snapshot (see scratchCoinReward).
+      if (authed && handId) {
+        persistScratchCoins({ handId, milestone: crossed, cardId, amount: award });
+      }
+      // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();
-      scheduleCoinBadgeIdleHide();
+      scheduleCoinBadgeIdleHide(COIN_BADGE_AWARD_HOLD_MS);
     });
 
     let reducedMotion = false;
@@ -1855,7 +1893,8 @@ export function ScratchPrototype({
     }
     if (!cursorFxRef.current.fairyDust || reducedMotion) return;
 
-    celebrateUntilRef.current = performance.now() + CURSOR_FX_CELEBRATE_MS;
+    const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
+    celebrateUntilRef.current = performance.now() + celebrateMs;
     setCursorFxCelebrate(true);
     setCursorFxBurstNonce((n) => n + 1);
     clearCelebrateTimer();
@@ -1864,7 +1903,7 @@ export function ScratchPrototype({
       if (performance.now() >= celebrateUntilRef.current) {
         setCursorFxCelebrate(false);
       }
-    }, CURSOR_FX_CELEBRATE_MS + 40);
+    }, celebrateMs + 40);
   }
   // Phones hide the side panel, so the scratch-zoom config lives behind a gear
   // button that opens this sheet.
@@ -3161,8 +3200,9 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    setSparkleDelta(0);
+    beginScratchHand(card.id);
     setCoinPopNonce(0);
+    setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
     setCoinBadgeShown(true);
@@ -3207,6 +3247,18 @@ export function ScratchPrototype({
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
+
+  // Card-switch may call beginScratchHand while the session is still resolving
+  // (`authed` false → early return, empty handId). Without a retry, milestones
+  // still addCoins locally but never persist, so credits vanish on refresh.
+  useEffect(() => {
+    const wasAuthed = prevAuthedForHandRef.current;
+    prevAuthedForHandRef.current = authed;
+    if (!authed || wasAuthed) return;
+    if (!card?.id) return;
+    beginScratchHand(card.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- false→true only; card switches already start a hand
+  }, [authed, card?.id]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
@@ -3591,8 +3643,8 @@ export function ScratchPrototype({
     !introCover &&
     (!useBodySymbols ||
       (topBarPhase !== "center" && !introGateActive && !symbolsHuntComplete));
-  // Win-feel trail: celebrate window after each +10%. Fine pointer spawns while
-  // scratching on mesh; coarse defers spawn until pointer-up (Phase 9).
+  // Win-feel trail: celebrate window after each +10%. Spawns while celebrate
+  // is armed (coarse + fine); fabric probes still skip mid-scratch on coarse.
   const cursorFxSpawnActive = shouldSpawnFairyDust({
     playWindow: cursorFxPlayWindow,
     celebrate: cursorFxCelebrate,
@@ -3601,7 +3653,10 @@ export function ScratchPrototype({
     coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
   });
   const cursorFxSpawnCount = cursorFxCelebrate
-    ? celebrateParticleBoost(cursorFx.particleCount)
+    ? celebrateParticleBoost(
+        cursorFx.particleCount,
+        CURSOR_FX_DEVICE.coarsePointer,
+      )
     : cursorFx.particleCount;
 
   useEffect(() => {
@@ -3656,8 +3711,9 @@ export function ScratchPrototype({
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    setSparkleDelta(0);
+    beginScratchHand(selectedCardId);
     setCoinPopNonce(0);
+    setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
     setCoinBadgeShown(true);
@@ -5094,9 +5150,17 @@ export function ScratchPrototype({
               fadeSpeed={cursorFx.fadeSpeed}
               initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
               spawnEnabled={cursorFxSpawnActive}
+              spawnMinDistance={fairyDustSpawnMinDistancePx(
+                CURSOR_FX_DEVICE.coarsePointer,
+              )}
               maxDevicePixelRatio={CURSOR_FX_DEVICE.maxOverlayDpr}
               burstNonce={cursorFxBurstNonce}
-              burstCount={celebrateParticleBoost(cursorFx.particleCount) * 2}
+              burstCount={
+                celebrateParticleBoost(
+                  cursorFx.particleCount,
+                  CURSOR_FX_DEVICE.coarsePointer,
+                ) * (CURSOR_FX_DEVICE.coarsePointer ? 1 : 2)
+              }
             />
           ) : null}
           {glError ? (
@@ -5332,8 +5396,8 @@ export function ScratchPrototype({
                     onAnimationEnd={onCoinBadgeLeaveEnd}
                   >
                     <StageCoinCount
-                      sessionDelta={sparkleDelta}
                       popNonce={coinPopNonce}
+                      awardAmount={coinAwardFlash}
                     />
                   </div>
                 ) : null}
