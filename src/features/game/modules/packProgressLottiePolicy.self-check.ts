@@ -14,12 +14,12 @@ function assert(cond: boolean, message: string): void {
 }
 
 assert(
-  initialCardCountdownPlayKey(1) === 0,
-  "first card mount stays static (playKey 0)",
+  initialCardCountdownPlayKey(1) === 1,
+  "first card mount autoplays when badge shows",
 );
 assert(
   initialCardCountdownPlayKey(2) === 1,
-  "HUD remount mid-pack must start with playKey > 0",
+  "HUD remount mid-pack autoplays",
 );
 assert(
   shouldAutoplayCardCountdown(0) === false,
@@ -59,7 +59,7 @@ console.log(
     {
       ok: true,
       policy:
-        "static first-card mount; remount mid-pack autoplays; stop only when idle; hook once per instance",
+        "cards-left badge autoplays on mount; stop only when idle; hook once per instance",
     },
     null,
     2,

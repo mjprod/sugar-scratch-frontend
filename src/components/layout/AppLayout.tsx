@@ -108,6 +108,45 @@ export function AppLayout() {
     !hideChrome &&
     !location.pathname.startsWith("/settings");
 
+  // Android-only: Chrome's bottom toolbar overlays the layout viewport while
+  // safe-area stays 0. Safari/iOS keep the pre-fix stage (100dvh + safe-area).
+  useEffect(() => {
+    if (!hideChrome || typeof window === "undefined") return;
+
+    const ua = navigator.userAgent || "";
+    const isAndroid = /Android/i.test(ua);
+    if (!isAndroid) return;
+
+    const root = document.documentElement;
+    root.dataset.gameAndroid = "1";
+
+    const publish = () => {
+      const vv = window.visualViewport;
+      const h = Math.round(vv?.height || window.innerHeight || 0);
+      const top = Math.round(vv?.offsetTop || 0);
+      if (h > 0) {
+        root.style.setProperty("--game-vv-height", `${h}px`);
+      }
+      root.style.setProperty("--game-vv-top", `${top}px`);
+    };
+
+    publish();
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", publish);
+    vv?.addEventListener("scroll", publish);
+    window.addEventListener("resize", publish);
+    window.addEventListener("orientationchange", publish);
+    return () => {
+      vv?.removeEventListener("resize", publish);
+      vv?.removeEventListener("scroll", publish);
+      window.removeEventListener("resize", publish);
+      window.removeEventListener("orientationchange", publish);
+      root.style.removeProperty("--game-vv-height");
+      root.style.removeProperty("--game-vv-top");
+      delete root.dataset.gameAndroid;
+    };
+  }, [hideChrome]);
+
   useEffect(() => {
     if (guest) {
       setInboxUnread(0);

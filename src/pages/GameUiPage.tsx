@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { BonusDiamondSpawner } from "@/features/game/modules/BonusDiamondSpawner";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { Paths } from "@/routes/Paths";
@@ -20,9 +21,21 @@ const LAB_CARD = "juliana_1";
 export function GameUiPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  /** Bonus diamond stays off until first crossedProgressMilestone. */
+  const [bonusDiamondUnlocked, setBonusDiamondUnlocked] = useState(false);
+  /** Icons found — lock bonus diamond at 11/12. */
+  const [revealedSymbols, setRevealedSymbols] = useState(0);
 
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
+
+  const unlockBonusDiamond = useCallback(() => {
+    setBonusDiamondUnlocked(true);
+  }, []);
+
+  const onRevealedSymbolsChange = useCallback((count: number) => {
+    setRevealedSymbols(count);
+  }, []);
 
   // Ensure Juliana is selected when the lab is opened bare.
   useEffect(() => {
@@ -95,6 +108,13 @@ export function GameUiPage() {
           key={`${model}-${card}`}
           skipToPlay
           onLeave={leaveGame}
+          onFirstProgressMilestone={unlockBonusDiamond}
+          onRevealedSymbolsChange={onRevealedSymbolsChange}
+        />
+        {/* Lab-only: after first 10% milestone, until 11/12 icons found. */}
+        <BonusDiamondSpawner
+          unlocked={bonusDiamondUnlocked}
+          revealedSymbols={revealedSymbols}
         />
       </div>
     </div>
