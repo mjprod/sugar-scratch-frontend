@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { MemoryTransitionProvider } from "@/components/memory/MemoryTransition";
 import { SitePreloader } from "@/components/SitePreloader";
 import { MotionProvider } from "@/features/collection/context/MotionContext";
 import { AppRoutes } from "@/routes/AppRoutes";
@@ -14,10 +15,12 @@ export default function App() {
         <WalletProvider>
           <SearchProvider>
             <PageReadyProvider>
-              <MotionProvider>
-                <AppRoutes />
-                <SitePreloader />
-              </MotionProvider>
+              <MemoryTransitionProvider>
+                <MotionProvider>
+                  <AppRoutes />
+                  <SitePreloader />
+                </MotionProvider>
+              </MemoryTransitionProvider>
             </PageReadyProvider>
           </SearchProvider>
         </WalletProvider>

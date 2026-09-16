@@ -13515,7 +13515,11 @@ body[data-theme="v8"] {
   --app-content-max: 80rem;
   /* Shared sticky top chrome heights (desktop bar / mobile utility). */
   --app-top-nav-height: 56px;
-  --app-top-nav-z-index: 30;
+  /*
+   * Above memory veil (4800) so top HUD stays visible during fade-to-black
+   * content transitions; still below liquid-glass dock (5100) / auth (5200+).
+   */
+  --app-top-nav-z-index: 5050;
   /* Floating 95dvw pill: outer top inset + bar height. */
   --app-top-nav-float-inset: 12px;
   --mobile-top-hud-height: calc(44px + max(8px, env(safe-area-inset-top, 0px)));

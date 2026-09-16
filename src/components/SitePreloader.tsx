@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { PreLoaderVisual } from "@/components/PreLoaderVisual";
+import { isMemoryTransitioning } from "@/lib/memory/memoryNavigate";
 import {
   isPageWarmed,
   routeNeedsWait,
@@ -14,6 +15,8 @@ const MAX_MS = 4500;
 const FADE_MS = 420;
 
 function shouldCover(pathname: string, search: string) {
+  // Memory veil owns warm cross-domain holds — skip brand splash for those hops.
+  if (isMemoryTransitioning()) return false;
   return routeNeedsWait(pathname) && !isPageWarmed(pathname, search);
 }
 

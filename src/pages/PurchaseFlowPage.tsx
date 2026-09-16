@@ -1,13 +1,13 @@
-import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import { isRecommendationInitialized } from "@/services/recommendation";
 import { PurchaseFlow } from "@/components/purchase/PurchaseFlow";
 import type { PurchaseFlowPack } from "@/services/purchase";
 
 export function PurchaseFlowPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { packId } = useParams<{ packId: string }>();
   const {
@@ -43,7 +43,7 @@ export function PurchaseFlowPage() {
       diamonds={diamonds}
       coins={coins}
       onClose={() => {
-        navigate(Paths.home);
+        memoryNavigate(Paths.home);
         if (!isRecommendationInitialized()) {
           applyRecommendationDecision(null);
         }
@@ -62,7 +62,7 @@ export function PurchaseFlowPage() {
         if (!guest) openStore();
         else requireAuth({ type: "store" });
       }}
-      onGoHome={() => navigate(Paths.home)}
+      onGoHome={() => memoryNavigate(Paths.home)}
       onViewCollection={() => requestTab("bag")}
       onGoMyBag={() => requestTab("bag")}
       onReturnContext={() => requestTab("bag")}

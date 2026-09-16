@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Search } from "lucide-react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
 import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
 import { PacksButton } from "@/components/InboxButton";
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
@@ -22,7 +23,6 @@ import {
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const {
     guest,
     authOpen,
@@ -50,10 +50,11 @@ export function AppLayout() {
 
   useEffect(() => {
     bindGameNavigate((to) => {
-      navigate(to);
+      // Fade-to-black + purge when crossing packs/game domains.
+      memoryNavigate(to);
     });
     return () => bindGameNavigate(null);
-  }, [navigate]);
+  }, []);
 
   const isPurchase = location.pathname.startsWith("/purchase");
   const isTearOpen = location.pathname.startsWith("/purchase/tear-open");

@@ -2,6 +2,7 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
+import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   getGameAudioPrefs,
@@ -1429,6 +1430,7 @@ export function PhotoScratch() {
     if (!fgCanvas || !ready) return;
 
     // Drop any prior renderer on this canvas before creating a new one.
+    // Never loseContext here — same canvas is about to get a new renderer.
     fgRendererRef.current?.dispose({ loseContext: false });
     fgRendererRef.current = null;
 
@@ -1715,11 +1717,20 @@ export function PhotoScratch() {
 
     return () => {
       cancelAnimationFrame(frameId);
-      // Same canvas may remount a renderer when showMesh toggles — don't loseContext.
+      // showMesh / ready churn remounts on the same canvas — never lose here.
       fgRendererRef.current?.dispose({ loseContext: false });
       fgRendererRef.current = null;
     };
   }, [ready, showMesh]);
+
+  // Real route leave: memory purge arms the flag; lose GL context once.
+  useEffect(() => {
+    return () => {
+      if (!consumeLoseGlContextOnUnmount()) return;
+      fgRendererRef.current?.dispose({ loseContext: true });
+      fgRendererRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const fgCanvas = fgCanvasRef.current;

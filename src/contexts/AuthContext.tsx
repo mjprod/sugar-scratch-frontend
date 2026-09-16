@@ -11,6 +11,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import {
   clearEmailVerified,
   clearHasLoggedIn,
@@ -412,7 +413,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             packSession.packScratch.readyPackId === readyId)
         ) {
           activateGameSessionForPack(readyId);
-          navigate(
+          memoryNavigate(
             motionPlayHref(
               packSession,
               firstMissingMotionCardId(packSession),
@@ -420,7 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
           return;
         }
-        navigate(Paths.purchase(action.pack.packId), {
+        memoryNavigate(Paths.purchase(action.pack.packId), {
           state: { pack: { ...action.pack, entry: "scratch" as const } },
         });
         return;
@@ -442,7 +443,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             packSession.packScratch.readyPackId === packId)
         ) {
           const started = beginPhotoPhase() ?? packSession;
-          navigate(photoPlayHref(started));
+          memoryNavigate(photoPlayHref(started));
           return;
         }
         if (!packId) {
@@ -452,11 +453,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             (session.phase === "photo_reveal" || session.phase === "photo")
           ) {
             const started = beginPhotoPhase() ?? session;
-            navigate(photoPlayHref(started));
+            memoryNavigate(photoPlayHref(started));
             return;
           }
         }
-        navigate(Paths.collection);
+        memoryNavigate(Paths.collection);
         return;
       }
       if (action.type === "buy") {
@@ -464,7 +465,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isBuyPack =
           action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
         if (isBuyPack) clearOpening();
-        navigate(
+        memoryNavigate(
           action.pack.entry === "cart-tear"
             ? Paths.purchaseTearOpen
             : Paths.purchase(action.pack.packId),
@@ -480,7 +481,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "like") {
         setResumeLikeId(action.feedItemId);
-        navigate(Paths.discover);
+        memoryNavigate(Paths.discover);
         return;
       }
       if (action.type === "follow") {
@@ -494,27 +495,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hasUnseenActivity: false,
         });
         if (!window.location.pathname.startsWith("/creator/")) {
-          navigate(Paths.discover);
+          memoryNavigate(Paths.discover);
         }
         return;
       }
       if (action.type === "store") {
         captureSecondaryReturn();
-        navigate(Paths.store);
+        memoryNavigate(Paths.store);
         return;
       }
       if (action.type === "inbox") {
         captureSecondaryReturn();
-        navigate(Paths.inbox);
+        memoryNavigate(Paths.inbox);
         return;
       }
       if (action.type === "unopened-packs") {
-        navigate(Paths.collectionPacks);
+        memoryNavigate(Paths.collectionPacks);
         return;
       }
       if (action.type === "cart") {
         captureSecondaryReturn();
-        navigate(Paths.packPocket);
+        memoryNavigate(Paths.packPocket);
         return;
       }
       if (action.type === "add-to-cart") {
@@ -523,21 +524,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "collection") {
         noteCreatorEngagement(action.creatorId);
-        navigate(Paths.creator(action.creatorId));
+        memoryNavigate(Paths.creator(action.creatorId));
         return;
       }
       if (action.type === "resume") {
         const target = action.path.trim();
         if (target.startsWith("/")) {
-          navigate(target);
+          memoryNavigate(target);
         }
         return;
       }
       if (action.type === "tab") {
-        navigate(pathForTab(action.tab));
+        memoryNavigate(pathForTab(action.tab));
       }
     },
-    [captureSecondaryReturn, navigate],
+    [captureSecondaryReturn],
   );
 
   const enterAfterOnboarding = useCallback(
@@ -553,13 +554,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
 
       if (resume) {
-        navigate(Paths.discover);
+        memoryNavigate(Paths.discover);
         window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      navigate(Paths.discover);
+      memoryNavigate(Paths.discover);
     },
-    [navigate, resumePending],
+    [resumePending],
   );
 
   const applyRecommendationDecision = useCallback(
@@ -573,7 +574,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (pendingAction && !isHighIntentForDefer(pendingAction)) {
           setPendingAfterRec(pendingAction);
         }
-        navigate(Paths.recommend);
+        memoryNavigate(Paths.recommend);
         return;
       }
 
@@ -584,7 +585,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       enterAfterOnboarding({ scrollToDailyReward: true });
     },
-    [enterAfterOnboarding, navigate, resumePending],
+    [enterAfterOnboarding, resumePending],
   );
 
   const finishRecommendationAndResume = useCallback(() => {
@@ -635,18 +636,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestTab = useCallback(
     (next: AppTab) => {
       if (PUBLIC_TABS.includes(next) || authed) {
-        navigate(pathForTab(next));
+        memoryNavigate(pathForTab(next));
         return;
       }
       requireAuth({ type: "tab", tab: next });
     },
-    [authed, navigate, requireAuth],
+    [authed, requireAuth],
   );
 
   const openStore = useCallback(() => {
     captureSecondaryReturn();
-    navigate(Paths.store);
-  }, [captureSecondaryReturn, navigate]);
+    memoryNavigate(Paths.store);
+  }, [captureSecondaryReturn]);
 
   const openInbox = useCallback(() => {
     if (!requireAuth({ type: "inbox" })) return;
@@ -674,9 +675,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const query = themeId?.trim()
         ? `?theme=${encodeURIComponent(themeId.trim())}`
         : "";
-      navigate(`${Paths.creator(id)}${query}`);
+      memoryNavigate(`${Paths.creator(id)}${query}`);
     },
-    [navigate],
+    [],
   );
 
   const openPurchase = useCallback(
@@ -693,8 +694,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     captureSecondaryReturn();
-    navigate(Paths.settings);
-  }, [captureSecondaryReturn, guest, navigate, requireAuth]);
+    memoryNavigate(Paths.settings);
+  }, [captureSecondaryReturn, guest, requireAuth]);
 
   const openPasswordReset = useCallback(() => {
     setPending(null);
@@ -888,8 +889,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setVerifyFromRegister(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
-    navigate(Paths.discover);
-  }, [navigate]);
+    memoryNavigate(Paths.discover);
+  }, []);
 
   const restart = useCallback(() => {
     sessionSyncEpochRef.current += 1;
@@ -914,8 +915,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPurchasedPacks(0);
     setPending(null);
     setAuthOpen(false);
-    navigate(Paths.home);
-  }, [navigate]);
+    memoryNavigate(Paths.home);
+  }, []);
 
   const consumeResumeLike = useCallback(() => setResumeLikeId(null), []);
 

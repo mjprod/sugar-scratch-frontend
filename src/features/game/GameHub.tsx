@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { memoryNavigate } from '@/lib/memory/memoryNavigate'
 import { CtaButton, ctaButtonPropsFromTemplate } from '@/components/cta'
 import { DiamondLottie } from '@/components/ui/DiamondLottie'
 import { CardFan } from '@/features/reveal/components/CardFan'
@@ -139,7 +139,6 @@ function HubRewardTally({ amount }: { amount: number }) {
 }
 
 export function GameHub() {
-  const navigate = useNavigate()
   const catalog = useCatalog()
   const { addDiamonds } = useWallet()
   const [phase, setPhase] = useState<Phase>('loading')
@@ -344,15 +343,15 @@ export function GameHub() {
     if (existing?.phase === 'motion' || existing?.phase === 'photo') {
       if (existing.phase === 'photo') {
         const started = beginPhotoPhase() ?? existing
-        navigate(photoPlayHref(started))
+        memoryNavigate(photoPlayHref(started))
         return
       }
-      navigate(motionPlayHref(existing, firstMissingMotionCardId(existing)))
+      memoryNavigate(motionPlayHref(existing, firstMissingMotionCardId(existing)))
       return
     }
     const created = startMotionSession(hand)
     setSession(created)
-    navigate(motionPlayHref(created))
+    memoryNavigate(motionPlayHref(created))
   }
 
   function playPhotoHand() {
@@ -364,12 +363,12 @@ export function GameHub() {
     unlockCountdownSound()
     const started = beginPhotoPhase() ?? current
     setSession(started)
-    navigate(photoPlayHref(started))
+    memoryNavigate(photoPlayHref(started))
   }
 
   function savePhotoCardsForLater() {
     persistGameProgress()
-    navigate(Paths.collection)
+    memoryNavigate(Paths.collection)
   }
 
   function deleteGame() {
@@ -522,7 +521,7 @@ export function GameHub() {
                 label="View Collection"
                 onClick={() => {
                   persistGameProgress()
-                  navigate(Paths.collection)
+                  memoryNavigate(Paths.collection)
                 }}
               />
               <button
@@ -532,7 +531,7 @@ export function GameHub() {
                   clearGameSession(
                     session ? gameSessionStorageKey(session) : "hub",
                   )
-                  navigate(Paths.home)
+                  memoryNavigate(Paths.home)
                 }}
               >
                 Done
@@ -546,7 +545,7 @@ export function GameHub() {
                 label="View Collection"
                 onClick={() => {
                   persistGameProgress()
-                  navigate(Paths.collection)
+                  memoryNavigate(Paths.collection)
                 }}
               />
               <button
@@ -556,7 +555,7 @@ export function GameHub() {
                   clearGameSession(
                     session ? gameSessionStorageKey(session) : "hub",
                   )
-                  navigate(Paths.home)
+                  memoryNavigate(Paths.home)
                 }}
               >
                 Done
