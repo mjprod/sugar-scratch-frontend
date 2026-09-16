@@ -629,7 +629,7 @@ export function TopSymbolBar({
     if (rect.width > 8 && rect.height > 8 && rect.top > 80) {
       centerBarRectRef.current = DOMRect.fromRect(rect);
     }
-  });
+  }, [phase, dockExiting]);
 
   // Center → docked: one rAF pixel climb. Gen-guarded; never cancelled by re-render.
   useLayoutEffect(() => {
