@@ -182,6 +182,40 @@ export function applyBoundThemeIntroSound(wantSound: boolean) {
 }
 
 /**
+ * Retry intro playback after a failed kick. Never flips muted=true once the
+ * user has gesture-unlocked — that permanently breaks WebKit unmute.
+ */
+export function retryThemeIntroPlayback(video: HTMLVideoElement) {
+  if (!introSoundUnlocked(video)) {
+    remuteForAutoplay(video);
+  }
+  void video.play().catch(() => undefined);
+}
+
+async function applyIntroSoundAndResume(
+  video: HTMLVideoElement,
+  wantSound: boolean,
+  forceUnmute: boolean,
+): Promise<ThemeIntroPlayback> {
+  setThemeIntroSound(video, wantSound, { forceUnmute });
+  if (video.paused) {
+    try {
+      await video.play();
+    } catch {
+      // Never remute after the user unlocked — keep waiting for a gesture play.
+      if (!introSoundUnlocked(video)) {
+        remuteForAutoplay(video);
+        void video.play().catch(() => undefined);
+      }
+    }
+  }
+  return {
+    muted: video.muted || video.volume === 0,
+    playing: !video.paused,
+  };
+}
+
+/**
  * Kick a theme-intro clip. Starts muted (allowed without a user gesture on
  * Android/iOS — e.g. F5 / post-fetch mount), then tries to unmute when sound
  * is enabled.
@@ -191,6 +225,10 @@ export function applyBoundThemeIntroSound(wantSound: boolean) {
  *
  * Waits for canplay and retries — calling play() at readyState 0 often rejects
  * (AbortError / background-media pause) and must not tear down the overlay.
+ *
+ * If mute/unmute bumps the sound epoch (or unlocks) while waiting for canplay,
+ * still run the resume play() path — applyBoundThemeIntroSound may have failed
+ * play() before the element was ready.
  */
 export async function playThemeIntro(
   video: HTMLVideoElement,
@@ -207,23 +245,11 @@ export async function playThemeIntro(
   // Already running (or user already unlocked sound) — never re-enter the
   // muted=true autoplay path; that permanently breaks WebKit unmute.
   if ((!video.paused && video.readyState >= 2) || introSoundUnlocked(video)) {
-    const unlocked = introSoundUnlocked(video);
-    setThemeIntroSound(video, soundWanted(), { forceUnmute: unlocked });
-    if (video.paused) {
-      try {
-        await video.play();
-      } catch {
-        // Never remute after the user unlocked — keep waiting for a gesture play.
-        if (!introSoundUnlocked(video)) {
-          remuteForAutoplay(video);
-          void video.play().catch(() => undefined);
-        }
-      }
-    }
-    return {
-      muted: video.muted || video.volume === 0,
-      playing: !video.paused,
-    };
+    return applyIntroSoundAndResume(
+      video,
+      soundWanted(),
+      introSoundUnlocked(video),
+    );
   }
 
   remuteForAutoplay(video);
@@ -231,23 +257,21 @@ export async function playThemeIntro(
   const ready = await waitForVideoCanPlay(video);
   if (!ready) return { muted: true, playing: false };
   if (themeIntroSoundEpoch !== epochAtStart || introSoundUnlocked(video)) {
-    setThemeIntroSound(video, soundWanted(), {
-      forceUnmute: introSoundUnlocked(video),
-    });
-    return {
-      muted: video.muted || video.volume === 0,
-      playing: !video.paused,
-    };
+    return applyIntroSoundAndResume(
+      video,
+      soundWanted(),
+      introSoundUnlocked(video),
+    );
   }
 
   let playing = false;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     if (themeIntroSoundEpoch !== epochAtStart || introSoundUnlocked(video)) {
-      setThemeIntroSound(video, soundWanted(), {
-        forceUnmute: introSoundUnlocked(video),
-      });
-      playing = !video.paused;
-      break;
+      return applyIntroSoundAndResume(
+        video,
+        soundWanted(),
+        introSoundUnlocked(video),
+      );
     }
     try {
       remuteForAutoplay(video);

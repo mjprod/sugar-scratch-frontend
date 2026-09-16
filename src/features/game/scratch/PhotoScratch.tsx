@@ -84,6 +84,7 @@ import {
   bindThemeIntroVideo,
   playThemeIntro,
   releaseMediaElement,
+  retryThemeIntroPlayback,
   setThemeIntroSound,
   unbindThemeIntroVideo,
 } from "../shared/media";
@@ -2409,12 +2410,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       (result) => {
         if (cancelled) return;
         if (!result.playing) {
-          // Keep trying muted autoplay — do not tear down on cold-refresh
-          // unmuted-autoplay failure (sound pref may be on from last session).
-          video.muted = true;
-          video.defaultMuted = true;
-          video.setAttribute("muted", "");
-          void video.play().catch(() => undefined);
+          // Keep trying autoplay — do not tear down on cold-refresh failure.
+          // Never flip muted=true after a gesture unlock (WebKit stays silent).
+          retryThemeIntroPlayback(video);
           return;
         }
         // Never force-unmute here — that needs a user gesture after refresh.

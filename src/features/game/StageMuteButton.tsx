@@ -13,11 +13,11 @@ import {
 } from "./shared/media";
 import {
   isCountdownAudioPlaying,
-  isCountdownSoundUnlocked,
   resumeCountdownAudioIfActive,
   stopCountdownAudio,
   unlockCountdownSound,
 } from "./modules/InitialCountdown";
+import { stageMuteIconShowsSoundOn } from "./stageMuteIconPolicy";
 
 function prefsSoundOn() {
   const prefs = getGameAudioPrefs();
@@ -31,12 +31,16 @@ function liveAudioOn() {
 /**
  * Icon follows what the user can hear. If intro/countdown audio is already
  * playing, show unmuted so the first tap mutes.
+ *
+ * Hub Play unlocks countdown only — the theme intro may still be autoplay-
+ * muted. Treat that as muted so the first tap unlocks the clip.
  */
 function audibleSoundOn() {
-  if (liveAudioOn()) return true;
-  if (!prefsSoundOn()) return false;
-  if (introNeedsGestureUnlock() && !isCountdownSoundUnlocked()) return false;
-  return true;
+  return stageMuteIconShowsSoundOn({
+    liveAudioOn: liveAudioOn(),
+    prefsSoundOn: prefsSoundOn(),
+    introNeedsGestureUnlock: introNeedsGestureUnlock(),
+  });
 }
 
 /**
