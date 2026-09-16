@@ -20,11 +20,10 @@ type PackProgressProps = {
   total: number;
 };
 
-/** Compact pack-progress pill — status-row HUD. Card lottie plays on new card. */
+/** Compact pack-progress pill — status-row HUD. Card lottie plays when badge shows. */
 export function PackProgress({ current, total }: PackProgressProps) {
-  // Remount DotLottie only when the card index advances so idle mounts stay still.
-  // Mid-pack HUD remounts (stage hides the pill after first scratch) start with
-  // playKey > 0 so the transition still runs.
+  // playKey starts > 0 so every mount autoplays once (badge in / remount).
+  // Card-index bumps remount the player again for the next one-shot.
   const [playKey, setPlayKey] = useState(() =>
     initialCardCountdownPlayKey(current),
   );
@@ -33,7 +32,6 @@ export function PackProgress({ current, total }: PackProgressProps) {
   useEffect(() => {
     const prev = prevCurrentRef.current;
     prevCurrentRef.current = current;
-    // First paint: show static first frame. Later card bumps: remount + play.
     if (prev != null && current !== prev) {
       setPlayKey((n) => n + 1);
     }

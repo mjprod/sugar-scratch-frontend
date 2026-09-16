@@ -748,6 +748,30 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-match-enter 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Lab park before dock fly: no foil-enter flash. */
+.top-symbol-bar.is-phase-center.is-force-revealed:not(.is-dock-exiting) {
+  animation: none;
+}
+
+/*
+ * Dock fly host: rAF pins top/left in px and owns transform.
+ * Kill CSS animations/transitions so nothing fights the climb.
+ */
+.top-symbol-bar.is-phase-center.is-dock-exiting {
+  pointer-events: none;
+  animation: none !important;
+  transition: none !important;
+  opacity: 1 !important;
+  /* filter is set inline by the rAF tween (motion blur) — do not force none. */
+  z-index: 12;
+}
+
+/* After fly handoff: no CSS transition/enter flash on first docked paint. */
+.top-symbol-bar.is-phase-docked.is-force-revealed {
+  animation: none !important;
+  transition: none !important;
+}
+
 @keyframes top-bar-match-enter {
   0% {
     opacity: 0;
@@ -890,11 +914,12 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   /* Stage-absolute dock: same 6-slot width as the chrome center spacer so
      pause/mute gutters stay put while this bar flies mid → top.
      Override .symbol-bar left/right/margin so centering is left:50% only. */
-  position: absolute !important;
-  top: var(
+  --top-bar-dock-top: var(
     --game-top-hud,
     calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
-  ) !important;
+  );
+  position: absolute !important;
+  top: var(--top-bar-dock-top) !important;
   left: 50% !important;
   right: auto !important;
   box-sizing: border-box;
@@ -906,42 +931,17 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   padding: var(--game-top-bar-pad-y, 7px) var(--game-top-bar-pad-x, 8px);
   pointer-events: none;
   cursor: default;
-  /* Keep width/gap/pad transitions off — size is locked to 6 slots. */
   transition: none;
-  animation: top-bar-dock-fly 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: none;
   background: transparent;
   border: 0 !important;
   box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
   overflow: hidden;
   z-index: 9;
+  opacity: 1;
+  filter: none;
 }
 
-/* Lab / skip-to-play lands already docked — no mid→top fly on first paint. */
-.top-symbol-bar.is-phase-docked.is-force-revealed {
-  animation: none;
-}
-
-@keyframes top-bar-dock-fly {
-  0% {
-    top: 50%;
-    /* Mid-screen foil is larger (44px slots); scale down into docked 6-slot pill. */
-    transform: translateX(-50%) translateY(-50%) scale(1.18);
-    box-shadow:
-      0 18px 48px oklch(0 0 0 / 0.5),
-      0 0 48px oklch(0.865 0.116 75.55 / 0.35);
-  }
-  42% {
-    transform: translateX(-50%) translateY(-58%) scale(0.94);
-  }
-  100% {
-    top: var(
-      --game-top-hud,
-      calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh)
-    );
-    transform: translateX(-50%) translateY(0) scale(1);
-    box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
-  }
-}
 
 /* After dock: cascade right→left into grayscale on the ICON only.
    Slot plate stays solid black — never wash the circle fill. */
@@ -958,35 +958,36 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-slot-go-dormant 520ms cubic-bezier(0.33, 1, 0.4, 1) both;
 }
 
+/* Dormant cascade starts when is-dormant lands (after FLIP), so short stagger. */
 .top-symbol-bar.is-phase-docked
   .top-symbol-slot.is-dormant:nth-child(6)
   .game-symbol-lottie {
-  animation-delay: 380ms;
+  animation-delay: 0ms;
 }
 .top-symbol-bar.is-phase-docked
   .top-symbol-slot.is-dormant:nth-child(5)
   .game-symbol-lottie {
-  animation-delay: 440ms;
+  animation-delay: 40ms;
 }
 .top-symbol-bar.is-phase-docked
   .top-symbol-slot.is-dormant:nth-child(4)
   .game-symbol-lottie {
-  animation-delay: 500ms;
+  animation-delay: 80ms;
 }
 .top-symbol-bar.is-phase-docked
   .top-symbol-slot.is-dormant:nth-child(3)
   .game-symbol-lottie {
-  animation-delay: 560ms;
+  animation-delay: 120ms;
 }
 .top-symbol-bar.is-phase-docked
   .top-symbol-slot.is-dormant:nth-child(2)
   .game-symbol-lottie {
-  animation-delay: 620ms;
+  animation-delay: 160ms;
 }
 .top-symbol-bar.is-phase-docked
   .top-symbol-slot.is-dormant:nth-child(1)
   .game-symbol-lottie {
-  animation-delay: 680ms;
+  animation-delay: 200ms;
 }
 
 @keyframes top-bar-slot-go-dormant {
@@ -1441,7 +1442,8 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 /* Continuous frame progress — outer card stroke (symbol hunt).
    Keep the stroke inside the stage (positive insets only — negative would
    clip under overflow:hidden). On phones, lift the bottom edge above the
-   iOS browser chrome with safe-area + a small dvh-based toolbar clearance. */
+   iOS browser chrome with safe-area + a small dvh-based toolbar clearance.
+   Android Chrome overrides below (html[data-game-android]). */
 .scratch-frame-progress {
   --frame-inset-x: max(4px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   --frame-inset-top: max(4px, env(safe-area-inset-top, 0px));
@@ -1471,6 +1473,18 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
     );
     --frame-inset-top: max(8px, env(safe-area-inset-top, 0px));
     --frame-inset-x: max(6px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+  }
+
+  /*
+   * Android: stage is already pinned to visualViewport, so don't re-add a
+   * large toolbar floor (that double-pads). Match iOS optical spacing.
+   */
+  html[data-game-android="1"] .scratch-frame-progress {
+    --frame-inset-bottom: max(
+      12px,
+      env(safe-area-inset-bottom, 0px),
+      calc(env(safe-area-inset-bottom, 0px) + clamp(12px, 2.5svh, 20px))
+    );
   }
 }
 
@@ -2050,6 +2064,8 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   .top-symbol-bar.is-phase-center,
   .top-symbol-bar.is-phase-center.is-scratchable::after,
   .top-symbol-bar.is-phase-center.is-cleared,
+  .top-symbol-bar.is-phase-center.is-dock-exiting,
+  /* (WAAPI dock fly respects reduced motion in JS) */
   .top-symbol-bar.is-phase-docked,
   .top-symbol-bar.is-phase-showcase,
   .top-symbol-bar.is-cleared .top-symbol-slot.is-revealed,
@@ -4020,6 +4036,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    /* Safari / iOS original: full dynamic viewport. */
     height: 100dvh;
     left: 0;
     position: fixed;
@@ -4052,6 +4069,33 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     transition: transform var(--scratch-zoom-duration, 180ms)
       var(--scratch-zoom-easing, ease-out);
     width: max(100dvw, 100dvh * 390 / 672);
+  }
+
+  /* Android Chrome only — size to visualViewport (see AppLayout). */
+  html[data-game-android="1"] .app-shell:not(.home-picker):not(.photo-scratch-page) {
+    min-height: var(--game-vv-height, 100svh);
+    height: var(--game-vv-height, 100svh);
+    max-height: var(--game-vv-height, 100svh);
+  }
+
+  html[data-game-android="1"] .app-shell.home-picker {
+    min-height: var(--game-vv-height, 100svh);
+  }
+
+  html[data-game-android="1"] .stage {
+    height: var(--game-vv-height, 100svh);
+    max-height: var(--game-vv-height, 100svh);
+    top: var(--game-vv-top, 0px);
+  }
+
+  html[data-game-android="1"] .stage canvas.photo-scratch-fg-layer {
+    height: max(var(--game-vv-height, 100svh), 100dvw * 672 / 390);
+    width: max(100dvw, var(--game-vv-height, 100svh) * 390 / 672);
+  }
+
+  html[data-game-android="1"] .stage .game-stage-canvas-wrap {
+    height: max(var(--game-vv-height, 100svh), 100dvw * 672 / 390);
+    width: max(100dvw, var(--game-vv-height, 100svh) * 390 / 672);
   }
 
   .stage .game-stage-canvas-wrap .game-stage-canvas {
