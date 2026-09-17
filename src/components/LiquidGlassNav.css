@@ -493,12 +493,13 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
     )
     scale(var(--top-bubble-scale, 1));
   transform-origin: center center;
+  /* 0ms fallback — same first-paint trap as the dock bubble. */
   transition:
-    transform var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    width var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    height var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    opacity var(--top-bubble-opacity-duration, 180ms) ease;
+    transform var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    width var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    height var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--top-bubble-opacity-duration, 0ms) ease;
   will-change: transform, width, height, border-radius, opacity;
 }
 
@@ -523,11 +524,11 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   box-shadow: inset 4px 5px 0px -3px oklch(0.652 0.267 355.66);
   /* Slow fade-in after the indicator settles */
   transition:
-    transform var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    width var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    height var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius var(--top-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    opacity var(--top-bubble-opacity-duration, 180ms) ease;
+    transform var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    width var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    height var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius var(--top-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--top-bubble-opacity-duration, 0ms) ease;
 }
 
 /* Invisible drag handle above items so bubble can be grabbed */
@@ -1489,13 +1490,18 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
     )
     scale(var(--dock-bubble-scale, 1));
   transform-origin: center center;
+  /*
+   * Duration fallbacks MUST be 0ms. On first paint the cascade still has no
+   * inline --dock-bubble-* vars, and CSS transitions use the *pre-change*
+   * duration — a 420ms default made the indicator slide up from y:0 on load.
+   */
   transition:
-    transform var(--dock-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    width var(--dock-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    height var(--dock-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius var(--dock-bubble-duration, 420ms) cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 70ms ease-out,
-    filter 70ms ease-out;
+    transform var(--dock-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    width var(--dock-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    height var(--dock-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius var(--dock-bubble-duration, 0ms) cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--dock-bubble-opacity-duration, 0ms) ease-out,
+    filter var(--dock-bubble-opacity-duration, 0ms) ease-out;
   will-change: transform, width, height, border-radius, opacity, filter;
 }
 

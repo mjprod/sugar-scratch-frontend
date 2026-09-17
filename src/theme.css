@@ -8522,7 +8522,8 @@ body[data-theme="v8"] .hf-viewport {
   touch-action: pan-y;
   overscroll-behavior-y: contain;
   scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
+  /* Keep auto — smooth here made restore/loadMore/loop teleports animate through cards. */
+  scroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   /* Desktop: drag-to-swipe affordance (touch still uses native pan-y). */
