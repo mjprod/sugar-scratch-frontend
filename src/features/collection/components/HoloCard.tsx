@@ -34,6 +34,10 @@ import {
   PLACEHOLDER_MEDIA_URL,
   type CardFaceOverlayConfig,
 } from '../lib/cards'
+import {
+  shouldNudgeCachedSrcLoad,
+  shouldPlayFromDecodePoll,
+} from '../lib/faceVideoPlayback'
 import { getVideoCardCount } from '../lib/photoSlots'
 import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
 import { useCollectionActions } from '../CollectionActionsContext'
@@ -1762,9 +1766,9 @@ export default function HoloCard({
     }
 
     // Video: don't leave the card stuck in .loading (front opacity: 0).
-    // Safari often won't re-fire loadeddata for a cached src, so poll readyState
-    // and also force a load() after mount. Playback is owned by the select /
-    // scrub effects below — this only waits for a decoded frame.
+    // Safari often won't re-fire loadeddata for a cached src (hero preload),
+    // so poll readyState, nudge load(), and start playback here — the select
+    // effect can miss that path if it only waits for media events.
     const clearLoading = () => {
       if (!cancelled) {
         setLoading(false)
@@ -1776,6 +1780,7 @@ export default function HoloCard({
     const fallback = window.setTimeout(() => {
       if (!cancelled) setLoading(false)
     }, 2500)
+    let didNudgeLoad = false
     const tryReveal = () => {
       const el =
         frontVideoRef.current ??
@@ -1783,7 +1788,37 @@ export default function HoloCard({
           '.card__front video'
         ) as HTMLVideoElement | null)
       if (!el) return
-      if (el.readyState >= 2) clearLoading()
+      if (el.readyState >= 2) {
+        clearLoading()
+        if (
+          shouldPlayFromDecodePoll({
+            playFrontVideo,
+            scrubbing: isCarouselScrubbing(),
+            readyState: el.readyState,
+            paused: el.paused,
+          })
+        ) {
+          void el.play().catch(() => {
+            // Autoplay may be blocked until a gesture; first frame still shows.
+          })
+        }
+        return
+      }
+      if (
+        !didNudgeLoad &&
+        shouldNudgeCachedSrcLoad({
+          readyState: el.readyState,
+          networkState: el.networkState,
+          networkIdle: HTMLMediaElement.NETWORK_IDLE,
+        })
+      ) {
+        didNudgeLoad = true
+        try {
+          el.load()
+        } catch {
+          // ignore
+        }
+      }
     }
     // Next frames: video node is mounted after this effect runs.
     const raf1 = requestAnimationFrame(() => {
@@ -1797,36 +1832,78 @@ export default function HoloCard({
       window.clearInterval(interval)
       cancelAnimationFrame(raf1)
     }
-  }, [facePosterUrl, frontDisplayUrl, mountFrontVideo, showFrontVideo])
+  }, [
+    facePosterUrl,
+    frontDisplayUrl,
+    isCarouselScrubbing,
+    mountFrontVideo,
+    playFrontVideo,
+    showFrontVideo,
+  ])
 
   // Start / stop the face clip when selection changes (poster-first browse).
   useEffect(() => {
-    const video = frontVideoRef.current
-    if (!video) return
-    if (!playFrontVideo || isCarouselScrubbing()) {
-      if (!video.paused) video.pause()
-      return
-    }
-    if (video.readyState >= 2) {
-      void video.play().catch(() => {
-        // Autoplay may be blocked; poster / first frame stays visible.
-      })
-      return
-    }
+    let cancelled = false
+    let raf = 0
+    let waiting: HTMLVideoElement | null = null
     const onReady = () => {
-      video.removeEventListener('loadeddata', onReady)
-      video.removeEventListener('canplay', onReady)
+      if (waiting) {
+        waiting.removeEventListener('loadeddata', onReady)
+        waiting.removeEventListener('canplay', onReady)
+      }
+      if (cancelled) return
+      const video = frontVideoRef.current
+      if (!video) return
       if (activeRef.current && !isCarouselScrubbing()) {
         void video.play().catch(() => {
           // ignore
         })
       }
     }
-    video.addEventListener('loadeddata', onReady)
-    video.addEventListener('canplay', onReady)
+    const run = () => {
+      const video = frontVideoRef.current
+      if (!video) return false
+      if (!playFrontVideo || isCarouselScrubbing()) {
+        if (!video.paused) video.pause()
+        return true
+      }
+      if (video.readyState >= 2) {
+        void video.play().catch(() => {
+          // Autoplay may be blocked; poster / first frame stays visible.
+        })
+        return true
+      }
+      waiting = video
+      video.addEventListener('loadeddata', onReady)
+      video.addEventListener('canplay', onReady)
+      if (
+        shouldNudgeCachedSrcLoad({
+          readyState: video.readyState,
+          networkState: video.networkState,
+          networkIdle: HTMLMediaElement.NETWORK_IDLE,
+        })
+      ) {
+        try {
+          video.load()
+        } catch {
+          // ignore
+        }
+      }
+      return true
+    }
+    if (!run()) {
+      // Same mount timing as decode polling — ref can still be null this tick.
+      raf = requestAnimationFrame(() => {
+        if (!cancelled) run()
+      })
+    }
     return () => {
-      video.removeEventListener('loadeddata', onReady)
-      video.removeEventListener('canplay', onReady)
+      cancelled = true
+      cancelAnimationFrame(raf)
+      if (waiting) {
+        waiting.removeEventListener('loadeddata', onReady)
+        waiting.removeEventListener('canplay', onReady)
+      }
     }
   }, [isCarouselScrubbing, playFrontVideo])
 
