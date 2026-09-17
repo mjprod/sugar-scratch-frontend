@@ -358,9 +358,9 @@ export function useMemoryTransition(): MemoryTransitionValue {
         const url = new URL(to, window.location.href);
         const next = `${url.pathname}${url.search}${url.hash}`;
         if (options?.replace) {
-          window.history.replaceState(options.state ?? null, "", next);
+          window.history.replaceState(options?.state ?? null, "", next);
         } else {
-          window.history.pushState(options.state ?? null, "", next);
+          window.history.pushState(options?.state ?? null, "", next);
         }
         window.dispatchEvent(new PopStateEvent("popstate"));
       },
