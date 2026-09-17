@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pause } from "lucide-react";
+import { Pause, X } from "lucide-react";
 
 /**
  * Pause control for the scratch stage: opens an overlay with resume / leave.
@@ -32,6 +32,8 @@ export function GamePauseButton({ onLeave }: { onLeave: () => void }) {
   );
 }
 
+const PAUSE_LEAVE_MS = 320;
+
 function GamePauseModal({
   onResume,
   onLeave,
@@ -41,48 +43,110 @@ function GamePauseModal({
 }) {
   const titleId = useId();
   const resumeRef = useRef<HTMLButtonElement>(null);
+  const [leaving, setLeaving] = useState(false);
+  const resumeAfterLeaveRef = useRef(false);
+  const leaveDoneRef = useRef(false);
+
+  function finishLeave() {
+    if (leaveDoneRef.current) return;
+    leaveDoneRef.current = true;
+    if (resumeAfterLeaveRef.current) onResume();
+  }
+
+  function requestClose(resume = true) {
+    if (leaving) return;
+    resumeAfterLeaveRef.current = resume;
+    leaveDoneRef.current = false;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      if (resume) onResume();
+      return;
+    }
+    setLeaving(true);
+  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onResume();
+      if (event.key === "Escape") requestClose(true);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onResume]);
+  });
 
-  // Land keyboard focus inside the dialog rather than back on the stage.
   useEffect(() => {
     resumeRef.current?.focus();
   }, []);
 
+  // Fallback if animationend is skipped (tab backgrounded, reduced motion race).
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = window.setTimeout(finishLeave, PAUSE_LEAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [leaving]);
+
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="game-pause" role="presentation">
+    <div
+      className={["game-pause", leaving ? "is-leaving" : ""].filter(Boolean).join(" ")}
+      role="presentation"
+    >
       <button
         type="button"
         className="game-pause__scrim"
         aria-label="Resume game"
-        onClick={onResume}
+        onClick={() => requestClose(true)}
       />
       <div
         className="game-pause__panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onAnimationEnd={(event) => {
+          if (!leaving) return;
+          if (event.target !== event.currentTarget) return;
+          if (!event.animationName.split(", ").includes("game-pause-panel-out")) {
+            return;
+          }
+          finishLeave();
+        }}
       >
+        <button
+          type="button"
+          className="game-pause__close"
+          aria-label="Close"
+          onClick={() => requestClose(true)}
+        >
+          <X aria-hidden="true" strokeWidth={2.5} />
+        </button>
+        <img
+          src="/svg/logoSugarScratch.svg"
+          alt=""
+          className="game-pause__logo"
+          draggable={false}
+          aria-hidden="true"
+        />
         <h2 id={titleId} className="game-pause__title">
-          Paused
+          Game Paused
         </h2>
         <button
           ref={resumeRef}
           type="button"
           className="game-pause__resume"
-          onClick={onResume}
+          onClick={() => requestClose(true)}
         >
           Resume
         </button>
-        <button type="button" className="game-pause__leave" onClick={onLeave}>
+        <button
+          type="button"
+          className="game-pause__leave"
+          onClick={() => {
+            // Leave should go immediately; no need to reverse-animate out first.
+            onLeave();
+          }}
+        >
           Leave Game
         </button>
       </div>

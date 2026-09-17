@@ -1748,8 +1748,16 @@ wrapperClass={`coverflow-pack-html coverflow-pack-html--active${
               >
                 <div className="coverflow-buy-pack-cta__primary">
                   <CtaButton
-                    {...ctaButtonPropsFromTemplate('hexGoldCTA')}
+                    {...ctaButtonPropsFromTemplate('squircleCTA')}
                     {...ctaSize}
+                    cornerRadius={12} /* 0.75rem */
+                    // Force red squircle plate (coverflow used to pin gold hex chrome).
+                    auroraBaseColor="#42001b"
+                    auroraColorStops={['#aa3c6b', '#ea2e89', '#42001b', '#933e4c']}
+                    glowColors={['#aa085f', '#e00083', '#eb6a00']}
+                    glowColor="326 90 30"
+                    strokeColor="rgba(170, 8, 95, 0.42)"
+                    labelColor="#ffe0e8"
                     auroraPaused={isMobile}
                     glowOuterBloom="off"
                     costIconAnimated={false}

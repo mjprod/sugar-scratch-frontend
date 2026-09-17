@@ -483,7 +483,7 @@
 
 .stage-game__bottom-chrome-logo {
   display: block;
-  /* 1.5× the prior 44px (2×) mark — row height stays --bottom-chrome-h. */
+  /* Layout box stays put; scale paints ~1.25× larger without growing coin row. */
   height: 66px;
   width: auto;
   max-width: min(48%, 180px);
@@ -491,8 +491,9 @@
   object-position: right center;
   opacity: 0.92;
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
-  /* Nudge up so the mark sits on the chrome baseline without stage-edge clip. */
-  transform: translate(-4px, -10px);
+  transform-origin: right center;
+  /* Nudge up + scale; parent overflow is visible. */
+  transform: translate(-4px, -10px) scale(1.25);
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
@@ -519,7 +520,8 @@
   .stage-game__bottom-chrome-logo {
     height: 44px;
     max-width: min(38vw, 120px);
-    transform: translate(0, -6px);
+    transform-origin: right center;
+    transform: translate(0, -6px) scale(1.25);
   }
 
   /*
@@ -987,36 +989,240 @@
   /* Solid dim only — no backdrop-filter on the game page. */
   background: oklch(0.08 0.01 284 / 0.72);
   cursor: default;
+  animation: game-pause-scrim-in 220ms ease both;
 }
 
-/* Solid rose panel (no glass / backdrop-filter). */
+/* Match coverflow anchored confirm colors (no glass / backdrop-filter). */
 .game-pause__panel {
-  --top-nav-surface: linear-gradient(
-    180deg,
-    oklch(0.316 0.126 12.15) 0%,
-    oklch(0.261 0.104 10.45) 45%,
-    oklch(0.141 0.057 0.87) 100%
-  );
   position: relative;
   z-index: 1;
   width: min(100%, 320px);
   padding: 20px 18px 16px;
   border: 1px solid oklch(1 0 0 / 0.1);
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--top-nav-surface);
+  border-radius: 1.15rem;
+  overflow: visible;
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0 0 / 0.92) 0%,
+    oklch(0.12 0 0 / 0.94) 100%
+  );
   box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.12),
-    0 8px 24px oklch(0 0 0 / 0.28);
+    inset 0 1px 0 oklch(1 0 0 / 0.1),
+    0 12px 28px oklch(0 0 0 / 0.42);
+  color: oklch(1 0 0 / 0.92);
+  transform-origin: center bottom;
+  animation: game-pause-panel-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes game-pause-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes game-pause-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes game-pause-scrim-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Reverse of game-pause-panel-in. */
+@keyframes game-pause-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+}
+
+/* Reverse of game-pause-close-enter (settle → overshoot → shrink away). */
+@keyframes game-pause-close-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  38% {
+    opacity: 1;
+    transform: scale(1.14);
+    animation-timing-function: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.58);
+  }
+}
+
+.game-pause.is-leaving {
+  pointer-events: none;
+}
+
+.game-pause.is-leaving .game-pause__scrim {
+  animation: game-pause-scrim-out 280ms ease both;
+}
+
+.game-pause.is-leaving .game-pause__panel {
+  animation: game-pause-panel-out 280ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both;
+}
+
+.game-pause.is-leaving .game-pause__close {
+  /* No delay on exit — reverse runs with the panel. */
+  animation: game-pause-close-out 280ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both;
+  transition: none;
+}
+
+.game-pause.is-leaving .game-pause__close:hover,
+.game-pause.is-leaving .game-pause__close:active {
+  transform: none;
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0 0 / 0.72) 0%,
+    oklch(0.12 0 0 / 0.94) 100%
+  );
+  border-color: oklch(1 0 0 / 0.14);
+  color: oklch(1 0 0 / 0.78);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-pause__scrim,
+  .game-pause__panel,
+  .game-pause__close,
+  .game-pause.is-leaving .game-pause__scrim,
+  .game-pause.is-leaving .game-pause__panel,
+  .game-pause.is-leaving .game-pause__close {
+    animation: none;
+  }
+
+  .game-pause__close {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Top-right close — outside panel; delayed enter like coverflow buy-confirm. */
+.game-pause__close {
+  position: absolute;
+  top: -0.7rem;
+  right: -0.7rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.3125rem;
+  height: 2.3125rem;
+  min-width: 2.3125rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0 0 / 0.72) 0%,
+    oklch(0.12 0 0 / 0.94) 100%
+  );
+  box-shadow: none;
+  color: oklch(1 0 0 / 0.78);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.72);
+  transform-origin: center;
+  /* Panel enter ~360ms — start close at 260ms (same as coverflow confirm). */
+  animation: game-pause-close-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) 260ms both;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms ease;
+}
+
+@keyframes game-pause-close-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.58);
+    animation-timing-function: cubic-bezier(0.22, 0.9, 0.32, 1);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.14);
+    animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.game-pause__close svg {
+  width: 1.1875rem;
+  height: 1.1875rem;
+}
+
+.game-pause__close:hover {
+  border-color: oklch(1 0 0 / 0.42);
+  background: linear-gradient(
+    180deg,
+    oklch(0.28 0 0 / 0.88) 0%,
+    oklch(0.16 0 0 / 0.96) 100%
+  );
+  color: oklch(1 0 0 / 0.95);
+  transform: scale(1.06);
+}
+
+.game-pause__close:active {
+  background: linear-gradient(
+    180deg,
+    oklch(0.16 0 0 / 0.9) 0%,
+    oklch(0.1 0 0 / 0.98) 100%
+  );
+  transform: scale(0.96);
+}
+
+.game-pause__close:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
+}
+
+.game-pause__logo {
+  display: block;
+  width: auto;
+  height: 2.8125rem; /* 2.25rem * 1.25 */
+  max-width: min(78%, 13.75rem);
+  margin: 0 auto 12px;
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 1px 2px oklch(0 0 0 / 0.35));
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
 .game-pause__title {
   margin: 0 0 14px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.01em;
   text-align: center;
-  color: oklch(0.971 0.003 286.35 / 0.92);
+  color: oklch(1 0 0 / 0.92);
 }
 
 .game-pause__resume {
@@ -1026,20 +1232,24 @@
   width: 100%;
   height: 44px;
   margin-top: 4px;
-  border: 1px solid oklch(0.779 0.139 1.41 / 0.5);
+  border: 1px solid oklch(1 0 0 / 0.16);
   border-radius: 12px;
-  background: oklch(0.639 0.256 9.9 / 0.42);
-  color: oklch(0.995 0.002 286 / 0.96);
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.72);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition:
     background 160ms ease,
-    border-color 160ms ease;
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 120ms ease;
 }
 
 .game-pause__resume:hover {
-  background: oklch(0.639 0.256 9.9 / 0.55);
+  border-color: oklch(1 0 0 / 0.24);
+  background: oklch(1 0 0 / 0.14);
+  color: oklch(1 0 0 / 0.9);
 }
 
 .game-pause__resume:active {
@@ -1047,28 +1257,34 @@
 }
 
 .game-pause__leave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 40px;
   margin-top: 6px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 0;
   background: transparent;
-  color: oklch(1 0 0 / 0.55);
+  color: oklch(0.72 0.18 25);
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition:
-    background 160ms ease,
-    color 160ms ease;
+  transition: color 160ms ease, opacity 160ms ease;
 }
 
 .game-pause__leave:hover {
-  background: oklch(1 0 0 / 0.06);
-  color: oklch(1 0 0 / 0.85);
+  background: transparent;
+  color: oklch(0.78 0.2 25);
+}
+
+.game-pause__leave:active {
+  opacity: 0.85;
 }
 
 .game-pause__resume:focus-visible,
 .game-pause__leave:focus-visible {
-  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
   outline-offset: 2px;
 }
 

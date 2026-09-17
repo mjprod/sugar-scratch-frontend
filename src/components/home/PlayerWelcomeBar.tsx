@@ -38,9 +38,15 @@ function firstNameFromProfile(profile: {
 export function PlayerWelcomeBar({
   onClaimed,
   onClaimAttempt,
+  claimLabel = "FREE",
+  readySubtitle,
 }: {
   onClaimed: (diamonds: number) => void;
   onClaimAttempt?: () => boolean;
+  /** CTA label when the daily gift is available. */
+  claimLabel?: string;
+  /** Override subtitle while the daily gift is still claimable. */
+  readySubtitle?: string;
 }) {
   const { profile } = useAuth();
   const titleId = useId();
@@ -101,9 +107,11 @@ export function PlayerWelcomeBar({
   const greetingTitle = isNewUser
     ? `Welcome to Sugar, ${firstName}!`
     : `Welcome back, ${firstName}!`;
-  const greetingSubtitle = isNewUser
-    ? "Your collection starts here ✨"
-    : "Keep collecting, you're on a roll ✨";
+  const greetingSubtitle =
+    readySubtitle ??
+    (isNewUser
+      ? "Your collection starts here ✨"
+      : "Keep collecting, you're on a roll ✨");
 
   return (
     <section
@@ -149,7 +157,7 @@ export function PlayerWelcomeBar({
             aria-busy={claiming}
             onClick={handleClaim}
           >
-            {claiming ? "Claiming…" : "FREE"}
+            {claiming ? "Claiming…" : claimLabel}
           </button>
         )}
 

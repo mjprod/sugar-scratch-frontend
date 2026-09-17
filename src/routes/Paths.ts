@@ -80,6 +80,8 @@ export const Paths = {
   resetPassword: "/reset-password",
   coverflowV2: "/coverflow-v2",
   mobileCarousel: "/mobile-carousel",
+  /** @deprecated Design is now the logged-in home at Paths.home. */
+  homeVersion2: "/home-version2",
 } as const;
 
 /** Tabs guests can open without auth (Store is browseable; purchase still gates). */
@@ -107,11 +109,12 @@ export function pathForTab(tab: AppTab): string {
 export function tabFromPathname(pathname: string): AppTab | null {
   // Discover feed
   if (pathname.startsWith("/discover")) return "home";
-  // Home browse + search
+  // Home browse + search (+ legacy home-version2 redirect)
   if (
     pathname === "/" ||
     pathname.startsWith("/browse") ||
-    pathname.startsWith("/search")
+    pathname.startsWith("/search") ||
+    pathname.startsWith("/home-version2")
   ) {
     return "feed";
   }

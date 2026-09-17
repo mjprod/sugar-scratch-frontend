@@ -4,6 +4,9 @@ type PlayStep = {
   title: string;
   sentence: string;
   icon: ReactNode;
+  /** Optional image art (Figma How to Play cards). */
+  imageSrc?: string;
+  imageClassName?: string;
 };
 
 function CollectIcon() {
@@ -42,8 +45,7 @@ function WinDiamondsIcon() {
 const STEPS: PlayStep[] = [
   {
     title: "Collect",
-    sentence:
-      "Grab every influencer to build a legendary full set!",
+    sentence: "Grab every influencer to build a legendary full set!",
     icon: <CollectIcon />,
   },
   {
@@ -55,6 +57,31 @@ const STEPS: PlayStep[] = [
     title: "Win Diamonds",
     sentence: "Scratch your cards and rake in the diamonds!",
     icon: <WinDiamondsIcon />,
+  },
+];
+
+/** Figma Home (2:20) — Scratch / Win / Collect with design art. */
+export const FIGMA_HOME_PLAY_STEPS: PlayStep[] = [
+  {
+    title: "Scratch",
+    sentence: "Scratch & reveal matching symbols",
+    icon: <ScratchMatchIcon />,
+    imageSrc: "/images/home-v2/how-scratch.png",
+    imageClassName: "is-scratch",
+  },
+  {
+    title: "Win",
+    sentence: "Win cards scratch for diamonds",
+    icon: <WinDiamondsIcon />,
+    imageSrc: "/images/home-v2/how-win.png",
+    imageClassName: "is-win",
+  },
+  {
+    title: "Collect",
+    sentence: "Complete themes get spicy content",
+    icon: <CollectIcon />,
+    imageSrc: "/images/home-v2/how-collect.png",
+    imageClassName: "is-collect",
   },
 ];
 
@@ -70,22 +97,45 @@ function PlayStepCard({
       className={[
         "home-play-steps-card",
         featured ? "home-play-steps-card--featured" : "",
+        step.imageSrc ? "has-art" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <span className="home-play-steps-icon">{step.icon}</span>
+      {step.imageSrc ? (
+        <span
+          className={[
+            "home-play-steps-art",
+            step.imageClassName ?? "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-hidden="true"
+        >
+          <img src={step.imageSrc} alt="" draggable={false} />
+        </span>
+      ) : (
+        <span className="home-play-steps-icon">{step.icon}</span>
+      )}
       <h3 className="home-play-steps-title">{step.title}</h3>
       <p className="home-play-steps-copy">{step.sentence}</p>
     </article>
   );
 }
 
-export function PlaySteps() {
+export function PlaySteps({
+  steps = STEPS,
+  title,
+}: {
+  steps?: PlayStep[];
+  /** Optional section heading (Figma Home shows “How to Play”). */
+  title?: string;
+} = {}) {
   return (
-    <section className="home-play-steps" aria-label="How to play">
+    <section className="home-play-steps" aria-label={title ?? "How to play"}>
+      {title ? <h2 className="home-play-steps-heading">{title}</h2> : null}
       <div className="home-play-steps-grid">
-        {STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <PlayStepCard
             key={step.title}
             step={step}

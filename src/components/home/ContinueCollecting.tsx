@@ -31,6 +31,12 @@ export type ContinueCollectingSectionProps = {
   ariaLabel?: string;
   /** When true, hides progress rings, percentage and fraction from cards. */
   hideProgress?: boolean;
+  /** See-all control label (default SEE ALL). */
+  seeAllLabel?: string;
+  /** Extra class on the section root (e.g. home-v2 title casing). */
+  className?: string;
+  /** Avatar + progress only — hide name / % / fraction under the ring. */
+  avatarOnly?: boolean;
 };
 
 function progressColor(percent: number): string {
@@ -65,6 +71,9 @@ export function ContinueCollectingSection({
   icon,
   ariaLabel,
   hideProgress = false,
+  seeAllLabel = "SEE ALL",
+  className,
+  avatarOnly = false,
 }: ContinueCollectingSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -112,7 +121,7 @@ export function ContinueCollectingSection({
 
   return (
     <section
-      className="continue-collecting"
+      className={["continue-collecting", className].filter(Boolean).join(" ")}
       aria-label={ariaLabel ?? title.toLowerCase()}
     >
       <div className="continue-collecting-header">
@@ -132,7 +141,7 @@ export function ContinueCollectingSection({
             className="continue-collecting-see-all"
             onClick={onSeeAllClick}
           >
-            SEE ALL
+            {seeAllLabel}
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         ) : null}
@@ -141,7 +150,7 @@ export function ContinueCollectingSection({
       <div className="continue-collecting-scroll-wrap">
         <button
           type="button"
-          className="continue-collecting-arrow is-prev"
+          className="continue-collecting-arrow is-prev glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           aria-label="Previous creators"
           disabled={!canScrollLeft}
           onClick={() => scrollByPage(-1)}
@@ -158,6 +167,7 @@ export function ContinueCollectingSection({
                   key={card.id}
                   card={card}
                   hideProgress={hideProgress}
+                  avatarOnly={avatarOnly}
                   onClick={() => {
                     onCardClick?.(card.id);
                     onOpen?.(item);
@@ -184,7 +194,7 @@ export function ContinueCollectingSection({
 
         <button
           type="button"
-          className="continue-collecting-arrow is-next"
+          className="continue-collecting-arrow is-next glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           aria-label="Next creators"
           disabled={!canScrollRight}
           onClick={() => scrollByPage(1)}
@@ -205,27 +215,39 @@ function CollectionCard({
   card,
   onClick,
   hideProgress = false,
+  avatarOnly = false,
 }: {
   card: CollectionCardData;
   onClick: () => void;
   hideProgress?: boolean;
+  avatarOnly?: boolean;
 }) {
   const percent = Math.round(
     (card.progressCurrent / Math.max(1, card.progressTotal)) * 100,
   );
   const color = progressColor(percent);
-  const showRank = card.rank != null && !card.isNew;
+  const showRank = !avatarOnly && card.rank != null && !card.isNew;
   // Just Drop In / unread: always show NEW when flagged (even at 0%).
-  const showNew = Boolean(card.isNew);
+  const showNew = !avatarOnly && Boolean(card.isNew);
+  const showMeta = !avatarOnly;
 
   return (
     <button
       type="button"
-      className="continue-collecting-card"
+      className={[
+        "continue-collecting-card",
+        avatarOnly ? "is-avatar-only" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       onClick={onClick}
       aria-label={
-        hideProgress
-          ? card.creatorName
+        hideProgress || avatarOnly
+          ? `${card.creatorName}${
+              avatarOnly && !hideProgress
+                ? `, ${percent}% collected`
+                : ""
+            }`
           : `${card.creatorName}, ${percent}% collected, ${card.progressCurrent} of ${card.progressTotal}`
       }
     >
@@ -246,7 +268,7 @@ function CollectionCard({
         {showNew ? <span className="continue-collecting-new">NEW</span> : null}
       </div>
 
-      {!hideProgress ? (
+      {showMeta && !hideProgress ? (
         <span
           className="continue-collecting-dot"
           style={{ background: color }}
@@ -254,23 +276,25 @@ function CollectionCard({
         />
       ) : null}
 
-      <div className="continue-collecting-meta">
-        <span className="continue-collecting-name">{card.creatorName}</span>
-        {!hideProgress ? (
-          <span
-            className="continue-collecting-pct"
-            style={{
-              color:
-                percent >= 60
-                  ? "oklch(0.669 0.23 6.08)"
-                  : "oklch(1 0 0 / 0.92)",
-            }}
-          >
-            {percent}%
-          </span>
-        ) : null}
-      </div>
-      {!hideProgress ? (
+      {showMeta ? (
+        <div className="continue-collecting-meta">
+          <span className="continue-collecting-name">{card.creatorName}</span>
+          {!hideProgress ? (
+            <span
+              className="continue-collecting-pct"
+              style={{
+                color:
+                  percent >= 60
+                    ? "oklch(0.669 0.23 6.08)"
+                    : "oklch(1 0 0 / 0.92)",
+              }}
+            >
+              {percent}%
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {showMeta && !hideProgress ? (
         <p className="continue-collecting-fraction">
           {card.progressCurrent} / {card.progressTotal}
         </p>

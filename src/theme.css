@@ -2206,6 +2206,10 @@ body[data-theme="v8"] .category-leaderboard-thumb:focus-visible {
 }
 
 body[data-theme="v8"] .category-leaderboard-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   min-width: 0;
   flex: 1;
   padding: 0;
@@ -2222,21 +2226,37 @@ body[data-theme="v8"] .category-leaderboard-info:focus-visible {
   border-radius: 6px;
 }
 
-body[data-theme="v8"] .category-leaderboard-pack {
+body[data-theme="v8"] .category-leaderboard-pack,
+body[data-theme="v8"] .category-leaderboard-author,
+body[data-theme="v8"] .category-leaderboard-stats {
   margin: 0;
   overflow: hidden;
-  color: oklch(1 0 0);
-  font-size: 14px;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
-body[data-theme="v8"] .category-leaderboard-meta {
-  margin: 2px 0 0;
-  overflow: hidden;
-  color: oklch(1 0 0 / 0.45);
+body[data-theme="v8"] .category-leaderboard-pack {
+  color: oklch(1 0 0);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.26px;
+}
+
+body[data-theme="v8"] .category-leaderboard-author,
+body[data-theme="v8"] .category-leaderboard-stats {
+  color: oklch(1 0 0 / 0.7);
   font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.24px;
+}
+
+/* Legacy class kept for any non-home usages. */
+body[data-theme="v8"] .category-leaderboard-meta {
+  margin: 0;
+  overflow: hidden;
+  color: oklch(1 0 0 / 0.7);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2276,8 +2296,8 @@ body[data-theme="v8"] .category-leaderboard-price-diamond svg {
 body[data-theme="v8"] .category-leaderboard-play {
   position: relative;
   z-index: 1;
-  width: 72px;
-  min-width: 72px;
+  width: 88px;
+  min-width: 88px;
   height: 32px;
   min-height: 32px;
   overflow: visible;
@@ -2298,8 +2318,32 @@ body[data-theme="v8"] .category-leaderboard-play .cta-button-glow>.border-glow-i
   height: 100%;
 }
 
+body[data-theme="v8"] .category-leaderboard-play .cta-button__inner,
+body[data-theme="v8"] .category-leaderboard-play .cta-button__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+body[data-theme="v8"] .category-leaderboard-play .cta-button__label {
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .category-leaderboard-play .cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15em;
+  width: max-content;
+  margin-inline: auto;
+}
+
 body[data-theme="v8"] .category-leaderboard-play .cta-button__title {
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
+  text-align: center;
 }
 
 /* Store — secondary page shell + package grid */
@@ -15012,3 +15056,1631 @@ body[data-theme="v8"] .search-pack-card.is-skeleton .search-pack-art {
     grid-template-columns: 1fr;
   }
 }
+/* —— Home version 2 (Figma Home 2:20) —— */
+body[data-theme="v8"] .home-v2 .home-page-inner--after-hero {
+  gap: 15px;
+  /* Clear the coverflow status pill under the carousel */
+  margin-top: -1.25rem;
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .home-v2 .home-page-inner--after-hero {
+    margin-top: -1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-v2 .home-page-inner--after-hero {
+    margin-top: -1.25rem;
+  }
+}
+
+body[data-theme="v8"] .explore-creators {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .explore-creators-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body[data-theme="v8"] .explore-creators-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .explore-creators-heart {
+  width: 14px;
+  height: 14px;
+  color: #ff3d7f;
+  flex-shrink: 0;
+}
+
+body[data-theme="v8"] .explore-creators-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.28px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .explore-creators-see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 17px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.28px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .explore-creators-see-all:hover {
+  opacity: 0.9;
+}
+
+body[data-theme="v8"] .explore-creators-scroll-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .explore-creators-viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .explore-creators-scroll {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 4px 2px 2px;
+}
+
+body[data-theme="v8"] .explore-creators-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-theme="v8"] .explore-creators-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  z-index: 1;
+}
+
+body[data-theme="v8"] .explore-creators-fade:not(.is-left) {
+  right: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.75));
+}
+
+body[data-theme="v8"] .explore-creators-fade.is-left {
+  left: 0;
+  background: linear-gradient(270deg, transparent, rgba(0, 0, 0, 0.75));
+}
+
+body[data-theme="v8"] .explore-creators-fade.is-visible {
+  opacity: 1;
+}
+
+body[data-theme="v8"] .explore-creators-arrow {
+  display: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .explore-creators-arrow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="v8"] .explore-creators-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+body[data-theme="v8"] .explore-creators-arrow:focus-visible {
+  outline: 2px solid rgba(255, 61, 127, 0.65);
+  outline-offset: 2px;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .explore-creators-arrow {
+    display: inline-flex;
+  }
+}
+
+body[data-theme="v8"] .explore-creators-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 77px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  scroll-snap-align: start;
+  text-align: center;
+}
+
+body[data-theme="v8"] .explore-creators-card:focus-visible {
+  outline: 2px solid rgba(255, 61, 127, 0.65);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+body[data-theme="v8"] .explore-creators-avatar-wrap {
+  position: relative;
+  width: 77px;
+  height: 77px;
+  border-radius: 60px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="v8"] .explore-creators-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .explore-creators-avatar.is-fallback {
+  background: linear-gradient(
+    160deg,
+    rgba(170, 0, 79, 0.45),
+    rgba(20, 10, 24, 0.9)
+  );
+}
+
+body[data-theme="v8"] .explore-creators-name {
+  display: block;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  color: #fff;
+  line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .explore-creators-sub {
+  display: block;
+  width: 100%;
+  margin-top: -6px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* —— Home v2 pixel pass (Figma 2:20) —— */
+
+/* Influencer API backdrop behind coverflow packs */
+body[data-theme="v8"] .packs-influencer-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .packs-influencer-backdrop__img {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  object-fit: cover;
+  object-position: center 28%;
+  filter: blur(0.5px) saturate(1.05);
+  transform: scale(1.04);
+}
+
+body[data-theme="v8"] .packs-influencer-backdrop__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, transparent 0%, rgba(0, 0, 0, 0.55) 72%, rgba(0, 0, 0, 0.92) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 28%, transparent 58%, rgba(0, 0, 0, 0.92) 100%);
+}
+
+body[data-theme="v8"] .home-featured-coverflow.has-influencer-backdrop,
+body[data-theme="v8"] .stage-packs.has-influencer-backdrop {
+  background: #000;
+}
+
+body[data-theme="v8"] .home-featured-coverflow.has-influencer-backdrop .stage-packs {
+  background: transparent;
+}
+
+body[data-theme="v8"] .home-featured-coverflow.has-influencer-backdrop .mobile-css-carousel-shell,
+body[data-theme="v8"] .home-featured-coverflow.has-influencer-backdrop .coverflow-stage {
+  position: relative;
+  z-index: 2;
+}
+
+/* How to Play — forced 3 equal columns + Figma art */
+body[data-theme="v8"] .home-v2 .home-play-steps {
+  margin-top: 0;
+  gap: 15px;
+  padding: 16px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(122, 122, 122, 0.12);
+  background: linear-gradient(180deg, rgba(25, 17, 39, 0.2) 0%, #0b0b12 100%);
+  overflow: clip;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-heading {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  color: #fff;
+  line-height: normal;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  align-items: stretch;
+  gap: 8px;
+  padding-block: 0;
+  width: 100%;
+  height: 140px;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-card,
+body[data-theme="v8"] .home-v2 .home-play-steps-card:first-child {
+  grid-column: auto !important;
+  min-height: 0;
+  height: 100%;
+  gap: 8px;
+  padding: 12px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(122, 122, 122, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(123, 123, 123, 0.22) 0%,
+    rgba(63, 63, 63, 0.02) 100%
+  );
+  transform: none !important;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-card--featured {
+  z-index: auto;
+  transform: none !important;
+  box-shadow: none;
+  border-color: rgba(122, 122, 122, 0.1);
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-art {
+  position: relative;
+  display: block;
+  width: 87px;
+  max-width: 100%;
+  height: 51px;
+  border-radius: 80px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-art.is-win {
+  width: 100%;
+  height: 50px;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-art.is-win img {
+  width: 74.27%;
+  height: 94.2%;
+  left: 12.86%;
+  top: 2.9%;
+  right: auto;
+  bottom: auto;
+  object-fit: contain;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-art.is-collect img {
+  width: 63.58%;
+  height: 109.13%;
+  left: 18.26%;
+  top: -4.52%;
+  right: auto;
+  bottom: auto;
+  object-fit: contain;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-title {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  line-height: normal;
+}
+
+body[data-theme="v8"] .home-v2 .home-play-steps-copy {
+  max-width: none;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  line-height: normal;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 639px) {
+  body[data-theme="v8"] .home-v2 .home-play-steps-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px;
+    height: 140px;
+  }
+}
+
+/* Continue Collecting — sentence case + mobile chevrons on home-v2 */
+body[data-theme="v8"] .home-v2 .continue-collecting.is-title-sentence .continue-collecting-title {
+  text-transform: none;
+  letter-spacing: 0.28px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-title-sentence .continue-collecting-see-all {
+  text-transform: none;
+  letter-spacing: 0.28px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.6;
+  color: #fff;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+  display: grid !important;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  opacity: 1;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-scroll-wrap,
+body[data-theme="v8"] .home-v2 .explore-creators-scroll-wrap {
+  gap: 4px;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow:disabled,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow:disabled {
+  opacity: 0.28;
+}
+
+/* Welcome card already partially styled — tighten gift placement */
+body[data-theme="v8"] .home-v2 .player-welcome-bar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 148px;
+  padding: 16px 14px;
+  padding-right: calc(7.93125rem + 0.5rem);
+  border-radius: 20px;
+  border: 1px solid #660934;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(170, 0, 79, 0.41) 0%,
+      rgba(68, 0, 32, 0.175) 23.558%,
+      rgba(0, 0, 0, 0.5) 50.001%,
+      rgba(169, 0, 79, 0.41) 84.617%
+    ),
+    linear-gradient(90deg, #000, #000);
+  overflow: visible;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-greeting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-gift {
+  display: none;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-subtitle {
+  display: block !important; /* override mobile hide on main home */
+  margin: 0;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  line-height: normal;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-reward {
+  position: static;
+  display: flex;
+  width: auto;
+  max-width: 100%;
+  justify-content: flex-start !important;
+  align-items: flex-start;
+  align-self: start;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-claimed {
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-claim {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  margin-inline: 0 auto;
+  min-width: 154px;
+  width: 154px;
+  height: 43px;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 3, 121, 0.2);
+  background-image: linear-gradient(
+    180deg,
+    rgba(170, 0, 79, 0.41) 0%,
+    rgba(68, 0, 32, 0.175) 23.558%,
+    rgba(0, 0, 0, 0.5) 50.001%,
+    rgba(169, 0, 79, 0.41) 84.617%
+  );
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.28px;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-bar::after {
+  content: "";
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  z-index: 1;
+  width: 7.93125rem; /* ~10% smaller than 8.8125rem */
+  height: 7.9875rem;
+  transform: translateY(calc(-50% + 0.35rem));
+  background: url("/images/home-v2/gift-box.png") center / contain no-repeat;
+  pointer-events: none;
+  margin: 0;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-greeting {
+  position: relative;
+  z-index: 3;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-reward {
+  position: relative;
+  z-index: 3;
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  justify-content: flex-start !important;
+  margin-top: 4px;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-title,
+body[data-theme="v8"] .home-v2 .player-welcome-subtitle,
+body[data-theme="v8"] .home-v2 .player-welcome-claim {
+  position: relative;
+  z-index: 3;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-reward .player-welcome-claim {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-error {
+  grid-column: 1 / -1;
+}
+
+/* Category leaderboard title sentence-ish on v2 */
+body[data-theme="v8"] .home-v2 .category-leaderboard .continue-collecting-title {
+  text-transform: none;
+  letter-spacing: 0.28px;
+}
+
+/* Explore creators always show chevrons on home-v2 */
+body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+  display: grid !important;
+}
+
+@media (max-width: 767px) {
+  body[data-theme="v8"] .home-v2 .player-welcome-bar {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 148px;
+    padding-right: calc(7.93125rem + 0.25rem);
+  }
+
+  body[data-theme="v8"] .home-v2 .player-welcome-bar::after {
+    width: 7.93125rem;
+    height: 7.9875rem;
+    right: 0.15rem;
+    transform: translateY(calc(-50% + 0.55rem));
+  }
+
+  body[data-theme="v8"] .home-v2 .player-welcome-claim {
+    min-width: 140px;
+    width: 140px;
+  }
+}
+
+
+/* Home v2 mobile coverflow — nudge packs down ~1rem from default -1rem pull */
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel-stage {
+  translate: 0 0;
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel-shell {
+  /* shell already has margin-top: -6rem; keep packs a touch lower */
+  transform: translateY(1rem);
+}
+
+/* Home v2 mobile coverflow — ~10% smaller packs so more cards show */
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel .swiper-slide {
+  width: 12.96rem; /* 14.4rem * 0.9 */
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud .coverflow-buy-pack-cta {
+  transform: scale(0.9);
+  transform-origin: center bottom;
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud {
+  bottom: calc(3.5rem - 3px);
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
+  transform: translate3d(-50%, calc(0.7rem + 3px), 40px);
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] {
+  height: min(70.2dvh, 702px); /* 78dvh/780 * 0.9-ish keep room */
+  min-height: 504px;
+}
+
+/* —— Home v2 strip cards, glass chevrons, avatar-only, figma board —— */
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-title-sentence .continue-collecting-title,
+body[data-theme="v8"] .home-v2 .explore-creators.is-title-sentence .continue-collecting-title,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence .continue-collecting-title {
+  text-transform: none;
+  letter-spacing: 0.28px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-title-sentence .continue-collecting-see-all,
+body[data-theme="v8"] .home-v2 .explore-creators.is-title-sentence .continue-collecting-see-all {
+  text-transform: none;
+  letter-spacing: 0.28px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.6;
+  color: #fff;
+}
+
+/* Absolute glass chevrons over the carousel (more circles visible) */
+body[data-theme="v8"] .home-v2 .continue-collecting-scroll-wrap,
+body[data-theme="v8"] .home-v2 .explore-creators-scroll-wrap {
+  position: relative;
+  display: block;
+  gap: 0;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-viewport,
+body[data-theme="v8"] .home-v2 .explore-creators-viewport {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+  --coverflow-chevron-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0 0 / 0.12) 0%,
+    oklch(0 0 0 / 0.06) 42%,
+    oklch(0.12 0 0 / 0.1) 100%
+  );
+  --glass-bg-opacity: 0;
+  position: absolute;
+  top: 50%;
+  z-index: 6;
+  display: grid !important;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.05);
+  border-radius: 999px;
+  background: var(--coverflow-chevron-surface);
+  color: oklch(1 0 0 / 0.88);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateY(-50%);
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow.glass.glass-surface,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface {
+  --glass-bg-opacity: 0;
+  background: var(--coverflow-chevron-surface);
+  border: 1px solid oklch(1 0 0 / 0.05);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.12),
+    0 8px 24px oklch(0 0 0 / 0.28);
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow.is-prev,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-prev {
+  left: 0.15rem;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow.is-next,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-next {
+  right: 0.15rem;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow:hover:not(:disabled),
+body[data-theme="v8"] .home-v2 .explore-creators-arrow:hover:not(:disabled) {
+  border-color: oklch(1 0 0 / 0.1);
+  background: linear-gradient(
+    180deg,
+    oklch(0.26 0 0 / 0.18) 0%,
+    oklch(0 0 0 / 0.1) 42%,
+    oklch(0.16 0 0 / 0.16) 100%
+  );
+  color: oklch(1 0 0);
+  transform: translateY(-50%) scale(1.04);
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-arrow:disabled,
+body[data-theme="v8"] .home-v2 .explore-creators-arrow:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting-scroll,
+body[data-theme="v8"] .home-v2 .explore-creators-scroll {
+  padding-inline: 0.35rem;
+}
+
+/* Continue collecting — photo + ring only, 3.8rem */
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip {
+  --cc-avatar-size: 3.8rem;
+  --cc-gap: 10px;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card.is-avatar-only {
+  width: 3.8rem;
+  gap: 0;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar-wrap,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring-svg {
+  width: 3.8rem;
+  height: 3.8rem;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar {
+  width: calc(3.8rem - 10px);
+  height: calc(3.8rem - 10px);
+  border-radius: 999px;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-meta,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-fraction,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-dot,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-rank,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-new {
+  display: none !important;
+}
+
+/* Explore creators inherits continue-collecting card chrome */
+body[data-theme="v8"] .home-v2 .explore-creators.continue-collecting {
+  /* same panel tokens as Continue Collecting */
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-scroll {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  padding-block: 4px 2px;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 77px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  scroll-snap-align: start;
+  text-align: center;
+  font-family: inherit;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-avatar-wrap {
+  position: relative;
+  width: 77px;
+  height: 77px;
+  border-radius: 60px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-avatar.is-fallback {
+  background: linear-gradient(
+    160deg,
+    rgba(170, 0, 79, 0.45),
+    rgba(20, 10, 24, 0.9)
+  );
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-name {
+  display: block;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  color: #fff;
+  line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-sub {
+  display: block;
+  width: 100%;
+  margin-top: -4px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Figma filter chips (node 9:758) — horizontal scroll row.
+   Left inset = real opacity-0 chip (.is-shim); right = padding matching cards. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding-inline: 0 1.25rem;
+  padding-block: 0 2px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  -webkit-mask-image: none;
+  mask-image: none;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs {
+    padding-inline-end: 2rem;
+  }
+}
+
+/* Same chip element as tabs — invisible + non-interactive left spacer. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab.is-shim {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  cursor: default;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  flex: 0 0 auto;
+  width: 20px;
+  min-width: 20px;
+  max-width: 20px;
+  padding-inline: 0;
+  overflow: hidden;
+}
+
+/* Same mask-image scroll hints as Explore Creators carousel. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs.has-fade-left {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs.has-fade-left.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
+  max-width: max-content;
+  min-height: 0;
+  height: auto;
+  padding: 8px 16px;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-image: linear-gradient(
+    180deg,
+    rgba(170, 170, 170, 0.246) 0%,
+    rgba(68, 68, 68, 0.105) 23.558%,
+    rgba(0, 0, 0, 0.3) 50.001%,
+    rgba(169, 169, 169, 0.246) 84.617%
+  );
+  background-color: transparent;
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.28px;
+  line-height: normal;
+  white-space: nowrap;
+  box-shadow: none;
+  scroll-snap-align: start;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab.is-active {
+  border-color: rgba(255, 3, 121, 0.2);
+  background-image: linear-gradient(
+    180deg,
+    rgba(170, 0, 79, 0.41) 0%,
+    rgba(68, 0, 32, 0.175) 23.558%,
+    rgba(0, 0, 0, 0.5) 50.001%,
+    rgba(169, 0, 79, 0.41) 84.617%
+  );
+  background-color: transparent;
+  color: #fff;
+  box-shadow: none;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab:hover:not(.is-active) {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+/* Figma leaderboard: no outer card — content sits in home-page-inner only. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board {
+  margin-top: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Match home-page-inner px-5 / lg:px-8 used by How to Play + sections above. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .continue-collecting-header,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-list {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .continue-collecting-header,
+  body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-list {
+    padding-inline: 2rem;
+  }
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-list {
+  gap: 10px;
+}
+
+/* Figma 4thPlace+ neutral cards (9:147). */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row {
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid #201c2a;
+  background-color: #0b0b12;
+  background-image: linear-gradient(
+    103.75deg,
+    rgba(25, 17, 39, 0.2) 2.4985%,
+    rgb(11, 11, 18) 100%
+  );
+  background-blend-mode: normal;
+}
+
+/* Figma 1stPlace (8:667) — gold only on rank 1. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-first-place {
+  border-color: rgba(102, 74, 9, 0.75);
+  background-color: #000;
+  background-image: linear-gradient(
+    253.59deg,
+    rgba(169, 118, 0, 0.41) 15.693%,
+    rgba(0, 0, 0, 0.5) 50.182%,
+    rgba(68, 0, 32, 0.175) 76.529%,
+    rgba(170, 119, 0, 0.41) 100%
+  );
+}
+
+/* Figma 2ndPlace (9:89) — silver/grey. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-second-place {
+  border-color: rgba(81, 101, 102, 0.75);
+  background-color: #000;
+  background-image: linear-gradient(
+    72.63deg,
+    rgba(153, 169, 170, 0.41) 0%,
+    rgba(61, 67, 68, 0.175) 23.558%,
+    rgba(0, 0, 0, 0.5) 50.001%,
+    rgba(152, 169, 169, 0.41) 84.617%
+  );
+}
+
+/* Figma 3rdPlace (9:128) — bronze/copper. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-third-place {
+  border-color: rgba(102, 56, 41, 0.75);
+  background-color: #000;
+  background-image: linear-gradient(
+    252.15deg,
+    rgba(169, 93, 68, 0.41) 15.217%,
+    rgba(0, 0, 0, 0.5) 49.46%,
+    rgba(68, 37, 27, 0.175) 75.617%,
+    rgba(170, 98, 68, 0.41) 98.92%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  min-width: 29px;
+  height: 29px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-first,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-second,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-third {
+  color: transparent;
+}
+
+/* Figma crowns: gold 9:265, silver 9:311, bronze 9:314. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank-crown {
+  display: block;
+  width: 29px;
+  height: 29px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Place-specific pack thumb borders. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-first-place .category-leaderboard-thumb .card-pack-thumb {
+  border: 2px solid #5e4409;
+}
+
+/* hsba(182, 20%, 40%, 0.75) → hsla(182, 20%, 40%, 0.75) */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-second-place .category-leaderboard-thumb .card-pack-thumb {
+  border: 2px solid hsla(182, 20%, 40%, 0.75);
+}
+
+/* hsba(15, 60%, 40%, 0.75) → hsla(15, 60%, 40%, 0.75) */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-third-place .category-leaderboard-thumb .card-pack-thumb {
+  border: 2px solid hsla(15, 60%, 40%, 0.75);
+}
+
+/* Figma 4th+ (9:147): rank slot is empty spacer, no numeral. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-empty {
+  color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Figma pack text container (9:60) — 1 column, 3 rows, 4px gap. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-info {
+  gap: 4px;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-pack {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.26px;
+  color: #fff;
+  line-height: normal;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-stats {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.24px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: normal;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-actions {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-price {
+  font-size: 13px;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-play {
+  width: 88px;
+  min-width: 88px;
+  height: 34px;
+  min-height: 34px;
+}
+
+/* Figma status pager under home coverflow (node 2:118) */
+body[data-theme="v8"] .home-featured-coverflow-frame {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+body[data-theme="v8"] .coverflow-status-pager {
+  --status-dot: 12.5px; /* 10px * 1.25 */
+  --status-pill-w: 37.5px; /* 30px * 1.25 */
+  --status-pill-h: 21.25px; /* 17px * 1.25 */
+  --status-gap: 8px; /* wider track so bar is ~1.25x */
+  position: absolute;
+  left: 50%;
+  bottom: 0.85rem;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: none;
+  height: calc(35px * 1.25);
+  padding: calc(8px * 1.25) 1.25rem;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+  transform: translateX(-50%);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-interactive {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-interactive * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--status-gap);
+  width: max-content;
+  max-width: none;
+  height: 100%;
+  min-height: var(--status-pill-h);
+}
+
+body[data-theme="v8"] .coverflow-status-pager__dot {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: var(--status-dot);
+  height: var(--status-dot);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  /* Keep hit target stable while active pill is overlayed */
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+body[data-theme="v8"] .coverflow-status-pager {
+  --status-pill-side-pad: calc((var(--status-pill-w) - var(--status-dot)) / 2 + 4px);
+}
+
+body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__dot.is-active {
+  width: var(--status-dot);
+  height: var(--status-dot);
+  margin: 0;
+  margin-left: var(--status-pill-side-pad);
+  margin-right: var(--status-pill-side-pad);
+  padding: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__dot.is-active.is-first {
+  margin-left: 0;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__dot.is-active.is-last {
+  margin-right: 0;
+}
+
+/* Keep shell width = mid (both pads) when on first/last */
+body[data-theme="v8"] .coverflow-status-pager.has-pill:has(.is-active.is-first) {
+  padding-left: calc(1.25rem + var(--status-pill-side-pad));
+}
+
+body[data-theme="v8"] .coverflow-status-pager.has-pill:has(.is-active.is-last) {
+  padding-right: calc(1.25rem + var(--status-pill-side-pad));
+}
+
+/* Extra gap so the floating pill has breathing room without resizing dots */
+body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__track {
+  column-gap: calc(var(--status-gap) + 6px);
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-scrubbing {
+  touch-action: none;
+}
+
+body[data-theme="v8"] .coverflow-status-pager:not(.has-pill) .coverflow-status-pager__dot.is-active {
+  width: var(--status-pill-w);
+  height: var(--status-pill-h);
+  border: 1px solid rgba(215, 0, 101, 0.1);
+  border-radius: 999px;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 33, 137, 0.55) 0%,
+    rgba(151, 0, 71, 0.55) 100%
+  );
+  box-shadow:
+    inset -0.5px 0.75px 0 rgba(255, 255, 255, 0.1),
+    inset 1.5px -2.5px 0 -2px rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-interactive .coverflow-status-pager__dot {
+  appearance: none;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-interactive .coverflow-status-pager__dot:focus-visible {
+  outline: 2px solid rgba(255, 61, 127, 0.7);
+  outline-offset: 2px;
+}
+
+/* Draggable selected indicator — home-v2 pink capsule */
+body[data-theme="v8"] .coverflow-status-pager__pill {
+  --status-pill-hit: 0.55rem;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 2;
+  /* Visual size only; hit pad via pseudo so vertical center stays on the dots */
+  width: var(--status-pill-w);
+  max-width: none;
+  height: var(--status-pill-h);
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border: 0;
+  transform: translate3d(0, -50%, 0);
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+/* Expand hit target without shifting the visual center */
+body[data-theme="v8"] .coverflow-status-pager__pill::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--status-pill-hit) * -1);
+  border-radius: inherit;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__pill-face {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(215, 0, 101, 0.1);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 33, 137, 0.55) 0%,
+    rgba(151, 0, 71, 0.55) 100%
+  );
+  box-shadow:
+    inset -0.5px 0.75px 0 rgba(255, 255, 255, 0.1),
+    inset 1.5px -2.5px 0 -2px rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__pill.is-held {
+  cursor: grabbing;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__pill.is-held .coverflow-status-pager__pill-face {
+  filter: brightness(1.08);
+  transform: scale(1.04);
+}
+
+
+
+body[data-theme="v8"] .home-v2 .coverflow-status-pager {
+  bottom: 4.6rem;
+  z-index: 50;
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .home-v2 .coverflow-status-pager {
+    bottom: 3.85rem;
+  }
+}
+
+/* Explore Creators edge shims */
+body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim {
+  width: 21px;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  flex-shrink: 0;
+  visibility: hidden;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim .explore-creators-avatar-wrap {
+  width: 21px;
+  height: 77px;
+}
+
+/* Home v2 Explore Creators — no side fade gradients */
+body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-fade,
+body[data-theme="v8"] .home-v2 .explore-creators .explore-creators-fade {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Explore Creators chevrons — nudge up 1rem from vertical center */
+body[data-theme="v8"] .home-v2 .explore-creators .explore-creators-arrow {
+  top: calc(50% - 1rem);
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators .explore-creators-arrow:hover:not(:disabled) {
+  transform: translateY(-50%) scale(1.04);
+}
+
+/* Explore Creators — same card width as Continue Collecting; row edge-to-edge inside card */
+body[data-theme="v8"] .home-v2 .home-page-inner--after-hero > .explore-creators.continue-collecting {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  /* Keep card chrome; only the carousel row is full-bleed within the card */
+  padding-left: 0;
+  padding-right: 0;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators > .continue-collecting-header,
+body[data-theme="v8"] .home-v2 .explore-creators > .explore-creators-header {
+  padding-left: 16px; /* match continue-collecting card padding */
+  padding-right: 16px;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators .explore-creators-scroll-wrap,
+body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-scroll-wrap {
+  width: 100%;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators .explore-creators-scroll,
+body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-scroll {
+  width: 100%;
+  padding-inline: 0;
+}
+
+/* Explore Creators — side mask-image scroll hints */
+body[data-theme="v8"] .home-v2 .explore-creators-viewport {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-left {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-left.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+/* Explore Creators — allow horizontal touch drag */
+body[data-theme="v8"] .home-v2 .explore-creators-viewport,
+body[data-theme="v8"] .home-v2 .explore-creators-scroll,
+body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-scroll {
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-scroll:active,
+body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-scroll:active {
+  cursor: grabbing;
+}
+
+/* Buttons must not steal horizontal pans from the strip */
+body[data-theme="v8"] .home-v2 .explore-creators-card:not(.is-shim) {
+  touch-action: pan-x;
+  -webkit-user-drag: none;
+}
+
+body[data-theme="v8"] .home-v2 .explore-creators-card img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* home-v2 hero/status: no iOS text select while dragging */
+body[data-theme="v8"] .home-v2 .home-featured-coverflow-frame {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* home-v2 coverflow Buy Pack label size + radius */
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button {
+  --cta-font-size: 1rem;
+  --cta-r: 0.75rem;
+  --cta-inner-r: calc(0.75rem - var(--cta-stroke, 1px));
+  font-size: 1rem;
+  border-radius: 0.75rem;
+}
+
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__inner,
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__stroke,
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__aurora,
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__face {
+  border-radius: var(--cta-inner-r, 0.75rem);
+}
+
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button-glow,
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .border-glow-card {
+  --border-radius: 0.75rem;
+  --shape-r: 0.75rem;
+  border-radius: 0.75rem;
+}
+
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__title,
+body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__label {
+  font-size: 1rem;
+}
+
