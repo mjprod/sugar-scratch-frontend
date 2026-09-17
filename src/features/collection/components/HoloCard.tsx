@@ -398,16 +398,25 @@ export default function HoloCard({
       ? frontMediaUrl
       : facePosterUrl || PLACEHOLDER_MEDIA_URL
   const frontPlaceholderUrl = facePosterUrl || PLACEHOLDER_MEDIA_URL
+  const active = activeCardId === cardId
+  /** Owned / playable motion card — otherwise show B&W + lock. */
+  const isCollected = getVideoCardCount(cardId, videoCardCount) > 0
+  /**
+   * Poster-first face media: keep a still poster while browsing.
+   * Mount + play the motion clip only after the user selects this card.
+   */
+  const mountFrontVideo = showFrontVideo && active
+  const playFrontVideo = mountFrontVideo
   /** Identity strip only after real face media is visible — not over the placeholder. */
   const showFaceOverlay =
     Boolean(overlay) &&
     (showFrontVideo
       ? frontVideoReady || Boolean(facePosterUrl)
       : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL)
-  const faceMediaReady =
-    showFrontVideo
-      ? frontVideoReady || Boolean(facePosterUrl)
-      : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL
+  /** Browse stills are ready immediately; selected clips wait for a frame / poster. */
+  const faceMediaReady = showFrontVideo
+    ? !active || frontVideoReady || Boolean(facePosterUrl)
+    : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL
 
   useEffect(() => {
     onFaceMediaReady?.(faceMediaReady)
@@ -441,9 +450,6 @@ export default function HoloCard({
     [randomSeed]
   )
 
-  const active = activeCardId === cardId
-  /** Owned / playable motion card — otherwise show B&W + lock. */
-  const isCollected = getVideoCardCount(cardId, videoCardCount) > 0
   /** Safari + mobile: no shine/glare (unreliable WebKit holo). */
   const holoDisabled = useMemo(() => shouldDisableHoloEffects(), [])
 
@@ -1668,9 +1674,8 @@ export default function HoloCard({
 
   /**
    * Pause face videos while the carousel is scrubbing (card-row drag or dots
-   * hold-scrub). Resumes after settle. Keep preload=auto always — dropping to
-   * metadata while scrubbing left newly mounted end-of-deck cards with no
-   * decoded frame (blank Gym/Firefighter cards).
+   * hold-scrub). Resume only for the selected card after settle — neighbors
+   * stay on their poster and must not autoplay.
    */
   useEffect(() => {
     const resumeVideo = (video: HTMLVideoElement) => {
@@ -1684,7 +1689,7 @@ export default function HoloCard({
       const onReady = () => {
         video.removeEventListener('loadeddata', onReady)
         video.removeEventListener('canplay', onReady)
-        if (!isCarouselScrubbing()) {
+        if (!isCarouselScrubbing() && activeRef.current) {
           void video.play().catch(() => {
             // ignore
           })
@@ -1706,7 +1711,7 @@ export default function HoloCard({
       const videos = [frontVideoRef.current, backVideoRef.current]
       for (const video of videos) {
         if (!video) continue
-        if (scrubbing) {
+        if (scrubbing || !playFrontVideo) {
           if (!video.paused) video.pause()
         } else {
           resumeVideo(video)
@@ -1717,7 +1722,7 @@ export default function HoloCard({
     // Sync immediately in case we mounted mid-scrub.
     setPlayback(isCarouselScrubbing())
     return subscribeScrubbing(setPlayback)
-  }, [isCarouselScrubbing, subscribeScrubbing])
+  }, [isCarouselScrubbing, playFrontVideo, subscribeScrubbing])
 
   useEffect(() => {
     setFrontMediaFailed(false)
@@ -1728,10 +1733,11 @@ export default function HoloCard({
     setLoading(true)
     let cancelled = false
 
-    // Image faces are CSS backgrounds (not <img>) so iOS can't long-press-save them.
-    if (!showFrontVideo) {
+    // Still face (image or poster-while-browsing): CSS background, not <img>,
+    // so iOS can't long-press-save them.
+    if (!mountFrontVideo) {
       setFrontVideoReady(false)
-      const imageSrc = frontDisplayUrl
+      const imageSrc = facePosterUrl || frontDisplayUrl
       if (!imageSrc) {
         setLoading(false)
         return
@@ -1742,7 +1748,9 @@ export default function HoloCard({
       }
       img.onerror = () => {
         if (cancelled) return
-        setFrontMediaFailed(true)
+        // Poster-only browse: don't mark the motion URL failed — just keep the
+        // placeholder underlay. Image faces without a poster still fall back.
+        if (!showFrontVideo) setFrontMediaFailed(true)
         setLoading(false)
       }
       img.src = imageSrc
@@ -1755,8 +1763,8 @@ export default function HoloCard({
 
     // Video: don't leave the card stuck in .loading (front opacity: 0).
     // Safari often won't re-fire loadeddata for a cached src, so poll readyState
-    // and also force a load() + play() after mount.
-    // Until readyState >= 2, the placeholder underlay stays visible.
+    // and also force a load() after mount. Playback is owned by the select /
+    // scrub effects below — this only waits for a decoded frame.
     const clearLoading = () => {
       if (!cancelled) {
         setLoading(false)
@@ -1775,17 +1783,7 @@ export default function HoloCard({
           '.card__front video'
         ) as HTMLVideoElement | null)
       if (!el) return
-      if (el.readyState >= 2) {
-        clearLoading()
-        // Stay paused while the deck is being scrubbed — resume after settle.
-        if (!isCarouselScrubbing()) {
-          void el.play().catch(() => {
-            // Autoplay may be blocked until a gesture; still show the first frame.
-          })
-        } else {
-          el.pause()
-        }
-      }
+      if (el.readyState >= 2) clearLoading()
     }
     // Next frames: video node is mounted after this effect runs.
     const raf1 = requestAnimationFrame(() => {
@@ -1799,7 +1797,38 @@ export default function HoloCard({
       window.clearInterval(interval)
       cancelAnimationFrame(raf1)
     }
-  }, [frontDisplayUrl, showFrontVideo])
+  }, [facePosterUrl, frontDisplayUrl, mountFrontVideo, showFrontVideo])
+
+  // Start / stop the face clip when selection changes (poster-first browse).
+  useEffect(() => {
+    const video = frontVideoRef.current
+    if (!video) return
+    if (!playFrontVideo || isCarouselScrubbing()) {
+      if (!video.paused) video.pause()
+      return
+    }
+    if (video.readyState >= 2) {
+      void video.play().catch(() => {
+        // Autoplay may be blocked; poster / first frame stays visible.
+      })
+      return
+    }
+    const onReady = () => {
+      video.removeEventListener('loadeddata', onReady)
+      video.removeEventListener('canplay', onReady)
+      if (activeRef.current && !isCarouselScrubbing()) {
+        void video.play().catch(() => {
+          // ignore
+        })
+      }
+    }
+    video.addEventListener('loadeddata', onReady)
+    video.addEventListener('canplay', onReady)
+    return () => {
+      video.removeEventListener('loadeddata', onReady)
+      video.removeEventListener('canplay', onReady)
+    }
+  }, [isCarouselScrubbing, playFrontVideo])
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -2162,7 +2191,7 @@ export default function HoloCard({
               aria-hidden="true"
               style={{ backgroundImage: `url(${frontPlaceholderUrl})` }}
             />
-            {showFrontVideo ? (
+            {mountFrontVideo ? (
               <video
                 key={frontDisplayUrl}
                 className={
@@ -2195,6 +2224,16 @@ export default function HoloCard({
                 }}
                 width={251}
                 height={475}
+              />
+            ) : showFrontVideo ? (
+              // Browse / unselected: still poster only — no video decode.
+              <div
+                className="card__media card__media--image is-media-ready"
+                role="img"
+                aria-label="Card artwork"
+                style={{
+                  backgroundImage: `url(${facePosterUrl || frontPlaceholderUrl})`,
+                }}
               />
             ) : frontDisplayUrl !== PLACEHOLDER_MEDIA_URL ? (
               // Background-image face: no <img> for iOS long-press "Save Image".
