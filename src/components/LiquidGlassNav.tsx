@@ -1127,47 +1127,59 @@ export function LiquidGlassNav({
 
   // Soften under Collection: fade + blur + duck scale (handle stays interactive)
   const under = bubble.underCollection;
-  // Almost fully gone under Collection
-  const bubbleVisualOpacity = bubble.visible ? 1 - under * 0.99 : 0;
+  // Hold the bubble invisible until the first measured geometry has painted with
+  // duration:0. Otherwise first load can show it sliding up from (0,0)/CSS defaults.
+  const dockBubbleSettled = bubble.ready || isDraggingBubble;
+  const bubbleVisualOpacity =
+    bubble.visible && dockBubbleSettled ? 1 - under * 0.99 : 0;
   const bubbleVisualBlur = under * 10;
-  const glowVisualOpacity = bubble.visible ? 0.5 * (1 - under) : 0;
+  const glowVisualOpacity =
+    bubble.visible && dockBubbleSettled ? 0.5 * (1 - under) : 0;
   // Duck hard under Collection — scale down to ~72%
   const bubbleVisualScale = 1 - under * 0.28;
 
   const dockBubbleStyle = {
-    ["--dock-bubble-x" as string]: bubble.ready
-      ? `${bubble.x}px`
-      : "4.7rem",
+    // Always use measured geometry once we have it — only the transition duration
+    // is gated on ready. Gating x/w on ready reintroduced a slide on arming.
+    ["--dock-bubble-x" as string]:
+      bubble.w > 0 ? `${bubble.x}px` : "4.7rem",
     ["--dock-bubble-y" as string]: `${bubble.y}px`,
-    ["--dock-bubble-w" as string]: bubble.ready
-      ? `${bubble.w}px`
-      : `${DOCK_BUBBLE_W_REM}rem`,
+    ["--dock-bubble-w" as string]:
+      bubble.w > 0 ? `${bubble.w}px` : `${DOCK_BUBBLE_W_REM}rem`,
     ["--dock-bubble-h" as string]: `${DOCK_BUBBLE_H_REM}rem`,
     ["--dock-bubble-radius" as string]: bubble.radius,
     ["--dock-bubble-opacity" as string]: String(bubbleVisualOpacity),
     ["--dock-bubble-blur" as string]: `${bubbleVisualBlur}px`,
     ["--dock-bubble-glow-opacity" as string]: String(glowVisualOpacity),
     ["--dock-bubble-scale" as string]: String(bubbleVisualScale),
-    // Instant follow while dragging; smooth snap/morph otherwise
+    // Instant follow while dragging / first placement; smooth snap/morph otherwise
     ["--dock-bubble-duration" as string]:
       isDraggingBubble || !bubble.ready ? "0ms" : "420ms",
+    // Snap opacity on first reveal so load never fades the bubble up into place.
+    ["--dock-bubble-opacity-duration" as string]: dockBubbleSettled
+      ? "70ms"
+      : "0ms",
   } satisfies CSSProperties;
 
+  const topBubbleSettled = topBubble.ready || isDraggingTopBubble;
   const topBubbleStyle = {
     ["--top-bubble-x" as string]: `${topBubble.x}px`,
     ["--top-bubble-y" as string]: `${topBubble.y}px`,
     ["--top-bubble-w" as string]: `${topBubble.w}px`,
     ["--top-bubble-h" as string]: `${topBubble.h}px`,
     ["--top-bubble-radius" as string]: topBubble.radius,
-    ["--top-bubble-opacity" as string]: topBubble.visible
-      ? String(1 - utilsOverlap)
-      : "0",
+    ["--top-bubble-opacity" as string]:
+      topBubble.visible && topBubbleSettled
+        ? String(1 - utilsOverlap)
+        : "0",
     ["--top-bubble-scale" as string]: String(1 - utilsOverlap * 0.4),
     ["--top-bubble-duration" as string]:
       isDraggingTopBubble || !topBubble.ready ? "0ms" : "420ms",
-    ["--top-bubble-opacity-duration" as string]: isDraggingTopBubble
-      ? "80ms"
-      : "220ms",
+    ["--top-bubble-opacity-duration" as string]: !topBubbleSettled
+      ? "0ms"
+      : isDraggingTopBubble
+        ? "80ms"
+        : "220ms",
   } satisfies CSSProperties;
 
   return (

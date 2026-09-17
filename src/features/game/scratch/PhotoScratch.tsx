@@ -1,7 +1,7 @@
-import { Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
+import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   getGameAudioPrefs,
@@ -18,6 +18,8 @@ import {
   PRESENT_ZOOM,
   type ImageLayerCameras,
 } from "./glRenderer";
+import { GamePauseButton } from "../GamePauseButton";
+import { StageMuteButton } from "../StageMuteButton";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import { PackProgress } from "../modules/PackProgress";
@@ -727,7 +729,7 @@ function motionStatusLabel(status: string) {
   }
 }
 
-export function PhotoScratch() {
+export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
   const { bumpInventoryRevision } = useAuth();
   const { addDiamonds } = useWallet();
@@ -1445,6 +1447,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (!fgCanvas || !ready) return;
 
     // Drop any prior renderer on this canvas before creating a new one.
+    // Never loseContext here — same canvas is about to get a new renderer.
     fgRendererRef.current?.dispose({ loseContext: false });
     fgRendererRef.current = null;
 
@@ -1731,11 +1734,20 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
     return () => {
       cancelAnimationFrame(frameId);
-      // Same canvas may remount a renderer when showMesh toggles — don't loseContext.
+      // showMesh / ready churn remounts on the same canvas — never lose here.
       fgRendererRef.current?.dispose({ loseContext: false });
       fgRendererRef.current = null;
     };
   }, [ready, showMesh]);
+
+  // Real route leave: memory purge arms the flag; lose GL context once.
+  useEffect(() => {
+    return () => {
+      if (!consumeLoseGlContextOnUnmount()) return;
+      fgRendererRef.current?.dispose({ loseContext: true });
+      fgRendererRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const fgCanvas = fgCanvasRef.current;
@@ -2976,6 +2988,47 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               </div>
             </div>
           ) : null}
+          {/* Top chrome — match motion cards:
+                row 1: pause | icon-bar track | mute
+                row 2: cards left | progress toast slot */}
+          <div
+            className={`stage-game__top-chrome${
+              topBarPhase === "docked" ? " is-docked" : ""
+            }`}
+          >
+            <div className="stage-game__top-chrome-row is-controls">
+              <div className="stage-game__top-chrome-side is-start">
+                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+              </div>
+              <div className="stage-game__top-chrome-center" />
+              <div className="stage-game__top-chrome-side is-end">
+                <StageMuteButton />
+              </div>
+            </div>
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
+                {playlist.length > 1 &&
+                handSummaryDiamonds == null &&
+                photoResult == null &&
+                completedCardIds.length < playlist.length &&
+                selectedCardId ? (
+                  <div className="pack-progress-shell">
+                    <PackProgress
+                      current={Math.min(
+                        completedCardIds.length + 1,
+                        playlist.length,
+                      )}
+                      total={playlist.length}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="stage-game__top-chrome-status-notes"
+                data-progress-toast-slot="1"
+              />
+            </div>
+          </div>
           {hasBodySymbols ? (
             <TopSymbolBar
               symbols={topSymbols}
@@ -2993,6 +3046,21 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
+          {/* Bottom HUD: Sugar Scratch logo (bottom-right), same as motion. */}
+          <div className="stage-game__bottom-chrome">
+            <div className="stage-game__bottom-chrome-row is-status">
+              <div className="stage-game__bottom-chrome-status-cards" />
+              <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
+                <img
+                  src="/svg/logoSugarScratch.svg"
+                  alt=""
+                  className="stage-game__bottom-chrome-logo"
+                  draggable={false}
+                  decoding="async"
+                />
+              </div>
+            </div>
+          </div>
           <div
             className={`bg-drag-scale${isScratching ? " is-bg-blurred" : ""}`}
             aria-hidden="true"
@@ -3080,34 +3148,6 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 onArrive={() => removeFlyingMatch(coin.id)}
               />
             ))}
-          </div>
-          {playlist.length > 1 &&
-          handSummaryDiamonds == null &&
-          photoResult == null &&
-          completedCardIds.length < playlist.length &&
-          selectedCardId ? (
-            <PackProgress
-              current={Math.min(
-                completedCardIds.length + 1,
-                playlist.length,
-              )}
-              total={playlist.length}
-            />
-          ) : null}
-          <div className="mobile-sound-wrap">
-            <button
-              type="button"
-              className={`mobile-reset mobile-sound-toggle${soundEnabled ? "" : " is-muted"}`}
-              aria-label={soundEnabled ? "Mute sounds" : "Unmute sounds"}
-              aria-pressed={soundEnabled}
-              onClick={() => updateSoundEnabled(!soundEnabled)}
-            >
-              {soundEnabled ? (
-                <Volume2 aria-hidden="true" size={20} strokeWidth={2.2} />
-              ) : (
-                <VolumeX aria-hidden="true" size={20} strokeWidth={2.2} />
-              )}
-            </button>
           </div>
           {photoResult && photoOutcome === "diamond" ? (
             <PhotoDiamondReveal

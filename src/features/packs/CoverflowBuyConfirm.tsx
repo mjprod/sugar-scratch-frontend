@@ -107,7 +107,7 @@ export function CoverflowBuyConfirm({
   onLeaveEnd,
   disabled = false,
   showQuantity = true,
-  label = "Buy",
+  label: _label = "Buy",
   className,
   onAddToPocket,
   pocketDisabled = false,
@@ -295,46 +295,11 @@ export function CoverflowBuyConfirm({
       style={style}
       onAnimationEnd={handleLeaveEnd}
     >
-      <p className="coverflow-cart-remove-confirm__label">{label}</p>
-      {showQuantity ? (
-        <div
-          className="coverflow-buy-confirm__qty"
-          role="group"
-          aria-label="Pack quantity"
-        >
-          <button
-            type="button"
-            className="coverflow-buy-confirm__qty-btn"
-            aria-label="Decrease pack quantity"
-            disabled={disabled || qty <= 1}
-            onClick={(event) => {
-              event.stopPropagation();
-              onQuantityChange(clampBuyPackQuantity(qty - 1));
-            }}
-          >
-            <Minus aria-hidden="true" strokeWidth={2.5} />
-          </button>
-          <span className="coverflow-buy-confirm__qty-value" aria-live="polite">
-            {qty}
-          </span>
-          <button
-            type="button"
-            className="coverflow-buy-confirm__qty-btn"
-            aria-label="Increase pack quantity"
-            disabled={disabled || qty >= BUY_PACK_MAX_QUANTITY}
-            onClick={(event) => {
-              event.stopPropagation();
-              onQuantityChange(clampBuyPackQuantity(qty + 1));
-            }}
-          >
-            <Plus aria-hidden="true" strokeWidth={2.5} />
-          </button>
-        </div>
-      ) : null}
-      <div className="coverflow-cart-remove-confirm__actions">
+      {/* Row 1: close only (top right) */}
+      <div className="coverflow-buy-confirm__header">
         <button
           type="button"
-          className="coverflow-cart-remove-confirm__btn is-cancel"
+          className="coverflow-cart-remove-confirm__btn is-cancel coverflow-buy-confirm__close"
           aria-label="Cancel buy"
           onClick={(event) => {
             event.stopPropagation();
@@ -343,27 +308,76 @@ export function CoverflowBuyConfirm({
         >
           <X aria-hidden="true" strokeWidth={2.5} />
         </button>
-        <button
-          type="button"
-          className="coverflow-cart-remove-confirm__btn is-confirm"
-          aria-label={showQuantity ? `Confirm buy ${qty}` : "Confirm buy"}
-          disabled={disabled}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (disabled) return;
-            onConfirm(qty);
-          }}
-        >
-          <Check aria-hidden="true" strokeWidth={2.5} />
-        </button>
       </div>
+
+      {/* Row 2: qty stepper | confirm (two sibling divs when qty shown) */}
+      <div
+        className={[
+          "coverflow-buy-confirm__action-row",
+          showQuantity ? "has-qty" : "is-buy-only",
+        ].join(" ")}
+      >
+        {showQuantity ? (
+          <div
+            className="coverflow-buy-confirm__qty"
+            role="group"
+            aria-label="Pack quantity"
+          >
+            <button
+              type="button"
+              className="coverflow-buy-confirm__qty-btn"
+              aria-label="Decrease pack quantity"
+              disabled={disabled || qty <= 1}
+              onClick={(event) => {
+                event.stopPropagation();
+                onQuantityChange(clampBuyPackQuantity(qty - 1));
+              }}
+            >
+              <Minus aria-hidden="true" strokeWidth={2.5} />
+            </button>
+            <span className="coverflow-buy-confirm__qty-value" aria-live="polite">
+              {qty}
+            </span>
+            <button
+              type="button"
+              className="coverflow-buy-confirm__qty-btn"
+              aria-label="Increase pack quantity"
+              disabled={disabled || qty >= BUY_PACK_MAX_QUANTITY}
+              onClick={(event) => {
+                event.stopPropagation();
+                onQuantityChange(clampBuyPackQuantity(qty + 1));
+              }}
+            >
+              <Plus aria-hidden="true" strokeWidth={2.5} />
+            </button>
+          </div>
+        ) : null}
+        <div className="coverflow-buy-confirm__buy-wrap">
+          <button
+            type="button"
+            className="coverflow-cart-remove-confirm__btn is-confirm coverflow-buy-confirm__buy"
+            aria-label={showQuantity ? `Confirm buy ${qty}` : "Confirm buy"}
+            disabled={disabled}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (disabled) return;
+              onConfirm(qty);
+            }}
+          >
+            <Check aria-hidden="true" strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+
       {onAddToPocket ? (
         <>
+          {/* Row 3: or */}
           <div className="coverflow-buy-confirm__or" role="separator" aria-label="or">
             <span className="coverflow-buy-confirm__or-line" aria-hidden="true" />
             <span className="coverflow-buy-confirm__or-text">or</span>
             <span className="coverflow-buy-confirm__or-line" aria-hidden="true" />
           </div>
+          {/* Row 4: Add to Pocket */}
           <div className="coverflow-buy-confirm__pocket-row">
             <button
               type="button"

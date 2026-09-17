@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
-import { GamePauseButton } from "@/features/game/GamePauseButton";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -17,7 +17,6 @@ import {
 import "@/features/game/game.css";
 
 export function PhotoScratchPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { addDiamonds } = useWallet();
   const { bumpInventoryRevision } = useAuth();
@@ -49,7 +48,7 @@ export function PhotoScratchPage() {
   function leaveGame() {
     if (!gameMode) {
       const motionCardId = card ? motionCardIdFromPhotoScratchId(card) : "";
-      navigate(collectionReturnHref(model, motionCardId));
+      memoryNavigate(collectionReturnHref(model, motionCardId));
       return;
     }
     const session = loadGameSession();
@@ -67,14 +66,13 @@ export function PhotoScratchPage() {
     } else {
       persistGameProgress();
     }
-    navigate(Paths.collection);
+    memoryNavigate(Paths.collection);
   }
 
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
-        <GamePauseButton onLeave={leaveGame} />
-        <PhotoScratch key={card || "default"} />
+        <PhotoScratch key={card || "default"} onLeave={leaveGame} />
         <FirstPlayTutorial scene="foil" />
       </div>
     </div>

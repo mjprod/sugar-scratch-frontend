@@ -471,8 +471,8 @@
   max-width: 100%;
   height: var(--bottom-chrome-h);
   max-height: var(--bottom-chrome-h);
-  /* Let the 2× logo paint past the row without expanding layout. */
-  overflow: hidden;
+  /* Logo is taller than the row — must paint past it (stage clips at edges). */
+  overflow: visible;
   position: relative;
   z-index: 1;
   pointer-events: none;
@@ -491,7 +491,8 @@
   object-position: right center;
   opacity: 0.92;
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
-  transform: translate(-4px, -13px);
+  /* Nudge up so the mark sits on the chrome baseline without stage-edge clip. */
+  transform: translate(-4px, -10px);
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;

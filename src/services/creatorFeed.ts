@@ -84,18 +84,8 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
 }
 
 const PAGE_SIZE = 6;
-const FEED_CACHE_VERSION = 18;
-
-function shuffleCatalog<T>(items: T[]): T[] {
-  const next = [...items];
-  for (let i = next.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const current = next[i]!;
-    next[i] = next[j]!;
-    next[j] = current;
-  }
-  return next;
-}
+/** Bump when feed ordering semantics change (e.g. drop shuffle). */
+const FEED_CACHE_VERSION = 19;
 
 function uniqueFeedItems(items: Omit<HomeFeedCreator, "liked">[]) {
   const seen = new Set<string>();
@@ -109,7 +99,8 @@ function uniqueFeedItems(items: Omit<HomeFeedCreator, "liked">[]) {
   return unique;
 }
 
-let shuffledCatalog: Omit<HomeFeedCreator, "liked">[] | null = null;
+/** Stable catalog order from the models source — not shuffled. */
+let feedCatalog: Omit<HomeFeedCreator, "liked">[] | null = null;
 
 /** Upcoming clips to mount (poster→video) beyond the active one. */
 export const FEED_WARM_AHEAD = 1;
@@ -186,15 +177,14 @@ export async function fetchHomeFeedPage(
   cursor: string | null = null,
 ): Promise<HomeFeedPage> {
   // Rebuild only on first page / cold cache — later pages slice the in-memory catalog.
-  if (cursor == null || !shuffledCatalog) {
+  if (cursor == null || !feedCatalog) {
     const models = await Promise.all([loadModels(), loadPackCatalog()]).then(
       ([loaded]) => loaded,
     );
-    shuffledCatalog = shuffleCatalog(
-      uniqueFeedItems(models.map(feedItemFromModel)),
-    );
+    // Keep source order — do not randomize; randomization made the reel feel jumpy.
+    feedCatalog = uniqueFeedItems(models.map(feedItemFromModel));
   }
-  const catalog = shuffledCatalog;
+  const catalog = feedCatalog;
   const start = cursor ? Number.parseInt(cursor, 10) : 0;
   const safeStart = Number.isFinite(start) && start >= 0 ? start : 0;
   const slice = catalog.slice(safeStart, safeStart + PAGE_SIZE);
@@ -245,7 +235,7 @@ export function writeHomeFeedCache(
 
 export function clearHomeFeedCache() {
   feedCache = null;
-  shuffledCatalog = null;
+  feedCatalog = null;
 }
 
 export function toPurchasePack(item: HomeFeedCreator) {

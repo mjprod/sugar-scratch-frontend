@@ -1336,15 +1336,88 @@ h1 {
   place-items: center;
 }
 
-/* Buy Pack confirm — portaled fixed layer (keeps Daily Reward background intact). */
+/* Buy Pack confirm — portaled fixed layer (keeps Daily Reward background intact).
+   Layout:
+     row1  [Buy label] [X]
+     row2  [- 1 +] [Buy]   ← two sibling divs
+     row3  -or-
+     row4  [Add to Pocket]
+*/
 .coverflow-buy-confirm.is-portaled {
-  /* Wider shell for qty + pocket row. */
-  min-width: 13.3rem;
-  width: max-content;
+  position: relative;
+  box-sizing: border-box;
+  align-items: stretch;
+  width: 15.5rem;
+  min-width: 15.5rem;
+  max-width: min(15.5rem, calc(100vw - 2rem));
+  gap: 0.55rem;
+  padding: 0.75rem 0.8rem 0.8rem;
   transform-origin: top center;
   animation-name: coverflow-buy-confirm-enter;
   pointer-events: auto;
 }
+
+.coverflow-buy-confirm__header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.coverflow-buy-confirm__action-row {
+  display: grid;
+  width: 100%;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.coverflow-buy-confirm__action-row.has-qty {
+  grid-template-columns: 2fr 1fr;
+}
+
+.coverflow-buy-confirm__action-row.is-buy-only {
+  grid-template-columns: 1fr;
+}
+
+.coverflow-buy-confirm__action-row.has-qty .coverflow-buy-confirm__qty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.35rem;
+  height: 2.35rem;
+  padding: 0.15rem 0.25rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.05);
+  box-sizing: border-box;
+}
+
+.coverflow-buy-confirm__action-row.has-qty .coverflow-buy-confirm__buy-wrap {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+  justify-self: end;
+}
+
+.coverflow-buy-confirm__action-row.is-buy-only .coverflow-buy-confirm__buy-wrap {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__or,
+.coverflow-buy-confirm .coverflow-buy-confirm__pocket-row {
+  width: 100%;
+  align-self: stretch;
+}
+
+/* Full-row Buy + close overrides live after
+   .coverflow-cart-remove-confirm__btn so width/display win. */
 
 .coverflow-buy-confirm.is-portaled.is-leaving {
   animation-name: coverflow-buy-confirm-leave;
@@ -1366,12 +1439,14 @@ h1 {
 }
 
 /* Positive confirm styles still apply when portaled (no longer nested under CTA). */
+.coverflow-buy-confirm.is-portaled .coverflow-buy-confirm__buy,
 .coverflow-buy-confirm.is-portaled .coverflow-cart-remove-confirm__btn.is-confirm {
   border-color: oklch(0.88 0.25 151.94);
   background: oklch(0.88 0.25 151.96 / 0.19);
   color: oklch(0.88 0.25 151.94);
 }
 
+.coverflow-buy-confirm.is-portaled .coverflow-buy-confirm__buy:hover,
 .coverflow-buy-confirm.is-portaled .coverflow-cart-remove-confirm__btn.is-confirm:hover {
   background: oklch(0.88 0.25 151.96 / 0.32);
   border-color: oklch(0.88 0.25 151.94);
@@ -1480,12 +1555,12 @@ h1 {
   justify-content: center;
   box-sizing: border-box;
   width: 100%;
-  min-height: 1.85rem;
+  min-height: 2.35rem;
   margin: 0.1rem 0 0;
   padding: 0.35rem 0.65rem;
-  border: 1px solid oklch(1 0 0 / 0.16);
+  border: none;
   border-radius: 999px;
-  background: oklch(1 0 0 / 0.08);
+  background: none;
   color: oklch(1 0 0 / 0.92);
   font: inherit;
   font-size: 0.72rem;
@@ -1519,12 +1594,14 @@ h1 {
 }
 
 /* Positive confirm (buy) — green check instead of destructive red. */
+.coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-buy-confirm__buy,
 .coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm {
   border-color: oklch(0.88 0.25 151.94);
   background: oklch(0.88 0.25 151.96 / 0.19);
   color: oklch(0.88 0.25 151.94);
 }
 
+.coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-buy-confirm__buy:hover,
 .coverflow-buy-pack-cta .coverflow-buy-confirm .coverflow-cart-remove-confirm__btn.is-confirm:hover {
   background: oklch(0.88 0.25 151.96 / 0.32);
   border-color: oklch(0.88 0.25 151.94);
@@ -1572,10 +1649,10 @@ h1 {
   justify-content: center;
   gap: 0.4em;
   width: 100%;
-  min-height: 2.15rem;
+  min-height: 2.35rem;
   margin: 0;
   padding: 0.4rem 0.75rem;
-  border: 1px solid oklch(1 0 0 / 0.22);
+  border: none;
   border-radius: 999px;
   background: none;
   color: oklch(1 0 0 / 0.92);
@@ -2299,6 +2376,7 @@ h1 {
 .coverflow-cart-remove-confirm__btn svg {
   width: 1.05rem;
   height: 1.05rem;
+  flex-shrink: 0;
 }
 
 .coverflow-cart-remove-confirm__btn:hover {
@@ -2334,6 +2412,137 @@ h1 {
 .coverflow-cart-remove-confirm__btn:focus-visible {
   outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
   outline-offset: 2px;
+}
+
+/* Confirm CTA — circle check in the 1fr column (beats icon-btn defaults). */
+.coverflow-buy-confirm .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 2.35rem;
+  height: 2.35rem;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  aspect-ratio: 1 / 1;
+}
+
+.coverflow-buy-confirm__action-row.has-qty
+  .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn {
+  width: 100%;
+  min-width: 0;
+  height: 2.35rem;
+  aspect-ratio: auto;
+}
+
+.coverflow-buy-confirm__action-row.is-buy-only
+  .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn {
+  width: 2.35rem;
+  height: 2.35rem;
+  justify-self: center;
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn:hover {
+  transform: scale(1.04);
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__buy.coverflow-cart-remove-confirm__btn:active {
+  transform: scale(0.96);
+}
+
+/* Header close — circle outline, no fill. Staggered after dialog enter. */
+.coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn,
+.coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel {
+  position: relative;
+  width: 1.85rem;
+  height: 1.85rem;
+  min-width: 1.85rem;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: linear-gradient(180deg, oklch(0.2 0 0 / 0.72) 0%, oklch(0.12 0 0 / 0.94) 100%);
+  box-shadow: none;
+  color: oklch(1 0 0 / 0.78);
+  margin-top: -24px;
+  right: -26px;
+  opacity: 0;
+  transform: scale(0.72);
+  transform-origin: center;
+  /* Dialog enter is 480ms — start close at 260ms. */
+  animation: coverflow-buy-confirm-close-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) 260ms both;
+}
+
+.coverflow-buy-confirm.is-leaving
+  .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn,
+.coverflow-buy-confirm.is-leaving
+  .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes coverflow-buy-confirm-close-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.58);
+    animation-timing-function: cubic-bezier(0.22, 0.9, 0.32, 1);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.14);
+    animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn,
+  .coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn:hover,
+.coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn.is-cancel:hover {
+  border-color: oklch(1 0 0 / 0.42);
+  background: linear-gradient(180deg, oklch(0.28 0 0 / 0.88) 0%, oklch(0.16 0 0 / 0.96) 100%);
+  color: oklch(1 0 0 / 0.95);
+  transform: scale(1.06);
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn:active {
+  background: linear-gradient(180deg, oklch(0.16 0 0 / 0.9) 0%, oklch(0.1 0 0 / 0.98) 100%);
+  transform: scale(0.96);
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__close.coverflow-cart-remove-confirm__btn svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__qty-btn {
+  width: 1.7rem;
+  height: 1.7rem;
+  flex-shrink: 0;
+}
+
+.coverflow-buy-confirm .coverflow-buy-confirm__qty-value {
+  min-width: 1.35rem;
+  padding: 0 0.15rem;
+  font-size: 0.9rem;
 }
 
 .cart-continue {

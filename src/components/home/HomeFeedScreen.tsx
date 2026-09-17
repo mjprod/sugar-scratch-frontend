@@ -81,10 +81,8 @@ const WHEEL_SNAP_LOCK_MS = 520;
 /** Ignore tiny trackpad jitter before treating it as a slide change. */
 const WHEEL_SNAP_THRESHOLD = 8;
 
-/** Delay before the first-land scroll-nudge affordance. */
-const SCROLL_NUDGE_FIRST_DELAY_MS = 900;
-/** Replay the scroll-nudge after this much feed inactivity. */
-const SCROLL_NUDGE_IDLE_MS = 30_000;
+/** Delay before the one-shot first-land scroll-nudge affordance. */
+const SCROLL_NUDGE_FIRST_DELAY_MS = 1800;
 /** Peak travel of the nudge as a fraction of slide height. */
 const SCROLL_NUDGE_TRAVEL_RATIO = 0.085;
 /** Hard cap so tall desktop slides still get a subtle peek. */
@@ -131,12 +129,9 @@ export function HomeFeedScreen({
   const [activeId, setActiveId] = useState<string | null>(
     cached?.activeId ?? null,
   );
-  const [viewIndex, setViewIndex] = useState(() => {
-    const logical = Math.max(0, cached?.scrollIndex ?? 0);
-    // Loop slides: index 0 is the head clone; real items start at 1.
-    const loop = (cached?.items.length ?? 0) > 1;
-    return loop ? logical + 1 : logical;
-  });
+  const [viewIndex, setViewIndex] = useState(() =>
+    Math.max(0, cached?.scrollIndex ?? 0),
+  );
   const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
   const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -160,40 +155,21 @@ export function HomeFeedScreen({
   const overlayParallaxMaxPx = isDesktopFeed
     ? OVERLAY_PARALLAX_MAX_DESKTOP_PX
     : OVERLAY_PARALLAX_MAX_MOBILE_PX;
-  /** Seamless loop: clone last before first, clone first after last. */
-  const loopEnabled = items.length > 1;
-  const loopSlides = useMemo(() => {
-    if (!loopEnabled) {
-      return items.map((item, logicalIndex) => ({
-        item,
-        key: item.id,
-        logicalIndex,
-        clone: false as const,
-      }));
-    }
-    const first = items[0]!;
-    const last = items[items.length - 1]!;
-    return [
-      {
-        item: last,
-        key: `${last.id}__loop-head`,
-        logicalIndex: items.length - 1,
-        clone: true as const,
-      },
-      ...items.map((item, logicalIndex) => ({
+  /**
+   * Infinite clone-loop is off: teleporting head↔tail felt like the reel
+   * randomly jumping through videos while scrolling. Pagination still loads more.
+   */
+  const loopEnabled = false;
+  const loopSlides = useMemo(
+    () =>
+      items.map((item, logicalIndex) => ({
         item,
         key: item.id,
         logicalIndex,
         clone: false as const,
       })),
-      {
-        item: first,
-        key: `${first.id}__loop-tail`,
-        logicalIndex: 0,
-        clone: true as const,
-      },
-    ];
-  }, [items, loopEnabled]);
+    [items],
+  );
   const maxScrollIndex = Math.max(0, loopSlides.length - 1);
   const parallaxTargetRef = useRef(new Map<string, number>());
   const parallaxCurrentRef = useRef(new Map<string, number>());
@@ -216,10 +192,9 @@ export function HomeFeedScreen({
     moved: boolean;
   } | null>(null);
   const desktopDragWindowCleanupRef = useRef<(() => void) | null>(null);
-  /** True while the programmatic scroll-nudge rAF is driving the viewport. */
+  /** True while the one-shot scroll-nudge rAF is driving the viewport. */
   const nudgeAnimatingRef = useRef(false);
   const nudgeRafRef = useRef(0);
-  const nudgeIdleTimerRef = useRef(0);
   const nudgeFirstTimerRef = useRef(0);
   const nudgeFirstPlayedRef = useRef(false);
   /** Any real feed interaction — suppresses a pending first-land nudge. */
@@ -273,6 +248,7 @@ export function HomeFeedScreen({
       setActiveId(page.items[0]?.id ?? null);
       scrollIndexRef.current = 0;
       preloadFeedPosters(page.items);
+      restoredRef.current = false;
       setStatus("loaded");
       writeHomeFeedCache({
         items: page.items,
@@ -280,9 +256,6 @@ export function HomeFeedScreen({
         hasMore: page.hasMore,
         activeId: page.items[0]?.id ?? null,
         scrollIndex: 0,
-      });
-      requestAnimationFrame(() => {
-        scrollerRef.current?.scrollTo({ top: 0 });
       });
     } catch {
       setStatus("error");
@@ -514,7 +487,11 @@ export function HomeFeedScreen({
       Math.max(0, items.length - 1),
     );
     const index = loopEnabled ? logical + 1 : logical;
-    root.scrollTo({ top: index * slideHeight });
+    // Instant restore — smooth scrollBehavior would animate through every card.
+    const prevBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    root.scrollTop = index * slideHeight;
+    root.style.scrollBehavior = prevBehavior;
     viewIndexRef.current = index;
     setViewIndex(index);
     const next = items[logical];
@@ -531,7 +508,6 @@ export function HomeFeedScreen({
     nudgeAnimatingRef.current = false;
     const root = scrollerRef.current;
     if (!root) return;
-    // Leave scrollTop where the user interrupted; restore snap so CSS can settle.
     root.style.scrollSnapType = "";
     root.style.scrollBehavior = "";
   }, []);
@@ -547,11 +523,9 @@ export function HomeFeedScreen({
     const { slideHeight } = getSlideMetrics(root);
     if (slideHeight <= 0) return;
 
-    // Only nudge when parked on a slide — mid-scroll means the user is already moving.
     const restTop = root.scrollTop;
     const index = Math.round(restTop / slideHeight);
     if (Math.abs(restTop - index * slideHeight) > 2) return;
-    // Need a next slide to peek (includes loop tail clone after the last real).
     if (index >= maxScrollIndex) return;
 
     const travel = Math.min(
@@ -562,7 +536,6 @@ export function HomeFeedScreen({
     const totalMs = SCROLL_NUDGE_OUT_MS + SCROLL_NUDGE_BACK_MS;
 
     nudgeAnimatingRef.current = true;
-    // Disable snap so the peek doesn't get sucked to the next card.
     root.style.scrollSnapType = "none";
     root.style.scrollBehavior = "auto";
 
@@ -610,6 +583,57 @@ export function HomeFeedScreen({
     getSlideMetrics,
     items.length,
     maxScrollIndex,
+    reducedMotion,
+    status,
+    stopScrollNudge,
+  ]);
+
+  const markFeedActivity = useCallback(() => {
+    nudgeUserTouchedRef.current = true;
+    if (nudgeFirstTimerRef.current) {
+      window.clearTimeout(nudgeFirstTimerRef.current);
+      nudgeFirstTimerRef.current = 0;
+    }
+    nudgeFirstPlayedRef.current = true;
+    stopScrollNudge();
+  }, [stopScrollNudge]);
+
+  markFeedActivityRef.current = markFeedActivity;
+
+  // One-shot first-land nudge only — no idle replay loop.
+  useEffect(() => {
+    if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
+      stopScrollNudge();
+      if (nudgeFirstTimerRef.current) {
+        window.clearTimeout(nudgeFirstTimerRef.current);
+        nudgeFirstTimerRef.current = 0;
+      }
+      return;
+    }
+
+    if (nudgeFirstPlayedRef.current || nudgeUserTouchedRef.current) return;
+
+    if (nudgeFirstTimerRef.current) {
+      window.clearTimeout(nudgeFirstTimerRef.current);
+    }
+    nudgeFirstTimerRef.current = window.setTimeout(() => {
+      nudgeFirstTimerRef.current = 0;
+      nudgeFirstPlayedRef.current = true;
+      if (nudgeUserTouchedRef.current) return;
+      playScrollNudge();
+    }, SCROLL_NUDGE_FIRST_DELAY_MS);
+
+    return () => {
+      if (nudgeFirstTimerRef.current) {
+        window.clearTimeout(nudgeFirstTimerRef.current);
+        nudgeFirstTimerRef.current = 0;
+      }
+      stopScrollNudge();
+    };
+  }, [
+    active,
+    items.length,
+    playScrollNudge,
     reducedMotion,
     status,
     stopScrollNudge,
@@ -670,93 +694,6 @@ export function HomeFeedScreen({
     return () => root.removeEventListener("scrollend", onScrollEnd);
   }, [commitSettledViewIndex, loopEnabled, normalizeLoopScroll, status, items.length]);
 
-  const armScrollNudgeIdle = useCallback(() => {
-    if (nudgeIdleTimerRef.current) {
-      window.clearTimeout(nudgeIdleTimerRef.current);
-      nudgeIdleTimerRef.current = 0;
-    }
-    if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
-      return;
-    }
-    nudgeIdleTimerRef.current = window.setTimeout(() => {
-      nudgeIdleTimerRef.current = 0;
-      playScrollNudge();
-      // After an idle nudge, keep the 30s loop armed.
-      armScrollNudgeIdle();
-    }, SCROLL_NUDGE_IDLE_MS);
-  }, [active, items.length, playScrollNudge, reducedMotion, status]);
-
-  const markFeedActivity = useCallback(() => {
-    nudgeUserTouchedRef.current = true;
-    if (nudgeFirstTimerRef.current) {
-      window.clearTimeout(nudgeFirstTimerRef.current);
-      nudgeFirstTimerRef.current = 0;
-      nudgeFirstPlayedRef.current = true;
-    }
-    // User engagement cancels an in-flight affordance and restarts the idle clock.
-    // Keep current scrollTop so wheel/touch take over without a yank-back.
-    stopScrollNudge();
-    armScrollNudgeIdle();
-  }, [armScrollNudgeIdle, stopScrollNudge]);
-
-  markFeedActivityRef.current = markFeedActivity;
-
-  // First-land nudge + 30s idle loop while the home feed is the active tab.
-  useEffect(() => {
-    if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
-      stopScrollNudge();
-      if (nudgeFirstTimerRef.current) {
-        window.clearTimeout(nudgeFirstTimerRef.current);
-        nudgeFirstTimerRef.current = 0;
-      }
-      if (nudgeIdleTimerRef.current) {
-        window.clearTimeout(nudgeIdleTimerRef.current);
-        nudgeIdleTimerRef.current = 0;
-      }
-      return;
-    }
-
-    if (!nudgeFirstPlayedRef.current && !nudgeUserTouchedRef.current) {
-      if (nudgeFirstTimerRef.current) {
-        window.clearTimeout(nudgeFirstTimerRef.current);
-      }
-      nudgeFirstTimerRef.current = window.setTimeout(() => {
-        nudgeFirstTimerRef.current = 0;
-        if (nudgeUserTouchedRef.current) {
-          nudgeFirstPlayedRef.current = true;
-          armScrollNudgeIdle();
-          return;
-        }
-        nudgeFirstPlayedRef.current = true;
-        playScrollNudge();
-        armScrollNudgeIdle();
-      }, SCROLL_NUDGE_FIRST_DELAY_MS);
-    } else {
-      nudgeFirstPlayedRef.current = true;
-      armScrollNudgeIdle();
-    }
-
-    return () => {
-      if (nudgeFirstTimerRef.current) {
-        window.clearTimeout(nudgeFirstTimerRef.current);
-        nudgeFirstTimerRef.current = 0;
-      }
-      if (nudgeIdleTimerRef.current) {
-        window.clearTimeout(nudgeIdleTimerRef.current);
-        nudgeIdleTimerRef.current = 0;
-      }
-      stopScrollNudge();
-    };
-  }, [
-    active,
-    armScrollNudgeIdle,
-    items.length,
-    playScrollNudge,
-    reducedMotion,
-    status,
-    stopScrollNudge,
-  ]);
-
   useEffect(() => {
     return () => {
       if (scrollFxRafRef.current) {
@@ -778,10 +715,6 @@ export function HomeFeedScreen({
       if (nudgeFirstTimerRef.current) {
         window.clearTimeout(nudgeFirstTimerRef.current);
         nudgeFirstTimerRef.current = 0;
-      }
-      if (nudgeIdleTimerRef.current) {
-        window.clearTimeout(nudgeIdleTimerRef.current);
-        nudgeIdleTimerRef.current = 0;
       }
     };
   }, []);
@@ -1126,6 +1059,9 @@ export function HomeFeedScreen({
     if (!hasMore || loadingMoreRef.current || !cursor) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
+    // Hold absolute scroll while pages append so snap/layout doesn't jump.
+    const root = scrollerRef.current;
+    const holdTop = root?.scrollTop ?? null;
     try {
       const page = await fetchHomeFeedPage(cursor);
       preloadFeedPosters(page.items);
@@ -1149,6 +1085,20 @@ export function HomeFeedScreen({
       });
       setCursor(page.nextCursor);
       setHasMore(page.hasMore);
+      if (root && holdTop != null) {
+        requestAnimationFrame(() => {
+          const node = scrollerRef.current;
+          if (!node) return;
+          const prevBehavior = node.style.scrollBehavior;
+          const prevSnap = node.style.scrollSnapType;
+          node.style.scrollBehavior = "auto";
+          node.style.scrollSnapType = "none";
+          node.scrollTop = holdTop;
+          node.style.scrollBehavior = prevBehavior;
+          node.style.scrollSnapType = prevSnap;
+          applyScrollFx(node, true);
+        });
+      }
     } catch {
       /* keep browsing loaded cards */
     } finally {
@@ -1220,6 +1170,7 @@ export function HomeFeedScreen({
   }
 
   function toggleLike(id: string) {
+    markFeedActivityRef.current();
     if (onLikeAttempt && !onLikeAttempt(id)) return;
     setItems((prev) => {
       const next = prev.map((item) =>
@@ -1235,6 +1186,7 @@ export function HomeFeedScreen({
 
   /** One-way Like for double-tap — never unlikes; idempotent when already liked. */
   function ensureLike(id: string): boolean {
+    markFeedActivityRef.current();
     const already = items.some((item) => item.id === id && item.liked);
     if (already) return true;
     if (onLikeAttempt && !onLikeAttempt(id)) return false;
@@ -1379,10 +1331,12 @@ export function HomeFeedScreen({
             onPointerUp={endDesktopPointerDrag}
             onPointerCancel={endDesktopPointerDrag}
             style={
+              // Never set scrollBehavior:smooth on the scroller itself — any
+              // scrollTop write (restore, loadMore hold, loop normalize) would
+              // animate through intermediate cards and look like random flips.
               reducedMotion
                 ? undefined
                 : ({
-                    scrollBehavior: "smooth",
                     "--hf-snap-ms": `${SNAP_MS}ms`,
                   } as CSSProperties)
             }
@@ -1421,8 +1375,18 @@ export function HomeFeedScreen({
                       feedScrolling={feedScrolling || !active}
                       onLike={() => toggleLike(slide.item.id)}
                       onEnsureLike={() => ensureLike(slide.item.id)}
-                      onBuy={() => onBuyPack(toPurchasePack(slide.item))}
-                      onOpenCreator={onOpenCreator}
+                      onBuy={() => {
+                        markFeedActivityRef.current();
+                        onBuyPack(toPurchasePack(slide.item));
+                      }}
+                      onOpenCreator={
+                        onOpenCreator
+                          ? (creatorId) => {
+                              markFeedActivityRef.current();
+                              onOpenCreator(creatorId);
+                            }
+                          : undefined
+                      }
                       videoRef={(node) => {
                         if (node) videoRefs.current.set(slide.key, node);
                         else videoRefs.current.delete(slide.key);

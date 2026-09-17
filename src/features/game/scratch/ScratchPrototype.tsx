@@ -1,4 +1,5 @@
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
   getGameAudioPrefs,
@@ -2930,10 +2931,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     return () => {
       cancelled = true;
       cancelAnimationFrame(animationId);
-      // Dispose GL only. Keep the WebGL2 context — StrictMode / card remounts
-      // recreate GarmentGLRenderer on the same canvas; losing the context leaves
-      // getContext stuck on a dead handle and the stage paints black forever.
-      renderer?.dispose({ loseContext: false });
+      // Default loseContext:false keeps Safari same-canvas remounts alive.
+      // Real route leave arms consumeLoseGlContextOnUnmount via memory purge.
+      renderer?.dispose({
+        loseContext: consumeLoseGlContextOnUnmount(),
+      });
       if (glRendererRef.current === renderer) glRendererRef.current = null;
       renderer = null;
     };

@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import {
   persistGameProgress,
@@ -13,7 +14,6 @@ import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
 function ScratchGameEmbed() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Mark embed before ScratchPrototype mounts so zoom stays off on first paint.
@@ -45,14 +45,14 @@ function ScratchGameEmbed() {
   function leaveGame() {
     if (gameMode) {
       persistGameProgress();
-      navigate(Paths.collection);
+      memoryNavigate(Paths.collection);
       return;
     }
     if (playlistMode) {
-      navigate(Paths.home);
+      memoryNavigate(Paths.home);
       return;
     }
-    navigate(collectionReturnHref(model, card));
+    memoryNavigate(collectionReturnHref(model, card));
   }
 
   return (
