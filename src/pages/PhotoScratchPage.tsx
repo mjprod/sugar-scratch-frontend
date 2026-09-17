@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
-import { GamePauseButton } from "@/features/game/GamePauseButton";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
@@ -73,8 +72,7 @@ export function PhotoScratchPage() {
   return (
     <div className="app-shell app-shell--game">
       <div className="stage-game">
-        <GamePauseButton onLeave={leaveGame} />
-        <PhotoScratch key={card || "default"} />
+        <PhotoScratch key={card || "default"} onLeave={leaveGame} />
         <FirstPlayTutorial scene="foil" />
       </div>
     </div>
