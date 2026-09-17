@@ -8285,16 +8285,21 @@ body[data-theme="v8"] .hf-page--embed .hf-skeleton {
 body[data-theme="v8"] .hf-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  gap: 6px;
   min-width: 0;
 }
 
 body[data-theme="v8"] .hf-name-row {
   display: flex;
   min-width: 0;
-  flex-wrap: wrap;
+  max-width: 100%;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px 10px;
+}
+
+body[data-theme="v8"] .hf-info > .hf-follow {
+  align-self: flex-start;
 }
 
 body[data-theme="v8"] .hf-creator {

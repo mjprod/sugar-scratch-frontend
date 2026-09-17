@@ -431,6 +431,23 @@ export function CreatorFeedCard({
       <div className={["hf-overlay", active ? "is-visible" : ""].join(" ")}>
         <div className="hf-overlay-inner">
         <div className="hf-info">
+          <button
+            type="button"
+            className={[
+              "hf-follow",
+              following ? "is-following" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-pressed={following}
+            aria-label={following ? "Unfollow" : "Follow"}
+            data-no-feed-drag
+            onClick={handleToggleFollow}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+          >
+            {following ? "Following" : "Follow"}
+          </button>
           <div className="hf-name-row">
             {canOpenCreator ? (
               <button
@@ -446,23 +463,6 @@ export function CreatorFeedCard({
             ) : (
               <h2 className="hf-creator">{item.creatorName}</h2>
             )}
-            <button
-              type="button"
-              className={[
-                "hf-follow",
-                following ? "is-following" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-pressed={following}
-              aria-label={following ? "Unfollow" : "Follow"}
-              data-no-feed-drag
-              onClick={handleToggleFollow}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-            >
-              {following ? "Following" : "Follow"}
-            </button>
           </div>
           <p className="hf-pack">{packLabel}</p>
           {tags.length > 0 ? (
