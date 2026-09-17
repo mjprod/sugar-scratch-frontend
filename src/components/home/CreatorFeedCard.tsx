@@ -464,7 +464,6 @@ export function CreatorFeedCard({
               <h2 className="hf-creator">{item.creatorName}</h2>
             )}
           </div>
-          <p className="hf-pack">{packLabel}</p>
           {tags.length > 0 ? (
             <ul className="hf-tags" aria-label="Pack tags">
               {tags.map((tag) => (
