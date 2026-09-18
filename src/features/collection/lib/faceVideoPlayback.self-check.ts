@@ -4,6 +4,8 @@
  */
 import {
   FACE_VIDEO_FRAME_READY_STATE,
+  FACE_VIDEO_HAVE_METADATA,
+  FACE_VIDEO_HAVE_NOTHING,
   shouldNudgeCachedSrcLoad,
   shouldPlayFromDecodePoll,
 } from "./faceVideoPlayback";
@@ -59,7 +61,7 @@ assert(
   !shouldPlayFromDecodePoll({
     playFrontVideo: true,
     scrubbing: false,
-    readyState: 1,
+    readyState: FACE_VIDEO_HAVE_METADATA,
     paused: true,
   }),
   "do not play before a decoded frame exists",
@@ -67,20 +69,29 @@ assert(
 
 assert(
   shouldNudgeCachedSrcLoad({
-    readyState: 0,
+    readyState: FACE_VIDEO_HAVE_NOTHING,
     networkState: NETWORK_IDLE,
     networkIdle: NETWORK_IDLE,
   }),
-  "idle cached mount must call load() so Safari attaches the preloaded src",
+  "idle HAVE_NOTHING mount must call load() so Safari attaches the preloaded src",
 );
 
 assert(
   !shouldNudgeCachedSrcLoad({
-    readyState: 0,
+    readyState: FACE_VIDEO_HAVE_NOTHING,
     networkState: NETWORK_LOADING,
     networkIdle: NETWORK_IDLE,
   }),
   "do not interrupt an in-flight fetch",
+);
+
+assert(
+  !shouldNudgeCachedSrcLoad({
+    readyState: FACE_VIDEO_HAVE_METADATA,
+    networkState: NETWORK_IDLE,
+    networkIdle: NETWORK_IDLE,
+  }),
+  "HAVE_METADATA + NETWORK_IDLE must not load() — that resets Safari progress",
 );
 
 assert(
@@ -90,6 +101,16 @@ assert(
     networkIdle: NETWORK_IDLE,
   }),
   "decoded clips do not need another load()",
+);
+
+assert(
+  !shouldNudgeCachedSrcLoad({
+    readyState: FACE_VIDEO_HAVE_NOTHING,
+    networkState: NETWORK_IDLE,
+    networkIdle: NETWORK_IDLE,
+    scrubbing: true,
+  }),
+  "scrubbing must not load() — autoPlay would restart mid-gesture",
 );
 
 console.log("faceVideoPlayback.self-check: ok");

@@ -1701,13 +1701,20 @@ export default function HoloCard({
       }
       video.addEventListener('loadeddata', onReady)
       video.addEventListener('canplay', onReady)
-      // Nudge decode if the element is still idle.
-      try {
-        if (video.networkState === HTMLMediaElement.NETWORK_IDLE) {
+      // Nudge only while HAVE_NOTHING — never reset HAVE_METADATA progress.
+      if (
+        shouldNudgeCachedSrcLoad({
+          readyState: video.readyState,
+          networkState: video.networkState,
+          networkIdle: HTMLMediaElement.NETWORK_IDLE,
+          scrubbing: isCarouselScrubbing(),
+        })
+      ) {
+        try {
           video.load()
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
 
@@ -1810,6 +1817,7 @@ export default function HoloCard({
           readyState: el.readyState,
           networkState: el.networkState,
           networkIdle: HTMLMediaElement.NETWORK_IDLE,
+          scrubbing: isCarouselScrubbing(),
         })
       ) {
         didNudgeLoad = true
@@ -1881,6 +1889,7 @@ export default function HoloCard({
           readyState: video.readyState,
           networkState: video.networkState,
           networkIdle: HTMLMediaElement.NETWORK_IDLE,
+          scrubbing: isCarouselScrubbing(),
         })
       ) {
         try {
