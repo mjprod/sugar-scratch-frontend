@@ -204,6 +204,8 @@ type AuthContextValue = {
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
   openPasswordReset: () => void;
+  /** Open auth sheet on Create Account (guest onboarding CTA). */
+  openCreateAccount: () => void;
   closeSecondary: (surface: SecondarySurfaceId) => void;
   inventoryRevision: number;
   bumpInventoryRevision: () => void;
@@ -256,6 +258,7 @@ type AuthActionsContextValue = {
   openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
   openSettings: () => void;
   openPasswordReset: () => void;
+  openCreateAccount: () => void;
   closeSecondary: (surface: SecondarySurfaceId) => void;
   bumpInventoryRevision: () => void;
   invalidatePackSync: () => void;
@@ -546,19 +549,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deferred?: ProtectedAction | null;
       scrollToDailyReward?: boolean;
     }) => {
-      // First-run / post-recommend always lands on Discover — not Profile.
-      // Soft-gate from /profile now queues { type: "resume", path } (or the
-      // older tab form); both would otherwise send new users back to Profile.
+      // First-run / post-recommend lands on logged-in Home — not Profile.
+      // Soft-gate from /profile queues { type: "resume", path } (or the older
+      // tab form); both would otherwise send new users back to Profile.
       const deferred = opts?.deferred ?? null;
       const resume =
         deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
 
       if (resume) {
-        memoryNavigate(Paths.discover);
+        memoryNavigate(Paths.home);
         window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      memoryNavigate(Paths.discover);
+      memoryNavigate(Paths.home);
     },
     [resumePending],
   );
@@ -575,6 +578,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPendingAfterRec(pendingAction);
         }
         memoryNavigate(Paths.recommend);
+        return;
+      }
+
+      // Sign-in / Profile soft-gate must not dump returning users on Profile.
+      if (pendingAction && isProfileOnboardingResume(pendingAction)) {
+        memoryNavigate(Paths.home);
         return;
       }
 
@@ -703,6 +712,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthSheetEmail(getAuthEmail());
     setAuthOpen(true);
   }, []);
+
+  const openCreateAccount = useCallback(() => {
+    if (authed) return;
+    setPending(null);
+    setAuthSheetMode("create-account");
+    setAuthSheetEmail("");
+    setAuthOpen(true);
+  }, [authed]);
 
   const closeSecondary = useCallback(
     (surface: SecondarySurfaceId) => {
@@ -944,6 +961,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openPurchase,
       openSettings,
       openPasswordReset,
+      openCreateAccount,
       closeSecondary,
       bumpInventoryRevision,
       invalidatePackSync,
@@ -982,6 +1000,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onVerifyLater,
       onVerifyBack,
       openCart,
+      openCreateAccount,
       openCreator,
       openInbox,
       openPasswordReset,
@@ -1029,6 +1048,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openPurchase,
       openSettings,
       openPasswordReset,
+      openCreateAccount,
       closeSecondary,
       inventoryRevision,
       bumpInventoryRevision,
@@ -1084,6 +1104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openUnopenedPacks,
       openCart,
       addToCart,
+      openCreateAccount,
       openPasswordReset,
       openPurchase,
       openSettings,

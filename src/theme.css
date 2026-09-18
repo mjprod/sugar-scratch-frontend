@@ -501,7 +501,7 @@ body[data-theme="v8"] .footer-navigation {
   display: none;
 }
 
-/* Guest Home landing — looping 16:9 video behind guest nav + centered CTA. */
+/* Guest Home landing — swipeable background slides + fixed CTA / dots. */
 body[data-theme="v8"] .guest-home-landing {
   position: relative;
   display: flex;
@@ -510,6 +510,40 @@ body[data-theme="v8"] .guest-home-landing {
   width: 100%;
   overflow: hidden;
   background: #000;
+  touch-action: pan-y;
+}
+
+body[data-theme="v8"] .guest-home-landing__track {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body[data-theme="v8"] .guest-home-landing__track.is-dragging {
+  cursor: grabbing;
+}
+
+body[data-theme="v8"] .guest-home-landing__slide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  overflow: hidden;
+  background: #000;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .guest-home-landing__slide--video {
+  background: #0a0610;
 }
 
 body[data-theme="v8"] .guest-home-landing__video {
@@ -522,25 +556,184 @@ body[data-theme="v8"] .guest-home-landing__video {
   pointer-events: none;
 }
 
+body[data-theme="v8"] .guest-home-landing__slide--step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Top-align content so copy sits above the fixed CTA / status pill. */
+  justify-content: flex-start;
+  /* Bottom pad clears status pill + CTA + dock; top keeps space under mobile HUD. */
+  padding:
+    max(7.5dvh, calc(env(safe-area-inset-top, 0px) + 4.5rem))
+    28px
+    max(34dvh, calc(var(--guest-cta-dock-clearance, 9rem) + 7rem));
+  box-sizing: border-box;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 28%, oklch(0.32 0.12 350 / 0.45), transparent 70%),
+    linear-gradient(180deg, #120816 0%, #07050c 55%, #000 100%);
+}
+
+body[data-theme="v8"] .guest-home-landing__step-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* ~25% smaller than prior min(72vw/280 × 42vw/180). */
+  width: min(54vw, 210px);
+  height: min(31.5vw, 135px);
+  flex: 0 0 auto;
+  margin: 0 0 1rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: oklch(0 0 0 / 0.28);
+  box-shadow:
+    0 0 32px oklch(0.55 0.22 350 / 0.28),
+    inset 0 0 0 1px oklch(1 0 0 / 0.08);
+}
+
+body[data-theme="v8"] .guest-home-landing__step-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+body[data-theme="v8"] .guest-home-landing__slide--step.is-win .guest-home-landing__step-art img {
+  width: 78%;
+  height: 94%;
+}
+
+body[data-theme="v8"] .guest-home-landing__slide--step.is-collect .guest-home-landing__step-art img {
+  width: 68%;
+  height: 110%;
+}
+
+body[data-theme="v8"] .guest-home-landing__step-copy {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  max-width: 22rem;
+  text-align: center;
+}
+
+body[data-theme="v8"] .guest-home-landing__step-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: oklch(0.78 0.12 350 / 0.75);
+}
+
+body[data-theme="v8"] .guest-home-landing__step-title {
+  margin: 0;
+  font-size: clamp(24px, 6vw, 34px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #fff;
+}
+
+body[data-theme="v8"] .guest-home-landing__step-sentence {
+  margin: 0;
+  font-size: clamp(13px, 3.4vw, 16px);
+  font-weight: 450;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: oklch(1 0 0 / 0.62);
+}
+
 body[data-theme="v8"] .guest-home-landing__scrim {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
-  background: linear-gradient(to top,
-      #000 0%,
-      rgb(0 0 0 / 0) 100%);
+  background: linear-gradient(
+    to top,
+    #000 0%,
+    rgb(0 0 0 / 0.55) 18%,
+    rgb(0 0 0 / 0) 48%
+  );
+}
+
+/*
+ * Fixed chrome: status pill ~1rem above CTA.
+ * Bottom pad must clear the liquid dock + elevated Collection hero — pure dvh
+ * shrinks too far on short phones and the CTA slides under the center control.
+ */
+body[data-theme="v8"] .guest-home-landing__footer {
+  /* Mirrors .nav-test-dock (96px) + dock-wrap bottom pad + Collection rise + breath. */
+  --guest-cta-dock-clearance: calc(
+    env(safe-area-inset-bottom, 0px)
+    + 2.5dvh
+    + 96px
+    + 36px
+    - 1.5rem
+  );
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  width: 100%;
+  padding-bottom: max(13dvh, var(--guest-cta-dock-clearance));
+  pointer-events: none;
+}
+
+/* Phones use the tighter dock-wrap bottom pad (see LiquidGlassNav.css ≤440px). */
+@media (max-width: 440px) {
+  body[data-theme="v8"] .guest-home-landing__footer {
+    --guest-cta-dock-clearance: calc(
+      env(safe-area-inset-bottom, 0px)
+      + 0.1dvh
+      + 96px
+      + 36px
+      - 1.5rem
+    );
+  }
+}
+
+/* Desktop top chrome — dock is off-screen; don't reserve mobile dock space. */
+@media (min-width: 769px) {
+  body[data-theme="v8"] .guest-home-landing__footer {
+    --guest-cta-dock-clearance: 2rem;
+    padding-bottom: max(8dvh, var(--guest-cta-dock-clearance));
+  }
+}
+
+/* Same capsule + scrubbable pink pill as the logged-in home hero pager. */
+body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: 2;
+  transform: none;
+  pointer-events: auto;
 }
 
 body[data-theme="v8"] .guest-home-landing__cta {
   position: relative;
-  z-index: 1;
   display: flex;
-  flex: 1;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
+  /* Let BorderGlow bloom paint outside the button box without layout margin. */
+  overflow: visible;
   pointer-events: none;
-  padding-bottom: 13dvh;
+}
+
+/*
+ * Default .cta-button-glow uses margin: 56px for orbit bloom. That inflated the
+ * CTA box so footer gap sat above empty margin, not the button top edge.
+ * Collapse layout margin here; bloom still paints via overflow: visible.
+ */
+body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow {
+  margin: 0;
 }
 
 body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow,
@@ -551,6 +744,10 @@ body[data-theme="v8"] .guest-home-landing__cta .cta-button {
 @media (prefers-reduced-motion: reduce) {
   body[data-theme="v8"] .guest-home-landing__video {
     display: none;
+  }
+
+  body[data-theme="v8"] .guest-home-landing__track {
+    transition: none !important;
   }
 }
 
@@ -4197,32 +4394,137 @@ body[data-theme="v8"] .player-welcome-claim:disabled {
   cursor: wait;
 }
 
+/*
+ * Claim exit: anticipate (dip + compress) → scale up + fade out.
+ * Apple ease-out settle: cubic-bezier(0.22, 1, 0.36, 1).
+ */
+body[data-theme="v8"] .player-welcome-bar.is-claim-exiting {
+  pointer-events: none;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+  animation: player-welcome-card-exit 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+body[data-theme="v8"] .player-welcome-bar.is-claim-exiting::after {
+  animation: player-welcome-card-art-exit 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes player-welcome-card-exit {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
+  }
+  /* Anticipation */
+  14% {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(0.96) translateY(5px);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: scale(1.12) translateY(-10px);
+  }
+}
+
+@keyframes player-welcome-card-art-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(calc(-50% + 0.35rem)) scale(1);
+  }
+  14% {
+    opacity: 1;
+    transform: translateY(calc(-50% + 0.35rem + 4px)) scale(0.96);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(calc(-50% + 0.35rem - 12px)) scale(1.1);
+  }
+}
+
+/* Claimed: plain centered status text (no card chrome / gift / greeting). */
+body[data-theme="v8"] .player-welcome-bar.is-claimed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 0;
+  width: 100%;
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 body[data-theme="v8"] .player-welcome-claimed {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  text-align: right;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+body[data-theme="v8"] .player-welcome-claimed.is-enter {
+  animation: player-welcome-claimed-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+body[data-theme="v8"] .player-welcome-claimed.is-enter .player-welcome-claimed-label {
+  animation: player-welcome-claimed-line-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+body[data-theme="v8"] .player-welcome-claimed.is-enter .player-welcome-next {
+  animation: player-welcome-claimed-line-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 70ms both;
+}
+
+@keyframes player-welcome-claimed-enter {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(14px);
+  }
+  /* Soft overshoot settle */
+  72% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(-1px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes player-welcome-claimed-line-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 body[data-theme="v8"] .player-welcome-claimed-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   margin: 0;
   font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.72);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.78);
 }
 
 body[data-theme="v8"] .player-welcome-next {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.55);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -4282,11 +4584,6 @@ body[data-theme="v8"] .player-welcome-error {
     justify-content: flex-end;
   }
 
-  body[data-theme="v8"] .player-welcome-claimed {
-    align-items: flex-start;
-    text-align: left;
-  }
-
   body[data-theme="v8"] .player-welcome-claim {
     height: 44px;
     min-height: 44px;
@@ -4301,6 +4598,14 @@ body[data-theme="v8"] .player-welcome-error {
   body[data-theme="v8"] .player-welcome-burst {
     animation: none;
     opacity: 0;
+  }
+
+  body[data-theme="v8"] .player-welcome-bar.is-claim-exiting,
+  body[data-theme="v8"] .player-welcome-bar.is-claim-exiting::after,
+  body[data-theme="v8"] .player-welcome-claimed.is-enter,
+  body[data-theme="v8"] .player-welcome-claimed.is-enter .player-welcome-claimed-label,
+  body[data-theme="v8"] .player-welcome-claimed.is-enter .player-welcome-next {
+    animation: none !important;
   }
 }
 
@@ -15529,6 +15834,30 @@ body[data-theme="v8"] .home-v2 .player-welcome-bar {
   overflow: visible;
 }
 
+/* Claimed: drop card + art; plain centered status text only. */
+body[data-theme="v8"] .home-v2 .player-welcome-bar.is-claimed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 0;
+  height: auto;
+  padding: 0.35rem 0.75rem;
+  padding-right: 0.75rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .home-v2 .player-welcome-bar.is-claimed::after {
+  content: none;
+  display: none;
+}
+
 body[data-theme="v8"] .home-v2 .player-welcome-greeting {
   display: flex;
   flex-direction: column;
@@ -15588,9 +15917,9 @@ body[data-theme="v8"] .home-v2 .player-welcome-reward {
   padding: 0;
 }
 
-body[data-theme="v8"] .home-v2 .player-welcome-claimed {
-  align-items: flex-start !important;
-  text-align: left !important;
+body[data-theme="v8"] .home-v2 .player-welcome-bar.is-claimed .player-welcome-claimed {
+  align-items: center;
+  text-align: center;
 }
 
 body[data-theme="v8"] .home-v2 .player-welcome-claim {
@@ -15715,12 +16044,23 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
   transform-origin: center bottom;
 }
 
+/*
+ * Mobile coverflow CTA ↔ status-pager clearance (~0.5rem).
+ * HUD is bottom-anchored on the active slide; pager is bottom-anchored on the
+ * frame. The prior +Y translate on the visible HUD dropped the Buy Pack button
+ * into the pill — keep X centering only so the slide bottom offset leaves the
+ * intended gap (same spirit as guest-home footer clearance).
+ */
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud {
-  bottom: calc(3.5rem - 3px);
+  /* Tuned so button bottom → pill top ≈ --coverflow-cta-pager-gap (0.5rem). */
+  bottom: calc(
+    var(--coverflow-status-pager-bottom, 3.85rem) - 0.56rem
+  );
 }
 
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.coverflow-active-stack--html,
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
-  transform: translate3d(-50%, calc(0.7rem + 3px), 40px);
+  transform: translate3d(-50%, 0, 40px);
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] {
@@ -16294,6 +16634,10 @@ body[data-theme="v8"] .home-featured-coverflow-frame {
   position: relative;
   z-index: 1;
   width: 100%;
+  /* Buy Pack CTA sits this far above the coverflow status pill. */
+  --coverflow-cta-pager-gap: 0.5rem;
+  --coverflow-status-pager-h: calc(35px * 1.25);
+  --coverflow-status-pager-bottom: 0.85rem;
 }
 
 body[data-theme="v8"] .coverflow-status-pager {
@@ -16493,15 +16837,19 @@ body[data-theme="v8"] .coverflow-status-pager__pill.is-held .coverflow-status-pa
 
 
 
-body[data-theme="v8"] .home-v2 .coverflow-status-pager {
-  bottom: 4.6rem;
-  z-index: 50;
+body[data-theme="v8"] .home-v2 .home-featured-coverflow-frame {
+  --coverflow-status-pager-bottom: 4.6rem;
 }
 
 @media (max-width: 1023px) {
-  body[data-theme="v8"] .home-v2 .coverflow-status-pager {
-    bottom: 3.85rem;
+  body[data-theme="v8"] .home-v2 .home-featured-coverflow-frame {
+    --coverflow-status-pager-bottom: 3.85rem;
   }
+}
+
+body[data-theme="v8"] .home-v2 .coverflow-status-pager {
+  bottom: var(--coverflow-status-pager-bottom, 4.6rem);
+  z-index: 50;
 }
 
 /* Explore Creators edge shims */

@@ -17,11 +17,17 @@ export function CoverflowStatusPager({
   activeIndex,
   onSelectIndex,
   className,
+  ariaLabel = "Featured packs",
+  itemLabel = (index, total) => `Pack ${index + 1} of ${total}`,
 }: {
   count: number;
   activeIndex: number;
   onSelectIndex?: (index: number) => void;
   className?: string;
+  /** Accessible name for the tablist (guest home welcome slides, etc.). */
+  ariaLabel?: string;
+  /** Per-dot accessible name. */
+  itemLabel?: (index: number, total: number) => string;
 }) {
   const total = Math.max(0, Math.min(count, 12));
   const active = Math.min(Math.max(0, activeIndex), Math.max(0, total - 1));
@@ -183,7 +189,7 @@ export function CoverflowStatusPager({
         .filter(Boolean)
         .join(" ")}
       role="tablist"
-      aria-label="Featured packs"
+      aria-label={ariaLabel}
     >
       <div ref={trackRef} className="coverflow-status-pager__track">
         {interactive ? (
@@ -210,7 +216,7 @@ export function CoverflowStatusPager({
                   ? "is-last"
                   : "is-mid"
               : "";
-          const label = `Pack ${index + 1} of ${total}`;
+          const label = itemLabel(index, total);
           const className = [
             "coverflow-status-pager__dot",
             isActive ? "is-active" : "",
