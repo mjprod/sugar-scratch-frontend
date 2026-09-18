@@ -679,22 +679,49 @@
   max-height: 100%;
   /* Let stroke-relative status pager paint below the stage without clipping. */
   overflow: visible;
-  /* 3× the original 2.5rem chevrons. */
-  --chevron-size: 7.5rem;
-  --chevron-gutter: 0.75rem;
-  /* Keep group stroke height in sync with the live card width. */
-  --rendered-card-width: min(var(--card-width, 251px), 42vw);
-  /* Match idle .card-group pad so stroke-bottom math stays in sync. */
-  --group-pad-y: 64px;
-  --group-stroke-height: calc(var(--rendered-card-width) / var(--card-aspect, 0.528421) + (var(--group-pad-y) * 2));
-  /* Horizontal gap between cards (desktop default matches JS CARD_GAP). */
-  --card-gap: 28px;
+  /*
+   * Fluid card sizing (design ~0.75× prior pack size).
+   * Width = min(design max, vw cap, height budget × aspect) so the face +
+   * group pad + caption stay inside the live stage. Prefer cqh when the frame
+   * is a size container (creator embed); fall back to dvh otherwise.
+   * JS layout samples item offsetWidth + --card-gap.
+   */
+  --card-aspect-local: var(--card-aspect, 0.528421);
+  --card-width-max: 188.25px; /* 251 * 0.75 design ceiling */
+  --card-width-from-vw: 31.5dvw; /* 42vw * 0.75 */
+/* label + caption + pad + in-frame bottom status pager */
+	  --card-stage-chrome: calc(clamp(4.5rem, 14dvh, 7.5rem) + 2.75rem);
+  --card-height-budget: max(
+    8rem,
+    calc(min(100cqh, 100dvh) - var(--card-stage-chrome))
+  );
+  --card-width-from-height: calc(var(--card-height-budget) * var(--card-aspect-local));
+  --rendered-card-width: min(
+    var(--card-width-max),
+    var(--card-width-from-vw),
+    var(--card-width-from-height)
+  );
+  /* Keep --card-width in lockstep so max-width fallbacks don't re-inflate. */
+  --card-width: var(--rendered-card-width);
+  /* 3× the original 2.5rem chevrons, then *0.75 stage scale. */
+  --chevron-size: clamp(3.5rem, 12dvh, 5.625rem);
+  --chevron-gutter: clamp(0.35rem, 1.2dvw, 0.5625rem);
+  /* Match idle .card-group pad so stroke-bottom math stays in sync.
+   * Keep bottom stroke tight to the card face so the in-frame nav pill
+   * can sit just under the group instead of floating at the stage floor.
+   */
+  --group-pad-y: clamp(0.7rem, 3cqh, 1.5rem);
+  --group-stroke-height: calc(
+    var(--rendered-card-width) / var(--card-aspect-local) + (var(--group-pad-y) * 2)
+  );
+  /* Horizontal gap between cards (desktop default ~ CARD_GAP * 0.75). */
+  --card-gap: clamp(0.85rem, 2.4dvw, 1.35rem);
   /*
    * Left safe zone ≈ one card wide so the focused (leftmost) card
    * never sits under the left chevron.
    */
-  --stage-left-safe: min(var(--card-width, 251px), 28vw);
-  --stage-right-safe: min(var(--card-width, 251px), 28vw);
+  --stage-left-safe: min(var(--rendered-card-width), 21dvw);
+  --stage-right-safe: min(var(--rendered-card-width), 21dvw);
 }
 
 .coverflow__viewport {
@@ -755,8 +782,10 @@
 
 .coverflow__caption.is-active-hidden {
   opacity: 0 !important;
-  transform: translateY(-12px);
+  /* Keep X centering + lift above 3d card face while fading out. */
+  transform: translate3d(-50%, 4px, 48px);
   filter: blur(4px);
+  pointer-events: none;
   transition:
     opacity 0.2s ease,
     transform 0.25s ease,
@@ -1119,7 +1148,13 @@
 .card__flip-btn {
   position: absolute;
   left: 50%;
-  top: -1rem;
+  top: auto;
+  /*
+   * Visual center on the motion-card bottom edge. Parent perspective +
+   * translateZ projects the control outward on screen, so a small local
+   * inset cancels that before the 50% center shift.
+   */
+  bottom: 0.65rem;
   z-index: 130;
   width: 2rem;
   height: 2rem;
@@ -1141,9 +1176,9 @@
     transform 0.2s ease,
     opacity 0.2s ease;
   opacity: 0.92;
-  /* Original centering; keep a light Z lift so the hit-pad can't cover it. */
-  -webkit-transform: translate3d(-50%, 0, 80px);
-  transform: translate3d(-50%, 0, 80px);
+  /* Center on the bottom edge; modest Z so it stays above the hit-pad. */
+  -webkit-transform: translate3d(-50%, 50%, 40px);
+  transform: translate3d(-50%, 50%, 40px);
   touch-action: manipulation;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -1159,8 +1194,8 @@
 }
 
 .card__flip-btn:active {
-  -webkit-transform: translate3d(-50%, 0, 80px) scale(0.94);
-  transform: translate3d(-50%, 0, 80px) scale(0.94);
+  -webkit-transform: translate3d(-50%, 50%, 40px) scale(0.94);
+  transform: translate3d(-50%, 50%, 40px) scale(0.94);
   background: oklch(0.176 0.014 258.36 / 0.98);
 }
 
@@ -1174,21 +1209,25 @@
 @keyframes card-flip-btn-in {
   from {
     opacity: 0;
-    -webkit-transform: translate3d(-50%, 6px, 80px) scale(0.9);
-    transform: translate3d(-50%, 6px, 80px) scale(0.9);
+    -webkit-transform: translate3d(-50%, calc(50% - 6px), 40px) scale(0.9);
+    transform: translate3d(-50%, calc(50% - 6px), 40px) scale(0.9);
   }
 
   to {
     opacity: 0.92;
-    -webkit-transform: translate3d(-50%, 0, 80px) scale(1);
-    transform: translate3d(-50%, 0, 80px) scale(1);
+    -webkit-transform: translate3d(-50%, 50%, 40px) scale(1);
+    transform: translate3d(-50%, 50%, 40px) scale(1);
   }
 }
 
 .active-card-actions {
   position: absolute;
   left: 50%;
-  top: calc(100% + 0.65rem);
+  /*
+   * Flip control sits on the motion-card bottom (half hangs below). Clear
+   * that hang so the CTA row starts under the flip circle.
+   */
+  top: calc(100% + 1.65rem);
   /*
    * Counter the parent .card__translater scale(--card-scale) so the CTA
    * row stays at 1× screen pixels (scaled text looks soft/blurry).
@@ -1260,22 +1299,74 @@
   }
 }
 
-.active-card-actions__label {
+/*
+ * Active layout chrome — two rows:
+ *  1. .active-card-header  → title (left) + close (right), space-between
+ *  2. motion card (.coverflow__card) + photo grid (.active-card-panel)
+ * Header spans left over the motion card via --motion-card-width.
+ */
+.active-card-header {
+  position: absolute;
+  left: calc(-1 * (var(--motion-card-width, var(--rendered-card-width, 52.65vw)) + 1rem));
+  right: 0;
+  bottom: calc(100% + 0.45rem);
+  z-index: 140;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: auto;
+  min-height: 2rem;
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.34s ease;
+}
+
+.active-card-panel.is-visible > .active-card-header {
+  opacity: 1;
+}
+
+.active-card-panel.is-exiting > .active-card-header {
+  opacity: 0;
+}
+
+.active-card-header__title {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
   color: oklch(0.943 0.011 243.66);
   font-size: 1rem;
   font-weight: 600;
-  text-align: center;
+  line-height: 2rem;
+  text-align: left;
   white-space: nowrap;
-  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow:
+    0 1px 2px oklch(0 0 0 / 0.65),
+    0 0 10px oklch(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+.active-card-header__close {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 auto;
+  width: var(--photo-close-size, 2rem);
+  height: var(--photo-close-size, 2rem);
+  margin: 0;
+  pointer-events: auto;
 }
 
 .active-card-actions__row {
   display: grid;
-  /* Play wider, View wider than gift; gift is a fixed circle. */
-  grid-template-columns: 2.2fr 1.35fr;
+  /* Play fills remaining width; View is a fixed eye circle. */
+  grid-template-columns: minmax(0, 1fr) 3rem;
   gap: 0.45rem;
   width: 100%;
   height: 3rem;
@@ -1285,10 +1376,10 @@
 
 /* Play | View | Gift when the photo set is complete. */
 .active-card-actions__row.has-gift {
-  grid-template-columns: 2.2fr 1.45fr 3rem;
+  grid-template-columns: minmax(0, 1fr) 3rem 3rem;
 }
 
-.active-card-actions__row .btn-180,
+.active-card-actions__row .active-card-actions__play,
 .active-card-actions__row .active-card-panel__btn {
   width: 100%;
   height: 100%;
@@ -1298,6 +1389,79 @@
   justify-content: center;
   padding-top: 0;
   padding-bottom: 0;
+}
+
+/* Homepage pink squircle CTA — fill the Play grid cell. */
+.active-card-actions__play,
+.active-card-panel__play {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.active-card-actions__play .cta-button-glow,
+.active-card-panel__play .cta-button-glow,
+.active-card-actions__play .cta-button,
+.active-card-panel__play .cta-button {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.active-card-actions__cta.cta-button,
+.active-card-panel__cta.cta-button {
+  font-size: 0.875rem;
+}
+
+/*
+ * Homepage leaderboard CTA layout: diamond + value + label on ONE row
+ * (default CtaButton stacks title over costAmount).
+ */
+.active-card-actions__play .cta-button__label,
+.active-card-panel__play .cta-button__label {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  white-space: nowrap;
+  padding: 0 0.75rem;
+}
+
+.active-card-actions__play .cta-button__title-row,
+.active-card-panel__play .cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28em;
+  width: max-content;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.active-card-actions__play .cta-button__title,
+.active-card-panel__play .cta-button__title {
+  white-space: nowrap;
+}
+
+.active-card-actions__play .cta-button__leading-icon,
+.active-card-panel__play .cta-button__leading-icon {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.active-card-actions__cta-diamond,
+.active-card-actions__play .diamond-lottie,
+.active-card-panel__play .diamond-lottie {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* Icon-only gift cell — nearly circular (1/1) in the actions row. */
@@ -1413,19 +1577,26 @@
  * Same height as the card face; inner content is vertically centered.
  */
 .active-card-panel {
-  --photo-panel-gap: clamp(0.75rem, 2vw, 1.5rem);
-  --photo-panel-width: min(33rem,
-      max(16rem, calc(100vw - var(--stage-left-safe, 251px) - var(--card-width, 251px) - 6rem)));
-  /* Match active card face height from its width + aspect ratio. */
-  --photo-panel-height: calc(min(var(--card-width, 251px), 42vw) / var(--card-aspect, 0.528421));
-  /* Lift the whole grid chrome (title, count, X, slots) ~50px, responsively. */
-  --photo-panel-nudge-y: clamp(-36px, -4.2vw, -50px);
+	  --photo-panel-gap: clamp(0.75rem, 2vw, 1.5rem);
+	  --photo-panel-width: min(33rem,
+	      max(16rem, calc(100vw - var(--stage-left-safe, 188.25px) - var(--card-width, 188.25px) - 6rem)));
+/* Motion card face height from live width + aspect. */
+		  --motion-card-height: calc(
+		    var(--rendered-card-width, min(var(--card-width, 188.25px), 31.5vw))
+		      / var(--card-aspect, 0.528421)
+		  );
+		  /* Photo panel (header + slots) matches the motion-card face height. */
+		  --photo-grid-height: var(--motion-card-height);
+		  --photo-panel-height: var(--photo-grid-height);
+	  /* Lift the whole grid chrome (title, count, X, slots) ~50px, responsively. */
+	  --photo-panel-nudge-y: clamp(-36px, -4.2vw, -50px);
 
-  position: absolute;
-  left: calc(100% + var(--photo-panel-gap));
-  top: var(--photo-panel-nudge-y);
-  width: var(--photo-panel-width);
-  height: var(--photo-panel-height);
+	  position: absolute;
+	  left: calc(100% + var(--photo-panel-gap));
+	  top: var(--photo-panel-nudge-y);
+	  width: var(--photo-panel-width);
+	  height: auto;
+	  max-height: none;
   padding-left: 2rem;
   padding-right: 2rem;
   box-sizing: border-box;
@@ -1473,7 +1644,7 @@
 
 .active-card-panel__actions {
   display: grid;
-  grid-template-columns: 2.2fr 1.35fr;
+  grid-template-columns: minmax(0, 1fr) 3rem;
   gap: 0.6rem;
   width: 100%;
   height: 3rem;
@@ -1481,10 +1652,10 @@
 }
 
 .active-card-panel__actions.has-gift {
-  grid-template-columns: 2.2fr 1.45fr 3rem;
+  grid-template-columns: minmax(0, 1fr) 3rem 3rem;
 }
 
-.active-card-panel__actions .btn-180,
+.active-card-panel__actions .active-card-panel__play,
 .active-card-panel__actions .active-card-panel__btn {
   width: 100%;
   height: 100%;
@@ -1693,6 +1864,28 @@
   background: oklch(0.33 0.015 252.31);
 }
 
+/* Icon-only View control — fixed circle matching gift cell size. */
+.active-card-panel__btn--view {
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  flex: 0 0 3rem;
+}
+
+.active-card-panel__view-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
+  color: currentColor;
+}
+
 .photo-cards {
   width: 100%;
   margin-top: 0;
@@ -1709,6 +1902,15 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
+}
+
+/* When nested inside the slot grid, own the first full-width row. */
+.photo-cards__grid > .photo-cards__header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-self: center;
+  min-width: 0;
+  z-index: 2;
 }
 
 /* Shared under-card fly origin for header chrome + slots. */
@@ -1768,29 +1970,30 @@
 }
 
 .photo-cards__close {
-  position: relative;
-  z-index: 80;
-  width: 3.4rem;
-  height: 3.4rem;
-  padding: 0;
-  border-radius: 999px;
-  border: 1px solid oklch(1 0 0 / 0.16);
-  background: oklch(0.22 0.016 256.82 / 0.92);
-  color: oklch(0.943 0.011 243.66);
-  display: grid;
-  place-items: center;
-  cursor: default;
-  pointer-events: auto;
-  box-shadow:
-    0 3px 10px oklch(0 0 0 / 0.3),
-    inset 0 1px 0 oklch(1 0 0 / 0.06);
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.15s ease,
-    opacity 0.2s ease;
-  opacity: 0.92;
-}
+	  /* Match .card__flip-btn hit target + icon scale. */
+	  position: relative;
+	  z-index: 80;
+	  width: 2rem;
+	  height: 2rem;
+	  padding: 0;
+	  border-radius: 999px;
+	  border: 1px solid oklch(1 0 0 / 0.18);
+	  background: oklch(0.22 0.016 256.82 / 0.92);
+	  color: oklch(0.943 0.011 243.66);
+	  display: grid;
+	  place-items: center;
+	  cursor: default;
+	  pointer-events: auto;
+	  box-shadow:
+	    0 4px 12px oklch(0 0 0 / 0.35),
+	    inset 0 1px 0 oklch(1 0 0 / 0.08);
+	  transition:
+	    background 0.2s ease,
+	    border-color 0.2s ease,
+	    transform 0.15s ease,
+	    opacity 0.2s ease;
+	  opacity: 0.92;
+	}
 
 .photo-cards__close:hover {
   background: oklch(0.267 0.015 256.8 / 0.98);
@@ -1803,9 +2006,11 @@
 }
 
 .photo-cards__close svg {
-  display: block;
-  pointer-events: none;
-}
+	  display: block;
+	  width: 0.9rem;
+	  height: 0.9rem;
+	  pointer-events: none;
+	}
 
 .photo-cards__count {
   margin: 0;
@@ -1819,18 +2024,27 @@
 }
 
 .photo-cards__grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(0.3rem, 0.8vw, 0.5rem);
-  width: 100%;
-  /* Let slots size within the panel height instead of overflowing. */
-  align-content: center;
-}
+	  display: grid;
+	  grid-template-columns: repeat(5, minmax(0, 1fr));
+	  /* Row 1 = photo header; rows 2–3 = 2×5 slots. */
+	  grid-template-rows: auto repeat(2, minmax(0, 1fr));
+	  gap: clamp(0.3rem, 0.8vw, 0.5rem);
+	  width: 100%;
+	  height: var(--photo-grid-height, var(--photo-panel-height, auto));
+	  max-height: var(--photo-grid-height, var(--photo-panel-height, none));
+/* Fill the motion-card height budget instead of growing past the face. */
+		  align-content: stretch;
+	  box-sizing: border-box;
+	}
 
-.photo-cards__slot {
-  --slot-i: 0;
-  position: relative;
-  aspect-ratio: 0.528421;
+	.photo-cards__slot {
+	  --slot-i: 0;
+	  position: relative;
+	  aspect-ratio: auto;
+	  width: 100%;
+	  height: 100%;
+	  min-width: 0;
+	  min-height: 0;
   /*
    * Start stacked under the active card (panel is to the right of the card,
    * so "under card" is a large negative X toward the left).
@@ -2835,7 +3049,7 @@
         calc(
           100vw
             - var(--stage-left-safe, 1rem)
-            - var(--rendered-card-width, var(--card-width, 251px))
+            - var(--rendered-card-width, var(--card-width, 188.25px))
             - var(--photo-panel-gap)
             - var(--photo-panel-right-inset)
         )
@@ -2852,65 +3066,79 @@
         calc(
           100vw
             - var(--stage-left-safe, 1rem)
-            - var(--rendered-card-width, var(--card-width, 251px))
+            - var(--rendered-card-width, var(--card-width, 188.25px))
             - var(--photo-panel-gap)
             - var(--photo-panel-right-inset)
         )
       )
     );
-    --photo-panel-height: auto;
-    /* Match hero face height on phones when possible. */
-    max-height: calc(
-      var(--rendered-card-width, var(--card-width, 251px))
-        / var(--card-aspect, 0.528421)
-    );
-    justify-content: flex-start;
-  }
+--motion-card-height: calc(
+		      var(--rendered-card-width, var(--card-width, 188.25px))
+		        / var(--card-aspect, 0.528421)
+		    );
+		    --photo-grid-height: var(--motion-card-height);
+		    --photo-panel-height: var(--photo-grid-height);
+		    /* Cap panel chrome + grid to the motion face. */
+		    max-height: var(--motion-card-height);
+		    justify-content: flex-start;
+		  }
 
-  .photo-cards__header {
-    justify-content: space-between;
-  }
+	  .photo-cards__header {
+	    justify-content: space-between;
+	  }
 
-  .photo-cards__title {
-    text-align: left;
-  }
+	  .photo-cards__title {
+	    text-align: left;
+	  }
 
-  .photo-cards__count {
-    text-align: right;
-  }
+	  .photo-cards__count {
+	    text-align: right;
+	  }
 
-  /* Tablet (below desktop, above mobile 2-col): 4 across. */
-  .photo-cards__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
+	  /* Tablet (below desktop, above mobile 2-col): 4 across / ~3 rows. */
+	  .photo-cards__grid {
+	    grid-template-columns: repeat(4, minmax(0, 1fr));
+	    grid-template-rows: auto repeat(3, minmax(0, 1fr));
+	    height: var(--photo-grid-height);
+	    max-height: var(--photo-grid-height);
+	  }
+	}
 
-@media (max-width: 520px) {
-  .photo-cards__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.3rem;
-  }
+	@media (max-width: 520px) {
+	  .photo-cards__grid {
+	    grid-template-columns: repeat(2, minmax(0, 1fr));
+	    grid-template-rows: auto repeat(5, minmax(0, 1fr));
+	    gap: 0.3rem;
+	    height: var(--photo-grid-height);
+	    max-height: var(--photo-grid-height);
+	  }
 
-  .active-card-panel {
-    top: 0;
-    height: auto;
-    padding-left: 0;
-    padding-right: 0;
-  }
+	  .active-card-panel {
+	    top: 0;
+	    height: auto;
+	    padding-left: 0;
+	    padding-right: 0;
+--motion-card-height: calc(
+		      var(--rendered-card-width, var(--card-width, 188.25px))
+		        / var(--card-aspect, 0.528421)
+		    );
+		    --photo-grid-height: var(--motion-card-height);
+		    --photo-panel-height: var(--photo-grid-height);
+		  }
 
-  .active-card-panel__btn {
-    min-width: 0;
-    padding: 0.55rem 0.9rem;
-    font-size: 0.82rem;
-  }
-}
+	  .active-card-panel__btn {
+	    min-width: 0;
+	    padding: 0.55rem 0.9rem;
+	    font-size: 0.82rem;
+	  }
+	}
 
 .coverflow__hit-area {
   position: absolute;
-  left: var(--stage-left-safe, 251px);
+  left: var(--stage-left-safe, 188.25px);
   top: 0;
   bottom: 0;
-  width: var(--stack-width, 251px);
+  width: var(--stack-width, 188.25px);
   pointer-events: none;
   z-index: 0;
 }
@@ -2990,18 +3218,23 @@
    Pad eases larger when the group holds the active card.
    Always use blur(var) so blur animates 0px → 10px (not none ↔ blur). */
 .card-group {
-  --group-pad-y: 64px;
+  /* Keep in sync with .coverflow__frame fluid pad. */
+  --group-pad-y: clamp(0.75rem, 3.2dvh, 1.5rem);
   /* idle: room for the theme label / avatar above the cards */
-  --group-pad-x: 22px;
+  --group-pad-x: clamp(0.75rem, 2.4dvw, 1.1rem);
   /* idle side inset; rAF samples this for width/x */
   --group-blur: 0px;
   position: absolute;
-  left: var(--stage-left-safe, 251px);
+  left: var(--stage-left-safe, var(--rendered-card-width, 31.5dvw));
   top: 50%;
-  height: calc(var(--rendered-card-width, min(var(--card-width, 251px), 42vw)) / var(--card-aspect, 0.528421) + (var(--group-pad-y) * 2));
+  height: calc(
+    var(--rendered-card-width, min(var(--card-width, 31.5dvw), 31.5dvw))
+      / var(--card-aspect, 0.528421)
+      + (var(--group-pad-y) * 2)
+  );
   transform: translate3d(0, -50%, 0);
   border: 1px solid oklch(1 0 0 / 0.1);
-  border-radius: 16px;
+  border-radius: clamp(0.55rem, 1.6dvw, 0.75rem);
   box-sizing: border-box;
   pointer-events: none;
   z-index: 5;
@@ -3021,8 +3254,8 @@
 
 /* Active hero in this group → grow the frame, then fade stroke + label away. */
 .card-group.is-active-group {
-  --group-pad-y: 7rem;
-  --group-pad-x: 3.5rem;
+  --group-pad-y: 5.25rem; /* 7rem * 0.75 */
+  --group-pad-x: 2.625rem; /* 3.5rem * 0.75 */
   --group-blur: 0px;
   border: 2px solid oklch(1 0 0 / 0.2);
   opacity: 0;
@@ -3049,29 +3282,30 @@
   position: absolute;
   top: 0;
   left: 50%;
-  /* Lift above the stroke so the avatar clears the card top. */
-  transform: translate(-50%, calc(-50% - 10px));
+  /* Lift above the stroke so the avatar clears the card tops in front. */
+  transform: translate(-50%, calc(-50% - 7.5px - 1rem));
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  max-width: calc(100% - 2rem);
-  padding: 0 0.55rem;
+  gap: 0.4125rem; /* 0.55rem * 0.75 */
+  max-width: calc(100% - 1.5rem);
+  padding: 0 0.4125rem;
   background: oklch(0.176 0.014 258.36 / 0);
   z-index: 6;
   pointer-events: none;
 }
 
 .card-group__avatar {
-  width: 49px;
-  height: 49px;
+  --group-avatar-size: clamp(1.75rem, 5.2dvw, 2.3rem);
+  width: var(--group-avatar-size);
+  height: var(--group-avatar-size);
   aspect-ratio: 1;
   border-radius: 50%;
   object-fit: cover;
-  flex: 0 0 49px;
+  flex: 0 0 var(--group-avatar-size);
   display: block;
   border: 1px solid oklch(1 0 0 / 0.18);
   background: oklch(0.237 0.015 256.81);
-  box-shadow: 0 2px 10px oklch(0 0 0 / 0.35);
+  box-shadow: 0 1.5px 7.5px oklch(0 0 0 / 0.35);
 }
 
 .coverflow__caption.is-loading .coverflow__label,
@@ -3082,7 +3316,7 @@
 
 .card-group__theme {
   color: oklch(1 0 0);
-  font-size: 1.25rem;
+  font-size: clamp(0.72rem, 2.4dvw, 0.9375rem);
   font-weight: 500;
   letter-spacing: 0.03em;
   line-height: 1.2;
@@ -3101,8 +3335,8 @@
 .coverflow__placeholder {
   width: 100%;
   aspect-ratio: var(--card-aspect, 0.528421);
-  border-radius: 12px;
-  border: 1.5px dashed oklch(0.641 0.25 13.45 / 0.55);
+  border-radius: 9px; /* 12 * 0.75 */
+  border: 1.125px dashed oklch(0.641 0.25 13.45 / 0.55);
   background:
     linear-gradient(180deg,
       oklch(0.641 0.25 13.45 / 0.08),
@@ -3112,26 +3346,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.3375rem; /* 0.45rem * 0.75 */
   color: oklch(1 0 0 / 0.55);
   user-select: none;
 }
 
 .coverflow__placeholder-plus {
-  width: 2rem;
-  height: 2rem;
+  width: 1.5rem; /* 2rem * 0.75 */
+  height: 1.5rem;
   border-radius: 999px;
-  border: 1.5px solid oklch(0.641 0.25 13.45 / 0.55);
+  border: 1.125px solid oklch(0.641 0.25 13.45 / 0.55);
   display: grid;
   place-items: center;
-  font-size: 1.15rem;
+  font-size: 0.8625rem; /* 1.15rem * 0.75 */
   font-weight: 600;
   line-height: 1;
   color: oklch(0.745 0.167 1.57);
 }
 
 .coverflow__placeholder-label {
-  font-size: 0.72rem;
+  font-size: 0.54rem; /* 0.72rem * 0.75 */
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 600;
@@ -3145,10 +3379,10 @@
    * Older cards extend right from that origin.
    * Motion is 100% the 3dpack spring (120/16) via rAF — never CSS transition.
    */
-  left: var(--stage-left-safe, 251px);
+  left: var(--stage-left-safe, var(--rendered-card-width, 31.5dvw));
   top: 50%;
-  width: var(--rendered-card-width, min(var(--card-width, 251px), 42vw));
-  max-width: var(--card-width, 251px);
+  width: var(--rendered-card-width, min(31.5dvw, 188.25px));
+  max-width: var(--card-width, var(--rendered-card-width, 188.25px));
   pointer-events: auto;
   --item-blur: 0px;
   /* rAF samples this into filter so blur eases, not snaps */
@@ -3280,6 +3514,25 @@
   width: 100%;
 }
 
+/* Face-overlay tokens scale with the smaller collection card width. */
+.coverflow__card .card-face-overlay {
+  --overlay-strip-max-width: 3.75rem; /* 5rem * 0.75 */
+  --overlay-pad-top: 0.8625rem; /* 1.15rem * 0.75 */
+  --overlay-pad-bottom: 1.2rem; /* 1.6rem * 0.75 */
+  --overlay-gap: 0.375rem; /* 0.5rem * 0.75 */
+  --overlay-number-size: 1.5rem; /* 2rem * 0.75 */
+  --overlay-number-font: clamp(0.9375rem, 3.4cqi, 1.125rem);
+  --overlay-name-font: clamp(1.0125rem, 7cqi, 1.6875rem);
+  --overlay-location-font: clamp(0.36rem, 3.2cqi, 0.975rem);
+  --overlay-flag-w: 1.2375rem; /* 1.65rem * 0.75 */
+  --overlay-flag-h: 0.825rem; /* 1.1rem * 0.75 */
+  --overlay-flag-font: clamp(0.525rem, 4.2cqi, 0.7125rem);
+  --overlay-border-radius: 9.75px; /* 13px * 0.75 */
+  --overlay-border-stroke: 1.5px solid oklch(1 0 0);
+  --overlay-number-border: 1.5px solid oklch(0.178 0 0);
+  --overlay-text-gap: 0.4125em; /* 0.55em * 0.75 */
+}
+
 /*
  * Plain card silhouettes behind each motion card.
  * Count matches group size via N sibling divs; --stack-i is 1..N (rearmost
@@ -3297,9 +3550,9 @@
   aspect-ratio: var(--card-aspect, 0.528421);
   border-radius: var(--card-radius, 4.55% / 3.5%);
   background: oklch(1 0 0 / 0.09);
-  box-shadow: 0 2px 10px oklch(0 0 0 / 0.18);
-  /* Peek above the motion card; each rear layer steps up another 7px. */
-  transform: translate3d(0, calc(var(--stack-i) * -7px), 0) scale(var(--stack-scale));
+  box-shadow: 0 1.5px 7.5px oklch(0 0 0 / 0.18);
+  /* Peek above the motion card; each rear layer steps up another ~5.25px. */
+  transform: translate3d(0, calc(var(--stack-i) * -5.25px), 0) scale(var(--stack-scale));
   transform-origin: center top;
   z-index: 0;
   pointer-events: none;
@@ -3309,7 +3562,7 @@
 
 .coverflow__stack-back.is-hidden {
   opacity: 0;
-  transform: translate3d(0, calc(var(--stack-i) * -3px), 0) scale(var(--stack-scale));
+  transform: translate3d(0, calc(var(--stack-i) * -2.25px), 0) scale(var(--stack-scale));
 }
 
 .coverflow__card .card {
@@ -3678,13 +3931,36 @@
   cursor: default;
 }
 
+/*
+ * Caption glass capsule — same chrome language as the status nav pill.
+ * Anchored ~0.5rem above the motion card bottom edge (inside coverflow__card).
+ */
 .coverflow__caption {
-  margin: 0.75rem 0 0;
+  position: absolute;
+  left: 50%;
+  bottom: 0.95rem;
+  /* Sit above holo/stack faces (preserve-3d siblings need Z + high stack). */
+  z-index: 40;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.28rem;
+  justify-content: center;
+  gap: 0.14rem;
+  width: max-content;
+  max-width: calc(100% - 0.75rem);
   min-width: 0;
+  padding: 0.5rem 1.05rem;
+  box-sizing: border-box;
+  border-radius: 45px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-transform: translate3d(-50%, 0, 48px);
+  transform: translate3d(-50%, 0, 48px);
+  pointer-events: none;
+  user-select: none;
   transition:
     opacity 0.2s ease,
     transform 0.25s ease,
@@ -3695,8 +3971,10 @@
   margin: 0;
   max-width: 100%;
   text-align: center;
-  font-size: 1rem;
-  color: oklch(0.662 0.018 250.92);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: oklch(0.96 0.01 243.66 / 0.92);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3706,8 +3984,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  color: oklch(0.662 0.018 250.92);
+  gap: 0.3rem;
+  color: oklch(0.92 0.01 243.66 / 0.72);
   line-height: 1;
   user-select: none;
 }
@@ -3715,31 +3993,31 @@
 .coverflow__meta-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
+  gap: 0.18rem;
   min-width: 0;
 }
 
 .coverflow__meta-icon {
   width: auto;
-  height: 17px;
-  opacity: 0.5;
+  height: 11px;
+  opacity: 0.72;
   flex: 0 0 auto;
   display: block;
   color: currentColor;
 }
 
 .coverflow__meta-icon--play {
-  width: 23px;
-  height: 17px;
+  width: 15px;
+  height: 11px;
 }
 
 .coverflow__meta-icon--photo {
-  width: 17px;
-  height: 17px;
+  width: 11px;
+  height: 11px;
 }
 
 .coverflow__meta-text {
-  font-size: 0.8rem;
+  font-size: 0.56rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: currentColor;
@@ -3748,14 +4026,14 @@
 
 .coverflow__meta-divider {
   width: 1px;
-  height: 0.85rem;
-  background: oklch(0.662 0.018 250.92 / 0.55);
+  height: 0.55rem;
+  background: oklch(1 0 0 / 0.22);
   flex: 0 0 auto;
 }
 
 .coverflow__item.is-focused .coverflow__label,
 .coverflow__item.is-focused .coverflow__meta {
-  color: oklch(0.943 0.011 243.66);
+  color: oklch(0.98 0.01 243.66);
 }
 
 .coverflow__item.is-focused .coverflow__label {
@@ -3864,34 +4142,36 @@
 }
 
 /*
- * Shared CoverflowStatusPager placement in the collection shell.
- * Desktop: under the group stroke. Mobile: fixed near the bottom.
- * Visual chrome (glass capsule + pink active pill) comes from theme.css.
- */
-.coverflow__status-pager {
-  /* Desktop gap below the group-stroke bottom edge. */
-  --dots-under-stroke: 5dvh;
-
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% + (var(--group-stroke-height) / 2) + var(--dots-under-stroke));
-  bottom: auto;
-  z-index: 12;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0.55rem 1rem 0.25rem;
-  box-sizing: border-box;
-  flex-shrink: 0;
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
+	 * Shared CoverflowStatusPager placement in the collection shell.
+	 * Sit just under the centered group stroke (not the stage floor) so the
+	 * capsule stays close to the cards when group pad is tight.
+	 * Visual chrome (glass capsule + pink active pill) comes from theme.css.
+	 */
+	.coverflow__status-pager {
+	  position: absolute;
+	  left: 0;
+	  right: 0;
+	  /*
+	   * Group stroke is vertically centered. Pin the pager top just under
+	   * that bottom edge so the capsule rides close to the cards.
+	   */
+	  top: calc(50% + (var(--group-stroke-height, 50%) / 2) + 0.2rem);
+	  bottom: auto;
+	  z-index: 12;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  width: 100%;
+	  max-width: none;
+	  margin: 0;
+	  padding: 0.2rem 1rem 0.35rem;
+	  box-sizing: border-box;
+	  flex-shrink: 0;
+	  pointer-events: none;
+	  -webkit-user-select: none;
+	  user-select: none;
+	  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+	}
 
 /*
  * Collection shell owns placement; don't keep the homepage hero absolute overlay.
@@ -3900,6 +4180,15 @@
  */
 body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager,
 body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager {
+  /* ~25% smaller than homepage status chrome; JS measure reads these vars. */
+  --status-dot: 9.375px; /* 12.5 * 0.75 */
+  --status-pill-w: 28.125px; /* 37.5 * 0.75 */
+  --status-pill-h: 15.9375px; /* 21.25 * 0.75 */
+  --status-gap: 6px; /* 8 * 0.75 */
+  --status-pill-side-pad: calc(
+    (var(--status-pill-w) - var(--status-dot)) / 2 + 3px
+  );
+
   position: relative;
   left: auto;
   right: auto;
@@ -3913,20 +4202,35 @@ body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager {
   justify-content: center;
   width: min(max-content, 80dvw);
   max-width: 80dvw;
+  height: calc(35px * 1.25 * 0.75);
   /* Capsule chrome stays rounded; don't clip the floating pink pill. */
   overflow: visible;
   /* Keep side padding symmetric while scrolling — homepage first/last pad
      shifts the scrollport and clips the pill at the right edge mid-scrub. */
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  padding: calc(8px * 1.25 * 0.75) 0.9375rem;
+  padding-left: 0.9375rem;
+  padding-right: 0.9375rem;
+  border-radius: 45px;
 }
 
 body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager.has-pill:has(.is-active.is-first),
 body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager.has-pill:has(.is-active.is-first),
 body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager.has-pill:has(.is-active.is-last),
 body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager.has-pill:has(.is-active.is-last) {
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  padding-left: 0.9375rem;
+  padding-right: 0.9375rem;
+}
+
+body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager.has-pill .coverflow-status-pager__track,
+body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager.has-pill .coverflow-status-pager__track {
+  /* Theme uses gap + 6px; scale the fixed breathing room with the rest. */
+  column-gap: calc(var(--status-gap) + 4.5px);
+  padding-inline: calc((var(--status-pill-w) - var(--status-dot)) / 2);
+}
+
+body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager__pill,
+body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__pill {
+  --status-pill-hit: 0.4125rem; /* 0.55rem * 0.75 */
 }
 
 body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager__scroll,
@@ -4070,14 +4374,50 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
     /* No chevrons on mobile — keep a small side inset only. */
     --chevron-size: 0px;
     --chevron-gutter: 0px;
-    --stage-left-safe: 1rem;
-    --stage-right-safe: 1rem;
-    /* ~90% of the previous mobile card size, with a 1.5rem inter-card gap. */
-    --rendered-card-width: min(252px, 70.2vw);
-    --card-gap: 1.5rem;
+    /* Symmetric side insets — right must match left. */
+    --stage-left-safe: clamp(0.5rem, 2.4dvw, 0.85rem);
+    --stage-right-safe: var(--stage-left-safe);
+/*
+	     * Fluid mobile card: min(design max, vw, stage-height × aspect).
+	     * Leave room for the photo panel (2-col) + gap when expanded so the
+	     * motion+grid row can fill the device width (e.g. iPhone Pro Max 440).
+	     * 100cqh is the live frame height; fall back to dvh when needed.
+	     */
+	    --photo-panel-gap: 1rem;
+	    --active-row-gap: var(--photo-panel-gap);
+	    /* ~58% of the row after side safes + gap — panel claims the rest. */
+	    --card-width-from-vw: min(
+	      58dvw,
+	      calc(
+	        (100vw - var(--stage-left-safe) - var(--stage-right-safe) - var(--active-row-gap))
+	          * 0.58
+	      )
+	    );
+	    --card-width-max: 280px;
+	    --status-pager-reserve: 2.75rem;
+	    --card-stage-chrome: calc(
+	      clamp(3.5rem, 12cqh, 5.25rem) + var(--status-pager-reserve)
+	    );
+	    --card-height-budget: max(
+	      7.5rem,
+	      calc(min(100cqh, 72dvh) - var(--card-stage-chrome))
+	    );
+    --card-width-from-height: calc(
+      var(--card-height-budget) * var(--card-aspect-local, var(--card-aspect, 0.528421))
+    );
+    --rendered-card-width: min(
+      var(--card-width-max),
+      var(--card-width-from-vw),
+      var(--card-width-from-height)
+    );
+    --card-width: var(--rendered-card-width);
+    --card-gap: clamp(0.7rem, 3.2dvw, 1.125rem);
     /* Shared with .card-group so dots can sit under the stroke. */
-    --group-pad-y: calc(2.8rem + 16px);
-    --group-stroke-height: calc(var(--rendered-card-width) / var(--card-aspect, 0.528421) + (var(--group-pad-y) * 2));
+    --group-pad-y: clamp(0.65rem, 3.2cqh, 1.25rem);
+    --group-stroke-height: calc(
+      var(--rendered-card-width) / var(--card-aspect, 0.528421)
+        + (var(--group-pad-y) * 2)
+    );
   }
 
   .coverflow__chevron {
@@ -4085,19 +4425,77 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
   }
 
   .card-group {
-    --group-pad-y: calc(2.8rem + 16px);
+    --group-pad-y: clamp(0.65rem, 2.8dvh, 1.25rem);
   }
 
-  .card-group__label {
-    left: 0.85rem;
-    right: auto;
-    /* Lift avatar + title above the stroke so it clears the card top. */
-    transform: translateY(calc(-50% - 10px));
-    max-width: calc(100% - 1.5rem);
-  }
+.card-group__label {
+	    left: clamp(0.45rem, 2dvw, 0.7rem);
+	    right: auto;
+	    /* Lift avatar + title above the stroke so front cards don't cover them. */
+	    transform: translateY(calc(-50% - 0.45rem - 1rem));
+	    max-width: calc(100% - 1.125rem);
+	  }
 
   .coverflow__item {
-    width: var(--rendered-card-width, min(252px, 70.2vw));
+    width: var(--rendered-card-width);
+    max-width: none;
+  }
+
+  /*
+   * Expanded (active card): size the motion card so motion + gap + photo
+   * panel fill the device width (iPhone Pro Max 440, etc.). Browse keeps
+   * the smaller fluid card above.
+   */
+  /*
+   * Expanded: equal outer padding on L/R (coverflow box + stage safes).
+   * Close X / photo column must clear the viewport the same as the motion card.
+   */
+  .coverflow.is-expanded {
+    --active-side-pad: max(1rem, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+    padding-left: var(--active-side-pad);
+    padding-right: var(--active-side-pad);
+    box-sizing: border-box;
+  }
+
+  .coverflow.is-expanded .coverflow__frame {
+    --photo-panel-gap: 1rem;
+    /* Inner stage safes stay equal; outer pad is on .coverflow above. */
+    --stage-left-safe: 0.5rem;
+    --stage-right-safe: 0.5rem;
+    --active-row-inset: calc(
+      var(--active-side-pad, 1rem)
+        + var(--stage-left-safe)
+        + var(--active-side-pad, 1rem)
+        + var(--stage-right-safe)
+        + var(--photo-panel-gap, 1rem)
+    );
+    --active-row-usable: calc(100vw - var(--active-row-inset));
+    /* Prefer horizontal fill; height only caps if the stage is short. */
+    --card-stage-chrome: calc(
+      clamp(2.25rem, 7cqh, 3.5rem) + 3.25rem
+    );
+    --card-height-budget: max(
+      8rem,
+      calc(min(100cqh, 82dvh) - var(--card-stage-chrome))
+    );
+    --card-width-from-height: calc(
+      var(--card-height-budget)
+        * var(--card-aspect-local, var(--card-aspect, 0.528421))
+    );
+    /* Motion ~60% of the usable row; photo panel claims the remainder. */
+    --card-width-from-vw: calc(var(--active-row-usable) * 0.6);
+    --card-width-max: var(--active-row-usable);
+    --rendered-card-width: min(
+      var(--card-width-from-vw),
+      var(--card-width-from-height),
+      var(--card-width-max)
+    );
+    --card-width: var(--rendered-card-width);
+  }
+
+  /* Keep the layout box = visual face while expanded so width math holds. */
+  .coverflow.is-expanded .coverflow__item.is-active-item {
+    width: var(--rendered-card-width);
     max-width: none;
   }
 
@@ -4113,29 +4511,24 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
   }
 
   .active-card-actions {
-    /* Left lines up with the motion card. */
-    --actions-pad-left: max(
-      var(--stage-left-safe, 1rem),
-      env(safe-area-inset-left, 0px)
-    );
     /*
-     * Right lines up with the photo-slot COLUMN edge (not the outer stage
-     * / panel container). Extra inset pulls the gift circle inward so its
-     * right edge sits on the filled slot column rather than the panel edge.
+     * Span the active row: motion face left → photo panel right
+     * (same width as the track content, not full viewport).
+     * Live-pinned via --actions-row-width / left from ActiveCardPanel.
      */
-    --actions-pad-right: max(
-      calc(var(--stage-right-safe, 1rem) + 0.85rem),
-      calc(env(safe-area-inset-right, 0px) + 0.85rem)
-    );
+    --actions-pad-left: 0px;
+    --actions-pad-right: 0px;
     position: absolute;
-    left: calc(-1 * var(--stage-left-safe, 1rem));
+    left: var(--actions-row-left, 0px);
     right: auto;
-    top: calc(100% + 0.65rem);
+    /* Clear the bottom-mounted flip circle (half hangs below the face). */
+    top: calc(100% + 1.65rem);
     bottom: auto;
-    width: 100vw;
+    width: var(--actions-row-width, 100%);
     min-width: 0;
-    max-width: 100vw;
-    /* Keep under-card placement; animate Y, scale, opacity, and blur. */
+    max-width: none;
+    /* Keep under-card placement; animate Y, scale, opacity, and blur.
+     * No translateX — left is already face-aligned. */
     transform: translateY(0.85rem) scale(0.96);
     box-sizing: border-box;
     padding-left: 0;
@@ -4181,27 +4574,27 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
 
   .active-card-actions__row {
     display: grid;
-    grid-template-columns: 2.2fr 1.35fr;
+    grid-template-columns: minmax(0, 1fr) 3rem;
     gap: 0.55rem;
     width: 100%;
     height: 3rem;
-    /* Left = card edge; right = photo-slot column edge (extra inset). */
-    padding-left: var(--actions-pad-left);
-    padding-right: var(--actions-pad-right);
+    /* Full row width already equals face→panel span. */
+    padding-left: 0;
+    padding-right: 0;
     box-sizing: border-box;
   }
 
   .active-card-actions__row.has-gift {
-    grid-template-columns: 2.2fr 1.45fr 3rem;
+    grid-template-columns: minmax(0, 1fr) 3rem 3rem;
   }
 
-  .active-card-actions .btn-180,
-  .active-card-actions .active-card-panel__btn {
-    width: 100%;
-    height: 100%;
-    min-width: 0 !important;
-    justify-content: center;
-  }
+.active-card-actions .active-card-actions__play,
+	  .active-card-actions .active-card-panel__btn {
+	    width: 100%;
+	    height: 100%;
+	    min-width: 0 !important;
+	    justify-content: center;
+	  }
 
   .active-card-actions .btn-gift {
     width: 3rem;
@@ -4212,36 +4605,41 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
     justify-self: end;
   }
 
-  .active-card-actions__label {
-    max-width: 100%;
-    padding-left: var(--actions-pad-left);
-    padding-right: var(--actions-pad-right);
+  .active-card-header {
+    left: calc(
+      -1 * (var(--motion-card-width, var(--rendered-card-width, 52.65vw)) + 1rem)
+    );
+    /* Match photo-panel right edge (already inset via stage-right-safe). */
+    right: 0;
+    bottom: calc(100% + 0.45rem);
+    padding-right: 0;
     box-sizing: border-box;
   }
 
-  /*
-   * Keep the shared status pager fixed to the bottom of the viewport on mobile.
-   * bottom uses safe-area + a small gap so the capsule clears the iOS
-   * home indicator without relying on visualViewport hacks.
-   */
-  .coverflow__status-pager {
-    --dots-bottom-gap: 3dvh;
-
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: auto;
-    bottom: calc(var(--dots-bottom-gap) + env(safe-area-inset-bottom, 0px));
-    transform: none;
-    width: 100dvw;
-    max-width: 100dvw;
-    margin: 0;
-    padding: 1.1rem 1rem 0.85rem;
-    z-index: 12;
-    opacity: 1;
-    /* Mobile: long ease in when the card closes so the pager returns gently. */
-    transition: opacity 1.44s cubic-bezier(0.22, 1, 0.36, 1);
+  .active-card-header__close {
+    margin-right: 0;
   }
+
+/*
+		   * Mobile: keep the status capsule under the group stroke (inside
+		   * .coverflow__frame), not fixed above the liquid-glass dock.
+		   */
+		  .coverflow__status-pager {
+		    position: absolute;
+		    left: 0;
+		    right: 0;
+		    top: calc(50% + (var(--group-stroke-height, 50%) / 2) + 0.15rem);
+		    bottom: auto;
+		    transform: none;
+		    width: 100%;
+		    max-width: none;
+		    margin: 0;
+		    padding: 0.15rem 1rem 0.3rem;
+		    z-index: 12;
+		    opacity: 1;
+		    /* Mobile: long ease in when the card closes so the pager returns gently. */
+		    transition: opacity 1.44s cubic-bezier(0.22, 1, 0.36, 1);
+		  }
 
   /* Card active on mobile: slow fade for the status pager. */
   .coverflow.is-expanded .coverflow__status-pager {
@@ -4251,53 +4649,98 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
     transition: opacity 1.16s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /*
-   * Photo grid sits 1rem to the right of the active card as a 2×5 slot matrix.
-   * Overrides the tighter "stack under card" layout from the 1100/520 queries.
-   */
-  .active-card-panel {
-    left: calc(100% + 1rem);
-    right: auto;
-    top: 22dvh;
-    transform: translateY(-50%);
-    /* Narrower panel → smaller slot height while keeping card aspect ratio. */
-    width: min(7.75rem,
-        calc(100vw - var(--rendered-card-width, 70.2vw) - var(--stage-left-safe, 1rem) - 2.5rem));
-    height: auto;
-    min-height: 0;
-    padding-left: 0;
-    padding-right: 0;
-    --photo-panel-gap: 1rem;
-    --photo-panel-width: min(7.75rem,
-        calc(100vw - var(--rendered-card-width, 70.2vw) - var(--stage-left-safe, 1rem) - 2.5rem));
-    --photo-panel-height: auto;
-    --photo-panel-nudge-y: 0px;
-    justify-content: center;
-    /* Anchor for the close X so it can line up with the flip button. */
-    overflow: visible;
-  }
+/*
+			   * Photo grid sits 1rem to the right of the active card as a 2×5 slot matrix.
+			   * Grid height matches the motion card face so bottoms (and tops) align.
+			   * Vertically center with the card (same axis as .coverflow__item) so the
+			   * close control can share .card__flip-btn's top: -1rem line.
+			   */
+.active-card-panel {
+			    left: calc(100% + var(--photo-panel-gap, 1rem));
+			    right: auto;
+			    /*
+			     * Same vertical box as the motion card face so the photo grid
+			     * bottom (and top) share the card edges.
+			     */
+			    top: 50%;
+			    transform: translateY(-50%);
+			    /*
+			     * Fill the remaining row to the right safe edge so motion + grid
+			     * span the device width (no fixed 7.75rem ceiling).
+			     */
+			    --photo-panel-gap: 1rem;
+			    /*
+			     * Fallback width before rAF pin. Live sync sets width so
+			     * right pad == left pad (face.left). Keep safes equal here.
+			     */
+			    --photo-panel-width: max(
+			      5.5rem,
+			      calc(
+			        100vw
+			          - var(--stage-left-safe, 0.75rem)
+			          - var(--rendered-card-width, 52.65vw)
+			          - var(--photo-panel-gap, 1rem)
+			          - var(--stage-right-safe, var(--stage-left-safe, 0.75rem))
+			          - 1rem /* match .coverflow horizontal padding (0.5rem * 2) */
+			      )
+			    );
+			    width: var(--photo-panel-width);
+			    max-width: var(--photo-panel-width);
+			    height: var(--photo-grid-height);
+			    min-height: 0;
+			    max-height: var(--photo-grid-height);
+			    padding-left: 0;
+			    padding-right: 0;
+			    --motion-card-height: calc(
+			      var(--rendered-card-width, var(--card-width, 188.25px))
+			        / var(--card-aspect, 0.528421)
+			    );
+			    --photo-grid-height: var(--motion-card-height);
+			    --photo-panel-height: var(--photo-grid-height);
+			    --photo-panel-nudge-y: 0px;
+			    justify-content: stretch;
+			    /* Anchor for the close X so it can line up with the flip button. */
+			    overflow: visible;
+			  }
 
-  .active-card-panel.is-visible,
-  .active-card-panel.is-exiting {
-    transform: translateY(-52%);
-  }
+		  .active-card-panel.is-visible,
+		  .active-card-panel.is-exiting {
+		    /* Keep card-aligned center; don't lift the grid off the face. */
+		    transform: translateY(-50%);
+		  }
 
-  .photo-cards {
-    gap: 0.35rem;
-  }
+		  .photo-cards {
+		    position: relative;
+		    display: flex;
+		    flex-direction: column;
+		    justify-content: stretch;
+		    gap: 0;
+		    height: 100%;
+		    min-height: 0;
+		    padding-top: 0;
+		    box-sizing: border-box;
+		  }
 
-  .photo-cards__close-row {
-    position: relative;
+		  .photo-cards__close-row {
+		    /* Close moved into .active-card-header; keep rule as no-op fallback. */
+		    display: none;
+		  }
 
-    justify-content: flex-end;
-    margin-bottom: 0;
-    transform: none;
-  }
-
-  .photo-cards__header {
-    align-items: center;
-    min-height: 0;
-  }
+.photo-cards__header {
+	    /* First row inside .photo-cards__grid (spans both columns). */
+	    position: relative;
+	    left: auto;
+	    right: auto;
+	    top: auto;
+	    bottom: auto;
+	    flex: 0 0 auto;
+	    align-items: center;
+	    min-height: 1.5rem;
+	    height: auto;
+	    margin: 0;
+	    padding: 0;
+	    width: 100%;
+	  }
 
   .photo-cards__header-left {
     display: inline-flex;
@@ -4335,31 +4778,39 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
     text-align: left;
   }
 
-  .active-card-panel .photo-cards__close {
-    position: relative;
-    top: auto;
-    right: auto;
-    width: 4rem;
-    height: 4rem;
-    z-index: 90;
-  }
+.active-card-panel .photo-cards__close {
+		    position: relative;
+		    top: auto;
+		    right: auto;
+		    width: var(--photo-close-size, 2rem);
+		    height: var(--photo-close-size, 2rem);
+		    z-index: 90;
+		    pointer-events: auto;
+		  }
 
-  .photo-cards__close svg {
-    width: 28px;
-    height: 28px;
-  }
+		  .photo-cards__close svg {
+		    width: var(--photo-close-icon, 0.9rem);
+		    height: var(--photo-close-icon, 0.9rem);
+		  }
 
-  .photo-cards__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(4, auto);
-    gap: 0.3rem;
-    /* 70% of previous slot size; aspect ratio is preserved via slot CSS. */
-    width: 100%;
-    justify-self: start;
-  }
+.photo-cards__grid {
+		    grid-template-columns: repeat(2, minmax(0, 1fr));
+		    /* Header row + 5 slot rows */
+		    grid-template-rows: auto repeat(5, minmax(0, 1fr));
+		    gap: 0.3rem;
+		    width: 100%;
+		    /* Grid fills the panel; header is its first row. */
+		    flex: 1 1 auto;
+		    height: 100%;
+		    min-height: 0;
+		    max-height: none;
+		    justify-self: start;
+		  }
 
-  .photo-cards__slot {
-    aspect-ratio: 0.69;
-    width: 100%;
-  }
-}
+	  .photo-cards__slot {
+	    aspect-ratio: auto;
+	    width: 100%;
+	    height: 100%;
+	    min-height: 0;
+	  }
+	}

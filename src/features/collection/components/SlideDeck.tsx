@@ -339,6 +339,34 @@ const DeckItem = memo(function DeckItem({
             expandable ? onFocusChange(slotIndex) : onSelectCard(index)
           }
         />
+        {/*
+          Glass caption pill sits on the motion card bottom (~0.5rem inset).
+          Hidden while this item is the active selection.
+        */}
+        <div
+          className={`coverflow__caption${
+            isActiveItem ? ' is-active-hidden' : ''
+          }${faceReady ? '' : ' is-loading'}`}
+        >
+          <p className="coverflow__label">
+            {faceReady ? card.name : 'LOADING'}
+          </p>
+          <div className="coverflow__meta" aria-hidden="true">
+            <span className="coverflow__meta-item">
+              <CardMetaPlayIcon />
+              <span className="coverflow__meta-text">
+                {faceReady ? `${videoCount}x` : 'LOADING'}
+              </span>
+            </span>
+            <span className="coverflow__meta-divider" />
+            <span className="coverflow__meta-item">
+              <CardMetaPhotoIcon />
+              <span className="coverflow__meta-text">
+                {faceReady ? `${photoCount}/${PHOTO_SLOTS}` : 'LOADING'}
+              </span>
+            </span>
+          </div>
+        </div>
       </div>
       {/*
         Mount the photo grid only while this card is the active selection.
@@ -361,30 +389,6 @@ const DeckItem = memo(function DeckItem({
           onPlayPhotoCard={handlePlayPhotoCard}
         />
       )}
-      <div
-        className={`coverflow__caption${
-          isActiveItem ? ' is-active-hidden' : ''
-        }${faceReady ? '' : ' is-loading'}`}
-      >
-        <p className="coverflow__label">
-          {faceReady ? card.name : 'LOADING'}
-        </p>
-        <div className="coverflow__meta" aria-hidden="true">
-          <span className="coverflow__meta-item">
-            <CardMetaPlayIcon />
-            <span className="coverflow__meta-text">
-              {faceReady ? `${videoCount}x` : 'LOADING'}
-            </span>
-          </span>
-          <span className="coverflow__meta-divider" />
-          <span className="coverflow__meta-item">
-            <CardMetaPhotoIcon />
-            <span className="coverflow__meta-text">
-              {faceReady ? `${photoCount}/${PHOTO_SLOTS}` : 'LOADING'}
-            </span>
-          </span>
-        </div>
-      </div>
     </div>
   )
 })

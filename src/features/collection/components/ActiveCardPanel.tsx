@@ -8,13 +8,35 @@ import {
   type CSSProperties,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { CtaButton, ctaButtonPropsFromTemplate } from '@/components/cta'
+import { DiamondLottie } from '@/components/ui/DiamondLottie'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
+import { packCost } from '@/services/purchase'
 import {
   buildPhotoSlotFills,
   getVideoCardCount,
   PHOTO_SLOTS,
   type PhotoSlotFill,
 } from '../lib/photoSlots'
+
+function ViewCardEyeIcon() {
+  return (
+    <svg
+      className="active-card-panel__view-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M12 9a3 3 0 0 0-3 3a3 3 0 0 0 3 3a3 3 0 0 0 3-3a3 3 0 0 0-3-3m0 8a5 5 0 0 1-5-5a5 5 0 0 1 5-5a5 5 0 0 1 5 5a5 5 0 0 1-5 5m0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5"
+      />
+    </svg>
+  )
+}
 
 /** Role gift unlocks at 30 filled statics (3 motion videos × 10). */
 const ROLE_GIFT_PHOTO_TOTAL = 30
@@ -749,16 +771,16 @@ function PlayingPopup({
                 requestClose()
               }}
               disabled={giftExiting || !giftVideoReady}
-              aria-label="Close gift"
-              title="Close"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="28"
-                height="28"
-                aria-hidden="true"
-                focusable="false"
-              >
+aria-label="Close gift"
+	              title="Close"
+	            >
+	              <svg
+	                viewBox="0 0 24 24"
+	                width="14.4"
+	                height="14.4"
+	                aria-hidden="true"
+	                focusable="false"
+	              >
                 <path
                   d="M6 6l12 12M18 6L6 18"
                   fill="none"
@@ -975,10 +997,13 @@ export default function ActiveCardPanel({
     catalog.productSharedMedia.girlName.trim() || 'Juliana'
   // Demo recipient until a real collector profile name exists.
   const giftToName = 'Admin'
-  const visibleRef = useRef(visible)
-  visibleRef.current = visible
+const visibleRef = useRef(visible)
+	  visibleRef.current = visible
+	  const panelRef = useRef<HTMLDivElement | null>(null)
+	  const closeBtnRef = useRef<HTMLButtonElement | null>(null)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
 
-  const slotFills = useMemo(
+	  const slotFills = useMemo(
     () =>
       buildPhotoSlotFills(
         cardKey || cardName || 'card',
@@ -996,11 +1021,24 @@ export default function ActiveCardPanel({
     () => getVideoCardCount(cardKey || cardName || 'card', videoCardCount),
     [cardKey, cardName, videoCardCount]
   )
-  // 0x = no owned playable games yet → CTA becomes "Buy Pack to Play".
+  // 0x = no owned playable games yet → CTA becomes "Buy to Play" + pack cost.
   const canPlayGame = videoCount > 0
+  const buyPackDiamondCost = packCost(1)
+  // Homepage leaderboard pattern: diamond + value + label on one row.
   const playGameLabel = canPlayGame
     ? `Play Game (${videoCount}x)`
-    : 'Buy Pack to Play'
+    : `${buyPackDiamondCost} Buy to Play`
+  const playGameCostAmount = null
+  const playGameLeadingIcon = canPlayGame ? null : (
+    <DiamondLottie
+      className="active-card-actions__cta-diamond"
+      size={16}
+      aria-hidden
+    />
+  )
+  const playGameAriaLabel = canPlayGame
+    ? playGameLabel
+    : `Buy to Play for ${buyPackDiamondCost} diamonds`
   // Gift unlocks when all 30 role statics are filled (3 × 10).
   // Fallback: if role count is unknown, keep legacy per-card 10/10 for demos.
   const roleFilled =
@@ -1095,7 +1133,7 @@ export default function ActiveCardPanel({
       onPlayGame?.()
       return
     }
-    setPlayingMessage('Buy Pack to Play')
+    setPlayingMessage('Buy to Play')
     onPlayGame?.()
   }, [canPlayGame, onPlayGame])
 
@@ -1222,9 +1260,234 @@ export default function ActiveCardPanel({
         // ignore
       }
     }
-  }, [giftUnlocked, giftVideoUrl])
+}, [giftUnlocked, giftVideoUrl])
 
-  const handleGiftUnlocked = () => {
+/*
+		   * Pin photo-grid geometry to the live motion-card face + flip button:
+		   * - panel top/height track the active face (lift + scale on .card__translater)
+		   * - close control shares flip hit size and midY
+		   * CSS alone can't follow the spring pose, so keep a light rAF sync.
+		   */
+		  useEffect(() => {
+		    if (!gridOnly || !mounted) return
+	
+		    let raf = 0
+		    let ro: ResizeObserver | null = null
+	
+    const clearFacePin = (panel: HTMLElement) => {
+      panel.style.removeProperty('top')
+      panel.style.removeProperty('height')
+      panel.style.removeProperty('max-height')
+      panel.style.removeProperty('width')
+      panel.style.removeProperty('max-width')
+      panel.style.removeProperty('transform')
+      panel.style.removeProperty('--photo-grid-height')
+      panel.style.removeProperty('--photo-panel-height')
+      panel.style.removeProperty('--photo-panel-width')
+      panel.style.removeProperty('--motion-card-height')
+      panel.style.removeProperty('--motion-card-width')
+    }
+	
+    const clearClosePin = (panel: HTMLElement, closeBtn: HTMLElement | null) => {
+      panel.style.removeProperty('--photo-close-size')
+      panel.style.removeProperty('--photo-close-icon')
+      closeBtn?.style.removeProperty('width')
+      closeBtn?.style.removeProperty('height')
+    }
+
+    const sync = () => {
+      const panel = panelRef.current
+      if (!panel) return
+
+      const item = panel.closest('.coverflow__item') as HTMLElement | null
+      // Prefer the live scaled face (.card__translater / .card__rotator).
+      // Do NOT use a comma selector with .card first — tree-order would
+      // match the unscaled .card box before its transformed children.
+      const face =
+        (item?.querySelector('.card.active .card__translater') as HTMLElement | null) ??
+        (item?.querySelector('.card.active .card__rotator') as HTMLElement | null) ??
+        (item?.querySelector('.card__translater') as HTMLElement | null) ??
+        (item?.querySelector('.card__rotator') as HTMLElement | null) ??
+        (item?.querySelector('.card.active') as HTMLElement | null) ??
+        (item?.querySelector('.card') as HTMLElement | null)
+
+      // Match photo panel to the live motion-card face (same top + bottom).
+      // Header (card title|close) spans above via --motion-card-width.
+      // Width: right edge padding mirrors left edge (face.left → viewport).
+      if (item && face) {
+        const itemRect = item.getBoundingClientRect()
+        const faceRect = face.getBoundingClientRect()
+        if (itemRect.height > 1 && faceRect.height > 1) {
+          const height = Math.max(0, faceRect.height)
+          const top = faceRect.top - itemRect.top
+          panel.style.top = `${top}px`
+          panel.style.height = `${height}px`
+          panel.style.maxHeight = `${height}px`
+          panel.style.transform = 'none'
+          panel.style.setProperty('--motion-card-height', `${faceRect.height}px`)
+          panel.style.setProperty('--motion-card-width', `${faceRect.width}px`)
+          panel.style.setProperty('--photo-grid-height', `${height}px`)
+          panel.style.setProperty('--photo-panel-height', `${height}px`)
+
+          // Equal side padding: right gap mirrors left gap of the motion face.
+          // Prefer the live face.left; fall back to CSS --active-side-pad so a
+          // flush-left frame still keeps the close X off the viewport edge.
+          const rootFs = Number.parseFloat(
+            getComputedStyle(document.documentElement).fontSize,
+          )
+          const rem = Number.isFinite(rootFs) ? rootFs : 16
+          const gap = rem // 1rem between motion card and photo grid
+          const coverflow = item.closest('.coverflow') as HTMLElement | null
+          const padVar = coverflow
+            ? Number.parseFloat(
+                getComputedStyle(coverflow).getPropertyValue('--active-side-pad'),
+              )
+            : NaN
+          // --active-side-pad is length; probe via a temp node when needed.
+          let cssSidePad = Number.isFinite(padVar) && padVar > 0 ? padVar : rem
+          if (coverflow) {
+            const probe = document.createElement('div')
+            probe.style.cssText =
+              'position:absolute;visibility:hidden;width:var(--active-side-pad, 1rem);height:1px;pointer-events:none'
+            coverflow.appendChild(probe)
+            if (probe.offsetWidth > 0) cssSidePad = probe.offsetWidth
+            probe.remove()
+          }
+          const liveLeft = Math.max(0, faceRect.left)
+          const sidePad = Math.max(liveLeft, cssSidePad)
+          const viewportW =
+            typeof window !== 'undefined' ? window.innerWidth : 0
+          if (viewportW > 1) {
+            const panelRight = viewportW - sidePad
+            const panelLeft = faceRect.right + gap
+            const panelWidth = Math.max(0, panelRight - panelLeft)
+            panel.style.width = `${panelWidth}px`
+            panel.style.maxWidth = `${panelWidth}px`
+            panel.style.setProperty('--photo-panel-width', `${panelWidth}px`)
+          }
+        }
+      }
+
+      // Close lives in the header flex row — only keep hit size in sync.
+      if (!onClose) return
+      const closeBtn = closeBtnRef.current
+      if (!closeBtn) return
+      const rootFs = Number.parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      )
+      const rem = Number.isFinite(rootFs) ? rootFs : 16
+      const size = rem * 2
+      const icon = Math.max(10, size * 0.45)
+      panel.style.setProperty('--photo-close-size', `${size}px`)
+      panel.style.setProperty('--photo-close-icon', `${icon}px`)
+      closeBtn.style.width = `${size}px`
+      closeBtn.style.height = `${size}px`
+    }
+	
+		    const tick = () => {
+		      sync()
+		      raf = window.requestAnimationFrame(tick)
+		    }
+	
+		    raf = window.requestAnimationFrame(tick)
+	
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => sync())
+      if (panelRef.current) ro.observe(panelRef.current)
+      const faceEl = document.querySelector(
+        '.coverflow__item.is-active-item .card, .coverflow__item.is-focused .card',
+      )
+      if (faceEl) ro.observe(faceEl)
+    }
+	
+		    window.addEventListener('resize', sync)
+		    window.addEventListener('scroll', sync, true)
+	
+		    return () => {
+		      window.cancelAnimationFrame(raf)
+		      ro?.disconnect()
+		      window.removeEventListener('resize', sync)
+		      window.removeEventListener('scroll', sync, true)
+		      const panel = panelRef.current
+		      const closeBtn = closeBtnRef.current
+		      if (panel) {
+		        clearFacePin(panel)
+		        clearClosePin(panel, closeBtn)
+		      }
+		    }
+		  }, [gridOnly, mounted, onClose, open, visible])
+
+  /*
+   * Pin Buy/View/Gift row to the live face → photo-panel span so it matches
+   * the track content width (not 100vw). Runs for actionsOnly mount.
+   */
+  useEffect(() => {
+    if (!actionsOnly || !mounted) return
+
+    let raf = 0
+
+    const clear = (el: HTMLElement) => {
+      el.style.removeProperty('left')
+      el.style.removeProperty('width')
+      el.style.removeProperty('max-width')
+      el.style.removeProperty('--actions-row-left')
+      el.style.removeProperty('--actions-row-width')
+    }
+
+    const sync = () => {
+      const el = actionsRef.current
+      if (!el) return
+      const item = el.closest('.coverflow__item') as HTMLElement | null
+      const face =
+        (item?.querySelector('.card.active .card__translater') as HTMLElement | null) ??
+        (item?.querySelector('.card__translater') as HTMLElement | null) ??
+        (el.parentElement as HTMLElement | null)
+      const photoPanel =
+        (item?.querySelector('.active-card-panel--grid') as HTMLElement | null) ??
+        (document.querySelector(
+          '.coverflow__item.is-active-item .active-card-panel--grid',
+        ) as HTMLElement | null)
+      if (!face) return
+      const faceRect = face.getBoundingClientRect()
+      const panelRect = photoPanel?.getBoundingClientRect()
+      if (faceRect.width < 1) return
+
+      // Local coords inside .card__translater (actions parent).
+      const parent = el.offsetParent as HTMLElement | null
+      const parentRect = parent?.getBoundingClientRect() ?? faceRect
+      const scaleX =
+        parent && parentRect.width > 1
+          ? parentRect.width / Math.max(1, parent.offsetWidth || parentRect.width)
+          : 1
+
+      const rightEdge = panelRect && panelRect.width > 1 ? panelRect.right : faceRect.right
+      const spanPx = Math.max(0, rightEdge - faceRect.left)
+      // Convert viewport px → parent local px (undo parent scale).
+      const localWidth = scaleX > 0.01 ? spanPx / scaleX : spanPx
+      const localLeft =
+        scaleX > 0.01 ? (faceRect.left - parentRect.left) / scaleX : 0
+
+      el.style.left = `${localLeft}px`
+      el.style.width = `${localWidth}px`
+      el.style.maxWidth = `${localWidth}px`
+      el.style.setProperty('--actions-row-left', `${localLeft}px`)
+      el.style.setProperty('--actions-row-width', `${localWidth}px`)
+    }
+
+    const tick = () => {
+      sync()
+      raf = window.requestAnimationFrame(tick)
+    }
+    raf = window.requestAnimationFrame(tick)
+    window.addEventListener('resize', sync)
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.removeEventListener('resize', sync)
+      if (actionsRef.current) clear(actionsRef.current)
+    }
+  }, [actionsOnly, mounted, open, visible])
+
+	  const handleGiftUnlocked = () => {
     const giftUrl = giftVideoUrl?.trim() || ''
     setPlayingVideoUrl(giftUrl || undefined)
     setPlayingGiftCard(Boolean(giftUrl))
@@ -1270,31 +1533,47 @@ export default function ActiveCardPanel({
     if (!mounted && !visible) return null
     return (
       <>
+        {/* Title + close live in the grid panel header row above the cards. */}
         <div
+          ref={actionsRef}
           className={`active-card-actions${phaseClass}`}
           aria-hidden={!open}
         >
-          <p className="active-card-actions__label">{cardName}</p>
           <div
             className={`active-card-actions__row${
               giftUnlocked ? ' has-gift' : ''
             }`}
           >
+            <div className="active-card-actions__play">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate('squircleCTA')}
+                className="active-card-actions__cta"
+                fillParent
+                label={playGameLabel}
+                leadingIcon={playGameLeadingIcon}
+                costAmount={playGameCostAmount}
+                fontSize={14}
+                strokeWidth={1}
+                glowOuterBloom="lite"
+                glowAlwaysOn={open}
+                auroraPaused={!open}
+                tabIndex={open ? 0 : -1}
+                aria-label={playGameAriaLabel}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePlayMotionGame()
+                }}
+              />
+            </div>
             <button
               type="button"
-              className="btn-180"
-              onClick={handlePlayMotionGame}
-              tabIndex={open ? 0 : -1}
-            >
-              <span className="btn-180-label">{playGameLabel}</span>
-            </button>
-            <button
-              type="button"
-              className="active-card-panel__btn active-card-panel__btn--secondary"
+              className="active-card-panel__btn active-card-panel__btn--secondary active-card-panel__btn--view"
               onClick={handleViewCard}
               tabIndex={open ? 0 : -1}
+              aria-label="View card"
+              title="View"
             >
-              View
+              <ViewCardEyeIcon />
             </button>
             {giftUnlocked && (
               <GiftUnlockedButton open={open} onClick={handleGiftUnlocked} />
@@ -1306,82 +1585,87 @@ export default function ActiveCardPanel({
     )
   }
 
-  if (gridOnly) {
-    if (!mounted && !visible) return null
-    return (
-      <div
-        className={`active-card-panel active-card-panel--grid${phaseClass}`}
-        aria-hidden={!open}
-      >
-        <section className="photo-cards" aria-label="Photo cards">
-          {/* Own row above the title/count + grid so close can sit at the top. */}
-          <div className="photo-cards__close-row">
-            {onClose && (
-              <button
-                type="button"
-                className="photo-cards__close"
-                onPointerDown={(e) => {
-                  // Stage drag / card gestures must not steal the close press.
-                  e.preventDefault()
-                  e.stopPropagation()
-                }}
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onClose()
-                }}
-                tabIndex={open ? 0 : -1}
-                aria-label="Close card"
-                title="Close"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="28"
-                  height="28"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path
-                    d="M6 6l12 12M18 6L6 18"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-          <div className="photo-cards__header">
-            <div className="photo-cards__header-left">
-              <h3 className="photo-cards__title">
-                <span className="photo-cards__title-text">Photo Cards</span>
-                <PhotoCardsTitleIcon />
-              </h3>
-              <span className="photo-cards__count">
-                {filledCount}/{PHOTO_SLOTS}
-              </span>
-            </div>
-          </div>
-          {/* No enterKey remount — CSS is-visible drives the stagger once. */}
-          <div className="photo-cards__grid">
-            {slotFills.map((fill, i) => (
-              <PhotoSlot
-                key={i}
-                index={i}
-                fill={fill}
-                playRevealed={revealedPlaySlot === i}
-                keyboardSelected={kbSelectedSlot === i}
-                onRevealPlay={handleRevealPlay}
-                onPlay={handlePlayStaticCard}
-              />
-            ))}
-          </div>
-        </section>
-        {playingPopup}
-      </div>
-    )
-  }
+if (gridOnly) {
+		    if (!mounted && !visible) return null
+		    return (
+		      <div
+		        ref={panelRef}
+		        className={`active-card-panel active-card-panel--grid${phaseClass}`}
+		        aria-hidden={!open}
+		      >
+		        {/*
+		          Row 1: title (left) + close (right) spanning motion card + grid.
+		          Row 2: photo grid (motion card is the sibling .coverflow__card).
+		        */}
+		        <div className="active-card-header">
+		          <p className="active-card-header__title">{cardName}</p>
+		          {onClose && (
+		            <button
+		              ref={closeBtnRef}
+		              type="button"
+		              className="photo-cards__close active-card-header__close"
+		              onPointerDown={(e) => {
+		                e.preventDefault()
+		                e.stopPropagation()
+		              }}
+		              onClick={(e) => {
+		                e.preventDefault()
+		                e.stopPropagation()
+		                onClose()
+		              }}
+		              tabIndex={open ? 0 : -1}
+		              aria-label="Close card"
+		              title="Close"
+		            >
+		              <svg
+		                viewBox="0 0 24 24"
+		                width="14.4"
+		                height="14.4"
+		                aria-hidden="true"
+		                focusable="false"
+		              >
+		                <path
+		                  d="M6 6l12 12M18 6L6 18"
+		                  fill="none"
+		                  stroke="currentColor"
+		                  strokeWidth="2"
+		                  strokeLinecap="round"
+		                />
+		              </svg>
+		            </button>
+		          )}
+		        </div>
+		        <section className="photo-cards" aria-label="Photo cards">
+		          <div className="photo-cards__grid">
+		            {/* Own row above the 2×5 slots, spanning the grid width. */}
+		            <div className="photo-cards__header">
+		              <div className="photo-cards__header-left">
+		                <h3 className="photo-cards__title">
+		                  <span className="photo-cards__title-text">Photo Cards</span>
+		                  <PhotoCardsTitleIcon />
+		                </h3>
+		                <span className="photo-cards__count">
+		                  {filledCount}/{PHOTO_SLOTS}
+		                </span>
+		              </div>
+		            </div>
+		            {slotFills.map((fill, i) => (
+		              <PhotoSlot
+		                key={i}
+		                index={i}
+		                fill={fill}
+		                playRevealed={revealedPlaySlot === i}
+		                keyboardSelected={kbSelectedSlot === i}
+		                onRevealPlay={handleRevealPlay}
+		                onPlay={handlePlayStaticCard}
+		              />
+		            ))}
+		          </div>
+		        </section>
+		        {playingPopup}
+		      </div>
+		    )
+		  }
 
   if (!mounted && !visible) return null
 
@@ -1398,21 +1682,36 @@ export default function ActiveCardPanel({
             giftUnlocked ? ' has-gift' : ''
           }`}
         >
+          <div className="active-card-panel__play">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate('squircleCTA')}
+              className="active-card-panel__cta"
+              fillParent
+              label={playGameLabel}
+              leadingIcon={playGameLeadingIcon}
+              costAmount={playGameCostAmount}
+              fontSize={14}
+              strokeWidth={1}
+              glowOuterBloom="lite"
+              glowAlwaysOn={open}
+              auroraPaused={!open}
+              tabIndex={open ? 0 : -1}
+              aria-label={playGameAriaLabel}
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePlayMotionGame()
+              }}
+            />
+          </div>
           <button
             type="button"
-            className="btn-180"
-            onClick={handlePlayMotionGame}
-            tabIndex={open ? 0 : -1}
-          >
-            <span className="btn-180-label">{playGameLabel}</span>
-          </button>
-          <button
-            type="button"
-            className="active-card-panel__btn active-card-panel__btn--secondary"
+            className="active-card-panel__btn active-card-panel__btn--secondary active-card-panel__btn--view"
             onClick={handleViewCard}
             tabIndex={open ? 0 : -1}
+            aria-label="View card"
+            title="View"
           >
-            View
+            <ViewCardEyeIcon />
           </button>
           {giftUnlocked && (
             <GiftUnlockedButton open={open} onClick={handleGiftUnlocked} />

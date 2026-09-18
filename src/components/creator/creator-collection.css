@@ -3,16 +3,66 @@
 .creator-collection-browse,
 .creator-featured-stage {
   position: relative;
-  min-height: min(78vh, 720px);
+  /*
+   * One viewport-tall stage above the fixed dock. Status pager lives inside
+   * the coverflow frame bottom, so only dock chrome is reserved outside.
+   */
+  --creator-stage-dock: 96px;
+  --creator-stage-dock-inset: calc(2.5dvh + env(safe-area-inset-bottom, 0px));
+  --creator-stage-height: calc(
+    100dvh
+      - var(--creator-stage-dock)
+      - var(--creator-stage-dock-inset)
+  );
+  height: var(--creator-stage-height);
+  min-height: var(--creator-stage-height);
+  max-height: var(--creator-stage-height);
   margin: 0 -12px;
-  /* Group labels, captions, and nav dots extend past the stage — don't clip. */
+  /* Group labels / captions may paint slightly past the box — don't clip. */
   overflow: visible;
+}
+
+@media (max-width: 440px) {
+  .creator-collection-browse,
+  .creator-featured-stage {
+    --creator-stage-dock-inset: calc(env(safe-area-inset-bottom, 0px) + 0.1dvh);
+  }
+}
+
+/* Drive fluid card width from the live stage box (cqh), not raw 100dvh. */
+.creator-collection-browse .collection-app--embedded .coverflow__frame,
+.creator-featured-stage .collection-app--embedded .coverflow__frame {
+  container-type: size;
+  container-name: coverflow-stage;
+  height: 100%;
+  min-height: 0;
+}
+
+/*
+ * Mode-panel enter animation keeps transform: translateY(0) (fill-mode: both),
+ * which makes position:fixed descendants (status pager above the dock) bind to
+ * the panel instead of the viewport. Opacity-only fade keeps the swap soft.
+ */
+body[data-theme="v8"] .cpv2-mode-panel:has(.creator-collection-browse) {
+  transform: none;
+  animation-name: cpv2-collection-panel-fade;
+}
+
+@keyframes cpv2-collection-panel-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .creator-collection-browse .collection-app--embedded,
 .creator-featured-stage .collection-app--embedded {
   height: 100%;
-  min-height: min(78vh, 720px);
+  min-height: 0;
+  max-height: 100%;
   overflow: visible;
 }
 
@@ -21,6 +71,8 @@
   height: 100%;
   min-height: 0;
   overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
 
 /*
@@ -31,6 +83,9 @@
 .creator-collection-browse .collection-app--embedded .coverflow,
 .creator-featured-stage .collection-app--embedded .coverflow {
   transform: none;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
 }
 
 .creator-collection-browse .collection-app--embedded .coverflow__viewport,
