@@ -650,7 +650,7 @@
   padding: 1rem 0.5rem 1.25rem;
   box-sizing: border-box;
   overflow: visible;
-  /* Shift the whole stage (cards + stroke-relative nav dots) down. */
+  /* Shift the whole stage (cards + stroke-relative status pager) down. */
   transform: translateY(4dvh);
   user-select: none;
   -webkit-user-select: none;
@@ -677,7 +677,7 @@
   flex: 1;
   min-height: 0;
   max-height: 100%;
-  /* Let stroke-relative nav dots paint below the stage without clipping. */
+  /* Let stroke-relative status pager paint below the stage without clipping. */
   overflow: visible;
   /* 3× the original 2.5rem chevrons. */
   --chevron-size: 7.5rem;
@@ -3864,236 +3864,77 @@
 }
 
 /*
- * Outer shell stays fixed to the viewport bottom. Horizontal pan lives on
- * the inner scroller so the container itself never feels like it moves.
- * Rest marks are circles; only the active indicator is pill-shaped.
- *
- * Bottom offset uses safe-area + dvh-friendly spacing so iOS home-indicator
- * / dynamic island layouts keep the strip clear of system chrome.
+ * Shared CoverflowStatusPager placement in the collection shell.
+ * Desktop: under the group stroke. Mobile: fixed near the bottom.
+ * Visual chrome (glass capsule + pink active pill) comes from theme.css.
  */
-.coverflow__dots {
-  --dot-size: 0.78rem;
-  --dot-rest-w: var(--dot-size);
-  --dot-rest-h: var(--dot-size);
-  --dot-gap: 0.72rem;
-  /* Active indicator: taller stadium pill over the rest circles. */
-  --dot-pill-w: calc(var(--dot-size) * 2.15);
-  --dot-pill-h: calc(var(--dot-size) + 3px);
-  /* Extra air on either side of the active pill so neighbors don't crowd it.
-     Desktop uses a tighter pad; mobile can override this. */
-  --dot-active-side-gap: calc((var(--dot-pill-w) - var(--dot-size)) / 2 + 0.08rem);
+.coverflow__status-pager {
   /* Desktop gap below the group-stroke bottom edge. */
   --dots-under-stroke: 5dvh;
 
-  /*
-   * Desktop: park under the group stroke (same vertical center as cards).
-   * Mobile overrides to fixed bottom in the max-width: 800px query.
-   */
   position: absolute;
   left: 0;
   right: 0;
   top: calc(50% + (var(--group-stroke-height) / 2) + var(--dots-under-stroke));
   bottom: auto;
   z-index: 12;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0.55rem 0 0.25rem;
+  padding: 0.55rem 1rem 0.25rem;
   box-sizing: border-box;
   flex-shrink: 0;
-  /* Shell never scrolls — only the inner scroller does. */
-  overflow: hidden;
+  pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
-  pointer-events: auto;
-}
-
-.coverflow__dots-scroller {
-  display: flex;
-  justify-content: safe center;
-  align-items: center;
-  width: 100%;
-  max-width: 100%;
-  padding: 0 1rem;
-  box-sizing: border-box;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  /* Swipe pans the strip; pill hold-scrub takes over once active. */
-  touch-action: pan-x;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  scroll-snap-type: x proximity;
-}
-
-.coverflow__dots-scroller::-webkit-scrollbar {
-  display: none;
-}
-
-.coverflow__dots-track {
-  position: relative;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--dot-gap);
-  flex: 0 0 auto;
-  min-width: 100%;
-  min-height: calc(var(--dot-size) + 0.9rem);
-  padding: 0.25rem 0.15rem;
-  box-sizing: content-box;
-}
-
-/* While scrubbing/holding: rest-dots keep distance falloff; pill stays full. */
-.coverflow.is-dot-scrubbing .coverflow__dots {
-  cursor: ew-resize;
-}
-
-.coverflow.is-dot-scrubbing .coverflow__dots-scroller {
-  /* Lock strip pan so the pill scrub owns the gesture. */
-  touch-action: none;
-  overflow-x: hidden;
-  scroll-snap-type: none;
-}
-
-.coverflow.is-dot-scrubbing .coverflow__dot {
-  /* Faster opacity / margin chase while the pill is moving under the finger. */
-  transition:
-    background-color 0.18s ease,
-    opacity 0.28s cubic-bezier(0.33, 0.1, 0.25, 1),
-    margin 0.18s ease;
-}
-
-.coverflow.is-dot-scrubbing .coverflow__dot-pill {
-  filter: none;
-  opacity: 1;
-  cursor: grabbing;
-}
-
-.coverflow__dot {
-  position: relative;
-  z-index: 1;
-  /* Circular rest marks (equal width/height). */
-  width: var(--dot-size);
-  height: var(--dot-size);
-  aspect-ratio: 1;
-  border: none;
-  border-radius: 50%;
-  /* Filled slot: white at half opacity (JS multiplies scrub falloff on top). */
-  background: oklch(1 0 0);
-  box-shadow: none;
-  padding: 0;
-  margin-inline: 0;
-  cursor: pointer;
-  opacity: 0.5;
-  flex: 0 0 auto;
-  scroll-snap-align: center;
-  /*
-   * Distance falloff is written as inline opacity.
-   * Filled base = 0.5 (white half-opacity); empty base = 1 (styled inset look).
-   * Slow floaty ease when focus settles after scrub / swipe.
-   * Active side gap eases open so the pill has room on either side.
-   */
-  transition:
-    background-color 0.18s ease,
-    box-shadow 0.18s ease,
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    margin 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.coverflow__dot.is-empty {
-  /* Empty slot: recessed gray chip (opacity owned by JS, base 1). */
-  background: oklch(0.337 0 0);
-  box-shadow: 0px 1px 0px oklch(1 0 0 / 0.259), inset 0px 3px 1px oklch(0 0 0 / 0.231);
-  opacity: 1;
-}
-
-.coverflow__dot.active {
-  /* Active fill lives on the sliding pill; hide the rest under it. */
-  background: transparent;
-  box-shadow: none;
-  /* Breathing room on either side of the wider stadium pill. */
-  margin-inline: var(--dot-active-side-gap);
-}
-
-/* Sliding active indicator — pill-shaped, position driven by carousel scrub. */
-.coverflow__dot-pill {
-  --dot-pill-hit-y: 0.55rem;
-  --dot-pill-hit-x: 0.55rem;
-
-  position: absolute;
-  top: 0;
-  left: 0;
-  /* Above rest-dots so the active pill is never masked by neighbors. */
-  z-index: 2;
-  width: 0;
-  height: var(--dot-pill-h);
-  border-radius: 999px;
-  /* Fill lives on .coverflow__dot-pill-face so scale can animate independently. */
-  background: transparent;
-  transform: translate3d(0, 0, 0);
-  opacity: 0;
-  /* Hold/drag the pill to scrub; strip swipe only pans. */
-  pointer-events: auto;
-  touch-action: none;
-  cursor: grab;
-  /*
-   * Enlarge the grab target without changing the painted pill.
-   * The face sits in the content box; padding expands the hit area only.
-   */
-  box-sizing: content-box;
-  padding: var(--dot-pill-hit-y) var(--dot-pill-hit-x);
-  margin: calc(var(--dot-pill-hit-y) * -1) calc(var(--dot-pill-hit-x) * -1);
-  will-change: transform, width, height;
-  /*
-   * Geometry transitions are owned by JS (none while live, bounce on settle).
-   * Opacity fade while a card is active is owned by the parent .coverflow__dots.
-   */
-  transition: none;
-}
-
-/* Painted pink body — can grow under a finger without fighting JS translate. */
-.coverflow__dot-pill-face {
-  position: absolute;
-  top: var(--dot-pill-hit-y);
-  right: var(--dot-pill-hit-x);
-  bottom: var(--dot-pill-hit-y);
-  left: var(--dot-pill-hit-x);
-  border-radius: inherit;
-  background: oklch(0.641 0.25 13.45);
-  pointer-events: none;
-  transform: scale(1);
-  transform-origin: center center;
-  will-change: transform;
-}
-
-/* Inner rim layer — matches the painted face, not the padded hit target. */
-.coverflow__dot-pill-face::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: none;
-  transition: box-shadow 0.18s ease;
-}
-
-.coverflow__dot-pill.is-ready {
-  opacity: 1;
+  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /*
- * White inset rim while the pill is moving:
- * - carousel progressive drag (.is-dragging)
- * - nav-dot pill scrub (.is-dot-scrubbing)
- * Drawn on the face ::after so it sits inside the visible pink fill.
+ * Collection shell owns placement; don't keep the homepage hero absolute overlay.
+ * body[data-theme=v8] .coverflow-status-pager sets max-width:none — beat that
+ * specificity so long creator decks actually clamp to 80dvw.
  */
-.coverflow.is-dragging .coverflow__dot-pill-face::after,
-.coverflow.is-dot-scrubbing .coverflow__dot-pill-face::after {
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.72),
-    inset 0 -1px 0 oklch(1 0 0 / 0.18),
-    inset 0 0 0 1px oklch(1 0 0 / 0.28);
+body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager,
+body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  transform: none;
+  z-index: 1;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(max-content, 80dvw);
+  max-width: 80dvw;
+  /* Capsule chrome stays rounded; don't clip the floating pink pill. */
+  overflow: visible;
+  /* Keep side padding symmetric while scrolling — homepage first/last pad
+     shifts the scrollport and clips the pill at the right edge mid-scrub. */
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager.has-pill:has(.is-active.is-first),
+body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager.has-pill:has(.is-active.is-first),
+body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager.has-pill:has(.is-active.is-last),
+body[data-theme="v8"] .coverflow__status-pager-control.coverflow-status-pager.has-pill:has(.is-active.is-last) {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+body[data-theme="v8"] .coverflow__status-pager .coverflow-status-pager__scroll,
+body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .coverflow.is-expanded .coverflow__item:not(.is-focused) {
@@ -4101,8 +3942,8 @@
   pointer-events: none;
 }
 
-/* Desktop: dots stay dimmed while open; chevrons stay usable to page heroes. */
-.coverflow.is-expanded .coverflow__dots {
+/* Desktop: pager stays dimmed while open; chevrons stay usable to page heroes. */
+.coverflow.is-expanded .coverflow__status-pager {
   z-index: 1;
   opacity: 0.25;
   pointer-events: none;
@@ -4379,16 +4220,11 @@
   }
 
   /*
-   * Keep nav dots fixed to the bottom of the viewport on mobile.
-   * bottom uses safe-area + a small gap so the strip clears the iOS
+   * Keep the shared status pager fixed to the bottom of the viewport on mobile.
+   * bottom uses safe-area + a small gap so the capsule clears the iOS
    * home indicator without relying on visualViewport hacks.
    */
-  .coverflow__dots {
-    --dot-size: 0.95rem;
-    --dot-gap: 0.3rem;
-    --dot-pill-w: calc(var(--dot-size) * 2.2);
-    --dot-pill-h: calc(var(--dot-size) + 3px);
-    /* Mobile stays fixed to the viewport bottom (not stroke-relative). */
+  .coverflow__status-pager {
     --dots-bottom-gap: 3dvh;
 
     position: fixed;
@@ -4400,72 +4236,20 @@
     width: 100dvw;
     max-width: 100dvw;
     margin: 0;
-    /* Larger vertical hit pad so hold+scrub is easy without precise aim. */
-    padding: 1.1rem 0 0.85rem;
+    padding: 1.1rem 1rem 0.85rem;
     z-index: 12;
     opacity: 1;
-    overflow: hidden;
-    /* Mobile: long ease in when the card closes so dots return gently. */
+    /* Mobile: long ease in when the card closes so the pager returns gently. */
     transition: opacity 1.44s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .coverflow__dots-scroller {
-    padding: 0 1rem;
-  }
-
-  .coverflow__dots-track {
-    min-height: 2rem;
-  }
-
-  /* Card active on mobile: slow fade for nav dots + pill. */
-  .coverflow.is-expanded .coverflow__dots {
+  /* Card active on mobile: slow fade for the status pager. */
+  .coverflow.is-expanded .coverflow__status-pager {
     opacity: 0;
     pointer-events: none;
     /* Slightly quicker out than in, still stretched. */
     transition: opacity 1.16s cubic-bezier(0.4, 0, 0.2, 1);
   }
-
-  .coverflow__dot-pill {
-    --dot-pill-hit-y: 0.7rem;
-    --dot-pill-hit-x: 0.65rem;
-  }
-
-  /*
-   * Under-finger grow: expand ~3× on touch so the scrubber is visible under
-   * the fingertip, fade to 0.2 while enlarged, then restore scale + opacity
-   * when contact ends (.is-held is JS-owned).
-   */
-  .coverflow__dot-pill-face {
-    opacity: 1;
-    transition:
-      transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.22s ease;
-  }
-
-  .coverflow__dot-pill.is-held {
-    z-index: 20;
-  }
-
-  .coverflow__dot-pill.is-held .coverflow__dot-pill-face {
-    transform: scale(3);
-    opacity: 0.2;
-    transition:
-      transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.15),
-      opacity 0.18s ease;
-  }
-
-  /* Don't clip the enlarged pill while held / scrubbing. */
-  .coverflow__dots:has(.coverflow__dot-pill.is-held),
-  .coverflow.is-dot-scrubbing .coverflow__dots {
-    overflow: visible;
-  }
-
-  .coverflow__dots:has(.coverflow__dot-pill.is-held) .coverflow__dots-scroller,
-  .coverflow.is-dot-scrubbing .coverflow__dots-scroller {
-    overflow: visible;
-  }
-
-  /* Mobile inherits the shared scrub-dim opacity transition above. */
 
   /*
    * Photo grid sits 1rem to the right of the active card as a 2×5 slot matrix.

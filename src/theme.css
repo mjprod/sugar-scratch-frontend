@@ -16671,11 +16671,31 @@ body[data-theme="v8"] .coverflow-status-pager {
 
 body[data-theme="v8"] .coverflow-status-pager.is-interactive {
   pointer-events: auto;
-  touch-action: none;
+  /* Allow horizontal pan of overflowing tracks; pill scrub sets touch-action none. */
+  touch-action: pan-x;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__scroll {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  /* Keep y visible so the taller pink pill isn't clipped top/bottom. */
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__scroll::-webkit-scrollbar {
+  display: none;
 }
 
 body[data-theme="v8"] .coverflow-status-pager.is-interactive * {
@@ -16759,10 +16779,20 @@ body[data-theme="v8"] .coverflow-status-pager.has-pill:has(.is-active.is-last) {
 /* Extra gap so the floating pill has breathing room without resizing dots */
 body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__track {
   column-gap: calc(var(--status-gap) + 6px);
+  /* Pill is wider than a rest-dot; keep first/last pill fully inside the scrollport. */
+  padding-inline: calc((var(--status-pill-w) - var(--status-dot)) / 2);
+  box-sizing: content-box;
 }
 
 body[data-theme="v8"] .coverflow-status-pager.is-scrubbing {
   touch-action: none;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-scrubbing .coverflow-status-pager__scroll {
+  /* Lock finger pan only — keep overflow-x:auto so edge-hold can still scroll
+     the active pill fully into view without clipping at the right end. */
+  touch-action: none;
+  scroll-snap-type: none;
 }
 
 /* Scrub is direct; ease pads only when the committed active index changes */
