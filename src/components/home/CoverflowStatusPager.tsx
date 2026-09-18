@@ -41,29 +41,44 @@ export function CoverflowStatusPager({
   const pointerIdRef = useRef<number | null>(null);
   const hoverIndexRef = useRef(active);
   const pillWRef = useRef(37.5);
+  const hasLaidOutRef = useRef(false);
 
   const measure = useCallback(() => {
-    const track = trackRef.current;
-    if (!track || total <= 1) {
+    if (total <= 1) {
       metricsRef.current = [];
       return;
     }
-    const trackBox = track.getBoundingClientRect();
-    const buttons = track.querySelectorAll<HTMLElement>(
-      ".coverflow-status-pager__dot",
+    const root = rootRef.current;
+    // Final geometry from CSS vars (not live rects) so margin transitions
+    // can ease dots while the pill still targets the settled layout.
+    const styles = root ? getComputedStyle(root) : null;
+    const read = (name: string, fallback: number) => {
+      const n = Number.parseFloat(styles?.getPropertyValue(name) ?? "");
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+    const dotW = read("--status-dot", 12.5);
+    const gap = read("--status-gap", 8);
+    const pillW = read("--status-pill-w", 37.5);
+    const sidePad = read(
+      "--status-pill-side-pad",
+      (pillW - dotW) / 2 + 4,
     );
-    metricsRef.current = Array.from(buttons, (btn) => {
-      const box = btn.getBoundingClientRect();
-      return { center: box.left - trackBox.left + box.width / 2 };
-    });
-    const pill = pillRef.current;
-    if (pill) {
-      const w = Number.parseFloat(
-        getComputedStyle(pill).getPropertyValue("--status-pill-w"),
-      );
-      if (Number.isFinite(w) && w > 0) pillWRef.current = w;
+    // has-pill track uses column-gap: calc(var(--status-gap) + 6px)
+    const colGap = root?.classList.contains("has-pill") ? gap + 6 : gap;
+    pillWRef.current = pillW;
+
+    const metrics: DotMetric[] = [];
+    let offset = 0;
+    for (let i = 0; i < total; i++) {
+      const isActive = i === active;
+      const marginLeft = isActive && i !== 0 ? sidePad : 0;
+      const marginRight = isActive && i !== total - 1 ? sidePad : 0;
+      metrics.push({ center: offset + marginLeft + dotW / 2 });
+      offset += marginLeft + dotW + marginRight;
+      if (i < total - 1) offset += colGap;
     }
-  }, [total]);
+    metricsRef.current = metrics;
+  }, [active, total]);
 
   const paintPill = useCallback((index: number, animate: boolean) => {
     const pill = pillRef.current;
@@ -74,7 +89,7 @@ export function CoverflowStatusPager({
     if (!sample) return;
     const x = sample.center - pillWRef.current / 2;
     pill.style.transition = animate
-      ? "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)"
+      ? "transform 320ms cubic-bezier(0.34, 1.45, 0.48, 1)"
       : "none";
     pill.style.transform = `translate3d(${x}px, -50%, 0)`;
   }, []);
@@ -99,16 +114,12 @@ export function CoverflowStatusPager({
   useLayoutEffect(() => {
     if (scrubbingRef.current) return;
     measure();
-    paintPill(active, false);
+    // Snap on first layout; ease with the CSS margin transition after that
+    paintPill(active, hasLaidOutRef.current);
+    hasLaidOutRef.current = true;
     rootRef.current?.classList.add("has-pill");
     hoverIndexRef.current = active;
   }, [active, measure, paintPill, total]);
-
-  useEffect(() => {
-    if (scrubbingRef.current) return;
-    paintPill(active, true);
-    hoverIndexRef.current = active;
-  }, [active, paintPill]);
 
   useEffect(() => {
     const onResize = () => {

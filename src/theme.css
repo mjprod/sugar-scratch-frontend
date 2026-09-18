@@ -11111,7 +11111,8 @@ body[data-theme="v8"] .profile-edit-link {
   gap: 6px;
   margin-top: 8px;
   min-height: 28px;
-  color: oklch(0.757 0.168 353.61);
+  /* Match display name above (leo.mjpro) */
+  color: oklch(1 0 0);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
@@ -11172,11 +11173,12 @@ body[data-theme="v8"] .profile-action-btn--tilt.is-active {
 }
 
 body[data-theme="v8"] .profile-action-btn--logout {
-  color: oklch(1 0 0 / 0.65);
+  /* Tailwind @theme --color-danger */
+  color: var(--color-danger);
 }
 
 body[data-theme="v8"] .profile-action-btn--logout svg {
-  color: oklch(0.711 0.166 22.22);
+  color: inherit;
 }
 
 body[data-theme="v8"] .profile-action-label {
@@ -11339,7 +11341,7 @@ body[data-theme="v8"] .profile-menu-row:hover {
   }
 
   body[data-theme="v8"] .profile-action-btn--logout {
-    color: oklch(0.757 0.168 353.61);
+    color: var(--color-danger);
   }
 
   body[data-theme="v8"] .profile-action-btn--logout svg {
@@ -16645,6 +16647,8 @@ body[data-theme="v8"] .coverflow-status-pager {
   --status-pill-w: 37.5px; /* 30px * 1.25 */
   --status-pill-h: 21.25px; /* 17px * 1.25 */
   --status-gap: 8px; /* wider track so bar is ~1.25x */
+  /* Soft back ease: slight anticipation + overshoot so dots feel bouncy */
+  --status-dot-move: 320ms cubic-bezier(0.34, 1.45, 0.48, 1);
   position: absolute;
   left: 50%;
   bottom: 0.85rem;
@@ -16662,6 +16666,7 @@ body[data-theme="v8"] .coverflow-status-pager {
   transform: translateX(-50%);
   pointer-events: none;
   box-sizing: border-box;
+  transition: padding var(--status-dot-move);
 }
 
 body[data-theme="v8"] .coverflow-status-pager.is-interactive {
@@ -16704,12 +16709,22 @@ body[data-theme="v8"] .coverflow-status-pager__dot {
   border: 0;
   padding: 0;
   margin: 0;
+  /* Ease side-pads open/closed when the active indicator moves */
+  transition: margin var(--status-dot-move);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .coverflow-status-pager,
+  body[data-theme="v8"] .coverflow-status-pager__dot {
+    transition: none;
+  }
 }
 
 body[data-theme="v8"] .coverflow-status-pager {
   --status-pill-side-pad: calc((var(--status-pill-w) - var(--status-dot)) / 2 + 4px);
 }
 
+/* Keep the base dim dot under the floating pill so the track never loses a mark */
 body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__dot.is-active {
   width: var(--status-dot);
   height: var(--status-dot);
@@ -16717,10 +16732,10 @@ body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__
   margin-left: var(--status-pill-side-pad);
   margin-right: var(--status-pill-side-pad);
   padding: 0;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: 0 !important;
-  opacity: 0;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+  border: 0;
+  opacity: 1;
   pointer-events: auto;
 }
 
@@ -16748,6 +16763,12 @@ body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__
 
 body[data-theme="v8"] .coverflow-status-pager.is-scrubbing {
   touch-action: none;
+}
+
+/* Scrub is direct; ease pads only when the committed active index changes */
+body[data-theme="v8"] .coverflow-status-pager.is-scrubbing,
+body[data-theme="v8"] .coverflow-status-pager.is-scrubbing .coverflow-status-pager__dot {
+  transition: none;
 }
 
 body[data-theme="v8"] .coverflow-status-pager:not(.has-pill) .coverflow-status-pager__dot.is-active {
