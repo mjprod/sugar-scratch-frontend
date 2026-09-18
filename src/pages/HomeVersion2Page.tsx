@@ -1,9 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { GuestHomeLanding } from "@/components/home/GuestHomeLanding";
 import { HomeVersion2Screen } from "@/components/home/HomeVersion2Screen";
 
-export function BrowsePage() {
+/** Alternate logged-in homepage (Figma Home node 2:20) at `/home-version2`. */
+export function HomeVersion2Page() {
   const {
     restart,
     addToCart,
@@ -12,10 +12,6 @@ export function BrowsePage() {
     authed,
   } = useAuth();
   const { addDiamonds } = useWallet();
-
-  if (!authed) {
-    return <GuestHomeLanding />;
-  }
 
   return (
     <HomeVersion2Screen

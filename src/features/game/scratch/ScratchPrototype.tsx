@@ -3631,6 +3631,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   // load). Keep this separate from matchStartUnlocked so scratch stays gated.
   const topChromeBarReady =
     topBarPhase === "docked" && (skipToPlay || matchStartUnlocked);
+  // Center foil / docked icon revealer — same window as TopSymbolBar. Cards-left
+  // must not paint over theme intro video; it enters with this pad.
+  const iconRevealerShown =
+    (useBodySymbols || skipToPlay) &&
+    (topChromeBarReady ||
+      (matchStartUnlocked && topBarPhase !== "docked") ||
+      (skipToPlay && topBarPhase === "center"));
   const symbolsHuntComplete =
     useBodySymbols && revealedSymbols >= SYMBOL_SLOT_COUNT;
   const huntPhase = resolveHuntPhase({
@@ -5340,6 +5347,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
                 {packProgressShown &&
+                iconRevealerShown &&
                 (skipToPlay ||
                   (modelCards.length > 1 &&
                     completedCardIds.length < modelCards.length &&
@@ -5383,10 +5391,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           </div>
           {/* One TopSymbolBar for the whole match sequence:
               center (scratch foil) → docked (fly to top) → showcase. */}
-          {(useBodySymbols || skipToPlay) &&
-          (topChromeBarReady ||
-            (matchStartUnlocked && topBarPhase !== "docked") ||
-            (skipToPlay && topBarPhase === "center")) ? (
+          {iconRevealerShown ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}
@@ -5395,6 +5400,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               slotElsOutRef={topBarSlotElsRef}
               forceRevealed={skipToPlay}
               onAllRevealed={onTopBarAllRevealed}
+              onScratchStart={() => {
+                // First foil stroke: reverse-animate cards-left away for this card.
+                if (packProgressShown && !packProgressLeaving) {
+                  setPackProgressLeaving(true);
+                }
+              }}
               freezeSymbols={shouldFreezeSymbolLottie({
                 basePaused: false,
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,

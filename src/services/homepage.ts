@@ -131,14 +131,14 @@ export type ContinueCollectingItem = {
   badge?: "NEW" | "Almost Complete" | "Reward Ready";
 };
 
+/** Figma home filter chips (node 9:758). */
 export type LeaderboardCategory =
   | "all"
+  | "police"
   | "teacher"
   | "nurse"
-  | "maid"
-  | "bikini"
-  | "office"
-  | "student";
+  | "gym"
+  | "firefighter";
 
 export type LeaderboardRow = {
   rank: number;
@@ -187,12 +187,11 @@ export function formatPrice(price: Price) {
 
 export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "police", label: "Police" },
   { id: "teacher", label: "Teacher" },
   { id: "nurse", label: "Nurse" },
-  { id: "maid", label: "Maid" },
-  { id: "bikini", label: "Bikini" },
-  { id: "office", label: "Office" },
-  { id: "student", label: "Student" },
+  { id: "gym", label: "Gym" },
+  { id: "firefighter", label: "Firefighter" },
 ];
 
 const FEATURED: FeaturedPack[] = [
@@ -507,22 +506,25 @@ function themeToLeaderboardCategory(
 ): Exclude<LeaderboardCategory, "all"> {
   const key = canonicalThemeKey(themeName);
   const table: Record<string, Exclude<LeaderboardCategory, "all">> = {
+    police: "police",
     teacher: "teacher",
     nurse: "nurse",
-    maid: "maid",
-    bikini: "bikini",
-    office: "office",
-    student: "student",
-    police: "office",
-    firegirl: "student",
-    fire: "student",
-    gym: "student",
+    gym: "gym",
+    fitness: "gym",
+    firefighter: "firefighter",
+    firegirl: "firefighter",
+    fire: "firefighter",
+    // Legacy demo theme names → nearest Figma chip.
+    office: "police",
+    maid: "nurse",
+    bikini: "gym",
+    student: "gym",
   };
   if (table[key]) return table[key];
   for (const [needle, category] of Object.entries(table)) {
     if (key.includes(needle)) return category;
   }
-  return "student";
+  return "police";
 }
 
 /** Map `/api/models` foil packs → leaderboard rows (live prototype). */
@@ -704,12 +706,12 @@ const LEADERBOARD: LeaderboardRow[] = [
   row(3, "ep3", "Office Hours Pack", "Ashley", "Teacher", "teacher", 7801, 3.99),
   row(1, "en1", "Night Shift Foil Pack", "Emma", "Nurse", "nurse", 11200, 4.99),
   row(2, "en2", "Clinic Rush Pack", "Mia", "Nurse", "nurse", 6400, 5.99),
-  row(1, "em1", "Velvet Service Pack", "Emma", "Maid", "maid", 8800, 4.49),
-  row(1, "eb1", "Sunset Glow Pack", "Emma", "Bikini", "bikini", 15800, 5.99),
-  row(2, "eb2", "Poolside Pack", "Nancy Allison", "Bikini", "bikini", 9200, 4.99),
-  row(1, "al1", "Edition Zero Pack", "Alex Rivera", "Office", "office", 9900, 7.99),
-  row(1, "sw1", "Bonus Rush Pack", "Sam Chen", "Student", "student", 4300, 2.99),
-  row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Student", "student", 6200, 3.99),
+  row(1, "jp1", "Police Lineup Pack", "Juliana", "Police", "police", 15800, 5.99),
+  row(2, "al1", "Edition Zero Pack", "Alex Rivera", "Police", "police", 9900, 7.99),
+  row(1, "jg1", "Gym Session Pack", "Juliana", "Gym", "gym", 9200, 4.99),
+  row(2, "sw1", "Bonus Rush Pack", "Sam Chen", "Gym", "gym", 4300, 2.99),
+  row(1, "jf1", "Firehouse Pack", "Juliana", "Firefighter", "firefighter", 8800, 4.49),
+  row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Firefighter", "firefighter", 6200, 3.99),
 ];
 
 function wait(ms = 420) {

@@ -6,6 +6,7 @@ import {
 } from "@/components/home/DesktopCoverFlow";
 import { MobileCoverFlow } from "@/components/home/MobileCoverFlow";
 import { BuyPackQuantityModal } from "@/components/home/BuyPackQuantityModal";
+import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
 import {
   MOBILE_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
@@ -31,6 +32,8 @@ import { isPackInCart, subscribeCart } from "@/services/cart";
 import {
   loadModels,
   matchModel,
+  modelCoverUrl,
+  modelSwipePosterUrl,
   profileFromModel,
   type BackendModel,
 } from "@/services/models";
@@ -151,6 +154,11 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
         return { items, playById };
       }
       const diamondCost = packUnitCost(profile.id);
+      const backgroundImageUrl =
+        modelCoverUrl(model) ||
+        modelSwipePosterUrl(model) ||
+        foil.posterUrl ||
+        undefined;
       items.push(
         packItemToIteration({
           id: foil.id,
@@ -166,6 +174,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           packName: foil.label,
           flagEmoji: profile.flagEmoji ?? "",
           backgroundColor: profile.overlayColorEnd ?? DEFAULT_GLOW,
+          backgroundImageUrl,
         }),
       );
       playById.set(foil.id, {
@@ -200,12 +209,14 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
         modelUrl: PACK_MODEL_URL,
         modelName: "card2.glb",
         videoUrl: "",
+        posterUrl: pack.posterUrl || pack.coverImageUrl,
         price: pack.diamondCost,
         girlName: pack.creatorName,
         packNumber: 101,
         packName: pack.packTitle.replace(/\n/g, " "),
         flagEmoji: "",
         backgroundColor: pack.accentColors.primary,
+        backgroundImageUrl: pack.coverImageUrl || pack.posterUrl,
       }),
     );
     playById.set(pack.id, {
@@ -274,11 +285,17 @@ export function FeaturedCoverFlow({
   featured,
   onPlay,
   onReady,
+  influencerBackdrop = false,
+  showStatusPager = false,
 }: {
   featured: FeaturedPack[];
   /** Existing Pack Pocket add flow (auth-gated by the parent). */
   onPlay: (pack: FeaturedCoverFlowPlayTarget) => void;
   onReady?: () => void;
+  /** Use influencer API cover/swipe poster as the slider stage background. */
+  influencerBackdrop?: boolean;
+  /** Figma status capsule + dots under the carousel (home-version2). */
+  showStatusPager?: boolean;
 }) {
   const { authed } = useAuthSession();
   const {
@@ -294,6 +311,7 @@ export function FeaturedCoverFlow({
   const [models, setModels] = useState<BackendModel[] | null>(null);
   const [packCatalog, setPackCatalog] = useState<CatalogPackProduct[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
   const [isMobileViewport, setIsMobileViewport] = useState(
     isMobileCoverflowViewport,
@@ -720,27 +738,48 @@ export function FeaturedCoverFlow({
 
   if (!items.length) return null;
 
+  const statusPager =
+    showStatusPager && items.length > 1 ? (
+      <CoverflowStatusPager
+        count={items.length}
+        activeIndex={focusedIndex}
+        onSelectIndex={(index) => {
+          const item = items[index];
+          if (!item) return;
+          setFocusedIndex(index);
+          setSelectedId(item.id);
+        }}
+      />
+    ) : null;
+
   if (isMobileViewport) {
     return (
-      <MobileCoverFlow
-        items={items}
-        selectedId={selectedId}
-        glow={glow}
-        buying={buying}
-        addedToPocket={addedToPocket}
-        onSelect={setSelectedId}
-        onDeselect={() => setSelectedId(null)}
-        onFocusChange={(item) => {
-          setGlow(item?.backgroundColor || DEFAULT_GLOW);
-        }}
-        onBuy={(item, quantity) => {
-          void handleBuyPack(item, quantity ?? 1);
-        }}
-        onAddToPocket={(item) => {
-          handleAddToPocket(item);
-        }}
-        onReady={() => onReadyRef.current?.()}
-      />
+      <div className="home-featured-coverflow-frame">
+        <MobileCoverFlow
+          items={items}
+          selectedId={selectedId}
+          glow={glow}
+          buying={buying}
+          addedToPocket={addedToPocket}
+          influencerBackdrop={influencerBackdrop}
+          onSelect={setSelectedId}
+          onDeselect={() => setSelectedId(null)}
+          onFocusChange={(item) => {
+            setGlow(item?.backgroundColor || DEFAULT_GLOW);
+            if (!item) return;
+            const index = items.findIndex((entry) => entry.id === item.id);
+            if (index >= 0) setFocusedIndex(index);
+          }}
+          onBuy={(item, quantity) => {
+            void handleBuyPack(item, quantity ?? 1);
+          }}
+          onAddToPocket={(item) => {
+            handleAddToPocket(item);
+          }}
+          onReady={() => onReadyRef.current?.()}
+        />
+        {statusPager}
+      </div>
     );
   }
 
@@ -750,37 +789,45 @@ export function FeaturedCoverFlow({
 
   return (
     <>
-      <DesktopCoverFlow
-        items={items}
-        selectedId={selectedId}
-        glow={glow}
-        buying={buying}
-        addedToPocket={addedToPocket}
-        cameraSettings={cameraSettings}
-        showCenterGuide={HERO_DEBUG_ENABLED && debugOpen}
-        confirmBuy={focusedIsJuliana}
-        onSelect={setSelectedId}
-        onDeselect={() => {
-          setSelectedId(null);
-          setQtyModalItem(null);
-        }}
-        onFocusChange={(item) => {
-          setGlow(item?.backgroundColor || DEFAULT_GLOW);
-          if (qtyModalItem && item?.id !== qtyModalItem.id) {
+      <div className="home-featured-coverflow-frame">
+        <DesktopCoverFlow
+          items={items}
+          selectedId={selectedId}
+          glow={glow}
+          buying={buying}
+          addedToPocket={addedToPocket}
+          cameraSettings={cameraSettings}
+          showCenterGuide={HERO_DEBUG_ENABLED && debugOpen}
+          confirmBuy={focusedIsJuliana}
+          influencerBackdrop={influencerBackdrop}
+          onSelect={setSelectedId}
+          onDeselect={() => {
+            setSelectedId(null);
             setQtyModalItem(null);
-          }
-        }}
-        onBuy={(item, quantity) => {
-          if (iterationIsJuliana(item, resolveTarget(item))) {
-            void handleBuyPack(item, quantity ?? 1);
-            return;
-          }
-          /* Rosa / others: Buy Pack opens the quantity modal. */
-          setQtyModalQuantity(1);
-          setQtyModalItem(item);
-        }}
-        onAddToPocket={focusedIsJuliana ? handleAddToPocket : undefined}
-      />
+          }}
+          onFocusChange={(item) => {
+            setGlow(item?.backgroundColor || DEFAULT_GLOW);
+            if (item) {
+              const index = items.findIndex((entry) => entry.id === item.id);
+              if (index >= 0) setFocusedIndex(index);
+            }
+            if (qtyModalItem && item?.id !== qtyModalItem.id) {
+              setQtyModalItem(null);
+            }
+          }}
+          onBuy={(item, quantity) => {
+            if (iterationIsJuliana(item, resolveTarget(item))) {
+              void handleBuyPack(item, quantity ?? 1);
+              return;
+            }
+            /* Rosa / others: Buy Pack opens the quantity modal. */
+            setQtyModalQuantity(1);
+            setQtyModalItem(item);
+          }}
+          onAddToPocket={focusedIsJuliana ? handleAddToPocket : undefined}
+        />
+        {statusPager}
+      </div>
       {qtyModalItem ? (
         <BuyPackQuantityModal
           packTitle={

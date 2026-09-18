@@ -115,6 +115,8 @@ type TopSymbolBarProps = {
   preferStaticSymbols?: boolean;
   /** Hide decorative peel lottie (coarse pointer / reduced motion). */
   quietDecorativeLottie?: boolean;
+  /** First stroke on the center foil pad (icon revealer). */
+  onScratchStart?: () => void;
 };
 
 let scratchTexture: HTMLImageElement | null = null;
@@ -361,6 +363,7 @@ export function TopSymbolBar({
   freezeSymbols = false,
   preferStaticSymbols = false,
   quietDecorativeLottie = false,
+  onScratchStart,
 }: TopSymbolBarProps) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
@@ -381,6 +384,8 @@ export function TopSymbolBar({
   const notifiedRef = useRef(forceRevealed);
   const onAllRevealedRef = useRef(onAllRevealed);
   onAllRevealedRef.current = onAllRevealed;
+  const onScratchStartRef = useRef(onScratchStart);
+  onScratchStartRef.current = onScratchStart;
 
   const [revealedMask, setRevealedMask] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => forceRevealed),
@@ -1114,6 +1119,8 @@ export function TopSymbolBar({
     e.stopPropagation();
     drawingRef.current = true;
     lastPtRef.current = null;
+    // Parent uses this to reverse-animate cards-left off on first foil stroke.
+    onScratchStartRef.current?.();
     e.currentTarget.setPointerCapture(e.pointerId);
     scratchAt(e.clientX, e.clientY);
   }

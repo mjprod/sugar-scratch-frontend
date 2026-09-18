@@ -139,7 +139,7 @@ export function CoverflowBuyConfirm({
       const next: FixedBox = {
         top: rect.bottom + 7, // ~0.45rem
         left: rect.left + rect.width / 2,
-        width: Math.max(rect.width, 13.3 * 16),
+        width: 14.25 * 16,
       };
       setBox((prev) => {
         if (

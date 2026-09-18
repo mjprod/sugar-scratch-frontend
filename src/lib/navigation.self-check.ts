@@ -69,11 +69,12 @@ assert(formatBalance(0) === "0", "AC13 zero renders as 0");
 assert(formatBalance(5133) === "5,133", "AC12 thousands separator");
 assert(formatBalance(null) === "--", "null balance placeholder");
 
-// AC26 — guest dock hides My Collection (authenticated list still has it)
+// AC26 — guest mobile dock keeps the center Collection slot for symmetry
 assert(
-  MOBILE_DOCK_LABELS.filter((l) => l !== "My Collection").join("|") ===
-    "Discover|Home|Store|Profile",
-  "AC26 guest dock without Collection",
+  MOBILE_DOCK_LABELS.join("|") ===
+    "Discover|Home|My Collection|Store|Profile",
+  "AC26 guest dock keeps center Collection slot",
 );
+assert(MOBILE_DOCK_LABELS[2] === "My Collection", "AC26 center slot reserved");
 
 console.log("v8 navigation self-check passed");

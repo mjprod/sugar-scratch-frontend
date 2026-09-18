@@ -733,6 +733,19 @@ body[data-theme="v8"] .get-diamonds-exchange__head {
   gap: 12px;
 }
 
+@media (max-width: 639px) {
+  body[data-theme="v8"] .get-diamonds-exchange__head {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  body[data-theme="v8"] .get-diamonds-exchange__balance {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
 body[data-theme="v8"] .get-diamonds-exchange__balance {
   display: flex;
   flex-direction: column;

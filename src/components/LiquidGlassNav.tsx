@@ -404,10 +404,10 @@ export function LiquidGlassNav({
     () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
     [authed],
   );
-  // AC26: guests hide My Collection on the mobile dock (desktop already filters).
+  // Guests keep the center Collection slot on the mobile dock so the 5-column
+  // layout stays symmetrical around the notch (AC26). Desktop still omits it.
   const dockTabs = useMemo(() => {
-    const tabs = authed ? TABS : TABS.filter((tab) => tab.id !== "bag");
-    return tabs.map((tab) =>
+    return TABS.map((tab) =>
       tab.id === "profile" && !authed
         ? { ...tab, label: guestAuthLabel, icon: LoginIcon }
         : tab,

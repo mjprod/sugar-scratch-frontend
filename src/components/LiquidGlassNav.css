@@ -1945,7 +1945,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 
 .nav-test-dock-primary-guest-card {
   width: auto;
-  height: 2.43rem;
+  height: 2.187rem; /* 2.43rem - 10% */
   display: block;
   color: oklch(0.639 0.256 9.90);
   filter: drop-shadow(0px 1px 5px oklch(0.639 0.256 9.90));

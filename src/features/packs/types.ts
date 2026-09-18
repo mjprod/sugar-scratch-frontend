@@ -66,6 +66,11 @@ export interface Iteration {
   overlayColorStart?: string;
   overlayColorEnd?: string;
   backgroundColor: string;
+  /**
+   * Influencer stage backdrop (API `coverUrl` → swipe poster → pack poster).
+   * Used by home-version2 / coverflow hero backgrounds.
+   */
+  backgroundImageUrl?: string;
 }
 
 export function formatPackCollectionLabel(girlName: string): string {
@@ -109,6 +114,7 @@ export type PackItem = {
   overlayColorStart?: string;
   overlayColorEnd?: string;
   backgroundColor: string;
+  backgroundImageUrl?: string;
 };
 
 export function packItemToIteration(item: PackItem): Iteration {
@@ -140,5 +146,6 @@ export function packItemToIteration(item: PackItem): Iteration {
     overlayColorStart: item.overlayColorStart,
     overlayColorEnd: item.overlayColorEnd,
     backgroundColor: item.backgroundColor,
+    backgroundImageUrl: item.backgroundImageUrl?.trim() || undefined,
   };
 }

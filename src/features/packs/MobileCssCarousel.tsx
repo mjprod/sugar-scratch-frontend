@@ -18,7 +18,7 @@ import {
   subscribeCart,
 } from "@/services/cart";
 import { CoverflowBuyConfirm } from "@/features/packs/CoverflowBuyConfirm";
-import { formatPackPrice, type Iteration } from "@/features/packs/types";
+import { type Iteration } from "@/features/packs/types";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
@@ -156,17 +156,25 @@ function PackSlideHud({
       >
         <div className="coverflow-buy-pack-cta__primary">
           <CtaButton
-            {...ctaButtonPropsFromTemplate("hexGoldCTA")}
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
             {...BUY_PACK_CTA_SIZE_MOBILE}
+            cornerRadius={12} /* 0.75rem */
+            // Force red squircle plate (coverflow used to pin gold hex chrome).
+            auroraBaseColor="#42001b"
+            auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+            glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+            glowColor="326 90 30"
+            strokeColor="rgba(170, 8, 95, 0.42)"
+            labelColor="#ffe0e8"
             auroraPaused
-            glowAlwaysOn={false}
-            glowOrbitSpeed={0}
             glowOuterBloom="off"
             costIconAnimated={false}
             label="Buy Pack"
-            costAmount={formatPackPrice(
-              (item.price ?? 4.99) *
-                (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
+            costAmount={String(
+              Math.round(
+                (item.price ?? 0) *
+                  (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
+              ),
             )}
             className="coverflow-buy-pack-cta__button"
             tabIndex={revealed ? 0 : -1}
@@ -303,6 +311,8 @@ export function MobileCssCarousel({
   onAddToPocket,
   onFocusChange,
   buyDisabled = false,
+  influencerBackdrop = false,
+  selectedId = null,
 }: {
   items: Iteration[];
   onReady?: () => void;
@@ -312,6 +322,10 @@ export function MobileCssCarousel({
   onAddToPocket?: (item: Iteration) => void;
   onFocusChange?: (item: Iteration | null) => void;
   buyDisabled?: boolean;
+  /** Stage backdrop from influencer API cover/swipe poster. */
+  influencerBackdrop?: boolean;
+  /** Jump swiper to this pack id when set from outside (status pager). */
+  selectedId?: string | null;
 }) {
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -363,6 +377,18 @@ export function MobileCssCarousel({
   useEffect(() => {
     onFocusChangeRef.current?.(items[activeIndex] ?? null);
   }, [activeIndex, items]);
+
+  // External selection (status-pager) → jump carousel without long easing.
+  // Duration 0 avoids stacking transitions that freeze the main thread while scrubbing.
+  useEffect(() => {
+    if (!selectedId) return;
+    const index = items.findIndex((item) => item.id === selectedId);
+    if (index < 0) return;
+    if (index === activeIndexRef.current) return;
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    swiper.slideTo(index, 0);
+  }, [selectedId, items]);
 
   const clearGlowTimers = useCallback(() => {
     window.clearTimeout(glowFadeTimerRef.current);
@@ -716,9 +742,34 @@ export function MobileCssCarousel({
         ? " is-glow-fading"
         : "";
 
+  const activeBackdropItem = items[activeIndex] ?? items[0];
+  const activeBackdropUrl =
+    activeBackdropItem?.backgroundImageUrl?.trim() ||
+    activeBackdropItem?.posterUrl?.trim() ||
+    "";
+
   return (
-    <div className={`stage-packs mobile-css-carousel-stage${stageGlowClass}`}>
-      <PackGlowStacks baseColor={baseGlow} nextColor={nextGlow} />
+    <div
+      className={`stage-packs mobile-css-carousel-stage${stageGlowClass}${
+        influencerBackdrop ? " has-influencer-backdrop" : ""
+      }`}
+    >
+      {influencerBackdrop ? (
+        <div className="packs-influencer-backdrop" aria-hidden="true">
+          {activeBackdropUrl ? (
+            <img
+              key={activeBackdropUrl}
+              className="packs-influencer-backdrop__img"
+              src={activeBackdropUrl}
+              alt=""
+              draggable={false}
+            />
+          ) : null}
+          <div className="packs-influencer-backdrop__scrim" />
+        </div>
+      ) : (
+        <PackGlowStacks baseColor={baseGlow} nextColor={nextGlow} />
+      )}
       <div
         ref={shellRef}
         className="mobile-css-carousel-shell"

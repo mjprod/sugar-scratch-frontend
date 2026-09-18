@@ -202,6 +202,11 @@ export function AppRoutes() {
             {/* Home nav → pack browse at root (guest + signed-in); Discover → feed */}
             <Route index element={<BrowsePage />} />
             <Route path="discover" element={<HomeFeedPage />} />
+            {/* Legacy sandbox URL — design is now the logged-in home. */}
+            <Route
+              path="home-version2"
+              element={<Navigate to={Paths.home} replace />}
+            />
             {/* Legacy paths → root Home */}
             <Route path="browse" element={<Navigate to={Paths.home} replace />} />
             <Route

@@ -3,7 +3,9 @@ import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
 
 export function MobileCoverFlow({
   items,
+  selectedId,
   buying,
+  influencerBackdrop = false,
   onSelect,
   onDeselect,
   onFocusChange,
@@ -12,10 +14,20 @@ export function MobileCoverFlow({
   onReady,
 }: HomeCoverFlowViewProps & { onReady?: () => void }) {
   return (
-    <div className="home-featured-coverflow" data-coverflow="mobile-swiper">
+    <div
+      className={[
+        "home-featured-coverflow",
+        influencerBackdrop ? "has-influencer-backdrop" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-coverflow="mobile-swiper"
+    >
       <MobileCssCarousel
         items={items}
+        selectedId={selectedId}
         buyDisabled={buying}
+        influencerBackdrop={influencerBackdrop}
         onReady={onReady}
         onBuy={onBuy}
         onAddToPocket={onAddToPocket}

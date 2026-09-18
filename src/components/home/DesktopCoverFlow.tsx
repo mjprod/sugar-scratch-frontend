@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   CoverFlowCarousel,
   DEFAULT_COVERFLOW_CAMERA,
@@ -28,6 +29,8 @@ export type HomeCoverFlowViewProps = {
   showCenterGuide?: boolean;
   /** Juliana A/B: legacy HUD confirm path. */
   confirmBuy?: boolean;
+  /** When true, stage uses influencer API image backdrop (cover/swipe poster). */
+  influencerBackdrop?: boolean;
   onSelect: (id: string) => void;
   onDeselect: () => void;
   onFocusChange: (item: Iteration | null) => void;
@@ -39,6 +42,14 @@ export type HomeCoverFlowViewProps = {
   ) => void;
 };
 
+function backdropUrlForItem(item: Iteration | null | undefined) {
+  return (
+    item?.backgroundImageUrl?.trim() ||
+    item?.posterUrl?.trim() ||
+    ""
+  );
+}
+
 export function DesktopCoverFlow({
   items,
   selectedId,
@@ -48,36 +59,72 @@ export function DesktopCoverFlow({
   cameraSettings,
   showCenterGuide = false,
   confirmBuy = true,
+  influencerBackdrop = false,
   onSelect,
   onDeselect,
   onFocusChange,
   onBuy,
   onAddToPocket,
 }: HomeCoverFlowViewProps) {
+  const [focusedId, setFocusedId] = useState<string | null>(
+    selectedId ?? items[0]?.id ?? null,
+  );
+  const focusKey = selectedId ?? focusedId;
+  const focusedItem =
+    items.find((item) => item.id === focusKey) ?? items[0] ?? null;
+  const backdropUrl = influencerBackdrop
+    ? backdropUrlForItem(focusedItem)
+    : "";
+
   return (
     <div
-      className="home-featured-coverflow"
+      className={[
+        "home-featured-coverflow",
+        influencerBackdrop ? "has-influencer-backdrop" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       data-coverflow="desktop"
       style={{
         ["--overlay-gradient-color-end" as string]: glow,
+        ...(backdropUrl
+          ? { ["--influencer-backdrop-url" as string]: `url("${backdropUrl}")` }
+          : null),
       }}
     >
       <div className="stage-packs">
-        <div
-          className="packs-glow-stack packs-glow-stack--base"
-          aria-hidden="true"
-        >
-          <div className="packs-circle packs-circle--bloom" />
-          <div className="packs-circle packs-circle--core" />
-        </div>
+        {influencerBackdrop ? (
+          <div className="packs-influencer-backdrop" aria-hidden="true">
+            {backdropUrl ? (
+              <img
+                className="packs-influencer-backdrop__img"
+                src={backdropUrl}
+                alt=""
+                draggable={false}
+              />
+            ) : null}
+            <div className="packs-influencer-backdrop__scrim" />
+          </div>
+        ) : (
+          <div
+            className="packs-glow-stack packs-glow-stack--base"
+            aria-hidden="true"
+          >
+            <div className="packs-circle packs-circle--bloom" />
+            <div className="packs-circle packs-circle--core" />
+          </div>
+        )}
         <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           onSelect={onSelect}
           onDeselect={onDeselect}
           cameraSettings={cameraSettings ?? HOME_COVERFLOW_CAMERA}
-          onFocusChange={onFocusChange}
-          formatPrice={(price) => String(price)}
+          onFocusChange={(item) => {
+            setFocusedId(item?.id ?? null);
+            onFocusChange(item);
+          }}
+          formatPrice={(price) => String(Math.round(price))}
           disableSwipeDownDeactivate
           disableWheelPaging
           buyLabel="Buy Pack"
