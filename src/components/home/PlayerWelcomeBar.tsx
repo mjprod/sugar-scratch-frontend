@@ -14,6 +14,12 @@ import {
   getDailyRewardResetAt,
   isDailyRewardClaimedToday,
 } from "@/services/dailyReward";
+import {
+  CLAIM_CARD_EXIT_FALLBACK_MS,
+  nextClaimUiPhaseOnTick,
+  shouldArmClaimExitFallback,
+  type ClaimUiPhase,
+} from "./playerWelcomeClaimPhase";
 
 function track(event: string, payload?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
@@ -36,8 +42,6 @@ function firstNameFromProfile(profile: {
   const first = raw.split(/\s+/)[0] ?? raw;
   return first.charAt(0).toUpperCase() + first.slice(1);
 }
-
-type ClaimUiPhase = "ready" | "exiting" | "claimed";
 
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
@@ -78,6 +82,17 @@ export function PlayerWelcomeBar({
   const [exitHeightPx, setExitHeightPx] = useState<number | null>(null);
   /** True only after a live claim transition (not cold load already-claimed). */
   const [playClaimedEnter, setPlayClaimedEnter] = useState(false);
+  const exitDoneRef = useRef(false);
+  const uiPhaseRef = useRef<ClaimUiPhase>(uiPhase);
+  uiPhaseRef.current = uiPhase;
+
+  function finishClaimExit() {
+    if (exitDoneRef.current) return;
+    exitDoneRef.current = true;
+    setPlayClaimedEnter(true);
+    setUiPhase("claimed");
+    setExitHeightPx(null);
+  }
 
   useEffect(() => {
     const tick = () => {
@@ -85,11 +100,20 @@ export function PlayerWelcomeBar({
       setRemaining(getDailyRewardResetAt(new Date(now)) - now);
       const stillClaimed = isDailyRewardClaimedToday(new Date(now));
       setClaimed(stillClaimed);
-      // Midnight reset: return to ready card without replay of exit anim.
+
+      const phase = uiPhaseRef.current;
+      const next = nextClaimUiPhaseOnTick(phase, stillClaimed);
       if (!stillClaimed) {
-        setUiPhase((phase) => (phase === "ready" ? phase : "ready"));
+        // Midnight reset: return to ready card without replay of exit anim.
+        exitDoneRef.current = false;
         setExitHeightPx(null);
         setPlayClaimedEnter(false);
+        if (next !== phase) setUiPhase(next);
+        return;
+      }
+      // Already claimed today but exit never finished — recover chrome.
+      if (phase === "exiting" && next === "claimed") {
+        finishClaimExit();
       }
     };
     tick();
@@ -103,6 +127,13 @@ export function PlayerWelcomeBar({
       reward_state: isDailyRewardClaimedToday() ? "claimed" : "available",
     });
   }, [isNewUser]);
+
+  // Fallback if animationend is skipped (tab backgrounded, interrupted animation).
+  useEffect(() => {
+    if (!shouldArmClaimExitFallback(uiPhase)) return;
+    const timer = window.setTimeout(finishClaimExit, CLAIM_CARD_EXIT_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [uiPhase]);
 
   function handleClaim() {
     if (claimed || claiming || uiPhase !== "ready") return;
@@ -129,6 +160,7 @@ export function PlayerWelcomeBar({
     });
 
     if (prefersReducedMotion()) {
+      exitDoneRef.current = true;
       setPlayClaimedEnter(true);
       setUiPhase("claimed");
       setExitHeightPx(null);
@@ -137,15 +169,14 @@ export function PlayerWelcomeBar({
 
     const height = barRef.current?.getBoundingClientRect().height ?? null;
     setExitHeightPx(height && height > 0 ? height : null);
+    exitDoneRef.current = false;
     setUiPhase("exiting");
   }
 
   function onExitAnimationEnd(event: AnimationEvent<HTMLElement>) {
     if (event.target !== event.currentTarget) return;
     if (event.animationName !== "player-welcome-card-exit") return;
-    setPlayClaimedEnter(true);
-    setUiPhase("claimed");
-    setExitHeightPx(null);
+    finishClaimExit();
   }
 
   const countdown = formatCountdown(remaining);

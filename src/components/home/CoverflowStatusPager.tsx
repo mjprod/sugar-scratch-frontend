@@ -5,8 +5,13 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+  buildStatusDotMetrics,
+  shouldMeasureWithPillGeometry,
+  type StatusDotMetric,
+} from "./coverflowStatusMetrics";
 
-type DotMetric = { center: number };
+type DotMetric = StatusDotMetric;
 
 /**
  * Home-v2 status pill. Scrub only moves the pill; parent selection commits on release.
@@ -63,22 +68,23 @@ export function CoverflowStatusPager({
       "--status-pill-side-pad",
       (pillW - dotW) / 2 + 4,
     );
-    // has-pill track uses column-gap: calc(var(--status-gap) + 6px)
-    const colGap = root?.classList.contains("has-pill") ? gap + 6 : gap;
+    // Interactive / floating pill layout must use has-pill gap + side pads even
+    // on the first paint — class may be added in the same layout effect.
+    const hasPill = shouldMeasureWithPillGeometry({
+      interactive,
+      hasPillClass: Boolean(root?.classList.contains("has-pill")),
+    });
     pillWRef.current = pillW;
-
-    const metrics: DotMetric[] = [];
-    let offset = 0;
-    for (let i = 0; i < total; i++) {
-      const isActive = i === active;
-      const marginLeft = isActive && i !== 0 ? sidePad : 0;
-      const marginRight = isActive && i !== total - 1 ? sidePad : 0;
-      metrics.push({ center: offset + marginLeft + dotW / 2 });
-      offset += marginLeft + dotW + marginRight;
-      if (i < total - 1) offset += colGap;
-    }
-    metricsRef.current = metrics;
-  }, [active, total]);
+    metricsRef.current = buildStatusDotMetrics({
+      total,
+      active,
+      hasPill,
+      dotW,
+      gap,
+      pillW,
+      sidePad,
+    });
+  }, [active, interactive, total]);
 
   const paintPill = useCallback((index: number, animate: boolean) => {
     const pill = pillRef.current;
@@ -113,13 +119,15 @@ export function CoverflowStatusPager({
 
   useLayoutEffect(() => {
     if (scrubbingRef.current) return;
+    // Add has-pill before measure so gap/side-pad CSS and JS metrics agree on
+    // first mount (otherwise the floating pill can sit off the active dot).
+    if (interactive) rootRef.current?.classList.add("has-pill");
     measure();
     // Snap on first layout; ease with the CSS margin transition after that
     paintPill(active, hasLaidOutRef.current);
     hasLaidOutRef.current = true;
-    rootRef.current?.classList.add("has-pill");
     hoverIndexRef.current = active;
-  }, [active, measure, paintPill, total]);
+  }, [active, interactive, measure, paintPill, total]);
 
   useEffect(() => {
     const onResize = () => {
