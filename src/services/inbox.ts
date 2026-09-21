@@ -162,7 +162,7 @@ export const INBOX_FIXTURES: InboxMessage[] = [
     id: "msg-vip",
     type: "account_system",
     title: "VIP reward unlocked",
-    subtitle: "Claim your weekly Sugar Coins bonus",
+    subtitle: "Claim your weekly Diamond Dust bonus",
     timestamp: daysAgo(2),
     isRead: false,
     thumbnail: {

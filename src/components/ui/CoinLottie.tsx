@@ -2,7 +2,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import type { CSSProperties } from "react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
-export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond Coin.lottie";
+export const COIN_LOTTIE_SRC = "/lottie/lottieDiamondDust.lottie";
 
 type CoinLottieProps = {
   className?: string;
@@ -17,9 +17,8 @@ type CoinLottieProps = {
 };
 
 /**
- * Inline coin mark powered by the media-proxied cursor-fx Diamond Coin Lottie.
- * The source art has a large transparent margin — scale + clip so the coin fills
- * the requested box instead of looking padded.
+ * Inline coin mark for the top-nav HUD and other coin chips.
+ * Source art may include transparent margin — scale + clip so the mark fills the box.
  */
 export function CoinLottie({
   className,
@@ -30,8 +29,10 @@ export function CoinLottie({
   style,
   "aria-hidden": ariaHidden = true,
 }: CoinLottieProps) {
-  const edge =
-    typeof size === "number" ? `${size * 1.3}px` : `calc(${size} * 1.3)`;
+  // Dust particles need horizontal room; keep a wide viewport so edges aren't clipped.
+  const height = typeof size === "number" ? `${size}px` : size;
+  const width =
+    typeof size === "number" ? `${Math.round(size * 1.75)}px` : `calc(${size} * 1.75)`;
 
   return (
     <span
@@ -39,12 +40,12 @@ export function CoinLottie({
       style={{
         display: "inline-grid",
         placeItems: "center",
-        width: edge,
-        height: edge,
+        width,
+        height,
         flex: "0 0 auto",
         lineHeight: 0,
         verticalAlign: "middle",
-        overflow: "hidden",
+        overflow: "visible",
         ...style,
       }}
       aria-hidden={ariaHidden}
@@ -58,8 +59,6 @@ export function CoinLottie({
         style={{
           width: "100%",
           height: "100%",
-          transform: "scale(1.38)",
-          transformOrigin: "center",
         }}
       />
     </span>

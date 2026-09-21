@@ -13937,11 +13937,11 @@ body[data-theme="v8"] .top-nav-resource-value {
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--coin {
-  /* Lottie mark — keep HUD size stable; internal 1.3× scale still applies. */
-  width: 36px;
-  height: 36px;
+  /* Dust coin Lottie needs a wider viewport so particles aren't clipped. */
+  width: 28px;
+  height: 16px;
   color: transparent;
-  transform: translateX(14px);
+  overflow: visible;
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--coin canvas,
@@ -13949,6 +13949,7 @@ body[data-theme="v8"] .top-nav-resource-icon--coin svg {
   width: 100% !important;
   height: 100% !important;
   display: block;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--diamond {
@@ -13968,6 +13969,221 @@ body[data-theme="v8"] .top-nav-resource-icon--diamond svg {
 body[data-theme="v8"] .top-nav-resource--action:hover,
 body[data-theme="v8"] .top-nav-resource--action:active {
   background: oklch(1 0 0 / 0.06);
+}
+
+body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
+  background: oklch(1 0 0 / 0.08);
+}
+
+/* Top-nav Diamonds wallet snapshot — same glass shell as buy-confirm. */
+.wallet-balances-popover.is-portaled {
+  position: relative;
+  width: 10rem;
+  min-width: 10rem;
+  max-width: min(10rem, calc(100vw - 2rem));
+  gap: 0.2rem;
+  padding: 0.85rem 0.9rem 0.9rem;
+  align-items: stretch;
+}
+
+.wallet-balances-popover__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: max-content;
+  max-width: 100%;
+  min-height: 1.75rem;
+  align-self: center;
+}
+
+/* Match coverflow buy-confirm quantity pill chrome. */
+.wallet-balances-popover__row--diamonds {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.35rem;
+  height: 2.35rem;
+  padding: 4px 0.75rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.05);
+  box-sizing: border-box;
+  overflow: visible;
+  align-self: center;
+}
+
+/* Convert hangs off the diamonds pill bottom-right — no reserved padding. */
+.wallet-balances-popover__row--diamonds.has-convert {
+  padding-right: 0.75rem;
+  transform: translateX(-2px);
+}
+
+.wallet-balances-popover__row--diamonds.has-convert::after {
+  content: "";
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  width: 2.035rem;
+  height: 2.035rem;
+  border-radius: 999px;
+  pointer-events: none;
+  transform: translate(2.4rem, 2.55rem);
+  /* Positioning slot only — real button overlays this. */
+}
+
+.wallet-balances-popover__metric {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.wallet-balances-popover__metric--dust {
+  flex: 0 0 auto;
+  justify-content: center;
+  gap: 0;
+}
+
+.wallet-balances-popover__icon {
+  flex: 0 0 auto;
+}
+
+.wallet-balances-popover__icon--dust {
+  /* Match diamond row optical weight with the wider dust Lottie. */
+  margin-inline: -0.15rem;
+}
+
+.wallet-balances-popover__icon--preview-diamond {
+  flex: 0 0 auto;
+}
+
+.wallet-balances-popover__value {
+  flex: 0 0 auto;
+  min-width: 0;
+  color: oklch(0.971 0.003 286.35 / 0.94);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wallet-balances-popover__value--dust {
+  font-size: 13px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.wallet-balances-popover__value--dust.is-exchange-preview {
+  color: oklch(0.84 0.14 318 / 0.96);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.wallet-balances-popover__row--dust {
+  justify-content: center;
+  gap: 0;
+  align-self: center;
+  max-width: 100%;
+  transform: translateX(-2px);
+}
+
+.wallet-balances-popover__convert {
+  --wallet-convert-visual: 2.035rem;
+  --wallet-convert-hit-pad: 0.45rem;
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  /* Larger hitbox; visual circle stays via ::before. */
+  width: calc(var(--wallet-convert-visual) + var(--wallet-convert-hit-pad) * 2);
+  height: calc(var(--wallet-convert-visual) + var(--wallet-convert-hit-pad) * 2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  cursor: pointer;
+  /* Hang outside the pill: 2.4rem right, 2.55rem down. */
+  transform: translate(2.4rem, 2.55rem);
+  transition:
+    color 150ms ease,
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.wallet-balances-popover__convert::before {
+  content: "";
+  position: absolute;
+  inset: var(--wallet-convert-hit-pad);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(0.15 0.013 300.07 / 0.72);
+  box-shadow: none;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.wallet-balances-popover__convert:hover {
+  color: oklch(1 0 0);
+  transform: translate(2.4rem, 2.55rem) scale(1.06);
+}
+
+.wallet-balances-popover__convert:hover::before {
+  background: oklch(1 0 0 / 0.1);
+}
+
+.wallet-balances-popover__convert:active:not(:disabled) {
+  transform: translate(2.4rem, 2.55rem) scale(0.94);
+}
+
+.wallet-balances-popover__convert:disabled,
+.wallet-balances-popover__convert.is-disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: translate(2.4rem, 2.55rem);
+}
+
+.wallet-balances-popover__convert.is-busy {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.wallet-balances-popover__convert:focus-visible {
+  outline: 2px solid oklch(0.669 0.23 6.08);
+  outline-offset: 2px;
+}
+
+.wallet-balances-popover__convert-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 0.55rem;
+  height: 1.05rem;
+  color: #fff;
+  opacity: 0.5;
+  /* Top solid → bottom transparent; opaque stop lower so more of the shape shows. */
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 55%);
+  mask-image: linear-gradient(to top, transparent 0%, black 55%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge,

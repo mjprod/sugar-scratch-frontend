@@ -55,14 +55,14 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "2.4 One account per person. Creating multiple accounts to exploit promotions, missions, or Daily Rewards is prohibited and may result in forfeiture of Diamonds, Sugar Coin, and collected items.",
+    text: "2.4 One account per person. Creating multiple accounts to exploit promotions, missions, or Daily Rewards is prohibited and may result in forfeiture of Diamonds, Diamond Dust, and collected items.",
   },
-  { type: "h2", text: "3. Virtual Currencies (Diamonds & Sugar Coin)" },
+  { type: "h2", text: "3. Virtual Currencies (Diamonds & Diamond Dust)" },
   {
     type: "p",
-    text: "3.1 Diamonds are the primary paid virtual currency, purchasable with real money through our payment processor. Sugar Coin is a secondary soft currency earned through gameplay, missions, and promotions, and cannot be purchased directly.",
+    text: "3.1 Diamonds are the primary paid virtual currency, purchasable with real money through our payment processor. Diamond Dust is a secondary soft currency earned through gameplay, missions, and promotions, and cannot be purchased directly.",
   },
-  { type: "p", text: "3.2 Diamonds and Sugar Coin:" },
+  { type: "p", text: "3.2 Diamonds and Diamond Dust:" },
   {
     type: "ul",
     items: [
@@ -79,7 +79,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "4. Purchases, Card Packs & Virtual Items" },
   {
     type: "p",
-    text: "4.1 Diamonds may be spent on Card Packs and other in-Service offerings. Exclusive Packs are purchasable with Sugar Coin only and cannot be bought directly with Diamonds or real money.",
+    text: "4.1 Diamonds may be spent on Card Packs and other in-Service offerings. Exclusive Packs are purchasable with Diamond Dust only and cannot be bought directly with Diamonds or real money.",
   },
   {
     type: "p",
@@ -172,7 +172,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
     items: [
       "Use bots, scripts, or automation to interact with the Service;",
       "Exploit bugs, glitches, or unintended mechanics for unfair advantage;",
-      "Buy, sell, or trade accounts, Diamonds, Sugar Coin, or virtual items outside the Service;",
+      "Buy, sell, or trade accounts, Diamonds, Diamond Dust, or virtual items outside the Service;",
       "Harass creators, staff, or other users;",
       "Attempt unauthorized access to accounts, systems, or data;",
       "Use the Service for any unlawful purpose or in violation of these Terms.",
@@ -202,7 +202,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "11.3 Upon termination for cause, unused Diamonds, Sugar Coin, and collected items may be forfeited without compensation, to the extent permitted by law.",
+    text: "11.3 Upon termination for cause, unused Diamonds, Diamond Dust, and collected items may be forfeited without compensation, to the extent permitted by law.",
   },
   { type: "h2", text: "12. Disclaimers" },
   {
@@ -393,7 +393,7 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: `To exercise these rights, contact us at ${LEGAL_PRIVACY_EMAIL}. We may need to verify your identity before fulfilling a request. Note that deleting your account will result in forfeiture of Diamonds, Sugar Coin, and collected items, consistent with the Terms.`,
+    text: `To exercise these rights, contact us at ${LEGAL_PRIVACY_EMAIL}. We may need to verify your identity before fulfilling a request. Note that deleting your account will result in forfeiture of Diamonds, Diamond Dust, and collected items, consistent with the Terms.`,
   },
   { type: "h2", text: "10. Data Security" },
   {

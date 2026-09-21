@@ -564,14 +564,14 @@
   text-size-adjust: 100%;
 }
 
-/* Coin count-up — gold frosted plate + tunable overlay hue.
+/* Dust count-up — purple frosted plate + tunable overlay hue.
    Defaults live here; lab debug writes the same vars as inline styles on
    .stage-game / .stage-game__coin-count so they always win. */
 .stage-game__coin-count {
-  --coin-overlay-hue: 59;
-  --coin-overlay-sat: 100%;
-  --coin-overlay-light: 19%;
-  --coin-overlay-alpha: 0.71;
+  --coin-overlay-hue: 300;
+  --coin-overlay-sat: 72%;
+  --coin-overlay-light: 22%;
+  --coin-overlay-alpha: 0.74;
   --pp-tint: hsl(
     var(--coin-overlay-hue) var(--coin-overlay-sat) var(--coin-overlay-light) /
       var(--coin-overlay-alpha)
@@ -590,7 +590,7 @@
     rgb(255 255 255 / 0.12) 34%,
     rgb(255 255 255 / 0.4) 100%
   );
-  --pp-border-color: #f99d76;
+  --pp-border-color: #c78be8;
   --pp-border-width: 1px;
   --pp-radius-tl: 11px;
   --pp-radius-tr: 11px;
@@ -780,7 +780,7 @@
   }
   35% {
     transform: scale(1.18);
-    color: #ffe566;
+    color: #e3b7ff;
   }
   100% {
     transform: scale(1);
@@ -790,7 +790,7 @@
 
 .stage-game__coin-count-label {
   margin: 0;
-  color: rgb(190 175 190 / 0.9);
+  color: rgb(210 185 230 / 0.9);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: normal;
@@ -811,9 +811,9 @@
   transform: translate(-50%, -100%);
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgb(20 14 8 / 0.82);
-  border: 1px solid rgb(249 157 118 / 0.55);
-  color: #ffe566;
+  background: rgb(18 10 24 / 0.82);
+  border: 1px solid rgb(199 139 232 / 0.55);
+  color: #e3b7ff;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.02em;

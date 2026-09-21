@@ -92,7 +92,7 @@ export const RECOMMENDATION_CARDS: RecommendationCard[] = [
     creatorId: "riley",
     name: "Riley Brooks",
     theme: "Fantasy Realm",
-    tagline: "Mage series with coin surprises",
+    tagline: "Mage series with dust surprises",
   },
   {
     id: "oc9",

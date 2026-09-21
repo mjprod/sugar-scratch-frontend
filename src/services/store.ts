@@ -22,6 +22,37 @@ export const COIN_EXCHANGE_OPTIONS = [
 
 export type CoinExchangeOption = (typeof COIN_EXCHANGE_OPTIONS)[number];
 
+/** Highest diamond tier the player can afford with current Diamond Dust. */
+export function bestAffordableCoinExchange(
+  coinBalance: number,
+): CoinExchangeOption | null {
+  if (!Number.isFinite(coinBalance) || coinBalance <= 0) return null;
+  let best: CoinExchangeOption | null = null;
+  for (const option of COIN_EXCHANGE_OPTIONS) {
+    if (coinBalance < option.coins) continue;
+    if (!best || option.diamonds > best.diamonds) best = option;
+  }
+  return best;
+}
+
+/** Compact amount only for hover UI, e.g. "+5K" / "+500" (icon shown separately). */
+export function formatExchangeDiamondAmount(diamonds: number): string {
+  if (!Number.isFinite(diamonds) || diamonds <= 0) return "+0";
+  if (diamonds >= 1000 && diamonds % 1000 === 0) {
+    return `+${diamonds / 1000}K`;
+  }
+  if (diamonds >= 1000) {
+    const compact = (diamonds / 1000).toFixed(diamonds % 100 === 0 ? 1 : 2);
+    return `+${compact.replace(/\.0$/, "")}K`;
+  }
+  return `+${diamonds.toLocaleString("en-US")}`;
+}
+
+/** Screen-reader / aria form, e.g. "+5K Diamonds". */
+export function formatExchangeDiamondPreview(diamonds: number): string {
+  return `${formatExchangeDiamondAmount(diamonds)} Diamonds`;
+}
+
 export const DAILY_AD_LIMIT = 3;
 
 export type StoreProduct = {
@@ -38,7 +69,7 @@ export type StoreProduct = {
    * Display only — not added again on purchase.
    */
   bonusDiamonds?: number;
-  /** Bonus Sugar Coins granted with this product (not shown on cash package cards). */
+  /** Bonus Diamond Dust granted with this product (not shown on cash package cards). */
   coins?: number;
   badge?: StoreBadge;
   /** Artwork URL — CSS fallback used when empty. */
