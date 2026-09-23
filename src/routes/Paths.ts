@@ -20,6 +20,10 @@ export const Paths = {
   browse: "/",
   creator: (id: string) => `/creator/${id}`,
   creatorPattern: "/creator/:id",
+  /** Unlocked motion card detail (Figma 93:590 Keep Playing). */
+  motionCard: (creatorId: string, cardId: string) =>
+    `/creator/${encodeURIComponent(creatorId)}/motion/${encodeURIComponent(cardId)}`,
+  motionCardPattern: "/creator/:id/motion/:cardId",
   collection: "/collection",
   /** Collection hub opened on Unopened Packs. */
   collectionPacks: "/collection?reveal=packs",

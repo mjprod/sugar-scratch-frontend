@@ -266,8 +266,6 @@ function CreatorScreenInner({
     collection.cardsByThemeId,
   ]);
 
-  const theme =
-    themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
   // Profile avatar must stay the same creator face used on My Collection —
   // pin to the stable /models/{slug}/avatar path so it never flashes to a
   // theme cover or a late-arriving alternate URL.
@@ -416,8 +414,8 @@ function CreatorScreenInner({
           onAddPackToPocket={addCoverflowPackToPocket}
           onOpenCard={(cardId, themeId) => {
             setSelectedThemeId(themeId);
-            setFeaturedCardId(cardId);
             syncCardParam(cardId, themeId);
+            navigate(Paths.motionCard(creatorId, cardId));
           }}
           onLockedHint={() => notice("Buy packs to unlock Motion Cards")}
           onPlayGame={handlePlayGame}

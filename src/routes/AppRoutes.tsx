@@ -226,6 +226,10 @@ export function AppRoutes() {
             />
             <Route path="creator/:id" element={<CreatorPage />} />
             <Route
+              path="creator/:id/motion/:cardId"
+              element={<MotionCardPage />}
+            />
+            <Route
               path="collection"
               element={
                 <SoftGate tab="bag">

@@ -561,6 +561,14 @@ body[data-theme="v8"] .cpv2-theme-stack {
   width: 100%;
 }
 
+@media (min-width: 768px) {
+  body[data-theme="v8"] .cpv2-theme-stack {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
 body[data-theme="v8"] .cpv2-theme-card {
   position: relative;
   z-index: 0;
@@ -1331,17 +1339,24 @@ body[data-theme="v8"] .cpv2-diamonds-orb.is-b {
 }
 
 /* —— Ultra card panel —— */
+/* Figma Container 123:2308 is 369×207; gold pack hangs below (overflow visible). */
 
 body[data-theme="v8"] .cpv2-ultra-panel {
+  --cpv2-ultra-panel-h: 207px;
+  --cpv2-ultra-card-top: calc(109px + 2rem);
+  --cpv2-ultra-card-w: 169px;
+  --cpv2-ultra-card-h: 300px;
+  --cpv2-ultra-card-gap: 26px;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
   width: 100%;
-  min-height: 207px;
-  padding: 16px 16px 20px;
-  overflow: hidden;
+  height: var(--cpv2-ultra-panel-h);
+  max-height: var(--cpv2-ultra-panel-h);
+  padding: 14px 16px 0;
+  /* Let the gold video offset outside the framed panel */
+  overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 16px;
   box-sizing: border-box;
@@ -1353,12 +1368,19 @@ body[data-theme="v8"] .cpv2-ultra-panel {
     rgba(0, 0, 0, 0.3) 50%,
     rgba(169, 169, 169, 0.25) 85%
   );
+  /* Reserve flow space for the overhanging card + title stack */
+  margin-bottom: calc(
+    var(--cpv2-ultra-card-top) + var(--cpv2-ultra-card-h) +
+      var(--cpv2-ultra-card-gap) + 140px - var(--cpv2-ultra-panel-h)
+  );
 }
 
 body[data-theme="v8"] .cpv2-ultra-glow {
   position: absolute;
-  inset: auto -20% -40% -20%;
-  height: 70%;
+  left: -20%;
+  right: -20%;
+  top: 40%;
+  height: 120%;
   background: radial-gradient(
     ellipse at center,
     rgba(255, 198, 64, 0.22) 0%,
@@ -1367,15 +1389,69 @@ body[data-theme="v8"] .cpv2-ultra-glow {
   pointer-events: none;
 }
 
-body[data-theme="v8"] .cpv2-ultra-card-art {
-  position: relative;
+/* ~10% larger frame behind the video — gradient ring via cutout */
+body[data-theme="v8"] .cpv2-ultra-card-outline {
+  position: absolute;
+  top: calc(
+    var(--cpv2-ultra-card-top) - (var(--cpv2-ultra-card-h) * 0.05)
+  );
+  left: 50%;
   z-index: 1;
-  width: 101px;
-  height: 70px;
-  margin-top: 4px;
+  width: calc(var(--cpv2-ultra-card-w) * 1.1 + 10px);
+  height: calc(var(--cpv2-ultra-card-h) * 1.1);
+  transform: translateX(-50%);
+  padding: 2px;
+  border-radius: 18px;
+  box-sizing: border-box;
+  pointer-events: none;
+  isolation: isolate;
+  background: linear-gradient(
+    145deg,
+    #fff6d0 0%,
+    #ffd56a 18%,
+    #ffc640 36%,
+    #c4921a 58%,
+    #8a6208 78%,
+    #ffe6ab 100%
+  );
+  box-shadow: 0 0 24px rgba(255, 198, 64, 0.28);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.3) 33%,
+    rgba(0, 0, 0, 0.2) 66%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.3) 33%,
+    rgba(0, 0, 0, 0.2) 66%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+body[data-theme="v8"] .cpv2-ultra-card-outline-cutout {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background: #000;
+  /* Punch a transparent hole so only the gradient padding ring remains */
+  mix-blend-mode: destination-out;
+}
+
+/* Figma ActiveCard / goldPack: 169×300, starts inside panel and offsets out */
+body[data-theme="v8"] .cpv2-ultra-card-art {
+  position: absolute;
+  top: var(--cpv2-ultra-card-top);
+  left: 50%;
+  z-index: 2;
+  width: var(--cpv2-ultra-card-w);
+  height: var(--cpv2-ultra-card-h);
+  transform: translateX(-50%);
   overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 198, 64, 0.35);
+  border-radius: 16px;
+  box-sizing: border-box;
   background: #121212;
 }
 
@@ -1392,19 +1468,17 @@ body[data-theme="v8"] .cpv2-ultra-card-video {
   pointer-events: none;
 }
 
-body[data-theme="v8"] .cpv2-ultra-lock {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #ffc640;
-  background: rgba(0, 0, 0, 0.25);
-}
-
 body[data-theme="v8"] .cpv2-ultra-title {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  top: calc(
+    var(--cpv2-ultra-card-top) + var(--cpv2-ultra-card-h) +
+      var(--cpv2-ultra-card-gap)
+  );
+  left: 50%;
+  z-index: 2;
+  width: min(100%, 354px);
   margin: 0;
+  transform: translateX(-50%);
   color: #ffc640;
   font-size: 16px;
   font-weight: 500;
@@ -1413,10 +1487,17 @@ body[data-theme="v8"] .cpv2-ultra-title {
 }
 
 body[data-theme="v8"] .cpv2-ultra-copy {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  top: calc(
+    var(--cpv2-ultra-card-top) + var(--cpv2-ultra-card-h) +
+      var(--cpv2-ultra-card-gap) + 76px
+  );
+  left: 50%;
+  z-index: 2;
+  width: min(100%, 24ch);
+  max-width: 24ch;
   margin: 0;
-  max-width: 280px;
+  transform: translateX(-50%);
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
   font-weight: 400;
@@ -1430,21 +1511,27 @@ body[data-theme="v8"] .cpv2-ultra-copy strong {
 }
 
 body[data-theme="v8"] .cpv2-ultra-locked {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  top: calc(
+    var(--cpv2-ultra-card-top) + var(--cpv2-ultra-card-h) +
+      var(--cpv2-ultra-card-gap) + 28px
+  );
+  left: 50%;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   min-height: 33px;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border: 1px solid rgba(255, 179, 3, 0.2);
   border-radius: 60px;
   color: #ffc640;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.24px;
   cursor: default;
   box-sizing: border-box;
+  transform: translateX(-50%);
   background-image: linear-gradient(
     108deg,
     rgba(170, 119, 0, 0.41) 5%,
@@ -1474,10 +1561,15 @@ body[data-theme="v8"] .cpv2-ultra-locked-price {
 }
 
 body[data-theme="v8"] .cpv2-ultra-reward {
-  position: relative;
+  /* Figma 123:2337 — sits just above the gold pack (~14px gap) */
+  position: absolute;
+  top: 61px;
+  left: 50%;
   z-index: 1;
+  width: min(100%, 30ch);
+  max-width: 30ch;
   margin: 0;
-  max-width: 320px;
+  transform: translateX(-50%);
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
   font-weight: 400;
@@ -1489,13 +1581,33 @@ body[data-theme="v8"] .cpv2-ultra-reward span {
   color: #ffc640;
 }
 
+/* Figma 123:2333 Rating stars — 112×33 pill container */
 body[data-theme="v8"] .cpv2-ultra-stars {
   position: absolute;
   top: 14px;
   right: 14px;
   z-index: 1;
   display: flex;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 112px;
+  height: 33px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 1px solid #5c5446;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+body[data-theme="v8"] .cpv2-ultra-star {
+  display: block;
+  flex: 0 0 auto;
+}
+
+body[data-theme="v8"] .cpv2-ultra-star.is-filled {
+  width: 25px;
+  height: 25px;
 }
 
 /* —— Footer —— */

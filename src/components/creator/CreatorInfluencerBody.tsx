@@ -1,6 +1,6 @@
 import { lazy, Suspense, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Lock, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
@@ -269,6 +269,9 @@ export function CreatorInfluencerBody({
           Complete {creatorName}&rsquo;s Collection for your chance to{" "}
           <span>win 1000 Diamonds</span>
         </p>
+        <div className="cpv2-ultra-card-outline" aria-hidden="true">
+          <div className="cpv2-ultra-card-outline-cutout" />
+        </div>
         <div className="cpv2-ultra-card-art" aria-hidden="true">
           {ultraPreview.videoUrl ? (
             <video
@@ -288,9 +291,6 @@ export function CreatorInfluencerBody({
               className="cpv2-ultra-card-img"
             />
           )}
-          <span className="cpv2-ultra-lock">
-            <Lock size={18} strokeWidth={2.2} />
-          </span>
         </div>
         <p className="cpv2-ultra-title">{creatorName} Ultra Card</p>
         <p className="cpv2-ultra-copy">
@@ -310,18 +310,32 @@ export function CreatorInfluencerBody({
           <span className="cpv2-ultra-locked-label">Locked</span>
         </button>
         <div className="cpv2-ultra-stars" aria-hidden="true">
-          {Array.from({ length: 5 }, (_, i) => (
+          <svg
+            className="cpv2-ultra-star is-filled"
+            width="25"
+            height="25"
+            viewBox="0 0 25 25"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12.5 0L14.4411 5.25556L18.75 1.67468L17.8033 7.1967L23.3253 6.25L19.7444 10.5589L25 12.5L19.7444 14.4411L23.3253 18.75L17.8033 17.8033L18.75 23.3253L14.4411 19.7444L12.5 25L10.5589 19.7444L6.25 23.3253L7.1967 17.8033L1.67468 18.75L5.25556 14.4411L0 12.5L5.25556 10.5589L1.67468 6.25L7.1967 7.1967L6.25 1.67468L10.5589 5.25556L12.5 0Z"
+              fill="#E8CC9C"
+            />
+          </svg>
+          {Array.from({ length: 3 }, (_, i) => (
             <svg
               key={i}
-              width="17"
-              height="17"
-              viewBox="0 0 17 17"
+              className="cpv2-ultra-star"
+              width="19"
+              height="19"
+              viewBox="0 0 19 19"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
-                d="M8.5 0L9.81998 3.57378L12.75 1.13878L12.1062 4.89376L15.8612 4.25L13.4262 7.18002L17 8.5L13.4262 9.81998L15.8612 12.75L12.1062 12.1062L12.75 15.8612L9.81998 13.4262L8.5 17L7.18002 13.4262L4.25 15.8612L4.89376 12.1062L1.13878 12.75L3.57378 9.81998L0 8.5L3.57378 7.18002L1.13878 4.25L4.89376 4.89376L4.25 1.13878L7.18002 3.57378L8.5 0Z"
-                fill={i < 1 ? "#ffc640" : "rgba(255,255,255,0.2)"}
+                d="M9.5 0L10.9753 3.9942L14.25 1.27276L13.5305 5.4695L17.7272 4.75L15.0058 8.0247L19 9.5L15.0058 10.9753L17.7272 14.25L13.5305 13.5305L14.25 17.7272L10.9753 15.0058L9.5 19L8.0247 15.0058L4.75 17.7272L5.4695 13.5305L1.27276 14.25L3.9942 10.9753L0 9.5L3.9942 8.0247L1.27276 4.75L5.4695 5.4695L4.75 1.27276L8.0247 3.9942L9.5 0Z"
+                fill="#2E2E2E"
               />
             </svg>
           ))}
@@ -448,7 +462,7 @@ function ThemeCollectionCard({
       </header>
 
       <div className="cpv2-theme-card-row">
-        {motionCards.map((card, index) => {
+        {motionCards.map((card) => {
           const isPlaceholder = card.id.includes("-placeholder-");
           const filled = Math.max(
             0,
@@ -600,7 +614,7 @@ function ThemeCollectionCard({
                 )}
               </button>
 
-              {index === 0 && fullyUnlocked ? (
+              {fullyUnlocked ? (
                 <div className="cpv2-motion-tile-play-cta">
                   <CtaButton
                     {...ctaButtonPropsFromTemplate("squircleCTA")}
