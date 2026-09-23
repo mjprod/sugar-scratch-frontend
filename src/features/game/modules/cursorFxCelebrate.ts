@@ -2,6 +2,9 @@
  * Cursor-FX celebrate + mobile defaults (Phase 5 perf / win-feel).
  * Particles are not a continuous trail — they fire briefly each time scratch
  * progress crosses another 10% band so the player feels a small win.
+ *
+ * Emit mode: coins fall down (like TopSymbolBar foil flakes before the hunt),
+ * not an upward fireworks fountain.
  */
 
 export const CURSOR_FX_MILESTONE = 0.1;
@@ -9,6 +12,15 @@ export const CURSOR_FX_MILESTONE = 0.1;
 export const CURSOR_FX_CELEBRATE_MS = 1100;
 /** Longer arm on phones — finger often stays down past the 10% beat. */
 export const CURSOR_FX_CELEBRATE_MS_COARSE = 2400;
+
+/** Product default — match symbols-foil flake fall, not a fountain. */
+export type CursorFxEmitMode = "fountain" | "fall";
+export const CURSOR_FX_EMIT_MODE: CursorFxEmitMode = "fall";
+
+/** Per-frame velocity range for fall-mode coin trail (FairyDust units). */
+export const CURSOR_FX_FALL_VELOCITY = { min: 1.1, max: 2.6 };
+/** Stronger pull so fall reads like foil flakes, not a soft drift. */
+export const CURSOR_FX_FALL_GRAVITY = 0.22;
 
 export type CursorFxDeviceProfile = {
   fairyDust: boolean;
@@ -87,4 +99,28 @@ export function celebrateParticleBoost(
 
 export function celebrateDurationMs(coarsePointer: boolean): number {
   return coarsePointer ? CURSOR_FX_CELEBRATE_MS_COARSE : CURSOR_FX_CELEBRATE_MS;
+}
+
+/**
+ * Initial particle velocity. `fall` mirrors TopSymbolBar foil flakes:
+ * small side scatter + always-positive (downward) vy; gravity finishes the arc.
+ */
+export function cursorFxSpawnVelocity(
+  mode: CursorFxEmitMode,
+  velocity: { min: number; max: number },
+  random: () => number = Math.random,
+): { vx: number; vy: number } {
+  const span = Math.max(0, velocity.max - velocity.min);
+  const speed = velocity.min + random() * span;
+  if (mode === "fall") {
+    const angle = (random() - 0.5) * Math.PI * 0.9;
+    return {
+      vx: Math.sin(angle) * speed * 0.45,
+      vy: speed * (0.85 + random() * 0.55),
+    };
+  }
+  return {
+    vx: (random() < 0.5 ? -1 : 1) * speed,
+    vy: -(random() * Math.max(velocity.max, 0)),
+  };
 }
