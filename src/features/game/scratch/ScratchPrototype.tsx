@@ -1,4 +1,4 @@
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
@@ -4125,10 +4125,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       });
       return;
     }
-    // Collection single-card play — no Next card, return to the album.
+    // Single-card play — return to parent motion card (or collection fallback).
     if (!playlistMode) {
-      const params = new URLSearchParams(window.location.search);
-      navigateTo(collectionReturnHref(params.get("model"), params.get("card")));
+      navigateTo(gameReturnHrefFromSearch());
     }
   }
   advanceAfterScratchRef.current = advanceAfterScratch;

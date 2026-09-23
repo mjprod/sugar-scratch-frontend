@@ -40,19 +40,32 @@ function ScratchGameEmbed() {
   const playlistMode = searchParams.get("playlist") === "1";
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
+  const creator = searchParams.get("creator")?.trim() || "";
 
   // Leave from the pause overlay — progress is saved, so no second confirm.
   function leaveGame() {
     if (gameMode) {
       persistGameProgress();
-      memoryNavigate(Paths.collection);
+      memoryNavigate(
+        collectionReturnHref({
+          creatorId: creator,
+          modelId: model,
+          cardId: card,
+        }),
+      );
       return;
     }
     if (playlistMode) {
       memoryNavigate(Paths.home);
       return;
     }
-    memoryNavigate(collectionReturnHref(model, card));
+    memoryNavigate(
+      collectionReturnHref({
+        creatorId: creator,
+        modelId: model,
+        cardId: card,
+      }),
+    );
   }
 
   return (

@@ -36,9 +36,7 @@ import {
 import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
-import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { Paths } from "@/routes/Paths";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
@@ -2307,14 +2305,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       setClaimed(false);
       setCardFlowState("ready");
       cardFlowStateRef.current = "ready";
-      const params = new URLSearchParams(window.location.search);
-      const motionCardId = params.get("card")?.trim()
-        ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
-        : "";
-      navigateBackOr(
-        navigate,
-        collectionReturnHref(params.get("model")?.trim() || "", motionCardId),
-      );
+      navigateBackOr(navigate, gameReturnHrefFromSearch());
       return;
     }
 
@@ -2562,18 +2553,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setHandSummaryDiamonds(null);
     settleDonePhotoHand(addDiamonds);
     bumpInventoryRevision();
-
-    const params = new URLSearchParams(window.location.search);
-    const fallback =
-      params.get("game") === "1"
-        ? Paths.collection
-        : collectionReturnHref(
-            params.get("model")?.trim() || "",
-            params.get("card")?.trim()
-              ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
-              : "",
-          );
-    navigateBackOr(navigate, fallback);
+    navigateBackOr(navigate, gameReturnHrefFromSearch());
   }
 
   return (

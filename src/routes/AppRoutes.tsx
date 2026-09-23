@@ -7,17 +7,15 @@ import { SoftGate } from "@/routes/SoftGate";
 import { Paths } from "@/routes/Paths";
 import { RouteChunkFallback } from "@/routes/RouteChunkFallback";
 import { BrowsePage } from "@/pages/BrowsePage";
+import { CreatorPage } from "@/pages/CreatorPage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
+import { MotionCardPage } from "@/pages/MotionCardPage";
+import { GamePage } from "@/pages/GamePage";
+import { PhotoScratchPage } from "@/pages/PhotoScratchPage";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 
 const CollectionPage = lazy(() =>
   import("@/pages/CollectionPage").then((m) => ({ default: m.CollectionPage })),
-);
-const CreatorPage = lazy(() =>
-  import("@/pages/CreatorPage").then((m) => ({ default: m.CreatorPage })),
-);
-const GamePage = lazy(() =>
-  import("@/pages/GamePage").then((m) => ({ default: m.GamePage })),
 );
 const GameUiPage = lazy(() =>
   import("@/pages/GameUiPage").then((m) => ({ default: m.GameUiPage })),
@@ -34,11 +32,6 @@ const MobileCarouselPage = lazy(() =>
 );
 const PreLoaderPage = lazy(() =>
   import("@/pages/PreLoaderPage").then((m) => ({ default: m.PreLoaderPage })),
-);
-const PhotoScratchPage = lazy(() =>
-  import("@/pages/PhotoScratchPage").then((m) => ({
-    default: m.PhotoScratchPage,
-  })),
 );
 const ProfilePage = lazy(() =>
   import("@/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })),

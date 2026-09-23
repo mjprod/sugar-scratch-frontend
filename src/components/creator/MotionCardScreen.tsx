@@ -17,6 +17,7 @@ import {
 import type { CardConfig } from "@/features/collection/lib/cards";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
 import { Paths } from "@/routes/Paths";
+import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import "./creator-influencer.css";
 import "./motion-card-page.css";
 
@@ -88,6 +89,8 @@ function MotionCardScreenInner({
   const navigate = useNavigate();
   const { authed } = useAuth();
   const collection = useCreatorCollection(modelId);
+  // Paint immediately — no site preloader between influencer ↔ motion detail.
+  useMarkPageReady(true);
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const legalTitleId = useId();
 
@@ -166,6 +169,7 @@ function MotionCardScreenInner({
     navigate(
       Paths.photoScratchPlay(photoId, {
         modelId: playModelId || undefined,
+        creatorId,
       }),
     );
   }
