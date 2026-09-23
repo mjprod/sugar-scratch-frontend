@@ -1,0 +1,1567 @@
+/* InnerInfluencer (Figma 93:144) — creator profile page */
+
+body[data-theme="v8"] .cpv2-influencer {
+  display: flex;
+  flex-direction: column;
+  gap: 27px;
+  width: 100%;
+  min-width: 0;
+  /* Extra space under the sticky profile banner before "Buy … Packs". */
+  margin-top: 1rem;
+}
+
+/* —— Profile card (open ↔ collapsed at 7% scroll threshold) —— */
+
+@property --cpv2-profile-collapse {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+body[data-theme="v8"] .cpv2-profile-card {
+  --cpv2-profile-collapse: 0;
+  --cpv2-profile-open-h: 178px;
+  --cpv2-profile-closed-h: 63px;
+  --cpv2-profile-collapse-duration: 320ms;
+  --cpv2-profile-collapse-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Keep flow height stable so collapsing does not rewrite scrollTop. */
+  --cpv2-profile-flow-gap: calc(
+    (var(--cpv2-profile-open-h) - var(--cpv2-profile-closed-h)) *
+      var(--cpv2-profile-collapse)
+  );
+  position: sticky;
+  top: calc(var(--app-diamond-offset, 64px) + 7px);
+  z-index: 24;
+  display: block;
+  width: 100%;
+  height: calc(
+    var(--cpv2-profile-open-h) -
+      (
+        (var(--cpv2-profile-open-h) - var(--cpv2-profile-closed-h)) *
+          var(--cpv2-profile-collapse)
+      )
+  );
+  margin-top: 20px;
+  margin-bottom: var(--cpv2-profile-flow-gap);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  color: inherit;
+  text-align: left;
+  background: #0a0a0a;
+  isolation: isolate;
+  will-change: height;
+  transition:
+    --cpv2-profile-collapse var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    margin-bottom var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-bg > img {
+  position: absolute;
+  left: 50%;
+  top: calc(-20% - (20% * var(--cpv2-profile-collapse)));
+  width: 150%;
+  height: calc(140% + (40% * var(--cpv2-profile-collapse)));
+  max-width: none;
+  transform: translateX(-50%);
+  object-fit: cover;
+  object-position: center 20%;
+  opacity: 0.5;
+  transition:
+    top var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
+    height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.45)),
+    radial-gradient(
+      ellipse 80% 70% at 50% 55%,
+      transparent 20%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+}
+
+body[data-theme="v8"] .cpv2-profile-card-glow {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -60%;
+  height: 140%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(212, 20, 90, 0.45) 0%,
+    rgba(212, 20, 90, 0.12) 40%,
+    transparent 70%
+  );
+  opacity: calc(1 - var(--cpv2-profile-collapse));
+  pointer-events: none;
+  transition: opacity var(--cpv2-profile-collapse-duration)
+    var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-back {
+  position: absolute;
+  /* Open: 12px. Closed: optically center 28px control in 63px bar (~17.5px). */
+  top: calc(12px + (5.5px * var(--cpv2-profile-collapse)));
+  left: 9px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: calc(38px - (10px * var(--cpv2-profile-collapse)));
+  height: calc(38px - (10px * var(--cpv2-profile-collapse)));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 60px;
+  color: #fff;
+  cursor: pointer;
+  /* Stay visible in collapsed mode so users can still go back. */
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  background-image: linear-gradient(
+    120deg,
+    rgba(170, 170, 170, 0.25) 10%,
+    rgba(68, 68, 68, 0.1) 29%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+  transition:
+    top var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
+    width var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-actions {
+  position: absolute;
+  /* Match .cpv2-profile-card-back top/left inset on the open card. */
+  top: calc(12px - (12px * var(--cpv2-profile-collapse)));
+  right: calc(12px + (2px * var(--cpv2-profile-collapse)));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: calc(38px + ((100% - 38px) * var(--cpv2-profile-collapse)));
+  pointer-events: none;
+  transition:
+    top var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
+    right var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-actions > * {
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-follow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 81px;
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 60px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24px;
+  cursor: pointer;
+  opacity: calc(1 - var(--cpv2-profile-collapse));
+  transform: scale(calc(1 - (0.12 * var(--cpv2-profile-collapse))));
+  background-image: linear-gradient(
+    180deg,
+    rgba(170, 170, 170, 0.25) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+  transition:
+    opacity var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    transform var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card.is-collapsed .cpv2-profile-card-follow {
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-follow.is-following {
+  opacity: calc(0.85 * (1 - var(--cpv2-profile-collapse)));
+}
+
+body[data-theme="v8"] .cpv2-profile-card-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: calc(16px - (4px * var(--cpv2-profile-collapse)));
+  height: 100%;
+  /* Open: 32px left. Closed: clear back chevron (~9 + 28 + gap). */
+  padding:
+    calc(58px - (58px * var(--cpv2-profile-collapse)))
+    calc(16px - (2px * var(--cpv2-profile-collapse)))
+    calc(14px - (14px * var(--cpv2-profile-collapse)))
+    calc(32px + (16px * var(--cpv2-profile-collapse)));
+  box-sizing: border-box;
+  transition:
+    gap var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
+    padding var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: calc(83px - (45px * var(--cpv2-profile-collapse)));
+  height: calc(83px - (45px * var(--cpv2-profile-collapse)));
+  border-radius: 60px;
+  border: 2px solid #d4145a;
+  overflow: hidden;
+  background: #1a1a1a;
+  z-index: 2;
+  transition:
+    width var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px - (6px * var(--cpv2-profile-collapse)));
+  min-width: 0;
+  flex: 1;
+  padding-top: calc(8px - (8px * var(--cpv2-profile-collapse)));
+  transition:
+    gap var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
+    padding-top var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-identity {
+  display: flex;
+  flex-direction: column;
+  gap: calc(4px - (2px * var(--cpv2-profile-collapse)));
+  min-width: 0;
+  transition: gap var(--cpv2-profile-collapse-duration)
+    var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-name {
+  margin: 0;
+  color: #fff;
+  font-size: calc(16px - (3px * var(--cpv2-profile-collapse)));
+  font-weight: 600;
+  letter-spacing: calc(0.32px - (0.06px * var(--cpv2-profile-collapse)));
+  line-height: 1.2;
+  transition:
+    font-size var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    letter-spacing var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-handle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: calc(14px - (3px * var(--cpv2-profile-collapse)));
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  line-height: 1.2;
+  transition: font-size var(--cpv2-profile-collapse-duration)
+    var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-location {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.24px;
+  line-height: 1.2;
+  max-height: calc(1.2em * (1 - var(--cpv2-profile-collapse)));
+  opacity: calc(1 - var(--cpv2-profile-collapse));
+  overflow: hidden;
+  transition:
+    max-height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    opacity var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card-socials {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: calc(32px * (1 - var(--cpv2-profile-collapse)));
+  opacity: calc(1 - var(--cpv2-profile-collapse));
+  overflow: hidden;
+  transform: translateY(calc(6px * var(--cpv2-profile-collapse)));
+  transition:
+    max-height var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    opacity var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease),
+    transform var(--cpv2-profile-collapse-duration)
+      var(--cpv2-profile-collapse-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-profile-card,
+  body[data-theme="v8"] .cpv2-profile-card * {
+    transition: none !important;
+  }
+}
+
+body[data-theme="v8"] .cpv2-profile-card-social {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* —— Section title —— */
+
+body[data-theme="v8"] .cpv2-section-title {
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* —— Pack section (homepage coverflow, creator-filtered) —— */
+
+body[data-theme="v8"] .cpv2-pack-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow {
+  position: relative;
+  width: calc(100% + 24px);
+  margin-left: -12px;
+  min-width: 0;
+  overflow: visible;
+}
+
+/* Creator embed: keep homepage carousel look without hero-page top clearance. */
+body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow-frame {
+  width: 100%;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
+  width: 100%;
+  /* Fit closer to the pack card; avoid a tall empty band under it. */
+  height: min(48dvh, 420px);
+  min-height: 390px;
+  padding-top: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
+  height: min(48dvh, 420px);
+  min-height: 390px;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel-stage {
+  translate: 0 0;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel-shell {
+  transform: none;
+}
+
+body[data-theme="v8"] .cpv2-pack-disclaimer {
+  /* Coverflow stage is taller than the pack art; pull text up to ~1rem under the card. */
+  margin: calc(-3rem + 1rem) 0 0;
+  padding: 0 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24px;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0.3;
+  position: relative;
+  z-index: 2;
+}
+
+body[data-theme="v8"] .cpv2-pack-odds {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: underline;
+  text-underline-position: from-font;
+  cursor: pointer;
+}
+
+/* —— Collection progress panel —— */
+
+body[data-theme="v8"] .cpv2-progress-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  box-sizing: border-box;
+  background-image: linear-gradient(
+    216deg,
+    rgba(170, 170, 170, 0.25) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+body[data-theme="v8"] .cpv2-progress-title {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .cpv2-progress-overall {
+  width: min(236px, 100%);
+  height: 8px;
+  overflow: hidden;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="v8"] .cpv2-progress-overall-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #aa004f, rgba(170, 0, 79, 0.5));
+}
+
+body[data-theme="v8"] .cpv2-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+body[data-theme="v8"] .cpv2-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 15px;
+}
+
+body[data-theme="v8"] .cpv2-progress-row.is-skeleton {
+  height: 15px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body[data-theme="v8"] .cpv2-progress-label {
+  flex: 0 0 109px;
+  width: 109px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .cpv2-progress-row.is-total .cpv2-progress-label {
+  font-size: 14px;
+  letter-spacing: 0.28px;
+}
+
+body[data-theme="v8"] .cpv2-progress-track {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 15px;
+  padding: 2px 14px 2px 2px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.11);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .cpv2-progress-fill {
+  display: block;
+  height: 100%;
+  min-height: 9px;
+  border-radius: 60px 0 0 60px;
+  background: linear-gradient(90deg, #aa004f, rgba(170, 0, 79, 0.5));
+}
+
+/* —— Theme collection cards —— */
+
+body[data-theme="v8"] .cpv2-theme-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .cpv2-theme-card {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  width: 100%;
+  padding: 16px;
+  /* Visible so motion-tile play CTA can hang below the tile. */
+  overflow: visible;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  box-sizing: border-box;
+  /* Figma 126:3380 glass plate */
+  background-image: linear-gradient(
+    238deg,
+    rgba(170, 170, 170, 0.25) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+/* Figma 126:3345 — bottom-left glow group (two blurred ellipses). */
+body[data-theme="v8"] .cpv2-theme-card-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Behind head / motion row / premium banner */
+  z-index: -1;
+  height: 55%;
+  overflow: hidden;
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-glow-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Soft outer wash — bottom-left. */
+body[data-theme="v8"] .cpv2-theme-card-glow-blob--a {
+  left: -18%;
+  bottom: -42%;
+  width: 78%;
+  height: 120%;
+  background: #ff9d001a;
+  filter: blur(48px);
+}
+
+/* Tighter core bloom nested on the left. */
+body[data-theme="v8"] .cpv2-theme-card-glow-blob--b {
+  left: -6%;
+  bottom: -28%;
+  width: 52%;
+  height: 90%;
+  background: #ffbf1780;
+  filter: blur(28px);
+}
+
+body[data-theme="v8"] .cpv2-theme-card-head,
+body[data-theme="v8"] .cpv2-theme-card-row,
+body[data-theme="v8"] .cpv2-premium-banner {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 60px;
+  background: #1a1a1a;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-title {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-count {
+  margin: 0;
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24px;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+}
+
+body[data-theme="v8"] .cpv2-theme-card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 5.5px;
+  width: 100%;
+  /* Room for the play CTA hanging below unlocked tiles. */
+  padding-bottom: 18px;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile {
+  position: relative;
+  flex: 0 0 calc((100% - 11px) / 3);
+  width: calc((100% - 11px) / 3);
+  aspect-ratio: 108 / 210.5;
+  max-width: 108px;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-img,
+body[data-theme="v8"] .cpv2-motion-tile-shade {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-img.is-empty {
+  background: linear-gradient(160deg, #2a2a2a, #111);
+}
+
+body[data-theme="v8"] .cpv2-motion-tile.is-locked .cpv2-motion-tile-img,
+body[data-theme="v8"] .cpv2-motion-tile.is-partial .cpv2-motion-tile-img {
+  opacity: 0.6;
+  object-position: bottom;
+  /* Desaturate "Buy Packs to unlock Motion Cards" tile art. */
+  filter: grayscale(1) saturate(0);
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-shade {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile.is-unlocked .cpv2-motion-tile-shade {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.83) 0%,
+    transparent 33%
+  );
+}
+
+body[data-theme="v8"] .cpv2-motion-tile.is-locked .cpv2-motion-tile-shade,
+body[data-theme="v8"] .cpv2-motion-tile.is-partial .cpv2-motion-tile-shade {
+  background:
+    linear-gradient(
+      180deg,
+      transparent 83%,
+      rgba(0, 0, 0, 0.83) 100%
+    ),
+    linear-gradient(90deg, rgba(22, 22, 22, 0.8), rgba(22, 22, 22, 0.8));
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-check {
+  position: absolute;
+  right: 6px;
+  bottom: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 15px;
+  color: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.75));
+  /* Fade lock out toward the bottom edge; top peak at 70% opacity. */
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(0, 0, 0, 0.7) 42%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(0, 0, 0, 0.7) 42%,
+    transparent 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-check > svg {
+  display: block;
+  width: 14px;
+  height: 15px;
+}
+
+/* Compact play CTA — same squircle CtaButton family as leaderboard Play. */
+body[data-theme="v8"] .cpv2-motion-tile-play-cta {
+  position: absolute;
+  left: 50%;
+  /* Hang below the tile (~16px past bottom edge). */
+  bottom: -16px;
+  z-index: 3;
+  width: 33px;
+  min-width: 33px;
+  height: 33px;
+  min-height: 33px;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button-glow,
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button-glow--fill,
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button,
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"]
+  .cpv2-motion-tile-play-cta
+  .cta-button-glow
+  > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__inner,
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__label {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: max-content;
+  margin-inline: auto;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__title {
+  display: none;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__leading-icon {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: #ffe0e8;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play-cta .cta-button__leading-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 20px;
+  transform: translateX(-50%);
+  color: #fff;
+  opacity: 0.9;
+  line-height: 0;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-play > svg {
+  display: block;
+  width: 15px;
+  height: 20px;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-lock-msg {
+  position: absolute;
+  top: 49%;
+  left: 2px;
+  right: 2px;
+  z-index: 2;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.18px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-progress {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 61px;
+  padding: 4px 6px;
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.19px;
+  line-height: 1;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-progress > svg {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: oklch(0.66 0.3 5.67);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-scratch {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.16px;
+  line-height: 1.15;
+  text-align: left;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-scratch em {
+  font-style: normal;
+  color: #ff0077;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .cpv2-motion-tile-scratch-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, #fff 0 18%, transparent 19%),
+    linear-gradient(135deg, #ff2d87, #7a00ff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* —— Premium banner —— */
+
+body[data-theme="v8"] .cpv2-premium-banner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 193, 156, 0.18);
+  background: linear-gradient(
+    120deg,
+    rgba(80, 55, 30, 0.35),
+    rgba(20, 16, 12, 0.55)
+  );
+  /* Let corner sparkle hang slightly outside the border. */
+  overflow: visible;
+}
+
+/* Figma 126:3378 — white sparkle just outside top-right corner. */
+body[data-theme="v8"] .cpv2-premium-sparkle {
+  position: absolute;
+  top: -6px;
+  right: -5px;
+  left: auto;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 14px;
+  pointer-events: none;
+  line-height: 0;
+}
+
+body[data-theme="v8"] .cpv2-premium-sparkle > svg {
+  display: block;
+  width: 15px;
+  height: 14px;
+}
+
+body[data-theme="v8"] .cpv2-premium-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+body[data-theme="v8"] .cpv2-premium-banner-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24px;
+}
+
+/* Figma 126:3395 — 3 locks; gold when motion slot unlocked, muted when locked. */
+body[data-theme="v8"] .cpv2-premium-locks {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 8px;
+  list-style: none;
+  border-radius: 999px;
+  border: 1px solid #1f1f1f;
+  background: #000;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-premium-lock {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+body[data-theme="v8"] .cpv2-premium-lock > svg {
+  display: block;
+  width: 15px;
+  height: 17px;
+}
+
+body[data-theme="v8"] .cpv2-premium-lock.is-unlocked {
+  color: #e8c19c;
+  /* Match Figma gold lock fade toward the bottom. */
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 35%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 35%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+}
+
+body[data-theme="v8"] .cpv2-premium-lock.is-locked {
+  color: rgba(255, 255, 255, 0.38);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.42) 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.42) 100%
+  );
+}
+
+body[data-theme="v8"] .cpv2-premium-banner-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+body[data-theme="v8"] .cpv2-premium-preview {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 69px;
+  overflow: hidden;
+  border: 1px solid #e8c19c;
+  border-radius: 6px;
+  background: #1a1a1a;
+}
+
+body[data-theme="v8"] .cpv2-premium-preview > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.4;
+}
+
+body[data-theme="v8"] .cpv2-premium-preview-lock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  line-height: 0;
+}
+
+body[data-theme="v8"] .cpv2-premium-preview-lock > svg {
+  display: block;
+  width: 15px;
+  height: 20px;
+}
+
+body[data-theme="v8"] .cpv2-premium-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 61px;
+}
+
+body[data-theme="v8"] .cpv2-premium-copy > p {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.28px;
+  line-height: 19px;
+}
+
+body[data-theme="v8"] .cpv2-premium-copy .is-gold {
+  color: rgba(232, 193, 156, 0.7);
+  font-weight: 700;
+}
+
+body[data-theme="v8"] .cpv2-premium-copy .is-white {
+  color: #fff;
+  font-weight: 700;
+}
+
+body[data-theme="v8"] .cpv2-premium-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+body[data-theme="v8"] .cpv2-premium-win {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+body[data-theme="v8"] .cpv2-premium-win-amt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  color: #fff;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .cpv2-premium-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 33px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 179, 3, 0.2);
+  border-radius: 60px;
+  color: #ffc640;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: default;
+  box-sizing: border-box;
+  background-image: linear-gradient(
+    108deg,
+    rgba(170, 119, 0, 0.41) 5%,
+    rgba(68, 47, 0, 0.175) 28%,
+    rgba(0, 0, 0, 0.5) 53%,
+    rgba(169, 118, 0, 0.41) 85%
+  ),
+  linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6));
+}
+
+body[data-theme="v8"] .cpv2-premium-locked:disabled,
+body[data-theme="v8"] .cpv2-premium-locked:disabled .cpv2-premium-locked-label {
+  color: #ffdfc1;
+}
+
+body[data-theme="v8"] .cpv2-premium-locked-label {
+  line-height: 1;
+}
+
+body[data-theme="v8"] .cpv2-premium-locked-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* —— Diamonds CTA —— */
+
+body[data-theme="v8"] .cpv2-diamonds-cta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 96px;
+  padding: 18px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(213, 3, 255, 0.18);
+  border-radius: 16px;
+  color: #fff;
+  cursor: pointer;
+  background-image: linear-gradient(
+    180deg,
+    rgba(141, 0, 170, 0.41) 0%,
+    rgba(56, 0, 68, 0.175) 16%,
+    rgba(0, 0, 0, 0.5) 55%,
+    rgba(141, 0, 169, 0.41) 100%
+  );
+}
+
+body[data-theme="v8"] .cpv2-diamonds-cta-title {
+  position: relative;
+  z-index: 1;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.36px;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .cpv2-diamonds-cta-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border: 1px solid rgba(213, 3, 255, 0.2);
+  border-radius: 60px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24px;
+  background-image: linear-gradient(
+    180deg,
+    rgba(141, 0, 170, 0.41) 0%,
+    rgba(56, 0, 68, 0.175) 24%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(141, 0, 169, 0.41) 85%
+  ),
+  linear-gradient(90deg, #000, #000);
+}
+
+body[data-theme="v8"] .cpv2-diamonds-orb {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.9;
+  filter: drop-shadow(0 4px 10px rgba(180, 0, 255, 0.35));
+}
+
+body[data-theme="v8"] .cpv2-diamonds-orb.is-a {
+  top: -14px;
+  right: 8px;
+  transform: rotate(18deg);
+}
+
+body[data-theme="v8"] .cpv2-diamonds-orb.is-b {
+  left: -8px;
+  bottom: 8px;
+  transform: rotate(-17deg);
+}
+
+/* —— Ultra card panel —— */
+
+body[data-theme="v8"] .cpv2-ultra-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 207px;
+  padding: 16px 16px 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  box-sizing: border-box;
+  text-align: center;
+  background-image: linear-gradient(
+    220deg,
+    rgba(170, 170, 170, 0.25) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+body[data-theme="v8"] .cpv2-ultra-glow {
+  position: absolute;
+  inset: auto -20% -40% -20%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 198, 64, 0.22) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-ultra-card-art {
+  position: relative;
+  z-index: 1;
+  width: 101px;
+  height: 70px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 198, 64, 0.35);
+  background: #121212;
+}
+
+body[data-theme="v8"] .cpv2-ultra-card-img,
+body[data-theme="v8"] .cpv2-ultra-card-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(1px) brightness(0.55);
+}
+
+body[data-theme="v8"] .cpv2-ultra-card-video {
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-ultra-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffc640;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+body[data-theme="v8"] .cpv2-ultra-title {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #ffc640;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.32px;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .cpv2-ultra-copy {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  max-width: 280px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  line-height: 1.35;
+}
+
+body[data-theme="v8"] .cpv2-ultra-copy strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .cpv2-ultra-locked {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 33px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 179, 3, 0.2);
+  border-radius: 60px;
+  color: #ffc640;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: default;
+  box-sizing: border-box;
+  background-image: linear-gradient(
+    108deg,
+    rgba(170, 119, 0, 0.41) 5%,
+    rgba(68, 47, 0, 0.175) 28%,
+    rgba(0, 0, 0, 0.5) 53%,
+    rgba(169, 118, 0, 0.41) 85%
+  ),
+  linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6));
+}
+
+body[data-theme="v8"] .cpv2-ultra-locked:disabled,
+body[data-theme="v8"] .cpv2-ultra-locked:disabled .cpv2-ultra-locked-label {
+  color: #ffdfc1;
+}
+
+body[data-theme="v8"] .cpv2-ultra-locked-label {
+  line-height: 1;
+}
+
+body[data-theme="v8"] .cpv2-ultra-locked-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+body[data-theme="v8"] .cpv2-ultra-reward {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  max-width: 320px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
+  line-height: 1.35;
+}
+
+body[data-theme="v8"] .cpv2-ultra-reward span {
+  color: #ffc640;
+}
+
+body[data-theme="v8"] .cpv2-ultra-stars {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+}
+
+/* —— Footer —— */
+
+body[data-theme="v8"] .cpv2-site-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 8px 0 4px;
+  text-align: center;
+}
+
+body[data-theme="v8"] .cpv2-site-footer-tagline {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.28px;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .cpv2-site-footer-tagline .is-pink {
+  color: #d4145a;
+}
+
+body[data-theme="v8"] .cpv2-site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  max-width: 320px;
+}
+
+body[data-theme="v8"] .cpv2-site-footer-links > button,
+body[data-theme="v8"] .cpv2-site-footer-links > a {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.24px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .cpv2-site-footer-links > button:hover,
+body[data-theme="v8"] .cpv2-site-footer-links > a:hover {
+  color: #fff;
+}
+
+/* Shell spacing tweak for influencer layout */
+body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
+  gap: 0;
+}
+
+body[data-theme="v8"] .cpv2-shell:has(.cpv2-influencer) {
+  gap: 27px;
+}
+
+/* Hide legacy tall hero header styles when new card is present */
+body[data-theme="v8"] .cpv2-shell:has(.cpv2-profile-card) .cpv2-header {
+  display: none;
+}

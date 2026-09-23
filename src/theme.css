@@ -7048,7 +7048,12 @@ body[data-theme="v8"] .cpv2-shell {
   }
 }
 
-/* Creator profile: back button clears floating desktop nav. */
+/* Creator profile: clear floating top HUD (mobile + desktop). */
+body[data-theme="v8"] .app-layout--hud .cpv2-shell {
+  padding-top: var(--app-diamond-offset);
+}
+
+/* Creator profile: clear floating desktop nav when HUD is off. */
 @media (min-width: 769px) {
 
   body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,

@@ -33,6 +33,7 @@ import {
   loadModels,
   matchModel,
   modelCoverUrl,
+  modelDisplayName,
   modelSwipePosterUrl,
   profileFromModel,
   type BackendModel,
@@ -143,14 +144,57 @@ type CoverFlowCatalog = {
   playById: Map<string, FeaturedCoverFlowPlayTarget>;
 };
 
-function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
+function normalizeCreatorKey(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function modelMatchesCreator(
+  model: BackendModel,
+  creatorId: string | null | undefined,
+) {
+  const wanted = normalizeCreatorKey(creatorId);
+  if (!wanted) return true;
+  const profile = profileFromModel(model);
+  const candidates = [
+    profile.id,
+    model.id,
+    model.label,
+    modelDisplayName(model),
+  ];
+  return candidates.some((value) => {
+    const key = normalizeCreatorKey(value);
+    return key === wanted || key.includes(wanted) || wanted.includes(key);
+  });
+}
+
+function featuredMatchesCreator(
+  pack: FeaturedPack,
+  creatorId: string | null | undefined,
+) {
+  const wanted = normalizeCreatorKey(creatorId);
+  if (!wanted) return true;
+  const candidates = [pack.creatorId, pack.creatorName, pack.id];
+  return candidates.some((value) => {
+    const key = normalizeCreatorKey(value);
+    return key === wanted || key.includes(wanted) || wanted.includes(key);
+  });
+}
+
+function iterationsFromModels(
+  models: BackendModel[],
+  options?: { creatorId?: string | null; maxPacks?: number },
+): CoverFlowCatalog {
   const items: Iteration[] = [];
   const playById = new Map<string, FeaturedCoverFlowPlayTarget>();
+  const maxPacks = options?.maxPacks ?? MAX_HOME_PACKS;
+  const filtered = options?.creatorId
+    ? models.filter((model) => modelMatchesCreator(model, options.creatorId))
+    : models;
 
-  for (const model of models) {
+  for (const model of filtered) {
     const profile = profileFromModel(model);
     for (const foil of profile.packs) {
-      if (items.length >= MAX_HOME_PACKS) {
+      if (items.length >= maxPacks) {
         return { items, playById };
       }
       const diamondCost = packUnitCost(profile.id);
@@ -196,11 +240,17 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
   return { items, playById };
 }
 
-function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
+function iterationsFromFeatured(
+  packs: FeaturedPack[],
+  options?: { creatorId?: string | null },
+): CoverFlowCatalog {
   const items: Iteration[] = [];
   const playById = new Map<string, FeaturedCoverFlowPlayTarget>();
+  const filtered = options?.creatorId
+    ? packs.filter((pack) => featuredMatchesCreator(pack, options.creatorId))
+    : packs;
 
-  for (const pack of packs) {
+  for (const pack of filtered) {
     items.push(
       packItemToIteration({
         id: pack.id,
@@ -287,6 +337,7 @@ export function FeaturedCoverFlow({
   onReady,
   influencerBackdrop = false,
   showStatusPager = false,
+  creatorId = null,
 }: {
   featured: FeaturedPack[];
   /** Existing Pack Pocket add flow (auth-gated by the parent). */
@@ -296,6 +347,8 @@ export function FeaturedCoverFlow({
   influencerBackdrop?: boolean;
   /** Figma status capsule + dots under the carousel (home-version2). */
   showStatusPager?: boolean;
+  /** When set, only packs for this creator are shown. */
+  creatorId?: string | null;
 }) {
   const { authed } = useAuthSession();
   const {
@@ -352,25 +405,33 @@ export function FeaturedCoverFlow({
 
   useEffect(() => {
     let cancelled = false;
+    const filter = { creatorId };
+    // Creator page can show every foil for one model; home still caps the hero.
+    const maxPacks = creatorId ? Number.POSITIVE_INFINITY : MAX_HOME_PACKS;
     void Promise.all([loadModels(), loadPackCatalog()])
       .then(([loadedModels, loadedCatalog]) => {
         if (cancelled) return;
         setModels(loadedModels);
         setPackCatalog(loadedCatalog);
-        const fromModels = iterationsFromModels(loadedModels);
+        const fromModels = iterationsFromModels(loadedModels, {
+          ...filter,
+          maxPacks,
+        });
         setCatalog(
           fromModels.items.length
             ? fromModels
-            : iterationsFromFeatured(featured),
+            : iterationsFromFeatured(featured, filter),
         );
       })
       .catch(() => {
-        if (!cancelled) setCatalog(iterationsFromFeatured(featured));
+        if (!cancelled) {
+          setCatalog(iterationsFromFeatured(featured, filter));
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [featured]);
+  }, [creatorId, featured]);
 
   const items = catalog?.items ?? [];
   const focusedItem = items.find((item) => item.id === selectedId) ?? null;
@@ -389,10 +450,18 @@ export function FeaturedCoverFlow({
   }, [catalog, focusedItem]);
 
   useEffect(() => {
-    if (!selectedId && items[0]) {
-      setSelectedId(items[0].id);
-      setGlow(items[0].backgroundColor || DEFAULT_GLOW);
+    // Drop stale focus when the pack list is rebuilt (creator filter / catalog).
+    if (!items.length) {
+      setSelectedId(null);
+      setFocusedIndex(0);
+      return;
     }
+    const stillPresent =
+      selectedId != null && items.some((item) => item.id === selectedId);
+    if (stillPresent) return;
+    setSelectedId(items[0]!.id);
+    setFocusedIndex(0);
+    setGlow(items[0]!.backgroundColor || DEFAULT_GLOW);
   }, [items, selectedId]);
 
   useEffect(() => {
