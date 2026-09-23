@@ -91,6 +91,7 @@ import {
 import {
   playSparkleCoinSound,
   preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
@@ -3570,6 +3571,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
+          stopSparkleCoinSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
@@ -3736,9 +3738,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     applyBoundThemeIntroSound(enabled);
     if (enabled) {
       unlockCountdownSound();
+      preloadSparkleCoinSounds();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
+      stopSparkleCoinSounds();
     }
     setSoundEffectEnabled(enabled);
   }

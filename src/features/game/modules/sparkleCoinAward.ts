@@ -2,6 +2,9 @@
  * Coin roll when scratch progress crosses a 10% band (credited to wallet).
  * Picks a band at random, then an amount inside that band — each band maps
  * to a coins_game SFX length.
+ *
+ * Floor/ceil must stay in sync with backend `SCRATCH_COIN_MIN/MAX`
+ * (`backend/routers/rewards.py`) — server ignores client amount and rolls itself.
  */
 
 export type SparkleCoinBandId = "short" | "medium" | "long";

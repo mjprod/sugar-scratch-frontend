@@ -1,6 +1,6 @@
 /**
  * Sparkle-coin milestone SFX — one HTMLAudio per band clip.
- * Gated by game soundEffect prefs; restarts the clip on rapid milestones.
+ * Gated by game soundEffect prefs; never stacks overlapping band clips.
  */
 
 import { getGameAudioPrefs } from "@/services/gameAudioPrefs";
@@ -30,6 +30,18 @@ function getBandAudio(src: string): HTMLAudioElement | null {
   return audio;
 }
 
+/** Pause + rewind every cached band clip (mute / exclusive play). */
+export function stopSparkleCoinSounds(): void {
+  for (const audio of audioBySrc.values()) {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch {
+      // Ignore decode / seek races on iOS.
+    }
+  }
+}
+
 /** Warm the three band clips so the first 10% beat isn't silent on cold start. */
 export function preloadSparkleCoinSounds() {
   for (const band of SPARKLE_COIN_BANDS) {
@@ -39,7 +51,7 @@ export function preloadSparkleCoinSounds() {
 
 /**
  * Play the MP3 for a sparkle award. No-op when SFX are muted.
- * Restarts the matching element so overlapping milestones don't stack.
+ * Stops every band first so rapid cross-band milestones don't stack.
  */
 export function playSparkleCoinSound(soundSrc: string): void {
   if (!soundSrc) return;
@@ -47,8 +59,7 @@ export function playSparkleCoinSound(soundSrc: string): void {
   const audio = getBandAudio(soundSrc);
   if (!audio) return;
   try {
-    audio.pause();
-    audio.currentTime = 0;
+    stopSparkleCoinSounds();
     void audio.play().catch(() => {
       // Autoplay / gesture lock — ignore; next gesture unlocks prefs path.
     });
