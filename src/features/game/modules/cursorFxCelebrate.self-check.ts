@@ -5,7 +5,11 @@
 import {
   celebrateParticleBoost,
   crossedProgressMilestone,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
   CURSOR_FX_MILESTONE,
+  cursorFxSpawnVelocity,
   progressMilestoneIndex,
   resolveCursorFxDeviceProfile,
 } from "./cursorFxCelebrate";
@@ -67,12 +71,41 @@ assert(celebrateParticleBoost(5) >= 5, "boost does not shrink");
 assert(celebrateParticleBoost(5) <= 12, "desktop boost hard-capped");
 assert(celebrateParticleBoost(1, true) <= 2, "coarse boost stays minimal");
 
+assert(CURSOR_FX_EMIT_MODE === "fall", "product emit is fall (not fireworks)");
+assert(CURSOR_FX_FALL_GRAVITY > 0.1, "fall gravity stronger than old fountain");
+assert(CURSOR_FX_FALL_VELOCITY.min > 0, "fall speed positive");
+assert(
+  CURSOR_FX_FALL_VELOCITY.max >= CURSOR_FX_FALL_VELOCITY.min,
+  "fall velocity range ordered",
+);
+
+{
+  let fallDown = 0;
+  let fountainUp = 0;
+  for (let i = 0; i < 40; i += 1) {
+    const fall = cursorFxSpawnVelocity("fall", CURSOR_FX_FALL_VELOCITY, () =>
+      (i % 10) / 10,
+    );
+    assert(fall.vy > 0, `fall spawn #${i} must go down`);
+    fallDown += fall.vy;
+    const fountain = cursorFxSpawnVelocity(
+      "fountain",
+      { min: 0.5, max: 1.5 },
+      () => (i % 10) / 10,
+    );
+    assert(fountain.vy <= 0, `fountain spawn #${i} must go up or stay`);
+    fountainUp += fountain.vy;
+  }
+  assert(fallDown > 0, "fall sample accumulates downward speed");
+  assert(fountainUp <= 0, "fountain sample never goes down initially");
+}
+
 console.log(
   JSON.stringify(
     {
       ok: true,
       policy:
-        "celebrate ~1.1s desktop / ~2.4s coarse each 10%; mobile 1 particle for perf; reduced-motion off",
+        "celebrate ~1.1s desktop / ~2.4s coarse each 10%; coins fall like foil flakes (not fireworks); mobile 1 particle for perf; reduced-motion off",
     },
     null,
     2,

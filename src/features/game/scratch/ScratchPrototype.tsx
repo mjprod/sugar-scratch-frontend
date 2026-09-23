@@ -86,8 +86,13 @@ import { PackProgress } from "../modules/PackProgress";
 import {
   COIN_BADGE_AWARD_HOLD_MS,
   COIN_BADGE_IDLE_HIDE_MS,
-  rollSparkleCoin,
+  rollSparkleCoinAward,
 } from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -149,6 +154,9 @@ import {
   celebrateDurationMs,
   celebrateParticleBoost,
   crossedProgressMilestone,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
   resolveCursorFxDeviceProfile,
 } from "../modules/cursorFxCelebrate";
 import {
@@ -929,12 +937,13 @@ const CURSOR_FX_DEFAULTS: CursorFxSettings = {
   fairyDust: CURSOR_FX_DEVICE.fairyDust,
   particleSize: CURSOR_FX_DEVICE.particleSize,
   particleCount: CURSOR_FX_DEVICE.particleCount,
-  gravity: 0.1,
+  // Fall like symbols-foil flakes (not a fireworks fountain).
+  gravity: CURSOR_FX_FALL_GRAVITY,
   // Slightly longer life so a celebrate burst leaves a denser coin trail.
   fadeSpeed: 0.96,
 };
 
-const CURSOR_FX_INITIAL_VELOCITY = { min: 0.5, max: 1.5 };
+const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 /** Skip diamond-coin spawn on keyed-out / empty pixels. */
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
@@ -969,7 +978,7 @@ function loadCursorFxSettings(): CursorFxSettings {
       gravity: clampValue(
         Number(parsed.gravity) || CURSOR_FX_DEFAULTS.gravity,
         0,
-        0.1,
+        0.4,
       ),
       fadeSpeed: clampValue(
         Number(parsed.fadeSpeed) || CURSOR_FX_DEFAULTS.fadeSpeed,
@@ -1876,18 +1885,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
 
     // Defer badge work so the dust burst paints this frame first.
-    const award = rollSparkleCoin();
+    const award = rollSparkleCoinAward();
     const handId = handIdRef.current;
     const cardId = selectedCardId || undefined;
     queueMicrotask(() => {
       showCoinBadge();
-      addCoins(award);
-      setCoinAwardFlash(award);
+      addCoins(award.amount);
+      setCoinAwardFlash(award.amount);
       setCoinPopNonce((n) => n + 1);
+      playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       // Do not merge the persist wallet snapshot (see scratchCoinReward).
       if (authed && handId) {
-        persistScratchCoins({ handId, milestone: crossed, cardId, amount: award });
+        persistScratchCoins({
+          handId,
+          milestone: crossed,
+          cardId,
+          amount: award.amount,
+        });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();
@@ -3552,9 +3567,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          preloadSparkleCoinSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
+          stopSparkleCoinSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
@@ -3721,9 +3738,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     applyBoundThemeIntroSound(enabled);
     if (enabled) {
       unlockCountdownSound();
+      preloadSparkleCoinSounds();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
+      stopSparkleCoinSounds();
     }
     setSoundEffectEnabled(enabled);
   }
@@ -4960,7 +4979,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         Gravity ({cursorFx.gravity.toFixed(3)})
         <input
           disabled={!cursorFx.fairyDust}
-          max={0.1}
+          max={0.4}
           min={0}
           onChange={(event) =>
             updateCursorFx({ gravity: Number(event.currentTarget.value) })
@@ -5195,6 +5214,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               gravity={cursorFx.gravity}
               fadeSpeed={cursorFx.fadeSpeed}
               initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
+              emitMode={CURSOR_FX_EMIT_MODE}
               spawnEnabled={cursorFxSpawnActive}
               spawnMinDistance={fairyDustSpawnMinDistancePx(
                 CURSOR_FX_DEVICE.coarsePointer,
@@ -5581,8 +5601,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
               huntHintActivityAtRef.current = performance.now();
-              if (soundEnabledRef.current)
+              if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
+                preloadSparkleCoinSounds();
+              }
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
