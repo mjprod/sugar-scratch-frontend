@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { formatBalance } from "@/components/CurrencyBalances";
 import { useWallet } from "@/contexts/WalletContext";
 
-/** Static coin mark — still frame (no Lottie runtime / canvas). */
-const COIN_WEBP_SRC = "/images/coin.webp";
+/** Static dust mark — still frame (no Lottie runtime / canvas). */
+const COIN_WEBP_SRC = "/images/diamondDust.webp";
 const COUNT_BASE_MS = 720;
 /** How long the +N chip / value pop stay when CSS animations are disabled. */
 const REDUCED_MOTION_FLASH_MS = 900;
@@ -25,7 +25,7 @@ export type StageCoinCountProps = {
    * with crossedProgressMilestone (not only when the count target changes).
    */
   popNonce?: number;
-  /** Coins just awarded on this milestone — drives the floating +N chip. */
+  /** Dust just awarded on this milestone — drives the floating +N chip. */
   awardAmount?: number;
 };
 
@@ -142,7 +142,7 @@ export function StageCoinCount({
   return (
     <div className="stage-game__coin-count">
       <span className="visually-hidden" aria-live="polite">
-        {formatBalance(target)} coins
+        {formatBalance(target)} diamond dust
         {flashAward > 0 ? `, plus ${flashAward}` : ""}
       </span>
       <span className="stage-game__coin-count-icon" aria-hidden="true">
@@ -178,7 +178,7 @@ export function StageCoinCount({
         >
           {label}
         </p>
-        <p className="stage-game__coin-count-label">Coins</p>
+        <p className="stage-game__coin-count-label">Diamond Dust</p>
       </div>
       {flashAward > 0 ? (
         <span

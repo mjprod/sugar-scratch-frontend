@@ -939,10 +939,10 @@ const CURSOR_FX_INITIAL_VELOCITY = { min: 0.5, max: 1.5 };
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {

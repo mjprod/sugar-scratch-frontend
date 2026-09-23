@@ -132,7 +132,7 @@ export const DEFAULT_SYMBOL_TYPES: SymbolTypeEntry[] = [
   { src: "/lotties/05-Diamond.lottie", label: "Diamond" },
   { src: "/lotties/06-Magnet.lottie", label: "Magnet" },
   { src: "/lotties/07-Crown.lottie", label: "Crown" },
-  { src: "/lotties/08-Gold%20Coins.lottie", label: "Gold Coins" },
+  { src: "/lotties/08-Gold%20Coins.lottie", label: "Gold Diamond Dust" },
   { src: "/lotties/09-Key.lottie", label: "Key" },
   { src: "/lotties/10-Treasure%20Chest.lottie", label: "Treasure Chest" },
   { src: "/lotties/11-Diamond%20Cards.lottie", label: "Diamond Cards" },

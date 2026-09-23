@@ -169,7 +169,7 @@ function seedMockIfNeeded(existing: TransactionRecord[]): TransactionRecord[] {
       destinationCurrency: "COIN",
       balanceAfterDiamonds: 3,
       balanceAfterCoins: 1120,
-      exchangeRateLabel: "1 Diamond = 100 Coins",
+      exchangeRateLabel: "1 Diamond = 100 Diamond Dust",
     },
     {
       id: "seed-pack-1",
@@ -454,7 +454,7 @@ export function formatWalletAmount(
   if (currency === "DIAMOND") {
     return `${amount.toLocaleString()} Diamonds`;
   }
-  return `${amount.toLocaleString()} Coins`;
+  return `${amount.toLocaleString()} Diamond Dust`;
 }
 
 export type ChangeLine = {
@@ -573,7 +573,7 @@ export function transactionTitle(row: TransactionRecord): string {
     case "diamond_purchase":
       return `Purchased ${row.destinationAmount ?? 0} Diamonds`;
     case "diamond_coin_exchange":
-      return "Exchanged Diamonds for Coins";
+      return "Exchanged Diamonds for Diamond Dust";
     case "pack_purchase": {
       const name = row.packNameSnapshot ?? "Pack";
       const qty = row.quantity && row.quantity > 1 ? ` ×${row.quantity}` : "";
