@@ -11,7 +11,8 @@
 
 import { apiMutate } from "../lib/api";
 
-export const SCRATCH_COIN_MIN = 80;
+/** Client optimistic floor/ceil across sparkle bands (30–60 / 61–80 / 81–100). */
+export const SCRATCH_COIN_MIN = 30;
 export const SCRATCH_COIN_MAX = 100;
 
 export type ScratchWallet = { diamonds: number; coins: number };

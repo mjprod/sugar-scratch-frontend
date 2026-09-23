@@ -86,8 +86,12 @@ import { PackProgress } from "../modules/PackProgress";
 import {
   COIN_BADGE_AWARD_HOLD_MS,
   COIN_BADGE_IDLE_HIDE_MS,
-  rollSparkleCoin,
+  rollSparkleCoinAward,
 } from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -1880,18 +1884,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
 
     // Defer badge work so the dust burst paints this frame first.
-    const award = rollSparkleCoin();
+    const award = rollSparkleCoinAward();
     const handId = handIdRef.current;
     const cardId = selectedCardId || undefined;
     queueMicrotask(() => {
       showCoinBadge();
-      addCoins(award);
-      setCoinAwardFlash(award);
+      addCoins(award.amount);
+      setCoinAwardFlash(award.amount);
       setCoinPopNonce((n) => n + 1);
+      playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       // Do not merge the persist wallet snapshot (see scratchCoinReward).
       if (authed && handId) {
-        persistScratchCoins({ handId, milestone: crossed, cardId, amount: award });
+        persistScratchCoins({
+          handId,
+          milestone: crossed,
+          cardId,
+          amount: award.amount,
+        });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();
@@ -3556,6 +3566,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          preloadSparkleCoinSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
@@ -5586,8 +5597,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
               huntHintActivityAtRef.current = performance.now();
-              if (soundEnabledRef.current)
+              if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
+                preloadSparkleCoinSounds();
+              }
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
