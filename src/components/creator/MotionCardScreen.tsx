@@ -89,14 +89,20 @@ function MotionCardScreenInner({
   const navigate = useNavigate();
   const { authed } = useAuth();
   const collection = useCreatorCollection(modelId);
-  // Paint immediately — no site preloader between influencer ↔ motion detail.
-  useMarkPageReady(true);
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const legalTitleId = useId();
 
   const card = useMemo(() => {
     return collection.cards.find((entry) => entry.id === cardId) ?? null;
   }, [cardId, collection.cards]);
+
+  // Preloader between character → motion; dismiss as soon as the shell can paint.
+  useMarkPageReady(
+    Boolean(card) ||
+      !collection.loading ||
+      collection.cards.length > 0 ||
+      collection.themes.length > 0,
+  );
 
   const themeCards = useMemo(() => {
     if (!card) return [] as CardConfig[];
