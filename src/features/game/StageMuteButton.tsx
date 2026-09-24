@@ -17,6 +17,11 @@ import {
   stopCountdownAudio,
   unlockCountdownSound,
 } from "./modules/InitialCountdown";
+import {
+  isMotionScratchBgmPlaying,
+  preloadMotionScratchBgm,
+  syncMotionScratchBgm,
+} from "./modules/motionScratchBgm";
 import { stageMuteIconShowsSoundOn } from "./stageMuteIconPolicy";
 
 function prefsSoundOn() {
@@ -25,7 +30,11 @@ function prefsSoundOn() {
 }
 
 function liveAudioOn() {
-  return introVideoIsAudible() || isCountdownAudioPlaying();
+  return (
+    introVideoIsAudible() ||
+    isCountdownAudioPlaying() ||
+    isMotionScratchBgmPlaying()
+  );
 }
 
 /**
@@ -75,12 +84,16 @@ export function StageMuteButton() {
     applyBoundThemeIntroSound(next);
     if (next) {
       unlockCountdownSound();
+      preloadMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
     }
     setSoundEffectEnabled(next);
     setBackgroundMusicEnabled(next);
+    // Prefs notify is sync; still call play/pause here so unmute stays inside
+    // this user gesture on Safari.
+    syncMotionScratchBgm();
     setSoundOn(next);
   }
 

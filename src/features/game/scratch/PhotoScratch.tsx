@@ -5,6 +5,7 @@ import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   getGameAudioPrefs,
+  setBackgroundMusicEnabled,
   setSoundEffectEnabled,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
@@ -64,6 +65,13 @@ import {
   resumeCountdownAudioIfActive,
   stopCountdownAudio,
 } from "../modules/InitialCountdown";
+import {
+  preloadMotionScratchBgm,
+  setMotionScratchBgmBed,
+  setMotionScratchBgmFull,
+  stopMotionScratchBgm,
+  syncMotionScratchBgm,
+} from "../modules/motionScratchBgm";
 import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
@@ -2092,11 +2100,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     applyBoundThemeIntroSound(enabled);
     if (enabled) {
       unlockCountdownSound();
+      preloadMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
     }
     setSoundEffectEnabled(enabled);
+    setBackgroundMusicEnabled(enabled);
+    syncMotionScratchBgm();
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
@@ -2452,10 +2463,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          preloadMotionScratchBgm();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
         }
+        syncMotionScratchBgm();
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
@@ -2483,6 +2496,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function onPointerDown(clientX: number, clientY: number) {
     if (introActiveRef.current) return;
     if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
+    // First touch unlocks HTMLAudio autoplay for the looped BGM.
+    syncMotionScratchBgm();
     if (isBodyScratchLocked()) {
       return;
     }
@@ -2514,6 +2529,35 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
+  // Option 1: quiet bed on foil (center), full level after dock settles.
+  const motionScratchBgmWarm =
+    hasBodySymbols &&
+    entryReady &&
+    !introActive &&
+    !introGateActive &&
+    !gameResult;
+  useEffect(() => {
+    if (!motionScratchBgmWarm) {
+      stopMotionScratchBgm();
+      return;
+    }
+    preloadMotionScratchBgm();
+    if (topBarPhase === "center") {
+      setMotionScratchBgmBed();
+      return;
+    }
+    if (topBarPhase === "docked") {
+      setMotionScratchBgmBed();
+      const id = window.setTimeout(() => {
+        setMotionScratchBgmFull();
+      }, TOP_BAR_DOCK_MS);
+      return () => window.clearTimeout(id);
+    }
+  }, [motionScratchBgmWarm, topBarPhase]);
+  useEffect(
+    () => () => stopMotionScratchBgm({ fadeOutMs: 0 }),
+    [],
+  );
   const huntPhase = resolveHuntPhase({
     active:
       hasBodySymbols &&

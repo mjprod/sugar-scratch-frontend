@@ -3,6 +3,7 @@ import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
   getGameAudioPrefs,
+  setBackgroundMusicEnabled,
   setSoundEffectEnabled,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
@@ -91,6 +92,13 @@ import {
   preloadSparkleCoinSounds,
   stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
+import {
+  preloadMotionScratchBgm,
+  setMotionScratchBgmBed,
+  setMotionScratchBgmFull,
+  stopMotionScratchBgm,
+  syncMotionScratchBgm,
+} from "../modules/motionScratchBgm";
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -3562,11 +3570,15 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
           preloadSparkleCoinSounds();
+          preloadMotionScratchBgm();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
           stopSparkleCoinSounds();
         }
+        // BGM follows backgroundMusic (stage mute toggles both). Must run in
+        // this click so Safari treats play() as a user gesture on unmute.
+        syncMotionScratchBgm();
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
@@ -3638,6 +3650,42 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  // Option 1: quiet bed on foil (center), full level after dock settles.
+  // Cleanup must NOT stop on center→docked — only when warm ends or unmount.
+  const motionScratchBgmWarm =
+    useBodySymbols &&
+    matchStartUnlocked &&
+    !introGateActive &&
+    !introActive &&
+    !gameResult;
+  useEffect(() => {
+    if (!motionScratchBgmWarm) {
+      stopMotionScratchBgm();
+      return;
+    }
+    preloadMotionScratchBgm();
+    if (skipToPlay) {
+      setMotionScratchBgmFull();
+      return;
+    }
+    if (topBarPhase === "center") {
+      setMotionScratchBgmBed();
+      return;
+    }
+    if (topBarPhase === "docked") {
+      // Phase flips to docked when the climb starts — hold bed, then full.
+      setMotionScratchBgmBed();
+      const id = window.setTimeout(() => {
+        setMotionScratchBgmFull();
+      }, TOP_BAR_DOCK_MS);
+      return () => window.clearTimeout(id);
+    }
+    // showcase: leave level alone until warm clears (fade out above).
+  }, [motionScratchBgmWarm, topBarPhase, skipToPlay]);
+  useEffect(
+    () => () => stopMotionScratchBgm({ fadeOutMs: 0 }),
+    [],
+  );
   // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
   // load). Keep this separate from matchStartUnlocked so scratch stays gated.
   const topChromeBarReady =
@@ -3757,12 +3805,16 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (enabled) {
       unlockCountdownSound();
       preloadSparkleCoinSounds();
+      preloadMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
       stopSparkleCoinSounds();
     }
+    // Match StageMuteButton: SFX + BGM together so the looped track mutes too.
     setSoundEffectEnabled(enabled);
+    setBackgroundMusicEnabled(enabled);
+    syncMotionScratchBgm();
   }
 
   function isPhoneLayout() {
@@ -5619,6 +5671,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 ensureSymbolAudio(symbolAudioRef.current);
                 preloadSparkleCoinSounds();
               }
+              // First touch unlocks HTMLAudio autoplay for the looped BGM.
+              syncMotionScratchBgm();
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
