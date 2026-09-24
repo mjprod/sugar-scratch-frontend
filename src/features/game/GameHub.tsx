@@ -23,7 +23,7 @@ import {
   gameSessionStorageKey,
   firstMissingMotionCardId,
   loadGameSession,
-  markWalletCredited,
+  settleHubWalletFromSession,
   motionPlayHref,
   persistGameProgress,
   photoPlayHref,
@@ -189,7 +189,7 @@ function HubRewardTally({
 
 export function GameHub() {
   const catalog = useCatalog()
-  const { addDiamonds } = useWallet()
+  const { addCoins, addDiamonds } = useWallet()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
   const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
@@ -290,12 +290,11 @@ export function GameHub() {
     if (phase !== 'done' || !session) return
     if (session.walletCredited || walletCreditRef.current) return
     walletCreditRef.current = true
-    if (session.diamondTotal > 0) {
-      addDiamonds(session.diamondTotal)
-    }
-    const marked = markWalletCredited()
+    // Hub: apply coinTotal + diamondTotal once. Pack: reveal/event already
+    // credited the wallet — settleHubWalletFromSession only marks credited.
+    const marked = settleHubWalletFromSession(addDiamonds, addCoins)
     if (marked) setSession(marked)
-  }, [phase, session, addDiamonds])
+  }, [phase, session, addCoins, addDiamonds])
 
   useEffect(() => {
     if (phase !== 'photo_reveal' || resumedRef.current || wonPhotos.length === 0) {

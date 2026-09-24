@@ -3847,7 +3847,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   ): Promise<boolean> {
     const session = loadGameSession();
     if (session?.packScratch) {
-      const settle = await settlePackMotionCard(cardId);
+      const settle = await settlePackMotionCard(cardId, prize);
       if (!settle.ok) return false;
       if (settle.session) setGameSession(settle.session);
     }
@@ -3931,11 +3931,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       const pending = awarded?.pendingMotionResult;
       const coins = Math.max(0, pending?.coins ?? 0);
       const diamonds = Math.max(0, pending?.diamonds ?? 0);
-      // Pack settle already credits coins via PACK_OPENING_REWARD_EVENT.
-      // Hub / free hands still need a local wallet bump for the coin HUD.
-      if (coins > 0 && !loadGameSession()?.packScratch) {
-        addCoins(coins);
-      }
+      // Hub coins bank into session.coinTotal and settle once at done
+      // (same path as diamonds). Pack coins credit via PACK_OPENING_REWARD_EVENT.
       const current = pending?.current ?? completedCardIdsRef.current.length + 1;
       const total = awarded?.motionCardIds.length ?? modelCards.length;
       if (!completedCardIdsRef.current.includes(finishedId)) {

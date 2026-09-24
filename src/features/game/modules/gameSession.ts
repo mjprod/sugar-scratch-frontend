@@ -59,9 +59,12 @@ export type GameSession = {
   completedPhotoIds: string[];
   /** Accumulated diamonds from motion (and legacy photo) match games. */
   diamondTotal: number;
-  /** Accumulated coins from motion card wins (display / settle bookkeeping). */
+  /** Accumulated coins from motion card wins (hub settle + pack tally). */
   coinTotal?: number;
-  /** True after diamondTotal has been applied to the app wallet. */
+  /**
+   * True after hub wallet settle applied diamondTotal / coinTotal.
+   * Pack openings credit via reveal API / PACK_OPENING_REWARD_EVENT instead.
+   */
   walletCredited: boolean;
   /** Set when motion play continues a pack opening from PurchaseFlow. */
   packScratch?: PackScratchLink;
@@ -377,7 +380,7 @@ export function startMotionSession(
   return session;
 }
 
-/** Mark diamondTotal as applied to the wallet (idempotent). */
+/** Mark hub wallet settle as applied (idempotent). */
 export function markWalletCredited(): GameSession | null {
   const session = loadGameSession();
   if (!session) return null;
@@ -385,6 +388,27 @@ export function markWalletCredited(): GameSession | null {
   const next: GameSession = { ...session, walletCredited: true };
   saveGameSession(next);
   return next;
+}
+
+/**
+ * Apply session coinTotal + diamondTotal to the app wallet once.
+ * Pack-linked hands skip this — reveal / reward events own wallet credit.
+ */
+export function settleHubWalletFromSession(
+  addDiamonds: (amount: number) => void,
+  addCoins: (amount: number) => void,
+): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  if (session.walletCredited) return session;
+  if (session.packScratch) {
+    return markWalletCredited();
+  }
+  const diamonds = Math.max(0, session.diamondTotal);
+  const coins = Math.max(0, session.coinTotal ?? 0);
+  if (diamonds > 0) addDiamonds(diamonds);
+  if (coins > 0) addCoins(coins);
+  return markWalletCredited();
 }
 
 /** First motion card in deal order that has not been scratched yet. */
@@ -498,10 +522,10 @@ export function awardMotionCardCurrency(
     ...session,
     lastMotionWinPhotoIds: [],
     coinTotal: Math.max(0, session.coinTotal ?? 0) + coins,
-    // Pack openings credit currency via the reveal API / reward event.
-    // Hub hands bank diamonds here for the end-of-hand wallet settle.
-    diamondTotal:
-      session.diamondTotal + (packLinked ? 0 : diamonds),
+    // Always bank diamonds for the hand tally. Hub settles coinTotal +
+    // diamondTotal once at done; pack openings credit the wallet via reveal
+    // (prize passed through) / PACK_OPENING_REWARD_EVENT.
+    diamondTotal: session.diamondTotal + diamonds,
     pendingMotionResult: {
       cardId,
       photoIds: [],
@@ -655,16 +679,14 @@ function recordAwardedPhotoCards(session: GameSession): GameSession {
  */
 export function settleDonePhotoHand(
   addDiamonds: (amount: number) => void,
+  addCoins: (amount: number) => void = () => undefined,
 ): boolean {
   const promoted = promoteCompletePhotoHand();
   const session = promoted ?? loadGameSession();
   if (!session || session.phase !== "done") return false;
 
   if (!session.walletCredited) {
-    if (session.diamondTotal > 0) {
-      addDiamonds(session.diamondTotal);
-    }
-    markWalletCredited();
+    settleHubWalletFromSession(addDiamonds, addCoins);
   }
 
   const current = loadGameSession();
