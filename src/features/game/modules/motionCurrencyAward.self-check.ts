@@ -207,4 +207,39 @@ assert(
   "pack settle applies photoDiamondTotal only (not motion diamondTotal / coinTotal)",
 );
 
+local.clear();
+saveGameSession(
+  baseSession({
+    phase: "done",
+    diamondTotal: 6,
+    packScratch: {
+      readyPackId: "pack-legacy",
+      packName: "Legacy Pack",
+      creator: "Ashley",
+      openingSession: {
+        quantity: 1,
+        diamondCost: 10,
+        cards: [{ id: "open-1", rarity: "Rare", reward: 40 }],
+      },
+      openingCardIds: ["open-1"],
+      settledOpeningIds: ["open-1"],
+    },
+  }),
+);
+walletDiamonds = 0;
+walletCoins = 0;
+const legacyPackSettled = settleHubWalletFromSession(
+  (n) => {
+    walletDiamonds += n;
+  },
+  (n) => {
+    walletCoins += n;
+  },
+);
+assert(legacyPackSettled?.walletCredited === true, "legacy pack settle marks credited");
+assert(
+  walletDiamonds === 6 && walletCoins === 0,
+  "legacy pack session without photoDiamondTotal credits diamondTotal (photo-only era)",
+);
+
 console.log("motionCurrencyAward.self-check: ok");
