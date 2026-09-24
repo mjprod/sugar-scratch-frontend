@@ -47,10 +47,10 @@ import {
   TopSymbolBar,
   type TopBarPhase,
 } from "../modules/TopSymbolBar";
-import { MotionWinReveal } from "../modules/MotionWinReveal";
+import { MotionCurrencyReveal } from "../modules/MotionCurrencyReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import {
-  awardMotionCardPhotos,
+  awardMotionCardCurrency,
   clearPendingMotionResult,
   finishMotionHand,
   isGameModeUrl,
@@ -62,8 +62,6 @@ import {
 } from "../modules/gameSession";
 import {
   inferThemeFromLabel,
-  loadGameCatalog,
-  type PhotoCard,
 } from "../modules/session";
 import {
   advanceHuntHintCycle,
@@ -1425,7 +1423,8 @@ export function ScratchPrototype({
   );
   const [motionResult, setMotionResult] = useState<{
     win: boolean;
-    photos: PhotoCard[];
+    coins: number;
+    diamonds: number;
     current: number;
     total: number;
     resultId: string;
@@ -2565,6 +2564,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const render = () => {
       try {
         if (cancelled) return;
+        // Currency result owns the screen — skip GL + video sync (opaque cover).
+        if (motionResultRef.current?.win) {
+          return;
+        }
         const active = ensureRenderer();
         if (!active) return;
         probeFrameIdRef.current += 1;
@@ -3042,28 +3045,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             }
             setSelectedCardId(startId);
             if (pending) {
-              void loadGameCatalog()
-                .then((catalog) => {
-                  const photos = pending.photoIds
-                    .map((id) => catalog.photos.find((photo) => photo.id === id))
-                    .filter((photo): photo is PhotoCard => Boolean(photo));
-                  setMotionResult({
-                    win: pending.prize > 0 && photos.length > 0,
-                    photos,
-                    current: pending.current,
-                    total: pending.total,
-                    resultId: `${pending.cardId}:${pending.photoIds.join(",")}:${pending.current}`,
-                  });
-                })
-                .catch(() => {
-                  setMotionResult({
-                    win: false,
-                    photos: [],
-                    current: pending.current,
-                    total: pending.total,
-                    resultId: `pending-error:${pending.cardId}`,
-                  });
-                });
+              const coins = Math.max(0, pending.coins ?? 0);
+              const diamonds = Math.max(
+                0,
+                pending.diamonds ?? (pending.prize > 0 ? pending.prize : 0),
+              );
+              setMotionResult({
+                win: pending.prize > 0 && (coins > 0 || diamonds > 0),
+                coins,
+                diamonds,
+                current: pending.current,
+                total: pending.total,
+                resultId: `${pending.cardId}:${coins}:${diamonds}:${pending.current}`,
+              });
             }
             return;
           }
@@ -3671,9 +3665,33 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   });
   const motionOutcome = resolveScratchOutcome({
     scratchCompleted: motionResult != null,
-    photoCardFound: Boolean(motionResult?.win && motionResult.photos.length > 0),
-    diamondFound: false,
+    photoCardFound: false,
+    diamondFound: Boolean(
+      motionResult?.win &&
+        ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
+    ),
   });
+  /** Currency win covers the stage — clear theme video for look + perf. */
+  const clearStageForResult = motionOutcome === "diamond";
+
+  // Freeze theme decoders while the currency result is up (opaque overlay).
+  useEffect(() => {
+    if (!clearStageForResult) return;
+    const bottom = bottomVideoRef.current;
+    const foreground = foregroundVideoRef.current;
+    try {
+      bottom?.pause();
+    } catch {
+      // ignore
+    }
+    try {
+      foreground?.pause();
+    } catch {
+      // ignore
+    }
+    parkForegroundDecoder();
+  }, [clearStageForResult, motionResult?.resultId]);
+
   // Keep the frame mounted through the no-match beat so its energy can drain
   // instead of vanishing with the rest of the gameplay HUD.
   const frameSettling = useBodySymbols && motionOutcome === "no-match";
@@ -3908,21 +3926,16 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         abortPackRevealAttempt();
         return;
       }
-      // One catalog fetch for award + overlay photos (used to load twice).
-      const catalog = prize > 0 ? await loadGameCatalog() : null;
-      const awarded = await awardMotionCardPhotos(
-        finishedId,
-        prize,
-        catalog ?? undefined,
-      );
+      const awarded = awardMotionCardCurrency(finishedId, prize);
       if (awarded) setGameSession(awarded);
       const pending = awarded?.pendingMotionResult;
-      const photoIds = pending?.photoIds ?? awarded?.lastMotionWinPhotoIds ?? [];
-      const photos = catalog
-        ? photoIds
-            .map((id) => catalog.photos.find((photo) => photo.id === id))
-            .filter((photo): photo is PhotoCard => Boolean(photo))
-        : [];
+      const coins = Math.max(0, pending?.coins ?? 0);
+      const diamonds = Math.max(0, pending?.diamonds ?? 0);
+      // Pack settle already credits coins via PACK_OPENING_REWARD_EVENT.
+      // Hub / free hands still need a local wallet bump for the coin HUD.
+      if (coins > 0 && !loadGameSession()?.packScratch) {
+        addCoins(coins);
+      }
       const current = pending?.current ?? completedCardIdsRef.current.length + 1;
       const total = awarded?.motionCardIds.length ?? modelCards.length;
       if (!completedCardIdsRef.current.includes(finishedId)) {
@@ -3931,11 +3944,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         setCompletedCardIds(nextCompleted);
       }
       setMotionResult({
-        win: prize > 0 && photos.length > 0,
-        photos,
+        win: prize > 0 && (coins > 0 || diamonds > 0),
+        coins,
+        diamonds,
         current,
         total,
-        resultId: `${finishedId}:${photoIds.join(",")}:${current}`,
+        resultId: `${finishedId}:${coins}:${diamonds}:${current}`,
       });
       return;
     }
@@ -5193,6 +5207,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         <div
           ref={setStageNode}
           className={`stage${gameResult ? " is-game-over" : ""}${
+            clearStageForResult ? " is-result-clear" : ""
+          }${
             topBarPhase === "showcase" ? " is-showcase-phase" : ""
           }${
             useBodySymbols &&
@@ -5249,10 +5265,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               </div>
             </div>
           ) : null}
-          {motionResult && motionOutcome === "photo-card" ? (
-            <MotionWinReveal
+          {motionResult && motionOutcome === "diamond" ? (
+            <MotionCurrencyReveal
               key={motionResult.resultId}
-              photos={motionResult.photos}
+              coins={motionResult.coins}
+              diamonds={motionResult.diamonds}
               resultId={motionResult.resultId}
               onComplete={afterMotionResultPresentation}
             />
@@ -5876,7 +5893,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 ? ` · scratched ${completedCardIds.length}`
                 : ""}
               {gameMode && gameSession
-                ? ` · photos banked ${gameSession.photoPrizeTotal}`
+                ? ` · prizes ${gameSession.photoPrizeTotal}`
                 : ""}
             </p>
           </div>

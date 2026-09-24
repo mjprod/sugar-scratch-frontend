@@ -8,7 +8,6 @@ import {
 import type { OpeningSession } from "@/services/purchase";
 import {
   loadGameCatalog,
-  pickWonPhotocards,
   type ThemedMotionCard,
 } from "./session";
 
@@ -58,18 +57,23 @@ export type GameSession = {
    */
   collectedPhotoIds?: string[];
   completedPhotoIds: string[];
-  /** Accumulated diamonds from photo match games. */
+  /** Accumulated diamonds from motion (and legacy photo) match games. */
   diamondTotal: number;
+  /** Accumulated coins from motion card wins (display / settle bookkeeping). */
+  coinTotal?: number;
   /** True after diamondTotal has been applied to the app wallet. */
   walletCredited: boolean;
   /** Set when motion play continues a pack opening from PurchaseFlow. */
   packScratch?: PackScratchLink;
-  /** Photo Cards awarded by the Motion Card that just completed. */
+  /** Photo Cards awarded by the Motion Card that just completed (legacy). */
   lastMotionWinPhotoIds?: string[];
-  /** Result overlay waiting for Scratch Next / Save Remaining / photo summary. */
+  /** Result overlay waiting for auto-advance to the next motion card. */
   pendingMotionResult?: {
     cardId: string;
+    /** Legacy field — motion wins no longer award photo cards. */
     photoIds: string[];
+    coins: number;
+    diamonds: number;
     prize: number;
     current: number;
     total: number;
@@ -424,7 +428,7 @@ export function photoPlayHref(session: GameSession, cardId?: string): string {
   return `/photo-scratch?${params.toString()}`;
 }
 
-/** Record a finished motion card and its photo-scratch prize units. */
+/** Record a finished motion card and its prize units (now currency, not photos). */
 export function recordMotionCardResult(
   cardId: string,
   prize: number,
@@ -441,55 +445,85 @@ export function recordMotionCardResult(
   return next;
 }
 
-/** Assign Photo Cards for this Motion Card win and open the result overlay. */
-export async function awardMotionCardPhotos(
+/** Coins shown/awarded for a motion win when no pack opening reward exists. */
+export const MOTION_COINS_PER_PRIZE = 50;
+
+function packRewardCoinsForMotionCard(
+  session: GameSession,
+  cardId: string,
+): number {
+  const { packScratch } = session;
+  if (!packScratch) return 0;
+  const index = session.motionCardIds.indexOf(cardId);
+  if (index < 0) return 0;
+  const openingId = packScratch.openingCardIds[index];
+  if (!openingId) return 0;
+  const card = packScratch.openingSession.cards.find(
+    (entry) => entry.id === openingId,
+  );
+  return Math.max(0, card?.reward ?? 0);
+}
+
+export function coinsForMotionPrize(
+  prize: number,
+  packRewardCoins = 0,
+  opts?: { packLinked?: boolean },
+): number {
+  if (prize <= 0) return 0;
+  if (opts?.packLinked) return Math.max(0, packRewardCoins);
+  return Math.max(0, prize) * MOTION_COINS_PER_PRIZE;
+}
+
+export function diamondsForMotionPrize(prize: number): number {
+  return Math.max(0, Math.floor(prize));
+}
+
+/**
+ * Bank coin + diamond rewards for this Motion Card win and open the result overlay.
+ * Photo cards are no longer awarded from motion wins.
+ */
+export function awardMotionCardCurrency(
   cardId: string,
   prize: number,
-  catalog?: Awaited<ReturnType<typeof loadGameCatalog>>,
-): Promise<GameSession | null> {
+): GameSession | null {
   const session = loadGameSession();
   if (!session) return null;
   const total = Math.max(1, session.motionCardIds.length);
   const current = Math.max(1, session.completedMotionIds.indexOf(cardId) + 1);
-  if (prize <= 0) {
-    const next: GameSession = {
-      ...session,
-      lastMotionWinPhotoIds: [],
-      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
-    };
-    saveGameSession(next);
-    persistPackScratchInventory(next);
-    return next;
-  }
-  try {
-    const resolved = catalog ?? (await loadGameCatalog());
-    const theme = themeForMotionCard(session, cardId);
-    const picked = pickWonPhotocards(
-      resolved.photos,
-      prize,
-      theme ? [theme, ...session.themes] : session.themes,
-      session.wonPhotoIds,
-    );
-    const photoIds = picked.map((photo) => photo.id);
-    const next = recordAwardedPhotoCards({
-      ...session,
-      wonPhotoIds: [...session.wonPhotoIds, ...photoIds],
-      lastMotionWinPhotoIds: photoIds,
-      pendingMotionResult: { cardId, photoIds, prize, current, total },
-    });
-    saveGameSession(next);
-    persistPackScratchInventory(next);
-    return next;
-  } catch {
-    const next: GameSession = {
-      ...session,
-      lastMotionWinPhotoIds: [],
-      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
-    };
-    saveGameSession(next);
-    persistPackScratchInventory(next);
-    return next;
-  }
+  const packLinked = Boolean(session.packScratch);
+  const packCoins = packRewardCoinsForMotionCard(session, cardId);
+  const coins = coinsForMotionPrize(prize, packCoins, { packLinked });
+  const diamonds = diamondsForMotionPrize(prize);
+  const next: GameSession = {
+    ...session,
+    lastMotionWinPhotoIds: [],
+    coinTotal: Math.max(0, session.coinTotal ?? 0) + coins,
+    // Pack openings credit currency via the reveal API / reward event.
+    // Hub hands bank diamonds here for the end-of-hand wallet settle.
+    diamondTotal:
+      session.diamondTotal + (packLinked ? 0 : diamonds),
+    pendingMotionResult: {
+      cardId,
+      photoIds: [],
+      coins,
+      diamonds,
+      prize: Math.max(0, prize),
+      current,
+      total,
+    },
+  };
+  saveGameSession(next);
+  persistPackScratchInventory(next);
+  return next;
+}
+
+/** @deprecated Use awardMotionCardCurrency — motion wins no longer award photos. */
+export async function awardMotionCardPhotos(
+  cardId: string,
+  prize: number,
+  _catalog?: Awaited<ReturnType<typeof loadGameCatalog>>,
+): Promise<GameSession | null> {
+  return awardMotionCardCurrency(cardId, prize);
 }
 
 export function clearPendingMotionResult(): GameSession | null {
@@ -506,34 +540,28 @@ export function clearPendingMotionResult(): GameSession | null {
   return next;
 }
 
-/** After all motion cards: keep awarded photos and move to Photo Card Summary. */
+/**
+ * After all motion cards: bank currency and finish the hand.
+ * Legacy sessions that already won photo ids still enter photo_reveal.
+ */
 export async function finishMotionHand(): Promise<GameSession | null> {
   const session = loadGameSession();
   if (!session) return null;
   if (session.phase !== "motion") return session;
 
-  let wonPhotoIds = session.wonPhotoIds;
-  if (wonPhotoIds.length === 0 && session.photoPrizeTotal > 0) {
-    try {
-      const catalog = await loadGameCatalog();
-      wonPhotoIds = pickWonPhotocards(
-        catalog.photos,
-        session.photoPrizeTotal,
-        session.themes,
-      ).map((photo) => photo.id);
-    } catch {
-      wonPhotoIds = [];
-    }
-  }
-  const next = recordAwardedPhotoCards({
+  const wonPhotoIds = session.wonPhotoIds;
+  const next: GameSession = {
     ...session,
-    phase: "photo_reveal",
+    phase: wonPhotoIds.length > 0 ? "photo_reveal" : "done",
     wonPhotoIds,
     pendingMotionResult: undefined,
-  });
-  saveGameSession(next);
-  persistPackScratchInventory(next);
-  return next;
+  };
+  // Only count collection when legacy photo ids are present.
+  const recorded =
+    wonPhotoIds.length > 0 ? recordAwardedPhotoCards(next) : next;
+  saveGameSession(recorded);
+  persistPackScratchInventory(recorded);
+  return recorded;
 }
 
 export function beginPhotoPhase(): GameSession | null {
