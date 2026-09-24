@@ -109,7 +109,9 @@ export function MotionCurrencyReveal({
     if (completedRef.current) return;
     clearTimers();
     setPhase("minimizing");
-    window.setTimeout(finish, reduced ? 120 : 280);
+    timersRef.current.push(
+      window.setTimeout(finish, reduced ? 120 : 280),
+    );
   }
 
   useEffect(() => {
