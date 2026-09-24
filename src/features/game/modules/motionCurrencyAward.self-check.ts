@@ -167,7 +167,44 @@ const packSettled = settleHubWalletFromSession(
 assert(packSettled?.walletCredited === true, "pack settle marks credited");
 assert(
   walletDiamonds === 0 && walletCoins === 0,
-  "pack settle does not re-apply totals (reveal / reward event owns wallet)",
+  "pack settle does not re-apply motion totals (reveal / reward event owns wallet)",
+);
+
+local.clear();
+saveGameSession(
+  baseSession({
+    phase: "done",
+    diamondTotal: 5,
+    photoDiamondTotal: 2,
+    coinTotal: 40,
+    packScratch: {
+      readyPackId: "pack-1",
+      packName: "Test Pack",
+      creator: "Ashley",
+      openingSession: {
+        quantity: 1,
+        diamondCost: 10,
+        cards: [{ id: "open-1", rarity: "Rare", reward: 40 }],
+      },
+      openingCardIds: ["open-1"],
+      settledOpeningIds: ["open-1"],
+    },
+  }),
+);
+walletDiamonds = 0;
+walletCoins = 0;
+const packPhotoSettled = settleHubWalletFromSession(
+  (n) => {
+    walletDiamonds += n;
+  },
+  (n) => {
+    walletCoins += n;
+  },
+);
+assert(packPhotoSettled?.walletCredited === true, "pack+photo settle marks credited");
+assert(
+  walletDiamonds === 2 && walletCoins === 0,
+  "pack settle applies photoDiamondTotal only (not motion diamondTotal / coinTotal)",
 );
 
 console.log("motionCurrencyAward.self-check: ok");

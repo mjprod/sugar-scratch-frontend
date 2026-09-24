@@ -59,11 +59,17 @@ export type GameSession = {
   completedPhotoIds: string[];
   /** Accumulated diamonds from motion (and legacy photo) match games. */
   diamondTotal: number;
+  /**
+   * Diamonds from photo-hand scratches only (subset of diamondTotal).
+   * Pack settle applies this — motion diamonds already hit the wallet via
+   * reveal / PACK_OPENING_REWARD_EVENT and must not be re-applied.
+   */
+  photoDiamondTotal?: number;
   /** Accumulated coins from motion card wins (hub settle + pack tally). */
   coinTotal?: number;
   /**
-   * True after hub wallet settle applied diamondTotal / coinTotal.
-   * Pack openings credit via reveal API / PACK_OPENING_REWARD_EVENT instead.
+   * True after hub wallet settle applied diamondTotal / coinTotal
+   * (or pack photoDiamondTotal when openings already credited motion).
    */
   walletCredited: boolean;
   /** Set when motion play continues a pack opening from PurchaseFlow. */
@@ -368,6 +374,7 @@ export function startMotionSession(
     wonPhotoIds: [],
     completedPhotoIds: [],
     diamondTotal: 0,
+    photoDiamondTotal: 0,
     walletCredited: false,
     packScratch: options?.packScratch
       ? {
@@ -392,7 +399,8 @@ export function markWalletCredited(): GameSession | null {
 
 /**
  * Apply session coinTotal + diamondTotal to the app wallet once.
- * Pack-linked hands skip this — reveal / reward events own wallet credit.
+ * Pack-linked hands: motion coins/diamonds were already credited by reveal /
+ * PACK_OPENING_REWARD_EVENT — only apply photo-hand diamonds here.
  */
 export function settleHubWalletFromSession(
   addDiamonds: (amount: number) => void,
@@ -402,6 +410,8 @@ export function settleHubWalletFromSession(
   if (!session) return null;
   if (session.walletCredited) return session;
   if (session.packScratch) {
+    const photoDiamonds = Math.max(0, session.photoDiamondTotal ?? 0);
+    if (photoDiamonds > 0) addDiamonds(photoDiamonds);
     return markWalletCredited();
   }
   const diamonds = Math.max(0, session.diamondTotal);
@@ -606,10 +616,12 @@ export function recordPhotoCardResult(
   const session = loadGameSession();
   if (!session || session.phase !== "photo") return session;
   if (session.completedPhotoIds.includes(cardId)) return session;
+  const gained = Math.max(0, diamonds);
   const next: GameSession = {
     ...session,
     completedPhotoIds: [...session.completedPhotoIds, cardId],
-    diamondTotal: session.diamondTotal + Math.max(0, diamonds),
+    diamondTotal: session.diamondTotal + gained,
+    photoDiamondTotal: (session.photoDiamondTotal ?? 0) + gained,
   };
   saveGameSession(next);
   return next;

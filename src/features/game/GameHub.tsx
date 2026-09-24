@@ -290,8 +290,8 @@ export function GameHub() {
     if (phase !== 'done' || !session) return
     if (session.walletCredited || walletCreditRef.current) return
     walletCreditRef.current = true
-    // Hub: apply coinTotal + diamondTotal once. Pack: reveal/event already
-    // credited the wallet — settleHubWalletFromSession only marks credited.
+    // Hub: apply coinTotal + diamondTotal once. Pack: motion already credited
+    // via reveal/event; settle still applies any photo-hand diamonds.
     const marked = settleHubWalletFromSession(addDiamonds, addCoins)
     if (marked) setSession(marked)
   }, [phase, session, addCoins, addDiamonds])
