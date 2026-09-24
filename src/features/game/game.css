@@ -1881,13 +1881,255 @@
   z-index: 5;
   width: min(280px, calc(100% - 48px));
   transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
   pointer-events: auto;
+}
+
+.photo-diamond-reveal__skip,
+.motion-currency-reveal__skip,
+.no-match__skip {
+  margin: 0;
+  padding: 10px 22px;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  border-radius: 999px;
+  background: oklch(0.16 0.014 284 / 0.72);
+  color: oklch(1 0 0 / 0.88);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-diamond-reveal__skip:active,
+.motion-currency-reveal__skip:active,
+.no-match__skip:active {
+  transform: scale(0.97);
+  background: oklch(0.2 0.016 284 / 0.88);
 }
 
 .photo-diamond-reveal__cta-primary {
   width: 100%;
   height: 56px;
   touch-action: manipulation;
+}
+
+.motion-currency-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  pointer-events: auto;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.motion-currency-reveal.is-fading {
+  pointer-events: none;
+  animation: motion-win-fade-out 320ms ease-out forwards;
+}
+
+.motion-currency-reveal__backdrop {
+  position: absolute;
+  inset: 0;
+  /* Fully opaque — hide the scratched theme video (wrong look + decode cost). */
+  background: oklch(0.1 0.012 284);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  animation: motion-win-dim 320ms ease-out both;
+}
+
+/* Pause the stage picture while the currency result owns the screen. */
+.stage-game .stage.is-result-clear > canvas.game-stage-canvas,
+.stage-game .stage.is-result-clear .source-video {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.motion-currency-reveal__glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: min(88%, 320px);
+  height: 240px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    oklch(0.78 0.14 330 / 0.28) 0%,
+    oklch(0.82 0.14 90 / 0.14) 40%,
+    transparent 72%
+  );
+  pointer-events: none;
+}
+
+.motion-currency-reveal__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.motion-currency-reveal__particles span {
+  --i: 0;
+  position: absolute;
+  left: calc(18% + var(--i) * 7%);
+  top: calc(28% + (var(--i) % 4) * 12%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: oklch(0.92 0.1 90 / 0.7);
+  opacity: 0;
+  animation: motion-win-spark 2.6s ease-in-out calc(var(--i) * 120ms) infinite;
+}
+
+.motion-currency-reveal__particles span:nth-child(odd) {
+  background: oklch(0.78 0.16 330 / 0.65);
+}
+
+.motion-currency-reveal__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 64px 16px 88px;
+  box-sizing: border-box;
+}
+
+.motion-currency-reveal__header {
+  text-align: center;
+  animation: motion-win-header-in 420ms ease-out both;
+}
+
+.motion-currency-reveal__won {
+  margin: 0;
+  color: oklch(0.937 0.086 91.56);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+}
+
+.motion-currency-reveal__count {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.92);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.motion-currency-reveal__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 28px;
+  opacity: 0;
+  transform: scale(0.88);
+  transition:
+    opacity 420ms ease-out,
+    transform 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.motion-currency-reveal__row.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  animation: motion-win-card-pop 720ms ease-out both;
+}
+
+.motion-currency-reveal__row.is-minimizing {
+  transform: scale(0.72) translateY(-18px);
+  opacity: 0.35;
+  transition:
+    transform 420ms ease-in-out,
+    opacity 320ms ease-out;
+}
+
+.motion-currency-reveal__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 96px;
+}
+
+.motion-currency-reveal__icon {
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 0 22px oklch(0.78 0.16 330 / 0.45));
+}
+
+.motion-currency-reveal__amount {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 0 24px oklch(0.78 0.16 330 / 0.35);
+}
+
+.motion-currency-reveal__label {
+  margin: 0;
+  color: oklch(1 0 0 / 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.motion-currency-reveal__actions {
+  position: absolute;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  width: min(280px, calc(100% - 48px));
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.motion-currency-reveal__mini {
+  position: absolute;
+  right: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.157 0.013 284.85 / 0.92);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 360ms ease-out,
+    transform 360ms ease-out;
+  pointer-events: none;
+}
+
+.motion-currency-reveal__mini.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.motion-currency-reveal__mini-icon {
+  display: grid;
+  place-items: center;
+}
+
+.motion-currency-reveal__mini-new {
+  color: oklch(0.937 0.086 91.56);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.motion-currency-reveal.is-reduced .motion-currency-reveal__particles {
+  display: none;
 }
 
 .no-match__actions {
@@ -1897,6 +2139,8 @@
   z-index: 5;
   width: min(280px, calc(100% - 48px));
   transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
   pointer-events: auto;
 }
 
@@ -1912,8 +2156,9 @@
 /* No match — a resolved card outcome. Dims the card just enough to read the
    result while keeping the creator visible underneath. Staged entrance runs
    200→780ms so the scratch has a beat to land before the verdict appears, then
-   it holds 2s and fades itself out; no tap needed to reach the next card.
-   Blocks pointer input meanwhile so stray strokes don't hit the next card. */
+   it holds 2s (or until Skip) and advances; navigation is owned by the parent.
+   Blocks pointer input on the stage meanwhile so stray strokes don't hit the
+   next card. */
 .no-match {
   position: absolute;
   inset: 0;
@@ -2336,7 +2581,11 @@
   .photo-diamond-reveal__header,
   .photo-diamond-reveal__owned,
   .photo-diamond-reveal__hero,
-  .photo-diamond-reveal__mini {
+  .photo-diamond-reveal__mini,
+  .motion-currency-reveal__backdrop,
+  .motion-currency-reveal__header,
+  .motion-currency-reveal__row,
+  .motion-currency-reveal__mini {
     animation: none !important;
     transition: none !important;
   }

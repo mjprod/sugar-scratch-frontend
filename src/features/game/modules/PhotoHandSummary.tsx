@@ -94,7 +94,7 @@ export function PhotoHandSummary({
   diamondTotal,
   onCollect,
 }: PhotoHandSummaryProps) {
-  const { addDiamonds } = useWallet();
+  const { addCoins, addDiamonds } = useWallet();
   const noDiamonds = diamondTotal <= 0;
   const reducedMotion = prefersReducedMotion();
   const gradientId = useId().replace(/:/g, "");
@@ -111,13 +111,15 @@ export function PhotoHandSummary({
   onCollectRef.current = onCollect;
   const addDiamondsRef = useRef(addDiamonds);
   addDiamondsRef.current = addDiamonds;
+  const addCoinsRef = useRef(addCoins);
+  addCoinsRef.current = addCoins;
 
   const finishHand = useCallback(
     (opts?: { navigate?: boolean }) => {
       if (finishedRef.current) return;
       finishedRef.current = true;
       setCounting(false);
-      settleDonePhotoHand(addDiamondsRef.current);
+      settleDonePhotoHand(addDiamondsRef.current, addCoinsRef.current);
       setCredited(true);
       if (opts?.navigate !== false) {
         onCollectRef.current();
@@ -152,7 +154,7 @@ export function PhotoHandSummary({
       // ponytail: ignore Strict Mode's instant remount — settle only on real unmount.
       if (Date.now() - mountedAtRef.current < 250) return;
       finishedRef.current = true;
-      settleDonePhotoHand(addDiamondsRef.current);
+      settleDonePhotoHand(addDiamondsRef.current, addCoinsRef.current);
     };
   }, []);
 

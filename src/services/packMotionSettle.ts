@@ -1,5 +1,6 @@
 import { catalogMotionIdFromRevealId } from "@/features/game/modules/session";
 import {
+  diamondsForMotionPrize,
   loadGameSession,
   saveGameSession,
   themeForMotionCard,
@@ -18,6 +19,7 @@ export const PACK_OPENING_REWARD_EVENT = "sugar:pack-opening-reward";
 
 export type PackOpeningRewardDetail = {
   coins?: number;
+  diamonds?: number;
   cards?: number;
   wallet?: { diamonds: number; coins: number };
 };
@@ -115,6 +117,7 @@ async function appendGameHistoryFromSettle(
 /** Settle one opening card when its linked motion card finishes (idempotent). */
 export async function settlePackMotionCard(
   motionCardId: string,
+  prize = 0,
 ): Promise<PackMotionSettleResult> {
   const session = loadGameSession();
   if (!session?.packScratch) return { ok: true, session };
@@ -131,10 +134,13 @@ export async function settlePackMotionCard(
   const { packScratch } = session;
   const serverOpeningId = packScratch.serverOpeningId?.trim();
   const serverCardId = packScratch.serverRevealCardIds?.[motionIndex]?.trim();
+  const motionDiamonds = diamondsForMotionPrize(prize);
 
   if (serverOpeningId && serverCardId) {
     try {
-      const result = await revealPackCard(serverOpeningId, serverCardId);
+      const result = await revealPackCard(serverOpeningId, serverCardId, {
+        prize,
+      });
       recordRevealedCards({
         count: 1,
         creatorId: slugCreatorId(packScratch.creator),
@@ -182,7 +188,11 @@ export async function settlePackMotionCard(
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
-        detail: { coins, cards: 1 },
+        detail: {
+          coins,
+          diamonds: motionDiamonds,
+          cards: 1,
+        },
       }),
     );
   }

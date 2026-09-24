@@ -732,7 +732,7 @@ function motionStatusLabel(status: string) {
 export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
   const { bumpInventoryRevision } = useAuth();
-  const { addDiamonds } = useWallet();
+  const { addCoins, addDiamonds } = useWallet();
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -2560,7 +2560,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function leavePhotoScratchAfterHand() {
     setHandSummaryDiamonds(null);
-    settleDonePhotoHand(addDiamonds);
+    settleDonePhotoHand(addDiamonds, addCoins);
     bumpInventoryRevision();
 
     const params = new URLSearchParams(window.location.search);
