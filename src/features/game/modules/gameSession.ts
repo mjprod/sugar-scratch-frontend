@@ -113,6 +113,10 @@ function normalizeGameSession(session: GameSession): GameSession {
   return {
     ...session,
     walletCredited: session.walletCredited === true,
+    // Pre-currency sessions only stored photo-hand diamonds in diamondTotal.
+    // New sessions always persist photoDiamondTotal (including 0), so `??`
+    // must not treat an explicit 0 as missing.
+    photoDiamondTotal: session.photoDiamondTotal ?? session.diamondTotal,
   };
 }
 
@@ -410,7 +414,10 @@ export function settleHubWalletFromSession(
   if (!session) return null;
   if (session.walletCredited) return session;
   if (session.packScratch) {
-    const photoDiamonds = Math.max(0, session.photoDiamondTotal ?? 0);
+    const photoDiamonds = Math.max(
+      0,
+      session.photoDiamondTotal ?? session.diamondTotal,
+    );
     if (photoDiamonds > 0) addDiamonds(photoDiamonds);
     return markWalletCredited();
   }

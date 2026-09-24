@@ -110,4 +110,48 @@ assert(settled, "settleDonePhotoHand succeeds for pack photo hand");
 assert(walletDiamonds === 4, "pack photo settle credits photo diamonds to wallet");
 assert(walletCoins === 0, "pack photo settle does not re-credit motion coins");
 
+local.clear();
+saveGameSession(
+  baseSession({
+    phase: "photo",
+    wonPhotoIds: ["p1"],
+    completedPhotoIds: [],
+    diamondTotal: 5,
+    packScratch: {
+      readyPackId: "pack-legacy-mid",
+      packName: "Legacy Mid Pack",
+      creator: "Ashley",
+      openingSession: {
+        quantity: 1,
+        diamondCost: 10,
+        cards: [{ id: "open-1", rarity: "Rare", reward: 40 }],
+      },
+      openingCardIds: ["open-1"],
+      settledOpeningIds: ["open-1"],
+    },
+  }),
+);
+const afterLegacyPhoto = recordPhotoCardResult("p1", 2);
+assert(
+  afterLegacyPhoto?.photoDiamondTotal === 7,
+  "legacy mid-hand load backfills photoDiamondTotal from diamondTotal before adding",
+);
+assert(afterLegacyPhoto?.diamondTotal === 7, "legacy mid-hand still adds to diamondTotal");
+
+walletDiamonds = 0;
+walletCoins = 0;
+const legacySettled = settleDonePhotoHand(
+  (n) => {
+    walletDiamonds += n;
+  },
+  (n) => {
+    walletCoins += n;
+  },
+);
+assert(legacySettled, "legacy pack photo settle succeeds");
+assert(
+  walletDiamonds === 7,
+  "legacy mid-hand pack settle credits pre-upgrade diamonds plus the new card",
+);
+
 console.log("photoHandSettle.self-check: ok");
