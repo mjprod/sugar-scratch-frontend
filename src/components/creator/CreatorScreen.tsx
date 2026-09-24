@@ -413,8 +413,10 @@ function CreatorScreenInner({
           onBuyPack={buyThemePack}
           onAddPackToPocket={addCoverflowPackToPocket}
           onOpenCard={(cardId, themeId) => {
+            // Open the motion card detail route. Do not also write ?card= on the
+            // creator URL — setSearchParams races navigate and can leave the
+            // user stuck on the creator page / featured overlay.
             setSelectedThemeId(themeId);
-            syncCardParam(cardId, themeId);
             navigate(Paths.motionCard(creatorId, cardId));
           }}
           onLockedHint={() => notice("Buy packs to unlock Motion Cards")}
