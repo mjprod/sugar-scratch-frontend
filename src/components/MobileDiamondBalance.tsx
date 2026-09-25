@@ -9,9 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation } from "react-router-dom";
-import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatBalance } from "@/lib/formatBalance";
 import "@/components/LiquidGlassNav.css";
 
 type MobileTopTarget = "pack-pocket" | "search";

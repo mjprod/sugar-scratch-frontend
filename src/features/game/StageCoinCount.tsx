@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { formatBalance } from "@/components/CurrencyBalances";
 import { useWallet } from "@/contexts/WalletContext";
+import { formatBalance } from "@/lib/formatBalance";
 
 /** Static dust mark — still frame (no Lottie runtime / canvas). */
 const COIN_WEBP_SRC = "/images/diamondDust.webp";

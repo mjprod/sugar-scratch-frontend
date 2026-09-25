@@ -16,10 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import {
-  formatBalance,
-  formatCompactBalance,
-} from "@/components/CurrencyBalances";
+import { formatBalance, formatCompactBalance } from "@/lib/formatBalance";
 import {
   bestAffordableCoinExchange,
   formatExchangeDiamondAmount,

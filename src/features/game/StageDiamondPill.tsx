@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { CoinLottie } from "@/components/ui/CoinLottie";
-import { formatBalance } from "@/components/CurrencyBalances";
 import { useWallet } from "@/contexts/WalletContext";
 import { loadGameSession } from "@/features/game/modules/gameSession";
+import { formatBalance } from "@/lib/formatBalance";
 
 /**
  * Right-side top chrome pill: home-nav coin mark over collected amount.
