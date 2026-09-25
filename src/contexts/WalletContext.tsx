@@ -22,6 +22,8 @@ type WalletContextValue = {
   addDiamonds: (n: number) => void;
   spendDiamonds: (n: number) => void;
   spendCoins: (n: number) => boolean;
+  /** Absolute server snapshot — invalidates in-flight refreshWallet merges. */
+  applyWallet: (wallet: { diamonds: number; coins: number }) => void;
   resetWallet: () => void;
   refreshWallet: () => Promise<void>;
 };
@@ -87,6 +89,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  const applyWallet = useCallback((wallet: { diamonds: number; coins: number }) => {
+    // Drop any in-flight GET /api/me/wallet so it cannot overwrite this snapshot.
+    walletEpochRef.current += 1;
+    const nextDiamonds = Number.isFinite(wallet.diamonds)
+      ? Math.max(0, Math.trunc(wallet.diamonds))
+      : INITIAL_DIAMONDS;
+    const nextCoins = Number.isFinite(wallet.coins)
+      ? Math.max(0, Math.trunc(wallet.coins))
+      : INITIAL_COINS;
+    coinsRef.current = nextCoins;
+    setDiamonds(nextDiamonds);
+    setCoins(nextCoins);
+  }, []);
+
   const resetWallet = useCallback(() => {
     walletEpochRef.current += 1;
     setCoins(INITIAL_COINS);
@@ -104,10 +120,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       addDiamonds,
       spendDiamonds,
       spendCoins,
+      applyWallet,
       resetWallet,
       refreshWallet,
     }),
-    [addCoins, addDiamonds, coins, diamonds, refreshWallet, resetWallet, spendCoins, spendDiamonds],
+    [
+      addCoins,
+      addDiamonds,
+      applyWallet,
+      coins,
+      diamonds,
+      refreshWallet,
+      resetWallet,
+      spendCoins,
+      spendDiamonds,
+    ],
   );
 
   return (

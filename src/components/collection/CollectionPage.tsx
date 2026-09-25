@@ -168,6 +168,22 @@ export function CollectionPage({
           <CollectionPageSkeleton />
         ) : state.isTrueEmpty && !revealPacks ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
+        ) : state.isTrueEmpty && revealPacks ? (
+          <>
+            <header className="mc-greeting">
+              <h1 className="mc-greeting-text">
+                Hi, {greetingName} let&apos;s keep collecting…
+              </h1>
+            </header>
+
+            <ReadyToReveal
+              onOpenPack={openPack}
+              onScratch={openScratch}
+              onExplorePacks={onExplorePacks}
+              inventoryRevision={inventoryRevision}
+              forceEmptyReveal
+            />
+          </>
         ) : (
           <>
             <header className="mc-greeting">

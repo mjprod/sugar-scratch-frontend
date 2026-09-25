@@ -58,6 +58,8 @@ export function ReadyToReveal({
   scratchGroups,
   unopenedPacks,
   inventoryRevision = 0,
+  /** Keep the continue shell + #ready-heading when reveal=packs lands empty. */
+  forceEmptyReveal = false,
 }: {
   onOpenPack: (pack: UnopenedPack) => void;
   onScratch: (group: ScratchReadyGroup) => void;
@@ -66,10 +68,12 @@ export function ReadyToReveal({
   scratchGroups?: ScratchReadyGroup[];
   unopenedPacks?: UnopenedPack[];
   inventoryRevision?: number;
+  forceEmptyReveal?: boolean;
 }) {
   void _onExplorePacks;
   const [searchParams] = useSearchParams();
-  const revealPacks = searchParams.get("reveal") === "packs";
+  const revealPacks =
+    forceEmptyReveal || searchParams.get("reveal") === "packs";
   const models = useModels();
   const packs = useMemo(
     () => unopenedPacks ?? listUnopenedPackShelf(),
@@ -171,8 +175,9 @@ export function ReadyToReveal({
     return [...packTiles, ...cardTiles];
   }, [packs, scratches, models, onOpenPack, onScratch]);
 
-  // Hide the whole continue card when there is nothing to open or play.
-  if (tiles.length === 0) return null;
+  // Hide the whole continue card when there is nothing to open or play,
+  // unless auth landed on ?reveal=packs and needs the dedicated empty shell.
+  if (tiles.length === 0 && !forceEmptyReveal) return null;
 
   return (
     <ContinueSection
@@ -275,6 +280,18 @@ function isApiMediaUrl(url: string): boolean {
   return false;
 }
 
+function uniqueMediaUrls(urls: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of urls) {
+    const src = raw.trim();
+    if (!src || !isApiMediaUrl(src) || seen.has(src)) continue;
+    seen.add(src);
+    out.push(src);
+  }
+  return out;
+}
+
 function ContinueCard({
   tile,
   className = "",
@@ -285,21 +302,60 @@ function ContinueCard({
   const cover = (tile.coverUrl || "").trim();
   const poster = (tile.posterUrl || "").trim();
   const coverIsVideo = cover ? isVideoSrc(cover) : false;
-  const candidates = [
+
+  // Prefer stills for <img>, but keep video URLs so video-only inventory can play.
+  const imageCandidates = uniqueMediaUrls([
     poster,
     !coverIsVideo ? cover : "",
-    coverIsVideo ? cover : "",
-  ].filter((src) => src && isApiMediaUrl(src));
-  const imageFallback = candidates[0] || "";
-  const [imgSrc, setImgSrc] = useState(imageFallback);
-  const [failed, setFailed] = useState(false);
+  ]);
+  const videoCandidates = uniqueMediaUrls([coverIsVideo ? cover : ""]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [videoIndex, setVideoIndex] = useState(0);
+  const [mode, setMode] = useState<"image" | "video" | "empty">(() => {
+    if (imageCandidates.length > 0) return "image";
+    if (videoCandidates.length > 0) return "video";
+    return "empty";
+  });
+
+  const mediaKey = `${cover}|${poster}`;
 
   useEffect(() => {
-    setImgSrc(imageFallback);
-    setFailed(false);
-  }, [imageFallback]);
+    setImageIndex(0);
+    setVideoIndex(0);
+    if (imageCandidates.length > 0) setMode("image");
+    else if (videoCandidates.length > 0) setMode("video");
+    else setMode("empty");
+    // imageCandidates / videoCandidates are derived from cover+poster.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaKey]);
 
-  if (!imageFallback || failed) {
+  function advanceImage() {
+    const next = imageIndex + 1;
+    if (next < imageCandidates.length) {
+      setImageIndex(next);
+      return;
+    }
+    if (videoCandidates.length > 0) {
+      setVideoIndex(0);
+      setMode("video");
+      return;
+    }
+    setMode("empty");
+  }
+
+  function advanceVideo() {
+    const next = videoIndex + 1;
+    if (next < videoCandidates.length) {
+      setVideoIndex(next);
+      return;
+    }
+    setMode("empty");
+  }
+
+  const imgSrc = imageCandidates[imageIndex] || "";
+  const videoSrc = videoCandidates[videoIndex] || "";
+
+  if (mode === "empty" || (mode === "image" && !imgSrc) || (mode === "video" && !videoSrc)) {
     return (
       <div
         className={["mc-continue-card", className].filter(Boolean).join(" ")}
@@ -334,14 +390,29 @@ function ContinueCard({
         aria-label={tile.ariaLabel}
         onClick={tile.onActivate}
       >
-        <img
-          src={imgSrc}
-          alt=""
-          className="mc-continue-card-img"
-          loading="lazy"
-          decoding="async"
-          onError={() => setFailed(true)}
-        />
+        {mode === "video" ? (
+          <video
+            key={videoSrc}
+            src={videoSrc}
+            poster={poster || undefined}
+            className="mc-continue-card-img"
+            muted
+            loop
+            playsInline
+            autoPlay
+            onError={advanceVideo}
+          />
+        ) : (
+          <img
+            key={imgSrc}
+            src={imgSrc}
+            alt=""
+            className="mc-continue-card-img"
+            loading="lazy"
+            decoding="async"
+            onError={advanceImage}
+          />
+        )}
       </button>
       <button
         type="button"
