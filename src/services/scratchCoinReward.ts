@@ -11,8 +11,11 @@
 
 import { apiMutate } from "../lib/api";
 
-export const SCRATCH_COIN_MIN = 80;
-export const SCRATCH_COIN_MAX = 100;
+/** Optimistic floor/ceil — single source in sparkleCoinAward (must match backend). */
+export {
+  SCRATCH_COIN_MAX,
+  SCRATCH_COIN_MIN,
+} from "../features/game/modules/sparkleCoinAward";
 
 export type ScratchWallet = { diamonds: number; coins: number };
 

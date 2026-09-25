@@ -1,6 +1,11 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DotLottie } from "@lottiefiles/dotlottie-web";
 import { lottieDevicePixelRatio } from "@/utils/lottieRender";
+import {
+  CURSOR_FX_EMIT_MODE,
+  cursorFxSpawnVelocity,
+  type CursorFxEmitMode,
+} from "../modules/cursorFxCelebrate";
 
 // Ported from sugar-scratch-cursor-test-main's FairyDustCursor. The original
 // used `lottie-web` + a hidden DOM host to snapshot animation frames onto
@@ -25,6 +30,11 @@ interface FairyDustCursorProps {
     min: number;
     max: number;
   };
+  /**
+   * `fall` = coins drop like symbols-foil flakes (product default).
+   * `fountain` = legacy upward fireworks burst.
+   */
+  emitMode?: CursorFxEmitMode;
   /** When false, pointer-move spawning is disabled; bursts can still emit particles. */
   spawnEnabled?: boolean;
   /** Cap overlay backing-store DPR (use 1 on phones). */
@@ -195,6 +205,7 @@ function FairyDustCursorImpl({
   gravity = 0.1,
   fadeSpeed = 0.94,
   initialVelocity = DEFAULT_INITIAL_VELOCITY,
+  emitMode = CURSOR_FX_EMIT_MODE,
   spawnEnabled = true,
   maxDevicePixelRatio,
   burstNonce = 0,
@@ -226,6 +237,7 @@ function FairyDustCursorImpl({
     gravity,
     fadeSpeed,
     initialVelocity,
+    emitMode,
     spawnEnabled,
     maxDevicePixelRatio,
     spawnMinDistance,
@@ -237,6 +249,7 @@ function FairyDustCursorImpl({
     gravity,
     fadeSpeed,
     initialVelocity,
+    emitMode,
     spawnEnabled,
     maxDevicePixelRatio,
     spawnMinDistance,
@@ -483,12 +496,18 @@ function FairyDustCursorImpl({
       const types = typesRef.current;
       if (types.length === 0) return;
 
-      const { colors: palette, particleCount: count, initialVelocity: velocity } = configRef.current;
+      const {
+        colors: palette,
+        particleCount: count,
+        initialVelocity: velocity,
+        emitMode: mode,
+      } = configRef.current;
       const want = countOverride ?? count;
       const spawnCount = Math.min(want, MAX_PARTICLES - particles.length);
 
       for (let i = 0; i < spawnCount; i += 1) {
         const type = types[Math.floor(Math.random() * types.length)];
+        const { vx, vy } = cursorFxSpawnVelocity(mode, velocity);
         particles.push({
           x,
           y,
@@ -496,10 +515,8 @@ function FairyDustCursorImpl({
           kind: type.kind,
           character: type.kind === "emoji" ? type.value : "",
           color: palette[Math.floor(Math.random() * palette.length)],
-          vx:
-            (Math.random() < 0.5 ? -1 : 1) *
-            (Math.random() * (velocity.max - velocity.min) + velocity.min),
-          vy: -(Math.random() * velocity.max),
+          vx,
+          vy,
           lifeSpan: PARTICLE_LIFESPAN,
           scale: 1,
           animOffset: Math.random(),

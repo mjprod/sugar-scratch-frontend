@@ -27,7 +27,7 @@ function prefersReducedMotion() {
 /**
  * Per-card diamond win reveal — presentation only.
  * Session diamonds must already be persisted before this mounts.
- * Auto-advances after ~2s; navigation is handled by the parent.
+ * Auto-advances after ~2s (or Skip); navigation is handled by the parent.
  */
 export function PhotoDiamondReveal({
   diamonds,
@@ -36,24 +36,40 @@ export function PhotoDiamondReveal({
 }: PhotoDiamondRevealProps) {
   const [phase, setPhase] = useState<Phase>("entering");
   const completedRef = useRef(false);
+  const timersRef = useRef<number[]>([]);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const reduced = prefersReducedMotion();
 
+  function clearTimers() {
+    timersRef.current.forEach((id) => window.clearTimeout(id));
+    timersRef.current = [];
+  }
+
   function finish() {
     if (completedRef.current) return;
     completedRef.current = true;
+    clearTimers();
     setPhase("complete");
     onCompleteRef.current();
+  }
+
+  function skipNow() {
+    if (completedRef.current) return;
+    clearTimers();
+    setPhase("minimizing");
+    timersRef.current.push(
+      window.setTimeout(finish, reduced ? 120 : 280),
+    );
   }
 
   useEffect(() => {
     completedRef.current = false;
     setPhase("entering");
+    clearTimers();
 
-    const timers: number[] = [];
     const at = (ms: number, fn: () => void) => {
-      timers.push(window.setTimeout(fn, ms));
+      timersRef.current.push(window.setTimeout(fn, ms));
     };
 
     const holdMs = reduced ? 1500 : CARD_DIAMOND_RESULT_MS;
@@ -64,7 +80,7 @@ export function PhotoDiamondReveal({
       at(holdMs - 200, () => setPhase("minimizing"));
       at(holdMs, finish);
       at(SAFETY_MS, finish);
-      return () => timers.forEach((id) => window.clearTimeout(id));
+      return () => clearTimers();
     }
 
     at(200, () => setPhase("appearing"));
@@ -73,13 +89,15 @@ export function PhotoDiamondReveal({
     at(holdMs, finish);
     at(SAFETY_MS, finish);
 
-    return () => timers.forEach((id) => window.clearTimeout(id));
+    return () => clearTimers();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restart timeline per resultId
   }, [resultId]);
 
   const showHeader =
     phase !== "entering" && phase !== "minimizing" && phase !== "complete";
   const showMini = phase === "minimizing" || phase === "complete";
+  const showSkip =
+    phase === "appearing" || phase === "confirmed";
   const fading = phase === "complete";
 
   return (
@@ -133,6 +151,18 @@ export function PhotoDiamondReveal({
           <p className="photo-diamond-reveal__amount">{diamonds}</p>
         </div>
       </div>
+
+      {showSkip ? (
+        <div className="photo-diamond-reveal__actions">
+          <button
+            type="button"
+            className="photo-diamond-reveal__skip"
+            onClick={skipNow}
+          >
+            Skip
+          </button>
+        </div>
+      ) : null}
 
       <div
         className={[

@@ -668,18 +668,22 @@ export type RevealCardResult = {
   wallet: { diamonds: number; coins: number };
 };
 
-/** Reveal one scratched card — credits diamonds and collection on the server. */
+/** Reveal one scratched card — credits pack reward + optional motion prize. */
 export async function revealPackCard(
   openingId: string,
   cardId: string,
+  opts?: { prize?: number },
 ): Promise<RevealCardResult> {
   try {
+    const prize = Math.max(0, Math.floor(opts?.prize ?? 0));
     const remote = await apiMutate<{
       card: { id: string; revealStatus: string; reward: number };
       scratched: string[];
       wallet: { diamonds: number; coins: number };
     }>(`/api/me/openings/${openingId}/cards/${cardId}/reveal`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prize > 0 ? { prize } : {}),
     });
     return {
       card: remote.card,

@@ -44,7 +44,7 @@ export function AppLayout() {
     setPurchasedPacks,
     bumpInventoryRevision,
   } = useAuth();
-  const { coins, diamonds, addCoins, setCoins, setDiamonds } = useWallet();
+  const { coins, diamonds, addCoins, addDiamonds, setCoins, setDiamonds } = useWallet();
   const { searchOpen, openSearch } = useSearch();
   const { activeTab: tab, requestTab } = useTabNav();
 
@@ -63,17 +63,24 @@ export function AppLayout() {
     function onPackOpeningReward(event: Event) {
       const detail = (event as CustomEvent<PackOpeningRewardDetail>).detail;
       const rewardCoins = detail?.coins ?? 0;
+      const rewardDiamonds = detail?.diamonds ?? 0;
       const rewardCards = detail?.cards ?? 0;
       if (detail?.wallet) {
         setDiamonds(detail.wallet.diamonds);
         setCoins(detail.wallet.coins);
-      } else if (rewardCoins > 0) {
-        addCoins(rewardCoins);
+      } else {
+        if (rewardCoins > 0) addCoins(rewardCoins);
+        if (rewardDiamonds > 0) addDiamonds(rewardDiamonds);
       }
       if (rewardCards > 0) {
         setPurchasedPacks((count) => count + rewardCards);
       }
-      if (detail?.wallet || rewardCoins > 0 || rewardCards > 0) {
+      if (
+        detail?.wallet ||
+        rewardCoins > 0 ||
+        rewardDiamonds > 0 ||
+        rewardCards > 0
+      ) {
         bumpInventoryRevision();
       }
     }
@@ -83,6 +90,7 @@ export function AppLayout() {
     };
   }, [
     addCoins,
+    addDiamonds,
     bumpInventoryRevision,
     setCoins,
     setDiamonds,

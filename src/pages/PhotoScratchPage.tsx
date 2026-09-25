@@ -16,7 +16,7 @@ import "@/features/game/game.css";
 
 export function PhotoScratchPage() {
   const [searchParams] = useSearchParams();
-  const { addDiamonds } = useWallet();
+  const { addCoins, addDiamonds } = useWallet();
   const { bumpInventoryRevision } = useAuth();
 
   useLayoutEffect(() => {
@@ -57,7 +57,7 @@ export function PhotoScratchPage() {
           session.completedPhotoIds.includes(id),
         ))
     ) {
-      settleDonePhotoHand(addDiamonds);
+      settleDonePhotoHand(addDiamonds, addCoins);
       bumpInventoryRevision();
     } else {
       persistGameProgress();

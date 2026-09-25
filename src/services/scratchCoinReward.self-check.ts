@@ -2,7 +2,16 @@
  * Scratch coin persist — client wallet must not merge the server snapshot.
  * Run: npx tsx src/services/scratchCoinReward.self-check.ts
  */
-import { nextWalletAfterScratchPersist, persistScratchCoins } from "./scratchCoinReward.ts";
+import {
+  nextWalletAfterScratchPersist,
+  persistScratchCoins,
+  SCRATCH_COIN_MAX,
+  SCRATCH_COIN_MIN,
+} from "./scratchCoinReward.ts";
+import {
+  SCRATCH_COIN_MAX as AWARD_MAX,
+  SCRATCH_COIN_MIN as AWARD_MIN,
+} from "../features/game/modules/sparkleCoinAward";
 
 // Compile-time guard: persistScratchCoins must not accept an applyWallet callback argument.
 // @ts-expect-error persistScratchCoins should have exactly one argument
@@ -10,6 +19,11 @@ type _PersistScratchCoinsSecondArg = Parameters<typeof persistScratchCoins>[1];
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
+
+assert(SCRATCH_COIN_MIN === 30, "service floor is 30");
+assert(SCRATCH_COIN_MAX === 100, "service ceil is 100");
+assert(SCRATCH_COIN_MIN === AWARD_MIN, "service MIN matches sparkleCoinAward");
+assert(SCRATCH_COIN_MAX === AWARD_MAX, "service MAX matches sparkleCoinAward");
 
 const local = { coins: 190, diamonds: 8 };
 

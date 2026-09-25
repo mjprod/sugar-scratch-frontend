@@ -24,9 +24,10 @@ export type BackendModel = {
   packFacePosterUrl2?: string | null;
   swipeVideoUrl?: string | null;
   swipePosterUrl?: string | null;
-  /** Creator Ultra Card loop trailer, e.g. "/models/julianaval/ultra-card-trailer.mp4". */
+
+  /** Ultra card video trailer, e.g. "/models/julianaval/ultra-card-trailer.mp4". */
   ultraCardTrailerUrl?: string | null;
-  /** Still frame for the Ultra Card trailer. */
+
   ultraCardTrailerPosterUrl?: string | null;
   /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
   coverUrl?: string | null;

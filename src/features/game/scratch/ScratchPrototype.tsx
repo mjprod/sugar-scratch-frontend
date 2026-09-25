@@ -47,10 +47,10 @@ import {
   TopSymbolBar,
   type TopBarPhase,
 } from "../modules/TopSymbolBar";
-import { MotionWinReveal } from "../modules/MotionWinReveal";
+import { MotionCurrencyReveal } from "../modules/MotionCurrencyReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import {
-  awardMotionCardPhotos,
+  awardMotionCardCurrency,
   clearPendingMotionResult,
   finishMotionHand,
   isGameModeUrl,
@@ -62,8 +62,6 @@ import {
 } from "../modules/gameSession";
 import {
   inferThemeFromLabel,
-  loadGameCatalog,
-  type PhotoCard,
 } from "../modules/session";
 import {
   advanceHuntHintCycle,
@@ -86,8 +84,13 @@ import { PackProgress } from "../modules/PackProgress";
 import {
   COIN_BADGE_AWARD_HOLD_MS,
   COIN_BADGE_IDLE_HIDE_MS,
-  rollSparkleCoin,
+  rollSparkleCoinAward,
 } from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
@@ -149,6 +152,9 @@ import {
   celebrateDurationMs,
   celebrateParticleBoost,
   crossedProgressMilestone,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
   resolveCursorFxDeviceProfile,
 } from "../modules/cursorFxCelebrate";
 import {
@@ -929,12 +935,13 @@ const CURSOR_FX_DEFAULTS: CursorFxSettings = {
   fairyDust: CURSOR_FX_DEVICE.fairyDust,
   particleSize: CURSOR_FX_DEVICE.particleSize,
   particleCount: CURSOR_FX_DEVICE.particleCount,
-  gravity: 0.1,
+  // Fall like symbols-foil flakes (not a fireworks fountain).
+  gravity: CURSOR_FX_FALL_GRAVITY,
   // Slightly longer life so a celebrate burst leaves a denser coin trail.
   fadeSpeed: 0.96,
 };
 
-const CURSOR_FX_INITIAL_VELOCITY = { min: 0.5, max: 1.5 };
+const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 /** Skip diamond-coin spawn on keyed-out / empty pixels. */
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
@@ -969,7 +976,7 @@ function loadCursorFxSettings(): CursorFxSettings {
       gravity: clampValue(
         Number(parsed.gravity) || CURSOR_FX_DEFAULTS.gravity,
         0,
-        0.1,
+        0.4,
       ),
       fadeSpeed: clampValue(
         Number(parsed.fadeSpeed) || CURSOR_FX_DEFAULTS.fadeSpeed,
@@ -1416,7 +1423,8 @@ export function ScratchPrototype({
   );
   const [motionResult, setMotionResult] = useState<{
     win: boolean;
-    photos: PhotoCard[];
+    coins: number;
+    diamonds: number;
     current: number;
     total: number;
     resultId: string;
@@ -1876,18 +1884,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
 
     // Defer badge work so the dust burst paints this frame first.
-    const award = rollSparkleCoin();
+    const award = rollSparkleCoinAward();
     const handId = handIdRef.current;
     const cardId = selectedCardId || undefined;
     queueMicrotask(() => {
       showCoinBadge();
-      addCoins(award);
-      setCoinAwardFlash(award);
+      addCoins(award.amount);
+      setCoinAwardFlash(award.amount);
       setCoinPopNonce((n) => n + 1);
+      playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       // Do not merge the persist wallet snapshot (see scratchCoinReward).
       if (authed && handId) {
-        persistScratchCoins({ handId, milestone: crossed, cardId, amount: award });
+        persistScratchCoins({
+          handId,
+          milestone: crossed,
+          cardId,
+          amount: award.amount,
+        });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
       huntHintActivityAtRef.current = performance.now();
@@ -2550,6 +2564,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const render = () => {
       try {
         if (cancelled) return;
+        // Currency result owns the screen — skip GL + video sync (opaque cover).
+        if (motionResultRef.current?.win) {
+          return;
+        }
         const active = ensureRenderer();
         if (!active) return;
         probeFrameIdRef.current += 1;
@@ -2628,8 +2646,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         const autoSettings = autoScratchRef.current;
         const autoActive =
           finishAutoActiveRef.current || autoSettings.enabled;
-        // Never auto-finish while body-symbol hunt is still in progress — otherwise a
-        // persisted "enabled" flag (or premature toggle) wipes the dress before the player finds them all.
+        // Post-hunt finish-auto waits for all body symbols. Explicit player
+        // enable (HUD / panel) may run during the hunt.
         const huntComplete =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
@@ -2638,7 +2656,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         });
         if (
           autoActive &&
-          huntComplete &&
+          (autoSettings.enabled || huntComplete) &&
           !isBodyScratchLocked() &&
           trackedSample &&
           gameResultPendingRef.current === null
@@ -3027,28 +3045,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             }
             setSelectedCardId(startId);
             if (pending) {
-              void loadGameCatalog()
-                .then((catalog) => {
-                  const photos = pending.photoIds
-                    .map((id) => catalog.photos.find((photo) => photo.id === id))
-                    .filter((photo): photo is PhotoCard => Boolean(photo));
-                  setMotionResult({
-                    win: pending.prize > 0 && photos.length > 0,
-                    photos,
-                    current: pending.current,
-                    total: pending.total,
-                    resultId: `${pending.cardId}:${pending.photoIds.join(",")}:${pending.current}`,
-                  });
-                })
-                .catch(() => {
-                  setMotionResult({
-                    win: false,
-                    photos: [],
-                    current: pending.current,
-                    total: pending.total,
-                    resultId: `pending-error:${pending.cardId}`,
-                  });
-                });
+              const coins = Math.max(0, pending.coins ?? 0);
+              const diamonds = Math.max(
+                0,
+                pending.diamonds ?? (pending.prize > 0 ? pending.prize : 0),
+              );
+              setMotionResult({
+                win: pending.prize > 0 && (coins > 0 || diamonds > 0),
+                coins,
+                diamonds,
+                current: pending.current,
+                total: pending.total,
+                resultId: `${pending.cardId}:${coins}:${diamonds}:${pending.current}`,
+              });
             }
             return;
           }
@@ -3552,9 +3561,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          preloadSparkleCoinSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
+          stopSparkleCoinSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
@@ -3586,12 +3597,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
-    if (
-      patch.enabled &&
-      (isBodyScratchLocked() ||
-        (useBodySymbolsRef.current &&
-          revealedSymbolsRef.current < SYMBOL_SLOT_COUNT))
-    ) {
+    // HUD / panel can enable during the body hunt — player opted in.
+    // Intro / center-foil lock still blocks via isBodyScratchLocked.
+    if (patch.enabled && isBodyScratchLocked()) {
       return;
     }
     if (patch.enabled && soundEnabledRef.current)
@@ -3654,9 +3662,33 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   });
   const motionOutcome = resolveScratchOutcome({
     scratchCompleted: motionResult != null,
-    photoCardFound: Boolean(motionResult?.win && motionResult.photos.length > 0),
-    diamondFound: false,
+    photoCardFound: false,
+    diamondFound: Boolean(
+      motionResult?.win &&
+        ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
+    ),
   });
+  /** Currency win covers the stage — clear theme video for look + perf. */
+  const clearStageForResult = motionOutcome === "diamond";
+
+  // Freeze theme decoders while the currency result is up (opaque overlay).
+  useEffect(() => {
+    if (!clearStageForResult) return;
+    const bottom = bottomVideoRef.current;
+    const foreground = foregroundVideoRef.current;
+    try {
+      bottom?.pause();
+    } catch {
+      // ignore
+    }
+    try {
+      foreground?.pause();
+    } catch {
+      // ignore
+    }
+    parkForegroundDecoder();
+  }, [clearStageForResult, motionResult?.resultId]);
+
   // Keep the frame mounted through the no-match beat so its energy can drain
   // instead of vanishing with the rest of the gameplay HUD.
   const frameSettling = useBodySymbols && motionOutcome === "no-match";
@@ -3670,12 +3702,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       topBarPhase !== "center" &&
       (huntPhase === "hunt" || revealedSymbols >= SYMBOL_SLOT_COUNT)) ||
     frameSettling;
+  // Lock only while play isn't ready yet — not for the body-symbol hunt.
+  // (Finish-auto still waits for hunt; HUD enable can run during hunt.)
   const autoScratchLocked =
     !matchStartUnlocked ||
     introActive ||
     introCover ||
     (useBodySymbols &&
-      (!symbolsHuntComplete || topBarPhase === "center" || introGateActive));
+      (topBarPhase === "center" || introGateActive));
   // Sparkles only during the hunt play window (after countdown, before all
   // symbols found); cards without body symbols have no countdown gate.
   const cursorFxPlayWindow =
@@ -3721,9 +3755,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     applyBoundThemeIntroSound(enabled);
     if (enabled) {
       unlockCountdownSound();
+      preloadSparkleCoinSounds();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
+      stopSparkleCoinSounds();
     }
     setSoundEffectEnabled(enabled);
   }
@@ -3810,7 +3846,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   ): Promise<boolean> {
     const session = loadGameSession();
     if (session?.packScratch) {
-      const settle = await settlePackMotionCard(cardId);
+      const settle = await settlePackMotionCard(cardId, prize);
       if (!settle.ok) return false;
       if (settle.session) setGameSession(settle.session);
     }
@@ -3889,21 +3925,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         abortPackRevealAttempt();
         return;
       }
-      // One catalog fetch for award + overlay photos (used to load twice).
-      const catalog = prize > 0 ? await loadGameCatalog() : null;
-      const awarded = await awardMotionCardPhotos(
-        finishedId,
-        prize,
-        catalog ?? undefined,
-      );
+      const awarded = awardMotionCardCurrency(finishedId, prize);
       if (awarded) setGameSession(awarded);
       const pending = awarded?.pendingMotionResult;
-      const photoIds = pending?.photoIds ?? awarded?.lastMotionWinPhotoIds ?? [];
-      const photos = catalog
-        ? photoIds
-            .map((id) => catalog.photos.find((photo) => photo.id === id))
-            .filter((photo): photo is PhotoCard => Boolean(photo))
-        : [];
+      const coins = Math.max(0, pending?.coins ?? 0);
+      const diamonds = Math.max(0, pending?.diamonds ?? 0);
+      // Hub coins bank into session.coinTotal and settle once at done
+      // (same path as diamonds). Pack coins credit via PACK_OPENING_REWARD_EVENT.
       const current = pending?.current ?? completedCardIdsRef.current.length + 1;
       const total = awarded?.motionCardIds.length ?? modelCards.length;
       if (!completedCardIdsRef.current.includes(finishedId)) {
@@ -3912,11 +3940,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         setCompletedCardIds(nextCompleted);
       }
       setMotionResult({
-        win: prize > 0 && photos.length > 0,
-        photos,
+        win: prize > 0 && (coins > 0 || diamonds > 0),
+        coins,
+        diamonds,
         current,
         total,
-        resultId: `${finishedId}:${photoIds.join(",")}:${current}`,
+        resultId: `${finishedId}:${coins}:${diamonds}:${current}`,
       });
       return;
     }
@@ -4859,10 +4888,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           {introActive || introCover
             ? "Intro + countdown — play unlocks when both finish."
             : topBarPhase === "center"
-              ? "Scratch the foil, then match symbols on her — auto scratch finishes the reveal."
+              ? "Scratch the foil to unlock play controls."
               : introGateActive
                 ? "Get ready — play starts after the countdown."
-                : `Find all ${SYMBOL_SLOT_COUNT} matches first — auto scratch finishes the reveal.`}
+                : "Wait for play to unlock."}
         </p>
       ) : null}
       <label className="checkbox-label">
@@ -4959,7 +4988,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         Gravity ({cursorFx.gravity.toFixed(3)})
         <input
           disabled={!cursorFx.fairyDust}
-          max={0.1}
+          max={0.4}
           min={0}
           onChange={(event) =>
             updateCursorFx({ gravity: Number(event.currentTarget.value) })
@@ -5173,6 +5202,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         <div
           ref={setStageNode}
           className={`stage${gameResult ? " is-game-over" : ""}${
+            clearStageForResult ? " is-result-clear" : ""
+          }${
             topBarPhase === "showcase" ? " is-showcase-phase" : ""
           }${
             useBodySymbols &&
@@ -5194,6 +5225,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               gravity={cursorFx.gravity}
               fadeSpeed={cursorFx.fadeSpeed}
               initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
+              emitMode={CURSOR_FX_EMIT_MODE}
               spawnEnabled={cursorFxSpawnActive}
               spawnMinDistance={fairyDustSpawnMinDistancePx(
                 CURSOR_FX_DEVICE.coarsePointer,
@@ -5228,10 +5260,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               </div>
             </div>
           ) : null}
-          {motionResult && motionOutcome === "photo-card" ? (
-            <MotionWinReveal
+          {motionResult && motionOutcome === "diamond" ? (
+            <MotionCurrencyReveal
               key={motionResult.resultId}
-              photos={motionResult.photos}
+              coins={motionResult.coins}
+              diamonds={motionResult.diamonds}
               resultId={motionResult.resultId}
               onComplete={afterMotionResultPresentation}
             />
@@ -5342,9 +5375,49 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 <StageMuteButton />
               </div>
             </div>
-            {/* Status row: [ cards-left 1fr | notifications 2fr ] */}
+            {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
+                {iconRevealerShown &&
+                (skipToPlay || hasPlayableCard) &&
+                !motionResult ? (
+                  <button
+                    type="button"
+                    className={[
+                      "stage-game__auto-scratch",
+                      autoScratch.enabled ? "is-active" : "",
+                      symbolsHuntComplete ? "is-symbols-complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={autoScratchLocked}
+                    aria-label={
+                      autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                    }
+                    aria-pressed={autoScratch.enabled}
+                    onClick={() =>
+                      updateAutoScratch({ enabled: !autoScratch.enabled })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  </button>
+                ) : null}
                 {packProgressShown &&
                 iconRevealerShown &&
                 (skipToPlay ||
@@ -5580,8 +5653,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
               huntHintActivityAtRef.current = performance.now();
-              if (soundEnabledRef.current)
+              if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
+                preloadSparkleCoinSounds();
+              }
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
@@ -5778,7 +5853,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   disabled={autoScratchLocked}
                   aria-label={
                     autoScratchLocked
-                      ? `Find all ${SYMBOL_SLOT_COUNT} matches first`
+                      ? "Auto scratch unlocks when play starts"
                       : autoScratch.enabled
                         ? "Auto scratch running"
                         : "Enable auto scratch"
@@ -5853,7 +5928,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 ? ` · scratched ${completedCardIds.length}`
                 : ""}
               {gameMode && gameSession
-                ? ` · photos banked ${gameSession.photoPrizeTotal}`
+                ? ` · prizes ${gameSession.photoPrizeTotal}`
                 : ""}
             </p>
           </div>

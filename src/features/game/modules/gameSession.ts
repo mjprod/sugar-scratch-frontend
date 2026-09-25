@@ -8,7 +8,6 @@ import {
 import type { OpeningSession } from "@/services/purchase";
 import {
   loadGameCatalog,
-  pickWonPhotocards,
   type ThemedMotionCard,
 } from "./session";
 
@@ -58,18 +57,32 @@ export type GameSession = {
    */
   collectedPhotoIds?: string[];
   completedPhotoIds: string[];
-  /** Accumulated diamonds from photo match games. */
+  /** Accumulated diamonds from motion (and legacy photo) match games. */
   diamondTotal: number;
-  /** True after diamondTotal has been applied to the app wallet. */
+  /**
+   * Diamonds from photo-hand scratches only (subset of diamondTotal).
+   * Pack settle applies this — motion diamonds already hit the wallet via
+   * reveal / PACK_OPENING_REWARD_EVENT and must not be re-applied.
+   */
+  photoDiamondTotal?: number;
+  /** Accumulated coins from motion card wins (hub settle + pack tally). */
+  coinTotal?: number;
+  /**
+   * True after hub wallet settle applied diamondTotal / coinTotal
+   * (or pack photoDiamondTotal when openings already credited motion).
+   */
   walletCredited: boolean;
   /** Set when motion play continues a pack opening from PurchaseFlow. */
   packScratch?: PackScratchLink;
-  /** Photo Cards awarded by the Motion Card that just completed. */
+  /** Photo Cards awarded by the Motion Card that just completed (legacy). */
   lastMotionWinPhotoIds?: string[];
-  /** Result overlay waiting for Scratch Next / Save Remaining / photo summary. */
+  /** Result overlay waiting for auto-advance to the next motion card. */
   pendingMotionResult?: {
     cardId: string;
+    /** Legacy field — motion wins no longer award photo cards. */
     photoIds: string[];
+    coins: number;
+    diamonds: number;
     prize: number;
     current: number;
     total: number;
@@ -100,6 +113,10 @@ function normalizeGameSession(session: GameSession): GameSession {
   return {
     ...session,
     walletCredited: session.walletCredited === true,
+    // Pre-currency sessions only stored photo-hand diamonds in diamondTotal.
+    // New sessions always persist photoDiamondTotal (including 0), so `??`
+    // must not treat an explicit 0 as missing.
+    photoDiamondTotal: session.photoDiamondTotal ?? session.diamondTotal,
   };
 }
 
@@ -361,6 +378,7 @@ export function startMotionSession(
     wonPhotoIds: [],
     completedPhotoIds: [],
     diamondTotal: 0,
+    photoDiamondTotal: 0,
     walletCredited: false,
     packScratch: options?.packScratch
       ? {
@@ -373,7 +391,7 @@ export function startMotionSession(
   return session;
 }
 
-/** Mark diamondTotal as applied to the wallet (idempotent). */
+/** Mark hub wallet settle as applied (idempotent). */
 export function markWalletCredited(): GameSession | null {
   const session = loadGameSession();
   if (!session) return null;
@@ -381,6 +399,33 @@ export function markWalletCredited(): GameSession | null {
   const next: GameSession = { ...session, walletCredited: true };
   saveGameSession(next);
   return next;
+}
+
+/**
+ * Apply session coinTotal + diamondTotal to the app wallet once.
+ * Pack-linked hands: motion coins/diamonds were already credited by reveal /
+ * PACK_OPENING_REWARD_EVENT — only apply photo-hand diamonds here.
+ */
+export function settleHubWalletFromSession(
+  addDiamonds: (amount: number) => void,
+  addCoins: (amount: number) => void,
+): GameSession | null {
+  const session = loadGameSession();
+  if (!session) return null;
+  if (session.walletCredited) return session;
+  if (session.packScratch) {
+    const photoDiamonds = Math.max(
+      0,
+      session.photoDiamondTotal ?? session.diamondTotal,
+    );
+    if (photoDiamonds > 0) addDiamonds(photoDiamonds);
+    return markWalletCredited();
+  }
+  const diamonds = Math.max(0, session.diamondTotal);
+  const coins = Math.max(0, session.coinTotal ?? 0);
+  if (diamonds > 0) addDiamonds(diamonds);
+  if (coins > 0) addCoins(coins);
+  return markWalletCredited();
 }
 
 /** First motion card in deal order that has not been scratched yet. */
@@ -424,7 +469,7 @@ export function photoPlayHref(session: GameSession, cardId?: string): string {
   return `/photo-scratch?${params.toString()}`;
 }
 
-/** Record a finished motion card and its photo-scratch prize units. */
+/** Record a finished motion card and its prize units (now currency, not photos). */
 export function recordMotionCardResult(
   cardId: string,
   prize: number,
@@ -441,55 +486,85 @@ export function recordMotionCardResult(
   return next;
 }
 
-/** Assign Photo Cards for this Motion Card win and open the result overlay. */
-export async function awardMotionCardPhotos(
+/** Coins shown/awarded for a motion win when no pack opening reward exists. */
+export const MOTION_COINS_PER_PRIZE = 50;
+
+function packRewardCoinsForMotionCard(
+  session: GameSession,
+  cardId: string,
+): number {
+  const { packScratch } = session;
+  if (!packScratch) return 0;
+  const index = session.motionCardIds.indexOf(cardId);
+  if (index < 0) return 0;
+  const openingId = packScratch.openingCardIds[index];
+  if (!openingId) return 0;
+  const card = packScratch.openingSession.cards.find(
+    (entry) => entry.id === openingId,
+  );
+  return Math.max(0, card?.reward ?? 0);
+}
+
+export function coinsForMotionPrize(
+  prize: number,
+  packRewardCoins = 0,
+  opts?: { packLinked?: boolean },
+): number {
+  if (prize <= 0) return 0;
+  if (opts?.packLinked) return Math.max(0, packRewardCoins);
+  return Math.max(0, prize) * MOTION_COINS_PER_PRIZE;
+}
+
+export function diamondsForMotionPrize(prize: number): number {
+  return Math.max(0, Math.floor(prize));
+}
+
+/**
+ * Bank coin + diamond rewards for this Motion Card win and open the result overlay.
+ * Photo cards are no longer awarded from motion wins.
+ */
+export function awardMotionCardCurrency(
   cardId: string,
   prize: number,
-  catalog?: Awaited<ReturnType<typeof loadGameCatalog>>,
-): Promise<GameSession | null> {
+): GameSession | null {
   const session = loadGameSession();
   if (!session) return null;
   const total = Math.max(1, session.motionCardIds.length);
   const current = Math.max(1, session.completedMotionIds.indexOf(cardId) + 1);
-  if (prize <= 0) {
-    const next: GameSession = {
-      ...session,
-      lastMotionWinPhotoIds: [],
-      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
-    };
-    saveGameSession(next);
-    persistPackScratchInventory(next);
-    return next;
-  }
-  try {
-    const resolved = catalog ?? (await loadGameCatalog());
-    const theme = themeForMotionCard(session, cardId);
-    const picked = pickWonPhotocards(
-      resolved.photos,
-      prize,
-      theme ? [theme, ...session.themes] : session.themes,
-      session.wonPhotoIds,
-    );
-    const photoIds = picked.map((photo) => photo.id);
-    const next = recordAwardedPhotoCards({
-      ...session,
-      wonPhotoIds: [...session.wonPhotoIds, ...photoIds],
-      lastMotionWinPhotoIds: photoIds,
-      pendingMotionResult: { cardId, photoIds, prize, current, total },
-    });
-    saveGameSession(next);
-    persistPackScratchInventory(next);
-    return next;
-  } catch {
-    const next: GameSession = {
-      ...session,
-      lastMotionWinPhotoIds: [],
-      pendingMotionResult: { cardId, photoIds: [], prize: 0, current, total },
-    };
-    saveGameSession(next);
-    persistPackScratchInventory(next);
-    return next;
-  }
+  const packLinked = Boolean(session.packScratch);
+  const packCoins = packRewardCoinsForMotionCard(session, cardId);
+  const coins = coinsForMotionPrize(prize, packCoins, { packLinked });
+  const diamonds = diamondsForMotionPrize(prize);
+  const next: GameSession = {
+    ...session,
+    lastMotionWinPhotoIds: [],
+    coinTotal: Math.max(0, session.coinTotal ?? 0) + coins,
+    // Always bank diamonds for the hand tally. Hub settles coinTotal +
+    // diamondTotal once at done; pack openings credit the wallet via reveal
+    // (prize passed through) / PACK_OPENING_REWARD_EVENT.
+    diamondTotal: session.diamondTotal + diamonds,
+    pendingMotionResult: {
+      cardId,
+      photoIds: [],
+      coins,
+      diamonds,
+      prize: Math.max(0, prize),
+      current,
+      total,
+    },
+  };
+  saveGameSession(next);
+  persistPackScratchInventory(next);
+  return next;
+}
+
+/** @deprecated Use awardMotionCardCurrency — motion wins no longer award photos. */
+export async function awardMotionCardPhotos(
+  cardId: string,
+  prize: number,
+  _catalog?: Awaited<ReturnType<typeof loadGameCatalog>>,
+): Promise<GameSession | null> {
+  return awardMotionCardCurrency(cardId, prize);
 }
 
 export function clearPendingMotionResult(): GameSession | null {
@@ -506,34 +581,28 @@ export function clearPendingMotionResult(): GameSession | null {
   return next;
 }
 
-/** After all motion cards: keep awarded photos and move to Photo Card Summary. */
+/**
+ * After all motion cards: bank currency and finish the hand.
+ * Legacy sessions that already won photo ids still enter photo_reveal.
+ */
 export async function finishMotionHand(): Promise<GameSession | null> {
   const session = loadGameSession();
   if (!session) return null;
   if (session.phase !== "motion") return session;
 
-  let wonPhotoIds = session.wonPhotoIds;
-  if (wonPhotoIds.length === 0 && session.photoPrizeTotal > 0) {
-    try {
-      const catalog = await loadGameCatalog();
-      wonPhotoIds = pickWonPhotocards(
-        catalog.photos,
-        session.photoPrizeTotal,
-        session.themes,
-      ).map((photo) => photo.id);
-    } catch {
-      wonPhotoIds = [];
-    }
-  }
-  const next = recordAwardedPhotoCards({
+  const wonPhotoIds = session.wonPhotoIds;
+  const next: GameSession = {
     ...session,
-    phase: "photo_reveal",
+    phase: wonPhotoIds.length > 0 ? "photo_reveal" : "done",
     wonPhotoIds,
     pendingMotionResult: undefined,
-  });
-  saveGameSession(next);
-  persistPackScratchInventory(next);
-  return next;
+  };
+  // Only count collection when legacy photo ids are present.
+  const recorded =
+    wonPhotoIds.length > 0 ? recordAwardedPhotoCards(next) : next;
+  saveGameSession(recorded);
+  persistPackScratchInventory(recorded);
+  return recorded;
 }
 
 export function beginPhotoPhase(): GameSession | null {
@@ -554,10 +623,12 @@ export function recordPhotoCardResult(
   const session = loadGameSession();
   if (!session || session.phase !== "photo") return session;
   if (session.completedPhotoIds.includes(cardId)) return session;
+  const gained = Math.max(0, diamonds);
   const next: GameSession = {
     ...session,
     completedPhotoIds: [...session.completedPhotoIds, cardId],
-    diamondTotal: session.diamondTotal + Math.max(0, diamonds),
+    diamondTotal: session.diamondTotal + gained,
+    photoDiamondTotal: (session.photoDiamondTotal ?? 0) + gained,
   };
   saveGameSession(next);
   return next;
@@ -627,16 +698,14 @@ function recordAwardedPhotoCards(session: GameSession): GameSession {
  */
 export function settleDonePhotoHand(
   addDiamonds: (amount: number) => void,
+  addCoins: (amount: number) => void = () => undefined,
 ): boolean {
   const promoted = promoteCompletePhotoHand();
   const session = promoted ?? loadGameSession();
   if (!session || session.phase !== "done") return false;
 
   if (!session.walletCredited) {
-    if (session.diamondTotal > 0) {
-      addDiamonds(session.diamondTotal);
-    }
-    markWalletCredited();
+    settleHubWalletFromSession(addDiamonds, addCoins);
   }
 
   const current = loadGameSession();
