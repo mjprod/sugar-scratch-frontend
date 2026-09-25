@@ -98,6 +98,7 @@ import {
   setMotionScratchBgmFull,
   stopMotionScratchBgm,
   syncMotionScratchBgm,
+  unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
 import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
@@ -2020,6 +2021,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
     // Warm symbol lottie HTTP cache before hunt workers spin up (Phase 7).
@@ -3569,8 +3571,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          unlockMotionScratchBgm();
           preloadSparkleCoinSounds();
-          preloadMotionScratchBgm();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
@@ -3805,7 +3807,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (enabled) {
       unlockCountdownSound();
       preloadSparkleCoinSounds();
-      preloadMotionScratchBgm();
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
@@ -5671,7 +5673,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 ensureSymbolAudio(symbolAudioRef.current);
                 preloadSparkleCoinSounds();
               }
-              // First touch unlocks HTMLAudio autoplay for the looped BGM.
+              // Re-assert Web Audio unlock inside this gesture (Safari).
+              unlockMotionScratchBgm();
               syncMotionScratchBgm();
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;

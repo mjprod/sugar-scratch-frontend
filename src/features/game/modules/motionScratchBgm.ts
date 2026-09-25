@@ -98,6 +98,25 @@ function clampGain(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+/**
+ * Resume + silent tick must stay synchronous inside a user gesture.
+ * Awaiting fetch/decode first drops Safari's activation token.
+ */
+function resumeContextForGesture(audioCtx: AudioContext): void {
+  if (audioCtx.state === "suspended") {
+    void audioCtx.resume();
+  }
+  try {
+    const tick = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    const sourceNode = audioCtx.createBufferSource();
+    sourceNode.buffer = tick;
+    sourceNode.connect(audioCtx.destination);
+    sourceNode.start(0);
+  } catch {
+    // ignore
+  }
+}
+
 async function ensureBuffer(): Promise<AudioBuffer | null> {
   if (buffer) return buffer;
   if (!bufferPromise) {
@@ -115,8 +134,13 @@ async function ensureBuffer(): Promise<AudioBuffer | null> {
         return null;
       }
     })().then((decoded) => {
-      buffer = decoded;
-      return decoded;
+      if (decoded) {
+        buffer = decoded;
+        return decoded;
+      }
+      // Allow a later preload/sync to retry after a transient failure.
+      bufferPromise = null;
+      return null;
     });
   }
   return bufferPromise;
@@ -212,6 +236,17 @@ function startSourceAt(
 }
 
 /**
+ * Call synchronously from a user-gesture handler (Play / Continue / unmute).
+ * Resuming this module's AudioContext inside the gesture is what lets Safari
+ * start the loop after in-app navigation. Pair with SPA `navigateTo`.
+ */
+export function unlockMotionScratchBgm(): void {
+  const audioCtx = getContext();
+  if (audioCtx) resumeContextForGesture(audioCtx);
+  void ensureBuffer();
+}
+
+/**
  * Apply desired + mute state.
  * - Active + unmuted: ensure playing at desiredGain.
  * - Muted mid-loop: pause (keep position) with a short fade.
@@ -230,18 +265,16 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
     const gen = ++syncGeneration;
     const target = desiredGain;
     clearFadeStopTimer();
+    // Safari: resume + silent tick MUST run before any await (gesture token).
+    resumeContextForGesture(audioCtx);
     void (async () => {
       const buf = await ensureBuffer();
       if (gen !== syncGeneration || !buf || !desiredPlaying || !bgmAllowed()) {
         return;
       }
-      // resume() must run from the mute-button / scratch gesture when possible.
+      // Context may still be catching up after a sync resume(); don't await.
       if (audioCtx.state === "suspended") {
-        try {
-          await audioCtx.resume();
-        } catch {
-          return;
-        }
+        void audioCtx.resume();
       }
       if (gen !== syncGeneration || !desiredPlaying || !bgmAllowed()) return;
       if (!source) {

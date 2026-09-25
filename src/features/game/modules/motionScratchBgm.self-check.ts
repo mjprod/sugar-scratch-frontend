@@ -17,6 +17,7 @@ import {
   setMotionScratchBgmFull,
   stopMotionScratchBgm,
   syncMotionScratchBgm,
+  unlockMotionScratchBgm,
 } from "./motionScratchBgm";
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -45,10 +46,12 @@ assert(typeof setMotionScratchBgmFull === "function", "setMotionScratchBgmFull e
 assert(typeof stopMotionScratchBgm === "function", "stopMotionScratchBgm export");
 assert(typeof syncMotionScratchBgm === "function", "syncMotionScratchBgm export");
 assert(typeof preloadMotionScratchBgm === "function", "preloadMotionScratchBgm export");
+assert(typeof unlockMotionScratchBgm === "function", "unlockMotionScratchBgm export");
 assert(typeof isMotionScratchBgmPlaying === "function", "isMotionScratchBgmPlaying export");
 
 // Safe in Node (no AudioContext) — must not throw.
 stopMotionScratchBgm({ fadeOutMs: 0 });
+unlockMotionScratchBgm();
 preloadMotionScratchBgm();
 setMotionScratchBgmBed({ fadeInMs: 100 });
 syncMotionScratchBgm({ targetGain: MOTION_SCRATCH_BGM_BED_GAIN, fadeInMs: 100 });

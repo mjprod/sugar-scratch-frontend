@@ -14,6 +14,7 @@ import { loadFanLayout } from '@/features/reveal/lib/fanLayout'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { useMarkPageReady } from '@/shared/ui/PageTransition'
 import { unlockCountdownSound } from './modules/InitialCountdown'
+import { unlockMotionScratchBgm } from './modules/motionScratchBgm'
 import { PackNoMatchResult } from './modules/PackNoMatchResult'
 import { useWallet } from '@/contexts/WalletContext'
 import { Paths } from '@/routes/Paths'
@@ -228,7 +229,10 @@ export function GameHub() {
   )
 
   useEffect(() => {
-    const warm = () => unlockCountdownSound()
+    const warm = () => {
+      unlockCountdownSound()
+      unlockMotionScratchBgm()
+    }
     window.addEventListener('pointerdown', warm, { capture: true, once: true })
     return () => window.removeEventListener('pointerdown', warm, true)
   }, [])
@@ -387,6 +391,7 @@ export function GameHub() {
   function playMotionHand() {
     if (busy || hand.length === 0) return
     unlockCountdownSound()
+    unlockMotionScratchBgm()
     const existing = loadGameSession()
     if (existing?.phase === 'motion' || existing?.phase === 'photo') {
       if (existing.phase === 'photo') {
@@ -409,6 +414,7 @@ export function GameHub() {
       return
     }
     unlockCountdownSound()
+    unlockMotionScratchBgm()
     const started = beginPhotoPhase() ?? current
     setSession(started)
     memoryNavigate(photoPlayHref(started))

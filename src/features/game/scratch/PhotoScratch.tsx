@@ -71,6 +71,7 @@ import {
   setMotionScratchBgmFull,
   stopMotionScratchBgm,
   syncMotionScratchBgm,
+  unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
 import {
   ScratchFrameProgress,
@@ -1012,6 +1013,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     setEntryReady(true);
   }
 
@@ -2100,7 +2102,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     applyBoundThemeIntroSound(enabled);
     if (enabled) {
       unlockCountdownSound();
-      preloadMotionScratchBgm();
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
@@ -2463,7 +2465,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
-          preloadMotionScratchBgm();
+          unlockMotionScratchBgm();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
@@ -2496,7 +2498,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function onPointerDown(clientX: number, clientY: number) {
     if (introActiveRef.current) return;
     if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
-    // First touch unlocks HTMLAudio autoplay for the looped BGM.
+    // Re-assert Web Audio unlock inside this gesture (Safari).
+    unlockMotionScratchBgm();
     syncMotionScratchBgm();
     if (isBodyScratchLocked()) {
       return;

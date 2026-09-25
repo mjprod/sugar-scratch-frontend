@@ -19,8 +19,8 @@ import {
 } from "./modules/InitialCountdown";
 import {
   isMotionScratchBgmPlaying,
-  preloadMotionScratchBgm,
   syncMotionScratchBgm,
+  unlockMotionScratchBgm,
 } from "./modules/motionScratchBgm";
 import { stageMuteIconShowsSoundOn } from "./stageMuteIconPolicy";
 
@@ -84,7 +84,8 @@ export function StageMuteButton() {
     applyBoundThemeIntroSound(next);
     if (next) {
       unlockCountdownSound();
-      preloadMotionScratchBgm();
+      // Sync resume + silent tick before any await (Safari gesture token).
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
