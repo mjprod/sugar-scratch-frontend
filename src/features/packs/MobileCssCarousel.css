@@ -154,6 +154,7 @@
 }
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel-shell {
+  position: relative;
   margin-top: 0;
   height: 100%;
 }
@@ -163,11 +164,28 @@
   padding-top: 8px;
   padding-bottom: 22px;
   padding-left: 0;
+  padding-right: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-wrapper {
   justify-content: flex-start;
+  transform-style: flat;
+}
+
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow {
+  top: 50%;
+  z-index: 8;
+  transform: translateY(-50%);
+}
+
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-prev {
+  left: -6px;
+}
+
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-next {
+  right: -6px;
 }
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-slide {

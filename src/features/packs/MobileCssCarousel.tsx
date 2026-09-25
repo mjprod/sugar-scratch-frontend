@@ -8,7 +8,7 @@ import {
 import { EffectCoverflow } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperClass } from "swiper/types";
-import { Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import {
   CtaButton,
   ctaButtonPropsFromTemplate,
@@ -789,36 +789,57 @@ export function MobileCssCarousel({
         className="mobile-css-carousel-shell"
         onPointerUp={handleShellPointerUp}
       >
+        {compact && items.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="mc-popular-arrow is-prev"
+              aria-label="Previous packs"
+              disabled={activeIndex <= 0}
+              onClick={(event) => {
+                event.stopPropagation();
+                swiperRef.current?.slidePrev();
+              }}
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="mc-popular-arrow is-next"
+              aria-label="Next packs"
+              disabled={activeIndex >= items.length - 1}
+              onClick={(event) => {
+                event.stopPropagation();
+                swiperRef.current?.slideNext();
+              }}
+            >
+              <ChevronRight size={18} aria-hidden />
+            </button>
+          </>
+        ) : null}
         <Swiper
           className="mobile-css-carousel"
-          modules={[EffectCoverflow]}
-          effect="coverflow"
+          modules={compact ? [] : [EffectCoverflow]}
+          effect={compact ? "slide" : "coverflow"}
           grabCursor
           centeredSlides={!compact}
           slidesPerView="auto"
-          spaceBetween={compact ? -18 : -72}
+          spaceBetween={compact ? 9 : -72}
           speed={720}
           resistanceRatio={0.85}
           watchSlidesProgress
-          coverflowEffect={
-            compact
-              ? {
-                  rotate: 28,
-                  stretch: -22,
-                  depth: 48,
-                  scale: 0.92,
-                  modifier: 1,
-                  slideShadows: false,
-                }
-              : {
+          {...(compact
+            ? {}
+            : {
+                coverflowEffect: {
                   rotate: 38,
                   stretch: -88,
                   depth: 80,
                   scale: 0.9,
                   modifier: 1,
                   slideShadows: false,
-                }
-          }
+                },
+              })}
           onSwiper={onSwiper}
           onProgress={applySlideDim}
           onSetTranslate={(swiper) => {
@@ -828,7 +849,7 @@ export function MobileCssCarousel({
           onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button"
+          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
             const pocketed = isPackInCart(item.id, item.characterId);
@@ -872,7 +893,7 @@ export function MobileCssCarousel({
                     <div className="mobile-css-carousel__dim" aria-hidden="true" />
                   )}
                 </div>
-                {compact && isActive ? (
+                {compact ? (
                   <div className="mobile-css-carousel__play">
                     <CtaButton
                       {...ctaButtonPropsFromTemplate("squircleCTA")}
