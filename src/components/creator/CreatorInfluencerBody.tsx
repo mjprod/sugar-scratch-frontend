@@ -40,6 +40,27 @@ const THEME_GLYPH: Record<string, string> = {
   midnight: "🌙",
 };
 
+function isVideoSrc(src: string): boolean {
+  return /\.(mp4|webm|mov)(\?|#|$)/i.test(src);
+}
+
+/** Still frame for a motion tile — never a video URL, never a placeholder pad. */
+function motionTileStillUrl(card: CardConfig): string {
+  const poster = card.posterUrl?.trim() || "";
+  if (poster && !isVideoSrc(poster)) return poster;
+  if (card.mediaType === "image") {
+    const media = card.mediaUrl?.trim() || "";
+    if (media && !isVideoSrc(media) && !media.includes("placeholder")) return media;
+  }
+  const photo = card.photoUrls?.find((url) => url?.trim())?.trim() || "";
+  if (photo) return photo;
+  const id = card.id.trim();
+  if (id && !id.includes("-placeholder-")) {
+    return `/cards/${encodeURIComponent(id)}/motion-poster.webp`;
+  }
+  return "";
+}
+
 function themeGlyph(theme: Pick<ThemeCardData, "id" | "name">): string {
   const key = `${theme.id} ${theme.name}`.toLowerCase();
   for (const [id, glyph] of Object.entries(THEME_GLYPH)) {
@@ -374,7 +395,6 @@ function ThemeCollectionCard({
   showPersonalProgress,
   onBuyPack,
   onOpenCard,
-  onLockedHint,
   onPlayGame,
 }: {
   theme: ThemeCardData;
@@ -408,11 +428,9 @@ function ThemeCollectionCard({
 
   // Premium teaser: 3 locks — gold for fully unlocked motion cards (Figma 126:3395).
   const PREMIUM_LOCK_COUNT = 3;
-  const motionUnlocked = motionCards.filter((c) => {
-    if (c.id.includes("-placeholder-")) return false;
-    const filled = c.photoFilledCount ?? 0;
-    return showPersonalProgress && filled >= 10;
-  }).length;
+  const motionUnlocked = motionCards.filter(
+    (c) => !c.id.includes("-placeholder-"),
+  ).length;
   const unlockedLocks = Math.min(PREMIUM_LOCK_COUNT, motionUnlocked);
   const motionNeeded = Math.max(0, PREMIUM_LOCK_COUNT - unlockedLocks);
 
@@ -448,13 +466,10 @@ function ThemeCollectionCard({
           );
           const collected =
             showPersonalProgress && !isPlaceholder && filled >= 1;
-          const fullyUnlocked =
-            showPersonalProgress && !isPlaceholder && filled >= 10;
-          const thumb =
-            card.posterUrl ||
-            (card.mediaType === "image" ? card.mediaUrl : "") ||
-            card.photoUrls?.find(Boolean) ||
-            "";
+          // Published catalog cards are owned/playable — lock overlay is only
+          // for empty placeholder slots. Photo 10/10 is a separate collection meter.
+          const fullyUnlocked = !isPlaceholder;
+          const thumb = isPlaceholder ? "" : motionTileStillUrl(card);
           const scratchesReady =
             showPersonalProgress &&
             !isPlaceholder &&
@@ -466,15 +481,8 @@ function ThemeCollectionCard({
               onBuyPack();
               return;
             }
-            if (fullyUnlocked) {
-              onOpenCard(card.id);
-              return;
-            }
-            if (collected && card.modelId) {
-              onPlayGame(card.modelId, card.id, card.name);
-              return;
-            }
-            onLockedHint();
+            // Catalog cards always open — locked tiles still sell static photo cards.
+            onOpenCard(card.id);
           };
 
           return (
@@ -493,9 +501,11 @@ function ThemeCollectionCard({
                 type="button"
                 className="cpv2-motion-tile-hit"
                 aria-label={
-                  fullyUnlocked
-                    ? `${card.name} — unlocked`
-                    : `Locked motion card — buy packs to unlock`
+                  isPlaceholder
+                    ? `Locked motion card — buy packs to unlock`
+                    : fullyUnlocked
+                      ? `${card.name} — unlocked`
+                      : `${card.name} — view photo cards`
                 }
                 onClick={handleTileActivate}
               >

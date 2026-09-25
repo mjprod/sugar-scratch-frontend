@@ -204,8 +204,12 @@ export function useCreatorCollection(
         cardsByThemeId[theme.id] = [];
         continue;
       }
+      const memberIds = new Set(group.cards.map((card) => card.id));
       cardsByThemeId[theme.id] = deck.cards.filter(
-        (card) => card.groupId === group.id,
+        (card) =>
+          memberIds.has(card.id) ||
+          card.groupId === group.id ||
+          card.groupId === theme.id,
       );
     }
 

@@ -144,3 +144,93 @@
   position: relative;
   z-index: 31;
 }
+
+/* Compact resume / collection strip: scale coverflow to the parent, no HUD. */
+.mobile-css-carousel-stage.is-compact {
+  width: 100%;
+  height: 148px;
+  min-height: 148px;
+  overflow: visible;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel-shell {
+  margin-top: 0;
+  height: 100%;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper,
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper-3d {
+  padding-top: 8px;
+  padding-bottom: 22px;
+  padding-left: 0;
+  height: 100%;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-wrapper {
+  justify-content: flex-start;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-slide {
+  width: 70px;
+  height: 127px;
+  aspect-ratio: auto;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play {
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  z-index: 6;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  transform: translateX(-50%);
+  overflow: visible;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button-glow,
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button-glow--fill,
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button,
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button-glow > .border-glow-inner {
+  width: 100%;
+  height: 100%;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button__inner,
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button__label {
+  padding: 0;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button__title {
+  display: none;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button__leading-icon {
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: 10px;
+  color: #ffe0e8;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play .cta-button__leading-icon svg {
+  display: block;
+  width: 10px;
+  height: 10px;
+}

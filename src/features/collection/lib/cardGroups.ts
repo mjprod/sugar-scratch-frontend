@@ -604,11 +604,12 @@ export function createBackendDeck(
       const trailer = card.trailerUrl?.trim() || ''
       const mediaUrl =
         trailer || (card.videoUrl && card.videoUrl.trim()) || ''
-      const posterUrl = (
-        trailer
-          ? card.trailerPosterUrl?.trim() || ''
-          : card.motionPosterUrl?.trim() || ''
-      )
+      // Catalog tiles need a still even when the face is a motion clip.
+      // Prefer API posters; fall back to the card's published motion still.
+      const posterUrl =
+        card.trailerPosterUrl?.trim() ||
+        card.motionPosterUrl?.trim() ||
+        (card.id ? `/cards/${card.id}/motion-poster.webp` : '')
       const hasMedia = Boolean(mediaUrl)
       // Catalog browse lists every published card as a preview. Ownership only
       // comes from buying/opening packs — until that ledger is wired per card,

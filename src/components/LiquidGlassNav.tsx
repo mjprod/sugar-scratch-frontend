@@ -453,6 +453,8 @@ export function LiquidGlassNav({
     height: number;
   } | null>(null);
   const suppressTabClickRef = useRef(false);
+  /** Wall-clock until first-load geometry is trusted (hard-refresh settle). */
+  const bubbleArmAfterRef = useRef(0);
 
   const findNearestTab = useCallback(
     (
@@ -613,14 +615,32 @@ export function LiquidGlassNav({
     }
 
     const measured = measureBubbleForTab(parent, target, activeTabConfig.id);
-    setBubble((prev) => ({
-      ...measured,
-      underCollection: measureUnderCollection(measured.x, measured.w),
-      visible: true,
-      // First placement must stay duration:0 until after paint, otherwise the
-      // bubble slides up from the default (0,0) origin on load.
-      ready: prev.ready,
-    }));
+    const under = measureUnderCollection(measured.x, measured.w);
+    setBubble((prev) => {
+      // Pre-ready geometry drift = layout still settling — push arm deadline.
+      // Identical remeasures must not extend it or arming never completes.
+      if (
+        !prev.ready &&
+        prev.visible &&
+        prev.w > 0 &&
+        (Math.abs(prev.x - measured.x) > 0.5 ||
+          Math.abs(prev.y - measured.y) > 0.5 ||
+          Math.abs(prev.w - measured.w) > 0.5)
+      ) {
+        bubbleArmAfterRef.current = Math.max(
+          bubbleArmAfterRef.current,
+          performance.now() + 120,
+        );
+      }
+      return {
+        ...measured,
+        underCollection: under,
+        visible: true,
+        // First placement must stay duration:0 until settle completes, otherwise
+        // the bubble eases from an early y (often upward) down into place.
+        ready: prev.ready,
+      };
+    });
   }, [active, dockTabs, measureUnderCollection, packsActive]);
 
   const updateTopBubble = useCallback(() => {
@@ -652,13 +672,29 @@ export function LiquidGlassNav({
     }
 
     const measured = measureTopBubbleForTab(parent, target, activeTabId);
-    setTopBubble((prev) => ({
-      ...measured,
-      underCollection: 0,
-      visible: true,
-      // Same first-paint snap as the dock bubble.
-      ready: prev.ready,
-    }));
+    setTopBubble((prev) => {
+      if (
+        !prev.ready &&
+        prev.visible &&
+        prev.w > 0 &&
+        (Math.abs(prev.x - measured.x) > 0.5 ||
+          Math.abs(prev.y - measured.y) > 0.5 ||
+          Math.abs(prev.w - measured.w) > 0.5 ||
+          Math.abs(prev.h - measured.h) > 0.5)
+      ) {
+        bubbleArmAfterRef.current = Math.max(
+          bubbleArmAfterRef.current,
+          performance.now() + 120,
+        );
+      }
+      return {
+        ...measured,
+        underCollection: 0,
+        visible: true,
+        // Same first-paint snap as the dock bubble.
+        ready: prev.ready,
+      };
+    });
   }, [active, desktopTabs, packsActive]);
 
   useLayoutEffect(() => {
@@ -666,17 +702,40 @@ export function LiquidGlassNav({
     updateTopBubble();
   }, [updateDockBubble, updateTopBubble, handoff, isDesktop]);
 
-  // After the first measured geometry has painted with duration:0, arm
-  // transitions so later tab/drag moves ease instead of sliding from (0,0).
+  // Hard refresh / first paint: fonts, safe-area, and dock grid can still settle
+  // after the first measure. Keep transition duration at 0 until past
+  // bubbleArmAfterRef (extended by each pre-ready remeasure).
   useEffect(() => {
-    let raf1 = 0;
-    let raf2 = 0;
     const needsDockArm = bubble.visible && !bubble.ready && bubble.w > 0;
     const needsTopArm = topBubble.visible && !topBubble.ready && topBubble.w > 0;
     if (!needsDockArm && !needsTopArm) return;
 
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
+    let cancelled = false;
+    let timer = 0;
+    let raf = 0;
+
+    // Seed a minimum settle window on first visible measure.
+    if (bubbleArmAfterRef.current <= 0) {
+      bubbleArmAfterRef.current = performance.now() + 120;
+    }
+
+    const armIfQuiet = () => {
+      if (cancelled) return;
+      const wait = Math.max(0, bubbleArmAfterRef.current - performance.now());
+      if (wait > 0) {
+        timer = window.setTimeout(armIfQuiet, wait + 1);
+        return;
+      }
+      // One last snap while duration is still 0, then arm on the next frame.
+      updateDockBubble();
+      updateTopBubble();
+      raf = requestAnimationFrame(() => {
+        if (cancelled) return;
+        // If a remeasure pushed the deadline during the final snap, wait again.
+        if (performance.now() < bubbleArmAfterRef.current) {
+          armIfQuiet();
+          return;
+        }
         if (needsDockArm) {
           setBubble((prev) =>
             prev.visible && !prev.ready && prev.w > 0
@@ -692,19 +751,38 @@ export function LiquidGlassNav({
           );
         }
       });
-    });
+    };
+
+    armIfQuiet();
+
+    // Icon/label fonts shifting tab boxes is a common hard-refresh culprit.
+    const fonts = document.fonts;
+    if (fonts) {
+      void fonts.ready.then(() => {
+        if (cancelled) return;
+        updateDockBubble();
+        updateTopBubble();
+      });
+    }
 
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      cancelled = true;
+      window.clearTimeout(timer);
+      cancelAnimationFrame(raf);
     };
   }, [
     bubble.ready,
     bubble.visible,
     bubble.w,
+    bubble.x,
+    bubble.y,
     topBubble.ready,
     topBubble.visible,
     topBubble.w,
+    topBubble.x,
+    topBubble.y,
+    updateDockBubble,
+    updateTopBubble,
   ]);
 
   useEffect(() => {
@@ -724,12 +802,21 @@ export function LiquidGlassNav({
     const ro = new ResizeObserver(onResize);
     if (dockParent) ro.observe(dockParent);
     if (topParent) ro.observe(topParent);
+    // Tab cells can reflow without the parent box changing size (fonts/icons).
+    for (const el of dockTabRefs.current) {
+      if (el) ro.observe(el);
+    }
+    for (const el of topTabRefs.current) {
+      if (el) ro.observe(el);
+    }
+    if (topProfileRef.current) ro.observe(topProfileRef.current);
+    if (topCartRef.current) ro.observe(topCartRef.current);
     window.addEventListener("resize", onResize);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };
-  }, [updateDockBubble, updateTopBubble]);
+  }, [updateDockBubble, updateTopBubble, dockTabs, desktopTabs]);
 
   const handleBubblePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1127,14 +1214,15 @@ export function LiquidGlassNav({
 
   // Soften under Collection: fade + blur + duck scale (handle stays interactive)
   const under = bubble.underCollection;
-  // Hold the bubble invisible until the first measured geometry has painted with
-  // duration:0. Otherwise first load can show it sliding up from (0,0)/CSS defaults.
-  const dockBubbleSettled = bubble.ready || isDraggingBubble;
+  // Show as soon as we have measured geometry. Transitions stay duration:0 until
+  // `ready` so hard-refresh layout settle snaps instead of easing downward.
+  const dockBubbleMeasured =
+    (bubble.visible && bubble.w > 0) || isDraggingBubble;
   const bubbleVisualOpacity =
-    bubble.visible && dockBubbleSettled ? 1 - under * 0.99 : 0;
+    bubble.visible && dockBubbleMeasured ? 1 - under * 0.99 : 0;
   const bubbleVisualBlur = under * 10;
   const glowVisualOpacity =
-    bubble.visible && dockBubbleSettled ? 0.5 * (1 - under) : 0;
+    bubble.visible && dockBubbleMeasured ? 0.5 * (1 - under) : 0;
   // Duck hard under Collection — scale down to ~72%
   const bubbleVisualScale = 1 - under * 0.28;
 
@@ -1155,13 +1243,13 @@ export function LiquidGlassNav({
     // Instant follow while dragging / first placement; smooth snap/morph otherwise
     ["--dock-bubble-duration" as string]:
       isDraggingBubble || !bubble.ready ? "0ms" : "420ms",
-    // Snap opacity on first reveal so load never fades the bubble up into place.
-    ["--dock-bubble-opacity-duration" as string]: dockBubbleSettled
-      ? "70ms"
-      : "0ms",
+    // Keep first reveal + settle snaps opaque-instant; ease only after ready.
+    ["--dock-bubble-opacity-duration" as string]:
+      isDraggingBubble || bubble.ready ? "70ms" : "0ms",
   } satisfies CSSProperties;
 
-  const topBubbleSettled = topBubble.ready || isDraggingTopBubble;
+  const topBubbleMeasured =
+    (topBubble.visible && topBubble.w > 0) || isDraggingTopBubble;
   const topBubbleStyle = {
     ["--top-bubble-x" as string]: `${topBubble.x}px`,
     ["--top-bubble-y" as string]: `${topBubble.y}px`,
@@ -1169,17 +1257,18 @@ export function LiquidGlassNav({
     ["--top-bubble-h" as string]: `${topBubble.h}px`,
     ["--top-bubble-radius" as string]: topBubble.radius,
     ["--top-bubble-opacity" as string]:
-      topBubble.visible && topBubbleSettled
+      topBubble.visible && topBubbleMeasured
         ? String(1 - utilsOverlap)
         : "0",
     ["--top-bubble-scale" as string]: String(1 - utilsOverlap * 0.4),
     ["--top-bubble-duration" as string]:
       isDraggingTopBubble || !topBubble.ready ? "0ms" : "420ms",
-    ["--top-bubble-opacity-duration" as string]: !topBubbleSettled
-      ? "0ms"
-      : isDraggingTopBubble
-        ? "80ms"
-        : "220ms",
+    ["--top-bubble-opacity-duration" as string]:
+      !topBubbleMeasured || !topBubble.ready
+        ? "0ms"
+        : isDraggingTopBubble
+          ? "80ms"
+          : "220ms",
   } satisfies CSSProperties;
 
   return (

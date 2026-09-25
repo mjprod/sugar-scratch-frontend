@@ -128,8 +128,13 @@ function MotionCardScreenInner({
 
   const poster =
     card?.posterUrl ||
-    (card?.mediaType === "image" ? card.mediaUrl : "") ||
+    (card?.mediaType === "image" && !/\.(mp4|webm|mov)(\?|#|$)/i.test(card.mediaUrl)
+      ? card.mediaUrl
+      : "") ||
     card?.photoUrls?.find(Boolean) ||
+    (cardId && !cardId.includes("-placeholder-")
+      ? `/cards/${encodeURIComponent(cardId)}/motion-poster.webp`
+      : "") ||
     "/img/placeholder.png";
 
   const videoUrl =
