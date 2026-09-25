@@ -1,0 +1,16 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="33" height="33" viewBox="0 0 33 33" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="buttonBuy">
+<rect width="33" height="33" rx="16.5" fill="black"/>
+<rect width="33" height="33" rx="16.5" fill="url(#paint0_linear_139_1445)" fill-opacity="0.5"/>
+<rect x="0.5" y="0.5" width="32" height="32" rx="16" stroke="#FF0379" stroke-opacity="0.2"/>
+<path id="Vector" d="M12.4763 22.8793C12.6137 22.9629 12.7694 23 12.9251 23C13.0808 23 13.2548 22.9536 13.3922 22.87L22.5512 17.3C22.826 17.1329 23 16.8266 23 16.5016C23 16.1767 22.8351 15.8704 22.5512 15.7033L13.3922 10.1333C13.253 10.0477 13.0937 10.0017 12.9309 10C12.7681 9.99841 12.6079 10.0412 12.4671 10.124C12.1832 10.2911 12 10.5974 12 10.9316V22.0717C12 22.4059 12.174 22.7122 12.4671 22.8793H12.4763Z" fill="white"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_139_1445" x1="18.2295" y1="0" x2="18.2295" y2="33" gradientUnits="userSpaceOnUse">
+<stop stop-color="#AA004F" stop-opacity="0.82"/>
+<stop offset="0.235577" stop-color="#440020" stop-opacity="0.35"/>
+<stop offset="0.500007"/>
+<stop offset="0.846169" stop-color="#A9004F" stop-opacity="0.82"/>
+</linearGradient>
+</defs>
+</svg>

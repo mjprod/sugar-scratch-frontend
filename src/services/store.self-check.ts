@@ -1,6 +1,8 @@
 import {
+  bestAffordableCoinExchange,
   clearPurchaseSession,
   createPurchaseSession,
+  exchangeCoinsForDiamonds,
   listAvailableProducts,
   loadPurchaseSession,
   returnFromGateway,
@@ -73,5 +75,27 @@ assert(
 
 clearPurchaseSession();
 assert(loadPurchaseSession() === null, "clear removes session");
+
+const affordable = bestAffordableCoinExchange(900);
+assert(affordable?.id === "x500", "best affordable picks highest tier under balance");
+assert(bestAffordableCoinExchange(50) === null, "below cheapest tier is null");
+
+const demoExchange = await exchangeCoinsForDiamonds(
+  { id: "x100", diamonds: 100, coins: 100 },
+  { diamonds: 10, coins: 250 },
+);
+assert(demoExchange.status === "success", "demo exchange succeeds");
+assert(
+  demoExchange.status === "success" &&
+    demoExchange.diamonds === 110 &&
+    demoExchange.coins === 150,
+  "demo exchange applies dust spend + diamond grant",
+);
+
+const broke = await exchangeCoinsForDiamonds(
+  { id: "x500", diamonds: 500, coins: 780 },
+  { diamonds: 0, coins: 100 },
+);
+assert(broke.status === "failed", "exchange rejects insufficient dust");
 
 console.log("v8 store self-check passed");

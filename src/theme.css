@@ -7048,7 +7048,12 @@ body[data-theme="v8"] .cpv2-shell {
   }
 }
 
-/* Creator profile: back button clears floating desktop nav. */
+/* Creator profile: clear floating top HUD (mobile + desktop). */
+body[data-theme="v8"] .app-layout--hud .cpv2-shell {
+  padding-top: var(--app-diamond-offset);
+}
+
+/* Creator profile: clear floating desktop nav when HUD is off. */
 @media (min-width: 769px) {
 
   body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,
@@ -13937,11 +13942,11 @@ body[data-theme="v8"] .top-nav-resource-value {
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--coin {
-  /* Lottie mark — keep HUD size stable; internal 1.3× scale still applies. */
-  width: 36px;
-  height: 36px;
+  /* Dust coin Lottie needs a wider viewport so particles aren't clipped. */
+  width: 28px;
+  height: 16px;
   color: transparent;
-  transform: translateX(14px);
+  overflow: visible;
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--coin canvas,
@@ -13949,6 +13954,7 @@ body[data-theme="v8"] .top-nav-resource-icon--coin svg {
   width: 100% !important;
   height: 100% !important;
   display: block;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--diamond {
@@ -13968,6 +13974,221 @@ body[data-theme="v8"] .top-nav-resource-icon--diamond svg {
 body[data-theme="v8"] .top-nav-resource--action:hover,
 body[data-theme="v8"] .top-nav-resource--action:active {
   background: oklch(1 0 0 / 0.06);
+}
+
+body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
+  background: oklch(1 0 0 / 0.08);
+}
+
+/* Top-nav Diamonds wallet snapshot — same glass shell as buy-confirm. */
+.wallet-balances-popover.is-portaled {
+  position: relative;
+  width: 10rem;
+  min-width: 10rem;
+  max-width: min(10rem, calc(100vw - 2rem));
+  gap: 0.2rem;
+  padding: 0.85rem 0.9rem 0.9rem;
+  align-items: stretch;
+}
+
+.wallet-balances-popover__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: max-content;
+  max-width: 100%;
+  min-height: 1.75rem;
+  align-self: center;
+}
+
+/* Match coverflow buy-confirm quantity pill chrome. */
+.wallet-balances-popover__row--diamonds {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.35rem;
+  height: 2.35rem;
+  padding: 4px 0.75rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.05);
+  box-sizing: border-box;
+  overflow: visible;
+  align-self: center;
+}
+
+/* Convert hangs off the diamonds pill bottom-right — no reserved padding. */
+.wallet-balances-popover__row--diamonds.has-convert {
+  padding-right: 0.75rem;
+  transform: translateX(-2px);
+}
+
+.wallet-balances-popover__row--diamonds.has-convert::after {
+  content: "";
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  width: 2.035rem;
+  height: 2.035rem;
+  border-radius: 999px;
+  pointer-events: none;
+  transform: translate(2.4rem, 2.55rem);
+  /* Positioning slot only — real button overlays this. */
+}
+
+.wallet-balances-popover__metric {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.wallet-balances-popover__metric--dust {
+  flex: 0 0 auto;
+  justify-content: center;
+  gap: 0;
+}
+
+.wallet-balances-popover__icon {
+  flex: 0 0 auto;
+}
+
+.wallet-balances-popover__icon--dust {
+  /* Match diamond row optical weight with the wider dust Lottie. */
+  margin-inline: -0.15rem;
+}
+
+.wallet-balances-popover__icon--preview-diamond {
+  flex: 0 0 auto;
+}
+
+.wallet-balances-popover__value {
+  flex: 0 0 auto;
+  min-width: 0;
+  color: oklch(0.971 0.003 286.35 / 0.94);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wallet-balances-popover__value--dust {
+  font-size: 13px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.wallet-balances-popover__value--dust.is-exchange-preview {
+  color: oklch(0.84 0.14 318 / 0.96);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.wallet-balances-popover__row--dust {
+  justify-content: center;
+  gap: 0;
+  align-self: center;
+  max-width: 100%;
+  transform: translateX(-2px);
+}
+
+.wallet-balances-popover__convert {
+  --wallet-convert-visual: 2.035rem;
+  --wallet-convert-hit-pad: 0.45rem;
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  /* Larger hitbox; visual circle stays via ::before. */
+  width: calc(var(--wallet-convert-visual) + var(--wallet-convert-hit-pad) * 2);
+  height: calc(var(--wallet-convert-visual) + var(--wallet-convert-hit-pad) * 2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  cursor: pointer;
+  /* Hang outside the pill: 2.4rem right, 2.55rem down. */
+  transform: translate(2.4rem, 2.55rem);
+  transition:
+    color 150ms ease,
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.wallet-balances-popover__convert::before {
+  content: "";
+  position: absolute;
+  inset: var(--wallet-convert-hit-pad);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  border-radius: 999px;
+  background: oklch(0.15 0.013 300.07 / 0.72);
+  box-shadow: none;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.wallet-balances-popover__convert:hover {
+  color: oklch(1 0 0);
+  transform: translate(2.4rem, 2.55rem) scale(1.06);
+}
+
+.wallet-balances-popover__convert:hover::before {
+  background: oklch(1 0 0 / 0.1);
+}
+
+.wallet-balances-popover__convert:active:not(:disabled) {
+  transform: translate(2.4rem, 2.55rem) scale(0.94);
+}
+
+.wallet-balances-popover__convert:disabled,
+.wallet-balances-popover__convert.is-disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: translate(2.4rem, 2.55rem);
+}
+
+.wallet-balances-popover__convert.is-busy {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.wallet-balances-popover__convert:focus-visible {
+  outline: 2px solid oklch(0.669 0.23 6.08);
+  outline-offset: 2px;
+}
+
+.wallet-balances-popover__convert-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 0.55rem;
+  height: 1.05rem;
+  color: #fff;
+  opacity: 0.5;
+  /* Top solid → bottom transparent; opaque stop lower so more of the shape shows. */
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 55%);
+  mask-image: linear-gradient(to top, transparent 0%, black 55%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 body[data-theme="v8"] .inbox-utility-btn--ghost .inbox-utility-badge,
@@ -16671,11 +16892,31 @@ body[data-theme="v8"] .coverflow-status-pager {
 
 body[data-theme="v8"] .coverflow-status-pager.is-interactive {
   pointer-events: auto;
-  touch-action: none;
+  /* Allow horizontal pan of overflowing tracks; pill scrub sets touch-action none. */
+  touch-action: pan-x;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__scroll {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  /* Keep y visible so the taller pink pill isn't clipped top/bottom. */
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+body[data-theme="v8"] .coverflow-status-pager__scroll::-webkit-scrollbar {
+  display: none;
 }
 
 body[data-theme="v8"] .coverflow-status-pager.is-interactive * {
@@ -16759,10 +17000,20 @@ body[data-theme="v8"] .coverflow-status-pager.has-pill:has(.is-active.is-last) {
 /* Extra gap so the floating pill has breathing room without resizing dots */
 body[data-theme="v8"] .coverflow-status-pager.has-pill .coverflow-status-pager__track {
   column-gap: calc(var(--status-gap) + 6px);
+  /* Pill is wider than a rest-dot; keep first/last pill fully inside the scrollport. */
+  padding-inline: calc((var(--status-pill-w) - var(--status-dot)) / 2);
+  box-sizing: content-box;
 }
 
 body[data-theme="v8"] .coverflow-status-pager.is-scrubbing {
   touch-action: none;
+}
+
+body[data-theme="v8"] .coverflow-status-pager.is-scrubbing .coverflow-status-pager__scroll {
+  /* Lock finger pan only — keep overflow-x:auto so edge-hold can still scroll
+     the active pill fully into view without clipping at the right end. */
+  touch-action: none;
+  scroll-snap-type: none;
 }
 
 /* Scrub is direct; ease pads only when the committed active index changes */
@@ -17053,3 +17304,675 @@ body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__label {
   font-size: 1rem;
 }
 
+
+/* -----------------------------------------------------------------------
+ * Collection hub — Figma MyCollection (node 123:469)
+ * ----------------------------------------------------------------------- */
+
+body[data-theme="v8"] .mc-page {
+  background: #000;
+}
+
+body[data-theme="v8"] .mc-page-content {
+  gap: 24px;
+  padding-top: calc(var(--app-diamond-offset, 12px) + 0.75rem);
+}
+
+body[data-theme="v8"] .mc-greeting {
+  margin: 0;
+  padding: 0;
+}
+
+body[data-theme="v8"] .mc-greeting-text {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  line-height: 1.2;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Promo carousel */
+body[data-theme="v8"] .mc-promo {
+  position: relative;
+  width: 100%;
+}
+
+body[data-theme="v8"] .mc-promo-track {
+  display: flex;
+  width: 100%;
+  height: 102px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  border-radius: 8px;
+  border: 1px solid #199d4e;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+body[data-theme="v8"] .mc-promo-track::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-theme="v8"] .mc-promo-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100px;
+  scroll-snap-align: start;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .mc-promo-slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .mc-promo-pager {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+body[data-theme="v8"] .mc-promo-pager-pill {
+  width: 30px;
+  height: 17px;
+  border-radius: 59px;
+  border: 1px solid rgba(215, 0, 101, 0.1);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 33, 137, 0.5) 0%,
+    rgba(151, 0, 71, 0.5) 100%
+  );
+  box-shadow:
+    inset -0.5px 0.75px 0 rgba(255, 255, 255, 0.1),
+    inset 1.5px -2.5px 0 -2px rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="v8"] .mc-promo-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 59px;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-promo-dot.is-active {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* Continue where you left off */
+body[data-theme="v8"] .mc-continue {
+  width: 100%;
+}
+
+body[data-theme="v8"] .mc-continue-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  width: 100%;
+  min-height: 199px;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: linear-gradient(
+    217deg,
+    rgba(170, 170, 170, 0.246) 0%,
+    rgba(68, 68, 68, 0.105) 23.558%,
+    rgba(0, 0, 0, 0.3) 50.001%,
+    rgba(169, 169, 169, 0.246) 84.617%
+  );
+}
+
+body[data-theme="v8"] .mc-continue-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  color: #fff;
+}
+
+body[data-theme="v8"] .mc-continue-row {
+  display: flex;
+  gap: 9px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 18px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+body[data-theme="v8"] .mc-continue-row::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-theme="v8"] .mc-continue-card {
+  position: relative;
+  flex: 0 0 70px;
+  width: 70px;
+  height: 127px;
+}
+
+body[data-theme="v8"] .mc-continue-card.is-dim-1 {
+  opacity: 0.9;
+}
+
+body[data-theme="v8"] .mc-continue-card.is-dim-2 {
+  opacity: 0.5;
+}
+
+body[data-theme="v8"] .mc-continue-card.is-dim-3 {
+  opacity: 0.2;
+}
+
+body[data-theme="v8"] .mc-continue-card-hit {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-continue-card-hit.is-empty {
+  background: linear-gradient(160deg, #2a2a2a, #111);
+}
+
+body[data-theme="v8"] .mc-continue-card-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .mc-continue-play {
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  color: #ffe0e8;
+  background: linear-gradient(180deg, #ff4d8d 0%, #aa004f 100%);
+  box-shadow: 0 4px 12px rgba(170, 0, 79, 0.45);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-continue-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0 4px;
+}
+
+body[data-theme="v8"] .mc-continue-empty-copy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+body[data-theme="v8"] .mc-continue-empty-cta {
+  min-height: 36px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(180deg, rgba(255, 77, 141, 0.9), #aa004f);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Choose a Model */
+body[data-theme="v8"] .mc-models {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .mc-models-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #fff;
+}
+
+body[data-theme="v8"] .mc-models-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Popular creators */
+body[data-theme="v8"] .mc-popular {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+  min-height: 163px;
+  padding: 16px 14px;
+  box-sizing: border-box;
+  border-radius: 20px;
+  border: 1px solid #201c2a;
+  background: linear-gradient(
+    180deg,
+    rgba(25, 17, 39, 0.2) 0%,
+    #0b0b12 100%
+  );
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .mc-popular-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+body[data-theme="v8"] .mc-popular-heart {
+  display: grid;
+  place-items: center;
+  color: #ff3d7f;
+}
+
+body[data-theme="v8"] .mc-popular-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.28px;
+  color: #fff;
+}
+
+body[data-theme="v8"] .mc-popular-scroll-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+body[data-theme="v8"] .mc-popular-scroll {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 8px 2px;
+}
+
+body[data-theme="v8"] .mc-popular-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-theme="v8"] .mc-popular-card {
+  display: flex;
+  flex: 0 0 82px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 82px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-popular-avatar-wrap {
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 60px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="v8"] .mc-popular-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .mc-popular-name {
+  width: 100%;
+  font-size: 14px;
+  letter-spacing: 0.28px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .mc-popular-sub {
+  width: 100%;
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .mc-popular-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-popular-arrow.is-prev {
+  left: -4px;
+}
+
+body[data-theme="v8"] .mc-popular-arrow.is-next {
+  right: -4px;
+}
+
+body[data-theme="v8"] .mc-popular-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+/* Filters */
+body[data-theme="v8"] .mc-models-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .mc-models-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .mc-models-search {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 33px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    180deg,
+    rgba(170, 170, 170, 0.246) 0%,
+    rgba(68, 68, 68, 0.105) 23.558%,
+    rgba(0, 0, 0, 0.3) 50.001%,
+    rgba(169, 169, 169, 0.246) 84.617%
+  );
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-filter-btn.is-open,
+body[data-theme="v8"] .mc-filter-btn.is-active {
+  border-color: rgba(255, 61, 127, 0.55);
+}
+
+/* Model list cards */
+body[data-theme="v8"] .mc-model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .mc-model-card {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  height: 103px;
+  margin: 0;
+  padding: 0 12px 0 0;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b0b12;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-model-card.is-skeleton {
+  min-height: 103px;
+  background: rgba(255, 255, 255, 0.06);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Same bottom-left glow as cpv2-theme-card, clipped by overflow:hidden. */
+body[data-theme="v8"] .mc-model-card-glow {
+  position: absolute;
+  right: 10%;
+  bottom: -20%;
+  z-index: 0;
+  width: 50%;
+  height: 55%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .mc-model-card-glow-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Soft outer wash. */
+body[data-theme="v8"] .mc-model-card-glow-blob--a {
+  right: -18%;
+  bottom: -42%;
+  width: 78%;
+  height: 120%;
+  background: rgba(0, 0, 0, 0.1);
+  filter: blur(48px);
+}
+
+/* Tighter core bloom. */
+body[data-theme="v8"] .mc-model-card-glow-blob--b {
+  right: -6%;
+  bottom: -28%;
+  width: 52%;
+  height: 90%;
+  background: rgba(255, 0, 126, 0.5);
+  filter: blur(28px);
+}
+
+body[data-theme="v8"] .mc-model-avatar-wrap {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 65px;
+  width: 65px;
+  height: 65px;
+  margin-left: 33px;
+  margin-right: 34px;
+  border-radius: 60px;
+  box-shadow:
+    0 0 0 5px rgba(170, 0, 79, 0.35),
+    0 0 0 8px rgba(170, 0, 79, 0.18);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="v8"] .mc-model-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .mc-model-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 210px;
+  padding-right: 8px;
+}
+
+body[data-theme="v8"] .mc-model-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.32px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .mc-model-place {
+  font-size: 12px;
+  letter-spacing: 0.24px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .mc-model-metrics {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+body[data-theme="v8"] .mc-model-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: #fff;
+}
+
+body[data-theme="v8"] .mc-model-progress {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 12px;
+  margin-top: 2px;
+  padding: 2px 14px 2px 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+body[data-theme="v8"] .mc-model-progress-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: 0 60px 60px 0;
+  background: linear-gradient(
+    90deg,
+    rgba(170, 0, 79, 0.5) 0%,
+    #aa004f 100%
+  );
+}
+
+body[data-theme="v8"] .mc-diamonds-cta {
+  margin-top: 8px;
+}
+
+body[data-theme="v8"] .mc-site-footer {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+body[data-theme="v8"] .mc-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .mc-page-content {
+    gap: 28px;
+  }
+
+  body[data-theme="v8"] .mc-model-body {
+    max-width: none;
+  }
+}
