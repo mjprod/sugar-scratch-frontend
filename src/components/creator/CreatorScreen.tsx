@@ -26,6 +26,11 @@ import {
   unfollowCreator,
 } from "@/services/following";
 import {
+  modelAvatarUrl,
+  modelUltraCardTrailerPosterUrl,
+  modelUltraCardTrailerUrl,
+} from "@/services/models";
+import {
   loadPackCatalog,
   packUnitCost,
   type PurchaseFlowPack,
@@ -266,16 +271,20 @@ function CreatorScreenInner({
     collection.cardsByThemeId,
   ]);
 
-  // Profile avatar must stay the same creator face used on My Collection —
-  // pin to the stable /models/{slug}/avatar path so it never flashes to a
-  // theme cover or a late-arriving alternate URL.
-  const avatarUrl = useMemo(() => {
-    const slug = (creatorId || model?.id || "").trim().toLowerCase();
-    if (slug && /^[a-z0-9_-]+$/i.test(slug)) {
-      return `/models/${slug}/avatar.jpeg`;
-    }
-    return model?.avatar ? normalizeMediaUrl(model.avatar) : "";
-  }, [creatorId, model?.id, model?.avatar]);
+  // Profile avatar always comes from this model's `/api/models` avatar field
+  // (extension varies: .jpg / .jpeg / .png / .webp) — never a hardcoded path.
+  const avatarUrl = useMemo(() => modelAvatarUrl(model) ?? "", [model]);
+  const ultraVideoUrl = useMemo(
+    () => modelUltraCardTrailerUrl(model) ?? "",
+    [model],
+  );
+  const ultraPosterUrl = useMemo(
+    () =>
+      modelUltraCardTrailerPosterUrl(model) ??
+      avatarUrl ??
+      "",
+    [model, avatarUrl],
+  );
   // Prefer uploaded landscape cover for the top hero; never swap in theme art.
   const coverUrl =
     (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
@@ -406,6 +415,8 @@ function CreatorScreenInner({
           creatorName={creatorName}
           creatorId={purchaseCreatorId}
           avatarUrl={avatarUrl}
+          ultraVideoUrl={ultraVideoUrl}
+          ultraPosterUrl={ultraPosterUrl}
           themes={themes}
           cardsByThemeId={collection.cardsByThemeId}
           showPersonalProgress={authed}

@@ -390,23 +390,25 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow-frame {
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
   width: 100%;
-  /* Fit closer to the pack card; avoid a tall empty band under it. */
-  height: min(48dvh, 420px);
-  min-height: 390px;
+  /* Room for pack art + Buy Pack CTA without clipping the label. */
+  height: min(52dvh, 460px);
+  min-height: 430px;
   padding-top: 0;
+  overflow: visible;
   -webkit-mask-image: none;
   mask-image: none;
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
-  height: min(48dvh, 420px);
-  min-height: 390px;
+  height: min(52dvh, 460px);
+  min-height: 430px;
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow
   .home-featured-coverflow[data-coverflow="mobile-swiper"]
   .mobile-css-carousel-stage {
-  translate: 0 0;
+  /* Nudge packs + CTA down so Buy Pack text clears the stage edge. */
+  translate: 0 1.25rem;
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow
@@ -415,9 +417,25 @@ body[data-theme="v8"] .cpv2-pack-coverflow
   transform: none;
 }
 
+/* Keep the Buy Pack HUD fully below the pack face (not clipped mid-label). */
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel__hud {
+  bottom: 3.4rem;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel__hud.coverflow-active-stack--html,
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
+  transform: translate3d(-50%, 0.35rem, 40px);
+}
+
 body[data-theme="v8"] .cpv2-pack-disclaimer {
-  /* Coverflow stage is taller than the pack art; pull text up to ~1rem under the card. */
-  margin: calc(-3rem + 1rem) 0 0;
+  /* Coverflow stage is taller than the pack art; sit just under the CTA. */
+  margin: calc(-2.25rem + 1rem) 0 0;
   padding: 0 4px;
   color: #fff;
   font-size: 12px;

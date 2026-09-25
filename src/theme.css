@@ -17920,9 +17920,9 @@ body[data-theme="v8"] .mc-model-metric {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.16px;
+  letter-spacing: 0.2px;
   color: #fff;
 }
 

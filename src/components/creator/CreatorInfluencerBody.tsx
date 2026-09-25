@@ -54,6 +54,8 @@ export function CreatorInfluencerBody({
   creatorName,
   creatorId,
   avatarUrl,
+  ultraVideoUrl = "",
+  ultraPosterUrl = "",
   themes,
   cardsByThemeId,
   showPersonalProgress,
@@ -67,6 +69,10 @@ export function CreatorInfluencerBody({
   creatorName: string;
   creatorId: string;
   avatarUrl: string;
+  /** `/api/models` ultraCardTrailerUrl for this creator. */
+  ultraVideoUrl?: string;
+  /** `/api/models` ultraCardTrailerPosterUrl (falls back to avatar). */
+  ultraPosterUrl?: string;
   themes: ThemeCardData[];
   cardsByThemeId: Record<string, CardConfig[]>;
   showPersonalProgress: boolean;
@@ -98,41 +104,13 @@ export function CreatorInfluencerBody({
   const premiumTarget = Math.max(themes.length, 4);
   const premiumRemaining = Math.max(0, premiumTarget - premiumUnlocked);
 
-  // Figma 123:2309 — looped Ultra Card teaser uses Police motion card 01.
+  // Ultra Card teaser is the model-level trailer from `/api/models`, not a theme motion card.
   const ultraPreview = useMemo(() => {
-    const entries = Object.entries(cardsByThemeId);
-    const policeEntry =
-      entries.find(([themeId, cards]) => {
-        const theme = themes.find((t) => t.id === themeId);
-        const hay = `${themeId} ${theme?.name ?? ""} ${cards[0]?.groupTheme ?? ""}`.toLowerCase();
-        return /police|cop/.test(hay);
-      }) ?? entries[0];
-
-    const cards = policeEntry?.[1] ?? [];
-    const first =
-      cards.find(
-        (card) =>
-          !card.id.includes("-placeholder-") &&
-          card.mediaType === "video" &&
-          Boolean(card.mediaUrl?.trim()),
-      ) ?? cards[0];
-
-    if (!first) {
-      return { videoUrl: "", posterUrl: avatarUrl || "" };
-    }
-
-    const videoUrl =
-      first.mediaType === "video" && first.mediaUrl?.trim()
-        ? first.mediaUrl.trim()
-        : "";
+    const videoUrl = ultraVideoUrl.trim();
     const posterUrl =
-      first.posterUrl?.trim() ||
-      (first.mediaType === "image" ? first.mediaUrl?.trim() : "") ||
-      avatarUrl ||
-      "";
-
+      ultraPosterUrl.trim() || avatarUrl.trim() || "";
     return { videoUrl, posterUrl };
-  }, [avatarUrl, cardsByThemeId, themes]);
+  }, [avatarUrl, ultraPosterUrl, ultraVideoUrl]);
 
   return (
     <div className="cpv2-influencer">

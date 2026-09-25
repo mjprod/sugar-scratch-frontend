@@ -354,15 +354,15 @@ export function MyCollectionSection({
                   ) : null}
                   <span className="mc-model-metrics">
                     <span className="mc-model-metric">
-                      <Images size={8} strokeWidth={2.4} aria-hidden />
+                      <Images size={10} strokeWidth={2.4} aria-hidden />
                       {count}/{total}
                     </span>
                     <span className="mc-model-metric">
-                      <Layers size={8} strokeWidth={2.4} aria-hidden />
+                      <Layers size={10} strokeWidth={2.4} aria-hidden />
                       {motionDone}/{motionTotal}
                     </span>
                     <span className="mc-model-metric">
-                      <Sparkles size={8} strokeWidth={2.4} aria-hidden />
+                      <Sparkles size={10} strokeWidth={2.4} aria-hidden />
                       0/1
                     </span>
                   </span>
