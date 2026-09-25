@@ -109,9 +109,7 @@ export function AppLayout() {
     location.pathname.startsWith("/cart");
   const onSearch = searchOpen;
 
-  const showTopUtility =
-    !hideChrome &&
-    !location.pathname.startsWith("/creator");
+  const showTopUtility = !hideChrome;
 
   const showNav =
     !hideChrome &&

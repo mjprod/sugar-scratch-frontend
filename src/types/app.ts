@@ -69,7 +69,7 @@ export const SPLASH_SLIDES = [
   },
   {
     title: "Scratch. Collect. Win.",
-    hook: "Open packs, scratch to reveal, and earn Sugar Coins along the way.",
+    hook: "Open packs, scratch to reveal, and earn Diamond Dust along the way.",
     cta: "Next",
   },
   {
@@ -91,7 +91,7 @@ export const DEMO_CREATORS = [
   { id: "c3", name: "Alex Rivera", tag: "Limited editions" },
   { id: "c4", name: "Sam Chen", tag: "Weekend bonuses" },
   { id: "c5", name: "Jordan Lee", tag: "Collector series" },
-  { id: "c6", name: "Riley Brooks", tag: "Coin surprise packs" },
+  { id: "c6", name: "Riley Brooks", tag: "Diamond Dust surprise packs" },
   { id: "c7", name: "Casey Morgan", tag: "Featured weekly" },
   { id: "c8", name: "Taylor Quinn", tag: "VIP scratch vault" },
 ] as const;
@@ -105,7 +105,7 @@ export const AVATAR_OPTIONS = ["🌹", "✨", "💎", "🔥", "💋", "🌙"] as
 
 export const WELCOME_REWARDS = [
   { id: "r1", label: "Starter Scratch Pack", detail: "1 pack" },
-  { id: "r2", label: "Sugar Coins", detail: "+50" },
+  { id: "r2", label: "Diamond Dust", detail: "+50" },
   { id: "r3", label: "Daily Streak Boost", detail: "Day 1 locked in" },
 ] as const;
 

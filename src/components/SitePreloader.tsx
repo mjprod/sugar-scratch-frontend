@@ -11,6 +11,8 @@ import {
 import "./SitePreloader.css";
 
 const MIN_MS = 2800;
+/** Character → motion: brief splash, then dismiss as soon as the page is ready. */
+const MOTION_MIN_MS = 180;
 const MAX_MS = 4500;
 const FADE_MS = 420;
 
@@ -18,6 +20,11 @@ function shouldCover(pathname: string, search: string) {
   // Memory veil owns warm cross-domain holds — skip brand splash for those hops.
   if (isMemoryTransitioning()) return false;
   return routeNeedsWait(pathname) && !isPageWarmed(pathname, search);
+}
+
+function minCoverMs(pathname: string) {
+  if (pathname.includes("/motion/")) return MOTION_MIN_MS;
+  return MIN_MS;
 }
 
 /**
@@ -46,7 +53,9 @@ export function SitePreloader() {
     if (!overlay.visible || overlay.hiding || !ready) return;
 
     const elapsed = performance.now() - shownAtRef.current;
-    if (elapsed < 16) {
+    const floor = minCoverMs(location.pathname);
+    // Instant hide only when ready lands in the same frame as show (no flicker).
+    if (elapsed < 16 && floor <= 0) {
       setOverlay((current) =>
         current.visible ? { ...current, visible: false, hiding: false } : current,
       );
@@ -62,9 +71,9 @@ export function SitePreloader() {
           current.visible ? { ...current, visible: false, hiding: false } : current,
         );
       }, FADE_MS);
-    }, Math.max(0, MIN_MS - elapsed));
+    }, Math.max(0, floor - elapsed));
     return () => window.clearTimeout(timer);
-  }, [overlay.hiding, overlay.visible, ready]);
+  }, [location.pathname, overlay.hiding, overlay.visible, ready]);
 
   useEffect(() => {
     if (!overlay.visible || overlay.hiding || ready) return;

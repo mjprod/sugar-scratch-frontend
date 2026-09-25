@@ -67,7 +67,10 @@ export function StoreScreen({
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
   coinBalance: number;
-  onCoinExchange: (diamonds: number, coins: number) => boolean;
+  onCoinExchange: (
+    diamonds: number,
+    coins: number,
+  ) => boolean | Promise<boolean>;
   onDiamondReward?: (amount: number) => void;
   onPackReward?: (
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -299,12 +302,12 @@ export function StoreScreen({
     if (!option) return false;
     locking.current = true;
     setExchangingId(option.id);
-    // Yield so React can paint “Exchanging…” before the sync wallet update.
+    // Yield so React can paint “Exchanging…” before the wallet update.
     await new Promise<void>((resolve) => {
       window.setTimeout(resolve, 0);
     });
     try {
-      return onCoinExchange(diamonds, coins);
+      return await onCoinExchange(diamonds, coins);
     } finally {
       setExchangingId(null);
       locking.current = false;

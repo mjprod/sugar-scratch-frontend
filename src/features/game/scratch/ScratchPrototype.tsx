@@ -1,4 +1,4 @@
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
@@ -955,10 +955,10 @@ const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {
@@ -2656,8 +2656,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         const autoSettings = autoScratchRef.current;
         const autoActive =
           finishAutoActiveRef.current || autoSettings.enabled;
-        // Never auto-finish while body-symbol hunt is still in progress — otherwise a
-        // persisted "enabled" flag (or premature toggle) wipes the dress before the player finds them all.
+        // Post-hunt finish-auto waits for all body symbols. Explicit player
+        // enable (HUD / panel) may run during the hunt.
         const huntComplete =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
@@ -2666,7 +2666,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         });
         if (
           autoActive &&
-          huntComplete &&
+          (autoSettings.enabled || huntComplete) &&
           !isBodyScratchLocked() &&
           trackedSample &&
           gameResultPendingRef.current === null
@@ -3611,12 +3611,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
-    if (
-      patch.enabled &&
-      (isBodyScratchLocked() ||
-        (useBodySymbolsRef.current &&
-          revealedSymbolsRef.current < SYMBOL_SLOT_COUNT))
-    ) {
+    // HUD / panel can enable during the body hunt — player opted in.
+    // Intro / center-foil lock still blocks via isBodyScratchLocked.
+    if (patch.enabled && isBodyScratchLocked()) {
       return;
     }
     if (patch.enabled && soundEnabledRef.current)
@@ -3755,12 +3752,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       topBarPhase !== "center" &&
       (huntPhase === "hunt" || revealedSymbols >= SYMBOL_SLOT_COUNT)) ||
     frameSettling;
+  // Lock only while play isn't ready yet — not for the body-symbol hunt.
+  // (Finish-auto still waits for hunt; HUD enable can run during hunt.)
   const autoScratchLocked =
     !matchStartUnlocked ||
     introActive ||
     introCover ||
     (useBodySymbols &&
-      (!symbolsHuntComplete || topBarPhase === "center" || introGateActive));
+      (topBarPhase === "center" || introGateActive));
   // Sparkles only during the hunt play window (after countdown, before all
   // symbols found); cards without body symbols have no countdown gate.
   const cursorFxPlayWindow =
@@ -4209,10 +4208,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       });
       return;
     }
-    // Collection single-card play — no Next card, return to the album.
+    // Single-card play — return to parent motion card (or collection fallback).
     if (!playlistMode) {
-      const params = new URLSearchParams(window.location.search);
-      navigateTo(collectionReturnHref(params.get("model"), params.get("card")));
+      navigateTo(gameReturnHrefFromSearch());
     }
   }
   advanceAfterScratchRef.current = advanceAfterScratch;
@@ -4944,10 +4942,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           {introActive || introCover
             ? "Intro + countdown — play unlocks when both finish."
             : topBarPhase === "center"
-              ? "Scratch the foil, then match symbols on her — auto scratch finishes the reveal."
+              ? "Scratch the foil to unlock play controls."
               : introGateActive
                 ? "Get ready — play starts after the countdown."
-                : `Find all ${SYMBOL_SLOT_COUNT} matches first — auto scratch finishes the reveal.`}
+                : "Wait for play to unlock."}
         </p>
       ) : null}
       <label className="checkbox-label">
@@ -5431,9 +5429,49 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 <StageMuteButton />
               </div>
             </div>
-            {/* Status row: [ cards-left 1fr | notifications 2fr ] */}
+            {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
+                {iconRevealerShown &&
+                (skipToPlay || hasPlayableCard) &&
+                !motionResult ? (
+                  <button
+                    type="button"
+                    className={[
+                      "stage-game__auto-scratch",
+                      autoScratch.enabled ? "is-active" : "",
+                      symbolsHuntComplete ? "is-symbols-complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={autoScratchLocked}
+                    aria-label={
+                      autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                    }
+                    aria-pressed={autoScratch.enabled}
+                    onClick={() =>
+                      updateAutoScratch({ enabled: !autoScratch.enabled })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  </button>
+                ) : null}
                 {packProgressShown &&
                 iconRevealerShown &&
                 (skipToPlay ||
@@ -5872,7 +5910,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   disabled={autoScratchLocked}
                   aria-label={
                     autoScratchLocked
-                      ? `Find all ${SYMBOL_SLOT_COUNT} matches first`
+                      ? "Auto scratch unlocks when play starts"
                       : autoScratch.enabled
                         ? "Auto scratch running"
                         : "Enable auto scratch"

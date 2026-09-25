@@ -380,7 +380,7 @@ function ExchangePanel({
         <div>
           <h3 className="get-diamonds-section__title">
             <CoinLottie size={40} aria-hidden />
-            Exchange Sugar Coins for Diamonds
+            Exchange Diamond Dust for Diamonds
           </h3>
         </div>
         <div className="get-diamonds-exchange__balance">
@@ -397,8 +397,8 @@ function ExchangePanel({
           const busy = exchangingId === option.id;
           const missing = Math.max(option.coins - coinBalance, 0);
           const ariaLabel = canAfford
-            ? `Exchange ${option.coins} Sugar Coins for ${option.diamonds} Diamonds`
-            : `Requires ${option.coins} Sugar Coins for ${option.diamonds} Diamonds. Need ${missing} more Sugar Coins.`;
+            ? `Exchange ${option.coins} Diamond Dust for ${option.diamonds} Diamonds`
+            : `Requires ${option.coins} Diamond Dust for ${option.diamonds} Diamonds. Need ${missing} more Diamond Dust.`;
           return (
             <div
               key={option.id}
@@ -458,7 +458,7 @@ function ExchangePanel({
       </div>
       <p className="get-diamonds-exchange__hint">
         <Info className="size-3.5 shrink-0" aria-hidden="true" />
-        Sugar Coins can be earned from gameplay, daily rewards, and events.
+        Diamond Dust can be earned from gameplay, daily rewards, and events.
       </p>
     </div>
   );

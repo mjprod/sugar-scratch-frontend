@@ -51,8 +51,8 @@ const DRAG_FOLLOW_CONFIG = { tension: 600, friction: 38 }
 /** Active pack lift (px up) + scale boost (~10% desktop). */
 const ACTIVE_Y_LIFT_PX = 36
 const ACTIVE_SCALE = 1.1
-/** Mobile: a slightly smaller hero scale so the card doesn't overgrow the stage. */
-const ACTIVE_SCALE_MOBILE = 1.02
+/** Mobile: keep layout box = visual face so width fill math stays exact. */
+const ACTIVE_SCALE_MOBILE = 1.0
 
 function getActiveScale() {
   if (typeof window === 'undefined') return ACTIVE_SCALE

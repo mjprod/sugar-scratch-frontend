@@ -20,6 +20,10 @@ export const Paths = {
   browse: "/",
   creator: (id: string) => `/creator/${id}`,
   creatorPattern: "/creator/:id",
+  /** Unlocked motion card detail (Figma 93:590 Keep Playing). */
+  motionCard: (creatorId: string, cardId: string) =>
+    `/creator/${encodeURIComponent(creatorId)}/motion/${encodeURIComponent(cardId)}`,
+  motionCardPattern: "/creator/:id/motion/:cardId",
   collection: "/collection",
   /** Collection hub opened on Unopened Packs. */
   collectionPacks: "/collection?reveal=packs",
@@ -62,15 +66,17 @@ export const Paths = {
     if (extra?.themeId) params.set("theme", extra.themeId);
     return `/game?${params.toString()}`;
   },
-  /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection). */
+  /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection / motion page). */
   photoScratchPlay: (
     photoCardId: string,
-    extra?: { modelId?: string },
+    extra?: { modelId?: string; creatorId?: string },
   ) => {
     const params = new URLSearchParams();
     params.set("card", photoCardId);
     const model = extra?.modelId?.trim();
     if (model) params.set("model", model);
+    const creator = extra?.creatorId?.trim();
+    if (creator) params.set("creator", creator);
     return `/photo-scratch?${params.toString()}`;
   },
   recommend: "/recommend",

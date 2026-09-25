@@ -9,6 +9,7 @@ import {
   upsertInstancesFromApi,
 } from "@/services/packInventory";
 import type { RedeemReward } from "@/services/redeem";
+import { exchangeCoinsForDiamonds } from "@/services/store";
 
 export function StorePage() {
   const {
@@ -17,7 +18,8 @@ export function StorePage() {
     bumpInventoryRevision,
     setPurchasedPacks,
   } = useAuth();
-  const { addCoins, addDiamonds, coins, refreshWallet, spendCoins } = useWallet();
+  const { addCoins, addDiamonds, applyWallet, coins, diamonds, refreshWallet } =
+    useWallet();
 
   async function onPackReward(
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -70,9 +72,13 @@ export function StorePage() {
   return (
     <StoreScreen
       coinBalance={coins}
-      onCoinExchange={(diamonds, coinCost) => {
-        if (!spendCoins(coinCost)) return false;
-        addDiamonds(diamonds);
+      onCoinExchange={async (diamondAmount, coinCost) => {
+        const result = await exchangeCoinsForDiamonds(
+          { diamonds: diamondAmount, coins: coinCost },
+          { diamonds, coins },
+        );
+        if (result.status !== "success") return false;
+        applyWallet({ diamonds: result.diamonds, coins: result.coins });
         return true;
       }}
       onBack={() => closeSecondary("store")}

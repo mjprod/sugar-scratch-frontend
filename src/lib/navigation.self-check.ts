@@ -2,7 +2,7 @@
  * Navigation classification + primary chrome AC self-check.
  * Run: npx tsx src/lib/navigation.self-check.ts
  */
-import { formatBalance } from "../components/CurrencyBalances.tsx";
+import { formatBalance } from "./formatBalance.ts";
 import { tabFromPathname } from "../routes/Paths.ts";
 import {
   DESKTOP_MIN_PX,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
@@ -16,13 +17,21 @@ import { syncMyPacks } from "@/services/packInventory";
 import type { PurchaseFlowPack } from "@/services/purchase";
 import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
 import { CollectionEmptyState } from "./CollectionEmptyState";
-import { CollectionSnapshot } from "./CollectionSnapshot";
+import { CollectionPromoCarousel } from "./CollectionPromoCarousel";
+import { CollectionSiteFooter } from "./CollectionSiteFooter";
 import { MyCollectionSection } from "./MyCollectionSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
+function firstNameFromProfile(displayName: string, username: string): string {
+  const raw = (displayName || username || "").trim();
+  if (!raw) return "Collector";
+  const token = raw.split(/\s+/)[0] || raw;
+  return token.replace(/^@/, "") || "Collector";
+}
+
 /**
- * Collection hub — Summary → Ready to Reveal → My Collection.
- * Content comes from GET /api/me/collection (+ synced pack inventory). No fixture catalog.
+ * Collection hub — Figma MyCollection (node 123:469).
+ * Greeting → promo → continue strip → choose a model → footer.
  */
 export function CollectionPage({
   onOpenCreator,
@@ -37,6 +46,7 @@ export function CollectionPage({
   onScratchGroup?: (group: ScratchReadyGroup) => void;
   inventoryRevision?: number;
 }) {
+  const { profile } = useAuth();
   const [searchParams] = useSearchParams();
   const revealPacks = searchParams.get("reveal") === "packs";
   const [state, setState] = useState<CollectionPageState>(() =>
@@ -46,11 +56,8 @@ export function CollectionPage({
 
   useEffect(() => {
     let cancelled = false;
-    // Do not flip ready→false on inventory refresh — collapsing the page
-    // shell snaps mobile scroll back to the top.
 
     void (async () => {
-      // Keep pack shelf in sync with the server before reading local inventory.
       if (!isDemoMode()) {
         await syncMyPacks().catch(() => false);
       }
@@ -62,8 +69,6 @@ export function CollectionPage({
       if (cancelled) return;
 
       if (remote) {
-        // API owns summary + My Collection creators; merge live pack/scratch counts
-        // so Ready to Reveal stays consistent with local open/scratch shelves.
         const local = getCollectionPageState();
         setState({
           ...remote,
@@ -82,8 +87,6 @@ export function CollectionPage({
             remote.hasStartedCollection || local.hasStartedCollection,
         });
       } else {
-        // API unavailable — inventory shelves only (synced packs / ready scratch).
-        // Do not surface fixture catalogs or stale demo creator rows.
         const local = getCollectionPageState();
         setState({
           ...emptyCollectionPageState(),
@@ -109,6 +112,11 @@ export function CollectionPage({
   const collectedCreators = useMemo(
     () => state.continueCreators.filter((creator) => creator.collected > 0),
     [state.continueCreators],
+  );
+
+  const greetingName = firstNameFromProfile(
+    profile.displayName,
+    profile.username,
   );
 
   function openPack(pack: UnopenedPack) {
@@ -147,7 +155,7 @@ export function CollectionPage({
   return (
     <section
       data-page-scroll
-      className="collection-page flex min-h-0 flex-1 flex-col overflow-y-auto"
+      className="collection-page mc-page flex min-h-0 flex-1 flex-col overflow-y-auto"
       style={
         {
           "--bg-primary": "oklch(0.13 0.005 285.67)",
@@ -155,36 +163,36 @@ export function CollectionPage({
         } as CSSProperties
       }
     >
-      <div className="collection-page-content page-container">
+      <div className="collection-page-content mc-page-content page-container">
         {!ready ? (
           <CollectionPageSkeleton />
         ) : state.isTrueEmpty && !revealPacks ? (
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
         ) : state.isTrueEmpty && revealPacks ? (
           <>
-            <header className="collection-page-intro">
-              <h1 className="collection-page-title">Your Collection</h1>
+            <header className="mc-greeting">
+              <h1 className="mc-greeting-text">
+                Hi, {greetingName} let&apos;s keep collecting…
+              </h1>
             </header>
+
             <ReadyToReveal
               onOpenPack={openPack}
               onScratch={openScratch}
               onExplorePacks={onExplorePacks}
               inventoryRevision={inventoryRevision}
+              forceEmptyReveal
             />
           </>
         ) : (
           <>
-            <header className="collection-page-intro">
-              <h1 className="collection-page-title">Collection</h1>
+            <header className="mc-greeting">
+              <h1 className="mc-greeting-text">
+                Hi, {greetingName} let&apos;s keep collecting…
+              </h1>
             </header>
 
-            <CollectionSnapshot
-              summary={state.summary}
-              hasPendingReveal={state.hasPendingReveal}
-              onExplorePacks={onExplorePacks}
-              onFocusReadyToReveal={() => scrollTo("ready-heading")}
-              onOpenMyCollection={() => scrollTo("my-collection")}
-            />
+            <CollectionPromoCarousel />
 
             <ReadyToReveal
               onOpenPack={openPack}
@@ -194,12 +202,18 @@ export function CollectionPage({
             />
 
             <MyCollectionSection
-              creators={collectedCreators}
+              creators={
+                collectedCreators.length > 0
+                  ? collectedCreators
+                  : state.continueCreators
+              }
               hasPendingReveal={state.hasPendingReveal}
               onOpenCreator={onOpenCreator}
               onExplorePacks={onExplorePacks}
               onFocusReadyToReveal={() => scrollTo("ready-heading")}
             />
+
+            <CollectionSiteFooter />
           </>
         )}
       </div>
@@ -225,64 +239,29 @@ function SkeletonBar({
   );
 }
 
-/** Fixed-height first-load shell — same pulse language as search overlay. */
 function CollectionPageSkeleton() {
   return (
-    <div className="collection-page-skeleton" aria-busy="true" aria-live="polite">
-      <header className="collection-page-intro">
-        <SkeletonBar className="search-skeleton-title" width={148} height={28} />
+    <div className="collection-page-skeleton mc-skeleton" aria-busy="true">
+      <header className="mc-greeting">
+        <SkeletonBar className="search-skeleton-title" width={240} height={19} />
       </header>
-
-      <div className="collection-snapshot is-skeleton" aria-hidden="true">
-        <SkeletonBar className="search-skeleton-line" width={120} height={14} />
-        <div className="collection-snapshot-metrics">
-          {Array.from({ length: 3 }, (_, index) => (
-            <span key={index} className="collection-snapshot-metric is-skeleton">
-              <SkeletonBar className="search-skeleton-line" width={36} height={22} />
-              <SkeletonBar className="search-skeleton-line" width={64} height={12} />
-            </span>
+      <div className="mc-promo is-skeleton" aria-hidden="true">
+        <SkeletonBar width="100%" height={100} />
+      </div>
+      <div className="mc-continue-panel is-skeleton" aria-hidden="true">
+        <SkeletonBar width={220} height={19} />
+        <div className="mc-continue-row">
+          {Array.from({ length: 4 }, (_, i) => (
+            <SkeletonBar key={i} width={70} height={127} />
           ))}
         </div>
       </div>
-
-      <section className="collection-section ready-reveal is-skeleton" aria-hidden="true">
-        <SkeletonBar className="search-skeleton-title" width={156} height={20} />
-        <div className="collection-h-row collection-page-skeleton-row">
-          {Array.from({ length: 3 }, (_, index) => (
-            <span key={index} className="ready-reveal-tile is-skeleton">
-              <SkeletonBar className="ready-reveal-tile-art-btn" />
-              <span className="ready-reveal-tile-body">
-                <SkeletonBar className="search-skeleton-line" width="70%" height={12} />
-                <SkeletonBar className="search-skeleton-line" width="48%" height={12} />
-                <SkeletonBar className="ready-reveal-tile-action is-skeleton" height={36} />
-              </span>
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="my-collection"
-        className="collection-section my-collection is-skeleton"
-        aria-label="My Collection loading"
-      >
-        <div className="my-collection-head">
-          <SkeletonBar className="search-skeleton-title" width={140} height={20} />
-        </div>
-        <div className="my-collection-creator-row" role="presentation">
-          {Array.from({ length: 4 }, (_, index) => (
-            <span key={index} className="my-collection-creator-card is-skeleton">
-              <span className="my-collection-creator-art">
-                <SkeletonBar className="my-collection-creator-art-fill" />
-              </span>
-              <span className="my-collection-creator-meta">
-                <SkeletonBar className="search-skeleton-line" width="78%" height={13} />
-                <SkeletonBar className="search-skeleton-line" width="52%" height={12} />
-              </span>
-            </span>
-          ))}
-        </div>
-      </section>
+      <div className="mc-models is-skeleton" aria-hidden="true">
+        <SkeletonBar width={160} height={24} />
+        <SkeletonBar width="100%" height={163} />
+        <SkeletonBar width="100%" height={103} />
+        <SkeletonBar width="100%" height={103} />
+      </div>
     </div>
   );
 }

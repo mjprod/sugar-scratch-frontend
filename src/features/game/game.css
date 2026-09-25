@@ -330,7 +330,7 @@
   pointer-events: auto;
 }
 
-/* Cards-left: start edge overlay (gone before find toasts typically show). */
+/* Auto-scratch + cards-left: start edge overlay (cards-left leaves first). */
 .stage-game__top-chrome-status-cards {
   position: absolute;
   left: 0;
@@ -338,8 +338,10 @@
   bottom: 0;
   z-index: 2;
   display: flex;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   justify-content: flex-start;
+  gap: 8px;
   min-width: 0;
   min-height: var(--game-top-status-height, 45px);
   height: 100%;
@@ -353,6 +355,62 @@
   height: 100%;
   margin: 0;
   box-sizing: border-box;
+}
+
+/* Product HUD auto-scratch — left of cards-left; stays after pack-progress leaves. */
+.stage-game__auto-scratch {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  background: oklch(0.157 0.013 284.85 / 0.9);
+  color: oklch(1 0 0);
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.stage-game__auto-scratch:hover:not(:disabled) {
+  background: oklch(0.157 0.013 284.85 / 0.9);
+}
+
+.stage-game__auto-scratch:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.stage-game__auto-scratch:focus-visible {
+  outline: 2px solid oklch(0.779 0.139 1.41 / 0.9);
+  outline-offset: 2px;
+}
+
+.stage-game__auto-scratch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.stage-game__auto-scratch.is-active {
+  border-color: oklch(0.898 0.124 88.45 / 0.85);
+  box-shadow: 0 0 0 2px oklch(0.898 0.124 88.45 / 0.35);
+  color: oklch(0.898 0.124 88.45);
+}
+
+.stage-game__auto-scratch.is-symbols-complete:not(:disabled):not(.is-active) {
+  border-color: oklch(0.898 0.124 88.45 / 0.85);
+  box-shadow: 0 0 0 2px oklch(0.898 0.124 88.45 / 0.35);
+  animation: autoScratchReady 1.1s ease-in-out infinite;
+}
+
+.stage-game__auto-scratch.is-symbols-complete.is-active {
+  animation: autoScratchActive 0.85s ease-in-out infinite;
 }
 
 /* Find / progress notifications — horizontal center of the status row. */
@@ -564,14 +622,14 @@
   text-size-adjust: 100%;
 }
 
-/* Coin count-up — gold frosted plate + tunable overlay hue.
+/* Dust count-up — purple frosted plate + tunable overlay hue.
    Defaults live here; lab debug writes the same vars as inline styles on
    .stage-game / .stage-game__coin-count so they always win. */
 .stage-game__coin-count {
-  --coin-overlay-hue: 59;
-  --coin-overlay-sat: 100%;
-  --coin-overlay-light: 19%;
-  --coin-overlay-alpha: 0.71;
+  --coin-overlay-hue: 300;
+  --coin-overlay-sat: 72%;
+  --coin-overlay-light: 22%;
+  --coin-overlay-alpha: 0.74;
   --pp-tint: hsl(
     var(--coin-overlay-hue) var(--coin-overlay-sat) var(--coin-overlay-light) /
       var(--coin-overlay-alpha)
@@ -590,7 +648,7 @@
     rgb(255 255 255 / 0.12) 34%,
     rgb(255 255 255 / 0.4) 100%
   );
-  --pp-border-color: #f99d76;
+  --pp-border-color: #c78be8;
   --pp-border-width: 1px;
   --pp-radius-tl: 11px;
   --pp-radius-tr: 11px;
@@ -780,7 +838,7 @@
   }
   35% {
     transform: scale(1.18);
-    color: #ffe566;
+    color: #e3b7ff;
   }
   100% {
     transform: scale(1);
@@ -790,7 +848,7 @@
 
 .stage-game__coin-count-label {
   margin: 0;
-  color: rgb(190 175 190 / 0.9);
+  color: rgb(210 185 230 / 0.9);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: normal;
@@ -811,9 +869,9 @@
   transform: translate(-50%, -100%);
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgb(20 14 8 / 0.82);
-  border: 1px solid rgb(249 157 118 / 0.55);
-  color: #ffe566;
+  background: rgb(18 10 24 / 0.82);
+  border: 1px solid rgb(199 139 232 / 0.55);
+  color: #e3b7ff;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.02em;

@@ -24,8 +24,10 @@ export type BackendModel = {
   packFacePosterUrl2?: string | null;
   swipeVideoUrl?: string | null;
   swipePosterUrl?: string | null;
+
   /** Ultra card video trailer, e.g. "/models/julianaval/ultra-card-trailer.mp4". */
   ultraCardTrailerUrl?: string | null;
+
   ultraCardTrailerPosterUrl?: string | null;
   /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
   coverUrl?: string | null;
@@ -304,6 +306,20 @@ export function modelCoverUrl(model: BackendModel | null | undefined) {
 
 export function modelSwipePosterUrl(model: BackendModel | null | undefined) {
   return optionalMedia(model?.swipePosterUrl);
+}
+
+/** API Ultra Card trailer video for the creator page teaser. */
+export function modelUltraCardTrailerUrl(
+  model: BackendModel | null | undefined,
+) {
+  return optionalMedia(model?.ultraCardTrailerUrl);
+}
+
+/** API Ultra Card trailer poster / still frame. */
+export function modelUltraCardTrailerPosterUrl(
+  model: BackendModel | null | undefined,
+) {
+  return optionalMedia(model?.ultraCardTrailerPosterUrl);
 }
 
 export function profileFromModel(model: BackendModel): ModelProfile {

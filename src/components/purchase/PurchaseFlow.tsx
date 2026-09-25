@@ -2665,7 +2665,7 @@ function ScratchStage({
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-5 z-10">
           <p className="text-[20px] font-bold">{card.rarity}</p>
-          <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Sugar Coins</p>
+          <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Diamond Dust</p>
         </div>
         <motion.button
           type="button"

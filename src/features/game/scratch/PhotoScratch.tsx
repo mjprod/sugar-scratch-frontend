@@ -37,9 +37,7 @@ import {
 import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
-import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { Paths } from "@/routes/Paths";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
@@ -1504,16 +1502,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       );
 
       const autoSettings = autoScratchRef.current;
-      const productScratch = isProductPhotoScratch();
       const autoActive =
-        !productScratch &&
-        (finishAutoActiveRef.current || autoSettings.enabled);
+        finishAutoActiveRef.current || autoSettings.enabled;
       const huntComplete = hasBodySymbolsRef.current
         ? revealedSymbolsRef.current >= SYMBOL_POINT_COUNT
         : true;
       if (
         autoActive &&
-        huntComplete &&
+        (autoSettings.enabled || huntComplete) &&
         !isBodyScratchLocked() &&
         !introActiveRef.current &&
         cardFlowStateRef.current !== "showing-result" &&
@@ -2113,12 +2109,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
-    if (
-      patch.enabled &&
-      (isBodyScratchLocked() ||
-        (hasBodySymbolsRef.current &&
-          revealedSymbolsRef.current < SYMBOL_POINT_COUNT))
-    ) {
+    if (patch.enabled && isBodyScratchLocked()) {
       return;
     }
     if (patch.enabled && soundEnabledRef.current) {
@@ -2320,14 +2311,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       setClaimed(false);
       setCardFlowState("ready");
       cardFlowStateRef.current = "ready";
-      const params = new URLSearchParams(window.location.search);
-      const motionCardId = params.get("card")?.trim()
-        ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
-        : "";
-      navigateBackOr(
-        navigate,
-        collectionReturnHref(params.get("model")?.trim() || "", motionCardId),
-      );
+      navigateBackOr(navigate, gameReturnHrefFromSearch());
       return;
     }
 
@@ -2596,7 +2580,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     packFlowState === "complete" ||
     cardTransitionRef.current ||
     (hasBodySymbols &&
-      (!symbolsHuntComplete || topBarPhase === "center" || introGateActive));
+      (topBarPhase === "center" || introGateActive));
   const remainingCards = playlist.filter(
     (entry) => !completedCardIds.includes(entry.id),
   );
@@ -2609,18 +2593,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setHandSummaryDiamonds(null);
     settleDonePhotoHand(addDiamonds, addCoins);
     bumpInventoryRevision();
-
-    const params = new URLSearchParams(window.location.search);
-    const fallback =
-      params.get("game") === "1"
-        ? Paths.collection
-        : collectionReturnHref(
-            params.get("model")?.trim() || "",
-            params.get("card")?.trim()
-              ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
-              : "",
-          );
-    navigateBackOr(navigate, fallback);
+    navigateBackOr(navigate, gameReturnHrefFromSearch());
   }
 
   return (
@@ -2921,10 +2894,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             {autoScratchLocked ? (
               <p className="auto-scratch-hint">
                 {topBarPhase === "center"
-                  ? "Scratch the foil, then match symbols on her — auto scratch finishes the reveal."
+                  ? "Scratch the foil to unlock play controls."
                   : introGateActive
                     ? "Get ready — play starts when the top bar docks."
-                    : `Find all ${SYMBOL_POINT_COUNT} matches first — auto scratch finishes the reveal.`}
+                    : "Wait for play to unlock."}
               </p>
             ) : null}
             <label className="checkbox-label">
@@ -3054,6 +3027,47 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             </div>
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
+                {selectedCardId &&
+                handSummaryDiamonds == null &&
+                photoResult == null &&
+                gameResult == null ? (
+                  <button
+                    type="button"
+                    className={[
+                      "stage-game__auto-scratch",
+                      autoScratch.enabled ? "is-active" : "",
+                      symbolsHuntComplete ? "is-symbols-complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={autoScratchLocked}
+                    aria-label={
+                      autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                    }
+                    aria-pressed={autoScratch.enabled}
+                    onClick={() =>
+                      updateAutoScratch({ enabled: !autoScratch.enabled })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  </button>
+                ) : null}
                 {playlist.length > 1 &&
                 handSummaryDiamonds == null &&
                 photoResult == null &&
