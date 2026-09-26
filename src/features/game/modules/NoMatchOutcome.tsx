@@ -12,8 +12,8 @@ export const CARD_NO_MATCH_RESULT_MS = 2000;
 const TOTAL_MS = CONTENT_IN_MS + CARD_NO_MATCH_RESULT_MS;
 
 /**
- * Resolved "this card produced nothing" beat. Sits over the scratched card so
- * the player still sees what they just played — an outcome, not an error modal.
+ * Resolved "this card produced nothing" beat. Opaque static backdrop — theme
+ * videos are torn down by the parent so the next motion card can warm cleanly.
  * Auto-advances after ~2s (or Skip); navigation is handled by the parent.
  */
 export function NoMatchOutcome({ onComplete }: NoMatchOutcomeProps) {

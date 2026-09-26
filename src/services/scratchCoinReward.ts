@@ -9,7 +9,7 @@
  * `refreshWallet` remains the later source of truth.
  */
 
-import { apiMutate } from "../lib/api";
+import { ApiError, apiMutate } from "../lib/api";
 
 /** Optimistic floor/ceil — single source in sparkleCoinAward (must match backend). */
 export {
@@ -40,6 +40,10 @@ export type ScratchCoinClaimBody = {
   amount?: number;
 };
 
+/** Backend SCRATCH_HANDS_PER_DAY — stop POSTing after the first 429. */
+let scratchHandQuotaExhausted = false;
+const scratchHandInFlight = new Map<string, Promise<ScratchHandResult | null>>();
+
 /**
  * Client wallet after a scratch-coin persist response.
  * Always keeps the local balances: optimistic addCoins is the HUD credit,
@@ -54,21 +58,72 @@ export function nextWalletAfterScratchPersist(
   return local;
 }
 
-/** Ask the server for a new scratch hand id (rate-limited). */
-export async function startScratchHand(
+/** True after the server returns 429 for daily scratch-hand quota. */
+export function isScratchHandQuotaExhausted(): boolean {
+  return scratchHandQuotaExhausted;
+}
+
+/** Test helper — reset module quota / in-flight state. */
+export function resetScratchHandQuotaForTests(): void {
+  scratchHandQuotaExhausted = false;
+  scratchHandInFlight.clear();
+}
+
+/** Ask the server for a new scratch hand id (rate-limited; 24/day). */
+export function startScratchHand(
   cardId?: string,
 ): Promise<ScratchHandResult | null> {
-  try {
-    return await apiMutate<ScratchHandResult>("/api/rewards/scratch/hands", {
-      method: "POST",
-      body: JSON.stringify(cardId ? { cardId } : {}),
-    });
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn("[scratchCoinReward] start hand failed", error);
+  if (scratchHandQuotaExhausted) return Promise.resolve(null);
+
+  const key = cardId?.trim() || "";
+  const pending = scratchHandInFlight.get(key);
+  if (pending) return pending;
+
+  let settle!: (value: ScratchHandResult | null) => void;
+  const request = new Promise<ScratchHandResult | null>((resolve) => {
+    settle = resolve;
+  });
+  scratchHandInFlight.set(key, request);
+
+  void (async () => {
+    try {
+      const hand = await apiMutate<ScratchHandResult>(
+        "/api/rewards/scratch/hands",
+        {
+          method: "POST",
+          body: JSON.stringify(cardId ? { cardId } : {}),
+        },
+      );
+      settle(hand);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        scratchHandQuotaExhausted = true;
+        try {
+          if (import.meta.env?.DEV) {
+            console.warn(
+              "[scratchCoinReward] daily scratch-hand quota reached — skipping further starts",
+            );
+          }
+        } catch {
+          // import.meta.env unavailable outside Vite
+        }
+        settle(null);
+        return;
+      }
+      try {
+        if (import.meta.env?.DEV) {
+          console.warn("[scratchCoinReward] start hand failed", error);
+        }
+      } catch {
+        // ignore
+      }
+      settle(null);
+    } finally {
+      scratchHandInFlight.delete(key);
     }
-    return null;
-  }
+  })();
+
+  return request;
 }
 
 /** Persist a milestone award. Callers should optimistic-addCoins first. */

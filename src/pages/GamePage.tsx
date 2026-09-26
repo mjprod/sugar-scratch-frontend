@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
@@ -10,8 +9,13 @@ import { Paths } from "@/routes/Paths";
 import {
   persistGameProgress,
 } from "@/features/game/modules/gameSession";
+import { RouteChunkFallback } from "@/routes/RouteChunkFallback";
 import "@/features/game/game.css";
-import "@/features/packs/packs.css";
+
+/** Pack-fan hub — keep off the scratch embed graph (reveal/CardFan/Lottie fan). */
+const GameHub = lazy(() =>
+  import("@/features/game/GameHub").then((m) => ({ default: m.GameHub })),
+);
 
 function ScratchGameEmbed() {
   const [searchParams] = useSearchParams();
@@ -93,9 +97,11 @@ export function GamePage() {
   }
 
   return (
-    <div className="app-shell app-shell--game-hub">
-      <GameHub />
-    </div>
+    <Suspense fallback={<RouteChunkFallback />}>
+      <div className="app-shell app-shell--game-hub">
+        <GameHub />
+      </div>
+    </Suspense>
   );
 }
 

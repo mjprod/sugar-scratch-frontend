@@ -37,6 +37,7 @@ import {
   type ThemedMotionCard,
 } from './modules/session'
 import '@/features/reveal/reveal.css'
+import '@/features/packs/packs.css'
 import './gameHub.css'
 
 type Phase =

@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
-import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
 import { useAuth } from "@/contexts/AuthContext";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import {
@@ -37,6 +36,13 @@ import {
 } from "@/services/purchase";
 import "./creator-collection.css";
 import "./creator-influencer.css";
+
+/** SlideDeck / three stack — only when a featured motion card overlay opens. */
+const FeaturedCardOverlay = lazy(() =>
+  import("@/components/creator/FeaturedCardOverlay").then((m) => ({
+    default: m.FeaturedCardOverlay,
+  })),
+);
 
 /** Collapse once ~7% of the viewport height has been scrolled from the top. */
 const COLLAPSE_VIEWPORT_RATIO = 0.07;
@@ -438,16 +444,18 @@ function CreatorScreenInner({
       {toast ? <div className="cpv2-toast">{toast}</div> : null}
 
       {featuredCardId && collection.modelId ? (
-        <FeaturedCardOverlay
-          modelId={collection.modelId}
-          cardId={featuredCardId}
-          onClose={() => {
-            setFeaturedCardId(null);
-            syncCardParam(null, selectedThemeId);
-          }}
-          onPlayGame={handlePlayGame}
-          onViewCard={(name) => notice(`View ${name}`)}
-        />
+        <Suspense fallback={null}>
+          <FeaturedCardOverlay
+            modelId={collection.modelId}
+            cardId={featuredCardId}
+            onClose={() => {
+              setFeaturedCardId(null);
+              syncCardParam(null, selectedThemeId);
+            }}
+            onPlayGame={handlePlayGame}
+            onViewCard={(name) => notice(`View ${name}`)}
+          />
+        </Suspense>
       ) : null}
     </section>
   );

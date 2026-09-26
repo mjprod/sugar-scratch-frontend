@@ -95,6 +95,7 @@ import { StageCoinCount } from "../StageCoinCount";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import {
+  isScratchHandQuotaExhausted,
   persistScratchCoins,
   startScratchHand,
 } from "@/services/scratchCoinReward";
@@ -157,6 +158,10 @@ import {
   CURSOR_FX_FALL_VELOCITY,
   resolveCursorFxDeviceProfile,
 } from "../modules/cursorFxCelebrate";
+import {
+  shouldDeferCardVideoAttach,
+  shouldReviveGameVideos,
+} from "../modules/currencyResultMedia";
 import {
   fetchCatalogMotionCards,
 } from "../shared/catalog";
@@ -1284,8 +1289,8 @@ export function ScratchPrototype({
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
   const handIdRef = useRef("");
   const handStartGenRef = useRef(0);
-  /** Tracks prior auth so we only re-request a hand on false → true. */
-  const prevAuthedForHandRef = useRef(authed);
+  /** Card id the current handId was issued for — skip remount/mesh restarts. */
+  const handCardIdRef = useRef<string | null>(null);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -1854,15 +1859,35 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setCoinBadgeLeaving(false);
   }
 
-  function beginScratchHand(cardId?: string | null) {
-    handIdRef.current = "";
-    // Session may still be resolving on first paint — leave hand empty and let
-    // the auth-retry effect start once `authed` becomes true.
+  function beginScratchHand(
+    cardId?: string | null,
+    opts?: { force?: boolean },
+  ) {
+    // Session may still be resolving on first paint — leave hand empty; the
+    // card+auth effect re-runs once `authed` becomes true.
     if (!authed) return;
+    if (isScratchHandQuotaExhausted()) return;
+    const key = cardId?.trim() || "";
+    // Mesh reload / Strict Mode remount for the same card must not burn quota.
+    if (
+      !opts?.force &&
+      handIdRef.current &&
+      handCardIdRef.current === key
+    ) {
+      return;
+    }
+    handIdRef.current = "";
+    handCardIdRef.current = key;
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
       if (gen !== handStartGenRef.current) return;
-      if (result?.handId) handIdRef.current = result.handId;
+      if (result?.handId) {
+        handIdRef.current = result.handId;
+        handCardIdRef.current = key;
+        return;
+      }
+      // Failed / quota — allow a later force retry if needed.
+      if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
   }
 
@@ -2564,8 +2589,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const render = () => {
       try {
         if (cancelled) return;
-        // Currency result owns the screen — skip GL + video sync (opaque cover).
-        if (motionResultRef.current?.win) {
+        // Per-card result owns the screen — skip GL + video sync (opaque cover).
+        if (motionResultRef.current) {
           return;
         }
         const active = ensureRenderer();
@@ -3235,7 +3260,6 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    beginScratchHand(card.id);
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
@@ -3283,17 +3307,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
 
-  // Card-switch may call beginScratchHand while the session is still resolving
-  // (`authed` false → early return, empty handId). Without a retry, milestones
-  // still addCoins locally but never persist, so credits vanish on refresh.
+  // One server hand per card identity (not per mesh reload). Re-runs when auth
+  // lands so a cold first paint that skipped while `!authed` still gets a hand.
   useEffect(() => {
-    const wasAuthed = prevAuthedForHandRef.current;
-    prevAuthedForHandRef.current = authed;
-    if (!authed || wasAuthed) return;
     if (!card?.id) return;
     beginScratchHand(card.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- false→true only; card switches already start a hand
-  }, [authed, card?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- beginScratchHand closes over authed
+  }, [selectedCardId, card?.id, labRestartToken, authed]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
@@ -3379,11 +3399,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
     // intro is up, fully unload the card clips so only the intro decodes.
-    if (introActiveRef.current) {
-      releaseMediaElement(bottomVideo);
-      releaseMediaElement(foregroundVideo);
-      glRendererRef.current?.resetForeground();
-      setGameVideosReady(false);
+    // Currency result also owns media (static backdrop + next-card warm load).
+    if (
+      shouldDeferCardVideoAttach({
+        introActive: introActiveRef.current,
+        resultOverlayActive: motionResultRef.current != null,
+      })
+    ) {
+      if (introActiveRef.current) {
+        releaseMediaElement(bottomVideo);
+        releaseMediaElement(foregroundVideo);
+        glRendererRef.current?.resetForeground();
+        setGameVideosReady(false);
+      }
       return;
     }
 
@@ -3459,7 +3487,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         // ignore
       }
     };
-  }, [cardsReady, card?.id, card?.bottom, card?.foreground, introActive]);
+  }, [
+    cardsReady,
+    card?.id,
+    card?.bottom,
+    card?.foreground,
+    introActive,
+    motionResult != null,
+  ]);
 
   // Mobile browsers (notably iOS Safari) will suspend a second, simultaneously
   // playing <video> after a few seconds to save power — which here drops the
@@ -3468,11 +3503,16 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   // out from under us (and on tab re-focus), as long as the user hasn't paused.
   useEffect(() => {
     const keepPlaying = () => {
-      if (uiStateRef.current.isPaused) return;
-      // Don't steal the decoder from the theme intro (causes black stage after
-      // 3-2-1 on Safari / Android when three <video>s fight).
-      if (introActiveRef.current) return;
-      if (cardTransitionActiveRef.current) return;
+      if (
+        !shouldReviveGameVideos({
+          userPaused: uiStateRef.current.isPaused,
+          introActive: introActiveRef.current,
+          cardTransitionActive: cardTransitionActiveRef.current,
+          resultOverlayActive: motionResultRef.current != null,
+        })
+      ) {
+        return;
+      }
       const bottomVideo = bottomVideoRef.current;
       const foregroundVideo = foregroundVideoRef.current;
       if (bottomVideo?.paused) void bottomVideo.play().catch(() => undefined);
@@ -3668,26 +3708,67 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
     ),
   });
-  /** Currency win covers the stage — clear theme video for look + perf. */
-  const clearStageForResult = motionOutcome === "diamond";
+  /** Win or no-match covers the stage — clear theme video for look + perf. */
+  const clearStageForResult =
+    motionOutcome === "diamond" || motionOutcome === "no-match";
 
-  // Freeze theme decoders while the currency result is up (opaque overlay).
+  // Tear down finished-card decoders while the static result is up, then
+  // warm the next motion card so Skip / auto-advance is not a cold dual-attach.
   useEffect(() => {
     if (!clearStageForResult) return;
     const bottom = bottomVideoRef.current;
     const foreground = foregroundVideoRef.current;
-    try {
-      bottom?.pause();
-    } catch {
-      // ignore
+    if (bottom) {
+      try {
+        bottom.pause();
+      } catch {
+        // ignore
+      }
+      glRendererRef.current?.detachVideoFrames(bottom);
+      releaseMediaElement(bottom);
     }
-    try {
-      foreground?.pause();
-    } catch {
-      // ignore
+    if (foreground) {
+      try {
+        foreground.pause();
+      } catch {
+        // ignore
+      }
+      glRendererRef.current?.detachVideoFrames(foreground);
+      releaseMediaElement(foreground);
     }
-    parkForegroundDecoder();
-  }, [clearStageForResult, motionResult?.resultId]);
+    fgParkedRef.current = true;
+    glRendererRef.current?.resetForeground();
+    setGameVideosReady(false);
+
+    const finishedId = selectedCardId;
+    const nextCard =
+      finishedId == null
+        ? null
+        : modelCards.find(
+            (entry) =>
+              entry.id !== finishedId &&
+              !completedCardIdsRef.current.includes(entry.id),
+          );
+    if (!nextCard || !bottom || !foreground) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await Promise.all([
+          loadVideoSrc(bottom, nextCard.bottom),
+          loadVideoSrc(foreground, nextCard.foreground),
+        ]);
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      // Stay paused — static result owns the screen until handoff.
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearStageForResult, motionResult?.resultId, selectedCardId, modelCards]);
 
   // Keep the frame mounted through the no-match beat so its energy can drain
   // instead of vanishing with the rest of the gameplay HUD.
@@ -3793,7 +3874,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    beginScratchHand(selectedCardId);
+    beginScratchHand(selectedCardId, { force: true });
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();

@@ -1992,16 +1992,15 @@
 .motion-currency-reveal__backdrop {
   position: absolute;
   inset: 0;
-  /* Fully opaque — hide the scratched theme video (wrong look + decode cost). */
-  background: oklch(0.1 0.012 284);
+  /* Solid static fill — never fade from transparent (video must not show through). */
+  background: #05040a;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  animation: motion-win-dim 320ms ease-out both;
 }
 
-/* Pause the stage picture while the currency result owns the screen. */
-.stage-game .stage.is-result-clear > canvas.game-stage-canvas,
-.stage-game .stage.is-result-clear .source-video {
+/* Hide stage picture while the currency result owns the screen. */
+.stage.is-result-clear > canvas.game-stage-canvas,
+.stage.is-result-clear .source-video {
   visibility: hidden !important;
   pointer-events: none !important;
 }
@@ -2235,10 +2234,10 @@
 .no-match__overlay {
   position: absolute;
   inset: 0;
-  background: oklch(0.08 0.01 284 / 0.28);
-  backdrop-filter: blur(1px);
-  -webkit-backdrop-filter: blur(1px);
-  animation: no-match-overlay-in 200ms ease-out 200ms both;
+  /* Solid static fill — hide theme video (same as currency result). */
+  background: #05040a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .no-match__content {

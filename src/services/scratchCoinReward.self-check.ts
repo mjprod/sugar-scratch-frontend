@@ -3,15 +3,19 @@
  * Run: npx tsx src/services/scratchCoinReward.self-check.ts
  */
 import {
+  isScratchHandQuotaExhausted,
   nextWalletAfterScratchPersist,
   persistScratchCoins,
+  resetScratchHandQuotaForTests,
   SCRATCH_COIN_MAX,
   SCRATCH_COIN_MIN,
+  startScratchHand,
 } from "./scratchCoinReward.ts";
 import {
   SCRATCH_COIN_MAX as AWARD_MAX,
   SCRATCH_COIN_MIN as AWARD_MIN,
 } from "../features/game/modules/sparkleCoinAward";
+import { ApiError } from "../lib/api";
 
 // Compile-time guard: persistScratchCoins must not accept an applyWallet callback argument.
 // @ts-expect-error persistScratchCoins should have exactly one argument
@@ -43,7 +47,10 @@ const local = { coins: 190, diamonds: 8 };
     { coins: 500, diamonds: 20 },
     { authed: false },
   );
-  assert(next.coins === 0 && next.diamonds === 0, "late persist after logout must not restore prior wallet");
+  assert(
+    next.coins === 0 && next.diamonds === 0,
+    "late persist after logout must not restore prior wallet",
+  );
 }
 
 {
@@ -58,7 +65,35 @@ const local = { coins: 190, diamonds: 8 };
 
 {
   const next = nextWalletAfterScratchPersist(local, null, { authed: true });
-  assert(next === local || (next.coins === local.coins && next.diamonds === local.diamonds), "null remote keeps local");
+  assert(
+    next === local ||
+      (next.coins === local.coins && next.diamonds === local.diamonds),
+    "null remote keeps local",
+  );
+}
+
+resetScratchHandQuotaForTests();
+assert(!isScratchHandQuotaExhausted(), "quota starts clear");
+
+const originalFetch = globalThis.fetch;
+let posts = 0;
+globalThis.fetch = (async () => {
+  posts += 1;
+  throw new ApiError(429, "scratch hand limit (24/day) reached");
+}) as typeof fetch;
+
+try {
+  const a = startScratchHand("card-a");
+  const b = startScratchHand("card-a");
+  assert(a === b, "concurrent same-card starts share one in-flight promise");
+  await a;
+  assert(isScratchHandQuotaExhausted(), "429 locks daily quota");
+  const postsAfterQuota = posts;
+  await startScratchHand("card-b");
+  assert(posts === postsAfterQuota, "after quota, no further network posts");
+} finally {
+  globalThis.fetch = originalFetch;
+  resetScratchHandQuotaForTests();
 }
 
 console.log("scratch coin reward self-check passed");
