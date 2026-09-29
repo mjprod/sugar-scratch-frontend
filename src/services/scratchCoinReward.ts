@@ -10,6 +10,7 @@
  */
 
 import { ApiError, apiMutate } from "../lib/api";
+import { getAuthUserId } from "./auth";
 
 /** Optimistic floor/ceil — single source in sparkleCoinAward (must match backend). */
 export {
@@ -40,8 +41,15 @@ export type ScratchCoinClaimBody = {
   amount?: number;
 };
 
-/** Backend SCRATCH_HANDS_PER_DAY — stop POSTing after the first 429. */
-let scratchHandQuotaExhausted = false;
+/**
+ * Backend SCRATCH_HANDS_PER_DAY is a rolling 24h window per user, so a slot can
+ * free up at any time — back off after a 429 instead of latching forever.
+ */
+export const SCRATCH_HAND_QUOTA_BACKOFF_MS = 15 * 60 * 1000;
+
+/** Set on 429; only blocks starts for the same account until `until`. */
+let scratchHandQuotaBlock: { ownerId: string | null; until: number } | null =
+  null;
 const scratchHandInFlight = new Map<
   string,
   Promise<ScratchHandResult | null>
@@ -61,14 +69,34 @@ export function nextWalletAfterScratchPersist(
   return local;
 }
 
-/** True after the server returns 429 for daily scratch-hand quota. */
-export function isScratchHandQuotaExhausted(): boolean {
-  return scratchHandQuotaExhausted;
+/**
+ * True while a recent 429 for this account is still inside its backoff.
+ * A different (or signed-out) account, or an expired backoff, clears it.
+ */
+export function isScratchHandQuotaExhausted(
+  ownerId: string | null = getAuthUserId(),
+  now: number = Date.now(),
+): boolean {
+  const block = scratchHandQuotaBlock;
+  if (!block) return false;
+  if (block.ownerId !== ownerId || now >= block.until) {
+    scratchHandQuotaBlock = null;
+    return false;
+  }
+  return true;
+}
+
+/** Record a quota 429 for `ownerId` (exported for self-checks). */
+export function markScratchHandQuotaExhausted(
+  ownerId: string | null = getAuthUserId(),
+  now: number = Date.now(),
+): void {
+  scratchHandQuotaBlock = { ownerId, until: now + SCRATCH_HAND_QUOTA_BACKOFF_MS };
 }
 
 /** Test helper — reset module quota / in-flight state. */
 export function resetScratchHandQuotaForTests(): void {
-  scratchHandQuotaExhausted = false;
+  scratchHandQuotaBlock = null;
   scratchHandInFlight.clear();
 }
 
@@ -76,9 +104,10 @@ export function resetScratchHandQuotaForTests(): void {
 export function startScratchHand(
   cardId?: string,
 ): Promise<ScratchHandResult | null> {
-  if (scratchHandQuotaExhausted) return Promise.resolve(null);
+  const ownerId = getAuthUserId();
+  if (isScratchHandQuotaExhausted(ownerId)) return Promise.resolve(null);
 
-  const key = cardId?.trim() || "";
+  const key = `${ownerId ?? ""}:${cardId?.trim() || ""}`;
   const pending = scratchHandInFlight.get(key);
   if (pending) return pending;
 
@@ -100,11 +129,11 @@ export function startScratchHand(
       settle(hand);
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
-        scratchHandQuotaExhausted = true;
+        markScratchHandQuotaExhausted(ownerId);
         try {
           if (import.meta.env?.DEV) {
             console.warn(
-              "[scratchCoinReward] daily scratch-hand quota reached — skipping further starts",
+              "[scratchCoinReward] daily scratch-hand quota reached — backing off",
             );
           }
         } catch {

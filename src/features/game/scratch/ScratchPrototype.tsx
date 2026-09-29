@@ -1290,6 +1290,8 @@ export function ScratchPrototype({
   const handStartGenRef = useRef(0);
   /** Card id the current handId was issued for — skip remount/mesh restarts. */
   const handCardIdRef = useRef<string | null>(null);
+  /** Lab restart token the current hand was started for — a bump needs a fresh hand. */
+  const handLabRestartTokenRef = useRef(0);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -3295,9 +3297,13 @@ export function ScratchPrototype({
 
   // One server hand per card identity (not per mesh reload). Re-runs when auth
   // lands so a cold first paint that skipped while `!authed` still gets a hand.
+  // A lab replay of the same card must start a new hand: the old one's
+  // milestones are already claimed server-side.
   useEffect(() => {
     if (!card?.id) return;
-    beginScratchHand(card.id);
+    const labRestarted = handLabRestartTokenRef.current !== labRestartToken;
+    if (authed) handLabRestartTokenRef.current = labRestartToken;
+    beginScratchHand(card.id, labRestarted ? { force: true } : undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- beginScratchHand closes over authed
   }, [selectedCardId, card?.id, labRestartToken, authed]);
 
