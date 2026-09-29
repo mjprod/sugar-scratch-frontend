@@ -34,7 +34,7 @@ console.log(
     {
       ok: true,
       policy:
-        "mute → stopSparkleCoinSounds; play → stop all bands first so clips never stack",
+        "mute → stopSparkleCoinSounds; play → overlap in-flight clips (capped voices)",
     },
     null,
     2,
