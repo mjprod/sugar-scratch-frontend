@@ -8,6 +8,7 @@ import {
 import { EffectCoverflow } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperClass } from "swiper/types";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import {
   CtaButton,
   ctaButtonPropsFromTemplate,
@@ -310,9 +311,11 @@ export function MobileCssCarousel({
   onBuy,
   onAddToPocket,
   onFocusChange,
+  onSelect,
   buyDisabled = false,
   influencerBackdrop = false,
   selectedId = null,
+  compact = false,
 }: {
   items: Iteration[];
   onReady?: () => void;
@@ -321,11 +324,15 @@ export function MobileCssCarousel({
   /** Home pocket path. When omitted, adds directly to the pack cart. */
   onAddToPocket?: (item: Iteration) => void;
   onFocusChange?: (item: Iteration | null) => void;
+  /** Compact resume strip: tap active pack (or play) instead of Buy Pack. */
+  onSelect?: (item: Iteration) => void;
   buyDisabled?: boolean;
   /** Stage backdrop from influencer API cover/swipe poster. */
   influencerBackdrop?: boolean;
   /** Jump swiper to this pack id when set from outside (status pager). */
   selectedId?: string | null;
+  /** Fit a parent panel: no buy HUD, no dim overlay, scaled coverflow. */
+  compact?: boolean;
 }) {
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -333,6 +340,7 @@ export function MobileCssCarousel({
   const onBuyRef = useRef(onBuy);
   const onAddToPocketRef = useRef(onAddToPocket);
   const onFocusChangeRef = useRef(onFocusChange);
+  const onSelectRef = useRef(onSelect);
   const buyDisabledRef = useRef(buyDisabled);
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -365,6 +373,7 @@ export function MobileCssCarousel({
   onBuyRef.current = onBuy;
   onAddToPocketRef.current = onAddToPocket;
   onFocusChangeRef.current = onFocusChange;
+  onSelectRef.current = onSelect;
   buyDisabledRef.current = buyDisabled;
   activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
@@ -548,12 +557,16 @@ export function MobileCssCarousel({
 
   const applySlideDim = useCallback((swiper: SwiperClass) => {
     swiper.slides.forEach((slide) => {
+      if (compact) {
+        slide.style.setProperty("--slide-dim", "0");
+        return;
+      }
       const t = Math.min(1, Math.abs(slide.progress ?? 0));
       const eased = t * t * (3 - 2 * t);
       // Matches prior brightness(1 - 0.5 * eased) via a black dim overlay.
       slide.style.setProperty("--slide-dim", String(0.5 * eased));
     });
-  }, []);
+  }, [compact]);
 
   const applyKeep = useCallback((keep: number[]) => {
     videoKeepRef.current = keep;
@@ -692,6 +705,7 @@ export function MobileCssCarousel({
   // confirm dialog open animation loops (open then immediate leave).
   function handleShellPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 && event.pointerType === "mouse") return;
+    if (compact) return;
     const origin = event.target;
     if (
       origin instanceof Element &&
@@ -752,9 +766,9 @@ export function MobileCssCarousel({
     <div
       className={`stage-packs mobile-css-carousel-stage${stageGlowClass}${
         influencerBackdrop ? " has-influencer-backdrop" : ""
-      }`}
+      }${compact ? " is-compact" : ""}`}
     >
-      {influencerBackdrop ? (
+      {compact ? null : influencerBackdrop ? (
         <div className="packs-influencer-backdrop" aria-hidden="true">
           {activeBackdropUrl ? (
             <img
@@ -775,25 +789,57 @@ export function MobileCssCarousel({
         className="mobile-css-carousel-shell"
         onPointerUp={handleShellPointerUp}
       >
+        {compact && items.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="mc-popular-arrow is-prev"
+              aria-label="Previous packs"
+              disabled={activeIndex <= 0}
+              onClick={(event) => {
+                event.stopPropagation();
+                swiperRef.current?.slidePrev();
+              }}
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="mc-popular-arrow is-next"
+              aria-label="Next packs"
+              disabled={activeIndex >= items.length - 1}
+              onClick={(event) => {
+                event.stopPropagation();
+                swiperRef.current?.slideNext();
+              }}
+            >
+              <ChevronRight size={18} aria-hidden />
+            </button>
+          </>
+        ) : null}
         <Swiper
           className="mobile-css-carousel"
-          modules={[EffectCoverflow]}
-          effect="coverflow"
+          modules={compact ? [] : [EffectCoverflow]}
+          effect={compact ? "slide" : "coverflow"}
           grabCursor
-          centeredSlides
+          centeredSlides={!compact}
           slidesPerView="auto"
-          spaceBetween={-72}
+          spaceBetween={compact ? 9 : -72}
           speed={720}
           resistanceRatio={0.85}
           watchSlidesProgress
-          coverflowEffect={{
-            rotate: 38,
-            stretch: -88,
-            depth: 80,
-            scale: 0.9,
-            modifier: 1,
-            slideShadows: false,
-          }}
+          {...(compact
+            ? {}
+            : {
+                coverflowEffect: {
+                  rotate: 38,
+                  stretch: -88,
+                  depth: 80,
+                  scale: 0.9,
+                  modifier: 1,
+                  slideShadows: false,
+                },
+              })}
           onSwiper={onSwiper}
           onProgress={applySlideDim}
           onSetTranslate={(swiper) => {
@@ -803,7 +849,7 @@ export function MobileCssCarousel({
           onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button"
+          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
             const pocketed = isPackInCart(item.id, item.characterId);
@@ -843,9 +889,36 @@ export function MobileCssCarousel({
                       }}
                     />
                   ) : null}
-                  <div className="mobile-css-carousel__dim" aria-hidden="true" />
+                  {compact ? null : (
+                    <div className="mobile-css-carousel__dim" aria-hidden="true" />
+                  )}
                 </div>
-                {isActive ? (
+                {compact ? (
+                  <div className="mobile-css-carousel__play">
+                    <CtaButton
+                      {...ctaButtonPropsFromTemplate("squircleCTA")}
+                      fillParent
+                      label=""
+                      leadingIcon={
+                        <Play
+                          size={10}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      }
+                      costAmount={null}
+                      fontSize={12}
+                      cornerRadius={999}
+                      aria-label={`Play ${item.packName || item.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelectRef.current?.(item);
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {!compact && isActive ? (
                   <PackSlideHud
                     item={item}
                     active

@@ -260,6 +260,110 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-img {
   width: 100%;
 }
 
+/* Page skeleton — same pulse as collection / creator placeholders. */
+.mcp-page-skeleton .mcp-skeleton-bar,
+.mcp-page-skeleton .mcp-skeleton-tile,
+.mcp-page-skeleton .mcp-skeleton-photo {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: oklch(1 0 0 / 0.08);
+  animation: search-pulse 1.2s ease-in-out infinite;
+}
+
+.mcp-skeleton-title {
+  width: 148px;
+  height: 20px;
+}
+
+.mcp-skeleton-hero {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: center;
+  width: 100%;
+  min-height: 164px;
+  padding: 16px 12px 16px 16px;
+  box-sizing: border-box;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  background-image: linear-gradient(
+    215deg,
+    rgba(170, 170, 170, 0.25) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+.mcp-skeleton-tile {
+  grid-column: 1;
+  grid-row: 1;
+  width: 108px;
+  aspect-ratio: 108 / 210.5;
+  margin-top: -28px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+
+.mcp-skeleton-copy {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.mcp-skeleton-bar.is-name {
+  width: 72%;
+  height: 32px;
+}
+
+.mcp-skeleton-bar.is-pill {
+  width: 58%;
+  height: 25px;
+  border-radius: 4px;
+}
+
+.mcp-skeleton-bar.is-note {
+  width: 46%;
+  height: 10px;
+}
+
+.mcp-skeleton-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.mcp-skeleton-bar.is-photos-title {
+  width: 46%;
+  height: 14px;
+}
+
+.mcp-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mcp-skeleton-photo {
+  aspect-ratio: 64 / 114;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mcp-page-skeleton .mcp-skeleton-bar,
+  .mcp-page-skeleton .mcp-skeleton-tile,
+  .mcp-page-skeleton .mcp-skeleton-photo {
+    animation: none;
+  }
+}
+
 .mcp-photo-cell {
   position: relative;
   aspect-ratio: 64 / 114;

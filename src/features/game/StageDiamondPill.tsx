@@ -45,7 +45,7 @@ export function StageDiamondPill() {
   return (
     <div
       className="stage-game__coin-pill"
-      aria-label={`${label} Diamond Dust collected`}
+      aria-label={`${label} Coins collected`}
       aria-live="polite"
     >
       <CoinLottie

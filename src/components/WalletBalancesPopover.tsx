@@ -324,8 +324,8 @@ export function WalletBalancesPopover({
       };
 
   const convertAria = affordable
-    ? `Convert ${affordable.coins.toLocaleString("en-US")} Diamond Dust for ${formatExchangeDiamondPreview(affordable.diamonds)}`
-    : "Not enough Diamond Dust to convert";
+    ? `Convert ${affordable.coins.toLocaleString("en-US")} Coins for ${formatExchangeDiamondPreview(affordable.diamonds)}`
+    : "Not enough Coins to convert";
 
   const dialog = (
     <div

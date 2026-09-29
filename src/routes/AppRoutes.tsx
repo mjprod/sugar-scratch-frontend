@@ -155,7 +155,7 @@ export function AppRoutes() {
           <Route
             path={Paths.recommend}
             element={
-              <OnboardShell badge="Recommend · Intro" intro>
+              <OnboardShell intro>
                 <RecIntroPage />
               </OnboardShell>
             }

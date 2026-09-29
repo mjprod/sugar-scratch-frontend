@@ -9,10 +9,7 @@ import {
   type FeaturedCoverFlowPlayTarget,
 } from "@/components/home/FeaturedCoverFlow";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import {
-  createCard,
-  type CardConfig,
-} from "@/features/collection/lib/cards";
+import { type CardConfig } from "@/features/collection/lib/cards";
 import type { ThemeCardData } from "@/services/collection";
 import type { FeaturedPack } from "@/services/homepage";
 import { Paths } from "@/routes/Paths";
@@ -40,6 +37,27 @@ const THEME_GLYPH: Record<string, string> = {
   midnight: "🌙",
 };
 
+function isVideoSrc(src: string): boolean {
+  return /\.(mp4|webm|mov)(\?|#|$)/i.test(src);
+}
+
+/** Still frame for a motion tile — never a video URL, never a placeholder pad. */
+function motionTileStillUrl(card: CardConfig): string {
+  const poster = card.posterUrl?.trim() || "";
+  if (poster && !isVideoSrc(poster)) return poster;
+  if (card.mediaType === "image") {
+    const media = card.mediaUrl?.trim() || "";
+    if (media && !isVideoSrc(media) && !media.includes("placeholder")) return media;
+  }
+  const photo = card.photoUrls?.find((url) => url?.trim())?.trim() || "";
+  if (photo) return photo;
+  const id = card.id.trim();
+  if (id && !id.includes("-placeholder-")) {
+    return `/cards/${encodeURIComponent(id)}/motion-poster.webp`;
+  }
+  return "";
+}
+
 function themeGlyph(theme: Pick<ThemeCardData, "id" | "name">): string {
   const key = `${theme.id} ${theme.name}`.toLowerCase();
   for (const [id, glyph] of Object.entries(THEME_GLYPH)) {
@@ -60,10 +78,8 @@ export function CreatorInfluencerBody({
   cardsByThemeId,
   showPersonalProgress,
   loading,
-  onBuyPack,
   onAddPackToPocket,
   onOpenCard,
-  onLockedHint,
   onPlayGame,
 }: {
   creatorName: string;
@@ -77,10 +93,8 @@ export function CreatorInfluencerBody({
   cardsByThemeId: Record<string, CardConfig[]>;
   showPersonalProgress: boolean;
   loading?: boolean;
-  onBuyPack: (themeId?: string) => void;
   onAddPackToPocket: (pack: FeaturedCoverFlowPlayTarget) => void;
   onOpenCard: (cardId: string, themeId: string) => void;
-  onLockedHint: () => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
 }) {
   const navigate = useNavigate();
@@ -152,19 +166,6 @@ export function CreatorInfluencerBody({
         aria-label="Collection progress"
       >
         <h3 className="cpv2-progress-title">Collection Progress</h3>
-        <div
-          className="cpv2-progress-overall"
-          role="progressbar"
-          aria-valuenow={totalPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`Overall collection ${totalCollected} of ${totalCards}`}
-        >
-          <span
-            className="cpv2-progress-overall-fill"
-            style={{ width: `${totalPct}%` }}
-          />
-        </div>
         <ul className="cpv2-progress-list">
           {loading && themes.length === 0
             ? Array.from({ length: 4 }, (_, i) => (
@@ -213,9 +214,7 @@ export function CreatorInfluencerBody({
             avatarUrl={theme.thumbnailUrl || avatarUrl}
             cards={cardsByThemeId[theme.id] ?? []}
             showPersonalProgress={showPersonalProgress}
-            onBuyPack={() => onBuyPack(theme.id)}
             onOpenCard={(cardId) => onOpenCard(cardId, theme.id)}
-            onLockedHint={onLockedHint}
             onPlayGame={onPlayGame}
           />
         ))}
@@ -372,9 +371,7 @@ function ThemeCollectionCard({
   avatarUrl,
   cards,
   showPersonalProgress,
-  onBuyPack,
   onOpenCard,
-  onLockedHint,
   onPlayGame,
 }: {
   theme: ThemeCardData;
@@ -382,37 +379,26 @@ function ThemeCollectionCard({
   avatarUrl: string;
   cards: CardConfig[];
   showPersonalProgress: boolean;
-  onBuyPack: () => void;
   onOpenCard: (cardId: string) => void;
-  onLockedHint: () => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
 }) {
-  const motionCards = cards.slice(0, 3);
-  while (motionCards.length < 3) {
-    const n = motionCards.length;
-    motionCards.push(
-      createCard({
-        id: `${theme.id}-placeholder-${n}`,
-        name: `Motion ${n + 1}`,
-        mediaType: "image",
-        mediaUrl: "/img/placeholder.png",
-        groupId: theme.id,
-        groupTheme: theme.name,
-        photoFilledCount: 0,
-      }),
-    );
-  }
+  // A tile exists only when the catalog published a motion template for it.
+  // Ownership (photoFilledCount) does not create or hide the tile.
+  const motionCards = cards
+    .filter(
+      (card) =>
+        !card.id.includes("-placeholder-") && Boolean(card.motionUrl?.trim()),
+    )
+    .slice(0, 3);
 
   const photoDone = showPersonalProgress ? theme.collected : 0;
   const photoTotal = theme.total || 30;
 
   // Premium teaser: 3 locks — gold for fully unlocked motion cards (Figma 126:3395).
   const PREMIUM_LOCK_COUNT = 3;
-  const motionUnlocked = motionCards.filter((c) => {
-    if (c.id.includes("-placeholder-")) return false;
-    const filled = c.photoFilledCount ?? 0;
-    return showPersonalProgress && filled >= 10;
-  }).length;
+  const motionUnlocked = motionCards.filter(
+    (c) => !c.id.includes("-placeholder-"),
+  ).length;
   const unlockedLocks = Math.min(PREMIUM_LOCK_COUNT, motionUnlocked);
   const motionNeeded = Math.max(0, PREMIUM_LOCK_COUNT - unlockedLocks);
 
@@ -448,13 +434,10 @@ function ThemeCollectionCard({
           );
           const collected =
             showPersonalProgress && !isPlaceholder && filled >= 1;
-          const fullyUnlocked =
-            showPersonalProgress && !isPlaceholder && filled >= 10;
-          const thumb =
-            card.posterUrl ||
-            (card.mediaType === "image" ? card.mediaUrl : "") ||
-            card.photoUrls?.find(Boolean) ||
-            "";
+          // Published catalog cards are owned/playable — lock overlay is only
+          // for empty placeholder slots. Photo 10/10 is a separate collection meter.
+          const fullyUnlocked = !isPlaceholder;
+          const thumb = isPlaceholder ? "" : motionTileStillUrl(card);
           const scratchesReady =
             showPersonalProgress &&
             !isPlaceholder &&
@@ -462,19 +445,12 @@ function ThemeCollectionCard({
             filled < 10;
 
           const handleTileActivate = () => {
-            if (isPlaceholder) {
-              onBuyPack();
-              return;
-            }
-            if (fullyUnlocked) {
-              onOpenCard(card.id);
-              return;
-            }
-            if (collected && card.modelId) {
-              onPlayGame(card.modelId, card.id, card.name);
-              return;
-            }
-            onLockedHint();
+            // Locked slots have no card of their own — open the theme's motion page.
+            const targetId = isPlaceholder
+              ? motionCards.find((entry) => !entry.id.includes("-placeholder-"))?.id
+              : card.id;
+            if (!targetId) return;
+            onOpenCard(targetId);
           };
 
           return (
@@ -493,9 +469,11 @@ function ThemeCollectionCard({
                 type="button"
                 className="cpv2-motion-tile-hit"
                 aria-label={
-                  fullyUnlocked
-                    ? `${card.name} — unlocked`
-                    : `Locked motion card — buy packs to unlock`
+                  isPlaceholder
+                    ? `Locked motion card — buy packs to unlock`
+                    : fullyUnlocked
+                      ? `${card.name} — unlocked`
+                      : `${card.name} — view photo cards`
                 }
                 onClick={handleTileActivate}
               >

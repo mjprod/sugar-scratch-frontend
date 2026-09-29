@@ -96,13 +96,9 @@ function MotionCardScreenInner({
     return collection.cards.find((entry) => entry.id === cardId) ?? null;
   }, [cardId, collection.cards]);
 
-  // Preloader between character → motion; dismiss as soon as the shell can paint.
-  useMarkPageReady(
-    Boolean(card) ||
-      !collection.loading ||
-      collection.cards.length > 0 ||
-      collection.themes.length > 0,
-  );
+  const pageLoading = !modelId || (collection.loading && !card);
+  // Preloader between character → motion; dismiss once the card or a failed load can paint.
+  useMarkPageReady(!pageLoading);
 
   const themeCards = useMemo(() => {
     if (!card) return [] as CardConfig[];
@@ -128,8 +124,13 @@ function MotionCardScreenInner({
 
   const poster =
     card?.posterUrl ||
-    (card?.mediaType === "image" ? card.mediaUrl : "") ||
+    (card?.mediaType === "image" && !/\.(mp4|webm|mov)(\?|#|$)/i.test(card.mediaUrl)
+      ? card.mediaUrl
+      : "") ||
     card?.photoUrls?.find(Boolean) ||
+    (cardId && !cardId.includes("-placeholder-")
+      ? `/cards/${encodeURIComponent(cardId)}/motion-poster.webp`
+      : "") ||
     "/img/placeholder.png";
 
   const videoUrl =
@@ -177,6 +178,14 @@ function MotionCardScreenInner({
         modelId: playModelId || undefined,
         creatorId,
       }),
+    );
+  }
+
+  if (pageLoading) {
+    return (
+      <section data-page-scroll className="mcp-page cpv2-page no-sticky-cta">
+        <MotionCardSkeleton onBack={goBack} />
+      </section>
     );
   }
 
@@ -440,5 +449,39 @@ function MotionCardScreenInner({
           )
         : null}
     </section>
+  );
+}
+
+function MotionCardSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="mcp-shell mcp-page-skeleton" aria-busy="true">
+      <header className="mcp-top">
+        <button
+          type="button"
+          className="mcp-back"
+          aria-label="Back to creator"
+          onClick={onBack}
+        >
+          <ChevronLeft size={18} strokeWidth={2.4} aria-hidden />
+        </button>
+        <span className="mcp-skeleton-bar mcp-skeleton-title" aria-hidden="true" />
+      </header>
+      <div className="mcp-skeleton-hero" aria-hidden="true">
+        <span className="mcp-skeleton-tile" />
+        <span className="mcp-skeleton-copy">
+          <span className="mcp-skeleton-bar is-name" />
+          <span className="mcp-skeleton-bar is-pill" />
+          <span className="mcp-skeleton-bar is-note" />
+        </span>
+      </div>
+      <div className="mcp-skeleton-photos" aria-hidden="true">
+        <span className="mcp-skeleton-bar is-photos-title" />
+        <div className="mcp-skeleton-grid">
+          {Array.from({ length: PHOTO_SLOTS }, (_, index) => (
+            <span key={index} className="mcp-skeleton-photo" />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

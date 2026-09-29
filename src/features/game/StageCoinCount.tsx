@@ -3,7 +3,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { formatBalance } from "@/lib/formatBalance";
 
 /** Static dust mark — still frame (no Lottie runtime / canvas). */
-const COIN_WEBP_SRC = "/images/diamondDust.webp";
+const COIN_WEBP_SRC = "/images/coin.webp";
 const COUNT_BASE_MS = 720;
 /** How long the +N chip / value pop stay when CSS animations are disabled. */
 const REDUCED_MOTION_FLASH_MS = 900;
@@ -142,7 +142,7 @@ export function StageCoinCount({
   return (
     <div className="stage-game__coin-count">
       <span className="visually-hidden" aria-live="polite">
-        {formatBalance(target)} diamond dust
+        {formatBalance(target)} coins
         {flashAward > 0 ? `, plus ${flashAward}` : ""}
       </span>
       <span className="stage-game__coin-count-icon" aria-hidden="true">
@@ -178,7 +178,7 @@ export function StageCoinCount({
         >
           {label}
         </p>
-        <p className="stage-game__coin-count-label">Diamond Dust</p>
+        <p className="stage-game__coin-count-label">Coins</p>
       </div>
       {flashAward > 0 ? (
         <span

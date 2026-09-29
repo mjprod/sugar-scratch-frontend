@@ -32,7 +32,6 @@ import {
 } from "@/services/models";
 import {
   loadPackCatalog,
-  packUnitCost,
   type PurchaseFlowPack,
 } from "@/services/purchase";
 import "./creator-collection.css";
@@ -120,8 +119,9 @@ function CreatorScreenInner({
 }) {
   const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId);
+  const pageLoading = !model || collection.loading;
   useMarkPageReady(
-    !collection.loading ||
+    !pageLoading ||
       collection.themes.length > 0 ||
       collection.cards.length > 0,
   );
@@ -352,27 +352,6 @@ function CreatorScreenInner({
     notice(`Following ${creatorName}`);
   }
 
-  function buyThemePack(themeId?: string) {
-    const packTheme =
-      (themeId
-        ? themes.find((entry) => entry.id === themeId)
-        : undefined) ??
-      themes.find((entry) => entry.id === selectedThemeId) ??
-      themes[0];
-    const packId = packTheme
-      ? `${purchaseCreatorId}-${packTheme.id}-buy`
-      : `${purchaseCreatorId}-pack`;
-    const cost = packUnitCost(packId);
-    onBuyPack({
-      packId,
-      packName: packTheme?.name ?? `${creatorName} Pack`,
-      themeName: packTheme?.name,
-      price: `${cost} ◆`,
-      creator: creatorName,
-      entry: "purchase",
-    });
-  }
-
   function addCoverflowPackToPocket(pack: {
     id: string;
     foilId?: string;
@@ -390,6 +369,18 @@ function CreatorScreenInner({
       creator: pack.creatorName || creatorName,
       entry: "purchase",
     });
+  }
+
+  if (pageLoading && themes.length === 0) {
+    return (
+      <section
+        ref={pageRef}
+        data-page-scroll
+        className="cpv2-page no-sticky-cta"
+      >
+        <CreatorPageSkeleton onBack={onBack} />
+      </section>
+    );
   }
 
   return (
@@ -421,7 +412,6 @@ function CreatorScreenInner({
           cardsByThemeId={collection.cardsByThemeId}
           showPersonalProgress={authed}
           loading={collection.loading}
-          onBuyPack={buyThemePack}
           onAddPackToPocket={addCoverflowPackToPocket}
           onOpenCard={(cardId, themeId) => {
             // Open the motion card detail route. Do not also write ?card= on the
@@ -430,7 +420,6 @@ function CreatorScreenInner({
             setSelectedThemeId(themeId);
             navigate(Paths.motionCard(creatorId, cardId));
           }}
-          onLockedHint={() => notice("Buy packs to unlock Motion Cards")}
           onPlayGame={handlePlayGame}
         />
       </div>
@@ -450,5 +439,33 @@ function CreatorScreenInner({
         />
       ) : null}
     </section>
+  );
+}
+
+function CreatorPageSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="cpv2-shell cpv2-page-skeleton" aria-busy="true">
+      <div className="cpv2-skeleton-profile">
+        <button
+          type="button"
+          className="cpv2-skeleton-back"
+          aria-label="Back"
+          onClick={onBack}
+        />
+        <span className="cpv2-skeleton-avatar" aria-hidden="true" />
+        <span className="cpv2-skeleton-meta" aria-hidden="true">
+          <span className="cpv2-skeleton-bar is-name" />
+          <span className="cpv2-skeleton-bar is-handle" />
+          <span className="cpv2-skeleton-bar is-location" />
+        </span>
+      </div>
+      <div className="cpv2-influencer" aria-hidden="true">
+        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-progress" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+      </div>
+    </div>
   );
 }

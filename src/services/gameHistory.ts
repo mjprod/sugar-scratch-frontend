@@ -436,7 +436,7 @@ export function rewardOutcomeLabel(row: GameHistoryRecord): string {
   let value: string;
   if (row.rewardType === "AUD") value = `Won A$${amount.toFixed(2)}`;
   else if (row.rewardType === "DIAMOND") value = `+${amount} Diamonds`;
-  else value = `+${amount} Diamond Dust`;
+  else value = `+${amount} Coins`;
 
   const status = rewardStatusLabel(row.rewardStatus);
   return status ? `${value} · ${status}` : value;

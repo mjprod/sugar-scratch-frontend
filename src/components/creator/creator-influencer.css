@@ -491,22 +491,6 @@ body[data-theme="v8"] .cpv2-progress-title {
   line-height: 1.2;
 }
 
-body[data-theme="v8"] .cpv2-progress-overall {
-  width: min(236px, 100%);
-  height: 8px;
-  overflow: hidden;
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.11);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-body[data-theme="v8"] .cpv2-progress-overall-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #aa004f, rgba(170, 0, 79, 0.5));
-}
-
 body[data-theme="v8"] .cpv2-progress-list {
   display: flex;
   flex-direction: column;
@@ -541,6 +525,10 @@ body[data-theme="v8"] .cpv2-progress-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+body[data-theme="v8"] .cpv2-progress-row.is-total {
+  margin-top: 0.5rem;
 }
 
 body[data-theme="v8"] .cpv2-progress-row.is-total .cpv2-progress-label {
@@ -718,7 +706,7 @@ body[data-theme="v8"] .cpv2-theme-card-count {
 
 body[data-theme="v8"] .cpv2-theme-card-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 5.5px;
   width: 100%;
   /* Room for the play CTA hanging below unlocked tiles. */
@@ -1407,8 +1395,21 @@ body[data-theme="v8"] .cpv2-ultra-glow {
   pointer-events: none;
 }
 
-/* ~10% larger frame behind the video — gradient ring via cutout */
+@property --cpv2-ultra-gold-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes cpv2-ultra-gold-spin {
+  to {
+    --cpv2-ultra-gold-angle: 360deg;
+  }
+}
+
+/* ~10% larger frame behind the video — spinning gold ring via cutout */
 body[data-theme="v8"] .cpv2-ultra-card-outline {
+  --cpv2-ultra-gold-angle: 0deg;
   position: absolute;
   top: calc(
     var(--cpv2-ultra-card-top) - (var(--cpv2-ultra-card-h) * 0.05)
@@ -1423,16 +1424,18 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
   box-sizing: border-box;
   pointer-events: none;
   isolation: isolate;
-  background: linear-gradient(
-    145deg,
-    #fff6d0 0%,
-    #ffd56a 18%,
-    #ffc640 36%,
-    #c4921a 58%,
-    #8a6208 78%,
-    #ffe6ab 100%
+  background: conic-gradient(
+    from var(--cpv2-ultra-gold-angle),
+    #fff6d0 0deg,
+    #ffd56a 65deg,
+    #ffc640 130deg,
+    #c4921a 210deg,
+    #8a6208 280deg,
+    #ffe6ab 330deg,
+    #fff6d0 360deg
   );
   box-shadow: 0 0 24px rgba(255, 198, 64, 0.28);
+  animation: cpv2-ultra-gold-spin 4000ms linear infinite;
   -webkit-mask-image: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 1) 0%,
@@ -1447,6 +1450,12 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
     rgba(0, 0, 0, 0.2) 66%,
     rgba(0, 0, 0, 0.3) 100%
   );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-ultra-card-outline {
+    animation: none;
+  }
 }
 
 body[data-theme="v8"] .cpv2-ultra-card-outline-cutout {
@@ -1479,7 +1488,6 @@ body[data-theme="v8"] .cpv2-ultra-card-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(1px) brightness(0.55);
 }
 
 body[data-theme="v8"] .cpv2-ultra-card-video {
@@ -1694,4 +1702,115 @@ body[data-theme="v8"] .cpv2-shell:has(.cpv2-influencer) {
 /* Hide legacy tall hero header styles when new card is present */
 body[data-theme="v8"] .cpv2-shell:has(.cpv2-profile-card) .cpv2-header {
   display: none;
+}
+
+/* Page skeleton — same pulse as collection / search placeholders. */
+body[data-theme="v8"] .cpv2-page-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 27px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-bar,
+body[data-theme="v8"] .cpv2-skeleton-block,
+body[data-theme="v8"] .cpv2-skeleton-avatar,
+body[data-theme="v8"] .cpv2-skeleton-back {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: oklch(1 0 0 / 0.08);
+  animation: search-pulse 1.2s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-profile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  height: 178px;
+  margin-top: 20px;
+  padding: 58px 16px 14px 32px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: #0a0a0a;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-back {
+  position: absolute;
+  top: 12px;
+  left: 9px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 60px;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-avatar {
+  width: 83px;
+  height: 83px;
+  border-radius: 60px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-bar.is-name {
+  width: 42%;
+  height: 16px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-bar.is-handle {
+  width: 28%;
+  height: 14px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-bar.is-location {
+  width: 36%;
+  height: 12px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-title {
+  width: min(220px, 70%);
+  height: 20px;
+  margin-inline: auto;
+  border-radius: 6px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-coverflow {
+  width: calc(100% + 24px);
+  height: min(52dvh, 460px);
+  min-height: 430px;
+  margin-left: -12px;
+  border-radius: 16px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-progress {
+  width: 100%;
+  height: 220px;
+  border-radius: 16px;
+}
+
+body[data-theme="v8"] .cpv2-skeleton-theme {
+  width: 100%;
+  height: 420px;
+  border-radius: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-skeleton-bar,
+  body[data-theme="v8"] .cpv2-skeleton-block,
+  body[data-theme="v8"] .cpv2-skeleton-avatar,
+  body[data-theme="v8"] .cpv2-skeleton-back {
+    animation: none;
+  }
 }

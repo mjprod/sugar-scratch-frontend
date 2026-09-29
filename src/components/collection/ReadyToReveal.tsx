@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Play } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
+import {
+  packItemToIteration,
+  type Iteration,
+} from "@/features/packs/types";
 import { useModels } from "@/hooks/useModels";
 import {
   resolveCollectionThemeLabel,
@@ -190,6 +194,27 @@ export function ReadyToReveal({
   );
 }
 
+function tileToIteration(tile: ContinueTile): Iteration {
+  const cover = (tile.coverUrl || "").trim();
+  const poster = (tile.posterUrl || "").trim();
+  const videoUrl = isVideoSrc(cover) ? cover : "";
+  return packItemToIteration({
+    id: tile.id,
+    characterId: tile.id,
+    name: tile.title,
+    modelUrl: "",
+    modelName: tile.title,
+    videoUrl,
+    posterUrl: poster || (!videoUrl ? cover : "") || undefined,
+    price: 0,
+    girlName: tile.title,
+    packNumber: 1,
+    packName: tile.title,
+    flagEmoji: "",
+    backgroundColor: "oklch(0.798 0.104 207.84)",
+  });
+}
+
 function ContinueSection({
   tiles,
   revealPacks,
@@ -203,7 +228,13 @@ function ContinueSection({
   scratchCount: number;
   inventoryRevision: number;
 }) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const items = useMemo(() => tiles.map(tileToIteration), [tiles]);
+  const activateById = useMemo(() => {
+    const map = new Map(tiles.map((tile) => [tile.id, tile.onActivate]));
+    return (item: Iteration) => {
+      map.get(item.id)?.();
+    };
+  }, [tiles]);
 
   useEffect(() => {
     if (scratchCount > 0) {
@@ -233,195 +264,18 @@ function ContinueSection({
         <h2 id="ready-heading" className="mc-continue-title">
           Continue where you left off…
         </h2>
-
-        <div ref={scrollerRef} className="mc-continue-row" role="list">
-          {tiles.map((tile, index) => {
-            const fade =
-              index === 0
-                ? ""
-                : index === 1
-                  ? "is-dim-1"
-                  : index === 2
-                    ? "is-dim-2"
-                    : "is-dim-3";
-            return (
-              <ContinueCard key={tile.id} tile={tile} className={fade} />
-            );
-          })}
-        </div>
+        {items.length > 0 ? (
+          <div className="mc-continue-carousel">
+            <MobileCssCarousel
+              items={items}
+              compact
+              onSelect={activateById}
+            />
+          </div>
+        ) : (
+          <div className="mc-continue-row" role="list" />
+        )}
       </div>
     </section>
-  );
-}
-
-function isApiMediaUrl(url: string): boolean {
-  const value = url.trim();
-  if (!value) return false;
-  if (
-    value.startsWith("/models/") ||
-    value.startsWith("/cards/") ||
-    value.startsWith("/photo-scratch/") ||
-    value.startsWith("/api/")
-  ) {
-    return true;
-  }
-  try {
-    if (/^https?:\/\//i.test(value)) {
-      const path = new URL(value).pathname;
-      return (
-        path.startsWith("/models/") ||
-        path.startsWith("/cards/") ||
-        path.startsWith("/photo-scratch/")
-      );
-    }
-  } catch {
-    /* ignore */
-  }
-  return false;
-}
-
-function uniqueMediaUrls(urls: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of urls) {
-    const src = raw.trim();
-    if (!src || !isApiMediaUrl(src) || seen.has(src)) continue;
-    seen.add(src);
-    out.push(src);
-  }
-  return out;
-}
-
-function ContinueCard({
-  tile,
-  className = "",
-}: {
-  tile: ContinueTile;
-  className?: string;
-}) {
-  const cover = (tile.coverUrl || "").trim();
-  const poster = (tile.posterUrl || "").trim();
-  const coverIsVideo = cover ? isVideoSrc(cover) : false;
-
-  // Prefer stills for <img>, but keep video URLs so video-only inventory can play.
-  const imageCandidates = uniqueMediaUrls([
-    poster,
-    !coverIsVideo ? cover : "",
-  ]);
-  const videoCandidates = uniqueMediaUrls([coverIsVideo ? cover : ""]);
-  const [imageIndex, setImageIndex] = useState(0);
-  const [videoIndex, setVideoIndex] = useState(0);
-  const [mode, setMode] = useState<"image" | "video" | "empty">(() => {
-    if (imageCandidates.length > 0) return "image";
-    if (videoCandidates.length > 0) return "video";
-    return "empty";
-  });
-
-  const mediaKey = `${cover}|${poster}`;
-
-  useEffect(() => {
-    setImageIndex(0);
-    setVideoIndex(0);
-    if (imageCandidates.length > 0) setMode("image");
-    else if (videoCandidates.length > 0) setMode("video");
-    else setMode("empty");
-    // imageCandidates / videoCandidates are derived from cover+poster.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaKey]);
-
-  function advanceImage() {
-    const next = imageIndex + 1;
-    if (next < imageCandidates.length) {
-      setImageIndex(next);
-      return;
-    }
-    if (videoCandidates.length > 0) {
-      setVideoIndex(0);
-      setMode("video");
-      return;
-    }
-    setMode("empty");
-  }
-
-  function advanceVideo() {
-    const next = videoIndex + 1;
-    if (next < videoCandidates.length) {
-      setVideoIndex(next);
-      return;
-    }
-    setMode("empty");
-  }
-
-  const imgSrc = imageCandidates[imageIndex] || "";
-  const videoSrc = videoCandidates[videoIndex] || "";
-
-  if (mode === "empty" || (mode === "image" && !imgSrc) || (mode === "video" && !videoSrc)) {
-    return (
-      <div
-        className={["mc-continue-card", className].filter(Boolean).join(" ")}
-        role="listitem"
-      >
-        <button
-          type="button"
-          className="mc-continue-card-hit is-empty"
-          aria-label={tile.ariaLabel}
-          onClick={tile.onActivate}
-        />
-        <button
-          type="button"
-          className="mc-continue-play"
-          aria-label={tile.ariaLabel}
-          onClick={tile.onActivate}
-        >
-          <Play size={10} strokeWidth={2.4} fill="currentColor" aria-hidden />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={["mc-continue-card", className].filter(Boolean).join(" ")}
-      role="listitem"
-    >
-      <button
-        type="button"
-        className="mc-continue-card-hit"
-        aria-label={tile.ariaLabel}
-        onClick={tile.onActivate}
-      >
-        {mode === "video" ? (
-          <video
-            key={videoSrc}
-            src={videoSrc}
-            poster={poster || undefined}
-            className="mc-continue-card-img"
-            muted
-            loop
-            playsInline
-            autoPlay
-            onError={advanceVideo}
-          />
-        ) : (
-          <img
-            key={imgSrc}
-            src={imgSrc}
-            alt=""
-            className="mc-continue-card-img"
-            loading="lazy"
-            decoding="async"
-            onError={advanceImage}
-          />
-        )}
-      </button>
-      <button
-        type="button"
-        className="mc-continue-play"
-        aria-label={tile.ariaLabel}
-        onClick={tile.onActivate}
-      >
-        <Play size={10} strokeWidth={2.4} fill="currentColor" aria-hidden />
-      </button>
-    </div>
   );
 }

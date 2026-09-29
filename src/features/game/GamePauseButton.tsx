@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pause, X } from "lucide-react";
+import { StageMuteButton } from "./StageMuteButton";
 
 /**
- * Pause control for the scratch stage: opens an overlay with resume / leave.
- * Audio is controlled by the stage mute button (SFX + BGM together).
+ * Pause control for the scratch stage: opens an overlay with mute / resume / leave.
+ * Mute toggles SFX and background music together.
  *
  * Layout: sit inside `.stage-game__top-chrome-side` so the button is flex-
  * centered in the gutter between the frame edge and the middle symbol bar.
@@ -131,6 +132,7 @@ function GamePauseModal({
         <h2 id={titleId} className="game-pause__title">
           Game Paused
         </h2>
+        <StageMuteButton className="game-pause__mute" showLabel />
         <button
           ref={resumeRef}
           type="button"

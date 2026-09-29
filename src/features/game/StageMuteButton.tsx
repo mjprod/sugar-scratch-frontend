@@ -44,10 +44,16 @@ function audibleSoundOn() {
 }
 
 /**
- * Right top-chrome control: same pill as pause, mute symbol.
- * Toggles both SFX and background music together (pause popup no longer has rows).
+ * Mute / unmute both SFX and background music together.
+ * Lives in the pause menu (the stage chrome no longer has its own button).
  */
-export function StageMuteButton() {
+export function StageMuteButton({
+  className = "stage-game__pause stage-game__mute",
+  showLabel = false,
+}: {
+  className?: string;
+  showLabel?: boolean;
+} = {}) {
   const [soundOn, setSoundOn] = useState(() => audibleSoundOn());
 
   useEffect(
@@ -87,7 +93,7 @@ export function StageMuteButton() {
   return (
     <button
       type="button"
-      className={`stage-game__pause stage-game__mute${soundOn ? "" : " is-muted"}`}
+      className={`${className}${soundOn ? "" : " is-muted"}`}
       aria-label={soundOn ? "Mute sounds" : "Unmute sounds"}
       aria-pressed={!soundOn}
       onClick={toggle}
@@ -97,6 +103,7 @@ export function StageMuteButton() {
       ) : (
         <VolumeX aria-hidden="true" size={17} strokeWidth={2.4} />
       )}
+      {showLabel ? (soundOn ? "Mute" : "Unmute") : null}
     </button>
   );
 }

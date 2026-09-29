@@ -19,7 +19,6 @@ import {
   type ImageLayerCameras,
 } from "./glRenderer";
 import { GamePauseButton } from "../GamePauseButton";
-import { StageMuteButton } from "../StageMuteButton";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import { PackProgress } from "../modules/PackProgress";
@@ -2962,7 +2961,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             </div>
           ) : null}
           {/* Top chrome — match motion cards:
-                row 1: pause | icon-bar track | mute
+                row 1: pause | icon-bar track
                 row 2: cards left | progress toast slot */}
           <div
             className={`stage-game__top-chrome${
@@ -2974,9 +2973,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
               </div>
               <div className="stage-game__top-chrome-center" />
-              <div className="stage-game__top-chrome-side is-end">
-                <StageMuteButton />
-              </div>
+              <div className="stage-game__top-chrome-side is-end" />
             </div>
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">

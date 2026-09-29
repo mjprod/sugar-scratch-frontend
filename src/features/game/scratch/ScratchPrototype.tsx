@@ -41,7 +41,6 @@ import {
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
 import { GamePauseButton } from "../GamePauseButton";
-import { StageMuteButton } from "../StageMuteButton";
 import {
   TOP_BAR_SHOWCASE_MS,
   TopSymbolBar,
@@ -946,10 +945,10 @@ const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {
@@ -5323,7 +5322,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             </div>
           ) : null}
           {/* Top chrome — two rows:
-                row 1: pause | icon-bar track | mute
+                row 1: pause | icon-bar track
                 row 2: blank | progress toast slot | cards left
               Body-match bar is stage-absolute (center foil → dock fly). */}
           <div
@@ -5371,9 +5370,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   </div>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end">
-                <StageMuteButton />
-              </div>
+              <div className="stage-game__top-chrome-side is-end" />
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">

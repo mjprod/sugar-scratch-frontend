@@ -153,6 +153,16 @@ export function GuestHomeLanding() {
       }
 
       const delta = clientX - drag.startX;
+      if (Math.abs(delta) >= SWIPE_THRESHOLD_PX) {
+        const suppressClick = (event: Event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        };
+        document.addEventListener("click", suppressClick, true);
+        window.setTimeout(() => {
+          document.removeEventListener("click", suppressClick, true);
+        }, 0);
+      }
       if (delta <= -SWIPE_THRESHOLD_PX && active < slideCount - 1) {
         goTo(active + 1);
         return;
@@ -166,8 +176,15 @@ export function GuestHomeLanding() {
     [active, goTo, slideCount],
   );
 
-  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest("a, input, textarea, select, .cta-button, .guest-home-landing__cta")
+    ) {
+      return;
+    }
     dragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -179,7 +196,7 @@ export function GuestHomeLanding() {
     event.currentTarget.setPointerCapture(event.pointerId);
   }, []);
 
-  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     const drag = dragRef.current;
     if (!drag || event.pointerId !== drag.pointerId) return;
 
@@ -188,8 +205,10 @@ export function GuestHomeLanding() {
 
     if (drag.axis === "undecided") {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      // Horizontal only — a vertical swipe must not move the track.
       if (Math.abs(dy) > Math.abs(dx)) {
         drag.axis = "y";
+        drag.dragging = false;
         return;
       }
       drag.axis = "x";
@@ -210,7 +229,7 @@ export function GuestHomeLanding() {
   }, [active, slideCount]);
 
   const onPointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    (event: ReactPointerEvent<HTMLElement>) => {
       const drag = dragRef.current;
       if (!drag || event.pointerId !== drag.pointerId) return;
       try {
@@ -224,7 +243,7 @@ export function GuestHomeLanding() {
   );
 
   const onPointerCancel = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    (event: ReactPointerEvent<HTMLElement>) => {
       const drag = dragRef.current;
       if (!drag || event.pointerId !== drag.pointerId) return;
       endDrag(drag.lastX);
@@ -238,7 +257,15 @@ export function GuestHomeLanding() {
   } as const;
 
   return (
-    <section className="guest-home-landing" aria-label="Welcome" aria-roledescription="carousel">
+    <section
+      className="guest-home-landing"
+      aria-label="Welcome"
+      aria-roledescription="carousel"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+    >
       <div
         ref={trackRef}
         className={[
