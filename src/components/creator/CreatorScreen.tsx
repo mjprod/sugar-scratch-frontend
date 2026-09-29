@@ -32,7 +32,6 @@ import {
 } from "@/services/models";
 import {
   loadPackCatalog,
-  packUnitCost,
   type PurchaseFlowPack,
 } from "@/services/purchase";
 import "./creator-collection.css";
@@ -353,27 +352,6 @@ function CreatorScreenInner({
     notice(`Following ${creatorName}`);
   }
 
-  function buyThemePack(themeId?: string) {
-    const packTheme =
-      (themeId
-        ? themes.find((entry) => entry.id === themeId)
-        : undefined) ??
-      themes.find((entry) => entry.id === selectedThemeId) ??
-      themes[0];
-    const packId = packTheme
-      ? `${purchaseCreatorId}-${packTheme.id}-buy`
-      : `${purchaseCreatorId}-pack`;
-    const cost = packUnitCost(packId);
-    onBuyPack({
-      packId,
-      packName: packTheme?.name ?? `${creatorName} Pack`,
-      themeName: packTheme?.name,
-      price: `${cost} ◆`,
-      creator: creatorName,
-      entry: "purchase",
-    });
-  }
-
   function addCoverflowPackToPocket(pack: {
     id: string;
     foilId?: string;
@@ -434,7 +412,6 @@ function CreatorScreenInner({
           cardsByThemeId={collection.cardsByThemeId}
           showPersonalProgress={authed}
           loading={collection.loading}
-          onBuyPack={buyThemePack}
           onAddPackToPocket={addCoverflowPackToPocket}
           onOpenCard={(cardId, themeId) => {
             // Open the motion card detail route. Do not also write ?card= on the

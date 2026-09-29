@@ -9,10 +9,7 @@ import {
   type FeaturedCoverFlowPlayTarget,
 } from "@/components/home/FeaturedCoverFlow";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import {
-  createCard,
-  type CardConfig,
-} from "@/features/collection/lib/cards";
+import { type CardConfig } from "@/features/collection/lib/cards";
 import type { ThemeCardData } from "@/services/collection";
 import type { FeaturedPack } from "@/services/homepage";
 import { Paths } from "@/routes/Paths";
@@ -81,7 +78,6 @@ export function CreatorInfluencerBody({
   cardsByThemeId,
   showPersonalProgress,
   loading,
-  onBuyPack,
   onAddPackToPocket,
   onOpenCard,
   onPlayGame,
@@ -97,7 +93,6 @@ export function CreatorInfluencerBody({
   cardsByThemeId: Record<string, CardConfig[]>;
   showPersonalProgress: boolean;
   loading?: boolean;
-  onBuyPack: (themeId?: string) => void;
   onAddPackToPocket: (pack: FeaturedCoverFlowPlayTarget) => void;
   onOpenCard: (cardId: string, themeId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
@@ -219,7 +214,6 @@ export function CreatorInfluencerBody({
             avatarUrl={theme.thumbnailUrl || avatarUrl}
             cards={cardsByThemeId[theme.id] ?? []}
             showPersonalProgress={showPersonalProgress}
-            onBuyPack={() => onBuyPack(theme.id)}
             onOpenCard={(cardId) => onOpenCard(cardId, theme.id)}
             onPlayGame={onPlayGame}
           />
@@ -377,7 +371,6 @@ function ThemeCollectionCard({
   avatarUrl,
   cards,
   showPersonalProgress,
-  onBuyPack,
   onOpenCard,
   onPlayGame,
 }: {
@@ -386,7 +379,6 @@ function ThemeCollectionCard({
   avatarUrl: string;
   cards: CardConfig[];
   showPersonalProgress: boolean;
-  onBuyPack: () => void;
   onOpenCard: (cardId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
 }) {
