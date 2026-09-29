@@ -1934,6 +1934,29 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   opacity: 1;
 }
 
+.photo-scratch-intro-skip {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+  z-index: 2;
+  height: 40px;
+  padding: 0 1.25rem;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(0.157 0.013 284.85 / 0.9);
+  color: oklch(1 0 0);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.photo-scratch-intro-skip:active {
+  transform: scale(0.96);
+}
+
 .photo-scratch-intro-media {
   position: absolute;
   inset: 0;

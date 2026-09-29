@@ -189,6 +189,7 @@ import {
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
+import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
 import { StageMuteButton } from "../StageMuteButton";
 import {
   MirrorSlideTransition,
@@ -959,10 +960,7 @@ const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: COIN_LOTTIE_SRC, name: "Diamond Coin.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {
@@ -1559,6 +1557,7 @@ export function ScratchPrototype({
   );
   const matchOutcomeRef = useRef<MatchGameOutcome | null>(null);
   const [topSymbols, setTopSymbols] = useState(buildTopSymbols);
+  const [dockHidden, setDockHidden] = useState(false);
   const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>(() =>
     skipToPlay ? "docked" : "center",
   );
@@ -1721,8 +1720,8 @@ export function ScratchPrototype({
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
   const [coinAwardFlash, setCoinAwardFlash] = useState(0);
-  /** Bottom coin badge visibility — idle-hides after ~2s without scrub. */
-  const [coinBadgeShown, setCoinBadgeShown] = useState(true);
+  /** Bottom coin badge — hidden until a scratch milestone awards coins. */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(false);
   const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
@@ -2332,6 +2331,18 @@ export function ScratchPrototype({
     setShowIntroCountdown(false);
     showIntroCountdownRef.current = false;
     scheduleIntroCountdown();
+  }
+
+  function skipIntro() {
+    handCountdownDoneRef.current = true;
+    handStartCountdownOverIntroRef.current = false;
+    setShowIntroCountdown(false);
+    showIntroCountdownRef.current = false;
+    setHandStartCountdownPending(false);
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    clearIntroDockTimer();
+    dismissThemeIntro();
   }
 
   function onIntroCountdownComplete() {
@@ -3265,8 +3276,7 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(true);
-    setCoinBadgeEnterKey((k) => k + 1);
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3926,8 +3936,7 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(true);
-    setCoinBadgeEnterKey((k) => k + 1);
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -5446,6 +5455,15 @@ export function ScratchPrototype({
               </div>
               <div className="photo-scratch-intro-flash" />
               <div className="photo-scratch-intro-ring" />
+              {introActive ? (
+                <button
+                  type="button"
+                  className="photo-scratch-intro-skip"
+                  onClick={skipIntro}
+                >
+                  Skip intro
+                </button>
+              ) : null}
             </div>
           ) : null}
           {/* Top chrome — two rows:
@@ -5462,6 +5480,50 @@ export function ScratchPrototype({
                 {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
               </div>
               <div className="stage-game__top-chrome-center">
+                {iconRevealerShown &&
+                dockHidden &&
+                (skipToPlay || hasPlayableCard) &&
+                !motionResult ? (
+                  <button
+                    type="button"
+                    className={[
+                      "stage-game__auto-scratch",
+                      autoScratch.enabled ? "is-active" : "",
+                      symbolsHuntComplete ? "is-symbols-complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={autoScratchLocked}
+                    aria-label={
+                      autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                    }
+                    aria-pressed={autoScratch.enabled}
+                    onClick={() =>
+                      updateAutoScratch({ enabled: !autoScratch.enabled })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18.45 16.95"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M9.28,9.47c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5ZM7.57,8.19c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0s.2.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM12.27,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM7.14,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM8.08,5.29c-.13,0-.26-.05-.35-.15l-.51-.51c-.2-.19-.2-.51,0-.71s.51-.2.71,0l.51.51c.2.19.2.51,0,.71-.1.1-.23.15-.35.15ZM10.47,5.29c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0,.19.2.19.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM9.28,4.35c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5Z" />
+                      <rect x="13.27" y="5.83" width="1.5" height="9.79" transform="translate(-3.48 13.06) rotate(-45)" />
+                      <path d="M9.21,13.38c-.19,0-.38-.07-.53-.22L3.1,7.59c-.29-.29-.29-.77,0-1.06s.77-.29,1.06,0l5.57,5.57c.29.29.29.77,0,1.06-.15.15-.34.22-.53.22Z" />
+                      <rect x="8.53" y="5.48" width="2.09" height="1.5" transform="translate(7.21 -4.95) rotate(45)" />
+                      <path d="M6.26,13.51c-.16,0-.32-.06-.44-.18l-2.78-2.78c-.24-.24-.24-.64,0-.88s.64-.24.88,0l2.78,2.78c.24.24.24.64,0,.88-.12.12-.28.18-.44.18Z" />
+                      <path d="M4.25,13.75c-.1,0-.19-.04-.27-.11l-.91-.91c-.15-.15-.15-.38,0-.53s.38-.15.53,0l.91.91c.15.15.15.38,0,.53-.07.07-.17.11-.27.11Z" />
+                      <path d="M13.3,12.13v1.17c0,.61-.49,1.1-1.1,1.1H3.2c-.61,0-1.1-.49-1.1-1.1V3.3c0-.61.49-1.1,1.1-1.1h9c.61,0,1.1.49,1.1,1.1v4.58l1.8,1.8V3.3c0-1.6-1.3-2.9-2.9-2.9H3.2C1.6.4.3,1.7.3,3.3v10c0,1.6,1.3,2.9,2.9,2.9h9c1.4,0,2.58-1,2.84-2.33l-1.74-1.74Z" />
+                    </svg>
+                    <span className="stage-game__auto-scratch-label">AutoScratch</span>
+                  </button>
+                ) : null}
                 {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
                   /* Legacy foil path: always 6 top slots (never body 12). */
                   <div
@@ -5504,46 +5566,6 @@ export function ScratchPrototype({
             {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
-                {iconRevealerShown &&
-                (skipToPlay || hasPlayableCard) &&
-                !motionResult ? (
-                  <button
-                    type="button"
-                    className={[
-                      "stage-game__auto-scratch",
-                      autoScratch.enabled ? "is-active" : "",
-                      symbolsHuntComplete ? "is-symbols-complete" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    disabled={autoScratchLocked}
-                    aria-label={
-                      autoScratchLocked
-                        ? "Auto scratch unlocks when play starts"
-                        : autoScratch.enabled
-                          ? "Auto scratch running"
-                          : "Enable auto scratch"
-                    }
-                    aria-pressed={autoScratch.enabled}
-                    onClick={() =>
-                      updateAutoScratch({ enabled: !autoScratch.enabled })
-                    }
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
-                  </button>
-                ) : null}
                 {packProgressShown &&
                 iconRevealerShown &&
                 (skipToPlay ||
@@ -5615,6 +5637,7 @@ export function ScratchPrototype({
               quietDecorativeLottie={shouldPreferStaticSymbolLottie({
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
               })}
+              onDockHiddenChange={setDockHidden}
             />
           ) : null}
           <ScratchFrameProgress
@@ -5799,8 +5822,6 @@ export function ScratchPrototype({
               drawingRef.current = true;
               isScratchingRef.current = true;
               setIsScratching(true);
-              // Scrubbing again: bring coin badge back if it idle-hid.
-              showCoinBadge();
               // First scratch touch: animate cards-left away for this card.
               if (packProgressShown && !packProgressLeaving) {
                 setPackProgressLeaving(true);

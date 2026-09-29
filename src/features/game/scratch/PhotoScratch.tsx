@@ -869,6 +869,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const [topSymbols, setTopSymbols] = useState(buildTopSymbols);
   const topSymbolsRef = useRef(topSymbols);
   topSymbolsRef.current = topSymbols;
+  const [dockHidden, setDockHidden] = useState(false);
   const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>("center");
   const topBarPhaseRef = useRef(topBarPhase);
   topBarPhaseRef.current = topBarPhase;
@@ -1074,6 +1075,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setIntroCover(false);
     introCoverRef.current = false;
     setIntroVideoUrl("");
+  }
+
+  function skipIntro() {
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    clearIntroDockTimer();
+    dismissIntro();
   }
 
   function dismissIntro() {
@@ -2993,6 +3001,15 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   className={`photo-scratch-intro-freeze${introActive ? "" : " is-visible"}`}
                 />
               </div>
+              {introActive ? (
+                <button
+                  type="button"
+                  className="photo-scratch-intro-skip"
+                  onClick={skipIntro}
+                >
+                  Skip intro
+                </button>
+              ) : null}
             </div>
           ) : null}
           {/* Top chrome — match motion cards:
@@ -3007,12 +3024,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               <div className="stage-game__top-chrome-side is-start">
                 {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
               </div>
-              <div className="stage-game__top-chrome-center" />
-              <div className="stage-game__top-chrome-side is-end" />
-            </div>
-            <div className="stage-game__top-chrome-row is-status">
-              <div className="stage-game__top-chrome-status-cards">
+              <div className="stage-game__top-chrome-center">
                 {selectedCardId &&
+                dockHidden &&
                 handSummaryDiamonds == null &&
                 photoResult == null &&
                 gameResult == null ? (
@@ -3041,18 +3055,26 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                     <svg
                       width="18"
                       height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      viewBox="0 0 18.45 16.95"
+                      fill="currentColor"
                       aria-hidden="true"
                     >
-                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                      <path d="M9.28,9.47c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5ZM7.57,8.19c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0s.2.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM12.27,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM7.14,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM8.08,5.29c-.13,0-.26-.05-.35-.15l-.51-.51c-.2-.19-.2-.51,0-.71s.51-.2.71,0l.51.51c.2.19.2.51,0,.71-.1.1-.23.15-.35.15ZM10.47,5.29c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0,.19.2.19.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM9.28,4.35c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5Z" />
+                      <rect x="13.27" y="5.83" width="1.5" height="9.79" transform="translate(-3.48 13.06) rotate(-45)" />
+                      <path d="M9.21,13.38c-.19,0-.38-.07-.53-.22L3.1,7.59c-.29-.29-.29-.77,0-1.06s.77-.29,1.06,0l5.57,5.57c.29.29.29.77,0,1.06-.15.15-.34.22-.53.22Z" />
+                      <rect x="8.53" y="5.48" width="2.09" height="1.5" transform="translate(7.21 -4.95) rotate(45)" />
+                      <path d="M6.26,13.51c-.16,0-.32-.06-.44-.18l-2.78-2.78c-.24-.24-.24-.64,0-.88s.64-.24.88,0l2.78,2.78c.24.24.24.64,0,.88-.12.12-.28.18-.44.18Z" />
+                      <path d="M4.25,13.75c-.1,0-.19-.04-.27-.11l-.91-.91c-.15-.15-.15-.38,0-.53s.38-.15.53,0l.91.91c.15.15.15.38,0,.53-.07.07-.17.11-.27.11Z" />
+                      <path d="M13.3,12.13v1.17c0,.61-.49,1.1-1.1,1.1H3.2c-.61,0-1.1-.49-1.1-1.1V3.3c0-.61.49-1.1,1.1-1.1h9c.61,0,1.1.49,1.1,1.1v4.58l1.8,1.8V3.3c0-1.6-1.3-2.9-2.9-2.9H3.2C1.6.4.3,1.7.3,3.3v10c0,1.6,1.3,2.9,2.9,2.9h9c1.4,0,2.58-1,2.84-2.33l-1.74-1.74Z" />
                     </svg>
+                    <span className="stage-game__auto-scratch-label">AutoScratch</span>
                   </button>
                 ) : null}
+              </div>
+              <div className="stage-game__top-chrome-side is-end" />
+            </div>
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
                 {playlist.length > 1 &&
                 handSummaryDiamonds == null &&
                 photoResult == null &&
@@ -3083,6 +3105,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               matchedSlots={litTopSlots}
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
+              onDockHiddenChange={setDockHidden}
             />
           ) : null}
           <ScratchFrameProgress
