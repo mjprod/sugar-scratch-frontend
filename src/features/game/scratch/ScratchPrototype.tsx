@@ -1711,8 +1711,8 @@ export function ScratchPrototype({
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
   const [coinAwardFlash, setCoinAwardFlash] = useState(0);
-  /** Bottom coin badge visibility — idle-hides after ~2s without scrub. */
-  const [coinBadgeShown, setCoinBadgeShown] = useState(true);
+  /** Bottom coin badge — hidden until a scratch milestone awards coins. */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(false);
   const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
@@ -3265,8 +3265,7 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(true);
-    setCoinBadgeEnterKey((k) => k + 1);
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3907,8 +3906,7 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(true);
-    setCoinBadgeEnterKey((k) => k + 1);
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -5787,8 +5785,6 @@ export function ScratchPrototype({
               drawingRef.current = true;
               isScratchingRef.current = true;
               setIsScratching(true);
-              // Scrubbing again: bring coin badge back if it idle-hid.
-              showCoinBadge();
               // First scratch touch: animate cards-left away for this card.
               if (packProgressShown && !packProgressLeaving) {
                 setPackProgressLeaving(true);

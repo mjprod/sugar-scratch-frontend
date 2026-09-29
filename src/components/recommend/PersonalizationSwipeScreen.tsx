@@ -45,6 +45,8 @@ export function PersonalizationSwipeScreen({
   useMarkPageReady(productReady && mediaReady);
   const [liked, setLiked] = useState<string[]>([]);
   const [passed, setPassed] = useState<string[]>([]);
+  const decisions = liked.length + passed.length;
+  const progress = Math.min(1, decisions / 4);
   const likedRef = useRef(liked);
   const passedRef = useRef(passed);
   likedRef.current = liked;
@@ -136,6 +138,30 @@ export function PersonalizationSwipeScreen({
       <SwipeCircleDebugProvider>
         <NopeTintDebugProvider>
           <div className="stage-swipe auth7-rec-swipe">
+            <div className="auth7-rec-swipe-footer">
+              <div
+                className="auth7-rec-swipe-bar"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={4}
+                aria-valuenow={Math.min(decisions, 4)}
+                aria-label="Swipe progress"
+              >
+                <div
+                  className="auth7-rec-swipe-bar-fill"
+                  style={{ transform: `scaleX(${progress})` }}
+                />
+              </div>
+              {decisions >= 4 ? (
+                <button
+                  type="button"
+                  className="auth7-rec-swipe-continue"
+                  onClick={() => onContinue(snapshot())}
+                >
+                  Continue
+                </button>
+              ) : null}
+            </div>
             <SwipeCircle />
             <div className="home">
               <VideoPreloader cards={deck} onReady={handleMediaReady} />

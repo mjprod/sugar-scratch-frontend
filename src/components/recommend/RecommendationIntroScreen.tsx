@@ -25,7 +25,8 @@ export function RecommendationIntroScreen({
             You&apos;ll Love
           </h1>
           <p className="auth7-intro-copy">
-            Swipe to personalise your Pack recommendations.
+            <span className="auth7-intro-copy-lead">Swipe to personalise</span>{" "}
+            your Pack recommendations.
           </p>
         </div>
 
@@ -70,7 +71,7 @@ export function RecommendationIntroScreen({
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
             fillParent
-            label="Start"
+            label="Get Started"
             costAmount={null}
             fontSize={15}
             strokeWidth={1}
