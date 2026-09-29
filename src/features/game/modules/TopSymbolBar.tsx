@@ -119,6 +119,8 @@ type TopSymbolBarProps = {
   quietDecorativeLottie?: boolean;
   /** First stroke on the center foil pad (icon revealer). */
   onScratchStart?: () => void;
+  /** Docked bar has slid off-screen (finger-down brings it back). */
+  onDockHiddenChange?: (hidden: boolean) => void;
 };
 
 let scratchTexture: HTMLImageElement | null = null;
@@ -366,6 +368,7 @@ export function TopSymbolBar({
   preferStaticSymbols = false,
   quietDecorativeLottie = false,
   onScratchStart,
+  onDockHiddenChange,
 }: TopSymbolBarProps) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
@@ -412,6 +415,10 @@ export function TopSymbolBar({
   const [dockAutohide, setDockAutohide] = useState(false);
   const dockPeekRef = useRef(false);
   dockPeekRef.current = dockPeek;
+  const onDockHiddenChangeRef = useRef(onDockHiddenChange);
+  onDockHiddenChangeRef.current = onDockHiddenChange;
+  /** First hide waits before AutoScratch; later swaps don't. */
+  const dockHiddenOnceRef = useRef(false);
   const prevPhaseRef = useRef<TopBarPhase>(phase);
   /** Last center-phase bar rect (viewport coords). */
   const centerBarRectRef = useRef<DOMRect | null>(null);
@@ -840,6 +847,13 @@ export function TopSymbolBar({
     };
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(".stage-game__auto-scratch")
+      ) {
+        return;
+      }
       show();
     };
     const onPointerEnd = () => {
@@ -855,8 +869,28 @@ export function TopSymbolBar({
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("pointerup", onPointerEnd, true);
       window.removeEventListener("pointercancel", onPointerEnd, true);
+      onDockHiddenChangeRef.current?.(false);
     };
   }, [phase, dockExiting, roundKey]);
+
+  // Hold AutoScratch on the first hide so it isn't an immediate tap. Later
+  // swaps show it as soon as the dock leaves. A returning dock cancels the wait.
+  useEffect(() => {
+    const hidden = phase === "docked" && !dockExiting && dockPeek;
+    if (!hidden) {
+      onDockHiddenChangeRef.current?.(false);
+      return;
+    }
+    if (dockHiddenOnceRef.current) {
+      onDockHiddenChangeRef.current?.(true);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      dockHiddenOnceRef.current = true;
+      onDockHiddenChangeRef.current?.(true);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [phase, dockExiting, dockPeek]);
 
   useEffect(() => {
     return () => {
