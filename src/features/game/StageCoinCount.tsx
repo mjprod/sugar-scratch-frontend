@@ -190,7 +190,17 @@ export function StageCoinCount({
             setFlashAward(0);
           }}
         >
-          +{flashAward}
+          +
+          <img
+            className="stage-game__coin-count-award-img"
+            src={COIN_WEBP_SRC}
+            alt=""
+            width={14}
+            height={14}
+            draggable={false}
+            decoding="async"
+          />
+          {flashAward}
         </span>
       ) : null}
     </div>
