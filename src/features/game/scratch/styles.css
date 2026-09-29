@@ -942,6 +942,27 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   filter: none;
 }
 
+/* After the dock sequence settles, slide up out of view until a finger is down.
+   Both directions animate — the docked rest rule's transition: none must not win. */
+.top-symbol-bar.is-phase-docked.is-dock-autohide,
+.top-symbol-bar.is-phase-docked.is-dock-autohide.is-dock-peek {
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms ease !important;
+}
+
+.top-symbol-bar.is-phase-docked.is-dock-peek {
+  transform: translateX(-50%) translateY(calc(-100% - 18px)) scale(1) !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-symbol-bar.is-phase-docked.is-dock-peek {
+    transition: none !important;
+  }
+}
+
 
 /* After dock: cascade right→left into grayscale on the ICON only.
    Slot plate stays solid black — never wash the circle fill. */

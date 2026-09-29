@@ -32,6 +32,8 @@ const CLEAR_CELEBRATE_MS = 420;
 const DOCK_FLY_MS = 280;
 /** Peak CSS blur during dock climb (px) — light motion-blur read. */
 const DOCK_FLY_BLUR_PX = 14;
+/** Last dormant cascade delay (200ms) + 520ms fade, then a beat before hide. */
+const DOCK_SETTLE_MS = 200 + 520 + 280;
 
 function foilCanvasDpr(): number {
   if (typeof window === "undefined") return 1;
@@ -404,6 +406,12 @@ export function TopSymbolBar({
    * settle docked only after WAAPI finishes.
    */
   const [dockExiting, setDockExiting] = useState(false);
+  /** After the dock sequence settles, slide the bar up until a finger is down. */
+  const [dockPeek, setDockPeek] = useState(false);
+  /** Armed once the first hide starts, so the return slides instead of snapping. */
+  const [dockAutohide, setDockAutohide] = useState(false);
+  const dockPeekRef = useRef(false);
+  dockPeekRef.current = dockPeek;
   const prevPhaseRef = useRef<TopBarPhase>(phase);
   /** Last center-phase bar rect (viewport coords). */
   const centerBarRectRef = useRef<DOMRect | null>(null);
@@ -796,7 +804,7 @@ export function TopSymbolBar({
     }
 
     if (phase === "docked" && prevPhaseRef.current === "docked") {
-      // Settled docked; nothing to do.
+      // Settled docked; peek/hide is handled below.
       return;
     }
 
@@ -807,6 +815,48 @@ export function TopSymbolBar({
     const stage = barRef.current?.closest(".stage");
     setStageEl(stage instanceof HTMLElement ? stage : null);
   }, [phase, showCoating, roundKey]);
+
+  // After the dock fly + grayscale cascade settle, slide the bar up out of view.
+  // A finger on the screen brings it back; lifting hides it again.
+  useEffect(() => {
+    if (phase !== "docked" || dockExiting) {
+      setDockPeek(false);
+      setDockAutohide(false);
+      return;
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let hideTimer = 0;
+    const armHide = () => {
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        setDockAutohide(true);
+        setDockPeek(true);
+      }, DOCK_SETTLE_MS);
+    };
+    const show = () => {
+      window.clearTimeout(hideTimer);
+      setDockPeek(false);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      show();
+    };
+    const onPointerEnd = () => {
+      if (!dockPeekRef.current) armHide();
+    };
+
+    armHide();
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("pointerup", onPointerEnd, true);
+    window.addEventListener("pointercancel", onPointerEnd, true);
+    return () => {
+      window.clearTimeout(hideTimer);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("pointerup", onPointerEnd, true);
+      window.removeEventListener("pointercancel", onPointerEnd, true);
+    };
+  }, [phase, dockExiting, roundKey]);
 
   useEffect(() => {
     return () => {
@@ -1167,6 +1217,8 @@ export function TopSymbolBar({
         clearedBurst && !dockExiting ? " is-cleared" : ""
       }${forceRevealed ? " is-force-revealed" : ""}${
         dockExiting ? " is-dock-exiting" : ""
+      }${dockAutohide && visualPhase === "docked" ? " is-dock-autohide" : ""}${
+        dockPeek && visualPhase === "docked" ? " is-dock-peek" : ""
       }`}
       aria-label="Match symbols — scratch to reveal"
       onPointerDown={onPointerDown}
