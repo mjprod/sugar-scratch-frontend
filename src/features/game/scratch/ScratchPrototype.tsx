@@ -156,6 +156,11 @@ import {
   stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
 import {
+  noteScratchSoundActivity,
+  preloadScratchSounds,
+  stopScratchSounds,
+} from "../modules/scratchSound";
+import {
   preloadLottieUrls,
   shouldFreezeSymbolLottie,
   shouldPreferStaticSymbolLottie,
@@ -1789,6 +1794,7 @@ export function ScratchPrototype({
   function endScratchStroke() {
     const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
     if (pending) addScratchRef.current(pending.x, pending.y);
+    stopScratchSounds();
     drawingRef.current = false;
     isScratchingRef.current = false;
     setIsScratching(false);
@@ -3604,16 +3610,20 @@ export function ScratchPrototype({
           unlockCountdownSound();
           unlockMotionScratchBgm();
           preloadSparkleCoinSounds();
+          preloadScratchSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
           stopSparkleCoinSounds();
+          stopScratchSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
     [],
   );
+
+  useEffect(() => stopScratchSounds, []);
 
   function syncScratchZoomTransition(
     canvas: HTMLCanvasElement,
@@ -3870,11 +3880,13 @@ export function ScratchPrototype({
     if (enabled) {
       unlockCountdownSound();
       preloadSparkleCoinSounds();
+      preloadScratchSounds();
       unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
       stopSparkleCoinSounds();
+      stopScratchSounds();
     }
     // Master mute, same as StageMuteButton — Settings switches stay put.
     setGameSoundOn(enabled);
@@ -4850,7 +4862,10 @@ export function ScratchPrototype({
       applied = true;
     }
 
-    if (applied) lastScratchWorldRef.current = point;
+    if (applied) {
+      lastScratchWorldRef.current = point;
+      noteScratchSoundActivity();
+    }
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
     // Fabric alpha is only for fairy-dust spawn gating. Skip readPixels when
@@ -5770,6 +5785,7 @@ export function ScratchPrototype({
               if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
                 preloadSparkleCoinSounds();
+                preloadScratchSounds();
               }
               // Re-assert Web Audio unlock inside this gesture (Safari).
               unlockMotionScratchBgm();

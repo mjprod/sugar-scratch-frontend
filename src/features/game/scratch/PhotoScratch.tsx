@@ -72,6 +72,11 @@ import {
   getGameAudioOutput,
 } from "../shared/gameAudioContext";
 import {
+  noteScratchSoundActivity,
+  preloadScratchSounds,
+  stopScratchSounds,
+} from "../modules/scratchSound";
+import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
@@ -2085,7 +2090,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
       applied = true;
     }
-    if (applied) lastScratchWorldRef.current = point;
+    if (applied) {
+      lastScratchWorldRef.current = point;
+      noteScratchSoundActivity();
+    }
   }
 
   function updateSoundEnabled(enabled: boolean) {
@@ -2442,15 +2450,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
           unlockMotionScratchBgm();
+          preloadScratchSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
+          stopScratchSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
     [],
   );
+
+  useEffect(() => stopScratchSounds, []);
 
   useEffect(() => {
     try {
@@ -2472,7 +2484,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function onPointerDown(clientX: number, clientY: number) {
     if (introActiveRef.current) return;
-    if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
+    if (soundEnabledRef.current) {
+      ensureSymbolAudio(symbolAudioRef.current);
+      preloadScratchSounds();
+    }
     // Re-assert Web Audio unlock inside this gesture (Safari).
     unlockMotionScratchBgm();
     syncMotionScratchBgm();
@@ -2497,6 +2512,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // Idle window starts when the finger lifts, so holding still mid-stroke
     // doesn't make the hint appear the instant they let go.
     huntHintActivityAtRef.current = performance.now();
+    stopScratchSounds();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
