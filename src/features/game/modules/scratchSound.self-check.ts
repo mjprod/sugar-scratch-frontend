@@ -9,6 +9,7 @@ import {
   SCRATCH_SOUND_LONG_AFTER_MS,
   SCRATCH_SOUND_MEDIUM_AFTER_MS,
   SCRATCH_SOUND_TIERS,
+  endScratchSoundStroke,
   noteScratchSoundActivity,
   preloadScratchSounds,
   scratchSoundTier,
@@ -52,6 +53,8 @@ for (const [tier, srcs] of Object.entries(SCRATCH_SOUND_TIERS)) {
 preloadScratchSounds();
 noteScratchSoundActivity(0);
 noteScratchSoundActivity(SCRATCH_SOUND_LONG_AFTER_MS);
+endScratchSoundStroke();
+noteScratchSoundActivity(0);
 stopScratchSounds();
 stopScratchSounds();
 
@@ -60,7 +63,7 @@ console.log(
     {
       ok: true,
       policy:
-        "stroke → short clip, chained medium after 1s, long after 2.8s; lift/idle/mute → fade out",
+        "stroke → short clip, chained medium after 1s, long after 2.8s; lift/idle → clips ring out and the next stroke layers on top; mute/unmount → fade out",
     },
     null,
     2,
