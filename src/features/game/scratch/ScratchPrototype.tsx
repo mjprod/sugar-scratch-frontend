@@ -174,6 +174,7 @@ import {
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
+import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
 import { StageMuteButton } from "../StageMuteButton";
 import {
   MirrorSlideTransition,
@@ -950,10 +951,7 @@ const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
-  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: COIN_LOTTIE_SRC, name: "Diamond Coin.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {
