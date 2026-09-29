@@ -7,8 +7,11 @@
 import { effectiveSoundEffect } from "@/services/gameAudioPrefs";
 import { SPARKLE_COIN_BANDS } from "./sparkleCoinAward";
 
-/** Ceiling on simultaneous coin clips so a scratch burst can't pile up audio. */
-const MAX_OVERLAPPING_COIN_VOICES = 6;
+/**
+ * Runaway guard only — above the 10 milestones a card can award, so coin
+ * clips pile up freely and are never dropped in normal play.
+ */
+const MAX_OVERLAPPING_COIN_VOICES = 12;
 
 const audioBySrc = new Map<string, HTMLAudioElement>();
 const overlapVoices = new Set<HTMLAudioElement>();

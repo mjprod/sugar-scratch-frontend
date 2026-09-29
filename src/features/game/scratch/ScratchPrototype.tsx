@@ -156,6 +156,7 @@ import {
   stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
 import {
+  endScratchSoundStroke,
   noteScratchSoundActivity,
   preloadScratchSounds,
   stopScratchSounds,
@@ -1793,7 +1794,7 @@ export function ScratchPrototype({
   function endScratchStroke() {
     const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
     if (pending) addScratchRef.current(pending.x, pending.y);
-    stopScratchSounds();
+    endScratchSoundStroke();
     drawingRef.current = false;
     isScratchingRef.current = false;
     setIsScratching(false);

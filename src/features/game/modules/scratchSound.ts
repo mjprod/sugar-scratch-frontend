@@ -1,10 +1,11 @@
 /**
- * Scratch SFX — one scratch clip at a time while the finger is scratching.
+ * Scratch SFX — clips ring out in full and pile up (slot-machine chaos).
  *
  * A stroke opens on a short clip; if the finger keeps scratching past the end
- * of that clip, the next one comes from the medium tier, then long. Lifting,
- * holding still, or sliding off the garment fades the clip out, so a quick
- * flick only plays its first beat. Gated by game soundEffect prefs.
+ * of that clip, the next one comes from the medium tier, then long. Lifting
+ * or holding still never cuts a clip — it plays to its end, and the next
+ * stroke layers a fresh clip on top. Only mute / leaving the stage silences
+ * them. Gated by game soundEffect prefs.
  *
  * Clips carry up to 2s of trailing silence, so chaining is timed off each
  * clip's audible end (measured at decode) rather than the file end.
@@ -43,8 +44,7 @@ export type ScratchSoundTier = keyof typeof SCRATCH_SOUND_TIERS;
 /** Continuous scratching time before the next chained clip is medium / long. */
 export const SCRATCH_SOUND_MEDIUM_AFTER_MS = 1000;
 export const SCRATCH_SOUND_LONG_AFTER_MS = 2800;
-/** No scratch stamp for this long (finger still or off-garment) → fade out. */
-const SCRATCH_SOUND_IDLE_MS = 140;
+/** Mute / unmount fade — the only time a clip is cut short. */
 const SCRATCH_SOUND_FADE_OUT_S = 0.08;
 /** Next clip starts this far before the current one's audible tail ends. */
 const SCRATCH_SOUND_CHAIN_OVERLAP_S = 0.06;
@@ -72,7 +72,6 @@ const liveVoices = new Set<Voice>();
 let currentVoice: Voice | null = null;
 let strokeStartMs: number | null = null;
 let lastSrc: string | null = null;
-let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function scratchSoundTier(activeMs: number): ScratchSoundTier {
   if (activeMs >= SCRATCH_SOUND_LONG_AFTER_MS) return "long";
@@ -164,18 +163,17 @@ function startVoice(ctx: AudioContext, clip: Clip) {
   source.start(startAt);
 }
 
-function clearIdleTimer() {
-  if (idleTimer === null) return;
-  clearTimeout(idleTimer);
-  idleTimer = null;
+/**
+ * Finger lifted: clips already playing ring out, and the next stroke starts a
+ * new short clip on top of them instead of waiting for the chain.
+ */
+export function endScratchSoundStroke(): void {
+  strokeStartMs = null;
+  currentVoice = null;
 }
 
-/**
- * Fade out every scratch clip and end the stroke. Use on pointer up / cancel,
- * on mute, and on unmount.
- */
+/** Fade out every scratch clip and end the stroke. Use on mute and unmount. */
 export function stopScratchSounds(): void {
-  clearIdleTimer();
   strokeStartMs = null;
   currentVoice = null;
   if (!liveVoices.size) return;
@@ -211,12 +209,6 @@ export function noteScratchSoundActivity(
   if (!ctx || ctx.state !== "running") return;
 
   strokeStartMs ??= nowMs;
-  clearIdleTimer();
-  idleTimer = setTimeout(() => {
-    idleTimer = null;
-    stopScratchSounds();
-  }, SCRATCH_SOUND_IDLE_MS);
-
   if (currentVoice && ctx.currentTime < currentVoice.chainAt) return;
   const picked = pickClip(scratchSoundTier(nowMs - strokeStartMs));
   if (!picked) {

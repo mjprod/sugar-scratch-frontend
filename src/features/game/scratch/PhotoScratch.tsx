@@ -72,6 +72,7 @@ import {
   getGameAudioOutput,
 } from "../shared/gameAudioContext";
 import {
+  endScratchSoundStroke,
   noteScratchSoundActivity,
   preloadScratchSounds,
   stopScratchSounds,
@@ -2520,7 +2521,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // Idle window starts when the finger lifts, so holding still mid-stroke
     // doesn't make the hint appear the instant they let go.
     huntHintActivityAtRef.current = performance.now();
-    stopScratchSounds();
+    endScratchSoundStroke();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
