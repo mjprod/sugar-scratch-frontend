@@ -1,11 +1,18 @@
-import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
-import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
   getGameAudioPrefs,
   setSoundEffectEnabled,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { settlePackMotionCard } from "@/services/packMotionSettle";
+import {
+  isScratchHandQuotaExhausted,
+  persistScratchCoins,
+  startScratchHand,
+} from "@/services/scratchCoinReward";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { Volume2, VolumeX } from "lucide-react";
 import {
@@ -25,29 +32,31 @@ import {
   type ParticleType,
 } from "../cursorFx/FairyDustCursor";
 import { loadLottieUrlSource } from "../cursorFx/loadLottieSource";
-import { GameSymbolIcon } from "../modules/GameSymbolIcon";
-import { MatchFlight } from "../modules/MatchFlight";
-import {
-  InitialCountdown,
-  isCountdownSoundUnlocked,
-  TOP_BAR_DOCK_MS,
-  TOP_BAR_DOCK_NEXT_CARD_MS,
-  unlockCountdownSound,
-  resumeCountdownAudioIfActive,
-  stopCountdownAudio,
-} from "../modules/InitialCountdown";
-import {
-  ScratchFrameProgress,
-  type SymbolDiscoveryBatch,
-} from "../modules/ScratchFrameProgress";
 import { GamePauseButton } from "../GamePauseButton";
 import {
-  TOP_BAR_SHOWCASE_MS,
-  TopSymbolBar,
-  type TopBarPhase,
-} from "../modules/TopSymbolBar";
-import { MotionCurrencyReveal } from "../modules/MotionCurrencyReveal";
-import { NoMatchOutcome } from "../modules/NoMatchOutcome";
+  shouldUpdateBodyMarkers,
+  shouldUpdateChestFollow,
+} from "../modules/chestFollowGate";
+import {
+  shouldClearStagePicture,
+  shouldDeferCardVideoAttach,
+  shouldReviveGameVideos,
+} from "../modules/currencyResultMedia";
+import {
+  celebrateDurationMs,
+  celebrateParticleBoost,
+  crossedProgressMilestone,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
+  resolveCursorFxDeviceProfile,
+} from "../modules/cursorFxCelebrate";
+import {
+  fairyDustSpawnMinDistancePx,
+  shouldSampleFabricAlpha,
+  shouldSpawnFairyDust,
+} from "../modules/fairyDustSpawnPolicy";
+import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
 import {
   awardMotionCardCurrency,
   clearPendingMotionResult,
@@ -59,9 +68,18 @@ import {
   themeForMotionCard,
   type GameSession,
 } from "../modules/gameSession";
+import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
 import {
-  inferThemeFromLabel,
-} from "../modules/session";
+  InitialCountdown,
+  isCountdownSoundUnlocked,
+  resumeCountdownAudioIfActive,
+  stopCountdownAudio,
+  TOP_BAR_DOCK_MS,
+  TOP_BAR_DOCK_NEXT_CARD_MS,
+  unlockCountdownSound,
+} from "../modules/InitialCountdown";
+import { MatchFlight } from "../modules/MatchFlight";
 import {
   advanceHuntHintCycle,
   applyBodyFindHits,
@@ -79,35 +97,13 @@ import {
   type HuntHintCycle,
   type MatchGameOutcome,
 } from "../modules/matchGame";
+import { MotionCurrencyReveal } from "../modules/MotionCurrencyReveal";
+import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { PackProgress } from "../modules/PackProgress";
 import {
-  COIN_BADGE_AWARD_HOLD_MS,
-  COIN_BADGE_IDLE_HIDE_MS,
-  rollSparkleCoinAward,
-} from "../modules/sparkleCoinAward";
-import {
-  playSparkleCoinSound,
-  preloadSparkleCoinSounds,
-  stopSparkleCoinSounds,
-} from "../modules/sparkleCoinSound";
-import { StageCoinCount } from "../StageCoinCount";
-import { useAuth } from "@/contexts/AuthContext";
-import { useWallet } from "@/contexts/WalletContext";
-import {
-  persistScratchCoins,
-  startScratchHand,
-} from "@/services/scratchCoinReward";
-import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
-import {
-  createFabricAlphaCache,
-  createSymbolScratchProbeCache,
-  isSymbolNearAnyStroke,
-  isSymbolNearStroke,
-  readCachedFabricAlpha,
-  readCachedSymbolScratchAmount,
-  writeCachedFabricAlpha,
-  writeCachedSymbolScratchAmount,
-} from "../modules/scratchProbeCache";
+  ScratchFrameProgress,
+  type SymbolDiscoveryBatch,
+} from "../modules/ScratchFrameProgress";
 import {
   clearPendingScratchMove,
   createScratchInputCoalesce,
@@ -120,55 +116,65 @@ import {
   pushScratchMark,
   scratchMarksSome,
 } from "../modules/scratchMarksRing";
-import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
+import {
+  createFabricAlphaCache,
+  createSymbolScratchProbeCache,
+  isSymbolNearAnyStroke,
+  isSymbolNearStroke,
+  readCachedFabricAlpha,
+  readCachedSymbolScratchAmount,
+  writeCachedFabricAlpha,
+  writeCachedSymbolScratchAmount,
+} from "../modules/scratchProbeCache";
+import {
+  resolveAutoScratchBudget,
+  resolveManualScratchBudget,
+} from "../modules/scratchStampBudget";
+import {
+  createThrottledUiClock,
+  shouldPublishThrottledUi,
+} from "../modules/scratchUiThrottle";
+import { inferThemeFromLabel } from "../modules/session";
+import {
+  COIN_BADGE_AWARD_HOLD_MS,
+  COIN_BADGE_IDLE_HIDE_MS,
+  rollSparkleCoinAward,
+} from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
 import {
   preloadLottieUrls,
   shouldFreezeSymbolLottie,
   shouldPreferStaticSymbolLottie,
 } from "../modules/symbolLottiePolicy";
+import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
-  createThrottledUiClock,
-  shouldPublishThrottledUi,
-} from "../modules/scratchUiThrottle";
-import { shouldUpdateBodyMarkers, shouldUpdateChestFollow } from "../modules/chestFollowGate";
-import {
-  shouldSampleFabricAlpha,
-  fairyDustSpawnMinDistancePx,
-  shouldSpawnFairyDust,
-} from "../modules/fairyDustSpawnPolicy";
-import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
-import {
-  resolveAutoScratchBudget,
-  resolveManualScratchBudget,
-} from "../modules/scratchStampBudget";
+  TOP_BAR_SHOWCASE_MS,
+  TopSymbolBar,
+  type TopBarPhase,
+} from "../modules/TopSymbolBar";
 import {
   createVideoSyncState,
   decideVideoSync,
   shortestMediaDrift,
   type VideoSyncState,
 } from "../modules/videoSync";
+import { fetchCatalogMotionCards } from "../shared/catalog";
 import {
-  celebrateDurationMs,
-  celebrateParticleBoost,
-  crossedProgressMilestone,
-  CURSOR_FX_EMIT_MODE,
-  CURSOR_FX_FALL_GRAVITY,
-  CURSOR_FX_FALL_VELOCITY,
-  resolveCursorFxDeviceProfile,
-} from "../modules/cursorFxCelebrate";
-import {
-  fetchCatalogMotionCards,
-} from "../shared/catalog";
-import {
+  applyBoundThemeIntroSound,
+  bindThemeIntroVideo,
   loadVideoSrc,
   playThemeIntro,
   releaseMediaElement,
   setThemeIntroSound,
-  bindThemeIntroVideo,
   unbindThemeIntroVideo,
-  applyBoundThemeIntroSound,
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
+import { StageCoinCount } from "../StageCoinCount";
+import { StageMuteButton } from "../StageMuteButton";
 import {
   MirrorSlideTransition,
   nextTemplateId,
@@ -512,7 +518,6 @@ async function loadCards(): Promise<Card[]> {
 
 const MESH_INDEX_SRC = "/mesh/index.json";
 const MESH_DIRECTORY_SRC = "/mesh";
-const DEFAULT_MESH_FILE = "tracked-mesh.json";
 const SYMBOL_SLOT_COUNT = SYMBOL_POINT_COUNT;
 const SYMBOL_REVEAL_STEP_MANUAL = 0.056;
 const SYMBOL_REVEAL_STEP_AUTO = 0.083;
@@ -945,10 +950,10 @@ const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond%20Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
+  { url: "/lottie/lottieDiamondDust.lottie", name: "lottieDiamondDust.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {
@@ -1283,8 +1288,8 @@ export function ScratchPrototype({
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
   const handIdRef = useRef("");
   const handStartGenRef = useRef(0);
-  /** Tracks prior auth so we only re-request a hand on false → true. */
-  const prevAuthedForHandRef = useRef(authed);
+  /** Card id the current handId was issued for — skip remount/mesh restarts. */
+  const handCardIdRef = useRef<string | null>(null);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -1334,15 +1339,15 @@ export function ScratchPrototype({
   const [meshFiles, setMeshFiles] = useState<string[]>([]);
   const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
   const [models, setModels] = useState<ModelInfo[]>(() =>
-    skipToPlay
-      ? [{ id: "julianaval", label: "Juliana", avatar: null }]
-      : [],
+    skipToPlay ? [{ id: "julianaval", label: "Juliana", avatar: null }] : [],
   );
   // Lab is ready immediately from DEFAULT_CARDS — no API wait for mobile preview.
   const [cardsReady, setCardsReady] = useState(() => skipToPlay);
   useMarkPageReady(cardsReady);
+  // Empty until the active card resolves — a placeholder mesh here is a wasted
+  // multi-hundred-KB fetch on every /game load.
   const [selectedMeshFile, setSelectedMeshFile] = useState(() => {
-    if (!skipToPlay) return DEFAULT_CARDS[1].mesh;
+    if (!skipToPlay) return "";
     if (typeof window === "undefined") return "juliana_1.json";
     const fromUrl =
       new URLSearchParams(window.location.search).get("card")?.trim() ||
@@ -1565,12 +1570,12 @@ export function ScratchPrototype({
   const introLeavingRef = useRef(false);
   introLeavingRef.current = introLeaving;
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
-const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
-  const prev = introVideoElRef.current;
-  if (prev && prev !== el) unbindThemeIntroVideo(prev);
-  introVideoElRef.current = el;
-  if (el) bindThemeIntroVideo(el);
-}, []);
+  const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+    const prev = introVideoElRef.current;
+    if (prev && prev !== el) unbindThemeIntroVideo(prev);
+    introVideoElRef.current = el;
+    if (el) bindThemeIntroVideo(el);
+  }, []);
   const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const introFadeTimerRef = useRef<number | null>(null);
   /** Lab skipToPlay: already past intro — keep in sync with handStartIntroResolved. */
@@ -1853,15 +1858,31 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setCoinBadgeLeaving(false);
   }
 
-  function beginScratchHand(cardId?: string | null) {
-    handIdRef.current = "";
-    // Session may still be resolving on first paint — leave hand empty and let
-    // the auth-retry effect start once `authed` becomes true.
+  function beginScratchHand(
+    cardId?: string | null,
+    opts?: { force?: boolean },
+  ) {
+    // Session may still be resolving on first paint — leave hand empty; the
+    // card+auth effect re-runs once `authed` becomes true.
     if (!authed) return;
+    if (isScratchHandQuotaExhausted()) return;
+    const key = cardId?.trim() || "";
+    // Mesh reload / Strict Mode remount for the same card must not burn quota.
+    if (!opts?.force && handIdRef.current && handCardIdRef.current === key) {
+      return;
+    }
+    handIdRef.current = "";
+    handCardIdRef.current = key;
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
       if (gen !== handStartGenRef.current) return;
-      if (result?.handId) handIdRef.current = result.handId;
+      if (result?.handId) {
+        handIdRef.current = result.handId;
+        handCardIdRef.current = key;
+        return;
+      }
+      // Failed / quota — allow a later force retry if needed.
+      if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
   }
 
@@ -1874,10 +1895,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
 
-    if (
-      onFirstProgressMilestone &&
-      !firstProgressMilestoneFiredRef.current
-    ) {
+    if (onFirstProgressMilestone && !firstProgressMilestoneFiredRef.current) {
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
@@ -2071,7 +2089,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function kickGameVideos() {
     if (uiStateRef.current.isPaused) return;
-    if (cardTransitionActiveRef.current && !cardTransitionHandoffRef.current) return;
+    if (cardTransitionActiveRef.current && !cardTransitionHandoffRef.current)
+      return;
     const bottomVideo = bottomVideoRef.current;
     const foregroundVideo = foregroundVideoRef.current;
     if (!bottomVideo || !foregroundVideo) return;
@@ -2563,8 +2582,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const render = () => {
       try {
         if (cancelled) return;
-        // Currency result owns the screen — skip GL + video sync (opaque cover).
-        if (motionResultRef.current?.win) {
+        // Showcase / result owns the screen — skip GL + video sync.
+        if (motionResultRef.current || topBarPhaseRef.current === "showcase") {
           return;
         }
         const active = ensureRenderer();
@@ -2636,15 +2655,18 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             const nextX = camera.x + dx * CHEST_SMOOTH;
             const nextY = camera.y + dy * CHEST_SMOOTH;
             camera.x =
-              Math.abs(targetCamX - nextX) <= CHEST_CAM_EPS ? targetCamX : nextX;
+              Math.abs(targetCamX - nextX) <= CHEST_CAM_EPS
+                ? targetCamX
+                : nextX;
             camera.y =
-              Math.abs(targetCamY - nextY) <= CHEST_CAM_EPS ? targetCamY : nextY;
+              Math.abs(targetCamY - nextY) <= CHEST_CAM_EPS
+                ? targetCamY
+                : nextY;
           }
         }
 
         const autoSettings = autoScratchRef.current;
-        const autoActive =
-          finishAutoActiveRef.current || autoSettings.enabled;
+        const autoActive = finishAutoActiveRef.current || autoSettings.enabled;
         // Post-hunt finish-auto waits for all body symbols. Explicit player
         // enable (HUD / panel) may run during the hunt.
         const huntComplete =
@@ -3171,16 +3193,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (isCancelled || !data) return;
-        const files = parseMeshIndex(data);
-        setMeshFiles(files);
-        setSelectedMeshFile(
-          (currentFile) =>
-            currentFile ||
-            (files.includes(DEFAULT_MESH_FILE)
-              ? DEFAULT_MESH_FILE
-              : files[0]) ||
-            "",
-        );
+        // Dropdown list only — the active card owns selectedMeshFile.
+        setMeshFiles(parseMeshIndex(data));
       })
       .catch(() => undefined);
 
@@ -3234,7 +3248,6 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    beginScratchHand(card.id);
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
@@ -3258,9 +3271,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     publishProgressUi(true);
     setClaimed(false);
     publishRevealedSymbols(0);
-    setLitSymbolSlots(
-      Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
-    );
+    setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -3282,17 +3293,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
 
-  // Card-switch may call beginScratchHand while the session is still resolving
-  // (`authed` false → early return, empty handId). Without a retry, milestones
-  // still addCoins locally but never persist, so credits vanish on refresh.
+  // One server hand per card identity (not per mesh reload). Re-runs when auth
+  // lands so a cold first paint that skipped while `!authed` still gets a hand.
   useEffect(() => {
-    const wasAuthed = prevAuthedForHandRef.current;
-    prevAuthedForHandRef.current = authed;
-    if (!authed || wasAuthed) return;
     if (!card?.id) return;
     beginScratchHand(card.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- false→true only; card switches already start a hand
-  }, [authed, card?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- beginScratchHand closes over authed
+  }, [selectedCardId, card?.id, labRestartToken, authed]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
@@ -3378,11 +3385,21 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
     // intro is up, fully unload the card clips so only the intro decodes.
-    if (introActiveRef.current) {
-      releaseMediaElement(bottomVideo);
-      releaseMediaElement(foregroundVideo);
-      glRendererRef.current?.resetForeground();
-      setGameVideosReady(false);
+    // Currency result also owns media (static backdrop + next-card warm load).
+    if (
+      shouldDeferCardVideoAttach({
+        introActive: introActiveRef.current,
+        resultOverlayActive:
+          motionResultRef.current != null ||
+          topBarPhaseRef.current === "showcase",
+      })
+    ) {
+      if (introActiveRef.current) {
+        releaseMediaElement(bottomVideo);
+        releaseMediaElement(foregroundVideo);
+        glRendererRef.current?.resetForeground();
+        setGameVideosReady(false);
+      }
       return;
     }
 
@@ -3458,7 +3475,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         // ignore
       }
     };
-  }, [cardsReady, card?.id, card?.bottom, card?.foreground, introActive]);
+  }, [
+    cardsReady,
+    card?.id,
+    card?.bottom,
+    card?.foreground,
+    introActive,
+    motionResult != null,
+  ]);
 
   // Mobile browsers (notably iOS Safari) will suspend a second, simultaneously
   // playing <video> after a few seconds to save power — which here drops the
@@ -3467,11 +3491,18 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   // out from under us (and on tab re-focus), as long as the user hasn't paused.
   useEffect(() => {
     const keepPlaying = () => {
-      if (uiStateRef.current.isPaused) return;
-      // Don't steal the decoder from the theme intro (causes black stage after
-      // 3-2-1 on Safari / Android when three <video>s fight).
-      if (introActiveRef.current) return;
-      if (cardTransitionActiveRef.current) return;
+      if (
+        !shouldReviveGameVideos({
+          userPaused: uiStateRef.current.isPaused,
+          introActive: introActiveRef.current,
+          cardTransitionActive: cardTransitionActiveRef.current,
+          resultOverlayActive:
+            motionResultRef.current != null ||
+            topBarPhaseRef.current === "showcase",
+        })
+      ) {
+        return;
+      }
       const bottomVideo = bottomVideoRef.current;
       const foregroundVideo = foregroundVideoRef.current;
       if (bottomVideo?.paused) void bottomVideo.play().catch(() => undefined);
@@ -3664,15 +3695,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     photoCardFound: false,
     diamondFound: Boolean(
       motionResult?.win &&
-        ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
+      ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
     ),
   });
-  /** Currency win covers the stage — clear theme video for look + perf. */
-  const clearStageForResult = motionOutcome === "diamond";
+  /** Showcase + win/no-match — clear theme video for look + perf. */
+  const clearStageForResult = shouldClearStagePicture({
+    topBarPhase,
+    motionOutcome,
+  });
 
-  // Freeze theme decoders while the currency result is up (opaque overlay).
+  // Pause theme decoders as soon as the symbol bar showcase takes the screen
+  // (before YOU WON / NO MATCH mounts). Full unload stays on the result effect.
   useEffect(() => {
-    if (!clearStageForResult) return;
+    if (topBarPhase !== "showcase") return;
     const bottom = bottomVideoRef.current;
     const foreground = foregroundVideoRef.current;
     try {
@@ -3686,7 +3721,66 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       // ignore
     }
     parkForegroundDecoder();
-  }, [clearStageForResult, motionResult?.resultId]);
+    if (bottom) glRendererRef.current?.detachVideoFrames(bottom);
+  }, [topBarPhase]);
+
+  // Tear down finished-card decoders while the static result is up, then
+  // warm the next motion card so Skip / auto-advance is not a cold dual-attach.
+  useEffect(() => {
+    if (motionOutcome !== "diamond" && motionOutcome !== "no-match") return;
+    const bottom = bottomVideoRef.current;
+    const foreground = foregroundVideoRef.current;
+    if (bottom) {
+      try {
+        bottom.pause();
+      } catch {
+        // ignore
+      }
+      glRendererRef.current?.detachVideoFrames(bottom);
+      releaseMediaElement(bottom);
+    }
+    if (foreground) {
+      try {
+        foreground.pause();
+      } catch {
+        // ignore
+      }
+      glRendererRef.current?.detachVideoFrames(foreground);
+      releaseMediaElement(foreground);
+    }
+    fgParkedRef.current = true;
+    glRendererRef.current?.resetForeground();
+    setGameVideosReady(false);
+
+    const finishedId = selectedCardId;
+    const nextCard =
+      finishedId == null
+        ? null
+        : modelCards.find(
+            (entry) =>
+              entry.id !== finishedId &&
+              !completedCardIdsRef.current.includes(entry.id),
+          );
+    if (!nextCard || !bottom || !foreground) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await Promise.all([
+          loadVideoSrc(bottom, nextCard.bottom),
+          loadVideoSrc(foreground, nextCard.foreground),
+        ]);
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      // Stay paused — static result owns the screen until handoff.
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [motionOutcome, motionResult?.resultId, selectedCardId, modelCards]);
 
   // Keep the frame mounted through the no-match beat so its energy can drain
   // instead of vanishing with the rest of the gameplay HUD.
@@ -3707,8 +3801,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     !matchStartUnlocked ||
     introActive ||
     introCover ||
-    (useBodySymbols &&
-      (topBarPhase === "center" || introGateActive));
+    (useBodySymbols && (topBarPhase === "center" || introGateActive));
   // Sparkles only during the hunt play window (after countdown, before all
   // symbols found); cards without body symbols have no countdown gate.
   const cursorFxPlayWindow =
@@ -3792,7 +3885,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
-    beginScratchHand(selectedCardId);
+    beginScratchHand(selectedCardId, { force: true });
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
@@ -3816,9 +3909,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     publishProgressUi(true);
     setClaimed(false);
     publishRevealedSymbols(0);
-    setLitSymbolSlots(
-      Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
-    );
+    setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -3931,7 +4022,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       const diamonds = Math.max(0, pending?.diamonds ?? 0);
       // Hub coins bank into session.coinTotal and settle once at done
       // (same path as diamonds). Pack coins credit via PACK_OPENING_REWARD_EVENT.
-      const current = pending?.current ?? completedCardIdsRef.current.length + 1;
+      const current =
+        pending?.current ?? completedCardIdsRef.current.length + 1;
       const total = awarded?.motionCardIds.length ?? modelCards.length;
       if (!completedCardIdsRef.current.includes(finishedId)) {
         const nextCompleted = [...completedCardIdsRef.current, finishedId];
@@ -4098,12 +4190,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const finishedCard =
       modelCards.find((entry) => entry.id === finishedId) ?? card;
 
-    if (
-      nextCard &&
-      !gameMode &&
-      finishedCard?.bottom &&
-      nextCard.foreground
-    ) {
+    if (nextCard && !gameMode && finishedCard?.bottom && nextCard.foreground) {
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
       );
@@ -4236,10 +4323,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       return;
     }
     // Plain scratch: don't wait on the multi-second win fanfare before advancing.
-    gameResultTimerRef.current = window.setTimeout(() => {
-      gameResultTimerRef.current = null;
-      void presentMotionResult();
-    }, Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS));
+    gameResultTimerRef.current = window.setTimeout(
+      () => {
+        gameResultTimerRef.current = null;
+        void presentMotionResult();
+      },
+      Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS),
+    );
   }
   tryResolveGameRef.current = tryResolveGame;
 
@@ -5202,9 +5292,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ref={setStageNode}
           className={`stage${gameResult ? " is-game-over" : ""}${
             clearStageForResult ? " is-result-clear" : ""
-          }${
-            topBarPhase === "showcase" ? " is-showcase-phase" : ""
-          }${
+          }${topBarPhase === "showcase" ? " is-showcase-phase" : ""}${
             useBodySymbols &&
             matchStartUnlocked &&
             topBarPhase === "center" &&
@@ -5322,7 +5410,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             </div>
           ) : null}
           {/* Top chrome — two rows:
-                row 1: pause | icon-bar track
+                row 1: pause | icon-bar track | mute
                 row 2: blank | progress toast slot | cards left
               Body-match bar is stage-absolute (center foil → dock fly). */}
           <div
@@ -5370,7 +5458,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   </div>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end" />
+              <div className="stage-game__top-chrome-side is-end">
+                <StageMuteButton />
+              </div>
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">
@@ -5520,7 +5610,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   </div>
                 ) : null}
               </div>
-              <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
+              <div
+                className="stage-game__bottom-chrome-brand"
+                aria-hidden="true"
+              >
                 <img
                   src="/svg/logoSugarScratch.svg"
                   alt=""
