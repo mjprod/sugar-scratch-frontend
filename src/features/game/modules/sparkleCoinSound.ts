@@ -1,12 +1,17 @@
 /**
- * Sparkle-coin milestone SFX — one HTMLAudio per band clip.
- * Gated by game soundEffect prefs; never stacks overlapping band clips.
+ * Sparkle-coin milestone SFX — one preloaded HTMLAudio per band clip.
+ * Gated by game soundEffect prefs; rapid milestones overlap (extra voices are
+ * clones of the cached clip, capped by MAX_OVERLAPPING_COIN_VOICES).
  */
 
 import { getGameAudioPrefs } from "@/services/gameAudioPrefs";
 import { SPARKLE_COIN_BANDS } from "./sparkleCoinAward";
 
+/** Ceiling on simultaneous coin clips so a scratch burst can't pile up audio. */
+const MAX_OVERLAPPING_COIN_VOICES = 6;
+
 const audioBySrc = new Map<string, HTMLAudioElement>();
+const overlapVoices = new Set<HTMLAudioElement>();
 
 function soundUrl(src: string) {
   if (typeof document === "undefined") return src;
@@ -30,7 +35,34 @@ function getBandAudio(src: string): HTMLAudioElement | null {
   return audio;
 }
 
-/** Pause + rewind every cached band clip (mute / exclusive play). */
+function isPlaying(audio: HTMLAudioElement) {
+  return !audio.paused && !audio.ended;
+}
+
+function activeVoiceCount() {
+  let count = overlapVoices.size;
+  for (const audio of audioBySrc.values()) {
+    if (isPlaying(audio)) count += 1;
+  }
+  return count;
+}
+
+function spawnOverlapVoice(base: HTMLAudioElement): HTMLAudioElement {
+  const voice = base.cloneNode(true) as HTMLAudioElement;
+  voice.muted = false;
+  voice.volume = base.volume;
+  const release = () => {
+    overlapVoices.delete(voice);
+    voice.removeEventListener("ended", release);
+    voice.removeEventListener("error", release);
+  };
+  voice.addEventListener("ended", release);
+  voice.addEventListener("error", release);
+  overlapVoices.add(voice);
+  return voice;
+}
+
+/** Pause + rewind every coin clip, including overlapping voices (mute). */
 export function stopSparkleCoinSounds(): void {
   for (const audio of audioBySrc.values()) {
     try {
@@ -40,6 +72,14 @@ export function stopSparkleCoinSounds(): void {
       // Ignore decode / seek races on iOS.
     }
   }
+  for (const voice of overlapVoices) {
+    try {
+      voice.pause();
+    } catch {
+      // Ignore decode races on iOS.
+    }
+  }
+  overlapVoices.clear();
 }
 
 /** Warm the three band clips so the first 10% beat isn't silent on cold start. */
@@ -51,16 +91,24 @@ export function preloadSparkleCoinSounds() {
 
 /**
  * Play the MP3 for a sparkle award. No-op when SFX are muted.
- * Stops every band first so rapid cross-band milestones don't stack.
+ * Overlaps any coin clip already playing; the same clip re-triggered mid-play
+ * gets a cloned voice instead of rewinding the one in flight.
  */
 export function playSparkleCoinSound(soundSrc: string): void {
   if (!soundSrc) return;
   if (!getGameAudioPrefs().soundEffect) return;
-  const audio = getBandAudio(soundSrc);
-  if (!audio) return;
+  const base = getBandAudio(soundSrc);
+  if (!base) return;
+  if (activeVoiceCount() >= MAX_OVERLAPPING_COIN_VOICES) return;
   try {
-    stopSparkleCoinSounds();
-    void audio.play().catch(() => {
+    let target = base;
+    if (isPlaying(base)) {
+      target = spawnOverlapVoice(base);
+    } else {
+      base.currentTime = 0;
+    }
+    void target.play().catch(() => {
+      overlapVoices.delete(target);
       // Autoplay / gesture lock — ignore; next gesture unlocks prefs path.
     });
   } catch {

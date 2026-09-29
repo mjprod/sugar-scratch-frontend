@@ -9,7 +9,8 @@
  * `refreshWallet` remains the later source of truth.
  */
 
-import { apiMutate } from "../lib/api";
+import { ApiError, apiMutate } from "../lib/api";
+import { getAuthUserId } from "./auth";
 
 /** Optimistic floor/ceil — single source in sparkleCoinAward (must match backend). */
 export {
@@ -41,6 +42,20 @@ export type ScratchCoinClaimBody = {
 };
 
 /**
+ * Backend SCRATCH_HANDS_PER_DAY is a rolling 24h window per user, so a slot can
+ * free up at any time — back off after a 429 instead of latching forever.
+ */
+export const SCRATCH_HAND_QUOTA_BACKOFF_MS = 15 * 60 * 1000;
+
+/** Set on 429; only blocks starts for the same account until `until`. */
+let scratchHandQuotaBlock: { ownerId: string | null; until: number } | null =
+  null;
+const scratchHandInFlight = new Map<
+  string,
+  Promise<ScratchHandResult | null>
+>();
+
+/**
  * Client wallet after a scratch-coin persist response.
  * Always keeps the local balances: optimistic addCoins is the HUD credit,
  * and refreshWallet is the later source of truth.
@@ -54,21 +69,93 @@ export function nextWalletAfterScratchPersist(
   return local;
 }
 
-/** Ask the server for a new scratch hand id (rate-limited). */
-export async function startScratchHand(
+/**
+ * True while a recent 429 for this account is still inside its backoff.
+ * A different (or signed-out) account, or an expired backoff, clears it.
+ */
+export function isScratchHandQuotaExhausted(
+  ownerId: string | null = getAuthUserId(),
+  now: number = Date.now(),
+): boolean {
+  const block = scratchHandQuotaBlock;
+  if (!block) return false;
+  if (block.ownerId !== ownerId || now >= block.until) {
+    scratchHandQuotaBlock = null;
+    return false;
+  }
+  return true;
+}
+
+/** Record a quota 429 for `ownerId` (exported for self-checks). */
+export function markScratchHandQuotaExhausted(
+  ownerId: string | null = getAuthUserId(),
+  now: number = Date.now(),
+): void {
+  scratchHandQuotaBlock = { ownerId, until: now + SCRATCH_HAND_QUOTA_BACKOFF_MS };
+}
+
+/** Test helper — reset module quota / in-flight state. */
+export function resetScratchHandQuotaForTests(): void {
+  scratchHandQuotaBlock = null;
+  scratchHandInFlight.clear();
+}
+
+/** Ask the server for a new scratch hand id (rate-limited; 24/day). */
+export function startScratchHand(
   cardId?: string,
 ): Promise<ScratchHandResult | null> {
-  try {
-    return await apiMutate<ScratchHandResult>("/api/rewards/scratch/hands", {
-      method: "POST",
-      body: JSON.stringify(cardId ? { cardId } : {}),
-    });
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn("[scratchCoinReward] start hand failed", error);
+  const ownerId = getAuthUserId();
+  if (isScratchHandQuotaExhausted(ownerId)) return Promise.resolve(null);
+
+  const key = `${ownerId ?? ""}:${cardId?.trim() || ""}`;
+  const pending = scratchHandInFlight.get(key);
+  if (pending) return pending;
+
+  let settle!: (value: ScratchHandResult | null) => void;
+  const request = new Promise<ScratchHandResult | null>((resolve) => {
+    settle = resolve;
+  });
+  scratchHandInFlight.set(key, request);
+
+  void (async () => {
+    try {
+      const hand = await apiMutate<ScratchHandResult>(
+        "/api/rewards/scratch/hands",
+        {
+          method: "POST",
+          body: JSON.stringify(cardId ? { cardId } : {}),
+        },
+      );
+      settle(hand);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        markScratchHandQuotaExhausted(ownerId);
+        try {
+          if (import.meta.env?.DEV) {
+            console.warn(
+              "[scratchCoinReward] daily scratch-hand quota reached — backing off",
+            );
+          }
+        } catch {
+          // import.meta.env unavailable outside Vite
+        }
+        settle(null);
+        return;
+      }
+      try {
+        if (import.meta.env?.DEV) {
+          console.warn("[scratchCoinReward] start hand failed", error);
+        }
+      } catch {
+        // ignore
+      }
+      settle(null);
+    } finally {
+      scratchHandInFlight.delete(key);
     }
-    return null;
-  }
+  })();
+
+  return request;
 }
 
 /** Persist a milestone award. Callers should optimistic-addCoins first. */
@@ -76,14 +163,17 @@ export async function claimScratchCoins(
   body: ScratchCoinClaimBody,
 ): Promise<ScratchCoinClaimResult | null> {
   try {
-    return await apiMutate<ScratchCoinClaimResult>("/api/rewards/scratch/coins", {
-      method: "POST",
-      body: JSON.stringify({
-        handId: body.handId,
-        milestone: body.milestone,
-        ...(body.cardId ? { cardId: body.cardId } : {}),
-      }),
-    });
+    return await apiMutate<ScratchCoinClaimResult>(
+      "/api/rewards/scratch/coins",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          handId: body.handId,
+          milestone: body.milestone,
+          ...(body.cardId ? { cardId: body.cardId } : {}),
+        }),
+      },
+    );
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn("[scratchCoinReward] persist failed", error);
