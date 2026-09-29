@@ -3,6 +3,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import {
   getGameAudioPrefs,
+  setBackgroundMusicEnabled,
   setSoundEffectEnabled,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
@@ -104,6 +105,14 @@ import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
+import {
+  preloadMotionScratchBgm,
+  setMotionScratchBgmBed,
+  setMotionScratchBgmFull,
+  stopMotionScratchBgm,
+  syncMotionScratchBgm,
+  unlockMotionScratchBgm,
+} from "../modules/motionScratchBgm";
 import {
   clearPendingScratchMove,
   createScratchInputCoalesce,
@@ -2031,6 +2040,7 @@ export function ScratchPrototype({
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
     // Warm symbol lottie HTTP cache before hunt workers spin up (Phase 7).
@@ -3597,12 +3607,16 @@ export function ScratchPrototype({
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          unlockMotionScratchBgm();
           preloadSparkleCoinSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
           stopSparkleCoinSounds();
         }
+        // BGM follows backgroundMusic (stage mute toggles both). Must run in
+        // this click so Safari treats play() as a user gesture on unmute.
+        syncMotionScratchBgm();
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
@@ -3671,6 +3685,42 @@ export function ScratchPrototype({
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  // Option 1: quiet bed on foil (center), full level after dock settles.
+  // Cleanup must NOT stop on center→docked — only when warm ends or unmount.
+  const motionScratchBgmWarm =
+    useBodySymbols &&
+    matchStartUnlocked &&
+    !introGateActive &&
+    !introActive &&
+    !gameResult;
+  useEffect(() => {
+    if (!motionScratchBgmWarm) {
+      stopMotionScratchBgm();
+      return;
+    }
+    preloadMotionScratchBgm();
+    if (skipToPlay) {
+      setMotionScratchBgmFull();
+      return;
+    }
+    if (topBarPhase === "center") {
+      setMotionScratchBgmBed();
+      return;
+    }
+    if (topBarPhase === "docked") {
+      // Phase flips to docked when the climb starts — hold bed, then full.
+      setMotionScratchBgmBed();
+      const id = window.setTimeout(() => {
+        setMotionScratchBgmFull();
+      }, TOP_BAR_DOCK_MS);
+      return () => window.clearTimeout(id);
+    }
+    // showcase: leave level alone until warm clears (fade out above).
+  }, [motionScratchBgmWarm, topBarPhase, skipToPlay]);
+  useEffect(
+    () => () => stopMotionScratchBgm({ fadeOutMs: 0 }),
+    [],
+  );
   // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
   // load). Keep this separate from matchStartUnlocked so scratch stays gated.
   const topChromeBarReady =
@@ -3854,12 +3904,16 @@ export function ScratchPrototype({
     if (enabled) {
       unlockCountdownSound();
       preloadSparkleCoinSounds();
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
       stopSparkleCoinSounds();
     }
+    // Match StageMuteButton: SFX + BGM together so the looped track mutes too.
     setSoundEffectEnabled(enabled);
+    setBackgroundMusicEnabled(enabled);
+    syncMotionScratchBgm();
   }
 
   function isPhoneLayout() {
@@ -5753,6 +5807,9 @@ export function ScratchPrototype({
                 ensureSymbolAudio(symbolAudioRef.current);
                 preloadSparkleCoinSounds();
               }
+              // Re-assert Web Audio unlock inside this gesture (Safari).
+              unlockMotionScratchBgm();
+              syncMotionScratchBgm();
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
