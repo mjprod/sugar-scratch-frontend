@@ -31,10 +31,10 @@ export type SoundMix = Record<SoundMixChannel, number>;
 
 /** Shipped levels. 1 = the hardcoded gain each player already used. */
 export const SOUND_MIX_DEFAULTS: SoundMix = {
-  bgm: 0.15,
-  scratch: 0.05,
-  coins: 0.15,
-  match: 0.1,
+  bgm: 1,
+  scratch: 1,
+  coins: 1,
+  match: 0.4,
   symbols: 1,
   win: 1,
   lose: 1,
