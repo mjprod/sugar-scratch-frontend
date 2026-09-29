@@ -102,6 +102,8 @@ import {
   setThemeIntroSound,
   unbindThemeIntroVideo,
 } from "../shared/media";
+import { SoundMixDebug } from "../shared/SoundMixDebug";
+import { soundMixOutput } from "../shared/soundMix";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 
@@ -310,9 +312,10 @@ function playMatchFindSound(
   if (!ctx) return;
   const t = gameAudioStartTime(ctx) + startOffsetS;
   // Bright ascending ding — claims a top-bar slot.
-  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
-  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
-  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine");
+  const out = soundMixOutput("match") ?? getGameAudioOutput(ctx);
+  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle", out);
+  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine", out);
+  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine", out);
 }
 
 /** Per newly revealed body icon: ding only when it claims a top-bar slot. */
@@ -343,16 +346,17 @@ function scheduleTone(
   durationS: number,
   volume: number,
   type: OscillatorType = "triangle",
+  output: AudioNode = getGameAudioOutput(ctx),
 ) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, startAt);
   gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0001), startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(getGameAudioOutput(ctx));
+  gain.connect(output);
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -368,6 +372,17 @@ function playGameOutcomeSound(
   if (!ctx) return 1800;
 
   const now = gameAudioStartTime(ctx);
+  const out =
+    soundMixOutput(outcome === "win" ? "win" : "lose") ?? getGameAudioOutput(ctx);
+  const tone = (
+    startAt: number,
+    frequency: number,
+    durationS: number,
+    volume: number,
+    type: OscillatorType = "triangle",
+  ) => {
+    scheduleTone(ctx, startAt, frequency, durationS, volume, type, out);
+  };
 
   if (outcome === "win") {
     const sparkle = [
@@ -376,9 +391,9 @@ function playGameOutcomeSound(
     ];
     const sparkleStep = 0.048;
     sparkle.forEach((freq, index) => {
-      scheduleTone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
+      tone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
       if (index % 2 === 0) {
-        scheduleTone(
+        tone(
           ctx,
           now + index * sparkleStep + 0.012,
           freq * 2,
@@ -393,27 +408,27 @@ function playGameOutcomeSound(
     const fanfare = [523.25, 659.25, 783.99, 987.77, 1174.66];
     fanfare.forEach((freq, index) => {
       const t = fanfareStart + index * 0.1;
-      scheduleTone(ctx, t, freq, 0.15, 0.3, "square");
-      scheduleTone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
-      scheduleTone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
+      tone(ctx, t, freq, 0.15, 0.3, "square");
+      tone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
+      tone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
     });
 
     const chordAt = fanfareStart + fanfare.length * 0.1 + 0.1;
     const chord = [261.63, 392, 523.25, 659.25, 783.99, 1046.5, 1318.51];
     chord.forEach((freq, index) => {
       const type: OscillatorType = index < 2 ? "sawtooth" : "triangle";
-      scheduleTone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
+      tone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
     });
 
     const glitterStart = chordAt + 0.12;
     const glitter = [2093, 2349, 2637, 2793, 3136, 3520];
     glitter.forEach((freq, index) => {
-      scheduleTone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
+      tone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
     });
 
     const shimmerStart = glitterStart + glitter.length * 0.045 + 0.08;
     for (let i = 0; i < 6; i += 1) {
-      scheduleTone(
+      tone(
         ctx,
         shimmerStart + i * 0.06,
         1760 + i * 110,
@@ -429,8 +444,8 @@ function playGameOutcomeSound(
 
   // No match is a resolved outcome, not a loss — a soft low chime that settles,
   // never a descending "you lost" sting.
-  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
-  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  tone(ctx, now, 523.25, 0.34, 0.09, "sine");
+  tone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
   return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
@@ -2962,6 +2977,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               : ""
           }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}`}
         >
+          {import.meta.env.DEV ? <SoundMixDebug /> : null}
           {!entryReady ? (
             <div
               className="match-audio-gate"

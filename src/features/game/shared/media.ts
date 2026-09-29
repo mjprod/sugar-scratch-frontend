@@ -11,6 +11,9 @@ export type ThemeIntroPlayback = {
   playing: boolean;
 };
 
+import { getGameAudioContext } from "./gameAudioContext";
+import { soundMixOutput } from "./soundMix";
+
 function delay(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
@@ -74,6 +77,24 @@ function introSoundUnlocked(video: HTMLVideoElement) {
   return video.hasAttribute(INTRO_SOUND_UNLOCKED);
 }
 
+function applyIntroMix(video: HTMLVideoElement) {
+  video.volume = 1;
+  const ctx = getGameAudioContext();
+  const out = soundMixOutput("intro");
+  if (!ctx || !out) return;
+  const node =
+    (video as HTMLVideoElement & { __mixSource?: MediaElementAudioSourceNode })
+      .__mixSource ?? ctx.createMediaElementSource(video);
+  (video as HTMLVideoElement & { __mixSource?: MediaElementAudioSourceNode }).__mixSource =
+    node;
+  try {
+    node.disconnect();
+  } catch {
+    // not yet connected
+  }
+  node.connect(out);
+}
+
 function remuteForAutoplay(video: HTMLVideoElement) {
   video.volume = 1;
   video.muted = true;
@@ -88,7 +109,7 @@ export function setThemeIntroSound(
   options?: ThemeIntroSoundOptions,
 ): void {
   if (wantSound) {
-    video.volume = 1;
+    applyIntroMix(video);
     const canUnmute =
       options?.forceUnmute === true || introSoundUnlocked(video);
     if (!canUnmute) {
@@ -102,6 +123,7 @@ export function setThemeIntroSound(
     video.defaultMuted = false;
     video.removeAttribute("muted");
     video.setAttribute(INTRO_SOUND_UNLOCKED, "1");
+    applyIntroMix(video);
     return;
   }
   video.volume = 0;
@@ -291,6 +313,7 @@ export async function playThemeIntro(
   // Apply mute pref without force-unmute. Cold refresh has no gesture — clearing
   // muted here pauses the clip. Sound is enabled from the mute button / entry tap.
   setThemeIntroSound(video, soundWanted());
+  applyIntroMix(video);
   return {
     muted: video.muted || video.volume === 0,
     playing: true,

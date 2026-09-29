@@ -16,6 +16,7 @@ import {
   getGameAudioContext,
   getGameAudioOutput,
 } from "../shared/gameAudioContext";
+import { soundMixOutput } from "../shared/soundMix";
 
 /**
  * Must not start with "/scratch" (or any other prefix in the vite.config proxy
@@ -146,7 +147,7 @@ function startVoice(ctx: AudioContext, clip: Clip) {
   const gain = ctx.createGain();
   gain.gain.value = SCRATCH_SOUND_VOLUME;
   source.connect(gain);
-  gain.connect(getGameAudioOutput(ctx));
+  gain.connect(soundMixOutput("scratch") ?? getGameAudioOutput(ctx));
   const startAt = gameAudioStartTime(ctx);
   const voice: Voice = {
     source,

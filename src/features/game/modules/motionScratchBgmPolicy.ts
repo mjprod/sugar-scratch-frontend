@@ -22,10 +22,9 @@ export function resolveMotionScratchBgmPlan(input: {
   dockMs: number;
 }): MotionScratchBgmPlan {
   if (!input.warm) return { level: "off" };
-  if (input.skipToPlay) return { level: "full" };
-  if (input.topBarPhase === "center") return { level: "bed" };
-  if (input.topBarPhase === "docked") {
-    return { level: "bed", fullAfterMs: input.dockMs };
+  if (input.skipToPlay) return { level: "bed" };
+  if (input.topBarPhase === "center" || input.topBarPhase === "docked") {
+    return { level: "bed" };
   }
   // showcase: leave the level alone until warm clears.
   return { level: "keep" };

@@ -5,6 +5,8 @@
  */
 
 import { effectiveSoundEffect } from "@/services/gameAudioPrefs";
+import { getGameAudioContext } from "../shared/gameAudioContext";
+import { soundMixOutput } from "../shared/soundMix";
 import { SPARKLE_COIN_BANDS } from "./sparkleCoinAward";
 
 /** Ceiling on simultaneous coin clips so a scratch burst can't pile up audio. */
@@ -16,6 +18,28 @@ const overlapVoices = new Set<HTMLAudioElement>();
 function soundUrl(src: string) {
   if (typeof document === "undefined") return src;
   return new URL(src, document.location.href).href;
+}
+
+function ensureCoinGain(): AudioNode | null {
+  return soundMixOutput("coins");
+}
+
+/** iOS ignores HTMLAudio.volume, so the element stays at 1 and the mix is a GainNode. */
+function routeThroughMix(audio: HTMLAudioElement) {
+  const gain = ensureCoinGain();
+  const ctx = getGameAudioContext();
+  if (!gain || !ctx) return;
+  const node = (
+    audio as HTMLAudioElement & { __coinSource?: MediaElementAudioSourceNode }
+  ).__coinSource ?? ctx.createMediaElementSource(audio);
+  (audio as HTMLAudioElement & { __coinSource?: MediaElementAudioSourceNode }).__coinSource =
+    node;
+  try {
+    node.disconnect();
+  } catch {
+    // not yet connected
+  }
+  node.connect(gain);
 }
 
 function getBandAudio(src: string): HTMLAudioElement | null {
@@ -107,6 +131,7 @@ export function playSparkleCoinSound(soundSrc: string): void {
     } else {
       base.currentTime = 0;
     }
+    routeThroughMix(target);
     void target.play().catch(() => {
       overlapVoices.delete(target);
       // Autoplay / gesture lock — ignore; next gesture unlocks prefs path.

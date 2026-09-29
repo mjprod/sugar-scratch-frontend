@@ -20,6 +20,9 @@ const CollectionPage = lazy(() =>
 const GameUiPage = lazy(() =>
   import("@/pages/GameUiPage").then((m) => ({ default: m.GameUiPage })),
 );
+const AudioTestPage = lazy(() =>
+  import("@/pages/AudioTestPage").then((m) => ({ default: m.AudioTestPage })),
+);
 const CoverFlowV2Page = lazy(() =>
   import("@/pages/CoverFlowV2Page").then((m) => ({
     default: m.CoverFlowV2Page,
@@ -374,6 +377,14 @@ export function AppRoutes() {
               element={
                 <GameCatalogRoute>
                   <GameUiPage />
+                </GameCatalogRoute>
+              }
+            />
+            <Route
+              path="audio-test"
+              element={
+                <GameCatalogRoute>
+                  <AudioTestPage />
                 </GameCatalogRoute>
               }
             />

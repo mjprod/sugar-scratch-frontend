@@ -52,6 +52,8 @@ export const Paths = {
   game: "/game",
   /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
   gameUi: "/game-ui",
+  /** Scratch card that replays from the intro, for mixing sound levels. */
+  audioTest: "/audio-test",
   photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
   gamePlay: (
