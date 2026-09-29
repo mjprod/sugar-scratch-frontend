@@ -2417,7 +2417,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
 }
 
 /* Anticipation only — stays put at the find and hands off at scale 1, which is
-   where MatchFlight's travel picks the scale up. Peak is 5× so the match reads
+   where MatchFlight's travel picks the scale up. Peak is 3× so the match reads
    on the mesh before the climb. */
 @keyframes matchAnticipate {
   /* Appear + surge toward camera — transform/opacity only (no CSS filter). */
@@ -2429,12 +2429,12 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   18% {
     opacity: 1;
     transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(5);
+      translate(-50%, -50%) scale(3);
   }
-  /* Hold the 5× read on the mesh. */
+  /* Hold the 3× read on the mesh. */
   72% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(5);
+      translate(-50%, -50%) scale(3);
     opacity: 1;
   }
   /* Gather itself for the launch. */
