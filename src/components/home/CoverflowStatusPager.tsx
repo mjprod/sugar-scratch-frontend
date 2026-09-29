@@ -3,6 +3,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
@@ -56,6 +57,12 @@ export function CoverflowStatusPager({
   const metricsRef = useRef<DotMetric[]>([]);
   const scrubbingRef = useRef(false);
   const pointerIdRef = useRef<number | null>(null);
+  const pillPressRef = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    moved: boolean;
+  } | null>(null);
   const hoverIndexRef = useRef(active);
   const pillWRef = useRef(37.5);
   const hasLaidOutRef = useRef(false);
@@ -333,8 +340,46 @@ export function CoverflowStatusPager({
     [stopEdgeHoldLoop],
   );
 
+  const selectFromClientX = useCallback(
+    (clientX: number) => {
+      if (!interactive || total <= 1) return;
+      measure();
+      const next = indexFromClientX(clientX);
+      hoverIndexRef.current = next;
+      paintPill(next, true);
+      ensureActiveVisible(next, "smooth");
+      onSelectIndexRef.current?.(next);
+    },
+    [
+      ensureActiveVisible,
+      indexFromClientX,
+      interactive,
+      measure,
+      paintPill,
+      total,
+    ],
+  );
+
   const endScrub = useCallback(
     (event?: ReactPointerEvent<HTMLSpanElement>) => {
+      const press = pillPressRef.current;
+      pillPressRef.current = null;
+      // A tap on the pill (no drag) jumps to the dot under the finger.
+      if (press && !press.moved && event && !scrubbingRef.current) {
+        const pill = pillRef.current;
+        if (pill && pointerIdRef.current != null) {
+          try {
+            pill.releasePointerCapture(pointerIdRef.current);
+          } catch {
+            /* noop */
+          }
+        }
+        pointerIdRef.current = null;
+        pill?.classList.remove("is-held");
+        rootRef.current?.classList.remove("is-scrubbing");
+        selectFromClientX(event.clientX);
+        return;
+      }
       if (!scrubbingRef.current) return;
       scrubbingRef.current = false;
       const pill = pillRef.current;
@@ -365,8 +410,61 @@ export function CoverflowStatusPager({
       measure,
       onSelectIndex,
       paintPill,
+      selectFromClientX,
       stopEdgeHoldLoop,
     ],
+  );
+
+  const selectIndex = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(totalRef.current - 1, index));
+    hoverIndexRef.current = clamped;
+    measure();
+    paintPill(clamped, true);
+    ensureActiveVisible(clamped, "smooth");
+    onSelectIndexRef.current?.(clamped);
+  }, [ensureActiveVisible, measure, paintPill]);
+
+  const onTrackPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!interactive || total <= 1) return;
+      if (event.button !== 0) return;
+      // Pill scrub owns its own pointer path.
+      if (
+        event.target instanceof Element &&
+        event.target.closest(".coverflow-status-pager__pill")
+      ) {
+        return;
+      }
+      // Commit the pressed dot on pointerdown so a tap still lands if an
+      // ancestor captures the pointer and swallows the later click.
+      const dot =
+        event.target instanceof Element
+          ? event.target.closest(".coverflow-status-pager__dot")
+          : null;
+      const index = dot
+        ? Number(dot.getAttribute("data-index"))
+        : indexFromClientX(event.clientX);
+      if (!Number.isFinite(index)) return;
+      event.stopPropagation();
+      selectIndex(index);
+    },
+    [indexFromClientX, interactive, selectIndex, total],
+  );
+
+  const onTrackClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (!interactive || total <= 1) return;
+      if (scrubbingRef.current) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest(".coverflow-status-pager__pill")
+      ) {
+        return;
+      }
+      event.stopPropagation();
+      selectFromClientX(event.clientX);
+    },
+    [interactive, selectFromClientX, total],
   );
 
   const onPillPointerDown = useCallback(
@@ -374,31 +472,37 @@ export function CoverflowStatusPager({
       if (!interactive || total <= 1) return;
       event.preventDefault();
       event.stopPropagation();
-      scrubbingRef.current = true;
+      // Don't start a scrub until the finger moves — a tap must jump slides.
+      pillPressRef.current = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        moved: false,
+      };
       pointerIdRef.current = event.pointerId;
       event.currentTarget.setPointerCapture(event.pointerId);
-      event.currentTarget.classList.add("is-held");
-      rootRef.current?.classList.add("is-scrubbing");
-      measure();
-      const next = indexFromClientX(event.clientX);
-      hoverIndexRef.current = next;
-      paintPill(next, false);
-      ensureActiveVisible(next, "auto");
-      updateEdgeHoldFromClientX(event.clientX);
     },
-    [
-      ensureActiveVisible,
-      indexFromClientX,
-      interactive,
-      measure,
-      paintPill,
-      total,
-      updateEdgeHoldFromClientX,
-    ],
+    [interactive, total],
   );
 
   const onPillPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLSpanElement>) => {
+      const press = pillPressRef.current;
+      if (press && event.pointerId === press.pointerId && !press.moved) {
+        const dx = event.clientX - press.x;
+        const dy = event.clientY - press.y;
+        if (Math.hypot(dx, dy) < 6) return;
+        press.moved = true;
+        scrubbingRef.current = true;
+        event.currentTarget.classList.add("is-held");
+        rootRef.current?.classList.add("is-scrubbing");
+        measure();
+        const next = indexFromClientX(event.clientX);
+        hoverIndexRef.current = next;
+        paintPill(next, false);
+        ensureActiveVisible(next, "auto");
+        updateEdgeHoldFromClientX(event.clientX);
+      }
       if (!scrubbingRef.current) return;
       event.preventDefault();
       updateEdgeHoldFromClientX(event.clientX);
@@ -414,6 +518,7 @@ export function CoverflowStatusPager({
     [
       ensureActiveVisible,
       indexFromClientX,
+      measure,
       paintPill,
       updateEdgeHoldFromClientX,
     ],
@@ -435,7 +540,12 @@ export function CoverflowStatusPager({
       aria-label={ariaLabel}
     >
       <div ref={scrollRef} className="coverflow-status-pager__scroll">
-        <div ref={trackRef} className="coverflow-status-pager__track">
+        <div
+          ref={trackRef}
+          className="coverflow-status-pager__track"
+          onPointerDown={onTrackPointerDown}
+          onClick={onTrackClick}
+        >
           {interactive ? (
             <span
               ref={pillRef}
@@ -485,11 +595,13 @@ export function CoverflowStatusPager({
                 type="button"
                 className={className}
                 role="tab"
+                data-index={index}
                 aria-selected={isActive}
                 aria-label={label}
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   if (scrubbingRef.current) return;
-                  onSelectIndex?.(index);
+                  selectIndex(index);
                 }}
               />
             );

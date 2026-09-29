@@ -181,7 +181,9 @@ export function GuestHomeLanding() {
     const target = event.target;
     if (
       target instanceof Element &&
-      target.closest("a, input, textarea, select, .cta-button, .guest-home-landing__cta")
+      target.closest(
+        "a, button, input, textarea, select, .cta-button, .guest-home-landing__cta, .coverflow-status-pager, .guest-home-landing__status-pager",
+      )
     ) {
       return;
     }
@@ -275,7 +277,6 @@ export function GuestHomeLanding() {
           .filter(Boolean)
           .join(" ")}
         style={trackStyle}
-        onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}

@@ -708,15 +708,9 @@ body[data-theme="v8"] .guest-home-landing__footer {
   }
 }
 
-/* Same capsule + scrubbable pink pill as the logged-in home hero pager. */
-body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager,
-body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__scroll,
-body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__track,
-body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__pill {
-  pointer-events: none;
-  touch-action: pan-x;
-}
-
+/* Same capsule + scrubbable pink pill as the logged-in home hero pager.
+ * Hits stay on the pager so a tap on a dot jumps to that slide instead of
+ * falling through to the landing swipe. */
 body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager,
 body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager.is-interactive {
   position: relative;
@@ -724,13 +718,24 @@ body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager.i
   bottom: auto;
   z-index: 2;
   transform: none;
-  pointer-events: none;
-  touch-action: pan-x;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__scroll,
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__track,
 body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__dot,
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__pill,
 body[data-theme="v8"] .guest-home-landing__status-pager button {
   pointer-events: auto;
+  touch-action: manipulation;
+}
+
+/* Rest dots are 12.5px — too small to tap. Expand the hit box without moving the mark. */
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__dot::before {
+  content: "";
+  position: absolute;
+  inset: -14px -6px;
 }
 
 body[data-theme="v8"] .guest-home-landing__cta {
