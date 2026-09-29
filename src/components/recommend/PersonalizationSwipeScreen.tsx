@@ -24,9 +24,18 @@ export type PersonalizationSwipeResult = {
   passed: string[];
 };
 
+/** Swipes needed before Continue appears (fewer if the deck is shorter). */
+const SWIPE_DECISION_GOAL = 4;
+
+/**
+ * Passed so SwipeDeck skips its own "No more cards" interstitial; the footer
+ * Continue is the only way forward, even once the stack is empty.
+ */
+function noop() {}
+
 /**
  * Incoming home swipe deck, used as Recommendation Initialization.
- * Advances when the stack empties (no interstitial empty screen).
+ * Advances only via the footer Continue once enough cards are decided.
  */
 export function PersonalizationSwipeScreen({
   onContinue,
@@ -46,7 +55,10 @@ export function PersonalizationSwipeScreen({
   const [liked, setLiked] = useState<string[]>([]);
   const [passed, setPassed] = useState<string[]>([]);
   const decisions = liked.length + passed.length;
-  const progress = Math.min(1, decisions / 4);
+  // Short decks (e.g. the one-card fallback) must still unlock Continue.
+  const decisionGoal = Math.max(1, Math.min(SWIPE_DECISION_GOAL, deck.length));
+  const progress = Math.min(1, decisions / decisionGoal);
+  const canContinue = decisions >= decisionGoal;
   const likedRef = useRef(liked);
   const passedRef = useRef(passed);
   likedRef.current = liked;
@@ -143,8 +155,8 @@ export function PersonalizationSwipeScreen({
                 className="auth7-rec-swipe-bar"
                 role="progressbar"
                 aria-valuemin={0}
-                aria-valuemax={4}
-                aria-valuenow={Math.min(decisions, 4)}
+                aria-valuemax={decisionGoal}
+                aria-valuenow={Math.min(decisions, decisionGoal)}
                 aria-label="Swipe progress"
               >
                 <div
@@ -152,7 +164,7 @@ export function PersonalizationSwipeScreen({
                   style={{ transform: `scaleX(${progress})` }}
                 />
               </div>
-              {decisions >= 4 ? (
+              {canContinue ? (
                 <button
                   type="button"
                   className="auth7-rec-swipe-continue"
@@ -181,7 +193,7 @@ export function PersonalizationSwipeScreen({
                     initialCards={deck}
                     playSwipeHint
                     onSwipe={handleSwipe}
-                    onEmpty={() => onContinue(snapshot())}
+                    onEmpty={noop}
                   />
                 ) : null}
               </animated.div>
