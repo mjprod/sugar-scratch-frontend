@@ -2,9 +2,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import {
-  getGameAudioPrefs,
-  setBackgroundMusicEnabled,
-  setSoundEffectEnabled,
+  effectiveSoundEffect,
+  setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
@@ -106,13 +105,15 @@ import {
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
 import {
-  preloadMotionScratchBgm,
-  setMotionScratchBgmBed,
-  setMotionScratchBgmFull,
-  stopMotionScratchBgm,
   syncMotionScratchBgm,
   unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
+import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import {
+  gameAudioStartTime,
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
 import {
   clearPendingScratchMove,
   createScratchInputCoalesce,
@@ -608,14 +609,8 @@ type SymbolAudioState = {
 
 function ensureSymbolAudio(state: SymbolAudioState) {
   if (typeof window === "undefined") return null;
-  if (!state.ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return null;
-    state.ctx = new AudioCtor();
-  }
+  state.ctx ??= getGameAudioContext();
+  if (!state.ctx) return null;
   if (state.ctx.state === "suspended") void state.ctx.resume();
   return state.ctx;
 }
@@ -627,7 +622,7 @@ function symbolSlotFrequency(slotIndex: number) {
 function playSymbolSlotNote(state: SymbolAudioState, slotIndex: number) {
   const ctx = ensureSymbolAudio(state);
   if (!ctx || slotIndex < 0 || slotIndex >= SYMBOL_SLOT_COUNT) return;
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "triangle";
@@ -636,7 +631,7 @@ function playSymbolSlotNote(state: SymbolAudioState, slotIndex: number) {
   gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + SYMBOL_NOTE_DURATION_S);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getGameAudioOutput(ctx));
   osc.start(now);
   osc.stop(now + SYMBOL_NOTE_DURATION_S + 0.02);
 }
@@ -661,7 +656,7 @@ function playMatchFindSound(
   if (!enabled) return;
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return;
-  const t = ctx.currentTime + startOffsetS;
+  const t = gameAudioStartTime(ctx) + startOffsetS;
   // Bright ascending ding — claims a top-bar slot.
   scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
   scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
@@ -705,7 +700,7 @@ function scheduleTone(
   gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getGameAudioOutput(ctx));
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -720,7 +715,7 @@ function playGameOutcomeSound(
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return 1800;
 
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
 
   if (outcome === "win") {
     const sparkle = [
@@ -791,7 +786,7 @@ function scratchZoomEasing(bounce: boolean) {
   return bounce ? "cubic-bezier(0.34, 1.56, 0.64, 1)" : "ease-out";
 }
 
-const loadSoundEnabled = () => getGameAudioPrefs().soundEffect;
+const loadSoundEnabled = () => effectiveSoundEffect();
 
 // Rect-taking variant, for callers that project several points per frame: the
 // two getBoundingClientRect reads are identical for every point, so hoisting
@@ -2055,15 +2050,15 @@ export function ScratchPrototype({
     });
     const video = introVideoElRef.current;
     if (video && introActiveRef.current) {
-      void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+      void playThemeIntro(video, () => effectiveSoundEffect()).then(
         (result) => {
           if (!introActiveRef.current) return;
           if (!result.playing) return;
           // Entry tap is a user gesture — safe to unmute if sound pref is on.
-          setThemeIntroSound(video, getGameAudioPrefs().soundEffect, {
+          setThemeIntroSound(video, effectiveSoundEffect(), {
             forceUnmute: true,
           });
-          if (getGameAudioPrefs().soundEffect) {
+          if (effectiveSoundEffect()) {
             void video.play().catch(() => undefined);
           }
         },
@@ -2458,7 +2453,7 @@ export function ScratchPrototype({
     const kick = () => {
       const video = introVideoElRef.current;
       if (!video) return false;
-      void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+      void playThemeIntro(video, () => effectiveSoundEffect()).then(
         (result) => {
           if (cancelled) return;
           if (!result.playing) {
@@ -2466,7 +2461,7 @@ export function ScratchPrototype({
             // Only the 20s safety timer / onError tears the overlay down.
             return;
           }
-          setThemeIntroSound(video, getGameAudioPrefs().soundEffect);
+          setThemeIntroSound(video, effectiveSoundEffect());
         },
       );
       return true;
@@ -3599,7 +3594,7 @@ export function ScratchPrototype({
   useEffect(
     () =>
       subscribeGameAudioPrefs(() => {
-        const next = getGameAudioPrefs().soundEffect;
+        const next = effectiveSoundEffect();
         // Keep the ref in sync inside this click before any async intro
         // callbacks read it — otherwise a late playThemeIntro then() can
         // undo the mute/unmute the user just chose.
@@ -3614,9 +3609,6 @@ export function ScratchPrototype({
           stopCountdownAudio();
           stopSparkleCoinSounds();
         }
-        // BGM follows backgroundMusic (stage mute toggles both). Must run in
-        // this click so Safari treats play() as a user gesture on unmute.
-        syncMotionScratchBgm();
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
@@ -3685,42 +3677,16 @@ export function ScratchPrototype({
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
-  // Option 1: quiet bed on foil (center), full level after dock settles.
-  // Cleanup must NOT stop on center→docked — only when warm ends or unmount.
-  const motionScratchBgmWarm =
-    useBodySymbols &&
-    matchStartUnlocked &&
-    !introGateActive &&
-    !introActive &&
-    !gameResult;
-  useEffect(() => {
-    if (!motionScratchBgmWarm) {
-      stopMotionScratchBgm();
-      return;
-    }
-    preloadMotionScratchBgm();
-    if (skipToPlay) {
-      setMotionScratchBgmFull();
-      return;
-    }
-    if (topBarPhase === "center") {
-      setMotionScratchBgmBed();
-      return;
-    }
-    if (topBarPhase === "docked") {
-      // Phase flips to docked when the climb starts — hold bed, then full.
-      setMotionScratchBgmBed();
-      const id = window.setTimeout(() => {
-        setMotionScratchBgmFull();
-      }, TOP_BAR_DOCK_MS);
-      return () => window.clearTimeout(id);
-    }
-    // showcase: leave level alone until warm clears (fade out above).
-  }, [motionScratchBgmWarm, topBarPhase, skipToPlay]);
-  useEffect(
-    () => () => stopMotionScratchBgm({ fadeOutMs: 0 }),
-    [],
-  );
+  useMotionScratchBgm({
+    warm:
+      useBodySymbols &&
+      matchStartUnlocked &&
+      !introGateActive &&
+      !introActive &&
+      !gameResult,
+    topBarPhase,
+    skipToPlay,
+  });
   // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
   // load). Keep this separate from matchStartUnlocked so scratch stays gated.
   const topChromeBarReady =
@@ -3910,10 +3876,8 @@ export function ScratchPrototype({
       stopCountdownAudio();
       stopSparkleCoinSounds();
     }
-    // Match StageMuteButton: SFX + BGM together so the looped track mutes too.
-    setSoundEffectEnabled(enabled);
-    setBackgroundMusicEnabled(enabled);
-    syncMotionScratchBgm();
+    // Master mute, same as StageMuteButton — Settings switches stay put.
+    setGameSoundOn(enabled);
   }
 
   function isPhoneLayout() {

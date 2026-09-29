@@ -4,7 +4,7 @@
  * clones of the cached clip, capped by MAX_OVERLAPPING_COIN_VOICES).
  */
 
-import { getGameAudioPrefs } from "@/services/gameAudioPrefs";
+import { effectiveSoundEffect } from "@/services/gameAudioPrefs";
 import { SPARKLE_COIN_BANDS } from "./sparkleCoinAward";
 
 /** Ceiling on simultaneous coin clips so a scratch burst can't pile up audio. */
@@ -96,7 +96,7 @@ export function preloadSparkleCoinSounds() {
  */
 export function playSparkleCoinSound(soundSrc: string): void {
   if (!soundSrc) return;
-  if (!getGameAudioPrefs().soundEffect) return;
+  if (!effectiveSoundEffect()) return;
   const base = getBandAudio(soundSrc);
   if (!base) return;
   if (activeVoiceCount() >= MAX_OVERLAPPING_COIN_VOICES) return;

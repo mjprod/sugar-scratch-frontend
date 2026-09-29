@@ -4,9 +4,8 @@ import { navigateBackOr } from "@/hooks/useGoBack";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
-  getGameAudioPrefs,
-  setBackgroundMusicEnabled,
-  setSoundEffectEnabled,
+  effectiveSoundEffect,
+  setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 import {
@@ -63,13 +62,15 @@ import {
   stopCountdownAudio,
 } from "../modules/InitialCountdown";
 import {
-  preloadMotionScratchBgm,
-  setMotionScratchBgmBed,
-  setMotionScratchBgmFull,
-  stopMotionScratchBgm,
   syncMotionScratchBgm,
   unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
+import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import {
+  gameAudioStartTime,
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
 import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
@@ -265,7 +266,7 @@ function playlistForGameSession(
   return ordered;
 }
 
-const loadSoundEnabled = () => getGameAudioPrefs().soundEffect;
+const loadSoundEnabled = () => effectiveSoundEffect();
 
 function loadAutoScratchSettings(): AutoScratchSettings {
   if (typeof window === "undefined") return AUTO_SCRATCH_DEFAULTS;
@@ -288,14 +289,8 @@ function loadAutoScratchSettings(): AutoScratchSettings {
 
 function ensureSymbolAudio(state: SymbolAudioState) {
   if (typeof window === "undefined") return null;
-  if (!state.ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return null;
-    state.ctx = new AudioCtor();
-  }
+  state.ctx ??= getGameAudioContext();
+  if (!state.ctx) return null;
   if (state.ctx.state === "suspended") void state.ctx.resume();
   return state.ctx;
 }
@@ -308,7 +303,7 @@ function playMatchFindSound(
   if (!enabled) return;
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return;
-  const t = ctx.currentTime + startOffsetS;
+  const t = gameAudioStartTime(ctx) + startOffsetS;
   // Bright ascending ding — claims a top-bar slot.
   scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
   scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
@@ -352,7 +347,7 @@ function scheduleTone(
   gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getGameAudioOutput(ctx));
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -367,7 +362,7 @@ function playGameOutcomeSound(
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return 1800;
 
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
 
   if (outcome === "win") {
     const sparkle = [
@@ -2102,9 +2097,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     } else {
       stopCountdownAudio();
     }
-    setSoundEffectEnabled(enabled);
-    setBackgroundMusicEnabled(enabled);
-    syncMotionScratchBgm();
+    setGameSoundOn(enabled);
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
@@ -2414,7 +2407,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const video = introVideoElRef.current;
     if (!video) return;
     let cancelled = false;
-    void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+    void playThemeIntro(video, () => effectiveSoundEffect()).then(
       (result) => {
         if (cancelled) return;
         if (!result.playing) {
@@ -2424,7 +2417,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           return;
         }
         // Never force-unmute here — that needs a user gesture after refresh.
-        setThemeIntroSound(video, getGameAudioPrefs().soundEffect);
+        setThemeIntroSound(video, effectiveSoundEffect());
       },
     );
     const safetyId = window.setTimeout(() => {
@@ -2443,7 +2436,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   useEffect(
     () =>
       subscribeGameAudioPrefs(() => {
-        const next = getGameAudioPrefs().soundEffect;
+        const next = effectiveSoundEffect();
         soundEnabledRef.current = next;
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
@@ -2453,7 +2446,6 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         } else {
           stopCountdownAudio();
         }
-        syncMotionScratchBgm();
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
@@ -2515,35 +2507,15 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
-  // Option 1: quiet bed on foil (center), full level after dock settles.
-  const motionScratchBgmWarm =
-    hasBodySymbols &&
-    entryReady &&
-    !introActive &&
-    !introGateActive &&
-    !gameResult;
-  useEffect(() => {
-    if (!motionScratchBgmWarm) {
-      stopMotionScratchBgm();
-      return;
-    }
-    preloadMotionScratchBgm();
-    if (topBarPhase === "center") {
-      setMotionScratchBgmBed();
-      return;
-    }
-    if (topBarPhase === "docked") {
-      setMotionScratchBgmBed();
-      const id = window.setTimeout(() => {
-        setMotionScratchBgmFull();
-      }, TOP_BAR_DOCK_MS);
-      return () => window.clearTimeout(id);
-    }
-  }, [motionScratchBgmWarm, topBarPhase]);
-  useEffect(
-    () => () => stopMotionScratchBgm({ fadeOutMs: 0 }),
-    [],
-  );
+  useMotionScratchBgm({
+    warm:
+      hasBodySymbols &&
+      entryReady &&
+      !introActive &&
+      !introGateActive &&
+      !gameResult,
+    topBarPhase,
+  });
   const huntPhase = resolveHuntPhase({
     active:
       hasBodySymbols &&

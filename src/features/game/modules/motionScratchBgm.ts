@@ -1,17 +1,26 @@
 /**
  * Looped ambient MP3 during motion scratch.
- * Gated by backgroundMusic prefs — the stage mute button toggles that flag.
+ * Gated by the effective background-music pref (Settings switch + in-game
+ * master mute).
  *
- * Web Audio buffer looping (gapless). Option 1 mix:
+ * Web Audio buffer looping (gapless) on the shared game AudioContext, which
+ * is suspended while the page is hidden. Option 1 mix:
  * - foil / center bar: quiet bed
  * - after dock settles: full level
+ * - pause menu open: ducked to the bed level
  * - hand end: fade out
  */
 
 import {
-  getGameAudioPrefs,
+  effectiveBackgroundMusic,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import {
+  getGameAudioContext,
+  getGameAudioOutput,
+  peekGameAudioContext,
+} from "../shared/gameAudioContext";
+import { resolveMotionScratchBgmGain } from "./motionScratchBgmPolicy";
 
 /** Local public/ path (not under Vite media proxy routes like /sounds). */
 export const MOTION_SCRATCH_BGM_SRC = "/bgm/magnific-nuestra-madre_01.mp3";
@@ -27,10 +36,10 @@ export const MOTION_SCRATCH_BGM_FADE_IN_MS = 240;
 export const MOTION_SCRATCH_BGM_BED_TO_FULL_MS = 320;
 /** Ease-out when the hand resolves / stage leaves. */
 export const MOTION_SCRATCH_BGM_FADE_OUT_MS = 560;
-
-type WebkitAudioWindow = typeof window & {
-  webkitAudioContext?: typeof AudioContext;
-};
+/** Duck / unduck when the pause menu opens or closes. */
+export const MOTION_SCRATCH_BGM_DUCK_MS = 240;
+/** After a failed fetch/decode, don't refetch on every tap for this long. */
+export const MOTION_SCRATCH_BGM_RETRY_MS = 10_000;
 
 export type MotionScratchBgmOptions = {
   /** Target linear gain while active (default full). */
@@ -39,9 +48,9 @@ export type MotionScratchBgmOptions = {
   fadeOutMs?: number;
 };
 
-let ctx: AudioContext | null = null;
 let buffer: AudioBuffer | null = null;
 let bufferPromise: Promise<AudioBuffer | null> | null = null;
+let lastLoadFailureAt = 0;
 let source: AudioBufferSourceNode | null = null;
 let gain: GainNode | null = null;
 /** Wall-clock when the current source started (ctx time). */
@@ -52,9 +61,15 @@ let sourceOffset = 0;
 let desiredPlaying = false;
 /** Last requested audible level while desiredPlaying. */
 let desiredGain = MOTION_SCRATCH_BGM_FULL_GAIN;
+/** Pause menu open — cap the level at the bed. */
+let ducked = false;
+/** Gain the current source is at or ramping toward. */
+let appliedGain = 0;
 /** Bumps on every sync so an older unmute's await can't restart after mute. */
 let syncGeneration = 0;
 let fadeStopTimer: number | null = null;
+/** Whether the pending fade-out keeps the loop position (mute) or rewinds. */
+let fadeKeepOffset = false;
 let prefsUnsub: (() => void) | null = null;
 
 function soundUrl(src: string) {
@@ -62,23 +77,11 @@ function soundUrl(src: string) {
   return new URL(src, document.location.href).href;
 }
 
-function getContext(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-  if (!ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as WebkitAudioWindow).webkitAudioContext;
-    if (!AudioCtor) return null;
-    ctx = new AudioCtor();
-  }
-  return ctx;
-}
-
 function bgmAllowed() {
-  return getGameAudioPrefs().backgroundMusic;
+  return effectiveBackgroundMusic();
 }
 
-function ensurePrefsSubscription() {
+function ensureListeners() {
   if (prefsUnsub || typeof window === "undefined") return;
   // Mute / settings writes are synchronous — resume() must stay in that click
   // so Safari treats it as a user gesture.
@@ -103,9 +106,8 @@ function clampGain(value: number) {
  * Awaiting fetch/decode first drops Safari's activation token.
  */
 function resumeContextForGesture(audioCtx: AudioContext): void {
-  if (audioCtx.state === "suspended") {
-    void audioCtx.resume();
-  }
+  if (audioCtx.state === "running") return;
+  void audioCtx.resume().catch(() => undefined);
   try {
     const tick = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
     const sourceNode = audioCtx.createBufferSource();
@@ -119,30 +121,35 @@ function resumeContextForGesture(audioCtx: AudioContext): void {
 
 async function ensureBuffer(): Promise<AudioBuffer | null> {
   if (buffer) return buffer;
-  if (!bufferPromise) {
-    bufferPromise = (async () => {
-      const audioCtx = getContext();
-      if (!audioCtx) return null;
-      try {
-        const res = await fetch(soundUrl(MOTION_SCRATCH_BGM_SRC));
-        if (!res.ok) return null;
-        const data = await res.arrayBuffer();
-        // copy before decode — some engines detach the buffer
-        const copy = data.slice(0);
-        return await audioCtx.decodeAudioData(copy);
-      } catch {
-        return null;
-      }
-    })().then((decoded) => {
-      if (decoded) {
-        buffer = decoded;
-        return decoded;
-      }
-      // Allow a later preload/sync to retry after a transient failure.
-      bufferPromise = null;
-      return null;
-    });
+  if (bufferPromise) return bufferPromise;
+  if (
+    lastLoadFailureAt > 0 &&
+    Date.now() - lastLoadFailureAt < MOTION_SCRATCH_BGM_RETRY_MS
+  ) {
+    return null;
   }
+  bufferPromise = (async () => {
+    const audioCtx = getGameAudioContext();
+    if (!audioCtx) return null;
+    try {
+      const res = await fetch(soundUrl(MOTION_SCRATCH_BGM_SRC));
+      if (!res.ok) return null;
+      const data = await res.arrayBuffer();
+      // copy before decode — some engines detach the buffer
+      return await audioCtx.decodeAudioData(data.slice(0));
+    } catch {
+      return null;
+    }
+  })().then((decoded) => {
+    bufferPromise = null;
+    if (decoded) {
+      buffer = decoded;
+      lastLoadFailureAt = 0;
+      return decoded;
+    }
+    lastLoadFailureAt = Date.now();
+    return null;
+  });
   return bufferPromise;
 }
 
@@ -156,7 +163,7 @@ function elapsedOffset(audioCtx: AudioContext): number {
 
 function stopSource(keepOffset: boolean) {
   clearFadeStopTimer();
-  const audioCtx = ctx;
+  const audioCtx = peekGameAudioContext();
   if (source && audioCtx && keepOffset && buffer) {
     sourceOffset = elapsedOffset(audioCtx);
   }
@@ -175,25 +182,27 @@ function stopSource(keepOffset: boolean) {
     }
     source = null;
   }
+  appliedGain = 0;
 }
 
 function ensureGain(audioCtx: AudioContext): GainNode {
   if (!gain) {
     gain = audioCtx.createGain();
     gain.gain.value = 0;
-    gain.connect(audioCtx.destination);
+    gain.connect(getGameAudioOutput(audioCtx));
   }
   return gain;
 }
 
 /** Cancel pending ramps and snap/ramp gain. */
 function rampGain(to: number, fadeMs: number) {
-  const audioCtx = ctx;
+  const audioCtx = peekGameAudioContext();
   if (!audioCtx || !gain) return;
   const now = audioCtx.currentTime;
   const param = gain.gain;
   param.cancelScheduledValues(now);
   const target = clampGain(to);
+  appliedGain = target;
   if (fadeMs <= 0) {
     param.setValueAtTime(target, now);
     return;
@@ -237,18 +246,21 @@ function startSourceAt(
 
 /**
  * Call synchronously from a user-gesture handler (Play / Continue / unmute).
- * Resuming this module's AudioContext inside the gesture is what lets Safari
- * start the loop after in-app navigation. Pair with SPA `navigateTo`.
+ * Resuming the shared AudioContext inside the gesture is what lets Safari
+ * start the loop after in-app navigation. Cheap no-op once running + loaded,
+ * so it is safe on every scratch touch.
  */
 export function unlockMotionScratchBgm(): void {
-  const audioCtx = getContext();
-  if (audioCtx) resumeContextForGesture(audioCtx);
+  const audioCtx = getGameAudioContext();
+  if (!audioCtx) return;
+  if (audioCtx.state === "running" && buffer) return;
+  resumeContextForGesture(audioCtx);
   void ensureBuffer();
 }
 
 /**
- * Apply desired + mute state.
- * - Active + unmuted: ensure playing at desiredGain.
+ * Apply desired + mute + duck state.
+ * - Active + unmuted: ensure playing at the (ducked) desired gain.
  * - Muted mid-loop: pause (keep position) with a short fade.
  * - Stage off: fade out, then rewind.
  */
@@ -258,12 +270,26 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
   }
   const fadeInMs = options?.fadeInMs ?? MOTION_SCRATCH_BGM_FADE_IN_MS;
   const fadeOutMs = options?.fadeOutMs ?? MOTION_SCRATCH_BGM_FADE_OUT_MS;
-  const audioCtx = getContext();
-  if (!audioCtx) return;
 
   if (desiredPlaying && bgmAllowed()) {
+    const audioCtx = getGameAudioContext();
+    if (!audioCtx) return;
+    const target = resolveMotionScratchBgmGain(
+      desiredGain,
+      ducked,
+      MOTION_SCRATCH_BGM_BED_GAIN,
+    );
+    // Already looping at this level — nothing to do (every scratch touch
+    // lands here, so keep it allocation-free).
+    if (
+      source &&
+      fadeStopTimer == null &&
+      appliedGain === target &&
+      audioCtx.state === "running"
+    ) {
+      return;
+    }
     const gen = ++syncGeneration;
-    const target = desiredGain;
     clearFadeStopTimer();
     // Safari: resume + silent tick MUST run before any await (gesture token).
     resumeContextForGesture(audioCtx);
@@ -274,13 +300,12 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
       }
       // Context may still be catching up after a sync resume(); don't await.
       if (audioCtx.state === "suspended") {
-        void audioCtx.resume();
+        void audioCtx.resume().catch(() => undefined);
       }
-      if (gen !== syncGeneration || !desiredPlaying || !bgmAllowed()) return;
       if (!source) {
         startSourceAt(audioCtx, buf, target, fadeInMs);
       } else {
-        // Already looping — ramp level (bed ↔ full, or unmute restore).
+        // Already looping — ramp level (bed ↔ full, duck, or unmute restore).
         rampGain(target, fadeInMs);
       }
     })();
@@ -291,11 +316,13 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
   // Muted but still on stage: freeze position after fade. Left stage: rewind.
   const keepOffset = desiredPlaying;
   if (source && gain && fadeOutMs > 0) {
+    fadeKeepOffset = keepOffset;
+    // A fade-out is already running — let it finish instead of restarting.
+    if (fadeStopTimer != null) return;
     rampGain(0, fadeOutMs);
-    clearFadeStopTimer();
     fadeStopTimer = window.setTimeout(() => {
       fadeStopTimer = null;
-      stopSource(keepOffset);
+      stopSource(fadeKeepOffset);
       if (gain) gain.gain.value = 0;
     }, fadeOutMs + 24);
     return;
@@ -309,11 +336,11 @@ export function setMotionScratchBgmActive(
   active: boolean,
   options?: MotionScratchBgmOptions,
 ): void {
-  ensurePrefsSubscription();
+  ensureListeners();
   desiredPlaying = active;
   if (options?.targetGain != null) {
     desiredGain = clampGain(options.targetGain);
-  } else if (active && options?.targetGain == null && desiredGain <= 0) {
+  } else if (active && desiredGain <= 0) {
     desiredGain = MOTION_SCRATCH_BGM_FULL_GAIN;
   }
   if (active) preloadMotionScratchBgm();
@@ -342,18 +369,25 @@ export function stopMotionScratchBgm(options?: MotionScratchBgmOptions): void {
   setMotionScratchBgmActive(false, options);
 }
 
+/** Pause menu open: cap the loop at the bed level until it closes. */
+export function setMotionScratchBgmDucked(next: boolean): void {
+  if (ducked === next) return;
+  ducked = next;
+  syncMotionScratchBgm({ fadeInMs: MOTION_SCRATCH_BGM_DUCK_MS });
+}
+
 export function preloadMotionScratchBgm(): void {
-  getContext();
   void ensureBuffer();
 }
 
 /** True while the buffer source is actually outputting. */
 export function isMotionScratchBgmPlaying(): boolean {
+  const audioCtx = peekGameAudioContext();
   return Boolean(
     desiredPlaying &&
       bgmAllowed() &&
       source &&
-      ctx &&
-      ctx.state === "running",
+      audioCtx &&
+      audioCtx.state === "running",
   );
 }
