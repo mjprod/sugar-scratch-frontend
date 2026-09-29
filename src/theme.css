@@ -510,7 +510,7 @@ body[data-theme="v8"] .guest-home-landing {
   width: 100%;
   overflow: hidden;
   background: #000;
-  touch-action: pan-y;
+  touch-action: pan-x;
 }
 
 body[data-theme="v8"] .guest-home-landing__track {
@@ -522,7 +522,7 @@ body[data-theme="v8"] .guest-home-landing__track {
   height: 100%;
   will-change: transform;
   cursor: grab;
-  touch-action: pan-y;
+  touch-action: pan-x;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -560,9 +560,8 @@ body[data-theme="v8"] .guest-home-landing__slide--step {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Top-align content so copy sits above the fixed CTA / status pill. */
-  justify-content: flex-start;
-  /* Bottom pad clears status pill + CTA + dock; top keeps space under mobile HUD. */
+  /* Center art + copy in the space above the fixed pager and CTA. */
+  justify-content: center;
   padding:
     max(7.5dvh, calc(env(safe-area-inset-top, 0px) + 4.5rem))
     28px
@@ -683,7 +682,9 @@ body[data-theme="v8"] .guest-home-landing__footer {
   gap: 1rem;
   width: 100%;
   padding-bottom: max(13dvh, var(--guest-cta-dock-clearance));
+  /* Pass swipes through. CTA and pager re-enable hits on their own controls. */
   pointer-events: none;
+  touch-action: pan-x;
 }
 
 /* Phones use the tighter dock-wrap bottom pad (see LiquidGlassNav.css ≤440px). */
@@ -708,12 +709,27 @@ body[data-theme="v8"] .guest-home-landing__footer {
 }
 
 /* Same capsule + scrubbable pink pill as the logged-in home hero pager. */
-body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager {
+body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager,
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__scroll,
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__track,
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__pill {
+  pointer-events: none;
+  touch-action: pan-x;
+}
+
+body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager,
+body[data-theme="v8"] .guest-home-landing__status-pager.coverflow-status-pager.is-interactive {
   position: relative;
   left: auto;
   bottom: auto;
   z-index: 2;
   transform: none;
+  pointer-events: none;
+  touch-action: pan-x;
+}
+
+body[data-theme="v8"] .guest-home-landing__status-pager .coverflow-status-pager__dot,
+body[data-theme="v8"] .guest-home-landing__status-pager button {
   pointer-events: auto;
 }
 
@@ -739,6 +755,7 @@ body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow {
 body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow,
 body[data-theme="v8"] .guest-home-landing__cta .cta-button {
   pointer-events: auto;
+  touch-action: manipulation;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -13942,11 +13959,10 @@ body[data-theme="v8"] .top-nav-resource-value {
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--coin {
-  /* Dust coin Lottie needs a wider viewport so particles aren't clipped. */
-  width: 28px;
+  width: 16px;
   height: 16px;
   color: transparent;
-  overflow: visible;
+  overflow: hidden;
 }
 
 body[data-theme="v8"] .top-nav-resource-icon--coin canvas,
@@ -14060,8 +14076,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 }
 
 .wallet-balances-popover__icon--dust {
-  /* Match diamond row optical weight with the wider dust Lottie. */
-  margin-inline: -0.15rem;
+  margin-inline: 0;
 }
 
 .wallet-balances-popover__icon--preview-diamond {

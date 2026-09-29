@@ -120,8 +120,9 @@ function CreatorScreenInner({
 }) {
   const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId);
+  const pageLoading = !model || collection.loading;
   useMarkPageReady(
-    !collection.loading ||
+    !pageLoading ||
       collection.themes.length > 0 ||
       collection.cards.length > 0,
   );
@@ -392,6 +393,18 @@ function CreatorScreenInner({
     });
   }
 
+  if (pageLoading && themes.length === 0) {
+    return (
+      <section
+        ref={pageRef}
+        data-page-scroll
+        className="cpv2-page no-sticky-cta"
+      >
+        <CreatorPageSkeleton onBack={onBack} />
+      </section>
+    );
+  }
+
   return (
     <section
       ref={pageRef}
@@ -430,7 +443,6 @@ function CreatorScreenInner({
             setSelectedThemeId(themeId);
             navigate(Paths.motionCard(creatorId, cardId));
           }}
-          onLockedHint={() => notice("Buy packs to unlock Motion Cards")}
           onPlayGame={handlePlayGame}
         />
       </div>
@@ -450,5 +462,33 @@ function CreatorScreenInner({
         />
       ) : null}
     </section>
+  );
+}
+
+function CreatorPageSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="cpv2-shell cpv2-page-skeleton" aria-busy="true">
+      <div className="cpv2-skeleton-profile">
+        <button
+          type="button"
+          className="cpv2-skeleton-back"
+          aria-label="Back"
+          onClick={onBack}
+        />
+        <span className="cpv2-skeleton-avatar" aria-hidden="true" />
+        <span className="cpv2-skeleton-meta" aria-hidden="true">
+          <span className="cpv2-skeleton-bar is-name" />
+          <span className="cpv2-skeleton-bar is-handle" />
+          <span className="cpv2-skeleton-bar is-location" />
+        </span>
+      </div>
+      <div className="cpv2-influencer" aria-hidden="true">
+        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-progress" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+      </div>
+    </div>
   );
 }

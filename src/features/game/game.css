@@ -250,7 +250,7 @@
 
 /*
  * Top HUD chrome — two rows:
- *   row 1 controls: [ pause | icon bar | mute ]  (3-col grid)
+ *   row 1 controls: [ pause | icon bar ]  (3-col grid; end gutter stays empty)
  *   row 2 status:   [ cards-left 1fr | notifications 2fr ]
  */
 .stage-game__top-chrome {
@@ -369,7 +369,9 @@
   margin: 0;
   padding: 0;
   border-radius: 50%;
-  border: 1px solid oklch(1 0 0 / 0.14);
+  border: 2px solid #00e5ff;
+  outline: 2px solid #00e5ff;
+  outline-offset: 2px;
   background: oklch(0.157 0.013 284.85 / 0.9);
   color: oklch(1 0 0);
   line-height: 1;
@@ -622,14 +624,14 @@
   text-size-adjust: 100%;
 }
 
-/* Dust count-up — purple frosted plate + tunable overlay hue.
+/* Coin count-up — yellow frosted plate + tunable overlay hue.
    Defaults live here; lab debug writes the same vars as inline styles on
    .stage-game / .stage-game__coin-count so they always win. */
 .stage-game__coin-count {
-  --coin-overlay-hue: 300;
-  --coin-overlay-sat: 72%;
-  --coin-overlay-light: 22%;
-  --coin-overlay-alpha: 0.74;
+  --coin-overlay-hue: 46;
+  --coin-overlay-sat: 88%;
+  --coin-overlay-light: 28%;
+  --coin-overlay-alpha: 0.62;
   --pp-tint: hsl(
     var(--coin-overlay-hue) var(--coin-overlay-sat) var(--coin-overlay-light) /
       var(--coin-overlay-alpha)
@@ -648,7 +650,7 @@
     rgb(255 255 255 / 0.12) 34%,
     rgb(255 255 255 / 0.4) 100%
   );
-  --pp-border-color: #c78be8;
+  --pp-border-color: #f0c14a;
   --pp-border-width: 1px;
   --pp-radius-tl: 11px;
   --pp-radius-tr: 11px;
@@ -815,7 +817,7 @@
 .stage-game__coin-count-value {
   display: block;
   margin: 0;
-  color: rgb(255 255 255 / 0.96);
+  color: #f0c14a;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -834,21 +836,21 @@
 @keyframes coin-count-value-pop {
   0% {
     transform: scale(1);
-    color: rgb(255 255 255 / 0.96);
+    color: #f0c14a;
   }
   35% {
     transform: scale(1.18);
-    color: #e3b7ff;
+    color: #ffe08a;
   }
   100% {
     transform: scale(1);
-    color: rgb(255 255 255 / 0.96);
+    color: #f0c14a;
   }
 }
 
 .stage-game__coin-count-label {
   margin: 0;
-  color: rgb(210 185 230 / 0.9);
+  color: #f0c14a;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: normal;
@@ -869,9 +871,9 @@
   transform: translate(-50%, -100%);
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgb(18 10 24 / 0.82);
-  border: 1px solid rgb(199 139 232 / 0.55);
-  color: #e3b7ff;
+  background: rgb(28 20 6 / 0.82);
+  border: 1px solid rgb(240 193 74 / 0.55);
+  color: #f0c14a;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -1281,6 +1283,47 @@
   letter-spacing: 0.01em;
   text-align: center;
   color: oklch(1 0 0 / 0.92);
+}
+
+.game-pause__mute {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  margin: 0 0 8px;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 12px;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.88);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 120ms ease;
+}
+
+.game-pause__mute.is-muted {
+  color: oklch(1 0 0 / 0.55);
+}
+
+.game-pause__mute:hover {
+  border-color: oklch(1 0 0 / 0.24);
+  background: oklch(1 0 0 / 0.14);
+  color: oklch(1 0 0 / 0.95);
+}
+
+.game-pause__mute:active {
+  transform: scale(0.98);
+}
+
+.game-pause__mute:focus-visible {
+  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline-offset: 2px;
 }
 
 .game-pause__resume {

@@ -37,6 +37,8 @@ export type CardConfig = {
    * Shown under/alongside the video so Safari and loading states aren't blank.
    */
   posterUrl?: string
+  /** Published motion-clip template. Absent means no motion card to show. */
+  motionUrl?: string
   backMediaType: MediaType
   backUrl: string
   effectIndex: number
@@ -100,6 +102,7 @@ export function createCard(
         ? PLACEHOLDER_MEDIA_URL
         : DEFAULT_MEDIA_URL),
     posterUrl: partial.posterUrl?.trim() || undefined,
+    motionUrl: partial.motionUrl?.trim() || undefined,
     backMediaType: partial.backMediaType ?? 'image',
     backUrl: partial.backUrl ?? DEFAULT_BACK_URL,
     effectIndex: partial.effectIndex ?? DEFAULT_EFFECT_INDEX,

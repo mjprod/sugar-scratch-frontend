@@ -134,6 +134,8 @@ export type BackendCollectionCard = {
   trailerPosterUrl?: string | null
   /** Still first-frame poster for the motion clip face. */
   motionPosterUrl?: string | null
+  /** Published motion clip, separate from the collection trailer. */
+  motionUrl?: string | null
   photoScratchDone: number
   /** Fixed 10-slot grid (empty string = unfilled). */
   photoUrls: string[]
@@ -809,6 +811,9 @@ function normalizeCollectionGroup(
       const motionPosterUrl = card.motionPosterUrl
         ? normalizeMediaUrl(card.motionPosterUrl)
         : ''
+      const motionUrl = card.motionUrl
+        ? normalizeMediaUrl(card.motionUrl)
+        : ''
       const videoUrl = normalizeMediaUrl(card.videoUrl || '')
       return {
         id: card.id,
@@ -816,6 +821,7 @@ function normalizeCollectionGroup(
         trailerUrl: trailerUrl || null,
         trailerPosterUrl: trailerPosterUrl || null,
         motionPosterUrl: motionPosterUrl || null,
+        motionUrl: motionUrl || null,
         videoUrl: trailerUrl || videoUrl,
         photoScratchDone: Math.max(
           0,
@@ -1117,6 +1123,7 @@ export async function fetchCollectionCatalogLegacy(
                 trailerUrl: trailerUrl || null,
                 trailerPosterUrl: trailerPosterUrl || null,
                 motionPosterUrl: motionPosterUrl || null,
+                motionUrl: motionUrl || null,
                 // Prefer trailer for collection face; fall back to motion clips.
                 videoUrl: trailerUrl || motionUrl,
                 photoScratchDone: Math.max(

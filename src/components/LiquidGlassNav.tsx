@@ -399,7 +399,7 @@ export function LiquidGlassNav({
   searchActive = false,
   hideDock = false,
 }: LiquidGlassNavProps) {
-  const { authed, guestAuthLabel, inboxUnread } = useAuth();
+  const { authed, guestAuthLabel, inboxUnread, openCreateAccount } = useAuth();
   const desktopTabs = useMemo(
     () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
     [authed],
@@ -957,6 +957,12 @@ export function LiquidGlassNav({
   const selectTab = useCallback(
     (id: AppTab) => {
       if (suppressTabClickRef.current) return;
+      // Guests keep the Collection slot for dock symmetry, but it is not a
+      // login prompt — it opens create account.
+      if (id === "bag" && !authed) {
+        openCreateAccount();
+        return;
+      }
       if (id === active) {
         onReselect?.(id);
         window.dispatchEvent(
@@ -975,7 +981,7 @@ export function LiquidGlassNav({
       }
       onTabChange(id);
     },
-    [active, onReselect, onTabChange],
+    [active, authed, onReselect, onTabChange, openCreateAccount],
   );
 
   /** Logo always leaves secondary/immersive routes (tear, pack pocket, etc.). */

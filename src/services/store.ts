@@ -22,7 +22,7 @@ export const COIN_EXCHANGE_OPTIONS = [
 
 export type CoinExchangeOption = (typeof COIN_EXCHANGE_OPTIONS)[number];
 
-/** Highest diamond tier the player can afford with current Diamond Dust. */
+/** Highest diamond tier the player can afford with current Coins. */
 export function bestAffordableCoinExchange(
   coinBalance: number,
 ): CoinExchangeOption | null {
@@ -90,7 +90,7 @@ export async function exchangeCoinsForDiamonds(
     current &&
     (!Number.isFinite(current.coins) || current.coins < resolved.coins)
   ) {
-    return { status: "failed", message: "Not enough Diamond Dust." };
+    return { status: "failed", message: "Not enough Coins." };
   }
 
   try {
@@ -154,7 +154,7 @@ export type StoreProduct = {
    * Display only — not added again on purchase.
    */
   bonusDiamonds?: number;
-  /** Bonus Diamond Dust granted with this product (not shown on cash package cards). */
+  /** Bonus Coins granted with this product (not shown on cash package cards). */
   coins?: number;
   badge?: StoreBadge;
   /** Artwork URL — CSS fallback used when empty. */

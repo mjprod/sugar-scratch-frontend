@@ -602,6 +602,7 @@ export function createBackendDeck(
       const overlay =
         lookup?.overlayForGroup?.(group) ?? lookup?.overlay ?? undefined
       const trailer = card.trailerUrl?.trim() || ''
+      const motionUrl = card.motionUrl?.trim() || ''
       const mediaUrl =
         trailer || (card.videoUrl && card.videoUrl.trim()) || ''
       // Catalog tiles need a still even when the face is a motion clip.
@@ -624,6 +625,7 @@ export function createBackendDeck(
         mediaType: hasMedia ? 'video' : 'image',
         mediaUrl: hasMedia ? mediaUrl : PLACEHOLDER_MEDIA_URL,
         posterUrl: posterUrl || undefined,
+        motionUrl: motionUrl || undefined,
         videoCardCount: 0,
         photoFilledCount: Math.max(
           0,
