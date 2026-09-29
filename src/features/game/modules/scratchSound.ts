@@ -53,6 +53,13 @@ const SCRATCH_SOUND_VOLUME = 0.9;
 const SCRATCH_SOUND_RATE_JITTER = 0.06;
 /** ~-40 dBFS; samples below this count as trailing silence. */
 const SCRATCH_SOUND_SILENCE_LEVEL = 0.01;
+/** A clip that failed to load/decode isn't refetched until this has passed. */
+export const SCRATCH_SOUND_RETRY_MS = 10_000;
+/**
+ * A stamp that landed on a suspended context still plays if the context
+ * resumes within this window (covers a tap that lifts before resume settles).
+ */
+const SCRATCH_SOUND_RESUME_GRACE_MS = 500;
 
 const ALL_SCRATCH_SOUND_SRCS: readonly string[] = Object.values(
   SCRATCH_SOUND_TIERS,
@@ -68,10 +75,14 @@ type Voice = {
 
 const pendingClips = new Map<string, Promise<Clip | null>>();
 const readyClips = new Map<string, Clip>();
+const failedAtMs = new Map<string, number>();
 const liveVoices = new Set<Voice>();
 let currentVoice: Voice | null = null;
 let strokeStartMs: number | null = null;
 let lastSrc: string | null = null;
+/** performance.now() of the latest stamp that hit a suspended context. */
+let suspendedStampMs: number | null = null;
+let resumeWatchedCtx: AudioContext | null = null;
 
 export function scratchSoundTier(activeMs: number): ScratchSoundTier {
   if (activeMs >= SCRATCH_SOUND_LONG_AFTER_MS) return "long";
@@ -93,27 +104,33 @@ function audibleEnd(buffer: AudioBuffer): number {
   return last > 0 ? (last + 1) / buffer.sampleRate : buffer.duration;
 }
 
-function loadClip(ctx: AudioContext, src: string): Promise<Clip | null> {
-  const pending = pendingClips.get(src);
-  if (pending) return pending;
+function loadClip(ctx: AudioContext, src: string): void {
+  if (readyClips.has(src) || pendingClips.has(src)) return;
+  const failedAt = failedAtMs.get(src);
+  if (failedAt != null && performance.now() - failedAt < SCRATCH_SOUND_RETRY_MS)
+    return;
   const next = fetch(src)
     .then((response) => {
       if (!response.ok) throw new Error(`Failed to load ${src}`);
       return response.arrayBuffer();
     })
-    .then((data) => ctx.decodeAudioData(data))
+    // decodeAudioData detaches the buffer; pass a copy for Safari.
+    .then((data) => ctx.decodeAudioData(data.slice(0)))
     .then((buffer) => {
       const clip = { buffer, audibleEnd: audibleEnd(buffer) };
       readyClips.set(src, clip);
+      failedAtMs.delete(src);
+      pendingClips.delete(src);
       return clip;
     })
     .catch(() => {
-      // Let a later preload retry (offline blip, decode race on iOS).
+      // Retry after a backoff (offline blip, decode race on iOS) — stamps
+      // call preload at pointer-move rate while nothing is ready.
+      failedAtMs.set(src, performance.now());
       pendingClips.delete(src);
       return null;
     });
   pendingClips.set(src, next);
-  return next;
 }
 
 /** Fetch + decode every scratch clip. Call from a user gesture. */
@@ -121,7 +138,7 @@ export function preloadScratchSounds(): void {
   if (typeof fetch === "undefined") return;
   const ctx = getGameAudioContext();
   if (!ctx) return;
-  for (const src of ALL_SCRATCH_SOUND_SRCS) void loadClip(ctx, src);
+  for (const src of ALL_SCRATCH_SOUND_SRCS) loadClip(ctx, src);
 }
 
 function pickClip(tier: ScratchSoundTier): { src: string; clip: Clip } | null {
@@ -176,6 +193,7 @@ export function endScratchSoundStroke(): void {
 export function stopScratchSounds(): void {
   strokeStartMs = null;
   currentVoice = null;
+  suspendedStampMs = null;
   if (!liveVoices.size) return;
   const ctx = getGameAudioContext();
   if (!ctx) return;
@@ -205,16 +223,46 @@ export function noteScratchSoundActivity(
     return;
   }
   const ctx = getGameAudioContext();
-  // Scheduling on a suspended context would burst out on resume.
-  if (!ctx || ctx.state !== "running") return;
+  if (!ctx || ctx.state === "closed") return;
 
   strokeStartMs ??= nowMs;
+  if (ctx.state !== "running") {
+    // Scheduling on a suspended context would burst out on resume, so ask
+    // for a resume and play the opening clip once it lands.
+    deferUntilResumed(ctx);
+    return;
+  }
   if (currentVoice && ctx.currentTime < currentVoice.chainAt) return;
-  const picked = pickClip(scratchSoundTier(nowMs - strokeStartMs));
+  playClip(ctx, scratchSoundTier(nowMs - strokeStartMs));
+}
+
+function playClip(ctx: AudioContext, tier: ScratchSoundTier): void {
+  const picked = pickClip(tier);
   if (!picked) {
     preloadScratchSounds();
     return;
   }
   lastSrc = picked.src;
   startVoice(ctx, picked.clip);
+}
+
+function deferUntilResumed(ctx: AudioContext): void {
+  const now = performance.now();
+  const resumeInFlight =
+    suspendedStampMs != null &&
+    now - suspendedStampMs < SCRATCH_SOUND_RESUME_GRACE_MS;
+  suspendedStampMs = now;
+  if (!resumeInFlight) void ctx.resume().catch(() => undefined);
+  if (resumeWatchedCtx === ctx) return;
+  resumeWatchedCtx = ctx;
+  ctx.addEventListener("statechange", () => {
+    if (ctx.state !== "running" || suspendedStampMs == null) return;
+    const fresh =
+      performance.now() - suspendedStampMs < SCRATCH_SOUND_RESUME_GRACE_MS;
+    suspendedStampMs = null;
+    if (!fresh || currentVoice || !effectiveSoundEffect()) return;
+    playClip(ctx, "short");
+    // Finger already lifted (a tap): let the next stroke layer on top.
+    if (strokeStartMs == null) currentVoice = null;
+  });
 }
