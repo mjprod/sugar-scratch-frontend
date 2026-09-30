@@ -16256,7 +16256,7 @@ body[data-theme="v8"] .home-v2 .player-welcome-bar::after {
   width: 7.93125rem; /* ~10% smaller than 8.8125rem */
   height: 7.9875rem;
   transform: translateY(calc(-50% + 0.35rem));
-  background: url("/images/home-v2/gift-box.png") center / contain no-repeat;
+  background: url("/images/home-v2/gift-box.webp") center / contain no-repeat;
   pointer-events: none;
   margin: 0;
 }

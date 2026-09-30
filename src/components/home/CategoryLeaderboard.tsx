@@ -171,6 +171,8 @@ export function CategoryLeaderboard({
                     className="category-leaderboard-rank-crown"
                     width={29}
                     height={29}
+                    loading="lazy"
+                    decoding="async"
                     draggable={false}
                     aria-hidden="true"
                   />

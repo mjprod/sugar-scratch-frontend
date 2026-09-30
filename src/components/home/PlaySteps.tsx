@@ -66,7 +66,7 @@ export const FIGMA_HOME_PLAY_STEPS: PlayStep[] = [
     title: "Scratch",
     sentence: "Scratch & reveal matching symbols",
     icon: <ScratchMatchIcon />,
-    imageSrc: "/images/home-v2/how-scratch.png",
+    imageSrc: "/images/home-v2/how-scratch.webp",
     imageClassName: "is-scratch",
   },
   {
@@ -80,7 +80,7 @@ export const FIGMA_HOME_PLAY_STEPS: PlayStep[] = [
     title: "Collect",
     sentence: "Complete themes get spicy content",
     icon: <CollectIcon />,
-    imageSrc: "/images/home-v2/how-collect.png",
+    imageSrc: "/images/home-v2/how-collect.webp",
     imageClassName: "is-collect",
   },
 ];
@@ -112,7 +112,13 @@ function PlayStepCard({
             .join(" ")}
           aria-hidden="true"
         >
-          <img src={step.imageSrc} alt="" draggable={false} />
+          <img
+            src={step.imageSrc}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+          />
         </span>
       ) : (
         <span className="home-play-steps-icon">{step.icon}</span>

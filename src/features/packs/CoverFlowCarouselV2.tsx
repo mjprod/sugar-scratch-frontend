@@ -2578,6 +2578,11 @@ export function CoverFlowCarouselV2({
 }: CoverFlowCarouselProps) {
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
+
+  useEffect(() => {
+    useGLTF.preload(PACK_MODEL_URL_V2)
+  }, [])
+
   const packRemoveTriggersRef = useRef(new Map<string, () => void>())
   const registerRemoveTrigger = useCallback(
     (id: string, trigger: (() => void) | null) => {
@@ -4042,5 +4047,3 @@ isMobile={isMobileViewportActive}
     </div>
   )
 }
-
-useGLTF.preload(PACK_MODEL_URL_V2)

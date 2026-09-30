@@ -1,9 +1,9 @@
+import type { VideoTextureCacheStats } from "@/lib/pack3d/videoTextureCache";
 import {
-  clearVideoTextureCache,
-  getVideoTextureCacheStats,
-  pauseAllVideoTextures,
-  type VideoTextureCacheStats,
-} from "@/lib/pack3d/videoTextureCache";
+  clearVideoTextureCacheIfLoaded as clearVideoTextureCache,
+  getVideoTextureCacheStatsIfLoaded as getVideoTextureCacheStats,
+  pauseAllVideoTexturesIfLoaded as pauseAllVideoTextures,
+} from "@/lib/pack3d/videoTextureCacheHandle";
 import { releaseMediaElement } from "@/features/game/shared/media";
 import { armLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import type { RouteMemoryDomain } from "@/lib/memory/routeMemoryDomain";

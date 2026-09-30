@@ -266,6 +266,8 @@ export function CreatorInfluencerBody({
               src={ultraPreview.posterUrl || avatarUrl || "/img/placeholder.png"}
               alt=""
               className="cpv2-ultra-card-img"
+              loading="lazy"
+              decoding="async"
             />
           )}
         </div>
@@ -413,7 +415,12 @@ function ThemeCollectionCard({
       <header className="cpv2-theme-card-head">
         <div className="cpv2-theme-card-identity">
           <span className="cpv2-theme-card-avatar">
-            <img src={avatarUrl || "/img/placeholder.png"} alt="" />
+            <img
+              src={avatarUrl || "/img/placeholder.png"}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
           </span>
           <h3 className="cpv2-theme-card-title">
             <span aria-hidden="true">{glyph} </span>
@@ -478,7 +485,13 @@ function ThemeCollectionCard({
                 onClick={handleTileActivate}
               >
                 {thumb ? (
-                  <img src={thumb} alt="" className="cpv2-motion-tile-img" />
+                  <img
+                    src={thumb}
+                    alt=""
+                    className="cpv2-motion-tile-img"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <span className="cpv2-motion-tile-img is-empty" />
                 )}
@@ -668,7 +681,9 @@ function ThemeCollectionCard({
         </div>
         <div className="cpv2-premium-banner-body">
           <div className="cpv2-premium-preview" aria-hidden="true">
-            {avatarUrl ? <img src={avatarUrl} alt="" /> : null}
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" loading="lazy" decoding="async" />
+            ) : null}
             <span className="cpv2-premium-preview-lock">
               <svg
                 width="15"
