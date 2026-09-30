@@ -72,6 +72,8 @@ export function OnboardShell({
     >
       {intro ? (
         <div className="auth7-intro-card">{main}</div>
+      ) : swipe ? (
+        main
       ) : (
         <>
           {header}

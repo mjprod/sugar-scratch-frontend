@@ -1,4 +1,6 @@
 import { animated, useSpring } from "@react-spring/web";
+import { ChevronRight } from "lucide-react";
+import { PersonalizationCompleteScreen } from "@/components/recommend/PersonalizationCompleteScreen";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SwipeCircle } from "@/features/swipe/components/SwipeCircle";
 import { SwipeDeck } from "@/features/swipe/components/SwipeDeck";
@@ -59,6 +61,7 @@ export function PersonalizationSwipeScreen({
   const decisionGoal = Math.max(1, Math.min(SWIPE_DECISION_GOAL, deck.length));
   const progress = Math.min(1, decisions / decisionGoal);
   const canContinue = decisions >= decisionGoal;
+  const deckEmpty = deck.length > 0 && decisions >= deck.length;
   const likedRef = useRef(liked);
   const passedRef = useRef(passed);
   likedRef.current = liked;
@@ -149,7 +152,17 @@ export function PersonalizationSwipeScreen({
     <StackBacksDebugProvider>
       <SwipeCircleDebugProvider>
         <NopeTintDebugProvider>
-          <div className="stage-swipe auth7-rec-swipe">
+          <div
+            className={`stage-swipe auth7-rec-swipe${deckEmpty ? " is-deck-empty" : ""}`}
+          >
+            <div
+              className="auth7-rec-swipe-done"
+              aria-hidden={deckEmpty ? undefined : true}
+            >
+              <PersonalizationCompleteScreen
+                onStart={() => onContinue(snapshot())}
+              />
+            </div>
             <div className="auth7-rec-swipe-footer">
               <div
                 className="auth7-rec-swipe-bar"
@@ -170,9 +183,12 @@ export function PersonalizationSwipeScreen({
                   className="auth7-rec-swipe-continue"
                   onClick={() => onContinue(snapshot())}
                 >
-                  Continue to Home…
                   <span className="auth7-rec-swipe-continue-hint">
-                    or keep swiping to keep personalising
+                    Keep swiping to continue personalising or…
+                  </span>
+                  <span className="auth7-rec-swipe-continue-label">
+                    Continue to Home
+                    <ChevronRight className="size-4" aria-hidden="true" />
                   </span>
                 </button>
               ) : null}

@@ -247,10 +247,20 @@ export const SwipeCard = memo(function SwipeCard({
 
       {/* Name sits above media so layout doesn't pop when video fades in. */}
       <div className="swipe-card__meta">
-        <span className="swipe-card__name">{card.name}</span>
-        {card.socialhandle?.trim() ? (
-          <span className="swipe-card__socialhandle">{card.socialhandle}</span>
-        ) : null}
+        <div className="swipe-card__meta-copy">
+          <span className="swipe-card__name">{card.name}</span>
+          {card.socialhandle?.trim() ? (
+            <span className="swipe-card__socialhandle">{card.socialhandle}</span>
+          ) : null}
+        </div>
+        <div className="swipe-card__meta-logo">
+          <img
+            src="/svg/logoSugarScratch.svg"
+            alt="Sugar Scratch"
+            className="swipe-card__logo"
+            draggable={false}
+          />
+        </div>
       </div>
     </div>
   )
