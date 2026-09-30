@@ -71,6 +71,15 @@ export default defineConfig(({ mode }) => {
         output: {
 manualChunks(id) {
   const normalized = id.split(path.sep).join("/");
+  // Shared runtime pieces must not land in a lazy vendor chunk, or the
+  // entry imports that whole chunk (three was preloaded on every page).
+  if (
+    /\/node_modules\/(react|react-dom|scheduler)\//.test(normalized) ||
+    normalized.includes("vite/preload-helper") ||
+    normalized.includes("commonjsHelpers")
+  ) {
+    return "vendor";
+  }
   if (
     normalized.includes("/node_modules/three/") ||
     normalized.includes("/node_modules/@react-three/")

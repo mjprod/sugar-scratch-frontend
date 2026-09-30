@@ -9,6 +9,7 @@ import {
   getPackStageVideoFilter,
   subscribePackStageLook,
 } from './packStageLook'
+import { registerVideoTextureCache } from './videoTextureCacheHandle'
 
 const PLAYING_FRAME_INTERVAL_MS = 1000 / 30
 const DESKTOP_PLAYING_FRAME_INTERVAL_MS = 1000 / 60
@@ -550,6 +551,12 @@ export function pauseAllVideoTextures() {
     teardownOffscreen(entry)
   }
 }
+
+registerVideoTextureCache({
+  stats: getVideoTextureCacheStats,
+  clear: clearVideoTextureCache,
+  pauseAll: pauseAllVideoTextures,
+})
 
 /** Resume entries that were playing when pauseAllVideoTextures ran. */
 export function resumePausedVideoTextures() {

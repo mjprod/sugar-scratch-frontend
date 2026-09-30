@@ -226,7 +226,13 @@ function MotionCardScreenInner({
                   preload="metadata"
                 />
               ) : poster ? (
-                <img src={poster} alt="" className="cpv2-motion-tile-img" />
+                <img
+                  src={poster}
+                  alt=""
+                  className="cpv2-motion-tile-img"
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
                 <span className="cpv2-motion-tile-img is-empty" />
               )}

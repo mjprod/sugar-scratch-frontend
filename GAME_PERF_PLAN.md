@@ -77,6 +77,10 @@ Scratch game (`/game`) frame-cost work. Prefer `*.self-check.ts` + `npm run test
 
 ## How to measure (quick)
 
+**On-device HUD:** open any route with `?perf=1` (persists across navigation; `?perf=0` or × turns it off). Shows window FPS, frame p50/p95/p99, frames >34ms / >50ms, long tasks (Chromium only), JS heap (Chromium only), DOM / canvas / video counts. **Reset** before a scenario, **Copy** to paste a report. Console: `__sugarPerf.snapshot()` / `__sugarPerf.reset()`. Measure against `npm run build && npm run preview`, not dev.
+
+**Whole-app pass:** `npm run build && npx vite preview --port 4174 --strictPort`, then `npm run perf:audit` (Lighthouse mobile on every route → `.perf/summary.json`) and `npm run perf:runtime` (headless Chrome, phone viewport + touch, 4x CPU: idle / scroll / swipe / scratch per route + home↔game leak cycles → `.perf/runtime.json`). Set `PERF_COOKIE="sugar_session=…"` to include signed-in routes. Runtime uses the desktop GPU, so WebGL/video costs read low — confirm on a phone with `?perf=1`.
+
 | Metric | Idle target | Scratch target |
 |--------|-------------|----------------|
 | GL clears / s | ~video rate | Higher OK while dirty |
