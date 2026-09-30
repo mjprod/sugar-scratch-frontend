@@ -103,7 +103,6 @@ import {
   setThemeIntroSound,
   unbindThemeIntroVideo,
 } from "../shared/media";
-import { SoundMixDebug } from "../shared/SoundMixDebug";
 import { soundMixOutput } from "../shared/soundMix";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
@@ -2978,7 +2977,6 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               : ""
           }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}`}
         >
-          {import.meta.env.DEV ? <SoundMixDebug /> : null}
           {!entryReady ? (
             <div
               className="match-audio-gate"

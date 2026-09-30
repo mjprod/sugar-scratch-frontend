@@ -115,7 +115,6 @@ import {
   getGameAudioContext,
   getGameAudioOutput,
 } from "../shared/gameAudioContext";
-import { SoundMixDebug } from "../shared/SoundMixDebug";
 import { soundMixOutput } from "../shared/soundMix";
 import {
   clearPendingScratchMove,
@@ -5438,7 +5437,6 @@ export function ScratchPrototype({
           new URLSearchParams(window.location.search).has("debug") ? (
             <DebugHud />
           ) : null}
-          {import.meta.env.DEV ? <SoundMixDebug /> : null}
           {!entryReady ? (
             <div
               className="match-audio-gate"
