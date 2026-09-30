@@ -29,7 +29,11 @@ export type CatalogPhotoCard = {
   model_id?: string;
   theme_id?: string;
   intro?: string;
+  /** From the API's `card_price`; undefined when no price is set. */
+  cardPrice?: number;
 };
+
+type ApiPhotoCard = Omit<CatalogPhotoCard, "cardPrice"> & { card_price?: unknown };
 
 type ApiMotionCard = {
   id?: unknown;
@@ -46,7 +50,7 @@ type ApiMotionCard = {
 };
 
 type CardsPayload = { cards?: ApiMotionCard[] };
-type PhotoPayload = { cards?: CatalogPhotoCard[] };
+type PhotoPayload = { cards?: ApiPhotoCard[] };
 
 /**
  * Convert a workspace path (`public/cards/...`) to a site URL (`/cards/...`).
@@ -145,6 +149,7 @@ function parsePhotoPayload(data: PhotoPayload): CatalogPhotoCard[] {
       model_id: optionalString(entry.model_id),
       theme_id: optionalString(entry.theme_id),
       intro: introRaw ? toPublicMediaUrl(introRaw) : undefined,
+      cardPrice: typeof entry.card_price === "number" ? entry.card_price : undefined,
     });
   }
   return cards;
