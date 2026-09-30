@@ -101,18 +101,21 @@ manualChunks(id) {
       allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
         "/api": proxyTo(apiTarget),
+        // Trailing slash is load-bearing: Vite matches by string prefix, and
+        // "/photo-scratch" is also an SPA route here. Without the slash a reload
+        // on /photo-scratch?card=… is served the media origin's operator app.
         ...Object.fromEntries(
           [
-            "/cards",
-            "/models",
-            "/photo-scratch",
-            "/mesh",
-            "/lotties",
-            "/symbols",
-            "/sounds",
-            "/themes",
-            "/scratch",
-            "/cursor-fx",
+            "/cards/",
+            "/models/",
+            "/photo-scratch/",
+            "/mesh/",
+            "/lotties/",
+            "/symbols/",
+            "/sounds/",
+            "/themes/",
+            "/scratch/",
+            "/cursor-fx/",
           ].map((route) => [route, proxyTo(mediaTarget)]),
         ),
       },
