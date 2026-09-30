@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import {
+  effectiveBackgroundMusic,
+  effectiveSoundEffect,
   getGameAudioPrefs,
-  setBackgroundMusicEnabled,
-  setSoundEffectEnabled,
+  setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 import {
@@ -17,15 +18,23 @@ import {
   stopCountdownAudio,
   unlockCountdownSound,
 } from "./modules/InitialCountdown";
+import {
+  isMotionScratchBgmPlaying,
+  unlockMotionScratchBgm,
+} from "./modules/motionScratchBgm";
 import { stageMuteIconShowsSoundOn } from "./stageMuteIconPolicy";
 
 function prefsSoundOn() {
   const prefs = getGameAudioPrefs();
-  return prefs.soundEffect || prefs.backgroundMusic;
+  return effectiveSoundEffect(prefs) || effectiveBackgroundMusic(prefs);
 }
 
 function liveAudioOn() {
-  return introVideoIsAudible() || isCountdownAudioPlaying();
+  return (
+    introVideoIsAudible() ||
+    isCountdownAudioPlaying() ||
+    isMotionScratchBgmPlaying()
+  );
 }
 
 /**
@@ -44,7 +53,8 @@ function audibleSoundOn() {
 }
 
 /**
- * Mute / unmute both SFX and background music together.
+ * Master mute for SFX and background music. Never rewrites the per-channel
+ * Settings switches (see `setGameSoundOn`).
  * Lives in the pause menu (the stage chrome no longer has its own button).
  */
 export function StageMuteButton({
@@ -81,12 +91,14 @@ export function StageMuteButton({
     applyBoundThemeIntroSound(next);
     if (next) {
       unlockCountdownSound();
+      // Sync resume + silent tick before any await (Safari gesture token).
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
     }
-    setSoundEffectEnabled(next);
-    setBackgroundMusicEnabled(next);
+    // Master mute only — the Settings switches stay as the user left them.
+    setGameSoundOn(next);
     setSoundOn(next);
   }
 

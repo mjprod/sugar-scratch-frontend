@@ -10,8 +10,9 @@
 
 export type Point = { x: number; y: number };
 
-/** In-place anticipation pop before the travel (CSS `matchAnticipate`). */
-export const MATCH_ANTICIPATION_MS = 575;
+/** In-place anticipation pop before the travel (CSS `matchAnticipate`).
+ *  Long enough to read the 3× hold on the mesh before the climb. */
+export const MATCH_ANTICIPATION_MS = 1400;
 
 /** Travel: anticipation end → slot. */
 export const MATCH_TRAVEL_MS = 620;

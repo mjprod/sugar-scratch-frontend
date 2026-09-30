@@ -1863,7 +1863,9 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
 }
 
 .body-symbol-marker.is-symbol-pop {
-  animation: symbol-found-pop 420ms cubic-bezier(0.22, 0.8, 0.3, 1);
+  z-index: 8;
+  overflow: visible;
+  animation: symbol-found-pop 1400ms cubic-bezier(0.22, 0.8, 0.3, 1);
 }
 
 @keyframes symbol-found-pop {
@@ -1872,14 +1874,14 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     filter: brightness(1);
   }
 
-  40% {
-    transform: scale(1.18);
+  28% {
+    transform: scale(5);
     filter: brightness(1.5);
   }
 
-  70% {
-    transform: scale(1.08);
-    filter: brightness(1.25);
+  62% {
+    transform: scale(5);
+    filter: brightness(1.35);
   }
 
   100% {
@@ -2264,6 +2266,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   z-index: 12;
   width: 42px;
   height: 42px;
+  overflow: visible;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -2415,8 +2418,8 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
 }
 
 /* Anticipation only — stays put at the find and hands off at scale 1, which is
-   where MatchFlight's travel picks the scale up. Timings are the old combined
-   matchFly 0→46% rescaled over the anticipation's own duration. */
+   where MatchFlight's travel picks the scale up. Peak is 3× so the match reads
+   on the mesh before the climb. */
 @keyframes matchAnticipate {
   /* Appear + surge toward camera — transform/opacity only (no CSS filter). */
   0% {
@@ -2424,23 +2427,15 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
       translate(-50%, -50%) scale(0.35);
     opacity: 0;
   }
-  15% {
+  18% {
     opacity: 1;
     transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(1.05);
+      translate(-50%, -50%) scale(3);
   }
-  39% {
+  /* Hold the 3× read on the mesh. */
+  72% {
     transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(2.2);
-  }
-  /* Settle and hold in front. */
-  65% {
-    transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(1.78);
-  }
-  87% {
-    transform: translate(var(--coin-from-x), var(--coin-from-y))
-      translate(-50%, -50%) scale(1.72);
+      translate(-50%, -50%) scale(3);
     opacity: 1;
   }
   /* Gather itself for the launch. */

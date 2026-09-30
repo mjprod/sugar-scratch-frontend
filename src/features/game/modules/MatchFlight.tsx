@@ -163,7 +163,7 @@ export function MatchFlight({
             <GameSymbolIcon
               typeId={typeId}
               size={34}
-              pixelScale={2.2}
+              pixelScale={5}
               preferStatic={PREFER_STATIC_SYMBOLS}
               paused
             />

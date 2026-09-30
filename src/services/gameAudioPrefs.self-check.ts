@@ -3,8 +3,12 @@
  * Run: npx tsx src/services/gameAudioPrefs.self-check.ts
  */
 import {
+  effectiveBackgroundMusic,
+  effectiveSoundEffect,
   getGameAudioPrefs,
   setBackgroundMusicEnabled,
+  setGameAudioMuted,
+  setGameSoundOn,
   setSoundEffectEnabled,
   subscribeGameAudioPrefs,
 } from "./gameAudioPrefs.ts";
@@ -117,5 +121,73 @@ assert(
   secondRan,
   "a listener that unsubscribes during notify must not cut the loop short",
 );
+
+// --- master mute: defaults off, silences both channels, leaves switches ---
+let muteNotifies = 0;
+const unsubMute = subscribeGameAudioPrefs(() => {
+  muteNotifies += 1;
+});
+setBackgroundMusicEnabled(true);
+muteNotifies = 0;
+assert(getGameAudioPrefs().muted === false, "master mute must default to off");
+assert(
+  effectiveSoundEffect() && effectiveBackgroundMusic(),
+  "with both switches on and no mute, both channels play",
+);
+
+setGameAudioMuted(true);
+assert(muteNotifies === 1, "muting must notify synchronously, once");
+assert(
+  local.get("sugar.v8.gameAudio.muted") === JSON.stringify({ enabled: true }),
+  "master mute must persist under its own key",
+);
+assert(
+  !effectiveSoundEffect() && !effectiveBackgroundMusic(),
+  "master mute must silence both channels",
+);
+assert(
+  getGameAudioPrefs().soundEffect && getGameAudioPrefs().backgroundMusic,
+  "master mute must not rewrite the Settings switches",
+);
+
+// --- in-game unmute clears the flag and respects a Settings "off" ---
+setGameSoundOn(false);
+setBackgroundMusicEnabled(false);
+assert(
+  getGameAudioPrefs().muted === true,
+  "turning a switch off must not clear the master mute",
+);
+setGameSoundOn(true);
+assert(getGameAudioPrefs().muted === false, "in-game unmute clears the master mute");
+assert(
+  effectiveSoundEffect() && !effectiveBackgroundMusic(),
+  "in-game unmute must keep background music off when Settings has it off",
+);
+
+// --- turning a Settings switch on clears a stale master mute ---
+setGameAudioMuted(true);
+setBackgroundMusicEnabled(true);
+assert(
+  getGameAudioPrefs().muted === false,
+  "enabling a Settings switch must clear the master mute",
+);
+assert(effectiveBackgroundMusic(), "the enabled switch must be audible");
+
+// --- unmuting with both switches off turns both back on ---
+setSoundEffectEnabled(false);
+setBackgroundMusicEnabled(false);
+setGameAudioMuted(true);
+muteNotifies = 0;
+setGameSoundOn(true);
+assert(muteNotifies === 1, "in-game unmute must notify once");
+assert(
+  effectiveSoundEffect() && effectiveBackgroundMusic(),
+  "unmute with both switches off must re-enable both",
+);
+
+// --- redundant unmute is a no-op ---
+setGameSoundOn(true);
+assert(muteNotifies === 1, "unmuting when already audible must not notify");
+unsubMute();
 
 console.log("gameAudioPrefs.self-check: ok");

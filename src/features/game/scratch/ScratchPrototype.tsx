@@ -1,9 +1,10 @@
+import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import {
-  getGameAudioPrefs,
-  setSoundEffectEnabled,
+  effectiveSoundEffect,
+  setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
@@ -105,6 +106,17 @@ import {
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
 import {
+  syncMotionScratchBgm,
+  unlockMotionScratchBgm,
+} from "../modules/motionScratchBgm";
+import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import {
+  gameAudioStartTime,
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
+import { soundMixOutput } from "../shared/soundMix";
+import {
   clearPendingScratchMove,
   createScratchInputCoalesce,
   notePendingScratchMove,
@@ -146,6 +158,12 @@ import {
   stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
 import {
+  endScratchSoundStroke,
+  noteScratchSoundActivity,
+  preloadScratchSounds,
+  stopScratchSounds,
+} from "../modules/scratchSound";
+import {
   preloadLottieUrls,
   shouldFreezeSymbolLottie,
   shouldPreferStaticSymbolLottie,
@@ -174,7 +192,6 @@ import {
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
-import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
 import { StageMuteButton } from "../StageMuteButton";
 import {
   MirrorSlideTransition,
@@ -600,14 +617,8 @@ type SymbolAudioState = {
 
 function ensureSymbolAudio(state: SymbolAudioState) {
   if (typeof window === "undefined") return null;
-  if (!state.ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return null;
-    state.ctx = new AudioCtor();
-  }
+  state.ctx ??= getGameAudioContext();
+  if (!state.ctx) return null;
   if (state.ctx.state === "suspended") void state.ctx.resume();
   return state.ctx;
 }
@@ -619,7 +630,7 @@ function symbolSlotFrequency(slotIndex: number) {
 function playSymbolSlotNote(state: SymbolAudioState, slotIndex: number) {
   const ctx = ensureSymbolAudio(state);
   if (!ctx || slotIndex < 0 || slotIndex >= SYMBOL_SLOT_COUNT) return;
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "triangle";
@@ -628,7 +639,7 @@ function playSymbolSlotNote(state: SymbolAudioState, slotIndex: number) {
   gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + SYMBOL_NOTE_DURATION_S);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(soundMixOutput("symbols") ?? getGameAudioOutput(ctx));
   osc.start(now);
   osc.stop(now + SYMBOL_NOTE_DURATION_S + 0.02);
 }
@@ -653,11 +664,12 @@ function playMatchFindSound(
   if (!enabled) return;
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return;
-  const t = ctx.currentTime + startOffsetS;
-  // Bright ascending ding — claims a top-bar slot.
-  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
-  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
-  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine");
+  const t = gameAudioStartTime(ctx) + startOffsetS;
+  // Bright ascending ding — claims a top-bar slot. Level is the match bus.
+  const out = soundMixOutput("match") ?? getGameAudioOutput(ctx);
+  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle", out);
+  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine", out);
+  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine", out);
 }
 
 /** Per newly revealed body icon: ding only when it claims a top-bar slot. */
@@ -688,16 +700,17 @@ function scheduleTone(
   durationS: number,
   volume: number,
   type: OscillatorType = "triangle",
+  output: AudioNode = getGameAudioOutput(ctx),
 ) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, startAt);
   gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0001), startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(output);
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -712,7 +725,18 @@ function playGameOutcomeSound(
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return 1800;
 
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
+  const out =
+    soundMixOutput(outcome === "win" ? "win" : "lose") ?? getGameAudioOutput(ctx);
+  const tone = (
+    startAt: number,
+    frequency: number,
+    durationS: number,
+    volume: number,
+    type: OscillatorType = "triangle",
+  ) => {
+    scheduleTone(ctx, startAt, frequency, durationS, volume, type, out);
+  };
 
   if (outcome === "win") {
     const sparkle = [
@@ -721,9 +745,9 @@ function playGameOutcomeSound(
     ];
     const sparkleStep = 0.048;
     sparkle.forEach((freq, index) => {
-      scheduleTone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
+      tone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
       if (index % 2 === 0) {
-        scheduleTone(
+        tone(
           ctx,
           now + index * sparkleStep + 0.012,
           freq * 2,
@@ -738,27 +762,27 @@ function playGameOutcomeSound(
     const fanfare = [523.25, 659.25, 783.99, 987.77, 1174.66];
     fanfare.forEach((freq, index) => {
       const t = fanfareStart + index * 0.1;
-      scheduleTone(ctx, t, freq, 0.15, 0.3, "square");
-      scheduleTone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
-      scheduleTone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
+      tone(ctx, t, freq, 0.15, 0.3, "square");
+      tone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
+      tone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
     });
 
     const chordAt = fanfareStart + fanfare.length * 0.1 + 0.1;
     const chord = [261.63, 392, 523.25, 659.25, 783.99, 1046.5, 1318.51];
     chord.forEach((freq, index) => {
       const type: OscillatorType = index < 2 ? "sawtooth" : "triangle";
-      scheduleTone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
+      tone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
     });
 
     const glitterStart = chordAt + 0.12;
     const glitter = [2093, 2349, 2637, 2793, 3136, 3520];
     glitter.forEach((freq, index) => {
-      scheduleTone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
+      tone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
     });
 
     const shimmerStart = glitterStart + glitter.length * 0.045 + 0.08;
     for (let i = 0; i < 6; i += 1) {
-      scheduleTone(
+      tone(
         ctx,
         shimmerStart + i * 0.06,
         1760 + i * 110,
@@ -774,8 +798,8 @@ function playGameOutcomeSound(
 
   // No match is a resolved outcome, not a loss — a soft low chime that settles,
   // never a descending "you lost" sting.
-  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
-  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  tone(ctx, now, 523.25, 0.34, 0.09, "sine");
+  tone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
   return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
@@ -783,7 +807,7 @@ function scratchZoomEasing(bounce: boolean) {
   return bounce ? "cubic-bezier(0.34, 1.56, 0.64, 1)" : "ease-out";
 }
 
-const loadSoundEnabled = () => getGameAudioPrefs().soundEffect;
+const loadSoundEnabled = () => effectiveSoundEffect();
 
 // Rect-taking variant, for callers that project several points per frame: the
 // two getBoundingClientRect reads are identical for every point, so hoisting
@@ -1260,6 +1284,7 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
 
 export function ScratchPrototype({
   skipToPlay = false,
+  loopFromIntro = false,
   onLeave,
   onFirstProgressMilestone,
   onRevealedSymbolsChange,
@@ -1269,6 +1294,8 @@ export function ScratchPrototype({
    * Open already in hunt play with the symbol bar docked at the top.
    */
   skipToPlay?: boolean;
+  /** Audio lab: after a card finishes, replay it from the theme intro. */
+  loopFromIntro?: boolean;
   /** When set, pause control is rendered in the top chrome left gutter. */
   onLeave?: () => void;
   /**
@@ -1711,8 +1738,8 @@ export function ScratchPrototype({
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
   const [coinAwardFlash, setCoinAwardFlash] = useState(0);
-  /** Bottom coin badge visibility — idle-hides after ~2s without scrub. */
-  const [coinBadgeShown, setCoinBadgeShown] = useState(true);
+  /** Bottom coin badge — hidden until a scratch milestone awards coins. */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(false);
   const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
@@ -1784,6 +1811,7 @@ export function ScratchPrototype({
   function endScratchStroke() {
     const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
     if (pending) addScratchRef.current(pending.x, pending.y);
+    endScratchSoundStroke();
     drawingRef.current = false;
     isScratchingRef.current = false;
     setIsScratching(false);
@@ -2030,6 +2058,7 @@ export function ScratchPrototype({
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
     // Warm symbol lottie HTTP cache before hunt workers spin up (Phase 7).
@@ -2044,15 +2073,15 @@ export function ScratchPrototype({
     });
     const video = introVideoElRef.current;
     if (video && introActiveRef.current) {
-      void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+      void playThemeIntro(video, () => effectiveSoundEffect()).then(
         (result) => {
           if (!introActiveRef.current) return;
           if (!result.playing) return;
           // Entry tap is a user gesture — safe to unmute if sound pref is on.
-          setThemeIntroSound(video, getGameAudioPrefs().soundEffect, {
+          setThemeIntroSound(video, effectiveSoundEffect(), {
             forceUnmute: true,
           });
-          if (getGameAudioPrefs().soundEffect) {
+          if (effectiveSoundEffect()) {
             void video.play().catch(() => undefined);
           }
         },
@@ -2240,7 +2269,7 @@ export function ScratchPrototype({
     setPackProgressShown(true);
     setPackProgressLeaving(false);
     setTopSymbols(buildTopSymbols());
-    if (skipToPlay) {
+    if (skipToPlay && !loopFromIntro) {
       // Lab stays in docked hunt UI across card resets.
       setTopBarPhase("docked");
       topBarPhaseRef.current = "docked";
@@ -2459,7 +2488,7 @@ export function ScratchPrototype({
     const kick = () => {
       const video = introVideoElRef.current;
       if (!video) return false;
-      void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+      void playThemeIntro(video, () => effectiveSoundEffect()).then(
         (result) => {
           if (cancelled) return;
           if (!result.playing) {
@@ -2467,7 +2496,7 @@ export function ScratchPrototype({
             // Only the 20s safety timer / onError tears the overlay down.
             return;
           }
-          setThemeIntroSound(video, getGameAudioPrefs().soundEffect);
+          setThemeIntroSound(video, effectiveSoundEffect());
         },
       );
       return true;
@@ -3265,8 +3294,7 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(true);
-    setCoinBadgeEnterKey((k) => k + 1);
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3327,7 +3355,7 @@ export function ScratchPrototype({
     if (!entryReady || !card) return;
     if (!skipToPlay && !themeIntrosReady) return;
     armStartIntro(themeKeyForCard(card));
-  }, [gameMode, entryReady, themeIntrosReady, card?.id, skipToPlay]);
+  }, [gameMode, entryReady, themeIntrosReady, card?.id, skipToPlay, labRestartToken]);
 
   // Rebuild the reveal sample grid whenever the mesh changes, recomputing which
   // samples are already revealed from the current marks (usually empty after a
@@ -3600,7 +3628,7 @@ export function ScratchPrototype({
   useEffect(
     () =>
       subscribeGameAudioPrefs(() => {
-        const next = getGameAudioPrefs().soundEffect;
+        const next = effectiveSoundEffect();
         // Keep the ref in sync inside this click before any async intro
         // callbacks read it — otherwise a late playThemeIntro then() can
         // undo the mute/unmute the user just chose.
@@ -3608,17 +3636,22 @@ export function ScratchPrototype({
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          unlockMotionScratchBgm();
           preloadSparkleCoinSounds();
+          preloadScratchSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
           stopSparkleCoinSounds();
+          stopScratchSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
     [],
   );
+
+  useEffect(() => stopScratchSounds, []);
 
   function syncScratchZoomTransition(
     canvas: HTMLCanvasElement,
@@ -3682,6 +3715,16 @@ export function ScratchPrototype({
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  useMotionScratchBgm({
+    warm:
+      useBodySymbols &&
+      matchStartUnlocked &&
+      !introGateActive &&
+      !introActive &&
+      !gameResult,
+    topBarPhase,
+    skipToPlay,
+  });
   // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
   // load). Keep this separate from matchStartUnlocked so scratch stays gated.
   const topChromeBarReady =
@@ -3865,12 +3908,16 @@ export function ScratchPrototype({
     if (enabled) {
       unlockCountdownSound();
       preloadSparkleCoinSounds();
+      preloadScratchSounds();
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
       stopSparkleCoinSounds();
+      stopScratchSounds();
     }
-    setSoundEffectEnabled(enabled);
+    // Master mute, same as StageMuteButton — Settings switches stay put.
+    setGameSoundOn(enabled);
   }
 
   function isPhoneLayout() {
@@ -3907,8 +3954,7 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(true);
-    setCoinBadgeEnterKey((k) => k + 1);
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3984,9 +4030,14 @@ export function ScratchPrototype({
     }
   }
 
-  /** /game-ui lab: after symbols are found, replay this card instead of leaving. */
+  /** Lab: after symbols are found, replay this card instead of leaving. */
   function restartCurrentCardLab() {
-    if (!skipToPlay) return;
+    if (!skipToPlay && !loopFromIntro) return;
+    if (loopFromIntro) {
+      handStartIntroDoneRef.current = false;
+      handCountdownDoneRef.current = false;
+      handStartCountdownOverIntroRef.current = false;
+    }
     finishAutoActiveRef.current = false;
     clearGameResultTimer();
     if (gameResultLeaveTimerRef.current !== null) {
@@ -4011,7 +4062,7 @@ export function ScratchPrototype({
     const finishedId = selectedCardId;
     if (!finishedId) return;
     // Lab: never advance / navigate — loop the same card for UI testing.
-    if (skipToPlay) {
+    if (skipToPlay || loopFromIntro) {
       restartCurrentCardLab();
       return;
     }
@@ -4843,7 +4894,10 @@ export function ScratchPrototype({
       applied = true;
     }
 
-    if (applied) lastScratchWorldRef.current = point;
+    if (applied) {
+      lastScratchWorldRef.current = point;
+      noteScratchSoundActivity();
+    }
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
     // Fabric alpha is only for fairy-dust spawn gating. Skip readPixels when
@@ -5408,7 +5462,10 @@ export function ScratchPrototype({
               <div className="photo-scratch-intro-media">
                 {introActive && introVideoUrl ? (
                   <video
-                    ref={setIntroVideoEl}
+                    ref={(el) => {
+                      setIntroVideoEl(el);
+                      if (el) bindThemeIntroVideo(el);
+                    }}
                     autoPlay
                     playsInline
                     preload="auto"
@@ -5777,7 +5834,11 @@ export function ScratchPrototype({
               if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
                 preloadSparkleCoinSounds();
+                preloadScratchSounds();
               }
+              // Re-assert Web Audio unlock inside this gesture (Safari).
+              unlockMotionScratchBgm();
+              syncMotionScratchBgm();
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
@@ -5787,8 +5848,6 @@ export function ScratchPrototype({
               drawingRef.current = true;
               isScratchingRef.current = true;
               setIsScratching(true);
-              // Scrubbing again: bring coin badge back if it idle-hid.
-              showCoinBadge();
               // First scratch touch: animate cards-left away for this card.
               if (packProgressShown && !packProgressLeaving) {
                 setPackProgressLeaving(true);
