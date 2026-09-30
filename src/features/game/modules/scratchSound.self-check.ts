@@ -9,9 +9,13 @@ import {
   SCRATCH_SOUND_LONG_AFTER_MS,
   SCRATCH_SOUND_MEDIUM_AFTER_MS,
   SCRATCH_SOUND_TIERS,
+  SCRATCH_STALE_QUIET_MS,
   endScratchSoundStroke,
+  nextScratchStaleState,
   noteScratchSoundActivity,
+  noteScratchStamp,
   preloadScratchSounds,
+  quietScratchSound,
   scratchSoundTier,
   stopScratchSounds,
 } from "./scratchSound";
@@ -49,12 +53,31 @@ for (const [tier, srcs] of Object.entries(SCRATCH_SOUND_TIERS)) {
   }
 }
 
+{
+  const fresh = nextScratchStaleState(true, 100, 500);
+  assert(fresh.staleSince === null && !fresh.quiet, "fresh stamp clears the grace timer");
+
+  const start = nextScratchStaleState(false, null, 1000);
+  assert(start.staleSince === 1000 && !start.quiet, "first stale stamp starts the timer");
+
+  const brief = nextScratchStaleState(false, 1000, 1000 + SCRATCH_STALE_QUIET_MS - 1);
+  assert(!brief.quiet, "a quick pass over scratched fabric keeps the sound");
+
+  const held = nextScratchStaleState(false, 1000, 1000 + SCRATCH_STALE_QUIET_MS);
+  assert(held.quiet && held.staleSince === 1000, "lingering on scratched fabric quiets");
+}
+
 // Safe in Node (no AudioContext) — must not throw.
 preloadScratchSounds();
 noteScratchSoundActivity(0);
 noteScratchSoundActivity(SCRATCH_SOUND_LONG_AFTER_MS);
 endScratchSoundStroke();
 noteScratchSoundActivity(0);
+noteScratchStamp(true, 0);
+noteScratchStamp(false, 10);
+noteScratchStamp(false, 10 + SCRATCH_STALE_QUIET_MS);
+quietScratchSound();
+quietScratchSound();
 stopScratchSounds();
 stopScratchSounds();
 
@@ -63,7 +86,7 @@ console.log(
     {
       ok: true,
       policy:
-        "stroke → short clip, chained medium after 1s, long after 2.8s; lift/idle → clips ring out and the next stroke layers on top; mute/unmount → fade out",
+        "stroke → short clip, chained medium after 1s, long after 2.8s; only fresh (unscratched) stamps keep clips going; ≥150ms on scratched fabric → fade; lift → clips ring out; mute/unmount → fade out",
     },
     null,
     2,

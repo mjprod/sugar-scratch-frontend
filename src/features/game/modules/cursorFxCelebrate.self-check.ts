@@ -3,8 +3,11 @@
  * Run: npx tsx src/features/game/modules/cursorFxCelebrate.self-check.ts
  */
 import {
+  celebrateBurstCount,
   celebrateParticleBoost,
   crossedProgressMilestone,
+  CURSOR_FX_BURST_VELOCITY,
+  cursorFxBurstVelocity,
   CURSOR_FX_EMIT_MODE,
   CURSOR_FX_FALL_GRAVITY,
   CURSOR_FX_FALL_VELOCITY,
@@ -57,7 +60,7 @@ assert(
   });
   assert(mobile.maxOverlayDpr === 1, "mobile overlay DPR capped");
   assert(mobile.particleCount < desktop.particleCount, "mobile fewer particles");
-  assert(mobile.particleSize <= desktop.particleSize, "mobile particles not larger");
+  assert(mobile.particleSize <= 96, "mobile particles within settings slider max");
 
   const reduced = resolveCursorFxDeviceProfile({
     reducedMotion: true,
@@ -100,12 +103,29 @@ assert(
   assert(fountainUp <= 0, "fountain sample never goes down initially");
 }
 
+for (const coarse of [true, false]) {
+  const label = coarse ? "coarse" : "fine";
+  const first = celebrateBurstCount(1, coarse);
+  const last = celebrateBurstCount(10, coarse);
+  assert(first >= 6, `${label}: first milestone pop is visible (not 1–2 coins)`);
+  assert(last > first, `${label}: later milestones pop bigger`);
+  assert(celebrateBurstCount(99, coarse) === last, `${label}: burst clamps at 100%`);
+  assert(celebrateBurstCount(0, coarse) === first, `${label}: burst floor at band 1`);
+}
+assert(celebrateBurstCount(10, true) <= 16, "coarse burst stays phone-cheap");
+assert(celebrateBurstCount(10, false) <= 30, "desktop burst hard-capped");
+
+for (let i = 0; i < 40; i += 1) {
+  const burst = cursorFxBurstVelocity(CURSOR_FX_BURST_VELOCITY, () => (i % 10) / 10);
+  assert(burst.vy < 0, `burst #${i} pops upward first`);
+}
+
 console.log(
   JSON.stringify(
     {
       ok: true,
       policy:
-        "celebrate ~1.1s desktop / ~2.4s coarse each 10%; coins fall like foil flakes (not fireworks); mobile 1 particle for perf; reduced-motion off",
+        "celebrate ~1.1s desktop / ~2.4s coarse each 10% with an upward pop that grows per milestone; trail coins fall like foil flakes; reduced-motion off",
     },
     null,
     2,

@@ -73,10 +73,20 @@ import {
 } from "../shared/gameAudioContext";
 import {
   endScratchSoundStroke,
-  noteScratchSoundActivity,
+  noteScratchStamp,
   preloadScratchSounds,
   stopScratchSounds,
 } from "../modules/scratchSound";
+import {
+  createScratchCoverage,
+  createStrokeFreshness,
+  noteStrokeStamp,
+  rebuildScratchCoverage,
+  resetScratchCoverage,
+  resetStrokeFreshness,
+  SCRATCH_COVERAGE_SIZE,
+  stampScratchCoverage,
+} from "../modules/scratchCoverage";
 import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
@@ -799,6 +809,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const revealSamplesRef = useRef<Vec2[]>([]);
   const revealedRef = useRef<boolean[]>([]);
   const revealedCountRef = useRef(0);
+  // Fine UV record of cleared fabric; scratch audio only plays while the
+  // latest stamps cleared something new.
+  const scratchCoverageRef = useRef(createScratchCoverage());
+  const strokeFreshnessRef = useRef(createStrokeFreshness());
+  const lastStampUvRef = useRef<{ u: number; v: number } | null>(null);
   const autoPathRef = useRef<Vec2[]>([]);
   const autoPathIndexRef = useRef(0);
   const autoPathProgressRef = useRef(0);
@@ -1178,6 +1193,14 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       false,
     );
     revealedCountRef.current = 0;
+    scratchCoverageRef.current = createScratchCoverage(
+      SCRATCH_COVERAGE_SIZE,
+      mesh.garment,
+      mesh.cols,
+      mesh.rows,
+    );
+    rebuildScratchCoverage(scratchCoverageRef.current, marksRef.current);
+    resetStrokeFresh();
     autoPathRef.current = buildAutoScratchPath(mesh);
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
@@ -1231,6 +1254,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     frontImageRef.current = assets.front;
     applyMesh(assets.mesh, opts);
     marksRef.current = [];
+    resetScratchCoverage(scratchCoverageRef.current);
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
     fgRendererRef.current?.clearScratch();
@@ -1815,7 +1839,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     };
   }
 
-  function applyScratchAtUv(u: number, v: number, radius: number) {
+  function resetStrokeFresh() {
+    resetStrokeFreshness(strokeFreshnessRef.current);
+    lastStampUvRef.current = null;
+  }
+
+  function applyScratchAtUv(u: number, v: number, radius: number): number {
     if (
       gameResultPendingRef.current !== null ||
       claimedRef.current ||
@@ -1824,10 +1853,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       cardTransitionRef.current ||
       scratchCompletionHandledRef.current
     ) {
-      return;
+      return 0;
     }
     if (isBodyScratchLocked()) {
-      return;
+      return 0;
     }
     if (cardFlowStateRef.current === "ready") {
       setCardFlowState("scratching");
@@ -1836,6 +1865,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
     marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
     fgRendererRef.current?.paintScratch(u, v, radius);
+    const freshCells = stampScratchCoverage(
+      scratchCoverageRef.current,
+      u,
+      v,
+      radius,
+    );
     setScratchCount(marksRef.current.length);
 
     const samples = revealSamplesRef.current;
@@ -1928,6 +1963,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       }
       tryResolveGameRef.current();
     }
+    return freshCells;
   }
   applyScratchAtUvRef.current = applyScratchAtUv;
 
@@ -2105,15 +2141,25 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         : [point];
 
     let applied = false;
+    let fresh = false;
     for (const strokePoint of strokePoints) {
       const uv = trackedWorldToUv(sample, strokePoint);
       if (!uv) continue;
-      applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
+      const newCells = applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
+      const prev = lastStampUvRef.current;
+      fresh = noteStrokeStamp(
+        strokeFreshnessRef.current,
+        newCells,
+        prev ? Math.hypot(uv.x - prev.u, uv.y - prev.v) : 0,
+        SCRATCH_RADIUS,
+        scratchCoverageRef.current.size,
+      );
+      lastStampUvRef.current = { u: uv.x, v: uv.y };
       applied = true;
     }
     if (applied) {
       lastScratchWorldRef.current = point;
-      noteScratchSoundActivity();
+      noteScratchStamp(fresh);
     }
   }
 
@@ -2365,6 +2411,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function resetScratches() {
     marksRef.current = [];
+    resetScratchCoverage(scratchCoverageRef.current);
+    resetStrokeFresh();
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
     idleSwayRef.current = { x: 0, y: 0 };
@@ -2534,6 +2582,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // doesn't make the hint appear the instant they let go.
     huntHintActivityAtRef.current = performance.now();
     endScratchSoundStroke();
+    resetStrokeFresh();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
