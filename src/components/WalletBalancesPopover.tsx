@@ -191,7 +191,10 @@ export function WalletBalancesPopover({
       if (!node) return;
       const focusables = dialogFocusables(node);
       if (focusables.length > 0) {
-        focusables[0]?.focus();
+        // Mobile autofocus paints :focus / :focus-visible on the convert
+        // control as soon as the popover opens. Keep that for keyboards only.
+        if (isCoarsePointer()) node.focus();
+        else focusables[0]?.focus();
         return;
       }
       if (tries++ < 20) {

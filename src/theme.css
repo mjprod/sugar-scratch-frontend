@@ -14082,6 +14082,10 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   align-items: stretch;
 }
 
+.wallet-balances-popover.is-portaled:focus {
+  outline: none;
+}
+
 .wallet-balances-popover__row {
   display: flex;
   align-items: center;
@@ -14259,9 +14263,32 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   pointer-events: none;
 }
 
+.wallet-balances-popover__convert:focus {
+  outline: none;
+}
+
 .wallet-balances-popover__convert:focus-visible {
   outline: 2px solid oklch(0.669 0.23 6.08);
   outline-offset: 2px;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .wallet-balances-popover__convert:hover,
+  .wallet-balances-popover__convert:hover::before,
+  .wallet-balances-popover__convert:focus,
+  .wallet-balances-popover__convert:focus-visible,
+  .wallet-balances-popover__convert:active:not(:disabled) {
+    color: #fff;
+    outline: none;
+    transform: translate(2.4rem, 2.55rem);
+  }
+
+  .wallet-balances-popover__convert:hover::before,
+  .wallet-balances-popover__convert:focus::before,
+  .wallet-balances-popover__convert:active:not(:disabled)::before {
+    background: oklch(0.15 0.013 300.07 / 0.72);
+    border-color: oklch(1 0 0 / 0.12);
+  }
 }
 
 .wallet-balances-popover__convert-icon {

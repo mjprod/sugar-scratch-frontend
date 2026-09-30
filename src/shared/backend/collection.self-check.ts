@@ -2,7 +2,11 @@
  * Collection regroup self-check.
  * Run: npx tsx src/shared/backend/collection.self-check.ts
  */
-import { regroupCollectionGroups, type BackendCollectionGroup } from "./collection";
+import {
+  photoScratchSlotPrices,
+  regroupCollectionGroups,
+  type BackendCollectionGroup,
+} from "./collection";
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -100,5 +104,16 @@ assert(
 const police = regrouped.find((group) => group.themeId === "police");
 assert(police?.cards.some((entry) => entry.id === "julianaval_cop"), "keeps themed police card");
 assert(police?.cards.some((entry) => entry.id === "juliana_1"), "absorbs motion cop cards");
+
+const prices = photoScratchSlotPrices([
+  { id: "slot_01", card_price: 10 },
+  { id: "slot_02", card_price: 12.4 },
+  { id: "slot_03" },
+]);
+assert(prices.length === 10, "always 10 slot prices");
+assert(prices[0] === 10, "slot 01 uses API card_price");
+assert(prices[1] === 12, "slot 02 rounds API card_price");
+assert(prices[2] === null, "missing card_price stays null");
+assert(prices[9] === null, "unlisted slots stay null");
 
 console.log("collection regroup self-check: ok");

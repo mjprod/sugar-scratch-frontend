@@ -380,7 +380,8 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   background: #121212;
 }
 
-.mcp-photo-cell.is-unlocked {
+.mcp-photo-cell.is-unlocked,
+.mcp-photo-cell.has-price-cta {
   /* Let the CTA glow breathe slightly without clipping hard */
   overflow: visible;
 }
@@ -425,18 +426,25 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   box-shadow: 0 0 8px rgba(255, 0, 93, 0.55);
 }
 
-/* Same squircle CTA family as motion tiles, sized to prior 28×28 play control */
+/* Diamond + API price + play triangle (no "Play" label). */
 .mcp-photo-play-cta {
   position: absolute;
   left: 50%;
   top: 50%;
   z-index: 3;
-  width: 28px;
-  min-width: 28px;
+  width: 58px;
+  min-width: 58px;
+  max-width: 58px;
   height: 28px;
   min-height: 28px;
   transform: translate(-50%, -50%);
   overflow: visible;
+}
+
+.mcp-photo-play-cta.is-owned {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
 }
 
 .mcp-photo-play-cta .cta-button-glow,
@@ -444,7 +452,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-photo-play-cta .cta-button,
 .mcp-photo-play-cta .cta-button--fill {
   width: 100%;
-  max-width: none;
+  max-width: 58px;
   height: 100%;
   margin: 0;
 }
@@ -465,11 +473,15 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   box-sizing: border-box;
 }
 
+.mcp-photo-play-cta .cta-button__label {
+  padding: 0 6px;
+}
+
 .mcp-photo-play-cta .cta-button__title-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 0.2em;
   width: max-content;
   margin-inline: auto;
 }
@@ -479,17 +491,29 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 }
 
 .mcp-photo-play-cta .cta-button__leading-icon {
-  display: grid;
-  place-items: center;
-  width: 12px;
-  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2em;
+  width: auto;
+  height: auto;
   color: #ffe0e8;
 }
 
-.mcp-photo-play-cta .cta-button__leading-icon svg {
+.mcp-photo-play-cta .mcp-photo-play-price {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.mcp-photo-play-cta .cta-button__leading-icon svg,
+.mcp-photo-play-cta .mcp-photo-play-diamond,
+.mcp-photo-play-cta .mcp-photo-play-triangle {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
 }
 
 .mcp-photo-lock {

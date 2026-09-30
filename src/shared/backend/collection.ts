@@ -122,6 +122,8 @@ export type BackendPhotoScratchSlot = {
   pending_clothes?: string | null
   clothes_cutout?: string | null
   bikini_cutout?: string | null
+  /** Diamond cost to play this static photo card. */
+  card_price?: number | null
 }
 
 export type BackendCollectionCard = {
@@ -541,7 +543,7 @@ export async function fetchVideoFlowThemes(): Promise<Map<string, string>> {
   return themes
 }
 
-async function fetchPhotoScratchSlots(
+export async function fetchPhotoScratchSlots(
   cardId: string,
   theme = '',
 ): Promise<BackendPhotoScratchSlot[]> {
@@ -552,6 +554,17 @@ async function fetchPhotoScratchSlots(
     `/api/cards/${encodeURIComponent(cardId)}/photo-scratch${params}`,
   )
   return data && Array.isArray(data.slots) ? data.slots : []
+}
+
+/** Per-slot diamond cost from `/api/cards/:id/photo-scratch`. Index 0 = slot_01. */
+export function photoScratchSlotPrices(
+  slots: BackendPhotoScratchSlot[],
+): Array<number | null> {
+  return Array.from({ length: 10 }, (_, i) => {
+    const raw = slots[i]?.card_price
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null
+    return Math.round(raw)
+  })
 }
 
 /** Prefer the clothed full-scene plate (same order as Models dashboard thumbs). */
