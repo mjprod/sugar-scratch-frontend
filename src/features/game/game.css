@@ -1117,6 +1117,26 @@
   outline-offset: 2px;
 }
 
+.stage-game__pause.is-freeplay,
+.stage-game__pause.is-freeplay:hover {
+  width: auto;
+  height: auto;
+  flex-basis: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+}
+
+.stage-game__freeplay-mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+  transform: translateX(-4px);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Right top chrome: coin over amount (column), home-nav coin mark. */
 .stage-game__coin-pill {
   display: inline-flex;

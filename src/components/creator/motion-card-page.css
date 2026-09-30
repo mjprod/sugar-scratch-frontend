@@ -116,6 +116,12 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-img {
   pointer-events: none;
 }
 
+body[data-theme="v8"] .mcp-hero-tile.cpv2-motion-tile.is-unlocked .cpv2-motion-tile-shade,
+body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
+  display: none;
+  background: none;
+}
+
 .mcp-hero-info {
   position: relative;
   z-index: 1;
