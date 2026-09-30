@@ -160,26 +160,28 @@ function HubRewardTally({
       </p>
       {!noRewards ? (
         <div className="game-hub-pack__tally-reward">
-          {showCoins ? (
-            <div className="game-hub-pack__tally-item">
-              <div className="game-hub-pack__tally-icon" aria-hidden="true">
-                <CoinLottie size={72} loop autoplay />
+          {showDiamonds ? (
+            <div className="game-hub-pack__tally-item is-diamonds">
+              <div className="game-hub-pack__tally-stack">
+                <div className="game-hub-pack__tally-icon" aria-hidden="true">
+                  <DiamondLottie size={72} />
+                </div>
+                <p className="game-hub-pack__tally-value">{diamonds}</p>
+                <p className="game-hub-pack__tally-label">
+                  Diamond{diamonds === 1 ? "" : "s"}
+                </p>
               </div>
-              <p className="game-hub-pack__tally-value">{coins}</p>
-              <p className="game-hub-pack__tally-label">
-                Coin{coins === 1 ? "" : "s"}
-              </p>
             </div>
           ) : null}
-          {showDiamonds ? (
+          {showCoins ? (
             <div className="game-hub-pack__tally-item">
-              <div className="game-hub-pack__tally-icon" aria-hidden="true">
-                <DiamondLottie size={80} />
+              <div className="game-hub-pack__tally-pair">
+                <div className="game-hub-pack__tally-icon" aria-hidden="true">
+                  <CoinLottie size={44} loop autoplay />
+                </div>
+                <p className="game-hub-pack__tally-value">{coins}</p>
               </div>
-              <p className="game-hub-pack__tally-value">{diamonds}</p>
-              <p className="game-hub-pack__tally-label">
-                Diamond{diamonds === 1 ? "" : "s"}
-              </p>
+              <p className="game-hub-pack__tally-label">Coins</p>
             </div>
           ) : null}
         </div>

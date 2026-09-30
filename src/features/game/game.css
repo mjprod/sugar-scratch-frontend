@@ -2324,26 +2324,51 @@
 
 .motion-currency-reveal__hero {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.motion-currency-reveal__hero.is-diamonds {
+  align-items: stretch;
+  width: 100%;
+}
+
+.motion-currency-reveal__stack-col {
+  display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  min-width: 96px;
+  width: 100%;
+}
+
+.motion-currency-reveal__pair {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.motion-currency-reveal__pair .motion-currency-reveal__icon {
+  margin-right: -10px;
+}
+
+.motion-currency-reveal__pair .motion-currency-reveal__amount {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .motion-currency-reveal__hero.is-coins {
-  min-width: 72px;
+  flex-wrap: nowrap;
 }
 
 .motion-currency-reveal__stack.has-both .motion-currency-reveal__hero.is-coins {
   opacity: 0.92;
-}
-
-.motion-currency-reveal__stack.has-both .motion-currency-reveal__hero.is-coins .motion-currency-reveal__amount {
-  font-size: 24px;
-}
-
-.motion-currency-reveal__stack.has-both .motion-currency-reveal__hero.is-coins .motion-currency-reveal__label {
-  font-size: 10px;
 }
 
 .motion-currency-reveal__icon {

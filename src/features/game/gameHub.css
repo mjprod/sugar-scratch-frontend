@@ -175,13 +175,13 @@
 
 .game-hub-pack__tally-reward {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
   justify-content: center;
-  gap: 32px;
+  gap: 14px;
   margin-top: 10px;
-  padding: 22px 28px 18px;
+  padding: 18px 22px;
   border-radius: 20px;
   border: 1px solid oklch(1 0 0 / 0.12);
   background:
@@ -198,18 +198,62 @@
 
 .game-hub-pack__tally-item {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.game-hub-pack__tally-item:not(.is-diamonds) {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.game-hub-pack__tally-pair {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.game-hub-pack__tally-pair .game-hub-pack__tally-icon {
+  margin-right: -10px;
+}
+
+.game-hub-pack__tally-pair .game-hub-pack__tally-value {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.game-hub-pack__tally-item.is-diamonds {
+  align-items: stretch;
+}
+
+.game-hub-pack__tally-stack {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  min-width: 108px;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
 }
 
 .game-hub-pack__tally-icon {
   display: grid;
   place-items: center;
-  width: 88px;
-  height: 88px;
-  filter: drop-shadow(0 16px 48px oklch(0.686 0.218 3.07 / 0.42));
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 8px 20px oklch(0.686 0.218 3.07 / 0.42));
+}
+
+.game-hub-pack__tally-stack .game-hub-pack__tally-icon {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
 }
 
 .game-hub-pack__tally-label {
@@ -269,7 +313,7 @@
 
 .game-hub-pack__tally-value {
   margin: 0;
-  font-size: clamp(40px, 10vw, 56px);
+  font-size: clamp(28px, 7vw, 40px);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;

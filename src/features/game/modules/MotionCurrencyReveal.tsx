@@ -217,23 +217,27 @@ export function MotionCurrencyReveal({
         >
           {showDiamonds ? (
             <div className="motion-currency-reveal__hero is-diamonds">
-              <div className="motion-currency-reveal__icon" aria-hidden="true">
-                <DiamondLottie size={72} />
+              <div className="motion-currency-reveal__stack-col">
+                <div className="motion-currency-reveal__icon" aria-hidden="true">
+                  <DiamondLottie size={72} />
+                </div>
+                <p className="motion-currency-reveal__amount tabular-nums">
+                  {diamondDisplay}
+                </p>
+                <p className="motion-currency-reveal__label">Diamonds</p>
               </div>
-              <p className="motion-currency-reveal__amount tabular-nums">
-                {diamondDisplay}
-              </p>
-              <p className="motion-currency-reveal__label">Diamonds</p>
             </div>
           ) : null}
           {showCoins ? (
             <div className="motion-currency-reveal__hero is-coins">
-              <div className="motion-currency-reveal__icon" aria-hidden="true">
-                <CoinLottie size={showDiamonds ? 44 : 72} loop autoplay />
+              <div className="motion-currency-reveal__pair">
+                <div className="motion-currency-reveal__icon" aria-hidden="true">
+                  <CoinLottie size={44} loop autoplay />
+                </div>
+                <p className="motion-currency-reveal__amount tabular-nums">
+                  {coinDisplay}
+                </p>
               </div>
-              <p className="motion-currency-reveal__amount tabular-nums">
-                {coinDisplay}
-              </p>
               <p className="motion-currency-reveal__label">Coins</p>
             </div>
           ) : null}
