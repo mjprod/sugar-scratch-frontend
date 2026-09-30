@@ -66,6 +66,7 @@ export function PersonalizationSwipeScreen({
   const passedRef = useRef(passed);
   likedRef.current = liked;
   passedRef.current = passed;
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +147,38 @@ export function PersonalizationSwipeScreen({
     };
   }, [mediaReady]);
 
+  // The card paints past the deck box, so a --card-h offset still overlaps it.
+  // Pin the footer to the front card's real bottom edge instead.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const sync = () => {
+      const card = stage.querySelector(".swipe-card");
+      if (!card) {
+        stage.style.removeProperty("--rec-card-bottom");
+        return;
+      }
+      const stageBox = stage.getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
+      stage.style.setProperty(
+        "--rec-card-bottom",
+        `${cardBox.bottom - stageBox.top}px`,
+      );
+    };
+
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(stage);
+    const deck = stage.querySelector(".swipe-deck");
+    if (deck) observer.observe(deck);
+    window.addEventListener("resize", sync);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, [deckMounted, deckEmpty]);
+
   if (!productReady) return null;
 
   return (
@@ -153,6 +186,7 @@ export function PersonalizationSwipeScreen({
       <SwipeCircleDebugProvider>
         <NopeTintDebugProvider>
           <div
+            ref={stageRef}
             className={`stage-swipe auth7-rec-swipe${deckEmpty ? " is-deck-empty" : ""}`}
           >
             <div

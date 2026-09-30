@@ -12324,13 +12324,22 @@ body[data-theme="v8"] .auth7-rec-swipe-footer {
   z-index: 40;
   left: 0;
   right: 0;
-  /* Track the lifted deck; keep the bar 3rem under the card's bottom edge. */
-  top: calc(50% + var(--card-h) / 2 + 3rem - var(--rec-deck-lift));
+  /* --card-h is declared on .stage-swipe; inherit it so the floor can compare. */
+  --card-h: inherit;
+  /*
+   * Sit the bar just under the front card's measured bottom. The 4dvh floor
+   * only catches short viewports, where that position would clip the control.
+   */
+  top: max(
+    calc(var(--rec-card-bottom, 100%) + 0.75rem),
+    calc(100% - 4dvh - 5.5rem - env(safe-area-inset-bottom, 0px))
+  );
   bottom: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  /* Bar sits just above the continue hint, not on the card. */
+  gap: 4px;
   padding: 0 28px;
   pointer-events: none;
   transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease;
@@ -13180,8 +13189,9 @@ body[data-theme="v8"] .auth7-intro-actions {
   align-items: center;
   width: 100%;
   margin-top: auto;
-  /* Same lift as .nav-test-dock-wrap ≤440px so the CTA clears browser chrome. */
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.1dvh);
+  /* Lift the CTA off the viewport edge; scales with dynamic viewport height. */
+  margin-bottom: 4dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   gap: 8px;
 }
 
@@ -13275,8 +13285,9 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
   }
 
   body[data-theme="v8"] .auth7-intro-actions {
-    /* Desktop dock uses the taller 2.5dvh lift, not the phone 0.1dvh. */
-    padding-bottom: calc(2.5dvh + env(safe-area-inset-bottom, 0px));
+    /* Desktop card already has its own inset; keep a smaller dvh lift. */
+    margin-bottom: 2.5dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
