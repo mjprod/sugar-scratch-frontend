@@ -60,7 +60,7 @@ assert(
   });
   assert(mobile.maxOverlayDpr === 1, "mobile overlay DPR capped");
   assert(mobile.particleCount < desktop.particleCount, "mobile fewer particles");
-  assert(mobile.particleSize <= desktop.particleSize, "mobile particles not larger");
+  assert(mobile.particleSize <= 96, "mobile particles within settings slider max");
 
   const reduced = resolveCursorFxDeviceProfile({
     reducedMotion: true,

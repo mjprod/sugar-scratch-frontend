@@ -929,7 +929,7 @@ function loadAutoScratchSettings(): AutoScratchSettings {
   }
 }
 
-const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v11";
+const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v13";
 const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx",
   "sugar-scratchie:cursor-fx-v1",
@@ -942,6 +942,8 @@ const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx-v8",
   "sugar-scratchie:cursor-fx-v9",
   "sugar-scratchie:cursor-fx-v10",
+  "sugar-scratchie:cursor-fx-v11",
+  "sugar-scratchie:cursor-fx-v12",
 ];
 
 type CursorFxSettings = {

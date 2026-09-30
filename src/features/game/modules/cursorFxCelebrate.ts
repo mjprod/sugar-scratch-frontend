@@ -72,7 +72,7 @@ export function resolveCursorFxDeviceProfile(opts: {
     return {
       fairyDust: true,
       // Minimal trail — phones struggle with Lottie particle draw calls.
-      particleSize: 40,
+      particleSize: 84,
       particleCount: 1,
       maxOverlayDpr: 1,
       coarsePointer: opts.coarsePointer,
