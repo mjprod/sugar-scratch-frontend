@@ -391,10 +391,9 @@ function playGameOutcomeSound(
     ];
     const sparkleStep = 0.048;
     sparkle.forEach((freq, index) => {
-      tone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
+      tone(now + index * sparkleStep, freq, 0.09, 0.17, "sine");
       if (index % 2 === 0) {
         tone(
-          ctx,
           now + index * sparkleStep + 0.012,
           freq * 2,
           0.055,
@@ -408,28 +407,27 @@ function playGameOutcomeSound(
     const fanfare = [523.25, 659.25, 783.99, 987.77, 1174.66];
     fanfare.forEach((freq, index) => {
       const t = fanfareStart + index * 0.1;
-      tone(ctx, t, freq, 0.15, 0.3, "square");
-      tone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
-      tone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
+      tone(t, freq, 0.15, 0.3, "square");
+      tone(t, freq * 0.5, 0.15, 0.14, "sawtooth");
+      tone(t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
     });
 
     const chordAt = fanfareStart + fanfare.length * 0.1 + 0.1;
     const chord = [261.63, 392, 523.25, 659.25, 783.99, 1046.5, 1318.51];
     chord.forEach((freq, index) => {
       const type: OscillatorType = index < 2 ? "sawtooth" : "triangle";
-      tone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
+      tone(chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
     });
 
     const glitterStart = chordAt + 0.12;
     const glitter = [2093, 2349, 2637, 2793, 3136, 3520];
     glitter.forEach((freq, index) => {
-      tone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
+      tone(glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
     });
 
     const shimmerStart = glitterStart + glitter.length * 0.045 + 0.08;
     for (let i = 0; i < 6; i += 1) {
       tone(
-        ctx,
         shimmerStart + i * 0.06,
         1760 + i * 110,
         0.07,
@@ -444,8 +442,8 @@ function playGameOutcomeSound(
 
   // No match is a resolved outcome, not a loss — a soft low chime that settles,
   // never a descending "you lost" sting.
-  tone(ctx, now, 523.25, 0.34, 0.09, "sine");
-  tone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  tone(now, 523.25, 0.34, 0.09, "sine");
+  tone(now + 0.13, 392, 0.5, 0.075, "sine");
   return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
