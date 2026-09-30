@@ -4,8 +4,9 @@
  * A stroke opens on a short clip; if the finger keeps scratching past the end
  * of that clip, the next one comes from the medium tier, then long. Lifting
  * or holding still never cuts a clip — it plays to its end, and the next
- * stroke layers a fresh clip on top. Only mute / leaving the stage silences
- * them. Gated by game soundEffect prefs.
+ * stroke layers a fresh clip on top. Rubbing over already-scratched fabric
+ * fades them out (after a short grace); mute / leaving the stage silences
+ * them outright. Gated by game soundEffect prefs.
  *
  * Clips carry up to 2s of trailing silence, so chaining is timed off each
  * clip's audible end (measured at decode) rather than the file end.
@@ -45,8 +46,15 @@ export type ScratchSoundTier = keyof typeof SCRATCH_SOUND_TIERS;
 /** Continuous scratching time before the next chained clip is medium / long. */
 export const SCRATCH_SOUND_MEDIUM_AFTER_MS = 1000;
 export const SCRATCH_SOUND_LONG_AFTER_MS = 2800;
-/** Mute / unmount fade — the only time a clip is cut short. */
+/** Mute / unmount fade. */
 const SCRATCH_SOUND_FADE_OUT_S = 0.08;
+/** Softer fade when the finger moves onto already-scratched fabric. */
+const SCRATCH_SOUND_QUIET_FADE_S = 0.15;
+/**
+ * How long a stroke may stay on already-scratched fabric before its clips
+ * fade — a quick pass across a cleared strip shouldn't chop the sound.
+ */
+export const SCRATCH_STALE_QUIET_MS = 150;
 /** Next clip starts this far before the current one's audible tail ends. */
 const SCRATCH_SOUND_CHAIN_OVERLAP_S = 0.06;
 const SCRATCH_SOUND_VOLUME = 0.9;
@@ -72,6 +80,7 @@ type Voice = {
   gain: GainNode;
   /** Context time at which the next clip should take over. */
   chainAt: number;
+  fading: boolean;
 };
 
 const pendingClips = new Map<string, Promise<Clip | null>>();
@@ -84,6 +93,8 @@ let lastSrc: string | null = null;
 /** performance.now() of the latest stamp that hit a suspended context. */
 let suspendedStampMs: number | null = null;
 let resumeWatchedCtx: AudioContext | null = null;
+/** performance.now() when the stroke first landed on scratched fabric. */
+let staleSinceMs: number | null = null;
 
 export function scratchSoundTier(activeMs: number): ScratchSoundTier {
   if (activeMs >= SCRATCH_SOUND_LONG_AFTER_MS) return "long";
@@ -169,6 +180,7 @@ function startVoice(ctx: AudioContext, clip: Clip) {
     source,
     gain,
     chainAt: startAt + clip.audibleEnd / rate - SCRATCH_SOUND_CHAIN_OVERLAP_S,
+    fading: false,
   };
   source.onended = () => {
     liveVoices.delete(voice);
@@ -188,6 +200,27 @@ function startVoice(ctx: AudioContext, clip: Clip) {
 export function endScratchSoundStroke(): void {
   strokeStartMs = null;
   currentVoice = null;
+  staleSinceMs = null;
+}
+
+function fadeLiveVoices(fadeS: number): void {
+  if (!liveVoices.size) return;
+  const ctx = getGameAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  for (const voice of liveVoices) {
+    if (voice.fading) continue;
+    voice.fading = true;
+    const param = voice.gain.gain;
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(param.value, now);
+    param.linearRampToValueAtTime(0, now + fadeS);
+    try {
+      voice.source.stop(now + fadeS);
+    } catch {
+      // Older Safari throws on a second stop(); the fade already silenced it.
+    }
+  }
 }
 
 /** Fade out every scratch clip and end the stroke. Use on mute and unmount. */
@@ -195,21 +228,47 @@ export function stopScratchSounds(): void {
   strokeStartMs = null;
   currentVoice = null;
   suspendedStampMs = null;
-  if (!liveVoices.size) return;
-  const ctx = getGameAudioContext();
-  if (!ctx) return;
-  const now = ctx.currentTime;
-  for (const voice of liveVoices) {
-    const param = voice.gain.gain;
-    param.cancelScheduledValues(now);
-    param.setValueAtTime(param.value, now);
-    param.linearRampToValueAtTime(0, now + SCRATCH_SOUND_FADE_OUT_S);
-    try {
-      voice.source.stop(now + SCRATCH_SOUND_FADE_OUT_S);
-    } catch {
-      // Older Safari throws on a second stop(); the fade already silenced it.
-    }
+  staleSinceMs = null;
+  fadeLiveVoices(SCRATCH_SOUND_FADE_OUT_S);
+}
+
+/**
+ * Finger is rubbing already-scratched fabric: fade what's playing and reset
+ * the tier so the next fresh scratch opens on a short clip.
+ */
+export function quietScratchSound(): void {
+  strokeStartMs = null;
+  currentVoice = null;
+  suspendedStampMs = null;
+  fadeLiveVoices(SCRATCH_SOUND_QUIET_FADE_S);
+}
+
+/** Pure grace-timer step for `noteScratchStamp`. */
+export function nextScratchStaleState(
+  fresh: boolean,
+  staleSince: number | null,
+  nowMs: number,
+): { staleSince: number | null; quiet: boolean } {
+  if (fresh) return { staleSince: null, quiet: false };
+  const since = staleSince ?? nowMs;
+  return { staleSince: since, quiet: nowMs - since >= SCRATCH_STALE_QUIET_MS };
+}
+
+/**
+ * Call once per manual scratch apply. `fresh` = the stamps cleared fabric
+ * that wasn't scratched yet; only those keep the clips going.
+ */
+export function noteScratchStamp(
+  fresh: boolean,
+  nowMs: number = performance.now(),
+): void {
+  const next = nextScratchStaleState(fresh, staleSinceMs, nowMs);
+  staleSinceMs = next.staleSince;
+  if (fresh) {
+    noteScratchSoundActivity(nowMs);
+    return;
   }
+  if (next.quiet) quietScratchSound();
 }
 
 /**
