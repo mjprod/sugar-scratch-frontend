@@ -44,6 +44,7 @@ import {
   shouldReviveGameVideos,
 } from "../modules/currencyResultMedia";
 import {
+  celebrateBurstCount,
   celebrateDurationMs,
   celebrateParticleBoost,
   crossedProgressMilestone,
@@ -127,7 +128,18 @@ import {
   createScratchMarksRing,
   pushScratchMark,
   scratchMarksSome,
+  type ScratchMark as RingScratchMark,
 } from "../modules/scratchMarksRing";
+import {
+  createScratchCoverage,
+  createStrokeFreshness,
+  noteStrokeStamp,
+  rebuildScratchCoverage,
+  resetScratchCoverage,
+  resetStrokeFreshness,
+  SCRATCH_COVERAGE_SIZE,
+  stampScratchCoverage,
+} from "../modules/scratchCoverage";
 import {
   createFabricAlphaCache,
   createSymbolScratchProbeCache,
@@ -159,7 +171,7 @@ import {
 } from "../modules/sparkleCoinSound";
 import {
   endScratchSoundStroke,
-  noteScratchSoundActivity,
+  noteScratchStamp,
   preloadScratchSounds,
   stopScratchSounds,
 } from "../modules/scratchSound";
@@ -1354,6 +1366,13 @@ export function ScratchPrototype({
   const revealSamplesRef = useRef<Vec2[]>([]);
   const revealedRef = useRef<boolean[]>([]);
   const revealedCountRef = useRef(0);
+  // Fine UV record of cleared fabric; scratch audio + cursor FX only fire
+  // while the latest stamps cleared something new.
+  const scratchCoverageRef = useRef(createScratchCoverage());
+  const strokeFreshnessRef = useRef(createStrokeFreshness());
+  const lastStampUvRef = useRef<{ u: number; v: number } | null>(null);
+  const strokeFreshRef = useRef(false);
+  const cursorFxSpawnGate = useCallback(() => strokeFreshRef.current, []);
   const [trackedMesh, setTrackedMesh] = useState<TrackedMesh | null>(null);
   const trackedSampleRef = useRef<TrackedMeshSample | null>(null);
   const trackedMeshRef = useRef<TrackedMesh | null>(null);
@@ -1732,6 +1751,9 @@ export function ScratchPrototype({
   const celebrateTimerRef = useRef<number | null>(null);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
   const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
+  const [cursorFxBurstCount, setCursorFxBurstCount] = useState(() =>
+    celebrateBurstCount(1, CURSOR_FX_DEVICE.coarsePointer),
+  );
   /** Bumps StageCoinCount scale-pop on each crossedProgressMilestone. */
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
@@ -1801,6 +1823,12 @@ export function ScratchPrototype({
     setProgress(next);
   }
 
+  function resetStrokeFresh() {
+    resetStrokeFreshness(strokeFreshnessRef.current);
+    lastStampUvRef.current = null;
+    strokeFreshRef.current = false;
+  }
+
   function publishCursorOnMesh(onMesh: boolean) {
     cursorOnMeshRef.current = onMesh;
     setCursorOnMesh((prev) => (prev === onMesh ? prev : onMesh));
@@ -1810,6 +1838,7 @@ export function ScratchPrototype({
     const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
     if (pending) addScratchRef.current(pending.x, pending.y);
     endScratchSoundStroke();
+    resetStrokeFresh();
     drawingRef.current = false;
     isScratchingRef.current = false;
     setIsScratching(false);
@@ -1965,6 +1994,9 @@ export function ScratchPrototype({
     const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
     celebrateUntilRef.current = performance.now() + celebrateMs;
     setCursorFxCelebrate(true);
+    setCursorFxBurstCount(
+      celebrateBurstCount(crossed, CURSOR_FX_DEVICE.coarsePointer),
+    );
     setCursorFxBurstNonce((n) => n + 1);
     clearCelebrateTimer();
     celebrateTimerRef.current = window.setTimeout(() => {
@@ -3276,6 +3308,8 @@ export function ScratchPrototype({
     }
     setSelectedMeshFile(card.mesh);
     clearScratchMarks(marksRef.current);
+    resetScratchCoverage(scratchCoverageRef.current);
+    resetStrokeFresh();
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
     if (!cardTransitionActiveRef.current) {
@@ -3369,6 +3403,19 @@ export function ScratchPrototype({
     );
     revealedRef.current = revealed;
     revealedCountRef.current = revealed.reduce((n, r) => n + (r ? 1 : 0), 0);
+    const coverage = createScratchCoverage(
+      SCRATCH_COVERAGE_SIZE,
+      trackedMesh?.garment,
+      trackedMesh?.cols,
+      trackedMesh?.rows,
+    );
+    const liveMarks: RingScratchMark[] = [];
+    scratchMarksSome(marksRef.current, (m) => {
+      liveMarks.push(m);
+      return false;
+    });
+    rebuildScratchCoverage(coverage, liveMarks);
+    scratchCoverageRef.current = coverage;
     const next = samples.length ? revealedCountRef.current / samples.length : 0;
     progressRef.current = next;
     publishedProgressRef.current = next;
@@ -3868,8 +3915,8 @@ export function ScratchPrototype({
     !introCover &&
     (!useBodySymbols ||
       (topBarPhase !== "center" && !introGateActive && !symbolsHuntComplete));
-  // Win-feel trail: celebrate window after each +10%. Spawns while celebrate
-  // is armed (coarse + fine); fabric probes still skip mid-scratch on coarse.
+  // Win-feel trail: coins only in the celebrate window after each +10%, and
+  // only over fresh fabric (spawnGate); fabric probes skip mid-scratch on coarse.
   const cursorFxSpawnActive = shouldSpawnFairyDust({
     playWindow: cursorFxPlayWindow,
     celebrate: cursorFxCelebrate,
@@ -3935,6 +3982,8 @@ export function ScratchPrototype({
 
   function resetScratch() {
     clearScratchMarks(marksRef.current);
+    resetScratchCoverage(scratchCoverageRef.current);
+    resetStrokeFresh();
     clearPendingScratchMove(scratchInputCoalesceRef.current);
     lastScratchWorldRef.current = null;
     glRendererRef.current?.clearScratch();
@@ -4688,17 +4737,23 @@ export function ScratchPrototype({
     worldPoint?: Vec2 | null,
     finalize = true,
     strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
-  ) {
-    if (gameResultPendingRef.current !== null) return;
-    if (packRevealBlockedRef.current) return;
+  ): number {
+    if (gameResultPendingRef.current !== null) return 0;
+    if (packRevealBlockedRef.current) return 0;
     if (isBodyScratchLocked()) {
-      return;
+      return 0;
     }
 
     if (finalize) huntHintActivityAtRef.current = performance.now();
 
     pushScratchMark(marksRef.current, u, v, radius);
     glRendererRef.current?.paintScratch(u, v, radius);
+    const freshCells = stampScratchCoverage(
+      scratchCoverageRef.current,
+      u,
+      v,
+      radius,
+    );
 
     const samples = revealSamplesRef.current;
     const revealed = revealedRef.current;
@@ -4713,7 +4768,7 @@ export function ScratchPrototype({
         revealedCountRef.current += 1;
       }
     }
-    if (!finalize) return;
+    if (!finalize) return freshCells;
 
     if (autoScratchRef.current.flakes && worldPoint) {
       glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
@@ -4839,6 +4894,7 @@ export function ScratchPrototype({
       publishProgressUi(true);
     }
     tryResolveGame();
+    return freshCells;
   }
   applyScratchAtUvRef.current = applyScratchAtUv;
 
@@ -4878,10 +4934,11 @@ export function ScratchPrototype({
     }
 
     let applied = false;
+    let fresh = false;
     for (let i = 0; i < appliedStamps.length; i += 1) {
       const stamp = appliedStamps[i];
       const isLast = i === appliedStamps.length - 1;
-      applyScratchAtUv(
+      const newCells = applyScratchAtUv(
         stamp.u,
         stamp.v,
         SCRATCH_RADIUS,
@@ -4889,12 +4946,24 @@ export function ScratchPrototype({
         isLast,
         isLast ? appliedStamps : undefined,
       );
+      const prev = lastStampUvRef.current;
+      fresh = noteStrokeStamp(
+        strokeFreshnessRef.current,
+        newCells,
+        prev ? Math.hypot(stamp.u - prev.u, stamp.v - prev.v) : 0,
+        SCRATCH_RADIUS,
+        scratchCoverageRef.current.size,
+      );
+      lastStampUvRef.current = { u: stamp.u, v: stamp.v };
       applied = true;
     }
 
     if (applied) {
       lastScratchWorldRef.current = point;
-      noteScratchSoundActivity();
+      strokeFreshRef.current = fresh;
+      noteScratchStamp(fresh);
+    } else {
+      strokeFreshRef.current = false;
     }
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
@@ -5388,12 +5457,8 @@ export function ScratchPrototype({
               )}
               maxDevicePixelRatio={CURSOR_FX_DEVICE.maxOverlayDpr}
               burstNonce={cursorFxBurstNonce}
-              burstCount={
-                celebrateParticleBoost(
-                  cursorFx.particleCount,
-                  CURSOR_FX_DEVICE.coarsePointer,
-                ) * (CURSOR_FX_DEVICE.coarsePointer ? 1 : 2)
-              }
+              burstCount={cursorFxBurstCount}
+              spawnGate={cursorFxSpawnGate}
             />
           ) : null}
           {glError ? (

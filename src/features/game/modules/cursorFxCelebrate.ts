@@ -1,10 +1,11 @@
 /**
  * Cursor-FX celebrate + mobile defaults (Phase 5 perf / win-feel).
- * Particles are not a continuous trail — they fire briefly each time scratch
- * progress crosses another 10% band so the player feels a small win.
+ * Each 10% band pops a burst that grows as the card nears done, then a short
+ * coin trail follows fresh scratching for the celebrate window. Rubbing over
+ * already-scratched fabric never spawns coins.
  *
- * Emit mode: coins fall down (like TopSymbolBar foil flakes before the hunt),
- * not an upward fireworks fountain.
+ * Trail emit mode: coins fall down (like TopSymbolBar foil flakes before the
+ * hunt). Milestone bursts pop up and out first, then gravity drops them.
  */
 
 export const CURSOR_FX_MILESTONE = 0.1;
@@ -99,6 +100,34 @@ export function celebrateParticleBoost(
 
 export function celebrateDurationMs(coarsePointer: boolean): number {
   return coarsePointer ? CURSOR_FX_CELEBRATE_MS_COARSE : CURSOR_FX_CELEBRATE_MS;
+}
+
+/** Launch speed range for milestone pops (FairyDust units per frame). */
+export const CURSOR_FX_BURST_VELOCITY = { min: 3.2, max: 6.8 };
+/** Burst coins draw larger than trail coins so the pop reads as the reward. */
+export const CURSOR_FX_BURST_SIZE_MUL = 1.3;
+
+/**
+ * Coins per milestone pop. Grows with the band crossed so later milestones
+ * feel bigger; coarse stays well under the 250 particle cap even mid-trail.
+ */
+export function celebrateBurstCount(
+  milestone: number,
+  coarsePointer: boolean,
+): number {
+  const band = Math.min(10, Math.max(1, Math.floor(milestone) || 1));
+  return coarsePointer ? 5 + band : 10 + band * 2;
+}
+
+/** Upward fan (±70° off vertical) so a milestone pops like a win, not a spill. */
+export function cursorFxBurstVelocity(
+  velocity: { min: number; max: number } = CURSOR_FX_BURST_VELOCITY,
+  random: () => number = Math.random,
+): { vx: number; vy: number } {
+  const span = Math.max(0, velocity.max - velocity.min);
+  const speed = velocity.min + random() * span;
+  const angle = (random() - 0.5) * Math.PI * 0.78;
+  return { vx: Math.sin(angle) * speed, vy: -Math.cos(angle) * speed };
 }
 
 /**
