@@ -170,7 +170,10 @@ export function PersonalizationSwipeScreen({
                   className="auth7-rec-swipe-continue"
                   onClick={() => onContinue(snapshot())}
                 >
-                  Continue
+                  Continue to Home…
+                  <span className="auth7-rec-swipe-continue-hint">
+                    or keep swiping to keep personalising
+                  </span>
                 </button>
               ) : null}
             </div>

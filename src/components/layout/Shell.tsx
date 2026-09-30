@@ -71,10 +71,7 @@ export function OnboardShell({
       aria-label="Personalization"
     >
       {intro ? (
-        <div className="auth7-intro-card">
-          {header}
-          {main}
-        </div>
+        <div className="auth7-intro-card">{main}</div>
       ) : (
         <>
           {header}
