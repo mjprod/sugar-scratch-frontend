@@ -36,16 +36,15 @@ for (const phase of ["center", "docked", "showcase"] as const) {
   assert(p.fullAfterMs == null, "center must not schedule full level");
 }
 
-// --- docked: hold the bed while the bar flies, then full ---
+// --- docked stays at the bed; the dock flight must not raise the music ---
 {
   const p = plan(true, "docked");
-  assert(p.level === "bed", "docked must start at the bed");
-  assert(p.fullAfterMs === DOCK_MS, "docked must step up after the dock flight");
+  assert(p.level === "bed", "docked must stay at the bed");
+  assert(p.fullAfterMs == null, "docked must not step up");
 }
 
-// --- lab skip-to-play goes straight to full ---
-assert(plan(true, "center", true).level === "full", "skipToPlay must be full");
-assert(plan(true, "docked", true).level === "full", "skipToPlay must be full when docked");
+assert(plan(true, "center", true).level === "bed", "skipToPlay stays at the bed");
+assert(plan(true, "docked", true).level === "bed", "skipToPlay stays at the bed when docked");
 
 // --- showcase leaves the level alone ---
 assert(plan(true, "showcase").level === "keep", "showcase must keep the level");

@@ -102,7 +102,8 @@ export function AppLayout() {
     location.pathname.startsWith("/welcome") ||
     location.pathname.startsWith("/game") ||
     location.pathname.startsWith("/game-ui") ||
-    location.pathname.startsWith("/photo-scratch");
+    location.pathname.startsWith("/photo-scratch") ||
+    location.pathname.startsWith("/audio-test");
 
   const onPackPocket =
     location.pathname.startsWith("/pack-pocket") ||

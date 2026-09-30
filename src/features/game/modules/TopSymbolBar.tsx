@@ -13,6 +13,7 @@ import { lottieRenderConfig } from "@/utils/lottieRender";
 import { GameSymbolIcon } from "./GameSymbolIcon";
 import { resolveFoilCanvasPixelRatio } from "./foilCanvasPixelRatio";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
+import { noteScratchSoundActivity, stopScratchSounds } from "./scratchSound";
 
 const BRUSH_RADIUS_CSS = 12;
 const SLOT_REVEAL_THRESHOLD = 0.55;
@@ -391,6 +392,7 @@ export function TopSymbolBar({
   onAllRevealedRef.current = onAllRevealed;
   const onScratchStartRef = useRef(onScratchStart);
   onScratchStartRef.current = onScratchStart;
+  useEffect(() => stopScratchSounds, []);
 
   const [revealedMask, setRevealedMask] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => forceRevealed),
@@ -1136,6 +1138,7 @@ export function TopSymbolBar({
       notifiedRef.current = true;
       setCoatingDone(true);
       setClearedBurst(true);
+      stopScratchSounds();
     }
   }, [slotGeometry]);
 
@@ -1168,6 +1171,7 @@ export function TopSymbolBar({
 
       lastPtRef.current = { x, y };
       canvas.__locked = true;
+      noteScratchSoundActivity();
       // First scratch stroke — peel cue gets out of the way immediately.
       setPeelHidden(true);
 
@@ -1219,6 +1223,7 @@ export function TopSymbolBar({
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     drawingRef.current = false;
     lastPtRef.current = null;
+    stopScratchSounds();
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
     }

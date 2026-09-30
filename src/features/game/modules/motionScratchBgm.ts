@@ -20,6 +20,7 @@ import {
   getGameAudioOutput,
   peekGameAudioContext,
 } from "../shared/gameAudioContext";
+import { soundMixOutput } from "../shared/soundMix";
 import { resolveMotionScratchBgmGain } from "./motionScratchBgmPolicy";
 
 /** Local public/ path (not under Vite media proxy routes like /sounds). */
@@ -189,7 +190,7 @@ function ensureGain(audioCtx: AudioContext): GainNode {
   if (!gain) {
     gain = audioCtx.createGain();
     gain.gain.value = 0;
-    gain.connect(getGameAudioOutput(audioCtx));
+    gain.connect(soundMixOutput("bgm") ?? getGameAudioOutput(audioCtx));
   }
   return gain;
 }
@@ -280,13 +281,13 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
       MOTION_SCRATCH_BGM_BED_GAIN,
     );
     // Already looping at this level — nothing to do (every scratch touch
-    // lands here, so keep it allocation-free).
+    // lands here, so keep it allocation-free). A live slider move snaps.
     if (
       source &&
       fadeStopTimer == null &&
-      appliedGain === target &&
       audioCtx.state === "running"
     ) {
+      if (appliedGain !== target) rampGain(target, fadeInMs);
       return;
     }
     const gen = ++syncGeneration;

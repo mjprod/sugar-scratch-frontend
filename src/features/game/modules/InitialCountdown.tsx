@@ -5,6 +5,7 @@ import {
   getGameAudioContext,
   getGameAudioOutput,
 } from "../shared/gameAudioContext";
+import { soundMixOutput } from "../shared/soundMix";
 
 /** Match `.top-symbol-bar` dock fly animation in styles.css. */
 export const TOP_BAR_DOCK_MS = 720;
@@ -103,6 +104,10 @@ async function ensureCountdownBuffer() {
     })();
   }
   return countdownBufferPromise;
+}
+
+function ensureCountdownGain(): AudioNode | null {
+  return soundMixOutput("countdown");
 }
 
 function stopCountdownSources() {
@@ -217,7 +222,7 @@ export async function playCountdownSound(offsetSec = 0) {
         if (startAt >= buffer.duration) return;
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.connect(getGameAudioOutput(ctx));
+        source.connect(ensureCountdownGain() ?? getGameAudioOutput(ctx));
         countdownSource = source;
         source.onended = () => {
           if (countdownSource === source) countdownSource = null;
@@ -233,6 +238,19 @@ export async function playCountdownSound(offsetSec = 0) {
   if (!html) throw new Error("Countdown audio unavailable");
   html.muted = false;
   html.volume = 1;
+  if (ctx && html) {
+    const node =
+      (html as HTMLAudioElement & { __mixSource?: MediaElementAudioSourceNode })
+        .__mixSource ?? ctx.createMediaElementSource(html);
+    (html as HTMLAudioElement & { __mixSource?: MediaElementAudioSourceNode }).__mixSource =
+      node;
+    try {
+      node.disconnect();
+    } catch {
+      // not yet connected
+    }
+    node.connect(ensureCountdownGain() ?? ctx.destination);
+  }
   try {
     html.currentTime = startAt;
   } catch {
@@ -285,6 +303,7 @@ export function InitialCountdown({
   }, []);
 
   const startCountdownAudioWithVisual = useCallback(() => {
+    ensureCountdownGain();
     if (!soundEnabledRef.current || audioStartedRef.current) return;
     // Cold refresh: prefs may be "on" but there is no user gesture yet.
     // Playing here makes the mute icon (still locked) lie — wait for unlock.
@@ -302,6 +321,7 @@ export function InitialCountdown({
   // Arm the audio session with the visual so unmute can resume even when the
   // first autoplay SFX attempt failed (cold refresh, no gesture yet).
   useEffect(() => {
+    ensureCountdownGain();
     audioStartedRef.current = false;
     countdownSessionRef.current = 0;
     finishedRef.current = false;
