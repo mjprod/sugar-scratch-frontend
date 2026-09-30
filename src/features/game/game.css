@@ -945,7 +945,10 @@
   pointer-events: none;
 }
 
-/* Floating +N on each 10% sparkle award. */
+/* Floating +N on each 10% sparkle award.
+   Absolutely positioned, so width must come from content — not the pill.
+   iOS Safari otherwise shrink-wraps the chip to the badge and stacks
+   "+ / coin / amount" on top of the count. */
 .stage-game__coin-count-award {
   position: absolute;
   left: 50%;
@@ -963,8 +966,14 @@
   letter-spacing: 0.02em;
   line-height: 1.2;
   display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
+  justify-content: center;
   gap: 3px;
+  width: max-content;
+  max-width: none;
+  min-width: max-content;
   white-space: nowrap;
   pointer-events: none;
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
@@ -990,10 +999,19 @@
   opacity: 1;
 }
 
+.stage-game__coin-count-award-sign,
+.stage-game__coin-count-award-amount {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .stage-game__coin-count-award-img {
   display: block;
   width: 14px;
   height: 14px;
+  min-width: 14px;
+  max-width: 14px;
+  max-height: 14px;
   flex: 0 0 14px;
   object-fit: contain;
   pointer-events: none;

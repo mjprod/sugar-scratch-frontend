@@ -4,8 +4,8 @@ import { navigateBackOr } from "@/hooks/useGoBack";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
-  getGameAudioPrefs,
-  setSoundEffectEnabled,
+  effectiveSoundEffect,
+  setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 import {
@@ -61,6 +61,22 @@ import {
   resumeCountdownAudioIfActive,
   stopCountdownAudio,
 } from "../modules/InitialCountdown";
+import {
+  syncMotionScratchBgm,
+  unlockMotionScratchBgm,
+} from "../modules/motionScratchBgm";
+import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import {
+  gameAudioStartTime,
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
+import {
+  endScratchSoundStroke,
+  noteScratchSoundActivity,
+  preloadScratchSounds,
+  stopScratchSounds,
+} from "../modules/scratchSound";
 import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
@@ -256,7 +272,7 @@ function playlistForGameSession(
   return ordered;
 }
 
-const loadSoundEnabled = () => getGameAudioPrefs().soundEffect;
+const loadSoundEnabled = () => effectiveSoundEffect();
 
 function loadAutoScratchSettings(): AutoScratchSettings {
   if (typeof window === "undefined") return AUTO_SCRATCH_DEFAULTS;
@@ -279,14 +295,8 @@ function loadAutoScratchSettings(): AutoScratchSettings {
 
 function ensureSymbolAudio(state: SymbolAudioState) {
   if (typeof window === "undefined") return null;
-  if (!state.ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return null;
-    state.ctx = new AudioCtor();
-  }
+  state.ctx ??= getGameAudioContext();
+  if (!state.ctx) return null;
   if (state.ctx.state === "suspended") void state.ctx.resume();
   return state.ctx;
 }
@@ -299,7 +309,7 @@ function playMatchFindSound(
   if (!enabled) return;
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return;
-  const t = ctx.currentTime + startOffsetS;
+  const t = gameAudioStartTime(ctx) + startOffsetS;
   // Bright ascending ding — claims a top-bar slot.
   scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
   scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
@@ -343,7 +353,7 @@ function scheduleTone(
   gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getGameAudioOutput(ctx));
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -358,7 +368,7 @@ function playGameOutcomeSound(
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return 1800;
 
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
 
   if (outcome === "win") {
     const sparkle = [
@@ -1002,6 +1012,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     setEntryReady(true);
   }
 
@@ -2088,18 +2099,22 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
       applied = true;
     }
-    if (applied) lastScratchWorldRef.current = point;
+    if (applied) {
+      lastScratchWorldRef.current = point;
+      noteScratchSoundActivity();
+    }
   }
 
   function updateSoundEnabled(enabled: boolean) {
     applyBoundThemeIntroSound(enabled);
     if (enabled) {
       unlockCountdownSound();
+      unlockMotionScratchBgm();
       resumeCountdownAudioIfActive();
     } else {
       stopCountdownAudio();
     }
-    setSoundEffectEnabled(enabled);
+    setGameSoundOn(enabled);
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
@@ -2409,7 +2424,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const video = introVideoElRef.current;
     if (!video) return;
     let cancelled = false;
-    void playThemeIntro(video, () => getGameAudioPrefs().soundEffect).then(
+    void playThemeIntro(video, () => effectiveSoundEffect()).then(
       (result) => {
         if (cancelled) return;
         if (!result.playing) {
@@ -2419,7 +2434,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           return;
         }
         // Never force-unmute here — that needs a user gesture after refresh.
-        setThemeIntroSound(video, getGameAudioPrefs().soundEffect);
+        setThemeIntroSound(video, effectiveSoundEffect());
       },
     );
     const safetyId = window.setTimeout(() => {
@@ -2438,20 +2453,25 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   useEffect(
     () =>
       subscribeGameAudioPrefs(() => {
-        const next = getGameAudioPrefs().soundEffect;
+        const next = effectiveSoundEffect();
         soundEnabledRef.current = next;
         if (next) {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
+          unlockMotionScratchBgm();
+          preloadScratchSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
+          stopScratchSounds();
         }
         applyBoundThemeIntroSound(next);
         setSoundEnabled(next);
       }),
     [],
   );
+
+  useEffect(() => stopScratchSounds, []);
 
   useEffect(() => {
     try {
@@ -2473,7 +2493,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function onPointerDown(clientX: number, clientY: number) {
     if (introActiveRef.current) return;
-    if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
+    if (soundEnabledRef.current) {
+      ensureSymbolAudio(symbolAudioRef.current);
+      preloadScratchSounds();
+    }
+    // Re-assert Web Audio unlock inside this gesture (Safari).
+    unlockMotionScratchBgm();
+    syncMotionScratchBgm();
     if (isBodyScratchLocked()) {
       return;
     }
@@ -2495,6 +2521,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     // Idle window starts when the finger lifts, so holding still mid-stroke
     // doesn't make the hint appear the instant they let go.
     huntHintActivityAtRef.current = performance.now();
+    endScratchSoundStroke();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
@@ -2505,6 +2532,15 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
+  useMotionScratchBgm({
+    warm:
+      hasBodySymbols &&
+      entryReady &&
+      !introActive &&
+      !introGateActive &&
+      !gameResult,
+    topBarPhase,
+  });
   const huntPhase = resolveHuntPhase({
     active:
       hasBodySymbols &&

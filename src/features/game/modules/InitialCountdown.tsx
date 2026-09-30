@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { lottieRenderConfig } from "@/utils/lottieRender";
+import {
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
 
 /** Match `.top-symbol-bar` dock fly animation in styles.css. */
 export const TOP_BAR_DOCK_MS = 720;
@@ -20,11 +24,6 @@ const COUNTDOWN_SIZE_PX = 260;
 
 const FALLBACK_LABELS = ["3", "2", "1", "GO"] as const;
 
-type WebkitAudioWindow = typeof window & {
-  webkitAudioContext?: typeof AudioContext;
-};
-
-let countdownCtx: AudioContext | null = null;
 let countdownBuffer: AudioBuffer | null = null;
 let countdownBufferPromise: Promise<AudioBuffer | null> | null = null;
 let countdownSource: AudioBufferSourceNode | null = null;
@@ -65,15 +64,7 @@ function countdownSoundUrl() {
 }
 
 function getCountdownContext() {
-  if (typeof window === "undefined") return null;
-  if (!countdownCtx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as WebkitAudioWindow).webkitAudioContext;
-    if (!AudioCtor) return null;
-    countdownCtx = new AudioCtor();
-  }
-  return countdownCtx;
+  return getGameAudioContext();
 }
 
 function getCountdownHtmlAudio() {
@@ -226,7 +217,7 @@ export async function playCountdownSound(offsetSec = 0) {
         if (startAt >= buffer.duration) return;
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.connect(ctx.destination);
+        source.connect(getGameAudioOutput(ctx));
         countdownSource = source;
         source.onended = () => {
           if (countdownSource === source) countdownSource = null;
