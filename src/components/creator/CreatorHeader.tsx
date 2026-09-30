@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, Instagram } from "lucide-react";
 
 const GLASS_PILL =
@@ -66,119 +67,121 @@ export function CreatorHeader({
   onToggleFollow?: () => void;
 }) {
   const location = locationLabel?.trim() || "";
-  const pinRef = useRef<HTMLDivElement | null>(null);
-  const barRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
+  const pinRef = useRef<HTMLDivElement | null>(null);
   const compactBackRef = useRef<HTMLButtonElement | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const pin = pinRef.current;
-    const bar = barRef.current;
     const card = cardRef.current;
-    if (!pin || !bar || !card) return;
+    const pin = pinRef.current;
+    if (!card || !pin) return;
 
     const scroller = card.closest("[data-page-scroll]");
-    let collapsedNow = pin.classList.contains("is-collapsed");
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const root = scroller instanceof HTMLElement ? scroller : null;
+    let collapsedNow = false;
+    const fadeRange = 48;
 
-    const fadeOpacity = (node: HTMLElement, to: number) => {
-      // iOS skips CSS opacity transitions on sticky descendants; WAAPI does not.
-      node.getAnimations().forEach((animation) => animation.cancel());
-      const from = Number.parseFloat(getComputedStyle(node).opacity) || 0;
-      node.animate([{ opacity: from }, { opacity: to }], {
-        duration: reduceMotion ? 0 : 360,
-        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        fill: "forwards",
+    const paint = (progress: number) => {
+      const compact = Math.min(1, Math.max(0, progress));
+      pin.style.opacity = String(compact);
+      card.style.opacity = String(1 - compact);
+    };
+
+    const measureProgress = () => {
+      const scrollTop = root ? Math.max(0, root.scrollTop) : 0;
+      return scrollTop / fadeRange;
+    };
+
+    const applyCollapsed = (next: boolean) => {
+      if (collapsedNow === next) return;
+      collapsedNow = next;
+      setCollapsed(next);
+      card.classList.toggle("is-collapsed", next);
+      card.classList.toggle("is-open", !next);
+      card.toggleAttribute("inert", next);
+      pin.classList.toggle("is-collapsed", next);
+      pin.setAttribute("aria-hidden", next ? "false" : "true");
+      const compactBack = compactBackRef.current;
+      if (compactBack) compactBack.tabIndex = next ? 0 : -1;
+    };
+
+    const sync = () => {
+      const progress = measureProgress();
+      paint(progress);
+      applyCollapsed(progress >= 1);
+    };
+
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        sync();
       });
     };
 
-    const fadeBar = (collapsed: boolean) => {
-      fadeOpacity(bar, collapsed ? 1 : 0);
-      fadeOpacity(card, collapsed ? 0 : 1);
-    };
-
-    const setCollapsed = (collapsed: boolean) => {
-      if (collapsedNow === collapsed) return;
-      collapsedNow = collapsed;
-      pin.classList.toggle("is-collapsed", collapsed);
-      pin.setAttribute("aria-hidden", collapsed ? "false" : "true");
-      card.classList.toggle("is-collapsed", collapsed);
-      card.classList.toggle("is-open", !collapsed);
-      card.toggleAttribute("inert", collapsed);
-      const compactBack = compactBackRef.current;
-      if (compactBack) compactBack.tabIndex = collapsed ? 0 : -1;
-      fadeBar(collapsed);
-    };
-
-    let primed = false;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        const collapsed = !entry.isIntersecting;
-        // First IO tick is layout. Keep the bar at opacity 0 so the next
-        // collapse can fade in instead of appearing already painted.
-        if (!primed) {
-          primed = true;
-          if (collapsed) requestAnimationFrame(() => setCollapsed(true));
-          return;
-        }
-        setCollapsed(collapsed);
-      },
-      {
-        root: scroller instanceof HTMLElement ? scroller : null,
-        // Collapse once the open card has scrolled under the HUD, without
-        // rewriting layout height (that stuttered on iOS momentum scroll).
-        rootMargin: "-72px 0px 0px 0px",
-        threshold: 0,
-      },
-    );
-
-    observer.observe(card);
+    paint(0);
+    window.requestAnimationFrame(sync);
+    root?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
-      observer.disconnect();
-      bar.getAnimations().forEach((animation) => animation.cancel());
-      card.getAnimations().forEach((animation) => animation.cancel());
+      if (frame) window.cancelAnimationFrame(frame);
+      root?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
     };
   }, []);
 
   const avatarSrc = avatarUrl || "/img/placeholder.png";
 
-  return (
-    <>
-      <div
-        ref={pinRef}
-        className="cpv2-profile-pin"
-        aria-hidden="true"
-      >
-        <div ref={barRef} className="cpv2-profile-bar">
-          <ProfileCardBackground coverUrl={coverUrl} />
-          <div className="cpv2-profile-bar-inner">
-            <button
-              ref={compactBackRef}
-              type="button"
-              aria-label="Back"
-              tabIndex={-1}
-              onClick={onBack}
-              className="cpv2-profile-bar-back"
-            >
-              <ChevronLeft className="size-4" strokeWidth={2.2} />
-            </button>
-            <div className="cpv2-profile-bar-avatar">
-              <img src={avatarSrc} alt="" decoding="async" />
-            </div>
-            <div className="cpv2-profile-bar-meta">
-              <p className="cpv2-profile-bar-name">{name}</p>
-              {username ? (
-                <p className="cpv2-profile-bar-handle">{username}</p>
-              ) : null}
-            </div>
+  const compactBar = (
+    <div
+      ref={pinRef}
+      className={["cpv2-profile-pin", collapsed ? "is-collapsed" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden={!collapsed}
+    >
+      <div className="cpv2-profile-bar">
+        <ProfileCardBackground coverUrl={coverUrl} />
+        <div className="cpv2-profile-bar-inner">
+          <button
+            ref={compactBackRef}
+            type="button"
+            aria-label="Back"
+            tabIndex={collapsed ? 0 : -1}
+            onClick={onBack}
+            className="cpv2-profile-bar-back"
+          >
+            <ChevronLeft className="size-4" strokeWidth={2.2} />
+          </button>
+          <div className="cpv2-profile-bar-avatar">
+            <img src={avatarSrc} alt="" decoding="async" />
+          </div>
+          <div className="cpv2-profile-bar-meta">
+            <p className="cpv2-profile-bar-name">{name}</p>
+            {username ? (
+              <p className="cpv2-profile-bar-handle">{username}</p>
+            ) : null}
           </div>
         </div>
       </div>
+    </div>
+  );
 
-      <header ref={cardRef} className="cpv2-profile-card is-open">
+  return (
+    <>
+      {typeof document !== "undefined"
+        ? createPortal(compactBar, document.body)
+        : compactBar}
+
+      <header
+        ref={cardRef}
+        className={[
+          "cpv2-profile-card",
+          collapsed ? "is-collapsed" : "is-open",
+        ].join(" ")}
+      >
         <ProfileCardBackground coverUrl={coverUrl} />
 
         <button

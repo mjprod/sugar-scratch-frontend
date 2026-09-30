@@ -16,14 +16,28 @@ body[data-theme="v8"] .cpv2-profile-pin {
   --cpv2-profile-closed-h: 63px;
   --cpv2-profile-collapse-duration: 360ms;
   --cpv2-profile-collapse-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  position: sticky;
-  top: calc(var(--app-diamond-offset, 64px) + 7px);
-  z-index: 24;
-  display: block;
-  width: 100%;
+  position: fixed;
+  left: 50%;
+  top: calc(var(--app-diamond-offset, 64px) + 57px);
+  z-index: 80;
+  width: min(calc(100% - 24px), 428px);
   height: var(--cpv2-profile-closed-h);
-  margin: 0 0 calc(var(--cpv2-profile-closed-h) * -1);
+  margin: 0;
+  transform: translate3d(-50%, 0, 0);
   pointer-events: none;
+  opacity: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  body[data-theme="v8"] .cpv2-profile-pin {
+    width: min(calc(100% - 40px), var(--app-content-max));
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .cpv2-profile-pin {
+    width: min(calc(100% - 64px), var(--app-content-max));
+  }
 }
 
 body[data-theme="v8"] .cpv2-profile-bar {
@@ -33,13 +47,7 @@ body[data-theme="v8"] .cpv2-profile-bar {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   background: #0a0a0a;
-  opacity: 0;
   pointer-events: none;
-  /* Own compositor layer so iOS can interpolate opacity. */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 body[data-theme="v8"] .cpv2-profile-pin.is-collapsed .cpv2-profile-bar-inner {
@@ -347,12 +355,6 @@ body[data-theme="v8"] .cpv2-profile-card-socials {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body[data-theme="v8"] .cpv2-profile-bar {
-    transition: none !important;
-  }
 }
 
 body[data-theme="v8"] .cpv2-profile-card-social {
