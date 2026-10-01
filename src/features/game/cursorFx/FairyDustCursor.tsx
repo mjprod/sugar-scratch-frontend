@@ -28,6 +28,7 @@ interface FairyDustCursorProps {
   particleSize?: number;
   particleCount?: number;
   gravity?: number;
+  /** Unused for visibility — coins stay opaque until they leave the overlay. */
   fadeSpeed?: number;
   initialVelocity?: {
     min: number;
@@ -46,6 +47,8 @@ interface FairyDustCursorProps {
   burstNonce?: number;
   /** Particles to emit on burst (defaults to particleCount * 3). */
   burstCount?: number;
+  /** Milestone-pop size relative to trail coins. Defaults to the desktop pop. */
+  burstSizeMul?: number;
   /** Pointer must get this far (px) from the last trail coin to emit another. */
   spawnMinDistance?: number;
   /**
@@ -65,7 +68,6 @@ interface Particle {
   color: string;
   vx: number;
   vy: number;
-  lifeSpan: number;
   scale: number;
   sizeMul: number;
   animOffset: number;
@@ -88,11 +90,8 @@ const LOTTIE_RENDER_SIZE_CSS = 128;
 const LOTTIE_MAX_FRAMES = 48;
 const LOTTIE_FPS = 30;
 const EMOJI_RENDER_SIZE_CSS = 72;
-const PARTICLE_LIFESPAN = 100;
-// Particles are culled once they fade past this alpha. At the default fade
-// speed that ends their life around frame 40 rather than the ~75 frames it
-// takes lifeSpan to decay below 0.1, so ~45% of the per-frame work disappears.
-const MIN_VISIBLE_ALPHA = 0.02;
+// Coins stay fully opaque until they leave the overlay. fadeSpeed is kept on
+// the props so saved settings still load, but it no longer drives visibility.
 // Soft cap: under the safer defaults (~128 concurrent at hard scratch) this
 // rarely bites; if someone cranked fade/count it thins the trail before the
 // 2D drawImage loop eats the frame budget.
@@ -220,6 +219,7 @@ function FairyDustCursorImpl({
   maxDevicePixelRatio,
   burstNonce = 0,
   burstCount,
+  burstSizeMul = CURSOR_FX_BURST_SIZE_MUL,
   spawnMinDistance = DEFAULT_SPAWN_MIN_DISTANCE,
   spawnGate,
 }: FairyDustCursorProps) {
@@ -255,6 +255,7 @@ function FairyDustCursorImpl({
     spawnEnabled,
     maxDevicePixelRatio,
     spawnMinDistance,
+    burstSizeMul,
   });
   configRef.current = {
     colors,
@@ -267,6 +268,7 @@ function FairyDustCursorImpl({
     spawnEnabled,
     maxDevicePixelRatio,
     spawnMinDistance,
+    burstSizeMul,
   };
 
   const resolvedTypes = useMemo(
@@ -398,7 +400,11 @@ function FairyDustCursorImpl({
       timeMs += dt;
       clearDirty();
 
-      const { particleSize: size, gravity: g, fadeSpeed: fade } = configRef.current;
+      const { particleSize: size, gravity: g, burstSizeMul: burstMul } =
+        configRef.current;
+      // A coin can drift this far past the overlay before it is culled, so a
+      // fast burst doesn't pop out the instant it crosses the edge.
+      const cullPad = size * Math.max(1, burstMul) * 1.4 + 8;
 
       let minX = Infinity;
       let minY = Infinity;
@@ -411,18 +417,21 @@ function FairyDustCursorImpl({
         particle.x += particle.vx;
         particle.y += particle.vy;
         particle.vy += g;
-        particle.lifeSpan *= fade;
 
-        const scale = particle.lifeSpan / PARTICLE_LIFESPAN;
-        if (scale <= MIN_VISIBLE_ALPHA) continue;
+        if (
+          particle.x < -cullPad ||
+          particle.x > width + cullPad ||
+          particle.y < -cullPad ||
+          particle.y > height + cullPad
+        ) {
+          continue;
+        }
 
-        particle.scale = scale;
+        particle.scale = 1;
         particles[write] = particle;
         write += 1;
 
-        context.globalAlpha = scale;
-
-        let drawSize = size * scale * particle.sizeMul;
+        let drawSize = size * particle.sizeMul;
         if (particle.kind === "lottie") {
           const entry = lottieCacheRef.current.get(particle.typeId);
           if (entry?.ready) {
@@ -462,7 +471,6 @@ function FairyDustCursorImpl({
       }
 
       particles.length = write;
-      context.globalAlpha = 1;
 
       if (write > 0) {
         dirtyX = Math.max(0, Math.floor(minX));
@@ -533,9 +541,8 @@ function FairyDustCursorImpl({
           color: palette[Math.floor(Math.random() * palette.length)],
           vx,
           vy,
-          lifeSpan: PARTICLE_LIFESPAN,
           scale: 1,
-          sizeMul: burst ? CURSOR_FX_BURST_SIZE_MUL : 1,
+          sizeMul: burst ? configRef.current.burstSizeMul : 1,
           animOffset: Math.random(),
         });
       }

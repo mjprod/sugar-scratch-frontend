@@ -49,6 +49,7 @@ import {
   celebrateParticleBoost,
   crossedProgressMilestone,
   CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_MOBILE_BURST_SIZE_MUL,
   CURSOR_FX_FALL_GRAVITY,
   CURSOR_FX_FALL_VELOCITY,
   resolveCursorFxDeviceProfile,
@@ -286,8 +287,8 @@ function DebugHud() {
       const [bottom, foreground] = vids;
       const out: string[] = [`render ${fps}fps`];
 
-      // Cursor FX cost: concurrent particles drive drawImage count; fadeSpeed
-      // and particles-per-move are the main knobs that grow this under load.
+      // Cursor FX cost: concurrent particles drive drawImage count; particles
+      // stay until they leave the stage, so particles-per-move is the main knob.
       const fx = fairyDustPerf;
       out.push(
         `fx ${fx.active} particles (peak ${fx.peak}) ${fx.avgFrameMs.toFixed(2)}ms avg`,
@@ -900,13 +901,11 @@ const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
 type AutoScratchSettings = {
   enabled: boolean;
   speed: number;
-  flakes: boolean;
 };
 
 const AUTO_SCRATCH_DEFAULTS: AutoScratchSettings = {
   enabled: false,
   speed: 58,
-  flakes: false,
 };
 
 function loadAutoScratchSettings(): AutoScratchSettings {
@@ -922,7 +921,6 @@ function loadAutoScratchSettings(): AutoScratchSettings {
         1,
         120,
       ),
-      flakes: parsed.flakes ?? AUTO_SCRATCH_DEFAULTS.flakes,
     };
   } catch {
     return AUTO_SCRATCH_DEFAULTS;
@@ -978,7 +976,7 @@ const CURSOR_FX_DEFAULTS: CursorFxSettings = {
   particleCount: CURSOR_FX_DEVICE.particleCount,
   // Fall like symbols-foil flakes (not a fireworks fountain).
   gravity: CURSOR_FX_FALL_GRAVITY,
-  // Slightly longer life so a celebrate burst leaves a denser coin trail.
+  // Kept for the settings slider; coins no longer fade with this value.
   fadeSpeed: 0.96,
 };
 
@@ -4756,6 +4754,9 @@ export function ScratchPrototype({
       v,
       radius,
     );
+    if (worldPoint && freshCells > 0) {
+      glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
+    }
 
     const samples = revealSamplesRef.current;
     const revealed = revealedRef.current;
@@ -4771,10 +4772,6 @@ export function ScratchPrototype({
       }
     }
     if (!finalize) return freshCells;
-
-    if (autoScratchRef.current.flakes && worldPoint) {
-      glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
-    }
 
     const nextProgress = samples.length
       ? revealedCountRef.current / samples.length
@@ -4944,7 +4941,7 @@ export function ScratchPrototype({
         stamp.u,
         stamp.v,
         SCRATCH_RADIUS,
-        isLast ? stamp.worldPoint : null,
+        stamp.worldPoint,
         isLast,
         isLast ? appliedStamps : undefined,
       );
@@ -5147,16 +5144,6 @@ export function ScratchPrototype({
           type="range"
           value={autoScratch.speed}
         />
-      </label>
-      <label className="checkbox-label">
-        <input
-          checked={autoScratch.flakes}
-          onChange={(event) =>
-            updateAutoScratch({ flakes: event.currentTarget.checked })
-          }
-          type="checkbox"
-        />
-        Flying flakes
       </label>
     </fieldset>
   );
@@ -5448,6 +5435,11 @@ export function ScratchPrototype({
               element={cursorHost}
               particleTypes={cursorFxParticleTypes}
               particleSize={cursorFx.particleSize}
+              burstSizeMul={
+                CURSOR_FX_DEVICE.coarsePointer
+                  ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
+                  : undefined
+              }
               particleCount={cursorFxSpawnCount}
               gravity={cursorFx.gravity}
               fadeSpeed={cursorFx.fadeSpeed}
