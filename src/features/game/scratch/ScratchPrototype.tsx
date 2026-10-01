@@ -193,7 +193,10 @@ import {
   shortestMediaDrift,
   type VideoSyncState,
 } from "../modules/videoSync";
-import { fetchCatalogMotionCards } from "../shared/catalog";
+import {
+  fetchCatalogMotionCards,
+  withPreferredVideoQuality,
+} from "../shared/catalog";
 import {
   applyBoundThemeIntroSound,
   bindThemeIntroVideo,
@@ -541,7 +544,9 @@ function playlistCardsForGameSession(
 async function loadCards(): Promise<Card[]> {
   try {
     const cards = await fetchCatalogMotionCards();
-    return cards.length > 0 ? cards : DEFAULT_CARDS;
+    return cards.length > 0
+      ? cards.map((card) => withPreferredVideoQuality(card))
+      : DEFAULT_CARDS;
   } catch {
     return DEFAULT_CARDS;
   }
