@@ -237,6 +237,7 @@ in vec2 vLocal;
 in vec2 vFabricUV;
 uniform sampler2D uFabric;
 uniform float uAlpha;
+uniform float uRotation;
 out vec4 frag;
 void main() {
   vec4 fabric = texture(uFabric, vFabricUV);
@@ -244,16 +245,23 @@ void main() {
   float round = smoothstep(1.0, 0.25, d);
   float tear = smoothstep(0.95, 0.55, abs(vLocal.x) + abs(vLocal.y) * 0.35);
   float mask = round * tear;
-  frag = vec4(fabric.rgb, mask * uAlpha);
+  // Tumble shading + dark rim: a fabric-colored flake is otherwise invisible
+  // while it passes over the same fabric it tore off.
+  float tumble = 0.7 + 0.45 * abs(cos(uRotation));
+  float rim = mix(0.55, 1.0, smoothstep(0.95, 0.5, d));
+  frag = vec4(fabric.rgb * tumble * rim, mask * uAlpha);
 }`;
 
-const FLAKE_COUNT_PER_SCRATCH = 2;
+const FLAKE_COUNT_PER_SCRATCH = 3;
 const FLAKE_MAX = 120;
-const FLAKE_LIFE = 0.7;
-const FLAKE_SCALE_MIN = 0.2;
-const FLAKE_SCALE_MAX = 0.55;
-const FLAKE_BASE_SIZE = 6;
+const FLAKE_LIFE = 1.0;
+const FLAKE_SCALE_MIN = 0.6;
+const FLAKE_SCALE_MAX = 1.0;
+const FLAKE_BASE_SIZE = 12;
 const FLAKE_GRAVITY = 140;
+const FLAKE_SPREAD_X = 0.8;
+const FLAKE_SPREAD_Y = 0.6;
+const FLAKE_POP_UP = 60;
 
 type Flake = {
   x: number;
@@ -560,8 +568,8 @@ export class GarmentGLRenderer {
         baseSize: FLAKE_BASE_SIZE * (0.75 + Math.random() * 0.5),
         rotation: Math.random() * Math.PI * 2,
         angularVel: (Math.random() - 0.5) * 10,
-        vx: Math.cos(angle) * speed * 0.35,
-        vy: Math.sin(angle) * speed * 0.35 - 30,
+        vx: Math.cos(angle) * speed * FLAKE_SPREAD_X,
+        vy: Math.sin(angle) * speed * FLAKE_SPREAD_Y - FLAKE_POP_UP,
         age: 0,
         life: FLAKE_LIFE * (0.85 + Math.random() * 0.3),
       });
