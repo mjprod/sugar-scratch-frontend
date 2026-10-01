@@ -1,4 +1,5 @@
 import { normalizeMediaUrl } from "@/services/models";
+import { getHdVideoEnabled } from "@/services/videoQualityPrefs";
 import { api } from "../scratch/api";
 
 export type CatalogPhoto = {
@@ -11,6 +12,9 @@ export type CatalogMotionCard = {
   label: string;
   bottom: string;
   foreground: string;
+  /** HD twins of bottom/foreground — both set or both absent. */
+  bottomHd?: string;
+  foregroundHd?: string;
   mesh: string;
   chromaKey: boolean;
   model_id?: string;
@@ -41,6 +45,8 @@ type ApiMotionCard = {
   background?: unknown;
   foreground?: unknown;
   bottom?: unknown;
+  background_hd?: unknown;
+  foreground_hd?: unknown;
   mesh?: unknown;
   chroma_key?: unknown;
   model_id?: unknown;
@@ -100,11 +106,21 @@ function motionFromRow(entry: ApiMotionCard): CatalogMotionCard | null {
   const bottomRaw = optionalString(entry.bottom) ?? optionalString(entry.background);
   const foregroundRaw = optionalString(entry.foreground);
   if (!id || !label || !mesh || !bottomRaw || !foregroundRaw) return null;
+  const bottomHdRaw = optionalString(entry.background_hd);
+  const foregroundHdRaw = optionalString(entry.foreground_hd);
+  const hd =
+    bottomHdRaw && foregroundHdRaw
+      ? {
+          bottomHd: toPublicMediaUrl(bottomHdRaw),
+          foregroundHd: toPublicMediaUrl(foregroundHdRaw),
+        }
+      : {};
   return {
     id,
     label,
     bottom: toPublicMediaUrl(bottomRaw),
     foreground: toPublicMediaUrl(foregroundRaw),
+    ...hd,
     mesh,
     chromaKey: entry.chroma_key === true || id === "original",
     model_id: optionalString(entry.model_id),
@@ -190,6 +206,21 @@ async function loadCatalogPhotoCards(): Promise<CatalogPhotoCard[]> {
   } catch {
     return [];
   }
+}
+
+/**
+ * Swap in the HD clips when the player turned on HD Videos and the card has
+ * them. Only the scratch game should call this — thumbnails and posters keep
+ * the light delivery clips.
+ */
+export function withPreferredVideoQuality(
+  card: CatalogMotionCard,
+  hd?: boolean,
+): CatalogMotionCard {
+  if (!card.bottomHd || !card.foregroundHd) return card;
+  const enabled = hd ?? getHdVideoEnabled();
+  if (!enabled) return card;
+  return { ...card, bottom: card.bottomHd, foreground: card.foregroundHd };
 }
 
 /** Page-lifetime memo — settle/enrich callers share one in-flight fetch. */
