@@ -215,9 +215,11 @@ async function loadCatalogPhotoCards(): Promise<CatalogPhotoCard[]> {
  */
 export function withPreferredVideoQuality(
   card: CatalogMotionCard,
-  hd: boolean = getHdVideoEnabled(),
+  hd?: boolean,
 ): CatalogMotionCard {
-  if (!hd || !card.bottomHd || !card.foregroundHd) return card;
+  if (!card.bottomHd || !card.foregroundHd) return card;
+  const enabled = hd ?? getHdVideoEnabled();
+  if (!enabled) return card;
   return { ...card, bottom: card.bottomHd, foreground: card.foregroundHd };
 }
 
