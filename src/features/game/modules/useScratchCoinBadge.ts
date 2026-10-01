@@ -17,6 +17,23 @@ export function isCoinBadgeLeaveAnimation(name: string | null | undefined) {
   return !value || value.includes(COIN_BADGE_LEAVE_ANIMATION);
 }
 
+/**
+ * Initial StageCoinCount state. The badge shell remounts (enterKey) in the same
+ * batch as popNonce + addCoins, so a mount carrying an award must start at the
+ * pre-credit total and treat popNonce as unseen — else no +N / pop / count-up.
+ */
+export function coinCountMountState(
+  target: number,
+  popNonce: number,
+  awardAmount: number,
+) {
+  const onAward = popNonce > 0 && awardAmount > 0;
+  return {
+    display: onAward ? Math.max(0, target - awardAmount) : target,
+    prevPopNonce: onAward ? popNonce - 1 : popNonce,
+  };
+}
+
 function prefersReducedMotion() {
   try {
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
