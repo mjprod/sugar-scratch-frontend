@@ -6,7 +6,7 @@
 import { CANVAS_HEIGHT } from "../scratch/meshGeometry";
 
 /** Matches ScratchPrototype SCRATCH_RADIUS (UV). */
-export const STAMP_SCRATCH_RADIUS_UV = 0.045;
+export const STAMP_SCRATCH_RADIUS_UV = 0.0225;
 
 export type ManualScratchBudget = {
   maxPoints: number;

@@ -49,6 +49,7 @@ import {
   celebrateParticleBoost,
   crossedProgressMilestone,
   CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_MOBILE_BURST_SIZE_MUL,
   CURSOR_FX_FALL_GRAVITY,
   CURSOR_FX_FALL_VELOCITY,
   resolveCursorFxDeviceProfile,
@@ -286,8 +287,8 @@ function DebugHud() {
       const [bottom, foreground] = vids;
       const out: string[] = [`render ${fps}fps`];
 
-      // Cursor FX cost: concurrent particles drive drawImage count; fadeSpeed
-      // and particles-per-move are the main knobs that grow this under load.
+      // Cursor FX cost: concurrent particles drive drawImage count; particles
+      // stay until they leave the stage, so particles-per-move is the main knob.
       const fx = fairyDustPerf;
       out.push(
         `fx ${fx.active} particles (peak ${fx.peak}) ${fx.avgFrameMs.toFixed(2)}ms avg`,
@@ -890,7 +891,7 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
 }
 
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
-const SCRATCH_RADIUS = 0.045;
+const SCRATCH_RADIUS = 0.0225;
 // Densify / auto stamp caps live in scratchStampBudget (Phase 9 coarse vs fine).
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
@@ -975,7 +976,7 @@ const CURSOR_FX_DEFAULTS: CursorFxSettings = {
   particleCount: CURSOR_FX_DEVICE.particleCount,
   // Fall like symbols-foil flakes (not a fireworks fountain).
   gravity: CURSOR_FX_FALL_GRAVITY,
-  // Slightly longer life so a celebrate burst leaves a denser coin trail.
+  // Kept for the settings slider; coins no longer fade with this value.
   fadeSpeed: 0.96,
 };
 
@@ -5434,6 +5435,11 @@ export function ScratchPrototype({
               element={cursorHost}
               particleTypes={cursorFxParticleTypes}
               particleSize={cursorFx.particleSize}
+              burstSizeMul={
+                CURSOR_FX_DEVICE.coarsePointer
+                  ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
+                  : undefined
+              }
               particleCount={cursorFxSpawnCount}
               gravity={cursorFx.gravity}
               fadeSpeed={cursorFx.fadeSpeed}

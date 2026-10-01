@@ -8,7 +8,9 @@ import {
   crossedProgressMilestone,
   CURSOR_FX_BURST_VELOCITY,
   cursorFxBurstVelocity,
+  CURSOR_FX_BURST_SIZE_MUL,
   CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_MOBILE_BURST_SIZE_MUL,
   CURSOR_FX_FALL_GRAVITY,
   CURSOR_FX_FALL_VELOCITY,
   CURSOR_FX_MILESTONE,
@@ -60,6 +62,15 @@ assert(
   });
   assert(mobile.maxOverlayDpr === 1, "mobile overlay DPR capped");
   assert(mobile.particleCount < desktop.particleCount, "mobile fewer particles");
+  assert(mobile.particleSize === 84, "saved phone size stays 84 so storage is not reset");
+  assert(
+    CURSOR_FX_MOBILE_BURST_SIZE_MUL / CURSOR_FX_BURST_SIZE_MUL < 0.75,
+    "phone max burst is clearly under the desktop pop",
+  );
+  assert(
+    Math.round(mobile.particleSize * CURSOR_FX_MOBILE_BURST_SIZE_MUL) === 68,
+    "biggest phone coin is 68px, another 10% under the last cap",
+  );
   assert(mobile.particleSize <= 96, "mobile particles within settings slider max");
 
   const reduced = resolveCursorFxDeviceProfile({

@@ -116,6 +116,44 @@ import {
 import { soundMixOutput } from "../shared/soundMix";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
+import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
+import { FairyDustCursor, type ParticleType } from "../cursorFx/FairyDustCursor";
+import { loadLottieUrlSource } from "../cursorFx/loadLottieSource";
+import {
+  celebrateBurstCount,
+  celebrateDurationMs,
+  celebrateParticleBoost,
+  crossedProgressMilestone,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
+  CURSOR_FX_MOBILE_BURST_SIZE_MUL,
+  resolveCursorFxDeviceProfile,
+} from "../modules/cursorFxCelebrate";
+import {
+  fairyDustSpawnMinDistancePx,
+  shouldSpawnFairyDust,
+} from "../modules/fairyDustSpawnPolicy";
+
+function detectPhotoCursorFx() {
+  if (typeof window === "undefined") {
+    return resolveCursorFxDeviceProfile({
+      reducedMotion: false,
+      coarsePointer: false,
+      narrowViewport: false,
+    });
+  }
+  return resolveCursorFxDeviceProfile({
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    narrowViewport: window.matchMedia("(max-width: 700px)").matches,
+  });
+}
+
+const PHOTO_CURSOR_FX = detectPhotoCursorFx();
+const PHOTO_CURSOR_FX_REDUCED =
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const BACK_LAYER_SRC = "/photo-scratch/background.jpg";
 const MID_LAYER_SRC = "/photo-scratch/mid.png";
@@ -140,7 +178,7 @@ async function fetchPhotoScratchIndex(): Promise<PhotoScratchCardEntry[]> {
   return fetchCatalogPhotoCards();
 }
 
-const SCRATCH_RADIUS = 0.045;
+const SCRATCH_RADIUS = 0.0225;
 const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
 const MANUAL_SCRATCH_MAX_POINTS = 40;
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
@@ -814,6 +852,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const scratchCoverageRef = useRef(createScratchCoverage());
   const strokeFreshnessRef = useRef(createStrokeFreshness());
   const lastStampUvRef = useRef<{ u: number; v: number } | null>(null);
+  const strokeFreshRef = useRef(false);
+  const celebrateProgressRef = useRef(0);
+  const celebrateUntilRef = useRef(0);
+  const celebrateTimerRef = useRef<number | null>(null);
+  const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
+  const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
+  const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
+  const [cursorFxBurstCount, setCursorFxBurstCount] = useState(() =>
+    celebrateBurstCount(1, PHOTO_CURSOR_FX.coarsePointer),
+  );
+  const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
+    ParticleType[]
+  >([]);
   const autoPathRef = useRef<Vec2[]>([]);
   const autoPathIndexRef = useRef(0);
   const autoPathProgressRef = useRef(0);
@@ -868,6 +919,29 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   useMarkPageReady(ready || loadError != null);
+  useEffect(() => {
+    if (!PHOTO_CURSOR_FX.fairyDust) return;
+    let cancelled = false;
+    void loadLottieUrlSource(COIN_LOTTIE_SRC, "Diamond Coin.lottie")
+      .then((result) => {
+        if (cancelled) return;
+        setCursorFxParticleTypes([
+          {
+            id: "photo-cursor-fx-coin",
+            kind: "lottie",
+            name: result.name,
+            source: result.source,
+          },
+        ]);
+      })
+      .catch(() => {
+        if (!cancelled) setCursorFxParticleTypes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => () => clearCelebrateTimer(), []);
   const [showMesh, setShowMesh] = useState(false);
   const [scratchCount, setScratchCount] = useState(0);
   const [isScratching, setIsScratching] = useState(false);
@@ -1255,6 +1329,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     applyMesh(assets.mesh, opts);
     marksRef.current = [];
     resetScratchCoverage(scratchCoverageRef.current);
+    celebrateProgressRef.current = 0;
+    clearCelebrateTimer();
+    setCursorFxCelebrate(false);
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
     fgRendererRef.current?.clearScratch();
@@ -1842,6 +1919,38 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function resetStrokeFresh() {
     resetStrokeFreshness(strokeFreshnessRef.current);
     lastStampUvRef.current = null;
+    strokeFreshRef.current = false;
+  }
+
+  function clearCelebrateTimer() {
+    if (celebrateTimerRef.current !== null) {
+      window.clearTimeout(celebrateTimerRef.current);
+      celebrateTimerRef.current = null;
+    }
+  }
+
+  function maybeCelebrateScratchProgress(nextProgress: number) {
+    const crossed = crossedProgressMilestone(
+      celebrateProgressRef.current,
+      nextProgress,
+    );
+    celebrateProgressRef.current = nextProgress;
+    if (crossed == null || PHOTO_CURSOR_FX_REDUCED) return;
+
+    const celebrateMs = celebrateDurationMs(PHOTO_CURSOR_FX.coarsePointer);
+    celebrateUntilRef.current = performance.now() + celebrateMs;
+    setCursorFxCelebrate(true);
+    setCursorFxBurstCount(
+      celebrateBurstCount(crossed, PHOTO_CURSOR_FX.coarsePointer),
+    );
+    setCursorFxBurstNonce((n) => n + 1);
+    clearCelebrateTimer();
+    celebrateTimerRef.current = window.setTimeout(() => {
+      celebrateTimerRef.current = null;
+      if (performance.now() >= celebrateUntilRef.current) {
+        setCursorFxCelebrate(false);
+      }
+    }, celebrateMs + 40);
   }
 
   function applyScratchAtUv(u: number, v: number, radius: number): number {
@@ -1886,6 +1995,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         revealedCountRef.current += 1;
       }
     }
+    maybeCelebrateScratchProgress(
+      samples.length ? revealedCountRef.current / samples.length : 0,
+    );
 
     const bodyPoints = trackedMeshRef.current?.symbolPoints;
     if (bodyPoints && bodyPoints.length === SYMBOL_POINT_COUNT) {
@@ -2159,7 +2271,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     if (applied) {
       lastScratchWorldRef.current = point;
+      strokeFreshRef.current = fresh;
       noteScratchStamp(fresh);
+    } else {
+      strokeFreshRef.current = false;
     }
   }
 
@@ -2593,6 +2708,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
+  const cursorFxPlayWindow =
+    entryReady &&
+    !introActive &&
+    !introCover &&
+    !gameResult &&
+    (!hasBodySymbols || (!introGateActive && !symbolsHuntComplete));
+  const cursorFxSpawnGate = useCallback(() => strokeFreshRef.current, []);
   useMotionScratchBgm({
     warm:
       hasBodySymbols &&
@@ -3014,7 +3136,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         </aside>
 
         <div
-          ref={stageRef}
+          ref={(node) => {
+            stageRef.current = node;
+            setCursorHost((current) => (current === node ? current : node));
+          }}
           data-tutorial-target="reveal"
           className={`stage photo-scratch-stage${ready ? " is-ready" : ""}${isScratching ? " is-finger-dragging is-scratching" : ""}${showLayerBg ? "" : " is-bg-hidden"}${
             gameResult ? " is-game-over" : ""
@@ -3024,6 +3149,43 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               : ""
           }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}`}
         >
+          {PHOTO_CURSOR_FX.fairyDust && cursorHost ? (
+            <FairyDustCursor
+              element={cursorHost}
+              particleTypes={cursorFxParticleTypes}
+              particleSize={PHOTO_CURSOR_FX.particleSize}
+              burstSizeMul={
+                PHOTO_CURSOR_FX.coarsePointer
+                  ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
+                  : undefined
+              }
+              particleCount={
+                cursorFxCelebrate
+                  ? celebrateParticleBoost(
+                      PHOTO_CURSOR_FX.particleCount,
+                      PHOTO_CURSOR_FX.coarsePointer,
+                    )
+                  : PHOTO_CURSOR_FX.particleCount
+              }
+              gravity={CURSOR_FX_FALL_GRAVITY}
+              initialVelocity={CURSOR_FX_FALL_VELOCITY}
+              emitMode={CURSOR_FX_EMIT_MODE}
+              spawnEnabled={shouldSpawnFairyDust({
+                playWindow: cursorFxPlayWindow,
+                celebrate: cursorFxCelebrate,
+                isScratching,
+                cursorOnMesh: true,
+                coarsePointer: PHOTO_CURSOR_FX.coarsePointer,
+              })}
+              spawnMinDistance={fairyDustSpawnMinDistancePx(
+                PHOTO_CURSOR_FX.coarsePointer,
+              )}
+              maxDevicePixelRatio={PHOTO_CURSOR_FX.maxOverlayDpr}
+              burstNonce={cursorFxBurstNonce}
+              burstCount={cursorFxBurstCount}
+              spawnGate={cursorFxSpawnGate}
+            />
+          ) : null}
           {!entryReady ? (
             <div
               className="match-audio-gate"

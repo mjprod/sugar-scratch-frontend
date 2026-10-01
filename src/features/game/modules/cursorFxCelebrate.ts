@@ -106,6 +106,11 @@ export function celebrateDurationMs(coarsePointer: boolean): number {
 export const CURSOR_FX_BURST_VELOCITY = { min: 3.2, max: 6.8 };
 /** Burst coins draw larger than trail coins so the pop reads as the reward. */
 export const CURSOR_FX_BURST_SIZE_MUL = 1.3;
+/**
+ * Phones: the biggest coins are the milestone bursts. Cap that pop so the
+ * max coin stays under the trail without rewriting the saved size.
+ */
+export const CURSOR_FX_MOBILE_BURST_SIZE_MUL = 0.81;
 
 /**
  * Coins per milestone pop. Grows with the band crossed so later milestones
