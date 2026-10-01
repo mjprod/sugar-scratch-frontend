@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { formatBalance } from "@/lib/formatBalance";
+import { coinCountMountState } from "./modules/useScratchCoinBadge";
 
 /** Static dust mark — still frame (no Lottie runtime / canvas). */
 const COIN_WEBP_SRC = "/images/coin.webp";
@@ -10,6 +11,14 @@ const REDUCED_MOTION_FLASH_MS = 900;
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
+}
+
+function prefersReducedMotion() {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
 }
 
 function countDurationMs(from: number, to: number) {
@@ -41,11 +50,14 @@ export function StageCoinCount({
 }: StageCoinCountProps) {
   const { coins } = useWallet();
   const target = Math.max(0, coins) + Math.max(0, sessionDelta);
-  const [display, setDisplay] = useState(target);
-  const displayRef = useRef(target);
+  const [mount] = useState(() =>
+    coinCountMountState(target, popNonce, awardAmount),
+  );
+  const [display, setDisplay] = useState(mount.display);
+  const displayRef = useRef(mount.display);
   const animRef = useRef<number | null>(null);
   const coinImgRef = useRef<HTMLImageElement | null>(null);
-  const prevPopNonceRef = useRef(popNonce);
+  const prevPopNonceRef = useRef(mount.prevPopNonce);
   const [flashAward, setFlashAward] = useState(0);
   const [valuePopping, setValuePopping] = useState(false);
 
@@ -60,22 +72,7 @@ export function StageCoinCount({
       setValuePopping(true);
     }
 
-    let reduced = false;
-    try {
-      reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      reduced = false;
-    }
-    // Reduced-motion CSS sets award/value animations to `none`, so
-    // onAnimationEnd never fires — clear flash/pop on a timer instead.
-    if (reduced) {
-      if (awardAmount <= 0) return;
-      const timer = window.setTimeout(() => {
-        setFlashAward(0);
-        setValuePopping(false);
-      }, REDUCED_MOTION_FLASH_MS);
-      return () => window.clearTimeout(timer);
-    }
+    if (prefersReducedMotion()) return;
 
     const img = coinImgRef.current;
     if (!img) return;
@@ -85,6 +82,18 @@ export function StageCoinCount({
     void img.offsetWidth;
     img.classList.add("is-popping");
   }, [popNonce, awardAmount]);
+
+  // Reduced-motion CSS sets award/value animations to `none`, so
+  // onAnimationEnd never fires — clear flash/pop on a timer instead.
+  useEffect(() => {
+    if (flashAward <= 0 && !valuePopping) return;
+    if (!prefersReducedMotion()) return;
+    const timer = window.setTimeout(() => {
+      setFlashAward(0);
+      setValuePopping(false);
+    }, REDUCED_MOTION_FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [flashAward, valuePopping, popNonce]);
 
   useEffect(() => {
     const from = displayRef.current;
@@ -98,13 +107,7 @@ export function StageCoinCount({
       animRef.current = null;
     }
 
-    let reduced = false;
-    try {
-      reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      reduced = false;
-    }
-    if (reduced) {
+    if (prefersReducedMotion()) {
       displayRef.current = target;
       setDisplay(target);
       return;
