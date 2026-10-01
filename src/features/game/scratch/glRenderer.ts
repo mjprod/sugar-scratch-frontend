@@ -252,16 +252,15 @@ void main() {
   frag = vec4(fabric.rgb * tumble * rim, mask * uAlpha);
 }`;
 
-const FLAKE_COUNT_PER_SCRATCH = 3;
+// Same launch as the TopSymbolBar foil flakes, at roughly half its size/count.
+// Units are logical canvas px (390×672) — no DPR scaling here.
+const FLAKE_COUNT_PER_SCRATCH = 2;
 const FLAKE_MAX = 120;
-const FLAKE_LIFE = 1.0;
-const FLAKE_SCALE_MIN = 0.6;
-const FLAKE_SCALE_MAX = 1.0;
-const FLAKE_BASE_SIZE = 12;
-const FLAKE_GRAVITY = 140;
-const FLAKE_SPREAD_X = 0.8;
-const FLAKE_SPREAD_Y = 0.6;
-const FLAKE_POP_UP = 60;
+const FLAKE_LIFE = 0.3;
+const FLAKE_SCALE_MIN = 0.55;
+const FLAKE_SCALE_MAX = 1;
+const FLAKE_BASE_SIZE = 2.5;
+const FLAKE_GRAVITY = 627;
 
 type Flake = {
   x: number;
@@ -558,20 +557,20 @@ export class GarmentGLRenderer {
 
   spawnFlakes(refX: number, refY: number, count = FLAKE_COUNT_PER_SCRATCH) {
     for (let i = 0; i < count; i += 1) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 40 + Math.random() * 60;
+      const angle = (Math.random() - 0.5) * Math.PI * 0.9;
+      const speed = 70 + Math.random() * 110;
       this.flakes.push({
-        x: refX + (Math.random() - 0.5) * 8,
-        y: refY + (Math.random() - 0.5) * 8,
+        x: refX + (Math.random() - 0.5) * 6,
+        y: refY + (Math.random() - 0.5) * 6,
         spawnU: refX / this.width,
         spawnV: refY / this.height,
-        baseSize: FLAKE_BASE_SIZE * (0.75 + Math.random() * 0.5),
+        baseSize: FLAKE_BASE_SIZE * (0.7 + Math.random() * 0.45),
         rotation: Math.random() * Math.PI * 2,
-        angularVel: (Math.random() - 0.5) * 10,
-        vx: Math.cos(angle) * speed * FLAKE_SPREAD_X,
-        vy: Math.sin(angle) * speed * FLAKE_SPREAD_Y - FLAKE_POP_UP,
+        angularVel: (Math.random() - 0.5) * 12,
+        vx: Math.sin(angle) * speed * 0.45,
+        vy: 40 + Math.random() * 80,
         age: 0,
-        life: FLAKE_LIFE * (0.85 + Math.random() * 0.3),
+        life: FLAKE_LIFE * (0.85 + Math.random() * 0.35),
       });
     }
     while (this.flakes.length > FLAKE_MAX) {

@@ -122,4 +122,3 @@ src/
 ## Notes
 
 - Pack art under `public/images/packs/` is SVG placeholders until real assets arrive.
-- Scratch flakes (fabric-colored bits that fly off while scratching) are off by default. Add `?flakes=1` to any URL to turn them on (persists; `?flakes=0` turns them off).

@@ -58,7 +58,6 @@ import {
   shouldSampleFabricAlpha,
   shouldSpawnFairyDust,
 } from "../modules/fairyDustSpawnPolicy";
-import { AUTO_SCRATCH_STORAGE_KEY } from "../modules/flakesUrlFlag";
 import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
 import {
   awardMotionCardCurrency,
@@ -890,6 +889,7 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
   }
 }
 
+const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
 const SCRATCH_RADIUS = 0.045;
 // Densify / auto stamp caps live in scratchStampBudget (Phase 9 coarse vs fine).
 const AUTO_SCRATCH_RADIUS = 0.092;
@@ -900,13 +900,11 @@ const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
 type AutoScratchSettings = {
   enabled: boolean;
   speed: number;
-  flakes: boolean;
 };
 
 const AUTO_SCRATCH_DEFAULTS: AutoScratchSettings = {
   enabled: false,
   speed: 58,
-  flakes: false,
 };
 
 function loadAutoScratchSettings(): AutoScratchSettings {
@@ -922,7 +920,6 @@ function loadAutoScratchSettings(): AutoScratchSettings {
         1,
         120,
       ),
-      flakes: parsed.flakes ?? AUTO_SCRATCH_DEFAULTS.flakes,
     };
   } catch {
     return AUTO_SCRATCH_DEFAULTS;
@@ -4756,6 +4753,9 @@ export function ScratchPrototype({
       v,
       radius,
     );
+    if (worldPoint && freshCells > 0) {
+      glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
+    }
 
     const samples = revealSamplesRef.current;
     const revealed = revealedRef.current;
@@ -4771,10 +4771,6 @@ export function ScratchPrototype({
       }
     }
     if (!finalize) return freshCells;
-
-    if (autoScratchRef.current.flakes && worldPoint) {
-      glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
-    }
 
     const nextProgress = samples.length
       ? revealedCountRef.current / samples.length
@@ -4944,7 +4940,7 @@ export function ScratchPrototype({
         stamp.u,
         stamp.v,
         SCRATCH_RADIUS,
-        isLast ? stamp.worldPoint : null,
+        stamp.worldPoint,
         isLast,
         isLast ? appliedStamps : undefined,
       );
@@ -5147,16 +5143,6 @@ export function ScratchPrototype({
           type="range"
           value={autoScratch.speed}
         />
-      </label>
-      <label className="checkbox-label">
-        <input
-          checked={autoScratch.flakes}
-          onChange={(event) =>
-            updateAutoScratch({ flakes: event.currentTarget.checked })
-          }
-          type="checkbox"
-        />
-        Flying flakes
       </label>
     </fieldset>
   );
