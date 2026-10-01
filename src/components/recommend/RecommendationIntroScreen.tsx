@@ -18,16 +18,28 @@ export function RecommendationIntroScreen({
   return (
     <div className="auth7-intro-panel">
       <div className="auth7-intro-body">
-        <div className="auth7-intro-lead">
-          <h1 className="auth7-intro-title">
-            Find More Creators
-            <br />
-            You&apos;ll Love
-          </h1>
-          <p className="auth7-intro-copy">
-            <span className="auth7-intro-copy-lead">Swipe to personalise</span>{" "}
-            your Pack recommendations.
-          </p>
+        <div className="auth7-intro-hero">
+          <header className="auth7-onboard-header">
+            <span className="auth2-logo">
+              <img
+                src="/svg/logoSugarScratch.svg"
+                alt="Sugar Scratch"
+                className="auth2-logo-img h-7 w-auto"
+                draggable={false}
+              />
+            </span>
+          </header>
+          <div className="auth7-intro-lead">
+            <h1 className="auth7-intro-title">
+              Find More Creators
+              <br />
+              You&apos;ll Love
+            </h1>
+            <p className="auth7-intro-copy">
+              <span className="auth7-intro-copy-lead">Swipe to personalise</span>{" "}
+              your Pack recommendations.
+            </p>
+          </div>
         </div>
 
         <div

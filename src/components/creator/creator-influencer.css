@@ -10,39 +10,142 @@ body[data-theme="v8"] .cpv2-influencer {
   margin-top: 1rem;
 }
 
-/* —— Profile card (open ↔ collapsed at 7% scroll threshold) —— */
+/* —— Profile card: native-scroll open card + compositor-only compact bar —— */
 
-@property --cpv2-profile-collapse {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
+body[data-theme="v8"] .cpv2-profile-pin {
+  --cpv2-profile-closed-h: 63px;
+  --cpv2-profile-collapse-duration: 360ms;
+  --cpv2-profile-collapse-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: fixed;
+  left: 50%;
+  top: calc(var(--app-diamond-offset, 64px) + 57px);
+  z-index: 80;
+  width: min(calc(100% - 24px), 428px);
+  height: var(--cpv2-profile-closed-h);
+  margin: 0;
+  transform: translate3d(-50%, 0, 0);
+  pointer-events: none;
+  opacity: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  body[data-theme="v8"] .cpv2-profile-pin {
+    width: min(calc(100% - 40px), var(--app-content-max));
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .cpv2-profile-pin {
+    width: min(calc(100% - 64px), var(--app-content-max));
+  }
+}
+
+body[data-theme="v8"] .cpv2-profile-bar {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: #0a0a0a;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-profile-pin.is-collapsed .cpv2-profile-bar-inner {
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar .cpv2-profile-card-glow {
+  display: none;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar .cpv2-profile-card-bg > img {
+  top: -40%;
+  height: 180%;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 0 12px 0 9px;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-back {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 60px;
+  color: #fff;
+  cursor: pointer;
+  background-image: linear-gradient(
+    120deg,
+    rgba(170, 170, 170, 0.25) 10%,
+    rgba(68, 68, 68, 0.1) 29%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-avatar {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 60px;
+  border: 2px solid #d4145a;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-name,
+body[data-theme="v8"] .cpv2-profile-bar-handle {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-name {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.26px;
+}
+
+body[data-theme="v8"] .cpv2-profile-bar-handle {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.28px;
 }
 
 body[data-theme="v8"] .cpv2-profile-card {
-  --cpv2-profile-collapse: 0;
-  --cpv2-profile-open-h: 178px;
-  --cpv2-profile-closed-h: 63px;
-  --cpv2-profile-collapse-duration: 320ms;
-  --cpv2-profile-collapse-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Keep flow height stable so collapsing does not rewrite scrollTop. */
-  --cpv2-profile-flow-gap: calc(
-    (var(--cpv2-profile-open-h) - var(--cpv2-profile-closed-h)) *
-      var(--cpv2-profile-collapse)
-  );
-  position: sticky;
-  top: calc(var(--app-diamond-offset, 64px) + 7px);
-  z-index: 24;
+  position: relative;
+  z-index: 2;
   display: block;
   width: 100%;
-  height: calc(
-    var(--cpv2-profile-open-h) -
-      (
-        (var(--cpv2-profile-open-h) - var(--cpv2-profile-closed-h)) *
-          var(--cpv2-profile-collapse)
-      )
-  );
+  height: 178px;
   margin-top: 20px;
-  margin-bottom: var(--cpv2-profile-flow-gap);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -50,14 +153,10 @@ body[data-theme="v8"] .cpv2-profile-card {
   text-align: left;
   background: #0a0a0a;
   isolation: isolate;
-  will-change: height;
-  transition:
-    --cpv2-profile-collapse var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    margin-bottom var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-card.is-collapsed {
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-bg {
@@ -70,18 +169,14 @@ body[data-theme="v8"] .cpv2-profile-card-bg {
 body[data-theme="v8"] .cpv2-profile-card-bg > img {
   position: absolute;
   left: 50%;
-  top: calc(-20% - (20% * var(--cpv2-profile-collapse)));
+  top: -20%;
   width: 150%;
-  height: calc(140% + (40% * var(--cpv2-profile-collapse)));
+  height: 140%;
   max-width: none;
   transform: translateX(-50%);
   object-fit: cover;
   object-position: center 20%;
   opacity: 0.5;
-  transition:
-    top var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
-    height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-veil {
@@ -108,27 +203,23 @@ body[data-theme="v8"] .cpv2-profile-card-glow {
     rgba(212, 20, 90, 0.12) 40%,
     transparent 70%
   );
-  opacity: calc(1 - var(--cpv2-profile-collapse));
+  opacity: 1;
   pointer-events: none;
-  transition: opacity var(--cpv2-profile-collapse-duration)
-    var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-back {
   position: absolute;
-  /* Open: 12px. Closed: optically center 28px control in 63px bar (~17.5px). */
-  top: calc(12px + (5.5px * var(--cpv2-profile-collapse)));
+  top: 12px;
   left: 9px;
   z-index: 3;
   display: grid;
   place-items: center;
-  width: calc(38px - (10px * var(--cpv2-profile-collapse)));
-  height: calc(38px - (10px * var(--cpv2-profile-collapse)));
+  width: 38px;
+  height: 38px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 60px;
   color: #fff;
   cursor: pointer;
-  /* Stay visible in collapsed mode so users can still go back. */
   opacity: 1;
   transform: none;
   pointer-events: auto;
@@ -139,31 +230,18 @@ body[data-theme="v8"] .cpv2-profile-card-back {
     rgba(0, 0, 0, 0.3) 50%,
     rgba(169, 169, 169, 0.25) 85%
   );
-  transition:
-    top var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
-    width var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-actions {
   position: absolute;
-  /* Match .cpv2-profile-card-back top/left inset on the open card. */
-  top: calc(12px - (12px * var(--cpv2-profile-collapse)));
-  right: calc(12px + (2px * var(--cpv2-profile-collapse)));
+  top: 12px;
+  right: 12px;
   z-index: 3;
   display: flex;
   align-items: center;
   gap: 7px;
-  height: calc(38px + ((100% - 38px) * var(--cpv2-profile-collapse)));
+  height: 38px;
   pointer-events: none;
-  transition:
-    top var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
-    right var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-actions > * {
@@ -184,8 +262,7 @@ body[data-theme="v8"] .cpv2-profile-card-follow {
   font-weight: 600;
   letter-spacing: 0.24px;
   cursor: pointer;
-  opacity: calc(1 - var(--cpv2-profile-collapse));
-  transform: scale(calc(1 - (0.12 * var(--cpv2-profile-collapse))));
+  opacity: 1;
   background-image: linear-gradient(
     180deg,
     rgba(170, 170, 170, 0.25) 0%,
@@ -193,19 +270,10 @@ body[data-theme="v8"] .cpv2-profile-card-follow {
     rgba(0, 0, 0, 0.3) 50%,
     rgba(169, 169, 169, 0.25) 85%
   );
-  transition:
-    opacity var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    transform var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
-}
-
-body[data-theme="v8"] .cpv2-profile-card.is-collapsed .cpv2-profile-card-follow {
-  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-follow.is-following {
-  opacity: calc(0.85 * (1 - var(--cpv2-profile-collapse)));
+  opacity: 0.85;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-body {
@@ -213,36 +281,22 @@ body[data-theme="v8"] .cpv2-profile-card-body {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: calc(16px - (4px * var(--cpv2-profile-collapse)));
+  gap: 16px;
   height: 100%;
-  /* Open: 32px left. Closed: clear back chevron (~9 + 28 + gap). */
-  padding:
-    calc(58px - (58px * var(--cpv2-profile-collapse)))
-    calc(16px - (2px * var(--cpv2-profile-collapse)))
-    calc(14px - (14px * var(--cpv2-profile-collapse)))
-    calc(32px + (16px * var(--cpv2-profile-collapse)));
+  padding: 58px 16px 14px 32px;
   box-sizing: border-box;
-  transition:
-    gap var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
-    padding var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-avatar {
   position: relative;
   flex-shrink: 0;
-  width: calc(83px - (45px * var(--cpv2-profile-collapse)));
-  height: calc(83px - (45px * var(--cpv2-profile-collapse)));
+  width: 83px;
+  height: 83px;
   border-radius: 60px;
   border: 2px solid #d4145a;
   overflow: hidden;
   background: #1a1a1a;
   z-index: 2;
-  transition:
-    width var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-avatar > img {
@@ -255,48 +309,35 @@ body[data-theme="v8"] .cpv2-profile-card-avatar > img {
 body[data-theme="v8"] .cpv2-profile-card-meta {
   display: flex;
   flex-direction: column;
-  gap: calc(8px - (6px * var(--cpv2-profile-collapse)));
+  gap: 8px;
   min-width: 0;
   flex: 1;
-  padding-top: calc(8px - (8px * var(--cpv2-profile-collapse)));
-  transition:
-    gap var(--cpv2-profile-collapse-duration) var(--cpv2-profile-collapse-ease),
-    padding-top var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
+  padding-top: 8px;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-identity {
   display: flex;
   flex-direction: column;
-  gap: calc(4px - (2px * var(--cpv2-profile-collapse)));
+  gap: 4px;
   min-width: 0;
-  transition: gap var(--cpv2-profile-collapse-duration)
-    var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-name {
   margin: 0;
   color: #fff;
-  font-size: calc(16px - (3px * var(--cpv2-profile-collapse)));
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: calc(0.32px - (0.06px * var(--cpv2-profile-collapse)));
+  letter-spacing: 0.32px;
   line-height: 1.2;
-  transition:
-    font-size var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    letter-spacing var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-handle {
   margin: 0;
   color: rgba(255, 255, 255, 0.7);
-  font-size: calc(14px - (3px * var(--cpv2-profile-collapse)));
+  font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.28px;
   line-height: 1.2;
-  transition: font-size var(--cpv2-profile-collapse-duration)
-    var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-location {
@@ -306,14 +347,6 @@ body[data-theme="v8"] .cpv2-profile-card-location {
   font-weight: 400;
   letter-spacing: 0.24px;
   line-height: 1.2;
-  max-height: calc(1.2em * (1 - var(--cpv2-profile-collapse)));
-  opacity: calc(1 - var(--cpv2-profile-collapse));
-  overflow: hidden;
-  transition:
-    max-height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    opacity var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-socials {
@@ -322,24 +355,6 @@ body[data-theme="v8"] .cpv2-profile-card-socials {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: calc(32px * (1 - var(--cpv2-profile-collapse)));
-  opacity: calc(1 - var(--cpv2-profile-collapse));
-  overflow: hidden;
-  transform: translateY(calc(6px * var(--cpv2-profile-collapse)));
-  transition:
-    max-height var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    opacity var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease),
-    transform var(--cpv2-profile-collapse-duration)
-      var(--cpv2-profile-collapse-ease);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body[data-theme="v8"] .cpv2-profile-card,
-  body[data-theme="v8"] .cpv2-profile-card * {
-    transition: none !important;
-  }
 }
 
 body[data-theme="v8"] .cpv2-profile-card-social {

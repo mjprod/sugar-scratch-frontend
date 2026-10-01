@@ -188,11 +188,11 @@ export function MotionCurrencyReveal({
             <p className="motion-currency-reveal__won">YOU WON!</p>
             <p className="motion-currency-reveal__count">
               {[
-                showCoins
-                  ? `${coins} Coin${coins === 1 ? "" : "s"}`
-                  : null,
                 showDiamonds
                   ? `${diamonds} Diamond${diamonds === 1 ? "" : "s"}`
+                  : null,
+                showCoins
+                  ? `${coins} Coin${coins === 1 ? "" : "s"}`
                   : null,
               ]
                 .filter(Boolean)
@@ -203,7 +203,8 @@ export function MotionCurrencyReveal({
 
         <div
           className={[
-            "motion-currency-reveal__row",
+            "motion-currency-reveal__stack",
+            showCoins && showDiamonds ? "has-both" : "",
             phase === "appearing" ||
             phase === "confirmed" ||
             phase === "minimizing"
@@ -214,26 +215,30 @@ export function MotionCurrencyReveal({
             .filter(Boolean)
             .join(" ")}
         >
-          {showCoins ? (
-            <div className="motion-currency-reveal__hero">
-              <div className="motion-currency-reveal__icon" aria-hidden="true">
-                <CoinLottie size={72} loop autoplay />
+          {showDiamonds ? (
+            <div className="motion-currency-reveal__hero is-diamonds">
+              <div className="motion-currency-reveal__stack-col">
+                <div className="motion-currency-reveal__icon" aria-hidden="true">
+                  <DiamondLottie size={72} />
+                </div>
+                <p className="motion-currency-reveal__amount tabular-nums">
+                  {diamondDisplay}
+                </p>
+                <p className="motion-currency-reveal__label">Diamonds</p>
               </div>
-              <p className="motion-currency-reveal__amount tabular-nums">
-                {coinDisplay}
-              </p>
-              <p className="motion-currency-reveal__label">Coins</p>
             </div>
           ) : null}
-          {showDiamonds ? (
-            <div className="motion-currency-reveal__hero">
-              <div className="motion-currency-reveal__icon" aria-hidden="true">
-                <DiamondLottie size={72} />
+          {showCoins ? (
+            <div className="motion-currency-reveal__hero is-coins">
+              <div className="motion-currency-reveal__pair">
+                <div className="motion-currency-reveal__icon" aria-hidden="true">
+                  <CoinLottie size={44} loop autoplay />
+                </div>
+                <p className="motion-currency-reveal__amount tabular-nums">
+                  {coinDisplay}
+                </p>
               </div>
-              <p className="motion-currency-reveal__amount tabular-nums">
-                {diamondDisplay}
-              </p>
-              <p className="motion-currency-reveal__label">Diamonds</p>
+              <p className="motion-currency-reveal__label">Coins</p>
             </div>
           ) : null}
         </div>
@@ -260,20 +265,20 @@ export function MotionCurrencyReveal({
           .join(" ")}
         aria-hidden={!showMini}
       >
-        {showCoins ? (
-          <>
-            <span className="motion-currency-reveal__mini-icon" aria-hidden="true">
-              <CoinLottie size={22} loop={false} autoplay />
-            </span>
-            <span className="motion-currency-reveal__mini-new">+{coins}</span>
-          </>
-        ) : null}
         {showDiamonds ? (
           <>
             <span className="motion-currency-reveal__mini-icon" aria-hidden="true">
               <DiamondLottie size={22} />
             </span>
             <span className="motion-currency-reveal__mini-new">+{diamonds}</span>
+          </>
+        ) : null}
+        {showCoins ? (
+          <>
+            <span className="motion-currency-reveal__mini-icon" aria-hidden="true">
+              <CoinLottie size={22} loop={false} autoplay />
+            </span>
+            <span className="motion-currency-reveal__mini-new">+{coins}</span>
           </>
         ) : null}
       </div>

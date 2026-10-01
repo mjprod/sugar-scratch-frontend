@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
@@ -36,26 +36,6 @@ import {
 } from "@/services/purchase";
 import "./creator-collection.css";
 import "./creator-influencer.css";
-
-/** Collapse once ~7% of the viewport height has been scrolled from the top. */
-const COLLAPSE_VIEWPORT_RATIO = 0.07;
-/**
- * Only reopen near the absolute top. A mid-range expand threshold fights the
- * sticky header height change and can open/close in a loop.
- */
-const EXPAND_SCROLL_PX = 12;
-
-function collapseFromScrollTop(
-  scroller: HTMLElement,
-  currentlyCollapsed: boolean,
-) {
-  const scrollTop = Math.max(0, scroller.scrollTop);
-  if (currentlyCollapsed) {
-    return scrollTop <= EXPAND_SCROLL_PX ? 0 : 1;
-  }
-  const viewport = Math.max(1, scroller.clientHeight);
-  return scrollTop >= viewport * COLLAPSE_VIEWPORT_RATIO ? 1 : 0;
-}
 
 /**
  * Creator Page — InnerInfluencer Figma layout (profile, packs, progress, themes).
@@ -128,9 +108,6 @@ function CreatorScreenInner({
   const navigate = useNavigate();
   const { authed, requireAuth } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [collapseProgress, setCollapseProgress] = useState(0);
-  const collapseProgressRef = useRef(0);
-  const collapseLockUntilRef = useRef(0);
   const pageRef = useRef<HTMLElement | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState(
     () => searchParams.get("theme") || "",
@@ -145,48 +122,6 @@ function CreatorScreenInner({
   useEffect(() => {
     setFollowing(isFollowing(followId));
   }, [followId, authed]);
-
-  const syncCollapseProgress = useCallback(() => {
-    const page = pageRef.current;
-    if (!page) return;
-    // Ignore scroll jitter while the open/closed animation is running.
-    if (performance.now() < collapseLockUntilRef.current) return;
-
-    const prev = collapseProgressRef.current;
-    const next = collapseFromScrollTop(page, prev >= 1);
-    if (next === prev) return;
-
-    collapseProgressRef.current = next;
-    collapseLockUntilRef.current = performance.now() + 360;
-    setCollapseProgress(next);
-  }, []);
-
-  useEffect(() => {
-    collapseProgressRef.current = collapseProgress;
-  }, [collapseProgress]);
-
-  useEffect(() => {
-    const page = pageRef.current;
-    if (!page) return;
-
-    let frame = 0;
-    const schedule = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        syncCollapseProgress();
-      });
-    };
-
-    schedule();
-    page.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      page.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
-    };
-  }, [syncCollapseProgress]);
 
   const themes: ThemeCardData[] = useMemo(
     () =>
@@ -396,7 +331,6 @@ function CreatorScreenInner({
           avatarUrl={avatarUrl}
           coverUrl={coverUrl}
           locationLabel={locationLabel}
-          collapseProgress={collapseProgress}
           onBack={onBack}
           following={following}
           onToggleFollow={handleToggleFollow}

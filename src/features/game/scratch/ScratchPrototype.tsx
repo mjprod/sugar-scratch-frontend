@@ -5651,7 +5651,7 @@ export function ScratchPrototype({
                 ) : null}
               </div>
               <div className="stage-game__top-chrome-side is-end">
-                <StageMuteButton />
+                <StageMuteButton icon={gameMode ? "volume" : "freeplay"} />
               </div>
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}

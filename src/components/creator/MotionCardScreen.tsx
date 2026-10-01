@@ -16,6 +16,10 @@ import {
 } from "@/features/collection/lib/photoSlots";
 import type { CardConfig } from "@/features/collection/lib/cards";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
+import {
+  fetchPhotoScratchSlots,
+  photoScratchSlotPrices,
+} from "@/shared/backend/collection";
 import { Paths } from "@/routes/Paths";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import "./creator-influencer.css";
@@ -90,11 +94,31 @@ function MotionCardScreenInner({
   const { authed } = useAuth();
   const collection = useCreatorCollection(modelId);
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
+  const [slotPrices, setSlotPrices] = useState<Array<number | null>>(
+    () => Array.from({ length: PHOTO_SLOTS }, () => null),
+  );
   const legalTitleId = useId();
 
   const card = useMemo(() => {
     return collection.cards.find((entry) => entry.id === cardId) ?? null;
   }, [cardId, collection.cards]);
+
+  useEffect(() => {
+    const motionId = (card?.id ?? cardId).trim();
+    if (!motionId || motionId.includes("-placeholder-")) {
+      setSlotPrices(Array.from({ length: PHOTO_SLOTS }, () => null));
+      return;
+    }
+    let cancelled = false;
+    const theme = (card?.groupId || card?.groupTheme || "").trim();
+    void fetchPhotoScratchSlots(motionId, theme).then((slots) => {
+      if (cancelled) return;
+      setSlotPrices(photoScratchSlotPrices(slots));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [card?.groupId, card?.groupTheme, card?.id, cardId]);
 
   const pageLoading = !modelId || (collection.loading && !card);
   // Preloader between character → motion; dismiss once the card or a failed load can paint.
@@ -170,8 +194,7 @@ function MotionCardScreenInner({
     );
   }
 
-  function openPhoto(slotIndex: number, collected: boolean) {
-    if (!collected) return;
+  function openPhoto(slotIndex: number) {
     const photoId = photoScratchIdForSlot(cardId, slotIndex);
     navigate(
       Paths.photoScratchPlay(photoId, {
@@ -335,14 +358,17 @@ function MotionCardScreenInner({
 
           <div className="mcp-photo-grid">
             {slots.map((slot, index) => {
-              const unlocked = slot.collected && Boolean(slot.src);
+              const owned = slot.collected;
               const src = slot.src || poster;
+              const playPrice = slotPrices[index];
+              const showPrice = !owned && playPrice != null;
               return (
                 <div
                   key={`${cardId}-photo-${index}`}
                   className={[
                     "mcp-photo-cell",
-                    unlocked ? "is-unlocked" : "is-locked",
+                    owned ? "is-unlocked" : "is-locked",
+                    showPrice ? "has-price-cta" : "has-play-cta",
                   ].join(" ")}
                 >
                   <img
@@ -350,31 +376,54 @@ function MotionCardScreenInner({
                     alt=""
                     className="mcp-photo-img"
                   />
-                  {unlocked ? (
-                    <>
-                      <span className="mcp-photo-dot" aria-hidden="true" />
-                      <div className="mcp-photo-play-cta">
-                        <CtaButton
-                          {...ctaButtonPropsFromTemplate("squircleCTA")}
-                          fillParent
-                          label=""
-                          leadingIcon={
-                            <Play
-                              size={12}
-                              strokeWidth={2.4}
-                              fill="currentColor"
+                  {owned ? (
+                    <span className="mcp-photo-dot" aria-hidden="true" />
+                  ) : null}
+                  <div
+                    className={[
+                      "mcp-photo-play-cta",
+                      showPrice ? "is-priced" : "is-owned",
+                    ].join(" ")}
+                  >
+                    <CtaButton
+                      {...ctaButtonPropsFromTemplate("squircleCTA")}
+                      fillParent
+                      label=""
+                      leadingIcon={
+                        <>
+                          {showPrice ? (
+                            <DiamondLottie
+                              className="mcp-photo-play-diamond"
+                              size={11}
                               aria-hidden
                             />
-                          }
-                          costAmount={null}
-                          fontSize={12}
-                          cornerRadius={999}
-                          aria-label={`${photoTitle} ${index + 1} — open`}
-                          onClick={() => openPhoto(index, true)}
-                        />
-                      </div>
-                    </>
-                  ) : (
+                          ) : null}
+                          {showPrice ? (
+                            <span className="mcp-photo-play-price">
+                              {playPrice}
+                            </span>
+                          ) : null}
+                          <Play
+                            className="mcp-photo-play-triangle"
+                            size={11}
+                            strokeWidth={2.4}
+                            fill="currentColor"
+                            aria-hidden
+                          />
+                        </>
+                      }
+                      costAmount={null}
+                      fontSize={11}
+                      cornerRadius={999}
+                      aria-label={
+                        showPrice
+                          ? `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
+                          : `Play ${photoTitle} ${index + 1}`
+                      }
+                      onClick={() => openPhoto(index)}
+                    />
+                  </div>
+                  {owned || showPrice ? null : (
                     <span className="mcp-photo-lock" aria-hidden="true">
                       <svg
                         width="15"

@@ -1,4 +1,6 @@
 import { animated, useSpring } from "@react-spring/web";
+import { ChevronRight } from "lucide-react";
+import { PersonalizationCompleteScreen } from "@/components/recommend/PersonalizationCompleteScreen";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SwipeCircle } from "@/features/swipe/components/SwipeCircle";
 import { SwipeDeck } from "@/features/swipe/components/SwipeDeck";
@@ -59,10 +61,12 @@ export function PersonalizationSwipeScreen({
   const decisionGoal = Math.max(1, Math.min(SWIPE_DECISION_GOAL, deck.length));
   const progress = Math.min(1, decisions / decisionGoal);
   const canContinue = decisions >= decisionGoal;
+  const deckEmpty = deck.length > 0 && decisions >= deck.length;
   const likedRef = useRef(liked);
   const passedRef = useRef(passed);
   likedRef.current = liked;
   passedRef.current = passed;
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,13 +147,56 @@ export function PersonalizationSwipeScreen({
     };
   }, [mediaReady]);
 
+  // The card paints past the deck box, so a --card-h offset still overlaps it.
+  // Pin the footer to the front card's real bottom edge instead.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const sync = () => {
+      const card = stage.querySelector(".swipe-card");
+      if (!card) {
+        stage.style.removeProperty("--rec-card-bottom");
+        return;
+      }
+      const stageBox = stage.getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
+      stage.style.setProperty(
+        "--rec-card-bottom",
+        `${cardBox.bottom - stageBox.top}px`,
+      );
+    };
+
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(stage);
+    const deck = stage.querySelector(".swipe-deck");
+    if (deck) observer.observe(deck);
+    window.addEventListener("resize", sync);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, [deckMounted, deckEmpty]);
+
   if (!productReady) return null;
 
   return (
     <StackBacksDebugProvider>
       <SwipeCircleDebugProvider>
         <NopeTintDebugProvider>
-          <div className="stage-swipe auth7-rec-swipe">
+          <div
+            ref={stageRef}
+            className={`stage-swipe auth7-rec-swipe${deckEmpty ? " is-deck-empty" : ""}`}
+          >
+            <div
+              className="auth7-rec-swipe-done"
+              aria-hidden={deckEmpty ? undefined : true}
+            >
+              <PersonalizationCompleteScreen
+                onStart={() => onContinue(snapshot())}
+              />
+            </div>
             <div className="auth7-rec-swipe-footer">
               <div
                 className="auth7-rec-swipe-bar"
@@ -170,7 +217,13 @@ export function PersonalizationSwipeScreen({
                   className="auth7-rec-swipe-continue"
                   onClick={() => onContinue(snapshot())}
                 >
-                  Continue
+                  <span className="auth7-rec-swipe-continue-hint">
+                    Keep swiping to continue personalising or…
+                  </span>
+                  <span className="auth7-rec-swipe-continue-label">
+                    Continue to Home
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </span>
                 </button>
               ) : null}
             </div>

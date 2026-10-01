@@ -1117,6 +1117,26 @@
   outline-offset: 2px;
 }
 
+.stage-game__pause.is-freeplay,
+.stage-game__pause.is-freeplay:hover {
+  width: auto;
+  height: auto;
+  flex-basis: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+}
+
+.stage-game__freeplay-mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+  transform: translateX(-4px);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Right top chrome: coin over amount (column), home-nav coin mark. */
 .stage-game__coin-pill {
   display: inline-flex;
@@ -2271,11 +2291,12 @@
   font-weight: 700;
 }
 
-.motion-currency-reveal__row {
+.motion-currency-reveal__stack {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 10px;
   opacity: 0;
   transform: scale(0.88);
   transition:
@@ -2283,13 +2304,17 @@
     transform 520ms cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
-.motion-currency-reveal__row.is-visible {
+.motion-currency-reveal__stack.has-both {
+  gap: 6px;
+}
+
+.motion-currency-reveal__stack.is-visible {
   opacity: 1;
   transform: scale(1);
   animation: motion-win-card-pop 720ms ease-out both;
 }
 
-.motion-currency-reveal__row.is-minimizing {
+.motion-currency-reveal__stack.is-minimizing {
   transform: scale(0.72) translateY(-18px);
   opacity: 0.35;
   transition:
@@ -2299,10 +2324,51 @@
 
 .motion-currency-reveal__hero {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.motion-currency-reveal__hero.is-diamonds {
+  align-items: stretch;
+  width: 100%;
+}
+
+.motion-currency-reveal__stack-col {
+  display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  min-width: 96px;
+  width: 100%;
+}
+
+.motion-currency-reveal__pair {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.motion-currency-reveal__pair .motion-currency-reveal__icon {
+  margin-right: -10px;
+}
+
+.motion-currency-reveal__pair .motion-currency-reveal__amount {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.motion-currency-reveal__hero.is-coins {
+  flex-wrap: nowrap;
+}
+
+.motion-currency-reveal__stack.has-both .motion-currency-reveal__hero.is-coins {
+  opacity: 0.92;
 }
 
 .motion-currency-reveal__icon {
@@ -2833,7 +2899,7 @@
   .photo-diamond-reveal__mini,
   .motion-currency-reveal__backdrop,
   .motion-currency-reveal__header,
-  .motion-currency-reveal__row,
+  .motion-currency-reveal__stack,
   .motion-currency-reveal__mini {
     animation: none !important;
     transition: none !important;

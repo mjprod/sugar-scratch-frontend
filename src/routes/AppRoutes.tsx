@@ -63,11 +63,6 @@ const PurchaseFlowPage = lazy(() =>
     default: m.PurchaseFlowPage,
   })),
 );
-const RecCompletePage = lazy(() =>
-  import("@/pages/RecCompletePage").then((m) => ({
-    default: m.RecCompletePage,
-  })),
-);
 const WelcomePage = lazy(() =>
   import("@/pages/WelcomePage").then((m) => ({ default: m.WelcomePage })),
 );
@@ -179,14 +174,6 @@ export function AppRoutes() {
             element={
               <OnboardShell swipe>
                 <RecSwipePage />
-              </OnboardShell>
-            }
-          />
-          <Route
-            path={Paths.recommendDone}
-            element={
-              <OnboardShell>
-                <RecCompletePage />
               </OnboardShell>
             }
           />
