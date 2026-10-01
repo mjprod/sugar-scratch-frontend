@@ -2043,6 +2043,10 @@ export function CoverFlowCarousel({
   const catalog = useCatalog()
   const [backendFan, setBackendFan] = useState<BackendFanCatalog | null>(null)
 
+  useEffect(() => {
+    useGLTF.preload(PACK_MODEL_URL)
+  }, [])
+
   // Controlled when parent passes selectedId (including null = deselected).
   // Don't use `??` with a defaulted prop — null would fall back to stale internal state
   // and make ↓ / Esc appear to do nothing after a pack was open.
@@ -3357,5 +3361,3 @@ isMobile={isMobileViewportActive}
     </div>
   )
 }
-
-useGLTF.preload(PACK_MODEL_URL)

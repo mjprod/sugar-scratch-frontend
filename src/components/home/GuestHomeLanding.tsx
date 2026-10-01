@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const GUEST_HOME_VIDEO = "/video/homepagevideo-min.mp4";
+const GUEST_HOME_POSTER = "/video/homepagevideo-poster.webp";
 
 type GuestSlide =
   | { id: "video"; kind: "video" }
@@ -30,7 +31,7 @@ const GUEST_HOW_TO_SLIDES: Extract<GuestSlide, { kind: "step" }>[] = [
     kind: "step",
     title: "Scratch & Match",
     sentence: "Scratch & reveal and match the symbols to win photo cards.",
-    imageSrc: "/images/home-v2/how-scratch.png",
+    imageSrc: "/images/home-v2/how-scratch.webp",
     imageClassName: "is-scratch",
   },
   {
@@ -46,7 +47,7 @@ const GUEST_HOW_TO_SLIDES: Extract<GuestSlide, { kind: "step" }>[] = [
     kind: "step",
     title: "Complete the collection",
     sentence: "Complete each theme to get exclusive spicy content.",
-    imageSrc: "/images/home-v2/how-collect.png",
+    imageSrc: "/images/home-v2/how-collect.webp",
     imageClassName: "is-collect",
   },
 ];
@@ -294,11 +295,12 @@ export function GuestHomeLanding() {
                   ref={videoRef}
                   className="guest-home-landing__video"
                   src={GUEST_HOME_VIDEO}
+                  poster={GUEST_HOME_POSTER}
                   autoPlay={!reduceMotion}
                   muted
                   loop
                   playsInline
-                  preload="auto"
+                  preload="metadata"
                   disablePictureInPicture
                   disableRemotePlayback
                   aria-hidden
@@ -320,7 +322,13 @@ export function GuestHomeLanding() {
               aria-hidden={!isActive}
             >
               <div className="guest-home-landing__step-art" aria-hidden>
-                <img src={slide.imageSrc} alt="" draggable={false} />
+                <img
+                  src={slide.imageSrc}
+                  alt=""
+                  draggable={false}
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div className="guest-home-landing__step-copy">
                 <p className="guest-home-landing__step-kicker">How to play</p>
