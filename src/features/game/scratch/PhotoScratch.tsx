@@ -9,6 +9,11 @@ import {
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
 import {
+  isScratchHandQuotaExhausted,
+  persistScratchCoins,
+  startScratchHand,
+} from "@/services/scratchCoinReward";
+import {
   fetchCatalogPhotoCards,
   type CatalogPhotoCard,
 } from "../shared/catalog";
@@ -19,6 +24,7 @@ import {
   type ImageLayerCameras,
 } from "./glRenderer";
 import { GamePauseButton } from "../GamePauseButton";
+import { StageCoinCount } from "../StageCoinCount";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import { PackProgress } from "../modules/PackProgress";
@@ -134,6 +140,16 @@ import {
   fairyDustSpawnMinDistancePx,
   shouldSpawnFairyDust,
 } from "../modules/fairyDustSpawnPolicy";
+import {
+  COIN_BADGE_AWARD_HOLD_MS,
+  rollSparkleCoinAward,
+} from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
+import { useScratchCoinBadge } from "../modules/useScratchCoinBadge";
 
 function detectPhotoCursorFx() {
   if (typeof window === "undefined") {
@@ -798,8 +814,12 @@ function motionStatusLabel(status: string) {
 
 export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
-  const { bumpInventoryRevision } = useAuth();
+  const { authed, bumpInventoryRevision } = useAuth();
   const { addCoins, addDiamonds } = useWallet();
+  /** Server-issued scratch hand — required to persist 10% coin awards. */
+  const handIdRef = useRef("");
+  const handCardIdRef = useRef<string | null>(null);
+  const handStartGenRef = useRef(0);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -837,6 +857,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const isScratchingRef = useRef(false);
+  const coinBadge = useScratchCoinBadge({ isScratchingRef });
   const scratchStartedRef = useRef(false);
   const idleSwayRef = useRef<Vec2>({ x: 0, y: 0 });
   const girlCamRef = useRef<Vec2>({ x: 0, y: 0 });
@@ -1028,6 +1049,31 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const [selectedCardId, setSelectedCardId] = useState("");
   const [completedCardIds, setCompletedCardIds] = useState<string[]>([]);
   completedCardIdsRef.current = completedCardIds;
+  useEffect(() => {
+    // Signed out — drop the hand so a later sign-in on the same card starts fresh.
+    if (!authed) {
+      handStartGenRef.current += 1;
+      handIdRef.current = "";
+      handCardIdRef.current = null;
+      return;
+    }
+    const key = selectedCardId.trim();
+    if (!key || isScratchHandQuotaExhausted()) return;
+    // Remount / effect re-run for the same card must not burn quota.
+    if (handCardIdRef.current === key) return;
+    handIdRef.current = "";
+    handCardIdRef.current = key;
+    const gen = ++handStartGenRef.current;
+    void startScratchHand(key).then((result) => {
+      if (gen !== handStartGenRef.current) return;
+      if (result?.handId) {
+        handIdRef.current = result.handId;
+        return;
+      }
+      // Failed / quota — allow a later retry for this card.
+      if (handCardIdRef.current === key) handCardIdRef.current = null;
+    });
+  }, [authed, selectedCardId]);
   const [handSummaryDiamonds, setHandSummaryDiamonds] = useState<number | null>(
     null,
   );
@@ -1332,6 +1378,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = 0;
     clearCelebrateTimer();
     setCursorFxCelebrate(false);
+    coinBadge.reset();
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
     fgRendererRef.current?.clearScratch();
@@ -1935,7 +1982,31 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       nextProgress,
     );
     celebrateProgressRef.current = nextProgress;
-    if (crossed == null || PHOTO_CURSOR_FX_REDUCED) return;
+    if (crossed == null) return;
+
+    // Defer badge work so the dust burst paints this frame first.
+    const award = rollSparkleCoinAward();
+    const handId = handIdRef.current;
+    const cardId = handCardIdRef.current || undefined;
+    queueMicrotask(() => {
+      coinBadge.award(award.amount);
+      addCoins(award.amount);
+      playSparkleCoinSound(award.soundSrc);
+      // Persist only with a server-issued hand — forged client ids are rejected.
+      if (handId) {
+        persistScratchCoins({
+          handId,
+          milestone: crossed,
+          cardId,
+          amount: award.amount,
+        });
+      }
+      // Milestone counts as activity — hold longer so +N / count-up can read.
+      huntHintActivityAtRef.current = performance.now();
+      coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+    });
+
+    if (PHOTO_CURSOR_FX_REDUCED) return;
 
     const celebrateMs = celebrateDurationMs(PHOTO_CURSOR_FX.coarsePointer);
     celebrateUntilRef.current = performance.now() + celebrateMs;
@@ -2634,10 +2705,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ensureSymbolAudio(symbolAudioRef.current);
           unlockCountdownSound();
           unlockMotionScratchBgm();
+          preloadSparkleCoinSounds();
           preloadScratchSounds();
           resumeCountdownAudioIfActive();
         } else {
           stopCountdownAudio();
+          stopSparkleCoinSounds();
           stopScratchSounds();
         }
         applyBoundThemeIntroSound(next);
@@ -2646,7 +2719,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     [],
   );
 
-  useEffect(() => stopScratchSounds, []);
+  useEffect(
+    () => () => {
+      stopScratchSounds();
+      stopSparkleCoinSounds();
+    },
+    [],
+  );
 
   useEffect(() => {
     try {
@@ -2670,6 +2749,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (introActiveRef.current) return;
     if (soundEnabledRef.current) {
       ensureSymbolAudio(symbolAudioRef.current);
+      preloadSparkleCoinSounds();
       preloadScratchSounds();
     }
     // Re-assert Web Audio unlock inside this gesture (Safari).
@@ -2703,6 +2783,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     lastScratchWorldRef.current = null;
     lastPointerRef.current = null;
     parallax.releaseFinger();
+    coinBadge.scheduleIdleHide();
   }
 
   const parallaxState = parallaxStateRef.current;
@@ -3339,10 +3420,30 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
-          {/* Bottom HUD: Sugar Scratch logo (bottom-right), same as motion. */}
+          {/* Bottom HUD: [ coin count | Sugar Scratch logo ], same as motion. Badge idle-hides. */}
           <div className="stage-game__bottom-chrome">
             <div className="stage-game__bottom-chrome-row is-status">
-              <div className="stage-game__bottom-chrome-status-cards" />
+              <div className="stage-game__bottom-chrome-status-cards">
+                {coinBadge.shown ? (
+                  <div
+                    key={coinBadge.enterKey}
+                    className={[
+                      "stage-game__cards-left",
+                      "pack-progress-shell",
+                      "pack-progress-shell--bottom-left",
+                      coinBadge.leaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={coinBadge.onLeaveEnd}
+                  >
+                    <StageCoinCount
+                      popNonce={coinBadge.popNonce}
+                      awardAmount={coinBadge.awardFlash}
+                    />
+                  </div>
+                ) : null}
+              </div>
               <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
                 <img
                   src="/svg/logoSugarScratch.svg"
@@ -3375,9 +3476,16 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               // CSS (width/height 100%) keeps the logical 390×672 stage size.
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              style={{ touchAction: "none", cursor: "crosshair" }}
+              style={{
+                touchAction: "none",
+                cursor: "crosshair",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+              }}
+              // No preventDefault on pointerdown: it suppresses the mouse
+              // events FairyDustCursor follows, so the coin trail stops
+              // tracking the cursor mid-stroke.
               onPointerDown={(event) => {
-                event.preventDefault();
                 event.currentTarget.setPointerCapture(event.pointerId);
                 onPointerDown(event.clientX, event.clientY);
               }}
