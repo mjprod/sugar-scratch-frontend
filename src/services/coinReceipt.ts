@@ -13,7 +13,11 @@ const RECEIPT_KEY = "sugar.coinReceipt";
 /** Fired on window with `{ coins }` — the visible CurrencyBalances opens. */
 export const WALLET_REVEAL_EVENT = "sugar:wallet-reveal";
 
-export type WalletRevealDetail = { coins: number };
+export type WalletRevealDetail = {
+  coins: number;
+  /** Set by the first wallet control that opens, so no second popover appears. */
+  handled?: boolean;
+};
 
 type StoredReceipt = { ownerId: string | null; amount: number };
 

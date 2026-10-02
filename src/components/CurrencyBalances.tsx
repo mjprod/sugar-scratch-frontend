@@ -17,6 +17,31 @@ export { formatBalance, formatCompactBalance } from "@/lib/formatBalance";
 /** How long the post-game coin receipt popover stays open on its own. */
 const WALLET_RECEIPT_AUTO_CLOSE_MS = 4000;
 
+/**
+ * The inactive desktop/mobile HUD stays laid out but is hidden with
+ * `visibility: hidden` / `opacity: 0` on an ancestor, so rects alone lie.
+ */
+function isRenderedVisible(el: HTMLElement): boolean {
+  if (el.getClientRects().length === 0) return false;
+  const check = (
+    el as HTMLElement & {
+      checkVisibility?: (opts: {
+        opacityProperty?: boolean;
+        visibilityProperty?: boolean;
+      }) => boolean;
+    }
+  ).checkVisibility;
+  if (typeof check === "function") {
+    return check.call(el, { opacityProperty: true, visibilityProperty: true });
+  }
+  if (window.getComputedStyle(el).visibility !== "visible") return false;
+  for (let node: Element | null = el; node; node = node.parentElement) {
+    const style = window.getComputedStyle(node);
+    if (style.display === "none" || Number(style.opacity) === 0) return false;
+  }
+  return true;
+}
+
 /** Inline diamond HUD counter (TopNav, mobile HUD, and subpage headers).
  * Dust lives in the Diamonds wallet popover. */
 export function CurrencyBalances({
@@ -61,11 +86,13 @@ export function CurrencyBalances({
 
   useEffect(() => {
     function onWalletReveal(event: Event) {
-      const coins = (event as CustomEvent<WalletRevealDetail>).detail?.coins ?? 0;
-      if (!(coins > 0)) return;
+      const detail = (event as CustomEvent<WalletRevealDetail>).detail;
+      const coins = detail?.coins ?? 0;
+      if (!detail || detail.handled || !(coins > 0)) return;
       // Desktop + mobile navs are both mounted; only the visible one opens.
       const anchor = diamondAnchorRef.current;
-      if (!anchor || anchor.getClientRects().length === 0) return;
+      if (!anchor || !isRenderedVisible(anchor)) return;
+      detail.handled = true;
       clearReceiptTimer();
       setReceiptCoins(coins);
       openWalletRef.current();
