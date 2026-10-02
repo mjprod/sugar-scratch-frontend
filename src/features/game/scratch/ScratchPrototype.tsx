@@ -896,7 +896,7 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
 }
 
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
-const SCRATCH_RADIUS = 0.045;
+const SCRATCH_RADIUS = 0.03;
 // Densify / auto stamp caps live in scratchStampBudget (Phase 9 coarse vs fine).
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
