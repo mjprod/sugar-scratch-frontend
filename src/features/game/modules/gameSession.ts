@@ -1,5 +1,6 @@
 import { apiMutate } from "@/lib/api";
 import { getAuthUserId } from "@/services/auth";
+import { noteCoinsReceived } from "@/services/coinReceipt";
 import { recordWonPhotoCards } from "@/services/collectionState";
 import {
   removeReadyToScratch,
@@ -424,7 +425,10 @@ export function settleHubWalletFromSession(
   const diamonds = Math.max(0, session.diamondTotal);
   const coins = Math.max(0, session.coinTotal ?? 0);
   if (diamonds > 0) addDiamonds(diamonds);
-  if (coins > 0) addCoins(coins);
+  if (coins > 0) {
+    addCoins(coins);
+    noteCoinsReceived(coins);
+  }
   return markWalletCredited();
 }
 

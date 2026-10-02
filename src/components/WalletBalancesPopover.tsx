@@ -30,6 +30,8 @@ export type WalletBalancesPopoverProps = {
   leaving?: boolean;
   diamonds: number | null;
   coins: number | null;
+  /** Coins just received (post-game receipt) — shows a "+N" chip on the Dust row. */
+  coinReceipt?: number;
   anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   onLeaveEnd?: () => void;
@@ -96,6 +98,7 @@ export function WalletBalancesPopover({
   leaving = false,
   diamonds,
   coins,
+  coinReceipt = 0,
   anchorRef,
   onClose,
   onLeaveEnd,
@@ -326,6 +329,11 @@ export function WalletBalancesPopover({
         zIndex: 5200,
       };
 
+  const hasReceipt = coinReceipt > 0;
+  const dustRowLabel = hasReceipt
+    ? `Dust balance ${dustLabel}. Received ${coinReceipt.toLocaleString("en-US")} Coins`
+    : "Dust balance";
+
   const convertAria = affordable
     ? `Convert ${affordable.coins.toLocaleString("en-US")} Coins for ${formatExchangeDiamondPreview(affordable.diamonds)}`
     : "Not enough Coins to convert";
@@ -403,9 +411,12 @@ export function WalletBalancesPopover({
           "wallet-balances-popover__row",
           "wallet-balances-popover__row--dust",
           showPreview ? "is-exchange-preview" : "",
+          hasReceipt ? "has-receipt" : "",
         ]
           .filter(Boolean)
           .join(" ")}
+        role="group"
+        aria-label={dustRowLabel}
       >
         <div className="wallet-balances-popover__metric wallet-balances-popover__metric--dust">
           {showPreview ? (
@@ -437,6 +448,14 @@ export function WalletBalancesPopover({
           >
             {showPreview && previewAmount ? previewAmount : dustLabel}
           </span>
+          {hasReceipt && !showPreview ? (
+            <span
+              className="wallet-balances-popover__receipt tabular-nums"
+              aria-hidden="true"
+            >
+              +{formatCompactBalance(coinReceipt)}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>

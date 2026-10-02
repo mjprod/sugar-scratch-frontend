@@ -18,6 +18,7 @@ import {
 export const PACK_OPENING_REWARD_EVENT = "sugar:pack-opening-reward";
 
 export type PackOpeningRewardDetail = {
+  /** Coins won. Credited only when `wallet` is absent; always counts toward the coin receipt. */
   coins?: number;
   diamonds?: number;
   cards?: number;
@@ -150,16 +151,20 @@ export async function settlePackMotionCard(
       const openingCard = packScratch.openingSession.cards.find(
         (entry) => entry.id === openingId,
       );
+      const rewardCoins = Math.max(
+        0,
+        result.card.reward ?? openingCard?.reward ?? 0,
+      );
       await appendGameHistoryFromSettle(
         session,
         motionCardId,
         openingId,
-        result.card.reward ?? openingCard?.reward ?? 0,
+        rewardCoins,
       );
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
-            detail: { cards: 1, wallet: result.wallet },
+            detail: { coins: rewardCoins, cards: 1, wallet: result.wallet },
           }),
         );
       }

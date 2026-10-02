@@ -8,6 +8,7 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   isScratchHandQuotaExhausted,
   persistScratchCoins,
@@ -1991,6 +1992,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     queueMicrotask(() => {
       coinBadge.award(award.amount);
       addCoins(award.amount);
+      noteCoinsReceived(award.amount);
       playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       if (handId) {

@@ -7,6 +7,7 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { noteCoinsReceived } from "@/services/coinReceipt";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
   isScratchHandQuotaExhausted,
@@ -1968,6 +1969,7 @@ export function ScratchPrototype({
     queueMicrotask(() => {
       showCoinBadge();
       addCoins(award.amount);
+      noteCoinsReceived(award.amount);
       setCoinAwardFlash(award.amount);
       setCoinPopNonce((n) => n + 1);
       playSparkleCoinSound(award.soundSrc);

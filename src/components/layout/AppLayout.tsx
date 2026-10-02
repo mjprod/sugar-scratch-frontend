@@ -14,6 +14,7 @@ import { bindGameNavigate } from "@/features/game/modules/gameSession";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
+import { noteCoinsReceived } from "@/services/coinReceipt";
 import { countUnread, fetchInboxMessages } from "@/services/inbox";
 import {
   PACK_OPENING_REWARD_EVENT,
@@ -72,6 +73,7 @@ export function AppLayout() {
         if (rewardCoins > 0) addCoins(rewardCoins);
         if (rewardDiamonds > 0) addDiamonds(rewardDiamonds);
       }
+      if (rewardCoins > 0) noteCoinsReceived(rewardCoins);
       if (rewardCards > 0) {
         setPurchasedPacks((count) => count + rewardCards);
       }
