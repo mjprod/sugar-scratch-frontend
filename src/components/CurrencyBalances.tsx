@@ -105,7 +105,7 @@ export function CurrencyBalances({
     return () => {
       window.removeEventListener(WALLET_REVEAL_EVENT, onWalletReveal);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot listener; uses refs/stable setters
 
   function clearReceiptTimer() {
     if (receiptTimerRef.current != null) {
