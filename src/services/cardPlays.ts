@@ -34,11 +34,13 @@ export function playedCardKey(kind: CardKind, cardId: string): string {
 type Cache = { ownerId: string | null; keys: Set<string> };
 
 let cache: Cache | null = null;
-let inFlight: Promise<Set<string>> | null = null;
+let inFlight: { ownerId: string | null; request: Promise<Set<string>> } | null =
+  null;
+const playInFlight = new Map<string, Promise<PlayCardResult>>();
 const listeners = new Set<(keys: Set<string>) => void>();
 
-function publish(keys: Set<string>) {
-  cache = { ownerId: getAuthUserId(), keys };
+function publish(keys: Set<string>, ownerId: string | null = getAuthUserId()) {
+  cache = { ownerId, keys };
   for (const listener of listeners) listener(keys);
 }
 
@@ -49,26 +51,41 @@ export function getCachedPlayedCards(): Set<string> | null {
 }
 
 export function fetchPlayedCards(opts?: { force?: boolean }): Promise<Set<string>> {
+  const ownerId = getAuthUserId();
   const cached = getCachedPlayedCards();
   if (cached && !opts?.force) return Promise.resolve(cached);
-  if (!getAuthUserId()) {
+  if (!ownerId) {
     const empty = new Set<string>();
-    publish(empty);
+    publish(empty, null);
     return Promise.resolve(empty);
   }
-  if (inFlight) return inFlight;
+  if (inFlight && inFlight.ownerId === ownerId) return inFlight.request;
   const request = apiFetch<{ played: PlayedCard[] }>("/api/me/cards/played")
     .then((data) => {
+      // Account switched while this GET was in flight — do not publish under the new user.
+      if (getAuthUserId() !== ownerId) {
+        return getCachedPlayedCards() ?? new Set<string>();
+      }
+      // Failed GET (network / 401 / timeout) must not wipe a just-recorded play
+      // or treat every card as unplayed.
+      if (data == null) {
+        return getCachedPlayedCards() ?? new Set<string>();
+      }
       const keys = new Set(
-        (data?.played ?? []).map((p) => playedCardKey(p.cardKind, p.cardId)),
+        (data.played ?? []).map((p) => playedCardKey(p.cardKind, p.cardId)),
       );
-      publish(keys);
+      // playCard may have published while this GET was in flight.
+      const live = getCachedPlayedCards();
+      if (live) {
+        for (const key of live) keys.add(key);
+      }
+      publish(keys, ownerId);
       return keys;
     })
     .finally(() => {
-      if (inFlight === request) inFlight = null;
+      if (inFlight?.request === request) inFlight = null;
     });
-  inFlight = request;
+  inFlight = { ownerId, request };
   return request;
 }
 
@@ -82,17 +99,39 @@ export function subscribePlayedCards(
 /**
  * Register a play. First call buys the card (throws ApiError 400 `insufficient`
  * when the wallet cannot cover the price); later calls are free replays.
+ *
+ * Concurrent calls for the same card share one POST so a double-tap cannot
+ * submit two first-play charges before the ledger row exists.
  */
 export async function playCard(
   kind: CardKind,
   cardId: string,
 ): Promise<PlayCardResult> {
-  const result = await apiMutate<PlayCardResult>("/api/me/cards/play", {
+  const key = playedCardKey(kind, cardId);
+  const pending = playInFlight.get(key);
+  if (pending) return pending;
+
+  const request = apiMutate<PlayCardResult>("/api/me/cards/play", {
     method: "POST",
     body: JSON.stringify({ cardKind: kind, cardId: cardId.trim() }),
-  });
-  const next = new Set(getCachedPlayedCards() ?? []);
-  next.add(playedCardKey(kind, cardId));
-  publish(next);
-  return result;
+  })
+    .then((result) => {
+      const next = new Set(getCachedPlayedCards() ?? []);
+      next.add(key);
+      publish(next);
+      return result;
+    })
+    .finally(() => {
+      if (playInFlight.get(key) === request) playInFlight.delete(key);
+    });
+  playInFlight.set(key, request);
+  return request;
+}
+
+/** Test helper — reset module cache / in-flight state. */
+export function resetCardPlaysForTests(): void {
+  cache = null;
+  inFlight = null;
+  playInFlight.clear();
+  listeners.clear();
 }

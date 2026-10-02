@@ -6,9 +6,7 @@ import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
 import { useAuth } from "@/contexts/AuthContext";
-import { useWallet } from "@/contexts/WalletContext";
-import { ApiError } from "@/lib/api";
-import { playCard } from "@/services/cardPlays";
+import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import {
   normalizeMediaUrl,
@@ -110,7 +108,8 @@ function CreatorScreenInner({
   );
   const navigate = useNavigate();
   const { authed, requireAuth } = useAuth();
-  const { applyWallet } = useWallet();
+  const registerPlay = useRegisterCardPlay();
+  const [buying, setBuying] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const pageRef = useRef<HTMLElement | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState(
@@ -246,18 +245,11 @@ function CreatorScreenInner({
   async function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
     const card = cardId.trim();
     const playModel = playModelId.trim();
-    if (!card || !playModel) return;
-    if (authed) {
-      try {
-        const result = await playCard("motion", card);
-        if (result.pricePaid > 0) applyWallet(result.wallet);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 400) {
-          navigate(Paths.store);
-          return;
-        }
-      }
-    }
+    if (!card || !playModel || buying) return;
+    setBuying(true);
+    const ok = await registerPlay("motion", card);
+    setBuying(false);
+    if (!ok) return;
     syncCardParam(card, selectedThemeId);
     navigate(
       Paths.gamePlay(playModel, card, {

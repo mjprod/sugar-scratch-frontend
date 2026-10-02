@@ -4,6 +4,7 @@ import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
+import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
@@ -69,12 +70,18 @@ function ScratchGameEmbed() {
   }
 
   return (
-    <div className="app-shell app-shell--game">
-      <div className="stage-game">
-        <ScratchPrototype onLeave={leaveGame} />
-        <FirstPlayTutorial scene="foil" />
+    <PaidCardPlayGate
+      kind="motion"
+      cardId={card}
+      skip={gameMode || playlistMode}
+    >
+      <div className="app-shell app-shell--game">
+        <div className="stage-game">
+          <ScratchPrototype onLeave={leaveGame} />
+          <FirstPlayTutorial scene="foil" />
+        </div>
       </div>
-    </div>
+    </PaidCardPlayGate>
   );
 }
 
