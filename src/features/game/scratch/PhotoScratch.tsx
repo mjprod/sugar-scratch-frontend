@@ -194,7 +194,7 @@ async function fetchPhotoScratchIndex(): Promise<PhotoScratchCardEntry[]> {
   return fetchCatalogPhotoCards();
 }
 
-const SCRATCH_RADIUS = 0.045;
+const SCRATCH_RADIUS = 0.03;
 const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
 const MANUAL_SCRATCH_MAX_POINTS = 40;
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
