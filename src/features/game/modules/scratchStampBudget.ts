@@ -5,7 +5,7 @@
  */
 import { CANVAS_HEIGHT } from "../scratch/meshGeometry";
 
-/** Matches ScratchPrototype SCRATCH_RADIUS (UV). */
+/** Shared manual scratch radius in UV space, kept in sync with ScratchPrototype so budget and stamping behavior stay aligned. */
 export const STAMP_SCRATCH_RADIUS_UV = 0.03;
 
 export type ManualScratchBudget = {
