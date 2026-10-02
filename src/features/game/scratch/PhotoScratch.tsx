@@ -33,9 +33,11 @@ import {
   beginPhotoPhase,
   finishPhotoHand,
   isGameModeUrl,
+  isPracticeCard,
   loadGameSession,
   promoteCompletePhotoHand,
   recordPhotoCardResult,
+  setPracticeCard,
   settleDonePhotoHand,
   type GameSession,
 } from "../modules/gameSession";
@@ -821,6 +823,9 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const handIdRef = useRef("");
   const handCardIdRef = useRef<string | null>(null);
   const handStartGenRef = useRef(0);
+  /** Replay of an already-played card: no coins / diamonds for this hand. */
+  const practiceRef = useRef(false);
+  const [practice, setPractice] = useState(false);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -1056,6 +1061,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
+      practiceRef.current = false;
+      setPractice(false);
       return;
     }
     const key = selectedCardId.trim();
@@ -1064,11 +1071,17 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (handCardIdRef.current === key) return;
     handIdRef.current = "";
     handCardIdRef.current = key;
+    practiceRef.current = isPracticeCard(key);
+    setPractice(practiceRef.current);
     const gen = ++handStartGenRef.current;
     void startScratchHand(key).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
+        const isPractice = result.rewardsEnabled === false;
+        practiceRef.current = isPractice;
+        setPracticeCard(key, isPractice);
+        setPractice(isPractice);
         return;
       }
       // Failed / quota — allow a later retry for this card.
@@ -1984,6 +1997,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     );
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
+    if (practiceRef.current) return;
 
     // Defer badge work so the dust burst paints this frame first.
     const award = rollSparkleCoinAward();
@@ -2475,7 +2489,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
     let diamonds = 0;
-    if (match) {
+    if (practiceRef.current) {
+      diamonds = 0;
+    } else if (match) {
       diamonds = match.prize;
     } else if (result === "win") {
       diamonds = 1;
@@ -3426,6 +3442,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           <div className="stage-game__bottom-chrome">
             <div className="stage-game__bottom-chrome-row is-status">
               <div className="stage-game__bottom-chrome-status-cards">
+                {practice ? (
+                  <span className="stage-game__free-play-pill">
+                    Free play · no rewards
+                  </span>
+                ) : null}
                 {coinBadge.shown ? (
                   <div
                     key={coinBadge.enterKey}

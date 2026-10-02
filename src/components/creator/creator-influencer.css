@@ -785,6 +785,11 @@ body[data-theme="v8"] .cpv2-motion-tile.is-partial .cpv2-motion-tile-img {
   filter: grayscale(1) saturate(0);
 }
 
+/* Unlocked but never played: black & white until the first play. */
+body[data-theme="v8"] .cpv2-motion-tile.is-unplayed .cpv2-motion-tile-img {
+  filter: grayscale(1);
+}
+
 body[data-theme="v8"] .cpv2-motion-tile-shade {
   position: absolute;
   inset: 0;

@@ -7,6 +7,10 @@ import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWallet } from "@/contexts/WalletContext";
+import { usePlayedCards } from "@/hooks/usePlayedCards";
+import { ApiError } from "@/lib/api";
+import { playCard, type CardKind } from "@/services/cardPlays";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
 import {
@@ -92,6 +96,9 @@ function MotionCardScreenInner({
 }) {
   const navigate = useNavigate();
   const { authed } = useAuth();
+  const { applyWallet } = useWallet();
+  const { isPlayed } = usePlayedCards();
+  const [buying, setBuying] = useState(false);
   const collection = useCreatorCollection(modelId);
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const [slotPrices, setSlotPrices] = useState<Array<number | null>>(
@@ -175,7 +182,11 @@ function MotionCardScreenInner({
     [card?.id, card?.photoUrls, cardId, filled, showPersonal],
   );
 
-  const collectedCount = slots.filter((s) => s.collected).length;
+  const photoPlayed = slots.map((_, index) =>
+    isPlayed("photo", photoScratchIdForSlot(cardId, index)),
+  );
+  const motionPlayed = isPlayed("motion", cardId);
+  const collectedCount = photoPlayed.filter(Boolean).length;
   const hasNewDot = collectedCount > 0 && collectedCount < PHOTO_SLOTS;
 
   const playModelId = card?.modelId?.trim() || modelId || "";
@@ -184,8 +195,29 @@ function MotionCardScreenInner({
     navigate(Paths.creator(creatorId));
   }
 
-  function playMotion() {
-    if (!playModelId || !cardId) return;
+  /** First play buys the card; replays are free. False when the user must top up. */
+  async function registerPlay(kind: CardKind, id: string): Promise<boolean> {
+    if (!authed) return true;
+    try {
+      const result = await playCard(kind, id);
+      if (result.pricePaid > 0) applyWallet(result.wallet);
+      return true;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 400) {
+        navigate(Paths.store);
+        return false;
+      }
+      // Unpublished / unknown cards still open; the server mints nothing for them.
+      return true;
+    }
+  }
+
+  async function playMotion() {
+    if (!playModelId || !cardId || buying) return;
+    setBuying(true);
+    const ok = await registerPlay("motion", cardId);
+    setBuying(false);
+    if (!ok) return;
     navigate(
       Paths.gamePlay(playModelId, cardId, {
         creatorId,
@@ -194,8 +226,13 @@ function MotionCardScreenInner({
     );
   }
 
-  function openPhoto(slotIndex: number) {
+  async function openPhoto(slotIndex: number) {
+    if (buying) return;
     const photoId = photoScratchIdForSlot(cardId, slotIndex);
+    setBuying(true);
+    const ok = await registerPlay("photo", photoId);
+    setBuying(false);
+    if (!ok) return;
     navigate(
       Paths.photoScratchPlay(photoId, {
         modelId: playModelId || undefined,
@@ -230,12 +267,17 @@ function MotionCardScreenInner({
         <section className="mcp-hero" aria-label={motionTitle}>
           <div className="mcp-hero-glow" aria-hidden="true" />
           {/* Same unlocked motion tile + offset play CTA as creator influencer page */}
-          <div className="cpv2-motion-tile is-unlocked mcp-hero-tile">
+          <div
+            className={[
+              "cpv2-motion-tile is-unlocked mcp-hero-tile",
+              motionPlayed ? "is-played" : "is-unplayed",
+            ].join(" ")}
+          >
             <button
               type="button"
               className="cpv2-motion-tile-hit"
               aria-label={`${card?.name ?? motionTitle} — unlocked`}
-              onClick={playMotion}
+              onClick={() => void playMotion()}
             >
               {videoUrl ? (
                 <video
@@ -294,7 +336,7 @@ function MotionCardScreenInner({
                 aria-label={`Play ${card?.name ?? motionTitle}`}
                 onClick={(event) => {
                   event.stopPropagation();
-                  playMotion();
+                  void playMotion();
                 }}
               />
             </div>
@@ -307,8 +349,12 @@ function MotionCardScreenInner({
                 <br />
                 Nº {formatOrdinal(motionIndex + 1)}/{formatOrdinal(motionTotal)}
               </p>
-              <span className="mcp-free-pill">Free Play Enabled*</span>
-              <p className="mcp-free-note">*No Rewards in free play</p>
+              {motionPlayed ? (
+                <>
+                  <span className="mcp-free-pill">Free Play Enabled*</span>
+                  <p className="mcp-free-note">*No Rewards in free play</p>
+                </>
+              ) : null}
             </div>
             <p className="mcp-premium-token">
               <span className="mcp-premium-token-icon" aria-hidden="true">
@@ -355,10 +401,15 @@ function MotionCardScreenInner({
               {hasNewDot ? <span className="mcp-photos-dot" /> : null}
             </p>
           </header>
+          {collectedCount > 0 ? (
+            <p className="mcp-photos-note">
+              Played cards replay in free play: no rewards
+            </p>
+          ) : null}
 
           <div className="mcp-photo-grid">
             {slots.map((slot, index) => {
-              const owned = slot.collected;
+              const owned = photoPlayed[index];
               const src = slot.src || poster;
               const playPrice = slotPrices[index];
               const showPrice = !owned && playPrice != null;
@@ -367,7 +418,11 @@ function MotionCardScreenInner({
                   key={`${cardId}-photo-${index}`}
                   className={[
                     "mcp-photo-cell",
-                    owned ? "is-unlocked" : "is-locked",
+                    owned
+                      ? "is-unlocked"
+                      : slot.src
+                        ? "is-unplayed"
+                        : "is-locked",
                     showPrice ? "has-price-cta" : "has-play-cta",
                   ].join(" ")}
                 >
@@ -418,9 +473,11 @@ function MotionCardScreenInner({
                       aria-label={
                         showPrice
                           ? `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
-                          : `Play ${photoTitle} ${index + 1}`
+                          : owned
+                            ? `Replay ${photoTitle} ${index + 1} (free play, no rewards)`
+                            : `Play ${photoTitle} ${index + 1}`
                       }
-                      onClick={() => openPhoto(index)}
+                      onClick={() => void openPhoto(index)}
                     />
                   </div>
                   {owned || showPrice ? null : (
