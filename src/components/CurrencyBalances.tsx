@@ -20,6 +20,9 @@ const WALLET_RECEIPT_AUTO_CLOSE_MS = 4000;
 /**
  * The inactive desktop/mobile HUD stays laid out but is hidden with
  * `visibility: hidden` / `opacity: 0` on an ancestor, so rects alone lie.
+ * Early `checkVisibility` builds only honour `checkOpacity` /
+ * `checkVisibilityCSS` and silently ignore the newer option names, so it is
+ * only trusted to reject; the computed-style walk always runs.
  */
 function isRenderedVisible(el: HTMLElement): boolean {
   if (el.getClientRects().length === 0) return false;
@@ -28,11 +31,21 @@ function isRenderedVisible(el: HTMLElement): boolean {
       checkVisibility?: (opts: {
         opacityProperty?: boolean;
         visibilityProperty?: boolean;
+        checkOpacity?: boolean;
+        checkVisibilityCSS?: boolean;
       }) => boolean;
     }
   ).checkVisibility;
-  if (typeof check === "function") {
-    return check.call(el, { opacityProperty: true, visibilityProperty: true });
+  if (
+    typeof check === "function" &&
+    !check.call(el, {
+      opacityProperty: true,
+      visibilityProperty: true,
+      checkOpacity: true,
+      checkVisibilityCSS: true,
+    })
+  ) {
+    return false;
   }
   if (window.getComputedStyle(el).visibility !== "visible") return false;
   for (let node: Element | null = el; node; node = node.parentElement) {
