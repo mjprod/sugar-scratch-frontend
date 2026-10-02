@@ -40,6 +40,7 @@ import { useNavigate } from 'react-router-dom'
 import { Paths } from '@/routes/Paths'
 import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
 import { useCollectionActions } from '../CollectionActionsContext'
+import { usePlayedCards } from '@/hooks/usePlayedCards'
 import {
   DESKTOP_LAYOUT,
   getLoadedIndexRange,
@@ -195,6 +196,9 @@ const DeckItem = memo(function DeckItem({
 }: DeckItemProps) {
   const navigate = useNavigate()
   const actions = useCollectionActions()
+  const { isPlayed } = usePlayedCards()
+  const motionPlayed =
+    card.id.includes('-placeholder-') || isPlayed('motion', card.id)
   // Keep a neutral effect object so HoloCard props stay stable while holos are off.
   const effect =
     HOLO_EFFECTS[clampEffectIndex(card.effectIndex)] ??
@@ -274,7 +278,9 @@ const DeckItem = memo(function DeckItem({
       ref={(node) => registerNode(card.id, node)}
       className={`coverflow__item${isActiveItem ? ' is-active-item' : ''}${
         isDimmed ? ' is-dimmed' : ''
-      }${isInactiveGroupItem ? ' is-inactive-group-item' : ''}`}
+      }${isInactiveGroupItem ? ' is-inactive-group-item' : ''}${
+        motionPlayed ? '' : ' is-unplayed'
+      }`}
       data-index={index}
       data-slot-index={slotIndex}
       data-card-id={card.id}

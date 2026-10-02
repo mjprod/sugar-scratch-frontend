@@ -66,9 +66,11 @@ import {
   clearPendingMotionResult,
   finishMotionHand,
   isGameModeUrl,
+  isPracticeCard,
   loadGameSession,
   navigateTo,
   recordMotionCardResult,
+  setPracticeCard,
   themeForMotionCard,
   type GameSession,
 } from "../modules/gameSession";
@@ -1331,6 +1333,9 @@ export function ScratchPrototype({
   const handStartGenRef = useRef(0);
   /** Card id the current handId was issued for — skip remount/mesh restarts. */
   const handCardIdRef = useRef<string | null>(null);
+  /** Replay of an already-played card: no coins / diamonds for this hand. */
+  const practiceRef = useRef(false);
+  const [practice, setPractice] = useState(false);
   /** Lab restart token the current hand was started for — a bump needs a fresh hand. */
   const handLabRestartTokenRef = useRef(0);
   // FairyDust must paint in stage space: the product embed wraps play in a
@@ -1935,12 +1940,19 @@ export function ScratchPrototype({
     }
     handIdRef.current = "";
     handCardIdRef.current = key;
+    practiceRef.current = key ? isPracticeCard(key) : false;
+    setPractice(practiceRef.current);
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
         handCardIdRef.current = key;
+        // Cardless lab hands mint nothing server-side but keep local sparkle coins.
+        const isPractice = Boolean(key) && result.rewardsEnabled === false;
+        practiceRef.current = isPractice;
+        if (key) setPracticeCard(key, isPractice);
+        setPractice(isPractice);
         return;
       }
       // Failed / quota — allow a later force retry if needed.
@@ -1961,6 +1973,7 @@ export function ScratchPrototype({
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
+    if (practiceRef.current) return;
 
     // Defer badge work so the dust burst paints this frame first.
     const award = rollSparkleCoinAward();
@@ -4125,7 +4138,9 @@ export function ScratchPrototype({
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
     let prize = 0;
-    if (match) {
+    if (practiceRef.current) {
+      prize = 0;
+    } else if (match) {
       prize = match.prize;
     } else if (result === "win") {
       prize = 1;
@@ -4299,7 +4314,9 @@ export function ScratchPrototype({
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
     let prize = 0;
-    if (match) {
+    if (practiceRef.current) {
+      prize = 0;
+    } else if (match) {
       prize = match.prize;
     } else if (result === "win") {
       prize = 1;
@@ -5742,6 +5759,11 @@ export function ScratchPrototype({
           <div className="stage-game__bottom-chrome">
             <div className="stage-game__bottom-chrome-row is-status">
               <div className="stage-game__bottom-chrome-status-cards">
+                {practice ? (
+                  <span className="stage-game__free-play-pill">
+                    Free play · no rewards
+                  </span>
+                ) : null}
                 {coinBadgeShown ? (
                   <div
                     key={coinBadgeEnterKey}

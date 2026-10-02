@@ -12,9 +12,11 @@ import { CtaButton, ctaButtonPropsFromTemplate } from '@/components/cta'
 import { DiamondLottie } from '@/components/ui/DiamondLottie'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { packCost } from '@/services/purchase'
+import { usePlayedCards } from '@/hooks/usePlayedCards'
 import {
   buildPhotoSlotFills,
   getVideoCardCount,
+  photoScratchIdForSlot,
   PHOTO_SLOTS,
   type PhotoSlotFill,
 } from '../lib/photoSlots'
@@ -851,6 +853,7 @@ function GiftUnlockedButton({ open, onClick }: GiftUnlockedButtonProps) {
 function PhotoSlot({
   index,
   fill,
+  played,
   playRevealed,
   keyboardSelected,
   onRevealPlay,
@@ -858,6 +861,8 @@ function PhotoSlot({
 }: {
   index: number
   fill: PhotoSlotFill
+  /** Played at least once: colour art; unplayed collected slots stay black & white. */
+  played?: boolean
   /** Sticky play-button reveal for tap devices (no hover). */
   playRevealed?: boolean
   /** Desktop keyboard highlight for the currently cycled slot. */
@@ -869,8 +874,10 @@ function PhotoSlot({
   return (
     <div
       className={`photo-cards__slot${collected ? ' is-filled is-collected' : ' is-locked'}${
-        collected && playRevealed ? ' is-play-revealed' : ''
-      }${keyboardSelected ? ' is-kb-selected' : ''}`}
+        collected && !played ? ' is-unplayed' : ''
+      }${collected && playRevealed ? ' is-play-revealed' : ''}${
+        keyboardSelected ? ' is-kb-selected' : ''
+      }`}
       style={{ ['--slot-i' as string]: String(index) } as CSSProperties}
       aria-label={
         collected
@@ -1015,6 +1022,14 @@ const visibleRef = useRef(visible)
   const filledCount = useMemo(
     () => slotFills.filter((s) => s.collected).length,
     [slotFills]
+  )
+  const { isPlayed } = usePlayedCards()
+  const slotPlayed = useMemo(
+    () =>
+      slotFills.map((_, i) =>
+        cardKey ? isPlayed('photo', photoScratchIdForSlot(cardKey, i)) : false,
+      ),
+    [cardKey, isPlayed, slotFills]
   )
   // Same seed as coverflow__meta-text play count ("Nx").
   const videoCount = useMemo(
@@ -1654,6 +1669,7 @@ if (gridOnly) {
 		                key={i}
 		                index={i}
 		                fill={fill}
+		                played={slotPlayed[i]}
 		                playRevealed={revealedPlaySlot === i}
 		                keyboardSelected={kbSelectedSlot === i}
 		                onRevealPlay={handleRevealPlay}
@@ -1734,6 +1750,7 @@ if (gridOnly) {
                 key={i}
                 index={i}
                 fill={fill}
+                played={slotPlayed[i]}
                 playRevealed={revealedPlaySlot === i}
                 keyboardSelected={kbSelectedSlot === i}
                 onRevealPlay={handleRevealPlay}

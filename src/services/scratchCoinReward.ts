@@ -22,6 +22,8 @@ export type ScratchWallet = { diamonds: number; coins: number };
 
 export type ScratchHandResult = {
   handId: string;
+  /** False for free-play replays: the server mints nothing for this hand. */
+  rewardsEnabled: boolean;
   milestonesRemaining: number;
   handsRemainingToday: number;
 };

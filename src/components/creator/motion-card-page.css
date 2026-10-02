@@ -115,7 +115,6 @@ body[data-theme="v8"] .mcp-hero-tile.cpv2-motion-tile {
 body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-img {
   pointer-events: none;
 }
-
 body[data-theme="v8"] .mcp-hero-tile.cpv2-motion-tile.is-unlocked .cpv2-motion-tile-shade,
 body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   display: none;
@@ -235,6 +234,16 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   font-weight: 500;
   letter-spacing: 0.28px;
   line-height: 1.2;
+}
+
+.mcp-photos-note {
+  margin: -4px 0 8px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+  opacity: 0.3;
 }
 
 .mcp-photos-count {
@@ -411,6 +420,12 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 
 .mcp-photo-cell.is-unlocked .mcp-photo-img {
   filter: none;
+  opacity: 1;
+}
+
+/* Not played yet: black & white until the first (paid) play. */
+.mcp-photo-cell.is-unplayed .mcp-photo-img {
+  filter: grayscale(1);
   opacity: 1;
 }
 

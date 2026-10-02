@@ -605,6 +605,21 @@
   -webkit-user-select: none;
 }
 
+/* Replay of an already-played card: the hand earns no coins or diamonds. */
+.stage-game__free-play-pill {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: oklch(0 0 0 / 0.45);
+  border: 1px solid oklch(1 0 0 / 0.18);
+  color: oklch(1 0 0 / 0.8);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .stage-game__bottom-chrome-brand {
   display: flex;
   align-items: center;

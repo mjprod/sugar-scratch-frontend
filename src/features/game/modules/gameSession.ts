@@ -473,6 +473,23 @@ export function photoPlayHref(session: GameSession, cardId?: string): string {
   return `/photo-scratch?${params.toString()}`;
 }
 
+/**
+ * Cards whose current scratch hand is free play (already played before):
+ * the server mints nothing for them, so the client banks no coins/diamonds.
+ */
+const practiceCardIds = new Set<string>();
+
+export function setPracticeCard(cardId: string, practice: boolean): void {
+  const id = cardId.trim();
+  if (!id) return;
+  if (practice) practiceCardIds.add(id);
+  else practiceCardIds.delete(id);
+}
+
+export function isPracticeCard(cardId: string): boolean {
+  return practiceCardIds.has(cardId.trim());
+}
+
 /** Record a finished motion card and its prize units (now currency, not photos). */
 export function recordMotionCardResult(
   cardId: string,
@@ -537,8 +554,11 @@ export function awardMotionCardCurrency(
   const current = Math.max(1, session.completedMotionIds.indexOf(cardId) + 1);
   const packLinked = Boolean(session.packScratch);
   const packCoins = packRewardCoinsForMotionCard(session, cardId);
-  const coins = coinsForMotionPrize(prize, packCoins, { packLinked });
-  const diamonds = diamondsForMotionPrize(prize);
+  const practice = isPracticeCard(cardId);
+  const coins = practice
+    ? 0
+    : coinsForMotionPrize(prize, packCoins, { packLinked });
+  const diamonds = practice ? 0 : diamondsForMotionPrize(prize);
   const next: GameSession = {
     ...session,
     lastMotionWinPhotoIds: [],
@@ -627,7 +647,7 @@ export function recordPhotoCardResult(
   const session = loadGameSession();
   if (!session || session.phase !== "photo") return session;
   if (session.completedPhotoIds.includes(cardId)) return session;
-  const gained = Math.max(0, diamonds);
+  const gained = isPracticeCard(cardId) ? 0 : Math.max(0, diamonds);
   const next: GameSession = {
     ...session,
     completedPhotoIds: [...session.completedPhotoIds, cardId],
