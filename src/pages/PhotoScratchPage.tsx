@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
+import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
 import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { useAuth } from "@/contexts/AuthContext";
@@ -66,12 +67,14 @@ export function PhotoScratchPage() {
   }
 
   return (
-    <div className="app-shell app-shell--game">
-      <div className="stage-game">
-        <PhotoScratch key={card || "default"} onLeave={leaveGame} />
-        <FirstPlayTutorial scene="foil" />
+    <PaidCardPlayGate kind="photo" cardId={card || ""} skip={gameMode}>
+      <div className="app-shell app-shell--game">
+        <div className="stage-game">
+          <PhotoScratch key={card || "default"} onLeave={leaveGame} />
+          <FirstPlayTutorial scene="foil" />
+        </div>
       </div>
-    </div>
+    </PaidCardPlayGate>
   );
 }
 

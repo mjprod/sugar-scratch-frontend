@@ -7,10 +7,8 @@ import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/AuthContext";
-import { useWallet } from "@/contexts/WalletContext";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
-import { ApiError } from "@/lib/api";
-import { playCard, type CardKind } from "@/services/cardPlays";
+import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
 import {
@@ -96,7 +94,7 @@ function MotionCardScreenInner({
 }) {
   const navigate = useNavigate();
   const { authed } = useAuth();
-  const { applyWallet } = useWallet();
+  const registerPlay = useRegisterCardPlay();
   const { isPlayed } = usePlayedCards();
   const [buying, setBuying] = useState(false);
   const collection = useCreatorCollection(modelId);
@@ -193,23 +191,6 @@ function MotionCardScreenInner({
 
   function goBack() {
     navigate(Paths.creator(creatorId));
-  }
-
-  /** First play buys the card; replays are free. False when the user must top up. */
-  async function registerPlay(kind: CardKind, id: string): Promise<boolean> {
-    if (!authed) return true;
-    try {
-      const result = await playCard(kind, id);
-      if (result.pricePaid > 0) applyWallet(result.wallet);
-      return true;
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 400) {
-        navigate(Paths.store);
-        return false;
-      }
-      // Unpublished / unknown cards still open; the server mints nothing for them.
-      return true;
-    }
   }
 
   async function playMotion() {

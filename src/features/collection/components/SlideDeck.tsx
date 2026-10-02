@@ -41,6 +41,7 @@ import { Paths } from '@/routes/Paths'
 import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
 import { useCollectionActions } from '../CollectionActionsContext'
 import { usePlayedCards } from '@/hooks/usePlayedCards'
+import { useRegisterCardPlay } from '@/hooks/useRegisterCardPlay'
 import {
   DESKTOP_LAYOUT,
   getLoadedIndexRange,
@@ -196,6 +197,7 @@ const DeckItem = memo(function DeckItem({
 }: DeckItemProps) {
   const navigate = useNavigate()
   const actions = useCollectionActions()
+  const registerPlay = useRegisterCardPlay()
   const { isPlayed } = usePlayedCards()
   const motionPlayed =
     card.id.includes('-placeholder-') || isPlayed('motion', card.id)
@@ -246,17 +248,21 @@ const DeckItem = memo(function DeckItem({
       const photoId = photoScratchIdForSlot(motion, slotIndex)
       const model = (card.modelId || '').trim()
       unlockCountdownSound()
-      if (actions.onPlayPhotoCard) {
-        actions.onPlayPhotoCard(model, photoId, slotIndex)
-        return
-      }
-      navigate(
-        Paths.photoScratchPlay(photoId, {
-          modelId: model || undefined,
-        }),
-      )
+      void (async () => {
+        const ok = await registerPlay('photo', photoId)
+        if (!ok) return
+        if (actions.onPlayPhotoCard) {
+          actions.onPlayPhotoCard(model, photoId, slotIndex)
+          return
+        }
+        navigate(
+          Paths.photoScratchPlay(photoId, {
+            modelId: model || undefined,
+          }),
+        )
+      })()
     },
-    [actions, card.id, card.modelId, navigate],
+    [actions, card.id, card.modelId, navigate, registerPlay],
   )
 
   // One source of truth for the play meta "Nx" and the stack-back layers.
