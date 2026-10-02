@@ -4,11 +4,18 @@ import { WalletBalancesPopover } from "@/components/WalletBalancesPopover";
 import { useWallet } from "@/contexts/WalletContext";
 import { formatBalance } from "@/lib/formatBalance";
 import {
+  WALLET_REVEAL_EVENT,
+  type WalletRevealDetail,
+} from "@/services/coinReceipt";
+import {
   exchangeCoinsForDiamonds,
   type CoinExchangeOption,
 } from "@/services/store";
 
 export { formatBalance, formatCompactBalance } from "@/lib/formatBalance";
+
+/** How long the post-game coin receipt popover stays open on its own. */
+const WALLET_RECEIPT_AUTO_CLOSE_MS = 4000;
 
 /** Inline diamond HUD counter (TopNav, mobile HUD, and subpage headers).
  * Dust lives in the Diamonds wallet popover. */
@@ -35,14 +42,50 @@ export function CurrencyBalances({
   /** Bumped on open / reopen so a stale leave timer or animationend cannot close. */
   const leaveEpochRef = useRef(0);
   const activeLeaveEpochRef = useRef<number | null>(null);
+  /** Coins shown as "+N" while the popover was opened by a post-game receipt. */
+  const [receiptCoins, setReceiptCoins] = useState(0);
+  const receiptTimerRef = useRef<number | null>(null);
+  const closeWalletRef = useRef<() => void>(() => undefined);
+  const openWalletRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     return () => {
       if (leaveTimerRef.current != null) {
         window.clearTimeout(leaveTimerRef.current);
       }
+      if (receiptTimerRef.current != null) {
+        window.clearTimeout(receiptTimerRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    function onWalletReveal(event: Event) {
+      const coins = (event as CustomEvent<WalletRevealDetail>).detail?.coins ?? 0;
+      if (!(coins > 0)) return;
+      // Desktop + mobile navs are both mounted; only the visible one opens.
+      const anchor = diamondAnchorRef.current;
+      if (!anchor || anchor.getClientRects().length === 0) return;
+      clearReceiptTimer();
+      setReceiptCoins(coins);
+      openWalletRef.current();
+      receiptTimerRef.current = window.setTimeout(() => {
+        receiptTimerRef.current = null;
+        closeWalletRef.current();
+      }, WALLET_RECEIPT_AUTO_CLOSE_MS);
+    }
+    window.addEventListener(WALLET_REVEAL_EVENT, onWalletReveal);
+    return () => {
+      window.removeEventListener(WALLET_REVEAL_EVENT, onWalletReveal);
+    };
+  }, []);
+
+  function clearReceiptTimer() {
+    if (receiptTimerRef.current != null) {
+      window.clearTimeout(receiptTimerRef.current);
+      receiptTimerRef.current = null;
+    }
+  }
 
   function clearLeaveTimer() {
     if (leaveTimerRef.current != null) {
@@ -57,10 +100,12 @@ export function CurrencyBalances({
     clearLeaveTimer();
     setWalletOpen(false);
     setWalletLeaving(false);
+    setReceiptCoins(0);
   }
 
   function closeWallet() {
     if (!walletOpen || walletLeaving) return;
+    clearReceiptTimer();
     const epoch = ++leaveEpochRef.current;
     activeLeaveEpochRef.current = epoch;
     setWalletLeaving(true);
@@ -79,9 +124,17 @@ export function CurrencyBalances({
     setWalletOpen(true);
   }
 
+  closeWalletRef.current = closeWallet;
+  openWalletRef.current = openWallet;
+
   function toggleWallet() {
-    if (walletOpen && !walletLeaving) closeWallet();
-    else openWallet();
+    if (walletOpen && !walletLeaving) {
+      closeWallet();
+    } else {
+      clearReceiptTimer();
+      setReceiptCoins(0);
+      openWallet();
+    }
   }
 
   async function handleConvertDust(
@@ -143,6 +196,7 @@ export function CurrencyBalances({
         leaving={walletLeaving}
         diamonds={diamonds}
         coins={coins}
+        coinReceipt={receiptCoins}
         anchorRef={diamondAnchorRef}
         onClose={closeWallet}
         onLeaveEnd={() => {
