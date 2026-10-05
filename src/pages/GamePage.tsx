@@ -74,6 +74,7 @@ function ScratchGameEmbed() {
       kind="motion"
       cardId={card}
       skip={gameMode || playlistMode}
+      onLeave={leaveGame}
     >
       <div className="app-shell app-shell--game">
         <div className="stage-game">

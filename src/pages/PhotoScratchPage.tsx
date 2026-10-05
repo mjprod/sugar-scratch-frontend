@@ -67,7 +67,12 @@ export function PhotoScratchPage() {
   }
 
   return (
-    <PaidCardPlayGate kind="photo" cardId={card || ""} skip={gameMode}>
+    <PaidCardPlayGate
+      kind="photo"
+      cardId={card || ""}
+      skip={gameMode}
+      onLeave={leaveGame}
+    >
       <div className="app-shell app-shell--game">
         <div className="stage-game">
           <PhotoScratch key={card || "default"} onLeave={leaveGame} />
