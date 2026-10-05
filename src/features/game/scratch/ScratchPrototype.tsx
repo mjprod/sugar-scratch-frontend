@@ -66,7 +66,6 @@ import {
   clearPendingMotionResult,
   finishMotionHand,
   isGameModeUrl,
-  isPracticeCard,
   loadGameSession,
   navigateTo,
   recordMotionCardResult,
@@ -1931,7 +1930,13 @@ export function ScratchPrototype({
   ) {
     // Session may still be resolving on first paint — leave hand empty; the
     // card+auth effect re-runs once `authed` becomes true.
-    if (!authed) return;
+    if (!authed) {
+      handIdRef.current = "";
+      handCardIdRef.current = null;
+      practiceRef.current = false;
+      setPractice(false);
+      return;
+    }
     if (isScratchHandQuotaExhausted()) return;
     const key = cardId?.trim() || "";
     // Mesh reload / Strict Mode remount for the same card must not burn quota.
@@ -1940,8 +1945,9 @@ export function ScratchPrototype({
     }
     handIdRef.current = "";
     handCardIdRef.current = key;
-    practiceRef.current = key ? isPracticeCard(key) : false;
-    setPractice(practiceRef.current);
+    // Paid until the server confirms rewardsEnabled for this hand.
+    practiceRef.current = false;
+    setPractice(false);
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
       if (gen !== handStartGenRef.current) return;
@@ -1956,6 +1962,8 @@ export function ScratchPrototype({
         return;
       }
       // Failed / quota — allow a later force retry if needed.
+      practiceRef.current = false;
+      setPractice(false);
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
   }

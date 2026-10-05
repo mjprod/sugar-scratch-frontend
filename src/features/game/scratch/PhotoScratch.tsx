@@ -33,7 +33,6 @@ import {
   beginPhotoPhase,
   finishPhotoHand,
   isGameModeUrl,
-  isPracticeCard,
   loadGameSession,
   promoteCompletePhotoHand,
   recordPhotoCardResult,
@@ -1071,8 +1070,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (handCardIdRef.current === key) return;
     handIdRef.current = "";
     handCardIdRef.current = key;
-    practiceRef.current = isPracticeCard(key);
-    setPractice(practiceRef.current);
+    // Paid until the server confirms rewardsEnabled for this hand.
+    practiceRef.current = false;
+    setPractice(false);
     const gen = ++handStartGenRef.current;
     void startScratchHand(key).then((result) => {
       if (gen !== handStartGenRef.current) return;
@@ -1085,6 +1085,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         return;
       }
       // Failed / quota — allow a later retry for this card.
+      practiceRef.current = false;
+      setPractice(false);
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
   }, [authed, selectedCardId]);
