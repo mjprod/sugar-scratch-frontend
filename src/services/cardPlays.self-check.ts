@@ -73,13 +73,14 @@ const fetchMock: FetchHandler = async (input, init) => {
   }
   if (url.includes("/api/me/cards/played")) {
     gets += 1;
+    const body = getBody;
     if (getDelayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, getDelayMs));
     }
     if (getStatus >= 400) {
       return jsonResponse(getStatus, { detail: "failed" });
     }
-    return jsonResponse(200, getBody);
+    return jsonResponse(200, body);
   }
   return jsonResponse(404, { detail: "missing" });
 };
@@ -157,6 +158,30 @@ assert(
   getCachedPlayedCards()?.has(playedCardKey("photo", "kept")) === true,
   "failed GET must not publish an empty set",
 );
+
+resetCardPlaysForTests();
+getStatus = 200;
+getDelayMs = 30;
+gets = 0;
+session.set("sugar.v8.authUserId", "user-a");
+getBody = { played: [{ cardKind: "photo", cardId: "a-only", playCount: 1, pricePaid: 1, firstPlayedAt: 1 }] };
+const userAListing = fetchPlayedCards({ force: true });
+session.set("sugar.v8.authUserId", "user-b");
+getBody = { played: [{ cardKind: "photo", cardId: "b-only", playCount: 1, pricePaid: 1, firstPlayedAt: 1 }] };
+const userBListing = fetchPlayedCards({ force: true });
+assert(userBListing !== userAListing, "in-flight GET is not reused across accounts");
+const [, userBKeys] = await Promise.all([userAListing, userBListing]);
+assert(gets === 2, "account switch starts a fresh played-cards GET");
+assert(
+  userBKeys.has(playedCardKey("photo", "b-only")) &&
+    !userBKeys.has(playedCardKey("photo", "a-only")),
+  "second account sees only its own played cards",
+);
+assert(
+  getCachedPlayedCards()?.has(playedCardKey("photo", "a-only")) !== true,
+  "late GET from the previous account must not publish under the new one",
+);
+getDelayMs = 0;
 
 assert(
   isInsufficientPlayError(new ApiError(400, "insufficient")),
