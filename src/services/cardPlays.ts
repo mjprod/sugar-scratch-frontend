@@ -114,8 +114,10 @@ export function isInsufficientPlayError(error: unknown): boolean {
  * submit two first-play charges before the ledger row exists.
  *
  * `handoff: "offer"` — a screen registering right before it navigates to the
- * scratch page; the result is kept for one `handoff: "claim"` by the play gate.
- * Without it the gate's POST would count as a replay and start a practice hand.
+ * scratch page; the result is kept for one `handoff: "claim"` by the play gate
+ * so the gate does not POST again. A missed handoff (offer failed / response
+ * lost) is safe: the retry is a free replay, and the server binds rewards to the
+ * card's first scratch hand, not to the purchasing POST.
  */
 export async function playCard(
   kind: CardKind,
