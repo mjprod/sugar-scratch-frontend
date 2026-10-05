@@ -10,6 +10,7 @@ import {
 } from "@/components/home/FeaturedCoverFlow";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { type CardConfig } from "@/features/collection/lib/cards";
+import { usePlayedCards } from "@/hooks/usePlayedCards";
 import type { ThemeCardData } from "@/services/collection";
 import type { FeaturedPack } from "@/services/homepage";
 import { Paths } from "@/routes/Paths";
@@ -384,6 +385,7 @@ function ThemeCollectionCard({
   onOpenCard: (cardId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
 }) {
+  const { isPlayed } = usePlayedCards();
   // A tile exists only when the catalog published a motion template for it.
   // Ownership (photoFilledCount) does not create or hide the tile.
   const motionCards = cards
@@ -470,6 +472,9 @@ function ThemeCollectionCard({
                   : collected
                     ? "is-partial"
                     : "is-locked",
+                fullyUnlocked && !isPlayed("motion", card.id)
+                  ? "is-unplayed"
+                  : "",
               ].join(" ")}
             >
               <button

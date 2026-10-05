@@ -264,6 +264,7 @@ export function saveGameSession(session: GameSession): void {
 export function clearAllGameSessions(): void {
   if (typeof window === "undefined") return;
   writeStore(emptyStore());
+  clearPracticeCards();
 }
 
 export function clearGameSession(key?: string): void {
@@ -473,6 +474,43 @@ export function photoPlayHref(session: GameSession, cardId?: string): string {
   return `/photo-scratch?${params.toString()}`;
 }
 
+/**
+ * Cards whose current scratch hand is free play (already played before):
+ * the server mints nothing for them, so the client banks no coins/diamonds.
+ * Scoped per signed-in user so replays do not leak across logout / switch.
+ */
+const practiceCardIdsByOwner = new Map<string, Set<string>>();
+
+function practiceCardsForOwner(ownerId: string | null = getAuthUserId()): Set<string> {
+  const owner = ownerId?.trim() || "";
+  if (!owner) return new Set();
+  let set = practiceCardIdsByOwner.get(owner);
+  if (!set) {
+    set = new Set();
+    practiceCardIdsByOwner.set(owner, set);
+  }
+  return set;
+}
+
+export function setPracticeCard(cardId: string, practice: boolean): void {
+  const id = cardId.trim();
+  if (!id) return;
+  const set = practiceCardsForOwner();
+  if (practice) set.add(id);
+  else set.delete(id);
+}
+
+export function isPracticeCard(cardId: string): boolean {
+  const id = cardId.trim();
+  if (!id) return false;
+  return practiceCardsForOwner().has(id);
+}
+
+/** Drop in-memory practice flags (logout / account switch). */
+export function clearPracticeCards(): void {
+  practiceCardIdsByOwner.clear();
+}
+
 /** Record a finished motion card and its prize units (now currency, not photos). */
 export function recordMotionCardResult(
   cardId: string,
@@ -537,8 +575,11 @@ export function awardMotionCardCurrency(
   const current = Math.max(1, session.completedMotionIds.indexOf(cardId) + 1);
   const packLinked = Boolean(session.packScratch);
   const packCoins = packRewardCoinsForMotionCard(session, cardId);
-  const coins = coinsForMotionPrize(prize, packCoins, { packLinked });
-  const diamonds = diamondsForMotionPrize(prize);
+  const practice = isPracticeCard(cardId);
+  const coins = practice
+    ? 0
+    : coinsForMotionPrize(prize, packCoins, { packLinked });
+  const diamonds = practice ? 0 : diamondsForMotionPrize(prize);
   const next: GameSession = {
     ...session,
     lastMotionWinPhotoIds: [],
@@ -627,7 +668,7 @@ export function recordPhotoCardResult(
   const session = loadGameSession();
   if (!session || session.phase !== "photo") return session;
   if (session.completedPhotoIds.includes(cardId)) return session;
-  const gained = Math.max(0, diamonds);
+  const gained = isPracticeCard(cardId) ? 0 : Math.max(0, diamonds);
   const next: GameSession = {
     ...session,
     completedPhotoIds: [...session.completedPhotoIds, cardId],

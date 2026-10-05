@@ -89,6 +89,58 @@
   );
 }
 
+/* PaidCardPlayGate: play registration failed before the scratch surface mounted. */
+.play-gate-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: white;
+}
+
+.play-gate-error__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.play-gate-error__copy {
+  margin: 0;
+  max-width: 22rem;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.875rem;
+}
+
+.play-gate-error__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.play-gate-error__cta {
+  min-height: 2.75rem;
+  padding: 0.55rem 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: oklch(0.55 0.18 330);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.play-gate-error__cta--ghost {
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.8);
+}
+
 /* Game / photo-scratch fill the outlet and center the phone frame on desktop. */
 .app-layout__immersive {
   align-items: center;
@@ -603,6 +655,21 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Replay of an already-played card: the hand earns no coins or diamonds. */
+.stage-game__free-play-pill {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: oklch(0 0 0 / 0.45);
+  border: 1px solid oklch(1 0 0 / 0.18);
+  color: oklch(1 0 0 / 0.8);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .stage-game__bottom-chrome-brand {

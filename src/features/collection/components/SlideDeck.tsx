@@ -40,6 +40,8 @@ import { useNavigate } from 'react-router-dom'
 import { Paths } from '@/routes/Paths'
 import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
 import { useCollectionActions } from '../CollectionActionsContext'
+import { usePlayedCards } from '@/hooks/usePlayedCards'
+import { useRegisterCardPlay } from '@/hooks/useRegisterCardPlay'
 import {
   DESKTOP_LAYOUT,
   getLoadedIndexRange,
@@ -195,6 +197,10 @@ const DeckItem = memo(function DeckItem({
 }: DeckItemProps) {
   const navigate = useNavigate()
   const actions = useCollectionActions()
+  const registerPlay = useRegisterCardPlay()
+  const { isPlayed } = usePlayedCards()
+  const motionPlayed =
+    card.id.includes('-placeholder-') || isPlayed('motion', card.id)
   // Keep a neutral effect object so HoloCard props stay stable while holos are off.
   const effect =
     HOLO_EFFECTS[clampEffectIndex(card.effectIndex)] ??
@@ -235,24 +241,38 @@ const DeckItem = memo(function DeckItem({
     [card.id, onFaceMediaReady],
   )
 
+  // Sync lock: a state flag would still let two taps in the same frame both buy.
+  const buyingPhotoRef = useRef(false)
+
   const handlePlayPhotoCard = useCallback(
     (slotIndex: number) => {
+      if (buyingPhotoRef.current) return
       const motion = card.id.trim()
       if (!motion) return
       const photoId = photoScratchIdForSlot(motion, slotIndex)
       const model = (card.modelId || '').trim()
+      buyingPhotoRef.current = true
       unlockCountdownSound()
-      if (actions.onPlayPhotoCard) {
-        actions.onPlayPhotoCard(model, photoId, slotIndex)
-        return
-      }
-      navigate(
-        Paths.photoScratchPlay(photoId, {
-          modelId: model || undefined,
-        }),
-      )
+      void (async () => {
+        let ok = false
+        try {
+          ok = await registerPlay('photo', photoId)
+        } finally {
+          buyingPhotoRef.current = false
+        }
+        if (!ok) return
+        if (actions.onPlayPhotoCard) {
+          actions.onPlayPhotoCard(model, photoId, slotIndex)
+          return
+        }
+        navigate(
+          Paths.photoScratchPlay(photoId, {
+            modelId: model || undefined,
+          }),
+        )
+      })()
     },
-    [actions, card.id, card.modelId, navigate],
+    [actions, card.id, card.modelId, navigate, registerPlay],
   )
 
   // One source of truth for the play meta "Nx" and the stack-back layers.
@@ -274,7 +294,9 @@ const DeckItem = memo(function DeckItem({
       ref={(node) => registerNode(card.id, node)}
       className={`coverflow__item${isActiveItem ? ' is-active-item' : ''}${
         isDimmed ? ' is-dimmed' : ''
-      }${isInactiveGroupItem ? ' is-inactive-group-item' : ''}`}
+      }${isInactiveGroupItem ? ' is-inactive-group-item' : ''}${
+        motionPlayed ? '' : ' is-unplayed'
+      }`}
       data-index={index}
       data-slot-index={slotIndex}
       data-card-id={card.id}

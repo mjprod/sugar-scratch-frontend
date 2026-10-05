@@ -6,6 +6,7 @@ import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import {
   normalizeMediaUrl,
@@ -107,6 +108,8 @@ function CreatorScreenInner({
   );
   const navigate = useNavigate();
   const { authed, requireAuth } = useAuth();
+  const registerPlay = useRegisterCardPlay();
+  const [buying, setBuying] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const pageRef = useRef<HTMLElement | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState(
@@ -239,17 +242,24 @@ function CreatorScreenInner({
     setSearchParams(next, { replace: true });
   }
 
-  function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
+  async function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
     const card = cardId.trim();
     const playModel = playModelId.trim();
-    if (!card || !playModel) return;
-    syncCardParam(card, selectedThemeId);
-    navigate(
-      Paths.gamePlay(playModel, card, {
-        creatorId,
-        themeId: selectedThemeId,
-      }),
-    );
+    if (!card || !playModel || buying) return;
+    setBuying(true);
+    try {
+      const ok = await registerPlay("motion", card);
+      if (!ok) return;
+      syncCardParam(card, selectedThemeId);
+      navigate(
+        Paths.gamePlay(playModel, card, {
+          creatorId,
+          themeId: selectedThemeId,
+        }),
+      );
+    } finally {
+      setBuying(false);
+    }
   }
 
   function handleToggleFollow() {

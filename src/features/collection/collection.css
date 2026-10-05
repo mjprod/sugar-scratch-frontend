@@ -1081,6 +1081,14 @@
   height: 128%;
 }
 
+/* Collected but never played: black & white art until the first play. */
+.coverflow__item.is-unplayed .card__front video,
+.coverflow__item.is-unplayed .card__front .card__media,
+.coverflow__item.is-unplayed .card__back video,
+.coverflow__item.is-unplayed .card__back .card__media {
+  filter: grayscale(1);
+}
+
 /* Uncollected motion card: grayscale art + centered lock. */
 .card.is-locked .card__front,
 .card.is-locked .card__front video,
@@ -2178,6 +2186,14 @@
 .photo-cards__slot.is-filled.is-kb-selected .photo-cards__slot-img {
   filter: brightness(1.03);
   transform: scale(1.03);
+}
+
+/* Collected but never played: black & white until the first play. */
+.photo-cards__slot.is-unplayed .photo-cards__slot-img,
+.photo-cards__slot.is-unplayed.is-filled:hover .photo-cards__slot-img,
+.photo-cards__slot.is-unplayed.is-filled.is-play-revealed .photo-cards__slot-img,
+.photo-cards__slot.is-unplayed.is-filled.is-kb-selected .photo-cards__slot-img {
+  filter: grayscale(1);
 }
 
 /* Play control — hidden until hover / sticky tap reveal / focus. */
