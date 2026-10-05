@@ -186,7 +186,7 @@ export function AppLayout() {
         data-top-nav-target="search"
         className={[
           // AC23: ≥44×44 touch target
-          "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+          "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/6 hover:text-white/85 active:scale-95",
           onSearch ? "is-active" : "",
         ]
           .filter(Boolean)
