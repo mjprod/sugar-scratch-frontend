@@ -1931,6 +1931,7 @@ export function ScratchPrototype({
     // Session may still be resolving on first paint — leave hand empty; the
     // card+auth effect re-runs once `authed` becomes true.
     if (!authed) {
+      handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
       practiceRef.current = false;
