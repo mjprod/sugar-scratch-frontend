@@ -247,16 +247,19 @@ function CreatorScreenInner({
     const playModel = playModelId.trim();
     if (!card || !playModel || buying) return;
     setBuying(true);
-    const ok = await registerPlay("motion", card);
-    setBuying(false);
-    if (!ok) return;
-    syncCardParam(card, selectedThemeId);
-    navigate(
-      Paths.gamePlay(playModel, card, {
-        creatorId,
-        themeId: selectedThemeId,
-      }),
-    );
+    try {
+      const ok = await registerPlay("motion", card);
+      if (!ok) return;
+      syncCardParam(card, selectedThemeId);
+      navigate(
+        Paths.gamePlay(playModel, card, {
+          creatorId,
+          themeId: selectedThemeId,
+        }),
+      );
+    } finally {
+      setBuying(false);
+    }
   }
 
   function handleToggleFollow() {
