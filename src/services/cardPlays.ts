@@ -108,7 +108,9 @@ export async function playCard(
   cardId: string,
 ): Promise<PlayCardResult> {
   const key = playedCardKey(kind, cardId);
-  const pending = playInFlight.get(key);
+  const ownerId = getAuthUserId();
+  const inFlightKey = `${ownerId ?? "anonymous"}:${key}`;
+  const pending = playInFlight.get(inFlightKey);
   if (pending) return pending;
 
   const request = apiMutate<PlayCardResult>("/api/me/cards/play", {
@@ -116,15 +118,16 @@ export async function playCard(
     body: JSON.stringify({ cardKind: kind, cardId: cardId.trim() }),
   })
     .then((result) => {
+      if (getAuthUserId() !== ownerId) return result;
       const next = new Set(getCachedPlayedCards() ?? []);
       next.add(key);
-      publish(next);
+      publish(next, ownerId);
       return result;
     })
     .finally(() => {
-      if (playInFlight.get(key) === request) playInFlight.delete(key);
+      if (playInFlight.get(inFlightKey) === request) playInFlight.delete(inFlightKey);
     });
-  playInFlight.set(key, request);
+  playInFlight.set(inFlightKey, request);
   return request;
 }
 
