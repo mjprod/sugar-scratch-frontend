@@ -55,6 +55,7 @@ let getBody: unknown = { played: [] };
 let getStatus = 200;
 let playDelayMs = 20;
 let getDelayMs = 0;
+const playCountsByUser = new Map<string, number>();
 
 const fetchMock: FetchHandler = async (input, init) => {
   const url = String(input);
@@ -63,7 +64,10 @@ const fetchMock: FetchHandler = async (input, init) => {
     posts += 1;
     await new Promise((resolve) => setTimeout(resolve, playDelayMs));
     const body = JSON.parse(String(init?.body ?? "{}")) as { cardId?: string };
-    return jsonResponse(200, playResult(body.cardId ?? "card", posts === 1));
+    const ownerId = session.get("sugar.v8.authUserId") ?? "anonymous";
+    const playCount = (playCountsByUser.get(ownerId) ?? 0) + 1;
+    playCountsByUser.set(ownerId, playCount);
+    return jsonResponse(200, playResult(body.cardId ?? "card", playCount === 1));
   }
   if (url.includes("/api/me/cards/played")) {
     gets += 1;
@@ -82,6 +86,7 @@ const fetchMock: FetchHandler = async (input, init) => {
 
 resetCardPlaysForTests();
 posts = 0;
+playCountsByUser.clear();
 const [first, second] = await Promise.all([
   playCard("photo", "slot-1"),
   playCard("photo", "slot-1"),
@@ -91,6 +96,26 @@ assert(first.pricePaid === 5 && second.pricePaid === 5, "shared POST returns the
 assert(
   getCachedPlayedCards()?.has(playedCardKey("photo", "slot-1")) === true,
   "successful play is cached",
+);
+
+resetCardPlaysForTests();
+posts = 0;
+playCountsByUser.clear();
+session.set("sugar.v8.authUserId", "user-a");
+const firstResult = await playCard("photo", "cross-user");
+assert(firstResult.pricePaid === 5, "first user is charged once for a first play");
+assert(
+  getCachedPlayedCards()?.has(playedCardKey("photo", "cross-user")) === true,
+  "first user is cached after a successful first play",
+);
+
+session.set("sugar.v8.authUserId", "user-b");
+const secondResult = await playCard("photo", "cross-user");
+assert(posts === 2, "playCard dedupes only within the same authenticated user");
+assert(secondResult.pricePaid === 5, "second user is also charged once for a first play");
+assert(
+  getCachedPlayedCards()?.has(playedCardKey("photo", "cross-user")) === true,
+  "second user receives the cached first play after switching accounts",
 );
 
 resetCardPlaysForTests();
