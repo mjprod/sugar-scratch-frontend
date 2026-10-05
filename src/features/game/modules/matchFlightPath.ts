@@ -11,8 +11,14 @@
 export type Point = { x: number; y: number };
 
 /** In-place anticipation pop before the travel (CSS `matchAnticipate`).
- *  Long enough to read the 3× hold on the mesh before the climb. */
-export const MATCH_ANTICIPATION_MS = 1400;
+ *  Fade-up, 0.3s read, 3× punch, then gather for the climb. */
+export const MATCH_ANTICIPATION_MS = 1800;
+
+/** 3× hold inside anticipation (`matchAnticipate` 39%–78%): tilt-shake window. */
+export const MATCH_SHAKE_START_MS = Math.round(MATCH_ANTICIPATION_MS * 0.39);
+export const MATCH_SHAKE_MS = Math.round(MATCH_ANTICIPATION_MS * 0.39);
+export const MATCH_SHAKE_CYCLES = 3;
+export const MATCH_SHAKE_CYCLE_MS = Math.round(MATCH_SHAKE_MS / MATCH_SHAKE_CYCLES);
 
 /** Travel: anticipation end → slot. */
 export const MATCH_TRAVEL_MS = 620;
