@@ -25,12 +25,16 @@ export function useRegisterCardPlay() {
         if (result.pricePaid > 0) applyWallet(result.wallet);
         return true;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 400) {
-          navigate(Paths.store);
+        if (error instanceof ApiError) {
+          if (error.status === 400) {
+            navigate(Paths.store);
+            return false;
+          }
+          // Allow fail-open only for unknown/unpublished cards.
+          if (error.status === 404) return true;
           return false;
         }
-        // Unpublished / unknown cards still open; the server mints nothing for them.
-        return true;
+        return false;
       }
     },
     [applyWallet, authed, navigate],
