@@ -37,6 +37,9 @@ let cache: Cache | null = null;
 let inFlight: { ownerId: string | null; request: Promise<Set<string>> } | null =
   null;
 const playInFlight = new Map<string, Promise<PlayCardResult>>();
+/** How long a pre-navigation registration stays claimable by the play gate. */
+export const PLAY_HANDOFF_MS = 30_000;
+const playHandoffs = new Map<string, { result: PlayCardResult; at: number }>();
 const listeners = new Set<(keys: Set<string>) => void>();
 
 function publish(keys: Set<string>, ownerId: string | null = getAuthUserId()) {
@@ -109,10 +112,15 @@ export function isInsufficientPlayError(error: unknown): boolean {
  *
  * Concurrent calls for the same card share one POST so a double-tap cannot
  * submit two first-play charges before the ledger row exists.
+ *
+ * `handoff: "offer"` — a screen registering right before it navigates to the
+ * scratch page; the result is kept for one `handoff: "claim"` by the play gate.
+ * Without it the gate's POST would count as a replay and start a practice hand.
  */
 export async function playCard(
   kind: CardKind,
   cardId: string,
+  opts?: { handoff?: "offer" | "claim"; now?: number },
 ): Promise<PlayCardResult> {
   const key = playedCardKey(kind, cardId);
   const ownerId = getAuthUserId();
@@ -120,11 +128,24 @@ export async function playCard(
   const pending = playInFlight.get(inFlightKey);
   if (pending) return pending;
 
+  if (opts?.handoff === "claim") {
+    const handoff = playHandoffs.get(inFlightKey);
+    playHandoffs.delete(inFlightKey);
+    if (handoff && (opts.now ?? Date.now()) - handoff.at < PLAY_HANDOFF_MS) {
+      return handoff.result;
+    }
+  } else {
+    playHandoffs.delete(inFlightKey);
+  }
+
   const request = apiMutate<PlayCardResult>("/api/me/cards/play", {
     method: "POST",
     body: JSON.stringify({ cardKind: kind, cardId: cardId.trim() }),
   })
     .then((result) => {
+      if (opts?.handoff === "offer") {
+        playHandoffs.set(inFlightKey, { result, at: opts.now ?? Date.now() });
+      }
       if (getAuthUserId() !== ownerId) return result;
       const next = new Set(getCachedPlayedCards() ?? []);
       next.add(key);
@@ -143,5 +164,6 @@ export function resetCardPlaysForTests(): void {
   cache = null;
   inFlight = null;
   playInFlight.clear();
+  playHandoffs.clear();
   listeners.clear();
 }

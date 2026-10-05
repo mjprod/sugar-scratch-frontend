@@ -18,6 +18,8 @@ import { Paths } from "@/routes/Paths";
  */
 export type CardPlayOutcome = "ok" | "store" | "failed";
 
+type CardPlayHandoff = "offer" | "claim";
+
 /** First play buys the card; replays are free. */
 export function useRegisterCardPlayOutcome() {
   const { authed } = useAuth();
@@ -25,12 +27,16 @@ export function useRegisterCardPlayOutcome() {
   const navigate = useNavigate();
 
   return useCallback(
-    async (kind: CardKind, cardId: string): Promise<CardPlayOutcome> => {
+    async (
+      kind: CardKind,
+      cardId: string,
+      handoff?: CardPlayHandoff,
+    ): Promise<CardPlayOutcome> => {
       const id = cardId.trim();
       if (!id) return "failed";
       if (!authed) return "ok";
       try {
-        const result = await playCard(kind, id);
+        const result = await playCard(kind, id, { handoff });
         if (result.pricePaid > 0) applyWallet(result.wallet);
         return "ok";
       } catch (error) {
@@ -49,12 +55,18 @@ export function useRegisterCardPlayOutcome() {
   );
 }
 
-/** False when the play was not registered (Store redirect or failure). */
+/**
+ * Register before navigating to a `PaidCardPlayGate` page — the gate claims
+ * this play instead of POSTing a second (replay) one.
+ * False only when the player was sent to the Store. A failed registration
+ * still navigates: the gate retries it and owns the error / retry UI, so the
+ * Play tap never silently does nothing.
+ */
 export function useRegisterCardPlay() {
   const registerPlay = useRegisterCardPlayOutcome();
   return useCallback(
     async (kind: CardKind, cardId: string): Promise<boolean> =>
-      (await registerPlay(kind, cardId)) === "ok",
+      (await registerPlay(kind, cardId, "offer")) !== "store",
     [registerPlay],
   );
 }

@@ -8,6 +8,7 @@ import {
   fetchPlayedCards,
   getCachedPlayedCards,
   isInsufficientPlayError,
+  PLAY_HANDOFF_MS,
   playCard,
   playedCardKey,
   resetCardPlaysForTests,
@@ -126,6 +127,45 @@ posts = 0;
 await playCard("photo", "slot-1");
 await playCard("photo", "slot-1");
 assert(posts === 2, "sequential playCard after settle issues a second POST (replay)");
+
+resetCardPlaysForTests();
+posts = 0;
+playCountsByUser.clear();
+session.set("sugar.v8.authUserId", "user-a");
+await playCard("photo", "handoff", { handoff: "offer" });
+const claimed = await playCard("photo", "handoff", { handoff: "claim" });
+const postsAfterClaim = posts;
+assert(postsAfterClaim === 1, "play gate claims the launching screen's registration without a second POST");
+assert(claimed.rewardsEnabled, "claimed first play keeps rewards (no practice hand)");
+const reclaimed = await playCard("photo", "handoff", { handoff: "claim" });
+assert((posts as number) === 2, "a handoff is claimable once — the next gate mount registers a replay");
+assert(!reclaimed.rewardsEnabled, "second gate mount is a replay");
+
+resetCardPlaysForTests();
+posts = 0;
+playCountsByUser.clear();
+await playCard("photo", "deep-link", { handoff: "claim" });
+assert(posts === 1, "gate without a handoff (deep link / refresh) registers the play itself");
+
+resetCardPlaysForTests();
+posts = 0;
+playCountsByUser.clear();
+await playCard("photo", "stale", { handoff: "offer", now: 1_000 });
+await playCard("photo", "stale", {
+  handoff: "claim",
+  now: 1_000 + PLAY_HANDOFF_MS,
+});
+assert(posts === 2, "expired handoff is not claimed");
+
+resetCardPlaysForTests();
+posts = 0;
+playCountsByUser.clear();
+session.set("sugar.v8.authUserId", "user-a");
+await playCard("photo", "scoped", { handoff: "offer" });
+session.set("sugar.v8.authUserId", "user-b");
+await playCard("photo", "scoped", { handoff: "claim" });
+assert(posts === 2, "handoff is scoped to the user who registered it");
+session.set("sugar.v8.authUserId", "user-a");
 
 resetCardPlaysForTests();
 session.set("sugar.v8.authUserId", "user-a");
