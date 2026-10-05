@@ -3,9 +3,11 @@
  * failed/stale GET must not wipe a just-recorded play.
  * Run: npx tsx src/services/cardPlays.self-check.ts
  */
+import { ApiError } from "../lib/api.ts";
 import {
   fetchPlayedCards,
   getCachedPlayedCards,
+  isInsufficientPlayError,
   playCard,
   playedCardKey,
   resetCardPlaysForTests,
@@ -155,6 +157,24 @@ assert(
   getCachedPlayedCards()?.has(playedCardKey("photo", "kept")) === true,
   "failed GET must not publish an empty set",
 );
+
+assert(
+  isInsufficientPlayError(new ApiError(400, "insufficient")),
+  "400 insufficient is a Store redirect",
+);
+assert(
+  isInsufficientPlayError(new ApiError(402, "Insufficient diamonds")),
+  "402 insufficient is a Store redirect",
+);
+assert(
+  !isInsufficientPlayError(new ApiError(400, "Bad Request")),
+  "other 400s must not be treated as insufficient funds",
+);
+assert(
+  !isInsufficientPlayError(new ApiError(500, "insufficient")),
+  "5xx is a failure even if the message mentions insufficient",
+);
+assert(!isInsufficientPlayError(new Error("insufficient")), "non-API errors are not a Store redirect");
 
 resetCardPlaysForTests();
 console.log("cardPlays.self-check: ok");

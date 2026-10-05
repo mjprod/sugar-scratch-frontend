@@ -5,6 +5,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { ApiError } from "@/lib/api";
 import {
   getCachedPlayedCards,
+  isInsufficientPlayError,
   playCard,
   playedCardKey,
   type CardKind,
@@ -33,14 +34,12 @@ export function useRegisterCardPlayOutcome() {
         if (result.pricePaid > 0) applyWallet(result.wallet);
         return "ok";
       } catch (error) {
-        if (error instanceof ApiError) {
-          if (error.status === 400) {
-            navigate(Paths.store);
-            return "store";
-          }
-          // Allow fail-open only for unknown/unpublished cards.
-          if (error.status === 404) return "ok";
+        if (isInsufficientPlayError(error)) {
+          navigate(Paths.store);
+          return "store";
         }
+        // Allow fail-open only for unknown/unpublished cards.
+        if (error instanceof ApiError && error.status === 404) return "ok";
         // Already owned → the replay is free, so a failed backstop charges nothing.
         if (getCachedPlayedCards()?.has(playedCardKey(kind, id))) return "ok";
         return "failed";

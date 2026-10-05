@@ -6,7 +6,7 @@
  * (the server issues practice scratch hands for them).
  */
 
-import { apiFetch, apiMutate } from "../lib/api";
+import { ApiError, apiFetch, apiMutate } from "../lib/api";
 import { getAuthUserId } from "./auth";
 
 export type CardKind = "motion" | "photo";
@@ -94,6 +94,13 @@ export function subscribePlayedCards(
 ): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** Wallet cannot cover the first play — other 4xx are real failures, not a Store redirect. */
+export function isInsufficientPlayError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status !== 400 && error.status !== 402 && error.status !== 409) return false;
+  return error.message.toLowerCase().includes("insufficient");
 }
 
 /**
