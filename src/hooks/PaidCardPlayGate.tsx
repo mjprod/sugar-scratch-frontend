@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useAuthSession } from "@/contexts/AuthContext";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import type { CardKind } from "@/services/cardPlays";
 
@@ -18,7 +19,14 @@ export function PaidCardPlayGate({
   skip?: boolean;
   children: ReactNode;
 }) {
+  const { authReady } = useAuthSession();
   const registerPlay = useRegisterCardPlay();
+  // Register once per card after the session probe; later auth / wallet churn
+  // must not tear down a surface that is already mounted.
+  const registerPlayRef = useRef(registerPlay);
+  useEffect(() => {
+    registerPlayRef.current = registerPlay;
+  }, [registerPlay]);
   const id = cardId.trim();
   const bypass = Boolean(skip) || !id;
   const [ready, setReady] = useState(bypass);
@@ -28,15 +36,18 @@ export function PaidCardPlayGate({
       setReady(true);
       return;
     }
-    let cancelled = false;
     setReady(false);
-    void registerPlay(kind, id).then((ok) => {
+    // `authed` is false until the session probe lands — registering earlier
+    // would take the guest path and mount a signed-in user's card unpaid.
+    if (!authReady) return;
+    let cancelled = false;
+    void registerPlayRef.current(kind, id).then((ok) => {
       if (!cancelled && ok) setReady(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [bypass, id, kind, registerPlay]);
+  }, [authReady, bypass, id, kind]);
 
   if (!ready) {
     return (

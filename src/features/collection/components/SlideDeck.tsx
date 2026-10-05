@@ -241,15 +241,25 @@ const DeckItem = memo(function DeckItem({
     [card.id, onFaceMediaReady],
   )
 
+  // Sync lock: a state flag would still let two taps in the same frame both buy.
+  const buyingPhotoRef = useRef(false)
+
   const handlePlayPhotoCard = useCallback(
     (slotIndex: number) => {
+      if (buyingPhotoRef.current) return
       const motion = card.id.trim()
       if (!motion) return
       const photoId = photoScratchIdForSlot(motion, slotIndex)
       const model = (card.modelId || '').trim()
+      buyingPhotoRef.current = true
       unlockCountdownSound()
       void (async () => {
-        const ok = await registerPlay('photo', photoId)
+        let ok = false
+        try {
+          ok = await registerPlay('photo', photoId)
+        } finally {
+          buyingPhotoRef.current = false
+        }
         if (!ok) return
         if (actions.onPlayPhotoCard) {
           actions.onPlayPhotoCard(model, photoId, slotIndex)
