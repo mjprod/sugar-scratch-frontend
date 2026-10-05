@@ -264,6 +264,7 @@ export function saveGameSession(session: GameSession): void {
 export function clearAllGameSessions(): void {
   if (typeof window === "undefined") return;
   writeStore(emptyStore());
+  clearPracticeCards();
 }
 
 export function clearGameSession(key?: string): void {
@@ -476,18 +477,38 @@ export function photoPlayHref(session: GameSession, cardId?: string): string {
 /**
  * Cards whose current scratch hand is free play (already played before):
  * the server mints nothing for them, so the client banks no coins/diamonds.
+ * Scoped per signed-in user so replays do not leak across logout / switch.
  */
-const practiceCardIds = new Set<string>();
+const practiceCardIdsByOwner = new Map<string, Set<string>>();
+
+function practiceCardsForOwner(ownerId: string | null = getAuthUserId()): Set<string> {
+  const owner = ownerId?.trim() || "";
+  if (!owner) return new Set();
+  let set = practiceCardIdsByOwner.get(owner);
+  if (!set) {
+    set = new Set();
+    practiceCardIdsByOwner.set(owner, set);
+  }
+  return set;
+}
 
 export function setPracticeCard(cardId: string, practice: boolean): void {
   const id = cardId.trim();
   if (!id) return;
-  if (practice) practiceCardIds.add(id);
-  else practiceCardIds.delete(id);
+  const set = practiceCardsForOwner();
+  if (practice) set.add(id);
+  else set.delete(id);
 }
 
 export function isPracticeCard(cardId: string): boolean {
-  return practiceCardIds.has(cardId.trim());
+  const id = cardId.trim();
+  if (!id) return false;
+  return practiceCardsForOwner().has(id);
+}
+
+/** Drop in-memory practice flags (logout / account switch). */
+export function clearPracticeCards(): void {
+  practiceCardIdsByOwner.clear();
 }
 
 /** Record a finished motion card and its prize units (now currency, not photos). */
