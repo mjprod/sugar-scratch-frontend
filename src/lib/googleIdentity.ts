@@ -40,8 +40,11 @@ declare global {
 export type GoogleSignInFailure = "cancelled" | "unavailable" | "failed";
 
 export class GoogleSignInError extends Error {
-  constructor(readonly reason: GoogleSignInFailure) {
+  readonly reason: GoogleSignInFailure;
+
+  constructor(reason: GoogleSignInFailure) {
     super(`google_sign_in_${reason}`);
+    this.reason = reason;
     this.name = "GoogleSignInError";
   }
 }
