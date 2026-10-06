@@ -178,6 +178,18 @@ export async function loginWithOAuth(
   );
 }
 
+/** Exchange a Google Identity Services auth code for a server session. */
+export async function loginWithGoogle(code: string) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export function googleAuthFailureMessage() {
+  return "We couldn’t sign you in with Google. Please try again.";
+}
+
 export async function logoutRemote() {
   try {
     await apiMutate("/api/auth/logout", { method: "POST" });
