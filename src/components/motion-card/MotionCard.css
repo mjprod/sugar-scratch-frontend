@@ -1,0 +1,50 @@
+.motion-card-play-cta {
+  width: 100%;
+  height: 100%;
+}
+
+.motion-card-play-cta .cta-button-glow,
+.motion-card-play-cta .cta-button-glow--fill,
+.motion-card-play-cta .cta-button,
+.motion-card-play-cta .cta-button--fill {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+.motion-card-play-cta .cta-button__title {
+  display: none;
+}
+
+.motion-card-play-cta .cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  margin-inline: auto;
+}
+
+.motion-card-play-cta .cta-button__leading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25em;
+  width: auto;
+  height: auto;
+  color: #ffe0e8;
+}
+
+.motion-card-play-cta .cta-button__leading-icon img,
+.motion-card-play-cta .cta-button__leading-icon svg {
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+.motion-card-play-cta__price {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2px;
+}

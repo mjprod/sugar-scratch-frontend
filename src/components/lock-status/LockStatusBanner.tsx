@@ -114,15 +114,15 @@ export function LockStatusBanner({
       </span>
 
       <motion.div
-        className="grid min-w-0"
+        className="grid shrink-0"
         initial={false}
         animate={{
-          gridTemplateColumns: showLabel ? "1fr" : "0fr",
+          gridTemplateColumns: showLabel ? "max-content" : "0fr",
           marginLeft: showLabel ? 8 : 0,
         }}
         transition={instant ?? LABEL_MOTION}
       >
-        <div className="min-w-0 overflow-hidden">
+        <div className="overflow-hidden">
           <span className="relative block whitespace-nowrap font-medium text-[10px] tracking-[0.2px]">
             <span className="invisible" aria-hidden="true">
               Unlocked
