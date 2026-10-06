@@ -25,6 +25,7 @@ type GoogleOAuth2 = {
     client_id: string;
     scope: string;
     ux_mode: "popup";
+    redirect_uri?: string;
     select_account?: boolean;
     callback: (response: CodeResponse) => void;
     error_callback?: (error: CodeClientError) => void;
