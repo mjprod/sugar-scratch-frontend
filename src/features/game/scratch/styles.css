@@ -1039,6 +1039,53 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-slot-reactivate 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
+/* Matching type: pop the slot up and tilt ±5° so it reads next to the flying icon. */
+.stage-game__top-chrome-center
+  .top-symbol-bar.is-phase-docked:has(.is-match-shaking) {
+  overflow: visible;
+}
+
+.top-symbol-bar.is-phase-docked .top-symbol-slot.is-match-shaking {
+  z-index: 6;
+  overflow: visible;
+  filter: none;
+  background: var(--symbol-slot-fill, #a74479) !important;
+  animation-name: top-bar-match-shake;
+  animation-duration: var(--match-shake-cycle-ms);
+  animation-delay: calc(var(--match-delay-ms, 0ms) + var(--match-shake-start-ms));
+  animation-iteration-count: var(--match-shake-cycles);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+.top-symbol-bar.is-phase-docked
+  .top-symbol-slot.is-match-shaking
+  .game-symbol-lottie {
+  filter: none;
+  animation: none;
+}
+
+@keyframes top-bar-match-shake {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  12% {
+    transform: scale(1.45) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.45) rotate(5deg);
+  }
+  50% {
+    transform: scale(1.45) rotate(0deg);
+  }
+  75% {
+    transform: scale(1.45) rotate(-5deg);
+  }
+  100% {
+    transform: scale(1.45) rotate(0deg);
+  }
+}
+
 @keyframes top-bar-slot-reactivate {
   0% {
     filter: saturate(0) brightness(1.05);
@@ -2119,6 +2166,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   .top-symbol-bar.is-cleared .top-symbol-slot.is-revealed,
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant,
   .top-symbol-bar.is-phase-docked .top-symbol-slot.is-matched,
+  .top-symbol-bar.is-phase-docked .top-symbol-slot.is-match-shaking,
   .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing,
   .lottie-clipper-peel {
     animation: none !important;

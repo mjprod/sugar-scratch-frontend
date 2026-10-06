@@ -1695,6 +1695,12 @@ export function ScratchPrototype({
   const [litTopSlots, setLitTopSlots] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
+  const [shakingTopSlots, setShakingTopSlots] = useState<boolean[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
+  );
+  const [shakeDelayMs, setShakeDelayMs] = useState<number[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => 0),
+  );
   const [litSymbolSlots, setLitSymbolSlots] = useState<boolean[]>(() =>
     Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
   );
@@ -3361,6 +3367,8 @@ export function ScratchPrototype({
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
@@ -4036,6 +4044,8 @@ export function ScratchPrototype({
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
@@ -4604,6 +4614,12 @@ export function ScratchPrototype({
       if (coin && typeof coin.topSlot === "number" && coin.topSlot >= 0) {
         const slot = coin.topSlot;
         queueMicrotask(() => {
+          setShakingTopSlots((prev) => {
+            if (!prev[slot]) return prev;
+            const next = prev.slice();
+            next[slot] = false;
+            return next;
+          });
           if (useBodySymbolsRef.current) {
             setLitTopSlots((prev) => {
               if (prev[slot]) return prev;
@@ -4733,6 +4749,24 @@ export function ScratchPrototype({
 
     claimedTopSlotsRef.current = claimed;
     if (coins.length > 0) {
+      setShakingTopSlots((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (typeof coin.topSlot === "number" && coin.topSlot >= 0) {
+            next[coin.topSlot] = true;
+          }
+        }
+        return next;
+      });
+      setShakeDelayMs((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (typeof coin.topSlot === "number" && coin.topSlot >= 0) {
+            next[coin.topSlot] = coin.delayMs;
+          }
+        }
+        return next;
+      });
       setFlyingCoins((current) => [...current, ...coins]);
     }
   }
@@ -5707,6 +5741,8 @@ export function ScratchPrototype({
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
+              shakingSlots={shakingTopSlots}
+              shakeDelayMs={shakeDelayMs}
               slotElsOutRef={topBarSlotElsRef}
               forceRevealed={skipToPlay}
               onAllRevealed={onTopBarAllRevealed}

@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -12,6 +13,11 @@ import { createPortal, flushSync } from "react-dom";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import { GameSymbolIcon } from "./GameSymbolIcon";
 import { resolveFoilCanvasPixelRatio } from "./foilCanvasPixelRatio";
+import {
+  MATCH_SHAKE_CYCLE_MS,
+  MATCH_SHAKE_CYCLES,
+  MATCH_SHAKE_START_MS,
+} from "./matchFlightPath";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
 import { noteScratchSoundActivity, stopScratchSounds } from "./scratchSound";
 
@@ -110,6 +116,10 @@ type TopSymbolBarProps = {
   forceRevealed?: boolean;
   /** Docked hunt: slots that have been found on the body (full color again). */
   matchedSlots?: boolean[];
+  /** Docked hunt: matching type is shaking with the flying body icon. */
+  shakingSlots?: boolean[];
+  /** Per-slot extra delay (ms) so concurrent matches stagger like the flights. */
+  shakeDelayMs?: number[];
   /** Optional mirror of slot DOM nodes for fly-to-slot animations. */
   slotElsOutRef?: MutableRefObject<(HTMLDivElement | null)[]>;
   /** Force symbol lotties onto first frame (iOS scratch / coarse pointer). */
@@ -364,6 +374,8 @@ export function TopSymbolBar({
   roundKey = 0,
   forceRevealed = false,
   matchedSlots,
+  shakingSlots,
+  shakeDelayMs,
   slotElsOutRef,
   freezeSymbols = false,
   preferStaticSymbols = false,
@@ -1264,15 +1276,27 @@ export function TopSymbolBar({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      style={{ touchAction: "none" }}
+      style={
+        {
+          touchAction: "none",
+          "--match-shake-start-ms": `${MATCH_SHAKE_START_MS}ms`,
+          "--match-shake-cycle-ms": `${MATCH_SHAKE_CYCLE_MS}ms`,
+          "--match-shake-cycles": `${MATCH_SHAKE_CYCLES}`,
+        } as CSSProperties
+      }
     >
       {slots.map((typeId, index) => {
         const revealed =
           revealedMask[index] || forceRevealed || phase === "showcase";
         const matched = Boolean(matchedSlots?.[index]);
+        const shaking = Boolean(shakingSlots?.[index]);
         const dormant =
-          (settleDocked || phase === "showcase") && revealed && !matched;
+          (settleDocked || phase === "showcase") &&
+          revealed &&
+          !matched &&
+          !shaking;
         const pulsing = phase === "showcase" && matched;
+        const slotShakeDelay = shakeDelayMs?.[index] ?? 0;
         return (
           <div
             key={`${roundKey}-${index}-${typeId}`}
@@ -1284,7 +1308,14 @@ export function TopSymbolBar({
               revealed ? " is-revealed" : ""
             }${dormant ? " is-dormant" : ""}${matched ? " is-matched" : ""}${
               pulsing ? " is-pulsing" : ""
-            }`}
+            }${shaking ? " is-match-shaking" : ""}`}
+            style={
+              shaking
+                ? ({
+                    "--match-delay-ms": `${slotShakeDelay}ms`,
+                  } as CSSProperties)
+                : undefined
+            }
             title={revealed ? SYMBOL_TYPES[typeId]?.label : "Scratch to reveal"}
           >
             <GameSymbolIcon
