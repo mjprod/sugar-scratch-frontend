@@ -5,6 +5,9 @@ import { shouldPreferStaticSymbolLottie } from "./symbolLottiePolicy";
 import {
   MATCH_ANTICIPATION_MS,
   MATCH_SEQUENCE_MS,
+  MATCH_SHAKE_CYCLE_MS,
+  MATCH_SHAKE_CYCLES,
+  MATCH_SHAKE_START_MS,
   MATCH_TRAIL_LIFE_MS,
   MATCH_TRAIL_SPAWN_MS,
   MATCH_TRAIL_STOP_PROGRESS,
@@ -150,6 +153,9 @@ export function MatchFlight({
             "--match-anticipate-ms": `${MATCH_ANTICIPATION_MS}ms`,
             "--match-sequence-ms": `${MATCH_SEQUENCE_MS}ms`,
             "--match-delay-ms": `${delayMs}ms`,
+            "--match-shake-start-ms": `${MATCH_SHAKE_START_MS}ms`,
+            "--match-shake-cycle-ms": `${MATCH_SHAKE_CYCLE_MS}ms`,
+            "--match-shake-cycles": `${MATCH_SHAKE_CYCLES}`,
           } as CSSProperties
         }
         aria-hidden="true"

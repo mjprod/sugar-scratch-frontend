@@ -1022,6 +1022,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const [litTopSlots, setLitTopSlots] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
+  const [shakingTopSlots, setShakingTopSlots] = useState<boolean[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
+  );
+  const [shakeDelayMs, setShakeDelayMs] = useState<number[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => 0),
+  );
   const [flyingMatches, setFlyingMatches] = useState<FlyingMatch[]>([]);
   const claimedTopSlotsRef = useRef<boolean[]>(
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
@@ -1360,6 +1366,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
@@ -2229,6 +2237,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       if (coin && coin.topSlot >= 0) {
         const slot = coin.topSlot;
         queueMicrotask(() => {
+          setShakingTopSlots((prev) => {
+            if (!prev[slot]) return prev;
+            const next = prev.slice();
+            next[slot] = false;
+            return next;
+          });
           setLitTopSlots((prev) => {
             if (prev[slot]) return prev;
             const next = prev.slice();
@@ -2320,6 +2334,20 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
     claimedTopSlotsRef.current = claimed;
     if (coins.length > 0) {
+      setShakingTopSlots((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (coin.topSlot >= 0) next[coin.topSlot] = true;
+        }
+        return next;
+      });
+      setShakeDelayMs((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (coin.topSlot >= 0) next[coin.topSlot] = coin.delayMs;
+        }
+        return next;
+      });
       setFlyingMatches((current) => [...current, ...coins]);
     }
   }
@@ -2648,6 +2676,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
@@ -3428,6 +3458,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
+              shakingSlots={shakingTopSlots}
+              shakeDelayMs={shakeDelayMs}
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
               onDockHiddenChange={setDockHidden}

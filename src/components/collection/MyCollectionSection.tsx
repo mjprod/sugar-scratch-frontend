@@ -317,9 +317,14 @@ export function MyCollectionSection({
               motionTotal,
               Math.max(0, creator.themesStarted || 0),
             );
+            const collectedAll = count + motionDone;
+            const totalAll = total + motionTotal;
             const pct = Math.max(
               0,
-              Math.min(100, Math.round((count / total) * 100) || creator.pct),
+              Math.min(
+                100,
+                totalAll > 0 ? Math.round((collectedAll / totalAll) * 100) : 0,
+              ),
             );
             const name =
               (model ? modelDisplayName(model) : "") || creator.name;
@@ -339,6 +344,7 @@ export function MyCollectionSection({
                   <span className="mc-model-card-glow-blob mc-model-card-glow-blob--b" />
                 </span>
                 <span className="mc-model-avatar-wrap">
+                  <CollectionAvatarRing percent={pct} />
                   <img
                     src={avatarFor(creator, model)}
                     alt=""
@@ -498,6 +504,37 @@ function PopularCreatorsStrip({
         </button>
       </div>
     </div>
+  );
+}
+
+const AVATAR_RING_R = 34;
+const AVATAR_RING_C = 2 * Math.PI * AVATAR_RING_R;
+
+function CollectionAvatarRing({ percent }: { percent: number }) {
+  const clamped = Math.max(0, Math.min(100, percent));
+  const offset = AVATAR_RING_C - (clamped / 100) * AVATAR_RING_C;
+  return (
+    <span className="mc-model-avatar-ring" aria-hidden="true">
+      <svg viewBox="0 0 80 80">
+        <circle
+          className="mc-model-avatar-ring-track"
+          cx="40"
+          cy="40"
+          r={AVATAR_RING_R}
+          fill="none"
+        />
+        <circle
+          className="mc-model-avatar-ring-arc"
+          cx="40"
+          cy="40"
+          r={AVATAR_RING_R}
+          fill="none"
+          strokeDasharray={AVATAR_RING_C}
+          strokeDashoffset={offset}
+          transform="rotate(-90 40 40)"
+        />
+      </svg>
+    </span>
   );
 }
 
