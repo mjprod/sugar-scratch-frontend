@@ -47,6 +47,11 @@ const MobileCarouselPage = lazy(() =>
 const PreLoaderPage = lazy(() =>
   import("@/pages/PreLoaderPage").then((m) => ({ default: m.PreLoaderPage })),
 );
+const ComponentLabPage = lazy(() =>
+  import("@/pages/ComponentLabPage").then((m) => ({
+    default: m.ComponentLabPage,
+  })),
+);
 const ProfilePage = lazy(() =>
   import("@/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })),
 );
@@ -150,6 +155,14 @@ export function AppRoutes() {
             element={
               <AppShell label="Pre-loader">
                 <PreLoaderPage />
+              </AppShell>
+            }
+          />
+          <Route
+            path={Paths.componentLab}
+            element={
+              <AppShell>
+                <ComponentLabPage />
               </AppShell>
             }
           />

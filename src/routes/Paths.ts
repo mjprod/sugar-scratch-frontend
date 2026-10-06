@@ -52,6 +52,8 @@ export const Paths = {
   game: "/game",
   /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
   gameUi: "/game-ui",
+  /** Isolated workshop for assembling Figma pieces one at a time. */
+  componentLab: "/component-lab",
   /** Scratch card that replays from the intro, for mixing sound levels. */
   audioTest: "/audio-test",
   photoScratch: "/photo-scratch",
