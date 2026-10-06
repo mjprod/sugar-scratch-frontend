@@ -2515,19 +2515,19 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
 
 @keyframes tilt-n-move-shaking {
   0% {
-    transform: rotate(0deg);
+    transform: translateZ(0) rotate(0deg);
   }
   25% {
-    transform: rotate(5deg);
+    transform: translateZ(0) rotate(5deg);
   }
   50% {
-    transform: rotate(0deg);
+    transform: translateZ(0) rotate(0deg);
   }
   75% {
-    transform: rotate(-5deg);
+    transform: translateZ(0) rotate(-5deg);
   }
   100% {
-    transform: rotate(0deg);
+    transform: translateZ(0) rotate(0deg);
   }
 }
 
