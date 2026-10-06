@@ -22,9 +22,11 @@ import {
   createAccountFailureMessage,
   duplicateEmailMessage,
   forgotPasswordSuccessMessage,
+  googleAuthFailureMessage,
   isDuplicateEmailRegisterError,
   isValidAuthPassword,
   loginWithEmail,
+  loginWithGoogle,
   loginWithOAuth,
   registerWithEmail,
   requestPasswordReset,
@@ -34,6 +36,12 @@ import {
 } from "@/services/auth";
 import { isValidEmail } from "@/types/app";
 import { STUB_OAUTH_ENABLED } from "@/env";
+import {
+  GOOGLE_LOGIN_ENABLED,
+  GoogleSignInError,
+  loadGoogleIdentity,
+  requestGoogleCode,
+} from "@/lib/googleIdentity";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import iconApple from "@/assets/auth/iconApple.svg";
@@ -42,6 +50,9 @@ import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
 const APPLE_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 const ANTICIPATE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const DROP_EASE: [number, number, number, number] = [0.48, 0.04, 0.72, 0.12];
+
+const SHOW_GOOGLE_BUTTON = GOOGLE_LOGIN_ENABLED || STUB_OAUTH_ENABLED;
+const SHOW_APPLE_BUTTON = STUB_OAUTH_ENABLED;
 
 const DRAG_DISMISS_PX = 88;
 const DRAG_FLICK_VY = 640;
@@ -125,6 +136,11 @@ export function AuthenticationSheet({
     setAcceptedTerms(false);
     setConsentError(false);
     setLegalDoc(null);
+    if (GOOGLE_LOGIN_ENABLED) {
+      void loadGoogleIdentity().catch(() => {
+        /* retried on click */
+      });
+    }
     const t = window.setTimeout(() => {
       panelRef.current
         ?.querySelector<HTMLElement>(
@@ -185,7 +201,30 @@ export function AuthenticationSheet({
         ? forgotPasswordSuccessMessage()
         : "";
 
+  async function finishGoogle() {
+    setSubmitting("google");
+    setError("");
+    try {
+      const code = await requestGoogleCode();
+      const { user } = await loginWithGoogle(code);
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
+    } catch (err) {
+      setSubmitting(null);
+      if (err instanceof GoogleSignInError && err.reason === "cancelled") return;
+      setError(googleAuthFailureMessage());
+    }
+  }
+
   async function finishSocial(provider: "Google" | "Apple") {
+    if (provider === "Google" && GOOGLE_LOGIN_ENABLED) {
+      await finishGoogle();
+      return;
+    }
     setSubmitting(provider === "Google" ? "google" : "apple");
     setError("");
     try {
@@ -528,7 +567,7 @@ export function AuthenticationSheet({
                       </form>
                     ) : (
                       <>
-                        {STUB_OAUTH_ENABLED ? (
+                        {SHOW_GOOGLE_BUTTON ? (
                         <>
                         <div className="auth7-sheet-social">
                           <div className="auth7-social-btn is-google">
@@ -555,6 +594,7 @@ export function AuthenticationSheet({
                               onClick={() => void finishSocial("Google")}
                             />
                           </div>
+                          {SHOW_APPLE_BUTTON ? (
                           <button
                             type="button"
                             className="auth7-social-btn"
@@ -577,6 +617,7 @@ export function AuthenticationSheet({
                             )}
                             Continue with Apple
                           </button>
+                          ) : null}
                         </div>
 
                         <div className="auth7-sheet-divider" role="separator">
