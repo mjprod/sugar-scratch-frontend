@@ -14,6 +14,7 @@ export type StaticCarouselItem = {
   backgroundUrl: string;
   topLayerUrl?: string;
   playCost?: number;
+  slotIndex?: number;
   onPlay?: () => void;
 };
 
@@ -143,6 +144,9 @@ export function StaticCarousel({
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     const node = scrollerRef.current;
     if (!node) return;
+    if ((event.target as HTMLElement).closest(".static-card-play-cta, .static-card-buy-confirm")) {
+      return;
+    }
     drag.current = {
       pointerId: event.pointerId,
       lastX: event.clientX,

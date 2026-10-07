@@ -15,6 +15,7 @@ import {
 type MotionCardHolderProps = {
   items: ThreeMotionItem[];
   photos?: StaticCarouselItem[];
+  initialActiveId?: string | null;
   onItemSelect?: (id: string, next: MotionCardState) => void;
   className?: string;
 };
@@ -60,12 +61,13 @@ function exitDuration() {
 export function MotionCardHolder({
   items,
   photos = [],
+  initialActiveId = null,
   onItemSelect,
   className,
 }: MotionCardHolderProps) {
   const reduceMotion = useReducedMotion();
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [detailsReady, setDetailsReady] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(initialActiveId);
+  const [detailsReady, setDetailsReady] = useState(Boolean(initialActiveId));
   const lastActiveIndex = useRef(0);
   const detailsTimer = useRef<number | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -78,6 +80,21 @@ export function MotionCardHolder({
 
   const openRef = useRef(false);
   openRef.current = active;
+
+  const closeActive = (item: ThreeMotionItem) => {
+    if (detailsTimer.current != null) {
+      window.clearTimeout(detailsTimer.current);
+      detailsTimer.current = null;
+    }
+    setActiveId(null);
+    setDetailsReady(false);
+    onItemSelect?.(
+      item.id,
+      (item.state ?? "").startsWith("locked")
+        ? "locked-unselected-banner"
+        : "unlocked-unselected",
+    );
+  };
 
   useEffect(() => {
     const node = rowRef.current;
@@ -162,7 +179,10 @@ export function MotionCardHolder({
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
                 hideMeter={selected && detailsReady}
-                onBuy={item.onBuy}
+                onBuy={() => {
+                  closeActive(item);
+                  window.requestAnimationFrame(() => item.onBuy?.());
+                }}
                 onPlay={item.onPlay}
                 onSelect={() => {
                   if (detailsTimer.current != null) {
@@ -184,14 +204,7 @@ export function MotionCardHolder({
                     }, DETAILS_DELAY * 1000);
                     return;
                   }
-                  setActiveId(null);
-                  setDetailsReady(false);
-                  onItemSelect?.(
-                    item.id,
-                    (item.state ?? "").startsWith("locked")
-                      ? "locked-unselected-banner"
-                      : "unlocked-unselected",
-                  );
+                  closeActive(item);
                 }}
               />
             </motion.div>

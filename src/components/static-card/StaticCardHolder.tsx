@@ -1,6 +1,7 @@
-import { useId } from "react";
+import { useId, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { packUnitCost } from "@/services/purchase";
 import "@/components/motion-card/MotionCard.css";
@@ -52,10 +53,6 @@ function CenterLock() {
   );
 }
 
-/**
- * Figma 227:571 — 43×71 photo tile with play CTA underneath.
- * Layers: catalog background + clothes (top). Locked matches motion-card treatment.
- */
 export function StaticCardHolder({
   state = "locked",
   backgroundUrl,
@@ -66,6 +63,8 @@ export function StaticCardHolder({
 }: StaticCardHolderProps) {
   const locked = state === "locked";
   const top = topLayerUrl?.trim() || "";
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const [confirm, setConfirm] = useState(false);
 
   return (
     <div
@@ -104,7 +103,7 @@ export function StaticCardHolder({
         ) : null}
       </div>
 
-      <div className="static-card-play-cta">
+      <div className="static-card-play-cta" ref={ctaRef}>
         <CtaButton
           {...SQUIRCLE_CTA}
           fillParent
@@ -126,8 +125,20 @@ export function StaticCardHolder({
           fontSize={10}
           cornerRadius={999}
           aria-label={`Play for ${playCost} diamonds`}
-          onClick={onPlay}
+          aria-expanded={confirm}
+          onClick={() => setConfirm((open) => !open)}
         />
+        {confirm && ctaRef.current ? (
+          <PlayConfirm
+            anchor={ctaRef.current}
+            playCost={playCost}
+            onCancel={() => setConfirm(false)}
+            onConfirm={() => {
+              setConfirm(false);
+              onPlay?.();
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

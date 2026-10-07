@@ -371,6 +371,7 @@ body[data-theme="v8"] .cpv2-profile-card-social {
 /* —— Section title —— */
 
 body[data-theme="v8"] .cpv2-section-title {
+  scroll-margin-top: 12px;
   margin: 0;
   color: #fff;
   font-size: 20px;
@@ -1274,6 +1275,13 @@ body[data-theme="v8"] .cpv2-premium-locked:disabled .cpv2-premium-locked-label {
   color: #ffdfc1;
 }
 
+body[data-theme="v8"] .cpv2-premium-locked.is-unlocked,
+body[data-theme="v8"] .cpv2-premium-locked.is-unlocked:disabled,
+body[data-theme="v8"] .cpv2-premium-locked.is-unlocked .cpv2-premium-locked-label {
+  color: #e8cc9c;
+  cursor: default;
+}
+
 body[data-theme="v8"] .cpv2-premium-locked-label {
   line-height: 1;
 }
@@ -1571,6 +1579,13 @@ body[data-theme="v8"] .cpv2-ultra-locked {
 body[data-theme="v8"] .cpv2-ultra-locked:disabled,
 body[data-theme="v8"] .cpv2-ultra-locked:disabled .cpv2-ultra-locked-label {
   color: #ffdfc1;
+}
+
+body[data-theme="v8"] .cpv2-ultra-locked.is-unlocked,
+body[data-theme="v8"] .cpv2-ultra-locked.is-unlocked:disabled,
+body[data-theme="v8"] .cpv2-ultra-locked.is-unlocked .cpv2-ultra-locked-label {
+  color: #e8cc9c;
+  cursor: default;
 }
 
 body[data-theme="v8"] .cpv2-ultra-locked-label {

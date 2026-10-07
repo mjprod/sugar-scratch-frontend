@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { motion, useAnimate, useReducedMotion } from "framer-motion";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
@@ -6,6 +6,7 @@ import {
   LockStatusBanner,
   type LockStatus,
 } from "@/components/lock-status/LockStatusBanner";
+import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { packUnitCost } from "@/services/purchase";
 import "./MotionCard.css";
@@ -87,6 +88,8 @@ export function MotionCard({
   className,
 }: MotionCardProps) {
   const reduceMotion = useReducedMotion();
+  const playCtaRef = useRef<HTMLDivElement>(null);
+  const [confirmPlay, setConfirmPlay] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [teaseRef, animateTease] = useAnimate();
   const frostRef = useRef<HTMLImageElement>(null);
@@ -115,34 +118,15 @@ export function MotionCard({
     video.load();
   }, [playVideo, videoUrl]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = teaseRef.current;
     if (!node) return;
 
     const frost = frostRef.current;
 
-    if (reduceMotion) {
-      void animateTease(
-        node,
-        { y: showTease ? 0 : 180, filter: "blur(0px)" },
-        { duration: 0 },
-      );
-      if (frost) {
-        void animateTease(frost, { opacity: showTease ? 1 : 0 }, { duration: 0 });
-      }
-      prevTease.current = showTease;
-      return;
-    }
-
-    if (prevTease.current === null) {
-      void animateTease(
-        node,
-        { y: showTease ? 0 : 180, filter: "blur(0px)" },
-        { duration: 0 },
-      );
-      if (frost) {
-        void animateTease(frost, { opacity: showTease ? 1 : 0 }, { duration: 0 });
-      }
+    if (reduceMotion || prevTease.current === null) {
+      node.style.transform = `translateY(${showTease ? 0 : 180}px)`;
+      if (frost) frost.style.opacity = showTease ? "1" : "0";
       prevTease.current = showTease;
       return;
     }
@@ -273,7 +257,7 @@ export function MotionCard({
               <span>{TEASE_COPY[theme]}</span>
               <span>{TEASE_COPY[theme]}</span>
             </div>
-            <div className="tease-banner__hint">Tap to Discover</div>
+            <div className="tease-banner__hint">Tap to Collect</div>
           </div>
         </div>
       </div>
@@ -304,7 +288,7 @@ export function MotionCard({
             tabIndex={ctaInFrame ? 0 : -1}
           />
         ) : (
-          <div className="motion-card-play-cta">
+          <div className="motion-card-play-cta" ref={playCtaRef}>
             <CtaButton
               {...SQUIRCLE_CTA}
               fillParent
@@ -326,9 +310,21 @@ export function MotionCard({
               fontSize={10}
               cornerRadius={999}
               aria-label={`Play for ${playCost} diamonds`}
-              onClick={onPlay}
+              aria-expanded={confirmPlay}
+              onClick={() => setConfirmPlay((open) => !open)}
               tabIndex={ctaInFrame ? 0 : -1}
             />
+            {confirmPlay && playCtaRef.current ? (
+              <PlayConfirm
+                anchor={playCtaRef.current}
+                playCost={playCost}
+                onCancel={() => setConfirmPlay(false)}
+                onConfirm={() => {
+                  setConfirmPlay(false);
+                  onPlay?.();
+                }}
+              />
+            ) : null}
           </div>
         )}
       </motion.div>

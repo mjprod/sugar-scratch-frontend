@@ -1,6 +1,6 @@
-import { lazy, Suspense, useId, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import {
@@ -16,6 +16,9 @@ import type {
 import type { ThreeMotionItem } from "@/components/motion-card/ThreeMotion";
 import type { StaticCarouselItem } from "@/components/static-card/StaticCarousel";
 import { type CardConfig } from "@/features/collection/lib/cards";
+import { photoScratchIdForSlot } from "@/features/collection/lib/photoSlots";
+import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
+import { isDemoMode } from "@/lib/demo";
 import { packUnitCost } from "@/services/purchase";
 import type { ThemeCardData } from "@/services/collection";
 import type { FeaturedPack } from "@/services/homepage";
@@ -89,13 +92,15 @@ function motionVideoUrl(card: CardConfig): string {
   return motion && isVideoSrc(motion) ? motion : "";
 }
 
-function photoItemsForCard(card: CardConfig): StaticCarouselItem[] {
+function photoItemsForCard(
+  card: CardConfig,
+  demo = false,
+): StaticCarouselItem[] {
   const urls = (card.photoUrls ?? []).slice(0, 10);
   while (urls.length < 10) urls.push("");
-  const filled = Math.max(
-    0,
-    Math.min(10, Math.round(card.photoFilledCount ?? 0)),
-  );
+  const filled = demo
+    ? 4
+    : Math.max(0, Math.min(10, Math.round(card.photoFilledCount ?? 0)));
   return urls.map((url, index) => {
     const src = url.trim();
     return {
@@ -104,6 +109,7 @@ function photoItemsForCard(card: CardConfig): StaticCarouselItem[] {
       backgroundUrl: src,
       topLayerUrl: "",
       playCost: packUnitCost(),
+      slotIndex: index,
     } satisfies StaticCarouselItem;
   });
 }
@@ -148,6 +154,10 @@ export function CreatorInfluencerBody({
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
 }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const openCardId = searchParams.get("card")?.trim() || "";
+  const registerPlay = useRegisterCardPlay();
+  const demo = isDemoMode();
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const legalTitleId = useId();
 
@@ -178,7 +188,9 @@ export function CreatorInfluencerBody({
 
   return (
     <div className="cpv2-influencer">
-      <h2 className="cpv2-section-title">Buy {creatorName} Packs</h2>
+      <h2 className="cpv2-section-title" id="creator-pack-offers">
+        Buy {creatorName} Packs
+      </h2>
 
       <section className="cpv2-pack-section" aria-label="Pack offers">
         <div className="cpv2-pack-coverflow">
@@ -264,8 +276,21 @@ export function CreatorInfluencerBody({
             avatarUrl={theme.thumbnailUrl || avatarUrl}
             cards={cardsByThemeId[theme.id] ?? []}
             showPersonalProgress={showPersonalProgress}
+            demoLockedBanner={demo}
             onOpenCard={(cardId) => onOpenCard(cardId, theme.id)}
             onPlayGame={onPlayGame}
+            openCardId={openCardId}
+            onPlayPhoto={async (cardId, slotIndex, modelId) => {
+              const photoId = photoScratchIdForSlot(cardId, slotIndex);
+              const ok = await registerPlay("photo", photoId);
+              if (!ok) return;
+              navigate(
+                Paths.photoScratchPlay(photoId, {
+                  modelId: modelId || undefined,
+                  creatorId,
+                }),
+              );
+            }}
           />
         ))}
       </div>
@@ -318,20 +343,36 @@ export function CreatorInfluencerBody({
         </div>
         <p className="cpv2-ultra-title">{creatorName} Ultra Card</p>
         <p className="cpv2-ultra-copy">
-          Collect{" "}
-          <strong>
-            {premiumRemaining > 0
-              ? `${premiumRemaining} Premium motion card${premiumRemaining === 1 ? "" : "s"}`
-              : "Premium motion cards"}
-          </strong>{" "}
-          to unlock the Ultra Card!
+          {demo ? (
+            <>
+              <strong>Unlocked</strong> for this demo.
+            </>
+          ) : (
+            <>
+              Collect{" "}
+              <strong>
+                {premiumRemaining > 0
+                  ? `${premiumRemaining} Premium motion card${premiumRemaining === 1 ? "" : "s"}`
+                  : "Premium motion cards"}
+              </strong>{" "}
+              to unlock the Ultra Card!
+            </>
+          )}
         </p>
-        <button type="button" className="cpv2-ultra-locked" disabled>
-          <span className="cpv2-ultra-locked-price" aria-hidden="true">
-            <DiamondLottie size={11} aria-hidden />
-            50
+        <button
+          type="button"
+          className={demo ? "cpv2-ultra-locked is-unlocked" : "cpv2-ultra-locked"}
+          disabled={!demo}
+        >
+          {demo ? null : (
+            <span className="cpv2-ultra-locked-price" aria-hidden="true">
+              <DiamondLottie size={11} aria-hidden />
+              50
+            </span>
+          )}
+          <span className="cpv2-ultra-locked-label">
+            {demo ? "Unlocked" : "Locked"}
           </span>
-          <span className="cpv2-ultra-locked-label">Locked</span>
         </button>
         <div className="cpv2-ultra-stars" aria-hidden="true">
           <svg
@@ -350,7 +391,7 @@ export function CreatorInfluencerBody({
           {Array.from({ length: 3 }, (_, i) => (
             <svg
               key={i}
-              className="cpv2-ultra-star"
+              className={demo ? "cpv2-ultra-star is-filled" : "cpv2-ultra-star"}
               width="19"
               height="19"
               viewBox="0 0 19 19"
@@ -359,7 +400,7 @@ export function CreatorInfluencerBody({
             >
               <path
                 d="M9.5 0L10.9753 3.9942L14.25 1.27276L13.5305 5.4695L17.7272 4.75L15.0058 8.0247L19 9.5L15.0058 10.9753L17.7272 14.25L13.5305 13.5305L14.25 17.7272L10.9753 15.0058L9.5 19L8.0247 15.0058L4.75 17.7272L5.4695 13.5305L1.27276 14.25L3.9942 10.9753L0 9.5L3.9942 8.0247L1.27276 4.75L5.4695 5.4695L4.75 1.27276L8.0247 3.9942L9.5 0Z"
-                fill="#2E2E2E"
+                fill={demo ? "#E8CC9C" : "#2E2E2E"}
               />
             </svg>
           ))}
@@ -418,16 +459,22 @@ function ThemeCollectionCard({
   avatarUrl,
   cards,
   showPersonalProgress,
+  demoLockedBanner = false,
+  openCardId = "",
   onOpenCard,
   onPlayGame,
+  onPlayPhoto,
 }: {
   theme: ThemeCardData;
   glyph: string;
   avatarUrl: string;
   cards: CardConfig[];
   showPersonalProgress: boolean;
+  demoLockedBanner?: boolean;
+  openCardId?: string;
   onOpenCard: (cardId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
+  onPlayPhoto: (cardId: string, slotIndex: number, modelId: string) => void;
 }) {
   const [holderItems, setHolderItems] = useState<ThreeMotionItem[]>([]);
   // A tile exists only when the catalog published a motion template for it.
@@ -446,28 +493,39 @@ function ThemeCollectionCard({
   const holderTheme = motionCardThemeFromName(theme);
   const mappedItems = useMemo<ThreeMotionItem[]>(
     () =>
-      motionCards.map((card) => {
+      motionCards.map((card, index) => {
         const filled = Math.max(
           0,
           Math.min(10, Math.round(card.photoFilledCount ?? 0)),
         );
-        const unlocked = !card.id.includes("-placeholder-");
+        const unlocked = demoLockedBanner
+          ? index === 0
+          : !card.id.includes("-placeholder-");
         const collectedIndexes = Array.from(
           { length: filled },
           (_, index) => index,
         );
         return {
           id: card.id,
-          state: unlocked
-            ? "unlocked-unselected"
-            : "locked-unselected-banner",
+          state:
+            card.id === openCardId
+              ? unlocked
+                ? "unlocked-selected"
+                : "locked-selected"
+              : unlocked
+                ? "unlocked-unselected"
+                : "locked-unselected-banner",
           theme: holderTheme,
           posterUrl: motionTileStillUrl(card) || "/img/placeholder.png",
           videoUrl: motionVideoUrl(card),
           playCost: packUnitCost(),
           staticTotal: 10,
           collectedIndexes,
-          photos: photoItemsForCard(card),
+          photos: photoItemsForCard(card, demoLockedBanner).map((photo) => ({
+            ...photo,
+            onPlay: () =>
+              onPlayPhoto(card.id, photo.slotIndex ?? 0, card.modelId ?? ""),
+          })),
           onPlay: () => {
             if (card.modelId) {
               onPlayGame(card.modelId, card.id, card.name);
@@ -475,10 +533,26 @@ function ThemeCollectionCard({
             }
             onOpenCard(card.id);
           },
-          onBuy: () => onOpenCard(card.id),
+          onBuy: () => {
+            const target = document.getElementById("creator-pack-offers");
+            const scroller = target?.closest<HTMLElement>("[data-page-scroll]");
+            if (!target || !scroller) return;
+            const reduce = window.matchMedia(
+              "(prefers-reduced-motion: reduce)",
+            ).matches;
+            const margin =
+              parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+            const dest =
+              scroller.scrollTop +
+              target.getBoundingClientRect().top -
+              scroller.getBoundingClientRect().top -
+              margin -
+              100;
+            scroller.scrollTo({ top: dest, behavior: reduce ? "auto" : "smooth" });
+          },
         };
       }),
-    [holderTheme, motionCards, onOpenCard, onPlayGame],
+    [demoLockedBanner, holderTheme, motionCards, onOpenCard, onPlayGame, onPlayPhoto, openCardId],
   );
 
   const items =
@@ -501,9 +575,21 @@ function ThemeCollectionCard({
   ).length;
   const unlockedLocks = Math.min(PREMIUM_LOCK_COUNT, motionUnlocked);
   const motionNeeded = Math.max(0, PREMIUM_LOCK_COUNT - unlockedLocks);
+  const rowOwnsOpenCard = motionCards.some((card) => card.id === openCardId);
+
+  useEffect(() => {
+    if (!rowOwnsOpenCard) return;
+    document
+      .getElementById(`creator-theme-${theme.id}`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [rowOwnsOpenCard, theme.id]);
 
   return (
-    <section className="cpv2-theme-card" aria-label={theme.name}>
+    <section
+      className="cpv2-theme-card"
+      id={`creator-theme-${theme.id}`}
+      aria-label={theme.name}
+    >
       {/* Figma 126:3345 — bottom-left blur glow group. */}
       <div className="cpv2-theme-card-glow" aria-hidden="true">
         <div className="cpv2-theme-card-glow-blob cpv2-theme-card-glow-blob--a" />
@@ -533,6 +619,7 @@ function ThemeCollectionCard({
       <div className="cpv2-theme-card-row">
         <MotionCardHolder
           items={items}
+          initialActiveId={rowOwnsOpenCard ? openCardId : null}
           onItemSelect={(id, next: MotionCardState) => {
             setHolderItems(
               items.map((item) =>

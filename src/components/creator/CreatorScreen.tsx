@@ -178,24 +178,12 @@ function CreatorScreenInner({
       matchLiveThemeId(wantedId, themes) ??
       themes[0]!.id;
 
-    const nextCardId =
-      urlCard &&
-      (collection.cardsByThemeId[nextThemeId] ?? []).some(
-        (card) => card.id === urlCard,
-      )
-        ? urlCard
-        : null;
-
     if (nextThemeId !== selectedThemeId) {
       setSelectedThemeId(nextThemeId);
     }
-    if (nextCardId !== featuredCardId) {
-      setFeaturedCardId(nextCardId);
-    }
-    if (urlTheme !== nextThemeId || (urlCard ?? null) !== nextCardId) {
+    if (featuredCardId) setFeaturedCardId(null);
+    if (urlTheme !== nextThemeId) {
       const next = new URLSearchParams(searchParams);
-      if (nextCardId) next.set("card", nextCardId);
-      else next.delete("card");
       next.set("theme", nextThemeId);
       setSearchParams(next, { replace: true });
     }
