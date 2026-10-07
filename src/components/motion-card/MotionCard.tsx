@@ -55,6 +55,8 @@ export type MotionCardProps = {
   posterUrl: string;
   videoUrl?: string;
   playCost?: number;
+  /** Theme Free Play: play without a diamond confirm. */
+  freePlay?: boolean;
   onBuy?: () => void;
   onPlay?: () => void;
   onSelect?: (next: MotionCardState) => void;
@@ -82,6 +84,7 @@ export function MotionCard({
   posterUrl,
   videoUrl = "",
   playCost = packUnitCost(),
+  freePlay = false,
   onBuy,
   onPlay,
   onSelect,
@@ -298,9 +301,7 @@ export function MotionCard({
               fillParent
               label=""
               leadingIcon={
-                <>
-                  <DiamondLottie size={11} aria-hidden />
-                  <span className="motion-card-play-cta__price">{playCost}</span>
+                freePlay ? (
                   <Play
                     className="motion-card-play-cta__triangle"
                     size={11}
@@ -308,17 +309,37 @@ export function MotionCard({
                     fill="currentColor"
                     aria-hidden
                   />
-                </>
+                ) : (
+                  <>
+                    <DiamondLottie size={11} aria-hidden />
+                    <span className="motion-card-play-cta__price">{playCost}</span>
+                    <Play
+                      className="motion-card-play-cta__triangle"
+                      size={11}
+                      strokeWidth={2.4}
+                      fill="currentColor"
+                      aria-hidden
+                    />
+                  </>
+                )
               }
               costAmount={null}
               fontSize={10}
               cornerRadius={999}
-              aria-label={`Play for ${playCost} diamonds`}
-              aria-expanded={confirmPlay}
-              onClick={() => setConfirmPlay((open) => !open)}
+              aria-label={
+                freePlay ? "Free play" : `Play for ${playCost} diamonds`
+              }
+              aria-expanded={freePlay ? undefined : confirmPlay}
+              onClick={() => {
+                if (freePlay) {
+                  onPlay?.();
+                  return;
+                }
+                setConfirmPlay((open) => !open);
+              }}
               tabIndex={ctaInFrame ? 0 : -1}
             />
-            {confirmPlay && playCtaRef.current ? (
+            {!freePlay && confirmPlay && playCtaRef.current ? (
               <PlayConfirm
                 anchor={playCtaRef.current}
                 playCost={playCost}

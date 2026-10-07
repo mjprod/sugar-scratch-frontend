@@ -137,6 +137,7 @@ export function CreatorInfluencerBody({
   onAddPackToPocket,
   onOpenCard,
   onPlayGame,
+  onPlayGameFree,
 }: {
   creatorName: string;
   creatorId: string;
@@ -152,6 +153,7 @@ export function CreatorInfluencerBody({
   onAddPackToPocket: (pack: FeaturedCoverFlowPlayTarget) => void;
   onOpenCard: (cardId: string, themeId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
+  onPlayGameFree?: (modelId: string, cardId: string, cardName: string) => void;
 }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -279,15 +281,19 @@ export function CreatorInfluencerBody({
             demoLockedBanner={demo}
             onOpenCard={(cardId) => onOpenCard(cardId, theme.id)}
             onPlayGame={onPlayGame}
+            onPlayGameFree={onPlayGameFree}
             openCardId={openCardId}
-            onPlayPhoto={async (cardId, slotIndex, modelId) => {
+            onPlayPhoto={async (cardId, slotIndex, modelId, freePlay) => {
               const photoId = photoScratchIdForSlot(cardId, slotIndex);
-              const ok = await registerPlay("photo", photoId);
-              if (!ok) return;
+              if (!freePlay) {
+                const ok = await registerPlay("photo", photoId);
+                if (!ok) return;
+              }
               navigate(
                 Paths.photoScratchPlay(photoId, {
                   modelId: modelId || undefined,
                   creatorId,
+                  freePlay,
                 }),
               );
             }}
@@ -463,6 +469,7 @@ function ThemeCollectionCard({
   openCardId = "",
   onOpenCard,
   onPlayGame,
+  onPlayGameFree,
   onPlayPhoto,
 }: {
   theme: ThemeCardData;
@@ -474,8 +481,15 @@ function ThemeCollectionCard({
   openCardId?: string;
   onOpenCard: (cardId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
-  onPlayPhoto: (cardId: string, slotIndex: number, modelId: string) => void;
+  onPlayGameFree?: (modelId: string, cardId: string, cardName: string) => void;
+  onPlayPhoto: (
+    cardId: string,
+    slotIndex: number,
+    modelId: string,
+    freePlay?: boolean,
+  ) => void;
 }) {
+  const [freePlay, setFreePlay] = useState(false);
   const [holderItems, setHolderItems] = useState<ThreeMotionItem[]>([]);
   // A tile exists only when the catalog published a motion template for it.
   // Ownership (photoFilledCount) does not create or hide the tile.
@@ -494,16 +508,14 @@ function ThemeCollectionCard({
   const mappedItems = useMemo<ThreeMotionItem[]>(
     () =>
       motionCards.map((card, index) => {
-        const filled = Math.max(
-          0,
-          Math.min(10, Math.round(card.photoFilledCount ?? 0)),
-        );
         const unlocked = demoLockedBanner
           ? index === 0
           : !card.id.includes("-placeholder-");
-        const collectedIndexes = Array.from(
-          { length: filled },
-          (_, index) => index,
+        const photos = photoItemsForCard(card, demoLockedBanner).map((photo) =>
+          unlocked ? photo : { ...photo, state: "locked" as const },
+        );
+        const collectedIndexes = photos.flatMap((photo, photoIndex) =>
+          photo.state === "unlocked" ? [photoIndex] : [],
         );
         return {
           id: card.id,
@@ -519,15 +531,26 @@ function ThemeCollectionCard({
           posterUrl: motionTileStillUrl(card) || "/img/placeholder.png",
           videoUrl: motionVideoUrl(card),
           playCost: packUnitCost(),
+          freePlay,
           staticTotal: 10,
           collectedIndexes,
-          photos: photoItemsForCard(card, demoLockedBanner).map((photo) => ({
+          photos: photos.map((photo) => ({
             ...photo,
+            freePlay,
             onPlay: () =>
-              onPlayPhoto(card.id, photo.slotIndex ?? 0, card.modelId ?? ""),
+              onPlayPhoto(
+                card.id,
+                photo.slotIndex ?? 0,
+                card.modelId ?? "",
+                freePlay,
+              ),
           })),
           onPlay: () => {
             if (card.modelId) {
+              if (freePlay && onPlayGameFree) {
+                onPlayGameFree(card.modelId, card.id, card.name);
+                return;
+              }
               onPlayGame(card.modelId, card.id, card.name);
               return;
             }
@@ -552,7 +575,17 @@ function ThemeCollectionCard({
           },
         };
       }),
-    [demoLockedBanner, holderTheme, motionCards, onOpenCard, onPlayGame, onPlayPhoto, openCardId],
+    [
+      demoLockedBanner,
+      freePlay,
+      holderTheme,
+      motionCards,
+      onOpenCard,
+      onPlayGame,
+      onPlayGameFree,
+      onPlayPhoto,
+      openCardId,
+    ],
   );
 
   const items =
@@ -564,9 +597,6 @@ function ThemeCollectionCard({
           state: item.state,
         }))
       : mappedItems;
-
-  const photoDone = showPersonalProgress ? theme.collected : 0;
-  const photoTotal = theme.total || 30;
 
   // Premium teaser: 3 locks — gold for fully unlocked motion cards (Figma 126:3395).
   const PREMIUM_LOCK_COUNT = 3;
@@ -611,9 +641,19 @@ function ThemeCollectionCard({
             {theme.name}
           </h3>
         </div>
-        <p className="cpv2-theme-card-count">
-          Photo Cards {photoDone}/{photoTotal}
-        </p>
+        <label className="cpv2-free-play">
+          <span className="cpv2-free-play-label">Free Play?</span>
+          <button
+            type="button"
+            className={freePlay ? "cpv2-free-play-switch is-on" : "cpv2-free-play-switch"}
+            role="switch"
+            aria-checked={freePlay}
+            aria-label={`Free play for ${theme.name}`}
+            onClick={() => setFreePlay((on) => !on)}
+          >
+            <span className="cpv2-free-play-knob" />
+          </button>
+        </label>
       </header>
 
       <div className="cpv2-theme-card-row">

@@ -250,6 +250,20 @@ function CreatorScreenInner({
     }
   }
 
+  function handlePlayGameFree(playModelId: string, cardId: string, _cardName: string) {
+    const card = cardId.trim();
+    const playModel = playModelId.trim();
+    if (!card || !playModel || buying) return;
+    syncCardParam(card, selectedThemeId);
+    navigate(
+      Paths.gamePlay(playModel, card, {
+        creatorId,
+        themeId: selectedThemeId,
+        freePlay: true,
+      }),
+    );
+  }
+
   function handleToggleFollow() {
     if (!authed) {
       requireAuth({
@@ -353,6 +367,7 @@ function CreatorScreenInner({
             navigate(Paths.motionCard(creatorId, cardId));
           }}
           onPlayGame={handlePlayGame}
+          onPlayGameFree={handlePlayGameFree}
         />
       </div>
 

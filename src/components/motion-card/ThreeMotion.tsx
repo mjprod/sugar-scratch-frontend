@@ -13,6 +13,7 @@ export type ThreeMotionItem = {
   posterUrl: string;
   videoUrl?: string;
   playCost?: number;
+  freePlay?: boolean;
   staticTotal?: number;
   collectedIndexes?: number[];
   photos?: import("@/components/static-card/StaticCarousel").StaticCarouselItem[];
@@ -53,6 +54,7 @@ export function ThreeMotion({
           posterUrl={item.posterUrl}
           videoUrl={item.videoUrl}
           playCost={item.playCost}
+          freePlay={item.freePlay}
           staticTotal={item.staticTotal}
           collectedIndexes={item.collectedIndexes}
           onBuy={item.onBuy}

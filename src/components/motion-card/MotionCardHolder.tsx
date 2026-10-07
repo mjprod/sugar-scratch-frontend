@@ -176,6 +176,7 @@ export function MotionCardHolder({
                 posterUrl={item.posterUrl}
                 videoUrl={item.videoUrl}
                 playCost={item.playCost}
+                freePlay={item.freePlay}
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
                 hideMeter={selected && detailsReady}

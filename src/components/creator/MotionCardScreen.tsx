@@ -380,7 +380,7 @@ function MotionCardScreenInner({
           </header>
           {collectedCount > 0 ? (
             <p className="mcp-photos-note">
-              Played cards replay in free play: no rewards
+              Playing again costs diamonds and still awards rewards
             </p>
           ) : null}
 

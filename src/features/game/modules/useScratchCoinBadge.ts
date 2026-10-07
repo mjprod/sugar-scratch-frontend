@@ -48,10 +48,13 @@ function prefersReducedMotion() {
  */
 export function useScratchCoinBadge({
   isScratchingRef,
+  initiallyShown = false,
 }: {
   isScratchingRef: MutableRefObject<boolean>;
+  /** Paid play shows the coin count from the start; free play stays hidden. */
+  initiallyShown?: boolean;
 }) {
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useState(initiallyShown);
   const [leaving, setLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [enterKey, setEnterKey] = useState(0);
@@ -59,7 +62,7 @@ export function useScratchCoinBadge({
   const [popNonce, setPopNonce] = useState(0);
   /** Last award amount — floating +N chip on StageCoinCount. */
   const [awardFlash, setAwardFlash] = useState(0);
-  const shownRef = useRef(false);
+  const shownRef = useRef(initiallyShown);
   const leavingRef = useRef(false);
   const idleTimerRef = useRef<number | null>(null);
 
@@ -78,6 +81,8 @@ export function useScratchCoinBadge({
   }, []);
 
   const beginIdleLeave = useCallback(() => {
+    // Paid play keeps the coin count visible for the whole hand.
+    if (initiallyShown) return;
     if (!shownRef.current || leavingRef.current) return;
     if (isScratchingRef.current) return;
     if (prefersReducedMotion()) {
@@ -86,7 +91,7 @@ export function useScratchCoinBadge({
     }
     leavingRef.current = true;
     setLeaving(true);
-  }, [hideNow, isScratchingRef]);
+  }, [hideNow, initiallyShown, isScratchingRef]);
 
   const scheduleIdleHide = useCallback(
     (holdMs: number = COIN_BADGE_IDLE_HIDE_MS) => {

@@ -13,6 +13,7 @@ type StaticCardHolderProps = {
   backgroundUrl: string;
   topLayerUrl?: string;
   playCost?: number;
+  freePlay?: boolean;
   onPlay?: () => void;
   className?: string;
 };
@@ -58,6 +59,7 @@ export function StaticCardHolder({
   backgroundUrl,
   topLayerUrl,
   playCost = packUnitCost(),
+  freePlay = false,
   onPlay,
   className,
 }: StaticCardHolderProps) {
@@ -109,9 +111,7 @@ export function StaticCardHolder({
           fillParent
           label=""
           leadingIcon={
-            <>
-              <DiamondLottie size={11} aria-hidden />
-              <span className="motion-card-play-cta__price">{playCost}</span>
+            freePlay ? (
               <Play
                 className="motion-card-play-cta__triangle"
                 size={11}
@@ -119,16 +119,34 @@ export function StaticCardHolder({
                 fill="currentColor"
                 aria-hidden
               />
-            </>
+            ) : (
+              <>
+                <DiamondLottie size={11} aria-hidden />
+                <span className="motion-card-play-cta__price">{playCost}</span>
+                <Play
+                  className="motion-card-play-cta__triangle"
+                  size={11}
+                  strokeWidth={2.4}
+                  fill="currentColor"
+                  aria-hidden
+                />
+              </>
+            )
           }
           costAmount={null}
           fontSize={10}
           cornerRadius={999}
-          aria-label={`Play for ${playCost} diamonds`}
-          aria-expanded={confirm}
-          onClick={() => setConfirm((open) => !open)}
+          aria-label={freePlay ? "Free play" : `Play for ${playCost} diamonds`}
+          aria-expanded={freePlay ? undefined : confirm}
+          onClick={() => {
+            if (freePlay) {
+              onPlay?.();
+              return;
+            }
+            setConfirm((open) => !open);
+          }}
         />
-        {confirm && ctaRef.current ? (
+        {!freePlay && confirm && ctaRef.current ? (
           <PlayConfirm
             anchor={ctaRef.current}
             playCost={playCost}

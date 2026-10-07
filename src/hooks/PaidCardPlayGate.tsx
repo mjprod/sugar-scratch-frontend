@@ -40,7 +40,7 @@ export function PaidCardPlayGate({
   const [status, setStatus] = useState<GateStatus>(bypass ? "ready" : "pending");
   const [attempt, setAttempt] = useState(0);
   // A re-run of the same attempt (StrictMode, auth churn) must reuse its
-  // request: the claimed handoff is gone, so a new call would POST a replay.
+  // request: the claimed handoff is gone, so a new call would charge again.
   const pendingRef = useRef<{
     key: string;
     request: Promise<CardPlayOutcome>;

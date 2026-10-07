@@ -39,6 +39,7 @@ function ScratchGameEmbed() {
 
   const gameMode = searchParams.get("game") === "1";
   const playlistMode = searchParams.get("playlist") === "1";
+  const freePlay = searchParams.get("freeplay") === "1";
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
   const creator = searchParams.get("creator")?.trim() || "";
@@ -73,7 +74,7 @@ function ScratchGameEmbed() {
     <PaidCardPlayGate
       kind="motion"
       cardId={card}
-      skip={gameMode || playlistMode}
+      skip={gameMode || playlistMode || freePlay}
       onLeave={leaveGame}
     >
       <div className="app-shell app-shell--game">
@@ -95,7 +96,7 @@ export function GamePage() {
   if (model && card) {
     return (
       <ScratchGameEmbed
-        key={`${model}-${card}-${searchParams.get("game") ?? ""}`}
+        key={`${model}-${card}-${searchParams.get("game") ?? ""}-${searchParams.get("freeplay") ?? ""}`}
       />
     );
   }

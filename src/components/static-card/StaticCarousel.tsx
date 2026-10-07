@@ -14,6 +14,7 @@ export type StaticCarouselItem = {
   backgroundUrl: string;
   topLayerUrl?: string;
   playCost?: number;
+  freePlay?: boolean;
   slotIndex?: number;
   onPlay?: () => void;
 };
@@ -240,6 +241,7 @@ export function StaticCarousel({
               backgroundUrl={item.backgroundUrl}
               topLayerUrl={item.topLayerUrl}
               playCost={item.playCost}
+              freePlay={item.freePlay}
               onPlay={item.onPlay}
             />
           </motion.div>

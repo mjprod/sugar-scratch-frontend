@@ -64,7 +64,7 @@ export function StageMuteButton({
 }: {
   className?: string;
   showLabel?: boolean;
-  /** Collection replay after unlock shows the free-play mark instead of volume. */
+  /** Free Play toggle shows the mark instead of the volume control. */
   icon?: "volume" | "freeplay";
 } = {}) {
   const [soundOn, setSoundOn] = useState(() => audibleSoundOn());
