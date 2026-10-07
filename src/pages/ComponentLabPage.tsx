@@ -5,10 +5,14 @@ import {
 } from "@/components/lock-status/LockStatusBanner";
 import {
   MOTION_CARD_THEMES,
-  MotionCard,
   type MotionCardState,
   type MotionCardTheme,
 } from "@/components/motion-card/MotionCard";
+import { MotionCardStack } from "@/components/motion-card/MotionCardStack";
+import {
+  ThreeMotion,
+  type ThreeMotionItem,
+} from "@/components/motion-card/ThreeMotion";
 import { loadModels, profileFromModel } from "@/services/models";
 import figmaPoster from "@/assets/component-lab/1e21a68ca6be26dfd06df3fc4951ef8f06b7f7d2.png";
 
@@ -31,6 +35,29 @@ export function ComponentLabPage() {
   const [motionTheme, setMotionTheme] = useState<MotionCardTheme>("police");
   const [posterUrl, setPosterUrl] = useState(figmaPoster);
   const [videoUrl, setVideoUrl] = useState("");
+  const [threeItems, setThreeItems] = useState<ThreeMotionItem[]>([
+    {
+      id: "left",
+      state: "locked-unselected",
+      theme: "police",
+      posterUrl: figmaPoster,
+      collectedIndexes: [2, 3, 6],
+    },
+    {
+      id: "center",
+      state: "unlocked-unselected",
+      theme: "police",
+      posterUrl: figmaPoster,
+      collectedIndexes: [2, 3, 6],
+    },
+    {
+      id: "right",
+      state: "locked-unselected",
+      theme: "police",
+      posterUrl: figmaPoster,
+      collectedIndexes: [2, 3, 6],
+    },
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +81,15 @@ export function ComponentLabPage() {
           "";
         if (nextPoster) setPosterUrl(nextPoster);
         if (nextVideo) setVideoUrl(nextVideo);
+        if (nextPoster || nextVideo) {
+          setThreeItems((current) =>
+            current.map((item) => ({
+              ...item,
+              posterUrl: nextPoster || item.posterUrl,
+              videoUrl: nextVideo || item.videoUrl,
+            })),
+          );
+        }
       })
       .catch(() => {
         /* Keep the Figma still if the API is down. */
@@ -122,8 +158,7 @@ export function ComponentLabPage() {
             <div>
               <h2 className="text-[15px] font-semibold">Motion card</h2>
               <p className="mt-1 text-[12px] text-ink-tertiary">
-                Figma 229:3873 · poster / video from `/api/models`, CTA clipped
-                to the tile.
+                Figma 229:3873 + 229:3123 · motion tile with static-card meter.
               </p>
             </div>
             <div className="flex flex-wrap rounded-full bg-surface-muted p-0.5">
@@ -164,12 +199,35 @@ export function ComponentLabPage() {
           </div>
 
           <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
-            <MotionCard
+            <MotionCardStack
               state={motionState}
               theme={motionTheme}
               posterUrl={posterUrl}
               videoUrl={videoUrl}
               onSelect={setMotionState}
+              collectedIndexes={[2, 3, 6]}
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Three motion</h2>
+            <p className="mt-1 text-[12px] text-ink-tertiary">
+              Figma 229:2546 · three 108px stacks in a 335px row.
+            </p>
+          </div>
+
+          <div className="mt-6 grid place-items-center overflow-x-auto rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            <ThreeMotion
+              items={threeItems}
+              onSelect={(id, next) =>
+                setThreeItems((current) =>
+                  current.map((item) =>
+                    item.id === id ? { ...item, state: next } : item,
+                  ),
+                )
+              }
             />
           </div>
         </section>
