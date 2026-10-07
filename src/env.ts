@@ -6,3 +6,4 @@ const viteEnv =
 
 export const API_BASE_URL = viteEnv?.VITE_API_BASE_URL ?? "";
 export const STUB_OAUTH_ENABLED = viteEnv?.VITE_STUB_OAUTH === "1";
+export const GOOGLE_CLIENT_ID = (viteEnv?.VITE_GOOGLE_CLIENT_ID ?? "").trim();
