@@ -180,15 +180,18 @@ export function StaticCarousel({
 
   return (
     <div
-      className={["flex w-[169px] flex-col gap-2", className]
+      className={[
+        "static-carousel flex w-full flex-col gap-2",
+        className,
+      ]
         .filter(Boolean)
         .join(" ")}
     >
       <div className="flex w-full flex-col">
-        <p className="font-medium text-[14px] tracking-[0.28px] text-white">
+        <p className="static-carousel__title font-medium text-white">
           {THEME_LABEL[theme]} Motion Card
         </p>
-        <p className="font-medium text-[14px] tracking-[0.28px] text-white">
+        <p className="static-carousel__title font-medium text-white">
           Nº {String(motionCardNumber).padStart(2, "0")}/
           {String(motionCardTotal).padStart(2, "0")}
         </p>
@@ -197,12 +200,12 @@ export function StaticCarousel({
       <div className="flex h-2.5 w-full items-center justify-between">
           <div className="flex items-center gap-1">
           <PhotoCardsIcon />
-          <p className="whitespace-nowrap font-medium text-[8px] tracking-[0.16px] text-white">
+          <p className="static-carousel__meta whitespace-nowrap font-medium text-white">
             {THEME_LABEL[theme]} Nº {String(motionCardNumber).padStart(2, "0")}{" "}
             Photo Cards
           </p>
         </div>
-        <p className="whitespace-nowrap font-medium text-[8px] tracking-[0.16px] text-right text-white">
+        <p className="static-carousel__meta whitespace-nowrap font-medium text-right text-white">
           {unlocked}/{total}
         </p>
       </div>

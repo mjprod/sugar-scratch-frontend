@@ -28,7 +28,7 @@ export function MotionCardStack({
 }: MotionCardStackProps) {
   return (
     <div
-      className={["flex w-[108px] flex-col items-center gap-2", className]
+      className={["flex h-full w-full flex-col items-center gap-2", className]
         .filter(Boolean)
         .join(" ")}
     >

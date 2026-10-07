@@ -19,22 +19,21 @@ type MotionCardHolderProps = {
   className?: string;
 };
 
-const ROW_W = 335;
-const CARD_W = 108;
-const OFFSCREEN = ROW_W;
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
 const SHIFT = { duration: 1.04, ease: APPLE_EASE };
 const DETAILS_DELAY = 0.15;
+const GAP = 12;
+const PANEL_GAP = 16;
 
-function cardLeft(index: number, count: number) {
-  if (count <= 1) return 0;
-  return index * ((ROW_W - CARD_W) / (count - 1));
+function cardLeft(index: number, cardW: number) {
+  return -index * (cardW + GAP);
 }
 
-function exitX(index: number, activeIndex: number) {
-  if (activeIndex === 1) return index === 0 ? -OFFSCREEN : OFFSCREEN;
-  if (activeIndex === 2) return -OFFSCREEN;
-  return OFFSCREEN;
+function exitX(index: number, activeIndex: number, cardW: number) {
+  const off = cardW + GAP;
+  if (activeIndex === 1) return index === 0 ? -off * 2 : off * 2;
+  if (activeIndex === 2) return -off * 2;
+  return off * 2;
 }
 
 function exitDelay(index: number, activeIndex: number) {
@@ -69,30 +68,58 @@ export function MotionCardHolder({
   const [detailsReady, setDetailsReady] = useState(false);
   const lastActiveIndex = useRef(0);
   const detailsTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (detailsTimer.current != null) window.clearTimeout(detailsTimer.current);
-    };
-  }, []);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [cardW, setCardW] = useState(108);
   const cards = items.slice(0, 3);
   const activeIndex = cards.findIndex((item) => item.id === activeId);
   const active = activeIndex >= 0;
   const activeCard = active ? cards[activeIndex] : null;
   const instant = reduceMotion ? { duration: 0 } : SHIFT;
 
+  const openRef = useRef(false);
+  openRef.current = active;
+
+  useEffect(() => {
+    const node = rowRef.current;
+    if (!node) return;
+    const measure = () => {
+      if (openRef.current) return;
+      const el = node.children[0] as HTMLElement | undefined;
+      if (el) setCardW(el.getBoundingClientRect().width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (detailsTimer.current != null) window.clearTimeout(detailsTimer.current);
+    };
+  }, []);
+
   return (
     <div
-      className={["relative w-[335px]", className].filter(Boolean).join(" ")}
+      className={[
+        "motion-card-holder relative w-full",
+        active ? "is-open" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
-      <div className="flex w-full items-start justify-between">
+      <div
+        ref={rowRef}
+        className="grid w-full grid-cols-3 items-start gap-3"
+      >
         {cards.map((item, index) => {
           const selected = item.id === activeId;
           const shift = !active
             ? 0
             : selected
-              ? -cardLeft(index, cards.length)
-              : exitX(index, activeIndex);
+              ? cardLeft(index, cardW)
+              : exitX(index, activeIndex, cardW);
           if (active) lastActiveIndex.current = activeIndex;
           const delay = active
             ? selected
@@ -103,8 +130,14 @@ export function MotionCardHolder({
           return (
             <motion.div
               key={item.id}
-              className="relative z-[1] w-[108px] shrink-0"
-              style={{ zIndex: selected ? 2 : 1 }}
+              className={[
+                "motion-card-holder__slot relative z-[1] min-w-0",
+                selected && active ? "motion-card-holder__selected" : "",
+              ].join(" ")}
+              style={{
+                zIndex: selected ? 2 : 1,
+                ...(selected && active ? { width: cardW } : {}),
+              }}
               initial={false}
               animate={{
                 x: shift,
@@ -169,14 +202,17 @@ export function MotionCardHolder({
       <AnimatePresence>
         {active && activeCard ? (
           <motion.div
-            className="absolute top-0 left-[120px] z-[3]"
+            className="motion-card-holder__panel absolute top-0 right-0 z-[3]"
+            style={{
+              left: cardW + PANEL_GAP,
+            }}
             initial={reduceMotion ? false : { opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, x: 16 }}
             transition={instant}
           >
             <StaticCarousel
-              items={photos}
+              items={activeCard.photos?.length ? activeCard.photos : photos}
               theme={activeCard.theme}
               motionCardNumber={activeIndex + 1}
               motionCardTotal={cards.length}

@@ -721,10 +721,10 @@ body[data-theme="v8"] .cpv2-theme-card-count {
 
 body[data-theme="v8"] .cpv2-theme-card-row {
   display: flex;
-  justify-content: flex-start;
-  gap: 5.5px;
+  justify-content: stretch;
+  gap: 12px;
   width: 100%;
-  /* Room for the play CTA hanging below unlocked tiles. */
+  overflow: hidden;
   padding-bottom: 18px;
 }
 

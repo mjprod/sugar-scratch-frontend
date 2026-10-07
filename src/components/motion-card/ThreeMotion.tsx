@@ -15,6 +15,7 @@ export type ThreeMotionItem = {
   playCost?: number;
   staticTotal?: number;
   collectedIndexes?: number[];
+  photos?: import("@/components/static-card/StaticCarousel").StaticCarouselItem[];
   onBuy?: () => void;
   onPlay?: () => void;
 };
@@ -58,7 +59,7 @@ export function ThreeMotion({
           onPlay={item.onPlay}
           onSelect={
             onSelect
-              ? (next) => onSelect(item.id, next)
+              ? (next: MotionCardState) => onSelect(item.id, next)
               : undefined
           }
           className={

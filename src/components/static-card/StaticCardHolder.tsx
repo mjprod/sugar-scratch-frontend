@@ -70,14 +70,14 @@ export function StaticCardHolder({
   return (
     <div
       className={[
-        "flex w-[51px] flex-col items-center gap-1",
+        "static-card-holder flex w-[51px] flex-col items-center gap-1",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
       data-state={state}
     >
-      <div className="relative h-[71px] w-[43px] overflow-hidden rounded">
+      <div className="static-card-holder__face relative h-[71px] w-[43px] overflow-hidden rounded">
         <img
           src={backgroundUrl}
           alt=""

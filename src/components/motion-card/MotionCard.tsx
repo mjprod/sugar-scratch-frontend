@@ -48,7 +48,7 @@ const TEASE_COPY: Record<MotionCardTheme, string> = {
   teacher: "SCHOOL'S OUT",
 };
 
-type MotionCardProps = {
+export type MotionCardProps = {
   state?: MotionCardState;
   theme?: MotionCardTheme;
   posterUrl: string;
@@ -180,7 +180,7 @@ export function MotionCard({
   return (
     <div
       className={[
-        "relative h-[210.5px] w-[108px] overflow-hidden rounded-lg",
+        "relative aspect-[108/210.5] h-full w-full overflow-hidden rounded-lg",
         className,
       ]
         .filter(Boolean)

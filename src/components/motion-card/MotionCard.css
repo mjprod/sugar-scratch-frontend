@@ -129,6 +129,67 @@
   cursor: default;
 }
 
+.motion-card-holder {
+  container-type: inline-size;
+  container-name: motion-holder;
+}
+
+.static-carousel {
+  container-type: inline-size;
+  container-name: static-carousel;
+}
+
+.static-carousel__title {
+  font-size: 14px;
+  letter-spacing: 0.28px;
+}
+
+.static-carousel__meta {
+  font-size: 8px;
+  letter-spacing: 0.16px;
+}
+
+@container motion-holder (max-width: 334px) {
+  .motion-card-holder .static-carousel {
+    max-width: none;
+  }
+
+  .static-carousel__title {
+    font-size: 12px;
+    letter-spacing: 0.2px;
+  }
+
+  .static-carousel-arrows .explore-creators-arrow {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@container static-carousel (max-width: 150px) {
+  .static-carousel__title {
+    font-size: 11px;
+  }
+
+  .static-carousel__meta {
+    font-size: 7px;
+  }
+
+  .static-card-holder {
+    width: 100%;
+    max-width: 51px;
+  }
+
+  .static-card-holder__face {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 43 / 71;
+  }
+
+  .static-card-play-cta {
+    width: 100%;
+  }
+}
+
 .tease-banner {
   position: absolute;
   top: 50px;
