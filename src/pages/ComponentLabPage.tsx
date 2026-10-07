@@ -4,14 +4,17 @@ import {
   type LockStatus,
 } from "@/components/lock-status/LockStatusBanner";
 import {
+  MOTION_CARD_THEMES,
   MotionCard,
   type MotionCardState,
+  type MotionCardTheme,
 } from "@/components/motion-card/MotionCard";
 import { loadModels, profileFromModel } from "@/services/models";
 import figmaPoster from "@/assets/component-lab/1e21a68ca6be26dfd06df3fc4951ef8f06b7f7d2.png";
 
 const MOTION_STATES: Array<[MotionCardState, string]> = [
   ["locked-unselected", "Locked unselected"],
+  ["locked-unselected-banner", "Locked unselected banner"],
   ["locked-selected", "Locked selected"],
   ["unlocked-unselected", "Unlocked unselected"],
   ["unlocked-selected", "Unlocked selected"],
@@ -25,6 +28,7 @@ export function ComponentLabPage() {
   const [lockStatus, setLockStatus] = useState<LockStatus>("unlocked");
   const [motionState, setMotionState] =
     useState<MotionCardState>("locked-unselected");
+  const [motionTheme, setMotionTheme] = useState<MotionCardTheme>("police");
   const [posterUrl, setPosterUrl] = useState(figmaPoster);
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -141,11 +145,31 @@ export function ComponentLabPage() {
             </div>
           </div>
 
+          <div className="mt-3 flex flex-wrap rounded-full bg-surface-muted p-0.5">
+            {MOTION_CARD_THEMES.map((theme) => (
+              <button
+                key={theme}
+                type="button"
+                onClick={() => setMotionTheme(theme)}
+                className={[
+                  "rounded-full px-3 py-1 text-[12px] font-medium capitalize transition",
+                  motionTheme === theme
+                    ? "bg-white text-black"
+                    : "text-ink-secondary hover:text-ink",
+                ].join(" ")}
+              >
+                {theme}
+              </button>
+            ))}
+          </div>
+
           <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
             <MotionCard
               state={motionState}
+              theme={motionTheme}
               posterUrl={posterUrl}
               videoUrl={videoUrl}
+              onSelect={setMotionState}
             />
           </div>
         </section>
