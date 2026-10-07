@@ -1,5 +1,5 @@
-import { useId } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useId, useRef } from "react";
+import { motion, useAnimate, useReducedMotion } from "framer-motion";
 
 export type LockStatus = "locked" | "unlocked" | "min-unlocked";
 
@@ -78,9 +78,10 @@ function LockedGlyph() {
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
 const LABEL_MOTION = {
-  duration: 0.42,
+  duration: 0.4,
   ease: APPLE_EASE,
 };
+const WIND = [0.4, 0, 1, 1] as const;
 
 /**
  * Figma 243:8741 — compact lock status pill.
@@ -93,15 +94,42 @@ export function LockStatusBanner({
   className,
 }: LockStatusBannerProps) {
   const reduceMotion = useReducedMotion();
+  const [scope, animate] = useAnimate();
+  const prevLocked = useRef<boolean | null>(null);
   const locked = status === "locked";
   const showLabel = status !== "min-unlocked";
   const label = locked ? "Locked" : "Unlocked";
   const instant = reduceMotion ? { duration: 0 } : undefined;
 
+  useEffect(() => {
+    if (prevLocked.current === null) {
+      prevLocked.current = locked;
+      return;
+    }
+    if (prevLocked.current === locked || reduceMotion || !scope.current) {
+      prevLocked.current = locked;
+      return;
+    }
+    prevLocked.current = locked;
+    void (async () => {
+      await animate(
+        scope.current,
+        { scaleX: 1.04, scaleY: 0.96 },
+        { duration: 0.22, ease: WIND },
+      );
+      await animate(
+        scope.current,
+        { scaleX: 1, scaleY: 1 },
+        { duration: 0.4, ease: APPLE_EASE },
+      );
+    })();
+  }, [locked, animate, reduceMotion, scope]);
+
   return (
-    <div
+    <motion.div
+      ref={scope}
       className={[
-        "inline-flex items-center overflow-hidden rounded-[30px] bg-black/50 px-2.5 py-1 shadow-[0_0_0_1px_rgba(255,255,255,0.10),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.08)]",
+        "inline-flex origin-center items-center overflow-hidden rounded-[30px] bg-black/50 px-2.5 py-1 shadow-[0_0_0_1px_rgba(255,255,255,0.10),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.08)]",
         className,
       ]
         .filter(Boolean)
@@ -109,35 +137,56 @@ export function LockStatusBanner({
       data-status={status}
       aria-label={label}
     >
-      <span className="inline-flex h-3 w-[9px] shrink-0 items-center justify-center">
-        {locked ? <LockedGlyph /> : <UnlockedGlyph />}
+      <span className="relative inline-flex h-3 w-[9px] shrink-0 items-center justify-center">
+        <motion.span
+          className="absolute inset-0 grid place-items-center"
+          initial={false}
+          animate={{ opacity: locked ? 1 : 0 }}
+          transition={instant ?? LABEL_MOTION}
+        >
+          <LockedGlyph />
+        </motion.span>
+        <motion.span
+          className="absolute inset-0 grid place-items-center"
+          initial={false}
+          animate={{ opacity: locked ? 0 : 1 }}
+          transition={instant ?? LABEL_MOTION}
+        >
+          <UnlockedGlyph />
+        </motion.span>
       </span>
 
       <motion.div
-        className="grid shrink-0"
+        className="shrink-0 overflow-hidden"
         initial={false}
         animate={{
-          gridTemplateColumns: showLabel ? "max-content" : "0fr",
+          width: showLabel ? "auto" : 0,
           marginLeft: showLabel ? 8 : 0,
         }}
         transition={instant ?? LABEL_MOTION}
       >
-        <div className="overflow-hidden">
-          <span className="relative block whitespace-nowrap font-medium text-[10px] tracking-[0.2px]">
-            <span className="invisible" aria-hidden="true">
-              Unlocked
-            </span>
-            <motion.span
-              className="absolute inset-0 text-white"
-              initial={false}
-              animate={{ x: showLabel ? "0%" : "-100%" }}
-              transition={instant ?? LABEL_MOTION}
-            >
-              {label}
-            </motion.span>
+        <span className="relative block w-max whitespace-nowrap font-medium text-[10px] tracking-[0.2px] text-white">
+          <span className="invisible" aria-hidden="true">
+            Unlocked
           </span>
-        </div>
+          <motion.span
+            className="absolute inset-0"
+            initial={false}
+            animate={{ opacity: locked ? 1 : 0 }}
+            transition={instant ?? LABEL_MOTION}
+          >
+            Locked
+          </motion.span>
+          <motion.span
+            className="absolute inset-0"
+            initial={false}
+            animate={{ opacity: locked ? 0 : 1 }}
+            transition={instant ?? LABEL_MOTION}
+          >
+            Unlocked
+          </motion.span>
+        </span>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

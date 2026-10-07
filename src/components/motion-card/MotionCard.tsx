@@ -281,7 +281,11 @@ export function MotionCard({
         className="absolute right-[3px] bottom-[3px] left-[3px] z-10 h-7"
         initial={false}
         animate={{ y: ctaInFrame ? 0 : 36 }}
-        transition={instant}
+        transition={
+          reduceMotion
+            ? { duration: 0 }
+            : { ...CARD_MOTION, delay: ctaInFrame ? 0.2 : 0 }
+        }
         style={{ pointerEvents: ctaInFrame ? "auto" : "none" }}
       >
         {locked ? (
