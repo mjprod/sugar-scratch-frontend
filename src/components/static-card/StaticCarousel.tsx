@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   StaticCardHolder,
   type StaticCardHolderState,
@@ -35,11 +33,7 @@ const THEME_LABEL: Record<MotionCardTheme, string> = {
   teacher: "Teacher",
 };
 
-const DRAG_THRESHOLD = 4;
-const CARD_STEP = 59;
 const STATIC_CARD_TOTAL = 10;
-const GLASS_ARROW =
-  "explore-creators-arrow glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface";
 
 function PhotoCardsIcon() {
   return (
@@ -64,7 +58,7 @@ function PhotoCardsIcon() {
 }
 
 /**
- * Horizontal drag carousel of static photo holders.
+ * Native overflow strip of static photo holders.
  * Viewport fits three 51px holders with 8px gaps (169px).
  */
 export function StaticCarousel({
@@ -74,114 +68,9 @@ export function StaticCarousel({
   motionCardTotal = 3,
   className,
 }: StaticCarouselProps) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{
-    pointerId: number;
-    lastX: number;
-    lastT: number;
-    velocity: number;
-  } | null>(null);
-  const holdRef = useRef<number | null>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
   const unlocked = cards.filter((item) => item.state === "unlocked").length;
   const total = STATIC_CARD_TOTAL;
-
-  const updateScrollButtons = useCallback(() => {
-    const node = scrollerRef.current;
-    if (!node) return;
-    setCanScrollLeft(node.scrollLeft > 2);
-    setCanScrollRight(node.scrollLeft + node.clientWidth < node.scrollWidth - 2);
-  }, []);
-
-  useEffect(() => {
-    updateScrollButtons();
-  }, [items, updateScrollButtons]);
-
-  function scrollByCard(direction: -1 | 1, smooth = true) {
-    const node = scrollerRef.current;
-    if (!node) return;
-    node.scrollBy({
-      left: direction * CARD_STEP,
-      behavior: smooth ? "smooth" : "auto",
-    });
-    updateScrollButtons();
-  }
-
-  function stopHold() {
-    if (holdRef.current != null) {
-      window.clearInterval(holdRef.current);
-      holdRef.current = null;
-    }
-  }
-
-  function startHold(direction: -1 | 1) {
-    stopHold();
-    scrollByCard(direction);
-    holdRef.current = window.setInterval(() => {
-      const node = scrollerRef.current;
-      if (!node) {
-        stopHold();
-        return;
-      }
-      const atStart = node.scrollLeft <= 2;
-      const atEnd =
-        node.scrollLeft + node.clientWidth >= node.scrollWidth - 2;
-      if ((direction < 0 && atStart) || (direction > 0 && atEnd)) {
-        stopHold();
-        updateScrollButtons();
-        return;
-      }
-      const nodeNow = scrollerRef.current;
-      if (!nodeNow) return;
-      nodeNow.scrollBy({ left: direction * 12, behavior: "auto" });
-      updateScrollButtons();
-    }, 16);
-  }
-
-  useEffect(() => stopHold, []);
-
-  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    const node = scrollerRef.current;
-    if (!node) return;
-    if ((event.target as HTMLElement).closest(".static-card-play-cta, .static-card-buy-confirm")) {
-      return;
-    }
-    drag.current = {
-      pointerId: event.pointerId,
-      lastX: event.clientX,
-      lastT: performance.now(),
-      velocity: 0,
-    };
-    node.setPointerCapture(event.pointerId);
-  }
-
-  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    const node = scrollerRef.current;
-    const session = drag.current;
-    if (!node || !session || session.pointerId !== event.pointerId) return;
-    const now = performance.now();
-    const delta = event.clientX - session.lastX;
-    const dt = Math.max(1, now - session.lastT);
-    node.scrollLeft -= delta;
-    session.velocity = delta / dt;
-    session.lastX = event.clientX;
-    session.lastT = now;
-    updateScrollButtons();
-  }
-
-  function endDrag(event: React.PointerEvent<HTMLDivElement>) {
-    const node = scrollerRef.current;
-    const session = drag.current;
-    if (!node || !session || session.pointerId !== event.pointerId) return;
-    const leftover = -session.velocity * 180;
-    if (Math.abs(leftover) > DRAG_THRESHOLD) {
-      node.scrollBy({ left: leftover, behavior: "smooth" });
-    }
-    drag.current = null;
-    updateScrollButtons();
-  }
 
   return (
     <div
@@ -202,11 +91,10 @@ export function StaticCarousel({
         </p>
       </div>
 
-      <div className="flex h-2.5 w-full items-center justify-between">
+      <div className="flex h-3.5 w-full items-center justify-between">
           <div className="flex items-center gap-1">
           <PhotoCardsIcon />
           <p className="static-carousel__meta whitespace-nowrap font-medium text-white">
-            {THEME_LABEL[theme]} Nº {String(motionCardNumber).padStart(2, "0")}{" "}
             Photo Cards
           </p>
         </div>
@@ -215,19 +103,11 @@ export function StaticCarousel({
         </p>
       </div>
 
-      <div
-        ref={scrollerRef}
-        className="flex w-full cursor-grab touch-pan-y items-start gap-2 overflow-x-auto select-none active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onScroll={updateScrollButtons}
-      >
+      <div className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto">
         {cards.map((item, index) => (
           <motion.div
             key={item.id}
-            className="w-[51px] shrink-0"
+            className="w-[62px] shrink-0"
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{
@@ -262,33 +142,6 @@ export function StaticCarousel({
           className="h-[0.25rem] w-full"
         />
       </motion.div>
-
-      <div className="static-carousel-arrows flex w-full items-center justify-between">
-        <button
-          type="button"
-          className={`${GLASS_ARROW} is-prev !flex`}
-          aria-label="Previous photo cards"
-          disabled={!canScrollLeft}
-          onPointerDown={() => startHold(-1)}
-          onPointerUp={stopHold}
-          onPointerLeave={stopHold}
-          onPointerCancel={stopHold}
-        >
-          <ChevronLeft className="size-5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={`${GLASS_ARROW} is-next !flex`}
-          aria-label="Next photo cards"
-          disabled={!canScrollRight}
-          onPointerDown={() => startHold(1)}
-          onPointerUp={stopHold}
-          onPointerLeave={stopHold}
-          onPointerCancel={stopHold}
-        >
-          <ChevronRight className="size-5" aria-hidden="true" />
-        </button>
-      </div>
     </div>
   );
 }

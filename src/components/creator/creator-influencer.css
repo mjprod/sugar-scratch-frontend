@@ -406,9 +406,9 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow-frame {
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
   width: 100%;
-  /* Room for pack art + Buy Pack CTA without clipping the label. */
-  height: min(52dvh, 460px);
-  min-height: 430px;
+  /* ~30% smaller than the previous 52dvh / 460px stage. */
+  height: min(36.4dvh, 322px);
+  min-height: 301px;
   padding-top: 0;
   overflow: visible;
   -webkit-mask-image: none;
@@ -416,8 +416,8 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
-  height: min(52dvh, 460px);
-  min-height: 430px;
+  height: min(36.4dvh, 322px);
+  min-height: 301px;
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow
@@ -431,6 +431,19 @@ body[data-theme="v8"] .cpv2-pack-coverflow
   .home-featured-coverflow[data-coverflow="mobile-swiper"]
   .mobile-css-carousel-shell {
   transform: none;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel .swiper-slide {
+  width: 10.08rem; /* 14.4rem * 0.7 */
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel__hud .coverflow-buy-pack-cta {
+  transform: scale(0.7);
+  transform-origin: center bottom;
 }
 
 /* Keep the Buy Pack HUD fully below the pack face (not clipped mid-label). */

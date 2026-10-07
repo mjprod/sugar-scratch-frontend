@@ -50,7 +50,7 @@
 }
 
 .static-card-play-cta {
-  width: 51px;
+  width: 56px;
   height: 28px;
   flex: 0 0 28px;
 }
@@ -139,13 +139,25 @@
   container-name: static-carousel;
 }
 
+.static-carousel__scroller {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.static-carousel__scroller::-webkit-scrollbar {
+  display: none;
+}
+
 .static-carousel__title {
   font-size: 14px;
   letter-spacing: 0.28px;
 }
 
 .static-carousel__meta {
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.16px;
 }
 
@@ -171,12 +183,12 @@
   }
 
   .static-carousel__meta {
-    font-size: 7px;
+    font-size: 10px;
   }
 
   .static-card-holder {
     width: 100%;
-    max-width: 51px;
+    max-width: 62px;
   }
 
   .static-card-holder__face {
