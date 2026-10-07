@@ -8,11 +8,22 @@ import {
   type MotionCardState,
   type MotionCardTheme,
 } from "@/components/motion-card/MotionCard";
+import { ActiveMotion } from "@/components/motion-card/ActiveMotion";
+import { MotionCardHolder } from "@/components/motion-card/MotionCardHolder";
 import { MotionCardStack } from "@/components/motion-card/MotionCardStack";
 import {
   ThreeMotion,
   type ThreeMotionItem,
 } from "@/components/motion-card/ThreeMotion";
+import {
+  StaticCardHolder,
+  type StaticCardHolderState,
+} from "@/components/static-card/StaticCardHolder";
+import {
+  StaticCarousel,
+  type StaticCarouselItem,
+} from "@/components/static-card/StaticCarousel";
+import { fetchCatalogPhotoCards } from "@/features/game/shared/catalog";
 import { loadModels, profileFromModel } from "@/services/models";
 import figmaPoster from "@/assets/component-lab/1e21a68ca6be26dfd06df3fc4951ef8f06b7f7d2.png";
 
@@ -35,10 +46,18 @@ export function ComponentLabPage() {
   const [motionTheme, setMotionTheme] = useState<MotionCardTheme>("police");
   const [posterUrl, setPosterUrl] = useState(figmaPoster);
   const [videoUrl, setVideoUrl] = useState("");
+  const [staticState, setStaticState] =
+    useState<StaticCardHolderState>("locked");
+  const [staticBackgroundUrl, setStaticBackgroundUrl] = useState(figmaPoster);
+  const [staticTopLayerUrl, setStaticTopLayerUrl] = useState("");
+  const [staticPlayCost, setStaticPlayCost] = useState(30);
+  const [staticCarouselItems, setStaticCarouselItems] = useState<
+    StaticCarouselItem[]
+  >([]);
   const [threeItems, setThreeItems] = useState<ThreeMotionItem[]>([
     {
       id: "left",
-      state: "locked-unselected",
+      state: "locked-unselected-banner",
       theme: "police",
       posterUrl: figmaPoster,
       collectedIndexes: [2, 3, 6],
@@ -52,7 +71,7 @@ export function ComponentLabPage() {
     },
     {
       id: "right",
-      state: "locked-unselected",
+      state: "locked-unselected-banner",
       theme: "police",
       posterUrl: figmaPoster,
       collectedIndexes: [2, 3, 6],
@@ -90,6 +109,37 @@ export function ComponentLabPage() {
             })),
           );
         }
+      })
+      .catch(() => {
+        /* Keep the Figma still if the API is down. */
+      });
+    void fetchCatalogPhotoCards()
+      .then((photos) => {
+        if (cancelled) return;
+        const photo = photos[0];
+        if (!photo) return;
+        const background = photo.background?.trim() || "";
+        const topLayer = photo.clothes?.trim() || photo.bikini?.trim() || "";
+        if (background) setStaticBackgroundUrl(background);
+        if (topLayer) setStaticTopLayerUrl(topLayer);
+        if (typeof photo.cardPrice === "number") {
+          setStaticPlayCost(photo.cardPrice);
+        }
+        setStaticCarouselItems(
+          photos.slice(0, 10).map((entry, index) => ({
+            id: entry.id || `static-${index}`,
+            state: index % 3 === 1 ? "unlocked" : "locked",
+            backgroundUrl:
+              entry.background?.trim() ||
+              entry.clothes?.trim() ||
+              figmaPoster,
+            topLayerUrl: entry.clothes?.trim() || entry.bikini?.trim() || "",
+            playCost:
+              typeof entry.cardPrice === "number"
+                ? entry.cardPrice
+                : 30,
+          })),
+        );
       })
       .catch(() => {
         /* Keep the Figma still if the API is down. */
@@ -222,6 +272,107 @@ export function ComponentLabPage() {
             <ThreeMotion
               items={threeItems}
               onSelect={(id, next) =>
+                setThreeItems((current) =>
+                  current.map((item) =>
+                    item.id === id ? { ...item, state: next } : item,
+                  ),
+                )
+              }
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Static card holder</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Figma 227:571 · photo card from catalog, play CTA under the
+                image.
+              </p>
+            </div>
+            <div className="flex rounded-full bg-surface-muted p-0.5">
+              {(["locked", "unlocked"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setStaticState(value)}
+                  className={[
+                    "rounded-full px-3 py-1 text-[12px] font-medium capitalize transition",
+                    staticState === value
+                      ? "bg-white text-black"
+                      : "text-ink-secondary hover:text-ink",
+                  ].join(" ")}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            <StaticCardHolder
+              state={staticState}
+              backgroundUrl={staticBackgroundUrl}
+              topLayerUrl={staticTopLayerUrl}
+              playCost={staticPlayCost}
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Static carousel</h2>
+            <p className="mt-1 text-[12px] text-ink-tertiary">
+              Three holders visible · snap-scroll through catalog photo cards.
+            </p>
+          </div>
+
+          <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            <StaticCarousel
+              items={staticCarouselItems}
+              theme={motionTheme}
+              motionCardNumber={1}
+              motionCardTotal={3}
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Active motion</h2>
+            <p className="mt-1 text-[12px] text-ink-tertiary">
+              Motion card + static carousel in two columns.
+            </p>
+          </div>
+
+          <div className="mt-6 grid place-items-center overflow-x-auto rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            <ActiveMotion
+              state={motionState}
+              theme={motionTheme}
+              posterUrl={posterUrl}
+              videoUrl={videoUrl}
+              onSelect={setMotionState}
+              photos={staticCarouselItems}
+              motionCardNumber={1}
+              motionCardTotal={3}
+            />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Motion card holder</h2>
+            <p className="mt-1 text-[12px] text-ink-tertiary">
+              Three-up row · click a card to expand into Active Motion.
+            </p>
+          </div>
+
+          <div className="mt-6 grid place-items-center overflow-x-auto rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            <MotionCardHolder
+              items={threeItems}
+              photos={staticCarouselItems}
+              onItemSelect={(id, next) =>
                 setThreeItems((current) =>
                   current.map((item) =>
                     item.id === id ? { ...item, state: next } : item,

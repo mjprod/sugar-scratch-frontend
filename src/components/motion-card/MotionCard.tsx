@@ -263,9 +263,12 @@ export function MotionCard({
             style={{ background: TEASE_TINT[theme] }}
           />
           <div className="tease-banner__copy">
-            <span>{TEASE_COPY[theme]}</span>
-            <span>{TEASE_COPY[theme]}</span>
-            <span>{TEASE_COPY[theme]}</span>
+            <div className="tease-banner__copy-row">
+              <span>{TEASE_COPY[theme]}</span>
+              <span>{TEASE_COPY[theme]}</span>
+              <span>{TEASE_COPY[theme]}</span>
+            </div>
+            <div className="tease-banner__hint">Tap to Discover</div>
           </div>
         </div>
       </div>

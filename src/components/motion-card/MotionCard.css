@@ -49,6 +49,86 @@
   letter-spacing: 0.2px;
 }
 
+.static-card-play-cta {
+  width: 51px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+
+.static-card-play-cta .cta-button-glow,
+.static-card-play-cta .cta-button-glow--fill,
+.static-card-play-cta .cta-button,
+.static-card-play-cta .cta-button--fill {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+.static-card-play-cta .cta-button__inner,
+.static-card-play-cta .cta-button__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.static-card-play-cta .cta-button__label {
+  padding: 0 4px;
+}
+
+.static-card-play-cta .cta-button__title {
+  display: none;
+}
+
+.static-card-play-cta .cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15em;
+  width: max-content;
+  margin-inline: auto;
+}
+
+.static-card-play-cta .cta-button__leading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15em;
+  width: auto;
+  height: auto;
+  color: #ffe0e8;
+}
+
+.static-card-play-cta .cta-button__leading-icon img,
+.static-card-play-cta .cta-button__leading-icon svg {
+  display: block;
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+}
+
+.static-card-play-cta .motion-card-play-cta__price {
+  font-size: 9px;
+}
+
+.static-carousel-arrows .explore-creators-arrow {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.static-carousel-arrows .explore-creators-arrow:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
 .tease-banner {
   position: absolute;
   top: 50px;
@@ -95,12 +175,33 @@
   z-index: 1;
   display: flex;
   height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 12px;
+  color: #000;
+  white-space: nowrap;
+}
+
+.tease-banner__copy-row {
+  display: flex;
   align-items: center;
   gap: 7px;
-  padding-left: 22px;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.2px;
-  color: #000;
-  white-space: nowrap;
+}
+
+.tease-banner__hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border: 1px solid #000;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.16px;
+  text-align: center;
 }

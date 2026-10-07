@@ -1,6 +1,8 @@
 export type StaticCardMeterProps = {
   /** First tick: champagne when the motion card is unlocked. */
   motionUnlocked?: boolean;
+  /** Include the leading motion-unlock tick. Default true. */
+  includeMotionTick?: boolean;
   /** Number of static cards tied to this motion card. Default 10. */
   staticTotal?: number;
   /** Indexes (0-based) of static cards played / unlocked / bought at least once. */
@@ -18,6 +20,7 @@ const STATIC_COLLECTED = "#d4145a";
  */
 export function StaticCardMeter({
   motionUnlocked = false,
+  includeMotionTick = true,
   staticTotal = 10,
   collectedIndexes = [],
   className,
@@ -27,19 +30,21 @@ export function StaticCardMeter({
   return (
     <div
       className={[
-        "flex h-[13px] w-[92px] items-center justify-center gap-[2px]",
-        className,
+        "flex items-center justify-center gap-[2px]",
+        className ?? "h-[13px] w-[92px]",
       ]
         .filter(Boolean)
         .join(" ")}
       aria-hidden="true"
     >
-      <span
-        className="h-full min-w-px flex-1 rounded-[2px]"
-        style={{
-          background: motionUnlocked ? MOTION_UNLOCKED : STATIC_LOCKED,
-        }}
-      />
+      {includeMotionTick ? (
+        <span
+          className="h-full min-w-px flex-1 rounded-[2px]"
+          style={{
+            background: motionUnlocked ? MOTION_UNLOCKED : STATIC_LOCKED,
+          }}
+        />
+      ) : null}
       {Array.from({ length: staticTotal }, (_, index) => (
         <span
           key={index}

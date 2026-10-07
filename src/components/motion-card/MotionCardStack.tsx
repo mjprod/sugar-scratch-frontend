@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import {
   MotionCard,
   type MotionCardProps,
@@ -8,6 +9,7 @@ import { StaticCardMeter } from "@/components/motion-card/StaticCardMeter";
 type MotionCardStackProps = MotionCardProps & {
   staticTotal?: number;
   collectedIndexes?: number[];
+  hideMeter?: boolean;
 };
 
 function motionUnlocked(state: MotionCardState | undefined) {
@@ -20,6 +22,7 @@ function motionUnlocked(state: MotionCardState | undefined) {
 export function MotionCardStack({
   staticTotal = 10,
   collectedIndexes = [],
+  hideMeter = false,
   className,
   ...cardProps
 }: MotionCardStackProps) {
@@ -30,11 +33,20 @@ export function MotionCardStack({
         .join(" ")}
     >
       <MotionCard {...cardProps} />
-      <StaticCardMeter
-        motionUnlocked={motionUnlocked(cardProps.state)}
-        staticTotal={staticTotal}
-        collectedIndexes={collectedIndexes}
-      />
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: hideMeter ? 0 : 1,
+          y: hideMeter ? 8 : 0,
+        }}
+        transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <StaticCardMeter
+          motionUnlocked={motionUnlocked(cardProps.state)}
+          staticTotal={staticTotal}
+          collectedIndexes={collectedIndexes}
+        />
+      </motion.div>
     </div>
   );
 }
