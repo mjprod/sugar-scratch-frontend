@@ -277,7 +277,6 @@ export function CreatorInfluencerBody({
             glyph={themeGlyph(theme)}
             avatarUrl={theme.thumbnailUrl || avatarUrl}
             cards={cardsByThemeId[theme.id] ?? []}
-            showPersonalProgress={showPersonalProgress}
             demoLockedBanner={demo}
             onOpenCard={(cardId) => onOpenCard(cardId, theme.id)}
             onPlayGame={onPlayGame}
@@ -464,7 +463,6 @@ function ThemeCollectionCard({
   glyph,
   avatarUrl,
   cards,
-  showPersonalProgress,
   demoLockedBanner = false,
   openCardId = "",
   onOpenCard,
@@ -476,7 +474,6 @@ function ThemeCollectionCard({
   glyph: string;
   avatarUrl: string;
   cards: CardConfig[];
-  showPersonalProgress: boolean;
   demoLockedBanner?: boolean;
   openCardId?: string;
   onOpenCard: (cardId: string) => void;
