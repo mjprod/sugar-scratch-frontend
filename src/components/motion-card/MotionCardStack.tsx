@@ -39,7 +39,7 @@ export function MotionCardStack({
           opacity: hideMeter ? 0 : 1,
           y: hideMeter ? 8 : 0,
         }}
-        transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
       >
         <StaticCardMeter
           motionUnlocked={motionUnlocked(cardProps.state)}

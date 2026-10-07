@@ -21,18 +21,37 @@ type MotionCardHolderProps = {
 
 const ROW_W = 335;
 const CARD_W = 108;
+const OFFSCREEN = ROW_W;
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
-const SHIFT = { duration: 0.48, ease: APPLE_EASE };
+const SHIFT = { duration: 1.04, ease: APPLE_EASE };
 
 function cardLeft(index: number, count: number) {
   if (count <= 1) return 0;
   return index * ((ROW_W - CARD_W) / (count - 1));
 }
 
+function exitX(index: number, activeIndex: number) {
+  if (activeIndex === 1) return index === 0 ? -OFFSCREEN : OFFSCREEN;
+  if (activeIndex === 2) return -OFFSCREEN;
+  return OFFSCREEN;
+}
+
+function exitDelay(index: number, activeIndex: number) {
+  if (activeIndex === 2) return index * 0.08;
+  const order = [0, 1, 2]
+    .filter((i) => i !== activeIndex)
+    .sort((a, b) => b - a);
+  const place = order.indexOf(index);
+  return place < 0 ? 0 : place * 0.16;
+}
+
+function exitDuration() {
+  return SHIFT.duration;
+}
+
 /**
  * Three-up motion row that expands into Active Motion on click.
- * Card 1 stays put; cards 2/3 slide to card 1's left edge.
- * Unselected cards fade to 10% opacity.
+ * Unused cards slide right off-screen, staggered.
  */
 export function MotionCardHolder({
   items,
@@ -55,7 +74,13 @@ export function MotionCardHolder({
       <div className="flex w-full items-start justify-between">
         {cards.map((item, index) => {
           const selected = item.id === activeId;
-          const shift = active && selected ? -cardLeft(index, cards.length) : 0;
+          const shift = !active
+            ? 0
+            : selected
+              ? -cardLeft(index, cards.length)
+              : exitX(index, activeIndex);
+          const delay =
+            active && !selected ? exitDelay(index, activeIndex) : 0;
 
           return (
             <motion.div
@@ -65,9 +90,17 @@ export function MotionCardHolder({
               initial={false}
               animate={{
                 x: shift,
-                opacity: !active || selected ? 1 : 0.1,
+                opacity: !active || selected ? 1 : 0,
               }}
-              transition={instant}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : {
+                      duration: exitDuration(),
+                      ease: APPLE_EASE,
+                      delay,
+                    }
+              }
             >
               <MotionCardStack
                 state={item.state}
