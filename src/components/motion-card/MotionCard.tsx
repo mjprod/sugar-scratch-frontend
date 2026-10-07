@@ -102,6 +102,10 @@ export function MotionCard({
   const instant = reduceMotion ? { duration: 0 } : CARD_MOTION;
 
   useEffect(() => {
+    if (!ctaInFrame) setConfirmPlay(false);
+  }, [ctaInFrame]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     if (playVideo) {
