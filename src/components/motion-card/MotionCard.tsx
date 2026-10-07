@@ -102,12 +102,18 @@ export function MotionCard({
     const video = videoRef.current;
     if (!video) return;
     if (playVideo) {
+      video.preload = "auto";
+      if (!video.getAttribute("src")) video.src = videoUrl;
       video.currentTime = 0;
       void video.play().catch(() => {});
       return;
     }
     video.pause();
-  }, [playVideo]);
+    // Drop the decoder while the tile is just a poster. iOS keeps a decoded
+    // frame for every attached src, and this row mounts one per theme.
+    video.removeAttribute("src");
+    video.load();
+  }, [playVideo, videoUrl]);
 
   useEffect(() => {
     const node = teaseRef.current;
@@ -202,12 +208,11 @@ export function MotionCard({
         <video
           ref={videoRef}
           className="pointer-events-none absolute inset-0 size-full object-cover"
-          src={videoUrl}
           poster={posterUrl}
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="none"
           aria-hidden={!playVideo}
           style={{
             opacity: playVideo ? 1 : 0,

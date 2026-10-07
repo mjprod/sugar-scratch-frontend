@@ -1415,21 +1415,16 @@ body[data-theme="v8"] .cpv2-ultra-glow {
   pointer-events: none;
 }
 
-@property --cpv2-ultra-gold-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
 @keyframes cpv2-ultra-gold-spin {
   to {
-    --cpv2-ultra-gold-angle: 360deg;
+    transform: translateX(-50%) rotate(360deg);
   }
 }
 
-/* ~10% larger frame behind the video — spinning gold ring via cutout */
+/* ~10% larger frame behind the video — spinning gold ring.
+   Rotate the element, not a registered angle: animating a custom property
+   invalidates styles on every frame and was pinning the creator page. */
 body[data-theme="v8"] .cpv2-ultra-card-outline {
-  --cpv2-ultra-gold-angle: 0deg;
   position: absolute;
   top: calc(
     var(--cpv2-ultra-card-top) - (var(--cpv2-ultra-card-h) * 0.05)
@@ -1438,14 +1433,13 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
   z-index: 1;
   width: calc(var(--cpv2-ultra-card-w) * 1.1 + 10px);
   height: calc(var(--cpv2-ultra-card-h) * 1.1);
-  transform: translateX(-50%);
   padding: 2px;
   border-radius: 18px;
   box-sizing: border-box;
   pointer-events: none;
   isolation: isolate;
   background: conic-gradient(
-    from var(--cpv2-ultra-gold-angle),
+    from 0deg,
     #fff6d0 0deg,
     #ffd56a 65deg,
     #ffc640 130deg,
@@ -1455,7 +1449,9 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
     #fff6d0 360deg
   );
   box-shadow: 0 0 24px rgba(255, 198, 64, 0.28);
+  transform: translateX(-50%);
   animation: cpv2-ultra-gold-spin 4000ms linear infinite;
+  will-change: transform;
   -webkit-mask-image: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 1) 0%,

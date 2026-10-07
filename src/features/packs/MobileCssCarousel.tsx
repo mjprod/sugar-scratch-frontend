@@ -293,7 +293,7 @@ function PackFaceVideo({
       loop
       playsInline
       autoPlay
-      preload="auto"
+      preload="metadata"
       onLoadedData={() => {
         onReady?.();
         const video = videoRef.current;

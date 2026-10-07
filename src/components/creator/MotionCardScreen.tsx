@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { OffscreenVideo } from "@/components/creator/OffscreenVideo";
 import { createPortal } from "react-dom";
 import { ChevronLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -261,15 +262,10 @@ function MotionCardScreenInner({
               onClick={() => void playMotion()}
             >
               {videoUrl ? (
-                <video
+                <OffscreenVideo
                   className="cpv2-motion-tile-img"
                   src={videoUrl}
                   poster={poster}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
                 />
               ) : poster ? (
                 <img

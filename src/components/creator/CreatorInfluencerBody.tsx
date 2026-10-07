@@ -7,6 +7,7 @@ import {
   type FeaturedCoverFlowPlayTarget,
 } from "@/components/home/FeaturedCoverFlow";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { OffscreenVideo } from "@/components/creator/OffscreenVideo";
 import { MotionCardHolder } from "@/components/motion-card/MotionCardHolder";
 import type {
   MotionCardState,
@@ -300,15 +301,10 @@ export function CreatorInfluencerBody({
         </div>
         <div className="cpv2-ultra-card-art" aria-hidden="true">
           {ultraPreview.videoUrl ? (
-            <video
+            <OffscreenVideo
               className="cpv2-ultra-card-video"
               src={ultraPreview.videoUrl}
               poster={ultraPreview.posterUrl || undefined}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
             />
           ) : (
             <img
