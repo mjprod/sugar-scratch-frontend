@@ -79,6 +79,7 @@ export function StaticCarousel({
     lastT: number;
     velocity: number;
   } | null>(null);
+  const holdRef = useRef<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
@@ -96,11 +97,48 @@ export function StaticCarousel({
     updateScrollButtons();
   }, [items, updateScrollButtons]);
 
-  function scrollByCard(direction: -1 | 1) {
+  function scrollByCard(direction: -1 | 1, smooth = true) {
     const node = scrollerRef.current;
     if (!node) return;
-    node.scrollBy({ left: direction * CARD_STEP, behavior: "smooth" });
+    node.scrollBy({
+      left: direction * CARD_STEP,
+      behavior: smooth ? "smooth" : "auto",
+    });
+    updateScrollButtons();
   }
+
+  function stopHold() {
+    if (holdRef.current != null) {
+      window.clearInterval(holdRef.current);
+      holdRef.current = null;
+    }
+  }
+
+  function startHold(direction: -1 | 1) {
+    stopHold();
+    scrollByCard(direction);
+    holdRef.current = window.setInterval(() => {
+      const node = scrollerRef.current;
+      if (!node) {
+        stopHold();
+        return;
+      }
+      const atStart = node.scrollLeft <= 2;
+      const atEnd =
+        node.scrollLeft + node.clientWidth >= node.scrollWidth - 2;
+      if ((direction < 0 && atStart) || (direction > 0 && atEnd)) {
+        stopHold();
+        updateScrollButtons();
+        return;
+      }
+      const nodeNow = scrollerRef.current;
+      if (!nodeNow) return;
+      nodeNow.scrollBy({ left: direction * 12, behavior: "auto" });
+      updateScrollButtons();
+    }, 16);
+  }
+
+  useEffect(() => stopHold, []);
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     const node = scrollerRef.current;
@@ -160,7 +198,8 @@ export function StaticCarousel({
           <div className="flex items-center gap-1">
           <PhotoCardsIcon />
           <p className="whitespace-nowrap font-medium text-[8px] tracking-[0.16px] text-white">
-            {THEME_LABEL[theme]} Photo Cards
+            {THEME_LABEL[theme]} Nº {String(motionCardNumber).padStart(2, "0")}{" "}
+            Photo Cards
           </p>
         </div>
         <p className="whitespace-nowrap font-medium text-[8px] tracking-[0.16px] text-right text-white">
@@ -211,7 +250,10 @@ export function StaticCarousel({
           className={`${GLASS_ARROW} is-prev !flex`}
           aria-label="Previous photo cards"
           disabled={!canScrollLeft}
-          onClick={() => scrollByCard(-1)}
+          onPointerDown={() => startHold(-1)}
+          onPointerUp={stopHold}
+          onPointerLeave={stopHold}
+          onPointerCancel={stopHold}
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
@@ -220,7 +262,10 @@ export function StaticCarousel({
           className={`${GLASS_ARROW} is-next !flex`}
           aria-label="Next photo cards"
           disabled={!canScrollRight}
-          onClick={() => scrollByCard(1)}
+          onPointerDown={() => startHold(1)}
+          onPointerUp={stopHold}
+          onPointerLeave={stopHold}
+          onPointerCancel={stopHold}
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>
