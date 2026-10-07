@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
+import { X } from "lucide-react";
 import {
   StaticCardHolder,
   type StaticCardHolderState,
@@ -35,6 +38,24 @@ const THEME_LABEL: Record<MotionCardTheme, string> = {
 
 const STATIC_CARD_TOTAL = 10;
 
+function PhotoCardsExpandIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      className="block size-4 shrink-0 text-white"
+    >
+      <path
+        fill="currentColor"
+        d="M18.25 3H5.75A2.755 2.755 0 0 0 3 5.75v12.5A2.755 2.755 0 0 0 5.75 21h12.5A2.755 2.755 0 0 0 21 18.25V5.75A2.755 2.755 0 0 0 18.25 3M11 17v1.5H6.75c-.69 0-1.25-.56-1.25-1.25V13H7v2.94l3.22-3.22l1.06 1.06L8.06 17zm7.5-6H17V8.06l-3.22 3.22l-1.06-1.06L15.94 7H13V5.5h4.25c.69 0 1.25.56 1.25 1.25z"
+      />
+    </svg>
+  );
+}
+
 function PhotoCardsIcon() {
   return (
     <svg
@@ -61,6 +82,41 @@ function PhotoCardsIcon() {
  * Native overflow strip of static photo holders.
  * Viewport fits three 51px holders with 8px gaps (169px).
  */
+function PhotoCardStrip({
+  cards,
+  animate = true,
+}: {
+  cards: StaticCarouselItem[];
+  animate?: boolean;
+}) {
+  return (
+    <div className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto">
+      {cards.map((item, index) => (
+        <motion.div
+          key={item.id}
+          className="static-carousel__item shrink-0"
+          initial={animate ? { opacity: 0, x: -16 } : false}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{
+            duration: 0.72,
+            delay: 0.12 + Math.min(index, 2) * 0.12,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          <StaticCardHolder
+            state={item.state}
+            backgroundUrl={item.backgroundUrl}
+            topLayerUrl={item.topLayerUrl}
+            playCost={item.playCost}
+            freePlay={item.freePlay}
+            onPlay={item.onPlay}
+          />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 export function StaticCarousel({
   items,
   theme = "police",
@@ -68,9 +124,51 @@ export function StaticCarousel({
   motionCardTotal = 3,
   className,
 }: StaticCarouselProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
   const unlocked = cards.filter((item) => item.state === "unlocked").length;
   const total = STATIC_CARD_TOTAL;
+
+  function openOverlay() {
+    setLeaving(false);
+    setExpanded(true);
+  }
+
+  function closeOverlay() {
+    if (!expanded || leaving) return;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setExpanded(false);
+      setLeaving(false);
+      return;
+    }
+    setLeaving(true);
+  }
+
+  function finishClose() {
+    setExpanded(false);
+    setLeaving(false);
+  }
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      event.preventDefault();
+      closeOverlay();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expanded, leaving]);
 
   return (
     <div
@@ -91,42 +189,29 @@ export function StaticCarousel({
         </p>
       </div>
 
-      <div className="flex h-3.5 w-full items-center justify-between">
+      <div className="flex h-4 w-full items-center justify-between">
           <div className="flex items-center gap-1">
           <PhotoCardsIcon />
           <p className="static-carousel__meta whitespace-nowrap font-medium text-white">
             Photo Cards
           </p>
         </div>
-        <p className="static-carousel__meta whitespace-nowrap font-medium text-right text-white">
-          {unlocked}/{total}
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="static-carousel__meta whitespace-nowrap font-medium text-right text-white">
+            {unlocked}/{total}
+          </p>
+          <button
+            type="button"
+            className="static-carousel__expand"
+            aria-label="Open photo cards"
+            onClick={openOverlay}
+          >
+            <PhotoCardsExpandIcon />
+          </button>
+        </div>
       </div>
 
-      <div className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto">
-        {cards.map((item, index) => (
-          <motion.div
-            key={item.id}
-            className="w-[62px] shrink-0"
-            initial={{ opacity: 0, x: -16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{
-              duration: 0.72,
-              delay: 0.12 + Math.min(index, 2) * 0.12,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-          >
-            <StaticCardHolder
-              state={item.state}
-              backgroundUrl={item.backgroundUrl}
-              topLayerUrl={item.topLayerUrl}
-              playCost={item.playCost}
-              freePlay={item.freePlay}
-              onPlay={item.onPlay}
-            />
-          </motion.div>
-        ))}
-      </div>
+      <PhotoCardStrip cards={cards} />
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -142,6 +227,61 @@ export function StaticCarousel({
           className="h-[0.25rem] w-full"
         />
       </motion.div>
+
+      {expanded && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className={`static-carousel-overlay${leaving ? " is-leaving" : ""}`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Photo Cards"
+              onClick={closeOverlay}
+              onAnimationEnd={(event) => {
+                if (!leaving) return;
+                if (event.target !== event.currentTarget) return;
+                if (event.animationName !== "static-carousel-overlay-fade-out") {
+                  return;
+                }
+                finishClose();
+              }}
+            >
+              <button
+                type="button"
+                className="static-carousel-overlay__close"
+                aria-label="Close photo cards"
+                onClick={closeOverlay}
+              >
+                <X className="size-5" />
+              </button>
+              <div
+                className="static-carousel-overlay__panel static-carousel static-carousel--expanded"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <PhotoCardsIcon />
+                    <p className="static-carousel__title font-medium text-white">
+                      Photo Cards
+                    </p>
+                  </div>
+                  <p className="static-carousel__title font-medium text-white">
+                    {unlocked}/{total}
+                  </p>
+                </div>
+                <PhotoCardStrip cards={cards} animate={false} />
+                <StaticCardMeter
+                  includeMotionTick={false}
+                  staticTotal={total}
+                  collectedIndexes={cards.flatMap((item, index) =>
+                    item.state === "unlocked" ? [index] : [],
+                  )}
+                  className="h-[0.25rem] w-full"
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
