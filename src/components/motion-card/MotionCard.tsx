@@ -177,7 +177,7 @@ export function MotionCard({
   return (
     <div
       className={[
-        "relative aspect-[108/210.5] h-full w-full overflow-hidden rounded-lg",
+        "relative aspect-[108/210.5] h-full w-full overflow-hidden rounded-lg [container-type:inline-size]",
         className,
       ]
         .filter(Boolean)

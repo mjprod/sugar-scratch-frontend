@@ -642,7 +642,12 @@ function ThemeCollectionCard({
           </h3>
         </div>
         <label className="cpv2-free-play">
-          <span className="cpv2-free-play-label">Free Play?</span>
+          <span className="cpv2-free-play-clip" aria-hidden="true">
+            <span className={freePlay ? "cpv2-free-play-track is-on" : "cpv2-free-play-track"}>
+              <span className="cpv2-free-play-label">Free Play?</span>
+              <span className="cpv2-free-play-label">Free: <span className="cpv2-free-play-on">ON</span></span>
+            </span>
+          </span>
           <button
             type="button"
             className={freePlay ? "cpv2-free-play-switch is-on" : "cpv2-free-play-switch"}

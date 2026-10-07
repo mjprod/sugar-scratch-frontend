@@ -730,13 +730,39 @@ body[data-theme="v8"] .cpv2-free-play {
   cursor: pointer;
 }
 
+body[data-theme="v8"] .cpv2-free-play-clip {
+  height: 14px;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .cpv2-free-play-track {
+  display: flex;
+  flex-direction: column;
+  transition: transform 160ms ease;
+}
+
+body[data-theme="v8"] .cpv2-free-play-track.is-on {
+  transform: translateY(-14px);
+}
+
 body[data-theme="v8"] .cpv2-free-play-label {
   color: #fff;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.24px;
-  line-height: 1.2;
+  line-height: 14px;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body[data-theme="v8"] .cpv2-free-play-track.is-on .cpv2-free-play-label {
+  font-weight: 700;
+  text-align: right;
+}
+
+body[data-theme="v8"] .cpv2-free-play-on {
+  color: #d4145a;
 }
 
 body[data-theme="v8"] .cpv2-free-play-switch {

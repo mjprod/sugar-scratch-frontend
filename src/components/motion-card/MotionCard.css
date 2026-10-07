@@ -240,16 +240,19 @@
 
 
 .tease-banner {
+  --card-w: 100cqi;
   position: absolute;
-  top: 22px;
-  left: -61px;
+  top: calc(var(--card-w) * 54 / 108);
+  left: 50%;
   z-index: 2;
   display: flex;
-  width: 210px;
-  height: 156px;
+  width: calc(var(--card-w) * 210 / 108);
+  height: calc(var(--card-w) * 156 / 108);
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  translate: -50% 0;
+  scale: calc(var(--card-w) / 108px);
 }
 
 .tease-banner__tape {
@@ -306,11 +309,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border: 1px solid #000;
   border-radius: 999px;
-  font-size: 8px;
+  background: #000;
+  color: #fff;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.16px;
+  letter-spacing: 0.2px;
   text-align: center;
 }
