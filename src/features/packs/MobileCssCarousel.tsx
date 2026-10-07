@@ -168,6 +168,7 @@ function PackSlideHud({
             strokeColor="rgba(170, 8, 95, 0.42)"
             labelColor="#ffe0e8"
             auroraPaused
+            glowAlwaysOn={false}
             glowOuterBloom="off"
             costIconAnimated={false}
             label="Buy Pack"
@@ -910,6 +911,7 @@ export function MobileCssCarousel({
                       costAmount={null}
                       fontSize={12}
                       cornerRadius={999}
+                      glowAlwaysOn={false}
                       aria-label={`Play ${item.packName || item.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
