@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   MotionCardStack,
@@ -45,6 +45,10 @@ function exitDelay(index: number, activeIndex: number) {
   return place < 0 ? 0 : place * 0.16;
 }
 
+function enterDelay(index: number) {
+  return (2 - index) * 0.16;
+}
+
 function exitDuration() {
   return SHIFT.duration;
 }
@@ -61,6 +65,7 @@ export function MotionCardHolder({
 }: MotionCardHolderProps) {
   const reduceMotion = useReducedMotion();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const lastActiveIndex = useRef(0);
   const cards = items.slice(0, 3);
   const activeIndex = cards.findIndex((item) => item.id === activeId);
   const active = activeIndex >= 0;
@@ -79,8 +84,12 @@ export function MotionCardHolder({
             : selected
               ? -cardLeft(index, cards.length)
               : exitX(index, activeIndex);
-          const delay =
-            active && !selected ? exitDelay(index, activeIndex) : 0;
+          if (active) lastActiveIndex.current = activeIndex;
+          const delay = active
+            ? selected
+              ? 0
+              : exitDelay(index, activeIndex)
+            : enterDelay(index);
 
           return (
             <motion.div

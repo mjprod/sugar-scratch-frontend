@@ -216,8 +216,18 @@ export function StaticCarousel({
         onPointerCancel={endDrag}
         onScroll={updateScrollButtons}
       >
-        {cards.map((item) => (
-          <div key={item.id} className="w-[51px] shrink-0">
+        {cards.map((item, index) => (
+          <motion.div
+            key={item.id}
+            className="w-[51px] shrink-0"
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: 0.72,
+              delay: 0.12 + Math.min(index, 2) * 0.12,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
             <StaticCardHolder
               state={item.state}
               backgroundUrl={item.backgroundUrl}
@@ -225,7 +235,7 @@ export function StaticCarousel({
               playCost={item.playCost}
               onPlay={item.onPlay}
             />
-          </div>
+          </motion.div>
         ))}
       </div>
 
