@@ -190,6 +190,26 @@ export function googleAuthFailureMessage() {
   return "We couldn’t sign you in with Google. Please try again.";
 }
 
+/** Exchange a Sign in with Apple ID token (+ raw nonce) for a server session. */
+export async function loginWithApple(input: {
+  idToken: string;
+  nonce: string;
+  name: string | null;
+}) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/apple", {
+    method: "POST",
+    body: JSON.stringify({
+      id_token: input.idToken,
+      nonce: input.nonce,
+      name: input.name,
+    }),
+  });
+}
+
+export function appleAuthFailureMessage() {
+  return "We couldn’t sign you in with Apple. Please try again.";
+}
+
 export async function logoutRemote() {
   try {
     await apiMutate("/api/auth/logout", { method: "POST" });

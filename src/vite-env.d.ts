@@ -4,6 +4,8 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_STUB_OAUTH?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  readonly VITE_APPLE_CLIENT_ID?: string;
+  readonly VITE_APPLE_REDIRECT_URI?: string;
 }
 
 interface ImportMeta {

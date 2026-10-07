@@ -55,7 +55,7 @@ Live catalog HTTP goes through `src/lib/api.ts` (`apiFetch`).
 | Pack purchase, store products/purchases, inbox | Live; **fail closed** (empty + error) if the API is down |
 | Homepage featured / leaderboard, store fixture catalog, inbox fixtures | Only with `?demo=1` |
 | Following list | `localStorage` until a follow API exists (no auto-seed unless `?demo=1`) |
-| Google / Apple OAuth | Disabled unless `VITE_STUB_OAUTH=1` **and** `ALLOW_STUB_OAUTH=1` |
+| Google / Apple login | Live when `VITE_GOOGLE_CLIENT_ID` / `VITE_APPLE_CLIENT_ID` are set (see `.env.example`); otherwise stubbed only with `VITE_STUB_OAUTH=1` **and** `ALLOW_STUB_OAUTH=1` |
 
 Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/auth/session`, not `sessionStorage` alone.
 

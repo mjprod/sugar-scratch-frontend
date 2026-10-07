@@ -18,6 +18,7 @@ import {
 } from "react";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
+  appleAuthFailureMessage,
   authFailureMessage,
   createAccountFailureMessage,
   duplicateEmailMessage,
@@ -25,6 +26,7 @@ import {
   googleAuthFailureMessage,
   isDuplicateEmailRegisterError,
   isValidAuthPassword,
+  loginWithApple,
   loginWithEmail,
   loginWithGoogle,
   loginWithOAuth,
@@ -42,6 +44,12 @@ import {
   loadGoogleIdentity,
   requestGoogleCode,
 } from "@/lib/googleIdentity";
+import {
+  APPLE_LOGIN_ENABLED,
+  AppleSignInError,
+  loadAppleIdentity,
+  requestAppleSignIn,
+} from "@/lib/appleIdentity";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import iconApple from "@/assets/auth/iconApple.svg";
@@ -52,7 +60,8 @@ const ANTICIPATE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const DROP_EASE: [number, number, number, number] = [0.48, 0.04, 0.72, 0.12];
 
 const SHOW_GOOGLE_BUTTON = GOOGLE_LOGIN_ENABLED || STUB_OAUTH_ENABLED;
-const SHOW_APPLE_BUTTON = STUB_OAUTH_ENABLED;
+const SHOW_APPLE_BUTTON = APPLE_LOGIN_ENABLED || STUB_OAUTH_ENABLED;
+const SHOW_SOCIAL_BUTTONS = SHOW_GOOGLE_BUTTON || SHOW_APPLE_BUTTON;
 
 const DRAG_DISMISS_PX = 88;
 const DRAG_FLICK_VY = 640;
@@ -141,6 +150,11 @@ export function AuthenticationSheet({
         /* retried on click */
       });
     }
+    if (APPLE_LOGIN_ENABLED) {
+      void loadAppleIdentity().catch(() => {
+        /* retried on click */
+      });
+    }
     const t = window.setTimeout(() => {
       panelRef.current
         ?.querySelector<HTMLElement>(
@@ -220,9 +234,32 @@ export function AuthenticationSheet({
     }
   }
 
+  async function finishApple() {
+    setSubmitting("apple");
+    setError("");
+    try {
+      const result = await requestAppleSignIn();
+      const { user } = await loginWithApple(result);
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
+    } catch (err) {
+      setSubmitting(null);
+      if (err instanceof AppleSignInError && err.reason === "cancelled") return;
+      setError(appleAuthFailureMessage());
+    }
+  }
+
   async function finishSocial(provider: "Google" | "Apple") {
     if (provider === "Google" && GOOGLE_LOGIN_ENABLED) {
       await finishGoogle();
+      return;
+    }
+    if (provider === "Apple" && APPLE_LOGIN_ENABLED) {
+      await finishApple();
       return;
     }
     setSubmitting(provider === "Google" ? "google" : "apple");
@@ -567,9 +604,10 @@ export function AuthenticationSheet({
                       </form>
                     ) : (
                       <>
-                        {SHOW_GOOGLE_BUTTON ? (
+                        {SHOW_SOCIAL_BUTTONS ? (
                         <>
                         <div className="auth7-sheet-social">
+                          {SHOW_GOOGLE_BUTTON ? (
                           <div className="auth7-social-btn is-google">
                             <CtaButton
                               {...ctaButtonPropsFromTemplate("squircleCTA")}
@@ -594,6 +632,7 @@ export function AuthenticationSheet({
                               onClick={() => void finishSocial("Google")}
                             />
                           </div>
+                          ) : null}
                           {SHOW_APPLE_BUTTON ? (
                           <button
                             type="button"
