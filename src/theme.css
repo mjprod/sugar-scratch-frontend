@@ -16203,7 +16203,7 @@ body[data-theme="v8"] .home-v2 .home-play-steps-art.is-collect img {
 }
 
 body[data-theme="v8"] .home-v2 .home-play-steps-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.28px;
   line-height: normal;
@@ -16211,7 +16211,7 @@ body[data-theme="v8"] .home-v2 .home-play-steps-title {
 
 body[data-theme="v8"] .home-v2 .home-play-steps-copy {
   max-width: none;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.2px;
   line-height: normal;
   color: rgba(255, 255, 255, 0.5);
