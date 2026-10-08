@@ -357,6 +357,7 @@ export function StoreScreen({
           activeProductId={activeProductId}
           flowStep={flow.step}
           exchangingId={exchangingId}
+          onBack={onBack}
           onSelect={onSelect}
           onCoinExchange={handleCoinExchange}
           onDiamondReward={onDiamondReward}

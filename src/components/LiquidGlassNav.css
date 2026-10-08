@@ -586,7 +586,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 .nav-test-top-slot:has(.nav-test-top-item.is-primary) {
-  /* Give "My Collection" room so the label never ellipsizes */
+  /* Give longer primary labels room so they never ellipsize */
   flex: 1.35 1 auto;
   min-width: max-content;
 }
@@ -777,12 +777,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   }
 }
 
-/* Logged-in compact bar: give utils more room than the logo. */
-@media (min-width: 769px) and (max-width: 900px) {
-  body:not([data-guest]) .nav-test-top {
-    grid-template-columns: 0.3fr auto 1fr;
-  }
-}
+/* Logged-in compact bar: keep equal side rails so tabs stay centered. */
 
 /* Keep top nav icon-only for the entire mobile handoff (any width) */
 .nav-test.is-handoff-to-mobile .nav-test-top {
@@ -1922,7 +1917,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   pointer-events: none;
 }
 
-/* iPhone-class widths: keep "My Collection" on one line */
+/* iPhone-class widths: keep the center Home label on one line */
 @media (max-width: 430px) {
   .nav-test-dock-primary-label {
     font-size: 9px;

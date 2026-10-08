@@ -4,11 +4,13 @@ export const Paths = {
   loading: "/loading",
   preLoader: "/pre-loader",
   /**
-   * Home nav tab (pack browse) lives at root.
-   * Discover nav tab (home feed) lives at /discover.
+   * Store tab (pack browse) lives at root.
+   * Home tab (creator reel) lives at /discover.
+   * Rank tab (leaderboard) lives at /rank.
    */
   home: "/",
   discover: "/discover",
+  rank: "/rank",
   /**
    * Opens the global search overlay on the current page.
    * Prefer `openSearch()` from SearchContext; this query is a deep-link fallback.
@@ -30,7 +32,8 @@ export const Paths = {
   rewards: "/rewards",
   profile: "/profile",
   editProfile: "/profile/edit",
-  store: "/store",
+  /** Diamond shop (Get Diamonds). */
+  store: "/get-diamonds",
   settings: "/settings",
   changePassword: "/profile/change-password",
   following: "/profile/following",
@@ -98,13 +101,27 @@ export const Paths = {
 /** Tabs guests can open without auth (Store is browseable; purchase still gates). */
 export const PUBLIC_TABS: AppTab[] = ["home", "feed", "hub"];
 
-export function pathForTab(tab: AppTab): string {
+export function pathForTab(tab: AppTab, authed = false): string {
+  if (authed) {
+    switch (tab) {
+      case "home":
+        return Paths.rank;
+      case "feed":
+        return Paths.home;
+      case "bag":
+        return Paths.discover;
+      case "hub":
+        return Paths.collection;
+      case "profile":
+        return Paths.profile;
+      default:
+        return Paths.discover;
+    }
+  }
   switch (tab) {
     case "home":
-      // Discover nav item
       return Paths.discover;
     case "feed":
-      // Home nav item (pack browse)
       return Paths.home;
     case "bag":
       return Paths.collection;
@@ -117,10 +134,44 @@ export function pathForTab(tab: AppTab): string {
   }
 }
 
-export function tabFromPathname(pathname: string): AppTab | null {
-  // Discover feed
+export function tabFromPathname(
+  pathname: string,
+  authed = false,
+): AppTab | null {
+  if (pathname.startsWith("/creator")) {
+    return null;
+  }
+  if (
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/inbox")
+  ) {
+    return "profile";
+  }
+
+  if (authed) {
+    if (pathname.startsWith("/rank")) return "home";
+    if (pathname.startsWith("/discover")) return "bag";
+    if (
+      pathname === "/" ||
+      pathname.startsWith("/browse") ||
+      pathname.startsWith("/search") ||
+      pathname.startsWith("/home-version2")
+    ) {
+      return "feed";
+    }
+    if (pathname.startsWith("/collection")) return "hub";
+    if (
+      pathname.startsWith("/rewards") ||
+      pathname.startsWith("/store") ||
+      pathname.startsWith("/get-diamonds")
+    ) {
+      return null;
+    }
+    return "feed";
+  }
+
   if (pathname.startsWith("/discover")) return "home";
-  // Home browse + search (+ legacy home-version2 redirect)
   if (
     pathname === "/" ||
     pathname.startsWith("/browse") ||
@@ -129,22 +180,13 @@ export function tabFromPathname(pathname: string): AppTab | null {
   ) {
     return "feed";
   }
-  // Collection hub only — creator profile is secondary and selects nothing.
-  if (pathname.startsWith("/collection")) {
-    return "bag";
-  }
-  if (pathname.startsWith("/creator")) {
-    return null;
-  }
-  if (pathname.startsWith("/rewards") || pathname.startsWith("/store")) {
-    return "hub";
-  }
+  if (pathname.startsWith("/collection")) return "bag";
   if (
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/inbox")
+    pathname.startsWith("/rewards") ||
+    pathname.startsWith("/store") ||
+    pathname.startsWith("/get-diamonds")
   ) {
-    return "profile";
+    return "hub";
   }
   return "feed";
 }

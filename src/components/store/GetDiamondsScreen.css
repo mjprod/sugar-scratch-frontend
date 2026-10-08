@@ -38,6 +38,12 @@ body[data-theme="v8"] .get-diamonds-page .page-container {
   padding: 20px 24px 48px;
 }
 
+body[data-theme="v8"] .get-diamonds-page .history-page-head {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 1.25rem;
+}
+
 body[data-theme="v8"] .get-diamonds-stack {
   position: relative;
   display: flex;

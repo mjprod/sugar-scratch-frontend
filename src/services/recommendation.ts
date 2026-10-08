@@ -194,7 +194,7 @@ export function isRecommendationInitialized() {
 export function isHighIntentPending(pending: ProtectedAction | null) {
   if (!pending) return false;
   if (pending.type === "buy") return true;
-  if (pending.type === "tab" && pending.tab === "hub") return true;
+  if (pending.type === "tab" && pending.tab === "feed") return true;
   return false;
 }
 

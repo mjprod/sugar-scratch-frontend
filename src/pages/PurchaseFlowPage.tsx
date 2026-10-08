@@ -17,7 +17,6 @@ export function PurchaseFlowPage() {
     notePackPurchaseSeed,
     applyRecommendationDecision,
     setPurchasedPacks,
-    requestTab,
     bumpInventoryRevision,
   } = useAuth();
   const { coins, diamonds, setDiamonds, setCoins, addCoins } = useWallet();
@@ -62,10 +61,10 @@ export function PurchaseFlowPage() {
         if (!guest) openStore();
         else requireAuth({ type: "store" });
       }}
-      onGoHome={() => memoryNavigate(Paths.home)}
-      onViewCollection={() => requestTab("bag")}
-      onGoMyBag={() => requestTab("bag")}
-      onReturnContext={() => requestTab("bag")}
+      onGoHome={() => memoryNavigate(Paths.discover)}
+      onViewCollection={() => memoryNavigate(Paths.collection)}
+      onGoMyBag={() => memoryNavigate(Paths.collection)}
+      onReturnContext={() => memoryNavigate(Paths.collection)}
       onInventoryChange={bumpInventoryRevision}
     />
   );

@@ -11,7 +11,9 @@ import {
 import {
   Compass,
   Home,
+  Package,
   Search,
+  Trophy,
   User,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +25,8 @@ import type { AppTab } from "@/types/app";
 import {
   DESKTOP_MIN_PX,
   DESKTOP_PRIMARY_LABELS,
+  GUEST_DESKTOP_PRIMARY_LABELS,
+  GUEST_MOBILE_DOCK_LABELS,
   MOBILE_DOCK_LABELS,
 } from "@/lib/navChrome";
 import "./LiquidGlassNav.css";
@@ -52,7 +56,7 @@ type DockBubble = {
 };
 
 const BUBBLE_RADIUS = {
-  /** Left end-cap (Discover tab is first). */
+  /** Left end-cap (Rank tab is first). */
   home: "1.5rem 0.2rem 0.2rem 1.5rem",
   profile: "0.2rem 1.5rem 1.5rem 0.2rem",
   default: "0.5rem",
@@ -201,35 +205,55 @@ function CollectionIcon({
   );
 }
 
-/** Mobile dock order. AC8a: Discover, Home, My Collection (center), Store, Profile. */
+/** Logged-in mobile dock: Rank, Store, Home (center), Collect, Profile. */
 export const TABS: TabConfig[] = [
-  { id: "home", label: MOBILE_DOCK_LABELS[0], icon: Compass },
-  { id: "feed", label: MOBILE_DOCK_LABELS[1], icon: Home },
+  { id: "home", label: MOBILE_DOCK_LABELS[0], icon: Trophy },
+  { id: "feed", label: MOBILE_DOCK_LABELS[1], icon: Package },
   {
     id: "bag",
     label: MOBILE_DOCK_LABELS[2],
-    icon: CollectionIcon,
+    icon: Home,
     primary: true,
   },
-  { id: "hub", label: MOBILE_DOCK_LABELS[3], icon: DiamondIcon },
+  { id: "hub", label: MOBILE_DOCK_LABELS[3], icon: CollectionIcon },
   { id: "profile", label: MOBILE_DOCK_LABELS[4], icon: User },
 ];
 
-/**
- * Desktop top bar primary tabs.
- * Profile is icon-only in the right utility cluster (not in this list).
- * AC4: Home, Discover, Store, My Collection.
- */
-export const DESKTOP_TABS: TabConfig[] = [
-  { id: "feed", label: DESKTOP_PRIMARY_LABELS[0], icon: Home },
-  { id: "home", label: DESKTOP_PRIMARY_LABELS[1], icon: Compass },
-  { id: "hub", label: DESKTOP_PRIMARY_LABELS[2], icon: DiamondIcon },
+/** Guest mobile dock: Discover, Home, Collect (center), Store, Profile. */
+export const GUEST_TABS: TabConfig[] = [
+  { id: "home", label: GUEST_MOBILE_DOCK_LABELS[0], icon: Compass },
+  { id: "feed", label: GUEST_MOBILE_DOCK_LABELS[1], icon: Home },
   {
     id: "bag",
-    label: DESKTOP_PRIMARY_LABELS[3],
+    label: GUEST_MOBILE_DOCK_LABELS[2],
     icon: CollectionIcon,
     primary: true,
   },
+  { id: "hub", label: GUEST_MOBILE_DOCK_LABELS[3], icon: DiamondIcon },
+  { id: "profile", label: GUEST_MOBILE_DOCK_LABELS[4], icon: User },
+];
+
+/**
+ * Logged-in desktop top bar.
+ * Profile is icon-only in the right utility cluster (not in this list).
+ */
+export const DESKTOP_TABS: TabConfig[] = [
+  { id: "bag", label: DESKTOP_PRIMARY_LABELS[0], icon: Home },
+  { id: "feed", label: DESKTOP_PRIMARY_LABELS[1], icon: Package },
+  {
+    id: "hub",
+    label: DESKTOP_PRIMARY_LABELS[2],
+    icon: CollectionIcon,
+    primary: true,
+  },
+  { id: "home", label: DESKTOP_PRIMARY_LABELS[3], icon: Trophy },
+];
+
+/** Guest desktop top bar — Collection omitted. */
+export const GUEST_DESKTOP_TABS: TabConfig[] = [
+  { id: "feed", label: GUEST_DESKTOP_PRIMARY_LABELS[0], icon: Home },
+  { id: "home", label: GUEST_DESKTOP_PRIMARY_LABELS[1], icon: Compass },
+  { id: "hub", label: GUEST_DESKTOP_PRIMARY_LABELS[2], icon: DiamondIcon },
 ];
 
 /**
@@ -308,7 +332,7 @@ function measureBubbleForTab(
   let bubbleX =
     rect.left - parentRect.left + (rect.width - bubbleW) / 2;
 
-  // Side-pad compensation for end caps (Discover / Profile)
+  // Side-pad compensation for end caps (Rank / Profile)
   if (tabId === "home") {
     bubbleX -= 2;
   } else if (tabId === "profile") {
@@ -401,13 +425,14 @@ export function LiquidGlassNav({
 }: LiquidGlassNavProps) {
   const { authed, guestAuthLabel, inboxUnread, openCreateAccount } = useAuth();
   const desktopTabs = useMemo(
-    () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
+    () => (authed ? DESKTOP_TABS : GUEST_DESKTOP_TABS),
     [authed],
   );
   // Guests keep the center Collection slot on the mobile dock so the 5-column
   // layout stays symmetrical around the notch (AC26). Desktop still omits it.
   const dockTabs = useMemo(() => {
-    return TABS.map((tab) =>
+    const source = authed ? TABS : GUEST_TABS;
+    return source.map((tab) =>
       tab.id === "profile" && !authed
         ? { ...tab, label: guestAuthLabel, icon: LoginIcon }
         : tab,
@@ -987,8 +1012,8 @@ export function LiquidGlassNav({
   /** Logo always leaves secondary/immersive routes (tear, pack pocket, etc.). */
   const goHome = useCallback(() => {
     if (suppressTabClickRef.current) return;
-    onTabChange("feed");
-  }, [onTabChange]);
+    onTabChange(authed ? "bag" : "feed");
+  }, [authed, onTabChange]);
 
   const handleTopBubblePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {

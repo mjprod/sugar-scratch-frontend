@@ -90,7 +90,6 @@ const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
 function actionNeedsVerifiedEmail(action: ProtectedAction) {
   if (action.type === "buy") return true;
   if (action.type === "store") return true;
-  if (action.type === "tab" && action.tab === "hub") return true;
   return false;
 }
 
@@ -98,7 +97,7 @@ function isHighIntentForDefer(action: ProtectedAction) {
   return (
     action.type === "buy" ||
     action.type === "store" ||
-    (action.type === "tab" && action.tab === "hub")
+    (action.type === "tab" && action.tab === "feed")
   );
 }
 
@@ -381,8 +380,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const captureSecondaryReturn = useCallback(() => {
-    setSecondaryReturnTab(tabFromPathname(window.location.pathname));
-  }, []);
+    setSecondaryReturnTab(tabFromPathname(window.location.pathname, authed));
+  }, [authed]);
 
   const guest = !authed;
   const guestAuthLabel = "Sign in" as const;
@@ -538,7 +537,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (action.type === "tab") {
-        memoryNavigate(pathForTab(action.tab));
+        memoryNavigate(pathForTab(action.tab, true));
       }
     },
     [captureSecondaryReturn],
@@ -557,11 +556,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
 
       if (resume) {
-        memoryNavigate(Paths.home);
+        memoryNavigate(Paths.discover);
         window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      memoryNavigate(Paths.home);
+      memoryNavigate(Paths.discover);
     },
     [resumePending],
   );
@@ -583,7 +582,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Sign-in / Profile soft-gate must not dump returning users on Profile.
       if (pendingAction && isProfileOnboardingResume(pendingAction)) {
-        memoryNavigate(Paths.home);
+        memoryNavigate(Paths.discover);
         return;
       }
 
@@ -645,7 +644,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestTab = useCallback(
     (next: AppTab) => {
       if (PUBLIC_TABS.includes(next) || authed) {
-        memoryNavigate(pathForTab(next));
+        memoryNavigate(pathForTab(next, authed));
         return;
       }
       requireAuth({ type: "tab", tab: next });
@@ -725,9 +724,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (surface: SecondarySurfaceId) => {
       setSecondaryReturnTab(null);
       // Prefer the real previous step (Discover → Creator → back, etc.).
-      navigateBackOr(navigate, pathForTab(resolveSecondaryBack(secondaryReturnTab, surface)));
+      navigateBackOr(
+        navigate,
+        pathForTab(resolveSecondaryBack(secondaryReturnTab, surface), authed),
+      );
     },
-    [navigate, secondaryReturnTab],
+    [authed, navigate, secondaryReturnTab],
   );
 
   const completeAuth = useCallback(

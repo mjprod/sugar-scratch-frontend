@@ -217,7 +217,7 @@ export function AppLayout() {
           coins={guest ? null : coins}
           balance={guest ? null : diamonds}
           onOpenStore={openStore}
-          onOpenHome={() => requestTab("feed")}
+          onOpenHome={() => requestTab(guest ? "feed" : "bag")}
           onOpenPackPocket={openCart}
           onOpenSearch={openSearch}
           packsActive={onPackPocket}

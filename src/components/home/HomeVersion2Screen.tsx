@@ -1,5 +1,4 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { ExploreCreators } from "@/components/home/ExploreCreators";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
@@ -10,12 +9,9 @@ import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import {
   fetchHomepage,
-  fetchLeaderboard,
   splitContinueCollectingItems,
   type ContinueCollectingItem,
   type HomepageData,
-  type LeaderboardCategory,
-  type LeaderboardRow,
 } from "@/services/homepage";
 
 const FeaturedCoverFlow = lazy(() =>
@@ -27,9 +23,7 @@ const FeaturedCoverFlow = lazy(() =>
 type PageStatus = "loading" | "loaded" | "error";
 
 /**
- * Logged-in homepage v2 — Figma Home (node 2:20).
- * Same data/wiring as HomeScreen; layout drops the discover reel bento and
- * stacks How to Play → Continue Collecting → Explore Creators.
+ * Store (pack browse) — Figma Home (node 2:20) without the leaderboard (now on Rank).
  */
 export function HomeVersion2Screen({
   onRestart,
@@ -56,9 +50,6 @@ export function HomeVersion2Screen({
   const { openSearch } = useSearch();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
-  const [category, setCategory] = useState<LeaderboardCategory>("all");
-  const [board, setBoard] = useState<LeaderboardRow[]>([]);
-  const [boardLoading, setBoardLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [heroReady, setHeroReady] = useState(false);
 
@@ -70,7 +61,6 @@ export function HomeVersion2Screen({
     try {
       const data = await fetchHomepage();
       setHome(data);
-      setBoard(await fetchLeaderboard("all"));
       setStatus("loaded");
     } catch {
       setStatus("error");
@@ -80,16 +70,6 @@ export function HomeVersion2Screen({
   useEffect(() => {
     void load();
   }, [load]);
-
-  async function changeCategory(next: LeaderboardCategory) {
-    setCategory(next);
-    setBoardLoading(true);
-    try {
-      setBoard(await fetchLeaderboard(next));
-    } finally {
-      setBoardLoading(false);
-    }
-  }
 
   function playPack(pack: {
     id: string;
@@ -106,17 +86,6 @@ export function HomeVersion2Screen({
       price: String(pack.diamondCost),
       creator: pack.creatorName,
       characterId: pack.id,
-    });
-  }
-
-  function playRow(row: LeaderboardRow) {
-    playPack({
-      id: row.characterId ?? row.packId,
-      foilId: row.characterId ? row.packId : undefined,
-      name: row.packName,
-      creatorName: row.creatorName,
-      diamondCost: row.diamondCost,
-      themeName: row.themeName,
     });
   }
 
@@ -231,17 +200,6 @@ export function HomeVersion2Screen({
       <SpotlightBanner />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)]">
-        <CategoryLeaderboard
-          className="is-title-sentence is-figma-board"
-          title="Top Packs By Purchase"
-          category={category}
-          rows={board}
-          loading={boardLoading}
-          onCategoryChange={(c) => void changeCategory(c)}
-          onPlay={playRow}
-          onOpen={playRow}
-        />
-
         <button
           type="button"
           onClick={onRestart}

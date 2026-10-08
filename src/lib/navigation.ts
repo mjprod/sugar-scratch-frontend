@@ -73,7 +73,7 @@ export const SECONDARY_SURFACES: Record<string, SecondarySurface> = {
   store: {
     id: "store",
     kind: "secondary",
-    fallbackTab: "hub",
+    fallbackTab: "feed",
     title: "Store",
     backLabel: "Back",
   },

@@ -17,10 +17,14 @@ import {
 } from "lucide-react";
 import { useId, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
+import { CoinLottie } from "@/components/ui/CoinLottie";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useMotion } from "@/features/collection/hooks/useMotion";
+import { formatBalance } from "@/lib/formatBalance";
 
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
@@ -28,12 +32,15 @@ export function UserDashboardScreen({
   name,
   username,
   avatar,
+  coins = 0,
+  diamonds = 0,
   onLogout,
   onOpenChangePassword,
   onOpenEditProfile,
   onOpenFollowing,
   onOpenGameSettings,
   onOpenInbox,
+  onBuyMoreDiamonds,
   onOpenTransactionHistory,
   onOpenGameHistory,
   inboxUnreadCount = 0,
@@ -41,12 +48,15 @@ export function UserDashboardScreen({
   name: string;
   username: string;
   avatar?: string | null;
+  coins?: number;
+  diamonds?: number;
   onLogout: () => void;
   onOpenChangePassword: () => void;
   onOpenEditProfile: () => void;
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
   onOpenInbox?: () => void;
+  onBuyMoreDiamonds?: () => void;
   onOpenTransactionHistory?: () => void;
   onOpenGameHistory?: () => void;
   inboxUnreadCount?: number;
@@ -218,6 +228,57 @@ export function UserDashboardScreen({
 
       <div className="profile-menu-grid">
         <div className="profile-menu-stack">
+          <div className="profile-menu-group">
+            <h2 className="profile-menu-group-title">Your Balance</h2>
+            <div className="profile-menu-group-card">
+              <div className="profile-menu-row profile-balance-row">
+                <span className="profile-menu-icon">
+                  <DiamondLottie size={22} animated aria-hidden />
+                </span>
+                <span className="profile-balance-copy">
+                  <span className="profile-balance-value">
+                    {formatBalance(diamonds)}
+                  </span>
+                  <span className="profile-balance-label">Diamond Balance</span>
+                </span>
+              </div>
+              <div className="profile-menu-row profile-balance-row is-divided">
+                <span className="profile-menu-icon">
+                  <CoinLottie size={22} aria-hidden />
+                </span>
+                <span className="profile-balance-copy">
+                  <span className="profile-balance-value">
+                    {formatBalance(coins)}
+                  </span>
+                  <span className="profile-balance-label">Coin Balance</span>
+                </span>
+              </div>
+              {onBuyMoreDiamonds ? (
+                <div className="profile-balance-cta">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("squircleCTA")}
+                    fillParent
+                    type="button"
+                    leadingIcon={
+                      <DiamondLottie
+                        className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
+                        size={14}
+                        animated
+                        loop
+                        autoplay
+                        aria-hidden
+                      />
+                    }
+                    label="Get Diamonds"
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    onClick={onBuyMoreDiamonds}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
           <MenuGroup
             title="History"
             items={[
