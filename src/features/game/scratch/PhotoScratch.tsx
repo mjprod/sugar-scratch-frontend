@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
@@ -29,6 +35,22 @@ import { StageCoinCount } from "../StageCoinCount";
 import { StageMuteButton } from "../StageMuteButton";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
+import {
+  finaleHaptics,
+  playFinaleBoomSound,
+  playFinaleChargeSound,
+} from "../modules/finaleFx";
+import {
+  chargeAmount,
+  explosionOrigin,
+  finaleHidesForeground,
+  finalePhaseAt,
+  finaleTimeline,
+  garmentRevealSatisfied,
+  shouldExplodeGarment,
+  type FinalePhase,
+  type FinaleTimeline,
+} from "../modules/garmentExplosion";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
@@ -1051,6 +1073,22 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   autoScratchRef.current = autoScratch;
   /** Auto-clear garment after all body symbols found — not the settings toggle. */
   const finishAutoActiveRef = useRef(false);
+  /** Hunt-complete finale (charge → shatter → hold); driven from the rAF loop. */
+  const finaleStartRef = useRef<number | null>(null);
+  const finaleTimelineRef = useRef<FinaleTimeline | null>(null);
+  const finalePhaseRef = useRef<FinalePhase | null>(null);
+  const finaleOriginRef = useRef<Vec2>({
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT / 2,
+  });
+  const garmentExplodedRef = useRef(false);
+  const finaleBurstKeyRef = useRef(0);
+  const [finalePhase, setFinalePhase] = useState<FinalePhase | null>(null);
+  const [finaleBurst, setFinaleBurst] = useState<{
+    key: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const revealedSymbolsRef = useRef(0);
   revealedSymbolsRef.current = revealedSymbols;
   const hasBodySymbolsRef = useRef(false);
@@ -1169,6 +1207,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function isBodyScratchLocked() {
+    // Garment finale owns the stage — a finger still down must not paint.
+    if (finaleStartRef.current !== null || garmentExplodedRef.current) {
+      return true;
+    }
     if (!entryReadyRef.current) return true;
     if (introActiveRef.current) return true;
     return (
@@ -1373,6 +1415,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setFlyingMatches([]);
     setHasBodySymbols(mesh.symbolPoints?.length === SYMBOL_POINT_COUNT);
     finishAutoActiveRef.current = false;
+    resetGarmentFinale();
     revealedSymbolsRef.current = 0;
     setCardFlowState("ready");
     cardFlowStateRef.current = "ready";
@@ -1798,16 +1841,27 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       const canClaim =
         !hasBodySymbolsRef.current ||
         revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
+      const finaleStart = finaleStartRef.current;
+      const finaleTl = finaleTimelineRef.current;
+      let finaleHide: boolean | null = null;
+      if (finaleStart !== null && finaleTl) {
+        const elapsed = now - finaleStart;
+        const phase = finalePhaseAt(elapsed, finaleTl);
+        fgRenderer.setForegroundCharge(chargeAmount(elapsed, finaleTl));
+        if (phase !== finalePhaseRef.current) advanceGarmentFinale(phase);
+        finaleHide = finaleHidesForeground(phase);
+      }
       const hideClothes =
-        claimedRef.current ||
-        cardFlowStateRef.current === "showing-result" ||
-        packFlowStateRef.current === "complete" ||
-        (canClaim &&
-          isGarmentFullyRevealed(
-            revealedCountRef.current,
-            sampleCount,
-            autoMode,
-          ));
+        finaleHide ??
+        (claimedRef.current ||
+          cardFlowStateRef.current === "showing-result" ||
+          packFlowStateRef.current === "complete" ||
+          (canClaim &&
+            isGarmentFullyRevealed(
+              revealedCountRef.current,
+              sampleCount,
+              autoMode,
+            )));
       if (
         hideClothes &&
         !claimedRef.current &&
@@ -2146,6 +2200,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         spawnBodyMatchFlights(newlyRevealed);
         if (
           nextSymbolCount >= SYMBOL_POINT_COUNT &&
+          !startGarmentFinale(newlyRevealed) &&
           !isProductPhotoScratch()
         ) {
           beginFinishAutoScratch();
@@ -2158,6 +2213,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
     if (
       canClaim &&
+      finaleStartRef.current === null &&
       isGarmentFullyRevealed(
         revealedCountRef.current,
         samples.length,
@@ -2422,6 +2478,124 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     finishAutoActiveRef.current = true;
   }
 
+  /** Last symbol found: charge up, then shatter the remaining clothes. */
+  function startGarmentFinale(newlyRevealed: readonly number[]): boolean {
+    if (
+      !shouldExplodeGarment({
+        useBodySymbols: hasBodySymbolsRef.current,
+        found: revealedSymbolsRef.current,
+        total: SYMBOL_POINT_COUNT,
+        alreadyStarted:
+          finaleStartRef.current !== null || garmentExplodedRef.current,
+        packRevealBlocked:
+          scratchCompletionHandledRef.current ||
+          cardFlowStateRef.current === "showing-result" ||
+          packFlowStateRef.current === "complete" ||
+          cardTransitionRef.current,
+      })
+    ) {
+      return false;
+    }
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    finaleOriginRef.current = explosionOrigin(
+      newlyRevealed.map((index) => {
+        const point = bodyPoints?.[index];
+        return sample && point
+          ? sampleMeshUvToWorld(sample, point.u, point.v)
+          : null;
+      }),
+      { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+    );
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeline = finaleTimeline({
+      reducedMotion: reducedMotion || !fgRendererRef.current,
+    });
+    finaleTimelineRef.current = timeline;
+    finalePhaseRef.current = null;
+    finaleStartRef.current = performance.now();
+    finishAutoActiveRef.current = false;
+    onPointerUp();
+    claimedRef.current = true;
+    if (!timeline.reducedMotion) {
+      if (soundEnabledRef.current) {
+        playFinaleChargeSound(timeline.burstAtMs / 1000);
+      }
+      finaleHaptics("charge");
+    }
+    return true;
+  }
+
+  /** Runs on the first rAF of each finale phase (phases may be skipped on a slow frame). */
+  function advanceGarmentFinale(phase: FinalePhase) {
+    finalePhaseRef.current = phase;
+    const timeline = finaleTimelineRef.current;
+    if (!timeline) return;
+    if (phase !== "charge" && !garmentExplodedRef.current) {
+      fireGarmentBurst(timeline);
+    }
+    setFinalePhase(phase === "done" ? null : phase);
+    if (phase === "done") {
+      finaleStartRef.current = null;
+      setFinaleBurst(null);
+      tryResolveGameRef.current();
+    }
+  }
+
+  function fireGarmentBurst(timeline: FinaleTimeline) {
+    garmentExplodedRef.current = true;
+    const renderer = fgRendererRef.current;
+    const origin = finaleOriginRef.current;
+    renderer?.setForegroundCharge(0);
+    if (!timeline.reducedMotion) {
+      renderer?.explodeForeground(origin.x, origin.y);
+    }
+    setClaimed(true);
+    if (soundEnabledRef.current) playFinaleBoomSound();
+    if (timeline.reducedMotion) return;
+    finaleHaptics("burst");
+    const stage = stageRef.current;
+    const fgCanvas = fgCanvasRef.current;
+    const frontCam = renderer?.getFrontPresentCamera() ?? { x: 0, y: 0 };
+    const stagePoint =
+      stage && fgCanvas
+        ? worldPointToStage(origin, fgCanvas, stage, frontCam)
+        : null;
+    finaleBurstKeyRef.current += 1;
+    setFinaleBurst({
+      key: finaleBurstKeyRef.current,
+      x: stagePoint?.x ?? (stage?.clientWidth ?? 0) / 2,
+      y: stagePoint?.y ?? (stage?.clientHeight ?? 0) / 2,
+    });
+    if (PHOTO_CURSOR_FX_REDUCED) return;
+    const celebrateMs = celebrateDurationMs(PHOTO_CURSOR_FX.coarsePointer);
+    celebrateUntilRef.current = performance.now() + celebrateMs;
+    setCursorFxCelebrate(true);
+    setCursorFxBurstCount(
+      celebrateBurstCount(10, PHOTO_CURSOR_FX.coarsePointer),
+    );
+    setCursorFxBurstNonce((n) => n + 1);
+    clearCelebrateTimer();
+    celebrateTimerRef.current = window.setTimeout(() => {
+      celebrateTimerRef.current = null;
+      if (performance.now() >= celebrateUntilRef.current) {
+        setCursorFxCelebrate(false);
+      }
+    }, celebrateMs + 40);
+  }
+
+  function resetGarmentFinale() {
+    finaleStartRef.current = null;
+    finaleTimelineRef.current = null;
+    finalePhaseRef.current = null;
+    garmentExplodedRef.current = false;
+    fgRendererRef.current?.clearExplosion();
+    setFinalePhase(null);
+    setFinaleBurst(null);
+  }
+
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
     if (scratchCompletionHandledRef.current) return;
@@ -2432,13 +2606,18 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     ) {
       return;
     }
+    // The finale resolves the game itself once its hold ends.
+    if (finaleStartRef.current !== null) return;
     const sampleCount = revealSamplesRef.current.length;
     if (
-      !isGarmentFullyRevealed(
-        revealedCountRef.current,
-        sampleCount,
-        autoScratchRef.current.enabled,
-      )
+      !garmentRevealSatisfied({
+        exploded: garmentExplodedRef.current,
+        fullyRevealed: isGarmentFullyRevealed(
+          revealedCountRef.current,
+          sampleCount,
+          autoScratchRef.current.enabled,
+        ),
+      })
     ) {
       return;
     }
@@ -2683,6 +2862,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     );
     setFlyingMatches([]);
     finishAutoActiveRef.current = false;
+    resetGarmentFinale();
     revealedSymbolsRef.current = 0;
     scratchCompletionHandledRef.current = false;
     autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
@@ -2796,6 +2976,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
 
   function onPointerDown(clientX: number, clientY: number) {
     if (introActiveRef.current) return;
+    if (finaleStartRef.current !== null) return;
     if (soundEnabledRef.current) {
       ensureSymbolAudio(symbolAudioRef.current);
       preloadSparkleCoinSounds();
@@ -2816,6 +2997,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function onPointerMove(clientX: number, clientY: number) {
+    if (finaleStartRef.current !== null) return;
     trackFingerParallax(clientX, clientY);
     if (!isScratchingRef.current) return;
     addScratch(clientX, clientY);
@@ -3277,13 +3459,21 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
             hasBodySymbols && !introActive && topBarPhase === "center"
               ? " is-bar-phase"
               : ""
-          }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}`}
+          }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}${
+            finalePhase === "charge" ? " is-finale-charge" : ""
+          }${
+            finalePhase === "burst" || finalePhase === "hold"
+              ? " is-finale-burst"
+              : ""
+          }`}
         >
           {PHOTO_CURSOR_FX.fairyDust && cursorHost ? (
             <FairyDustCursor
               element={cursorHost}
               particleTypes={cursorFxParticleTypes}
-              particleSize={PHOTO_CURSOR_FX.particleSize}
+              particleSize={
+                PHOTO_CURSOR_FX.particleSize * PHOTO_CURSOR_FX.displaySizeMul
+              }
               burstSizeMul={
                 PHOTO_CURSOR_FX.coarsePointer
                   ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
@@ -3525,6 +3715,23 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               draggable={false}
             />
           </div>
+          {finaleBurst ? (
+            <div
+              key={finaleBurst.key}
+              className="finale-burst"
+              aria-hidden="true"
+              style={
+                {
+                  "--finale-x": `${finaleBurst.x}px`,
+                  "--finale-y": `${finaleBurst.y}px`,
+                } as CSSProperties
+              }
+            >
+              <div className="finale-flash" />
+              <div className="finale-shockwave" />
+              <div className="finale-shockwave is-late" />
+            </div>
+          ) : null}
           <div className="photo-scratch-fg-drag-scale">
             <canvas
               ref={fgCanvasRef}

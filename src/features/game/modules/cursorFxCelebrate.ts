@@ -23,9 +23,18 @@ export const CURSOR_FX_FALL_VELOCITY = { min: 1.1, max: 2.6 };
 /** Stronger pull so fall reads like foil flakes, not a soft drift. */
 export const CURSOR_FX_FALL_GRAVITY = 0.22;
 
+/**
+ * Desktop draws coins at this fraction of the saved particle size. The desktop
+ * stage is a phone-sized frame on a big screen, so full-size coins swamp it;
+ * applied at render so saved settings / phone sizes stay untouched.
+ */
+export const CURSOR_FX_DESKTOP_SIZE_MUL = 0.55;
+
 export type CursorFxDeviceProfile = {
   fairyDust: boolean;
   particleSize: number;
+  /** Render-time multiplier on `particleSize` (1 on phones). */
+  displaySizeMul: number;
   particleCount: number;
   /** Cap FairyDust overlay canvas DPR (1 on phone / coarse pointer). */
   maxOverlayDpr: number;
@@ -62,6 +71,7 @@ export function resolveCursorFxDeviceProfile(opts: {
     return {
       fairyDust: false,
       particleSize: 40,
+      displaySizeMul: 1,
       particleCount: 2,
       maxOverlayDpr: 1,
       coarsePointer: opts.coarsePointer,
@@ -73,6 +83,7 @@ export function resolveCursorFxDeviceProfile(opts: {
       fairyDust: true,
       // Minimal trail — phones struggle with Lottie particle draw calls.
       particleSize: 84,
+      displaySizeMul: 1,
       particleCount: 1,
       maxOverlayDpr: 1,
       coarsePointer: opts.coarsePointer,
@@ -81,6 +92,7 @@ export function resolveCursorFxDeviceProfile(opts: {
   return {
     fairyDust: true,
     particleSize: 64,
+    displaySizeMul: CURSOR_FX_DESKTOP_SIZE_MUL,
     particleCount: 5,
     maxOverlayDpr: 2,
     coarsePointer: opts.coarsePointer,

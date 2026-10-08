@@ -7169,3 +7169,171 @@ dd {
   padding: 10px 12px;
   width: 100%;
 }
+
+/* Hunt-complete garment finale (modules/garmentExplosion.ts): push-in while
+   the clothes charge, then impact shake + flash + shockwave as they shatter.
+   Animates the individual `scale` / `translate` properties so it composes
+   with the scratch-zoom and phone-centering `transform`s. */
+.stage.is-finale-charge .game-stage-canvas,
+.stage.is-finale-charge .photo-scratch-fg-drag-scale,
+.stage.is-finale-charge .bg-drag-scale {
+  animation: finale-tremble 500ms linear both;
+  scale: 1.06;
+  transition: scale 500ms cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+/* Whole-canvas tremble (bikini + clothes move together, so no ghosting),
+   growing toward the burst. */
+@keyframes finale-tremble {
+  0% {
+    translate: 0 0;
+  }
+  20% {
+    translate: 0.5px -0.5px;
+  }
+  30% {
+    translate: -1px 0.5px;
+  }
+  40% {
+    translate: 1px 1px;
+  }
+  50% {
+    translate: -1.5px -1px;
+  }
+  60% {
+    translate: 2px 0.5px;
+  }
+  68% {
+    translate: -2px 1.5px;
+  }
+  76% {
+    translate: 2.5px -1.5px;
+  }
+  84% {
+    translate: -3px -1px;
+  }
+  92% {
+    translate: 3px 2px;
+  }
+  100% {
+    translate: -3px -2px;
+  }
+}
+
+.stage.is-finale-burst .game-stage-canvas,
+.stage.is-finale-burst .photo-scratch-fg-drag-scale,
+.stage.is-finale-burst .bg-drag-scale {
+  animation: finale-shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  scale: 1;
+  transition: scale 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes finale-shake {
+  0% {
+    translate: 0 0;
+  }
+  10% {
+    translate: -10px 7px;
+  }
+  20% {
+    translate: 9px -8px;
+  }
+  32% {
+    translate: -7px -5px;
+  }
+  45% {
+    translate: 6px 6px;
+  }
+  60% {
+    translate: -4px 3px;
+  }
+  75% {
+    translate: 2px -2px;
+  }
+  90% {
+    translate: -1px 1px;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+.finale-burst {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.finale-flash {
+  animation: finale-flash 280ms ease-out both;
+  background: radial-gradient(
+    circle at var(--finale-x, 50%) var(--finale-y, 50%),
+    oklch(1 0 0 / 0.95) 0%,
+    oklch(0.97 0.06 85 / 0.6) 22%,
+    oklch(0.97 0.06 85 / 0) 62%
+  );
+  inset: 0;
+  position: absolute;
+}
+
+@keyframes finale-flash {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.finale-shockwave {
+  animation: finale-shockwave 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  border: 3px solid oklch(0.97 0.08 85 / 0.9);
+  border-radius: 50%;
+  box-shadow:
+    0 0 24px oklch(0.9 0.15 85 / 0.7),
+    inset 0 0 12px oklch(0.97 0.08 85 / 0.6);
+  height: 40px;
+  left: var(--finale-x, 50%);
+  margin: -20px 0 0 -20px;
+  position: absolute;
+  top: var(--finale-y, 50%);
+  width: 40px;
+}
+
+.finale-shockwave.is-late {
+  animation-delay: 110ms;
+  border-width: 2px;
+}
+
+@keyframes finale-shockwave {
+  0% {
+    opacity: 1;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage.is-finale-charge .game-stage-canvas,
+  .stage.is-finale-charge .photo-scratch-fg-drag-scale,
+  .stage.is-finale-charge .bg-drag-scale,
+  .stage.is-finale-burst .game-stage-canvas,
+  .stage.is-finale-burst .photo-scratch-fg-drag-scale,
+  .stage.is-finale-burst .bg-drag-scale {
+    animation: none;
+    scale: none;
+    transition: none;
+  }
+
+  .finale-shockwave {
+    display: none;
+  }
+}

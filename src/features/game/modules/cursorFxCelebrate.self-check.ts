@@ -54,6 +54,11 @@ assert(
     narrowViewport: false,
   });
   assert(desktop.fairyDust && desktop.maxOverlayDpr >= 2, "desktop richer");
+  assert(
+    desktop.displaySizeMul < 1 &&
+      desktop.particleSize * desktop.displaySizeMul * CURSOR_FX_BURST_SIZE_MUL <= 48,
+    "desktop coins drawn smaller so they don't swamp the phone-sized stage",
+  );
 
   const mobile = resolveCursorFxDeviceProfile({
     reducedMotion: false,
@@ -72,6 +77,7 @@ assert(
     "biggest phone coin is 68px, another 10% under the last cap",
   );
   assert(mobile.particleSize <= 96, "mobile particles within settings slider max");
+  assert(mobile.displaySizeMul === 1, "phone coin size unchanged");
 
   const reduced = resolveCursorFxDeviceProfile({
     reducedMotion: true,

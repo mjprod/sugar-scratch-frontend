@@ -60,7 +60,23 @@ import {
   shouldSampleFabricAlpha,
   shouldSpawnFairyDust,
 } from "../modules/fairyDustSpawnPolicy";
+import {
+  finaleHaptics,
+  playFinaleBoomSound,
+  playFinaleChargeSound,
+} from "../modules/finaleFx";
 import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
+import {
+  chargeAmount,
+  explosionOrigin,
+  finaleHidesForeground,
+  finalePhaseAt,
+  finaleTimeline,
+  garmentRevealSatisfied,
+  shouldExplodeGarment,
+  type FinalePhase,
+  type FinaleTimeline,
+} from "../modules/garmentExplosion";
 import {
   awardMotionCardCurrency,
   clearPendingMotionResult,
@@ -1755,6 +1771,22 @@ export function ScratchPrototype({
   autoScratchRef.current = autoScratch;
   /** Auto-clear garment after all body symbols found — not the settings toggle. */
   const finishAutoActiveRef = useRef(false);
+  /** Hunt-complete finale (charge → shatter → hold); driven from the rAF loop. */
+  const finaleStartRef = useRef<number | null>(null);
+  const finaleTimelineRef = useRef<FinaleTimeline | null>(null);
+  const finalePhaseRef = useRef<FinalePhase | null>(null);
+  const finaleOriginRef = useRef<Vec2>({
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT / 2,
+  });
+  const garmentExplodedRef = useRef(false);
+  const finaleBurstKeyRef = useRef(0);
+  const [finalePhase, setFinalePhase] = useState<FinalePhase | null>(null);
+  const [finaleBurst, setFinaleBurst] = useState<{
+    key: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [cursorFx, setCursorFx] =
     useState<CursorFxSettings>(loadCursorFxSettings);
   const cursorFxRef = useRef(cursorFx);
@@ -2101,6 +2133,10 @@ export function ScratchPrototype({
   }
 
   function isBodyScratchLocked() {
+    // Garment finale owns the stage — a finger still down must not paint.
+    if (finaleStartRef.current !== null || garmentExplodedRef.current) {
+      return true;
+    }
     // Lab opens in docked hunt play — never gate on theme intro / fetchThemes.
     if (skipToPlay) return false;
     if (!entryReadyRef.current) return true;
@@ -2882,15 +2918,26 @@ export function ScratchPrototype({
         const canClaim =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        const finaleStart = finaleStartRef.current;
+        const finaleTl = finaleTimelineRef.current;
+        let finaleHide: boolean | null = null;
+        if (finaleStart !== null && finaleTl) {
+          const elapsed = now - finaleStart;
+          const phase = finalePhaseAt(elapsed, finaleTl);
+          active.setForegroundCharge(chargeAmount(elapsed, finaleTl));
+          if (phase !== finalePhaseRef.current) advanceGarmentFinale(phase);
+          finaleHide = finaleHidesForeground(phase);
+        }
         const hideForeground =
-          claimedRef.current ||
-          (canClaim &&
-            isGarmentFullyRevealed(
-              progressRef.current,
-              revealedCountRef.current,
-              sampleCount,
-              autoMode,
-            ));
+          finaleHide ??
+          (claimedRef.current ||
+            (canClaim &&
+              isGarmentFullyRevealed(
+                progressRef.current,
+                revealedCountRef.current,
+                sampleCount,
+                autoMode,
+              )));
         if (
           hideForeground &&
           !claimedRef.current &&
@@ -3397,6 +3444,7 @@ export function ScratchPrototype({
     setFlyingCoins([]);
     setGameResult(null);
     finishAutoActiveRef.current = false;
+    resetGarmentFinale();
     autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3787,6 +3835,121 @@ export function ScratchPrototype({
     finishAutoActiveRef.current = true;
   }
 
+  /** Last symbol found: charge up, then shatter the remaining clothes. */
+  function startGarmentFinale(newlyRevealed: readonly number[]): boolean {
+    if (
+      !shouldExplodeGarment({
+        useBodySymbols: useBodySymbolsRef.current,
+        found: revealedSymbolsRef.current,
+        total: SYMBOL_SLOT_COUNT,
+        alreadyStarted:
+          finaleStartRef.current !== null || garmentExplodedRef.current,
+        packRevealBlocked: packRevealBlockedRef.current,
+      })
+    ) {
+      return false;
+    }
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    finaleOriginRef.current = explosionOrigin(
+      newlyRevealed.map((index) => {
+        const point = bodyPoints?.[index];
+        return sample && point
+          ? sampleMeshUvToWorld(sample, point.u, point.v)
+          : null;
+      }),
+      { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+    );
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeline = finaleTimeline({
+      reducedMotion: reducedMotion || !glRendererRef.current,
+    });
+    finaleTimelineRef.current = timeline;
+    finalePhaseRef.current = null;
+    finaleStartRef.current = performance.now();
+    finishAutoActiveRef.current = false;
+    // Drop the queued move first: we're inside addScratch, and replaying it
+    // from endScratchStroke would re-enter the hunt-complete path.
+    clearPendingScratchMove(scratchInputCoalesceRef.current);
+    endScratchStroke();
+    clearScratchZoom();
+    claimedRef.current = true;
+    if (!timeline.reducedMotion) {
+      if (soundEnabledRef.current) {
+        playFinaleChargeSound(timeline.burstAtMs / 1000);
+      }
+      finaleHaptics("charge");
+    }
+    return true;
+  }
+
+  /** Runs on the first rAF of each finale phase (phases may be skipped on a slow frame). */
+  function advanceGarmentFinale(phase: FinalePhase) {
+    finalePhaseRef.current = phase;
+    const timeline = finaleTimelineRef.current;
+    if (!timeline) return;
+    if (phase !== "charge" && !garmentExplodedRef.current) {
+      fireGarmentBurst(timeline);
+    }
+    setFinalePhase(phase === "done" ? null : phase);
+    if (phase === "done") {
+      finaleStartRef.current = null;
+      setFinaleBurst(null);
+      tryResolveGameRef.current();
+    }
+  }
+
+  function fireGarmentBurst(timeline: FinaleTimeline) {
+    garmentExplodedRef.current = true;
+    const renderer = glRendererRef.current;
+    const origin = finaleOriginRef.current;
+    renderer?.setForegroundCharge(0);
+    if (!timeline.reducedMotion) {
+      renderer?.explodeForeground(origin.x, origin.y);
+    }
+    setClaimed(true);
+    publishProgressUi(true);
+    if (soundEnabledRef.current) playFinaleBoomSound();
+    if (timeline.reducedMotion) return;
+    finaleHaptics("burst");
+    const stagePoint = worldToStagePoint(origin);
+    const stage = stageRef.current;
+    finaleBurstKeyRef.current += 1;
+    setFinaleBurst({
+      key: finaleBurstKeyRef.current,
+      x: stagePoint?.x ?? (stage?.clientWidth ?? 0) / 2,
+      y: stagePoint?.y ?? (stage?.clientHeight ?? 0) / 2,
+    });
+    if (cursorFxRef.current.fairyDust) {
+      const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
+      celebrateUntilRef.current = performance.now() + celebrateMs;
+      setCursorFxCelebrate(true);
+      setCursorFxBurstCount(
+        celebrateBurstCount(10, CURSOR_FX_DEVICE.coarsePointer),
+      );
+      setCursorFxBurstNonce((n) => n + 1);
+      clearCelebrateTimer();
+      celebrateTimerRef.current = window.setTimeout(() => {
+        celebrateTimerRef.current = null;
+        if (performance.now() >= celebrateUntilRef.current) {
+          setCursorFxCelebrate(false);
+        }
+      }, celebrateMs + 40);
+    }
+  }
+
+  function resetGarmentFinale() {
+    finaleStartRef.current = null;
+    finaleTimelineRef.current = null;
+    finalePhaseRef.current = null;
+    garmentExplodedRef.current = false;
+    glRendererRef.current?.clearExplosion();
+    setFinalePhase(null);
+    setFinaleBurst(null);
+  }
+
   // Hold top-bar until theme intro + 3-2-1 finish and card clips have a frame.
   // While the intro cover is dissolving (`introLeaving`), unlock early so the
   // scratch-to-start bar can spring in over the live stage — that's the beat.
@@ -4074,6 +4237,7 @@ export function ScratchPrototype({
     );
     setFlyingCoins([]);
     finishAutoActiveRef.current = false;
+    resetGarmentFinale();
     autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
   }
@@ -4125,6 +4289,7 @@ export function ScratchPrototype({
       handStartCountdownOverIntroRef.current = false;
     }
     finishAutoActiveRef.current = false;
+    resetGarmentFinale();
     clearGameResultTimer();
     if (gameResultLeaveTimerRef.current !== null) {
       window.clearTimeout(gameResultLeaveTimerRef.current);
@@ -4230,6 +4395,7 @@ export function ScratchPrototype({
     const finishedId = selectedCardId;
     if (!finishedId) return;
     finishAutoActiveRef.current = false;
+    resetGarmentFinale();
     revealedSymbolsRef.current = 0;
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
@@ -4408,15 +4574,20 @@ export function ScratchPrototype({
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
     if (packRevealBlockedRef.current) return;
+    // The finale resolves the game itself once its hold ends.
+    if (finaleStartRef.current !== null) return;
     const autoMode = autoScratchRef.current.enabled;
     const sampleCount = revealSamplesRef.current.length;
     if (
-      !isGarmentFullyRevealed(
-        progressRef.current,
-        revealedCountRef.current,
-        sampleCount,
-        autoMode,
-      )
+      !garmentRevealSatisfied({
+        exploded: garmentExplodedRef.current,
+        fullyRevealed: isGarmentFullyRevealed(
+          progressRef.current,
+          revealedCountRef.current,
+          sampleCount,
+          autoMode,
+        ),
+      })
     ) {
       return;
     }
@@ -4923,7 +5094,10 @@ export function ScratchPrototype({
         );
         pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
-        if (nextSymbolCount >= SYMBOL_SLOT_COUNT) {
+        if (
+          nextSymbolCount >= SYMBOL_SLOT_COUNT &&
+          !startGarmentFinale(newlyRevealed)
+        ) {
           beginFinishAutoScratch();
         }
       }
@@ -4947,6 +5121,7 @@ export function ScratchPrototype({
       revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
     if (
       canClaimGarment &&
+      finaleStartRef.current === null &&
       !packRevealBlockedRef.current &&
       isGarmentFullyRevealed(
         nextProgress,
@@ -5495,13 +5670,21 @@ export function ScratchPrototype({
               : ""
           }${useBodySymbols && introGateActive ? " is-countdown-phase" : ""}${
             introCover ? " is-intro-video-phase" : ""
-          }${introLeaving ? " is-intro-revealing" : ""}`}
+          }${introLeaving ? " is-intro-revealing" : ""}${
+            finalePhase === "charge" ? " is-finale-charge" : ""
+          }${
+            finalePhase === "burst" || finalePhase === "hold"
+              ? " is-finale-burst"
+              : ""
+          }`}
         >
           {cursorFx.fairyDust && cursorHost ? (
             <FairyDustCursor
               element={cursorHost}
               particleTypes={cursorFxParticleTypes}
-              particleSize={cursorFx.particleSize}
+              particleSize={
+                cursorFx.particleSize * CURSOR_FX_DEVICE.displaySizeMul
+              }
               burstSizeMul={
                 CURSOR_FX_DEVICE.coarsePointer
                   ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
@@ -5963,6 +6146,7 @@ export function ScratchPrototype({
             }
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
+              if (finaleStartRef.current !== null) return;
               huntHintActivityAtRef.current = performance.now();
               if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
@@ -6029,6 +6213,23 @@ export function ScratchPrototype({
               clearScratchZoom();
             }}
           />
+          {finaleBurst ? (
+            <div
+              key={finaleBurst.key}
+              className="finale-burst"
+              aria-hidden="true"
+              style={
+                {
+                  "--finale-x": `${finaleBurst.x}px`,
+                  "--finale-y": `${finaleBurst.y}px`,
+                } as CSSProperties
+              }
+            >
+              <div className="finale-flash" />
+              <div className="finale-shockwave" />
+              <div className="finale-shockwave is-late" />
+            </div>
+          ) : null}
           {packRevealFailed && gameSession?.packScratch ? (
             <div
               className="game-result game-result--static"
