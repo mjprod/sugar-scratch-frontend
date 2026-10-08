@@ -2519,8 +2519,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     finalePhaseRef.current = null;
     finaleStartRef.current = performance.now();
     finishAutoActiveRef.current = false;
-    isScratchingRef.current = false;
-    setIsScratching(false);
+    onPointerUp();
     claimedRef.current = true;
     if (!timeline.reducedMotion) {
       if (soundEnabledRef.current) {
@@ -2999,6 +2998,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function onPointerMove(clientX: number, clientY: number) {
+    if (finaleStartRef.current !== null) return;
     trackFingerParallax(clientX, clientY);
     if (!isScratchingRef.current) return;
     addScratch(clientX, clientY);

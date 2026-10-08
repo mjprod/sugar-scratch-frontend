@@ -3871,7 +3871,10 @@ export function ScratchPrototype({
     finalePhaseRef.current = null;
     finaleStartRef.current = performance.now();
     finishAutoActiveRef.current = false;
-    drawingRef.current = false;
+    // Drop the queued move first: we're inside addScratch, and replaying it
+    // from endScratchStroke would re-enter the hunt-complete path.
+    clearPendingScratchMove(scratchInputCoalesceRef.current);
+    endScratchStroke();
     clearScratchZoom();
     claimedRef.current = true;
     if (!timeline.reducedMotion) {
