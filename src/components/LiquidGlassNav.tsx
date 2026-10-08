@@ -11,9 +11,7 @@ import {
 import {
   Compass,
   Home,
-  Package,
   Search,
-  Trophy,
   User,
   type LucideIcon,
 } from "lucide-react";
@@ -84,7 +82,9 @@ type NavIcon =
   | typeof LoginIcon
   | typeof DiamondIcon
   | typeof CollectionIcon
-  | typeof GuestCollectionIcon;
+  | typeof GuestCollectionIcon
+  | typeof ShopIcon
+  | typeof RankIcon;
 
 type TabConfig = {
   id: AppTab;
@@ -150,6 +150,85 @@ function LoginIcon({
   );
 }
 
+/** Shop tab — tilted card with plus. */
+function ShopIcon({
+  className,
+  strokeWidth = 1.5,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  fill?: string;
+  fillOpacity?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      overflow="visible"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="m18.942 15.05l.626 2.44a2 2 0 0 1-1.44 2.434L7.433 22.67a2 2 0 0 1-2.435-1.44L1.22 6.51a2 2 0 0 1 1.44-2.434L13.354 1.33a2 2 0 0 1 2.215.912"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Plus scaled 1.5×; shifted up-right so the inner gap stays clear. */}
+      <path
+        d="M20.893 11.352V-.363M15.035 5.495h11.715"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Rank tab — crown from /images/home-v2/rank-crown-silver.svg */
+function RankIcon({
+  className,
+  strokeWidth = 1.5,
+  fill = "none",
+  fillOpacity = 0,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  fill?: string;
+  fillOpacity?: number;
+}) {
+  // Tight 17.4 viewBox makes a 24-unit stroke look heavier; keep thinner than Shop.
+  const sw = Math.max(0.55, (strokeWidth * 12) / 24);
+  return (
+    <svg
+      viewBox="1.8 3.6 17.4 15.2"
+      fill="none"
+      overflow="visible"
+      className={["nav-rank-icon", className].filter(Boolean).join(" ")}
+      aria-hidden="true"
+    >
+      <path
+        d="M10.127 4.201c.037-.061.091-.112.156-.147A.5.5 0 0 1 10.5 4c.076 0 .15.019.216.054c.065.035.119.086.156.147l2.51 4.36c.06.101.143.189.244.257c.102.068.218.115.341.136c.123.022.25.019.372-.01c.122-.028.235-.081.331-.154l3.637-2.851c.07-.052.155-.082.245-.087c.09-.004.179.018.254.063c.076.045.134.11.166.187c.032.077.037.161.013.241l-2.41 7.972c-.049.163-.155.307-.301.41c-.147.103-.326.16-.511.161H5.237c-.185-.001-.365-.058-.511-.161c-.147-.103-.253-.247-.303-.41L2.015 6.344a.5.5 0 0 1 .013-.241a.5.5 0 0 1 .165-.187a.5.5 0 0 1 .255-.062c.09.004.175.034.245.086L6.329 8.791c.096.073.21.126.331.154c.122.028.249.032.372.01c.123-.022.24-.068.341-.136c.101-.068.185-.156.245-.257z"
+        fill={fill}
+        fillOpacity={fillOpacity}
+        stroke="currentColor"
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.548 18h11.903"
+        stroke="currentColor"
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Store tab — sourced from /public/svg/iconDiamond.svg */
 function DiamondIcon({
   className,
@@ -190,7 +269,7 @@ function CollectionIcon({
       viewBox="-1 -1 16 16"
       fill="none"
       overflow="visible"
-      className={className}
+      className={["nav-collect-icon", className].filter(Boolean).join(" ")}
       aria-hidden="true"
     >
       <g
@@ -208,8 +287,8 @@ function CollectionIcon({
 
 /** Logged-in mobile dock: Rank, Shop, Home (center), Collect, Profile. */
 export const TABS: TabConfig[] = [
-  { id: "home", label: MOBILE_DOCK_LABELS[0], icon: Trophy },
-  { id: "feed", label: MOBILE_DOCK_LABELS[1], icon: Package },
+  { id: "home", label: MOBILE_DOCK_LABELS[0], icon: RankIcon },
+  { id: "feed", label: MOBILE_DOCK_LABELS[1], icon: ShopIcon },
   {
     id: "bag",
     label: MOBILE_DOCK_LABELS[2],
@@ -240,14 +319,14 @@ export const GUEST_TABS: TabConfig[] = [
  */
 export const DESKTOP_TABS: TabConfig[] = [
   { id: "bag", label: DESKTOP_PRIMARY_LABELS[0], icon: Home },
-  { id: "feed", label: DESKTOP_PRIMARY_LABELS[1], icon: Package },
+  { id: "feed", label: DESKTOP_PRIMARY_LABELS[1], icon: ShopIcon },
   {
     id: "hub",
     label: DESKTOP_PRIMARY_LABELS[2],
     icon: CollectionIcon,
     primary: true,
   },
-  { id: "home", label: DESKTOP_PRIMARY_LABELS[3], icon: Trophy },
+  { id: "home", label: DESKTOP_PRIMARY_LABELS[3], icon: RankIcon },
 ];
 
 /** Guest desktop top bar — Collection omitted. */
