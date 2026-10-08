@@ -7,6 +7,10 @@ import {
 } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import {
+  isImageAvatar,
+  ProfileAvatar,
+} from "@/components/profile/ProfileAvatar";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   DISPLAY_NAME_MAX_LENGTH,
@@ -62,6 +66,9 @@ export function EditProfileScreen({
     initial.username.replace(/^@/, ""),
   );
   const baselineAvatar = initial.avatar || AVATAR_OPTIONS[0];
+  const avatarOptions: readonly string[] = isImageAvatar(initial.avatar)
+    ? [initial.avatar, ...AVATAR_OPTIONS]
+    : AVATAR_OPTIONS;
 
   const nextName = normalizeDisplayName(displayName);
   const nextUsername = normalizeUsername(username);
@@ -150,7 +157,7 @@ export function EditProfileScreen({
               onClick={() => setPickerOpen((v) => !v)}
             >
               <span className="edit-profile-avatar" aria-hidden="true">
-                {avatar || "✨"}
+                <ProfileAvatar value={avatar} />
               </span>
               <span className="edit-profile-avatar-badge" aria-hidden="true">
                 <Camera className="size-3.5" />
@@ -170,7 +177,7 @@ export function EditProfileScreen({
                 role="listbox"
                 aria-label="Choose avatar"
               >
-                {AVATAR_OPTIONS.map((option) => (
+                {avatarOptions.map((option) => (
                   <button
                     key={option}
                     type="button"
@@ -188,7 +195,7 @@ export function EditProfileScreen({
                       setPickerOpen(false);
                     }}
                   >
-                    {option}
+                    <ProfileAvatar value={option} />
                   </button>
                 ))}
               </div>
