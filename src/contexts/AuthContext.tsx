@@ -63,7 +63,7 @@ import {
   motionPlayHref,
   photoPlayHref,
 } from "@/features/game/modules/gameSession";
-import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
+import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
 import {
   resolveSecondaryBack,
   SECONDARY_SURFACES,

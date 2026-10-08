@@ -1,6 +1,7 @@
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { DotLottieWorker } from "@lottiefiles/dotlottie-web";
 import type { DotLottie } from "@lottiefiles/dotlottie-web";
+import "@/lib/lottie/setupWasm";
 import { useEffect, useRef, useState } from "react";
 import { lottieDevicePixelRatio, lottieRenderConfig } from "@/utils/lottieRender";
 import { SYMBOL_TYPES } from "./matchGame";

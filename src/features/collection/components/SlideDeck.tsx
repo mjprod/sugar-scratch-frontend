@@ -38,7 +38,7 @@ import {
 } from '../lib/photoSlots'
 import { useNavigate } from 'react-router-dom'
 import { Paths } from '@/routes/Paths'
-import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
+import { unlockCountdownSound } from '@/features/game/modules/countdownSound'
 import { useCollectionActions } from '../CollectionActionsContext'
 import { usePlayedCards } from '@/hooks/usePlayedCards'
 import { useRegisterCardPlay } from '@/hooks/useRegisterCardPlay'

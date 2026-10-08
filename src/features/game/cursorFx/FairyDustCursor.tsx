@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DotLottie } from "@lottiefiles/dotlottie-web";
+import "@/lib/lottie/setupWasm";
 import { lottieDevicePixelRatio } from "@/utils/lottieRender";
 import {
   CURSOR_FX_BURST_SIZE_MUL,

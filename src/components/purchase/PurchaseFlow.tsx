@@ -103,7 +103,7 @@ import {
   trackScratchEvent,
   upsertReadyToScratch,
 } from "@/services/readyToScratch";
-import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
+import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
 import {
   motionPlayHref,
   navigateTo,

@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion, type PanInfo } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import "@/lib/lottie/setupWasm";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 const TEAR_DRAG_DISTANCE_PX = 180;

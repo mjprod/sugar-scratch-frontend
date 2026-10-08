@@ -12,7 +12,7 @@ import { join } from "node:path";
 
 const DIST = "dist";
 const FIRST_LOAD_JS_BUDGET_KB = 300;
-const FORBIDDEN_PRELOADS = [/\/three-[\w-]+\.js$/];
+const FORBIDDEN_PRELOADS = [/\/three-[\w-]+\.js$/, /\/lottie-[\w-]+\.js$/];
 
 const indexPath = join(DIST, "index.html");
 if (!existsSync(indexPath)) {
