@@ -42,11 +42,11 @@ function PhotoCardsExpandIcon() {
   return (
     <svg
       aria-hidden="true"
-      width="16"
-      height="16"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
-      className="block size-4 shrink-0 text-white"
+      className="block size-[18px] shrink-0 text-white"
     >
       <path
         fill="currentColor"
@@ -257,6 +257,16 @@ export function StaticCarousel({
                 className="static-carousel-overlay__panel static-carousel static-carousel--expanded"
                 onClick={(event) => event.stopPropagation()}
               >
+                <div className="flex w-full justify-end">
+                  <button
+                    type="button"
+                    className="static-carousel__expand"
+                    aria-label="Close photo cards"
+                    onClick={closeOverlay}
+                  >
+                    <PhotoCardsExpandIcon />
+                  </button>
+                </div>
                 <div className="flex w-full items-center justify-between">
                   <div className="flex items-center gap-1">
                     <PhotoCardsIcon />
