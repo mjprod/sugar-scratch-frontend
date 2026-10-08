@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -21,6 +21,33 @@ import { CollectionPromoCarousel } from "./CollectionPromoCarousel";
 import { CollectionSiteFooter } from "./CollectionSiteFooter";
 import { MyCollectionSection } from "./MyCollectionSection";
 import { ReadyToReveal } from "./ReadyToReveal";
+
+function creatorKey(id: string, name: string): string {
+  return (id || name).trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/** Remote revealed creators plus locally owned packs, one row per model. */
+function mergeOwnedCreators(
+  remote: CollectionPageState["continueCreators"],
+  local: CollectionPageState["continueCreators"],
+) {
+  const byKey = new Map<string, (typeof remote)[number]>();
+  for (const creator of remote) {
+    byKey.set(creatorKey(creator.id, creator.name), creator);
+  }
+  for (const creator of local) {
+    const key = creatorKey(creator.id, creator.name);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, creator);
+      continue;
+    }
+    if (creator.collected > existing.collected) {
+      byKey.set(key, { ...existing, ...creator });
+    }
+  }
+  return [...byKey.values()];
+}
 
 function firstNameFromProfile(displayName: string, username: string): string {
   const raw = (displayName || username || "").trim();
@@ -85,6 +112,12 @@ export function CollectionPage({
             remote.hasEverPurchasedPack || local.hasEverPurchasedPack,
           hasStartedCollection:
             remote.hasStartedCollection || local.hasStartedCollection,
+          // Server list is revealed cards only. Owned packs (still sealed) live
+          // locally — keep those models in Choose a Model.
+          continueCreators: mergeOwnedCreators(
+            remote.continueCreators,
+            local.continueCreators,
+          ),
         });
       } else {
         const local = getCollectionPageState();
@@ -99,6 +132,7 @@ export function CollectionPage({
           hasStartedCollection: local.hasStartedCollection,
           totalPurchasedPacks: local.totalPurchasedPacks,
           isTrueEmpty: local.isTrueEmpty,
+          continueCreators: local.continueCreators,
         });
       }
       setReady(true);
@@ -108,11 +142,6 @@ export function CollectionPage({
       cancelled = true;
     };
   }, [inventoryRevision]);
-
-  const collectedCreators = useMemo(
-    () => state.continueCreators.filter((creator) => creator.collected > 0),
-    [state.continueCreators],
-  );
 
   const greetingName = firstNameFromProfile(
     profile.displayName,
@@ -202,11 +231,7 @@ export function CollectionPage({
             />
 
             <MyCollectionSection
-              creators={
-                collectedCreators.length > 0
-                  ? collectedCreators
-                  : state.continueCreators
-              }
+              creators={state.continueCreators}
               hasPendingReveal={state.hasPendingReveal}
               onOpenCreator={onOpenCreator}
               onExplorePacks={onExplorePacks}

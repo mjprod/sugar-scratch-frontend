@@ -41,6 +41,7 @@ export function PhotoScratchPage() {
 
   const card = searchParams.get("card")?.trim();
   const gameMode = searchParams.get("game") === "1";
+  const freePlay = searchParams.get("freeplay") === "1";
 
   // Leave from the pause overlay — progress is saved, so no second confirm.
   function leaveGame() {
@@ -70,12 +71,12 @@ export function PhotoScratchPage() {
     <PaidCardPlayGate
       kind="photo"
       cardId={card || ""}
-      skip={gameMode}
+      skip={gameMode || freePlay}
       onLeave={leaveGame}
     >
       <div className="app-shell app-shell--game">
         <div className="stage-game">
-          <PhotoScratch key={card || "default"} onLeave={leaveGame} />
+          <PhotoScratch key={`${card || "default"}-${freePlay ? "free" : "paid"}`} onLeave={leaveGame} />
           <FirstPlayTutorial scene="foil" />
         </div>
       </div>

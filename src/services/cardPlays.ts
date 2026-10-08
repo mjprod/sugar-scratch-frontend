@@ -1,9 +1,9 @@
 /**
  * User x cards played — server ledger of cards the player has bought/played.
  *
- * First play is the purchase (photo cards charge `card_price` diamonds once).
- * Played cards render in colour and replay for free; replays earn no rewards
- * (the server issues practice scratch hands for them).
+ * Every paid play charges diamonds, including cards the player already owns.
+ * Free Play (theme toggle, `freeplay=1`) is the only path that skips the charge
+ * and awards nothing. Played cards still render in colour.
  */
 
 import { ApiError, apiFetch, apiMutate } from "../lib/api";
@@ -108,7 +108,7 @@ export function isInsufficientPlayError(error: unknown): boolean {
 
 /**
  * Register a play. First call buys the card (throws ApiError 400 `insufficient`
- * when the wallet cannot cover the price); later calls are free replays.
+ * when the wallet cannot cover the price). Every paid play is charged.
  *
  * Concurrent calls for the same card share one POST so a double-tap cannot
  * submit two first-play charges before the ledger row exists.
@@ -116,8 +116,7 @@ export function isInsufficientPlayError(error: unknown): boolean {
  * `handoff: "offer"` — a screen registering right before it navigates to the
  * scratch page; the result is kept for one `handoff: "claim"` by the play gate
  * so the gate does not POST again. A missed handoff (offer failed / response
- * lost) is safe: the retry is a free replay, and the server binds rewards to the
- * card's first scratch hand, not to the purchasing POST.
+ * lost) is safe: the gate retries the same paid play.
  */
 export async function playCard(
   kind: CardKind,

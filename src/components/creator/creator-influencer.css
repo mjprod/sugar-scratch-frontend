@@ -371,6 +371,7 @@ body[data-theme="v8"] .cpv2-profile-card-social {
 /* —— Section title —— */
 
 body[data-theme="v8"] .cpv2-section-title {
+  scroll-margin-top: 12px;
   margin: 0;
   color: #fff;
   font-size: 20px;
@@ -405,9 +406,9 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow-frame {
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
   width: 100%;
-  /* Room for pack art + Buy Pack CTA without clipping the label. */
-  height: min(52dvh, 460px);
-  min-height: 430px;
+  /* ~30% smaller than the previous 52dvh / 460px stage. */
+  height: min(36.4dvh, 322px);
+  min-height: 301px;
   padding-top: 0;
   overflow: visible;
   -webkit-mask-image: none;
@@ -415,8 +416,8 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
-  height: min(52dvh, 460px);
-  min-height: 430px;
+  height: min(36.4dvh, 322px);
+  min-height: 301px;
 }
 
 body[data-theme="v8"] .cpv2-pack-coverflow
@@ -430,6 +431,19 @@ body[data-theme="v8"] .cpv2-pack-coverflow
   .home-featured-coverflow[data-coverflow="mobile-swiper"]
   .mobile-css-carousel-shell {
   transform: none;
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel .swiper-slide {
+  width: 10.08rem; /* 14.4rem * 0.7 */
+}
+
+body[data-theme="v8"] .cpv2-pack-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel__hud .coverflow-buy-pack-cta {
+  transform: scale(0.7);
+  transform-origin: center bottom;
 }
 
 /* Keep the Buy Pack HUD fully below the pack face (not clipped mid-label). */
@@ -719,12 +733,94 @@ body[data-theme="v8"] .cpv2-theme-card-count {
   white-space: nowrap;
 }
 
+/* Figma 229:6542 — Free Play? switch, off by default. */
+body[data-theme="v8"] .cpv2-free-play {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .cpv2-free-play-clip {
+  height: 14px;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .cpv2-free-play-track {
+  display: flex;
+  flex-direction: column;
+  transition: transform 160ms ease;
+}
+
+body[data-theme="v8"] .cpv2-free-play-track.is-on {
+  transform: translateY(-14px);
+}
+
+body[data-theme="v8"] .cpv2-free-play-label {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24px;
+  line-height: 14px;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body[data-theme="v8"] .cpv2-free-play-track.is-on .cpv2-free-play-label {
+  font-weight: 700;
+  text-align: right;
+}
+
+body[data-theme="v8"] .cpv2-free-play-on {
+  color: #d4145a;
+}
+
+body[data-theme="v8"] .cpv2-free-play-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 80px;
+  background: #d9d9d9;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .cpv2-free-play-switch.is-on {
+  background: #d4145a;
+}
+
+body[data-theme="v8"] .cpv2-free-play-knob {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 80px;
+  background: #272727;
+  transition: transform 160ms ease;
+}
+
+body[data-theme="v8"] .cpv2-free-play-switch.is-on .cpv2-free-play-knob {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+body[data-theme="v8"] .cpv2-free-play-switch:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 body[data-theme="v8"] .cpv2-theme-card-row {
   display: flex;
-  justify-content: flex-start;
-  gap: 5.5px;
+  justify-content: stretch;
+  gap: 12px;
   width: 100%;
-  /* Room for the play CTA hanging below unlocked tiles. */
+  overflow: hidden;
   padding-bottom: 18px;
 }
 
@@ -1274,6 +1370,13 @@ body[data-theme="v8"] .cpv2-premium-locked:disabled .cpv2-premium-locked-label {
   color: #ffdfc1;
 }
 
+body[data-theme="v8"] .cpv2-premium-locked.is-unlocked,
+body[data-theme="v8"] .cpv2-premium-locked.is-unlocked:disabled,
+body[data-theme="v8"] .cpv2-premium-locked.is-unlocked .cpv2-premium-locked-label {
+  color: #e8cc9c;
+  cursor: default;
+}
+
 body[data-theme="v8"] .cpv2-premium-locked-label {
   line-height: 1;
 }
@@ -1415,21 +1518,8 @@ body[data-theme="v8"] .cpv2-ultra-glow {
   pointer-events: none;
 }
 
-@property --cpv2-ultra-gold-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes cpv2-ultra-gold-spin {
-  to {
-    --cpv2-ultra-gold-angle: 360deg;
-  }
-}
-
-/* ~10% larger frame behind the video — spinning gold ring via cutout */
+/* ~10% larger frame behind the video — static gold ring. */
 body[data-theme="v8"] .cpv2-ultra-card-outline {
-  --cpv2-ultra-gold-angle: 0deg;
   position: absolute;
   top: calc(
     var(--cpv2-ultra-card-top) - (var(--cpv2-ultra-card-h) * 0.05)
@@ -1438,14 +1528,13 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
   z-index: 1;
   width: calc(var(--cpv2-ultra-card-w) * 1.1 + 10px);
   height: calc(var(--cpv2-ultra-card-h) * 1.1);
-  transform: translateX(-50%);
   padding: 2px;
   border-radius: 18px;
   box-sizing: border-box;
   pointer-events: none;
   isolation: isolate;
   background: conic-gradient(
-    from var(--cpv2-ultra-gold-angle),
+    from 0deg,
     #fff6d0 0deg,
     #ffd56a 65deg,
     #ffc640 130deg,
@@ -1455,7 +1544,7 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
     #fff6d0 360deg
   );
   box-shadow: 0 0 24px rgba(255, 198, 64, 0.28);
-  animation: cpv2-ultra-gold-spin 4000ms linear infinite;
+  transform: translateX(-50%);
   -webkit-mask-image: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 1) 0%,
@@ -1470,12 +1559,6 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
     rgba(0, 0, 0, 0.2) 66%,
     rgba(0, 0, 0, 0.3) 100%
   );
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body[data-theme="v8"] .cpv2-ultra-card-outline {
-    animation: none;
-  }
 }
 
 body[data-theme="v8"] .cpv2-ultra-card-outline-cutout {
@@ -1591,6 +1674,13 @@ body[data-theme="v8"] .cpv2-ultra-locked {
 body[data-theme="v8"] .cpv2-ultra-locked:disabled,
 body[data-theme="v8"] .cpv2-ultra-locked:disabled .cpv2-ultra-locked-label {
   color: #ffdfc1;
+}
+
+body[data-theme="v8"] .cpv2-ultra-locked.is-unlocked,
+body[data-theme="v8"] .cpv2-ultra-locked.is-unlocked:disabled,
+body[data-theme="v8"] .cpv2-ultra-locked.is-unlocked .cpv2-ultra-locked-label {
+  color: #e8cc9c;
+  cursor: default;
 }
 
 body[data-theme="v8"] .cpv2-ultra-locked-label {

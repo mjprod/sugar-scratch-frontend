@@ -26,17 +26,18 @@ import {
 } from "./glRenderer";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageCoinCount } from "../StageCoinCount";
+import { StageMuteButton } from "../StageMuteButton";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
   finishPhotoHand,
+  isFreePlayUrl,
   isGameModeUrl,
   loadGameSession,
   promoteCompletePhotoHand,
   recordPhotoCardResult,
-  setPracticeCard,
   settleDonePhotoHand,
   type GameSession,
 } from "../modules/gameSession";
@@ -822,9 +823,9 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const handIdRef = useRef("");
   const handCardIdRef = useRef<string | null>(null);
   const handStartGenRef = useRef(0);
-  /** Replay of an already-played card: no coins / diamonds for this hand. */
-  const practiceRef = useRef(false);
-  const [practice, setPractice] = useState(false);
+  /** Theme toggle only. A paid launch always awards, even on an owned card. */
+  const freePlayLaunch = isFreePlayUrl();
+  const practiceRef = useRef(freePlayLaunch);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -862,7 +863,10 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const isScratchingRef = useRef(false);
-  const coinBadge = useScratchCoinBadge({ isScratchingRef });
+  const coinBadge = useScratchCoinBadge({
+    isScratchingRef,
+    initiallyShown: !freePlayLaunch,
+  });
   const scratchStartedRef = useRef(false);
   const idleSwayRef = useRef<Vec2>({ x: 0, y: 0 });
   const girlCamRef = useRef<Vec2>({ x: 0, y: 0 });
@@ -1062,12 +1066,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   completedCardIdsRef.current = completedCardIds;
   useEffect(() => {
     // Signed out — drop the hand so a later sign-in on the same card starts fresh.
-    if (!authed) {
+    if (!authed || freePlayLaunch) {
       handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
-      practiceRef.current = false;
-      setPractice(false);
+      practiceRef.current = freePlayLaunch;
       return;
     }
     const key = selectedCardId.trim();
@@ -1076,26 +1079,21 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (handCardIdRef.current === key) return;
     handIdRef.current = "";
     handCardIdRef.current = key;
-    // Paid until the server confirms rewardsEnabled for this hand.
     practiceRef.current = false;
-    setPractice(false);
     const gen = ++handStartGenRef.current;
     void startScratchHand(key).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
-        const isPractice = result.rewardsEnabled === false;
-        practiceRef.current = isPractice;
-        setPracticeCard(key, isPractice);
-        setPractice(isPractice);
+        // Owned-card replays still award. Only the theme toggle skips minting.
+        practiceRef.current = freePlayLaunch;
         return;
       }
       // Failed / quota — allow a later retry for this card.
       practiceRef.current = false;
-      setPractice(false);
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
-  }, [authed, selectedCardId]);
+  }, [authed, freePlayLaunch, selectedCardId]);
   const [handSummaryDiamonds, setHandSummaryDiamonds] = useState<number | null>(
     null,
   );
@@ -2007,30 +2005,30 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     );
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
-    if (practiceRef.current) return;
-
-    // Defer badge work so the dust burst paints this frame first.
-    const award = rollSparkleCoinAward();
-    const handId = handIdRef.current;
-    const cardId = handCardIdRef.current || undefined;
-    queueMicrotask(() => {
-      coinBadge.award(award.amount);
-      addCoins(award.amount);
-      noteCoinsReceived(award.amount);
-      playSparkleCoinSound(award.soundSrc);
-      // Persist only with a server-issued hand — forged client ids are rejected.
-      if (handId) {
-        persistScratchCoins({
-          handId,
-          milestone: crossed,
-          cardId,
-          amount: award.amount,
-        });
-      }
-      // Milestone counts as activity — hold longer so +N / count-up can read.
-      huntHintActivityAtRef.current = performance.now();
-      coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
-    });
+    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    if (!freePlayLaunch && !practiceRef.current) {
+      const award = rollSparkleCoinAward();
+      const handId = handIdRef.current;
+      const cardId = handCardIdRef.current || undefined;
+      queueMicrotask(() => {
+        coinBadge.award(award.amount);
+        addCoins(award.amount);
+        noteCoinsReceived(award.amount);
+        playSparkleCoinSound(award.soundSrc);
+        // Persist only with a server-issued hand — forged client ids are rejected.
+        if (handId) {
+          persistScratchCoins({
+            handId,
+            milestone: crossed,
+            cardId,
+            amount: award.amount,
+          });
+        }
+        // Milestone counts as activity — hold longer so +N / count-up can read.
+        huntHintActivityAtRef.current = performance.now();
+        coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+      });
+    }
 
     if (PHOTO_CURSOR_FX_REDUCED) return;
 
@@ -2583,6 +2581,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         const url = new URL(window.location.href);
         url.searchParams.set("card", nextCard.id);
         if (isGameModeUrl()) url.searchParams.set("game", "1");
+        if (freePlayLaunch) url.searchParams.set("freeplay", "1");
         window.history.replaceState({}, "", url.toString());
         return applyLoadedAssets(assets, { resumeHand });
       })
@@ -3426,7 +3425,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   </button>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end" />
+              <div className="stage-game__top-chrome-side is-end">
+                <StageMuteButton icon={freePlayLaunch ? "freeplay" : "volume"} />
+              </div>
             </div>
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
@@ -3476,7 +3477,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           <div className="stage-game__bottom-chrome">
             <div className="stage-game__bottom-chrome-row is-status">
               <div className="stage-game__bottom-chrome-status-cards">
-                {practice ? (
+                {freePlayLaunch ? (
                   <span className="stage-game__free-play-pill">
                     Free play · no rewards
                   </span>

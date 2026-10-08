@@ -5,6 +5,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { Paths } from "@/routes/Paths";
+import "@/components/creator/creator-influencer.css";
 
 type LegalKind = "terms" | "privacy";
 

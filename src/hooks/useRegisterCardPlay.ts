@@ -4,10 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { ApiError } from "@/lib/api";
 import {
-  getCachedPlayedCards,
   isInsufficientPlayError,
   playCard,
-  playedCardKey,
   type CardKind,
 } from "@/services/cardPlays";
 import { Paths } from "@/routes/Paths";
@@ -20,7 +18,7 @@ export type CardPlayOutcome = "ok" | "store" | "failed";
 
 type CardPlayHandoff = "offer" | "claim";
 
-/** First play buys the card; replays are free. */
+/** Every paid play charges diamonds, including cards the player already owns. */
 export function useRegisterCardPlayOutcome() {
   const { authed } = useAuth();
   const { applyWallet } = useWallet();
@@ -46,8 +44,7 @@ export function useRegisterCardPlayOutcome() {
         }
         // Allow fail-open only for unknown/unpublished cards.
         if (error instanceof ApiError && error.status === 404) return "ok";
-        // Already owned → the replay is free, so a failed backstop charges nothing.
-        if (getCachedPlayedCards()?.has(playedCardKey(kind, id))) return "ok";
+        // An owned card is still a paid play — do not fail open into a free scratch.
         return "failed";
       }
     },

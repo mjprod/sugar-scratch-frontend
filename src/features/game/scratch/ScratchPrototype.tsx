@@ -65,11 +65,11 @@ import {
   awardMotionCardCurrency,
   clearPendingMotionResult,
   finishMotionHand,
+  isFreePlayUrl,
   isGameModeUrl,
   loadGameSession,
   navigateTo,
   recordMotionCardResult,
-  setPracticeCard,
   themeForMotionCard,
   type GameSession,
 } from "../modules/gameSession";
@@ -1332,9 +1332,9 @@ export function ScratchPrototype({
   const handStartGenRef = useRef(0);
   /** Card id the current handId was issued for — skip remount/mesh restarts. */
   const handCardIdRef = useRef<string | null>(null);
-  /** Replay of an already-played card: no coins / diamonds for this hand. */
-  const practiceRef = useRef(false);
-  const [practice, setPractice] = useState(false);
+  /** Theme toggle only. A paid launch always awards, even on an owned card. */
+  const freePlayLaunch = isFreePlayUrl();
+  const practiceRef = useRef(freePlayLaunch);
   /** Lab restart token the current hand was started for — a bump needs a fresh hand. */
   const handLabRestartTokenRef = useRef(0);
   // FairyDust must paint in stage space: the product embed wraps play in a
@@ -1774,8 +1774,8 @@ export function ScratchPrototype({
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
   const [coinAwardFlash, setCoinAwardFlash] = useState(0);
-  /** Bottom coin badge — hidden until a scratch milestone awards coins. */
-  const [coinBadgeShown, setCoinBadgeShown] = useState(false);
+  /** Bottom coin badge — visible on paid play; free play hides it until an award (there is none). */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(!freePlayLaunch);
   const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
@@ -1894,6 +1894,8 @@ export function ScratchPrototype({
   }
 
   function beginCoinBadgeIdleLeave() {
+    // Paid play keeps the coin count up. Free play never awards, so it stays hidden.
+    if (!freePlayLaunch) return;
     if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
     if (isScratchingRef.current) return;
 
@@ -1904,6 +1906,7 @@ export function ScratchPrototype({
       reduced = false;
     }
     if (reduced) {
+      coinBadgeShownRef.current = false;
       setCoinBadgeShown(false);
       setCoinBadgeLeaving(false);
       return;
@@ -1926,6 +1929,7 @@ export function ScratchPrototype({
     if (!coinBadgeLeavingRef.current) return;
     const name = event.animationName || "";
     if (name && !name.includes("pack-progress-leave-bl")) return;
+    coinBadgeShownRef.current = false;
     setCoinBadgeShown(false);
     setCoinBadgeLeaving(false);
   }
@@ -1936,12 +1940,11 @@ export function ScratchPrototype({
   ) {
     // Session may still be resolving on first paint — leave hand empty; the
     // card+auth effect re-runs once `authed` becomes true.
-    if (!authed) {
+    if (!authed || freePlayLaunch) {
       handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
-      practiceRef.current = false;
-      setPractice(false);
+      practiceRef.current = freePlayLaunch;
       return;
     }
     if (isScratchHandQuotaExhausted()) return;
@@ -1952,25 +1955,19 @@ export function ScratchPrototype({
     }
     handIdRef.current = "";
     handCardIdRef.current = key;
-    // Paid until the server confirms rewardsEnabled for this hand.
     practiceRef.current = false;
-    setPractice(false);
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
         handCardIdRef.current = key;
-        // Cardless lab hands mint nothing server-side but keep local sparkle coins.
-        const isPractice = Boolean(key) && result.rewardsEnabled === false;
-        practiceRef.current = isPractice;
-        if (key) setPracticeCard(key, isPractice);
-        setPractice(isPractice);
+        // Owned-card replays still award. Only the theme toggle skips minting.
+        practiceRef.current = freePlayLaunch;
         return;
       }
       // Failed / quota — allow a later force retry if needed.
       practiceRef.current = false;
-      setPractice(false);
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
   }
@@ -1988,33 +1985,33 @@ export function ScratchPrototype({
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
-    if (practiceRef.current) return;
-
-    // Defer badge work so the dust burst paints this frame first.
-    const award = rollSparkleCoinAward();
-    const handId = handIdRef.current;
-    const cardId = selectedCardId || undefined;
-    queueMicrotask(() => {
-      showCoinBadge();
-      addCoins(award.amount);
-      noteCoinsReceived(award.amount);
-      setCoinAwardFlash(award.amount);
-      setCoinPopNonce((n) => n + 1);
-      playSparkleCoinSound(award.soundSrc);
-      // Persist only with a server-issued hand — forged client ids are rejected.
-      // Do not merge the persist wallet snapshot (see scratchCoinReward).
-      if (authed && handId) {
-        persistScratchCoins({
-          handId,
-          milestone: crossed,
-          cardId,
-          amount: award.amount,
-        });
-      }
-      // Milestone counts as activity — hold longer so +N / count-up can read.
-      huntHintActivityAtRef.current = performance.now();
-      scheduleCoinBadgeIdleHide(COIN_BADGE_AWARD_HOLD_MS);
-    });
+    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    if (!freePlayLaunch && !practiceRef.current) {
+      const award = rollSparkleCoinAward();
+      const handId = handIdRef.current;
+      const cardId = selectedCardId || undefined;
+      queueMicrotask(() => {
+        showCoinBadge();
+        addCoins(award.amount);
+        noteCoinsReceived(award.amount);
+        setCoinAwardFlash(award.amount);
+        setCoinPopNonce((n) => n + 1);
+        playSparkleCoinSound(award.soundSrc);
+        // Persist only with a server-issued hand — forged client ids are rejected.
+        // Do not merge the persist wallet snapshot (see scratchCoinReward).
+        if (authed && handId) {
+          persistScratchCoins({
+            handId,
+            milestone: crossed,
+            cardId,
+            amount: award.amount,
+          });
+        }
+        // Milestone counts as activity — hold longer so +N / count-up can read.
+        huntHintActivityAtRef.current = performance.now();
+        scheduleCoinBadgeIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+      });
+    }
 
     let reducedMotion = false;
     try {
@@ -3253,6 +3250,7 @@ export function ScratchPrototype({
     else url.searchParams.delete("game");
     if (playlistMode && !gameMode) url.searchParams.set("playlist", "1");
     else url.searchParams.delete("playlist");
+    if (freePlayLaunch) url.searchParams.set("freeplay", "1");
     const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams}` : ""}`;
     window.history.replaceState(null, "", next);
   }, [
@@ -3361,7 +3359,8 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(false);
+    coinBadgeShownRef.current = !freePlayLaunch;
+    setCoinBadgeShown(!freePlayLaunch);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -4038,7 +4037,8 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    setCoinBadgeShown(false);
+    coinBadgeShownRef.current = !freePlayLaunch;
+    setCoinBadgeShown(!freePlayLaunch);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -5710,7 +5710,9 @@ export function ScratchPrototype({
                 ) : null}
               </div>
               <div className="stage-game__top-chrome-side is-end">
-                <StageMuteButton icon={gameMode ? "volume" : "freeplay"} />
+                <StageMuteButton
+                  icon={gameMode || !freePlayLaunch ? "volume" : "freeplay"}
+                />
               </div>
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}
@@ -5804,7 +5806,7 @@ export function ScratchPrototype({
           <div className="stage-game__bottom-chrome">
             <div className="stage-game__bottom-chrome-row is-status">
               <div className="stage-game__bottom-chrome-status-cards">
-                {practice ? (
+                {freePlayLaunch ? (
                   <span className="stage-game__free-play-pill">
                     Free play · no rewards
                   </span>

@@ -1,16 +1,10 @@
 import {
-  useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Heart,
   Images,
   Layers,
   Search,
@@ -95,7 +89,7 @@ function avatarFor(
 
 /**
  * Figma MyCollection "Choose a Model" block (node 206:699):
- * popular creators strip + filters + vertical model progress cards.
+ * filters + vertical model progress cards.
  */
 export function MyCollectionSection({
   creators,
@@ -130,12 +124,6 @@ export function MyCollectionSection({
     }
     return map;
   }, [creators, models]);
-
-  const popularCreators = useMemo(() => {
-    return [...creators]
-      .sort((a, b) => b.pct - a.pct || b.collected - a.collected)
-      .slice(0, 12);
-  }, [creators]);
 
   const sortedCreators = useMemo(() => {
     const list = [...creators];
@@ -204,12 +192,6 @@ export function MyCollectionSection({
       <h2 id="my-collection-heading" className="mc-models-title">
         Choose a Model
       </h2>
-
-      <PopularCreatorsStrip
-        creators={popularCreators}
-        modelByCreator={modelByCreator}
-        onOpenCreator={onOpenCreator}
-      />
 
       <div className="mc-models-filters" role="group" aria-label="Filters">
         <div className="mc-models-filter-left">
@@ -391,119 +373,6 @@ export function MyCollectionSection({
         </div>
       )}
     </section>
-  );
-}
-
-function PopularCreatorsStrip({
-  creators,
-  modelByCreator,
-  onOpenCreator,
-}: {
-  creators: CreatorProgress[];
-  modelByCreator: Map<string, BackendModel | null>;
-  onOpenCreator: (creatorId: string) => void;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const updateScrollState = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(max - el.scrollLeft > 4);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    updateScrollState();
-    el.addEventListener("scroll", updateScrollState, { passive: true });
-    const ro = new ResizeObserver(updateScrollState);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener("scroll", updateScrollState);
-      ro.disconnect();
-    };
-  }, [creators, updateScrollState]);
-
-  const scrollByPage = useCallback((direction: -1 | 1) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const card = el.querySelector<HTMLElement>(".mc-popular-card");
-    const styles = window.getComputedStyle(el);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 4;
-    const cardWidth = card?.offsetWidth ?? 82;
-    const step = cardWidth + gap;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollBy({
-      left: direction * step * 2,
-      behavior: reduce ? "auto" : "smooth",
-    });
-  }, []);
-
-  if (!creators.length) return null;
-
-  return (
-    <div className="mc-popular" aria-label="Popular creators">
-      <div className="mc-popular-head">
-        <span className="mc-popular-heart" aria-hidden="true">
-          <Heart size={14} fill="currentColor" strokeWidth={0} />
-        </span>
-        <p className="mc-popular-title">Popular Creators</p>
-      </div>
-
-      <div className="mc-popular-scroll-wrap">
-        <button
-          type="button"
-          className="mc-popular-arrow is-prev"
-          aria-label="Previous creators"
-          disabled={!canScrollLeft}
-          onClick={() => scrollByPage(-1)}
-        >
-          <ChevronLeft size={18} aria-hidden />
-        </button>
-        <div ref={scrollRef} className="mc-popular-scroll">
-          {creators.map((creator) => {
-            const model = modelByCreator.get(creator.id) ?? null;
-            const name =
-              (model ? modelDisplayName(model) : "") || creator.name;
-            return (
-              <button
-                key={creator.id}
-                type="button"
-                className="mc-popular-card"
-                onClick={() => onOpenCreator(creator.id)}
-              >
-                <span className="mc-popular-avatar-wrap">
-                  <img
-                    src={avatarFor(creator, model)}
-                    alt=""
-                    className="mc-popular-avatar"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </span>
-                <span className="mc-popular-name">{name}</span>
-                <span className="mc-popular-sub">
-                  {creator.pct > 0 ? `${creator.pct}% complete` : "Joined recently"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          className="mc-popular-arrow is-next"
-          aria-label="Next creators"
-          disabled={!canScrollRight}
-          onClick={() => scrollByPage(1)}
-        >
-          <ChevronRight size={18} aria-hidden />
-        </button>
-      </div>
-    </div>
   );
 }
 

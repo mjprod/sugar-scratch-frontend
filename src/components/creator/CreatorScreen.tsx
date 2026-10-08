@@ -178,24 +178,12 @@ function CreatorScreenInner({
       matchLiveThemeId(wantedId, themes) ??
       themes[0]!.id;
 
-    const nextCardId =
-      urlCard &&
-      (collection.cardsByThemeId[nextThemeId] ?? []).some(
-        (card) => card.id === urlCard,
-      )
-        ? urlCard
-        : null;
-
     if (nextThemeId !== selectedThemeId) {
       setSelectedThemeId(nextThemeId);
     }
-    if (nextCardId !== featuredCardId) {
-      setFeaturedCardId(nextCardId);
-    }
-    if (urlTheme !== nextThemeId || (urlCard ?? null) !== nextCardId) {
+    if (featuredCardId) setFeaturedCardId(null);
+    if (urlTheme !== nextThemeId) {
       const next = new URLSearchParams(searchParams);
-      if (nextCardId) next.set("card", nextCardId);
-      else next.delete("card");
       next.set("theme", nextThemeId);
       setSearchParams(next, { replace: true });
     }
@@ -260,6 +248,20 @@ function CreatorScreenInner({
     } finally {
       setBuying(false);
     }
+  }
+
+  function handlePlayGameFree(playModelId: string, cardId: string, _cardName: string) {
+    const card = cardId.trim();
+    const playModel = playModelId.trim();
+    if (!card || !playModel || buying) return;
+    syncCardParam(card, selectedThemeId);
+    navigate(
+      Paths.gamePlay(playModel, card, {
+        creatorId,
+        themeId: selectedThemeId,
+        freePlay: true,
+      }),
+    );
   }
 
   function handleToggleFollow() {
@@ -365,6 +367,7 @@ function CreatorScreenInner({
             navigate(Paths.motionCard(creatorId, cardId));
           }}
           onPlayGame={handlePlayGame}
+          onPlayGameFree={handlePlayGameFree}
         />
       </div>
 

@@ -10,7 +10,7 @@ type GameReturnOptions = {
 };
 
 /**
- * Prefer the parent motion card page when play started from an influencer flow.
+ * Influencer play exits back to the creator page with the card still open.
  * Falls back to /collection (with model+card deep-link) for bag / pack exits.
  */
 export function collectionReturnHref(
@@ -36,11 +36,11 @@ export function collectionReturnHref(
     ? motionCardIdFromPhotoScratchId(cardId)
     : "";
 
-  if (creatorId && motionCardId) {
-    return Paths.motionCard(creatorId, motionCardId);
-  }
   if (creatorId) {
-    return Paths.creator(creatorId);
+    const params = new URLSearchParams();
+    if (motionCardId) params.set("card", motionCardId);
+    const qs = params.toString();
+    return qs ? `${Paths.creator(creatorId)}?${qs}` : Paths.creator(creatorId);
   }
 
   const params = new URLSearchParams();

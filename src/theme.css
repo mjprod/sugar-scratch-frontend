@@ -16190,6 +16190,7 @@ body[data-theme="v8"] .home-v2 .player-welcome-bar {
   align-items: center;
   gap: 16px;
   min-height: 148px;
+  margin-top: 1rem;
   padding: 16px 14px;
   padding-right: calc(7.93125rem + 0.5rem);
   border-radius: 20px;
@@ -16402,17 +16403,17 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel-shell {
-  /* shell already has margin-top: -6rem; keep packs a touch lower */
-  transform: translateY(1rem);
+  /* shell already has margin-top: -6rem; extra drop so 1.1× packs clear the nav. */
+  transform: translateY(2.5rem);
 }
 
-/* Home v2 mobile coverflow — ~10% smaller packs so more cards show */
+/* Home v2 mobile coverflow — 10% larger than the 14.4rem base. */
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel .swiper-slide {
-  width: 12.96rem; /* 14.4rem * 0.9 */
+  width: 15.84rem; /* 14.4rem * 1.1 */
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud .coverflow-buy-pack-cta {
-  transform: scale(0.9);
+  transform: scale(1.1);
   transform-origin: center bottom;
 }
 
@@ -16436,8 +16437,8 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] {
-  height: min(70.2dvh, 702px); /* 78dvh/780 * 0.9-ish keep room */
-  min-height: 504px;
+  height: min(78dvh, 780px);
+  min-height: 560px;
 }
 
 /* —— Home v2 strip cards, glass chevrons, avatar-only, figma board —— */
@@ -17269,7 +17270,7 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow-frame {
 }
 
 body[data-theme="v8"] .home-v2 .coverflow-status-pager {
-  bottom: var(--coverflow-status-pager-bottom, 4.6rem);
+  bottom: calc(var(--coverflow-status-pager-bottom, 4.6rem) - 46px);
   z-index: 50;
 }
 

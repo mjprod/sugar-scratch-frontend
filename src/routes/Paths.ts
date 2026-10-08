@@ -52,6 +52,8 @@ export const Paths = {
   game: "/game",
   /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
   gameUi: "/game-ui",
+  /** Isolated workshop for assembling Figma pieces one at a time. */
+  componentLab: "/component-lab",
   /** Scratch card that replays from the intro, for mixing sound levels. */
   audioTest: "/audio-test",
   photoScratch: "/photo-scratch",
@@ -59,19 +61,20 @@ export const Paths = {
   gamePlay: (
     modelId: string,
     cardId: string,
-    extra?: { creatorId?: string; themeId?: string },
+    extra?: { creatorId?: string; themeId?: string; freePlay?: boolean },
   ) => {
     const params = new URLSearchParams();
     params.set("model", modelId);
     params.set("card", cardId);
     if (extra?.creatorId) params.set("creator", extra.creatorId);
     if (extra?.themeId) params.set("theme", extra.themeId);
+    if (extra?.freePlay) params.set("freeplay", "1");
     return `/game?${params.toString()}`;
   },
   /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection / motion page). */
   photoScratchPlay: (
     photoCardId: string,
-    extra?: { modelId?: string; creatorId?: string },
+    extra?: { modelId?: string; creatorId?: string; freePlay?: boolean },
   ) => {
     const params = new URLSearchParams();
     params.set("card", photoCardId);
@@ -79,6 +82,7 @@ export const Paths = {
     if (model) params.set("model", model);
     const creator = extra?.creatorId?.trim();
     if (creator) params.set("creator", creator);
+    if (extra?.freePlay) params.set("freeplay", "1");
     return `/photo-scratch?${params.toString()}`;
   },
   recommend: "/recommend",

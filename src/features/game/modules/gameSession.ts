@@ -314,6 +314,11 @@ export function isGameModeUrl(search = window.location.search): boolean {
   return new URLSearchParams(search).get("game") === "1";
 }
 
+/** Theme Free Play toggle — play the card without charging or minting rewards. */
+export function isFreePlayUrl(search = window.location.search): boolean {
+  return new URLSearchParams(search).get("freeplay") === "1";
+}
+
 export type StartMotionSessionOptions = {
   packScratch?: Omit<PackScratchLink, "settledOpeningIds"> & {
     settledOpeningIds?: string[];
@@ -475,9 +480,9 @@ export function photoPlayHref(session: GameSession, cardId?: string): string {
 }
 
 /**
- * Cards whose current scratch hand is free play (already played before):
- * the server mints nothing for them, so the client banks no coins/diamonds.
- * Scoped per signed-in user so replays do not leak across logout / switch.
+ * Explicit free-play hands only (theme toggle). Owning a card no longer
+ * zeroes coins or diamonds — every paid play awards.
+ * Scoped per signed-in user so flags do not leak across logout / switch.
  */
 const practiceCardIdsByOwner = new Map<string, Set<string>>();
 
