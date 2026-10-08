@@ -207,11 +207,19 @@ body[data-theme="v8"] .cpv2-profile-card-glow {
   pointer-events: none;
 }
 
-body[data-theme="v8"] .cpv2-profile-card-back {
+body[data-theme="v8"] .cpv2-profile-card-toolbar {
   position: absolute;
   top: 12px;
   left: 9px;
+  right: 12px;
   z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-back {
   display: grid;
   place-items: center;
   width: 38px;
@@ -233,15 +241,10 @@ body[data-theme="v8"] .cpv2-profile-card-back {
 }
 
 body[data-theme="v8"] .cpv2-profile-card-actions {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
   display: flex;
   align-items: center;
   gap: 7px;
   height: 38px;
-  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-actions > * {
@@ -281,10 +284,25 @@ body[data-theme="v8"] .cpv2-profile-card-body {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 16px;
   height: 100%;
-  padding: 58px 16px 14px 32px;
+  padding: 58px 12px 14px 9px;
   box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-avatar {
@@ -350,11 +368,14 @@ body[data-theme="v8"] .cpv2-profile-card-location {
 }
 
 body[data-theme="v8"] .cpv2-profile-card-socials {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 32px);
+  grid-template-rows: repeat(2, 32px);
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
+  justify-self: end;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-social {
@@ -626,6 +647,11 @@ body[data-theme="v8"] .cpv2-theme-card {
     rgba(0, 0, 0, 0.3) 50%,
     rgba(169, 169, 169, 0.25) 85%
   );
+}
+
+body[data-theme="v8"] .cpv2-theme-card.is-free-play {
+  border-width: 2px;
+  border-color: #d4145a;
 }
 
 /* Figma 126:3345 — bottom-left glow group (two blurred ellipses). */

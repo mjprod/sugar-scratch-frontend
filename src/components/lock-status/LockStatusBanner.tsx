@@ -129,7 +129,7 @@ export function LockStatusBanner({
     <motion.div
       ref={scope}
       className={[
-        "inline-flex origin-center items-center overflow-hidden rounded-[30px] bg-black/50 px-2.5 py-1 shadow-[0_0_0_1px_rgba(255,255,255,0.10),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.08)]",
+        "inline-flex origin-center items-center overflow-hidden rounded-[30px] bg-black/60 px-2.5 py-1 shadow-[0_0_0_1px_rgba(255,255,255,0.10),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.08)]",
         className,
       ]
         .filter(Boolean)

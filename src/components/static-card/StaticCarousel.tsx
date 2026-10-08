@@ -56,6 +56,24 @@ function PhotoCardsExpandIcon() {
   );
 }
 
+function PhotoCardsContractIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      xmlns="http://www.w3.org/2000/svg"
+      className="block size-[18px] shrink-0 text-white"
+    >
+      <path
+        fill="currentColor"
+        d="M13.69,2.25H4.31c-1.14,0-2.06.92-2.06,2.06v9.38c0,1.14.92,2.06,2.06,2.06h9.38c1.14,0,2.06-.92,2.06-2.06V4.31c0-1.14-.92-2.06-2.06-2.06M4.34,10.67v-1.12h3.19c.52,0,.94.42.94.94v3.19h-1.12v-2.21l-2.42,2.42-.8-.8,2.42-2.41h-2.2ZM9.54,4.34h1.12v2.2l2.42-2.42.8.79-2.42,2.42h2.2v1.12h-3.19c-.52,0-.94-.42-.94-.94v-3.19Z"
+      />
+    </svg>
+  );
+}
+
 function PhotoCardsIcon() {
   return (
     <svg
@@ -264,7 +282,7 @@ export function StaticCarousel({
                     aria-label="Close photo cards"
                     onClick={closeOverlay}
                   >
-                    <PhotoCardsExpandIcon />
+                    <PhotoCardsContractIcon />
                   </button>
                 </div>
                 <div className="flex w-full items-center justify-between">

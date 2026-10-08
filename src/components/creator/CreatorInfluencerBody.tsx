@@ -613,7 +613,9 @@ function ThemeCollectionCard({
 
   return (
     <section
-      className="cpv2-theme-card"
+      className={["cpv2-theme-card", freePlay ? "is-free-play" : ""]
+        .filter(Boolean)
+        .join(" ")}
       id={`creator-theme-${theme.id}`}
       aria-label={theme.name}
     >
