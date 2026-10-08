@@ -135,10 +135,14 @@ export function useScratchCoinBadge({
 
   const reset = useCallback(() => {
     clearIdleTimer();
-    hideNow();
+    leavingRef.current = false;
+    setLeaving(false);
     setPopNonce(0);
     setAwardFlash(0);
-  }, [clearIdleTimer, hideNow]);
+    // Paid play (`initiallyShown`) must stay visible across asset loads; free play hides.
+    shownRef.current = initiallyShown;
+    setShown(initiallyShown);
+  }, [clearIdleTimer, initiallyShown]);
 
   useEffect(() => clearIdleTimer, [clearIdleTimer]);
 
