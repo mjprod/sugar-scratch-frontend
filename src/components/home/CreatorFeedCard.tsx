@@ -152,7 +152,7 @@ export function CreatorFeedCard({
         type: "follow",
         creatorId,
         displayName: item.creatorName,
-        avatarUrl: item.avatarUrl || "/img/placeholder.png",
+        avatarUrl: item.avatarUrl || "/img/placeholder.webp",
       });
       return;
     }
@@ -167,7 +167,7 @@ export function CreatorFeedCard({
       id: creatorId,
       displayName: item.creatorName,
       username: "",
-      avatarUrl: item.avatarUrl || "/img/placeholder.png",
+      avatarUrl: item.avatarUrl || "/img/placeholder.webp",
       followedAt: Date.now(),
       hasUnseenActivity: false,
     });

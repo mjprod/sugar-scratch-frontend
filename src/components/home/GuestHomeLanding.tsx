@@ -8,6 +8,7 @@ import {
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
 import { useAuth } from "@/contexts/AuthContext";
+import { runAfterPaintIdle } from "@/lib/idle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 
 const GUEST_HOME_VIDEO = "/video/homepagevideo-min.mp4";
@@ -39,7 +40,7 @@ const GUEST_HOW_TO_SLIDES: Extract<GuestSlide, { kind: "step" }>[] = [
     kind: "step",
     title: "Win Photo Cards",
     sentence: "Scratch the photo cards to collect diamonds.",
-    imageSrc: "/images/home-v2/how-win.png",
+    imageSrc: "/images/home-v2/how-win.webp",
     imageClassName: "is-win",
   },
   {
@@ -76,12 +77,16 @@ export function GuestHomeLanding() {
   const [dragOffsetPx, setDragOffsetPx] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [canPlay, setCanPlay] = useState(false);
+  const [posterReady, setPosterReady] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  // The clip is attached after first paint so the poster is the LCP element and
+  // the MP4 does not compete with first-load JS/CSS (autoPlay ignores preload).
+  const [videoSrc, setVideoSrc] = useState<string | undefined>(undefined);
 
   const slideCount = GUEST_SLIDES.length;
   const active = Math.max(0, Math.min(index, slideCount - 1));
 
-  useMarkPageReady(canPlay || active !== 0);
+  useMarkPageReady(posterReady || canPlay || active !== 0);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -92,8 +97,26 @@ export function GuestHomeLanding() {
   }, []);
 
   useEffect(() => {
+    const poster = new Image();
+    const done = () => setPosterReady(true);
+    poster.onload = done;
+    poster.onerror = done;
+    poster.src = GUEST_HOME_POSTER;
+    return () => {
+      poster.onload = null;
+      poster.onerror = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion || videoSrc) return;
+    return runAfterPaintIdle(() => setVideoSrc(GUEST_HOME_VIDEO));
+  }, [reduceMotion, videoSrc]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    if (!videoSrc && !reduceMotion) return;
 
     const markCanPlay = () => setCanPlay(true);
     video.addEventListener("canplay", markCanPlay);
@@ -131,7 +154,7 @@ export function GuestHomeLanding() {
       video.removeEventListener("canplay", markCanPlay);
       video.removeEventListener("playing", markCanPlay);
     };
-  }, [active, reduceMotion]);
+  }, [active, reduceMotion, videoSrc]);
 
   const goTo = useCallback(
     (next: number) => {
@@ -294,9 +317,9 @@ export function GuestHomeLanding() {
                 <video
                   ref={videoRef}
                   className="guest-home-landing__video"
-                  src={GUEST_HOME_VIDEO}
+                  src={videoSrc}
                   poster={GUEST_HOME_POSTER}
-                  autoPlay={!reduceMotion}
+                  autoPlay={!reduceMotion && Boolean(videoSrc)}
                   muted
                   loop
                   playsInline

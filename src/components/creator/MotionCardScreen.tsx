@@ -161,7 +161,7 @@ function MotionCardScreenInner({
     (cardId && !cardId.includes("-placeholder-")
       ? `/cards/${encodeURIComponent(cardId)}/motion-poster.webp`
       : "") ||
-    "/img/placeholder.png";
+    "/img/placeholder.webp";
 
   const videoUrl =
     card?.mediaType === "video" && card.mediaUrl ? card.mediaUrl : "";
@@ -404,7 +404,7 @@ function MotionCardScreenInner({
                   ].join(" ")}
                 >
                   <img
-                    src={src || "/img/placeholder.png"}
+                    src={src || "/img/placeholder.webp"}
                     alt=""
                     className="mcp-photo-img"
                   />

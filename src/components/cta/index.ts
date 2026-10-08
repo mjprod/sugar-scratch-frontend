@@ -1,4 +1,3 @@
-export { default as Aurora } from './Aurora'
 export type { AuroraColorStops, AuroraProps } from './Aurora'
 
 export { default as BorderGlow } from './BorderGlow'

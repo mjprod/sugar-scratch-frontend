@@ -11,7 +11,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/features/game/modules/gameSession";
+import { runWhenIdle } from "@/lib/idle";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
+import { prefetchTabPages } from "@/routes/lazyPages";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
 import { noteCoinsReceived } from "@/services/coinReceipt";
@@ -48,6 +50,8 @@ export function AppLayout() {
   const { coins, diamonds, addCoins, addDiamonds, setCoins, setDiamonds } = useWallet();
   const { searchOpen, openSearch } = useSearch();
   const { activeTab: tab, requestTab } = useTabNav();
+
+  useEffect(() => runWhenIdle(prefetchTabPages, 4000), []);
 
   useEffect(() => {
     bindGameNavigate((to) => {

@@ -1,14 +1,38 @@
+import { useEffect, useState } from "react";
 import { ChevronLeft } from "lucide-react";
+import { LoadingLabel } from "@/components/LoadingLabel";
 import { SubpageHeader } from "@/components/SubpageHeader";
-import {
-  PRIVACY_BLOCKS,
-  PRIVACY_TITLE,
-  TERMS_BLOCKS,
-  TERMS_TITLE,
-  type LegalBlock,
-} from "@/content/legalDocs";
+import type { LegalBlock } from "@/content/legalDocs";
+import { PRIVACY_TITLE, TERMS_TITLE } from "@/content/legalTitles";
 
 type LegalDocKind = "terms" | "privacy";
+
+type LegalBlocks = Record<LegalDocKind, LegalBlock[]>;
+
+let legalBlocksCache: LegalBlocks | null = null;
+
+function loadLegalBlocks(): Promise<LegalBlocks> {
+  if (legalBlocksCache) return Promise.resolve(legalBlocksCache);
+  return import("@/content/legalDocs").then((m) => {
+    legalBlocksCache = { terms: m.TERMS_BLOCKS, privacy: m.PRIVACY_BLOCKS };
+    return legalBlocksCache;
+  });
+}
+
+function useLegalBlocks(kind: LegalDocKind): LegalBlock[] | null {
+  const [loaded, setLoaded] = useState<LegalBlocks | null>(legalBlocksCache);
+  useEffect(() => {
+    if (loaded) return;
+    let alive = true;
+    void loadLegalBlocks().then((blocks) => {
+      if (alive) setLoaded(blocks);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [loaded]);
+  return loaded ? loaded[kind] : null;
+}
 
 /** Shared Terms / Privacy surface — Create Account + Profile use the same content. */
 export function LegalDocPanel({
@@ -26,9 +50,11 @@ export function LegalDocPanel({
   backLabel?: string;
 }) {
   const title = kind === "terms" ? TERMS_TITLE : PRIVACY_TITLE;
-  const blocks = kind === "terms" ? TERMS_BLOCKS : PRIVACY_BLOCKS;
+  const blocks = useLegalBlocks(kind);
   const body = (
-    <div className="auth7-legal-body">{blocks.map(renderBlock)}</div>
+    <div className="auth7-legal-body">
+      {blocks ? blocks.map(renderBlock) : <LoadingLabel />}
+    </div>
   );
 
   if (variant === "page") {

@@ -215,7 +215,7 @@ function CreatorScreenInner({
   const coverUrl =
     (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
     avatarUrl ||
-    "/img/placeholder.png";
+    "/img/placeholder.webp";
 
   function notice(message: string) {
     setToast(message);
@@ -270,7 +270,7 @@ function CreatorScreenInner({
         type: "follow",
         creatorId: followId || creatorId,
         displayName: creatorName,
-        avatarUrl: avatarUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.webp",
       });
       return;
     }
@@ -289,7 +289,7 @@ function CreatorScreenInner({
         id: followId || creatorId,
         displayName: creatorName,
         username: "",
-        avatarUrl: avatarUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.webp",
         followedAt: Date.now(),
         hasUnseenActivity: false,
       } as const);

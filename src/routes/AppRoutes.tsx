@@ -7,9 +7,15 @@ import { SoftGate } from "@/routes/SoftGate";
 import { Paths } from "@/routes/Paths";
 import { RouteChunkFallback } from "@/routes/RouteChunkFallback";
 import { BrowsePage } from "@/pages/BrowsePage";
-import { HomeFeedPage } from "@/pages/HomeFeedPage";
-import { RankPage } from "@/pages/RankPage";
+import { loadHomeFeedPage, loadRankPage } from "@/routes/lazyPages";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
+
+const HomeFeedPage = lazy(() =>
+  loadHomeFeedPage().then((m) => ({ default: m.HomeFeedPage })),
+);
+const RankPage = lazy(() =>
+  loadRankPage().then((m) => ({ default: m.RankPage })),
+);
 
 const CreatorPage = lazy(() =>
   import("@/pages/CreatorPage").then((m) => ({ default: m.CreatorPage })),

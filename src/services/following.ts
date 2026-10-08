@@ -137,7 +137,7 @@ export function followedCreatorFromModel(
   const displayName = displayNameOf(model);
   const handleRaw = (model.label ?? model.id ?? "").trim();
   const username = handleRaw ? formatSocialHandle(handleRaw) : "";
-  const avatarUrl = normalizeMediaUrl(model.avatar ?? "") || "/img/placeholder.png";
+  const avatarUrl = normalizeMediaUrl(model.avatar ?? "") || "/img/placeholder.webp";
   return {
     id,
     displayName,

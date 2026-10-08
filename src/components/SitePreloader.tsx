@@ -10,7 +10,7 @@ import {
 } from "@/shared/ui/PageTransition";
 import "./SitePreloader.css";
 
-const MIN_MS = 2800;
+const MIN_MS = 1000;
 /** Character → motion: brief splash, then dismiss as soon as the page is ready. */
 const MOTION_MIN_MS = 180;
 const MAX_MS = 4500;

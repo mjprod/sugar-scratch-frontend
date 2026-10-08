@@ -14,9 +14,7 @@ export type LegalBlock =
   | { type: "ul"; items: string[] }
   | { type: "note"; text: string };
 
-/** Matches create-account consent copy ("Terms of Service"). */
-export const TERMS_TITLE = "Terms of Service";
-export const PRIVACY_TITLE = "Privacy Policy";
+export { PRIVACY_TITLE, TERMS_TITLE } from "./legalTitles";
 
 export const TERMS_BLOCKS: LegalBlock[] = [
   {

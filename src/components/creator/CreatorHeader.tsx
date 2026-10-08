@@ -132,7 +132,7 @@ export function CreatorHeader({
     };
   }, []);
 
-  const avatarSrc = avatarUrl || "/img/placeholder.png";
+  const avatarSrc = avatarUrl || "/img/placeholder.webp";
 
   const compactBar = (
     <div

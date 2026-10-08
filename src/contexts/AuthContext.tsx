@@ -492,7 +492,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: action.creatorId,
           displayName: action.displayName?.trim() || action.creatorId,
           username: "",
-          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.png",
+          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.webp",
           followedAt: Date.now(),
           hasUnseenActivity: false,
         });
