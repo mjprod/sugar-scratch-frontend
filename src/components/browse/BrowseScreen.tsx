@@ -181,7 +181,7 @@ export function HomeScreen({
   const { openSearch } = useSearch();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
-  const [category, setCategory] = useState<LeaderboardCategory>("all");
+  const [category, setCategory] = useState<LeaderboardCategory>("purchased");
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const [boardLoading, setBoardLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -196,7 +196,7 @@ export function HomeScreen({
     try {
       const data = await fetchHomepage();
       setHome(data);
-      setBoard(await fetchLeaderboard("all"));
+      setBoard(await fetchLeaderboard("purchased"));
       setStatus("loaded");
     } catch {
       setStatus("error");

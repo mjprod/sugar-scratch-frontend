@@ -8,6 +8,7 @@ import { Paths } from "@/routes/Paths";
 import { RouteChunkFallback } from "@/routes/RouteChunkFallback";
 import { BrowsePage } from "@/pages/BrowsePage";
 import { HomeFeedPage } from "@/pages/HomeFeedPage";
+import { RankPage } from "@/pages/RankPage";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 
 const CreatorPage = lazy(() =>
@@ -206,9 +207,17 @@ export function AppRoutes() {
               </AppShell>
             }
           >
-            {/* Home nav → pack browse at root (guest + signed-in); Discover → feed */}
+            {/* Store → pack browse at root; Home → reel; Rank → leaderboard */}
             <Route index element={<BrowsePage />} />
             <Route path="discover" element={<HomeFeedPage />} />
+            <Route
+              path="rank"
+              element={
+                <SoftGate tab="home">
+                  <RankPage />
+                </SoftGate>
+              }
+            />
             {/* Legacy sandbox URL — design is now the logged-in home. */}
             <Route
               path="home-version2"
@@ -239,7 +248,7 @@ export function AppRoutes() {
             <Route
               path="collection"
               element={
-                <SoftGate tab="bag">
+                <SoftGate tab="hub">
                   <CollectionPage />
                 </SoftGate>
               }
@@ -300,7 +309,8 @@ export function AppRoutes() {
                 </SoftGate>
               }
             />
-            <Route path="store" element={<StorePage />} />
+            <Route path="get-diamonds" element={<StorePage />} />
+            <Route path="store" element={<Navigate to={Paths.store} replace />} />
             <Route
               path="profile/change-password"
               element={

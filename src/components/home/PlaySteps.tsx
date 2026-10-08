@@ -123,8 +123,10 @@ function PlayStepCard({
       ) : (
         <span className="home-play-steps-icon">{step.icon}</span>
       )}
-      <h3 className="home-play-steps-title">{step.title}</h3>
-      <p className="home-play-steps-copy">{step.sentence}</p>
+      <div className="home-play-steps-text">
+        <h3 className="home-play-steps-title">{step.title}</h3>
+        <p className="home-play-steps-copy">{step.sentence}</p>
+      </div>
     </article>
   );
 }

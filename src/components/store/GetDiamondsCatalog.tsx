@@ -7,7 +7,9 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import { HistoryPageHeader } from "@/components/history/HistoryShared";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { useAuth } from "@/contexts/AuthContext";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -45,6 +47,7 @@ export function GetDiamondsCatalog({
   activeProductId,
   flowStep,
   exchangingId,
+  onBack,
   onSelect,
   onCoinExchange,
   onDiamondReward,
@@ -58,6 +61,7 @@ export function GetDiamondsCatalog({
   activeProductId?: string;
   flowStep: GetDiamondsFlowStep;
   exchangingId?: string | null;
+  onBack: () => void;
   onSelect: (product: StoreProduct) => void;
   onCoinExchange: (diamonds: number, coins: number) => boolean | Promise<boolean>;
   onDiamondReward?: (amount: number) => void;
@@ -73,6 +77,7 @@ export function GetDiamondsCatalog({
     instanceId?: string;
   }) => void;
 }) {
+  const { authed } = useAuth();
   const ads = products.filter((p) => p.kind === "rewarded-ad");
   const packs = products.filter((p) => p.kind === "diamonds");
   const adProduct = ads[0] ?? null;
@@ -90,6 +95,7 @@ export function GetDiamondsCatalog({
 
   return (
     <div className="get-diamonds-stack">
+      <HistoryPageHeader title="Buy Diamonds" onBack={onBack} />
       <div className="get-diamonds-ambient" aria-hidden="true">
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--a" />
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--b" />
@@ -134,20 +140,22 @@ export function GetDiamondsCatalog({
             <WatchAdPanel
               product={adProduct}
               processing={isProcessing(adProduct.id)}
-              disabled={busy || adRemaining <= 0}
+              disabled={authed ? busy || adRemaining <= 0 : false}
               onWatch={() => onSelect(adProduct)}
             />
           ) : null}
-          <ExchangePanel
-            coinBalance={coinBalance}
-            exchangingId={exchangingId}
-            disabled={busy}
-            onExchange={onCoinExchange}
-          />
+          {authed ? (
+            <ExchangePanel
+              coinBalance={coinBalance}
+              exchangingId={exchangingId}
+              disabled={busy}
+              onExchange={onCoinExchange}
+            />
+          ) : null}
         </div>
       </section>
 
-      {onDiamondReward && onPackReward && onOpenPack ? (
+      {authed && onDiamondReward && onPackReward && onOpenPack ? (
         <HubRedeemSection
           heading="Redeem Code"
           onDiamondReward={onDiamondReward}

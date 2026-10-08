@@ -1,7 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
+import { useGoBack } from "@/hooks/useGoBack";
 import { isDemoMode } from "@/lib/demo";
+import { Paths } from "@/routes/Paths";
 import {
   addUnopenedFromPurchase,
   peekNewestUnopenedInstance,
@@ -12,8 +14,8 @@ import type { RedeemReward } from "@/services/redeem";
 import { exchangeCoinsForDiamonds } from "@/services/store";
 
 export function StorePage() {
+  const goBackToProfile = useGoBack(Paths.profile);
   const {
-    closeSecondary,
     openPurchase,
     bumpInventoryRevision,
     setPurchasedPacks,
@@ -81,7 +83,7 @@ export function StorePage() {
         applyWallet({ diamonds: result.diamonds, coins: result.coins });
         return true;
       }}
-      onBack={() => closeSecondary("store")}
+      onBack={goBackToProfile}
       onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
         addDiamonds(gained);
         addCoins(gainedCoins);

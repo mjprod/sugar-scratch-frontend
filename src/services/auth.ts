@@ -610,8 +610,7 @@ export function triggerFromAction(
     return "view-profile";
   }
   if (action.type === "tab") {
-    if (action.tab === "bag") return "view-collection";
-    if (action.tab === "hub") return "view-rewards";
+    if (action.tab === "hub") return "view-collection";
     if (action.tab === "profile") return "view-profile";
   }
   return undefined;

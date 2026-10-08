@@ -15,12 +15,22 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
+import { ConvertDustIcon } from "@/components/WalletBalancesPopover";
+import { CoinLottie } from "@/components/ui/CoinLottie";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useMotion } from "@/features/collection/hooks/useMotion";
+import { formatBalance } from "@/lib/formatBalance";
+import {
+  bestAffordableCoinExchange,
+  formatExchangeDiamondAmount,
+  type CoinExchangeOption,
+} from "@/services/store";
 
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
 
@@ -28,12 +38,16 @@ export function UserDashboardScreen({
   name,
   username,
   avatar,
+  coins = 0,
+  diamonds = 0,
   onLogout,
   onOpenChangePassword,
   onOpenEditProfile,
   onOpenFollowing,
   onOpenGameSettings,
   onOpenInbox,
+  onBuyMoreDiamonds,
+  onConvertDust,
   onOpenTransactionHistory,
   onOpenGameHistory,
   inboxUnreadCount = 0,
@@ -41,19 +55,36 @@ export function UserDashboardScreen({
   name: string;
   username: string;
   avatar?: string | null;
+  coins?: number;
+  diamonds?: number;
   onLogout: () => void;
   onOpenChangePassword: () => void;
   onOpenEditProfile: () => void;
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
   onOpenInbox?: () => void;
+  onBuyMoreDiamonds?: () => void;
+  onConvertDust?: (
+    option: CoinExchangeOption,
+  ) => boolean | Promise<boolean>;
   onOpenTransactionHistory?: () => void;
   onOpenGameHistory?: () => void;
   inboxUnreadCount?: number;
 }) {
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [previewExchange, setPreviewExchange] = useState(false);
   const [view, setView] = useState<ProfileView>("main");
+  const affordable = useMemo(
+    () => bestAffordableCoinExchange(coins),
+    [coins],
+  );
+  const canConvert = Boolean(onConvertDust && affordable && !converting);
+  const previewAmount = affordable
+    ? formatExchangeDiamondAmount(affordable.diamonds)
+    : null;
+  const showPreview = previewExchange && Boolean(previewAmount) && !converting;
   const legalTitleId = useId();
   const {
     enabled: motionEnabled,
@@ -218,6 +249,136 @@ export function UserDashboardScreen({
 
       <div className="profile-menu-grid">
         <div className="profile-menu-stack">
+          <div className="profile-menu-group">
+            <h2 className="profile-menu-group-title">Your Balance</h2>
+            <div className="profile-menu-group-card">
+              <div className="profile-menu-row profile-balance-row">
+                <span className="profile-menu-icon">
+                  <DiamondLottie
+                    className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
+                    size={14}
+                    animated
+                    loop
+                    autoplay
+                    aria-hidden
+                  />
+                </span>
+                <span className="profile-balance-copy">
+                  <span className="profile-balance-value">
+                    {formatBalance(diamonds)}
+                  </span>
+                  <span className="profile-balance-label">Diamond Balance</span>
+                </span>
+              </div>
+              <div
+                className={[
+                  "profile-menu-row profile-balance-row is-divided",
+                  showPreview ? "is-exchange-preview" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className="profile-menu-icon">
+                  {showPreview ? (
+                    <DiamondLottie
+                      className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
+                      size={14}
+                      animated
+                      loop
+                      autoplay
+                      aria-hidden
+                    />
+                  ) : (
+                    <CoinLottie
+                      className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
+                      size={16}
+                      aria-hidden
+                    />
+                  )}
+                </span>
+                <span className="profile-balance-copy">
+                  <span
+                    className={[
+                      "profile-balance-value",
+                      showPreview ? "is-exchange-preview" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-live="polite"
+                  >
+                    {showPreview && previewAmount
+                      ? previewAmount
+                      : formatBalance(coins)}
+                  </span>
+                  <span className="profile-balance-label">
+                    {showPreview ? "Convert?" : "Coin Balance"}
+                  </span>
+                </span>
+                {onConvertDust ? (
+                  <button
+                    type="button"
+                    className={[
+                      "wallet-balances-popover__convert",
+                      "profile-balance-convert",
+                      canConvert ? "" : "is-disabled",
+                      converting ? "is-busy" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-label={
+                      affordable
+                        ? `Convert ${affordable.coins} Coins for +${formatExchangeDiamondAmount(affordable.diamonds)} Diamonds`
+                        : "Not enough Coins to convert"
+                    }
+                    disabled={!canConvert}
+                    onPointerEnter={() => {
+                      if (affordable) setPreviewExchange(true);
+                    }}
+                    onPointerLeave={() => setPreviewExchange(false)}
+                    onPointerDown={() => {
+                      if (affordable) setPreviewExchange(true);
+                    }}
+                    onPointerUp={() => setPreviewExchange(false)}
+                    onPointerCancel={() => setPreviewExchange(false)}
+                    onClick={() => {
+                      if (!onConvertDust || !affordable || converting) return;
+                      setPreviewExchange(false);
+                      setConverting(true);
+                      void Promise.resolve(onConvertDust(affordable)).finally(
+                        () => setConverting(false),
+                      );
+                    }}
+                  >
+                    <ConvertDustIcon className="wallet-balances-popover__convert-icon" />
+                  </button>
+                ) : null}
+              </div>
+              {onBuyMoreDiamonds ? (
+                <div className="profile-balance-cta">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("squircleCTA")}
+                    fillParent
+                    type="button"
+                    leadingIcon={
+                      <DiamondLottie
+                        className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
+                        size={14}
+                        animated
+                        loop
+                        autoplay
+                        aria-hidden
+                      />
+                    }
+                    label="Get Diamonds"
+                    costAmount={null}
+                    fontSize={15}
+                    strokeWidth={1}
+                    onClick={onBuyMoreDiamonds}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
           <MenuGroup
             title="History"
             items={[

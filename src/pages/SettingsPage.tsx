@@ -6,7 +6,7 @@ export function SettingsPage() {
   return (
     <SettingsScreen
       onBack={() => closeSecondary("settings")}
-      onReplayTutorials={() => requestTab("home")}
+      onReplayTutorials={() => requestTab("bag")}
     />
   );
 }

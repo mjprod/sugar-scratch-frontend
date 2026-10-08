@@ -84,7 +84,7 @@ export function StoreScreen({
     instanceId?: string;
   }) => void;
 }) {
-  const { requireAuth } = useAuth();
+  const { authed, requireAuth } = useAuth();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
   const [adClaimsToday, setAdClaimsToday] = useState(0);
@@ -279,6 +279,10 @@ export function StoreScreen({
   function onSelect(product: StoreProduct) {
     if (busy) return;
     if (product.kind === "rewarded-ad") {
+      if (!authed) {
+        requireAuth({ type: "store" });
+        return;
+      }
       void runRewardedAd(product);
       return;
     }
@@ -357,6 +361,7 @@ export function StoreScreen({
           activeProductId={activeProductId}
           flowStep={flow.step}
           exchangingId={exchangingId}
+          onBack={onBack}
           onSelect={onSelect}
           onCoinExchange={handleCoinExchange}
           onDiamondReward={onDiamondReward}

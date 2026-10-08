@@ -71,7 +71,7 @@ function isCoarsePointer() {
   return window.matchMedia("(hover: none), (pointer: coarse)").matches;
 }
 
-function ConvertDustIcon({ className }: { className?: string }) {
+export function ConvertDustIcon({ className }: { className?: string }) {
   return (
     <svg
       width="9"

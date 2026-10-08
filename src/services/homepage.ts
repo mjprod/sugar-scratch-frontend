@@ -32,6 +32,7 @@ import {
   type BackendCard,
 } from "../shared/backend/collection";
 import { loadPackCatalog, packUnitCost } from "./purchase";
+import { listOwnedPacks } from "./packInventory";
 
 const NEW_MODEL_WINDOW_SEC = 14 * 24 * 60 * 60;
 
@@ -131,9 +132,10 @@ export type ContinueCollectingItem = {
   badge?: "NEW" | "Almost Complete" | "Reward Ready";
 };
 
-/** Figma home filter chips (node 9:758). */
-export type LeaderboardCategory =
-  | "all"
+/** Rank filter chips. */
+export type LeaderboardCategory = "purchased" | "hot" | "all" | "new";
+
+export type LeaderboardTheme =
   | "police"
   | "teacher"
   | "nurse"
@@ -154,7 +156,8 @@ export type LeaderboardRow = {
   price: Price;
   /** Pack Diamond cost — same currency used by Purchase / Featured. */
   diamondCost: number;
-  category: Exclude<LeaderboardCategory, "all">;
+  category: LeaderboardTheme;
+  createdAt?: number;
 };
 
 export type HomepageData = {
@@ -186,12 +189,10 @@ export function formatPrice(price: Price) {
 }
 
 export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "police", label: "Police" },
-  { id: "teacher", label: "Teacher" },
-  { id: "nurse", label: "Nurse" },
-  { id: "gym", label: "Gym" },
-  { id: "firefighter", label: "Firefighter" },
+  { id: "purchased", label: "Purchased" },
+  { id: "hot", label: "🔥 Hot" },
+  { id: "all", label: "All Time" },
+  { id: "new", label: "New" },
 ];
 
 const FEATURED: FeaturedPack[] = [
@@ -501,11 +502,9 @@ async function loadContinueCollecting(): Promise<ContinueCollectingItem[]> {
   }
 }
 
-function themeToLeaderboardCategory(
-  themeName: string,
-): Exclude<LeaderboardCategory, "all"> {
+function themeToLeaderboardCategory(themeName: string): LeaderboardTheme {
   const key = canonicalThemeKey(themeName);
-  const table: Record<string, Exclude<LeaderboardCategory, "all">> = {
+  const table: Record<string, LeaderboardTheme> = {
     police: "police",
     teacher: "teacher",
     nurse: "nurse",
@@ -573,6 +572,7 @@ export function leaderboardFromModels(
         price: { amount: diamondCost, currency: "SC" },
         diamondCost,
         category: themeToLeaderboardCategory(themeName),
+        createdAt: created,
       });
     }
   }
@@ -681,9 +681,10 @@ function row(
   packName: string,
   creatorName: string,
   themeName: string,
-  category: Exclude<LeaderboardCategory, "all">,
+  category: LeaderboardTheme,
   purchaseCount: number,
   amount: number,
+  createdAt = 0,
 ): LeaderboardRow {
   const diamondCost = diamondCostForPackId(packId, amount);
   return {
@@ -697,6 +698,7 @@ function row(
     price: { amount: diamondCost, currency: "SC" },
     diamondCost,
     category,
+    createdAt,
   };
 }
 
@@ -734,17 +736,54 @@ export async function fetchHomepage(): Promise<HomepageData> {
   };
 }
 
+function ownedPackKeys() {
+  const keys = new Set<string>();
+  for (const pack of listOwnedPacks()) {
+    const catalog = pack.catalogPackId.trim();
+    const name = pack.packName.trim();
+    if (catalog) keys.add(catalog);
+    if (name) keys.add(name);
+  }
+  return keys;
+}
+
+function isPurchasedRow(row: LeaderboardRow, owned: Set<string>) {
+  if (owned.has(row.packId)) return true;
+  if (row.characterId && owned.has(row.characterId)) return true;
+  return owned.has(row.packName);
+}
+
+function rankByPurchases(rows: LeaderboardRow[]) {
+  return [...rows]
+    .sort((a, b) => b.purchaseCount - a.purchaseCount)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
 function filterLeaderboardRows(
   rows: LeaderboardRow[],
   category: LeaderboardCategory,
 ): LeaderboardRow[] {
-  const filtered =
-    category === "all"
-      ? [...rows].sort((a, b) => b.purchaseCount - a.purchaseCount)
-      : rows.filter((r) => r.category === category).sort((a, b) => a.rank - b.rank);
-  return filtered.map((row, index) =>
-    category === "all" ? { ...row, rank: index + 1 } : row,
-  );
+  if (category === "purchased") {
+    const owned = ownedPackKeys();
+    return rankByPurchases(rows.filter((row) => isPurchasedRow(row, owned)));
+  }
+  if (category === "new") {
+    return [...rows]
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+  }
+  if (category === "hot") {
+    const ranked = rankByPurchases(rows);
+    const cutoff = ranked[0]?.purchaseCount
+      ? ranked[0].purchaseCount * 0.6
+      : 0;
+    const hot = ranked.filter((row) => row.purchaseCount >= cutoff);
+    return (hot.length > 0 ? hot : ranked).map((row, index) => ({
+      ...row,
+      rank: index + 1,
+    }));
+  }
+  return rankByPurchases(rows);
 }
 
 export async function fetchLeaderboard(

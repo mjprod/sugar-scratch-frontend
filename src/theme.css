@@ -3356,6 +3356,10 @@ body[data-theme="v8"] .category-leaderboard {
   margin-top: -7rem;
 }
 
+body[data-theme="v8"] .category-leaderboard.rank-leaderboard {
+  margin-top: 2rem;
+}
+
 body[data-theme="v8"] .hub-section-row {
   display: flex;
   align-items: center;
@@ -11268,6 +11272,68 @@ body[data-theme="v8"] .profile-menu-row:hover {
   background: oklch(1 0 0 / 0.05);
 }
 
+body[data-theme="v8"] .profile-balance-row {
+  position: relative;
+  cursor: default;
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled),
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:disabled,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert.is-disabled {
+  right: 0.75rem;
+  bottom: auto;
+  top: 0;
+  z-index: 3;
+  transform: translateY(-1rem);
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover {
+  transform: translateY(-1rem) scale(1.06);
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled) {
+  transform: translateY(-1rem) scale(0.94);
+}
+
+body[data-theme="v8"] .profile-balance-row:hover {
+  background: transparent;
+}
+
+body[data-theme="v8"] .profile-balance-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  gap: 8px;
+}
+
+body[data-theme="v8"] .profile-balance-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+body[data-theme="v8"] .profile-balance-value.is-exchange-preview {
+  color: oklch(0.84 0.14 318 / 0.96);
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .profile-balance-label {
+  color: oklch(1 0 0 / 0.55);
+  font-size: 14px;
+}
+
+body[data-theme="v8"] .profile-balance-cta {
+  display: grid;
+  height: 80px;
+  min-height: 80px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid oklch(1 0 0 / 0.06);
+}
+
 @media (min-width: 1024px) {
   body[data-theme="v8"] .profile-menu-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -14716,7 +14782,8 @@ body[data-theme="v8"] .top-nav-profile--active:hover {
    * Covers AppPageShell routes, collection, and search (not home/feed).
    */
   body[data-theme="v8"] .app-layout--hud .app-page-shell,
-  body[data-theme="v8"] .app-layout--hud .search-page {
+  body[data-theme="v8"] .app-layout--hud .search-page,
+  body[data-theme="v8"] .app-layout--hud .home-v2:has(.rank-leaderboard) {
     padding-top: calc(var(--app-diamond-offset) + 1rem);
   }
 
@@ -16135,9 +16202,42 @@ body[data-theme="v8"] .home-v2 .home-play-steps-copy {
 
 @media (max-width: 639px) {
   body[data-theme="v8"] .home-v2 .home-play-steps-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr !important;
     gap: 8px;
-    height: 140px;
+    height: auto;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-card,
+  body[data-theme="v8"] .home-v2 .home-play-steps-card:first-child {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    height: auto;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-art,
+  body[data-theme="v8"] .home-v2 .home-play-steps-art.is-win {
+    width: 87px;
+    height: 51px;
+    flex-shrink: 0;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-title,
+  body[data-theme="v8"] .home-v2 .home-play-steps-copy {
+    text-align: left;
   }
 }
 

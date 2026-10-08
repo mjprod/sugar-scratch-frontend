@@ -43,6 +43,10 @@ export function routeMemoryDomain(pathname: string): RouteMemoryDomain {
     return "feed";
   }
 
+  if (path.startsWith(Paths.rank)) {
+    return "light";
+  }
+
   if (path.startsWith(Paths.collection)) {
     return "collection";
   }
