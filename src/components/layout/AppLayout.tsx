@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
-import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
-import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
+// The auth sheet is lazy, but its CTA styles must keep their entry-CSS slot
+// ahead of LiquidGlassNav.css / theme.css or equal-specificity rules flip.
+import "@/components/cta/BorderGlow.css";
+import "@/components/cta/CtaButton.css";
 import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
@@ -10,7 +12,7 @@ import { PackAddedToast } from "@/components/ui/PackAddedToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { bindGameNavigate } from "@/features/game/modules/gameSession";
+import { bindGameNavigate } from "@/services/gameSessionStore";
 import { runWhenIdle } from "@/lib/idle";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { prefetchTabPages } from "@/routes/lazyPages";
@@ -22,6 +24,29 @@ import {
   PACK_OPENING_REWARD_EVENT,
   type PackOpeningRewardDetail,
 } from "@/services/packMotionSettle";
+
+const loadAuthenticationSheet = () =>
+  import("@/components/auth/AuthenticationSheet").then((mod) => ({
+    default: mod.AuthenticationSheet,
+  }));
+const loadVerifyEmailModal = () =>
+  import("@/components/auth/VerifyEmailModal").then((mod) => ({
+    default: mod.VerifyEmailModal,
+  }));
+const AuthenticationSheet = lazy(loadAuthenticationSheet);
+const VerifyEmailModal = lazy(loadVerifyEmailModal);
+
+function prefetchAuthOverlays(): void {
+  void loadAuthenticationSheet();
+  void loadVerifyEmailModal();
+}
+
+/** True from the first render where `flag` is true, forever after (keeps exit animations). */
+function useLatched(flag: boolean): boolean {
+  const [latched, setLatched] = useState(flag);
+  if (flag && !latched) setLatched(true);
+  return latched || flag;
+}
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -51,7 +76,11 @@ export function AppLayout() {
   const { searchOpen, openSearch } = useSearch();
   const { activeTab: tab, requestTab } = useTabNav();
 
+  const authMounted = useLatched(authOpen);
+  const verifyMounted = useLatched(verifyOpen);
+
   useEffect(() => runWhenIdle(prefetchTabPages, 4000), []);
+  useEffect(() => runWhenIdle(prefetchAuthOverlays, 4000), []);
 
   useEffect(() => {
     bindGameNavigate((to) => {
@@ -261,22 +290,30 @@ export function AppLayout() {
         />
       ) : null}
 
-      <AuthenticationSheet
-        open={authOpen}
-        trigger={triggerFromAction(pending)}
-        initialMode={authSheetMode}
-        initialEmail={authSheetEmail}
-        onDismiss={dismissAuth}
-        onSuccess={completeAuth}
-      />
+      {authMounted ? (
+        <Suspense fallback={null}>
+          <AuthenticationSheet
+            open={authOpen}
+            trigger={triggerFromAction(pending)}
+            initialMode={authSheetMode}
+            initialEmail={authSheetEmail}
+            onDismiss={dismissAuth}
+            onSuccess={completeAuth}
+          />
+        </Suspense>
+      ) : null}
 
-      <VerifyEmailModal
-        open={verifyOpen}
-        email={verifyEmail}
-        fromRegister={verifyFromRegister}
-        onBack={onVerifyBack}
-        onVerified={onVerified}
-      />
+      {verifyMounted ? (
+        <Suspense fallback={null}>
+          <VerifyEmailModal
+            open={verifyOpen}
+            email={verifyEmail}
+            fromRegister={verifyFromRegister}
+            onBack={onVerifyBack}
+            onVerified={onVerified}
+          />
+        </Suspense>
+      ) : null}
 
       {navNotice ? (
         <div className="pointer-events-none absolute bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">

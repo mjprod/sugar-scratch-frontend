@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { AnimatePresence, m, type PanInfo } from "framer-motion";
 import {
   AlertTriangle,
   Check,
@@ -1581,7 +1581,7 @@ export function PurchaseFlow({
       )}
 
       <AnimatePresence mode="wait">
-        <motion.div
+        <m.div
           key={stage}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1902,7 +1902,7 @@ export function PurchaseFlow({
               }}
             />
           ) : null}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
 
       {!isScratchTutorialCompleted() &&
@@ -2667,7 +2667,7 @@ function ScratchStage({
           <p className="text-[20px] font-bold">{card.rarity}</p>
           <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Coins</p>
         </div>
-        <motion.button
+        <m.button
           type="button"
           aria-label="Scratch card cover"
           drag={revealed ? false : "x"}
@@ -2683,10 +2683,10 @@ function ScratchStage({
           <span className="absolute inset-x-0 bottom-7 text-[11px] font-bold tracking-[0.16em] uppercase">
             Drag or tap to scratch
           </span>
-        </motion.button>
+        </m.button>
       </div>
       {revealed ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-7 flex w-full max-w-sm flex-col items-center"
@@ -2714,7 +2714,7 @@ function ScratchStage({
               Finish Later
             </button>
           ) : null}
-        </motion.div>
+        </m.div>
       ) : (
         <p className="mt-5 text-[13px] text-white/45">Drag across the card or tap three times.</p>
       )}

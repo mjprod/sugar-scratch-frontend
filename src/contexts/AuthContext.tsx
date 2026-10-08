@@ -62,7 +62,7 @@ import {
   loadGameSessionForPack,
   motionPlayHref,
   photoPlayHref,
-} from "@/features/game/modules/gameSession";
+} from "@/services/gameSessionStore";
 import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
 import {
   resolveSecondaryBack,

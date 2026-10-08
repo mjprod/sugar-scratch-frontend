@@ -2,7 +2,8 @@
 /**
  * Fails the build when first-load JS (the entry script plus every
  * modulepreload in dist/index.html) grows past the gzip budget, or when a
- * lazy-only vendor chunk (three) is preloaded on every page again.
+ * lazy-only chunk (three, lottie, framer-motion features, auth overlays) is
+ * preloaded on every page again.
  *
  * Usage: node scripts/check-bundle-budget.mjs  (run after `vite build`)
  */
@@ -11,8 +12,13 @@ import { gzipSync } from "node:zlib";
 import { join } from "node:path";
 
 const DIST = "dist";
-const FIRST_LOAD_JS_BUDGET_KB = 300;
-const FORBIDDEN_PRELOADS = [/\/three-[\w-]+\.js$/, /\/lottie-[\w-]+\.js$/];
+const FIRST_LOAD_JS_BUDGET_KB = 195;
+const FORBIDDEN_PRELOADS = [
+  /\/three-[\w-]+\.js$/,
+  /\/lottie-[\w-]+\.js$/,
+  /\/motionFeatures-[\w-]+\.js$/,
+  /\/(AuthenticationSheet|VerifyEmailModal|SearchScreen)-[\w-]+\.js$/,
+];
 
 const indexPath = join(DIST, "index.html");
 if (!existsSync(indexPath)) {

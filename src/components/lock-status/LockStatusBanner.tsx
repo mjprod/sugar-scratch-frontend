@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { motion, useAnimate, useReducedMotion } from "framer-motion";
+import { m, useAnimate, useReducedMotion } from "framer-motion";
 
 export type LockStatus = "locked" | "unlocked" | "min-unlocked";
 
@@ -126,7 +126,7 @@ export function LockStatusBanner({
   }, [locked, animate, reduceMotion, scope]);
 
   return (
-    <motion.div
+    <m.div
       ref={scope}
       className={[
         "inline-flex origin-center items-center overflow-hidden rounded-[30px] bg-black/50 px-2.5 py-1 shadow-[0_0_0_1px_rgba(255,255,255,0.10),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.08)]",
@@ -138,25 +138,25 @@ export function LockStatusBanner({
       aria-label={label}
     >
       <span className="relative inline-flex h-3 w-[9px] shrink-0 items-center justify-center">
-        <motion.span
+        <m.span
           className="absolute inset-0 grid place-items-center"
           initial={false}
           animate={{ opacity: locked ? 1 : 0 }}
           transition={instant ?? LABEL_MOTION}
         >
           <LockedGlyph />
-        </motion.span>
-        <motion.span
+        </m.span>
+        <m.span
           className="absolute inset-0 grid place-items-center"
           initial={false}
           animate={{ opacity: locked ? 0 : 1 }}
           transition={instant ?? LABEL_MOTION}
         >
           <UnlockedGlyph />
-        </motion.span>
+        </m.span>
       </span>
 
-      <motion.div
+      <m.div
         className="shrink-0 overflow-hidden"
         initial={false}
         animate={{
@@ -169,24 +169,24 @@ export function LockStatusBanner({
           <span className="invisible" aria-hidden="true">
             Unlocked
           </span>
-          <motion.span
+          <m.span
             className="absolute inset-0"
             initial={false}
             animate={{ opacity: locked ? 1 : 0 }}
             transition={instant ?? LABEL_MOTION}
           >
             Locked
-          </motion.span>
-          <motion.span
+          </m.span>
+          <m.span
             className="absolute inset-0"
             initial={false}
             animate={{ opacity: locked ? 0 : 1 }}
             transition={instant ?? LABEL_MOTION}
           >
             Unlocked
-          </motion.span>
+          </m.span>
         </span>
-      </motion.div>
-    </motion.div>
+      </m.div>
+    </m.div>
   );
 }

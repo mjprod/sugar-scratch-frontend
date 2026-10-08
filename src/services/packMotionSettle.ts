@@ -5,7 +5,7 @@ import {
   saveGameSession,
   themeForMotionCard,
   type GameSession,
-} from "@/features/game/modules/gameSession";
+} from "@/services/gameSessionStore";
 import { fetchCatalogMotionCards } from "@/features/game/shared/catalog";
 import { recordRevealedCards } from "@/services/collectionState";
 import { packHistoryIds, recordGameReveal } from "@/services/gameHistory";
