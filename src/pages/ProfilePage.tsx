@@ -3,11 +3,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { UserDashboardScreen } from "@/components/profile/ProfileScreen";
 import { Paths } from "@/routes/Paths";
+import { exchangeCoinsForDiamonds } from "@/services/store";
 
 export function ProfilePage() {
   const navigate = useNavigate();
   const { profile, logout, openInbox, openStore, inboxUnread } = useAuth();
-  const { coins, diamonds } = useWallet();
+  const { coins, diamonds, applyWallet } = useWallet();
   return (
     <UserDashboardScreen
       name={profile.displayName || profile.username}
@@ -15,6 +16,15 @@ export function ProfilePage() {
       avatar={profile.avatar}
       coins={coins}
       diamonds={diamonds}
+      onConvertDust={async (option) => {
+        const result = await exchangeCoinsForDiamonds(option, {
+          diamonds,
+          coins,
+        });
+        if (result.status !== "success") return false;
+        applyWallet({ diamonds: result.diamonds, coins: result.coins });
+        return true;
+      }}
       onLogout={logout}
       onOpenEditProfile={() => navigate(Paths.editProfile)}
       onOpenChangePassword={() => navigate(Paths.changePassword)}

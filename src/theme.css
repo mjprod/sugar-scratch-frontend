@@ -11273,7 +11273,28 @@ body[data-theme="v8"] .profile-menu-row:hover {
 }
 
 body[data-theme="v8"] .profile-balance-row {
+  position: relative;
   cursor: default;
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled),
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:disabled,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert.is-disabled {
+  right: 0.75rem;
+  bottom: auto;
+  top: 0;
+  z-index: 3;
+  transform: translateY(-1rem);
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover {
+  transform: translateY(-1rem) scale(1.06);
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled) {
+  transform: translateY(-1rem) scale(0.94);
 }
 
 body[data-theme="v8"] .profile-balance-row:hover {
@@ -11293,6 +11314,11 @@ body[data-theme="v8"] .profile-balance-value {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+}
+
+body[data-theme="v8"] .profile-balance-value.is-exchange-preview {
+  color: oklch(0.84 0.14 318 / 0.96);
+  font-weight: 600;
 }
 
 body[data-theme="v8"] .profile-balance-label {
