@@ -20,6 +20,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import { ConvertDustIcon } from "@/components/WalletBalancesPopover";
 import { CoinLottie } from "@/components/ui/CoinLottie";
@@ -188,7 +189,7 @@ export function UserDashboardScreen({
             aria-label="Edit profile"
           >
             <div className="profile-identity-avatar" aria-hidden="true">
-              {avatar || "✨"}
+              <ProfileAvatar value={avatar} />
             </div>
             <div className="profile-identity-copy">
               <p
