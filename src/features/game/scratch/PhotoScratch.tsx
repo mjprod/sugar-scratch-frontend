@@ -2006,6 +2006,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
     // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    if (!freePlayLaunch && !practiceRef.current) {
+      const award = rollSparkleCoinAward();
       const handId = handIdRef.current;
       const cardId = handCardIdRef.current || undefined;
       queueMicrotask(() => {

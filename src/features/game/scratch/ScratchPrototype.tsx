@@ -1986,6 +1986,7 @@ export function ScratchPrototype({
       onFirstProgressMilestone();
     }
     // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    if (!freePlayLaunch && !practiceRef.current) {
       const award = rollSparkleCoinAward();
       const handId = handIdRef.current;
       const cardId = selectedCardId || undefined;
