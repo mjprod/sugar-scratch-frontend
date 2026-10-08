@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { HistoryPageHeader } from "@/components/history/HistoryShared";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { useAuth } from "@/contexts/AuthContext";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -76,6 +77,7 @@ export function GetDiamondsCatalog({
     instanceId?: string;
   }) => void;
 }) {
+  const { authed } = useAuth();
   const ads = products.filter((p) => p.kind === "rewarded-ad");
   const packs = products.filter((p) => p.kind === "diamonds");
   const adProduct = ads[0] ?? null;
@@ -138,20 +140,22 @@ export function GetDiamondsCatalog({
             <WatchAdPanel
               product={adProduct}
               processing={isProcessing(adProduct.id)}
-              disabled={busy || adRemaining <= 0}
+              disabled={authed ? busy || adRemaining <= 0 : false}
               onWatch={() => onSelect(adProduct)}
             />
           ) : null}
-          <ExchangePanel
-            coinBalance={coinBalance}
-            exchangingId={exchangingId}
-            disabled={busy}
-            onExchange={onCoinExchange}
-          />
+          {authed ? (
+            <ExchangePanel
+              coinBalance={coinBalance}
+              exchangingId={exchangingId}
+              disabled={busy}
+              onExchange={onCoinExchange}
+            />
+          ) : null}
         </div>
       </section>
 
-      {onDiamondReward && onPackReward && onOpenPack ? (
+      {authed && onDiamondReward && onPackReward && onOpenPack ? (
         <HubRedeemSection
           heading="Redeem Code"
           onDiamondReward={onDiamondReward}

@@ -83,7 +83,8 @@ type NavIcon =
   | LucideIcon
   | typeof LoginIcon
   | typeof DiamondIcon
-  | typeof CollectionIcon;
+  | typeof CollectionIcon
+  | typeof GuestCollectionIcon;
 
 type TabConfig = {
   id: AppTab;
@@ -205,14 +206,14 @@ function CollectionIcon({
   );
 }
 
-/** Logged-in mobile dock: Rank, Store, Home (center), Collect, Profile. */
+/** Logged-in mobile dock: Rank, Shop, Home (center), Collect, Profile. */
 export const TABS: TabConfig[] = [
   { id: "home", label: MOBILE_DOCK_LABELS[0], icon: Trophy },
   { id: "feed", label: MOBILE_DOCK_LABELS[1], icon: Package },
   {
     id: "bag",
     label: MOBILE_DOCK_LABELS[2],
-    icon: Home,
+    icon: GuestCollectionIcon,
     primary: true,
   },
   { id: "hub", label: MOBILE_DOCK_LABELS[3], icon: CollectionIcon },

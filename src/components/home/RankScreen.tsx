@@ -26,7 +26,7 @@ export function RankScreen({
   }) => void;
 }) {
   const [status, setStatus] = useState<PageStatus>("loading");
-  const [category, setCategory] = useState<LeaderboardCategory>("all");
+  const [category, setCategory] = useState<LeaderboardCategory>("purchased");
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const [boardLoading, setBoardLoading] = useState(false);
 
@@ -35,8 +35,8 @@ export function RankScreen({
   const load = useCallback(async () => {
     setStatus("loading");
     try {
-      setBoard(await fetchLeaderboard("all"));
-      setCategory("all");
+      setBoard(await fetchLeaderboard("purchased"));
+      setCategory("purchased");
       setStatus("loaded");
     } catch {
       setStatus("error");
@@ -112,8 +112,8 @@ export function RankScreen({
     >
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)]">
         <CategoryLeaderboard
-          className="is-title-sentence is-figma-board"
-          title="Top Packs By Purchase"
+          className="is-title-sentence is-figma-board rank-leaderboard"
+          title="Top Packs"
           category={category}
           rows={board}
           loading={boardLoading}

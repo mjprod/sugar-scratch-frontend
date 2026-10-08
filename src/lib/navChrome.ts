@@ -12,7 +12,7 @@ export const DESKTOP_MIN_PX = 769;
 /** Authenticated desktop primary destinations (labels). */
 export const DESKTOP_PRIMARY_LABELS = [
   "Home",
-  "Store",
+  "Shop",
   "Collect",
   "Rank",
 ] as const;
@@ -27,7 +27,7 @@ export const GUEST_DESKTOP_PRIMARY_LABELS = [
 /** Authenticated mobile dock order (labels); index 2 is elevated Home. */
 export const MOBILE_DOCK_LABELS = [
   "Rank",
-  "Store",
+  "Shop",
   "Home",
   "Collect",
   "Profile",

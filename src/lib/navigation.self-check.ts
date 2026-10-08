@@ -49,7 +49,7 @@ assert(tabFromPathname("/get-diamonds") === "hub", "guest store selects Store");
 
 // AC4 — authenticated primary destinations (desktop top bar)
 assert(
-  DESKTOP_PRIMARY_LABELS.join("|") === "Home|Store|Collect|Rank",
+  DESKTOP_PRIMARY_LABELS.join("|") === "Home|Shop|Collect|Rank",
   "AC4 desktop primary tabs",
 );
 assert(
@@ -60,7 +60,7 @@ assert(
 // AC8a — mobile dock order + center Home (authed) / Collection (guest)
 assert(
   MOBILE_DOCK_LABELS.join("|") ===
-    "Rank|Store|Home|Collect|Profile",
+    "Rank|Shop|Home|Collect|Profile",
   "AC8a mobile dock order",
 );
 assert(MOBILE_DOCK_LABELS[2] === "Home", "AC8a center elevated");

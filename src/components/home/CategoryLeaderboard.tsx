@@ -9,15 +9,6 @@ import {
 } from "@/services/homepage";
 import { PackArt } from "./PackArt";
 
-/** Figma filter chips (node 9:758) — emoji + label. */
-const FIGMA_TAB_EMOJI: Partial<Record<LeaderboardCategory, string>> = {
-  police: "🚨",
-  teacher: "✏️",
-  nurse: "💉",
-  gym: "🎧",
-  firefighter: "🔥",
-};
-
 /** Figma crowns: gold 9:265, silver 9:311, bronze 9:314. */
 const RANK_CROWN_SRC: Record<1 | 2 | 3, string> = {
   1: "/images/home-v2/rank-crown-gold.svg",
@@ -106,7 +97,7 @@ export function CategoryLeaderboard({
           className="category-leaderboard-tab is-shim"
           aria-hidden="true"
         >
-          All
+          Purchased
         </span>
         {LEADERBOARD_CATEGORIES.map((c) => {
           const active = c.id === category;
@@ -122,9 +113,7 @@ export function CategoryLeaderboard({
                 active ? "is-active" : "",
               ].join(" ")}
             >
-              {FIGMA_TAB_EMOJI[c.id]
-                ? `${FIGMA_TAB_EMOJI[c.id]} ${c.label}`
-                : c.label}
+              {c.label}
             </button>
           );
         })}

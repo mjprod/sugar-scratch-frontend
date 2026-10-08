@@ -74,14 +74,17 @@ export function PackLibrary({
 
   useEffect(() => {
     if (!open) return;
-    const scroller = document.querySelector<HTMLElement>("[data-page-scroll]");
-    const previousOverflow = scroller?.style.overflow ?? "";
     const previousBodyOverflow = document.body.style.overflow;
-    if (scroller) scroller.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    const locked: Array<{ el: HTMLElement; overflow: string }> = [];
+    document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((el) => {
+      if (el.closest(".pack-library-root")) return;
+      locked.push({ el, overflow: el.style.overflow });
+      el.style.overflow = "hidden";
+    });
     return () => {
-      if (scroller) scroller.style.overflow = previousOverflow;
       document.body.style.overflow = previousBodyOverflow;
+      for (const item of locked) item.el.style.overflow = item.overflow;
     };
   }, [open]);
 
