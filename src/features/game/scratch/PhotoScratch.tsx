@@ -2005,10 +2005,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     );
     celebrateProgressRef.current = nextProgress;
     if (crossed == null) return;
-    // Replay hands mint nothing, but the cursor trail still plays unless the
-    // theme toggle launched this hand as free play.
-    if (!freePlayLaunch && !practiceRef.current) {
-      const award = rollSparkleCoinAward();
+    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
       const handId = handIdRef.current;
       const cardId = handCardIdRef.current || undefined;
       queueMicrotask(() => {

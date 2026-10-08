@@ -1985,9 +1985,7 @@ export function ScratchPrototype({
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
-    // Replay hands mint nothing, but the cursor trail still plays unless the
-    // theme toggle launched this hand as free play.
-    if (!freePlayLaunch && !practiceRef.current) {
+    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
       const award = rollSparkleCoinAward();
       const handId = handIdRef.current;
       const cardId = selectedCardId || undefined;
