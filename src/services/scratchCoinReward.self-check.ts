@@ -8,6 +8,7 @@ import {
   nextWalletAfterScratchPersist,
   persistScratchCoins,
   resetScratchHandQuotaForTests,
+  scratchCoinAwardAction,
   SCRATCH_COIN_MAX,
   SCRATCH_COIN_MIN,
   SCRATCH_HAND_QUOTA_BACKOFF_MS,
@@ -88,6 +89,79 @@ const local = { coins: 190, diamonds: 8 };
   markScratchHandQuotaExhausted("user-a", t0);
   assert(!isScratchHandQuotaExhausted(null, t0 + 1), "logout clears the block");
   resetScratchHandQuotaForTests();
+}
+
+{
+  assert(
+    scratchCoinAwardAction({
+      freePlay: true,
+      practice: false,
+      coinsDisabled: false,
+      authed: true,
+      handId: "hand-1",
+    }) === "skip",
+    "theme-toggle free play never awards",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: true,
+      coinsDisabled: false,
+      authed: true,
+      handId: "hand-1",
+    }) === "skip",
+    "practice hand never awards",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: false,
+      coinsDisabled: true,
+      authed: true,
+      handId: "",
+    }) === "skip",
+    "quota-spent or failed hand start skips coins instead of holding",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: false,
+      coinsDisabled: false,
+      authed: true,
+      handId: "hand-1",
+    }) === "persist",
+    "paid hand with a server id persists",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: false,
+      coinsDisabled: false,
+      authed: true,
+      handId: "  ",
+    }) === "hold",
+    "signed-in without a hand must hold, not optimistic-credit",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: false,
+      coinsDisabled: false,
+      authed: true,
+      handId: "",
+    }) === "hold",
+    "empty handId while signed in holds milestones until start returns",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: false,
+      coinsDisabled: false,
+      authed: false,
+      handId: "",
+    }) === "local",
+    "guest play may juice the HUD without persist",
+  );
 }
 
 console.log("scratch coin reward self-check passed");

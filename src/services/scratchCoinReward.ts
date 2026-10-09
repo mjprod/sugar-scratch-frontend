@@ -160,6 +160,36 @@ export function startScratchHand(
   return request;
 }
 
+export type ScratchCoinAwardAction = "skip" | "hold" | "persist" | "local";
+
+/**
+ * Paid-hand sparkle coins must not hit the HUD until they can be persisted.
+ * AutoScratch / a fast first stroke can cross 10% bands while
+ * `POST /hands` is still in flight (or after quota/start failure). Optimistic
+ * `addCoins` without persist is then wiped by `refreshWallet`, and the
+ * already-consumed progress bands are never claimed.
+ *
+ * `hold` — signed-in, waiting for a server hand: queue milestones and flush
+ *           when `handId` arrives.
+ * `persist` — have a hand: credit + POST.
+ * `local` — guest juice only (no wallet refresh to wipe it).
+ * `skip` — free-play / practice, or coins disabled for this hand (quota spent
+ *          or hand start failed): no coins. Only coins — diamonds / card
+ *          prizes are gated by `practice` alone in the callers.
+ */
+export function scratchCoinAwardAction(input: {
+  freePlay: boolean;
+  practice: boolean;
+  coinsDisabled: boolean;
+  authed: boolean;
+  handId: string;
+}): ScratchCoinAwardAction {
+  if (input.freePlay || input.practice || input.coinsDisabled) return "skip";
+  if (!input.authed) return "local";
+  if (input.handId.trim()) return "persist";
+  return "hold";
+}
+
 /** Persist a milestone award. Callers should optimistic-addCoins first. */
 export async function claimScratchCoins(
   body: ScratchCoinClaimBody,
