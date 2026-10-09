@@ -166,7 +166,10 @@ function PhotoCardStrip({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
-      onPointerCancel={endDrag}
+      onPointerCancel={(event) => {
+        suppressClickRef.current = false;
+        endDrag(event);
+      }}
       onClickCapture={onClickCapture}
     >
       {cards.map((item, index) => (
