@@ -16,11 +16,11 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
-import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import {
-  CoverFlowCarouselV2,
+  CoverFlowCarousel,
+  HOME_COVERFLOW_PRESET,
   type CoverFlowCameraSettings,
-} from "@/features/packs/CoverFlowCarouselV2";
+} from "@/features/packs/CoverFlowCarousel";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
@@ -2064,6 +2064,8 @@ function ChoosePackStage({
         <div className="packs-circle packs-circle--core" />
       </div>
       <CoverFlowCarousel
+        preset={HOME_COVERFLOW_PRESET}
+        disablePackOpenReveal
         items={items}
         selectedId={selectedId}
         onSelect={setSelectedId}
@@ -2374,7 +2376,7 @@ function ReadyStage({
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
-        <CoverFlowCarouselV2
+        <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           cameraSettings={cameraSettings}

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  CoverFlowCarouselV2,
+  CoverFlowCarousel,
   DEFAULT_COVERFLOW_CAMERA,
   MOBILE_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
-} from "@/features/packs/CoverFlowCarouselV2";
+} from "@/features/packs/CoverFlowCarousel";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
 import {
@@ -631,7 +631,7 @@ export function CoverFlowV2Page() {
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
-        <CoverFlowCarouselV2
+        <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           onSelect={setSelectedId}

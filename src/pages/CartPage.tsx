@@ -3,7 +3,7 @@ import { AlertTriangle, ShoppingBag } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
+import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/useAuth";
@@ -596,7 +596,7 @@ export function CartPage() {
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
-        <CoverFlowCarouselV2
+        <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           onSelect={setSelectedId}
