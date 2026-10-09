@@ -25,6 +25,7 @@ import {
   useState,
   type AnimationEvent,
   type CSSProperties,
+  type RefObject,
 } from "react";
 import { flushSync } from "react-dom";
 import {
@@ -173,10 +174,6 @@ import {
   resolveAutoScratchBudget,
   resolveManualScratchBudget,
 } from "../modules/scratchStampBudget";
-import {
-  createThrottledUiClock,
-  shouldPublishThrottledUi,
-} from "../modules/scratchUiThrottle";
 import { inferThemeFromLabel } from "../modules/session";
 import {
   COIN_BADGE_AWARD_HOLD_MS,
@@ -245,6 +242,72 @@ import {
   type Vec2,
 } from "./meshGeometry";
 import { fetchModels, type ModelInfo } from "./models";
+
+// Debug readouts that tick several times a second own their state, so updates
+// re-render only them instead of the whole ScratchPrototype tree.
+function CursorFxPerfReadout() {
+  const [perf, setPerf] = useState({ active: 0, peak: 0, avgFrameMs: 0 });
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const active = fairyDustPerf.active;
+      const peak = fairyDustPerf.peak;
+      const avgFrameMs = Math.round(fairyDustPerf.avgFrameMs * 100) / 100;
+      setPerf((current) =>
+        current.active === active &&
+        current.peak === peak &&
+        current.avgFrameMs === avgFrameMs
+          ? current
+          : { active, peak, avgFrameMs },
+      );
+    }, UI_STATE_UPDATE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <p className="auto-scratch-hint">
+      Active {perf.active} · peak {perf.peak} · {perf.avgFrameMs.toFixed(2)}
+      ms/frame
+      {perf.peak >= 220 ? " — near cap (250)" : ""}
+    </p>
+  );
+}
+
+function VideoTimelineSlider({
+  duration,
+  onSeek,
+  videoRef,
+}: {
+  duration: number;
+  onSeek: (time: number) => void;
+  videoRef: RefObject<HTMLVideoElement | null>;
+}) {
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const time = videoRef.current?.currentTime;
+      if (typeof time === "number") setCurrentTime(time);
+    }, UI_STATE_UPDATE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [videoRef]);
+
+  return (
+    <input
+      aria-label="Video timeline"
+      max={duration || 0}
+      min={0}
+      onChange={(event) => {
+        const time = Number(event.currentTarget.value);
+        onSeek(time);
+        setCurrentTime(time);
+      }}
+      step={0.05}
+      type="range"
+      value={Math.min(currentTime, duration || currentTime)}
+    />
+  );
+}
 
 // On-screen diagnostics (FPS, layer drift, raw video state) shown only when the
 // page is opened with ?debug=1. Self-contained: it polls the DOM/video elements
@@ -1598,7 +1661,6 @@ export function ScratchPrototype({
   const useBodySymbols =
     trackedMesh?.symbolPoints?.length === SYMBOL_SLOT_COUNT;
   useBodySymbolsRef.current = useBodySymbols;
-  const [progress, setProgress] = useState(0);
   // Mirrors drawingRef for the body-symbol icons, which hold their animation
   // while a stroke is in progress — that is exactly the window where the two
   // videos compete with Lottie for the main thread. Flips twice per stroke, not
@@ -1729,10 +1791,10 @@ export function ScratchPrototype({
   const topBarSlotElsRef = useRef<(HTMLDivElement | null)[]>(
     Array.from({ length: TOP_SYMBOL_COUNT }, () => null),
   );
-  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(18.8);
   const [isPaused, setIsPaused] = useState(false);
-  const progressRef = useRef(progress);
+  /** Live reveal progress. Not React state — nothing renders it. */
+  const progressRef = useRef(0);
   const claimedRef = useRef(claimed);
   const gameResultRef = useRef<GameResult | null>(gameResult);
   gameResultRef.current = gameResult;
@@ -1753,7 +1815,7 @@ export function ScratchPrototype({
   const revealedSymbolsRef = useRef(revealedSymbols);
   revealedSymbolsRef.current = revealedSymbols;
   const uiStateRef = useRef({
-    currentTime,
+    currentTime: 0,
     duration,
     isPaused,
     lastUpdatedAt: 0,
@@ -1822,18 +1884,10 @@ export function ScratchPrototype({
   const symbolScratchProbeCacheRef = useRef(
     createSymbolScratchProbeCache(SYMBOL_SLOT_COUNT),
   );
-  /** Live progress is in progressRef; React state publishes ≤1 / UI interval. */
-  const progressUiClockRef = useRef(createThrottledUiClock());
-  const publishedProgressRef = useRef(0);
   const cursorOnMeshRef = useRef(false);
   const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
     ParticleType[]
   >([]);
-  const [cursorFxPerf, setCursorFxPerf] = useState({
-    active: 0,
-    peak: 0,
-    avgFrameMs: 0,
-  });
   const [soundEnabled, setSoundEnabled] = useState(loadSoundEnabled);
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
@@ -1841,7 +1895,14 @@ export function ScratchPrototype({
   const autoPathIndexRef = useRef(0);
   const autoPathProgressRef = useRef(0);
   const applyScratchAtUvRef = useRef<
-    (u: number, v: number, radius: number, worldPoint?: Vec2 | null) => void
+    (
+      u: number,
+      v: number,
+      radius: number,
+      worldPoint?: Vec2 | null,
+      finalize?: boolean,
+      strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
+    ) => void
   >(() => undefined);
   const addScratchRef = useRef<(clientX: number, clientY: number) => void>(
     () => undefined,
@@ -1849,26 +1910,6 @@ export function ScratchPrototype({
   const tryResolveGameRef = useRef<() => void>(() => undefined);
   const resetScratchRef = useRef<() => void>(() => undefined);
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
-
-  /** Ref holds live progress; React `progress` publishes ≤1 / UI interval (flush on stroke end). */
-  function publishProgressUi(force = false) {
-    const next = progressRef.current;
-    if (!force && next === publishedProgressRef.current) return;
-
-    if (
-      !shouldPublishThrottledUi(
-        progressUiClockRef.current,
-        performance.now(),
-        UI_STATE_UPDATE_INTERVAL_MS,
-        force,
-      )
-    ) {
-      return;
-    }
-
-    publishedProgressRef.current = next;
-    setProgress(next);
-  }
 
   function resetStrokeFresh() {
     resetStrokeFreshness(strokeFreshnessRef.current);
@@ -1889,7 +1930,6 @@ export function ScratchPrototype({
     drawingRef.current = false;
     isScratchingRef.current = false;
     setIsScratching(false);
-    publishProgressUi(true);
     publishCursorOnMesh(false);
     lastScratchWorldRef.current = null;
     // Stroke ended — start 2s idle hide if badge is visible.
@@ -2821,26 +2861,21 @@ export function ScratchPrototype({
           trackedSample &&
           gameResultPendingRef.current === null
         ) {
+          // Paint every stamp, but finalize (symbol GPU probes, progress,
+          // milestones, resolve) once per frame — same as manual strokes.
+          const autoStamps: { u: number; v: number }[] = [];
           const path = autoPathRef.current;
           if (path.length > 0 && autoPathIndexRef.current < path.length) {
             autoPathProgressRef.current += autoSettings.speed * dt;
-            let scratched = 0;
             while (
               autoPathProgressRef.current >= 1 &&
               autoPathIndexRef.current < path.length &&
-              scratched < autoBudget.maxPerFrame
+              autoStamps.length < autoBudget.maxPerFrame
             ) {
               autoPathProgressRef.current -= 1;
               const pt = path[autoPathIndexRef.current];
-              const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
-              applyScratchAtUvRef.current(
-                pt.x,
-                pt.y,
-                AUTO_SCRATCH_RADIUS,
-                worldPos,
-              );
+              autoStamps.push({ u: pt.x, v: pt.y });
               autoPathIndexRef.current += 1;
-              scratched += 1;
             }
           }
 
@@ -2864,15 +2899,22 @@ export function ScratchPrototype({
             ) {
               if (revealed[i]) continue;
               const pt = samples[i];
-              const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
-              applyScratchAtUvRef.current(
-                pt.x,
-                pt.y,
-                AUTO_SCRATCH_RADIUS,
-                worldPos,
-              );
+              autoStamps.push({ u: pt.x, v: pt.y });
               filled += 1;
             }
+          }
+
+          for (let i = 0; i < autoStamps.length; i += 1) {
+            const stamp = autoStamps[i];
+            const isLast = i === autoStamps.length - 1;
+            applyScratchAtUvRef.current(
+              stamp.u,
+              stamp.v,
+              AUTO_SCRATCH_RADIUS,
+              sampleMeshUvToWorld(trackedSample, stamp.u, stamp.v),
+              isLast,
+              isLast ? autoStamps : undefined,
+            );
           }
         }
 
@@ -2900,15 +2942,17 @@ export function ScratchPrototype({
             Math.abs(videoTime - uiStateRef.current.currentTime) > 1;
 
           if (shouldUpdateUi) {
+            const prevUi = uiStateRef.current;
             uiStateRef.current = {
               currentTime: videoTime,
               duration: nextDuration,
               isPaused: nextPaused,
               lastUpdatedAt: now,
             };
-            setCurrentTime(videoTime);
-            setDuration(nextDuration);
-            setIsPaused(nextPaused);
+            // The timeline slider polls currentTime itself; re-rendering this
+            // whole component on every clock tick stalled phones mid-scratch.
+            if (nextDuration !== prevUi.duration) setDuration(nextDuration);
+            if (nextPaused !== prevUi.isPaused) setIsPaused(nextPaused);
           }
         }
 
@@ -3420,8 +3464,6 @@ export function ScratchPrototype({
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     resetMatchRound();
-    publishedProgressRef.current = 0;
-    publishProgressUi(true);
     setClaimed(false);
     publishRevealedSymbols(0);
     setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -3501,9 +3543,7 @@ export function ScratchPrototype({
     scratchCoverageRef.current = coverage;
     const next = samples.length ? revealedCountRef.current / samples.length : 0;
     progressRef.current = next;
-    publishedProgressRef.current = next;
     celebrateProgressRef.current = next;
-    publishProgressUi(true);
     const hasBodySymbols =
       trackedMesh?.symbolPoints?.length === SYMBOL_SLOT_COUNT;
     const nextSymbolCount = hasBodySymbols
@@ -3708,23 +3748,6 @@ export function ScratchPrototype({
   }, [cursorFx]);
 
   useEffect(() => {
-    if (!cursorFx.fairyDust) return;
-    const id = window.setInterval(() => {
-      const active = fairyDustPerf.active;
-      const peak = fairyDustPerf.peak;
-      const avgFrameMs = Math.round(fairyDustPerf.avgFrameMs * 100) / 100;
-      setCursorFxPerf((current) =>
-        current.active === active &&
-        current.peak === peak &&
-        current.avgFrameMs === avgFrameMs
-          ? current
-          : { active, peak, avgFrameMs },
-      );
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [cursorFx.fairyDust]);
-
-  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
@@ -3909,7 +3932,6 @@ export function ScratchPrototype({
       renderer?.explodeForeground(origin.x, origin.y);
     }
     setClaimed(true);
-    publishProgressUi(true);
     if (soundEnabledRef.current) playFinaleBoomSound();
     if (timeline.reducedMotion) return;
     finaleHaptics("burst");
@@ -4214,8 +4236,6 @@ export function ScratchPrototype({
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     resetMatchRound();
-    publishedProgressRef.current = 0;
-    publishProgressUi(true);
     setClaimed(false);
     publishRevealedSymbols(0);
     setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -5014,7 +5034,6 @@ export function ScratchPrototype({
       ? revealedCountRef.current / samples.length
       : 0;
     progressRef.current = nextProgress;
-    publishProgressUi(false);
     maybeCelebrateScratchProgress(nextProgress);
     const autoMode = autoScratchRef.current.enabled;
     if (useBodySymbolsRef.current && trackedMeshRef.current?.symbolPoints) {
@@ -5131,7 +5150,6 @@ export function ScratchPrototype({
     ) {
       claimedRef.current = true;
       setClaimed(true);
-      publishProgressUi(true);
     }
     tryResolveGame();
     return freshCells;
@@ -5257,7 +5275,6 @@ export function ScratchPrototype({
       currentTime: nextTime,
       lastUpdatedAt: performance.now(),
     };
-    setCurrentTime(nextTime);
   }
 
   function togglePlayback() {
@@ -5469,13 +5486,7 @@ export function ScratchPrototype({
           value={cursorFx.fadeSpeed}
         />
       </label>
-      {cursorFx.fairyDust ? (
-        <p className="auto-scratch-hint">
-          Active {cursorFxPerf.active} · peak {cursorFxPerf.peak} ·{" "}
-          {cursorFxPerf.avgFrameMs.toFixed(2)}ms/frame
-          {cursorFxPerf.peak >= 220 ? " — near cap (250)" : ""}
-        </p>
-      ) : null}
+      {cursorFx.fairyDust ? <CursorFxPerfReadout /> : null}
     </fieldset>
   );
 
@@ -6500,16 +6511,10 @@ export function ScratchPrototype({
             </select>
           </label>
           <div className="timeline-controls">
-            <input
-              aria-label="Video timeline"
-              max={duration || 0}
-              min={0}
-              onChange={(event) =>
-                setVideoTime(Number(event.currentTarget.value))
-              }
-              step={0.05}
-              type="range"
-              value={Math.min(currentTime, duration || currentTime)}
+            <VideoTimelineSlider
+              duration={duration}
+              onSeek={setVideoTime}
+              videoRef={bottomVideoRef}
             />
           </div>
           <div className="button-row">
