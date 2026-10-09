@@ -76,6 +76,27 @@ body[data-theme="v8"] :focus-visible {
   }
 }
 
+.card-pack-lg {
+  width: var(--card-pack-width-lg);
+  max-width: 100%;
+  aspect-ratio: var(--card-pack-aspect-ratio);
+  height: auto;
+}
+
+.card-pack-md {
+  width: var(--card-pack-width-md);
+  max-width: 100%;
+  aspect-ratio: var(--card-pack-aspect-ratio);
+  height: auto;
+}
+
+.card-pack-thumb {
+  width: var(--card-pack-width-thumb);
+  aspect-ratio: var(--card-pack-aspect-ratio);
+  height: auto;
+  flex-shrink: 0;
+}
+
 /* Desktop / website: top navigation only — hide floating bottom bar. */
 
 /* Guest Home landing — swipeable background slides + fixed CTA / dots. */

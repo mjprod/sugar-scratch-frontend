@@ -37,7 +37,7 @@ import {
   type AuthSuccessResult,
   type ProtectedActionType,
 } from "@/services/auth";
-import { isValidEmail } from "@/types/app";
+import { isValidEmail } from "@/lib/validation";
 import { STUB_OAUTH_ENABLED } from "@/env";
 import {
   GOOGLE_LOGIN_ENABLED,

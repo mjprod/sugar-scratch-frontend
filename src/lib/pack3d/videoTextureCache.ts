@@ -9,7 +9,7 @@ import {
   getPackStageVideoFilter,
   subscribePackStageLook,
 } from './packStageLook'
-import { registerVideoTextureCache } from './videoTextureCacheHandle'
+import { registerVideoTextureCache, type VideoTextureCacheStats } from './videoTextureCacheHandle'
 
 const PLAYING_FRAME_INTERVAL_MS = 1000 / 30
 const DESKTOP_PLAYING_FRAME_INTERVAL_MS = 1000 / 60
@@ -505,12 +505,7 @@ export function releaseVideoTexture(key: string) {
   }
 }
 
-export type VideoTextureCacheStats = {
-  entries: number
-  refs: number
-  playing: number
-  ready: number
-}
+export type { VideoTextureCacheStats }
 
 /** Snapshot of shared pack-face video texture cache pressure. */
 export function getVideoTextureCacheStats(): VideoTextureCacheStats {

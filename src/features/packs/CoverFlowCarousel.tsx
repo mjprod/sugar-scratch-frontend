@@ -29,7 +29,7 @@ import {
 		  uniquifyMeshMaterial,
 	  useVideoTexture,
 	  type VideoTextureTransform,
-} from '@/shared/pack3d'
+} from '@/lib/pack3d'
 import {
   ownerIdFromPackId,
   parsePackId,
