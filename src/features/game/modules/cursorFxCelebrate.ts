@@ -73,7 +73,10 @@ export function crossedProgressMilestones(
   return bands;
 }
 
-/** Highest milestone index crossed (1 = 10%, 2 = 20%, …), or null. */
+/**
+ * Highest milestone index crossed (1 = 10%, 2 = 20%, …), or null.
+ * FX sizing only — coin awards must use `crossedProgressMilestones`.
+ */
 export function crossedProgressMilestone(
   prevProgress: number,
   nextProgress: number,
