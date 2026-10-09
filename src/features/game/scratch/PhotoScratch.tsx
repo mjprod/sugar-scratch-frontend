@@ -849,6 +849,8 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   /** Theme toggle only. A paid launch always awards, even on an owned card. */
   const freePlayLaunch = isFreePlayUrl();
   const practiceRef = useRef(freePlayLaunch);
+  /** Quota spent / hand start failed — skip sparkle coins only, not diamonds. */
+  const coinAwardsDisabledRef = useRef(false);
   /** 10% bands crossed while the paid hand POST is still in flight. */
   const pendingMilestonesRef = useRef<number[]>([]);
   const bgImageRef = useRef<HTMLImageElement>(null);
@@ -1112,6 +1114,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       handIdRef.current = "";
       handCardIdRef.current = null;
       practiceRef.current = freePlayLaunch;
+      coinAwardsDisabledRef.current = false;
       pendingMilestonesRef.current = [];
       return;
     }
@@ -1120,7 +1123,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (isScratchHandQuotaExhausted()) {
       // Already paid to play, but the daily reward-hand quota is spent —
       // do not optimistic-credit coins that can never persist.
-      practiceRef.current = true;
+      coinAwardsDisabledRef.current = true;
       pendingMilestonesRef.current = [];
       return;
     }
@@ -1129,6 +1132,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     handIdRef.current = "";
     handCardIdRef.current = key;
     practiceRef.current = false;
+    coinAwardsDisabledRef.current = false;
     pendingMilestonesRef.current = [];
     const gen = ++handStartGenRef.current;
     void startScratchHand(key).then((result) => {
@@ -1142,7 +1146,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       }
       // Failed / quota — skip awards so the HUD cannot show coins refreshWallet
       // will later wipe. A later card change can start a new hand.
-      practiceRef.current = true;
+      coinAwardsDisabledRef.current = true;
       pendingMilestonesRef.current = [];
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
@@ -2112,6 +2116,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     const awardAction = scratchCoinAwardAction({
       freePlay: freePlayLaunch,
       practice: practiceRef.current,
+      coinsDisabled: coinAwardsDisabledRef.current,
       authed,
       handId: handIdRef.current,
     });

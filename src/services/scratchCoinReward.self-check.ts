@@ -96,6 +96,7 @@ const local = { coins: 190, diamonds: 8 };
     scratchCoinAwardAction({
       freePlay: true,
       practice: false,
+      coinsDisabled: false,
       authed: true,
       handId: "hand-1",
     }) === "skip",
@@ -105,15 +106,27 @@ const local = { coins: 190, diamonds: 8 };
     scratchCoinAwardAction({
       freePlay: false,
       practice: true,
+      coinsDisabled: false,
       authed: true,
       handId: "hand-1",
     }) === "skip",
-    "practice / failed-or-quota hand never awards",
+    "practice hand never awards",
   );
   assert(
     scratchCoinAwardAction({
       freePlay: false,
       practice: false,
+      coinsDisabled: true,
+      authed: true,
+      handId: "",
+    }) === "skip",
+    "quota-spent or failed hand start skips coins instead of holding",
+  );
+  assert(
+    scratchCoinAwardAction({
+      freePlay: false,
+      practice: false,
+      coinsDisabled: false,
       authed: true,
       handId: "hand-1",
     }) === "persist",
@@ -123,6 +136,7 @@ const local = { coins: 190, diamonds: 8 };
     scratchCoinAwardAction({
       freePlay: false,
       practice: false,
+      coinsDisabled: false,
       authed: true,
       handId: "  ",
     }) === "hold",
@@ -132,6 +146,7 @@ const local = { coins: 190, diamonds: 8 };
     scratchCoinAwardAction({
       freePlay: false,
       practice: false,
+      coinsDisabled: false,
       authed: true,
       handId: "",
     }) === "hold",
@@ -141,6 +156,7 @@ const local = { coins: 190, diamonds: 8 };
     scratchCoinAwardAction({
       freePlay: false,
       practice: false,
+      coinsDisabled: false,
       authed: false,
       handId: "",
     }) === "local",

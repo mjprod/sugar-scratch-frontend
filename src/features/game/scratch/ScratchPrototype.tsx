@@ -1415,6 +1415,8 @@ export function ScratchPrototype({
   /** Theme toggle only. A paid launch always awards, even on an owned card. */
   const freePlayLaunch = isFreePlayUrl();
   const practiceRef = useRef(freePlayLaunch);
+  /** Quota spent / hand start failed — skip sparkle coins only, not card prizes. */
+  const coinAwardsDisabledRef = useRef(false);
   /** 10% bands crossed while the paid hand POST is still in flight. */
   const pendingMilestonesRef = useRef<number[]>([]);
   /** Lab restart token the current hand was started for — a bump needs a fresh hand. */
@@ -2020,13 +2022,14 @@ export function ScratchPrototype({
       handIdRef.current = "";
       handCardIdRef.current = null;
       practiceRef.current = freePlayLaunch;
+      coinAwardsDisabledRef.current = false;
       pendingMilestonesRef.current = [];
       return;
     }
     if (isScratchHandQuotaExhausted()) {
       // Already paid to play, but the daily reward-hand quota is spent —
       // do not optimistic-credit coins that can never persist.
-      practiceRef.current = true;
+      coinAwardsDisabledRef.current = true;
       pendingMilestonesRef.current = [];
       return;
     }
@@ -2038,6 +2041,7 @@ export function ScratchPrototype({
     handIdRef.current = "";
     handCardIdRef.current = key;
     practiceRef.current = false;
+    coinAwardsDisabledRef.current = false;
     pendingMilestonesRef.current = [];
     const gen = ++handStartGenRef.current;
     void startScratchHand(cardId || undefined).then((result) => {
@@ -2052,7 +2056,7 @@ export function ScratchPrototype({
       }
       // Failed / quota — skip awards so the HUD cannot show coins refreshWallet
       // will later wipe. A later force retry can start a new hand.
-      practiceRef.current = true;
+      coinAwardsDisabledRef.current = true;
       pendingMilestonesRef.current = [];
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
@@ -2112,6 +2116,7 @@ export function ScratchPrototype({
     const awardAction = scratchCoinAwardAction({
       freePlay: freePlayLaunch,
       practice: practiceRef.current,
+      coinsDisabled: coinAwardsDisabledRef.current,
       authed,
       handId: handIdRef.current,
     });

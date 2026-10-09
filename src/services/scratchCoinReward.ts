@@ -173,15 +173,18 @@ export type ScratchCoinAwardAction = "skip" | "hold" | "persist" | "local";
  *           when `handId` arrives.
  * `persist` — have a hand: credit + POST.
  * `local` — guest juice only (no wallet refresh to wipe it).
- * `skip` — free-play / practice: no coins.
+ * `skip` — free-play / practice, or coins disabled for this hand (quota spent
+ *          or hand start failed): no coins. Only coins — diamonds / card
+ *          prizes are gated by `practice` alone in the callers.
  */
 export function scratchCoinAwardAction(input: {
   freePlay: boolean;
   practice: boolean;
+  coinsDisabled: boolean;
   authed: boolean;
   handId: string;
 }): ScratchCoinAwardAction {
-  if (input.freePlay || input.practice) return "skip";
+  if (input.freePlay || input.practice || input.coinsDisabled) return "skip";
   if (!input.authed) return "local";
   if (input.handId.trim()) return "persist";
   return "hold";
