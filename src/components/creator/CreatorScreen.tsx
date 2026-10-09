@@ -8,10 +8,8 @@ import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
 import { useAuth } from "@/contexts/useAuth";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
-import {
-  normalizeMediaUrl,
-  type BackendModel,
-} from "@/shared/backend/collection";
+import { type BackendModel } from "@/shared/backend/collection";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { modelDisplayName } from "@/shared/backend/modelProfile";
 import { formatSocialHandle } from "@/shared/catalog/characters";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";

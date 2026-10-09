@@ -12,9 +12,9 @@ import {
   loadModels,
   modelDisplayName,
   modelId,
-  normalizeMediaUrl,
   type BackendModel,
 } from "./models";
+import { normalizeMediaUrl } from "../lib/mediaUrl";
 import {
   fetchCards,
   type BackendCard,

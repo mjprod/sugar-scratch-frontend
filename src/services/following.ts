@@ -3,11 +3,8 @@
  * Activity/NEW flags are only stored when the product sets them; we never invent them.
  */
 import { getAuthUserId } from "./auth";
-import {
-  fetchModels,
-  normalizeMediaUrl,
-  type BackendModel,
-} from "./models";
+import { fetchModels, type BackendModel } from "./models";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { formatSocialHandle } from "@/shared/catalog/characters";
 import { isDemoMode } from "@/lib/demo";
 

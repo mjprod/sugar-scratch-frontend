@@ -1,5 +1,5 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
-import { normalizeMediaUrl } from "@/services/models";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import {
   PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR,
   type VideoFitMode,

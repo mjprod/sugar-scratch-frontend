@@ -1,4 +1,4 @@
-import { normalizeMediaUrl } from "@/services/models";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { getHdVideoEnabled } from "@/services/videoQualityPrefs";
 import { api } from "../scratch/api";
 
