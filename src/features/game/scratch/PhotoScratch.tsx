@@ -2076,7 +2076,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       noteCoinsReceived(award.amount);
       playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
-      if (handId) {
+      if (handId && authed) {
         persistScratchCoins({
           handId,
           milestone,
