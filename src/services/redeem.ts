@@ -51,9 +51,9 @@ const DEMO_CODES: Record<
     kind: "ok",
     reward: {
       type: "free_pack",
-      packId: "ep1",
+      packId: "mina-pack",
       creatorHandle: "Mina",
-      sceneName: "Neon Rain",
+      sceneName: "Starter",
     },
   },
   WELCOME100: { kind: "error", errorType: "already_redeemed" },

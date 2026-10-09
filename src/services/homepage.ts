@@ -693,7 +693,7 @@ function row(
     packName,
     creatorName,
     themeName,
-    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
+    thumbnailUrl: PACK_PHOTOS[packId] ?? HOLO_PACKS.cyberHolo,
     purchaseCount,
     price: { amount: diamondCost, currency: "SC" },
     diamondCost,
@@ -703,17 +703,17 @@ function row(
 }
 
 const LEADERBOARD: LeaderboardRow[] = [
-  row(1, "ep1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
-  row(2, "ep2", "Teacher Deluxe Pack", "Luna", "Teacher", "teacher", 9102, 6.99),
-  row(3, "ep3", "Office Hours Pack", "Ashley", "Teacher", "teacher", 7801, 3.99),
-  row(1, "en1", "Night Shift Foil Pack", "Emma", "Nurse", "nurse", 11200, 4.99),
-  row(2, "en2", "Clinic Rush Pack", "Mia", "Nurse", "nurse", 6400, 5.99),
-  row(1, "jp1", "Police Lineup Pack", "Juliana", "Police", "police", 15800, 5.99),
-  row(2, "al1", "Edition Zero Pack", "Alex Rivera", "Police", "police", 9900, 7.99),
-  row(1, "jg1", "Gym Session Pack", "Juliana", "Gym", "gym", 9200, 4.99),
-  row(2, "sw1", "Bonus Rush Pack", "Sam Chen", "Gym", "gym", 4300, 2.99),
-  row(1, "jf1", "Firehouse Pack", "Juliana", "Firefighter", "firefighter", 8800, 4.49),
-  row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Firefighter", "firefighter", 6200, 3.99),
+  row(1, "teacher-1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
+  row(2, "teacher-2", "Teacher Deluxe Pack", "Luna", "Teacher", "teacher", 9102, 6.99),
+  row(3, "teacher-3", "Office Hours Pack", "Ashley", "Teacher", "teacher", 7801, 3.99),
+  row(1, "nurse-1", "Night Shift Foil Pack", "Emma", "Nurse", "nurse", 11200, 4.99),
+  row(2, "nurse-2", "Clinic Rush Pack", "Mia", "Nurse", "nurse", 6400, 5.99),
+  row(1, "police-1", "Police Lineup Pack", "Juliana", "Police", "police", 15800, 5.99),
+  row(2, "police-2", "Edition Zero Pack", "Alex Rivera", "Police", "police", 9900, 7.99),
+  row(1, "gym-1", "Gym Session Pack", "Juliana", "Gym", "gym", 9200, 4.99),
+  row(2, "gym-2", "Bonus Rush Pack", "Sam Chen", "Gym", "gym", 4300, 2.99),
+  row(1, "fire-1", "Firehouse Pack", "Juliana", "Firefighter", "firefighter", 8800, 4.49),
+  row(2, "fire-2", "Daily Drop Foil Pack", "Nancy Allison", "Firefighter", "firefighter", 6200, 3.99),
 ];
 
 function wait(ms = 420) {

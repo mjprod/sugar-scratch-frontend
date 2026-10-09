@@ -1,7 +1,7 @@
 /** Shared inventory tile for Ready to Reveal (packs + cards). */
 import { useEffect, useRef, useState } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { PACK_PHOTOS } from "@/lib/photos";
+import { HOLO_PACKS } from "@/lib/photos";
 import { isVideoSrc } from "@/services/models";
 
 export function RevealInventoryTile({
@@ -36,7 +36,7 @@ export function RevealInventoryTile({
   const poster = (posterUrl || "").trim();
   const coverIsVideo = cover ? isVideoSrc(cover) : false;
   const playVideo = coverIsVideo && autoplayVideo;
-  const imageFallback = poster || (!coverIsVideo ? cover : "") || PACK_PHOTOS.ep1;
+  const imageFallback = poster || (!coverIsVideo ? cover : "") || HOLO_PACKS.cyberHolo;
   const [imgSrc, setImgSrc] = useState(imageFallback);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -60,7 +60,7 @@ export function RevealInventoryTile({
   }, [playVideo, cover]);
 
   function fallbackImg() {
-    if (imgSrc !== PACK_PHOTOS.ep1) setImgSrc(PACK_PHOTOS.ep1);
+    if (imgSrc !== HOLO_PACKS.cyberHolo) setImgSrc(HOLO_PACKS.cyberHolo);
   }
 
   return (

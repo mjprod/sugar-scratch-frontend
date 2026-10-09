@@ -31,13 +31,47 @@ export function isLocalPackInstanceId(instanceId: string): boolean {
   return id.startsWith("pack-") || id.startsWith("demo-pack-");
 }
 
+/**
+ * Retired prototype catalog ids (ep1 "Neon Rain" and the other fixture packs).
+ * They are not in GET /api/packs, but older accounts still have them owned.
+ */
+const RETIRED_CATALOG_PACK_IDS = new Set([
+  "ep1",
+  "ep2",
+  "ep3",
+  "en1",
+  "en2",
+  "em1",
+  "eb1",
+  "eb2",
+  "al1",
+  "al2",
+  "sw1",
+  "nl1",
+  "nl2",
+  "np1",
+  "aa1",
+  "jp1",
+  "jg1",
+  "jf1",
+]);
+
+export function isRetiredCatalogPackId(
+  catalogPackId: string | null | undefined,
+): boolean {
+  return RETIRED_CATALOG_PACK_IDS.has((catalogPackId ?? "").trim().toLowerCase());
+}
+
 function readAll(): OwnedPackInstance[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValid);
+    const packs = parsed.filter(isValid);
+    const live = packs.filter((pack) => !isRetiredCatalogPackId(pack.catalogPackId));
+    if (live.length !== packs.length) writeAll(live);
+    return live;
   } catch {
     return [];
   }
@@ -169,6 +203,7 @@ export function upsertInstancesFromApi(
   let changed = false;
 
   for (const instance of instances) {
+    if (isRetiredCatalogPackId(instance.catalogPackId)) continue;
     const owned = apiInstanceToOwned(instance);
     touched.push(owned);
     const index = indexById.get(owned.instanceId);
@@ -193,7 +228,9 @@ export function upsertInstancesFromApi(
 export function replaceInventoryFromApi(
   instances: PackInstanceApi[],
 ): OwnedPackInstance[] {
-  const owned = instances.map(apiInstanceToOwned);
+  const owned = instances
+    .filter((instance) => !isRetiredCatalogPackId(instance.catalogPackId))
+    .map(apiInstanceToOwned);
   writeAll(owned);
   return owned;
 }

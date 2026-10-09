@@ -130,17 +130,7 @@ function catalogUnitCost(packId: string): number | null {
 
 /** Demo / offline fixture costs when GET /api/packs has no match yet. */
 const DEMO_PACK_DIAMOND_COSTS: Record<string, number> = {
-  ep1: 50,
-  ep2: 70,
-  ep3: 40,
-  en1: 50,
-  en2: 60,
-  em1: 45,
-  eb1: 60,
-  eb2: 50,
-  al1: 80,
-  sw1: 30,
-  nl1: 40,
+  starter: 50,
 };
 
 function demoUnitCost(packId: string, fallbackUsd?: number) {

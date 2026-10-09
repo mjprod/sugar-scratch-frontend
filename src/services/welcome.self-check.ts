@@ -99,7 +99,7 @@ clearPackInventory();
 clearWelcomeGiftState();
 const instance = {
   instanceId: "welcome-uuid-1",
-  catalogPackId: "ep1",
+  catalogPackId: "starter",
   packName: "Starter Scratch Pack",
   creator: "Sugar",
   creatorId: "sugar",

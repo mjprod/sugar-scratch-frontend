@@ -28,6 +28,10 @@ const SCRATCH_TEXTURE_URL = "/scratch/scratchTexture.jpg";
 const BRUSH_STEP_RATIO = 0.35;
 /** Decorative peel cue on the left edge of the centered scratch bar. */
 const PEEL_LOTTIE_SRC = "/lottie/peelv2.lottie";
+/** "Scratch" text that plays once in the gap the bar leaves as it docks. */
+const SCRATCH_TEXT_LOTTIE_SRC = "/lottie/lottieScratchText.lottie";
+/** lottieScratchText.lottie is 90 frames @ 60fps (400×190.705). */
+const SCRATCH_TEXT_LOTTIE_MS = Math.round((90 / 60) * 1000);
 const PEEL_LOTTIE_WIDTH = 52;
 /** peelv2.lottie is 180 frames @ 60fps (public/lottie/peelv2.lottie). */
 const PEEL_LOTTIE_DURATION_MS = Math.round((180 / 60) * 1000);
@@ -36,6 +40,8 @@ const PEEL_LOTTIE_PAUSE_MS = 1800;
 const PEEL_LOTTIE_CYCLE_MS = PEEL_LOTTIE_DURATION_MS + PEEL_LOTTIE_PAUSE_MS;
 /** Beat after foil clears before the bar flies up to dock. */
 const CLEAR_CELEBRATE_MS = 420;
+/** Start the "Scratch" text this far before the dock climb so it leads the bar. */
+const SCRATCH_TEXT_LEAD_MS = 180;
 /** Center → top climb duration (rAF pixel tween, includes anticipation). */
 const DOCK_FLY_MS = 280;
 /** Peak CSS blur during dock climb (px) — light motion-blur read. */
@@ -424,6 +430,8 @@ export function TopSymbolBar({
    * settle docked only after WAAPI finishes.
    */
   const [dockExiting, setDockExiting] = useState(false);
+  /** One-shot "Scratch" text, started just before the dock climb. */
+  const [scratchTextPlay, setScratchTextPlay] = useState(false);
   /** After the dock sequence settles, slide the bar up until a finger is down. */
   const [dockPeek, setDockPeek] = useState(false);
   /** Armed once the first hide starts, so the return slides instead of snapping. */
@@ -628,6 +636,7 @@ export function TopSymbolBar({
     );
     setCoatingDone(forceRevealed);
     setClearedBurst(false);
+    setScratchTextPlay(false);
     setPeelHidden(false);
     setPeelPlayKey(0);
     setFlakesActive(false);
@@ -720,6 +729,11 @@ export function TopSymbolBar({
       const node = el;
 
       setDockExiting(true);
+      if (!quietDecorativeLottie) {
+        const stage = node.closest(".stage");
+        if (stage instanceof HTMLElement) setStageEl(stage);
+        setScratchTextPlay(true);
+      }
 
       node.style.top = `${startTopPx}px`;
       node.style.left = "50%";
@@ -831,7 +845,16 @@ export function TopSymbolBar({
     }
 
     prevPhaseRef.current = phase;
-  }, [phase]);
+  }, [phase, quietDecorativeLottie]);
+
+  useEffect(() => {
+    if (!scratchTextPlay) return;
+    const id = window.setTimeout(
+      () => setScratchTextPlay(false),
+      SCRATCH_TEXT_LOTTIE_MS + 80,
+    );
+    return () => window.clearTimeout(id);
+  }, [scratchTextPlay, roundKey]);
 
   useLayoutEffect(() => {
     const stage = barRef.current?.closest(".stage");
@@ -1064,11 +1087,28 @@ export function TopSymbolBar({
     const id = window.setTimeout(() => {
       onAllRevealedRef.current();
     }, delay);
-    return () => window.clearTimeout(id);
+    // Lead the dock fly so the text is already playing when the bar starts up.
+    // Pin the portal host now — the bar is still centered, so .stage is stable.
+    const lead = reduceMotion
+      ? 0
+      : Math.max(0, delay - SCRATCH_TEXT_LEAD_MS);
+    const leadId =
+      !quietDecorativeLottie && lead < delay
+        ? window.setTimeout(() => {
+            const host = barRef.current?.closest(".stage");
+            if (host instanceof HTMLElement) setStageEl(host);
+            setScratchTextPlay(true);
+          }, lead)
+        : 0;
+    return () => {
+      window.clearTimeout(id);
+      window.clearTimeout(leadId);
+    };
   }, [
     clearedBurst,
     forceRevealed,
     phase,
+    quietDecorativeLottie,
     spawnFlakesAtStage,
     stageEl,
     syncParticleCanvasSize,
@@ -1393,6 +1433,21 @@ export function TopSymbolBar({
                 ref={particleCanvasRef}
                 className="top-symbol-bar-particle-canvas"
                 aria-hidden="true"
+              />
+            </div>,
+            particleHost,
+          )
+        : null}
+      {scratchTextPlay && particleHost
+        ? createPortal(
+            <div className="scratch-text-lottie" aria-hidden="true">
+              <DotLottieReact
+                key={`scratch-text-${roundKey}`}
+                src={SCRATCH_TEXT_LOTTIE_SRC}
+                autoplay
+                loop={false}
+                className="scratch-text-lottie-player"
+                renderConfig={lottieRenderConfig({ autoResize: false })}
               />
             </div>,
             particleHost,
