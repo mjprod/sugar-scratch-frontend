@@ -5,10 +5,3 @@ body[data-theme="v8"] .auth7-verify-email {
   color: oklch(1 0 0);
   font-weight: 600;
 }
-
-body[data-theme="v8"] .auth7-verify-email {
-  display: inline-block;
-  margin-top: 6px;
-  color: oklch(1 0 0);
-  font-weight: 600;
-}
