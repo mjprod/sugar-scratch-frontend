@@ -181,6 +181,8 @@ export function CollectionPage({
     });
   }
 
+  const [hideContinue, setHideContinue] = useState(false);
+
   return (
     <section
       data-page-scroll
@@ -223,20 +225,32 @@ export function CollectionPage({
 
             <CollectionPromoCarousel />
 
-            <ReadyToReveal
-              onOpenPack={openPack}
-              onScratch={openScratch}
-              onExplorePacks={onExplorePacks}
-              inventoryRevision={inventoryRevision}
-            />
+            <button
+              type="button"
+              className="mc-debug-continue"
+              onClick={() => setHideContinue((hidden) => !hidden)}
+            >
+              {hideContinue ? "Show continue" : "Hide continue"}
+            </button>
 
-            <MyCollectionSection
-              creators={state.continueCreators}
-              hasPendingReveal={state.hasPendingReveal}
-              onOpenCreator={onOpenCreator}
-              onExplorePacks={onExplorePacks}
-              onFocusReadyToReveal={() => scrollTo("ready-heading")}
-            />
+            <div className="mc-hub">
+              {hideContinue ? null : (
+                <ReadyToReveal
+                  onOpenPack={openPack}
+                  onScratch={openScratch}
+                  onExplorePacks={onExplorePacks}
+                  inventoryRevision={inventoryRevision}
+                />
+              )}
+
+              <MyCollectionSection
+                creators={state.continueCreators}
+                hasPendingReveal={state.hasPendingReveal}
+                onOpenCreator={onOpenCreator}
+                onExplorePacks={onExplorePacks}
+                onFocusReadyToReveal={() => scrollTo("ready-heading")}
+              />
+            </div>
 
             <CollectionSiteFooter />
           </>

@@ -852,9 +852,7 @@ export function FeaturedCoverFlow({
     );
   }
 
-  const focusedIsJuliana = focusedItem
-    ? iterationIsJuliana(focusedItem, resolveTarget(focusedItem))
-    : false;
+  const focusedIsJuliana = true;
 
   return (
     <>
@@ -885,13 +883,7 @@ export function FeaturedCoverFlow({
             }
           }}
           onBuy={(item, quantity) => {
-            if (iterationIsJuliana(item, resolveTarget(item))) {
-              void handleBuyPack(item, quantity ?? 1);
-              return;
-            }
-            /* Rosa / others: Buy Pack opens the quantity modal. */
-            setQtyModalQuantity(1);
-            setQtyModalItem(item);
+            void handleBuyPack(item, quantity ?? 1);
           }}
           onAddToPocket={focusedIsJuliana ? handleAddToPocket : undefined}
         />

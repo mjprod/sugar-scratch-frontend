@@ -2552,7 +2552,8 @@ h1 {
 .cart-continue {
   position: absolute;
   right: 0;
-  bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  /* Short windows stay near the edge. Taller ones pull the button up toward the pack bottoms. */
+  bottom: max(1.5rem, min(18dvh, 11rem), env(safe-area-inset-bottom, 0px));
   left: 0;
   z-index: 8;
   display: grid;

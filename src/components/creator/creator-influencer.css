@@ -562,6 +562,35 @@ body[data-theme="v8"] .cpv2-progress-list {
   list-style: none;
 }
 
+/* Desktop prefers 3 columns; the floor drops to 2, then 1, when a row can't fit. */
+body[data-theme="v8"] .cpv2-progress-themes {
+  display: block;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: cpv2-progress;
+}
+
+body[data-theme="v8"] .cpv2-progress-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container cpv2-progress (min-width: 520px) {
+  body[data-theme="v8"] .cpv2-progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container cpv2-progress (min-width: 760px) {
+  body[data-theme="v8"] .cpv2-progress-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 body[data-theme="v8"] .cpv2-progress-row {
   display: flex;
   align-items: center;
@@ -577,8 +606,9 @@ body[data-theme="v8"] .cpv2-progress-row.is-skeleton {
 }
 
 body[data-theme="v8"] .cpv2-progress-label {
-  flex: 0 0 109px;
-  width: 109px;
+  flex: 0 1 60px;
+  width: auto;
+  max-width: 60px;
   color: #fff;
   font-size: 12px;
   font-weight: 500;
