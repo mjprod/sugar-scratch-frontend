@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Fails the build when first-load JS (the entry script plus every
- * modulepreload in dist/index.html) grows past the gzip budget, or when a
+ * modulepreload in dist/index.html) or first-load CSS grows past its gzip
+ * budget, or when a
  * lazy-only chunk (three, lottie, framer-motion features, auth overlays) is
  * preloaded on every page again.
  *
@@ -13,6 +14,7 @@ import { join } from "node:path";
 
 const DIST = "dist";
 const FIRST_LOAD_JS_BUDGET_KB = 195;
+const FIRST_LOAD_CSS_BUDGET_KB = 60;
 const FORBIDDEN_PRELOADS = [
   /\/three-[\w-]+\.js$/,
   /\/lottie-[\w-]+\.js$/,
@@ -43,12 +45,16 @@ for (const r of rows.sort((a, b) => b.kb - a.kb)) {
   console.log(`  ${r.kb.toFixed(1).padStart(7)} KB gz  ${r.url}`);
 }
 console.log(
-  `[bundle-budget] first-load JS ${totalJs.toFixed(1)} KB gz (budget ${FIRST_LOAD_JS_BUDGET_KB}), CSS ${totalCss.toFixed(1)} KB gz`,
+  `[bundle-budget] first-load JS ${totalJs.toFixed(1)} KB gz (budget ${FIRST_LOAD_JS_BUDGET_KB}), ` +
+    `CSS ${totalCss.toFixed(1)} KB gz (budget ${FIRST_LOAD_CSS_BUDGET_KB})`,
 );
 
 const failures = [];
 if (totalJs > FIRST_LOAD_JS_BUDGET_KB) {
   failures.push(`first-load JS ${totalJs.toFixed(1)} KB gz exceeds ${FIRST_LOAD_JS_BUDGET_KB} KB`);
+}
+if (totalCss > FIRST_LOAD_CSS_BUDGET_KB) {
+  failures.push(`first-load CSS ${totalCss.toFixed(1)} KB gz exceeds ${FIRST_LOAD_CSS_BUDGET_KB} KB — page CSS belongs next to its lazy route`);
 }
 for (const url of jsUrls) {
   if (FORBIDDEN_PRELOADS.some((re) => re.test(url))) {

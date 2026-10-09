@@ -23,6 +23,7 @@ const ROUTES = (process.env.STYLE_ROUTES || "/,/discover,/store,/rank,/creator/j
 const WIDTHS = (process.env.STYLE_WIDTHS || "390,1280").split(",").map(Number);
 const COOKIE = process.env.STYLE_COOKIE || "";
 const SETTLE_MS = Number(process.env.STYLE_SETTLE_MS || 4000);
+const CDP_TIMEOUT_MS = 60000;
 const OUT = process.env.STYLE_OUT || ".perf/style-diff.json";
 const CHROME = process.env.CHROME_PATH
   || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -91,10 +92,19 @@ class Cdp {
       }
     });
   }
-  send(method, params = {}) {
+  send(method, params = {}, timeoutMs = CDP_TIMEOUT_MS) {
     const id = ++this.id;
     this.ws.send(JSON.stringify({ id, method, params }));
-    return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`timeout waiting for ${method}`));
+      }, timeoutMs);
+      this.pending.set(id, {
+        resolve: (v) => { clearTimeout(timer); resolve(v); },
+        reject: (e) => { clearTimeout(timer); reject(e); },
+      });
+    });
   }
   once(method, timeoutMs = 30000) {
     return new Promise((resolve, reject) => {
@@ -226,8 +236,16 @@ try {
   await cdp.send("Network.enable");
   for (const route of ROUTES) {
     for (const width of WIDTHS) {
-      const a = await snapshot(cdp, A, route, width);
-      const b = await snapshot(cdp, B, route, width);
+      let a, b;
+      try {
+        a = await snapshot(cdp, A, route, width);
+        b = await snapshot(cdp, B, route, width);
+      } catch (err) {
+        failed = true;
+        console.log(`ERROR ${route} @${width}  ${err.message}`);
+        report.push({ route, width, error: err.message });
+        continue;
+      }
       const d = diff(a, b);
       const ok = d.changed.length === 0 && d.onlyA === 0 && d.onlyB === 0;
       if (!ok) failed = true;
