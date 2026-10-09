@@ -108,17 +108,3 @@ export const WELCOME_REWARDS = [
   { id: "r2", label: "Coins", detail: "+50" },
   { id: "r3", label: "Daily Streak Boost", detail: "Day 1 locked in" },
 ] as const;
-
-export {
-  isValidPassword,
-  isValidEmail,
-  suggestUsernames,
-} from "@/lib/validation";
-
-export {
-  hasEnteredBefore,
-  markEntered,
-  isOnboardingDone,
-  markOnboardingDone,
-  clearV8Session,
-} from "@/lib/session";

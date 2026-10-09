@@ -1,8 +1,10 @@
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import type { CSSProperties } from "react";
+import { DeferredLottie } from "@/lib/lottie/DeferredLottie";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond%20Coin.lottie";
+/** Still coin shown until the deferred Lottie mounts. */
+const COIN_STILL_SRC = "/images/coin.webp";
 
 type CoinLottieProps = {
   className?: string;
@@ -48,7 +50,15 @@ export function CoinLottie({
       }}
       aria-hidden={ariaHidden}
     >
-      <DotLottieReact
+      <DeferredLottie
+        fallback={
+          <img
+            src={COIN_STILL_SRC}
+            alt=""
+            draggable={false}
+            style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+          />
+        }
         src={COIN_LOTTIE_SRC}
         autoplay={autoplay}
         loop={loop}

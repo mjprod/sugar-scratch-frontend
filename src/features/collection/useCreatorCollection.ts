@@ -96,7 +96,7 @@ function themeChipFromGroup(
       themeIdOf(group),
     collected: Math.min(filled, total),
     total,
-    coverUrl: themeCoverUrl(group) || "/img/placeholder.png",
+    coverUrl: themeCoverUrl(group) || "/img/placeholder.webp",
     avatarUrl: group.avatarUrl,
   };
 }

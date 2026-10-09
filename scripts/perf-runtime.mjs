@@ -4,7 +4,7 @@
  * driven over raw DevTools protocol (Node's global WebSocket, no deps).
  * Uses the `?perf=1` HUD (`window.__sugarPerf`) for frame stats.
  *
- *   npm run build && npx vite preview --port 4174 --strictPort
+ *   VITE_ENABLE_LABS=1 npm run build && npx vite preview --port 4174 --strictPort
  *   node scripts/perf-runtime.mjs
  *   PERF_COOKIE="sugar_session=…" node scripts/perf-runtime.mjs   # adds signed-in routes
  *

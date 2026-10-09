@@ -86,9 +86,6 @@ manualChunks(id) {
   ) {
     return "three";
   }
-  if (normalized.includes("/node_modules/framer-motion/")) {
-    return "motion";
-  }
   if (normalized.includes("/node_modules/@lottiefiles/")) {
     return "lottie";
   }

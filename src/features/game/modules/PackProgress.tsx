@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
+import "@/lib/lottie/setupWasm";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
   claimPackProgressLottieHook,

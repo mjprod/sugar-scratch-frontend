@@ -3,14 +3,11 @@ import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { PreLoaderVisual } from "@/components/PreLoaderVisual";
 import { isMemoryTransitioning } from "@/lib/memory/memoryNavigate";
-import {
-  isPageWarmed,
-  routeNeedsWait,
-  usePageReady,
-} from "@/shared/ui/PageTransition";
+import { isPageWarmed, routeNeedsWait } from "@/shared/ui/pageWarmth";
+import { usePageReady } from "@/shared/ui/usePageReady";
 import "./SitePreloader.css";
 
-const MIN_MS = 2800;
+const MIN_MS = 1000;
 /** Character → motion: brief splash, then dismiss as soon as the page is ready. */
 const MOTION_MIN_MS = 180;
 const MAX_MS = 4500;

@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { AnimatePresence, m, type PanInfo } from "framer-motion";
 import {
   AlertTriangle,
   Check,
@@ -16,11 +16,11 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
-import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import {
-  CoverFlowCarouselV2,
+  CoverFlowCarousel,
+  HOME_COVERFLOW_PRESET,
   type CoverFlowCameraSettings,
-} from "@/features/packs/CoverFlowCarouselV2";
+} from "@/features/packs/CoverFlowCarousel";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
@@ -40,7 +40,7 @@ import { loadFanDrag } from "@/features/reveal/lib/fanDrag";
 import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { PACK_PHOTOS, resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   isVideoSrc,
@@ -74,7 +74,7 @@ import {
   type PackQuantity,
   type PurchaseFlowPack,
 } from "@/services/purchase";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,
@@ -103,7 +103,7 @@ import {
   trackScratchEvent,
   upsertReadyToScratch,
 } from "@/services/readyToScratch";
-import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
+import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
 import {
   motionPlayHref,
   navigateTo,
@@ -1581,7 +1581,7 @@ export function PurchaseFlow({
       )}
 
       <AnimatePresence mode="wait">
-        <motion.div
+        <m.div
           key={stage}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1902,7 +1902,7 @@ export function PurchaseFlow({
               }}
             />
           ) : null}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
 
       {!isScratchTutorialCompleted() &&
@@ -2064,6 +2064,8 @@ function ChoosePackStage({
         <div className="packs-circle packs-circle--core" />
       </div>
       <CoverFlowCarousel
+        preset={HOME_COVERFLOW_PRESET}
+        disablePackOpenReveal
         items={items}
         selectedId={selectedId}
         onSelect={setSelectedId}
@@ -2374,7 +2376,7 @@ function ReadyStage({
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
-        <CoverFlowCarouselV2
+        <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           cameraSettings={cameraSettings}
@@ -2667,7 +2669,7 @@ function ScratchStage({
           <p className="text-[20px] font-bold">{card.rarity}</p>
           <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Coins</p>
         </div>
-        <motion.button
+        <m.button
           type="button"
           aria-label="Scratch card cover"
           drag={revealed ? false : "x"}
@@ -2683,10 +2685,10 @@ function ScratchStage({
           <span className="absolute inset-x-0 bottom-7 text-[11px] font-bold tracking-[0.16em] uppercase">
             Drag or tap to scratch
           </span>
-        </motion.button>
+        </m.button>
       </div>
       {revealed ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-7 flex w-full max-w-sm flex-col items-center"
@@ -2714,7 +2716,7 @@ function ScratchStage({
               Finish Later
             </button>
           ) : null}
-        </motion.div>
+        </m.div>
       ) : (
         <p className="mt-5 text-[13px] text-white/45">Drag across the card or tap three times.</p>
       )}

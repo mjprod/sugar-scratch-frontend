@@ -6,7 +6,7 @@ import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { FIGMA_HOME_PLAY_STEPS, PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useSearch } from "@/contexts/SearchContext";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   fetchHomepage,
   splitContinueCollectingItems,

@@ -1,45 +1,33 @@
 import {
-  useRef,
   useCallback,
   useEffect,
+  useRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+
 import "./BorderGlow.css";
 
-function parseHSL(hslStr: string) {
+function parseHSL(hslStr: string): { h: number; s: number; l: number } {
   const match = hslStr.match(/([\d.]+)\s*([\d.]+)%?\s*([\d.]+)%?/);
   if (!match) return { h: 40, s: 80, l: 80 };
-  return {
-    h: parseFloat(match[1]),
-    s: parseFloat(match[2]),
-    l: parseFloat(match[3]),
-  };
+  return { h: parseFloat(match[1]), s: parseFloat(match[2]), l: parseFloat(match[3]) };
 }
 
-function buildGlowVars(glowColor: string, intensity: number) {
+function buildGlowVars(glowColor: string, intensity: number): CSSProperties {
   const { h, s, l } = parseHSL(glowColor);
   const base = `${h}deg ${s}% ${l}%`;
   const opacities = [100, 60, 50, 40, 30, 20, 10];
   const keys = ["", "-60", "-50", "-40", "-30", "-20", "-10"];
   const vars: Record<string, string> = {};
   for (let i = 0; i < opacities.length; i++) {
-    vars[`--glow-color${keys[i]}`] =
-      `hsl(${base} / ${Math.min(opacities[i] * intensity, 100)}%)`;
+    vars[`--glow-color${keys[i]}`] = `hsl(${base} / ${Math.min(opacities[i] * intensity, 100)}%)`;
   }
-  return vars;
+  return vars as CSSProperties;
 }
 
-const GRADIENT_POSITIONS = [
-  "80% 55%",
-  "69% 34%",
-  "8% 6%",
-  "41% 38%",
-  "86% 85%",
-  "82% 18%",
-  "51% 4%",
-];
+const GRADIENT_POSITIONS = ["80% 55%", "69% 34%", "8% 6%", "41% 38%", "86% 85%", "82% 18%", "51% 4%"];
 const GRADIENT_KEYS = [
   "--gradient-one",
   "--gradient-two",
@@ -51,15 +39,16 @@ const GRADIENT_KEYS = [
 ];
 const COLOR_MAP = [0, 1, 2, 0, 1, 2, 1];
 
-function buildGradientVars(colors: string[]) {
+function buildGradientVars(colors: string[]): CSSProperties {
   const vars: Record<string, string> = {};
   for (let i = 0; i < 7; i++) {
-    const c = colors[Math.min(COLOR_MAP[i], colors.length - 1)];
+    const c = colors[Math.min(COLOR_MAP[i], colors.length - 1)] ?? colors[0] ?? "#ffffff";
+    // Reference falloff: soft radial stops (harder stops read oversaturated).
     vars[GRADIENT_KEYS[i]] =
       `radial-gradient(at ${GRADIENT_POSITIONS[i]}, ${c} 0px, transparent 50%)`;
   }
-  vars["--gradient-base"] = `linear-gradient(${colors[0]} 0 100%)`;
-  return vars;
+  vars["--gradient-base"] = `linear-gradient(${colors[0] ?? "#c299ff"} 0 100%)`;
+  return vars as CSSProperties;
 }
 
 function easeOutCubic(x: number) {
@@ -69,6 +58,16 @@ function easeInCubic(x: number) {
   return x * x * x;
 }
 
+type AnimateValueArgs = {
+  start?: number;
+  end?: number;
+  duration?: number;
+  delay?: number;
+  ease?: (x: number) => number;
+  onUpdate: (value: number) => void;
+  onEnd?: () => void;
+};
+
 function animateValue({
   start = 0,
   end = 100,
@@ -77,46 +76,33 @@ function animateValue({
   ease = easeOutCubic,
   onUpdate,
   onEnd,
-}: {
-  start?: number;
-  end?: number;
-  duration?: number;
-  delay?: number;
-  ease?: (x: number) => number;
-  onUpdate: (v: number) => void;
-  onEnd?: () => void;
-}) {
-  let cancelled = false;
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  let rafId = 0;
+}: AnimateValueArgs) {
   const t0 = performance.now() + delay;
+  let raf = 0;
+  let timeout = 0;
 
-  function tick() {
-    if (cancelled) return;
-    const elapsed = performance.now() - t0;
+  function tick(now: number) {
+    const elapsed = now - t0;
     const t = Math.min(elapsed / duration, 1);
     onUpdate(start + (end - start) * ease(t));
-    if (t < 1) {
-      rafId = requestAnimationFrame(tick);
-    } else if (onEnd) {
-      onEnd();
-    }
+    if (t < 1) raf = requestAnimationFrame(tick);
+    else onEnd?.();
   }
 
-  timeoutId = setTimeout(() => {
-    if (cancelled) return;
-    rafId = requestAnimationFrame(tick);
+  timeout = window.setTimeout(() => {
+    raf = requestAnimationFrame(tick);
   }, delay);
 
   return () => {
-    cancelled = true;
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
-    if (rafId) cancelAnimationFrame(rafId);
+    window.clearTimeout(timeout);
+    cancelAnimationFrame(raf);
   };
 }
 
+export type BorderGlowShape = "rounded-rect" | "hex";
+
 export type BorderGlowProps = {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
   edgeSensitivity?: number;
   glowColor?: string;
@@ -125,34 +111,89 @@ export type BorderGlowProps = {
   glowRadius?: number;
   glowIntensity?: number;
   coneSpread?: number;
+  /** One-shot intro sweep on mount (stock React Bits behavior). */
   animated?: boolean;
-  /** Continuous soft orbit of the rim glow (never fades out). */
+  colors?: string[];
+  fillOpacity?: number;
+  /**
+   * Keep the glow visible and continuously orbit the cone —
+   * no pointer/hover required.
+   */
+  alwaysOn?: boolean;
+  /** Degrees per second when alwaysOn. */
+  orbitSpeed?: number;
+  /** Fixed edge proximity 0–100 used while alwaysOn. */
+  alwaysOnProximity?: number;
+  /**
+   * Soft full-rim orbit for compact controls (Collection FAB): wider feathered
+   * cone at full proximity, never fades out, ignores the pointer.
+   */
   orbit?: boolean;
   /** Seconds per full rotation when orbit is enabled. */
   orbitDuration?: number;
-  /** Prefer exactly 3 hex colors for the mesh rim. */
-  colors?: [string, string, string] | string[];
-  fillOpacity?: number;
+  /** Strip card chrome (border/bg/shadow) for wrapping custom CTAs. */
+  bare?: boolean;
+  /**
+   * Silhouette for mesh rim + outer bloom. `hex` clips glow layers to the
+   * pointed chevron (needs shapeWidth/shapeHeight). Default keeps rounded-rect.
+   */
+  shape?: BorderGlowShape;
+  /** Button box used to size hex/squircle glow clips. */
+  shapeWidth?: number;
+  shapeHeight?: number;
+  /** Hex tip depth as a fraction of height (matches CtaButton.hexTip). */
+  hexTip?: number;
+  /** Freeze orbit / pointer glow and hide bloom layers. */
+  disabled?: boolean;
+  /**
+   * Outer bloom quality:
+   * - `full` — stock cone + multi drop-shadows (desktop)
+   * - `lite` — single soft outer glow, no multi-shadow cone (mobile)
+   * - `off`  — orbiting rim only
+   */
+  outerBloom?: boolean | "full" | "lite" | "off";
   style?: CSSProperties;
 };
+
+function resolveOuterBloomMode(
+  outerBloom: boolean | "full" | "lite" | "off" | undefined,
+): "full" | "lite" | "off" {
+  if (outerBloom === false || outerBloom === "off") return "off";
+  if (outerBloom === "lite") return "lite";
+  return "full";
+}
+
+const DEFAULT_COLORS = ["#c084fc", "#f472b6", "#38bdf8"];
+const MIN_ORBIT_DURATION_S = 0.5;
 
 export function BorderGlow({
   children,
   className = "",
   edgeSensitivity = 30,
-  glowColor = "40 80 80",
+  glowColor = "326 90 30",
   backgroundColor = "#120F17",
   borderRadius = 28,
   glowRadius = 40,
   glowIntensity = 1.0,
   coneSpread = 25,
   animated = false,
+  colors = DEFAULT_COLORS,
+  fillOpacity = 0.5,
+  alwaysOn = false,
+  orbitSpeed = 40,
+  alwaysOnProximity = 92,
   orbit = false,
   orbitDuration = 6,
-  colors = ["#c084fc", "#f472b6", "#38bdf8"],
-  fillOpacity = 0.5,
+  bare = false,
+  shape = "rounded-rect",
+  shapeWidth,
+  shapeHeight,
+  hexTip = 0.27,
+  disabled = false,
+  outerBloom = true,
   style,
 }: BorderGlowProps) {
+  const outerBloomMode = resolveOuterBloomMode(outerBloom);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const getCenterOfElement = useCallback((el: HTMLElement) => {
@@ -190,6 +231,7 @@ export function BorderGlow({
 
   const handlePointerMove = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (alwaysOn || disabled) return;
       const card = cardRef.current;
       if (!card) return;
 
@@ -203,65 +245,92 @@ export function BorderGlow({
       card.style.setProperty("--edge-proximity", `${(edge * 100).toFixed(3)}`);
       card.style.setProperty("--cursor-angle", `${angle.toFixed(3)}deg`);
     },
-    [getEdgeProximity, getCursorAngle],
+    [alwaysOn, disabled, getEdgeProximity, getCursorAngle],
   );
 
+  // One-shot intro sweep (stock).
   useEffect(() => {
-    if (!animated || orbit || !cardRef.current) return;
+    if (!animated || alwaysOn || orbit || disabled || !cardRef.current) return;
     const card = cardRef.current;
     const angleStart = 110;
     const angleEnd = 465;
     card.classList.add("sweep-active");
     card.style.setProperty("--cursor-angle", `${angleStart}deg`);
 
-    const cancelProximityIn = animateValue({
-      duration: 500,
-      onUpdate: (v) => card.style.setProperty("--edge-proximity", String(v)),
-    });
-    const cancelAngleIn = animateValue({
-      ease: easeInCubic,
-      duration: 1500,
-      end: 50,
-      onUpdate: (v) => {
-        card.style.setProperty(
-          "--cursor-angle",
-          `${(angleEnd - angleStart) * (v / 100) + angleStart}deg`,
-        );
-      },
-    });
-    const cancelAngleOut = animateValue({
-      ease: easeOutCubic,
-      delay: 1500,
-      duration: 2250,
-      start: 50,
-      end: 100,
-      onUpdate: (v) => {
-        card.style.setProperty(
-          "--cursor-angle",
-          `${(angleEnd - angleStart) * (v / 100) + angleStart}deg`,
-        );
-      },
-    });
-    const cancelProximityOut = animateValue({
-      ease: easeInCubic,
-      delay: 2500,
-      duration: 1500,
-      start: 100,
-      end: 0,
-      onUpdate: (v) => card.style.setProperty("--edge-proximity", String(v)),
-      onEnd: () => card.classList.remove("sweep-active"),
-    });
+    const cleanups = [
+      animateValue({
+        duration: 500,
+        onUpdate: (v) => card.style.setProperty("--edge-proximity", String(v)),
+      }),
+      animateValue({
+        ease: easeInCubic,
+        duration: 1500,
+        end: 50,
+        onUpdate: (v) => {
+          card.style.setProperty(
+            "--cursor-angle",
+            `${(angleEnd - angleStart) * (v / 100) + angleStart}deg`,
+          );
+        },
+      }),
+      animateValue({
+        ease: easeOutCubic,
+        delay: 1500,
+        duration: 2250,
+        start: 50,
+        end: 100,
+        onUpdate: (v) => {
+          card.style.setProperty(
+            "--cursor-angle",
+            `${(angleEnd - angleStart) * (v / 100) + angleStart}deg`,
+          );
+        },
+      }),
+      animateValue({
+        ease: easeInCubic,
+        delay: 2500,
+        duration: 1500,
+        start: 100,
+        end: 0,
+        onUpdate: (v) => card.style.setProperty("--edge-proximity", String(v)),
+        onEnd: () => card.classList.remove("sweep-active"),
+      }),
+    ];
 
     return () => {
-      cancelProximityIn();
-      cancelAngleIn();
-      cancelAngleOut();
-      cancelProximityOut();
+      cleanups.forEach((fn) => fn());
       card.classList.remove("sweep-active");
     };
-  }, [animated, orbit]);
+  }, [animated, alwaysOn, orbit, disabled]);
 
-  // Continuous soft orbit via CSS @property (no rAF style thrash).
+  // Continuous orbit via CSS @property animation (no rAF style thrash).
+  useEffect(() => {
+    if (!alwaysOn || disabled || !cardRef.current) return;
+    const card = cardRef.current;
+    card.classList.add("always-on");
+    card.style.setProperty("--edge-proximity", String(alwaysOnProximity));
+
+    const reduce =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const speed = Math.max(0, orbitSpeed);
+    const canOrbit = !reduce && speed > 0;
+
+    if (canOrbit) {
+      card.style.setProperty("--orbit-duration", `${360 / speed}s`);
+      card.classList.add("is-css-orbit");
+    } else {
+      card.classList.remove("is-css-orbit");
+      // Keep a stable cone angle when frozen / reduced-motion.
+      card.style.setProperty("--cursor-angle", "45deg");
+    }
+
+    return () => {
+      card.classList.remove("always-on", "is-css-orbit");
+    };
+  }, [alwaysOn, disabled, orbitSpeed, alwaysOnProximity]);
+
   useEffect(() => {
     if (!orbit || !cardRef.current) return;
     const card = cardRef.current;
@@ -280,23 +349,70 @@ export function BorderGlow({
     return () => {
       card.classList.remove("border-glow-orbiting", "is-css-orbit");
     };
-  }, [orbit, orbitDuration]);
+  }, [orbit]);
+
+  // Ensure bloom is fully off while disabled (even if a previous orbit left proximity high).
+  useEffect(() => {
+    if (!disabled || !cardRef.current) return;
+    const card = cardRef.current;
+    card.classList.remove("always-on", "is-css-orbit", "sweep-active");
+    card.style.setProperty("--edge-proximity", "0");
+  }, [disabled]);
 
   const glowVars = buildGlowVars(glowColor, glowIntensity);
-  const palette = colors.slice(0, 3);
-  while (palette.length < 3) palette.push(palette[palette.length - 1] ?? "#fff");
+  const tipRatio = Math.max(0.12, Math.min(0.55, hexTip));
+  const tipPx = shapeHeight != null ? shapeHeight * tipRatio : 0;
+
+  const cssOrbit =
+    alwaysOn && !disabled && orbitSpeed > 0;
+  const classes = [
+    "border-glow-card",
+    bare ? "is-bare" : "",
+    alwaysOn && !disabled ? "always-on" : "",
+    cssOrbit ? "is-css-orbit" : "",
+    orbit ? "border-glow-always-on border-glow-orbiting is-css-orbit" : "",
+    disabled ? "is-disabled" : "",
+    outerBloomMode === "off"
+      ? "is-no-outer-bloom"
+      : outerBloomMode === "lite"
+        ? "is-lite-outer-bloom"
+        : "",
+    shape === "hex" ? "is-shape-hex" : "is-shape-rounded-rect",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const shapeVars: CSSProperties = {};
+  if (shapeWidth != null) {
+    (shapeVars as Record<string, string>)["--shape-w"] = `${shapeWidth}px`;
+  }
+  if (shapeHeight != null) {
+    (shapeVars as Record<string, string>)["--shape-h"] = `${shapeHeight}px`;
+    // Match CtaButton hex tip so glow and face share one silhouette.
+    (shapeVars as Record<string, string>)["--shape-tip"] = `${tipPx}px`;
+  }
+  (shapeVars as Record<string, string>)["--shape-r"] = `${Math.max(0, borderRadius)}px`;
+  if (cssOrbit) {
+    (shapeVars as Record<string, string>)["--orbit-duration"] =
+      `${360 / Math.max(orbitSpeed, 0.001)}s`;
+    (shapeVars as Record<string, string>)["--cursor-angle-start"] = "45deg";
+  }
+  if (alwaysOn && !disabled) {
+    (shapeVars as Record<string, string | number>)["--edge-proximity"] =
+      alwaysOnProximity;
+  }
+  if (orbit) {
+    (shapeVars as Record<string, string>)["--orbit-duration"] =
+      `${Math.max(orbitDuration, MIN_ORBIT_DURATION_S)}s`;
+    (shapeVars as Record<string, string>)["--cursor-angle-start"] = "0deg";
+  }
 
   return (
     <div
       ref={cardRef}
       onPointerMove={orbit ? undefined : handlePointerMove}
-      className={[
-        "border-glow-card",
-        orbit ? "border-glow-always-on border-glow-orbiting is-css-orbit" : "",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={classes}
       style={{
         "--card-bg": backgroundColor,
         "--edge-sensitivity": edgeSensitivity,
@@ -304,14 +420,16 @@ export function BorderGlow({
         "--glow-padding": `${glowRadius}px`,
         "--cone-spread": coneSpread,
         "--fill-opacity": fillOpacity,
-        "--orbit-duration": `${Math.max(orbitDuration, 0.5)}s`,
-        "--cursor-angle-start": "0deg",
+        ...shapeVars,
         ...glowVars,
-        ...buildGradientVars(palette),
+        ...buildGradientVars(colors),
         ...style,
       } as CSSProperties}
     >
-      <span className="edge-light" />
+      {/* Full + lite keep .edge-light; off skips the outer bloom node entirely. */}
+      {outerBloomMode !== "off" ? (
+        <span className="edge-light" aria-hidden="true" />
+      ) : null}
       <div className="border-glow-inner">{children}</div>
     </div>
   );

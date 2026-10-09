@@ -1,4 +1,4 @@
-import { normalizeMediaUrl } from "@/services/models";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { getHdVideoEnabled } from "@/services/videoQualityPrefs";
 import { api } from "../scratch/api";
 
@@ -76,11 +76,14 @@ export function toPublicMediaUrl(path: string): string {
   ) {
     return normalizeMediaUrl(trimmed);
   }
-  const withoutPublic = trimmed.startsWith("public/")
-    ? trimmed.slice("public/".length)
-    : trimmed;
+  const queryStart = trimmed.search(/[?#]/);
+  const pathPart = queryStart >= 0 ? trimmed.slice(0, queryStart) : trimmed;
+  const query = queryStart >= 0 ? trimmed.slice(queryStart) : "";
+  const withoutPublic = pathPart.startsWith("public/")
+    ? pathPart.slice("public/".length)
+    : pathPart;
   const parts = withoutPublic.split("/").filter(Boolean);
-  return normalizeMediaUrl(`/${parts.map(encodeURIComponent).join("/")}`);
+  return normalizeMediaUrl(`/${parts.map(encodeURIComponent).join("/")}${query}`);
 }
 
 function optionalString(value: unknown): string | undefined {

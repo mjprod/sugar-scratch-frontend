@@ -1,17 +1,21 @@
-import { useEffect } from "react";
-import { Search } from "lucide-react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Loader2, Search } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
-import { AuthenticationSheet } from "@/components/auth/AuthenticationSheet";
-import { VerifyEmailModal } from "@/components/auth/VerifyEmailModal";
+// The auth sheet is lazy, but its CTA styles must keep their entry-CSS slot
+// ahead of LiquidGlassNav.css / theme.css or equal-specificity rules flip.
+// BorderGlow.css must stay after CtaButton.css (ties on .border-glow-card).
+import "@/components/cta/CtaButton.css";
 import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { PackAddedToast } from "@/components/ui/PackAddedToast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWallet } from "@/contexts/WalletContext";
-import { bindGameNavigate } from "@/features/game/modules/gameSession";
+import { bindGameNavigate } from "@/services/gameSessionStore";
+import { runWhenIdle } from "@/lib/idle";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
+import { prefetchTabPages } from "@/routes/lazyPages";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
 import { noteCoinsReceived } from "@/services/coinReceipt";
@@ -20,6 +24,55 @@ import {
   PACK_OPENING_REWARD_EVENT,
   type PackOpeningRewardDetail,
 } from "@/services/packMotionSettle";
+
+const loadAuthenticationSheet = () =>
+  import("@/components/auth/AuthenticationSheet").then((mod) => ({
+    default: mod.AuthenticationSheet,
+  }));
+const loadVerifyEmailModal = () =>
+  import("@/components/auth/VerifyEmailModal").then((mod) => ({
+    default: mod.VerifyEmailModal,
+  }));
+const AuthenticationSheet = lazy(loadAuthenticationSheet);
+const VerifyEmailModal = lazy(loadVerifyEmailModal);
+
+function prefetchAuthOverlays(): void {
+  void loadAuthenticationSheet();
+  void loadVerifyEmailModal();
+}
+
+const FIRST_INTERACTION_EVENTS = ["pointerdown", "keydown"] as const;
+
+/** Shown while an overlay chunk loads so a gated tap never looks ignored. */
+function OverlayLoading({ label, onDismiss }: { label: string; onDismiss?: () => void }) {
+  return (
+    <div className="auth7-sheet-root" role="presentation">
+      <button
+        type="button"
+        className="auth7-sheet-backdrop"
+        aria-label={label}
+        disabled={!onDismiss}
+        onClick={onDismiss}
+      />
+      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+        <Loader2
+          className="size-8 animate-spin text-white/70"
+          role="status"
+          aria-label="Loading"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** True from the first render where `flag` is true, forever after (keeps exit animations). */
+function useLatched(flag: boolean): boolean {
+  const [latched, setLatched] = useState(flag);
+  useEffect(() => {
+    if (flag) setLatched(true);
+  }, [flag]);
+  return latched || flag;
+}
 
 /** Main product chrome: liquid-glass nav + outlet + auth/verify overlays. */
 export function AppLayout() {
@@ -48,6 +101,31 @@ export function AppLayout() {
   const { coins, diamonds, addCoins, addDiamonds, setCoins, setDiamonds } = useWallet();
   const { searchOpen, openSearch } = useSearch();
   const { activeTab: tab, requestTab } = useTabNav();
+
+  const authMounted = useLatched(authOpen);
+  const verifyMounted = useLatched(verifyOpen);
+
+  useEffect(() => runWhenIdle(prefetchTabPages, 4000), []);
+  useEffect(() => runWhenIdle(prefetchAuthOverlays, 4000), []);
+
+  // A guest's pointerdown lands before the click that opens the sheet.
+  useEffect(() => {
+    if (!guest) return;
+    const prefetch = () => {
+      for (const type of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(type, prefetch, true);
+      }
+      prefetchAuthOverlays();
+    };
+    for (const type of FIRST_INTERACTION_EVENTS) {
+      window.addEventListener(type, prefetch, { capture: true, passive: true });
+    }
+    return () => {
+      for (const type of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(type, prefetch, true);
+      }
+    };
+  }, [guest]);
 
   useEffect(() => {
     bindGameNavigate((to) => {
@@ -257,22 +335,38 @@ export function AppLayout() {
         />
       ) : null}
 
-      <AuthenticationSheet
-        open={authOpen}
-        trigger={triggerFromAction(pending)}
-        initialMode={authSheetMode}
-        initialEmail={authSheetEmail}
-        onDismiss={dismissAuth}
-        onSuccess={completeAuth}
-      />
+      {authMounted ? (
+        <Suspense
+          fallback={
+            authOpen ? (
+              <OverlayLoading label="Dismiss authentication" onDismiss={dismissAuth} />
+            ) : null
+          }
+        >
+          <AuthenticationSheet
+            open={authOpen}
+            trigger={triggerFromAction(pending)}
+            initialMode={authSheetMode}
+            initialEmail={authSheetEmail}
+            onDismiss={dismissAuth}
+            onSuccess={completeAuth}
+          />
+        </Suspense>
+      ) : null}
 
-      <VerifyEmailModal
-        open={verifyOpen}
-        email={verifyEmail}
-        fromRegister={verifyFromRegister}
-        onBack={onVerifyBack}
-        onVerified={onVerified}
-      />
+      {verifyMounted ? (
+        <Suspense
+          fallback={verifyOpen ? <OverlayLoading label="Verification required" /> : null}
+        >
+          <VerifyEmailModal
+            open={verifyOpen}
+            email={verifyEmail}
+            fromRegister={verifyFromRegister}
+            onBack={onVerifyBack}
+            onVerified={onVerified}
+          />
+        </Suspense>
+      ) : null}
 
       {navNotice ? (
         <div className="pointer-events-none absolute bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">

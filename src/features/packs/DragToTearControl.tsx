@@ -1,6 +1,7 @@
 import { useRef } from "react";
-import { motion, type PanInfo } from "framer-motion";
+import { m, type PanInfo } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import "@/lib/lottie/setupWasm";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 const TEAR_DRAG_DISTANCE_PX = 180;
@@ -20,7 +21,7 @@ export function DragToTearControl({
 
   return (
     <div className="pointer-events-none flex justify-center">
-      <motion.button
+      <m.button
         type="button"
         data-tutorial-target="tear"
         aria-label="Drag to tear"
@@ -53,7 +54,7 @@ export function DragToTearControl({
           renderConfig={lottieRenderConfig()}
           style={{ width: 288, height: 288 }}
         />
-      </motion.button>
+      </m.button>
     </div>
   );
 }

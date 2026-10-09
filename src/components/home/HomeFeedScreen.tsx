@@ -31,9 +31,11 @@ import {
   withFavouriteLikes,
 } from "@/services/feedFavourites";
 import { useSearch } from "@/contexts/SearchContext";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 const SNAP_MS = 220;
+/** Hold full preload of ahead slides so the visible clip gets the bandwidth first. */
+const AHEAD_PRELOAD_DELAY_MS = 2500;
 /** Overlay lag vs video (0 = locked, 1 = fully detached). */
 const OVERLAY_PARALLAX_MOBILE = 0.33;
 /** Desktop: stronger lag so taller frames still read on scrub. */
@@ -126,6 +128,15 @@ export function HomeFeedScreen({
     cached?.items.length ? "loaded" : "loading",
   );
   useMarkPageReady(status !== "loading");
+  const [aheadPreloadReady, setAheadPreloadReady] = useState(false);
+  useEffect(() => {
+    if (status === "loading" || aheadPreloadReady) return;
+    const id = window.setTimeout(
+      () => setAheadPreloadReady(true),
+      AHEAD_PRELOAD_DELAY_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [status, aheadPreloadReady]);
   const [activeId, setActiveId] = useState<string | null>(
     cached?.activeId ?? null,
   );
@@ -1355,7 +1366,9 @@ export function HomeFeedScreen({
                     isFeedMountIndex(slide.logicalIndex, resolvedActiveIndex));
                 const eagerPreload =
                   active &&
-                  isFeedPreloadAutoIndex(slide.logicalIndex, resolvedActiveIndex);
+                  isFeedPreloadAutoIndex(slide.logicalIndex, resolvedActiveIndex) &&
+                  (aheadPreloadReady ||
+                    slide.logicalIndex === resolvedActiveIndex);
 
                 return (
                   <div

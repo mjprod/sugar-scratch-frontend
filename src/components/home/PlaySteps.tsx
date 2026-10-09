@@ -73,7 +73,7 @@ export const FIGMA_HOME_PLAY_STEPS: PlayStep[] = [
     title: "Win",
     sentence: "Win cards scratch for diamonds",
     icon: <WinDiamondsIcon />,
-    imageSrc: "/images/home-v2/how-win.png",
+    imageSrc: "/images/home-v2/how-win.webp",
     imageClassName: "is-win",
   },
   {

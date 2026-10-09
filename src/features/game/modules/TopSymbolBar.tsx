@@ -1,4 +1,5 @@
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import "@/lib/lottie/setupWasm";
 import {
   useCallback,
   useEffect,

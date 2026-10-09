@@ -22,10 +22,10 @@ import {
   modelAvatarUrl,
   modelDisplayName,
   modelId,
-  normalizeMediaUrl,
   profileFromModel,
   type BackendModel,
 } from "./models";
+import { normalizeMediaUrl } from "../lib/mediaUrl";
 import { feedPosterUrl } from "./creatorFeed";
 import {
   fetchCards,

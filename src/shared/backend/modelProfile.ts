@@ -6,7 +6,8 @@ import {
   formatSocialHandle,
 } from "@/shared/catalog/characters";
 import type { SwipeCardData } from "@/features/swipe/constants/cards";
-import { normalizeMediaUrl, type BackendModel } from "./collection";
+import { type BackendModel } from "./collection";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 
 function optionalApiString(value: unknown): string | null {
   if (typeof value !== "string") return null;

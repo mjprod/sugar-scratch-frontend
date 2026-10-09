@@ -3,11 +3,8 @@
  * Activity/NEW flags are only stored when the product sets them; we never invent them.
  */
 import { getAuthUserId } from "./auth";
-import {
-  fetchModels,
-  normalizeMediaUrl,
-  type BackendModel,
-} from "./models";
+import { fetchModels, type BackendModel } from "./models";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { formatSocialHandle } from "@/shared/catalog/characters";
 import { isDemoMode } from "@/lib/demo";
 
@@ -137,7 +134,7 @@ export function followedCreatorFromModel(
   const displayName = displayNameOf(model);
   const handleRaw = (model.label ?? model.id ?? "").trim();
   const username = handleRaw ? formatSocialHandle(handleRaw) : "";
-  const avatarUrl = normalizeMediaUrl(model.avatar ?? "") || "/img/placeholder.png";
+  const avatarUrl = normalizeMediaUrl(model.avatar ?? "") || "/img/placeholder.webp";
   return {
     id,
     displayName,

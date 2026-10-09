@@ -1,4 +1,5 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import "@/components/auth/VerifyEmailModal.css";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
@@ -161,7 +162,7 @@ export function VerifyEmailModal({
             aria-label="Verification required"
             disabled
           />
-          <motion.div
+          <m.div
             ref={panelRef}
             role="dialog"
             aria-modal="true"
@@ -258,7 +259,7 @@ export function VerifyEmailModal({
                 </p>
               </form>
             </div>
-          </motion.div>
+          </m.div>
         </div>
       ) : null}
     </AnimatePresence>

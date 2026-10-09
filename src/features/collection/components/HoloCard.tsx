@@ -39,7 +39,7 @@ import {
   shouldPlayFromDecodePoll,
 } from '../lib/faceVideoPlayback'
 import { getVideoCardCount } from '../lib/photoSlots'
-import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
+import { unlockCountdownSound } from '@/features/game/modules/countdownSound'
 import { useCollectionActions } from '../CollectionActionsContext'
 
 const INTERACT_CONFIG = { tension: 200, friction: 22 }

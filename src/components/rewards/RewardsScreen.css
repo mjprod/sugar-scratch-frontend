@@ -1,0 +1,168 @@
+/* theme.css rules owned by RewardsPage (lazy route CSS). */
+/* Hub page — premium engagement / reward center */
+body[data-theme="v8"] .hub-page {
+  position: relative;
+}
+
+body[data-theme="v8"] .hub-page::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  z-index: 0;
+  width: min(720px, 110%);
+  height: 320px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 30%,
+      oklch(0.606 0.219 292.72 / 0.14),
+      transparent 68%);
+}
+
+/* AppPageShell wraps children in .app-page-shell-inner — ambient on shell */
+body[data-theme="v8"] .app-page-shell.hub-page::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  z-index: 0;
+  width: min(720px, 120%);
+  height: 340px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 28%,
+      oklch(0.606 0.219 292.72 / 0.16),
+      transparent 70%);
+}
+
+body[data-theme="v8"] .app-page-shell.hub-page>.app-page-shell-inner {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-theme="v8"] .hub-section-label--active {
+  color: oklch(0.811 0.101 293.57);
+}
+
+/* -------- Level 2: Active feature tiles -------- */
+body[data-theme="v8"] .hub-active-grid {
+  display: grid;
+  gap: 10px;
+}
+
+body[data-theme="v8"] .hub-active-grid--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-active-grid:not(.hub-active-grid--solo) {
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+body[data-theme="v8"] .hub-feature-tile {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid oklch(1 0 0 / 0.09);
+  background: oklch(1 0 0 / 0.04);
+  padding: 14px 14px;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+body[data-theme="v8"] .hub-feature-tile:hover {
+  border-color: oklch(1 0 0 / 0.14);
+  background: oklch(1 0 0 / 0.06);
+}
+
+body[data-theme="v8"] .hub-feature-tile:active {
+  transform: scale(0.99);
+}
+
+body[data-theme="v8"] .hub-feature-tile:focus-visible {
+  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .hub-feature-tile-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(1 0 0 / 0.05);
+}
+
+body[data-theme="v8"] .hub-feature-tile-icon.is-store {
+  color: oklch(0.828 0.101 230.32);
+  background: oklch(0.754 0.139 232.66 / 0.1);
+  border-color: oklch(0.754 0.139 232.66 / 0.2);
+}
+
+body[data-theme="v8"] .hub-feature-tile-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+body[data-theme="v8"] .hub-feature-tile-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: oklch(1 0 0);
+}
+
+body[data-theme="v8"] .hub-feature-tile-detail {
+  font-size: 12px;
+  line-height: 1.35;
+  color: oklch(1 0 0 / 0.48);
+}
+
+body[data-theme="v8"] .hub-feature-tile-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: oklch(1 0 0 / 0.32);
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hub-feature-tile {
+    min-height: 88px;
+    border-radius: 22px;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  body[data-theme="v8"] .hub-feature-tile-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  body[data-theme="v8"] .hub-feature-tile-title {
+    font-size: 16px;
+  }
+
+  body[data-theme="v8"] .hub-feature-tile-detail {
+    font-size: 13px;
+  }
+}
+@media (max-width: 1023px) {
+
+  /* Ambient/glow may start at top so it shows through the HUD. */
+  body[data-theme="v8"] .app-layout--hud .app-page-shell.hub-page::before,
+  body[data-theme="v8"] .app-layout--hud .hub-page::before {
+    top: 0;
+  }
+}

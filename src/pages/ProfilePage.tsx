@@ -1,5 +1,6 @@
+import "@/components/profile/ProfileScreen.css";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { UserDashboardScreen } from "@/components/profile/ProfileScreen";
 import { Paths } from "@/routes/Paths";

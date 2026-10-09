@@ -1,5 +1,6 @@
+import "@/components/recommend/PersonalizationSwipeScreen.css";
 import { markRecommendationExplicitCompleted, saveSwipePreferences } from "@/services/recommendation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { PersonalizationSwipeScreen } from "@/components/recommend/PersonalizationSwipeScreen";
 
 export function RecSwipePage() {

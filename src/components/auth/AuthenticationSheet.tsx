@@ -1,7 +1,8 @@
+import "@/components/auth/AuthenticationSheet.css";
 import {
   AnimatePresence,
   animate,
-  motion,
+  m,
   useDragControls,
   useMotionValue,
   useReducedMotion,
@@ -36,7 +37,7 @@ import {
   type AuthSuccessResult,
   type ProtectedActionType,
 } from "@/services/auth";
-import { isValidEmail } from "@/types/app";
+import { isValidEmail } from "@/lib/validation";
 import { STUB_OAUTH_ENABLED } from "@/env";
 import {
   GOOGLE_LOGIN_ENABLED,
@@ -455,7 +456,7 @@ export function AuthenticationSheet({
     <AnimatePresence>
       {open ? (
         <div className="auth7-sheet-root" role="presentation">
-          <motion.button
+          <m.button
             type="button"
             className="auth7-sheet-backdrop"
             aria-label="Dismiss authentication"
@@ -468,7 +469,7 @@ export function AuthenticationSheet({
               if (!busy) dismissWithAnticipation();
             }}
           />
-          <motion.div
+          <m.div
             ref={panelRef}
             role="dialog"
             aria-modal="true"
@@ -516,7 +517,7 @@ export function AuthenticationSheet({
             </div>
 
             <AnimatePresence mode="wait">
-              <motion.div
+              <m.div
                 key={legalDoc ? `legal-${legalDoc}` : mode}
                 initial={reduce ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -917,9 +918,9 @@ export function AuthenticationSheet({
                     )}
                   </>
                 )}
-              </motion.div>
+              </m.div>
             </AnimatePresence>
-          </motion.div>
+          </m.div>
         </div>
       ) : null}
     </AnimatePresence>

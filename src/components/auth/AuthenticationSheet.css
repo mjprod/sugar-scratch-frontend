@@ -1,0 +1,268 @@
+/* theme.css rules owned by AuthenticationSheet (lazy route CSS). */
+body[data-theme="v8"] .auth7-sheet-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.9rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid oklch(1 0 0 / 0.15);
+  border-radius: 50%;
+  background: transparent;
+  color: oklch(1 0 0 / 0.55);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-sheet-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .auth7-sheet-close {
+    top: 1.7rem;
+    right: 0.9rem;
+  }
+}
+
+body[data-theme="v8"] .auth7-sheet-social {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .auth7-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  width: 100%;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.05);
+  color: oklch(1 0 0);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-social-icon {
+  display: block;
+  width: 1.35em;
+  height: 1.35em;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+/* Google continues as filled CTA slot (label-only aurora button). */
+body[data-theme="v8"] .auth7-social-btn.is-google {
+  position: relative;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow--fill {
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button--fill {
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow--fill,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button,
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+}
+
+body[data-theme="v8"] .auth7-social-btn.is-google .cta-button-glow>.border-glow-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .auth7-social-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .auth7-sheet-divider::before,
+body[data-theme="v8"] .auth7-sheet-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: oklch(1 0 0 / 0.12);
+}
+
+body[data-theme="v8"] .auth7-row-end {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+
+body[data-theme="v8"] .auth7-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+body[data-theme="v8"] .auth7-consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body[data-theme="v8"] .auth7-consent-box {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin: -10px 0 -10px -10px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-consent-box::before {
+  content: "";
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid oklch(1 0 0 / 0.35);
+  background: oklch(1 0 0 / 0.04);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+body[data-theme="v8"] .auth7-consent-box[aria-checked="true"]::before {
+  border-color: oklch(0.757 0.168 353.61);
+  background: oklch(0.757 0.168 353.61);
+  box-shadow: 0 0 0 3px oklch(0.757 0.168 353.61 / 0.18);
+}
+
+body[data-theme="v8"] .auth7-consent-row.is-error .auth7-consent-box::before {
+  border-color: oklch(0.775 0.136 9.34);
+  background: oklch(0.775 0.136 9.34 / 0.1);
+}
+
+body[data-theme="v8"] .auth7-consent-box:focus-visible {
+  outline: none;
+}
+
+body[data-theme="v8"] .auth7-consent-box:focus-visible::before {
+  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .auth7-consent-tick {
+  grid-area: 1 / 1;
+  z-index: 1;
+  color: oklch(0.153 0.033 321.42);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .auth7-consent-copy {
+  margin: 0;
+  padding-top: 2px;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+body[data-theme="v8"] .auth7-consent-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: oklch(0.757 0.168 353.61);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-consent-link:focus-visible {
+  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+body[data-theme="v8"] .auth7-consent-error {
+  margin: 0;
+}
+@media (max-width: 767px) {
+
+  body[data-theme="v8"] .auth7-sheet-close {
+    top: 0.7rem;
+    right: 0.9rem;
+  }
+
+  body[data-theme="v8"] .auth7-sheet-social {
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  body[data-theme="v8"] .auth7-social-btn {
+    min-height: 52px;
+  }
+
+  body[data-theme="v8"] .auth7-sheet-divider {
+    margin: 16px 0;
+  }
+
+  body[data-theme="v8"] .auth7-consent {
+    gap: 6px;
+    margin-top: 0;
+  }
+
+  body[data-theme="v8"] .auth7-consent-row {
+    gap: 8px;
+  }
+
+  body[data-theme="v8"] .auth7-consent-box {
+    width: 40px;
+    height: 40px;
+    margin: -8px 0 -8px -8px;
+  }
+
+  body[data-theme="v8"] .auth7-consent-copy {
+    padding-top: 1px;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+}

@@ -30,7 +30,7 @@ import {
   type BackendCollectionCatalog,
 } from '@/shared/backend/collection'
 import { cardFaceOverlayFromShared } from '@/shared/ui/CardFaceOverlay'
-import { usePageReady } from '@/shared/ui/PageTransition'
+import { usePageReady } from '@/shared/ui/usePageReady'
 import { useSearchParams } from 'react-router-dom'
 import './collection.css'
 

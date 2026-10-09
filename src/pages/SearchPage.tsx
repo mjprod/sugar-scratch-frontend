@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { SearchScreen } from "@/components/search/SearchScreen";
 import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";

@@ -1,5 +1,6 @@
+import "@/components/home/HomeFeedScreen.css";
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { HomeFeedScreen } from "@/components/home/HomeFeedScreen";
 import { WelcomeGiftOverlay } from "@/components/welcome/WelcomeGiftOverlay";
 

@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { Paths } from "@/routes/Paths";
 import type { ProtectedAction } from "@/services/auth";
 import type { AppTab } from "@/types/app";

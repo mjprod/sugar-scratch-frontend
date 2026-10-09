@@ -1,0 +1,406 @@
+/* theme.css rules owned by RankPage (lazy route CSS). */
+/* Category Leaderboard — same panel system as Continue Collecting */
+body[data-theme="v8"] .category-leaderboard-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+body[data-theme="v8"] .category-leaderboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+body[data-theme="v8"] .category-leaderboard-tab:focus-visible {
+  outline: 2px solid oklch(0.669 0.23 6.08);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .category-leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: opacity 180ms ease;
+}
+
+body[data-theme="v8"] .category-leaderboard-empty {
+  margin: 0;
+  padding: 20px 12px;
+  border: 1px dashed oklch(1 0 0 / 0.1);
+  border-radius: 14px;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 13px;
+  text-align: center;
+}
+
+body[data-theme="v8"] .category-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid oklch(1 0 0 / 0.06);
+  border-radius: 14px;
+  background: oklch(1 0 0 / 0.03);
+}
+
+body[data-theme="v8"] .category-leaderboard-row.is-top {
+  border-color: oklch(0.669 0.23 6.08 / 0.22);
+  background: oklch(0.669 0.23 6.08 / 0.07);
+}
+
+body[data-theme="v8"] .category-leaderboard-rank {
+  width: 22px;
+  flex-shrink: 0;
+  color: oklch(1 0 0 / 0.4);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+body[data-theme="v8"] .category-leaderboard-rank.is-second {
+  color: oklch(0.652 0.187 351.84);
+}
+
+body[data-theme="v8"] .category-leaderboard-rank.is-third {
+  color: oklch(0.806 0.136 84.74);
+}
+
+body[data-theme="v8"] .category-leaderboard-thumb {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+body[data-theme="v8"] .category-leaderboard-thumb:focus-visible {
+  outline: 2px solid oklch(0.669 0.23 6.08);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .category-leaderboard-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+body[data-theme="v8"] .category-leaderboard-info:focus-visible {
+  outline: 2px solid oklch(0.669 0.23 6.08);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+body[data-theme="v8"] .category-leaderboard-pack,
+body[data-theme="v8"] .category-leaderboard-author,
+body[data-theme="v8"] .category-leaderboard-stats {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+body[data-theme="v8"] .category-leaderboard-pack {
+  color: oklch(1 0 0);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.26px;
+}
+
+body[data-theme="v8"] .category-leaderboard-author,
+body[data-theme="v8"] .category-leaderboard-stats {
+  color: oklch(1 0 0 / 0.7);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.24px;
+}
+
+body[data-theme="v8"] .category-leaderboard-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Slot for parent-filled squircle CTA (leaderboard Play). */
+body[data-theme="v8"] .category-leaderboard-play {
+  position: relative;
+  z-index: 1;
+  width: 88px;
+  min-width: 88px;
+  height: 32px;
+  min-height: 32px;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .category-leaderboard {
+  position: relative;
+  z-index: 2;
+  margin-top: -7rem;
+}
+
+body[data-theme="v8"] .category-leaderboard.rank-leaderboard {
+  margin-top: 2rem;
+}
+
+/* Category leaderboard title sentence-ish on v2 */
+body[data-theme="v8"] .home-v2 .category-leaderboard .continue-collecting-title {
+  text-transform: none;
+  letter-spacing: 0.28px;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs {
+    padding-inline-end: 2rem;
+  }
+}
+
+/* Same chip element as tabs — invisible + non-interactive left spacer. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab.is-shim {
+  opacity: 0;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  flex: 0 0 auto;
+  width: 20px;
+  min-width: 20px;
+  max-width: 20px;
+  padding-inline: 0;
+  overflow: hidden;
+}
+
+/* Same mask-image scroll hints as Explore Creators carousel. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs.has-fade-left {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs.has-fade-left.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab.is-active {
+  border-color: rgba(255, 3, 121, 0.2);
+  background-image: linear-gradient(
+    180deg,
+    rgba(170, 0, 79, 0.41) 0%,
+    rgba(68, 0, 32, 0.175) 23.558%,
+    rgba(0, 0, 0, 0.5) 50.001%,
+    rgba(169, 0, 79, 0.41) 84.617%
+  );
+  background-color: transparent;
+  color: #fff;
+  box-shadow: none;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab:hover:not(.is-active) {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-list {
+  gap: 10px;
+}
+
+/* Figma 4thPlace+ neutral cards (9:147). */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row {
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid #201c2a;
+  background-color: #0b0b12;
+  background-image: linear-gradient(
+    103.75deg,
+    rgba(25, 17, 39, 0.2) 2.4985%,
+    rgb(11, 11, 18) 100%
+  );
+  background-blend-mode: normal;
+}
+
+/* Figma 1stPlace (8:667) — gold only on rank 1. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-first-place {
+  border-color: rgba(102, 74, 9, 0.75);
+  background-color: #000;
+  background-image: linear-gradient(
+    253.59deg,
+    rgba(169, 118, 0, 0.41) 15.693%,
+    rgba(0, 0, 0, 0.5) 50.182%,
+    rgba(68, 0, 32, 0.175) 76.529%,
+    rgba(170, 119, 0, 0.41) 100%
+  );
+}
+
+/* Figma 2ndPlace (9:89) — silver/grey. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-second-place {
+  border-color: rgba(81, 101, 102, 0.75);
+  background-color: #000;
+  background-image: linear-gradient(
+    72.63deg,
+    rgba(153, 169, 170, 0.41) 0%,
+    rgba(61, 67, 68, 0.175) 23.558%,
+    rgba(0, 0, 0, 0.5) 50.001%,
+    rgba(152, 169, 169, 0.41) 84.617%
+  );
+}
+
+/* Figma 3rdPlace (9:128) — bronze/copper. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-third-place {
+  border-color: rgba(102, 56, 41, 0.75);
+  background-color: #000;
+  background-image: linear-gradient(
+    252.15deg,
+    rgba(169, 93, 68, 0.41) 15.217%,
+    rgba(0, 0, 0, 0.5) 49.46%,
+    rgba(68, 37, 27, 0.175) 75.617%,
+    rgba(170, 98, 68, 0.41) 98.92%
+  );
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  min-width: 29px;
+  height: 29px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-first,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-second,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-third {
+  color: transparent;
+}
+
+/* Figma crowns: gold 9:265, silver 9:311, bronze 9:314. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank-crown {
+  display: block;
+  width: 29px;
+  height: 29px;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Place-specific pack thumb borders. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-first-place .category-leaderboard-thumb .card-pack-thumb {
+  border: 2px solid #5e4409;
+}
+
+/* hsba(182, 20%, 40%, 0.75) → hsla(182, 20%, 40%, 0.75) */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-second-place .category-leaderboard-thumb .card-pack-thumb {
+  border: 2px solid hsla(182, 20%, 40%, 0.75);
+}
+
+/* hsba(15, 60%, 40%, 0.75) → hsla(15, 60%, 40%, 0.75) */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row.is-third-place .category-leaderboard-thumb .card-pack-thumb {
+  border: 2px solid hsla(15, 60%, 40%, 0.75);
+}
+
+/* Figma 4th+ (9:147): rank slot is empty spacer, no numeral. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-rank.is-empty {
+  color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Figma pack text container (9:60) — 1 column, 3 rows, 4px gap. */
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-info {
+  gap: 4px;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-pack {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.26px;
+  color: #fff;
+  line-height: normal;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-stats {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.24px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: normal;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-actions {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-play {
+  width: 88px;
+  min-width: 88px;
+  height: 34px;
+  min-height: 34px;
+}

@@ -5,7 +5,7 @@ import {
   useState,
   type AnimationEvent,
 } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { isNewUserForHomepageHero } from "@/services/collectionState";
 import {
   DAILY_REWARD_DIAMONDS,

@@ -1,9 +1,7 @@
-import {
-  DotLottieReact,
-  type DotLottie,
-} from "@lottiefiles/dotlottie-react";
+import type { DotLottie } from "@lottiefiles/dotlottie-react";
 import { Bell } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import { DeferredLottie, openDeferredLotties } from "@/lib/lottie/DeferredLottie";
 import {
   countCartPacks,
   subscribeCart,
@@ -132,6 +130,7 @@ export const PacksButton = forwardRef<
   const playPocketFx = useCallback(
     (direction: PocketFxDirection) => {
       if (prefersReducedMotion()) return;
+      openDeferredLotties();
       if (hideTimeoutRef.current != null) {
         window.clearTimeout(hideTimeoutRef.current);
         hideTimeoutRef.current = null;
@@ -227,7 +226,7 @@ export const PacksButton = forwardRef<
         aria-hidden="true"
         style={{ visibility: fxVisible ? "visible" : "hidden" }}
       >
-        <DotLottieReact
+        <DeferredLottie
           src={ADDED_LOTTIE_SRC}
           autoplay={false}
           loop={false}

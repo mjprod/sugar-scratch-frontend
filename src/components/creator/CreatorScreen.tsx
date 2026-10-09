@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
-import {
-  normalizeMediaUrl,
-  type BackendModel,
-} from "@/shared/backend/collection";
+import { type BackendModel } from "@/shared/backend/collection";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { modelDisplayName } from "@/shared/backend/modelProfile";
 import { formatSocialHandle } from "@/shared/catalog/characters";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
@@ -215,7 +213,7 @@ function CreatorScreenInner({
   const coverUrl =
     (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
     avatarUrl ||
-    "/img/placeholder.png";
+    "/img/placeholder.webp";
 
   function notice(message: string) {
     setToast(message);
@@ -270,7 +268,7 @@ function CreatorScreenInner({
         type: "follow",
         creatorId: followId || creatorId,
         displayName: creatorName,
-        avatarUrl: avatarUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.webp",
       });
       return;
     }
@@ -289,7 +287,7 @@ function CreatorScreenInner({
         id: followId || creatorId,
         displayName: creatorName,
         username: "",
-        avatarUrl: avatarUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.webp",
         followedAt: Date.now(),
         hasUnseenActivity: false,
       } as const);

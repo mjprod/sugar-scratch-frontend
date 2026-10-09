@@ -19,7 +19,7 @@ import {
   createSwipeDeckFromModels,
 } from "@/shared/backend/modelProfile";
 import "@/features/swipe/swipe.css";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 export type PersonalizationSwipeResult = {
   liked: string[];

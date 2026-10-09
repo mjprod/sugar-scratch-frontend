@@ -1,6 +1,7 @@
 /** Creator models and foil packs from `/api/models`. */
 
 import { apiFetch } from "../lib/api";
+import { normalizeMediaUrl } from "../lib/mediaUrl";
 
 export type BackendModel = {
   id?: string | null;
@@ -60,14 +61,6 @@ export type ModelProfile = {
   packs: FoilPack[];
 };
 
-const PROXIED_MEDIA_PREFIXES = [
-  "/api/",
-  "/cards/",
-  "/models/",
-  "/photo-scratch/",
-  "/mesh/",
-] as const;
-
 export function formatCollectionLabel(name: string) {
   const trimmed = name.trim();
   return trimmed ? `${trimmed} Collection` : "Collection";
@@ -89,34 +82,6 @@ function normalizeKey(value: string) {
     .toLowerCase()
     .replace(/^@+/, "")
     .replace(/[^a-z0-9]+/g, "");
-}
-
-function isProxiedMediaPath(pathname: string) {
-  return PROXIED_MEDIA_PREFIXES.some(
-    (prefix) => pathname === prefix.slice(0, -1) || pathname.startsWith(prefix),
-  );
-}
-
-/** Rewrite API media onto the Vite proxy so videos load same-origin. */
-export function normalizeMediaUrl(value: string): string {
-  const raw = value.trim();
-  if (!raw) return "";
-  if (raw.startsWith("blob:") || raw.startsWith("data:")) return raw;
-
-  if (/^(?:https?:)?\/\//i.test(raw)) {
-    try {
-      const absolute = new URL(raw, "https://placeholder.local");
-      const pathWithSearch = `${absolute.pathname}${absolute.search}${absolute.hash}`;
-      if (isProxiedMediaPath(absolute.pathname)) return pathWithSearch;
-      if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) return raw;
-      return pathWithSearch;
-    } catch {
-      return raw;
-    }
-  }
-
-  const withoutPublic = raw.replace(/^\.?\/?public\//, "");
-  return withoutPublic.startsWith("/") ? withoutPublic : `/${withoutPublic}`;
 }
 
 function optionalMedia(value: unknown): string | null {

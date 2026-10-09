@@ -23,7 +23,7 @@ import {
   formatExchangeDiamondPreview,
   type CoinExchangeOption,
 } from "@/services/store";
-import "@/features/packs/packs.css";
+import "@/features/packs/packs-entry.css";
 
 export type WalletBalancesPopoverProps = {
   open: boolean;

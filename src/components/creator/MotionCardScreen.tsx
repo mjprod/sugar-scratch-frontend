@@ -7,7 +7,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
@@ -24,7 +24,7 @@ import {
   photoScratchSlotPrices,
 } from "@/shared/backend/collection";
 import { Paths } from "@/routes/Paths";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import "./creator-influencer.css";
 import "./motion-card-page.css";
 
@@ -161,7 +161,7 @@ function MotionCardScreenInner({
     (cardId && !cardId.includes("-placeholder-")
       ? `/cards/${encodeURIComponent(cardId)}/motion-poster.webp`
       : "") ||
-    "/img/placeholder.png";
+    "/img/placeholder.webp";
 
   const videoUrl =
     card?.mediaType === "video" && card.mediaUrl ? card.mediaUrl : "";
@@ -404,7 +404,7 @@ function MotionCardScreenInner({
                   ].join(" ")}
                 >
                   <img
-                    src={src || "/img/placeholder.png"}
+                    src={src || "/img/placeholder.webp"}
                     alt=""
                     className="mcp-photo-img"
                   />

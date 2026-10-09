@@ -1,9 +1,15 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { SearchScreen } from "@/components/search/SearchScreen";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { searchPackToPurchase } from "@/services/search";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
+
+const SearchScreen = lazy(() =>
+  import("@/components/search/SearchScreen").then((mod) => ({
+    default: mod.SearchScreen,
+  })),
+);
 
 const ROOT_VARIANTS = {
   hidden: {
@@ -93,7 +99,7 @@ export function PackLibrary({
   return createPortal(
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           key="pack-library"
           className="pack-library-root fixed inset-0 z-[5150] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
           role="presentation"
@@ -103,7 +109,7 @@ export function PackLibrary({
           variants={ROOT_VARIANTS}
         >
           {/* Backdrop fades on its own track — not tied to the sheet transform. */}
-          <motion.button
+          <m.button
             type="button"
             className="pack-library-overlay absolute inset-0"
             aria-label="Dismiss search"
@@ -111,22 +117,34 @@ export function PackLibrary({
             onClick={onClose}
           />
           {/* Search sheet slides up independently of the overlay fade. */}
-          <motion.div
+          <m.div
             className="pack-library-panel relative z-[1] mx-auto mt-auto flex min-h-0 w-full max-w-[75rem] flex-1 flex-col overflow-hidden"
             role="dialog"
             aria-modal="true"
             aria-label="Search"
             variants={PANEL_VARIANTS}
           >
-            <SearchScreen
-              onCancel={onClose}
-              onOpenCreator={openCreator}
-              onOpenPack={(pack) => {
-                openPurchase(searchPackToPurchase(pack), "buy-pack");
-              }}
-            />
-          </motion.div>
-        </motion.div>
+            <Suspense
+              fallback={
+                <div className="grid flex-1 place-items-center">
+                  <Loader2
+                    className="size-8 animate-spin text-white/70"
+                    role="status"
+                    aria-label="Loading search"
+                  />
+                </div>
+              }
+            >
+              <SearchScreen
+                onCancel={onClose}
+                onOpenCreator={openCreator}
+                onOpenPack={(pack) => {
+                  openPurchase(searchPackToPurchase(pack), "buy-pack");
+                }}
+              />
+            </Suspense>
+          </m.div>
+        </m.div>
       ) : null}
     </AnimatePresence>,
     document.body,

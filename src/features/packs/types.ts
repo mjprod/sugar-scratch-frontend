@@ -5,7 +5,7 @@ import {
   type ModelRotation,
   type VideoFitMode,
   type VideoTextureTransform,
-} from "@/shared/pack3d";
+} from "@/lib/pack3d";
 
 export type AssetSource = "bundled" | "upload";
 export type { VideoFitMode, VideoTextureTransform, ModelRotation };

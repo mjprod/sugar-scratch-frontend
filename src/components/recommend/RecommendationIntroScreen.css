@@ -1,0 +1,216 @@
+/* theme.css rules owned by RecIntroPage (lazy route CSS). */
+body[data-theme="v8"] .auth7-intro-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 360px;
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 4px 8px 0;
+  text-align: center;
+}
+
+body[data-theme="v8"] .auth7-intro-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body[data-theme="v8"] .auth7-intro-hero {
+  flex-shrink: 0;
+  width: 100%;
+  margin-top: 3dvh;
+}
+
+body[data-theme="v8"] .auth7-intro-lead {
+  flex-shrink: 0;
+}
+
+body[data-theme="v8"] .auth7-intro-title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: clamp(1.76rem, 6.2vw, 2.15rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+body[data-theme="v8"] .auth7-intro-copy {
+  margin: 8px auto 0;
+  max-width: 50ch;
+  color: oklch(1 0 0 / 0.58);
+  font-size: 1rem;
+  line-height: 150%;
+}
+
+body[data-theme="v8"] .auth7-intro-copy-lead {
+  color: #ff0068;
+}
+
+/* Swipe education — one compact group */
+body[data-theme="v8"] .auth7-intro-demo {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: max-content max-content;
+  align-content: center;
+  justify-content: center;
+  column-gap: 18px;
+  width: 100%;
+  min-height: 0;
+  margin-top: 28px;
+}
+
+body[data-theme="v8"] .auth7-intro-demo-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  min-height: 0;
+}
+
+body[data-theme="v8"] .auth7-intro-demo-card {
+  display: block;
+  width: auto;
+  height: clamp(125px, 26dvh, 179px);
+  aspect-ratio: 164 / 285;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 12px;
+  border: 1px solid oklch(1 0 0 / 0.14);
+  box-shadow: 0 10px 24px oklch(0 0 0 / 0.42);
+  background: oklch(0.198 0.01 285.46);
+  zoom: 1.2;
+}
+
+body[data-theme="v8"] .auth7-intro-demo-card--left {
+  transform: rotate(-8deg) translateX(-2px);
+}
+
+body[data-theme="v8"] .auth7-intro-demo-card--right {
+  transform: rotate(8deg) translateX(2px);
+}
+
+body[data-theme="v8"] .auth7-intro-dir {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 1rem 0 0;
+}
+
+body[data-theme="v8"] .auth7-intro-dir-marks {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+body[data-theme="v8"] .auth7-intro-demo-col.is-pass .auth7-intro-dir-marks {
+  color: oklch(0.77 0.14 9.82);
+}
+
+body[data-theme="v8"] .auth7-intro-demo-col.is-like .auth7-intro-dir-marks {
+  color: #0fff00;
+}
+
+body[data-theme="v8"] .auth7-intro-dir-label {
+  color: oklch(1 0 0 / 0.55);
+  font-size: calc(0.78rem + 2px);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .auth7-intro-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: auto;
+  /* Lift the CTA off the viewport edge; scales with dynamic viewport height. */
+  margin-bottom: 4dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  gap: 8px;
+}
+
+/* Intro start CTA reuses the shared auth CtaButton slot (hf-buy look). */
+body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
+  width: 78%;
+  max-width: 280px;
+  min-height: 52px;
+  height: 52px;
+  margin-top: 0;
+}
+
+body[data-theme="v8"] .auth7-intro-skip {
+  position: static;
+  width: auto;
+  min-height: 40px;
+  padding: 8px 16px 4px;
+  border: none;
+  background: transparent;
+  color: oklch(1 0 0 / 0.5);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .auth7-intro-skip:hover {
+  color: oklch(1 0 0 / 0.78);
+}
+
+body[data-theme="v8"] .auth7-intro-skip:focus-visible {
+  outline: 2px solid oklch(0.711 0.203 357.66 / 0.7);
+  outline-offset: 3px;
+}
+
+body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
+  outline: 2px solid oklch(0.711 0.203 357.66 / 0.7);
+  outline-offset: 3px;
+}
+
+@media (max-height: 580px) {
+  body[data-theme="v8"] .auth7-intro-demo-card {
+    height: clamp(114px, 23dvh, 156px);
+  }
+}
+
+@media (min-width: 768px) {
+
+  body[data-theme="v8"] .auth7-intro-panel {
+    max-width: none;
+    padding: 8px 0 0;
+  }
+
+  body[data-theme="v8"] .auth7-intro-title {
+    font-size: clamp(1.95rem, 3.1vw, 2.28rem);
+  }
+
+  body[data-theme="v8"] .auth7-intro-demo {
+    column-gap: 22px;
+    margin-top: 32px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-demo-card {
+    height: clamp(143px, 23dvh, 179px);
+    border-radius: 14px;
+  }
+
+  body[data-theme="v8"] .auth7-intro-actions {
+    /* Desktop card already has its own inset; keep a smaller dvh lift. */
+    margin-bottom: 2.5dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  body[data-theme="v8"] .auth7-intro-start.auth2-primary-cta {
+    width: 76%;
+    min-height: 54px;
+    height: 54px;
+  }
+}

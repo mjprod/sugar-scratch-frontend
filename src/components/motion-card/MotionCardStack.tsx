@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   MotionCard,
   type MotionCardProps,
@@ -33,7 +33,7 @@ export function MotionCardStack({
         .join(" ")}
     >
       <MotionCard {...cardProps} />
-      <motion.div
+      <m.div
         initial={false}
         animate={{
           opacity: hideMeter ? 0 : 1,
@@ -50,7 +50,7 @@ export function MotionCardStack({
           staticTotal={staticTotal}
           collectedIndexes={collectedIndexes}
         />
-      </motion.div>
+      </m.div>
     </div>
   );
 }

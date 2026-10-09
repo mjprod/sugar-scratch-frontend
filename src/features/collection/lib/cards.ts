@@ -12,7 +12,7 @@ import {
 export const DEFAULT_BACK_URL = '/img/SugarScratch.png'
 
 /** Shown on card faces until API media is available (or when it fails). */
-export const PLACEHOLDER_MEDIA_URL = '/img/placeholder.png'
+export const PLACEHOLDER_MEDIA_URL = '/img/placeholder.webp'
 
 /** Identity badge rendered on the card face (shared influencer fields). */
 export type CardFaceOverlayConfig = {

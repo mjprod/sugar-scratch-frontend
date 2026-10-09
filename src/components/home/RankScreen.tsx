@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   fetchLeaderboard,
   type LeaderboardCategory,

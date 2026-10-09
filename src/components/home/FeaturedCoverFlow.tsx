@@ -8,12 +8,12 @@ import { MobileCoverFlow } from "@/components/home/MobileCoverFlow";
 import { BuyPackQuantityModal } from "@/components/home/BuyPackQuantityModal";
 import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
 import {
-  MOBILE_COVERFLOW_CAMERA,
+  HOME_MOBILE_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
-import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
@@ -84,7 +84,7 @@ function isMobileCoverflowViewport() {
 }
 
 function defaultHeroDebug(isMobile: boolean): HeroDebugState {
-  const camera = isMobile ? MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
+  const camera = isMobile ? HOME_MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
   return {
     headingX: 0,
     headingY: isMobile ? 5.25 : 7.1,
@@ -493,7 +493,7 @@ export function FeaturedCoverFlow({
 
   const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
     const base = isMobileViewport
-      ? MOBILE_COVERFLOW_CAMERA
+      ? HOME_MOBILE_COVERFLOW_CAMERA
       : HOME_COVERFLOW_CAMERA;
     return {
       ...base,

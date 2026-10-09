@@ -1,0 +1,228 @@
+/* theme.css rules owned by InboxPage (lazy route CSS). */
+body[data-theme="v8"] .inbox-page .app-page-shell-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (min-width: 769px) {
+
+  body[data-theme="v8"] .inbox-header-filter .inbox-filter-label {
+    display: inline;
+  }
+}
+
+body[data-theme="v8"] .inbox-unread-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: oklch(0.688 0.215 4.09);
+  box-shadow: 0 0 8px oklch(0.688 0.215 4.09 / 0.55);
+}
+
+body[data-theme="v8"] .inbox-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body[data-theme="v8"] .inbox-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body[data-theme="v8"] .inbox-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body[data-theme="v8"] .inbox-header-filter .inbox-filter-label {
+  display: none;
+}
+
+/* Unified list surface — not floating per-row cards */
+body[data-theme="v8"] .inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 20px;
+  background: oklch(1 0 0 / 0.03);
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .inbox-item-row+.inbox-item-row {
+  border-top: 1px solid oklch(1 0 0 / 0.06);
+}
+
+body[data-theme="v8"] .inbox-item {
+  display: grid;
+  grid-template-columns: 6px 44px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px 12px;
+  width: 100%;
+  padding: 14px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+body[data-theme="v8"] .inbox-item:hover {
+  background: oklch(1 0 0 / 0.045);
+}
+
+body[data-theme="v8"] .inbox-item:hover .inbox-item-chevron {
+  color: oklch(1 0 0 / 0.5);
+}
+
+body[data-theme="v8"] .inbox-item:focus-visible {
+  outline: 2px solid oklch(0.711 0.203 357.66 / 0.7);
+  outline-offset: -2px;
+}
+
+body[data-theme="v8"] .inbox-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: oklch(0.688 0.215 4.09);
+  justify-self: center;
+}
+
+body[data-theme="v8"] .inbox-item-dot.is-hidden {
+  visibility: hidden;
+}
+
+body[data-theme="v8"] .inbox-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .inbox-thumb--avatar {
+  border-radius: 999px;
+  border: 1px solid oklch(0.711 0.203 357.66 / 0.35);
+}
+
+body[data-theme="v8"] .inbox-thumb--pack {
+  border-radius: 12px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+}
+
+body[data-theme="v8"] .inbox-thumb--icon {
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: oklch(1 0 0);
+}
+
+body[data-theme="v8"] .inbox-thumb--icon.is-bell {
+  background: oklch(0.711 0.035 256.79 / 0.22);
+  color: oklch(0.869 0.02 252.89);
+}
+
+body[data-theme="v8"] .inbox-thumb--icon.is-gift {
+  background: oklch(0.656 0.212 354.31 / 0.18);
+  color: oklch(0.823 0.11 346.02);
+}
+
+body[data-theme="v8"] .inbox-thumb--icon.is-diamond {
+  background: oklch(0.754 0.139 232.66 / 0.16);
+  color: oklch(0.828 0.101 230.32);
+}
+
+body[data-theme="v8"] .inbox-thumb--icon.is-vip_crown {
+  background: oklch(0.767 0.139 91.06 / 0.16);
+  color: oklch(0.841 0.119 90.92);
+}
+
+body[data-theme="v8"] .inbox-thumb--icon.is-warning {
+  background: oklch(0.758 0.159 55.93 / 0.16);
+  color: oklch(0.837 0.117 66.29);
+}
+
+body[data-theme="v8"] .inbox-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .inbox-item-title {
+  color: oklch(1 0 0);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+body[data-theme="v8"] .inbox-item-subtitle {
+  color: oklch(1 0 0 / 0.48);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .inbox-item-time {
+  color: oklch(1 0 0 / 0.38);
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+body[data-theme="v8"] .inbox-item-chevron {
+  width: 16px;
+  height: 16px;
+  color: oklch(1 0 0 / 0.28);
+  transition: color 140ms ease;
+}
+
+body[data-theme="v8"] .inbox-empty-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .inbox-item {
+    grid-template-columns: 6px 40px minmax(0, 1fr) auto 14px;
+    gap: 8px 10px;
+    padding: 12px;
+  }
+
+  body[data-theme="v8"] .inbox-thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  body[data-theme="v8"] .inbox-item-title {
+    font-size: 0.9rem;
+  }
+}
+
+body[data-theme="v8"] .inbox-empty-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body[data-theme="v8"] .inbox-empty-wrap .inbox-section-head {
+  margin-bottom: 0;
+}

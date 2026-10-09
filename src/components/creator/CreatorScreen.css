@@ -1,0 +1,47 @@
+/* theme.css rules owned by CreatorPage (lazy route CSS). */
+/* Creator profile: clear floating top HUD (mobile + desktop). */
+body[data-theme="v8"] .app-layout--hud .cpv2-shell {
+  padding-top: var(--app-diamond-offset);
+}
+@media (min-width: 769px) {
+
+  body[data-theme="v8"][data-liquid-nav="desktop"] .cpv2-shell,
+  body[data-theme="v8"][data-liquid-nav="to-desktop"] .cpv2-shell {
+    padding-top: var(--app-diamond-offset);
+  }
+}
+
+body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
+  padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+
+  body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
+    padding-bottom: 40px;
+  }
+}
+
+body[data-theme="v8"] .cpv2-toast {
+  position: fixed;
+  left: 50%;
+  /* Above sticky CTA + footer nav */
+  bottom: calc(220px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  max-width: min(90vw, 360px);
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(0 0 0 / 0.88);
+  color: oklch(1 0 0);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .cpv2-toast {
+    bottom: 48px;
+  }
+}

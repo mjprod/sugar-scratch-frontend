@@ -12,7 +12,7 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
-import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import {
   feedLikeCount,
   feedPackLabel,
@@ -152,7 +152,7 @@ export function CreatorFeedCard({
         type: "follow",
         creatorId,
         displayName: item.creatorName,
-        avatarUrl: item.avatarUrl || "/img/placeholder.png",
+        avatarUrl: item.avatarUrl || "/img/placeholder.webp",
       });
       return;
     }
@@ -167,7 +167,7 @@ export function CreatorFeedCard({
       id: creatorId,
       displayName: item.creatorName,
       username: "",
-      avatarUrl: item.avatarUrl || "/img/placeholder.png",
+      avatarUrl: item.avatarUrl || "/img/placeholder.webp",
       followedAt: Date.now(),
       hasUnseenActivity: false,
     });
