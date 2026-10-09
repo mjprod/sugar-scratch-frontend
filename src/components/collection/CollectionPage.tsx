@@ -225,13 +225,15 @@ export function CollectionPage({
 
             <CollectionPromoCarousel />
 
-            <button
-              type="button"
-              className="mc-debug-continue"
-              onClick={() => setHideContinue((hidden) => !hidden)}
-            >
-              {hideContinue ? "Show continue" : "Hide continue"}
-            </button>
+            {import.meta.env.DEV ? (
+              <button
+                type="button"
+                className="mc-debug-continue"
+                onClick={() => setHideContinue((hidden) => !hidden)}
+              >
+                {hideContinue ? "Show continue" : "Hide continue"}
+              </button>
+            ) : null}
 
             <div className="mc-hub">
               {hideContinue ? null : (
