@@ -3,7 +3,7 @@ import { Loader2, Search } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
 // The auth sheet is lazy, but its CTA styles must keep their entry-CSS slot
 // ahead of LiquidGlassNav.css / theme.css or equal-specificity rules flip.
-import "@/components/cta/BorderGlow.css";
+// BorderGlow.css must stay after CtaButton.css (ties on .border-glow-card).
 import "@/components/cta/CtaButton.css";
 import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";

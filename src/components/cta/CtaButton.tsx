@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import BorderGlow from "./BorderGlow";
+import BorderGlow from "@/components/ui/BorderGlow";
 
 // Aurora pulls in ogl (WebGL); keep it out of the entry chunk.
 const Aurora = lazy(() => import("./Aurora"));

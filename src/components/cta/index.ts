@@ -1,7 +1,7 @@
 export type { AuroraColorStops, AuroraProps } from './Aurora'
 
-export { default as BorderGlow } from './BorderGlow'
-export type { BorderGlowProps, BorderGlowShape } from './BorderGlow'
+export { default as BorderGlow } from '@/components/ui/BorderGlow'
+export type { BorderGlowProps, BorderGlowShape } from '@/components/ui/BorderGlow'
 
 export { CtaButton } from './CtaButton'
 export type { CtaButtonProps, CtaShape } from './CtaButton'
