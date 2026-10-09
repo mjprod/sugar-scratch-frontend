@@ -92,8 +92,8 @@ export function ReadyToReveal({
     [scratchGroups, inventoryRevision],
   );
 
-  const tiles = useMemo<ContinueTile[]>(() => {
-    const packTiles: ContinueTile[] = packs.map((pack) => {
+  const tiles = useMemo(() => {
+    const packTiles = packs.map((pack) => {
       const model = matchModel(models, {
         packId: pack.catalogPackId ?? pack.id,
         name: pack.creator,
@@ -138,7 +138,7 @@ export function ReadyToReveal({
       };
     });
 
-    const cardTiles: ContinueTile[] = scratches.map((group) => {
+    const cardTiles = scratches.map((group) => {
       const model = matchModel(models, {
         packId: group.id.replace(/^(photo|motion):/, ""),
         name: group.creatorName,
@@ -183,8 +183,8 @@ export function ReadyToReveal({
       };
     });
 
-    return [...packTiles, ...cardTiles].filter(
-      (tile): tile is ContinueTile => tile != null,
+    return [...packTiles, ...cardTiles].flatMap((tile) =>
+      tile ? [tile] : [],
     );
   }, [packs, scratches, models, onOpenPack, onScratch]);
 
@@ -259,7 +259,6 @@ function ContinueSection({
 }) {
   const items = useMemo(() => tiles.map(tileToIteration), [tiles]);
   const desktop = useContinueDesktop();
-  const [focusedId, setFocusedId] = useState<string | null>(null);
   const activateById = useMemo(() => {
     const map = new Map(tiles.map((tile) => [tile.id, tile.onActivate]));
     return (item: Iteration) => {

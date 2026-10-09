@@ -51,7 +51,6 @@ import {
   packUnitCost,
   resolvePurchasePackId,
   submitLinearPackPurchase,
-  isJulianaCoverflowBuyAb,
   type CatalogPackProduct,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
@@ -279,20 +278,6 @@ function iterationsFromFeatured(
   }
 
   return { items, playById };
-}
-
-function iterationIsJuliana(
-  item: Iteration,
-  target: FeaturedCoverFlowPlayTarget | null,
-) {
-  return (
-    isJulianaCoverflowBuyAb(item.characterId) ||
-    isJulianaCoverflowBuyAb(item.id) ||
-    isJulianaCoverflowBuyAb(target?.id) ||
-    isJulianaCoverflowBuyAb(target?.foilId) ||
-    isJulianaCoverflowBuyAb(item.girlName) ||
-    isJulianaCoverflowBuyAb(target?.creatorName)
-  );
 }
 
 function HeroDebugField({
