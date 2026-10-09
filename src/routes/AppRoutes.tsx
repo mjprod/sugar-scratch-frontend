@@ -125,6 +125,9 @@ const GameHistoryPage = lazy(() =>
   })),
 );
 
+const LABS_ENABLED =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_LABS === "1";
+
 function GameCatalogRoute({ children }: { children: ReactNode }) {
   return <CatalogProvider>{children}</CatalogProvider>;
 }
@@ -157,22 +160,26 @@ export function AppRoutes() {
             path={Paths.loading}
             element={<Navigate to={Paths.home} replace />}
           />
-          <Route
-            path={Paths.preLoader}
-            element={
-              <AppShell label="Pre-loader">
-                <PreLoaderPage />
-              </AppShell>
-            }
-          />
-          <Route
-            path={Paths.componentLab}
-            element={
-              <AppShell>
-                <ComponentLabPage />
-              </AppShell>
-            }
-          />
+          {LABS_ENABLED && (
+            <>
+              <Route
+                path={Paths.preLoader}
+                element={
+                  <AppShell label="Pre-loader">
+                    <PreLoaderPage />
+                  </AppShell>
+                }
+              />
+              <Route
+                path={Paths.componentLab}
+                element={
+                  <AppShell>
+                    <ComponentLabPage />
+                  </AppShell>
+                }
+              />
+            </>
+          )}
           <Route
             path={Paths.resetPassword}
             element={
@@ -376,22 +383,6 @@ export function AppRoutes() {
               }
             />
             <Route
-              path="coverflow-v2"
-              element={
-                <CatalogProvider>
-                  <CoverFlowV2Page />
-                </CatalogProvider>
-              }
-            />
-            <Route
-              path="mobile-carousel"
-              element={
-                <CatalogProvider>
-                  <MobileCarouselPage />
-                </CatalogProvider>
-              }
-            />
-            <Route
               path="game"
               element={
                 <GameCatalogRoute>
@@ -399,22 +390,42 @@ export function AppRoutes() {
                 </GameCatalogRoute>
               }
             />
-            <Route
-              path="game-ui"
-              element={
-                <GameCatalogRoute>
-                  <GameUiPage />
-                </GameCatalogRoute>
-              }
-            />
-            <Route
-              path="audio-test"
-              element={
-                <GameCatalogRoute>
-                  <AudioTestPage />
-                </GameCatalogRoute>
-              }
-            />
+            {LABS_ENABLED && (
+              <>
+                <Route
+                  path="coverflow-v2"
+                  element={
+                    <CatalogProvider>
+                      <CoverFlowV2Page />
+                    </CatalogProvider>
+                  }
+                />
+                <Route
+                  path="mobile-carousel"
+                  element={
+                    <CatalogProvider>
+                      <MobileCarouselPage />
+                    </CatalogProvider>
+                  }
+                />
+                <Route
+                  path="game-ui"
+                  element={
+                    <GameCatalogRoute>
+                      <GameUiPage />
+                    </GameCatalogRoute>
+                  }
+                />
+                <Route
+                  path="audio-test"
+                  element={
+                    <GameCatalogRoute>
+                      <AudioTestPage />
+                    </GameCatalogRoute>
+                  }
+                />
+              </>
+            )}
             <Route
               path="photo-scratch"
               element={
