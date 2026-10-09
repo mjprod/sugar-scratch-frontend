@@ -199,8 +199,13 @@ export const PacksButton = forwardRef<
         }
       };
       if (player.isLoaded) ready();
-      else player.addEventListener("load", ready);
-    },
+      else {
+        const onLoad = () => {
+          player.removeEventListener("load", onLoad);
+          ready();
+        };
+        player.addEventListener("load", onLoad);
+      }
     [runPocketFx],
   );
 
