@@ -18,6 +18,7 @@ import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   isScratchHandQuotaExhausted,
   persistScratchCoins,
+  scratchCoinAwardAction,
   startScratchHand,
 } from "@/services/scratchCoinReward";
 import {
@@ -848,6 +849,8 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   /** Theme toggle only. A paid launch always awards, even on an owned card. */
   const freePlayLaunch = isFreePlayUrl();
   const practiceRef = useRef(freePlayLaunch);
+  /** 10% bands crossed while the paid hand POST is still in flight. */
+  const pendingMilestonesRef = useRef<number[]>([]);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -1109,15 +1112,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       handIdRef.current = "";
       handCardIdRef.current = null;
       practiceRef.current = freePlayLaunch;
+      pendingMilestonesRef.current = [];
       return;
     }
     const key = selectedCardId.trim();
-    if (!key || isScratchHandQuotaExhausted()) return;
+    if (!key) return;
+    if (isScratchHandQuotaExhausted()) {
+      // Already paid to play, but the daily reward-hand quota is spent —
+      // do not optimistic-credit coins that can never persist.
+      practiceRef.current = true;
+      pendingMilestonesRef.current = [];
+      return;
+    }
     // Remount / effect re-run for the same card must not burn quota.
     if (handCardIdRef.current === key) return;
     handIdRef.current = "";
     handCardIdRef.current = key;
     practiceRef.current = false;
+    pendingMilestonesRef.current = [];
     const gen = ++handStartGenRef.current;
     void startScratchHand(key).then((result) => {
       if (gen !== handStartGenRef.current) return;
@@ -1125,10 +1137,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         handIdRef.current = result.handId;
         // Owned-card replays still award. Only the theme toggle skips minting.
         practiceRef.current = freePlayLaunch;
+        flushHeldScratchMilestones(result.handId);
         return;
       }
-      // Failed / quota — allow a later retry for this card.
-      practiceRef.current = false;
+      // Failed / quota — skip awards so the HUD cannot show coins refreshWallet
+      // will later wipe. A later card change can start a new hand.
+      practiceRef.current = true;
+      pendingMilestonesRef.current = [];
       if (handCardIdRef.current === key) handCardIdRef.current = null;
     });
   }, [authed, freePlayLaunch, selectedCardId]);
@@ -2052,6 +2067,37 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
   }
 
+  function creditScratchMilestone(milestone: number, handId: string) {
+    const award = rollSparkleCoinAward();
+    const cardId = handCardIdRef.current || undefined;
+    queueMicrotask(() => {
+      coinBadge.award(award.amount);
+      addCoins(award.amount);
+      noteCoinsReceived(award.amount);
+      playSparkleCoinSound(award.soundSrc);
+      // Persist only with a server-issued hand — forged client ids are rejected.
+      if (handId) {
+        persistScratchCoins({
+          handId,
+          milestone,
+          cardId,
+          amount: award.amount,
+        });
+      }
+      // Milestone counts as activity — hold longer so +N / count-up can read.
+      huntHintActivityAtRef.current = performance.now();
+      coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+    });
+  }
+
+  function flushHeldScratchMilestones(handId: string) {
+    const held = pendingMilestonesRef.current;
+    pendingMilestonesRef.current = [];
+    for (const milestone of held) {
+      creditScratchMilestone(milestone, handId);
+    }
+  }
+
   function maybeCelebrateScratchProgress(nextProgress: number) {
     const crossedBands = crossedProgressMilestones(
       celebrateProgressRef.current,
@@ -2060,32 +2106,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     celebrateProgressRef.current = nextProgress;
     if (crossedBands.length === 0) return;
     const crossed = crossedBands[crossedBands.length - 1];
-    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    // Award sparkle coins on paid hands. Free play (theme toggle) skips awards.
     // One finalize can jump several 10% bands; persist each band or those coins
-    // never get claimed.
-    if (!freePlayLaunch && !practiceRef.current) {
-      const handId = handIdRef.current;
-      const cardId = handCardIdRef.current || undefined;
+    // never get claimed. Signed-in awards wait for a server hand.
+    const awardAction = scratchCoinAwardAction({
+      freePlay: freePlayLaunch,
+      practice: practiceRef.current,
+      authed,
+      handId: handIdRef.current,
+    });
+    if (awardAction === "hold") {
+      pendingMilestonesRef.current.push(...crossedBands);
+    } else if (awardAction === "persist") {
       for (const milestone of crossedBands) {
-        const award = rollSparkleCoinAward();
-        queueMicrotask(() => {
-          coinBadge.award(award.amount);
-          addCoins(award.amount);
-          noteCoinsReceived(award.amount);
-          playSparkleCoinSound(award.soundSrc);
-          // Persist only with a server-issued hand — forged client ids are rejected.
-          if (handId) {
-            persistScratchCoins({
-              handId,
-              milestone,
-              cardId,
-              amount: award.amount,
-            });
-          }
-          // Milestone counts as activity — hold longer so +N / count-up can read.
-          huntHintActivityAtRef.current = performance.now();
-          coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
-        });
+        creditScratchMilestone(milestone, handIdRef.current);
+      }
+    } else if (awardAction === "local") {
+      for (const milestone of crossedBands) {
+        creditScratchMilestone(milestone, "");
       }
     }
 
