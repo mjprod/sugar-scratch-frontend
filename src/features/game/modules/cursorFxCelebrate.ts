@@ -50,21 +50,12 @@ export function progressMilestoneIndex(
   return Math.floor(progress / step + 1e-9);
 }
 
-/** Returns the milestone index crossed (1 = 10%, 2 = 20%, …), or null. */
-export function crossedProgressMilestone(
-  prevProgress: number,
-  nextProgress: number,
-  step = CURSOR_FX_MILESTONE,
-): number | null {
-  const prev = progressMilestoneIndex(prevProgress, step);
-  const next = progressMilestoneIndex(nextProgress, step);
-  if (next > prev && next > 0) return next;
-  return null;
-}
-
 /**
- * Every milestone index crossed, ascending. A batched scratch frame can jump
- * several bands at once; each band is its own coin award.
+ * Every 10% band crossed from `prevProgress` to `nextProgress`
+ * (1 = 10%, 2 = 20%, …). Empty when the jump stays in the same band.
+ *
+ * AutoScratch / a coalesced swipe can span several bands in one finalize;
+ * callers that award coins must walk this list or those milestones are lost.
  */
 export function crossedProgressMilestones(
   prevProgress: number,
@@ -73,11 +64,26 @@ export function crossedProgressMilestones(
 ): number[] {
   const prev = progressMilestoneIndex(prevProgress, step);
   const next = progressMilestoneIndex(nextProgress, step);
-  const crossed: number[] = [];
-  for (let index = Math.max(prev + 1, 1); index <= next; index += 1) {
-    crossed.push(index);
+  if (next <= prev || next <= 0) return [];
+  const start = Math.max(prev + 1, 1);
+  const bands: number[] = [];
+  for (let band = start; band <= next; band += 1) {
+    bands.push(band);
   }
-  return crossed;
+  return bands;
+}
+
+/**
+ * Highest milestone index crossed (1 = 10%, 2 = 20%, …), or null.
+ * FX sizing only — coin awards must use `crossedProgressMilestones`.
+ */
+export function crossedProgressMilestone(
+  prevProgress: number,
+  nextProgress: number,
+  step = CURSOR_FX_MILESTONE,
+): number | null {
+  const bands = crossedProgressMilestones(prevProgress, nextProgress, step);
+  return bands.length > 0 ? bands[bands.length - 1] : null;
 }
 
 export function resolveCursorFxDeviceProfile(opts: {
