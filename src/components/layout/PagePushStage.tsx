@@ -45,6 +45,7 @@ export function PagePushStage() {
   });
 
   const idx = historyIndex();
+  const fromPath = trail.current.pathname;
   if (location.pathname !== trail.current.pathname) {
     trail.current = {
       pathname: location.pathname,
@@ -57,7 +58,7 @@ export function PagePushStage() {
 
   const skip =
     Boolean(reduceMotion) ||
-    shouldSkipPushHop(trail.current.pathname, location.pathname) ||
+    shouldSkipPushHop(fromPath, location.pathname) ||
     isMemoryTransitioning();
 
   if (skip) {
