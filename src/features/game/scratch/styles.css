@@ -397,10 +397,31 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   pointer-events: none;
 }
 
-/* Bottom-left coin badge: rise from below, leave straight down. */
+/* Game diamond: drop in from above once the scratch dock has landed. */
+.stage-game__diamond-enter {
+  margin-right: 2px;
+  transform-origin: top center;
+  animation: stage-game-diamond-enter 980ms cubic-bezier(0.22, 1, 0.36, 1) 720ms both;
+  pointer-events: auto;
+}
+
+@keyframes stage-game-diamond-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bottom-left coin badge: rise from below, leave straight down.
+   Enter waits out the dock fly so it arrives with the diamond. */
 .pack-progress-shell--bottom-left {
   transform-origin: center bottom;
-  animation: pack-progress-enter-bl 420ms both;
+  animation: pack-progress-enter-bl 980ms cubic-bezier(0.22, 1, 0.36, 1) 720ms both;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
@@ -504,7 +525,8 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   .pack-progress-shell,
   .pack-progress-shell.is-leaving,
   .pack-progress-shell--bottom-left,
-  .pack-progress-shell--bottom-left.is-leaving {
+  .pack-progress-shell--bottom-left.is-leaving,
+  .stage-game__diamond-enter {
     animation: none !important;
   }
 }

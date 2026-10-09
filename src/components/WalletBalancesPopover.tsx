@@ -41,6 +41,8 @@ export type WalletBalancesPopoverProps = {
    * Coarse pointer (mobile): tap runs the exchange immediately.
    */
   onConvertDust?: (option: CoinExchangeOption) => boolean | Promise<boolean>;
+  /** Game HUD: same shell, diamond balance only — no dust or convert. */
+  diamondsOnly?: boolean;
 };
 
 const LEAVE_ANIMATIONS = new Set([
@@ -103,6 +105,7 @@ export function WalletBalancesPopover({
   onClose,
   onLeaveEnd,
   onConvertDust,
+  diamondsOnly = false,
 }: WalletBalancesPopoverProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState<FixedBox | null>(null);
@@ -133,12 +136,19 @@ export function WalletBalancesPopover({
       const anchor = anchorRef.current;
       if (!anchor) return;
       const rect = anchor.getBoundingClientRect();
-      const next: FixedBox = {
-        // Sit directly under the Diamonds top-nav control.
-        top: rect.bottom + 7,
-        left: rect.left + rect.width / 2,
-        width: 10 * 16,
-      };
+      const next: FixedBox = diamondsOnly
+        ? {
+            // Inset from the button's top-right so the bubble clears the progress border.
+            top: rect.top + 50,
+            left: rect.right - 40,
+            width: 5 * 16,
+          }
+        : {
+            // Sit directly under the Diamonds top-nav control.
+            top: rect.bottom + 7,
+            left: rect.left + rect.width / 2,
+            width: 10 * 16,
+          };
       setBox((prev) => {
         if (
           prev &&
@@ -175,7 +185,7 @@ export function WalletBalancesPopover({
       vv?.removeEventListener("resize", schedule);
       vv?.removeEventListener("scroll", schedule);
     };
-  }, [anchorRef, open, leaving, diamonds, coins]);
+  }, [anchorRef, open, leaving, diamonds, coins, diamondsOnly]);
 
   useEffect(() => {
     if (!open || leaving) return;
@@ -317,7 +327,8 @@ export function WalletBalancesPopover({
         left: box.left,
         width: box.width,
         minWidth: box.width,
-        transform: "translateX(-50%)",
+        transform: diamondsOnly ? "translateX(-100%)" : "translateX(-50%)",
+        transformOrigin: diamondsOnly ? "100% 0" : undefined,
         zIndex: 5200,
       }
     : {
@@ -347,12 +358,13 @@ export function WalletBalancesPopover({
         "coverflow-buy-confirm",
         "wallet-balances-popover",
         "is-portaled",
+        diamondsOnly ? "is-diamonds-only" : "",
         leaving ? "is-leaving" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       role="dialog"
-      aria-label="Wallet balances"
+      aria-label={diamondsOnly ? "Diamond balance" : "Wallet balances"}
       tabIndex={-1}
       style={style}
       onAnimationEnd={handleLeaveEnd}
@@ -361,7 +373,7 @@ export function WalletBalancesPopover({
         className={[
           "wallet-balances-popover__row",
           "wallet-balances-popover__row--diamonds",
-          onConvertDust ? "has-convert" : "",
+          !diamondsOnly && onConvertDust ? "has-convert" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -381,7 +393,7 @@ export function WalletBalancesPopover({
             {diamondLabel}
           </span>
         </div>
-        {onConvertDust ? (
+        {!diamondsOnly && onConvertDust ? (
           <button
             type="button"
             className={[
@@ -406,6 +418,7 @@ export function WalletBalancesPopover({
         ) : null}
       </div>
 
+      {diamondsOnly ? null : (
       <div
         className={[
           "wallet-balances-popover__row",
@@ -458,6 +471,7 @@ export function WalletBalancesPopover({
           ) : null}
         </div>
       </div>
+      )}
     </div>
   );
 
