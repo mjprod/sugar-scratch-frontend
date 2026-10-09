@@ -153,6 +153,8 @@ body[data-theme="v8"] .profile-balance-copy {
   flex: 1;
   align-items: baseline;
   gap: 8px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 body[data-theme="v8"] .profile-balance-value {

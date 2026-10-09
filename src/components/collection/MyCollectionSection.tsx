@@ -226,13 +226,12 @@ export function MyCollectionSection({
           }
           onToggle={() => setOpenMenu((m) => (m === "sort" ? null : "sort"))}
         />
-      </div>
-
-      {openMenu ? (
-        <FilterSheet
-          title={openMenu === "creator" ? "Creators" : "Sort"}
-          onClose={() => setOpenMenu(null)}
-        >
+        {openMenu ? (
+          <FilterSheet
+            title={openMenu === "creator" ? "Creators" : "Sort"}
+            anchor={openMenu === "creator" ? "left" : "right"}
+            onClose={() => setOpenMenu(null)}
+          >
           {openMenu === "creator" ? (
             <>
               <FilterOption
@@ -269,8 +268,9 @@ export function MyCollectionSection({
                 />
               ))
             : null}
-        </FilterSheet>
-      ) : null}
+          </FilterSheet>
+        ) : null}
+      </div>
 
       {!themesReady ? (
         <div className="mc-model-list is-skeleton" aria-busy="true">
@@ -447,15 +447,23 @@ function FilterButton({
 
 function FilterSheet({
   title,
+  anchor,
   onClose,
   children,
 }: {
   title: string;
+  anchor: "left" | "right";
   onClose: () => void;
   children: ReactNode;
 }) {
   return (
-    <div className="my-collection-filter-overlay" role="presentation">
+    <div
+      className={[
+        "my-collection-filter-overlay",
+        anchor === "right" ? "is-anchor-right" : "is-anchor-left",
+      ].join(" ")}
+      role="presentation"
+    >
       <button
         type="button"
         className="my-collection-filter-backdrop"

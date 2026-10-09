@@ -181,8 +181,6 @@ export function CollectionPage({
     });
   }
 
-  const [hideContinue, setHideContinue] = useState(false);
-
   return (
     <section
       data-page-scroll
@@ -225,25 +223,13 @@ export function CollectionPage({
 
             <CollectionPromoCarousel />
 
-            {import.meta.env.DEV ? (
-              <button
-                type="button"
-                className="mc-debug-continue"
-                onClick={() => setHideContinue((hidden) => !hidden)}
-              >
-                {hideContinue ? "Show continue" : "Hide continue"}
-              </button>
-            ) : null}
-
             <div className="mc-hub">
-              {hideContinue ? null : (
-                <ReadyToReveal
-                  onOpenPack={openPack}
-                  onScratch={openScratch}
-                  onExplorePacks={onExplorePacks}
-                  inventoryRevision={inventoryRevision}
-                />
-              )}
+              <ReadyToReveal
+                onOpenPack={openPack}
+                onScratch={openScratch}
+                onExplorePacks={onExplorePacks}
+                inventoryRevision={inventoryRevision}
+              />
 
               <MyCollectionSection
                 creators={state.continueCreators}
@@ -293,7 +279,7 @@ function CollectionPageSkeleton() {
         <SkeletonBar width={220} height={19} />
         <div className="mc-continue-row">
           {Array.from({ length: 4 }, (_, i) => (
-            <SkeletonBar key={i} width={70} height={127} />
+            <SkeletonBar key={i} width="9.072rem" height="16.128rem" />
           ))}
         </div>
       </div>

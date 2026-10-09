@@ -292,7 +292,7 @@ function ContinueSection({
     >
       <div className="mc-continue-panel">
         <h2 id="ready-heading" className="mc-continue-title">
-          Continue where you left off…
+          Continue playing…
         </h2>
         {items.length > 0 ? (
           <div className="mc-continue-carousel">

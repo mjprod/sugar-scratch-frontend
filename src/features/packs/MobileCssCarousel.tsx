@@ -337,6 +337,7 @@ export function MobileCssCarousel({
 }) {
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
   const onReadyRef = useRef(onReady);
   const onBuyRef = useRef(onBuy);
   const onAddToPocketRef = useRef(onAddToPocket);
@@ -554,6 +555,23 @@ export function MobileCssCarousel({
       onReadyRef.current?.();
     },
     [activeSurfaceReady, neighborOnScreen],
+  );
+
+  const syncEdgeFade = useCallback(
+    (swiper: SwiperClass) => {
+      if (!compact) return;
+      const start = swiper.minTranslate();
+      const end = swiper.maxTranslate();
+      const current = swiper.translate;
+      const next = {
+        left: current < start - 8,
+        right: current > end + 8,
+      };
+      setEdgeFade((prev) =>
+        prev.left === next.left && prev.right === next.right ? prev : next,
+      );
+    },
+    [compact],
   );
 
   const applySlideDim = useCallback((swiper: SwiperClass) => {
@@ -819,13 +837,15 @@ export function MobileCssCarousel({
           </>
         ) : null}
         <Swiper
-          className="mobile-css-carousel"
+          className={`mobile-css-carousel${
+            edgeFade.left ? " has-fade-left" : ""
+          }${edgeFade.right ? " has-fade-right" : ""}`}
           modules={compact ? [] : [EffectCoverflow]}
           effect={compact ? "slide" : "coverflow"}
           grabCursor
           centeredSlides={!compact}
           slidesPerView="auto"
-          spaceBetween={compact ? 9 : -72}
+          spaceBetween={compact ? 18 : -72}
           speed={720}
           resistanceRatio={0.85}
           watchSlidesProgress
@@ -845,6 +865,7 @@ export function MobileCssCarousel({
           onProgress={applySlideDim}
           onSetTranslate={(swiper) => {
             applySlideDim(swiper);
+            syncEdgeFade(swiper);
             markReady(swiper);
           }}
           onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
@@ -895,23 +916,31 @@ export function MobileCssCarousel({
                   )}
                 </div>
                 {compact ? (
-                  <div className="mobile-css-carousel__play">
+                  <div className="mobile-css-carousel__play coverflow-play-only-cta">
                     <CtaButton
                       {...ctaButtonPropsFromTemplate("squircleCTA")}
                       fillParent
-                      label=""
+                      fontSize={12}
+                      strokeWidth={1}
+                      cornerRadius={999}
+                      auroraBaseColor="#42001b"
+                      auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+                      glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+                      glowColor="326 90 30"
+                      strokeColor="rgba(170, 8, 95, 0.42)"
+                      labelColor="#ffe0e8"
+                      glowOuterBloom="off"
+                      label="Play"
                       leadingIcon={
                         <Play
-                          size={10}
+                          className="motion-card-play-cta__triangle"
+                          size={11}
                           strokeWidth={2.4}
                           fill="currentColor"
                           aria-hidden
                         />
                       }
                       costAmount={null}
-                      fontSize={12}
-                      cornerRadius={999}
-                      glowAlwaysOn={false}
                       aria-label={`Play ${item.packName || item.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
