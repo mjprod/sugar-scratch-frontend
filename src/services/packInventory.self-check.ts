@@ -5,6 +5,7 @@ import {
   countUnopened,
   getPackInstance,
   isLocalPackInstanceId,
+  isRetiredCatalogPackId,
   listUnopenedGroups,
   markPackOpened,
   nextUnopenedInPurchase,
@@ -70,11 +71,11 @@ clearPackInventory();
 const replaced = replaceInventoryFromApi([
   {
     instanceId: "srv-1",
-    catalogPackId: "ep1",
-    packName: "Neon Rain",
+    catalogPackId: "mina-pack",
+    packName: "Starter",
     creator: "Mina",
     creatorId: "mina",
-    themeName: "Neon Rain",
+    themeName: "Starter",
     coverUrl: "",
     status: "unopened",
     purchaseId: "buy-1",
@@ -82,11 +83,11 @@ const replaced = replaceInventoryFromApi([
   },
   {
     instanceId: "srv-2",
-    catalogPackId: "ep1",
-    packName: "Neon Rain",
+    catalogPackId: "mina-pack",
+    packName: "Starter",
     creator: "Mina",
     creatorId: "mina",
-    themeName: "Neon Rain",
+    themeName: "Starter",
     coverUrl: "",
     status: "opened",
     purchaseId: "buy-1",
@@ -100,7 +101,7 @@ assert(getPackInstance("srv-1")?.instanceId === "srv-1", "replace keeps server i
 const merged = upsertInstancesFromApi([
   {
     instanceId: "srv-3",
-    catalogPackId: "ep2",
+    catalogPackId: "emily-pack",
     packName: "Other",
     creator: "Emily",
     themeName: "Other",
@@ -116,11 +117,11 @@ assert(countOwnedPacks() === 3, "upsert merges without dropping replaced rows");
 const openedViaApi = upsertInstancesFromApi([
   {
     instanceId: "srv-1",
-    catalogPackId: "ep1",
-    packName: "Neon Rain",
+    catalogPackId: "mina-pack",
+    packName: "Starter",
     creator: "Mina",
     creatorId: "mina",
-    themeName: "Neon Rain",
+    themeName: "Starter",
     coverUrl: "",
     status: "opened",
     purchaseId: "buy-1",
@@ -166,5 +167,33 @@ assert(
 assert(isLocalPackInstanceId("pack-abc123"), "local pack id");
 assert(isLocalPackInstanceId("demo-pack-xyz"), "demo pack id");
 assert(!isLocalPackInstanceId("550e8400-e29b-41d4-a716-446655440000"), "server uuid");
+assert(isRetiredCatalogPackId("ep1"), "ep1 is the retired neon rain pack");
+assert(!isRetiredCatalogPackId("julianaval-pack"), "live catalog packs stay");
+const dropped = replaceInventoryFromApi([
+  {
+    instanceId: "srv-neon",
+    catalogPackId: "ep1",
+    packName: "Neon Rain",
+    creator: "Neon Rain",
+    themeName: "Neon Rain",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-neon",
+    savedAt: 5,
+  },
+  {
+    instanceId: "srv-live",
+    catalogPackId: "julianaval-pack",
+    packName: "J01",
+    creator: "Juliana",
+    themeName: "J01",
+    coverUrl: "",
+    status: "unopened",
+    purchaseId: "buy-live",
+    savedAt: 6,
+  },
+]);
+assert(dropped.length === 1 && dropped[0]?.instanceId === "srv-live", "sync drops retired packs");
+assert(getPackInstance("srv-neon") == null, "retired neon rain is not stored");
 
 console.log("v8 pack inventory self-check passed");

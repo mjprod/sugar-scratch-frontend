@@ -251,7 +251,7 @@ export function MotionCurrencyReveal({
             className="motion-currency-reveal__skip"
             onClick={skipNow}
           >
-            Skip
+            Next Card
           </button>
         </div>
       ) : null}

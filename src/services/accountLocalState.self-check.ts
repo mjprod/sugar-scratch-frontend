@@ -80,15 +80,15 @@ local.clear();
 session.clear();
 seedReadyScratch();
 saveOpening({
-  packId: "ep1",
-  session: buildOpeningSession(1, "ep1"),
+  packId: "starter",
+  session: buildOpeningSession(1, "starter"),
   stage: "scratch",
   cardIndex: 0,
   scratched: [],
   openingId: "open-1",
 });
 addPackToCart({
-  packId: "ep1",
+  packId: "starter",
   packName: "Starter",
   creator: "Sugar",
 });
@@ -96,7 +96,7 @@ seedGameSession("user-a");
 restoreWelcomeGiftPending();
 local.set("sugar.v8.welcomeGiftClaimed", "1");
 assert(listReadyToScratch().length === 1, "seeded ready-to-scratch");
-assert(restoreOpening("ep1").status === "resume", "seeded opening");
+assert(restoreOpening("starter").status === "resume", "seeded opening");
 assert(listCartPacks().length === 1, "seeded cart");
 assert(listStoredGameSessions().length === 1, "seeded game session");
 assert(hasPendingWelcomeGift(), "seeded welcome pending");
@@ -104,7 +104,7 @@ assert(isWelcomeGiftClaimed(), "seeded welcome claimed");
 
 clearUngatedAccountArtifacts();
 assert(listReadyToScratch().length === 1, "logout keeps ready-to-scratch");
-assert(restoreOpening("ep1").status === "none", "logout drops opening resume");
+assert(restoreOpening("starter").status === "none", "logout drops opening resume");
 assert(listCartPacks().length === 0, "logout clears cart");
 assert(listStoredGameSessions().length === 0, "logout drops game sessions");
 assert(!hasPendingWelcomeGift(), "logout clears welcome pending");
