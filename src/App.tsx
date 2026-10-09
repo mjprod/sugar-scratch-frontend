@@ -8,6 +8,7 @@ import { SitePreloader } from "@/components/SitePreloader";
 import { MotionProvider } from "@/features/collection/context/MotionContext";
 import { loadMotionFeatures } from "@/lib/loadMotionFeatures";
 import { AppRoutes } from "@/routes/AppRoutes";
+import { RouteErrorBoundary } from "@/routes/RouteChunkFallback";
 import { PageReadyProvider } from "@/shared/ui/PageTransition";
 
 export default function App() {
@@ -20,7 +21,9 @@ export default function App() {
               <PageReadyProvider>
                 <MemoryTransitionProvider>
                   <MotionProvider>
-                    <AppRoutes />
+                    <RouteErrorBoundary>
+                      <AppRoutes />
+                    </RouteErrorBoundary>
                     <SitePreloader />
                   </MotionProvider>
                 </MemoryTransitionProvider>

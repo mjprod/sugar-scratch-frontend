@@ -153,7 +153,7 @@ import {
   celebrateBurstCount,
   celebrateDurationMs,
   celebrateParticleBoost,
-  crossedProgressMilestone,
+  crossedProgressMilestones,
   CURSOR_FX_EMIT_MODE,
   CURSOR_FX_FALL_GRAVITY,
   CURSOR_FX_FALL_VELOCITY,
@@ -2052,35 +2052,40 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }
 
   function maybeCelebrateScratchProgress(nextProgress: number) {
-    const crossed = crossedProgressMilestone(
+    const crossedBands = crossedProgressMilestones(
       celebrateProgressRef.current,
       nextProgress,
     );
     celebrateProgressRef.current = nextProgress;
-    if (crossed == null) return;
+    if (crossedBands.length === 0) return;
+    const crossed = crossedBands[crossedBands.length - 1];
     // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    // One finalize can jump several 10% bands; persist each band or those coins
+    // never get claimed.
     if (!freePlayLaunch && !practiceRef.current) {
-      const award = rollSparkleCoinAward();
       const handId = handIdRef.current;
       const cardId = handCardIdRef.current || undefined;
-      queueMicrotask(() => {
-        coinBadge.award(award.amount);
-        addCoins(award.amount);
-        noteCoinsReceived(award.amount);
-        playSparkleCoinSound(award.soundSrc);
-        // Persist only with a server-issued hand — forged client ids are rejected.
-        if (handId) {
-          persistScratchCoins({
-            handId,
-            milestone: crossed,
-            cardId,
-            amount: award.amount,
-          });
-        }
-        // Milestone counts as activity — hold longer so +N / count-up can read.
-        huntHintActivityAtRef.current = performance.now();
-        coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
-      });
+      for (const milestone of crossedBands) {
+        const award = rollSparkleCoinAward();
+        queueMicrotask(() => {
+          coinBadge.award(award.amount);
+          addCoins(award.amount);
+          noteCoinsReceived(award.amount);
+          playSparkleCoinSound(award.soundSrc);
+          // Persist only with a server-issued hand — forged client ids are rejected.
+          if (handId) {
+            persistScratchCoins({
+              handId,
+              milestone,
+              cardId,
+              amount: award.amount,
+            });
+          }
+          // Milestone counts as activity — hold longer so +N / count-up can read.
+          huntHintActivityAtRef.current = performance.now();
+          coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+        });
+      }
     }
 
     if (PHOTO_CURSOR_FX_REDUCED) return;

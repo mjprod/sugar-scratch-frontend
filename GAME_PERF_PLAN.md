@@ -75,6 +75,19 @@ Scratch game (`/game`) frame-cost work. Prefer `*.self-check.ts` + `npm run test
 
 ---
 
+## Phase 10 — AutoScratch re-render churn
+
+**Why:** Long-animation-frame traces during AutoScratch (touch emulation, 4× CPU) showed every slow frame was one full `ScratchPrototype` re-render; the rAF scratch loop itself was ~5ms. ~70% of those renders came from debug readouts (video-timeline clock, cursor-FX perf stats) and an unused `progress` state, each ticking 4×/s.
+
+**Do:**
+1. Drop the unused `progress` React state (live value stays in `progressRef`).
+2. Video timeline slider + cursor-FX perf readout own their polling state (`VideoTimelineSlider`, `CursorFxPerfReadout`); render loop only sets `duration` / `isPaused` when they change.
+3. AutoScratch paints every stamp but finalizes once per rAF (`strokeUvs`), like manual strokes.
+
+**Result (dev, touch + 4× CPU):** idle 90 → 120 fps with zero idle re-renders; AutoScratch 55 → 71 fps, slow frames 59 → 32. Remaining renders are real game feedback (symbol reveals, coins, FX bursts).
+
+---
+
 ## How to measure (quick)
 
 **On-device HUD:** open any route with `?perf=1` (persists across navigation; `?perf=0` or × turns it off). Shows window FPS, frame p50/p95/p99, frames >34ms / >50ms, long tasks (Chromium only), JS heap (Chromium only), DOM / canvas / video counts. **Reset** before a scenario, **Copy** to paste a report. Console: `__sugarPerf.snapshot()` / `__sugarPerf.reset()`. Measure against `npm run build && npm run preview`, not dev.

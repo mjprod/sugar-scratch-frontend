@@ -35,30 +35,51 @@ const PhotoScratchPage = lazy(() =>
 const CollectionPage = lazy(() =>
   import("@/pages/CollectionPage").then((m) => ({ default: m.CollectionPage })),
 );
-const GameUiPage = lazy(() =>
-  import("@/pages/GameUiPage").then((m) => ({ default: m.GameUiPage })),
-);
-const AudioTestPage = lazy(() =>
-  import("@/pages/AudioTestPage").then((m) => ({ default: m.AudioTestPage })),
-);
-const CoverFlowV2Page = lazy(() =>
-  import("@/pages/CoverFlowV2Page").then((m) => ({
-    default: m.CoverFlowV2Page,
-  })),
-);
-const MobileCarouselPage = lazy(() =>
-  import("@/pages/MobileCarouselPage").then((m) => ({
-    default: m.MobileCarouselPage,
-  })),
-);
-const PreLoaderPage = lazy(() =>
-  import("@/pages/PreLoaderPage").then((m) => ({ default: m.PreLoaderPage })),
-);
-const ComponentLabPage = lazy(() =>
-  import("@/pages/ComponentLabPage").then((m) => ({
-    default: m.ComponentLabPage,
-  })),
-);
+const LABS_ENABLED =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_LABS === "1";
+
+// Each import() must sit behind LABS_ENABLED so Rollup drops the lab chunks.
+const NoLabPage = () => null;
+const GameUiPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/GameUiPage").then((m) => ({ default: m.GameUiPage })),
+    )
+  : NoLabPage;
+const AudioTestPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/AudioTestPage").then((m) => ({
+        default: m.AudioTestPage,
+      })),
+    )
+  : NoLabPage;
+const CoverFlowV2Page = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/CoverFlowV2Page").then((m) => ({
+        default: m.CoverFlowV2Page,
+      })),
+    )
+  : NoLabPage;
+const MobileCarouselPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/MobileCarouselPage").then((m) => ({
+        default: m.MobileCarouselPage,
+      })),
+    )
+  : NoLabPage;
+const PreLoaderPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/PreLoaderPage").then((m) => ({
+        default: m.PreLoaderPage,
+      })),
+    )
+  : NoLabPage;
+const ComponentLabPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/ComponentLabPage").then((m) => ({
+        default: m.ComponentLabPage,
+      })),
+    )
+  : NoLabPage;
 const ProfilePage = lazy(() =>
   import("@/pages/ProfilePage").then((m) => ({ default: m.ProfilePage })),
 );
@@ -125,8 +146,6 @@ const GameHistoryPage = lazy(() =>
   })),
 );
 
-const LABS_ENABLED =
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_LABS === "1";
 
 function GameCatalogRoute({ children }: { children: ReactNode }) {
   return <CatalogProvider>{children}</CatalogProvider>;

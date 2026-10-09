@@ -2,7 +2,7 @@
  * Deferred Lottie gate + wasm version self-check.
  * Run: npx tsx src/lib/lottie/deferredLottie.self-check.ts
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createLottieGate, type LottieGateEnv } from "./deferredLottieGate.ts";
 import { DOTLOTTIE_WASM_PATH, DOTLOTTIE_WEB_VERSION } from "./wasmPath.ts";
@@ -80,16 +80,23 @@ function fakeEnv() {
     pinned === DOTLOTTIE_WEB_VERSION,
     `wasmPath DOTLOTTIE_WEB_VERSION ${DOTLOTTIE_WEB_VERSION} must equal package.json pin ${pinned}`,
   );
-  const installed = JSON.parse(
-    readFileSync(`${root}node_modules/@lottiefiles/dotlottie-web/package.json`, "utf8"),
-  ).version;
-  assert(
-    installed === DOTLOTTIE_WEB_VERSION,
-    `installed dotlottie-web ${installed} must equal ${DOTLOTTIE_WEB_VERSION}`,
-  );
+  const nested = `${root}node_modules/@lottiefiles/dotlottie-react/node_modules/@lottiefiles/dotlottie-web/package.json`;
+  const hoisted = `${root}node_modules/@lottiefiles/dotlottie-web/package.json`;
+  for (const pkgJson of [hoisted, nested]) {
+    if (!existsSync(pkgJson)) continue;
+    const installed = JSON.parse(readFileSync(pkgJson, "utf8")).version;
+    assert(
+      installed === DOTLOTTIE_WEB_VERSION,
+      `installed dotlottie-web ${installed} (${pkgJson}) must equal ${DOTLOTTIE_WEB_VERSION}`,
+    );
+  }
   assert(
     DOTLOTTIE_WASM_PATH === `/wasm/dotlottie-player.${DOTLOTTIE_WEB_VERSION}.wasm`,
     "wasm path is versioned",
+  );
+  assert(
+    existsSync(`${root}public${DOTLOTTIE_WASM_PATH}`),
+    `public${DOTLOTTIE_WASM_PATH} missing; run node scripts/copy-dotlottie-wasm.mjs`,
   );
 }
 

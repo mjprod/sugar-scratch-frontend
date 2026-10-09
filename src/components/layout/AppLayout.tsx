@@ -8,6 +8,7 @@ import "@/components/cta/CtaButton.css";
 import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
+import { ChunkErrorBoundary } from "@/components/ui/ChunkErrorBoundary";
 import { PackAddedToast } from "@/components/ui/PackAddedToast";
 import { useAuth } from "@/contexts/useAuth";
 import { useSearch } from "@/contexts/SearchContext";
@@ -16,6 +17,7 @@ import { bindGameNavigate } from "@/services/gameSessionStore";
 import { runWhenIdle } from "@/lib/idle";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { prefetchTabPages } from "@/routes/lazyPages";
+import { RouteLoadError } from "@/routes/RouteChunkFallback";
 import { useTabNav } from "@/hooks/useTabNav";
 import { triggerFromAction } from "@/services/auth";
 import { noteCoinsReceived } from "@/services/coinReceipt";
@@ -37,8 +39,8 @@ const AuthenticationSheet = lazy(loadAuthenticationSheet);
 const VerifyEmailModal = lazy(loadVerifyEmailModal);
 
 function prefetchAuthOverlays(): void {
-  void loadAuthenticationSheet();
-  void loadVerifyEmailModal();
+  void loadAuthenticationSheet().catch(() => {});
+  void loadVerifyEmailModal().catch(() => {});
 }
 
 const FIRST_INTERACTION_EVENTS = ["pointerdown", "keydown"] as const;
@@ -60,6 +62,26 @@ function OverlayLoading({ label, onDismiss }: { label: string; onDismiss?: () =>
           role="status"
           aria-label="Loading"
         />
+      </div>
+    </div>
+  );
+}
+
+/** Shown when an overlay chunk failed to download; only a reload can retry it. */
+function OverlayLoadError({ onDismiss }: { onDismiss?: () => void }) {
+  return (
+    <div className="auth7-sheet-root" role="presentation">
+      <button
+        type="button"
+        className="auth7-sheet-backdrop"
+        aria-label="Dismiss"
+        disabled={!onDismiss}
+        onClick={onDismiss}
+      />
+      <div className="pointer-events-none absolute inset-0 grid place-items-center px-8">
+        <div className="pointer-events-auto rounded-3xl bg-black/80 backdrop-blur-md">
+          <RouteLoadError />
+        </div>
       </div>
     </div>
   );
@@ -107,6 +129,25 @@ export function AppLayout() {
 
   useEffect(() => runWhenIdle(prefetchTabPages, 4000), []);
   useEffect(() => runWhenIdle(prefetchAuthOverlays, 4000), []);
+
+  // A tab's pointerdown lands before its click, so the first tap on Discover /
+  // Rank (before the idle prefetch) still gets a head start on the chunk.
+  useEffect(() => {
+    const prefetch = () => {
+      for (const type of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(type, prefetch, true);
+      }
+      prefetchTabPages();
+    };
+    for (const type of FIRST_INTERACTION_EVENTS) {
+      window.addEventListener(type, prefetch, { capture: true, passive: true });
+    }
+    return () => {
+      for (const type of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(type, prefetch, true);
+      }
+    };
+  }, []);
 
   // A guest's pointerdown lands before the click that opens the sheet.
   useEffect(() => {
@@ -313,7 +354,9 @@ export function AppLayout() {
           .filter(Boolean)
           .join(" ")}
       >
-        <Outlet />
+        <ChunkErrorBoundary resetKey={location.pathname} fallback={<RouteLoadError />}>
+          <Outlet />
+        </ChunkErrorBoundary>
       </div>
 
       <PackAddedToast />
@@ -336,36 +379,42 @@ export function AppLayout() {
       ) : null}
 
       {authMounted ? (
-        <Suspense
-          fallback={
-            authOpen ? (
-              <OverlayLoading label="Dismiss authentication" onDismiss={dismissAuth} />
-            ) : null
-          }
+        <ChunkErrorBoundary
+          fallback={authOpen ? <OverlayLoadError onDismiss={dismissAuth} /> : null}
         >
-          <AuthenticationSheet
-            open={authOpen}
-            trigger={triggerFromAction(pending)}
-            initialMode={authSheetMode}
-            initialEmail={authSheetEmail}
-            onDismiss={dismissAuth}
-            onSuccess={completeAuth}
-          />
-        </Suspense>
+          <Suspense
+            fallback={
+              authOpen ? (
+                <OverlayLoading label="Dismiss authentication" onDismiss={dismissAuth} />
+              ) : null
+            }
+          >
+            <AuthenticationSheet
+              open={authOpen}
+              trigger={triggerFromAction(pending)}
+              initialMode={authSheetMode}
+              initialEmail={authSheetEmail}
+              onDismiss={dismissAuth}
+              onSuccess={completeAuth}
+            />
+          </Suspense>
+        </ChunkErrorBoundary>
       ) : null}
 
       {verifyMounted ? (
-        <Suspense
-          fallback={verifyOpen ? <OverlayLoading label="Verification required" /> : null}
-        >
-          <VerifyEmailModal
-            open={verifyOpen}
-            email={verifyEmail}
-            fromRegister={verifyFromRegister}
-            onBack={onVerifyBack}
-            onVerified={onVerified}
-          />
-        </Suspense>
+        <ChunkErrorBoundary fallback={verifyOpen ? <OverlayLoadError /> : null}>
+          <Suspense
+            fallback={verifyOpen ? <OverlayLoading label="Verification required" /> : null}
+          >
+            <VerifyEmailModal
+              open={verifyOpen}
+              email={verifyEmail}
+              fromRegister={verifyFromRegister}
+              onBack={onVerifyBack}
+              onVerified={onVerified}
+            />
+          </Suspense>
+        </ChunkErrorBoundary>
       ) : null}
 
       {navNotice ? (
