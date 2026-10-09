@@ -182,8 +182,8 @@ export function scratchCoinAwardAction(input: {
   handId: string;
 }): ScratchCoinAwardAction {
   if (input.freePlay || input.practice) return "skip";
-  if (input.handId.trim()) return "persist";
   if (!input.authed) return "local";
+  if (input.handId.trim()) return "persist";
   return "hold";
 }
 
