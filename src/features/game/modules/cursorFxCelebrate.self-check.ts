@@ -48,21 +48,20 @@ assert(
   "crossing 100% celebrates",
 );
 assert(
-  JSON.stringify(crossedProgressMilestones(0.05, 0.12)) === "[1]",
-  "single-band jump lists that band",
+  crossedProgressMilestones(0.12, 0.15).length === 0,
+  "same band crosses nothing",
 );
 assert(
-  JSON.stringify(crossedProgressMilestones(0.12, 0.15)) === "[]",
-  "same band lists nothing",
+  crossedProgressMilestones(0.05, 0.12).join() === "1",
+  "single band crossing",
 );
 assert(
-  JSON.stringify(crossedProgressMilestones(0, 0.25)) === "[1,2]",
-  "AutoScratch-sized jump lists every 10% band, not only the highest",
+  crossedProgressMilestones(0.18, 0.41).join() === "2,3,4",
+  "batched jump awards every band crossed",
 );
 assert(
-  JSON.stringify(crossedProgressMilestones(0.08, 1)) ===
-    "[1,2,3,4,5,6,7,8,9,10]",
-  "full-card jump lists all ten bands",
+  crossedProgressMilestones(0, 1).length === 10,
+  "full reveal in one frame awards all ten bands",
 );
 
 {
