@@ -297,6 +297,31 @@
   will-change: opacity, transform, filter;
 }
 
+/* Collection continue: side labels and Play ease out instead of popping. */
+.mc-continue-carousel .coverflow-pack-html--browse:not(.is-visible),
+.mc-continue-carousel .coverflow-pack-html-label:not(.is-visible) {
+  opacity: 0;
+  filter: none;
+  transform: none;
+  visibility: visible;
+  transition: opacity 420ms ease;
+  pointer-events: none;
+}
+
+.mc-continue-carousel .coverflow-pack-html-label.is-visible {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  transition: none;
+}
+
+.mc-continue-carousel .coverflow-pack-html-label:not(.is-visible) .coverflow-play-only-cta {
+  opacity: 0;
+  visibility: visible;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
 .coverflow-active-pack-label {
   position: relative;
   left: auto;
@@ -750,6 +775,74 @@
 }
 
 .coverflow-active-stack.is-visible .coverflow-buy-pack-cta .cta-button {
+  pointer-events: auto;
+}
+
+/* Play-only squircle under the pack number (collection continue). */
+.coverflow-play-only-cta {
+  display: grid;
+  place-items: center;
+  width: 113px;
+  height: 42px;
+  min-height: 42px;
+  margin: 8px auto 0;
+  pointer-events: auto;
+  opacity: 1;
+  filter: none;
+  visibility: visible;
+  flex: none;
+}
+
+/* Selection must not hide Play while this pack is still centered. */
+.coverflow-pack-html-label.is-visible.is-active-hidden .coverflow-play-only-cta,
+.coverflow-pack-html--browse.is-visible.is-active-hidden .coverflow-play-only-cta {
+  opacity: 1;
+  filter: none;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.coverflow-play-only-cta .cta-button-glow,
+.coverflow-play-only-cta .cta-button-glow--fill,
+.coverflow-play-only-cta .cta-button,
+.coverflow-play-only-cta .cta-button--fill {
+  width: 113px;
+  height: 42px;
+  min-height: 42px;
+  margin: 0;
+}
+
+.coverflow-play-only-cta .cta-button__title {
+  display: inline;
+}
+
+.coverflow-play-only-cta .cta-button__title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+  margin-inline: auto;
+}
+
+.coverflow-play-only-cta .cta-button__leading-icon {
+  display: inline-flex;
+  align-items: center;
+  color: #ffe0e8;
+}
+
+.coverflow-play-only-cta .cta-button__leading-icon svg {
+  display: block;
+  width: 11px;
+  height: 11px;
+}
+
+.coverflow-pack-html-label.is-visible .coverflow-play-only-cta,
+.coverflow-active-stack.is-visible .coverflow-play-only-cta {
+  pointer-events: auto;
+}
+
+.coverflow-play-only-cta .cta-button {
   pointer-events: auto;
 }
 

@@ -393,6 +393,33 @@ body[data-theme="v8"] .mc-promo-slide {
   }
 }
 
+/* Continue + Choose a Model: 2fr / 1fr until the container is too narrow. */
+body[data-theme="v8"] .mc-hub {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: 24px;
+  width: 100%;
+}
+
+/* One child (Continue hidden) fills the parent instead of the 2fr column. */
+body[data-theme="v8"] .mc-hub:not(:has(.mc-continue)),
+body[data-theme="v8"] .mc-hub > :only-child {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body[data-theme="v8"] .mc-hub > :only-child {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+@container (max-width: 720px) {
+  body[data-theme="v8"] .mc-hub {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Continue where you left off */
 body[data-theme="v8"] .mc-continue {
   width: 100%;
@@ -403,6 +430,7 @@ body[data-theme="v8"] .mc-continue-panel {
   flex-direction: column;
   gap: 11px;
   width: 100%;
+  min-width: 0;
   min-height: 199px;
   padding: 16px;
   box-sizing: border-box;
@@ -419,9 +447,9 @@ body[data-theme="v8"] .mc-continue-panel {
 
 body[data-theme="v8"] .mc-continue-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: 0.32px;
+  letter-spacing: 0.4px;
   color: #fff;
 }
 
@@ -429,6 +457,12 @@ body[data-theme="v8"] .mc-continue-carousel {
   width: 100%;
   min-height: 148px;
   overflow: visible;
+}
+
+/* Coverflow is sized for the homepage hero; fit it to the hub column. */
+body[data-theme="v8"] .mc-continue-carousel .home-featured-coverflow {
+  height: min(52dvh, 560px);
+  min-height: 360px;
 }
 
 body[data-theme="v8"] .mc-continue-row {
@@ -464,6 +498,7 @@ body[data-theme="v8"] .mc-models {
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .mc-models-title {
@@ -520,10 +555,11 @@ body[data-theme="v8"] .mc-filter-btn.is-active {
   border-color: rgba(255, 61, 127, 0.55);
 }
 
-/* Model list cards */
+/* Model list cards — 2 columns when the container can fit them, else stack. */
 body[data-theme="v8"] .mc-model-list {
-  display: flex;
-  flex-direction: column;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: 8px;
   width: 100%;
 }
@@ -663,7 +699,6 @@ body[data-theme="v8"] .mc-model-body {
   justify-content: center;
   gap: 4px;
   min-width: 0;
-  max-width: 210px;
   padding-right: 8px;
 }
 
@@ -738,11 +773,12 @@ body[data-theme="v8"] .mc-skeleton {
 }
 
 @media (min-width: 768px) {
-  body[data-theme="v8"] .mc-page-content {
-    gap: 28px;
+  body[data-theme="v8"] .mc-promo-track,
+  body[data-theme="v8"] .mc-promo-slide {
+    height: 400px;
   }
 
-  body[data-theme="v8"] .mc-model-body {
-    max-width: none;
+  body[data-theme="v8"] .mc-page-content {
+    gap: 28px;
   }
 }

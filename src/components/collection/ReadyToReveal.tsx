@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { DesktopCoverFlow } from "@/components/home/DesktopCoverFlow";
+import {
+  DesktopCoverFlow,
+  HOME_COVERFLOW_CAMERA,
+} from "@/components/home/DesktopCoverFlow";
 import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
 import {
   packItemToIteration,
@@ -297,19 +300,17 @@ function ContinueSection({
             {desktop ? (
               <DesktopCoverFlow
                 items={items}
-                selectedId={focusedId}
+                selectedId={null}
                 glow="oklch(0.798 0.104 207.84)"
+                playOnlyCta
+                cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
                 buying={false}
                 addedToPocket={false}
                 confirmBuy={false}
-                onSelect={(id) => {
-                  setFocusedId(id);
-                  const item = items.find((entry) => entry.id === id);
-                  if (item) activateById(item);
-                }}
-                onDeselect={() => setFocusedId(null)}
+                onSelect={() => {}}
+                onDeselect={() => {}}
                 onFocusChange={() => {}}
-                onBuy={() => {}}
+                onBuy={activateById}
               />
             ) : (
               <MobileCssCarousel
