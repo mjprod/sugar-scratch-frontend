@@ -16520,18 +16520,17 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel-shell {
-  /* shell already has margin-top: -6rem; extra drop so 1.1× packs clear the nav. */
-  transform: translateY(2.5rem);
+  /* shell already has margin-top: -6rem; extra drop so packs clear the nav. */
+  transform: translateY(1rem);
 }
 
-/* Home v2 mobile coverflow — 10% larger than the 14.4rem base. */
+/* Home v2 mobile coverflow — 15% larger than the 14.4rem base. Base slide stays 14.4rem elsewhere. */
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel .swiper-slide {
-  width: 15.84rem; /* 14.4rem * 1.1 */
+  width: 16.56rem; /* 14.4rem * 1.15 */
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud .coverflow-buy-pack-cta {
-  transform: scale(1.1);
-  transform-origin: center bottom;
+  transform: none;
 }
 
 /*
@@ -16554,8 +16553,8 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] {
-  height: min(78dvh, 780px);
-  min-height: 560px;
+  height: min(86dvh, 860px);
+  min-height: 620px;
 }
 
 /* —— Home v2 strip cards, glass chevrons, avatar-only, figma board —— */
@@ -18146,10 +18145,10 @@ body[data-theme="v8"] .mc-filter-btn.is-active {
   border-color: rgba(255, 61, 127, 0.55);
 }
 
-/* Model list cards */
+/* Model list cards. 3 columns on desktop/tablet; minmax drops to 2, then 1. */
 body[data-theme="v8"] .mc-model-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 8px;
   width: 100%;
 }

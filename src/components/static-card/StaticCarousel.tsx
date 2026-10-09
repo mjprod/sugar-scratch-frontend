@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
@@ -107,8 +107,68 @@ function PhotoCardStrip({
   cards: StaticCarouselItem[];
   animate?: boolean;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startScroll: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || event.pointerType !== "mouse") return;
+    const el = scrollerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 1) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScroll: el.scrollLeft,
+      moved: false,
+    };
+    el.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const el = scrollerRef.current;
+    if (!drag || !el || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    if (!drag.moved && Math.abs(dx) <= 4) return;
+    drag.moved = true;
+    suppressClickRef.current = true;
+    el.classList.add("is-dragging");
+    el.scrollLeft = drag.startScroll - dx;
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const el = scrollerRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    el?.classList.remove("is-dragging");
+    if (el?.hasPointerCapture(event.pointerId)) {
+      el.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function onClickCapture(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!suppressClickRef.current) return;
+    suppressClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   return (
-    <div className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto">
+    <div
+      ref={scrollerRef}
+      className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onClickCapture={onClickCapture}
+    >
       {cards.map((item, index) => (
         <motion.div
           key={item.id}

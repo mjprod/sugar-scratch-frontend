@@ -151,6 +151,17 @@
   display: none;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .static-carousel__scroller {
+    cursor: grab;
+  }
+
+  .static-carousel__scroller.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+}
+
 .static-carousel__item {
   width: 62px;
 }
@@ -274,6 +285,24 @@
 .static-carousel--expanded .static-card-holder__face {
   width: 114px;
   height: 172px;
+}
+
+@media (min-width: 1024px) {
+  .static-carousel-overlay__panel {
+    width: min(100%, 64rem);
+    gap: 16px;
+    padding: 20px 20px 18px;
+  }
+
+  .static-carousel--expanded .static-carousel__item,
+  .static-carousel--expanded .static-card-holder {
+    width: 188px;
+  }
+
+  .static-carousel--expanded .static-card-holder__face {
+    width: 156px;
+    height: 236px;
+  }
 }
 
 .static-carousel__title {
