@@ -49,7 +49,7 @@ import {
   celebrateBurstCount,
   celebrateDurationMs,
   celebrateParticleBoost,
-  crossedProgressMilestone,
+  crossedProgressMilestones,
   CURSOR_FX_EMIT_MODE,
   CURSOR_FX_MOBILE_BURST_SIZE_MUL,
   CURSOR_FX_FALL_GRAVITY,
@@ -1394,8 +1394,8 @@ export function ScratchPrototype({
   /** When set, pause control is rendered in the top chrome left gutter. */
   onLeave?: () => void;
   /**
-   * Fires once the first time crossedProgressMilestone returns a band
-   * (10% scratch progress). Used by /game-ui lab bonus diamond.
+   * Fires once the first time scratch progress crosses a 10% band.
+   * Used by /game-ui lab bonus diamond.
    */
   onFirstProgressMilestone?: () => void;
   /** Body/foil icons found so far (0…SYMBOL_SLOT_COUNT). Lab bonus diamond lock. */
@@ -1863,7 +1863,7 @@ export function ScratchPrototype({
   const [cursorFxBurstCount, setCursorFxBurstCount] = useState(() =>
     celebrateBurstCount(1, CURSOR_FX_DEVICE.coarsePointer),
   );
-  /** Bumps StageCoinCount scale-pop on each crossedProgressMilestone. */
+  /** Bumps StageCoinCount scale-pop on each 10% progress band. */
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
   const [coinAwardFlash, setCoinAwardFlash] = useState(0);
@@ -2045,43 +2045,48 @@ export function ScratchPrototype({
 
   /** 10% progress beat: credit wallet coins; arm fairy-dust when FX allows. */
   function maybeCelebrateScratchProgress(nextProgress: number) {
-    const crossed = crossedProgressMilestone(
+    const crossedBands = crossedProgressMilestones(
       celebrateProgressRef.current,
       nextProgress,
     );
     celebrateProgressRef.current = nextProgress;
-    if (crossed == null) return;
+    if (crossedBands.length === 0) return;
+    const crossed = crossedBands[crossedBands.length - 1];
 
     if (onFirstProgressMilestone && !firstProgressMilestoneFiredRef.current) {
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
     // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    // One finalize can jump several 10% bands (AutoScratch paints many stamps
+    // per rAF); persist each band or those coins never get claimed.
     if (!freePlayLaunch && !practiceRef.current) {
-      const award = rollSparkleCoinAward();
       const handId = handIdRef.current;
       const cardId = selectedCardId || undefined;
-      queueMicrotask(() => {
-        showCoinBadge();
-        addCoins(award.amount);
-        noteCoinsReceived(award.amount);
-        setCoinAwardFlash(award.amount);
-        setCoinPopNonce((n) => n + 1);
-        playSparkleCoinSound(award.soundSrc);
-        // Persist only with a server-issued hand — forged client ids are rejected.
-        // Do not merge the persist wallet snapshot (see scratchCoinReward).
-        if (authed && handId) {
-          persistScratchCoins({
-            handId,
-            milestone: crossed,
-            cardId,
-            amount: award.amount,
-          });
-        }
-        // Milestone counts as activity — hold longer so +N / count-up can read.
-        huntHintActivityAtRef.current = performance.now();
-        scheduleCoinBadgeIdleHide(COIN_BADGE_AWARD_HOLD_MS);
-      });
+      for (const milestone of crossedBands) {
+        const award = rollSparkleCoinAward();
+        queueMicrotask(() => {
+          showCoinBadge();
+          addCoins(award.amount);
+          noteCoinsReceived(award.amount);
+          setCoinAwardFlash(award.amount);
+          setCoinPopNonce((n) => n + 1);
+          playSparkleCoinSound(award.soundSrc);
+          // Persist only with a server-issued hand — forged client ids are rejected.
+          // Do not merge the persist wallet snapshot (see scratchCoinReward).
+          if (authed && handId) {
+            persistScratchCoins({
+              handId,
+              milestone,
+              cardId,
+              amount: award.amount,
+            });
+          }
+          // Milestone counts as activity — hold longer so +N / count-up can read.
+          huntHintActivityAtRef.current = performance.now();
+          scheduleCoinBadgeIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+        });
+      }
     }
 
     let reducedMotion = false;

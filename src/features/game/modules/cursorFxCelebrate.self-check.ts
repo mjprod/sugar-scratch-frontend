@@ -6,6 +6,7 @@ import {
   celebrateBurstCount,
   celebrateParticleBoost,
   crossedProgressMilestone,
+  crossedProgressMilestones,
   CURSOR_FX_BURST_VELOCITY,
   cursorFxBurstVelocity,
   CURSOR_FX_BURST_SIZE_MUL,
@@ -45,6 +46,23 @@ assert(
 assert(
   crossedProgressMilestone(0.95, 1) === 10,
   "crossing 100% celebrates",
+);
+assert(
+  JSON.stringify(crossedProgressMilestones(0.05, 0.12)) === "[1]",
+  "single-band jump lists that band",
+);
+assert(
+  JSON.stringify(crossedProgressMilestones(0.12, 0.15)) === "[]",
+  "same band lists nothing",
+);
+assert(
+  JSON.stringify(crossedProgressMilestones(0, 0.25)) === "[1,2]",
+  "AutoScratch-sized jump lists every 10% band, not only the highest",
+);
+assert(
+  JSON.stringify(crossedProgressMilestones(0.08, 1)) ===
+    "[1,2,3,4,5,6,7,8,9,10]",
+  "full-card jump lists all ten bands",
 );
 
 {
