@@ -4,13 +4,14 @@
  * modulepreload in dist/index.html) or first-load CSS grows past its gzip
  * budget, or when a
  * lazy-only chunk (three, lottie, framer-motion features, auth overlays) is
- * preloaded on every page again.
+ * preloaded on every page again, or when lab pages ship without VITE_ENABLE_LABS.
  *
  * Usage: node scripts/check-bundle-budget.mjs  (run after `vite build`)
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { join } from "node:path";
+import { loadEnv } from "vite";
 
 const DIST = "dist";
 const FIRST_LOAD_JS_BUDGET_KB = 195;
@@ -21,6 +22,8 @@ const FORBIDDEN_PRELOADS = [
   /\/motionFeatures-[\w-]+\.js$/,
   /\/(AuthenticationSheet|VerifyEmailModal|SearchScreen)-[\w-]+\.js$/,
 ];
+const LAB_CHUNKS =
+  /^(ComponentLabPage|PreLoaderPage|CoverFlowV2Page|MobileCarouselPage|GameUiPage|AudioTestPage)-[\w-]+\.js$/;
 
 const indexPath = join(DIST, "index.html");
 if (!existsSync(indexPath)) {
@@ -59,6 +62,13 @@ if (totalCss > FIRST_LOAD_CSS_BUDGET_KB) {
 for (const url of jsUrls) {
   if (FORBIDDEN_PRELOADS.some((re) => re.test(url))) {
     failures.push(`${url} is preloaded by index.html — it must stay behind a lazy route`);
+  }
+}
+if (loadEnv("production", process.cwd(), "VITE_").VITE_ENABLE_LABS !== "1") {
+  for (const name of readdirSync(join(DIST, "assets"))) {
+    if (LAB_CHUNKS.test(name)) {
+      failures.push(`assets/${name} is a lab page — keep its import() behind LABS_ENABLED`);
+    }
   }
 }
 

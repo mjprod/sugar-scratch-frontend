@@ -1,5 +1,6 @@
 import { lazy, Suspense, useSyncExternalStore, type ReactNode } from "react";
 import type { DotLottieReactProps } from "@lottiefiles/dotlottie-react";
+import { ChunkErrorBoundary } from "@/components/ui/ChunkErrorBoundary";
 import { runWhenIdle } from "@/lib/idle";
 import { createLottieGate, type LottieGate } from "./deferredLottieGate";
 
@@ -70,8 +71,10 @@ export function DeferredLottie({
   const open = useLottieGateOpen();
   if (!open) return <>{fallback}</>;
   return (
-    <Suspense fallback={fallback}>
-      <LazyDotLottie {...props} />
-    </Suspense>
+    <ChunkErrorBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <LazyDotLottie {...props} />
+      </Suspense>
+    </ChunkErrorBoundary>
   );
 }

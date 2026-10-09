@@ -19,19 +19,43 @@ function loadLegalBlocks(): Promise<LegalBlocks> {
   });
 }
 
-function useLegalBlocks(kind: LegalDocKind): LegalBlock[] | null {
+function useLegalBlocks(kind: LegalDocKind) {
   const [loaded, setLoaded] = useState<LegalBlocks | null>(legalBlocksCache);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (loaded) return;
     let alive = true;
-    void loadLegalBlocks().then((blocks) => {
-      if (alive) setLoaded(blocks);
-    });
+    loadLegalBlocks().then(
+      (blocks) => {
+        if (alive) setLoaded(blocks);
+      },
+      () => {
+        if (alive) setFailed(true);
+      },
+    );
     return () => {
       alive = false;
     };
   }, [loaded]);
-  return loaded ? loaded[kind] : null;
+  return { blocks: loaded ? loaded[kind] : null, failed };
+}
+
+/** Browsers cache a failed dynamic import, so only a reload can retry it. */
+function LegalLoadError() {
+  return (
+    <div role="alert" className="flex flex-col items-start gap-3">
+      <p className="auth7-legal-p">
+        This document didn&apos;t load. Check your connection and try again.
+      </p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[14px] font-medium text-white transition hover:bg-white/15 active:scale-95"
+      >
+        Reload
+      </button>
+    </div>
+  );
 }
 
 /** Shared Terms / Privacy surface — Create Account + Profile use the same content. */
@@ -50,10 +74,16 @@ export function LegalDocPanel({
   backLabel?: string;
 }) {
   const title = kind === "terms" ? TERMS_TITLE : PRIVACY_TITLE;
-  const blocks = useLegalBlocks(kind);
+  const { blocks, failed } = useLegalBlocks(kind);
   const body = (
     <div className="auth7-legal-body">
-      {blocks ? blocks.map(renderBlock) : <LoadingLabel />}
+      {blocks ? (
+        blocks.map(renderBlock)
+      ) : failed ? (
+        <LegalLoadError />
+      ) : (
+        <LoadingLabel />
+      )}
     </div>
   );
 

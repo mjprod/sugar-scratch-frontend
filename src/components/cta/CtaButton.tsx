@@ -11,6 +11,7 @@ import {
 } from "react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import BorderGlow from "@/components/ui/BorderGlow";
+import { ChunkErrorBoundary } from "@/components/ui/ChunkErrorBoundary";
 
 // Aurora pulls in ogl (WebGL); keep it out of the entry chunk.
 const Aurora = lazy(() => import("./Aurora"));
@@ -405,23 +406,25 @@ export function CtaButton({
       <span className="cta-button__inner">
         <span className="cta-button__aurora" aria-hidden="true">
           {auroraLive ? (
-            <Suspense fallback={<span className="cta-button__aurora-fallback" />}>
-              <Aurora
-                colorStops={auroraColorStops}
-                speed={auroraSpeed}
-                blend={auroraBlend}
-                amplitude={auroraAmplitude}
-                bandHeight={auroraBandHeight}
-                rotation={auroraRotation}
-                particleCount={liveParticleCount}
-                particleSize={particleSize}
-                particleSpeed={particleSpeed}
-                particleOpacity={particleOpacity}
-                particleColor={particleColor}
-                particleTwinkle={particleTwinkle}
-                paused={false}
-              />
-            </Suspense>
+            <ChunkErrorBoundary fallback={<span className="cta-button__aurora-fallback" />}>
+              <Suspense fallback={<span className="cta-button__aurora-fallback" />}>
+                <Aurora
+                  colorStops={auroraColorStops}
+                  speed={auroraSpeed}
+                  blend={auroraBlend}
+                  amplitude={auroraAmplitude}
+                  bandHeight={auroraBandHeight}
+                  rotation={auroraRotation}
+                  particleCount={liveParticleCount}
+                  particleSize={particleSize}
+                  particleSpeed={particleSpeed}
+                  particleOpacity={particleOpacity}
+                  particleColor={particleColor}
+                  particleTwinkle={particleTwinkle}
+                  paused={false}
+                />
+              </Suspense>
+            </ChunkErrorBoundary>
           ) : (
             <span className="cta-button__aurora-fallback" />
           )}

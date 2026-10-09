@@ -7,6 +7,13 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
+const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
+
+// wasmPath.ts hard-codes the package.json pin (enforced by deferredLottie.self-check.ts).
+const pinned = readJson(resolve(here, '../package.json')).dependencies['@lottiefiles/dotlottie-web']
+
+// dotlottie-react runs whichever dotlottie-web it resolves (a nested copy wins),
+// and the wasm must come from that same copy.
 const nestedPkg = resolve(
   here,
   '../node_modules/@lottiefiles/dotlottie-react/node_modules/@lottiefiles/dotlottie-web',
@@ -20,7 +27,16 @@ if (!existsSync(src)) {
   process.exit(0)
 }
 
-const { version } = JSON.parse(readFileSync(resolve(pkgDir, 'package.json'), 'utf8'))
+const { version } = readJson(resolve(pkgDir, 'package.json'))
+if (version !== pinned) {
+  console.error(
+    `[copy-dotlottie-wasm] dotlottie-react resolves @lottiefiles/dotlottie-web ${version} ` +
+      `(${pkgDir}) but package.json pins ${pinned}. Align the pin, ` +
+      'DOTLOTTIE_WEB_VERSION in src/lib/lottie/wasmPath.ts and the dotlottie-react range.',
+  )
+  process.exit(1)
+}
+
 const destDir = resolve(here, '../public/wasm')
 const destName = `dotlottie-player.${version}.wasm`
 const dest = resolve(destDir, destName)
