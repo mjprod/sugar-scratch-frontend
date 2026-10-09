@@ -1,6 +1,3 @@
-/** Fallback delay where `requestIdleCallback` is missing (Safari). */
-const IDLE_FALLBACK_MS = 200;
-
 type IdleWindow = Window & {
   requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
   cancelIdleCallback?: (id: number) => void;
@@ -8,7 +5,8 @@ type IdleWindow = Window & {
 
 /**
  * Run `callback` once the main thread is idle (or after `timeoutMs` at the
- * latest). Returns a cancel function.
+ * latest). Without `requestIdleCallback` (Safari) there is no idle signal, so
+ * it runs at `timeoutMs`. Returns a cancel function.
  */
 export function runWhenIdle(callback: () => void, timeoutMs = 2000): () => void {
   if (typeof window === "undefined") return () => {};
@@ -17,7 +15,7 @@ export function runWhenIdle(callback: () => void, timeoutMs = 2000): () => void 
     const id = w.requestIdleCallback(callback, { timeout: timeoutMs });
     return () => w.cancelIdleCallback?.(id);
   }
-  const id = window.setTimeout(callback, IDLE_FALLBACK_MS);
+  const id = window.setTimeout(callback, timeoutMs);
   return () => window.clearTimeout(id);
 }
 
