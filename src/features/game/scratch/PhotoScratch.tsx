@@ -32,7 +32,6 @@ import {
 } from "./glRenderer";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageCoinCount } from "../StageCoinCount";
-import { StageMuteButton } from "../StageMuteButton";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import {
@@ -3615,9 +3614,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   </button>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end">
-                <StageMuteButton icon={freePlayLaunch ? "freeplay" : "volume"} />
-              </div>
+              <div className="stage-game__top-chrome-side is-end" />
             </div>
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">

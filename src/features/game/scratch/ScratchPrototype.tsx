@@ -226,7 +226,6 @@ import {
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
-import { StageMuteButton } from "../StageMuteButton";
 import {
   MirrorSlideTransition,
   nextTemplateId,
@@ -5892,11 +5891,7 @@ export function ScratchPrototype({
                   </div>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end">
-                <StageMuteButton
-                  icon={gameMode || !freePlayLaunch ? "volume" : "freeplay"}
-                />
-              </div>
+              <div className="stage-game__top-chrome-side is-end" />
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">

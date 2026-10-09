@@ -1275,7 +1275,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   top: 46%;
   z-index: 8;
   width: min(72%, 280px);
-  aspect-ratio: 400 / 183;
+  aspect-ratio: 400 / 190.705;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }

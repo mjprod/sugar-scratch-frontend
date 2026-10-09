@@ -30,7 +30,7 @@ const BRUSH_STEP_RATIO = 0.35;
 const PEEL_LOTTIE_SRC = "/lottie/peelv2.lottie";
 /** "Scratch" text that plays once in the gap the bar leaves as it docks. */
 const SCRATCH_TEXT_LOTTIE_SRC = "/lottie/lottieScratchText.lottie";
-/** lottieScratchText.lottie is 90 frames @ 60fps (400×183). */
+/** lottieScratchText.lottie is 90 frames @ 60fps (400×190.705). */
 const SCRATCH_TEXT_LOTTIE_MS = Math.round((90 / 60) * 1000);
 const PEEL_LOTTIE_WIDTH = 52;
 /** peelv2.lottie is 180 frames @ 60fps (public/lottie/peelv2.lottie). */
