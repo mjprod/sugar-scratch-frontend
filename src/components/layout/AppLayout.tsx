@@ -44,7 +44,9 @@ function prefetchAuthOverlays(): void {
 /** True from the first render where `flag` is true, forever after (keeps exit animations). */
 function useLatched(flag: boolean): boolean {
   const [latched, setLatched] = useState(flag);
-  if (flag && !latched) setLatched(true);
+  useEffect(() => {
+    if (flag) setLatched(true);
+  }, [flag]);
   return latched || flag;
 }
 
