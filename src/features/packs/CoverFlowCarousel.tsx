@@ -2435,7 +2435,15 @@ groupRef.current.position.set(motion.x, motion.y, motion.z)
       Math.abs(appliedTiltRef.current - targetTouchTilt) > FRAME_SETTLE_EPS ||
       Math.abs(appliedPitchRef.current - targetPitch) > FRAME_SETTLE_EPS ||
       Math.abs(sideFadeRef.current - fadeTarget) > 0.002 ||
-      (playOnlyCta && Math.abs(labelOpacityRef.current - (Math.abs(liveOffset) < 0.02 ? 1 : 0)) > 0.01)
+      (playOnlyCta &&
+        Math.abs(
+          labelOpacityRef.current -
+            (revealModeRef.current && !isRevealHeroRef.current
+              ? 0
+              : Math.abs(liveOffset) < 0.02
+                ? 1
+                : 0),
+        ) > 0.01)
     // Center pack video + tilt need continuous uploads under frameloop=demand.
     if (
       springBusy ||
