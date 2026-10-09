@@ -2070,7 +2070,7 @@ export function ScratchPrototype({
       playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       // Do not merge the persist wallet snapshot (see scratchCoinReward).
-      if (handId) {
+      if (handId && authed) {
         persistScratchCoins({
           handId,
           milestone,
