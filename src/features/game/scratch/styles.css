@@ -1267,6 +1267,28 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 /* Flying foil flakes: portaled onto `.stage` inside a wrapper div so product
    embed `.stage > canvas` cover rules never hit the flake buffer (matches
    https://localhost:5080 behavior). */
+/* One-shot "Scratch" text. Portaled onto .stage so it stays put while the
+   bar climbs, sitting in the gap the pill just left. */
+.scratch-text-lottie {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 8;
+  width: min(72%, 280px);
+  aspect-ratio: 400 / 183;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.scratch-text-lottie-player,
+.scratch-text-lottie-player canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
 .top-symbol-bar-particle-layer {
   position: absolute !important;
   inset: 0 !important;
