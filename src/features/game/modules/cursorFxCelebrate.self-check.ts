@@ -6,6 +6,7 @@ import {
   celebrateBurstCount,
   celebrateParticleBoost,
   crossedProgressMilestone,
+  crossedProgressMilestones,
   CURSOR_FX_BURST_VELOCITY,
   cursorFxBurstVelocity,
   CURSOR_FX_BURST_SIZE_MUL,
@@ -45,6 +46,22 @@ assert(
 assert(
   crossedProgressMilestone(0.95, 1) === 10,
   "crossing 100% celebrates",
+);
+assert(
+  crossedProgressMilestones(0.12, 0.15).length === 0,
+  "same band crosses nothing",
+);
+assert(
+  crossedProgressMilestones(0.05, 0.12).join() === "1",
+  "single band crossing",
+);
+assert(
+  crossedProgressMilestones(0.18, 0.41).join() === "2,3,4",
+  "batched jump awards every band crossed",
+);
+assert(
+  crossedProgressMilestones(0, 1).length === 10,
+  "full reveal in one frame awards all ten bands",
 );
 
 {

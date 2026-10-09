@@ -62,6 +62,24 @@ export function crossedProgressMilestone(
   return null;
 }
 
+/**
+ * Every milestone index crossed, ascending. A batched scratch frame can jump
+ * several bands at once; each band is its own coin award.
+ */
+export function crossedProgressMilestones(
+  prevProgress: number,
+  nextProgress: number,
+  step = CURSOR_FX_MILESTONE,
+): number[] {
+  const prev = progressMilestoneIndex(prevProgress, step);
+  const next = progressMilestoneIndex(nextProgress, step);
+  const crossed: number[] = [];
+  for (let index = Math.max(prev + 1, 1); index <= next; index += 1) {
+    crossed.push(index);
+  }
+  return crossed;
+}
+
 export function resolveCursorFxDeviceProfile(opts: {
   reducedMotion: boolean;
   coarsePointer: boolean;

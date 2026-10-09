@@ -49,7 +49,7 @@ import {
   celebrateBurstCount,
   celebrateDurationMs,
   celebrateParticleBoost,
-  crossedProgressMilestone,
+  crossedProgressMilestones,
   CURSOR_FX_EMIT_MODE,
   CURSOR_FX_MOBILE_BURST_SIZE_MUL,
   CURSOR_FX_FALL_GRAVITY,
@@ -2045,19 +2045,22 @@ export function ScratchPrototype({
 
   /** 10% progress beat: credit wallet coins; arm fairy-dust when FX allows. */
   function maybeCelebrateScratchProgress(nextProgress: number) {
-    const crossed = crossedProgressMilestone(
+    const milestones = crossedProgressMilestones(
       celebrateProgressRef.current,
       nextProgress,
     );
     celebrateProgressRef.current = nextProgress;
-    if (crossed == null) return;
+    if (milestones.length === 0) return;
+    const crossed = milestones[milestones.length - 1];
 
     if (onFirstProgressMilestone && !firstProgressMilestoneFiredRef.current) {
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
     // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
-    if (!freePlayLaunch && !practiceRef.current) {
+    // Batched frames can cross several bands; each band is its own award.
+    for (const milestone of milestones) {
+      if (freePlayLaunch || practiceRef.current) break;
       const award = rollSparkleCoinAward();
       const handId = handIdRef.current;
       const cardId = selectedCardId || undefined;
@@ -2073,7 +2076,7 @@ export function ScratchPrototype({
         if (authed && handId) {
           persistScratchCoins({
             handId,
-            milestone: crossed,
+            milestone,
             cardId,
             amount: award.amount,
           });

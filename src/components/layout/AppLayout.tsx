@@ -39,8 +39,8 @@ const AuthenticationSheet = lazy(loadAuthenticationSheet);
 const VerifyEmailModal = lazy(loadVerifyEmailModal);
 
 function prefetchAuthOverlays(): void {
-  loadAuthenticationSheet().catch(() => {});
-  loadVerifyEmailModal().catch(() => {});
+  void loadAuthenticationSheet().catch(() => {});
+  void loadVerifyEmailModal().catch(() => {});
 }
 
 const FIRST_INTERACTION_EVENTS = ["pointerdown", "keydown"] as const;

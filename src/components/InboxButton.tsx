@@ -206,6 +206,7 @@ export const PacksButton = forwardRef<
         };
         player.addEventListener("load", onLoad);
       }
+    },
     [runPocketFx],
   );
 
