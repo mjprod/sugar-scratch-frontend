@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Outlet, useLocation } from "react-router-dom";
 // The auth sheet is lazy, but its CTA styles must keep their entry-CSS slot
 // ahead of LiquidGlassNav.css / theme.css or equal-specificity rules flip.
@@ -39,6 +39,30 @@ const VerifyEmailModal = lazy(loadVerifyEmailModal);
 function prefetchAuthOverlays(): void {
   void loadAuthenticationSheet();
   void loadVerifyEmailModal();
+}
+
+const FIRST_INTERACTION_EVENTS = ["pointerdown", "keydown"] as const;
+
+/** Shown while an overlay chunk loads so a gated tap never looks ignored. */
+function OverlayLoading({ label, onDismiss }: { label: string; onDismiss?: () => void }) {
+  return (
+    <div className="auth7-sheet-root" role="presentation">
+      <button
+        type="button"
+        className="auth7-sheet-backdrop"
+        aria-label={label}
+        disabled={!onDismiss}
+        onClick={onDismiss}
+      />
+      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+        <Loader2
+          className="size-8 animate-spin text-white/70"
+          role="status"
+          aria-label="Loading"
+        />
+      </div>
+    </div>
+  );
 }
 
 /** True from the first render where `flag` is true, forever after (keeps exit animations). */
@@ -83,6 +107,25 @@ export function AppLayout() {
 
   useEffect(() => runWhenIdle(prefetchTabPages, 4000), []);
   useEffect(() => runWhenIdle(prefetchAuthOverlays, 4000), []);
+
+  // A guest's pointerdown lands before the click that opens the sheet.
+  useEffect(() => {
+    if (!guest) return;
+    const prefetch = () => {
+      for (const type of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(type, prefetch, true);
+      }
+      prefetchAuthOverlays();
+    };
+    for (const type of FIRST_INTERACTION_EVENTS) {
+      window.addEventListener(type, prefetch, { capture: true, passive: true });
+    }
+    return () => {
+      for (const type of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(type, prefetch, true);
+      }
+    };
+  }, [guest]);
 
   useEffect(() => {
     bindGameNavigate((to) => {
@@ -293,7 +336,13 @@ export function AppLayout() {
       ) : null}
 
       {authMounted ? (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            authOpen ? (
+              <OverlayLoading label="Dismiss authentication" onDismiss={dismissAuth} />
+            ) : null
+          }
+        >
           <AuthenticationSheet
             open={authOpen}
             trigger={triggerFromAction(pending)}
@@ -306,7 +355,9 @@ export function AppLayout() {
       ) : null}
 
       {verifyMounted ? (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={verifyOpen ? <OverlayLoading label="Verification required" /> : null}
+        >
           <VerifyEmailModal
             open={verifyOpen}
             email={verifyEmail}

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { searchPackToPurchase } from "@/services/search";
 import { useAuth } from "@/contexts/useAuth";
 
@@ -123,7 +124,17 @@ export function PackLibrary({
             aria-label="Search"
             variants={PANEL_VARIANTS}
           >
-            <Suspense fallback={null}>
+            <Suspense
+              fallback={
+                <div className="grid flex-1 place-items-center">
+                  <Loader2
+                    className="size-8 animate-spin text-white/70"
+                    role="status"
+                    aria-label="Loading search"
+                  />
+                </div>
+              }
+            >
               <SearchScreen
                 onCancel={onClose}
                 onOpenCreator={openCreator}
