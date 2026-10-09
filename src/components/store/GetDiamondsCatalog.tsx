@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { HistoryPageHeader } from "@/components/history/HistoryShared";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";

@@ -65,7 +65,8 @@ Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/au
 |--------|---------|
 | `npm run dev` | Vite dev server (HTTPS) |
 | `npm run certs` | Regenerate `.certs/` with mkcert (localhost + LAN IPs) |
-| `npm run test` | **Pre-PR gate:** typecheck + all self-checks + build |
+| `npm run test` | **Pre-PR gate:** typecheck + all self-checks + build + first-load bundle budget |
+| `npm run check:bundle` | Fail if first-load JS/CSS (gzip) exceeds budget or heavy chunks are preloaded |
 | `npm run build` | Typecheck + production build |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run self-check` | Offline invariant checks (`*.self-check.ts`) |
@@ -106,6 +107,14 @@ src/
   types/        # Shared domain types
 ```
 
+### Folder conventions
+
+- `src/features/<domain>/` owns a domain's screens, hooks, helpers and CSS. New domain code goes there.
+- `src/components/` is for UI shared across domains only; don't add domain screens to it.
+- CSS lives next to the component that uses it. A lazy route's CSS is imported by that route's root so it ships in the route chunk, not the entry. `index.css` / `theme.css` hold only tokens and app-shell styles.
+- Component files export only components (Fast Refresh). Put hooks, contexts and constants in a sibling module (`useAuth.ts`, `usePageReady.ts`, `navTabs.ts`).
+- Lab/dev routes (`/component-lab`, `/audio-test`, `/game-ui`, `/coverflow-v2`, `/mobile-carousel`, `/pre-loader`) exist only in dev or with `VITE_ENABLE_LABS=1`.
+
 ## Product rules (do not break)
 
 - Guests can browse Home + Browse.
@@ -116,7 +125,7 @@ src/
 ## Measuring performance
 
 - **On-device HUD:** add `?perf=1` to any route (persists; `?perf=0` turns it off). It shows FPS, frame p50/p95/p99, long frames, heap (Chromium) and DOM/canvas/video counts. In the console: `__sugarPerf.snapshot()` / `__sugarPerf.reset()`. Measure against `npm run build && npm run preview`, not dev.
-- **Whole-app pass:** `npm run build && npx vite preview --port 4174 --strictPort`, then `npm run perf:audit` (Lighthouse mobile per route → `.perf/summary.json`) and `npm run perf:runtime` (headless Chrome, phone viewport, 4× CPU → `.perf/runtime.json`). Set `PERF_COOKIE="sugar_session=…"` to include signed-in routes. Runtime uses the desktop GPU, so confirm WebGL/video costs on a phone.
+- **Whole-app pass:** `npm run build && npx vite preview --port 4174 --strictPort`, then `npm run perf:audit` (Lighthouse mobile per route → `.perf/summary.json`) and `npm run perf:runtime` (headless Chrome, phone viewport, 4× CPU → `.perf/runtime.json`; its swipe/game-ui scenarios need a `VITE_ENABLE_LABS=1` build). Set `PERF_COOKIE="sugar_session=…"` to include signed-in routes. Runtime uses the desktop GPU, so confirm WebGL/video costs on a phone.
 - Targets for `/game` on a phone: frame p99 ≤ ~16–32 ms, `readPixels` ~0/s when idle, full GC pauses well under 100 ms.
 
 ## Notes

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
-import { motion, useAnimate, useReducedMotion } from "framer-motion";
+import { m, useAnimate, useReducedMotion } from "framer-motion";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   LockStatusBanner,
@@ -237,7 +237,7 @@ export function MotionCard({
         }
       />
 
-      <motion.div
+      <m.div
         className="pointer-events-none absolute inset-0 z-[1] bg-black/40"
         initial={false}
         animate={{ opacity: locked ? 1 : 0 }}
@@ -273,7 +273,7 @@ export function MotionCard({
         <LockStatusBanner status={bannerStatus(state)} />
       </div>
 
-      <motion.div
+      <m.div
         className="absolute right-[3px] bottom-[3px] left-[3px] z-10 h-7"
         initial={false}
         animate={{ y: ctaInFrame ? 0 : 36 }}
@@ -352,7 +352,7 @@ export function MotionCard({
             ) : null}
           </div>
         )}
-      </motion.div>
+      </m.div>
     </div>
   );
 }

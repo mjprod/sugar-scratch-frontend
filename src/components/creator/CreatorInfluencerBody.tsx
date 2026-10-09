@@ -342,7 +342,7 @@ export function CreatorInfluencerBody({
             />
           ) : (
             <img
-              src={ultraPreview.posterUrl || avatarUrl || "/img/placeholder.png"}
+              src={ultraPreview.posterUrl || avatarUrl || "/img/placeholder.webp"}
               alt=""
               className="cpv2-ultra-card-img"
               loading="lazy"
@@ -529,7 +529,7 @@ function ThemeCollectionCard({
                 ? "unlocked-unselected"
                 : "locked-unselected-banner",
           theme: holderTheme,
-          posterUrl: motionTileStillUrl(card) || "/img/placeholder.png",
+          posterUrl: motionTileStillUrl(card) || "/img/placeholder.webp",
           videoUrl: motionVideoUrl(card),
           playCost: packUnitCost(),
           freePlay,
@@ -633,7 +633,7 @@ function ThemeCollectionCard({
         <div className="cpv2-theme-card-identity">
           <span className="cpv2-theme-card-avatar">
             <img
-              src={avatarUrl || "/img/placeholder.png"}
+              src={avatarUrl || "/img/placeholder.webp"}
               alt=""
               loading="lazy"
               decoding="async"

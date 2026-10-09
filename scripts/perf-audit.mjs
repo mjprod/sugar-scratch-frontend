@@ -26,13 +26,9 @@ const PUBLIC_ROUTES = [
   "/creator/julianaval/motion/julianaval_cop",
   "/purchase/julianaval-pack-1",
   "/purchase/tear-open",
-  "/coverflow-v2",
-  "/mobile-carousel",
   "/game?model=julianaval&card=julianaval_cop",
-  "/game-ui",
   "/photo-scratch",
   "/welcome",
-  "/pre-loader",
 ];
 
 const SIGNED_IN_ROUTES = [

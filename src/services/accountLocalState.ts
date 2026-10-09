@@ -16,7 +16,7 @@ import {
   hasPendingWelcomeGift,
   restoreWelcomeGiftPending,
 } from "./welcome";
-import { clearAllGameSessions } from "@/features/game/modules/gameSession";
+import { clearAllGameSessions } from "@/services/gameSessionStore";
 
 const OWNER_KEY = "sugar.v8.accountStateOwner";
 

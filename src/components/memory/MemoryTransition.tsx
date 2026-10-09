@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -24,15 +22,13 @@ import {
   shouldMemoryTransition,
   shouldSafetyNetTransition,
 } from "@/lib/memory/routeMemoryDomain";
-import { usePageReady } from "@/shared/ui/PageTransition";
+import { usePageReady } from "@/shared/ui/usePageReady";
+import {
+  MemoryTransitionContext,
+  type MemoryPhase,
+  type MemoryTransitionValue,
+} from "./useMemoryNavigate";
 import "./MemoryTransition.css";
-
-export type MemoryPhase =
-  | "idle"
-  | "fading-in"
-  | "purging"
-  | "holding"
-  | "fading-out";
 
 const FADE_IN_MS = 360;
 const FADE_OUT_MS = 420;
@@ -40,18 +36,6 @@ const MIN_HOLD_MS = 120;
 const MAX_HOLD_MS = 1000;
 /** Safety-net: still brief so back-nav jank is covered without a long wait. */
 const SAFETY_FADE_IN_MS = 140;
-
-type TransitionToOptions = MemoryNavigateOptions;
-
-type MemoryTransitionValue = {
-  transitionTo: (to: string, options?: TransitionToOptions) => void;
-  isTransitioning: boolean;
-  phase: MemoryPhase;
-};
-
-const MemoryTransitionContext = createContext<MemoryTransitionValue | null>(
-  null,
-);
 
 function doubleRaf(): Promise<void> {
   return new Promise((resolve) => {
@@ -226,7 +210,7 @@ export function MemoryTransitionProvider({
   );
 
   const transitionTo = useCallback(
-    (to: string, options?: TransitionToOptions) => {
+    (to: string, options?: MemoryNavigateOptions) => {
       const { pathname: toPath } = pathFromTarget(to);
       const fromPath = location.pathname;
 
@@ -346,33 +330,4 @@ export function MemoryTransitionProvider({
         : null}
     </MemoryTransitionContext.Provider>
   );
-}
-
-export function useMemoryTransition(): MemoryTransitionValue {
-  const ctx = useContext(MemoryTransitionContext);
-  if (!ctx) {
-    return {
-      transitionTo: (to, options) => {
-        // Fallback if provider missing — best-effort history hop.
-        if (typeof window === "undefined") return;
-        const url = new URL(to, window.location.href);
-        const next = `${url.pathname}${url.search}${url.hash}`;
-        if (options?.replace) {
-          window.history.replaceState(options?.state ?? null, "", next);
-        } else {
-          window.history.pushState(options?.state ?? null, "", next);
-        }
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      },
-      isTransitioning: false,
-      phase: "idle",
-    };
-  }
-  return ctx;
-}
-
-/** Drop-in navigate that prefers fade-to-black when domains differ. */
-export function useMemoryNavigate() {
-  const { transitionTo } = useMemoryTransition();
-  return transitionTo;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import {
   MotionCardStack,
 } from "@/components/motion-card/MotionCardStack";
@@ -145,7 +145,7 @@ export function MotionCardHolder({
             : enterDelay(index);
 
           return (
-            <motion.div
+            <m.div
               key={item.id}
               className={[
                 "motion-card-holder__slot relative z-[1] min-w-0",
@@ -208,14 +208,14 @@ export function MotionCardHolder({
                   closeActive(item);
                 }}
               />
-            </motion.div>
+            </m.div>
           );
         })}
       </div>
 
       <AnimatePresence>
         {active && activeCard ? (
-          <motion.div
+          <m.div
             className="motion-card-holder__panel absolute top-0 right-0 z-[3]"
             style={{
               left: cardW + PANEL_GAP,
@@ -231,7 +231,7 @@ export function MotionCardHolder({
               motionCardNumber={activeIndex + 1}
               motionCardTotal={cards.length}
             />
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
     </div>

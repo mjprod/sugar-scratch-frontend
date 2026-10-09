@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { X } from "lucide-react";
 import {
   StaticCardHolder,
@@ -170,7 +170,7 @@ function PhotoCardStrip({
       onClickCapture={onClickCapture}
     >
       {cards.map((item, index) => (
-        <motion.div
+        <m.div
           key={item.id}
           className="static-carousel__item shrink-0"
           initial={animate ? { opacity: 0, x: -16 } : false}
@@ -189,7 +189,7 @@ function PhotoCardStrip({
             freePlay={item.freePlay}
             onPlay={item.onPlay}
           />
-        </motion.div>
+        </m.div>
       ))}
     </div>
   );
@@ -291,7 +291,7 @@ export function StaticCarousel({
 
       <PhotoCardStrip cards={cards} />
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
@@ -304,7 +304,7 @@ export function StaticCarousel({
           )}
           className="h-[0.25rem] w-full"
         />
-      </motion.div>
+      </m.div>
 
       {expanded && typeof document !== "undefined"
         ? createPortal(

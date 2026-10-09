@@ -1,4 +1,9 @@
-import type { VideoTextureCacheStats } from './videoTextureCache'
+export type VideoTextureCacheStats = {
+  entries: number
+  refs: number
+  playing: number
+  ready: number
+}
 
 /**
  * three-free entry point to the pack video texture cache. The global route

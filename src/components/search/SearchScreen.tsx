@@ -1,3 +1,4 @@
+import "@/components/search/SearchScreen.css";
 import {
   useCallback,
   useEffect,
@@ -10,7 +11,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { Search, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
 import {
   filterSearchCatalog,
@@ -86,9 +87,9 @@ function SearchReveal({
     "aria-hidden": ariaHidden,
   };
   if (as === "section") {
-    return <motion.section {...motionProps}>{children}</motion.section>;
+    return <m.section {...motionProps}>{children}</m.section>;
   }
-  return <motion.div {...motionProps}>{children}</motion.div>;
+  return <m.div {...motionProps}>{children}</m.div>;
 }
 
 export function SearchScreen({
@@ -192,7 +193,7 @@ export function SearchScreen({
       aria-label="Search"
     >
       <div className="search-page-inner mx-auto w-full max-w-[75rem] px-4 pt-3 sm:px-6 lg:px-8">
-        <motion.div
+        <m.div
           className="search-bar-row"
           initial={reduce ? false : "hidden"}
           animate="visible"
@@ -230,9 +231,9 @@ export function SearchScreen({
           >
             <X className="size-5" aria-hidden="true" />
           </button>
-        </motion.div>
+        </m.div>
 
-        <motion.div
+        <m.div
           key={bodyKey}
           className="search-body"
           initial={reduce ? false : "hidden"}
@@ -375,7 +376,7 @@ export function SearchScreen({
               )}
             </>
           ) : null}
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

@@ -9,7 +9,7 @@ import {
   HistoryPageHeader,
   HistorySkeleton,
 } from "@/components/history/HistoryShared";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   filterGameHistory,
   formatRevealWhen,

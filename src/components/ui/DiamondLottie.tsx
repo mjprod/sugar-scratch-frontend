@@ -1,5 +1,5 @@
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import type { CSSProperties } from "react";
+import { DeferredLottie } from "@/lib/lottie/DeferredLottie";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const DIAMOND_LOTTIE_SRC = "/lottie/lottieDiamond.lottie";
@@ -68,7 +68,8 @@ export function DiamondLottie({
       aria-hidden={ariaHidden}
     >
       {animated ? (
-        <DotLottieReact
+        <DeferredLottie
+          fallback={<StaticDiamondMark />}
           src={DIAMOND_LOTTIE_SRC}
           autoplay={autoplay}
           loop={loop}

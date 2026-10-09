@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { SPLASH_PHOTOS } from "@/lib/photos";
 
@@ -82,14 +82,14 @@ export function AuthShell({
         </section>
 
         <section className="auth2-stage">
-          <motion.div
+          <m.div
             className="auth2-card"
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
             {children}
-          </motion.div>
+          </m.div>
         </section>
       </div>
 

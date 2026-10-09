@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useAuthSession } from "@/contexts/AuthContext";
+import { useAuthSession } from "@/contexts/useAuth";
 import {
   useRegisterCardPlayOutcome,
   type CardPlayOutcome,

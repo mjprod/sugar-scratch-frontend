@@ -8,7 +8,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   effectiveSoundEffect,
   setGameSoundOn,
@@ -67,7 +67,7 @@ import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   advanceHuntHintCycle,

@@ -6,7 +6,7 @@ import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
 import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   loadGameSession,

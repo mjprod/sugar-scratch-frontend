@@ -12,7 +12,7 @@ import {
   countUnopened,
   listOwnedPacks,
 } from "./packInventory";
-import { listStoredGameSessions } from "@/features/game/modules/gameSession";
+import { listStoredGameSessions } from "@/services/gameSessionStore";
 import { listReadyToScratch } from "./readyToScratch";
 import {
   creatorHasAnyThemeCompletionClaim,

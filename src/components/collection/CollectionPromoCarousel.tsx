@@ -3,12 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const PROMO_SLIDES = [
   {
     id: "promo-01",
-    src: "/img/figma-my-collection/86d4f39478b36d507194017d10f86c3f93bb849f.png",
+    src: "/img/figma-my-collection/86d4f39478b36d507194017d10f86c3f93bb849f.webp",
     alt: "Collection promo",
   },
   {
     id: "promo-02",
-    src: "/img/figma-my-collection/1d9af28cb93cd6d47151fef2a48c01962ccfd627.png",
+    src: "/img/figma-my-collection/1d9af28cb93cd6d47151fef2a48c01962ccfd627.webp",
     alt: "Collection promo",
   },
 ] as const;

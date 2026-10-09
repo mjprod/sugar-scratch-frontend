@@ -25,7 +25,7 @@ import {
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
 import { GetDiamondsCatalog } from "@/components/store/GetDiamondsCatalog";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import type { RedeemReward } from "@/services/redeem";
 
 type LoadState =

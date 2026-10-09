@@ -1,14 +1,15 @@
 import { useState } from "react";
 import {
   CoverFlowCarousel,
-  DEFAULT_COVERFLOW_CAMERA,
+  HOME_COVERFLOW_PRESET,
+  HOME_DEFAULT_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
 } from "@/features/packs/CoverFlowCarousel";
 import type { Iteration } from "@/features/packs/types";
 
 /** Desktop homepage hero — locked from center debug. */
 export const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
-  ...DEFAULT_COVERFLOW_CAMERA,
+  ...HOME_DEFAULT_COVERFLOW_CAMERA,
   packsX: 0.015,
   packsY: -1.0,
   modelY: -0.02,
@@ -115,6 +116,8 @@ export function DesktopCoverFlow({
           </div>
         )}
         <CoverFlowCarousel
+          preset={HOME_COVERFLOW_PRESET}
+          disablePackOpenReveal
           items={items}
           selectedId={selectedId}
           onSelect={onSelect}

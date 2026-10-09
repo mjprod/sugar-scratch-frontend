@@ -1,4 +1,5 @@
-import { useAuth } from "@/contexts/AuthContext";
+import "@/components/rewards/RewardsScreen.css";
+import { useAuth } from "@/contexts/useAuth";
 import { HubScreen } from "@/components/rewards/RewardsScreen";
 
 export function RewardsPage() {

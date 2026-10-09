@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useLayoutEffect,
   useRef,
   useState,
@@ -8,8 +10,10 @@ import {
   type ReactNode,
 } from "react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import Aurora from "./Aurora";
-import BorderGlow from "./BorderGlow";
+import BorderGlow from "@/components/ui/BorderGlow";
+
+// Aurora pulls in ogl (WebGL); keep it out of the entry chunk.
+const Aurora = lazy(() => import("./Aurora"));
 import "./CtaButton.css";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
@@ -401,21 +405,23 @@ export function CtaButton({
       <span className="cta-button__inner">
         <span className="cta-button__aurora" aria-hidden="true">
           {auroraLive ? (
-            <Aurora
-              colorStops={auroraColorStops}
-              speed={auroraSpeed}
-              blend={auroraBlend}
-              amplitude={auroraAmplitude}
-              bandHeight={auroraBandHeight}
-              rotation={auroraRotation}
-              particleCount={liveParticleCount}
-              particleSize={particleSize}
-              particleSpeed={particleSpeed}
-              particleOpacity={particleOpacity}
-              particleColor={particleColor}
-              particleTwinkle={particleTwinkle}
-              paused={false}
-            />
+            <Suspense fallback={<span className="cta-button__aurora-fallback" />}>
+              <Aurora
+                colorStops={auroraColorStops}
+                speed={auroraSpeed}
+                blend={auroraBlend}
+                amplitude={auroraAmplitude}
+                bandHeight={auroraBandHeight}
+                rotation={auroraRotation}
+                particleCount={liveParticleCount}
+                particleSize={particleSize}
+                particleSpeed={particleSpeed}
+                particleOpacity={particleOpacity}
+                particleColor={particleColor}
+                particleTwinkle={particleTwinkle}
+                paused={false}
+              />
+            </Suspense>
           ) : (
             <span className="cta-button__aurora-fallback" />
           )}
