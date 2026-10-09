@@ -8,7 +8,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   effectiveSoundEffect,
   setGameSoundOn,

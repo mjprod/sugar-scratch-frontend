@@ -15,7 +15,7 @@ import {
   startScratchHand,
 } from "@/services/scratchCoinReward";
 import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { Volume2, VolumeX } from "lucide-react";
 import {
   useCallback,

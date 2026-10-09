@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   loadModels,
   profileFromModel,

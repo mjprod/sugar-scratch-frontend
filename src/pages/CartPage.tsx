@@ -8,7 +8,7 @@ import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { isDemoMode } from "@/lib/demo";
 import {
   clearCart,

@@ -24,7 +24,7 @@ import {
   photoScratchSlotPrices,
 } from "@/shared/backend/collection";
 import { Paths } from "@/routes/Paths";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import "./creator-influencer.css";
 import "./motion-card-page.css";
 

@@ -9,7 +9,7 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
 import { useAuth } from "@/contexts/useAuth";
 import { runAfterPaintIdle } from "@/lib/idle";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 const GUEST_HOME_VIDEO = "/video/homepagevideo-min.mp4";
 const GUEST_HOME_POSTER = "/video/homepagevideo-poster.webp";

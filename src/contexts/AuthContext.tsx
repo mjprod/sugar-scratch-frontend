@@ -49,7 +49,7 @@ import {
 import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
 import { fulfillPendingWelcomeGift, hasPendingWelcomeGift } from "@/services/welcome";
-import { resetPageReady } from "@/shared/ui/PageTransition";
+import { resetPageReady } from "@/shared/ui/pageWarmth";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
 import {

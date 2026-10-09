@@ -12,7 +12,7 @@ import {
   HistoryRowChevron,
   HistorySkeleton,
 } from "@/components/history/HistoryShared";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   balanceAfterLines,
   changeLinesFor,

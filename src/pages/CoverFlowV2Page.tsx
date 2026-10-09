@@ -17,7 +17,7 @@ import {
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/useAuth";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   fetchHomepage,
   type FeaturedPack,

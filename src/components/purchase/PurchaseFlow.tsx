@@ -40,7 +40,7 @@ import { loadFanDrag } from "@/features/reveal/lib/fanDrag";
 import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { PACK_PHOTOS, resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   isVideoSrc,

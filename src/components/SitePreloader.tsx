@@ -3,11 +3,8 @@ import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { PreLoaderVisual } from "@/components/PreLoaderVisual";
 import { isMemoryTransitioning } from "@/lib/memory/memoryNavigate";
-import {
-  isPageWarmed,
-  routeNeedsWait,
-  usePageReady,
-} from "@/shared/ui/PageTransition";
+import { isPageWarmed, routeNeedsWait } from "@/shared/ui/pageWarmth";
+import { usePageReady } from "@/shared/ui/usePageReady";
 import "./SitePreloader.css";
 
 const MIN_MS = 1000;

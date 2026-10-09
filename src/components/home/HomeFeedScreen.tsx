@@ -31,7 +31,7 @@ import {
   withFavouriteLikes,
 } from "@/services/feedFavourites";
 import { useSearch } from "@/contexts/SearchContext";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 const SNAP_MS = 220;
 /** Hold full preload of ahead slides so the visible clip gets the bandwidth first. */

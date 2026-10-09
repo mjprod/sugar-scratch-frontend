@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";

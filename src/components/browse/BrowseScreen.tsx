@@ -10,7 +10,7 @@ import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useAuth } from "@/contexts/useAuth";
 import { useSearch } from "@/contexts/SearchContext";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { isNewUserForHomepageHero } from "@/services/collectionState";
 import {
   fetchHomepage,

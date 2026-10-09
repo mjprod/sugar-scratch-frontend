@@ -22,7 +22,7 @@ import {
   shouldMemoryTransition,
   shouldSafetyNetTransition,
 } from "@/lib/memory/routeMemoryDomain";
-import { usePageReady } from "@/shared/ui/PageTransition";
+import { usePageReady } from "@/shared/ui/usePageReady";
 import {
   MemoryTransitionContext,
   type MemoryPhase,
