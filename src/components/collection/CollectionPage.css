@@ -404,8 +404,7 @@ body[data-theme="v8"] .mc-hub {
 }
 
 /* One child (Continue hidden) fills the parent instead of the 2fr column. */
-body[data-theme="v8"] .mc-hub:not(:has(.mc-continue)),
-body[data-theme="v8"] .mc-hub > :only-child {
+body[data-theme="v8"] .mc-hub:not(:has(.mc-continue)) {
   grid-template-columns: minmax(0, 1fr);
 }
 
