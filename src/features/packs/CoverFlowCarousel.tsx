@@ -2524,17 +2524,20 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
 				                : ''
 				          }${shortHudGlass ? ' is-short-glass' : ''}`}
 			        >
-			          <div
-			            ref={playOnlyCta ? labelElRef : undefined}
-			            className={`coverflow-pack-html-label${
-			              browseHudVisible
-			                ? ' is-visible'
-			                : isActive
-			                  ? ' is-active-hidden'
-			                  : ''
-			            }${shortHudGlass ? ' is-short-glass' : ''}`}
-			            aria-hidden={!browseHudVisible}
-			          >
+                  <div
+                    ref={playOnlyCta ? labelElRef : undefined}
+                    className={`coverflow-pack-html-label${
+                      browseHudVisible
+                        ? ' is-visible'
+                        : isActive
+                          ? ' is-active-hidden'
+                          : ''
+                    }${shortHudGlass ? ' is-short-glass' : ''}`}
+                    aria-hidden={playOnlyCta ? !isCenter : !browseHudVisible}
+                    {...(playOnlyCta && !isCenter
+                      ? { inert: true }
+                      : {})}
+                  >
 	            <p className="coverflow-pack-label__collection">
 	              {formatPackCollectionLabel(item.girlName)}
 	            </p>
