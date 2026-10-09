@@ -12,7 +12,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import {
   countUnread,
   fetchInboxMessages,

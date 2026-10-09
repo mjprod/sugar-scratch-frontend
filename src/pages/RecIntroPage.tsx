@@ -1,7 +1,7 @@
 import "@/components/recommend/RecommendationIntroScreen.css";
 import { useNavigate } from "react-router-dom";
 import { markRecommendationExplicitInProgress, markRecommendationSkipped } from "@/services/recommendation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { Paths } from "@/routes/Paths";
 import { RecommendationIntroScreen } from "@/components/recommend/RecommendationIntroScreen";
 

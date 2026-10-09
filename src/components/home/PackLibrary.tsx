@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { searchPackToPurchase } from "@/services/search";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 
 const SearchScreen = lazy(() =>
   import("@/components/search/SearchScreen").then((mod) => ({

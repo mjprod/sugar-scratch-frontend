@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { tabFromPathname } from "@/routes/Paths";
 import type { AppTab } from "@/types/app";
 import { useLocation } from "react-router-dom";

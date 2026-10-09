@@ -18,7 +18,7 @@ import {
 import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { InboxUtilityBadge, PacksButton } from "@/components/InboxButton";
 import { BorderGlow } from "@/components/ui/BorderGlow";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import type { AppTab } from "@/types/app";
 import {
   DESKTOP_MIN_PX,

@@ -7,7 +7,7 @@ import {
 } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { runAfterPaintIdle } from "@/lib/idle";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 

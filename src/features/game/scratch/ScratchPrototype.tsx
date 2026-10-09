@@ -1,5 +1,5 @@
 import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
 import {

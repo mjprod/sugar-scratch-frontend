@@ -11,7 +11,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { formatBalance } from "@/lib/formatBalance";
 import "@/components/LiquidGlassNav.css";
 

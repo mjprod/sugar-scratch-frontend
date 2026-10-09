@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import { RouteChunkFallback } from "@/routes/RouteChunkFallback";

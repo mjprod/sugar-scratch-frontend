@@ -7,7 +7,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";

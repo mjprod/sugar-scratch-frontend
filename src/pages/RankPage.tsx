@@ -1,5 +1,5 @@
 import "@/components/home/RankScreen.css";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { RankScreen } from "@/components/home/RankScreen";
 
 export function RankPage() {

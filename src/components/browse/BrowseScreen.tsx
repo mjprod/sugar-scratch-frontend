@@ -8,7 +8,7 @@ import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { isNewUserForHomepageHero } from "@/services/collectionState";

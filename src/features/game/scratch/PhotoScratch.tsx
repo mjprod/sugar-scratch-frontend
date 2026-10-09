@@ -67,7 +67,7 @@ import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   advanceHuntHintCycle,

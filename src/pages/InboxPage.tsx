@@ -1,5 +1,5 @@
 import "@/components/inbox/InboxScreen.css";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";

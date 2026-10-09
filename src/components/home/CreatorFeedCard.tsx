@@ -12,7 +12,7 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
-import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import {
   feedLikeCount,
   feedPackLabel,

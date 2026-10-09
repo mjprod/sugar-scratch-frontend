@@ -1,5 +1,5 @@
 import "@/components/store/StoreScreen.css";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
 import { useGoBack } from "@/hooks/useGoBack";

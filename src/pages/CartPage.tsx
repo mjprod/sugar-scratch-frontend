@@ -6,7 +6,7 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { CoverFlowCarouselV2 } from "@/features/packs/CoverFlowCarouselV2";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { useMarkPageReady } from "@/shared/ui/PageTransition";
 import { isDemoMode } from "@/lib/demo";

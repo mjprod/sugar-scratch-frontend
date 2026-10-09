@@ -74,7 +74,7 @@ import {
   type PackQuantity,
   type PurchaseFlowPack,
 } from "@/services/purchase";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,

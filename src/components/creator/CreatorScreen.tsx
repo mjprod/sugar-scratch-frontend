@@ -5,7 +5,7 @@ import { Paths } from "@/routes/Paths";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
 import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import {

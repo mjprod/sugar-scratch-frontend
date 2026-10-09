@@ -9,7 +9,7 @@ import { PacksButton } from "@/components/InboxButton";
 import { LiquidGlassNav } from "@/components/LiquidGlassNav";
 import { MobileDiamondUtility } from "@/components/MobileDiamondBalance";
 import { PackAddedToast } from "@/components/ui/PackAddedToast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { bindGameNavigate } from "@/services/gameSessionStore";

@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { apiFetch } from "@/lib/api";
 
 type WalletContextValue = {

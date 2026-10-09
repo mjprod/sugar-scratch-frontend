@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -64,10 +62,7 @@ import {
   photoPlayHref,
 } from "@/services/gameSessionStore";
 import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
-import {
-  resolveSecondaryBack,
-  SECONDARY_SURFACES,
-} from "@/lib/navigation";
+import { resolveSecondaryBack } from "@/lib/navigation";
 import { navigateBackOr } from "@/hooks/useGoBack";
 import {
   AuthActionsContext,

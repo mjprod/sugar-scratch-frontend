@@ -13,7 +13,7 @@ import {
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
-import { useAuthActions, useAuthSession } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,

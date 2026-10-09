@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { FollowingScreen } from "@/components/profile/FollowingScreen";
 import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";
