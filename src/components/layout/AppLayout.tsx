@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Loader2, Search } from "lucide-react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { PagePushStage } from "@/components/layout/PagePushStage";
 // The auth sheet is lazy, but its CTA styles must keep their entry-CSS slot
 // ahead of LiquidGlassNav.css / theme.css or equal-specificity rules flip.
 // BorderGlow.css must stay after CtaButton.css (ties on .border-glow-card).
@@ -355,7 +356,7 @@ export function AppLayout() {
           .join(" ")}
       >
         <ChunkErrorBoundary resetKey={location.pathname} fallback={<RouteLoadError />}>
-          <Outlet />
+          <PagePushStage />
         </ChunkErrorBoundary>
       </div>
 

@@ -413,13 +413,15 @@ body[data-theme="v8"] .mc-hub > :only-child {
   width: 100%;
 }
 
-@container (max-width: 720px) {
+/* Below 720px the 280px floor squeezes Continue into a sliver. A container
+   query cannot restyle .mc-hub itself, so this is a viewport media query. */
+@media (max-width: 720px) {
   body[data-theme="v8"] .mc-hub {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* Continue where you left off */
+/* Continue playing */
 body[data-theme="v8"] .mc-continue {
   width: 100%;
 }
@@ -454,8 +456,23 @@ body[data-theme="v8"] .mc-continue-title {
 
 body[data-theme="v8"] .mc-continue-carousel {
   width: 100%;
-  min-height: 148px;
+  min-height: 340px;
   overflow: visible;
+}
+
+@media (max-width: 720px) {
+  body[data-theme="v8"] .mc-continue-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body[data-theme="v8"] .mc-continue-title,
+  body[data-theme="v8"] .mc-continue-carousel,
+  body[data-theme="v8"] .mc-continue-row {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 /* Coverflow is sized for the homepage hero; fit it to the hub column. */

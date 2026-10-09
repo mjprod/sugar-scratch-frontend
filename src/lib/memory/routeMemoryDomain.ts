@@ -59,15 +59,28 @@ export function isHeavyMemoryDomain(domain: RouteMemoryDomain): boolean {
   return domain === "packs" || domain === "game" || domain === "feed";
 }
 
+/** Creator is an AppLayout page — push, don't fade, even from collection. */
+function isCreatorPushHop(fromPath: string, toPath: string): boolean {
+  const path = (value: string) => value.split("?")[0]?.split("#")[0] || "/";
+  const from = path(fromPath);
+  const to = path(toPath);
+  return (
+    (from.startsWith("/collection") && to.startsWith("/creator/")) ||
+    (from.startsWith("/creator/") && to.startsWith("/collection"))
+  );
+}
+
 /**
  * Whether intentional nav should run the full fade → purge → navigate sequence.
  * light ↔ light stays instant. Same-domain light hops stay instant.
  * Any hop involving packs/game (or crossing heavy domains) transitions.
+ * Collection ↔ creator is a page push, not a veil.
  */
 export function shouldMemoryTransition(
   fromPath: string,
   toPath: string,
 ): boolean {
+  if (isCreatorPushHop(fromPath, toPath)) return false;
   const from = routeMemoryDomain(fromPath);
   const to = routeMemoryDomain(toPath);
   if (from === to && from === "light") return false;
@@ -87,6 +100,7 @@ export function shouldSafetyNetTransition(
   fromPath: string,
   toPath: string,
 ): boolean {
+  if (isCreatorPushHop(fromPath, toPath)) return false;
   const from = routeMemoryDomain(fromPath);
   const to = routeMemoryDomain(toPath);
   if (from === to) return false;
