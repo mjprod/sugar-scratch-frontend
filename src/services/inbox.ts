@@ -103,7 +103,7 @@ export const INBOX_FIXTURES: InboxMessage[] = [
     id: "msg-drop-1",
     type: "creator_drop",
     title: "Ashley dropped a new theme",
-    subtitle: "Neon Rain is live — open her collection",
+    subtitle: "A new theme is live — open her collection",
     timestamp: hoursAgo(0.4),
     isRead: false,
     thumbnail: {

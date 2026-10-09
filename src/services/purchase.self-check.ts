@@ -24,9 +24,9 @@ function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
-const single = buildOpeningSession(1, "ep1");
-const bundle = buildOpeningSession(5, "ep1");
-const unit = packUnitCost("ep1");
+const single = buildOpeningSession(1, "starter");
+const bundle = buildOpeningSession(5, "starter");
+const unit = packUnitCost("starter");
 
 assert(single.diamondCost === unit, "single-pack cost matches ranking");
 assert(single.cards.length === 3, "single-pack card count");
@@ -35,7 +35,7 @@ assert(bundle.cards.length === 5, "bundle card count");
 assert(bundle.cards.at(-1)?.rarity === "Ultra Rare", "bundle rarity order");
 assert(clampBuyPackQuantity(0) === 1, "qty floor");
 assert(clampBuyPackQuantity(99) === 10, "qty ceiling");
-assert(linearPackTotalCost("ep1", 3) === unit * 3, "linear qty cost");
+assert(linearPackTotalCost("starter", 3) === unit * 3, "linear qty cost");
 
 const foil = buildFoilOpeningSession(
   [{ id: "foil-1", label: "Foil", videoUrl: "https://example.com/foil.mp4" }],
@@ -80,10 +80,10 @@ const store = new Map<string, string>();
   removeItem: (key: string) => void store.delete(key),
 };
 
-assert(restoreOpening("ep1").status === "none", "no saved session yet");
+assert(restoreOpening("starter").status === "none", "no saved session yet");
 
 saveOpening({
-  packId: "ep1",
+  packId: "starter",
   session: single,
   stage: "scratch",
   cardIndex: 1,
@@ -96,7 +96,7 @@ saveOpening({
   ],
 });
 
-const resumed = restoreOpening("ep1");
+const resumed = restoreOpening("starter");
 assert(resumed.status === "resume", "saved session resumes");
 assert(
   resumed.status === "resume" && resumed.data.scratched.length === 1,
@@ -115,10 +115,10 @@ assert(
 assert(restoreOpening("ep2").status === "none", "other packs ignore this session");
 
 store.set("sugar.v8.openingSession", "{not json");
-assert(restoreOpening("ep1").status === "expired", "corrupted session expires");
+assert(restoreOpening("starter").status === "expired", "corrupted session expires");
 
 saveOpening({
-  packId: "ep1",
+  packId: "starter",
   session: single,
   stage: "ready",
   cardIndex: 0,
@@ -127,20 +127,20 @@ saveOpening({
 const stale = JSON.parse(store.get("sugar.v8.openingSession")!);
 stale.savedAt = Date.now() - 1000 * 60 * 60 * 24;
 store.set("sugar.v8.openingSession", JSON.stringify(stale));
-assert(restoreOpening("ep1").status === "expired", "stale session expires");
+assert(restoreOpening("starter").status === "expired", "stale session expires");
 
 clearOpening();
-assert(restoreOpening("ep1").status === "none", "clear removes the session");
+assert(restoreOpening("starter").status === "none", "clear removes the session");
 
 clearPackInventory();
 const apiInstances = [
   {
     instanceId: "server-uuid-1",
-    catalogPackId: "ep1",
-    packName: "Neon Rain",
+    catalogPackId: "mina-pack",
+    packName: "Starter",
     creator: "Mina",
     creatorId: "mina",
-    themeName: "Neon Rain",
+    themeName: "Starter",
     coverUrl: "",
     status: "unopened" as const,
     purchaseId: "purchase-uuid-1",
@@ -148,11 +148,11 @@ const apiInstances = [
   },
   {
     instanceId: "server-uuid-2",
-    catalogPackId: "ep1",
-    packName: "Neon Rain",
+    catalogPackId: "mina-pack",
+    packName: "Starter",
     creator: "Mina",
     creatorId: "mina",
-    themeName: "Neon Rain",
+    themeName: "Starter",
     coverUrl: "",
     status: "unopened" as const,
     purchaseId: "purchase-uuid-1",
@@ -220,33 +220,33 @@ const session = new Map<string, string>();
   setItem: (key: string, value: string) => void session.set(key, value),
   removeItem: (key: string) => void session.delete(key),
 };
-session.set("sugar.purchase.idempotency.linear:ep1:1", "stale-linear-1");
-session.set("sugar.v8.packBuyIdempotency:ep1:1", "stale-legacy-1");
-commitLinearPurchaseIdempotencyKey("ep1", 1);
+session.set("sugar.purchase.idempotency.linear:starter:1", "stale-linear-1");
+session.set("sugar.v8.packBuyIdempotency:starter:1", "stale-legacy-1");
+commitLinearPurchaseIdempotencyKey("starter", 1);
 assert(
-  !session.has("sugar.purchase.idempotency.linear:ep1:1"),
+  !session.has("sugar.purchase.idempotency.linear:starter:1"),
   "commit clears linear qty-1 key",
 );
 assert(
-  !session.has("sugar.v8.packBuyIdempotency:ep1:1"),
+  !session.has("sugar.v8.packBuyIdempotency:starter:1"),
   "commit clears legacy qty-1 key after 1-pack linear buy",
 );
 
-session.set("sugar.purchase.idempotency.linear:ep1:5", "stale-linear-5");
-session.set("sugar.v8.packBuyIdempotency:ep1:5", "stale-legacy-5");
-commitLinearPurchaseIdempotencyKey("ep1", 5);
+session.set("sugar.purchase.idempotency.linear:starter:5", "stale-linear-5");
+session.set("sugar.v8.packBuyIdempotency:starter:5", "stale-legacy-5");
+commitLinearPurchaseIdempotencyKey("starter", 5);
 assert(
-  !session.has("sugar.purchase.idempotency.linear:ep1:5") &&
-    !session.has("sugar.v8.packBuyIdempotency:ep1:5"),
+  !session.has("sugar.purchase.idempotency.linear:starter:5") &&
+    !session.has("sugar.v8.packBuyIdempotency:starter:5"),
   "commit clears linear + legacy keys after 5-pack linear buy",
 );
 
-session.set("sugar.purchase.idempotency.linear:ep1:3", "stale-linear-3");
-session.set("sugar.v8.packBuyIdempotency:ep1:1", "stale-legacy-1-from-singles");
-commitLinearPurchaseIdempotencyKey("ep1", 3);
+session.set("sugar.purchase.idempotency.linear:starter:3", "stale-linear-3");
+session.set("sugar.v8.packBuyIdempotency:starter:1", "stale-legacy-1-from-singles");
+commitLinearPurchaseIdempotencyKey("starter", 3);
 assert(
-  !session.has("sugar.purchase.idempotency.linear:ep1:3") &&
-    !session.has("sugar.v8.packBuyIdempotency:ep1:1"),
+  !session.has("sugar.purchase.idempotency.linear:starter:3") &&
+    !session.has("sugar.v8.packBuyIdempotency:starter:1"),
   "commit clears singles-fallback legacy qty-1 key for N≠1,5",
 );
 

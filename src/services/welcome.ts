@@ -23,7 +23,7 @@ const SESSION_HIDE_KEY = "sugar.v8.welcomeOverlayHidden";
 
 const WELCOME_PACK = {
   purchaseId: "welcome",
-  catalogPackId: "ep1",
+  catalogPackId: "starter",
   packName: "Starter Scratch Pack",
   creator: "Sugar",
   count: 1,

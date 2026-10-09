@@ -40,6 +40,8 @@ const PEEL_LOTTIE_PAUSE_MS = 1800;
 const PEEL_LOTTIE_CYCLE_MS = PEEL_LOTTIE_DURATION_MS + PEEL_LOTTIE_PAUSE_MS;
 /** Beat after foil clears before the bar flies up to dock. */
 const CLEAR_CELEBRATE_MS = 420;
+/** Start the "Scratch" text this far before the dock climb so it leads the bar. */
+const SCRATCH_TEXT_LEAD_MS = 180;
 /** Center → top climb duration (rAF pixel tween, includes anticipation). */
 const DOCK_FLY_MS = 280;
 /** Peak CSS blur during dock climb (px) — light motion-blur read. */
@@ -428,7 +430,7 @@ export function TopSymbolBar({
    * settle docked only after WAAPI finishes.
    */
   const [dockExiting, setDockExiting] = useState(false);
-  /** One-shot "Scratch" text, mounted when the dock climb starts. */
+  /** One-shot "Scratch" text, started just before the dock climb. */
   const [scratchTextPlay, setScratchTextPlay] = useState(false);
   /** After the dock sequence settles, slide the bar up until a finger is down. */
   const [dockPeek, setDockPeek] = useState(false);
@@ -1085,11 +1087,28 @@ export function TopSymbolBar({
     const id = window.setTimeout(() => {
       onAllRevealedRef.current();
     }, delay);
-    return () => window.clearTimeout(id);
+    // Lead the dock fly so the text is already playing when the bar starts up.
+    // Pin the portal host now — the bar is still centered, so .stage is stable.
+    const lead = reduceMotion
+      ? 0
+      : Math.max(0, delay - SCRATCH_TEXT_LEAD_MS);
+    const leadId =
+      !quietDecorativeLottie && lead < delay
+        ? window.setTimeout(() => {
+            const host = barRef.current?.closest(".stage");
+            if (host instanceof HTMLElement) setStageEl(host);
+            setScratchTextPlay(true);
+          }, lead)
+        : 0;
+    return () => {
+      window.clearTimeout(id);
+      window.clearTimeout(leadId);
+    };
   }, [
     clearedBurst,
     forceRevealed,
     phase,
+    quietDecorativeLottie,
     spawnFlakesAtStage,
     stageEl,
     syncParticleCanvasSize,
