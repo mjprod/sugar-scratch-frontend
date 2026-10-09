@@ -139,6 +139,23 @@ textarea:focus-visible {
   position: relative;
   touch-action: none;
   width: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.stage,
+.stage * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.stage input,
+.stage textarea,
+.stage [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Stage picture only — never symbol Lottie / foil / flake / cursor canvases. */
@@ -682,6 +699,14 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   gap: 2px;
   min-width: 0;
   text-align: left;
+}
+
+.pack-progress__remain,
+.pack-progress__pos,
+.pack-progress__copy {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .pack-progress__remain {
@@ -1277,7 +1302,14 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   width: min(72%, 280px);
   aspect-ratio: 400 / 190.705;
   transform: translate(-50%, -50%);
-  pointer-events: none;
+  pointer-events: none !important;
+}
+
+.scratch-text-lottie,
+.scratch-text-lottie *,
+.scratch-text-lottie-player,
+.scratch-text-lottie-player canvas {
+  pointer-events: none !important;
 }
 
 .scratch-text-lottie-player,
@@ -1286,7 +1318,6 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   width: 100% !important;
   height: 100% !important;
   transform: none !important;
-  pointer-events: none;
 }
 
 .top-symbol-bar-particle-layer {
