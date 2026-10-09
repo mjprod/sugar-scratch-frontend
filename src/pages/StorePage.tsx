@@ -1,3 +1,4 @@
+import "@/components/store/StoreScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";

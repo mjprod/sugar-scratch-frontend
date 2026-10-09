@@ -1,3 +1,4 @@
+import "@/components/auth/VerifyEmailModal.css";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";

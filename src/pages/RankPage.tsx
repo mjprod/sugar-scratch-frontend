@@ -1,3 +1,4 @@
+import "@/components/home/RankScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { RankScreen } from "@/components/home/RankScreen";
 

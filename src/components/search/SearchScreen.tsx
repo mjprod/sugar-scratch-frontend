@@ -1,3 +1,4 @@
+import "@/components/search/SearchScreen.css";
 import {
   useCallback,
   useEffect,

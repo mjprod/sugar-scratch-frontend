@@ -1,3 +1,4 @@
+import "@/components/auth/ResetPasswordScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";

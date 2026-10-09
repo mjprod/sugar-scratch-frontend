@@ -181,8 +181,10 @@ async function snapshot(cdp, base, route, width) {
 }
 
 /**
- * Drop the server origin from url()s, minifier spelling differences in custom
- * properties (oklch(24.9% …) vs oklch(.249 …)) and sub-pixel float noise.
+ * Drop the server origin from url()s, React useId suffixes, and spellings that
+ * differ only because Tailwind's Lightning CSS pass rewrote the entry CSS but
+ * not lazy CSS: oklch(24.9% …) vs oklch(.249 …), oklch black/white vs rgba,
+ * explicit 0%/100% gradient stops, 0% 0% vs 0px 0px. Plus sub-pixel noise.
  */
 function normalize(value, origin) {
   return value
@@ -191,7 +193,12 @@ function normalize(value, origin) {
     .replace(/oklch\(\s*([\d.]+)(%?)/g, (_, l, pct) =>
       `oklch(${Number((pct ? Number(l) / 100 : Number(l)).toFixed(4))}`)
     .replace(/\s*\/\s*/g, "/")
-    .replace(/-?\d*\.\d+/g, (n) => Number(n).toFixed(2));
+    .replace(/-?\d*\.\d+/g, (n) => Number(n).toFixed(2))
+    .replace(/oklch\(0 0 0\/([\d.]+)\)/g, "rgba(0, 0, 0, $1)")
+    .replace(/oklch\(1 0 0\/([\d.]+)\)/g, "rgba(255, 255, 255, $1)")
+    .replace(/\) 0%(?=,)/g, ")")
+    .replace(/\) 100%\)/g, "))")
+    .replace(/(^|[\s,])0% 0%(?=$|[\s,])/g, "$10px 0px");
 }
 
 function diff(a, b) {

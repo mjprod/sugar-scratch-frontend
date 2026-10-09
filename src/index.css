@@ -42,9 +42,7 @@
 
   --color-accent: oklch(0.656 0.212 354.31);
   --color-accent-strong: oklch(0.627 0.233 303.9);
-  --color-brand: oklch(0.606 0.219 292.72);
   --color-champagne: oklch(0.767 0.139 91.06);
-  --color-rose: oklch(0.656 0.212 354.31);
   --color-berry: oklch(0.606 0.219 292.72);
   --color-social: oklch(0.609 0.182 257.29);
   --color-danger: oklch(0.637 0.208 25.33);
@@ -59,6 +57,13 @@
   --shadow-float: 0 20px 60px oklch(0 0 0 / 0.35);
   --shadow-soft: 0 8px 24px oklch(0 0 0 / 0.25);
   --shadow-glow: 0 0 40px oklch(0.606 0.219 292.72 / 0.35);
+}
+
+/* Only lazy route CSS reads these, and Tailwind tree-shakes theme vars it
+   doesn't see referenced, so they must be emitted unconditionally. */
+@theme static {
+  --color-brand: oklch(0.606 0.219 292.72);
+  --color-rose: oklch(0.656 0.212 354.31);
 }
 
 html,

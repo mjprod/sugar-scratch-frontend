@@ -1,0 +1,70 @@
+/* theme.css rules owned by SettingsPage (lazy route CSS). */
+body[data-theme="v8"] .app-page-shell.settings-page>.app-page-shell-inner {
+  max-width: min(1100px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+body[data-theme="v8"] .settings-group-card {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid oklch(1 0 0 / 0.08);
+  background: oklch(1 0 0 / 0.035);
+}
+
+body[data-theme="v8"] .settings-row:hover:not(.is-static) {
+  background: oklch(1 0 0 / 0.05);
+}
+
+body[data-theme="v8"] .settings-row:hover:not(.is-static) .settings-row-chevron {
+  color: oklch(1 0 0 / 0.5);
+}
+
+body[data-theme="v8"] .settings-row:active:not(.is-static) {
+  background: oklch(1 0 0 / 0.07);
+}
+
+body[data-theme="v8"] .settings-row:focus-visible {
+  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline-offset: -2px;
+}
+
+body[data-theme="v8"] .settings-row.is-static {
+  cursor: default;
+  opacity: 0.72;
+}
+
+body[data-theme="v8"] .settings-row-title {
+  min-width: 0;
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: oklch(1 0 0);
+}
+
+body[data-theme="v8"] .settings-row.is-static .settings-row-title {
+  color: oklch(1 0 0 / 0.72);
+}
+
+body[data-theme="v8"] .settings-row-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: oklch(1 0 0 / 0.3);
+  transition: color 0.15s ease;
+}
+
+@media (min-width: 768px) {
+
+  body[data-theme="v8"] .settings-row {
+    min-height: 58px;
+    padding: 12px 16px;
+  }
+}
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .app-page-shell.settings-page .subpage-header {
+    top: var(--app-diamond-offset);
+  }
+}

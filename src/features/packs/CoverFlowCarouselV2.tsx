@@ -2,6 +2,7 @@ import { Html, useGLTF } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useDrag } from '@use-gesture/react'
+import { LazyMotion } from 'framer-motion'
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import {
 	  Suspense,
@@ -47,6 +48,7 @@ import {
 } from '@/shared/catalog/characters'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
 import { useMotion } from '@/features/collection/hooks/useMotion'
+import { loadMotionFeatures } from '@/lib/loadMotionFeatures'
 import { BuyButton } from '@/features/reveal/components/BuyButton'
 import {
   CtaButton,
@@ -857,7 +859,9 @@ function TearLottieHud({
       style={{ pointerEvents: 'none' }}
       wrapperClass="coverflow-pack-html coverflow-pack-html--tear"
     >
-      <div style={{ pointerEvents: 'auto' }}>{children}</div>
+      <LazyMotion features={loadMotionFeatures} strict>
+        <div style={{ pointerEvents: 'auto' }}>{children}</div>
+      </LazyMotion>
     </Html>
   )
 }

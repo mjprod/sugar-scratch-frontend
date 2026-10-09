@@ -1,3 +1,4 @@
+import "@/components/settings/SettingsScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { SettingsScreen } from "@/components/settings/SettingsScreen";
 

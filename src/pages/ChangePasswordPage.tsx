@@ -1,3 +1,4 @@
+import "@/components/settings/ChangePasswordScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChangePasswordScreen } from "@/components/settings/ChangePasswordScreen";
 import { useGoBack } from "@/hooks/useGoBack";

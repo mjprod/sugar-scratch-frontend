@@ -1,3 +1,4 @@
+import "@/components/inbox/InboxScreen.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";

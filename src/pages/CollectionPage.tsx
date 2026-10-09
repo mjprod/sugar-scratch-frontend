@@ -1,3 +1,4 @@
+import "@/components/collection/CollectionPage.css";
 import { useEffect } from "react";
 import { CollectionPage as CollectionView } from "@/components/collection/CollectionPage";
 import { requestWalletReveal, takeCoinReceipt } from "@/services/coinReceipt";

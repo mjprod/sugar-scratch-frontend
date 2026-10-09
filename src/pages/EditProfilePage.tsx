@@ -1,3 +1,4 @@
+import "@/components/profile/EditProfileScreen.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditProfileScreen } from "@/components/profile/EditProfileScreen";

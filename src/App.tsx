@@ -6,11 +6,9 @@ import { WalletProvider } from "@/contexts/WalletContext";
 import { MemoryTransitionProvider } from "@/components/memory/MemoryTransition";
 import { SitePreloader } from "@/components/SitePreloader";
 import { MotionProvider } from "@/features/collection/context/MotionContext";
+import { loadMotionFeatures } from "@/lib/loadMotionFeatures";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { PageReadyProvider } from "@/shared/ui/PageTransition";
-
-const loadMotionFeatures = () =>
-  import("@/lib/motionFeatures").then((mod) => mod.default);
 
 export default function App() {
   return (
