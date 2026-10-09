@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useLayoutEffect,
   useRef,
   useState,
@@ -8,8 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import Aurora from "./Aurora";
-import BorderGlow from "./BorderGlow";
+import BorderGlow from "@/components/ui/BorderGlow";
+import { ChunkErrorBoundary } from "@/components/ui/ChunkErrorBoundary";
+
+// Aurora pulls in ogl (WebGL); keep it out of the entry chunk.
+const Aurora = lazy(() => import("./Aurora"));
 import "./CtaButton.css";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
@@ -41,30 +46,13 @@ function isDiamondIconMarker(icon: ReactNode): boolean {
   return icon == null || icon === "" || icon === "💎";
 }
 
-function renderCostIcon(
-  icon: ReactNode,
-  opts?: { animate?: boolean },
-): ReactNode {
+function renderCostIcon(icon: ReactNode): ReactNode {
   if (icon === false) return null;
   if (isDiamondIconMarker(icon)) {
-    const animate = opts?.animate !== false;
-    // Offscreen / frozen CTAs: skip wasm Lottie entirely (static glyph).
-    if (!animate) {
-      return (
-        <span
-          className="cta-button__cost-lottie cta-button__cost-lottie--static"
-          aria-hidden
-        >
-          💎
-        </span>
-      );
-    }
     return (
       <DiamondLottie
         className="cta-button__cost-lottie"
         size="1.1em"
-        autoplay
-        loop
         aria-hidden
       />
     );
@@ -173,10 +161,7 @@ export type CtaButtonProps = {
    * Useful on low-power / mobile paths without greying out the button.
    */
   auroraPaused?: boolean;
-  /**
-   * When false, keep a static diamond mark (no Lottie rAF/wasm loop).
-   * Defaults to true whenever the diamond marker is used.
-   */
+  /** Kept for call-site compatibility. Diamond marks are always static. */
   costIconAnimated?: boolean;
   labelColor?: string;
   fontSize?: number;
@@ -245,7 +230,7 @@ export function CtaButton({
   particleColor = "#fb4b97",
   particleTwinkle = 0.51,
   auroraPaused = false,
-  costIconAnimated = true,
+  costIconAnimated: _costIconAnimated = true,
   labelColor = "#ffe0e8",
   fontSize = 18,
   forceHover = false,
@@ -421,21 +406,25 @@ export function CtaButton({
       <span className="cta-button__inner">
         <span className="cta-button__aurora" aria-hidden="true">
           {auroraLive ? (
-            <Aurora
-              colorStops={auroraColorStops}
-              speed={auroraSpeed}
-              blend={auroraBlend}
-              amplitude={auroraAmplitude}
-              bandHeight={auroraBandHeight}
-              rotation={auroraRotation}
-              particleCount={liveParticleCount}
-              particleSize={particleSize}
-              particleSpeed={particleSpeed}
-              particleOpacity={particleOpacity}
-              particleColor={particleColor}
-              particleTwinkle={particleTwinkle}
-              paused={false}
-            />
+            <ChunkErrorBoundary fallback={<span className="cta-button__aurora-fallback" />}>
+              <Suspense fallback={<span className="cta-button__aurora-fallback" />}>
+                <Aurora
+                  colorStops={auroraColorStops}
+                  speed={auroraSpeed}
+                  blend={auroraBlend}
+                  amplitude={auroraAmplitude}
+                  bandHeight={auroraBandHeight}
+                  rotation={auroraRotation}
+                  particleCount={liveParticleCount}
+                  particleSize={particleSize}
+                  particleSpeed={particleSpeed}
+                  particleOpacity={particleOpacity}
+                  particleColor={particleColor}
+                  particleTwinkle={particleTwinkle}
+                  paused={false}
+                />
+              </Suspense>
+            </ChunkErrorBoundary>
           ) : (
             <span className="cta-button__aurora-fallback" />
           )}
@@ -454,9 +443,7 @@ export function CtaButton({
             <span className="cta-button__cost">
               <span className="cta-button__cost-amount">{costText}</span>
               {(() => {
-                const icon = renderCostIcon(costIcon, {
-                  animate: costIconAnimated && !disabled && !reducedMotion,
-                });
+                const icon = renderCostIcon(costIcon);
                 if (icon == null || icon === false) return null;
                 return (
                   <span className="cta-button__cost-icon" aria-hidden="true">

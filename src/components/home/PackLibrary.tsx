@@ -1,19 +1,15 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { SearchScreen } from "@/components/search/SearchScreen";
-import { type FeaturedPack } from "@/services/homepage";
-import {
-  searchPackToPurchase,
-  type SearchPack,
-} from "@/services/search";
-import { useAuth } from "@/contexts/AuthContext";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { searchPackToPurchase } from "@/services/search";
+import { useAuth } from "@/contexts/useAuth";
 
-const LIBRARY_ACCENT = {
-  primary: "oklch(0.55 0.2 330)",
-  secondary: "oklch(0.45 0.18 300)",
-  glow: "oklch(0.65 0.18 340)",
-} as const;
+const SearchScreen = lazy(() =>
+  import("@/components/search/SearchScreen").then((mod) => ({
+    default: mod.SearchScreen,
+  })),
+);
 
 const ROOT_VARIANTS = {
   hidden: {
@@ -64,68 +60,48 @@ const PANEL_VARIANTS = {
 export function PackLibrary({
   open,
   onClose,
-  onPlay,
 }: {
   open: boolean;
   onClose: () => void;
-  onPlay: (pack: FeaturedPack) => void;
 }) {
   const reduce = useReducedMotion();
-  const { openCreator } = useAuth();
+  const { authOpen, openCreator, openPurchase } = useAuth();
 
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      if (authOpen) return;
+      onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [authOpen, open, onClose]);
 
   useEffect(() => {
     if (!open) return;
-    const scroller = document.querySelector<HTMLElement>("[data-page-scroll]");
-    const previousOverflow = scroller?.style.overflow ?? "";
     const previousBodyOverflow = document.body.style.overflow;
-    if (scroller) scroller.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    const locked: Array<{ el: HTMLElement; overflow: string }> = [];
+    document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((el) => {
+      if (el.closest(".pack-library-root")) return;
+      locked.push({ el, overflow: el.style.overflow });
+      el.style.overflow = "hidden";
+    });
     return () => {
-      if (scroller) scroller.style.overflow = previousOverflow;
       document.body.style.overflow = previousBodyOverflow;
+      for (const item of locked) item.el.style.overflow = item.overflow;
     };
   }, [open]);
-
-  function handleOpenPack(pack: SearchPack) {
-    const purchase = searchPackToPurchase(pack);
-    onPlay({
-      id: purchase.packId,
-      name: purchase.packName,
-      packTitle: purchase.packName,
-      creatorId: pack.creatorId,
-      creatorName: pack.creatorName,
-      collectionName: pack.themeName || purchase.packName,
-      themeName: pack.themeName,
-      coverImageUrl: pack.coverImageUrl,
-      price: {
-        amount: pack.diamondCost,
-        currency: "SC",
-      },
-      diamondCost: pack.diamondCost,
-      collected: 0,
-      collectionTotal: pack.cardCount || 5,
-      accentColors: LIBRARY_ACCENT,
-      isAvailable: true,
-    });
-  }
 
   if (typeof document === "undefined") return null;
 
   return createPortal(
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <m.div
           key="pack-library"
-          className="pack-library-root fixed inset-0 z-[1100] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
+          className="pack-library-root fixed inset-0 z-[5150] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden"
           role="presentation"
           initial={reduce ? false : "hidden"}
           animate="visible"
@@ -133,7 +109,7 @@ export function PackLibrary({
           variants={ROOT_VARIANTS}
         >
           {/* Backdrop fades on its own track — not tied to the sheet transform. */}
-          <motion.button
+          <m.button
             type="button"
             className="pack-library-overlay absolute inset-0"
             aria-label="Dismiss search"
@@ -141,26 +117,34 @@ export function PackLibrary({
             onClick={onClose}
           />
           {/* Search sheet slides up independently of the overlay fade. */}
-          <motion.div
+          <m.div
             className="pack-library-panel relative z-[1] mx-auto mt-auto flex min-h-0 w-full max-w-[75rem] flex-1 flex-col overflow-hidden"
             role="dialog"
             aria-modal="true"
-            aria-label="Pack library"
+            aria-label="Search"
             variants={PANEL_VARIANTS}
           >
-            <SearchScreen
-              onCancel={onClose}
-              onOpenCreator={(id) => {
-                onClose();
-                openCreator(id);
-              }}
-              onOpenPack={(pack) => {
-                onClose();
-                handleOpenPack(pack);
-              }}
-            />
-          </motion.div>
-        </motion.div>
+            <Suspense
+              fallback={
+                <div className="grid flex-1 place-items-center">
+                  <Loader2
+                    className="size-8 animate-spin text-white/70"
+                    role="status"
+                    aria-label="Loading search"
+                  />
+                </div>
+              }
+            >
+              <SearchScreen
+                onCancel={onClose}
+                onOpenCreator={openCreator}
+                onOpenPack={(pack) => {
+                  openPurchase(searchPackToPurchase(pack), "buy-pack");
+                }}
+              />
+            </Suspense>
+          </m.div>
+        </m.div>
       ) : null}
     </AnimatePresence>,
     document.body,

@@ -1,0 +1,246 @@
+/* Same stage + bottom glow pose as 3D packs; carousel chrome sits above circles. */
+.mobile-css-carousel-stage.stage-packs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Circles sit near the bottom edge; allow bloom to paint past the stage. */
+  overflow: visible;
+}
+
+/* Half the last pass — readable without overpowering the packs. */
+.mobile-css-carousel-stage .packs-circle--bloom {
+  opacity: 0.29;
+  filter: blur(12px);
+}
+
+.mobile-css-carousel-stage .packs-circle--core {
+  opacity: 0.31;
+  filter: blur(14px) hue-rotate(304deg);
+}
+
+/* Slightly slower than the shared 480ms packs fade. */
+.mobile-css-carousel-stage.is-glow-fading .packs-glow-stack--base,
+.mobile-css-carousel-stage.is-glow-fading .packs-glow-stack--next {
+  transition: opacity 640ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-css-carousel-shell {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin-top: -6rem;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mobile-css-carousel.swiper,
+.mobile-css-carousel.swiper-3d {
+  width: 100%;
+  padding-top: 50px;
+  padding-bottom: 50px;
+  overflow: visible;
+}
+
+.mobile-css-carousel.swiper-3d .swiper-wrapper,
+.mobile-css-carousel .swiper-wrapper {
+  overflow: visible;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mobile-css-carousel .swiper-slide {
+  position: relative;
+  width: 14.4rem;
+  aspect-ratio: 9 / 16;
+  height: auto;
+  background: #111;
+  overflow: visible;
+  /* Keep nested HUD hit-testable under coverflow 3D transforms. */
+  transform-style: flat;
+  -webkit-transform-style: flat;
+}
+
+.mobile-css-carousel .swiper-slide-active {
+  z-index: 5 !important;
+}
+
+.mobile-css-carousel .swiper-slide video,
+.mobile-css-carousel__poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+}
+
+.mobile-css-carousel__pack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #111;
+}
+
+/* Poster is the cheap base layer under the video. */
+.mobile-css-carousel__poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Single active decoder paints above the poster. Neighbors are poster-only. */
+.mobile-css-carousel__pack video,
+.mobile-css-carousel__video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Dim inactive slides without filter:brightness (Safari GPU/decode cost). */
+.mobile-css-carousel__dim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: #000;
+  opacity: var(--slide-dim, 0.5);
+}
+
+.mobile-css-carousel__hud {
+  position: absolute;
+  left: 50%;
+  /* Mobile CSS carousel only — keep 3D coverflow stack untouched. */
+  bottom: 4.9rem;
+  z-index: 30;
+  touch-action: manipulation;
+  width: max-content;
+  transform: translate3d(-50%, 10px, 40px);
+  pointer-events: auto;
+  transform-style: flat;
+  -webkit-transform-style: flat;
+}
+
+.mobile-css-carousel__hud.coverflow-active-stack--html {
+  transform: translate3d(-50%, 10px, 40px);
+}
+
+.mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
+  transform: translate3d(-50%, 0, 40px);
+}
+
+.mobile-css-carousel__hud .coverflow-buy-pack-cta {
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
+  transform: translateZ(1px);
+}
+
+.mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button-glow,
+.mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button {
+  pointer-events: auto;
+  position: relative;
+  z-index: 31;
+}
+
+/* Compact resume / collection strip: scale coverflow to the parent, no HUD. */
+.mobile-css-carousel-stage.is-compact {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel-shell {
+  position: relative;
+  margin-top: 0;
+  height: auto;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper,
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper-3d {
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+  padding-right: 0;
+  height: auto;
+  /* Clip the sliding track sideways. clip (not hidden) so the Play
+     button can still paint past the top/bottom of the stage. */
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* Edge fade while more cards sit off that side. Drops at either end. */
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel.has-fade-right {
+  -webkit-mask-image: linear-gradient(90deg, #000 60%, #0000002e);
+  mask-image: linear-gradient(90deg, #000 60%, #0000002e);
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel.has-fade-left {
+  -webkit-mask-image: linear-gradient(270deg, #000 60%, #0000002e);
+  mask-image: linear-gradient(270deg, #000 60%, #0000002e);
+}
+
+.mobile-css-carousel-stage.is-compact
+  .mobile-css-carousel.has-fade-left.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #0000002e,
+    #000 40%,
+    #000 60%,
+    #0000002e
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #0000002e,
+    #000 40%,
+    #000 60%,
+    #0000002e
+  );
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-wrapper {
+  justify-content: flex-start;
+  transform-style: flat;
+}
+
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow {
+  top: 50%;
+  z-index: 8;
+  transform: translateY(-50%);
+}
+
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-prev {
+  left: -6px;
+}
+
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-next {
+  right: -6px;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-slide {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 9.072rem;
+  height: calc(9.072rem * 16 / 9);
+  background: transparent;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__pack {
+  width: 100%;
+  height: 100%;
+  flex: none;
+}
+
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__play {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  z-index: 6;
+  margin: 0;
+  transform: translateX(-50%);
+  overflow: visible;
+}

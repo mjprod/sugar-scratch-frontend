@@ -2,11 +2,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   claimWelcomeRewards,
-  clearWelcomeGiftState,
   finalizeWelcomeClaimRemote,
   hideWelcomeOverlayForSession,
   shouldShowWelcomeOverlay,
@@ -29,9 +28,16 @@ function prefersReducedMotion() {
   );
 }
 
-export function WelcomeGiftOverlay() {
+export function WelcomeGiftOverlay({
+  onOpenChange,
+}: {
+  onOpenChange?: (open: boolean) => void;
+}) {
   const {
     authed,
+    authOpen,
+    emailVerified,
+    verifyOpen,
     profile,
     bumpInventoryRevision,
     invalidatePackSync,
@@ -52,7 +58,13 @@ export function WelcomeGiftOverlay() {
   const [exitPhase, setExitPhase] = useState<ExitPhase>("idle");
 
   useEffect(() => {
-    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed)) {
+    // Guests browse freely — gift only after sign-in + verified email.
+    const waitingOnEmailVerify = authed && !emailVerified;
+    if (!authed || authOpen || verifyOpen || waitingOnEmailVerify) {
+      setOpen(false);
+      return;
+    }
+    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed, authed)) {
       setExitPhase("idle");
       setOpen(true);
       return;
@@ -61,14 +73,24 @@ export function WelcomeGiftOverlay() {
       setExitPhase("idle");
       setOpen(false);
     }
-    // Re-check on auth so a failed signup fulfill (pending cleared) can reopen.
-  }, [authed, skip, profile.welcomeClaimed]);
+  }, [
+    authOpen,
+    authed,
+    emailVerified,
+    verifyOpen,
+    skip,
+    profile.welcomeClaimed,
+  ]);
 
   useEffect(() => {
     if (open && exitPhase === "idle") {
       claimSlotRef.current?.querySelector("button")?.focus();
     }
   }, [open, exitPhase]);
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
     if (phase !== "confirm" || exitPhase !== "idle") return;
@@ -168,16 +190,6 @@ export function WelcomeGiftOverlay() {
     setPhase("confirm");
   }
 
-  function onDebugReset() {
-    clearWelcomeGiftState();
-    setProfile((d) => ({ ...d, welcomeClaimed: false }));
-    setPhase("offer");
-    setError(false);
-    setHeldForAccount(false);
-    setExitPhase("idle");
-    setOpen(true);
-  }
-
   // Don't mark CTA disabled during exit — disabled greys the gold button.
   const claimBusy = phase === "claiming" || phase === "confirm";
   const exitLocked = exitPhase !== "idle";
@@ -190,23 +202,10 @@ export function WelcomeGiftOverlay() {
   const panelExitClass = exitPhase === "panel" ? "is-exiting" : "";
   const ctaExitClass =
     exitPhase === "cta" || exitPhase === "panel" ? "is-exit-cta" : "";
-  const debugReset = (
-    <button
-      type="button"
-      className="welcome-gift-debug-reset"
-      onClick={onDebugReset}
-    >
-      welcome kicker reset
-    </button>
-  );
-
-  if (!open) {
-    return createPortal(debugReset, document.body);
-  }
+  if (!open) return null;
 
   return createPortal(
-    <>
-      <div
+    <div
         className={["welcome-gift-overlay", overlayExitClass].filter(Boolean).join(" ")}
         role="presentation"
       >
@@ -310,9 +309,7 @@ export function WelcomeGiftOverlay() {
             )}
           </div>
         </div>
-      </div>
-      {debugReset}
-    </>,
+      </div>,
     document.body,
   );
 }

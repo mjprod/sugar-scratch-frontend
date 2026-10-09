@@ -1,21 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
-import { CreatorCollectionBrowse } from "@/components/creator/CreatorCollectionBrowse";
-import { CreatorCollectionsDiscovery } from "@/components/creator/CreatorCollectionsDiscovery";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
+import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
 import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
-import {
-  ViewModeToggle,
-  type ViewMode,
-} from "@/components/creator/ViewModeToggle";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
+import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
-import {
-  normalizeMediaUrl,
-  type BackendModel,
-} from "@/shared/backend/collection";
+import { type BackendModel } from "@/shared/backend/collection";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { modelDisplayName } from "@/shared/backend/modelProfile";
 import { formatSocialHandle } from "@/shared/catalog/characters";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
@@ -31,14 +25,19 @@ import {
   unfollowCreator,
 } from "@/services/following";
 import {
+  modelAvatarUrl,
+  modelUltraCardTrailerPosterUrl,
+  modelUltraCardTrailerUrl,
+} from "@/services/models";
+import {
   loadPackCatalog,
-  packUnitCost,
   type PurchaseFlowPack,
 } from "@/services/purchase";
 import "./creator-collection.css";
+import "./creator-influencer.css";
 
 /**
- * Creator Page V2 — {Creator}'s Scratches with Grid / Collection browse modes.
+ * Creator Page — InnerInfluencer Figma layout (profile, packs, progress, themes).
  */
 export function CreatorScreen({
   creatorId,
@@ -99,15 +98,18 @@ function CreatorScreenInner({
 }) {
   const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId);
+  const pageLoading = !model || collection.loading;
   useMarkPageReady(
-    !collection.loading ||
+    !pageLoading ||
       collection.themes.length > 0 ||
       collection.cards.length > 0,
   );
   const navigate = useNavigate();
   const { authed, requireAuth } = useAuth();
+  const registerPlay = useRegisterCardPlay();
+  const [buying, setBuying] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<ViewMode>("carousel");
+  const pageRef = useRef<HTMLElement | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState(
     () => searchParams.get("theme") || "",
   );
@@ -145,9 +147,14 @@ function CreatorScreenInner({
     formatSocialHandle(model?.label) ||
     formatSocialHandle(creatorId) ||
     "";
-  const creatorDescription = `${creatorName} brings confidence, charm, and energy to every moment. Explore her exclusive collections.`;
-  const themeTags = themes.map((entry) => entry.name).slice(0, 6);
   const purchaseCreatorId = creatorId || model?.id || "";
+
+  const locationLabel = useMemo(() => {
+    const city = model?.influencerCity?.trim() || "";
+    const country = model?.influencerCountry?.trim() || "";
+    if (city && country) return `${city}, ${country}`;
+    return city || country || "";
+  }, [model?.influencerCity, model?.influencerCountry]);
 
   useEffect(() => {
     if (!usingLiveThemes) return;
@@ -169,24 +176,12 @@ function CreatorScreenInner({
       matchLiveThemeId(wantedId, themes) ??
       themes[0]!.id;
 
-    const nextCardId =
-      urlCard &&
-      (collection.cardsByThemeId[nextThemeId] ?? []).some(
-        (card) => card.id === urlCard,
-      )
-        ? urlCard
-        : null;
-
     if (nextThemeId !== selectedThemeId) {
       setSelectedThemeId(nextThemeId);
     }
-    if (nextCardId !== featuredCardId) {
-      setFeaturedCardId(nextCardId);
-    }
-    if (urlTheme !== nextThemeId || (urlCard ?? null) !== nextCardId) {
+    if (featuredCardId) setFeaturedCardId(null);
+    if (urlTheme !== nextThemeId) {
       const next = new URLSearchParams(searchParams);
-      if (nextCardId) next.set("card", nextCardId);
-      else next.delete("card");
       next.set("theme", nextThemeId);
       setSearchParams(next, { replace: true });
     }
@@ -200,12 +195,25 @@ function CreatorScreenInner({
     collection.cardsByThemeId,
   ]);
 
-  const theme =
-    themes.find((entry) => entry.id === selectedThemeId) ?? themes[0];
+  // Profile avatar always comes from this model's `/api/models` avatar field
+  // (extension varies: .jpg / .jpeg / .png / .webp) — never a hardcoded path.
+  const avatarUrl = useMemo(() => modelAvatarUrl(model) ?? "", [model]);
+  const ultraVideoUrl = useMemo(
+    () => modelUltraCardTrailerUrl(model) ?? "",
+    [model],
+  );
+  const ultraPosterUrl = useMemo(
+    () =>
+      modelUltraCardTrailerPosterUrl(model) ??
+      avatarUrl ??
+      "",
+    [model, avatarUrl],
+  );
+  // Prefer uploaded landscape cover for the top hero; never swap in theme art.
   const coverUrl =
-    (model?.avatar ? normalizeMediaUrl(model.avatar) : "") ||
-    theme?.thumbnailUrl ||
-    "";
+    (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
+    avatarUrl ||
+    "/img/placeholder.webp";
 
   function notice(message: string) {
     setToast(message);
@@ -220,15 +228,36 @@ function CreatorScreenInner({
     setSearchParams(next, { replace: true });
   }
 
-  function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
+  async function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
     const card = cardId.trim();
     const playModel = playModelId.trim();
-    if (!card || !playModel) return;
+    if (!card || !playModel || buying) return;
+    setBuying(true);
+    try {
+      const ok = await registerPlay("motion", card);
+      if (!ok) return;
+      syncCardParam(card, selectedThemeId);
+      navigate(
+        Paths.gamePlay(playModel, card, {
+          creatorId,
+          themeId: selectedThemeId,
+        }),
+      );
+    } finally {
+      setBuying(false);
+    }
+  }
+
+  function handlePlayGameFree(playModelId: string, cardId: string, _cardName: string) {
+    const card = cardId.trim();
+    const playModel = playModelId.trim();
+    if (!card || !playModel || buying) return;
     syncCardParam(card, selectedThemeId);
     navigate(
       Paths.gamePlay(playModel, card, {
         creatorId,
         themeId: selectedThemeId,
+        freePlay: true,
       }),
     );
   }
@@ -239,7 +268,7 @@ function CreatorScreenInner({
         type: "follow",
         creatorId: followId || creatorId,
         displayName: creatorName,
-        avatarUrl: coverUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.webp",
       });
       return;
     }
@@ -258,7 +287,7 @@ function CreatorScreenInner({
         id: followId || creatorId,
         displayName: creatorName,
         username: "",
-        avatarUrl: coverUrl || "/img/placeholder.png",
+        avatarUrl: avatarUrl || "/img/placeholder.webp",
         followedAt: Date.now(),
         hasUnseenActivity: false,
       } as const);
@@ -268,84 +297,81 @@ function CreatorScreenInner({
     notice(`Following ${creatorName}`);
   }
 
-  function switchMode(mode: ViewMode) {
-    if (mode === viewMode) return;
-    setFeaturedCardId(null);
-    syncCardParam(null, selectedThemeId);
-    setViewMode(mode);
-  }
-
-  function buyThemePack(themeId: string) {
-    const packTheme =
-      themes.find((entry) => entry.id === themeId) ?? themes[0];
-    if (!packTheme) return;
-    const packId = `${purchaseCreatorId}-${packTheme.id}-buy`;
-    const cost = packUnitCost(packId);
+  function addCoverflowPackToPocket(pack: {
+    id: string;
+    foilId?: string;
+    name: string;
+    creatorName: string;
+    diamondCost: number;
+    themeName?: string;
+  }) {
+    const packId = pack.foilId ?? pack.id;
     onBuyPack({
       packId,
-      packName: packTheme.name,
-      themeName: packTheme.name,
-      price: `${cost} ◆`,
-      creator: creatorName,
+      packName: pack.name,
+      themeName: pack.themeName,
+      price: `${pack.diamondCost} ◆`,
+      creator: pack.creatorName || creatorName,
       entry: "purchase",
     });
   }
 
+  if (pageLoading && themes.length === 0) {
+    return (
+      <section
+        ref={pageRef}
+        data-page-scroll
+        className="cpv2-page no-sticky-cta"
+      >
+        <CreatorPageSkeleton onBack={onBack} />
+      </section>
+    );
+  }
+
   return (
-    <section data-page-scroll className="cpv2-page no-sticky-cta">
+    <section
+      ref={pageRef}
+      data-page-scroll
+      className="cpv2-page no-sticky-cta"
+    >
       <div className="cpv2-shell">
         <CreatorHeader
           name={creatorName}
           username={username}
+          avatarUrl={avatarUrl}
           coverUrl={coverUrl}
-          description={creatorDescription}
-          tags={themeTags}
+          locationLabel={locationLabel}
           onBack={onBack}
           following={following}
           onToggleFollow={handleToggleFollow}
         />
 
-        <div className="cpv2-choose-row" id="cpv2-choose-theme">
-          <h2 className="cpv2-choose-title">Choose a Theme</h2>
-          <ViewModeToggle value={viewMode} onChange={switchMode} />
-        </div>
-
-        <div key={viewMode} className="cpv2-mode-panel">
-          {viewMode === "grid" ? (
-            <CreatorCollectionsDiscovery
-              creatorId={purchaseCreatorId}
-              themes={themes}
-              selectedThemeId={theme?.id ?? selectedThemeId}
-              onSelectTheme={(id) => {
-                setSelectedThemeId(id);
-                syncCardParam(null, id);
-              }}
-              cardsByThemeId={collection.cardsByThemeId}
-              loading={collection.loading}
-              showPersonalProgress={authed}
-              onBuyPack={buyThemePack}
-              onOpenCollectedCard={(cardId) => {
-                setFeaturedCardId(cardId);
-                syncCardParam(cardId, selectedThemeId);
-              }}
-              onLockedCardHint={() => notice("Not collected yet")}
-            />
-          ) : (
-            <CreatorCollectionBrowse
-              modelId={collection.modelId}
-              focusCardId={searchParams.get("card")}
-              onPlayGame={handlePlayGame}
-              onViewCard={(name) => notice(`View ${name}`)}
-            />
-          )}
-        </div>
+        <CreatorInfluencerBody
+          creatorName={creatorName}
+          creatorId={purchaseCreatorId}
+          avatarUrl={avatarUrl}
+          ultraVideoUrl={ultraVideoUrl}
+          ultraPosterUrl={ultraPosterUrl}
+          themes={themes}
+          cardsByThemeId={collection.cardsByThemeId}
+          showPersonalProgress={authed}
+          loading={collection.loading}
+          onAddPackToPocket={addCoverflowPackToPocket}
+          onOpenCard={(cardId, themeId) => {
+            // Open the motion card detail route. Do not also write ?card= on the
+            // creator URL — setSearchParams races navigate and can leave the
+            // user stuck on the creator page / featured overlay.
+            setSelectedThemeId(themeId);
+            navigate(Paths.motionCard(creatorId, cardId));
+          }}
+          onPlayGame={handlePlayGame}
+          onPlayGameFree={handlePlayGameFree}
+        />
       </div>
 
       {toast ? <div className="cpv2-toast">{toast}</div> : null}
 
-      {viewMode === "grid" &&
-      featuredCardId &&
-      collection.modelId ? (
+      {featuredCardId && collection.modelId ? (
         <FeaturedCardOverlay
           modelId={collection.modelId}
           cardId={featuredCardId}
@@ -358,5 +384,33 @@ function CreatorScreenInner({
         />
       ) : null}
     </section>
+  );
+}
+
+function CreatorPageSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="cpv2-shell cpv2-page-skeleton" aria-busy="true">
+      <div className="cpv2-skeleton-profile">
+        <button
+          type="button"
+          className="cpv2-skeleton-back"
+          aria-label="Back"
+          onClick={onBack}
+        />
+        <span className="cpv2-skeleton-avatar" aria-hidden="true" />
+        <span className="cpv2-skeleton-meta" aria-hidden="true">
+          <span className="cpv2-skeleton-bar is-name" />
+          <span className="cpv2-skeleton-bar is-handle" />
+          <span className="cpv2-skeleton-bar is-location" />
+        </span>
+      </div>
+      <div className="cpv2-influencer" aria-hidden="true">
+        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-progress" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+      </div>
+    </div>
   );
 }

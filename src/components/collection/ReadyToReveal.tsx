@@ -1,7 +1,14 @@
-import { useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
+import {
+  DesktopCoverFlow,
+  HOME_COVERFLOW_CAMERA,
+} from "@/components/home/DesktopCoverFlow";
+import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
+import {
+  packItemToIteration,
+  type Iteration,
+} from "@/features/packs/types";
 import { useModels } from "@/hooks/useModels";
 import {
   resolveCollectionThemeLabel,
@@ -10,7 +17,11 @@ import {
 } from "@/services/collection";
 import {
   cardPackNameFromModel,
+  isVideoSrc,
   matchModel,
+  modelAvatarUrl,
+  modelId,
+  packFacePosterFromModel,
   packFaceVideoFromModel,
 } from "@/services/models";
 import {
@@ -19,7 +30,6 @@ import {
   listUnopenedPackShelf,
 } from "@/services/scratchResume";
 import { trackScratchEvent } from "@/services/readyToScratch";
-import { RevealInventoryTile } from "./RevealInventoryTile";
 
 /** Display-only: real theme name, never foil placeholders like "Pack 1". */
 function themeLabel(
@@ -36,27 +46,42 @@ function themeLabel(
   );
 }
 
+type ContinueTile = {
+  id: string;
+  coverUrl: string;
+  posterUrl?: string;
+  title: string;
+  ariaLabel: string;
+  onActivate: () => void;
+};
+
 /**
- * Ready to Reveal — unfinished owned inventory only.
- * Packs (unopened) + Cards (unscratched / resume). Rendering never settles state.
+ * Figma MyCollection "Continue where you left off…" strip (node 123:491).
+ * Unopened packs + ready scratches as compact portrait tiles with play CTA.
  */
 export function ReadyToReveal({
   onOpenPack,
   onScratch,
-  onExplorePacks,
+  onExplorePacks: _onExplorePacks,
   scratchGroups,
   unopenedPacks,
   inventoryRevision = 0,
+  /** Keep the continue shell + #ready-heading when reveal=packs lands empty. */
+  forceEmptyReveal = false,
 }: {
   onOpenPack: (pack: UnopenedPack) => void;
   onScratch: (group: ScratchReadyGroup) => void;
-  onExplorePacks: () => void;
+  /** Kept for callers; empty state no longer renders a CTA here. */
+  onExplorePacks?: () => void;
   scratchGroups?: ScratchReadyGroup[];
   unopenedPacks?: UnopenedPack[];
   inventoryRevision?: number;
+  forceEmptyReveal?: boolean;
 }) {
+  void _onExplorePacks;
   const [searchParams] = useSearchParams();
-  const revealPacks = searchParams.get("reveal") === "packs";
+  const revealPacks =
+    forceEmptyReveal || searchParams.get("reveal") === "packs";
   const models = useModels();
   const packs = useMemo(
     () => unopenedPacks ?? listUnopenedPackShelf(),
@@ -67,21 +92,187 @@ export function ReadyToReveal({
     [scratchGroups, inventoryRevision],
   );
 
-  // Header / subsection counts = actionable inventory tiles (grouped items),
-  // not every card inside a grouped photo session.
-  const packItems = packs.length;
-  const cardItems = scratches.length;
-  const cardsScroll = useHorizontalScroll(".ready-reveal-tile", cardItems);
-  const totalActions = packItems + cardItems;
-  const empty = totalActions === 0;
-  const showPacks = packItems > 0;
-  const showCards = cardItems > 0;
+  const tiles = useMemo(() => {
+    const packTiles = packs.map((pack) => {
+      const model = matchModel(models, {
+        packId: pack.catalogPackId ?? pack.id,
+        name: pack.creator,
+      });
+      // Retired local fixtures (ep1 / Neon Rain) are not in GET /api/models.
+      if (!model) return null;
+      const foilHints = {
+        packId: pack.catalogPackId ?? pack.id,
+        packName: pack.name,
+        themeName: pack.name,
+      };
+      const title =
+        cardPackNameFromModel(model, foilHints) ||
+        themeLabel(pack.name, {
+          catalogPackId: pack.catalogPackId,
+          creator: pack.creator,
+        });
+      const modelVideo = packFaceVideoFromModel(model, foilHints) || "";
+      const modelPoster = packFacePosterFromModel(model, foilHints) || "";
+      const packCover = (pack.coverUrl || "").trim();
+      const packCoverIsApi =
+        packCover.startsWith("/models/") ||
+        packCover.startsWith("/cards/") ||
+        packCover.startsWith("/photo-scratch/");
+      const videoUrl =
+        modelVideo ||
+        (isVideoSrc(packCover) && packCoverIsApi ? packCover : "");
+      const posterUrl =
+        modelPoster ||
+        (!isVideoSrc(packCover) && packCoverIsApi ? packCover : "") ||
+        undefined;
+      const avatarFallback =
+        modelAvatarUrl(model) ||
+        (model ? `/models/${modelId(model)}/avatar.jpeg` : "");
+      return {
+        id: `pack:${pack.id}`,
+        coverUrl: videoUrl || posterUrl || avatarFallback,
+        posterUrl: posterUrl || avatarFallback || undefined,
+        title,
+        ariaLabel: `Open ${title}`,
+        onActivate: () => onOpenPack(pack),
+      };
+    });
+
+    const cardTiles = scratches.map((group) => {
+      const model = matchModel(models, {
+        packId: group.id.replace(/^(photo|motion):/, ""),
+        name: group.creatorName,
+      });
+      if (!model) return null;
+      const foilHints = {
+        packId: group.id.replace(/^(photo|motion):/, ""),
+        packName: group.collectionName,
+        themeName: group.collectionName,
+      };
+      const title =
+        cardPackNameFromModel(model, foilHints) ||
+        themeLabel(group.collectionName, {
+          creator: group.creatorName,
+        });
+      const modelVideo = packFaceVideoFromModel(model, foilHints) || "";
+      const modelPoster = packFacePosterFromModel(model, foilHints) || "";
+      const groupCover = (group.coverUrl || "").trim();
+      const groupCoverIsApi =
+        groupCover.startsWith("/models/") ||
+        groupCover.startsWith("/cards/") ||
+        groupCover.startsWith("/photo-scratch/");
+      const videoUrl =
+        modelVideo ||
+        (isVideoSrc(groupCover) && groupCoverIsApi ? groupCover : "");
+      const posterUrl =
+        modelPoster ||
+        (!isVideoSrc(groupCover) && groupCoverIsApi ? groupCover : "") ||
+        undefined;
+      const avatarFallback =
+        modelAvatarUrl(model) ||
+        (model ? `/models/${modelId(model)}/avatar.jpeg` : "");
+      const action =
+        cardActionForGroup(group) === "resume" ? "Resume" : "Scratch";
+      return {
+        id: `card:${group.id}`,
+        coverUrl: videoUrl || posterUrl || avatarFallback,
+        posterUrl: posterUrl || avatarFallback || undefined,
+        title,
+        ariaLabel: `${action} ${title}`,
+        onActivate: () => onScratch(group),
+      };
+    });
+
+    return [...packTiles, ...cardTiles].flatMap((tile) =>
+      tile ? [tile] : [],
+    );
+  }, [packs, scratches, models, onOpenPack, onScratch]);
+
+  // Hide the whole continue card when there is nothing to open or play,
+  // unless auth landed on ?reveal=packs and needs the dedicated empty shell.
+  if (tiles.length === 0 && !forceEmptyReveal) return null;
+
+  return (
+    <ContinueSection
+      tiles={tiles}
+      revealPacks={revealPacks}
+      packCount={packs.length}
+      scratchCount={scratches.length}
+      inventoryRevision={inventoryRevision}
+    />
+  );
+}
+
+function tileToIteration(tile: ContinueTile): Iteration {
+  const cover = (tile.coverUrl || "").trim();
+  const poster = (tile.posterUrl || "").trim();
+  const videoUrl = isVideoSrc(cover) ? cover : "";
+  return packItemToIteration({
+    id: tile.id,
+    characterId: tile.id,
+    name: tile.title,
+    modelUrl: "",
+    modelName: tile.title,
+    videoUrl,
+    posterUrl: poster || (!videoUrl ? cover : "") || undefined,
+    price: 0,
+    girlName: tile.title,
+    packNumber: 1,
+    packName: tile.title,
+    flagEmoji: "",
+    backgroundColor: "oklch(0.798 0.104 207.84)",
+  });
+}
+
+const CONTINUE_DESKTOP_QUERY = "(min-width: 1024px)";
+
+function useContinueDesktop() {
+  const [desktop, setDesktop] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(CONTINUE_DESKTOP_QUERY).matches,
+  );
 
   useEffect(() => {
-    if (cardItems > 0) {
-      trackScratchEvent("Ready To Scratch Viewed", { count: cardItems });
+    const media = window.matchMedia(CONTINUE_DESKTOP_QUERY);
+    const apply = () => setDesktop(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  return desktop;
+}
+
+function ContinueSection({
+  tiles,
+  revealPacks,
+  packCount,
+  scratchCount,
+  inventoryRevision,
+}: {
+  tiles: ContinueTile[];
+  revealPacks: boolean;
+  packCount: number;
+  scratchCount: number;
+  inventoryRevision: number;
+}) {
+  const items = useMemo(() => tiles.map(tileToIteration), [tiles]);
+  const desktop = useContinueDesktop();
+  const activateById = useMemo(() => {
+    const map = new Map(tiles.map((tile) => [tile.id, tile.onActivate]));
+    return (item: Iteration) => {
+      map.get(item.id)?.();
+    };
+  }, [tiles]);
+
+  useEffect(() => {
+    if (scratchCount > 0) {
+      trackScratchEvent("Ready To Scratch Viewed", {
+        count: scratchCount,
+      });
     }
-  }, [cardItems, inventoryRevision]);
+  }, [scratchCount, inventoryRevision]);
 
   useEffect(() => {
     if (!revealPacks) return;
@@ -91,169 +282,47 @@ export function ReadyToReveal({
         ? "auto"
         : "smooth",
     });
-  }, [revealPacks, packItems]);
+  }, [revealPacks, packCount]);
 
   return (
     <section
-      className="collection-section ready-reveal"
+      className="mc-continue"
       aria-labelledby="ready-heading"
+      id="ready-heading-section"
     >
-      <div className="ready-reveal-head">
-        <div className="ready-reveal-intro">
-          <h2 id="ready-heading" className="collection-section-title">
-            Ready to Reveal
-            {!empty ? (
-              <span className="collection-section-count">{totalActions}</span>
-            ) : null}
-          </h2>
-        </div>
+      <div className="mc-continue-panel">
+        <h2 id="ready-heading" className="mc-continue-title">
+          Continue playing…
+        </h2>
+        {items.length > 0 ? (
+          <div className="mc-continue-carousel">
+            {desktop ? (
+              <DesktopCoverFlow
+                items={items}
+                selectedId={null}
+                glow="oklch(0.798 0.104 207.84)"
+                playOnlyCta
+                cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
+                buying={false}
+                addedToPocket={false}
+                confirmBuy={false}
+                onSelect={() => {}}
+                onDeselect={() => {}}
+                onFocusChange={() => {}}
+                onBuy={activateById}
+              />
+            ) : (
+              <MobileCssCarousel
+                items={items}
+                compact
+                onSelect={activateById}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="mc-continue-row" role="list" />
+        )}
       </div>
-
-      {empty ? (
-        <div className="ready-reveal-panel ready-reveal-empty">
-          <h3 className="collection-empty-title">
-            <span aria-hidden="true">✓ </span>
-            You&apos;re all caught up
-          </h3>
-          <p className="collection-empty-copy">
-            Everything you own has been revealed.
-          </p>
-          <button
-            type="button"
-            className="collection-snapshot-cta"
-            onClick={onExplorePacks}
-          >
-            Explore Packs
-          </button>
-        </div>
-      ) : (
-        <div className="ready-reveal-panel">
-          {showPacks ? (
-            <div className="ready-reveal-group" aria-label="Packs">
-              <h3 className="ready-reveal-group-title">
-                Packs
-                <span className="ready-reveal-group-count">{packItems}</span>
-              </h3>
-              <div className="collection-h-row">
-                {packs.map((pack) => {
-                  const model = matchModel(models, {
-                    packId: pack.catalogPackId ?? pack.id,
-                    name: pack.creator,
-                  });
-                  const foilHints = {
-                    packId: pack.catalogPackId ?? pack.id,
-                    packName: pack.name,
-                    themeName: pack.name,
-                  };
-                  const title =
-                    cardPackNameFromModel(model, foilHints) ||
-                    themeLabel(pack.name, {
-                      catalogPackId: pack.catalogPackId,
-                      creator: pack.creator,
-                    });
-                  const coverUrl =
-                    packFaceVideoFromModel(model, foilHints) || pack.coverUrl;
-                  const qtyLabel = `${pack.count} ${
-                    pack.count === 1 ? "Pack" : "Packs"
-                  }`;
-                  return (
-                    <RevealInventoryTile
-                      key={pack.id}
-                      coverUrl={coverUrl}
-                      title={title}
-                      creator={pack.creator}
-                      quantityLabel={qtyLabel}
-                      actionLabel="Open Pack"
-                      ariaLabel={`Open ${title}, ${qtyLabel}`}
-                      onClick={() => onOpenPack(pack)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          {showPacks && showCards ? (
-            <div className="ready-reveal-divider" role="separator" />
-          ) : null}
-
-          {showCards ? (
-            <div className="ready-reveal-group" aria-label="Cards">
-              <div className="ready-reveal-group-head">
-                <h3 className="ready-reveal-group-title">
-                  Cards
-                  <span className="ready-reveal-group-count">{cardItems}</span>
-                </h3>
-                <div className="ready-reveal-group-arrows">
-                  <button
-                    type="button"
-                    className="continue-collecting-arrow is-prev"
-                    aria-label="Previous cards"
-                    disabled={!cardsScroll.canScrollLeft}
-                    onClick={() => cardsScroll.scrollByPage(-1)}
-                  >
-                    <ChevronLeft className="size-5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className="continue-collecting-arrow is-next"
-                    aria-label="Next cards"
-                    disabled={!cardsScroll.canScrollRight}
-                    onClick={() => cardsScroll.scrollByPage(1)}
-                  >
-                    <ChevronRight className="size-5" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-              <div ref={cardsScroll.scrollRef} className="collection-h-row">
-                {scratches.map((group) => {
-                  const model = matchModel(models, {
-                    packId: group.id.replace(/^(photo|motion):/, ""),
-                    name: group.creatorName,
-                  });
-                  const foilHints = {
-                    packId: group.id.replace(/^(photo|motion):/, ""),
-                    packName: group.collectionName,
-                    themeName: group.collectionName,
-                  };
-                  const title =
-                    cardPackNameFromModel(model, foilHints) ||
-                    themeLabel(group.collectionName, {
-                      creator: group.creatorName,
-                    });
-                  const coverUrl =
-                    packFaceVideoFromModel(model, foilHints) || group.coverUrl;
-                  const isPhoto = group.kind === "photo";
-                  const typeLabel = isPhoto ? "Photo Card" : "Motion Card";
-                  const action =
-                    cardActionForGroup(group) === "resume"
-                      ? "Resume"
-                      : "Scratch";
-                  const qtyLabel =
-                    group.count > 1
-                      ? `${group.count} ${
-                          isPhoto ? "Photo Cards" : "Motion Cards"
-                        }`
-                      : `${group.count} ${typeLabel}`;
-                  return (
-                    <RevealInventoryTile
-                      key={group.id}
-                      coverUrl={coverUrl}
-                      title={title}
-                      creator={group.creatorName}
-                      quantityLabel={qtyLabel}
-                      typeLabel={typeLabel}
-                      actionLabel={action}
-                      ariaLabel={`${action} ${title}, ${typeLabel}`}
-                      onClick={() => onScratch(group)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
     </section>
   );
 }

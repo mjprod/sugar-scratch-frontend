@@ -1,4 +1,5 @@
 import { apiFetch } from '../../lib/api'
+import { normalizeMediaUrl } from '../../lib/mediaUrl'
 import {
   fetchModels as fetchServiceModels,
   type BackendModel as ServiceBackendModel,
@@ -60,6 +61,14 @@ export type BackendModel = {
   packFaceVideoUrl?: string | null
   packFaceVideoUrl2?: string | null
   swipeVideoUrl?: string | null
+  /** Still first-frame poster for swipe / recommend faces. */
+  swipePosterUrl?: string | null
+  /** Creator Ultra Card loop trailer from `/api/models`. */
+  ultraCardTrailerUrl?: string | null
+  /** Still frame for the Ultra Card trailer. */
+  ultraCardTrailerPosterUrl?: string | null
+  /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
+  coverUrl?: string | null
   /** theme_id → public URL for model×theme collection avatar. */
   theme_avatars?: Record<string, string> | null
   /** Freeform labels for dashboard filtering. */
@@ -76,6 +85,8 @@ export type BackendCard = {
   photo_scratch_done: number
   theme_id?: string | null
   trailer?: string | null
+  trailerPoster?: string | null
+  motionPoster?: string | null
 }
 
 /** One published motion card usable in the pack-open fan. */
@@ -112,6 +123,8 @@ export type BackendPhotoScratchSlot = {
   pending_clothes?: string | null
   clothes_cutout?: string | null
   bikini_cutout?: string | null
+  /** Diamond cost to play this static photo card. */
+  card_price?: number | null
 }
 
 export type BackendCollectionCard = {
@@ -120,6 +133,12 @@ export type BackendCollectionCard = {
   videoUrl: string
   /** Collection trailer preview when uploaded (preferred card-face media). */
   trailerUrl?: string | null
+  /** Still first-frame poster for the trailer face. */
+  trailerPosterUrl?: string | null
+  /** Still first-frame poster for the motion clip face. */
+  motionPosterUrl?: string | null
+  /** Published motion clip, separate from the collection trailer. */
+  motionUrl?: string | null
   photoScratchDone: number
   /** Fixed 10-slot grid (empty string = unfilled). */
   photoUrls: string[]
@@ -488,6 +507,10 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
     packFaceVideoUrl: model.packFaceVideoUrl,
     packFaceVideoUrl2: model.packFaceVideoUrl2,
     swipeVideoUrl: model.swipeVideoUrl,
+    swipePosterUrl: model.swipePosterUrl,
+    ultraCardTrailerUrl: model.ultraCardTrailerUrl ?? null,
+    ultraCardTrailerPosterUrl: model.ultraCardTrailerPosterUrl ?? null,
+    coverUrl: model.coverUrl ?? null,
     theme_avatars: model.theme_avatars,
     tags: model.tags,
   }
@@ -521,7 +544,7 @@ export async function fetchVideoFlowThemes(): Promise<Map<string, string>> {
   return themes
 }
 
-async function fetchPhotoScratchSlots(
+export async function fetchPhotoScratchSlots(
   cardId: string,
   theme = '',
 ): Promise<BackendPhotoScratchSlot[]> {
@@ -532,6 +555,17 @@ async function fetchPhotoScratchSlots(
     `/api/cards/${encodeURIComponent(cardId)}/photo-scratch${params}`,
   )
   return data && Array.isArray(data.slots) ? data.slots : []
+}
+
+/** Per-slot diamond cost from `/api/cards/:id/photo-scratch`. Index 0 = slot_01. */
+export function photoScratchSlotPrices(
+  slots: BackendPhotoScratchSlot[],
+): Array<number | null> {
+  return Array.from({ length: 10 }, (_, i) => {
+    const raw = slots[i]?.card_price
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null
+    return Math.round(raw)
+  })
 }
 
 /** Prefer the clothed full-scene plate (same order as Models dashboard thumbs). */
@@ -561,61 +595,6 @@ function photoUrlsFromSlots(slots: BackendPhotoScratchSlot[]): string[] {
     urls[i] = normalizeMediaUrl(slotThumbSrc(slot))
   }
   return urls
-}
-
-/**
- * Media paths that Vite proxies to VITE_MEDIA_PROXY (see vite.config.ts).
- * Absolute URLs under these prefixes are rewritten to same-origin paths so
- * Three.js video textures / <img> loads go through the dev proxy (CORS-safe).
- */
-const PROXIED_MEDIA_PREFIXES = [
-  '/api/',
-  '/cards/',
-  '/models/',
-  '/photo-scratch/',
-  '/mesh/',
-] as const
-
-function isProxiedMediaPath(pathname: string): boolean {
-  return PROXIED_MEDIA_PREFIXES.some(
-    (prefix) => pathname === prefix.slice(0, -1) || pathname.startsWith(prefix),
-  )
-}
-
-/**
- * Normalize backend/catalog media into a browser-loadable URL.
- * - Keeps blob: and data: as-is
- * - Strips a leading `public/` (admin/local paths)
- * - Rewrites absolute http(s) URLs whose path is under a Vite media proxy
- *   prefix into same-origin relative paths (so /models/... hits the proxy)
- * - Leaves other absolute URLs untouched
- */
-export function normalizeMediaUrl(value: string): string {
-  const raw = value.trim()
-  if (!raw) return ''
-  if (raw.startsWith('blob:') || raw.startsWith('data:')) return raw
-
-  // Protocol-relative or absolute http(s) → prefer same-origin proxy path.
-  if (/^(?:https?:)?\/\//i.test(raw)) {
-    try {
-      const absolute = new URL(raw, 'https://placeholder.local')
-      const pathWithSearch = `${absolute.pathname}${absolute.search}${absolute.hash}`
-      if (isProxiedMediaPath(absolute.pathname)) {
-        return pathWithSearch
-      }
-      // Non-proxied absolute URL (CDN, etc.) — keep fully qualified when possible.
-      if (/^https?:\/\//i.test(raw) || raw.startsWith('//')) return raw
-      return pathWithSearch
-    } catch {
-      return raw
-    }
-  }
-
-  const withoutPublic = raw.replace(/^\.?\/?public\//, '')
-  const withSlash = withoutPublic.startsWith('/')
-    ? withoutPublic
-    : `/${withoutPublic}`
-  return withSlash
 }
 
 /** Infer pack/collection role from theme_id, then id/label text. */
@@ -785,11 +764,23 @@ function normalizeCollectionGroup(
       const trailerUrl = card.trailerUrl
         ? normalizeMediaUrl(card.trailerUrl)
         : ''
+      const trailerPosterUrl = card.trailerPosterUrl
+        ? normalizeMediaUrl(card.trailerPosterUrl)
+        : ''
+      const motionPosterUrl = card.motionPosterUrl
+        ? normalizeMediaUrl(card.motionPosterUrl)
+        : ''
+      const motionUrl = card.motionUrl
+        ? normalizeMediaUrl(card.motionUrl)
+        : ''
       const videoUrl = normalizeMediaUrl(card.videoUrl || '')
       return {
         id: card.id,
         label: (card.label || card.id).trim(),
         trailerUrl: trailerUrl || null,
+        trailerPosterUrl: trailerPosterUrl || null,
+        motionPosterUrl: motionPosterUrl || null,
+        motionUrl: motionUrl || null,
         videoUrl: trailerUrl || videoUrl,
         photoScratchDone: Math.max(
           0,
@@ -1080,6 +1071,8 @@ export async function fetchCollectionCatalogLegacy(
               const photoUrls =
                 photosByCardId.get(card.id) ?? emptyPhotoUrls()
               const trailerUrl = normalizeMediaUrl(card.trailer ?? '')
+              const trailerPosterUrl = normalizeMediaUrl(card.trailerPoster ?? '')
+              const motionPosterUrl = normalizeMediaUrl(card.motionPoster ?? '')
               const motionUrl =
                 normalizeMediaUrl(card.foreground) ||
                 normalizeMediaUrl(card.background)
@@ -1087,6 +1080,9 @@ export async function fetchCollectionCatalogLegacy(
                 id: card.id,
                 label: card.label,
                 trailerUrl: trailerUrl || null,
+                trailerPosterUrl: trailerPosterUrl || null,
+                motionPosterUrl: motionPosterUrl || null,
+                motionUrl: motionUrl || null,
                 // Prefer trailer for collection face; fall back to motion clips.
                 videoUrl: trailerUrl || motionUrl,
                 photoScratchDone: Math.max(

@@ -39,7 +39,9 @@ Browser calls stay same-origin (`/api/...`, `/models/...`). Vite proxies them:
 | Path | Env | Default |
 |------|-----|---------|
 | `/api` | `VITE_API_PROXY` | `http://127.0.0.1:8090` |
-| `/models`, `/cards`, `/photo-scratch`, … | `VITE_MEDIA_PROXY` | `https://localhost:5080` |
+| `/models/`, `/cards/`, `/photo-scratch/`, … | `VITE_MEDIA_PROXY` | `https://localhost:5080` |
+
+Media prefixes are proxied **with a trailing slash** on purpose. Vite matches by string prefix, and some of them (e.g. `/photo-scratch`) are also SPA routes here. Without the slash, a reload on such a page is served by the operator app instead. For the same reason, don't put static assets under a path starting with a proxied prefix (see `scratchSound.ts`).
 
 Copy `.env.example` → `.env` and restart Vite after changes. Optional `VITE_API_BASE_URL` prefixes absolute API URLs in production builds; leave empty in local dev.
 
@@ -53,7 +55,7 @@ Live catalog HTTP goes through `src/lib/api.ts` (`apiFetch`).
 | Pack purchase, store products/purchases, inbox | Live; **fail closed** (empty + error) if the API is down |
 | Homepage featured / leaderboard, store fixture catalog, inbox fixtures | Only with `?demo=1` |
 | Following list | `localStorage` until a follow API exists (no auto-seed unless `?demo=1`) |
-| Google / Apple OAuth | Disabled unless `VITE_STUB_OAUTH=1` **and** `ALLOW_STUB_OAUTH=1` |
+| Google / Apple login | Live when `VITE_GOOGLE_CLIENT_ID` / `VITE_APPLE_CLIENT_ID` are set (see `.env.example`); otherwise stubbed only with `VITE_STUB_OAUTH=1` **and** `ALLOW_STUB_OAUTH=1` |
 
 Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/auth/session`, not `sessionStorage` alone.
 
@@ -63,18 +65,34 @@ Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/au
 |--------|---------|
 | `npm run dev` | Vite dev server (HTTPS) |
 | `npm run certs` | Regenerate `.certs/` with mkcert (localhost + LAN IPs) |
+| `npm run test` | **Pre-PR gate:** typecheck + all self-checks + build + first-load bundle budget |
+| `npm run check:bundle` | Fail if first-load JS/CSS (gzip) exceeds budget or heavy chunks are preloaded |
 | `npm run build` | Typecheck + production build |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run self-check` | Auth + recommendation invariant checks |
+| `npm run self-check` | Offline invariant checks (`*.self-check.ts`) |
 | `npm run lint:ui` | aura-lint against theme tokens |
+| `npm run perf:audit` / `perf:runtime` | Lighthouse / headless runtime perf pass (see below) |
+
+## Before you open a PR
+
+Run `npm run test`. It needs no API, Postgres or browser. If a self-check fails, it names the rule you broke; fix the product code rather than weakening the check.
+
+If you touched login, purchase, onboarding or pack inventory, also do a phone smoke test over HTTPS (`npm run certs && npm run dev`, then `https://<lan-ip>:5173`):
+
+1. Browse as a guest (Home / Discover).
+2. Tap **Buy** on a pack → the auth sheet appears (not a full-page login).
+3. Sign in or create an account → complete the purchase.
+4. Scratch at least one card in the pack.
 
 ## Structure
 
-Scratch engine (`meshGeometry.ts`, `glRenderer.ts`) lives under `src/features/game/scratch/` — vendored from the operator monorepo so this repo runs standalone (no parent checkout required). After editing those files in `sugar_scratchie/src/`, run from the monorepo root:
+Scratch engine (`meshGeometry.ts`, `glRenderer.ts`) lives under `src/features/game/scratch/`, vendored from the operator monorepo so this repo runs standalone. Don't edit those two files here: change them in `sugar_scratchie/src/`, then run from the monorepo root:
 
 ```bash
-npm run sync:player-scratch
+scripts/sync-player-scratch-shared.sh
 ```
+
+Game *flow* logic (session, outcomes, hints, perf policies) lives in `src/features/game/modules/` and is covered by self-checks.
 
 ```
 src/
@@ -89,6 +107,14 @@ src/
   types/        # Shared domain types
 ```
 
+### Folder conventions
+
+- `src/features/<domain>/` owns a domain's screens, hooks, helpers and CSS. New domain code goes there.
+- `src/components/` is for UI shared across domains only; don't add domain screens to it.
+- CSS lives next to the component that uses it. A lazy route's CSS is imported by that route's root so it ships in the route chunk, not the entry. `index.css` / `theme.css` hold only tokens and app-shell styles.
+- Component files export only components (Fast Refresh). Put hooks, contexts and constants in a sibling module (`useAuth.ts`, `usePageReady.ts`, `navTabs.ts`).
+- Lab/dev routes (`/component-lab`, `/audio-test`, `/game-ui`, `/coverflow-v2`, `/mobile-carousel`, `/pre-loader`) exist only in dev or with `VITE_ENABLE_LABS=1`.
+
 ## Product rules (do not break)
 
 - Guests can browse Home + Browse.
@@ -96,7 +122,11 @@ src/
 - After login, **only** `evaluateRecommendationEligibility` may open Tinder personalization.
 - Buy path never inserts personalization.
 
-See `old_app/src/v8/CHEATSHEET.md` for the full rules. `old_app/` is the junior prototype kept as reference.
+## Measuring performance
+
+- **On-device HUD:** add `?perf=1` to any route (persists; `?perf=0` turns it off). It shows FPS, frame p50/p95/p99, long frames, heap (Chromium) and DOM/canvas/video counts. In the console: `__sugarPerf.snapshot()` / `__sugarPerf.reset()`. Measure against `npm run build && npm run preview`, not dev.
+- **Whole-app pass:** `npm run build && npx vite preview --port 4174 --strictPort`, then `npm run perf:audit` (Lighthouse mobile per route → `.perf/summary.json`) and `npm run perf:runtime` (headless Chrome, phone viewport, 4× CPU → `.perf/runtime.json`; its swipe/game-ui scenarios need a `VITE_ENABLE_LABS=1` build). Set `PERF_COOKIE="sugar_session=…"` to include signed-in routes. Runtime uses the desktop GPU, so confirm WebGL/video costs on a phone.
+- Targets for `/game` on a phone: frame p99 ≤ ~16–32 ms, `readPixels` ~0/s when idle, full GC pauses well under 100 ms.
 
 ## Notes
 

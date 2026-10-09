@@ -8,20 +8,23 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  Compass,
-  Home,
-  User,
-  type LucideIcon,
-} from "lucide-react";
+import { Search, User } from "lucide-react";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { InboxUtilityBadge, PacksButton } from "@/components/InboxButton";
+import { GuestCollectionIcon, LoginIcon } from "@/components/navIcons";
+import {
+  DESKTOP_TABS,
+  GUEST_DESKTOP_TABS,
+  GUEST_TABS,
+  TABS,
+  type TabConfig,
+} from "@/components/navTabs";
 import { BorderGlow } from "@/components/ui/BorderGlow";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import type { AppTab } from "@/types/app";
+import { DESKTOP_MIN_PX } from "@/lib/navChrome";
 import "./LiquidGlassNav.css";
 
-const DESKTOP_MIN_PX = 507;
 const DESKTOP_MQ = `(min-width: ${DESKTOP_MIN_PX}px)`;
 
 function isDesktopViewport() {
@@ -45,7 +48,7 @@ type DockBubble = {
 };
 
 const BUBBLE_RADIUS = {
-  /** Left end-cap (Discover tab is first). */
+  /** Left end-cap (Rank tab is first). */
   home: "1.5rem 0.2rem 0.2rem 1.5rem",
   profile: "0.2rem 1.5rem 1.5rem 0.2rem",
   default: "0.5rem",
@@ -67,169 +70,6 @@ function bubbleRadiusForTab(id: AppTab) {
   if (id === "profile") return BUBBLE_RADIUS.profile;
   return BUBBLE_RADIUS.default;
 }
-
-type NavIcon =
-  | LucideIcon
-  | typeof LoginIcon
-  | typeof DiamondIcon
-  | typeof CollectionIcon;
-
-type TabConfig = {
-  id: AppTab;
-  label: string;
-  icon: NavIcon;
-  primary?: boolean;
-};
-
-function GuestCollectionIcon({
-  className,
-}: {
-  className?: string;
-  strokeWidth?: number;
-  fill?: string;
-  fillOpacity?: number;
-}) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        fill="oklch(1 0 0 / 0.2)"
-        d="M6 17.3c-.4 0-.7-.3-.7-.7v-1.5l2.2 2.2H6Zm2.5 0-3.2-3.2v-1.4l4.6 4.6H8.5ZM14.7 5.6l-2.8-2.8h2c.5 0 .8.4.8.8v2Z"
-      />
-      <rect
-        x="4.5"
-        y="1.9"
-        width="10.9"
-        height="16.2"
-        rx="1"
-        fill="none"
-        stroke="oklch(1 0 0 / 0.25)"
-        strokeMiterlimit={10}
-        strokeWidth="0.5"
-      />
-      <g transform="translate(9.95 10) scale(0.8) translate(-9.95 -10)">
-        <path
-          fill="currentColor"
-          d="M5.8 6.1s.4.7 1.2.9c-.7.3-1.1 1-1.2 1.7-.4-.3-.7-1 0-2.6Z"
-        />
-        <path
-          fill="currentColor"
-          d="M10.5 13.5l-.5.5-.5-.5c-1.9-1.7-3.1-2.8-3.1-4.2s.9-2 2-2 1.2.3 1.6.8c.4-.5 1-.8 1.6-.8 1.1 0 2 .9 2 2s-1.2 2.5-3.1 4.2Z"
-        />
-        <path
-          fill="currentColor"
-          d="M14.2 8.8c0-.8-.5-1.4-1.2-1.8.4 0 .8-.4 1.3-.9 0 0 .9 1.7-.1 2.7Z"
-        />
-      </g>
-    </svg>
-  );
-}
-
-function LoginIcon({
-  className,
-  strokeWidth = 2,
-}: {
-  className?: string;
-  strokeWidth?: number;
-  fill?: string;
-  fillOpacity?: number;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={["nav-login-icon", className].filter(Boolean).join(" ")}
-      aria-hidden="true"
-    >
-      <path
-        d="M17,12l-4,4M13,8l4,4M3,12h14M8,8v-1c0-1.7,1.3-3,3-3h7c1.7,0,3,1.3,3,3v10c0,1.7-1.3,3-3,3h-7c-1.7,0-3-1.3-3-3v-1"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-/** Store tab — sourced from /public/svg/iconDiamond.svg */
-function DiamondIcon({
-  className,
-}: {
-  className?: string;
-  strokeWidth?: number;
-  fill?: string;
-  fillOpacity?: number;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={["nav-diamond-icon", className].filter(Boolean).join(" ")}
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M11.329 19.159q-.323-.14-.566-.432L3.267 9.731q-.186-.217-.28-.475t-.093-.55q0-.187.047-.366q.048-.18.134-.361l1.779-3.59q.217-.405.603-.647t.845-.242h11.396q.46 0 .845.242t.603.646l1.779 3.59q.087.182.134.362t.047.366q0 .292-.094.55t-.28.475l-7.495 8.996q-.243.292-.566.432q-.323.139-.671.139t-.671-.14M8.817 8.5h6.366l-2-4h-2.366zm2.683 9.56V9.5H4.392zm1 0l7.108-8.56H12.5zm3.792-9.56h3.766L18.23 4.846q-.077-.154-.231-.25t-.327-.096h-3.38zm-12.35 0h3.766l2-4H6.327q-.173 0-.327.096t-.23.25z"
-      />
-    </svg>
-  );
-}
-
-/** My Collection tab — stacked cards mark (14 artboard, padded for stroke). */
-function CollectionIcon({
-  className,
-  strokeWidth = 1.8,
-}: {
-  className?: string;
-  strokeWidth?: number;
-  fill?: string;
-  fillOpacity?: number;
-}) {
-  // Lucide icons use ~1.8–2.1 on a 24 viewBox; scale to this 14 artboard.
-  const sw = Math.max(0.9, (strokeWidth * 14) / 24);
-  return (
-    <svg
-      viewBox="-1 -1 16 16"
-      fill="none"
-      overflow="visible"
-      className={className}
-      aria-hidden="true"
-    >
-      <g
-        stroke="currentColor"
-        strokeWidth={sw}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M6.546.857a.475.475 0 0 1 .581-.335l6.02 1.612a.475.475 0 0 1 .337.581l-2.31 8.618a.475.475 0 0 1-.582.335l-6.02-1.612a.475.475 0 0 1-.336-.581z" />
-        <path d="M6.108 2.535L.852 3.944a.475.475 0 0 0-.336.581l2.308 8.618a.475.475 0 0 0 .582.335l3.01-.806" />
-      </g>
-    </svg>
-  );
-}
-
-/** Mobile dock order. */
-const TABS: TabConfig[] = [
-  { id: "home", label: "Discover", icon: Compass },
-  { id: "feed", label: "Home", icon: Home },
-  { id: "bag", label: "My Collection", icon: CollectionIcon, primary: true },
-  { id: "hub", label: "Store", icon: DiamondIcon },
-  { id: "profile", label: "Profile", icon: User },
-];
-
-/**
- * Desktop top bar primary tabs.
- * Profile is icon-only in the right utility cluster (not in this list).
- */
-const DESKTOP_TABS: TabConfig[] = [
-  { id: "feed", label: "Home", icon: Home },
-  { id: "home", label: "Discover", icon: Compass },
-  { id: "hub", label: "Store", icon: DiamondIcon },
-  { id: "bag", label: "My Collection", icon: CollectionIcon, primary: true },
-];
 
 /**
  * Source: /public/svg/bottomNavClip.svg (viewBox 0 0 512.2 106.5)
@@ -307,7 +147,7 @@ function measureBubbleForTab(
   let bubbleX =
     rect.left - parentRect.left + (rect.width - bubbleW) / 2;
 
-  // Side-pad compensation for end caps (Discover / Profile)
+  // Side-pad compensation for end caps (Rank / Profile)
   if (tabId === "home") {
     bubbleX -= 2;
   } else if (tabId === "profile") {
@@ -361,7 +201,7 @@ function measureTopBubbleForTab(
 }
 
 export type LiquidGlassNavProps = {
-  activeTab: AppTab;
+  activeTab: AppTab | null;
   onTabChange: (tab: AppTab) => void;
   onReselect?: (tab: AppTab) => void;
   hidden?: boolean;
@@ -370,9 +210,12 @@ export type LiquidGlassNavProps = {
   diamonds?: number | null;
   onOpenStore?: () => void;
   onOpenUnopenedPacks?: () => void;
-  inboxUnreadCount?: number;
+  /** Desktop search control (opens global search overlay). */
+  onOpenSearch?: () => void;
   /** Cart / Pack Pocket is active — bubble sits on the cart utility. */
   packsActive?: boolean;
+  /** Search overlay open — highlights the search control. */
+  searchActive?: boolean;
   /** Hide the mobile bottom dock (purchase keeps the top bar only). */
   hideDock?: boolean;
 };
@@ -390,24 +233,26 @@ export function LiquidGlassNav({
   diamonds = null,
   onOpenStore,
   onOpenUnopenedPacks,
-  inboxUnreadCount = 0,
+  onOpenSearch,
   packsActive = false,
+  searchActive = false,
   hideDock = false,
 }: LiquidGlassNavProps) {
-  const { authed, guestAuthLabel } = useAuth();
+  const { authed, guestAuthLabel, inboxUnread, openCreateAccount } = useAuth();
   const desktopTabs = useMemo(
-    () => (authed ? DESKTOP_TABS : DESKTOP_TABS.filter((tab) => tab.id !== "bag")),
+    () => (authed ? DESKTOP_TABS : GUEST_DESKTOP_TABS),
     [authed],
   );
-  const dockTabs = useMemo(
-    () =>
-      TABS.map((tab) =>
-        tab.id === "profile" && !authed
-          ? { ...tab, label: guestAuthLabel, icon: LoginIcon }
-          : tab,
-      ),
-    [authed, guestAuthLabel],
-  );
+  // Guests keep the center Collection slot on the mobile dock so the 5-column
+  // layout stays symmetrical around the notch (AC26). Desktop still omits it.
+  const dockTabs = useMemo(() => {
+    const source = authed ? TABS : GUEST_TABS;
+    return source.map((tab) =>
+      tab.id === "profile" && !authed
+        ? { ...tab, label: guestAuthLabel, icon: LoginIcon }
+        : tab,
+    );
+  }, [authed, guestAuthLabel]);
   const active = packsActive ? null : activeTab;
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [handoff, setHandoff] = useState<NavHandoff>("none");
@@ -448,6 +293,8 @@ export function LiquidGlassNav({
     height: number;
   } | null>(null);
   const suppressTabClickRef = useRef(false);
+  /** Wall-clock until first-load geometry is trusted (hard-refresh settle). */
+  const bubbleArmAfterRef = useRef(0);
 
   const findNearestTab = useCallback(
     (
@@ -496,10 +343,10 @@ export function LiquidGlassNav({
 
   const findNearestDraggableTab = useCallback(
     (clientX: number) =>
-      findNearestTab(clientX, dockTabRefs.current, TABS, {
+      findNearestTab(clientX, dockTabRefs.current, dockTabs, {
         ignorePrimary: true,
       }),
-    [findNearestTab],
+    [dockTabs, findNearestTab],
   );
 
   const measureUtilsOverlap = useCallback(
@@ -561,7 +408,7 @@ export function LiquidGlassNav({
   const measureUnderCollection = useCallback(
     (bubbleX: number, bubbleW: number) => {
       const parent = dockItemsRef.current;
-      const collectionIndex = TABS.findIndex((tab) => tab.primary);
+      const collectionIndex = dockTabs.findIndex((tab) => tab.primary);
       const collectionEl = dockTabRefs.current[collectionIndex];
       if (!parent || !collectionEl || bubbleW <= 0) return 0;
 
@@ -577,15 +424,15 @@ export function LiquidGlassNav({
       // Aggressive curve (ease-in cubic)
       return linear * linear * linear;
     },
-    [],
+    [dockTabs],
   );
 
   const updateDockBubble = useCallback(() => {
     if (bubbleDragRef.current) return;
 
     const parent = dockItemsRef.current;
-    const activeIndex = TABS.findIndex((tab) => tab.id === active);
-    const activeTabConfig = TABS[activeIndex];
+    const activeIndex = dockTabs.findIndex((tab) => tab.id === active);
+    const activeTabConfig = dockTabs[activeIndex];
     const target = dockTabRefs.current[activeIndex];
 
     // Hero/Collection slot has its own glow treatment — hide shared bubble.
@@ -608,15 +455,33 @@ export function LiquidGlassNav({
     }
 
     const measured = measureBubbleForTab(parent, target, activeTabConfig.id);
-    setBubble((prev) => ({
-      ...measured,
-      underCollection: measureUnderCollection(measured.x, measured.w),
-      visible: true,
-      // First placement must stay duration:0 until after paint, otherwise the
-      // bubble slides up from the default (0,0) origin on load.
-      ready: prev.ready,
-    }));
-  }, [active, measureUnderCollection, packsActive]);
+    const under = measureUnderCollection(measured.x, measured.w);
+    setBubble((prev) => {
+      // Pre-ready geometry drift = layout still settling — push arm deadline.
+      // Identical remeasures must not extend it or arming never completes.
+      if (
+        !prev.ready &&
+        prev.visible &&
+        prev.w > 0 &&
+        (Math.abs(prev.x - measured.x) > 0.5 ||
+          Math.abs(prev.y - measured.y) > 0.5 ||
+          Math.abs(prev.w - measured.w) > 0.5)
+      ) {
+        bubbleArmAfterRef.current = Math.max(
+          bubbleArmAfterRef.current,
+          performance.now() + 120,
+        );
+      }
+      return {
+        ...measured,
+        underCollection: under,
+        visible: true,
+        // First placement must stay duration:0 until settle completes, otherwise
+        // the bubble eases from an early y (often upward) down into place.
+        ready: prev.ready,
+      };
+    });
+  }, [active, dockTabs, measureUnderCollection, packsActive]);
 
   const updateTopBubble = useCallback(() => {
     if (topBubbleDragRef.current) return;
@@ -647,13 +512,29 @@ export function LiquidGlassNav({
     }
 
     const measured = measureTopBubbleForTab(parent, target, activeTabId);
-    setTopBubble((prev) => ({
-      ...measured,
-      underCollection: 0,
-      visible: true,
-      // Same first-paint snap as the dock bubble.
-      ready: prev.ready,
-    }));
+    setTopBubble((prev) => {
+      if (
+        !prev.ready &&
+        prev.visible &&
+        prev.w > 0 &&
+        (Math.abs(prev.x - measured.x) > 0.5 ||
+          Math.abs(prev.y - measured.y) > 0.5 ||
+          Math.abs(prev.w - measured.w) > 0.5 ||
+          Math.abs(prev.h - measured.h) > 0.5)
+      ) {
+        bubbleArmAfterRef.current = Math.max(
+          bubbleArmAfterRef.current,
+          performance.now() + 120,
+        );
+      }
+      return {
+        ...measured,
+        underCollection: 0,
+        visible: true,
+        // Same first-paint snap as the dock bubble.
+        ready: prev.ready,
+      };
+    });
   }, [active, desktopTabs, packsActive]);
 
   useLayoutEffect(() => {
@@ -661,17 +542,40 @@ export function LiquidGlassNav({
     updateTopBubble();
   }, [updateDockBubble, updateTopBubble, handoff, isDesktop]);
 
-  // After the first measured geometry has painted with duration:0, arm
-  // transitions so later tab/drag moves ease instead of sliding from (0,0).
+  // Hard refresh / first paint: fonts, safe-area, and dock grid can still settle
+  // after the first measure. Keep transition duration at 0 until past
+  // bubbleArmAfterRef (extended by each pre-ready remeasure).
   useEffect(() => {
-    let raf1 = 0;
-    let raf2 = 0;
     const needsDockArm = bubble.visible && !bubble.ready && bubble.w > 0;
     const needsTopArm = topBubble.visible && !topBubble.ready && topBubble.w > 0;
     if (!needsDockArm && !needsTopArm) return;
 
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
+    let cancelled = false;
+    let timer = 0;
+    let raf = 0;
+
+    // Seed a minimum settle window on first visible measure.
+    if (bubbleArmAfterRef.current <= 0) {
+      bubbleArmAfterRef.current = performance.now() + 120;
+    }
+
+    const armIfQuiet = () => {
+      if (cancelled) return;
+      const wait = Math.max(0, bubbleArmAfterRef.current - performance.now());
+      if (wait > 0) {
+        timer = window.setTimeout(armIfQuiet, wait + 1);
+        return;
+      }
+      // One last snap while duration is still 0, then arm on the next frame.
+      updateDockBubble();
+      updateTopBubble();
+      raf = requestAnimationFrame(() => {
+        if (cancelled) return;
+        // If a remeasure pushed the deadline during the final snap, wait again.
+        if (performance.now() < bubbleArmAfterRef.current) {
+          armIfQuiet();
+          return;
+        }
         if (needsDockArm) {
           setBubble((prev) =>
             prev.visible && !prev.ready && prev.w > 0
@@ -687,19 +591,38 @@ export function LiquidGlassNav({
           );
         }
       });
-    });
+    };
+
+    armIfQuiet();
+
+    // Icon/label fonts shifting tab boxes is a common hard-refresh culprit.
+    const fonts = document.fonts;
+    if (fonts) {
+      void fonts.ready.then(() => {
+        if (cancelled) return;
+        updateDockBubble();
+        updateTopBubble();
+      });
+    }
 
     return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
+      cancelled = true;
+      window.clearTimeout(timer);
+      cancelAnimationFrame(raf);
     };
   }, [
     bubble.ready,
     bubble.visible,
     bubble.w,
+    bubble.x,
+    bubble.y,
     topBubble.ready,
     topBubble.visible,
     topBubble.w,
+    topBubble.x,
+    topBubble.y,
+    updateDockBubble,
+    updateTopBubble,
   ]);
 
   useEffect(() => {
@@ -719,12 +642,21 @@ export function LiquidGlassNav({
     const ro = new ResizeObserver(onResize);
     if (dockParent) ro.observe(dockParent);
     if (topParent) ro.observe(topParent);
+    // Tab cells can reflow without the parent box changing size (fonts/icons).
+    for (const el of dockTabRefs.current) {
+      if (el) ro.observe(el);
+    }
+    for (const el of topTabRefs.current) {
+      if (el) ro.observe(el);
+    }
+    if (topProfileRef.current) ro.observe(topProfileRef.current);
+    if (topCartRef.current) ro.observe(topCartRef.current);
     window.addEventListener("resize", onResize);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", onResize);
     };
-  }, [updateDockBubble, updateTopBubble]);
+  }, [updateDockBubble, updateTopBubble, dockTabs, desktopTabs]);
 
   const handleBubblePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -865,6 +797,12 @@ export function LiquidGlassNav({
   const selectTab = useCallback(
     (id: AppTab) => {
       if (suppressTabClickRef.current) return;
+      // Guests keep the Collection slot for dock symmetry, but it is not a
+      // login prompt — it opens create account.
+      if (id === "bag" && !authed) {
+        openCreateAccount();
+        return;
+      }
       if (id === active) {
         onReselect?.(id);
         window.dispatchEvent(
@@ -883,14 +821,14 @@ export function LiquidGlassNav({
       }
       onTabChange(id);
     },
-    [active, onReselect, onTabChange],
+    [active, authed, onReselect, onTabChange, openCreateAccount],
   );
 
   /** Logo always leaves secondary/immersive routes (tear, pack pocket, etc.). */
   const goHome = useCallback(() => {
     if (suppressTabClickRef.current) return;
-    onTabChange("feed");
-  }, [onTabChange]);
+    onTabChange(authed ? "bag" : "feed");
+  }, [authed, onTabChange]);
 
   const handleTopBubblePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1114,49 +1052,69 @@ export function LiquidGlassNav({
     .filter(Boolean)
     .join(" ");
 
+  // AC7: only the visible chrome lane is keyboard-focusable (dock XOR top).
+  const topNavKeyboard = !hidden && isDesktop;
+  const dockKeyboard = !hidden && !hideDock && !isDesktop;
+  const topTabIndex = topNavKeyboard ? undefined : -1;
+  const dockTabIndex = dockKeyboard ? undefined : -1;
+
   // Soften under Collection: fade + blur + duck scale (handle stays interactive)
   const under = bubble.underCollection;
-  // Almost fully gone under Collection
-  const bubbleVisualOpacity = bubble.visible ? 1 - under * 0.99 : 0;
+  // Show as soon as we have measured geometry. Transitions stay duration:0 until
+  // `ready` so hard-refresh layout settle snaps instead of easing downward.
+  const dockBubbleMeasured =
+    (bubble.visible && bubble.w > 0) || isDraggingBubble;
+  const bubbleVisualOpacity =
+    bubble.visible && dockBubbleMeasured ? 1 - under * 0.99 : 0;
   const bubbleVisualBlur = under * 10;
-  const glowVisualOpacity = bubble.visible ? 0.5 * (1 - under) : 0;
+  const glowVisualOpacity =
+    bubble.visible && dockBubbleMeasured ? 0.5 * (1 - under) : 0;
   // Duck hard under Collection — scale down to ~72%
   const bubbleVisualScale = 1 - under * 0.28;
 
   const dockBubbleStyle = {
-    ["--dock-bubble-x" as string]: bubble.ready
-      ? `${bubble.x}px`
-      : "4.7rem",
+    // Always use measured geometry once we have it — only the transition duration
+    // is gated on ready. Gating x/w on ready reintroduced a slide on arming.
+    ["--dock-bubble-x" as string]:
+      bubble.w > 0 ? `${bubble.x}px` : "4.7rem",
     ["--dock-bubble-y" as string]: `${bubble.y}px`,
-    ["--dock-bubble-w" as string]: bubble.ready
-      ? `${bubble.w}px`
-      : `${DOCK_BUBBLE_W_REM}rem`,
+    ["--dock-bubble-w" as string]:
+      bubble.w > 0 ? `${bubble.w}px` : `${DOCK_BUBBLE_W_REM}rem`,
     ["--dock-bubble-h" as string]: `${DOCK_BUBBLE_H_REM}rem`,
     ["--dock-bubble-radius" as string]: bubble.radius,
     ["--dock-bubble-opacity" as string]: String(bubbleVisualOpacity),
     ["--dock-bubble-blur" as string]: `${bubbleVisualBlur}px`,
     ["--dock-bubble-glow-opacity" as string]: String(glowVisualOpacity),
     ["--dock-bubble-scale" as string]: String(bubbleVisualScale),
-    // Instant follow while dragging; smooth snap/morph otherwise
+    // Instant follow while dragging / first placement; smooth snap/morph otherwise
     ["--dock-bubble-duration" as string]:
       isDraggingBubble || !bubble.ready ? "0ms" : "420ms",
+    // Keep first reveal + settle snaps opaque-instant; ease only after ready.
+    ["--dock-bubble-opacity-duration" as string]:
+      isDraggingBubble || bubble.ready ? "70ms" : "0ms",
   } satisfies CSSProperties;
 
+  const topBubbleMeasured =
+    (topBubble.visible && topBubble.w > 0) || isDraggingTopBubble;
   const topBubbleStyle = {
     ["--top-bubble-x" as string]: `${topBubble.x}px`,
     ["--top-bubble-y" as string]: `${topBubble.y}px`,
     ["--top-bubble-w" as string]: `${topBubble.w}px`,
     ["--top-bubble-h" as string]: `${topBubble.h}px`,
     ["--top-bubble-radius" as string]: topBubble.radius,
-    ["--top-bubble-opacity" as string]: topBubble.visible
-      ? String(1 - utilsOverlap)
-      : "0",
+    ["--top-bubble-opacity" as string]:
+      topBubble.visible && topBubbleMeasured
+        ? String(1 - utilsOverlap)
+        : "0",
     ["--top-bubble-scale" as string]: String(1 - utilsOverlap * 0.4),
     ["--top-bubble-duration" as string]:
       isDraggingTopBubble || !topBubble.ready ? "0ms" : "420ms",
-    ["--top-bubble-opacity-duration" as string]: isDraggingTopBubble
-      ? "80ms"
-      : "220ms",
+    ["--top-bubble-opacity-duration" as string]:
+      !topBubbleMeasured || !topBubble.ready
+        ? "0ms"
+        : isDraggingTopBubble
+          ? "80ms"
+          : "220ms",
   } satisfies CSSProperties;
 
   return (
@@ -1171,6 +1129,8 @@ export function LiquidGlassNav({
         ref={topBarRef}
         className="nav-test-top glass glass-strength-40 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
         aria-label="Primary"
+        aria-hidden={topNavKeyboard ? undefined : true}
+        {...(!topNavKeyboard ? { inert: true } : {})}
         style={topBubbleStyle}
       >
         <div className="nav-test-top-bubble-active-glow" aria-hidden="true" />
@@ -1201,7 +1161,7 @@ export function LiquidGlassNav({
           type="button"
           className="nav-test-top-brand"
           aria-label="Sugar Scratch Home"
-          tabIndex={hidden ? -1 : undefined}
+          tabIndex={topTabIndex}
           onClick={goHome}
         >
           <img
@@ -1237,7 +1197,7 @@ export function LiquidGlassNav({
                     .join(" ")}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={tab.label}
-                  tabIndex={hidden ? -1 : undefined}
+                  tabIndex={topTabIndex}
                   onClick={() => selectTab(tab.id)}
                 >
                   <Icon
@@ -1263,6 +1223,23 @@ export function LiquidGlassNav({
                 onOpenStore={onOpenStore}
               />
             </div>
+          ) : null}
+          {onOpenSearch ? (
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              aria-label="Search"
+              aria-pressed={searchActive}
+              tabIndex={topTabIndex}
+              className={[
+                "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+                searchActive ? "is-active" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <Search className="h-7 w-7" strokeWidth={1.5} aria-hidden="true" />
+            </button>
           ) : null}
           {authed && onOpenUnopenedPacks ? (
             <PacksButton
@@ -1290,45 +1267,36 @@ export function LiquidGlassNav({
             ]
               .filter(Boolean)
               .join(" ")}
-            aria-label={
-              authed && inboxUnreadCount > 0
-                ? `Profile, ${inboxUnreadCount} unread message${inboxUnreadCount === 1 ? "" : "s"}`
-                : authed
-                  ? "Profile"
-                  : guestAuthLabel
-            }
+            aria-label={authed ? "Profile" : guestAuthLabel}
             aria-current={
               !packsActive && active === "profile" ? "page" : undefined
             }
-            tabIndex={hidden ? -1 : undefined}
+            tabIndex={topTabIndex}
             onClick={() => selectTab("profile")}
           >
             {authed ? (
-              <>
-                <User
-                  className="nav-test-top-profile-icon"
-                  strokeWidth={
-                    (!packsActive && active === "profile") ||
-                    topDragHoverTab === "profile"
-                      ? 2.1
-                      : 1.8
-                  }
-                  fill={
-                    (!packsActive && active === "profile") ||
-                    topDragHoverTab === "profile"
-                      ? "currentColor"
-                      : "none"
-                  }
-                  fillOpacity={
-                    (!packsActive && active === "profile") ||
-                    topDragHoverTab === "profile"
-                      ? 0.2
-                      : 0
-                  }
-                  aria-hidden="true"
-                />
-                <InboxUtilityBadge count={inboxUnreadCount} />
-              </>
+              <User
+                className="nav-test-top-profile-icon"
+                strokeWidth={
+                  (!packsActive && active === "profile") ||
+                  topDragHoverTab === "profile"
+                    ? 2.1
+                    : 1.8
+                }
+                fill={
+                  (!packsActive && active === "profile") ||
+                  topDragHoverTab === "profile"
+                    ? "currentColor"
+                    : "none"
+                }
+                fillOpacity={
+                  (!packsActive && active === "profile") ||
+                  topDragHoverTab === "profile"
+                    ? 0.2
+                    : 0
+                }
+                aria-hidden="true"
+              />
             ) : (
               <>
                 <LoginIcon className="nav-test-top-profile-icon" />
@@ -1339,7 +1307,11 @@ export function LiquidGlassNav({
         </div>
       </nav>
 
-      <div className="nav-test-dock-wrap" aria-hidden={hidden ? true : undefined}>
+      <div
+        className="nav-test-dock-wrap"
+        aria-hidden={dockKeyboard ? undefined : true}
+        {...(!dockKeyboard ? { inert: true } : {})}
+      >
         <nav className="nav-test-dock" aria-label="Primary">
           {/*
             Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
@@ -1456,7 +1428,7 @@ export function LiquidGlassNav({
                         className="nav-test-dock-primary-btn"
                         aria-current={isActive ? "page" : undefined}
                         aria-label={tab.label}
-                        tabIndex={hidden ? -1 : undefined}
+                        tabIndex={dockTabIndex}
                         onClick={() => selectTab(tab.id)}
                       >
                         {authed ? (
@@ -1478,6 +1450,11 @@ export function LiquidGlassNav({
                 );
               }
 
+              const showInboxBadge = tab.id === "profile" && authed;
+              const itemLabel = showInboxBadge
+                ? `${tab.label}, ${inboxUnread} unread`
+                : tab.label;
+
               return (
                 <button
                   key={tab.id}
@@ -1493,12 +1470,8 @@ export function LiquidGlassNav({
                     .filter(Boolean)
                     .join(" ")}
                   aria-current={isActive ? "page" : undefined}
-                  aria-label={
-                    tab.id === "profile" && inboxUnreadCount > 0
-                      ? `${tab.label}, ${inboxUnreadCount} unread message${inboxUnreadCount === 1 ? "" : "s"}`
-                      : tab.label
-                  }
-                  tabIndex={hidden ? -1 : undefined}
+                  aria-label={itemLabel}
+                  tabIndex={dockTabIndex}
                   onClick={() => selectTab(tab.id)}
                 >
                   <span className="nav-test-dock-icon-wrap">
@@ -1509,8 +1482,12 @@ export function LiquidGlassNav({
                       fillOpacity={isActive || isDragTarget ? 0.2 : 0}
                       aria-hidden="true"
                     />
-                    {tab.id === "profile" ? (
-                      <InboxUtilityBadge count={inboxUnreadCount} />
+                    {showInboxBadge ? (
+                      <InboxUtilityBadge
+                        count={inboxUnread}
+                        tone="inbox"
+                        showZero
+                      />
                     ) : null}
                   </span>
                   <span className="nav-test-dock-label">{tab.label}</span>

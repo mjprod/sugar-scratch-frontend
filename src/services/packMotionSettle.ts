@@ -1,8 +1,12 @@
+import { catalogMotionIdFromRevealId } from "@/features/game/modules/session";
 import {
+  diamondsForMotionPrize,
   loadGameSession,
   saveGameSession,
+  themeForMotionCard,
   type GameSession,
-} from "@/features/game/modules/gameSession";
+} from "@/services/gameSessionStore";
+import { fetchCatalogMotionCards } from "@/features/game/shared/catalog";
 import { recordRevealedCards } from "@/services/collectionState";
 import { packHistoryIds, recordGameReveal } from "@/services/gameHistory";
 import { revealPackCard } from "@/services/purchase";
@@ -14,7 +18,9 @@ import {
 export const PACK_OPENING_REWARD_EVENT = "sugar:pack-opening-reward";
 
 export type PackOpeningRewardDetail = {
+  /** Coins won. Credited only when `wallet` is absent; always counts toward the coin receipt. */
   coins?: number;
+  diamonds?: number;
   cards?: number;
   wallet?: { diamonds: number; coins: number };
 };
@@ -58,7 +64,7 @@ function slugCreatorId(creator: string) {
   return creator.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-function appendGameHistoryFromSettle(
+async function appendGameHistoryFromSettle(
   session: GameSession,
   motionCardId: string,
   openingId: string,
@@ -74,10 +80,30 @@ function appendGameHistoryFromSettle(
   const revealSessionId = packScratch.serverOpeningId
     ? `${packScratch.serverOpeningId}:${openingId}`
     : `${packScratch.readyPackId}:${openingId}`;
+
+  let cardName = card?.rarity ? `${card.rarity} Card` : "Card";
+  let cardImageUrl = card?.faceUrl;
+  try {
+    const motionId = catalogMotionIdFromRevealId(motionCardId);
+    const motion = (await fetchCatalogMotionCards()).find(
+      (entry) => entry.id === motionCardId || entry.id === motionId,
+    );
+    if (motion) {
+      cardName = motion.label;
+      cardImageUrl = motion.bottom || motion.foreground || cardImageUrl;
+    } else {
+      const theme = themeForMotionCard(session, motionCardId)?.trim();
+      if (theme) cardName = theme;
+    }
+  } catch {
+    const theme = themeForMotionCard(session, motionCardId)?.trim();
+    if (theme) cardName = theme;
+  }
+
   recordGameReveal({
     cardId: motionCardId || openingId,
-    cardName: card?.rarity ? `${card.rarity} Card` : "Card",
-    cardImageUrl: card?.faceUrl,
+    cardName,
+    cardImageUrl,
     packInstanceId: historyIds.packInstanceId,
     packId: historyIds.packId,
     packName: packScratch.packName,
@@ -92,6 +118,7 @@ function appendGameHistoryFromSettle(
 /** Settle one opening card when its linked motion card finishes (idempotent). */
 export async function settlePackMotionCard(
   motionCardId: string,
+  prize = 0,
 ): Promise<PackMotionSettleResult> {
   const session = loadGameSession();
   if (!session?.packScratch) return { ok: true, session };
@@ -108,10 +135,13 @@ export async function settlePackMotionCard(
   const { packScratch } = session;
   const serverOpeningId = packScratch.serverOpeningId?.trim();
   const serverCardId = packScratch.serverRevealCardIds?.[motionIndex]?.trim();
+  const motionDiamonds = diamondsForMotionPrize(prize);
 
   if (serverOpeningId && serverCardId) {
     try {
-      const result = await revealPackCard(serverOpeningId, serverCardId);
+      const result = await revealPackCard(serverOpeningId, serverCardId, {
+        prize,
+      });
       recordRevealedCards({
         count: 1,
         creatorId: slugCreatorId(packScratch.creator),
@@ -121,16 +151,20 @@ export async function settlePackMotionCard(
       const openingCard = packScratch.openingSession.cards.find(
         (entry) => entry.id === openingId,
       );
-      appendGameHistoryFromSettle(
+      const rewardCoins = Math.max(
+        0,
+        result.card.reward ?? openingCard?.reward ?? 0,
+      );
+      await appendGameHistoryFromSettle(
         session,
         motionCardId,
         openingId,
-        result.card.reward ?? openingCard?.reward ?? 0,
+        rewardCoins,
       );
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
-            detail: { cards: 1, wallet: result.wallet },
+            detail: { coins: rewardCoins, cards: 1, wallet: result.wallet },
           }),
         );
       }
@@ -154,12 +188,16 @@ export async function settlePackMotionCard(
     creatorName: packScratch.creator,
     themeName: packScratch.themeName || packScratch.packName,
   });
-  appendGameHistoryFromSettle(session, motionCardId, openingId, coins);
+  await appendGameHistoryFromSettle(session, motionCardId, openingId, coins);
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent<PackOpeningRewardDetail>(PACK_OPENING_REWARD_EVENT, {
-        detail: { coins, cards: 1 },
+        detail: {
+          coins,
+          diamonds: motionDiamonds,
+          cards: 1,
+        },
       }),
     );
   }

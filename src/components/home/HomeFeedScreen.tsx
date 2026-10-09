@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import {
   CreatorFeedCard,
   useVideoRegistry,
@@ -17,9 +16,10 @@ import {
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   FEED_WARM_AHEAD,
-  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
-  isWarmFeedIndex,
+  isFeedMountIndex,
+  isFeedPreloadAutoIndex,
+  preloadFeedPosters,
   readHomeFeedCache,
   toPurchasePack,
   writeHomeFeedCache,
@@ -30,10 +30,12 @@ import {
   removeFeedFavourite,
   withFavouriteLikes,
 } from "@/services/feedFavourites";
-import { Paths } from "@/routes/Paths";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useSearch } from "@/contexts/SearchContext";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 const SNAP_MS = 220;
+/** Hold full preload of ahead slides so the visible clip gets the bandwidth first. */
+const AHEAD_PRELOAD_DELAY_MS = 2500;
 /** Overlay lag vs video (0 = locked, 1 = fully detached). */
 const OVERLAY_PARALLAX_MOBILE = 0.33;
 /** Desktop: stronger lag so taller frames still read on scrub. */
@@ -63,12 +65,10 @@ const MEDIA_SCALE_MAX_MOBILE = 1.16;
  */
 const MEDIA_SCALE_MAX_DESKTOP = 1.5;
 const MEDIA_SCALE_GAIN_DESKTOP = MEDIA_SCALE_MAX_DESKTOP - MEDIA_SCALE_BASE;
-/** Max scroll-driven media blur (px). Desktop only — mobile skips filter blur. */
-const MEDIA_BLUR_MAX_PX = 5;
-/** Blur reaches max sooner than scale (1 = linear with scroll, higher = faster). */
-const MEDIA_BLUR_PROGRESS_GAIN = 1.75;
 /** How close scale must get before we snap to target (smaller = smoother end). */
 const MEDIA_SCALE_SETTLE_EPS = 0.0002;
+/** After last scroll event, treat the feed as settled (CTA motion resumes). */
+const FEED_SCROLL_SETTLE_MS = 140;
 /** Desktop drag: ignore tiny pointer jitter before treating as a swipe. */
 const DESKTOP_DRAG_THRESHOLD_PX = 6;
 /** Desktop drag: velocity (px/ms) needed to advance a slide on release. */
@@ -83,10 +83,8 @@ const WHEEL_SNAP_LOCK_MS = 520;
 /** Ignore tiny trackpad jitter before treating it as a slide change. */
 const WHEEL_SNAP_THRESHOLD = 8;
 
-/** Delay before the first-land scroll-nudge affordance. */
-const SCROLL_NUDGE_FIRST_DELAY_MS = 900;
-/** Replay the scroll-nudge after this much feed inactivity. */
-const SCROLL_NUDGE_IDLE_MS = 30_000;
+/** Delay before the one-shot first-land scroll-nudge affordance. */
+const SCROLL_NUDGE_FIRST_DELAY_MS = 1800;
 /** Peak travel of the nudge as a fraction of slide height. */
 const SCROLL_NUDGE_TRAVEL_RATIO = 0.085;
 /** Hard cap so tall desktop slides still get a subtle peek. */
@@ -121,7 +119,7 @@ export function HomeFeedScreen({
   onOpenCreator?: (creatorId: string) => void;
   personalizationPrompt?: ReactNode;
 }) {
-  const navigate = useNavigate();
+  const { openSearch } = useSearch();
   const cached = readHomeFeedCache();
   const [items, setItems] = useState<HomeFeedCreator[]>(
     () => withFavouriteLikes(cached?.items ?? []),
@@ -130,15 +128,21 @@ export function HomeFeedScreen({
     cached?.items.length ? "loaded" : "loading",
   );
   useMarkPageReady(status !== "loading");
+  const [aheadPreloadReady, setAheadPreloadReady] = useState(false);
+  useEffect(() => {
+    if (status === "loading" || aheadPreloadReady) return;
+    const id = window.setTimeout(
+      () => setAheadPreloadReady(true),
+      AHEAD_PRELOAD_DELAY_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [status, aheadPreloadReady]);
   const [activeId, setActiveId] = useState<string | null>(
     cached?.activeId ?? null,
   );
-  const [viewIndex, setViewIndex] = useState(() => {
-    const logical = Math.max(0, cached?.scrollIndex ?? 0);
-    // Loop slides: index 0 is the head clone; real items start at 1.
-    const loop = (cached?.items.length ?? 0) > 1;
-    return loop ? logical + 1 : logical;
-  });
+  const [viewIndex, setViewIndex] = useState(() =>
+    Math.max(0, cached?.scrollIndex ?? 0),
+  );
   const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
   const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -148,9 +152,8 @@ export function HomeFeedScreen({
   const scrollIndexRef = useRef(cached?.scrollIndex ?? 0);
   const restoredRef = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
-  /** Desktop (≥981px): blur + aggressive scrub zoom. Mobile keeps the light path. */
+  /** Desktop (≥981px): aggressive scrub zoom. Mobile keeps the light path. */
   const isDesktopFeed = useIsDesktopFeed();
-  const allowMediaBlur = isDesktopFeed;
   const mediaScaleGain = isDesktopFeed
     ? MEDIA_SCALE_GAIN_DESKTOP
     : MEDIA_SCALE_GAIN_MOBILE;
@@ -163,49 +166,32 @@ export function HomeFeedScreen({
   const overlayParallaxMaxPx = isDesktopFeed
     ? OVERLAY_PARALLAX_MAX_DESKTOP_PX
     : OVERLAY_PARALLAX_MAX_MOBILE_PX;
-  /** Seamless loop: clone last before first, clone first after last. */
-  const loopEnabled = items.length > 1;
-  const loopSlides = useMemo(() => {
-    if (!loopEnabled) {
-      return items.map((item, logicalIndex) => ({
-        item,
-        key: item.id,
-        logicalIndex,
-        clone: false as const,
-      }));
-    }
-    const first = items[0]!;
-    const last = items[items.length - 1]!;
-    return [
-      {
-        item: last,
-        key: `${last.id}__loop-head`,
-        logicalIndex: items.length - 1,
-        clone: true as const,
-      },
-      ...items.map((item, logicalIndex) => ({
+  /**
+   * Infinite clone-loop is off: teleporting head↔tail felt like the reel
+   * randomly jumping through videos while scrolling. Pagination still loads more.
+   */
+  const loopEnabled = false;
+  const loopSlides = useMemo(
+    () =>
+      items.map((item, logicalIndex) => ({
         item,
         key: item.id,
         logicalIndex,
         clone: false as const,
       })),
-      {
-        item: first,
-        key: `${first.id}__loop-tail`,
-        logicalIndex: 0,
-        clone: true as const,
-      },
-    ];
-  }, [items, loopEnabled]);
+    [items],
+  );
   const maxScrollIndex = Math.max(0, loopSlides.length - 1);
   const parallaxTargetRef = useRef(new Map<string, number>());
   const parallaxCurrentRef = useRef(new Map<string, number>());
   const scaleTargetRef = useRef(new Map<string, number>());
   const scaleCurrentRef = useRef(new Map<string, number>());
-  const blurTargetRef = useRef(new Map<string, number>());
-  const blurCurrentRef = useRef(new Map<string, number>());
   const scrollFxRafRef = useRef(0);
   const scrollFxLastTsRef = useRef(0);
+  const viewIndexRef = useRef(viewIndex);
+  const scrollStateRafRef = useRef(0);
+  const feedScrollSettleTimerRef = useRef(0);
+  const [feedScrolling, setFeedScrolling] = useState(false);
   const [isDesktopDragging, setIsDesktopDragging] = useState(false);
   const desktopDragRef = useRef<{
     pointerId: number;
@@ -217,10 +203,9 @@ export function HomeFeedScreen({
     moved: boolean;
   } | null>(null);
   const desktopDragWindowCleanupRef = useRef<(() => void) | null>(null);
-  /** True while the programmatic scroll-nudge rAF is driving the viewport. */
+  /** True while the one-shot scroll-nudge rAF is driving the viewport. */
   const nudgeAnimatingRef = useRef(false);
   const nudgeRafRef = useRef(0);
-  const nudgeIdleTimerRef = useRef(0);
   const nudgeFirstTimerRef = useRef(0);
   const nudgeFirstPlayedRef = useRef(false);
   /** Any real feed interaction — suppresses a pending first-land nudge. */
@@ -273,6 +258,8 @@ export function HomeFeedScreen({
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
       scrollIndexRef.current = 0;
+      preloadFeedPosters(page.items);
+      restoredRef.current = false;
       setStatus("loaded");
       writeHomeFeedCache({
         items: page.items,
@@ -281,16 +268,16 @@ export function HomeFeedScreen({
         activeId: page.items[0]?.id ?? null,
         scrollIndex: 0,
       });
-      requestAnimationFrame(() => {
-        scrollerRef.current?.scrollTo({ top: 0 });
-      });
     } catch {
       setStatus("error");
     }
   }, []);
 
   useEffect(() => {
-    if (cached?.items.length) return;
+    if (cached?.items.length) {
+      preloadFeedPosters(cached.items);
+      return;
+    }
     void loadInitial();
   }, [cached?.items.length, loadInitial]);
 
@@ -317,7 +304,6 @@ export function HomeFeedScreen({
         const media = slide.querySelector<HTMLElement>(".hf-media");
         overlay?.style.setProperty("--hf-parallax-y", "0px");
         media?.style.setProperty("--hf-media-scale", String(MEDIA_SCALE_BASE));
-        media?.style.setProperty("--hf-media-blur", "0px");
       };
 
       if (reducedMotion) {
@@ -326,8 +312,6 @@ export function HomeFeedScreen({
         parallaxCurrentRef.current.clear();
         scaleTargetRef.current.clear();
         scaleCurrentRef.current.clear();
-        blurTargetRef.current.clear();
-        blurCurrentRef.current.clear();
         if (scrollFxRafRef.current) {
           cancelAnimationFrame(scrollFxRafRef.current);
           scrollFxRafRef.current = 0;
@@ -344,8 +328,6 @@ export function HomeFeedScreen({
           parallaxCurrentRef.current.delete(key);
           scaleTargetRef.current.delete(key);
           scaleCurrentRef.current.delete(key);
-          blurTargetRef.current.delete(key);
-          blurCurrentRef.current.delete(key);
           if (Number.isFinite(idx) && slides[idx]) resetSlideFx(slides[idx]!);
         }
       }
@@ -372,24 +354,12 @@ export function HomeFeedScreen({
         );
         scaleTargetRef.current.set(key, scaleTarget);
 
-        // Blur only on exit (leaving upward). Incoming/next peek stays sharp.
-        // Mobile: skip expensive filter blur; keep scale + parallax.
-        const exitProgress = Math.max(0, progress);
-        const blurTarget = allowMediaBlur
-          ? Math.min(
-              MEDIA_BLUR_MAX_PX,
-              exitProgress * MEDIA_BLUR_PROGRESS_GAIN * MEDIA_BLUR_MAX_PX,
-            )
-          : 0;
-        blurTargetRef.current.set(key, blurTarget);
-
         if (immediate) {
           const slide = slides[index];
           const overlay = slide?.querySelector<HTMLElement>(".hf-overlay");
           const media = slide?.querySelector<HTMLElement>(".hf-media");
           parallaxCurrentRef.current.set(key, overlayTarget);
           scaleCurrentRef.current.set(key, scaleTarget);
-          blurCurrentRef.current.set(key, blurTarget);
           overlay?.style.setProperty(
             "--hf-parallax-y",
             `${overlayTarget.toFixed(3)}px`,
@@ -397,10 +367,6 @@ export function HomeFeedScreen({
           media?.style.setProperty(
             "--hf-media-scale",
             scaleTarget.toFixed(5),
-          );
-          media?.style.setProperty(
-            "--hf-media-blur",
-            `${blurTarget.toFixed(3)}px`,
           );
         }
       }
@@ -436,7 +402,8 @@ export function HomeFeedScreen({
         let drifting = false;
 
         for (let index = liveStart; index <= liveEnd; index += 1) {
-          const key = items[index]?.id ?? String(index);
+          // Keys must match writes above (scroll index), not item.id.
+          const key = String(index);
           const slide = liveSlides[index];
           const overlay = slide?.querySelector<HTMLElement>(".hf-overlay");
           const media = slide?.querySelector<HTMLElement>(".hf-media");
@@ -465,18 +432,6 @@ export function HomeFeedScreen({
             sValue.toFixed(5),
           );
           if (!sSettled) drifting = true;
-
-          const bTarget = blurTargetRef.current.get(key) ?? 0;
-          const bCurrent = blurCurrentRef.current.get(key) ?? 0;
-          const bNext = bCurrent + (bTarget - bCurrent) * mediaAlpha;
-          const bSettled = Math.abs(bTarget - bNext) < 0.01;
-          const bValue = bSettled ? bTarget : bNext;
-          blurCurrentRef.current.set(key, bValue);
-          media?.style.setProperty(
-            "--hf-media-blur",
-            `${bValue.toFixed(3)}px`,
-          );
-          if (!bSettled) drifting = true;
         }
 
         if (drifting) {
@@ -491,7 +446,6 @@ export function HomeFeedScreen({
       scrollFxRafRef.current = requestAnimationFrame(tick);
     },
     [
-      allowMediaBlur,
       getSlideMetrics,
       mediaScaleGain,
       mediaScaleMax,
@@ -521,6 +475,7 @@ export function HomeFeedScreen({
       root.style.scrollSnapType = "none";
       root.style.scrollBehavior = "auto";
       root.scrollTop = y;
+      viewIndexRef.current = target;
       setViewIndex(target);
       scrollIndexRef.current = target - 1;
       requestAnimationFrame(() => {
@@ -543,7 +498,12 @@ export function HomeFeedScreen({
       Math.max(0, items.length - 1),
     );
     const index = loopEnabled ? logical + 1 : logical;
-    root.scrollTo({ top: index * slideHeight });
+    // Instant restore — smooth scrollBehavior would animate through every card.
+    const prevBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    root.scrollTop = index * slideHeight;
+    root.style.scrollBehavior = prevBehavior;
+    viewIndexRef.current = index;
     setViewIndex(index);
     const next = items[logical];
     if (next) setActiveId(next.id);
@@ -559,7 +519,6 @@ export function HomeFeedScreen({
     nudgeAnimatingRef.current = false;
     const root = scrollerRef.current;
     if (!root) return;
-    // Leave scrollTop where the user interrupted; restore snap so CSS can settle.
     root.style.scrollSnapType = "";
     root.style.scrollBehavior = "";
   }, []);
@@ -575,11 +534,9 @@ export function HomeFeedScreen({
     const { slideHeight } = getSlideMetrics(root);
     if (slideHeight <= 0) return;
 
-    // Only nudge when parked on a slide — mid-scroll means the user is already moving.
     const restTop = root.scrollTop;
     const index = Math.round(restTop / slideHeight);
     if (Math.abs(restTop - index * slideHeight) > 2) return;
-    // Need a next slide to peek (includes loop tail clone after the last real).
     if (index >= maxScrollIndex) return;
 
     const travel = Math.min(
@@ -590,7 +547,6 @@ export function HomeFeedScreen({
     const totalMs = SCROLL_NUDGE_OUT_MS + SCROLL_NUDGE_BACK_MS;
 
     nudgeAnimatingRef.current = true;
-    // Disable snap so the peek doesn't get sucked to the next card.
     root.style.scrollSnapType = "none";
     root.style.scrollBehavior = "auto";
 
@@ -643,46 +599,19 @@ export function HomeFeedScreen({
     stopScrollNudge,
   ]);
 
-  useEffect(() => {
-    const root = scrollerRef.current;
-    if (!root || !loopEnabled || status !== "loaded") return;
-    const onScrollEnd = () => normalizeLoopScroll(root);
-    root.addEventListener("scrollend", onScrollEnd);
-    return () => root.removeEventListener("scrollend", onScrollEnd);
-  }, [loopEnabled, normalizeLoopScroll, status, items.length]);
-
-  const armScrollNudgeIdle = useCallback(() => {
-    if (nudgeIdleTimerRef.current) {
-      window.clearTimeout(nudgeIdleTimerRef.current);
-      nudgeIdleTimerRef.current = 0;
-    }
-    if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
-      return;
-    }
-    nudgeIdleTimerRef.current = window.setTimeout(() => {
-      nudgeIdleTimerRef.current = 0;
-      playScrollNudge();
-      // After an idle nudge, keep the 30s loop armed.
-      armScrollNudgeIdle();
-    }, SCROLL_NUDGE_IDLE_MS);
-  }, [active, items.length, playScrollNudge, reducedMotion, status]);
-
   const markFeedActivity = useCallback(() => {
     nudgeUserTouchedRef.current = true;
     if (nudgeFirstTimerRef.current) {
       window.clearTimeout(nudgeFirstTimerRef.current);
       nudgeFirstTimerRef.current = 0;
-      nudgeFirstPlayedRef.current = true;
     }
-    // User engagement cancels an in-flight affordance and restarts the idle clock.
-    // Keep current scrollTop so wheel/touch take over without a yank-back.
+    nudgeFirstPlayedRef.current = true;
     stopScrollNudge();
-    armScrollNudgeIdle();
-  }, [armScrollNudgeIdle, stopScrollNudge]);
+  }, [stopScrollNudge]);
 
   markFeedActivityRef.current = markFeedActivity;
 
-  // First-land nudge + 30s idle loop while the home feed is the active tab.
+  // One-shot first-land nudge only — no idle replay loop.
   useEffect(() => {
     if (!active || reducedMotion || status !== "loaded" || items.length < 2) {
       stopScrollNudge();
@@ -690,47 +619,30 @@ export function HomeFeedScreen({
         window.clearTimeout(nudgeFirstTimerRef.current);
         nudgeFirstTimerRef.current = 0;
       }
-      if (nudgeIdleTimerRef.current) {
-        window.clearTimeout(nudgeIdleTimerRef.current);
-        nudgeIdleTimerRef.current = 0;
-      }
       return;
     }
 
-    if (!nudgeFirstPlayedRef.current && !nudgeUserTouchedRef.current) {
-      if (nudgeFirstTimerRef.current) {
-        window.clearTimeout(nudgeFirstTimerRef.current);
-      }
-      nudgeFirstTimerRef.current = window.setTimeout(() => {
-        nudgeFirstTimerRef.current = 0;
-        if (nudgeUserTouchedRef.current) {
-          nudgeFirstPlayedRef.current = true;
-          armScrollNudgeIdle();
-          return;
-        }
-        nudgeFirstPlayedRef.current = true;
-        playScrollNudge();
-        armScrollNudgeIdle();
-      }, SCROLL_NUDGE_FIRST_DELAY_MS);
-    } else {
-      nudgeFirstPlayedRef.current = true;
-      armScrollNudgeIdle();
+    if (nudgeFirstPlayedRef.current || nudgeUserTouchedRef.current) return;
+
+    if (nudgeFirstTimerRef.current) {
+      window.clearTimeout(nudgeFirstTimerRef.current);
     }
+    nudgeFirstTimerRef.current = window.setTimeout(() => {
+      nudgeFirstTimerRef.current = 0;
+      nudgeFirstPlayedRef.current = true;
+      if (nudgeUserTouchedRef.current) return;
+      playScrollNudge();
+    }, SCROLL_NUDGE_FIRST_DELAY_MS);
 
     return () => {
       if (nudgeFirstTimerRef.current) {
         window.clearTimeout(nudgeFirstTimerRef.current);
         nudgeFirstTimerRef.current = 0;
       }
-      if (nudgeIdleTimerRef.current) {
-        window.clearTimeout(nudgeIdleTimerRef.current);
-        nudgeIdleTimerRef.current = 0;
-      }
       stopScrollNudge();
     };
   }, [
     active,
-    armScrollNudgeIdle,
     items.length,
     playScrollNudge,
     reducedMotion,
@@ -738,11 +650,74 @@ export function HomeFeedScreen({
     stopScrollNudge,
   ]);
 
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+  const loopSlidesRef = useRef(loopSlides);
+  loopSlidesRef.current = loopSlides;
+  const maxScrollIndexRef = useRef(maxScrollIndex);
+  maxScrollIndexRef.current = maxScrollIndex;
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+
+  const commitSettledViewIndex = useCallback(
+    (root: HTMLElement) => {
+      const slides = loopSlidesRef.current;
+      const maxIdx = maxScrollIndexRef.current;
+      if (!slides.length) return;
+      const { slideHeight } = getSlideMetrics(root);
+      if (slideHeight <= 0) return;
+      const index = Math.round(root.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(maxIdx, index));
+      // Only commit React state once the snap has parked on a slide.
+      if (Math.abs(root.scrollTop - safeIndex * slideHeight) > 2) return;
+
+      const slide = slides[safeIndex];
+      viewIndexRef.current = safeIndex;
+      setViewIndex(safeIndex);
+      if (slide) {
+        scrollIndexRef.current = slide.logicalIndex;
+        if (slide.item.id !== activeIdRef.current) {
+          setActiveId(slide.item.id);
+        }
+        persistRef.current({
+          activeId: slide.item.id,
+          scrollIndex: slide.logicalIndex,
+        });
+      }
+    },
+    [getSlideMetrics],
+  );
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root || status !== "loaded") return;
+
+    const onScrollEnd = () => {
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+        feedScrollSettleTimerRef.current = 0;
+      }
+      setFeedScrolling(false);
+      if (loopEnabled) normalizeLoopScroll(root);
+      commitSettledViewIndex(root);
+    };
+    root.addEventListener("scrollend", onScrollEnd);
+    return () => root.removeEventListener("scrollend", onScrollEnd);
+  }, [commitSettledViewIndex, loopEnabled, normalizeLoopScroll, status, items.length]);
+
   useEffect(() => {
     return () => {
       if (scrollFxRafRef.current) {
         cancelAnimationFrame(scrollFxRafRef.current);
         scrollFxRafRef.current = 0;
+      }
+      if (scrollStateRafRef.current) {
+        cancelAnimationFrame(scrollStateRafRef.current);
+        scrollStateRafRef.current = 0;
+      }
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+        feedScrollSettleTimerRef.current = 0;
       }
       if (nudgeRafRef.current) {
         cancelAnimationFrame(nudgeRafRef.current);
@@ -752,32 +727,12 @@ export function HomeFeedScreen({
         window.clearTimeout(nudgeFirstTimerRef.current);
         nudgeFirstTimerRef.current = 0;
       }
-      if (nudgeIdleTimerRef.current) {
-        window.clearTimeout(nudgeIdleTimerRef.current);
-        nudgeIdleTimerRef.current = 0;
-      }
     };
   }, []);
 
   useEffect(() => {
     const activeSlide = loopSlides[viewIndex];
     const activeKey = activeSlide?.key;
-    const logical = activeSlide?.logicalIndex ?? 0;
-    const warmKeys = new Set<string>();
-    for (let offset = -FEED_WARM_BEHIND; offset <= FEED_WARM_AHEAD; offset += 1) {
-      if (offset === 0) continue;
-      const neighborLogical = logical + offset;
-      if (neighborLogical < 0 || neighborLogical >= items.length) continue;
-      const neighbor = items[neighborLogical];
-      if (neighbor) warmKeys.add(neighbor.id);
-      // Also warm the matching loop clone keys when relevant.
-      if (loopEnabled && neighborLogical === 0) {
-        warmKeys.add(`${items[0]!.id}__loop-tail`);
-      }
-      if (loopEnabled && neighborLogical === items.length - 1) {
-        warmKeys.add(`${items[items.length - 1]!.id}__loop-head`);
-      }
-    }
 
     videoRefs.current.forEach((video, id) => {
       if (!active) {
@@ -794,16 +749,24 @@ export function HomeFeedScreen({
       }
 
       video.pause();
-
-      if (warmKeys.has(id)) {
-        try {
-          if (video.preload !== "auto") video.preload = "auto";
-        } catch {
-          /* ignore media errors on warm path */
-        }
-      }
     });
-  }, [active, items, loopEnabled, loopSlides, videoRefs, viewIndex]);
+  }, [active, loopSlides, videoRefs, viewIndex]);
+
+  // Keep keyboard focus on the parked slide when the loop advances.
+  useEffect(() => {
+    if (!active) return;
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement)) return;
+    const slide = focused.closest(".hf-slide");
+    if (!slide || !slide.hasAttribute("inert")) return;
+    const next =
+      scrollerRef.current
+        ?.closest(".hf-page")
+        ?.querySelector<HTMLElement>(
+          '.hf-slide:not([inert]) button, .hf-slide:not([inert]) a, .hf-stepper-btn, .hf-search-btn',
+        ) ?? null;
+    next?.focus();
+  }, [active, viewIndex]);
 
   const go = useCallback(
     (delta: number) => {
@@ -1107,8 +1070,12 @@ export function HomeFeedScreen({
     if (!hasMore || loadingMoreRef.current || !cursor) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
+    // Hold absolute scroll while pages append so snap/layout doesn't jump.
+    const root = scrollerRef.current;
+    const holdTop = root?.scrollTop ?? null;
     try {
       const page = await fetchHomeFeedPage(cursor);
+      preloadFeedPosters(page.items);
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(
@@ -1129,6 +1096,20 @@ export function HomeFeedScreen({
       });
       setCursor(page.nextCursor);
       setHasMore(page.hasMore);
+      if (root && holdTop != null) {
+        requestAnimationFrame(() => {
+          const node = scrollerRef.current;
+          if (!node) return;
+          const prevBehavior = node.style.scrollBehavior;
+          const prevSnap = node.style.scrollSnapType;
+          node.style.scrollBehavior = "auto";
+          node.style.scrollSnapType = "none";
+          node.scrollTop = holdTop;
+          node.style.scrollBehavior = prevBehavior;
+          node.style.scrollSnapType = prevSnap;
+          applyScrollFx(node, true);
+        });
+      }
     } catch {
       /* keep browsing loaded cards */
     } finally {
@@ -1151,42 +1132,56 @@ export function HomeFeedScreen({
     // Programmatic nudge drives scrollTop itself — don't treat that as user activity.
     if (!nudgeAnimatingRef.current) {
       markFeedActivityRef.current();
-    }
-    const { slideHeight } = getSlideMetrics(root);
-    const index = Math.round(root.scrollTop / slideHeight);
-    const safeIndex = Math.max(0, Math.min(maxScrollIndex, index));
-    setViewIndex(safeIndex);
-    const slide = loopSlides[safeIndex];
-    if (slide) {
-      scrollIndexRef.current = slide.logicalIndex;
-      if (slide.item.id !== activeId) {
-        setActiveId(slide.item.id);
-        persist({
-          activeId: slide.item.id,
-          scrollIndex: slide.logicalIndex,
-        });
-      } else {
-        persist({ scrollIndex: slide.logicalIndex });
+      setFeedScrolling(true);
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
       }
+      // Fallback when scrollend is missing (older WebKit) — also commits view index.
+      feedScrollSettleTimerRef.current = window.setTimeout(() => {
+        feedScrollSettleTimerRef.current = 0;
+        setFeedScrolling(false);
+        const node = scrollerRef.current;
+        if (!node) return;
+        if (loopEnabled) normalizeLoopScroll(node);
+        commitSettledViewIndex(node);
+      }, FEED_SCROLL_SETTLE_MS);
     }
 
+    // Visual FX every scroll event (DOM writes only — no React index updates).
     applyScrollFx(root);
 
-    const logical = slide?.logicalIndex ?? 0;
-    const remaining = items.length - 1 - logical;
-    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+    // Track scroll position in refs only; React viewIndex waits for snap settle.
+    if (scrollStateRafRef.current) return;
+    scrollStateRafRef.current = requestAnimationFrame(() => {
+      scrollStateRafRef.current = 0;
+      const node = scrollerRef.current;
+      if (!node || !loopSlides.length) return;
+      const { slideHeight } = getSlideMetrics(node);
+      const index = Math.round(node.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(maxScrollIndex, index));
+      const slide = loopSlides[safeIndex];
+      viewIndexRef.current = safeIndex;
+      if (slide) {
+        scrollIndexRef.current = slide.logicalIndex;
+      }
 
-    // Settled on a loop clone → teleport to the matching real slide.
-    if (
-      loopEnabled &&
-      Math.abs(root.scrollTop - safeIndex * slideHeight) < 2 &&
-      (safeIndex <= 0 || safeIndex >= items.length + 1)
-    ) {
-      normalizeLoopScroll(root);
-    }
+      const logical = slide?.logicalIndex ?? 0;
+      const remaining = items.length - 1 - logical;
+      if (remaining <= FEED_WARM_AHEAD) void loadMore();
+
+      // Settled on a loop clone → teleport to the matching real slide.
+      if (
+        loopEnabled &&
+        Math.abs(node.scrollTop - safeIndex * slideHeight) < 2 &&
+        (safeIndex <= 0 || safeIndex >= items.length + 1)
+      ) {
+        normalizeLoopScroll(node);
+      }
+    });
   }
 
   function toggleLike(id: string) {
+    markFeedActivityRef.current();
     if (onLikeAttempt && !onLikeAttempt(id)) return;
     setItems((prev) => {
       const next = prev.map((item) =>
@@ -1202,6 +1197,7 @@ export function HomeFeedScreen({
 
   /** One-way Like for double-tap — never unlikes; idempotent when already liked. */
   function ensureLike(id: string): boolean {
+    markFeedActivityRef.current();
     const already = items.some((item) => item.id === id && item.liked);
     if (already) return true;
     if (onLikeAttempt && !onLikeAttempt(id)) return false;
@@ -1249,6 +1245,7 @@ export function HomeFeedScreen({
             aria-label="Previous creator"
             data-no-feed-drag
             disabled={
+              !loopEnabled &&
               items.findIndex((item) => item.id === activeId) <= 0
             }
             onClick={() => {
@@ -1264,8 +1261,9 @@ export function HomeFeedScreen({
             aria-label="Next creator"
             data-no-feed-drag
             disabled={
+              !loopEnabled &&
               items.findIndex((item) => item.id === activeId) >=
-              items.length - 1
+                items.length - 1
             }
             onClick={() => {
               markFeedActivityRef.current();
@@ -1282,11 +1280,7 @@ export function HomeFeedScreen({
             className="hf-search-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
             aria-label="Search"
             data-no-feed-drag
-            onClick={() =>
-              navigate(Paths.homeSearch, {
-                state: { openPackLibrary: true, from: Paths.discover },
-              })
-            }
+            onClick={openSearch}
           >
             <Search className="hf-search-icon" aria-hidden="true" />
           </button>
@@ -1348,10 +1342,12 @@ export function HomeFeedScreen({
             onPointerUp={endDesktopPointerDrag}
             onPointerCancel={endDesktopPointerDrag}
             style={
+              // Never set scrollBehavior:smooth on the scroller itself — any
+              // scrollTop write (restore, loadMore hold, loop normalize) would
+              // animate through intermediate cards and look like random flips.
               reducedMotion
                 ? undefined
                 : ({
-                    scrollBehavior: "smooth",
                     "--hf-snap-ms": `${SNAP_MS}ms`,
                   } as CSSProperties)
             }
@@ -1363,20 +1359,47 @@ export function HomeFeedScreen({
               const resolvedActiveIndex = activeLogical >= 0 ? activeLogical : 0;
 
               return loopSlides.map((slide, index) => {
-                const warm =
-                  !slide.clone &&
-                  isWarmFeedIndex(slide.logicalIndex, resolvedActiveIndex);
+                // True window: active ± warm (incl. visible slide). Far = poster only.
+                const mountVideo =
+                  index === viewIndex ||
+                  (!slide.clone &&
+                    isFeedMountIndex(slide.logicalIndex, resolvedActiveIndex));
+                const eagerPreload =
+                  active &&
+                  isFeedPreloadAutoIndex(slide.logicalIndex, resolvedActiveIndex) &&
+                  (aheadPreloadReady ||
+                    slide.logicalIndex === resolvedActiveIndex);
 
                 return (
-                  <div key={slide.key} className="hf-slide">
+                  <div
+                    key={slide.key}
+                    className="hf-slide"
+                    // Loop clones + neighbors stay out of Tab order; only the
+                    // parked slide is keyboard-reachable so Tab can leave the feed.
+                    {...(active && index === viewIndex
+                      ? {}
+                      : { inert: true, "aria-hidden": true as const })}
+                  >
                     <CreatorFeedCard
                       item={slide.item}
                       active={active && index === viewIndex}
-                      warm={warm || (active && index === viewIndex)}
+                      warm={mountVideo}
+                      eagerPreload={eagerPreload}
+                      feedScrolling={feedScrolling || !active}
                       onLike={() => toggleLike(slide.item.id)}
                       onEnsureLike={() => ensureLike(slide.item.id)}
-                      onBuy={() => onBuyPack(toPurchasePack(slide.item))}
-                      onOpenCreator={onOpenCreator}
+                      onBuy={() => {
+                        markFeedActivityRef.current();
+                        onBuyPack(toPurchasePack(slide.item));
+                      }}
+                      onOpenCreator={
+                        onOpenCreator
+                          ? (creatorId) => {
+                              markFeedActivityRef.current();
+                              onOpenCreator(creatorId);
+                            }
+                          : undefined
+                      }
                       videoRef={(node) => {
                         if (node) videoRefs.current.set(slide.key, node);
                         else videoRefs.current.delete(slide.key);
@@ -1422,7 +1445,7 @@ function gestureLayerBlocksNudge() {
 
 /**
  * Desktop feed breakpoint — matches CTA / pack mobile MQ (≤980 = mobile).
- * Used for blur + larger scrub zoom where there's GPU headroom.
+ * Used for larger scrub zoom where there's GPU headroom.
  */
 function useIsDesktopFeed() {
   const [desktop, setDesktop] = useState(false);

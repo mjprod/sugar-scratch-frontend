@@ -1,8 +1,25 @@
-import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { navigateBackOr } from "@/hooks/useGoBack";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
+import {
+  effectiveSoundEffect,
+  setGameSoundOn,
+  subscribeGameAudioPrefs,
+} from "@/services/gameAudioPrefs";
+import { noteCoinsReceived } from "@/services/coinReceipt";
+import {
+  isScratchHandQuotaExhausted,
+  persistScratchCoins,
+  startScratchHand,
+} from "@/services/scratchCoinReward";
 import {
   fetchCatalogPhotoCards,
   type CatalogPhotoCard,
@@ -13,14 +30,34 @@ import {
   PRESENT_ZOOM,
   type ImageLayerCameras,
 } from "./glRenderer";
+import { GamePauseButton } from "../GamePauseButton";
+import { StageCoinCount } from "../StageCoinCount";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { MatchFlight } from "../modules/MatchFlight";
+import {
+  finaleHaptics,
+  playFinaleBoomSound,
+  playFinaleChargeSound,
+} from "../modules/finaleFx";
+import {
+  chargeAmount,
+  explosionOrigin,
+  finaleHidesForeground,
+  finalePhaseAt,
+  finaleTimeline,
+  garmentRevealSatisfied,
+  shouldExplodeGarment,
+  type FinalePhase,
+  type FinaleTimeline,
+} from "../modules/garmentExplosion";
 import { PackProgress } from "../modules/PackProgress";
 import {
   beginPhotoPhase,
   finishPhotoHand,
+  isFreePlayUrl,
   isGameModeUrl,
   loadGameSession,
-  navigateTo,
   promoteCompletePhotoHand,
   recordPhotoCardResult,
   settleDonePhotoHand,
@@ -29,10 +66,8 @@ import {
 import { PhotoHandSummary } from "../modules/PhotoHandSummary";
 import { PhotoDiamondReveal } from "../modules/PhotoDiamondReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
-import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { Paths } from "@/routes/Paths";
-import { useAuth } from "@/contexts/AuthContext";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   advanceHuntHintCycle,
@@ -54,12 +89,40 @@ import {
   isCountdownSoundUnlocked,
   TOP_BAR_DOCK_MS,
   unlockCountdownSound,
+  resumeCountdownAudioIfActive,
+  stopCountdownAudio,
 } from "../modules/InitialCountdown";
+import {
+  syncMotionScratchBgm,
+  unlockMotionScratchBgm,
+} from "../modules/motionScratchBgm";
+import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import {
+  gameAudioStartTime,
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
+import {
+  endScratchSoundStroke,
+  noteScratchStamp,
+  preloadScratchSounds,
+  stopScratchSounds,
+} from "../modules/scratchSound";
+import {
+  createScratchCoverage,
+  createStrokeFreshness,
+  noteStrokeStamp,
+  rebuildScratchCoverage,
+  resetScratchCoverage,
+  resetStrokeFreshness,
+  SCRATCH_COVERAGE_SIZE,
+  stampScratchCoverage,
+} from "../modules/scratchCoverage";
 import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
-import { TopSymbolBar, TOP_BAR_SHOWCASE_MS, type TopBarPhase } from "../modules/TopSymbolBar";
+import { TopSymbolBar, type TopBarPhase } from "../modules/TopSymbolBar";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -72,9 +135,66 @@ import {
   type TrackedMeshSample,
   type Vec2,
 } from "./meshGeometry";
-import { playThemeIntro, releaseMediaElement } from "../shared/media";
+import {
+  applyBoundThemeIntroSound,
+  bindThemeIntroVideo,
+  playThemeIntro,
+  releaseMediaElement,
+  retryThemeIntroPlayback,
+  setThemeIntroSound,
+  unbindThemeIntroVideo,
+} from "../shared/media";
+import { soundMixOutput } from "../shared/soundMix";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
+import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
+import { FairyDustCursor, type ParticleType } from "../cursorFx/FairyDustCursor";
+import { loadLottieUrlSource } from "../cursorFx/loadLottieSource";
+import {
+  celebrateBurstCount,
+  celebrateDurationMs,
+  celebrateParticleBoost,
+  crossedProgressMilestones,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
+  CURSOR_FX_MOBILE_BURST_SIZE_MUL,
+  resolveCursorFxDeviceProfile,
+} from "../modules/cursorFxCelebrate";
+import {
+  fairyDustSpawnMinDistancePx,
+  shouldSpawnFairyDust,
+} from "../modules/fairyDustSpawnPolicy";
+import {
+  COIN_BADGE_AWARD_HOLD_MS,
+  rollSparkleCoinAward,
+} from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
+import { useScratchCoinBadge } from "../modules/useScratchCoinBadge";
+
+function detectPhotoCursorFx() {
+  if (typeof window === "undefined") {
+    return resolveCursorFxDeviceProfile({
+      reducedMotion: false,
+      coarsePointer: false,
+      narrowViewport: false,
+    });
+  }
+  return resolveCursorFxDeviceProfile({
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    narrowViewport: window.matchMedia("(max-width: 700px)").matches,
+  });
+}
+
+const PHOTO_CURSOR_FX = detectPhotoCursorFx();
+const PHOTO_CURSOR_FX_REDUCED =
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const BACK_LAYER_SRC = "/photo-scratch/background.jpg";
 const MID_LAYER_SRC = "/photo-scratch/mid.png";
@@ -82,6 +202,13 @@ const FRONT_LAYER_SRC = "/photo-scratch/foreground.png";
 const MESH_SRC = "/photo-scratch/mesh.json";
 
 type PhotoScratchCardEntry = CatalogPhotoCard;
+
+type CardFlowState = "ready" | "scratching" | "showing-result";
+type PackFlowState = "playing" | "complete";
+
+function isProductPhotoScratch(): boolean {
+  return isGameModeUrl() || Boolean(readCardIdFromLocation());
+}
 
 function readCardIdFromLocation(): string {
   if (typeof window === "undefined") return "";
@@ -92,11 +219,10 @@ async function fetchPhotoScratchIndex(): Promise<PhotoScratchCardEntry[]> {
   return fetchCatalogPhotoCards();
 }
 
-const SCRATCH_RADIUS = 0.045;
+const SCRATCH_RADIUS = 0.03;
 const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
 const MANUAL_SCRATCH_MAX_POINTS = 40;
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
-const SOUND_STORAGE_KEY = "sugar-scratchie:sound";
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
 const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
@@ -140,7 +266,7 @@ const SYMBOL_REVEAL_UV_RADIUS = 0.06;
 const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
  * upscale a soft canvas. */
-const BODY_SYMBOL_ICON_PX = 36;
+const BODY_SYMBOL_ICON_PX = 44;
 
 // Ring one unfound mark at a time once the player is idle and either only a few
 // remain or the garment already reads as finished. The garment threshold is the
@@ -160,14 +286,11 @@ type FlyingMatch = {
   fromY: number;
   toX: number;
   toY: number;
-  midX: number;
-  midY: number;
   delayMs: number;
   bodyIndex: number;
   topSlot: number;
 };
 
-const MATCH_FLIGHT_DURATION_MS = 1250;
 const MATCH_FLIGHT_STAGGER_MS = 90;
 
 function clamp(value: number, lo: number, hi: number) {
@@ -239,17 +362,7 @@ function playlistForGameSession(
   return ordered;
 }
 
-function loadSoundEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const raw = localStorage.getItem(SOUND_STORAGE_KEY);
-    if (!raw) return true;
-    const parsed = JSON.parse(raw) as { enabled?: boolean };
-    return parsed.enabled ?? true;
-  } catch {
-    return true;
-  }
-}
+const loadSoundEnabled = () => effectiveSoundEffect();
 
 function loadAutoScratchSettings(): AutoScratchSettings {
   if (typeof window === "undefined") return AUTO_SCRATCH_DEFAULTS;
@@ -272,14 +385,8 @@ function loadAutoScratchSettings(): AutoScratchSettings {
 
 function ensureSymbolAudio(state: SymbolAudioState) {
   if (typeof window === "undefined") return null;
-  if (!state.ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return null;
-    state.ctx = new AudioCtor();
-  }
+  state.ctx ??= getGameAudioContext();
+  if (!state.ctx) return null;
   if (state.ctx.state === "suspended") void state.ctx.resume();
   return state.ctx;
 }
@@ -292,11 +399,12 @@ function playMatchFindSound(
   if (!enabled) return;
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return;
-  const t = ctx.currentTime + startOffsetS;
+  const t = gameAudioStartTime(ctx) + startOffsetS;
   // Bright ascending ding — claims a top-bar slot.
-  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
-  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
-  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine");
+  const out = soundMixOutput("match") ?? getGameAudioOutput(ctx);
+  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle", out);
+  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine", out);
+  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine", out);
 }
 
 /** Per newly revealed body icon: ding only when it claims a top-bar slot. */
@@ -327,16 +435,17 @@ function scheduleTone(
   durationS: number,
   volume: number,
   type: OscillatorType = "triangle",
+  output: AudioNode = getGameAudioOutput(ctx),
 ) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, startAt);
   gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0001), startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(output);
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -351,7 +460,18 @@ function playGameOutcomeSound(
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return 1800;
 
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
+  const out =
+    soundMixOutput(outcome === "win" ? "win" : "lose") ?? getGameAudioOutput(ctx);
+  const tone = (
+    startAt: number,
+    frequency: number,
+    durationS: number,
+    volume: number,
+    type: OscillatorType = "triangle",
+  ) => {
+    scheduleTone(ctx, startAt, frequency, durationS, volume, type, out);
+  };
 
   if (outcome === "win") {
     const sparkle = [
@@ -360,10 +480,9 @@ function playGameOutcomeSound(
     ];
     const sparkleStep = 0.048;
     sparkle.forEach((freq, index) => {
-      scheduleTone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
+      tone(now + index * sparkleStep, freq, 0.09, 0.17, "sine");
       if (index % 2 === 0) {
-        scheduleTone(
-          ctx,
+        tone(
           now + index * sparkleStep + 0.012,
           freq * 2,
           0.055,
@@ -377,28 +496,27 @@ function playGameOutcomeSound(
     const fanfare = [523.25, 659.25, 783.99, 987.77, 1174.66];
     fanfare.forEach((freq, index) => {
       const t = fanfareStart + index * 0.1;
-      scheduleTone(ctx, t, freq, 0.15, 0.3, "square");
-      scheduleTone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
-      scheduleTone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
+      tone(t, freq, 0.15, 0.3, "square");
+      tone(t, freq * 0.5, 0.15, 0.14, "sawtooth");
+      tone(t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
     });
 
     const chordAt = fanfareStart + fanfare.length * 0.1 + 0.1;
     const chord = [261.63, 392, 523.25, 659.25, 783.99, 1046.5, 1318.51];
     chord.forEach((freq, index) => {
       const type: OscillatorType = index < 2 ? "sawtooth" : "triangle";
-      scheduleTone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
+      tone(chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
     });
 
     const glitterStart = chordAt + 0.12;
     const glitter = [2093, 2349, 2637, 2793, 3136, 3520];
     glitter.forEach((freq, index) => {
-      scheduleTone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
+      tone(glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
     });
 
     const shimmerStart = glitterStart + glitter.length * 0.045 + 0.08;
     for (let i = 0; i < 6; i += 1) {
-      scheduleTone(
-        ctx,
+      tone(
         shimmerStart + i * 0.06,
         1760 + i * 110,
         0.07,
@@ -413,8 +531,8 @@ function playGameOutcomeSound(
 
   // No match is a resolved outcome, not a loss — a soft low chime that settles,
   // never a descending "you lost" sting.
-  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
-  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  tone(now, 523.25, 0.34, 0.09, "sine");
+  tone(now + 0.13, 392, 0.5, 0.075, "sine");
   return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
@@ -719,14 +837,27 @@ function motionStatusLabel(status: string) {
   }
 }
 
-export function PhotoScratch() {
+export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
-  const { bumpInventoryRevision } = useAuth();
-  const { addDiamonds } = useWallet();
+  const { authed, bumpInventoryRevision } = useAuth();
+  const { addCoins, addDiamonds, coins, diamonds } = useWallet();
+  /** Server-issued scratch hand — required to persist 10% coin awards. */
+  const handIdRef = useRef("");
+  const handCardIdRef = useRef<string | null>(null);
+  const handStartGenRef = useRef(0);
+  /** Theme toggle only. A paid launch always awards, even on an owned card. */
+  const freePlayLaunch = isFreePlayUrl();
+  const practiceRef = useRef(freePlayLaunch);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const introVideoElRef = useRef<HTMLVideoElement>(null);
+  const introVideoElRef = useRef<HTMLVideoElement | null>(null);
+const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+  const prev = introVideoElRef.current;
+  if (prev && prev !== el) unbindThemeIntroVideo(prev);
+  introVideoElRef.current = el;
+  if (el) bindThemeIntroVideo(el);
+}, []);
   const fgRendererRef = useRef<GarmentGLRenderer | null>(null);
   const trackedMeshRef = useRef<TrackedMesh | null>(null);
   const trackedSampleRef = useRef<TrackedMeshSample | null>(null);
@@ -754,6 +885,10 @@ export function PhotoScratch() {
   });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const isScratchingRef = useRef(false);
+  const coinBadge = useScratchCoinBadge({
+    isScratchingRef,
+    initiallyShown: !freePlayLaunch,
+  });
   const scratchStartedRef = useRef(false);
   const idleSwayRef = useRef<Vec2>({ x: 0, y: 0 });
   const girlCamRef = useRef<Vec2>({ x: 0, y: 0 });
@@ -764,6 +899,24 @@ export function PhotoScratch() {
   const revealSamplesRef = useRef<Vec2[]>([]);
   const revealedRef = useRef<boolean[]>([]);
   const revealedCountRef = useRef(0);
+  // Fine UV record of cleared fabric; scratch audio only plays while the
+  // latest stamps cleared something new.
+  const scratchCoverageRef = useRef(createScratchCoverage());
+  const strokeFreshnessRef = useRef(createStrokeFreshness());
+  const lastStampUvRef = useRef<{ u: number; v: number } | null>(null);
+  const strokeFreshRef = useRef(false);
+  const celebrateProgressRef = useRef(0);
+  const celebrateUntilRef = useRef(0);
+  const celebrateTimerRef = useRef<number | null>(null);
+  const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
+  const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
+  const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
+  const [cursorFxBurstCount, setCursorFxBurstCount] = useState(() =>
+    celebrateBurstCount(1, PHOTO_CURSOR_FX.coarsePointer),
+  );
+  const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
+    ParticleType[]
+  >([]);
   const autoPathRef = useRef<Vec2[]>([]);
   const autoPathIndexRef = useRef(0);
   const autoPathProgressRef = useRef(0);
@@ -776,8 +929,13 @@ export function PhotoScratch() {
     null,
   );
   const tryResolveGameRef = useRef<() => void>(() => undefined);
-  const advanceAfterScratchRef = useRef<() => void>(() => undefined);
+  const enterCardResultRef = useRef<() => void>(() => undefined);
+  const advanceAfterResultRef = useRef<() => void>(() => undefined);
   const completedCardIdsRef = useRef<string[]>([]);
+  /** Blocks scratch input while the next card is loading. */
+  const cardTransitionRef = useRef(false);
+  /** One completion resolve per card — reset when a new card begins. */
+  const scratchCompletionHandledRef = useRef(false);
   const applyScratchAtUvRef = useRef<
     (u: number, v: number, radius: number) => void
   >(() => {});
@@ -813,6 +971,29 @@ export function PhotoScratch() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   useMarkPageReady(ready || loadError != null);
+  useEffect(() => {
+    if (!PHOTO_CURSOR_FX.fairyDust) return;
+    let cancelled = false;
+    void loadLottieUrlSource(COIN_LOTTIE_SRC, "Diamond Coin.lottie")
+      .then((result) => {
+        if (cancelled) return;
+        setCursorFxParticleTypes([
+          {
+            id: "photo-cursor-fx-coin",
+            kind: "lottie",
+            name: result.name,
+            source: result.source,
+          },
+        ]);
+      })
+      .catch(() => {
+        if (!cancelled) setCursorFxParticleTypes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => () => clearCelebrateTimer(), []);
   const [showMesh, setShowMesh] = useState(false);
   const [scratchCount, setScratchCount] = useState(0);
   const [isScratching, setIsScratching] = useState(false);
@@ -842,6 +1023,7 @@ export function PhotoScratch() {
   const [topSymbols, setTopSymbols] = useState(buildTopSymbols);
   const topSymbolsRef = useRef(topSymbols);
   topSymbolsRef.current = topSymbols;
+  const [dockHidden, setDockHidden] = useState(false);
   const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>("center");
   const topBarPhaseRef = useRef(topBarPhase);
   topBarPhaseRef.current = topBarPhase;
@@ -866,6 +1048,12 @@ export function PhotoScratch() {
   const [litTopSlots, setLitTopSlots] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
+  const [shakingTopSlots, setShakingTopSlots] = useState<boolean[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
+  );
+  const [shakeDelayMs, setShakeDelayMs] = useState<number[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => 0),
+  );
   const [flyingMatches, setFlyingMatches] = useState<FlyingMatch[]>([]);
   const claimedTopSlotsRef = useRef<boolean[]>(
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
@@ -883,6 +1071,24 @@ export function PhotoScratch() {
   );
   const autoScratchRef = useRef(autoScratch);
   autoScratchRef.current = autoScratch;
+  /** Auto-clear garment after all body symbols found — not the settings toggle. */
+  const finishAutoActiveRef = useRef(false);
+  /** Hunt-complete finale (charge → shatter → hold); driven from the rAF loop. */
+  const finaleStartRef = useRef<number | null>(null);
+  const finaleTimelineRef = useRef<FinaleTimeline | null>(null);
+  const finalePhaseRef = useRef<FinalePhase | null>(null);
+  const finaleOriginRef = useRef<Vec2>({
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT / 2,
+  });
+  const garmentExplodedRef = useRef(false);
+  const finaleBurstKeyRef = useRef(0);
+  const [finalePhase, setFinalePhase] = useState<FinalePhase | null>(null);
+  const [finaleBurst, setFinaleBurst] = useState<{
+    key: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const revealedSymbolsRef = useRef(0);
   revealedSymbolsRef.current = revealedSymbols;
   const hasBodySymbolsRef = useRef(false);
@@ -896,6 +1102,36 @@ export function PhotoScratch() {
   const [selectedCardId, setSelectedCardId] = useState("");
   const [completedCardIds, setCompletedCardIds] = useState<string[]>([]);
   completedCardIdsRef.current = completedCardIds;
+  useEffect(() => {
+    // Signed out — drop the hand so a later sign-in on the same card starts fresh.
+    if (!authed || freePlayLaunch) {
+      handStartGenRef.current += 1;
+      handIdRef.current = "";
+      handCardIdRef.current = null;
+      practiceRef.current = freePlayLaunch;
+      return;
+    }
+    const key = selectedCardId.trim();
+    if (!key || isScratchHandQuotaExhausted()) return;
+    // Remount / effect re-run for the same card must not burn quota.
+    if (handCardIdRef.current === key) return;
+    handIdRef.current = "";
+    handCardIdRef.current = key;
+    practiceRef.current = false;
+    const gen = ++handStartGenRef.current;
+    void startScratchHand(key).then((result) => {
+      if (gen !== handStartGenRef.current) return;
+      if (result?.handId) {
+        handIdRef.current = result.handId;
+        // Owned-card replays still award. Only the theme toggle skips minting.
+        practiceRef.current = freePlayLaunch;
+        return;
+      }
+      // Failed / quota — allow a later retry for this card.
+      practiceRef.current = false;
+      if (handCardIdRef.current === key) handCardIdRef.current = null;
+    });
+  }, [authed, freePlayLaunch, selectedCardId]);
   const [handSummaryDiamonds, setHandSummaryDiamonds] = useState<number | null>(
     null,
   );
@@ -910,12 +1146,16 @@ export function PhotoScratch() {
   } | null>(null);
   const photoResultRef = useRef(photoResult);
   photoResultRef.current = photoResult;
+  const [cardFlowState, setCardFlowState] = useState<CardFlowState>("ready");
+  const cardFlowStateRef = useRef(cardFlowState);
+  cardFlowStateRef.current = cardFlowState;
+  const [packFlowState, setPackFlowState] = useState<PackFlowState>("playing");
+  const packFlowStateRef = useRef(packFlowState);
+  packFlowStateRef.current = packFlowState;
   const [introVideoUrl, setIntroVideoUrl] = useState("");
   const [introActive, setIntroActive] = useState(false);
   const [introCover, setIntroCover] = useState(false);
   const [introLeaving, setIntroLeaving] = useState(false);
-  /** Starts muted for autoplay policy; may unmute after playThemeIntro succeeds. */
-  const [introMuted, setIntroMuted] = useState(true);
   const introActiveRef = useRef(false);
   introActiveRef.current = introActive;
   const introCoverRef = useRef(false);
@@ -967,6 +1207,10 @@ export function PhotoScratch() {
   }
 
   function isBodyScratchLocked() {
+    // Garment finale owns the stage — a finger still down must not paint.
+    if (finaleStartRef.current !== null || garmentExplodedRef.current) {
+      return true;
+    }
     if (!entryReadyRef.current) return true;
     if (introActiveRef.current) return true;
     return (
@@ -977,6 +1221,7 @@ export function PhotoScratch() {
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     setEntryReady(true);
   }
 
@@ -1030,6 +1275,7 @@ export function PhotoScratch() {
     }
     const intro = introVideoElRef.current;
     if (intro) releaseMediaElement(intro);
+    unbindThemeIntroVideo(intro);
     const freeze = introFreezeCanvasRef.current;
     if (freeze) {
       freeze.width = 0;
@@ -1039,6 +1285,13 @@ export function PhotoScratch() {
     setIntroCover(false);
     introCoverRef.current = false;
     setIntroVideoUrl("");
+  }
+
+  function skipIntro() {
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    clearIntroDockTimer();
+    dismissIntro();
   }
 
   function dismissIntro() {
@@ -1053,6 +1306,7 @@ export function PhotoScratch() {
     }
     const captured = captureIntroFreezeFrame();
     if (intro) releaseMediaElement(intro);
+    unbindThemeIntroVideo(intro);
     setIntroActive(false);
     introActiveRef.current = false;
     setIntroVideoUrl("");
@@ -1109,7 +1363,7 @@ export function PhotoScratch() {
     }, TOP_BAR_DOCK_MS);
   }
 
-  function applyMesh(mesh: TrackedMesh) {
+  function applyMesh(mesh: TrackedMesh, opts?: { resumeHand?: boolean }) {
     trackedMeshRef.current = mesh;
     trackedSampleRef.current = sampleTrackedMesh(mesh, 0);
     revealedPointsRef.current = Array.from(
@@ -1121,6 +1375,14 @@ export function PhotoScratch() {
       false,
     );
     revealedCountRef.current = 0;
+    scratchCoverageRef.current = createScratchCoverage(
+      SCRATCH_COVERAGE_SIZE,
+      mesh.garment,
+      mesh.cols,
+      mesh.rows,
+    );
+    rebuildScratchCoverage(scratchCoverageRef.current, marksRef.current);
+    resetStrokeFresh();
     autoPathRef.current = buildAutoScratchPath(mesh);
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
@@ -1128,6 +1390,12 @@ export function PhotoScratch() {
     setClaimed(false);
     resetGameOutcome();
     resetMatchRound();
+    if (opts?.resumeHand) {
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+    }
     setRevealedSymbols(0);
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
@@ -1138,29 +1406,44 @@ export function PhotoScratch() {
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
     );
     setFlyingMatches([]);
     setHasBodySymbols(mesh.symbolPoints?.length === SYMBOL_POINT_COUNT);
+    finishAutoActiveRef.current = false;
+    resetGarmentFinale();
+    revealedSymbolsRef.current = 0;
+    setCardFlowState("ready");
+    cardFlowStateRef.current = "ready";
     setAutoScratch((current) =>
       current.enabled ? { ...current, enabled: false } : current,
     );
   }
 
-  async function applyLoadedAssets(assets: {
-    back: HTMLImageElement;
-    mid: HTMLImageElement;
-    front: HTMLImageElement;
-    mesh: TrackedMesh;
-    label: string;
-  }) {
+  async function applyLoadedAssets(
+    assets: {
+      back: HTMLImageElement;
+      mid: HTMLImageElement;
+      front: HTMLImageElement;
+      mesh: TrackedMesh;
+      label: string;
+    },
+    opts?: { resumeHand?: boolean },
+  ) {
     backImageRef.current = assets.back;
     midImageRef.current = assets.mid;
     frontImageRef.current = assets.front;
-    applyMesh(assets.mesh);
+    applyMesh(assets.mesh, opts);
     marksRef.current = [];
+    resetScratchCoverage(scratchCoverageRef.current);
+    celebrateProgressRef.current = 0;
+    clearCelebrateTimer();
+    setCursorFxCelebrate(false);
+    coinBadge.reset();
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
     fgRendererRef.current?.clearScratch();
@@ -1276,7 +1559,13 @@ export function PhotoScratch() {
     const entry = resolvePublishedEntry(index, cardId);
     const parentId = parentMotionCardId(entry?.id ?? cardId);
     const siblings = playlistForParent(index, parentId);
-    setPlaylist(siblings);
+    setPlaylist(
+      isGameModeUrl()
+        ? siblings
+        : entry
+          ? [entry]
+          : [{ id: cardId, label: cardId } as PhotoScratchCardEntry],
+    );
     setCompletedCardIds([]);
 
     if (entry) {
@@ -1399,6 +1688,7 @@ export function PhotoScratch() {
     if (!fgCanvas || !ready) return;
 
     // Drop any prior renderer on this canvas before creating a new one.
+    // Never loseContext here — same canvas is about to get a new renderer.
     fgRendererRef.current?.dispose({ loseContext: false });
     fgRendererRef.current = null;
 
@@ -1445,14 +1735,20 @@ export function PhotoScratch() {
       );
 
       const autoSettings = autoScratchRef.current;
-      const huntComplete =
-        !hasBodySymbolsRef.current ||
-        revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
+      const autoActive =
+        finishAutoActiveRef.current || autoSettings.enabled;
+      const huntComplete = hasBodySymbolsRef.current
+        ? revealedSymbolsRef.current >= SYMBOL_POINT_COUNT
+        : true;
       if (
-        autoSettings.enabled &&
-        huntComplete &&
+        autoActive &&
+        (autoSettings.enabled || huntComplete) &&
         !isBodyScratchLocked() &&
         !introActiveRef.current &&
+        cardFlowStateRef.current !== "showing-result" &&
+        packFlowStateRef.current !== "complete" &&
+        !cardTransitionRef.current &&
+        !scratchCompletionHandledRef.current &&
         sample &&
         gameResultPendingRef.current === null &&
         !claimedRef.current
@@ -1545,15 +1841,35 @@ export function PhotoScratch() {
       const canClaim =
         !hasBodySymbolsRef.current ||
         revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
+      const finaleStart = finaleStartRef.current;
+      const finaleTl = finaleTimelineRef.current;
+      let finaleHide: boolean | null = null;
+      if (finaleStart !== null && finaleTl) {
+        const elapsed = now - finaleStart;
+        const phase = finalePhaseAt(elapsed, finaleTl);
+        fgRenderer.setForegroundCharge(chargeAmount(elapsed, finaleTl));
+        if (phase !== finalePhaseRef.current) advanceGarmentFinale(phase);
+        finaleHide = finaleHidesForeground(phase);
+      }
       const hideClothes =
-        claimedRef.current ||
-        (canClaim &&
-          isGarmentFullyRevealed(
-            revealedCountRef.current,
-            sampleCount,
-            autoMode,
-          ));
-      if (hideClothes && !claimedRef.current) {
+        finaleHide ??
+        (claimedRef.current ||
+          cardFlowStateRef.current === "showing-result" ||
+          packFlowStateRef.current === "complete" ||
+          (canClaim &&
+            isGarmentFullyRevealed(
+              revealedCountRef.current,
+              sampleCount,
+              autoMode,
+            )));
+      if (
+        hideClothes &&
+        !claimedRef.current &&
+        cardFlowStateRef.current !== "showing-result" &&
+        packFlowStateRef.current !== "complete" &&
+        !cardTransitionRef.current &&
+        !scratchCompletionHandledRef.current
+      ) {
         claimedRef.current = true;
         setClaimed(true);
         tryResolveGameRef.current();
@@ -1668,11 +1984,20 @@ export function PhotoScratch() {
 
     return () => {
       cancelAnimationFrame(frameId);
-      // Same canvas may remount a renderer when showMesh toggles — don't loseContext.
+      // showMesh / ready churn remounts on the same canvas — never lose here.
       fgRendererRef.current?.dispose({ loseContext: false });
       fgRendererRef.current = null;
     };
   }, [ready, showMesh]);
+
+  // Real route leave: memory purge arms the flag; lose GL context once.
+  useEffect(() => {
+    return () => {
+      if (!consumeLoseGlContextOnUnmount()) return;
+      fgRendererRef.current?.dispose({ loseContext: true });
+      fgRendererRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const fgCanvas = fgCanvasRef.current;
@@ -1714,14 +2039,101 @@ export function PhotoScratch() {
     };
   }
 
-  function applyScratchAtUv(u: number, v: number, radius: number) {
-    if (gameResultPendingRef.current !== null || claimedRef.current) return;
+  function resetStrokeFresh() {
+    resetStrokeFreshness(strokeFreshnessRef.current);
+    lastStampUvRef.current = null;
+    strokeFreshRef.current = false;
+  }
+
+  function clearCelebrateTimer() {
+    if (celebrateTimerRef.current !== null) {
+      window.clearTimeout(celebrateTimerRef.current);
+      celebrateTimerRef.current = null;
+    }
+  }
+
+  function maybeCelebrateScratchProgress(nextProgress: number) {
+    const crossedBands = crossedProgressMilestones(
+      celebrateProgressRef.current,
+      nextProgress,
+    );
+    celebrateProgressRef.current = nextProgress;
+    if (crossedBands.length === 0) return;
+    const crossed = crossedBands[crossedBands.length - 1];
+    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    // One finalize can jump several 10% bands; persist each band or those coins
+    // never get claimed.
+    if (!freePlayLaunch && !practiceRef.current) {
+      const handId = handIdRef.current;
+      const cardId = handCardIdRef.current || undefined;
+      for (const milestone of crossedBands) {
+        const award = rollSparkleCoinAward();
+        queueMicrotask(() => {
+          coinBadge.award(award.amount);
+          addCoins(award.amount);
+          noteCoinsReceived(award.amount);
+          playSparkleCoinSound(award.soundSrc);
+          // Persist only with a server-issued hand — forged client ids are rejected.
+          if (handId) {
+            persistScratchCoins({
+              handId,
+              milestone,
+              cardId,
+              amount: award.amount,
+            });
+          }
+          // Milestone counts as activity — hold longer so +N / count-up can read.
+          huntHintActivityAtRef.current = performance.now();
+          coinBadge.scheduleIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+        });
+      }
+    }
+
+    if (PHOTO_CURSOR_FX_REDUCED) return;
+
+    const celebrateMs = celebrateDurationMs(PHOTO_CURSOR_FX.coarsePointer);
+    celebrateUntilRef.current = performance.now() + celebrateMs;
+    setCursorFxCelebrate(true);
+    setCursorFxBurstCount(
+      celebrateBurstCount(crossed, PHOTO_CURSOR_FX.coarsePointer),
+    );
+    setCursorFxBurstNonce((n) => n + 1);
+    clearCelebrateTimer();
+    celebrateTimerRef.current = window.setTimeout(() => {
+      celebrateTimerRef.current = null;
+      if (performance.now() >= celebrateUntilRef.current) {
+        setCursorFxCelebrate(false);
+      }
+    }, celebrateMs + 40);
+  }
+
+  function applyScratchAtUv(u: number, v: number, radius: number): number {
+    if (
+      gameResultPendingRef.current !== null ||
+      claimedRef.current ||
+      cardFlowStateRef.current === "showing-result" ||
+      packFlowStateRef.current === "complete" ||
+      cardTransitionRef.current ||
+      scratchCompletionHandledRef.current
+    ) {
+      return 0;
+    }
     if (isBodyScratchLocked()) {
-      return;
+      return 0;
+    }
+    if (cardFlowStateRef.current === "ready") {
+      setCardFlowState("scratching");
+      cardFlowStateRef.current = "scratching";
     }
 
     marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
     fgRendererRef.current?.paintScratch(u, v, radius);
+    const freshCells = stampScratchCoverage(
+      scratchCoverageRef.current,
+      u,
+      v,
+      radius,
+    );
     setScratchCount(marksRef.current.length);
 
     const samples = revealSamplesRef.current;
@@ -1737,6 +2149,9 @@ export function PhotoScratch() {
         revealedCountRef.current += 1;
       }
     }
+    maybeCelebrateScratchProgress(
+      samples.length ? revealedCountRef.current / samples.length : 0,
+    );
 
     const bodyPoints = trackedMeshRef.current?.symbolPoints;
     if (bodyPoints && bodyPoints.length === SYMBOL_POINT_COUNT) {
@@ -1788,7 +2203,11 @@ export function PhotoScratch() {
         );
         pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
-        if (nextSymbolCount >= SYMBOL_POINT_COUNT) {
+        if (
+          nextSymbolCount >= SYMBOL_POINT_COUNT &&
+          !startGarmentFinale(newlyRevealed) &&
+          !isProductPhotoScratch()
+        ) {
           beginFinishAutoScratch();
         }
       }
@@ -1799,6 +2218,7 @@ export function PhotoScratch() {
       revealedSymbolsRef.current >= SYMBOL_POINT_COUNT;
     if (
       canClaim &&
+      finaleStartRef.current === null &&
       isGarmentFullyRevealed(
         revealedCountRef.current,
         samples.length,
@@ -1811,6 +2231,7 @@ export function PhotoScratch() {
       }
       tryResolveGameRef.current();
     }
+    return freshCells;
   }
   applyScratchAtUvRef.current = applyScratchAtUv;
 
@@ -1875,6 +2296,12 @@ export function PhotoScratch() {
       if (coin && coin.topSlot >= 0) {
         const slot = coin.topSlot;
         queueMicrotask(() => {
+          setShakingTopSlots((prev) => {
+            if (!prev[slot]) return prev;
+            const next = prev.slice();
+            next[slot] = false;
+            return next;
+          });
           setLitTopSlots((prev) => {
             if (prev[slot]) return prev;
             const next = prev.slice();
@@ -1957,8 +2384,6 @@ export function PhotoScratch() {
         fromY: from.y,
         toX,
         toY,
-        midX: from.x + (toX - from.x) * 0.28,
-        midY: Math.min(from.y - 28, toY + (from.y - toY) * 0.55) - 36,
         delayMs: flightIndex * MATCH_FLIGHT_STAGGER_MS,
         bodyIndex,
         topSlot,
@@ -1968,6 +2393,20 @@ export function PhotoScratch() {
 
     claimedTopSlotsRef.current = claimed;
     if (coins.length > 0) {
+      setShakingTopSlots((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (coin.topSlot >= 0) next[coin.topSlot] = true;
+        }
+        return next;
+      });
+      setShakeDelayMs((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (coin.topSlot >= 0) next[coin.topSlot] = coin.delayMs;
+        }
+        return next;
+      });
       setFlyingMatches((current) => [...current, ...coins]);
     }
   }
@@ -1990,30 +2429,45 @@ export function PhotoScratch() {
         : [point];
 
     let applied = false;
+    let fresh = false;
     for (const strokePoint of strokePoints) {
       const uv = trackedWorldToUv(sample, strokePoint);
       if (!uv) continue;
-      applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
+      const newCells = applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
+      const prev = lastStampUvRef.current;
+      fresh = noteStrokeStamp(
+        strokeFreshnessRef.current,
+        newCells,
+        prev ? Math.hypot(uv.x - prev.u, uv.y - prev.v) : 0,
+        SCRATCH_RADIUS,
+        scratchCoverageRef.current.size,
+      );
+      lastStampUvRef.current = { u: uv.x, v: uv.y };
       applied = true;
     }
-    if (applied) lastScratchWorldRef.current = point;
+    if (applied) {
+      lastScratchWorldRef.current = point;
+      strokeFreshRef.current = fresh;
+      noteScratchStamp(fresh);
+    } else {
+      strokeFreshRef.current = false;
+    }
   }
 
   function updateSoundEnabled(enabled: boolean) {
+    applyBoundThemeIntroSound(enabled);
     if (enabled) {
-      ensureSymbolAudio(symbolAudioRef.current);
       unlockCountdownSound();
+      unlockMotionScratchBgm();
+      resumeCountdownAudioIfActive();
+    } else {
+      stopCountdownAudio();
     }
-    setSoundEnabled(enabled);
+    setGameSoundOn(enabled);
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
-    if (
-      patch.enabled &&
-      (isBodyScratchLocked() ||
-        (hasBodySymbolsRef.current &&
-          revealedSymbolsRef.current < SYMBOL_POINT_COUNT))
-    ) {
+    if (patch.enabled && isBodyScratchLocked()) {
       return;
     }
     if (patch.enabled && soundEnabledRef.current) {
@@ -2026,21 +2480,149 @@ export function PhotoScratch() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
-    autoScratchRef.current = { ...autoScratchRef.current, enabled: true };
-    setAutoScratch((current) =>
-      current.enabled ? current : { ...current, enabled: true },
+    finishAutoActiveRef.current = true;
+  }
+
+  /** Last symbol found: charge up, then shatter the remaining clothes. */
+  function startGarmentFinale(newlyRevealed: readonly number[]): boolean {
+    if (
+      !shouldExplodeGarment({
+        useBodySymbols: hasBodySymbolsRef.current,
+        found: revealedSymbolsRef.current,
+        total: SYMBOL_POINT_COUNT,
+        alreadyStarted:
+          finaleStartRef.current !== null || garmentExplodedRef.current,
+        packRevealBlocked:
+          scratchCompletionHandledRef.current ||
+          cardFlowStateRef.current === "showing-result" ||
+          packFlowStateRef.current === "complete" ||
+          cardTransitionRef.current,
+      })
+    ) {
+      return false;
+    }
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    finaleOriginRef.current = explosionOrigin(
+      newlyRevealed.map((index) => {
+        const point = bodyPoints?.[index];
+        return sample && point
+          ? sampleMeshUvToWorld(sample, point.u, point.v)
+          : null;
+      }),
+      { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
     );
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeline = finaleTimeline({
+      reducedMotion: reducedMotion || !fgRendererRef.current,
+    });
+    finaleTimelineRef.current = timeline;
+    finalePhaseRef.current = null;
+    finaleStartRef.current = performance.now();
+    finishAutoActiveRef.current = false;
+    onPointerUp();
+    claimedRef.current = true;
+    if (!timeline.reducedMotion) {
+      if (soundEnabledRef.current) {
+        playFinaleChargeSound(timeline.burstAtMs / 1000);
+      }
+      finaleHaptics("charge");
+    }
+    return true;
+  }
+
+  /** Runs on the first rAF of each finale phase (phases may be skipped on a slow frame). */
+  function advanceGarmentFinale(phase: FinalePhase) {
+    finalePhaseRef.current = phase;
+    const timeline = finaleTimelineRef.current;
+    if (!timeline) return;
+    if (phase !== "charge" && !garmentExplodedRef.current) {
+      fireGarmentBurst(timeline);
+    }
+    setFinalePhase(phase === "done" ? null : phase);
+    if (phase === "done") {
+      finaleStartRef.current = null;
+      setFinaleBurst(null);
+      tryResolveGameRef.current();
+    }
+  }
+
+  function fireGarmentBurst(timeline: FinaleTimeline) {
+    garmentExplodedRef.current = true;
+    const renderer = fgRendererRef.current;
+    const origin = finaleOriginRef.current;
+    renderer?.setForegroundCharge(0);
+    if (!timeline.reducedMotion) {
+      renderer?.explodeForeground(origin.x, origin.y);
+    }
+    setClaimed(true);
+    if (soundEnabledRef.current) playFinaleBoomSound();
+    if (timeline.reducedMotion) return;
+    finaleHaptics("burst");
+    const stage = stageRef.current;
+    const fgCanvas = fgCanvasRef.current;
+    const frontCam = renderer?.getFrontPresentCamera() ?? { x: 0, y: 0 };
+    const stagePoint =
+      stage && fgCanvas
+        ? worldPointToStage(origin, fgCanvas, stage, frontCam)
+        : null;
+    finaleBurstKeyRef.current += 1;
+    setFinaleBurst({
+      key: finaleBurstKeyRef.current,
+      x: stagePoint?.x ?? (stage?.clientWidth ?? 0) / 2,
+      y: stagePoint?.y ?? (stage?.clientHeight ?? 0) / 2,
+    });
+    if (PHOTO_CURSOR_FX_REDUCED) return;
+    const celebrateMs = celebrateDurationMs(PHOTO_CURSOR_FX.coarsePointer);
+    celebrateUntilRef.current = performance.now() + celebrateMs;
+    setCursorFxCelebrate(true);
+    setCursorFxBurstCount(
+      celebrateBurstCount(10, PHOTO_CURSOR_FX.coarsePointer),
+    );
+    setCursorFxBurstNonce((n) => n + 1);
+    clearCelebrateTimer();
+    celebrateTimerRef.current = window.setTimeout(() => {
+      celebrateTimerRef.current = null;
+      if (performance.now() >= celebrateUntilRef.current) {
+        setCursorFxCelebrate(false);
+      }
+    }, celebrateMs + 40);
+  }
+
+  function resetGarmentFinale() {
+    finaleStartRef.current = null;
+    finaleTimelineRef.current = null;
+    finalePhaseRef.current = null;
+    garmentExplodedRef.current = false;
+    fgRendererRef.current?.clearExplosion();
+    setFinalePhase(null);
+    setFinaleBurst(null);
   }
 
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
+    if (scratchCompletionHandledRef.current) return;
+    if (
+      cardFlowStateRef.current === "showing-result" ||
+      packFlowStateRef.current === "complete" ||
+      cardTransitionRef.current
+    ) {
+      return;
+    }
+    // The finale resolves the game itself once its hold ends.
+    if (finaleStartRef.current !== null) return;
     const sampleCount = revealSamplesRef.current.length;
     if (
-      !isGarmentFullyRevealed(
-        revealedCountRef.current,
-        sampleCount,
-        autoScratchRef.current.enabled,
-      )
+      !garmentRevealSatisfied({
+        exploded: garmentExplodedRef.current,
+        fullyRevealed: isGarmentFullyRevealed(
+          revealedCountRef.current,
+          sampleCount,
+          autoScratchRef.current.enabled,
+        ),
+      })
     ) {
       return;
     }
@@ -2073,7 +2655,10 @@ export function PhotoScratch() {
     gameResultPendingRef.current = outcome;
     matchOutcomeRef.current = match;
     gameResultRef.current = outcome;
+    scratchCompletionHandledRef.current = true;
     setMatchOutcome(match);
+    finishAutoActiveRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) =>
       current.enabled ? { ...current, enabled: false } : current,
     );
@@ -2083,30 +2668,28 @@ export function PhotoScratch() {
       soundEnabledRef.current,
     );
     clearGameResultTimer();
-    // Don't hold the handoff for the full outcome sound — let it play under.
+    // Showcase top bar briefly, then enter per-card result (overlay handles ~2s hold).
     if (hasBodySymbolsRef.current) {
       setTopBarPhase("showcase");
       topBarPhaseRef.current = "showcase";
       const reduceMotion =
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const showcaseMs = reduceMotion
-        ? Math.min(advanceDelayMs, 300)
-        : TOP_BAR_SHOWCASE_MS;
+      const showcaseMs = reduceMotion ? 200 : Math.min(advanceDelayMs, 400);
       gameResultTimerRef.current = window.setTimeout(() => {
         gameResultTimerRef.current = null;
-        advanceAfterScratchRef.current();
+        enterCardResultRef.current();
       }, showcaseMs);
       return;
     }
     gameResultTimerRef.current = window.setTimeout(() => {
       gameResultTimerRef.current = null;
-      advanceAfterScratchRef.current();
-    }, Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS));
+      enterCardResultRef.current();
+    }, Math.min(advanceDelayMs, 300));
   }
   tryResolveGameRef.current = tryResolveGame;
 
-  function presentPhotoResult() {
+  function enterCardResult() {
     const finishedId = selectedCardId;
     if (!finishedId) {
       resetScratches();
@@ -2118,7 +2701,9 @@ export function PhotoScratch() {
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
     let diamonds = 0;
-    if (match) {
+    if (practiceRef.current) {
+      diamonds = 0;
+    } else if (match) {
       diamonds = match.prize;
     } else if (result === "win") {
       diamonds = 1;
@@ -2126,104 +2711,125 @@ export function PhotoScratch() {
 
     if (inGame) {
       recordPhotoCardResult(finishedId, diamonds);
-      const nextCompleted = completedCardIdsRef.current.includes(finishedId)
-        ? completedCardIdsRef.current
-        : [...completedCardIdsRef.current, finishedId];
-      completedCardIdsRef.current = nextCompleted;
-      setCompletedCardIds(nextCompleted);
-
-      const hasNext = playlist.some(
-        (entry) => entry.id !== finishedId && !nextCompleted.includes(entry.id),
-      );
-      // Settle phase → done before the per-card overlay so shell exit can't
-      // orphan an all-complete phase:"photo" session.
-      if (!hasNext) {
-        finishPhotoHand();
-      }
-
-      setPhotoResult({
-        win: diamonds > 0,
-        diamonds,
-        resultId: `${finishedId}:${diamonds}`,
-      });
-      return;
     }
 
-    finalizeScratchAdvance(finishedId);
+    setCardFlowState("showing-result");
+    cardFlowStateRef.current = "showing-result";
+    setPhotoResult({
+      win: diamonds > 0,
+      diamonds,
+      resultId: `${finishedId}:${diamonds}`,
+    });
   }
 
-  function afterPhotoResultPresentation() {
-    setPhotoResult(null);
-    const finishedId = selectedCardId;
-    if (!finishedId) return;
-
-    const session = loadGameSession();
-    if (session?.phase === "done") {
-      resetGameOutcome();
-      claimedRef.current = false;
-      setClaimed(false);
-      setSelectedCardId("");
-      setHandSummaryDiamonds(session.diamondTotal);
-      return;
-    }
-
-    finalizeScratchAdvance(finishedId);
+  function markCurrentCardCompleted(finishedId: string) {
+    if (completedCardIdsRef.current.includes(finishedId)) return;
+    const nextCompleted = [...completedCardIdsRef.current, finishedId];
+    completedCardIdsRef.current = nextCompleted;
+    setCompletedCardIds(nextCompleted);
   }
 
-  function finalizeScratchAdvance(finishedId: string) {
-    if (!completedCardIdsRef.current.includes(finishedId)) {
-      const nextCompleted = [...completedCardIdsRef.current, finishedId];
-      completedCardIdsRef.current = nextCompleted;
-      setCompletedCardIds(nextCompleted);
-    }
-    const session = loadGameSession();
-    const inGame =
-      isGameModeUrl() &&
-      (session?.phase === "photo" || session?.phase === "done");
-    const done = completedCardIdsRef.current;
-    const nextCard = playlist.find(
-      (entry) => entry.id !== finishedId && !done.includes(entry.id),
-    );
-    resetGameOutcome();
+  function resetScratchStateForNewCard(opts?: { resumeHand?: boolean }) {
+    clearGameResultTimer();
+    cardTransitionRef.current = true;
+    scratchCompletionHandledRef.current = false;
+    finishAutoActiveRef.current = false;
+    revealedSymbolsRef.current = 0;
+    autoPathIndexRef.current = 0;
+    autoPathProgressRef.current = 0;
+    gameResultPendingRef.current = null;
     claimedRef.current = false;
     setClaimed(false);
-    if (!nextCard) {
-      setSelectedCardId("");
-      if (inGame) {
-        const finished =
-          session?.phase === "done" ? session : finishPhotoHand();
-        if (finished) {
-          setHandSummaryDiamonds(finished.diamondTotal);
-        } else {
-          navigateTo("/game");
-        }
-      }
-      return;
+    setPhotoResult(null);
+    resetGameOutcome();
+    resetScratches();
+    setCardFlowState("ready");
+    cardFlowStateRef.current = "ready";
+    if (opts?.resumeHand) {
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
     }
-    setSelectedCardId(nextCard.id);
-    const url = new URL(window.location.href);
-    url.searchParams.set("card", nextCard.id);
-    if (inGame) url.searchParams.set("game", "1");
-    window.history.replaceState({}, "", url.toString());
+  }
+
+  function loadNextPackCard(nextCard: PhotoScratchCardEntry) {
+    const resumeHand =
+      isGameModeUrl() && completedCardIdsRef.current.length > 0;
+    resetScratchStateForNewCard({ resumeHand });
+
     void loadCardAssets(nextCard.id)
       .then((assets) => {
         revokeObjectUrls();
-        return applyLoadedAssets(assets);
+        setSelectedCardId(nextCard.id);
+        const url = new URL(window.location.href);
+        url.searchParams.set("card", nextCard.id);
+        if (isGameModeUrl()) url.searchParams.set("game", "1");
+        if (freePlayLaunch) url.searchParams.set("freeplay", "1");
+        window.history.replaceState({}, "", url.toString());
+        return applyLoadedAssets(assets, { resumeHand });
       })
       .then(() => {
         armIntroForEntry(nextCard);
+        cardTransitionRef.current = false;
       })
       .catch((error) => {
+        cardTransitionRef.current = false;
         setLoadError(
           error instanceof Error ? error.message : "Failed to load next card",
         );
       });
   }
 
-  advanceAfterScratchRef.current = presentPhotoResult;
+  function advanceAfterResult() {
+    if (cardFlowStateRef.current !== "showing-result") return;
+    const finishedId = selectedCardId;
+    if (!finishedId) return;
+
+    setPhotoResult(null);
+    markCurrentCardCompleted(finishedId);
+
+    if (!isGameModeUrl()) {
+      resetGameOutcome();
+      claimedRef.current = false;
+      setClaimed(false);
+      setCardFlowState("ready");
+      cardFlowStateRef.current = "ready";
+      navigateBackOr(navigate, gameReturnHrefFromSearch());
+      return;
+    }
+
+    resetGameOutcome();
+    claimedRef.current = false;
+    setClaimed(false);
+    gameResultPendingRef.current = null;
+
+    const nextCard = playlist.find(
+      (entry) => !completedCardIdsRef.current.includes(entry.id),
+    );
+
+    if (!nextCard) {
+      const finished = finishPhotoHand() ?? loadGameSession();
+      setCardFlowState("ready");
+      cardFlowStateRef.current = "ready";
+      setPackFlowState("complete");
+      packFlowStateRef.current = "complete";
+      setSelectedCardId("");
+      cardTransitionRef.current = false;
+      setHandSummaryDiamonds(finished?.diamondTotal ?? 0);
+      return;
+    }
+
+    loadNextPackCard(nextCard);
+  }
+
+  enterCardResultRef.current = enterCardResult;
+  advanceAfterResultRef.current = advanceAfterResult;
 
   function resetScratches() {
     marksRef.current = [];
+    resetScratchCoverage(scratchCoverageRef.current);
+    resetStrokeFresh();
     lastScratchWorldRef.current = null;
     scratchStartedRef.current = false;
     idleSwayRef.current = { x: 0, y: 0 };
@@ -2253,11 +2859,18 @@ export function PhotoScratch() {
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
     );
     setFlyingMatches([]);
+    finishAutoActiveRef.current = false;
+    resetGarmentFinale();
+    revealedSymbolsRef.current = 0;
+    scratchCompletionHandledRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
   }
 
@@ -2280,22 +2893,30 @@ export function PhotoScratch() {
 
   // Android/iOS block unmuted autoplay after refresh or async mount — kick
   // playback with a muted fallback so the intro still runs.
+  //
+  // Do NOT depend on soundEnabled here — mute/unmute must only adjust volume
+  // via the prefs subscriber. Re-running this effect calls playThemeIntro,
+  // which forces muted=true and can permanently silence the clip.
   useEffect(() => {
     if (!introActive || !introVideoUrl) {
-      setIntroMuted(true);
       return;
     }
     const video = introVideoElRef.current;
     if (!video) return;
     let cancelled = false;
-    void playThemeIntro(video, soundEnabled).then((result) => {
-      if (cancelled) return;
-      if (!result.playing) {
-        dismissIntro();
-        return;
-      }
-      setIntroMuted(result.muted);
-    });
+    void playThemeIntro(video, () => effectiveSoundEffect()).then(
+      (result) => {
+        if (cancelled) return;
+        if (!result.playing) {
+          // Keep trying autoplay — do not tear down on cold-refresh failure.
+          // Never flip muted=true after a gesture unlock (WebKit stays silent).
+          retryThemeIntroPlayback(video);
+          return;
+        }
+        // Never force-unmute here — that needs a user gesture after refresh.
+        setThemeIntroSound(video, effectiveSoundEffect());
+      },
+    );
     const safetyId = window.setTimeout(() => {
       if (!cancelled && introActiveRef.current) dismissIntro();
     }, 20_000);
@@ -2303,18 +2924,42 @@ export function PhotoScratch() {
       cancelled = true;
       window.clearTimeout(safetyId);
     };
-  }, [introActive, introVideoUrl, soundEnabled]);
+  }, [introActive, introVideoUrl]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        SOUND_STORAGE_KEY,
-        JSON.stringify({ enabled: soundEnabled }),
-      );
-    } catch {
-      // Ignore storage write failures (e.g. private mode / quota).
-    }
-  }, [soundEnabled]);
+  // The pause overlay and profile settings write the same store, so follow it
+  // rather than owning the flag. Notifications are synchronous, which keeps the
+  // unlock below inside the click that flipped the switch — Safari requires
+  // AudioContext work to happen in a user gesture.
+  useEffect(
+    () =>
+      subscribeGameAudioPrefs(() => {
+        const next = effectiveSoundEffect();
+        soundEnabledRef.current = next;
+        if (next) {
+          ensureSymbolAudio(symbolAudioRef.current);
+          unlockCountdownSound();
+          unlockMotionScratchBgm();
+          preloadSparkleCoinSounds();
+          preloadScratchSounds();
+          resumeCountdownAudioIfActive();
+        } else {
+          stopCountdownAudio();
+          stopSparkleCoinSounds();
+          stopScratchSounds();
+        }
+        applyBoundThemeIntroSound(next);
+        setSoundEnabled(next);
+      }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      stopScratchSounds();
+      stopSparkleCoinSounds();
+    },
+    [],
+  );
 
   useEffect(() => {
     try {
@@ -2336,7 +2981,15 @@ export function PhotoScratch() {
 
   function onPointerDown(clientX: number, clientY: number) {
     if (introActiveRef.current) return;
-    if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
+    if (finaleStartRef.current !== null) return;
+    if (soundEnabledRef.current) {
+      ensureSymbolAudio(symbolAudioRef.current);
+      preloadSparkleCoinSounds();
+      preloadScratchSounds();
+    }
+    // Re-assert Web Audio unlock inside this gesture (Safari).
+    unlockMotionScratchBgm();
+    syncMotionScratchBgm();
     if (isBodyScratchLocked()) {
       return;
     }
@@ -2349,6 +3002,7 @@ export function PhotoScratch() {
   }
 
   function onPointerMove(clientX: number, clientY: number) {
+    if (finaleStartRef.current !== null) return;
     trackFingerParallax(clientX, clientY);
     if (!isScratchingRef.current) return;
     addScratch(clientX, clientY);
@@ -2358,16 +3012,35 @@ export function PhotoScratch() {
     // Idle window starts when the finger lifts, so holding still mid-stroke
     // doesn't make the hint appear the instant they let go.
     huntHintActivityAtRef.current = performance.now();
+    endScratchSoundStroke();
+    resetStrokeFresh();
     isScratchingRef.current = false;
     setIsScratching(false);
     lastScratchWorldRef.current = null;
     lastPointerRef.current = null;
     parallax.releaseFinger();
+    coinBadge.scheduleIdleHide();
   }
 
   const parallaxState = parallaxStateRef.current;
   const symbolsHuntComplete =
     hasBodySymbols && revealedSymbols >= SYMBOL_POINT_COUNT;
+  const cursorFxPlayWindow =
+    entryReady &&
+    !introActive &&
+    !introCover &&
+    !gameResult &&
+    (!hasBodySymbols || (!introGateActive && !symbolsHuntComplete));
+  const cursorFxSpawnGate = useCallback(() => strokeFreshRef.current, []);
+  useMotionScratchBgm({
+    warm:
+      hasBodySymbols &&
+      entryReady &&
+      !introActive &&
+      !introGateActive &&
+      !gameResult,
+    topBarPhase,
+  });
   const huntPhase = resolveHuntPhase({
     active:
       hasBodySymbols &&
@@ -2399,35 +3072,31 @@ export function PhotoScratch() {
     frameSettling;
   const autoScratchLocked =
     introActive ||
+    cardFlowState === "showing-result" ||
+    packFlowState === "complete" ||
+    cardTransitionRef.current ||
     (hasBodySymbols &&
-      (!symbolsHuntComplete || topBarPhase === "center" || introGateActive));
+      (topBarPhase === "center" || introGateActive));
   const remainingCards = playlist.filter(
     (entry) => !completedCardIds.includes(entry.id),
   );
   const activePlaylistLabel =
     playlist.find((entry) => entry.id === selectedCardId)?.label ?? uploadLabel;
+  const immersive =
+    isGameModeUrl() || Boolean(readCardIdFromLocation());
 
   function leavePhotoScratchAfterHand() {
     setHandSummaryDiamonds(null);
-    settleDonePhotoHand(addDiamonds);
+    settleDonePhotoHand(addDiamonds, addCoins);
     bumpInventoryRevision();
-
-    const params = new URLSearchParams(window.location.search);
-    const fallback =
-      params.get("game") === "1"
-        ? Paths.collection
-        : collectionReturnHref(
-            params.get("model")?.trim() || "",
-            params.get("card")?.trim()
-              ? motionCardIdFromPhotoScratchId(params.get("card")!.trim())
-              : "",
-          );
-    navigateBackOr(navigate, fallback);
+    navigateBackOr(navigate, gameReturnHrefFromSearch());
   }
 
   return (
     <main className="app-shell photo-scratch-page">
-      <section className="prototype photo-scratch-prototype">
+      <section
+        className={`prototype photo-scratch-prototype${immersive ? " is-immersive" : ""}`}
+      >
         <aside className="panel photo-scratch-panel">
           <header className="photo-scratch-header">
             <h1>
@@ -2721,10 +3390,10 @@ export function PhotoScratch() {
             {autoScratchLocked ? (
               <p className="auto-scratch-hint">
                 {topBarPhase === "center"
-                  ? "Scratch the foil, then match symbols on her — auto scratch finishes the reveal."
+                  ? "Scratch the foil to unlock play controls."
                   : introGateActive
                     ? "Get ready — play starts when the top bar docks."
-                    : `Find all ${SYMBOL_POINT_COUNT} matches first — auto scratch finishes the reveal.`}
+                    : "Wait for play to unlock."}
               </p>
             ) : null}
             <label className="checkbox-label">
@@ -2784,7 +3453,10 @@ export function PhotoScratch() {
         </aside>
 
         <div
-          ref={stageRef}
+          ref={(node) => {
+            stageRef.current = node;
+            setCursorHost((current) => (current === node ? current : node));
+          }}
           data-tutorial-target="reveal"
           className={`stage photo-scratch-stage${ready ? " is-ready" : ""}${isScratching ? " is-finger-dragging is-scratching" : ""}${showLayerBg ? "" : " is-bg-hidden"}${
             gameResult ? " is-game-over" : ""
@@ -2792,8 +3464,53 @@ export function PhotoScratch() {
             hasBodySymbols && !introActive && topBarPhase === "center"
               ? " is-bar-phase"
               : ""
-          }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}`}
+          }${hasBodySymbols && introGateActive ? " is-countdown-phase" : ""}${introActive ? " is-intro-video-phase" : ""}${
+            finalePhase === "charge" ? " is-finale-charge" : ""
+          }${
+            finalePhase === "burst" || finalePhase === "hold"
+              ? " is-finale-burst"
+              : ""
+          }`}
         >
+          {PHOTO_CURSOR_FX.fairyDust && cursorHost ? (
+            <FairyDustCursor
+              element={cursorHost}
+              particleTypes={cursorFxParticleTypes}
+              particleSize={
+                PHOTO_CURSOR_FX.particleSize * PHOTO_CURSOR_FX.displaySizeMul
+              }
+              burstSizeMul={
+                PHOTO_CURSOR_FX.coarsePointer
+                  ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
+                  : undefined
+              }
+              particleCount={
+                cursorFxCelebrate
+                  ? celebrateParticleBoost(
+                      PHOTO_CURSOR_FX.particleCount,
+                      PHOTO_CURSOR_FX.coarsePointer,
+                    )
+                  : PHOTO_CURSOR_FX.particleCount
+              }
+              gravity={CURSOR_FX_FALL_GRAVITY}
+              initialVelocity={CURSOR_FX_FALL_VELOCITY}
+              emitMode={CURSOR_FX_EMIT_MODE}
+              spawnEnabled={shouldSpawnFairyDust({
+                playWindow: cursorFxPlayWindow,
+                celebrate: cursorFxCelebrate,
+                isScratching,
+                cursorOnMesh: true,
+                coarsePointer: PHOTO_CURSOR_FX.coarsePointer,
+              })}
+              spawnMinDistance={fairyDustSpawnMinDistancePx(
+                PHOTO_CURSOR_FX.coarsePointer,
+              )}
+              maxDevicePixelRatio={PHOTO_CURSOR_FX.maxOverlayDpr}
+              burstNonce={cursorFxBurstNonce}
+              burstCount={cursorFxBurstCount}
+              spawnGate={cursorFxSpawnGate}
+            />
+          ) : null}
           {!entryReady ? (
             <div
               className="match-audio-gate"
@@ -2819,9 +3536,8 @@ export function PhotoScratch() {
               <div className="photo-scratch-intro-media">
                 {introActive && introVideoUrl ? (
                   <video
-                    ref={introVideoElRef}
+                    ref={setIntroVideoEl}
                     autoPlay
-                    muted={introMuted}
                     playsInline
                     preload="auto"
                     src={introVideoUrl}
@@ -2834,16 +3550,124 @@ export function PhotoScratch() {
                   className={`photo-scratch-intro-freeze${introActive ? "" : " is-visible"}`}
                 />
               </div>
+              {introActive ? (
+                <button
+                  type="button"
+                  className="photo-scratch-intro-skip"
+                  onClick={skipIntro}
+                >
+                  Skip intro
+                </button>
+              ) : null}
             </div>
           ) : null}
+          {/* Top chrome — match motion cards:
+                row 1: pause | icon-bar track
+                row 2: cards left | progress toast slot */}
+          <div
+            className={`stage-game__top-chrome${
+              topBarPhase === "docked" ? " is-docked" : ""
+            }`}
+          >
+            <div className="stage-game__top-chrome-row is-controls">
+              <div className="stage-game__top-chrome-side is-start">
+                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+              </div>
+              <div className="stage-game__top-chrome-center">
+                {selectedCardId &&
+                dockHidden &&
+                handSummaryDiamonds == null &&
+                photoResult == null &&
+                gameResult == null ? (
+                  <button
+                    type="button"
+                    className={[
+                      "stage-game__auto-scratch",
+                      autoScratch.enabled ? "is-active" : "",
+                      symbolsHuntComplete ? "is-symbols-complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={autoScratchLocked}
+                    aria-label={
+                      autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                    }
+                    aria-pressed={autoScratch.enabled}
+                    onClick={() =>
+                      updateAutoScratch({ enabled: !autoScratch.enabled })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18.45 16.95"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M9.28,9.47c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5ZM7.57,8.19c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0s.2.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM12.27,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM7.14,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM8.08,5.29c-.13,0-.26-.05-.35-.15l-.51-.51c-.2-.19-.2-.51,0-.71s.51-.2.71,0l.51.51c.2.19.2.51,0,.71-.1.1-.23.15-.35.15ZM10.47,5.29c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0,.19.2.19.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM9.28,4.35c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5Z" />
+                      <rect x="13.27" y="5.83" width="1.5" height="9.79" transform="translate(-3.48 13.06) rotate(-45)" />
+                      <path d="M9.21,13.38c-.19,0-.38-.07-.53-.22L3.1,7.59c-.29-.29-.29-.77,0-1.06s.77-.29,1.06,0l5.57,5.57c.29.29.29.77,0,1.06-.15.15-.34.22-.53.22Z" />
+                      <rect x="8.53" y="5.48" width="2.09" height="1.5" transform="translate(7.21 -4.95) rotate(45)" />
+                      <path d="M6.26,13.51c-.16,0-.32-.06-.44-.18l-2.78-2.78c-.24-.24-.24-.64,0-.88s.64-.24.88,0l2.78,2.78c.24.24.24.64,0,.88-.12.12-.28.18-.44.18Z" />
+                      <path d="M4.25,13.75c-.1,0-.19-.04-.27-.11l-.91-.91c-.15-.15-.15-.38,0-.53s.38-.15.53,0l.91.91c.15.15.15.38,0,.53-.07.07-.17.11-.27.11Z" />
+                      <path d="M13.3,12.13v1.17c0,.61-.49,1.1-1.1,1.1H3.2c-.61,0-1.1-.49-1.1-1.1V3.3c0-.61.49-1.1,1.1-1.1h9c.61,0,1.1.49,1.1,1.1v4.58l1.8,1.8V3.3c0-1.6-1.3-2.9-2.9-2.9H3.2C1.6.4.3,1.7.3,3.3v10c0,1.6,1.3,2.9,2.9,2.9h9c1.4,0,2.58-1,2.84-2.33l-1.74-1.74Z" />
+                    </svg>
+                    <span className="stage-game__auto-scratch-label">AutoScratch</span>
+                  </button>
+                ) : null}
+              </div>
+              <div className="stage-game__top-chrome-side is-end">
+                {topBarPhase === "docked" ? (
+                  <div className="stage-game__diamond-enter">
+                    <CurrencyBalances
+                      coins={coins}
+                      diamonds={diamonds}
+                      compact
+                      diamondsOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
+                {playlist.length > 1 &&
+                handSummaryDiamonds == null &&
+                photoResult == null &&
+                completedCardIds.length < playlist.length &&
+                selectedCardId ? (
+                  <div className="pack-progress-shell">
+                    <PackProgress
+                      current={Math.min(
+                        completedCardIds.length + 1,
+                        playlist.length,
+                      )}
+                      total={playlist.length}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="stage-game__top-chrome-status-notes"
+                data-progress-toast-slot="1"
+              />
+            </div>
+          </div>
           {hasBodySymbols ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
+              shakingSlots={shakingTopSlots}
+              shakeDelayMs={shakeDelayMs}
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
+              onDockHiddenChange={setDockHidden}
             />
           ) : null}
           <ScratchFrameProgress
@@ -2853,6 +3677,46 @@ export function PhotoScratch() {
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
+          {/* Bottom HUD: [ coin count | Sugar Scratch logo ], same as motion. Badge idle-hides. */}
+          <div className="stage-game__bottom-chrome">
+            <div className="stage-game__bottom-chrome-row is-status">
+              <div className="stage-game__bottom-chrome-status-cards">
+                {freePlayLaunch ? (
+                  <span className="stage-game__free-play-pill">
+                    Free play · no rewards
+                  </span>
+                ) : null}
+                {coinBadge.shown && topBarPhase === "docked" ? (
+                  <div
+                    key={coinBadge.enterKey}
+                    className={[
+                      "stage-game__cards-left",
+                      "pack-progress-shell",
+                      "pack-progress-shell--bottom-left",
+                      coinBadge.leaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={coinBadge.onLeaveEnd}
+                  >
+                    <StageCoinCount
+                      popNonce={coinBadge.popNonce}
+                      awardAmount={coinBadge.awardFlash}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div className="stage-game__bottom-chrome-brand" aria-hidden="true">
+                <img
+                  src="/svg/logoSugarScratch.svg"
+                  alt=""
+                  className="stage-game__bottom-chrome-logo"
+                  draggable={false}
+                  decoding="async"
+                />
+              </div>
+            </div>
+          </div>
           <div
             className={`bg-drag-scale${isScratching ? " is-bg-blurred" : ""}`}
             aria-hidden="true"
@@ -2865,6 +3729,23 @@ export function PhotoScratch() {
               draggable={false}
             />
           </div>
+          {finaleBurst ? (
+            <div
+              key={finaleBurst.key}
+              className="finale-burst"
+              aria-hidden="true"
+              style={
+                {
+                  "--finale-x": `${finaleBurst.x}px`,
+                  "--finale-y": `${finaleBurst.y}px`,
+                } as CSSProperties
+              }
+            >
+              <div className="finale-flash" />
+              <div className="finale-shockwave" />
+              <div className="finale-shockwave is-late" />
+            </div>
+          ) : null}
           <div className="photo-scratch-fg-drag-scale">
             <canvas
               ref={fgCanvasRef}
@@ -2874,9 +3755,16 @@ export function PhotoScratch() {
               // CSS (width/height 100%) keeps the logical 390×672 stage size.
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              style={{ touchAction: "none", cursor: "crosshair" }}
+              style={{
+                touchAction: "none",
+                cursor: "crosshair",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+              }}
+              // No preventDefault on pointerdown: it suppresses the mouse
+              // events FairyDustCursor follows, so the coin trail stops
+              // tracking the cursor mid-stroke.
               onPointerDown={(event) => {
-                event.preventDefault();
                 event.currentTarget.setPointerCapture(event.pointerId);
                 onPointerDown(event.clientX, event.clientY);
               }}
@@ -2929,84 +3817,30 @@ export function PhotoScratch() {
               </div>
             ) : null}
             {flyingMatches.map((coin) => (
-              <div
+              <MatchFlight
                 key={coin.id}
-                className="flying-coin is-match-fly"
-                style={
-                  {
-                    "--coin-from-x": `${coin.fromX}px`,
-                    "--coin-from-y": `${coin.fromY}px`,
-                    "--coin-mid-x": `${coin.midX}px`,
-                    "--coin-mid-y": `${coin.midY}px`,
-                    "--coin-to-x": `${coin.toX}px`,
-                    "--coin-to-y": `${coin.toY}px`,
-                    animationDuration: `${MATCH_FLIGHT_DURATION_MS}ms`,
-                    animationDelay: `${coin.delayMs}ms`,
-                  } as CSSProperties
-                }
-                onAnimationEnd={(event) => {
-                  if (event.target !== event.currentTarget) return;
-                  removeFlyingMatch(coin.id);
-                }}
-                aria-hidden="true"
-              >
-                <span className="flying-coin-spin">
-                  <span
-                    className="flying-coin-plane flying-coin-plane--back"
-                    aria-hidden="true"
-                  />
-                  <span className="flying-coin-face flying-coin-plane flying-coin-plane--mid">
-                    <GameSymbolIcon
-                      typeId={coin.typeId}
-                      size={34}
-                      pixelScale={2.2}
-                      paused
-                    />
-                  </span>
-                </span>
-              </div>
+                typeId={coin.typeId}
+                fromX={coin.fromX}
+                fromY={coin.fromY}
+                toX={coin.toX}
+                toY={coin.toY}
+                delayMs={coin.delayMs}
+                onArrive={() => removeFlyingMatch(coin.id)}
+              />
             ))}
-          </div>
-          {playlist.length > 1 &&
-          handSummaryDiamonds == null &&
-          photoResult == null &&
-          completedCardIds.length < playlist.length &&
-          selectedCardId ? (
-            <PackProgress
-              current={Math.min(
-                completedCardIds.length + 1,
-                playlist.length,
-              )}
-              total={playlist.length}
-            />
-          ) : null}
-          <div className="mobile-sound-wrap">
-            <button
-              type="button"
-              className={`mobile-reset mobile-sound-toggle${soundEnabled ? "" : " is-muted"}`}
-              aria-label={soundEnabled ? "Mute sounds" : "Unmute sounds"}
-              aria-pressed={soundEnabled}
-              onClick={() => updateSoundEnabled(!soundEnabled)}
-            >
-              {soundEnabled ? (
-                <Volume2 aria-hidden="true" size={20} strokeWidth={2.2} />
-              ) : (
-                <VolumeX aria-hidden="true" size={20} strokeWidth={2.2} />
-              )}
-            </button>
           </div>
           {photoResult && photoOutcome === "diamond" ? (
             <PhotoDiamondReveal
               key={photoResult.resultId}
               diamonds={photoResult.diamonds}
               resultId={photoResult.resultId}
-              onComplete={afterPhotoResultPresentation}
+              onComplete={advanceAfterResult}
             />
           ) : null}
           {photoResult && photoOutcome === "no-match" ? (
             <NoMatchOutcome
               key={photoResult.resultId}
-              onComplete={afterPhotoResultPresentation}
+              onComplete={advanceAfterResult}
             />
           ) : null}
           {handSummaryDiamonds != null ? (

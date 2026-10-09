@@ -543,7 +543,7 @@
 }
 
 /* Clear floating nav like Favourites */
-@media (min-width: 507px) {
+@media (min-width: 769px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.following-page {
     padding-top: var(--app-diamond-offset);
     padding-bottom: 48px;
@@ -556,6 +556,6 @@
 
 @media (max-width: 1023px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.following-page {
-    padding-top: var(--app-diamond-offset);
+    padding-top: calc(var(--app-diamond-offset) + 1rem);
   }
 }

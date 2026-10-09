@@ -1,13 +1,35 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
-import { normalizeMediaUrl } from "@/services/models";
-import type { VideoFitMode, VideoTextureTransform } from './assets'
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
+import {
+  PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR,
+  type VideoFitMode,
+  type VideoTextureTransform,
+} from './assets'
 import {
   getPackStageVideoFilter,
   subscribePackStageLook,
 } from './packStageLook'
+import { registerVideoTextureCache, type VideoTextureCacheStats } from './videoTextureCacheHandle'
 
 const PLAYING_FRAME_INTERVAL_MS = 1000 / 30
-const IDLE_EVICT_MS = 45_000
+const DESKTOP_PLAYING_FRAME_INTERVAL_MS = 1000 / 60
+const COVERFLOW_MOBILE_QUERY = '(max-width: 980px)'
+/** iOS Jetsams ~2GB if paused pack-face decoders pile up while swiping. */
+const MAX_LIVE_DECODERS_MOBILE = 1
+
+let playingFrameIntervalMs = PLAYING_FRAME_INTERVAL_MS
+let mobileCoverflowViewport = false
+
+function isMobileCoverflowViewport() {
+  return mobileCoverflowViewport
+}
+
+function syncPlayingFrameInterval(isMobile: boolean) {
+  mobileCoverflowViewport = isMobile
+  playingFrameIntervalMs = isMobile
+    ? PLAYING_FRAME_INTERVAL_MS
+    : DESKTOP_PLAYING_FRAME_INTERVAL_MS
+}
 
 export interface VideoTextureCacheKeyInput {
   videoUrl: string
@@ -29,25 +51,21 @@ interface CacheEntry {
   stillCanvas: HTMLCanvasElement
   stillContext: CanvasRenderingContext2D
   stillTexture: CanvasTexture
-  // Soft still for unselected packs when another pack is active (cheap DOF look).
-  softCanvas: HTMLCanvasElement
-  softContext: CanvasRenderingContext2D
-  softTexture: CanvasTexture
-  softScratch: HTMLCanvasElement
-  softScratchContext: CanvasRenderingContext2D
   // Live canvas used only while at least one consumer is playing.
   liveCanvas: HTMLCanvasElement
   liveContext: CanvasRenderingContext2D
   liveTexture: CanvasTexture
   refCount: number
   playingCount: number
+  /** Restored by resumePausedVideoTextures after pauseAllVideoTextures. */
+  pausedPlayingCount: number
   isReady: boolean
   error: string | null
   frameId: number
   lastDrawAt: number
   readyListeners: Set<() => void>
   errorListeners: Set<(message: string) => void>
-  evictTimer: number | null
+  decoderAttached: boolean
 }
 
 const cache = new Map<string, CacheEntry>()
@@ -114,9 +132,10 @@ function drawVideoToContext(
   context: CanvasRenderingContext2D,
   texture: CanvasTexture,
 ) {
-  const { video, textureSize, fitMode, textureTransform } = entry
+  const { video, fitMode, textureTransform } = entry
+  const textureSize = context.canvas.width
 
-  if (video.videoWidth === 0 || video.videoHeight === 0) {
+  if (textureSize <= 1 || video.videoWidth === 0 || video.videoHeight === 0) {
     return
   }
 
@@ -184,8 +203,8 @@ function drawLiveFrame(entry: CacheEntry) {
 }
 
 function drawStillFrame(entry: CacheEntry) {
+  restoreStillCanvas(entry)
   drawVideoToContext(entry, entry.stillContext, entry.stillTexture)
-  updateSoftStill(entry)
 }
 
 /** Re-grade cached stills/live frames when PackStageDebug video sliders change. */
@@ -195,7 +214,7 @@ function redrawAllEntriesForGrade() {
     if (entry.playingCount > 0) {
       drawLiveFrame(entry)
     }
-    // Always refresh still + soft so off-center packs pick up the grade.
+    // Always refresh stills so off-center packs pick up the grade.
     drawStillFrame(entry)
   }
 }
@@ -208,47 +227,39 @@ if (typeof window !== 'undefined') {
     lastFilter = next
     redrawAllEntriesForGrade()
   })
+
+  const mobileMedia = window.matchMedia(COVERFLOW_MOBILE_QUERY)
+  syncPlayingFrameInterval(mobileMedia.matches)
+  mobileMedia.addEventListener('change', (event) => {
+    syncPlayingFrameInterval(event.matches)
+  })
+}
+
+function stillCanvasSize(textureSize: number) {
+  return isMobileCoverflowViewport()
+    ? PACK_TEXTURE_SIZE_MOBILE_NEIGHBOR
+    : textureSize
+}
+
+function restoreStillCanvas(entry: CacheEntry) {
+  const size = stillCanvasSize(entry.textureSize)
+  if (entry.stillCanvas.width !== size || entry.stillCanvas.height !== size) {
+    entry.stillCanvas.width = size
+    entry.stillCanvas.height = size
+  }
 }
 
 function copyLiveToStill(entry: CacheEntry) {
-  entry.stillContext.drawImage(entry.liveCanvas, 0, 0)
+  if (entry.liveCanvas.width <= 1) return
+  restoreStillCanvas(entry)
+  entry.stillContext.drawImage(
+    entry.liveCanvas,
+    0,
+    0,
+    entry.stillCanvas.width,
+    entry.stillCanvas.height,
+  )
   entry.stillTexture.needsUpdate = true
-  updateSoftStill(entry)
-}
-
-function updateSoftStill(entry: CacheEntry) {
-  const { softContext, softScratchContext, softScratch, stillCanvas, softTexture, textureSize } =
-    entry
-
-  // Cheap "depth of field": downscale then upscale. Very GPU/CPU light on Safari.
-  softScratchContext.clearRect(0, 0, softScratch.width, softScratch.height)
-  softScratchContext.drawImage(
-    stillCanvas,
-    0,
-    0,
-    textureSize,
-    textureSize,
-    0,
-    0,
-    softScratch.width,
-    softScratch.height,
-  )
-
-  softContext.clearRect(0, 0, textureSize, textureSize)
-  softContext.imageSmoothingEnabled = true
-  softContext.imageSmoothingQuality = 'low'
-  softContext.drawImage(
-    softScratch,
-    0,
-    0,
-    softScratch.width,
-    softScratch.height,
-    0,
-    0,
-    textureSize,
-    textureSize,
-  )
-  softTexture.needsUpdate = true
 }
 
 function stopLoop(entry: CacheEntry) {
@@ -270,7 +281,7 @@ function startLoop(entry: CacheEntry) {
     }
 
     if (
-      now - entry.lastDrawAt >= PLAYING_FRAME_INTERVAL_MS &&
+      now - entry.lastDrawAt >= playingFrameIntervalMs &&
       entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
     ) {
       drawLiveFrame(entry)
@@ -291,47 +302,96 @@ function freeCanvas(canvas: HTMLCanvasElement) {
   ctx?.clearRect(0, 0, 1, 1)
 }
 
-function destroyEntry(entry: CacheEntry) {
+function detachDecoder(entry: CacheEntry) {
   stopLoop(entry)
-
-  if (entry.evictTimer !== null) {
-    window.clearTimeout(entry.evictTimer)
-    entry.evictTimer = null
-  }
-
-  entry.playingCount = 0
-  entry.refCount = 0
-  entry.readyListeners.clear()
-  entry.errorListeners.clear()
-
   try {
     entry.video.pause()
   } catch {
     // ignore
   }
-  // Detach media thoroughly so the browser can drop the decoder / demuxer.
+  if (!entry.decoderAttached && !entry.video.getAttribute('src')) {
+    return
+  }
+  entry.decoderAttached = false
   try {
     entry.video.removeAttribute('src')
     entry.video.removeAttribute('srcObject')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(entry.video as any).srcObject = null
+    entry.video.srcObject = null
     entry.video.load()
   } catch {
     // ignore
   }
+}
+
+function restoreLiveCanvas(entry: CacheEntry) {
+  if (entry.liveCanvas.width !== entry.textureSize) {
+    entry.liveCanvas.width = entry.textureSize
+    entry.liveCanvas.height = entry.textureSize
+  }
+  if (entry.stillCanvas.width > 1) {
+    entry.liveContext.drawImage(
+      entry.stillCanvas,
+      0,
+      0,
+      entry.textureSize,
+      entry.textureSize,
+    )
+  } else {
+    entry.liveContext.fillStyle = '#040608'
+    entry.liveContext.fillRect(0, 0, entry.textureSize, entry.textureSize)
+  }
+  entry.liveTexture.needsUpdate = true
+}
+
+function attachDecoder(entry: CacheEntry) {
+  if (entry.decoderAttached) {
+    return
+  }
+  entry.video.preload = 'auto'
+  entry.video.src = entry.videoUrl
+  entry.decoderAttached = true
+  entry.video.load()
+}
+
+function teardownOffscreen(entry: CacheEntry) {
+  entry.playingCount = 0
+  detachDecoder(entry)
+  freeCanvas(entry.liveCanvas)
+}
+
+function capLiveDecoders(keep: CacheEntry) {
+  if (!isMobileCoverflowViewport()) {
+    return
+  }
+  let playing = 0
+  for (const entry of cache.values()) {
+    if (entry.playingCount > 0) playing += 1
+  }
+  if (playing < MAX_LIVE_DECODERS_MOBILE) {
+    return
+  }
+  for (const entry of cache.values()) {
+    if (entry === keep || entry.playingCount <= 0) continue
+    teardownOffscreen(entry)
+  }
+}
+
+function destroyEntry(entry: CacheEntry) {
+  entry.playingCount = 0
+  entry.refCount = 0
+  entry.readyListeners.clear()
+  entry.errorListeners.clear()
+  detachDecoder(entry)
 
   try {
     entry.stillTexture.dispose()
-    entry.softTexture.dispose()
     entry.liveTexture.dispose()
   } catch {
     // ignore
   }
 
   freeCanvas(entry.stillCanvas)
-  freeCanvas(entry.softCanvas)
   freeCanvas(entry.liveCanvas)
-  freeCanvas(entry.softScratch)
 
   cache.delete(entry.key)
 }
@@ -340,34 +400,20 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
   const key = makeVideoTextureCacheKey(input)
   const existing = cache.get(key)
   if (existing) {
-    if (existing.evictTimer !== null) {
-      window.clearTimeout(existing.evictTimer)
-      existing.evictTimer = null
-    }
     return existing
   }
 
-  const still = createCanvasTexture(input.textureSize, input.flipY)
-  const soft = createCanvasTexture(input.textureSize, input.flipY)
-  const live = createCanvasTexture(input.textureSize, input.flipY)
-  const softScratch = document.createElement('canvas')
-  // Very small intermediate canvas creates a soft blur when scaled back up.
-  softScratch.width = Math.max(16, Math.round(input.textureSize / 12))
-  softScratch.height = Math.max(16, Math.round(input.textureSize / 12))
-  const softScratchContext = softScratch.getContext('2d', { alpha: false })
-  if (!softScratchContext) {
-    throw new Error('Canvas context is not available in this browser.')
-  }
+  const still = createCanvasTexture(stillCanvasSize(input.textureSize), input.flipY)
+  const live = createCanvasTexture(1, input.flipY)
 
   const resolvedVideoUrl = resolveVideoTextureUrl(input.videoUrl)
 
   const video = document.createElement('video')
-  video.src = resolvedVideoUrl
   video.muted = true
   video.loop = true
   video.autoplay = false
   video.playsInline = true
-  video.preload = 'auto'
+  video.preload = 'none'
   video.crossOrigin = 'anonymous'
   video.setAttribute('playsinline', 'true')
   video.setAttribute('webkit-playsinline', 'true')
@@ -383,36 +429,39 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
     stillCanvas: still.canvas,
     stillContext: still.context,
     stillTexture: still.texture,
-    softCanvas: soft.canvas,
-    softContext: soft.context,
-    softTexture: soft.texture,
-    softScratch,
-    softScratchContext,
     liveCanvas: live.canvas,
     liveContext: live.context,
     liveTexture: live.texture,
     refCount: 0,
     playingCount: 0,
+    pausedPlayingCount: 0,
     isReady: false,
     error: null,
     frameId: 0,
     lastDrawAt: 0,
     readyListeners: new Set(),
     errorListeners: new Set(),
-    evictTimer: null,
+    decoderAttached: false,
   }
 
   const handleLoadedData = () => {
+    if (!entry.decoderAttached) return
     entry.isReady = true
-    // Seed still/soft/live so focused/unfocused packs have content immediately.
+    entry.error = null
     drawStillFrame(entry)
-    drawLiveFrame(entry)
+    if (entry.playingCount > 0) {
+      restoreLiveCanvas(entry)
+      drawLiveFrame(entry)
+    } else {
+      detachDecoder(entry)
+    }
     for (const listener of entry.readyListeners) {
       listener()
     }
   }
 
   const handleError = () => {
+    if (!entry.decoderAttached) return
     entry.error = 'Could not load the selected video file.'
     for (const listener of entry.errorListeners) {
       listener(entry.error)
@@ -421,7 +470,6 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
 
   video.addEventListener('loadeddata', handleLoadedData)
   video.addEventListener('error', handleError)
-  video.load()
 
   cache.set(key, entry)
   return entry
@@ -430,12 +478,9 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
 export function acquireVideoTexture(input: VideoTextureCacheKeyInput): CacheEntry {
   const entry = ensureEntry(input)
   entry.refCount += 1
-
-  if (entry.evictTimer !== null) {
-    window.clearTimeout(entry.evictTimer)
-    entry.evictTimer = null
+  if (!entry.isReady) {
+    attachDecoder(entry)
   }
-
   return entry
 }
 
@@ -455,31 +500,12 @@ export function releaseVideoTexture(key: string) {
   }
 
   entry.refCount = Math.max(0, entry.refCount - 1)
-
   if (entry.refCount === 0) {
-    entry.playingCount = 0
-    stopLoop(entry)
-    try {
-      entry.video.pause()
-    } catch {
-      // ignore
-    }
-
-    // Keep decoded stills around so scrolling back is instant.
-    entry.evictTimer = window.setTimeout(() => {
-      if (entry.refCount === 0) {
-        destroyEntry(entry)
-      }
-    }, IDLE_EVICT_MS)
+    destroyEntry(entry)
   }
 }
 
-export type VideoTextureCacheStats = {
-  entries: number
-  refs: number
-  playing: number
-  ready: number
-}
+export type { VideoTextureCacheStats }
 
 /** Snapshot of shared pack-face video texture cache pressure. */
 export function getVideoTextureCacheStats(): VideoTextureCacheStats {
@@ -496,9 +522,6 @@ export function getVideoTextureCacheStats(): VideoTextureCacheStats {
 
 /**
  * Immediately destroy every cached pack video + canvas texture.
- * Use when leaving GPU-heavy routes (e.g. /packs) so decoded video frames
- * and WebGL-related canvas bitmaps don't linger for IDLE_EVICT_MS.
- *
  * Safe to call even if some entries still have refs — those consumers should
  * already be unmounting; force-clear prioritizes memory recovery.
  */
@@ -512,16 +535,41 @@ export function clearVideoTextureCache(): VideoTextureCacheStats {
   return before
 }
 
-/** Pause every cached video without disposing textures (tab hide / soft leave). */
+/** Pause every cached video and drop decoders (tab hide / offscreen hero). */
 export function pauseAllVideoTextures() {
   for (const entry of cache.values()) {
-    entry.playingCount = 0
-    stopLoop(entry)
-    try {
-      entry.video.pause()
-    } catch {
-      // ignore
+    entry.pausedPlayingCount = entry.playingCount
+    if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      drawLiveFrame(entry)
+      copyLiveToStill(entry)
     }
+    teardownOffscreen(entry)
+  }
+}
+
+registerVideoTextureCache({
+  stats: getVideoTextureCacheStats,
+  clear: clearVideoTextureCache,
+  pauseAll: pauseAllVideoTextures,
+})
+
+/** Resume entries that were playing when pauseAllVideoTextures ran. */
+export function resumePausedVideoTextures() {
+  for (const entry of cache.values()) {
+    const resumeCount = entry.pausedPlayingCount
+    if (resumeCount <= 0) continue
+    entry.pausedPlayingCount = 0
+    capLiveDecoders(entry)
+    restoreLiveCanvas(entry)
+    attachDecoder(entry)
+    entry.playingCount = resumeCount
+    void entry.video.play().catch(() => {
+      // Muted autoplay should work; fail gracefully if blocked.
+    })
+    if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      drawLiveFrame(entry)
+    }
+    startLoop(entry)
   }
 }
 
@@ -532,9 +580,12 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
   }
 
   if (playing) {
+    entry.pausedPlayingCount = 0
     entry.playingCount += 1
     if (entry.playingCount === 1) {
-      // Start live updates for the focused pack only.
+      capLiveDecoders(entry)
+      restoreLiveCanvas(entry)
+      attachDecoder(entry)
       void entry.video.play().catch(() => {
         // Muted autoplay should work in modern browsers, but we fail gracefully.
       })
@@ -548,34 +599,25 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
 
   entry.playingCount = Math.max(0, entry.playingCount - 1)
   if (entry.playingCount === 0) {
-    // Freeze current frame into the still texture used by non-focused packs.
     if (entry.video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       drawLiveFrame(entry)
       copyLiveToStill(entry)
     }
-    entry.video.pause()
-    stopLoop(entry)
+    teardownOffscreen(entry)
   }
 }
 
 export function getVideoTextureForPlayback(
   key: string,
   playing: boolean,
-  soft = false,
+  _soft = false,
 ): CanvasTexture | null {
   const entry = cache.get(key)
   if (!entry) {
     return null
   }
 
-  // Critical:
-  // - focused/playing pack uses live texture
-  // - unselected packs can use soft still (cheap DOF look)
-  // - otherwise crisp still
-  if (playing) {
-    return entry.liveTexture
-  }
-  return soft ? entry.softTexture : entry.stillTexture
+  return playing ? entry.liveTexture : entry.stillTexture
 }
 
 export function subscribeVideoTextureReady(

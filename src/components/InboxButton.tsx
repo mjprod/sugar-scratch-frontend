@@ -1,8 +1,7 @@
-import {
-  DotLottieReact,
-  type DotLottie,
-} from "@lottiefiles/dotlottie-react";
+import type { DotLottie } from "@lottiefiles/dotlottie-react";
+import { Bell } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import { DeferredLottie, openDeferredLotties } from "@/lib/lottie/DeferredLottie";
 import {
   countCartPacks,
   subscribeCart,
@@ -18,21 +17,26 @@ const ADDED_LOTTIE_SPEED = 1.25;
 const ADDED_LOTTIE_MS = 920;
 const REMOVED_LOTTIE_SPEED = 1.5;
 const REMOVED_LOTTIE_MS = 780;
+/** Drop a queued pocket FX if the player takes longer than this to load. */
+const PENDING_FX_MAX_MS = 2500;
 
 /**
  * Global HUD utility control — cart for packs to open (TopNav / mobile utility).
- * Unread inbox count uses {@link InboxUtilityBadge} on the Profile icon.
+ * Unread inbox count uses {@link InboxUtilityBadge} on {@link NotificationBellButton}.
  */
 export function InboxUtilityBadge({
   count = 0,
   bump = false,
   tone = "inbox",
+  showZero = false,
 }: {
   count?: number;
   bump?: boolean;
   tone?: "pack" | "inbox";
+  /** When true, render a "0" badge instead of hiding empty counts. */
+  showZero?: boolean;
 }) {
-  if (count <= 0) return null;
+  if (count < 0 || (count === 0 && !showZero)) return null;
   const badgeLabel = count > 9 ? "9+" : String(count);
   return (
     <span
@@ -114,6 +118,9 @@ export const PacksButton = forwardRef<
   const previousCountRef = useRef(packCount);
   const playerRef = useRef<DotLottie | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
+  const pendingFxRef = useRef<{ direction: PocketFxDirection; at: number } | null>(
+    null,
+  );
   const [bumpId, setBumpId] = useState(0);
   const [fxVisible, setFxVisible] = useState(false);
   const [fxDirection, setFxDirection] = useState<PocketFxDirection>("forward");
@@ -125,27 +132,24 @@ export const PacksButton = forwardRef<
     );
   }, []);
 
-  const playPocketFx = useCallback(
-    (direction: PocketFxDirection) => {
-      if (prefersReducedMotion()) return;
-      if (hideTimeoutRef.current != null) {
-        window.clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = null;
-      }
-      setFxDirection(direction);
-      setFxVisible(true);
+  const clearHideTimeout = useCallback(() => {
+    if (hideTimeoutRef.current != null) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  }, []);
 
-      const player = playerRef.current;
-      if (player?.isLoaded) {
-        player.setMode(direction);
-        player.setSpeed(
-          direction === "reverse" ? REMOVED_LOTTIE_SPEED : ADDED_LOTTIE_SPEED,
-        );
-        const lastFrame = Math.max(0, player.totalFrames - 1);
-        player.setFrame(direction === "reverse" ? lastFrame : 0);
-        player.play();
-      }
+  const runPocketFx = useCallback(
+    (player: DotLottie, direction: PocketFxDirection) => {
+      player.setMode(direction);
+      player.setSpeed(
+        direction === "reverse" ? REMOVED_LOTTIE_SPEED : ADDED_LOTTIE_SPEED,
+      );
+      const lastFrame = Math.max(0, player.totalFrames - 1);
+      player.setFrame(direction === "reverse" ? lastFrame : 0);
+      player.play();
 
+      clearHideTimeout();
       hideTimeoutRef.current = window.setTimeout(
         () => {
           setFxVisible(false);
@@ -154,18 +158,57 @@ export const PacksButton = forwardRef<
         direction === "reverse" ? REMOVED_LOTTIE_MS : ADDED_LOTTIE_MS,
       );
     },
-    [prefersReducedMotion],
+    [clearHideTimeout],
   );
 
-  const handlePlayer = useCallback((player: DotLottie | null) => {
-    playerRef.current = player;
-    if (!player) return;
-    const ready = () => {
-      player.setLoop(false);
-    };
-    if (player.isLoaded) ready();
-    else player.addEventListener("load", ready);
-  }, []);
+  const playPocketFx = useCallback(
+    (direction: PocketFxDirection) => {
+      if (prefersReducedMotion()) return;
+      openDeferredLotties();
+      clearHideTimeout();
+      setFxDirection(direction);
+      setFxVisible(true);
+
+      const player = playerRef.current;
+      if (player?.isLoaded) {
+        pendingFxRef.current = null;
+        runPocketFx(player, direction);
+        return;
+      }
+      // The gate may have just opened: the player (and wasm) mount after this.
+      pendingFxRef.current = { direction, at: performance.now() };
+      hideTimeoutRef.current = window.setTimeout(() => {
+        pendingFxRef.current = null;
+        setFxVisible(false);
+        hideTimeoutRef.current = null;
+      }, PENDING_FX_MAX_MS);
+    },
+    [clearHideTimeout, prefersReducedMotion, runPocketFx],
+  );
+
+  const handlePlayer = useCallback(
+    (player: DotLottie | null) => {
+      playerRef.current = player;
+      if (!player) return;
+      const ready = () => {
+        player.setLoop(false);
+        const pending = pendingFxRef.current;
+        pendingFxRef.current = null;
+        if (pending && performance.now() - pending.at < PENDING_FX_MAX_MS) {
+          runPocketFx(player, pending.direction);
+        }
+      };
+      if (player.isLoaded) ready();
+      else {
+        const onLoad = () => {
+          player.removeEventListener("load", onLoad);
+          ready();
+        };
+        player.addEventListener("load", onLoad);
+      }
+    },
+    [runPocketFx],
+  );
 
   useEffect(() => {
     return () => {
@@ -193,8 +236,9 @@ export const PacksButton = forwardRef<
 
   const surfaceClasses =
     "inbox-utility-btn relative grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/75 transition hover:bg-white/10 hover:text-white active:scale-95";
+  // AC23: ≥44×44 touch target; icon stays visually compact inside.
   const ghostClasses =
-    "inbox-utility-btn inbox-utility-btn--ghost relative grid size-7 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95";
+    "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95";
 
   const ariaLabel =
     packCount > 0
@@ -222,7 +266,7 @@ export const PacksButton = forwardRef<
         aria-hidden="true"
         style={{ visibility: fxVisible ? "visible" : "hidden" }}
       >
-        <DotLottieReact
+        <DeferredLottie
           src={ADDED_LOTTIE_SRC}
           autoplay={false}
           loop={false}
@@ -232,12 +276,14 @@ export const PacksButton = forwardRef<
               ? REMOVED_LOTTIE_SPEED
               : ADDED_LOTTIE_SPEED
           }
-          renderConfig={lottieRenderConfig()}
+          // The offscreen observer reports this HUD slot as hidden and would
+          // freeze a play started right after load.
+          renderConfig={lottieRenderConfig({ freezeOnOffscreen: false })}
           dotLottieRefCallback={handlePlayer}
           style={{ width: "100%", height: "100%" }}
         />
       </span>
-      <CartOutlineIcon className="inbox-utility-icon h-full w-full" />
+      <CartOutlineIcon className="inbox-utility-icon h-7 w-7" />
       <InboxUtilityBadge
         key={bumpId}
         count={packCount}
@@ -247,3 +293,40 @@ export const PacksButton = forwardRef<
     </button>
   );
 });
+
+/** Header notification bell — unread badge when count ≥ 1 (AC15–18). */
+export function NotificationBellButton({
+  unreadCount = 0,
+  onOpen,
+  className = "",
+  active = false,
+}: {
+  unreadCount?: number;
+  onOpen: () => void;
+  className?: string;
+  active?: boolean;
+}) {
+  const ariaLabel =
+    unreadCount > 0
+      ? `Notifications, ${unreadCount} unread`
+      : "Notifications";
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={ariaLabel}
+      aria-current={active ? "page" : undefined}
+      className={[
+        "inbox-utility-btn inbox-utility-btn--ghost relative grid size-11 shrink-0 place-items-center rounded-md border border-transparent bg-transparent text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 active:scale-95",
+        active ? "is-active" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <Bell className="h-7 w-7" strokeWidth={1.5} aria-hidden="true" />
+      <InboxUtilityBadge count={unreadCount} />
+    </button>
+  );
+}

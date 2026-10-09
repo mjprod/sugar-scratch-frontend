@@ -43,7 +43,9 @@ export function useCreatorsCollectedThemes(creatorIds: string[]) {
       return;
     }
 
-    setReady(false);
+    // Keep prior theme map / cards mounted while refreshing — flipping ready
+    // off collapses the row and snaps mobile page scroll upward.
+
     void Promise.all(
       creatorIds.map(async (creatorId) => {
         try {

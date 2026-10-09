@@ -12,7 +12,7 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import {
   feedLikeCount,
   feedPackLabel,
@@ -51,32 +51,32 @@ type SecondaryHeart = {
   depth: HeartDepth;
 };
 
-/** Wide double-tap spread — inner / mid / outer rings (asymmetric). */
+/** Double-tap spread — compact rings so pieces stay in-frame. */
 const MEDIA_SECONDARY_POOL: SecondaryHeart[] = [
   /* Inner */
-  { dx: -70, dy: -56, sizePx: 48, delayMs: 18, opacity: 0.9, depth: "fg" },
-  { dx: 74, dy: -44, sizePx: 44, delayMs: 32, opacity: 0.86, depth: "fg" },
-  { dx: -36, dy: 66, sizePx: 40, delayMs: 46, opacity: 0.82, depth: "mid" },
+  { dx: -48, dy: -40, sizePx: 28, delayMs: 18, opacity: 0.9, depth: "fg" },
+  { dx: 52, dy: -32, sizePx: 26, delayMs: 32, opacity: 0.86, depth: "fg" },
+  { dx: -26, dy: 46, sizePx: 24, delayMs: 46, opacity: 0.82, depth: "mid" },
   /* Mid */
-  { dx: -138, dy: -118, sizePx: 56, delayMs: 40, opacity: 0.8, depth: "mid" },
-  { dx: 152, dy: -98, sizePx: 50, delayMs: 58, opacity: 0.78, depth: "mid" },
-  { dx: -158, dy: 48, sizePx: 46, delayMs: 72, opacity: 0.74, depth: "mid" },
-  { dx: 142, dy: 78, sizePx: 54, delayMs: 86, opacity: 0.76, depth: "mid" },
+  { dx: -92, dy: -78, sizePx: 32, delayMs: 40, opacity: 0.8, depth: "mid" },
+  { dx: 100, dy: -66, sizePx: 30, delayMs: 58, opacity: 0.78, depth: "mid" },
+  { dx: -104, dy: 34, sizePx: 28, delayMs: 72, opacity: 0.74, depth: "mid" },
+  { dx: 94, dy: 52, sizePx: 30, delayMs: 86, opacity: 0.76, depth: "mid" },
   /* Outer */
-  { dx: -198, dy: -168, sizePx: 34, delayMs: 64, opacity: 0.56, depth: "bg" },
-  { dx: 212, dy: -150, sizePx: 30, delayMs: 80, opacity: 0.52, depth: "bg" },
-  { dx: -18, dy: -220, sizePx: 36, delayMs: 50, opacity: 0.58, depth: "bg" },
-  { dx: 188, dy: 132, sizePx: 32, delayMs: 100, opacity: 0.48, depth: "bg" },
-  { dx: -176, dy: 148, sizePx: 28, delayMs: 112, opacity: 0.46, depth: "bg" },
+  { dx: -128, dy: -110, sizePx: 22, delayMs: 64, opacity: 0.56, depth: "bg" },
+  { dx: 136, dy: -98, sizePx: 20, delayMs: 80, opacity: 0.52, depth: "bg" },
+  { dx: -12, dy: -140, sizePx: 22, delayMs: 50, opacity: 0.58, depth: "bg" },
+  { dx: 120, dy: 88, sizePx: 20, delayMs: 100, opacity: 0.48, depth: "bg" },
+  { dx: -114, dy: 96, sizePx: 18, delayMs: 112, opacity: 0.46, depth: "bg" },
 ];
 
-/** Button burst — moderate primary + noticeably wider small satellites. */
+/** Button burst — compact primary + short-range satellites (stay in-frame). */
 const BUTTON_SECONDARIES: SecondaryHeart[] = [
-  { dx: -62, dy: -74, sizePx: 28, delayMs: 16, opacity: 0.8, depth: "fg" },
-  { dx: 68, dy: -58, sizePx: 24, delayMs: 30, opacity: 0.72, depth: "mid" },
-  { dx: -78, dy: 30, sizePx: 22, delayMs: 44, opacity: 0.6, depth: "bg" },
-  { dx: 76, dy: 40, sizePx: 26, delayMs: 58, opacity: 0.66, depth: "mid" },
-  { dx: 6, dy: -92, sizePx: 20, delayMs: 36, opacity: 0.55, depth: "bg" },
+  { dx: -42, dy: -50, sizePx: 20, delayMs: 16, opacity: 0.8, depth: "fg" },
+  { dx: 46, dy: -40, sizePx: 18, delayMs: 30, opacity: 0.72, depth: "mid" },
+  { dx: -52, dy: 22, sizePx: 16, delayMs: 44, opacity: 0.6, depth: "bg" },
+  { dx: 50, dy: 28, sizePx: 18, delayMs: 58, opacity: 0.66, depth: "mid" },
+  { dx: 4, dy: -62, sizePx: 14, delayMs: 36, opacity: 0.55, depth: "bg" },
 ];
 
 export function CreatorFeedCard({
@@ -84,6 +84,13 @@ export function CreatorFeedCard({
   active,
   /** Eager-buffer neighbor cards (next peek / previous) so they aren't black. */
   warm = false,
+  /**
+   * Full network preload. Cap at 1–2 concurrent across the feed; warm
+   * neighbors without this still mount but use preload="metadata".
+   */
+  eagerPreload = false,
+  /** Pause aurora / BorderGlow while the feed is scrubbing. */
+  feedScrolling = false,
   onLike,
   onEnsureLike,
   onBuy,
@@ -94,6 +101,8 @@ export function CreatorFeedCard({
   item: HomeFeedCreator;
   active: boolean;
   warm?: boolean;
+  eagerPreload?: boolean;
+  feedScrolling?: boolean;
   onLike: () => void;
   /** One-way Like for media double-tap. Return false when auth/modal blocks. */
   onEnsureLike: () => boolean;
@@ -102,7 +111,9 @@ export function CreatorFeedCard({
   videoRef: (node: HTMLVideoElement | null) => void;
   buyCta?: "squircleCTA" | "pillGoldCTA";
 }) {
-  const { requireAuth, authed } = useAuth();
+  // Session + actions only — avoid re-renders from profile / inventory / sheet.
+  const { authed } = useAuthSession();
+  const { requireAuth } = useAuthActions();
   const [burst, setBurst] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
   const [heartBurst, setHeartBurst] = useState<HeartBurst | null>(null);
@@ -110,6 +121,7 @@ export function CreatorFeedCard({
     isFollowing(item.creatorId),
   );
   const reducedMotion = usePrefersReducedMotion();
+  const isMobileFeed = useIsMobileFeed();
   const cardRef = useRef<HTMLElement>(null);
   const likeBtnRef = useRef<HTMLButtonElement>(null);
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
@@ -140,7 +152,7 @@ export function CreatorFeedCard({
         type: "follow",
         creatorId,
         displayName: item.creatorName,
-        avatarUrl: item.posterUrl || "/img/placeholder.png",
+        avatarUrl: item.avatarUrl || "/img/placeholder.webp",
       });
       return;
     }
@@ -155,19 +167,20 @@ export function CreatorFeedCard({
       id: creatorId,
       displayName: item.creatorName,
       username: "",
-      avatarUrl: item.posterUrl || "/img/placeholder.png",
+      avatarUrl: item.avatarUrl || "/img/placeholder.webp",
       followedAt: Date.now(),
       hasUnseenActivity: false,
     });
     setFollowing(true);
   }
   /**
-   * Keep CTA shader motion alive across the mid-scroll handoff.
+   * Keep CTA shader motion alive across the mid-scroll handoff when settled.
    * `active` flips at ~50% slide travel (Math.round), so gating aurora on
    * active-only makes the leaving card drop WebGL particles/aurora too early.
-   * Warm neighbors stay in view during that transition — keep them live too.
+   * Warm neighbors stay live after settle; pause everything while scrubbing.
    */
-  const ctaMotionLive = (active || warm) && !reducedMotion;
+  const ctaMotionLive = (active || warm) && !reducedMotion && !feedScrolling;
+  const skipAurora = isMobileFeed || !ctaMotionLive;
 
   useEffect(() => {
     setMediaReady(false);
@@ -331,27 +344,45 @@ export function CreatorFeedCard({
     >
       <div className={["hf-media", active ? "is-active" : ""].join(" ")}>
         {item.mediaType === "video" && item.videoUrl ? (
-          <video
-            key={videoKey}
-            ref={videoRef}
-            src={item.videoUrl}
-            playsInline
-            muted
-            loop
-            autoPlay={active}
-            preload={shouldBuffer ? "auto" : "metadata"}
-            className={[
-              "hf-media-el hf-media-video",
-              mediaReady ? "is-ready" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            onLoadStart={() => setMediaReady(false)}
-            onEmptied={() => setMediaReady(false)}
-            onLoadedData={(event) => markVideoReady(event.currentTarget)}
-            onCanPlay={(event) => markVideoReady(event.currentTarget)}
-            onPlaying={(event) => markVideoReady(event.currentTarget)}
-          />
+          <>
+            {item.swipePosterUrl ? (
+              <img
+                src={item.swipePosterUrl}
+                alt=""
+                aria-hidden="true"
+                className="hf-media-el hf-media-poster"
+              />
+            ) : !shouldBuffer || !mediaReady ? (
+              <div
+                className="hf-media-el hf-media-poster hf-media-poster--idle"
+                aria-hidden="true"
+              />
+            ) : null}
+            {/* Far slides: poster only — avoid decoder / preload metadata cost. */}
+            {shouldBuffer ? (
+              <video
+                key={videoKey}
+                ref={videoRef}
+                src={item.videoUrl}
+                playsInline
+                muted
+                loop
+                autoPlay={active}
+                preload={eagerPreload ? "auto" : "metadata"}
+                className={[
+                  "hf-media-el hf-media-video",
+                  mediaReady ? "is-ready" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onLoadStart={() => setMediaReady(false)}
+                onEmptied={() => setMediaReady(false)}
+                onLoadedData={(event) => markVideoReady(event.currentTarget)}
+                onCanPlay={(event) => markVideoReady(event.currentTarget)}
+                onPlaying={(event) => markVideoReady(event.currentTarget)}
+              />
+            ) : null}
+          </>
         ) : null}
         <div className="hf-media-shade" aria-hidden="true" />
       </div>
@@ -398,7 +429,25 @@ export function CreatorFeedCard({
       ) : null}
 
       <div className={["hf-overlay", active ? "is-visible" : ""].join(" ")}>
+        <div className="hf-overlay-inner">
         <div className="hf-info">
+          <button
+            type="button"
+            className={[
+              "hf-follow",
+              following ? "is-following" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-pressed={following}
+            aria-label={following ? "Unfollow" : "Follow"}
+            data-no-feed-drag
+            onClick={handleToggleFollow}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+          >
+            {following ? "Following" : "Follow"}
+          </button>
           <div className="hf-name-row">
             {canOpenCreator ? (
               <button
@@ -414,25 +463,7 @@ export function CreatorFeedCard({
             ) : (
               <h2 className="hf-creator">{item.creatorName}</h2>
             )}
-            <button
-              type="button"
-              className={[
-                "hf-follow",
-                following ? "is-following" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-pressed={following}
-              aria-label={following ? "Unfollow" : "Follow"}
-              data-no-feed-drag
-              onClick={handleToggleFollow}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-            >
-              {following ? "Following" : "Follow"}
-            </button>
           </div>
-          <p className="hf-pack">{packLabel}</p>
           {tags.length > 0 ? (
             <ul className="hf-tags" aria-label="Pack tags">
               {tags.map((tag) => (
@@ -456,14 +487,14 @@ export function CreatorFeedCard({
               strokeWidth={1}
               /*
                 Viewport-scoped motion:
-                - active + warm neighbors: aurora / particles / orbit
-                  (warm covers the ~50–100% scroll handoff on desktop)
+                - active + warm neighbors when settled: aurora / particles / orbit
+                - while scrubbing: pause CTA shaders (video decode already busy)
                 - far slides: static CTA only
                 - diamond Lottie stays active-only (heavier wasm loop)
               */
               glowOuterBloom={ctaMotionLive ? "lite" : "off"}
               glowAlwaysOn={ctaMotionLive}
-              auroraPaused={!ctaMotionLive}
+              auroraPaused={skipAurora}
               costIconAnimated={active && !reducedMotion}
               aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
               onClick={(e) => {
@@ -509,6 +540,7 @@ export function CreatorFeedCard({
               {likeCountLabel}
             </span>
           </div>
+        </div>
         </div>
       </div>
     </article>
@@ -648,6 +680,21 @@ function gestureLayerBlocked() {
       '[aria-modal="true"], [role="dialog"][aria-modal="true"]',
     ),
   );
+}
+
+function useIsMobileFeed() {
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 980px)").matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 980px)");
+    const apply = () => setMobile(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return mobile;
 }
 
 function usePrefersReducedMotion() {

@@ -14,14 +14,17 @@ import {
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   FEED_WARM_AHEAD,
-  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
-  isWarmFeedIndex,
+  isFeedMountIndex,
+  isFeedPreloadAutoIndex,
+  preloadFeedPosters,
   toPurchasePack,
   type HomeFeedCreator,
 } from "@/services/creatorFeed";
 
 const SNAP_MS = 220;
+/** After last scroll event, treat the reel as settled (commit activeId). */
+const FEED_SCROLL_SETTLE_MS = 140;
 const AUTO_ADVANCE_MS = 10_000;
 const DESKTOP_DRAG_THRESHOLD_PX = 6;
 const DESKTOP_DRAG_FLICK_VX = 0.45;
@@ -33,7 +36,6 @@ const OVERLAY_PARALLAX_MAX_PX = 84;
 const MEDIA_SCALE_BASE = 1.08;
 const MEDIA_SCALE_MAX = 1.28;
 const MEDIA_SCALE_GAIN = MEDIA_SCALE_MAX - MEDIA_SCALE_BASE;
-const MEDIA_BLUR_MAX_PX = 4;
 const OVERLAY_PARALLAX_HALFLIFE_MS = 240;
 const MEDIA_SCALE_HALFLIFE_MS = 280;
 const OVERLAY_PARALLAX_SETTLE_EPS = 0.12;
@@ -69,18 +71,22 @@ export function DiscoverReel({
   const [inView, setInView] = useState(false);
   const [isDesktopDragging, setIsDesktopDragging] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState(true);
+  const [feedScrolling, setFeedScrolling] = useState(false);
 
   const rootRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useVideoRegistry();
   const loadingMoreRef = useRef(false);
   const resumeAutoAdvanceTimerRef = useRef(0);
+  const activeIdRef = useRef<string | null>(null);
+  const scrollIndexRef = useRef(0);
+  const scrollStateRafRef = useRef(0);
+  const feedScrollSettleTimerRef = useRef(0);
+  const itemsRef = useRef<HomeFeedCreator[]>([]);
   const parallaxTargetRef = useRef(new Map<string, number>());
   const parallaxCurrentRef = useRef(new Map<string, number>());
   const scaleTargetRef = useRef(new Map<string, number>());
   const scaleCurrentRef = useRef(new Map<string, number>());
-  const blurTargetRef = useRef(new Map<string, number>());
-  const blurCurrentRef = useRef(new Map<string, number>());
   const scrollFxRafRef = useRef(0);
   const scrollFxLastTsRef = useRef(0);
   const reducedMotion = usePrefersReducedMotion();
@@ -93,6 +99,9 @@ export function DiscoverReel({
     velocityY: number;
     moved: boolean;
   } | null>(null);
+
+  activeIdRef.current = activeId;
+  itemsRef.current = items;
 
   const loadInitial = useCallback(async () => {
     setStatus("loading");
@@ -110,6 +119,7 @@ export function DiscoverReel({
       setCursor(page.nextCursor);
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
+      preloadFeedPosters(page.items);
       setStatus("loaded");
       requestAnimationFrame(() => {
         scrollerRef.current?.scrollTo({ top: 0 });
@@ -147,6 +157,40 @@ export function DiscoverReel({
     return { slideHeight };
   }, []);
 
+  const commitSettledActiveId = useCallback(
+    (root: HTMLElement) => {
+      const list = itemsRef.current;
+      if (!list.length) return;
+      const { slideHeight } = getSlideMetrics(root);
+      if (slideHeight <= 0) return;
+      const index = Math.round(root.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(list.length - 1, index));
+      if (Math.abs(root.scrollTop - safeIndex * slideHeight) > 2) return;
+
+      scrollIndexRef.current = safeIndex;
+      const next = list[safeIndex];
+      if (next && next.id !== activeIdRef.current) {
+        setActiveId(next.id);
+      }
+    },
+    [getSlideMetrics],
+  );
+
+  useEffect(() => {
+    const root = scrollerRef.current;
+    if (!root || status !== "loaded") return;
+    const onScrollEnd = () => {
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+        feedScrollSettleTimerRef.current = 0;
+      }
+      setFeedScrolling(false);
+      commitSettledActiveId(root);
+    };
+    root.addEventListener("scrollend", onScrollEnd);
+    return () => root.removeEventListener("scrollend", onScrollEnd);
+  }, [commitSettledActiveId, status, items.length]);
+
   const applyScrollFx = useCallback(
     (root: HTMLElement) => {
       const slides = root.querySelectorAll<HTMLElement>(".hf-slide");
@@ -162,7 +206,6 @@ export function DiscoverReel({
         const media = slide.querySelector<HTMLElement>(".hf-media");
         overlay?.style.setProperty("--hf-parallax-y", "0px");
         media?.style.setProperty("--hf-media-scale", String(MEDIA_SCALE_BASE));
-        media?.style.setProperty("--hf-media-blur", "0px");
       };
 
       if (reducedMotion) {
@@ -182,8 +225,6 @@ export function DiscoverReel({
           parallaxCurrentRef.current.delete(key);
           scaleTargetRef.current.delete(key);
           scaleCurrentRef.current.delete(key);
-          blurTargetRef.current.delete(key);
-          blurCurrentRef.current.delete(key);
           if (idx >= 0 && slides[idx]) resetSlideFx(slides[idx]);
         }
       }
@@ -200,10 +241,6 @@ export function DiscoverReel({
         scaleTargetRef.current.set(
           key,
           Math.min(MEDIA_SCALE_MAX, MEDIA_SCALE_BASE + absProgress * MEDIA_SCALE_GAIN),
-        );
-        blurTargetRef.current.set(
-          key,
-          Math.min(MEDIA_BLUR_MAX_PX, Math.max(0, progress) * MEDIA_BLUR_MAX_PX),
         );
       }
 
@@ -255,15 +292,6 @@ export function DiscoverReel({
           scaleCurrentRef.current.set(key, sValue);
           media?.style.setProperty("--hf-media-scale", sValue.toFixed(5));
           if (!sSettled) drifting = true;
-
-          const bTarget = blurTargetRef.current.get(key) ?? 0;
-          const bCurrent = blurCurrentRef.current.get(key) ?? 0;
-          const bNext = bCurrent + (bTarget - bCurrent) * mediaAlpha;
-          const bSettled = Math.abs(bTarget - bNext) < 0.01;
-          const bValue = bSettled ? bTarget : bNext;
-          blurCurrentRef.current.set(key, bValue);
-          media?.style.setProperty("--hf-media-blur", `${bValue.toFixed(3)}px`);
-          if (!bSettled) drifting = true;
         }
 
         if (drifting) {
@@ -283,19 +311,14 @@ export function DiscoverReel({
   useEffect(() => {
     return () => {
       if (scrollFxRafRef.current) cancelAnimationFrame(scrollFxRafRef.current);
+      if (scrollStateRafRef.current) cancelAnimationFrame(scrollStateRafRef.current);
+      if (feedScrollSettleTimerRef.current) {
+        window.clearTimeout(feedScrollSettleTimerRef.current);
+      }
     };
   }, []);
 
   useEffect(() => {
-    const activeIndex = items.findIndex((item) => item.id === activeId);
-    const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
-    const warmIds = new Set<string>();
-    for (let offset = -FEED_WARM_BEHIND; offset <= FEED_WARM_AHEAD; offset += 1) {
-      if (offset === 0) continue;
-      const neighbor = items[resolvedActiveIndex + offset];
-      if (neighbor) warmIds.add(neighbor.id);
-    }
-
     const live = desktop && inView;
     videoRefs.current.forEach((video, id) => {
       if (!live) {
@@ -310,14 +333,23 @@ export function DiscoverReel({
         return;
       }
       video.pause();
-      if (!warmIds.has(id)) return;
-      try {
-        if (video.preload !== "auto") video.preload = "auto";
-      } catch {
-        /* ignore media errors on warm path */
-      }
     });
-  }, [activeId, desktop, inView, items, videoRefs]);
+  }, [activeId, desktop, inView, videoRefs]);
+
+  // If the focused control was on a slide that just went inert, move focus to
+  // the new active card (or stepper) so Tab doesn't get stuck.
+  useEffect(() => {
+    if (!desktop || !inView) return;
+    const activeEl = document.activeElement;
+    if (!(activeEl instanceof HTMLElement)) return;
+    const slide = activeEl.closest(".hf-slide");
+    if (!slide || !slide.hasAttribute("inert")) return;
+    const next =
+      rootRef.current?.querySelector<HTMLElement>(
+        '.hf-slide:not([inert]) button, .hf-slide:not([inert]) a, .hf-stepper-btn',
+      ) ?? null;
+    next?.focus();
+  }, [activeId, desktop, inView]);
 
   const go = useCallback(
     (delta: number) => {
@@ -382,8 +414,7 @@ export function DiscoverReel({
       if (!root) return;
       const { slideHeight } = getSlideMetrics(root);
       if (slideHeight <= 0) return;
-      const index = Math.round(root.scrollTop / slideHeight);
-      if (index >= items.length - 1) return;
+      // Wrap — same infinite loop as drag / stepper.
       go(1);
     }, AUTO_ADVANCE_MS);
 
@@ -555,6 +586,7 @@ export function DiscoverReel({
     setLoadingMore(true);
     try {
       const page = await fetchHomeFeedPage(cursor);
+      preloadFeedPosters(page.items);
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(
@@ -588,13 +620,34 @@ export function DiscoverReel({
   function onScroll() {
     const root = scrollerRef.current;
     if (!root || !items.length) return;
-    const { slideHeight } = getSlideMetrics(root);
-    const index = Math.round(root.scrollTop / slideHeight);
-    const next = items[Math.max(0, Math.min(items.length - 1, index))];
-    if (next && next.id !== activeId) setActiveId(next.id);
+
+    setFeedScrolling(true);
+    if (feedScrollSettleTimerRef.current) {
+      window.clearTimeout(feedScrollSettleTimerRef.current);
+    }
+    // Fallback when scrollend is missing — also commits activeId.
+    feedScrollSettleTimerRef.current = window.setTimeout(() => {
+      feedScrollSettleTimerRef.current = 0;
+      setFeedScrolling(false);
+      const node = scrollerRef.current;
+      if (node) commitSettledActiveId(node);
+    }, FEED_SCROLL_SETTLE_MS);
+
     applyScrollFx(root);
-    const remaining = items.length - 1 - index;
-    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+
+    // Track scroll in refs only; React activeId waits for snap settle.
+    if (scrollStateRafRef.current) return;
+    scrollStateRafRef.current = requestAnimationFrame(() => {
+      scrollStateRafRef.current = 0;
+      const node = scrollerRef.current;
+      if (!node || !items.length) return;
+      const { slideHeight } = getSlideMetrics(node);
+      const index = Math.round(node.scrollTop / slideHeight);
+      const safeIndex = Math.max(0, Math.min(items.length - 1, index));
+      scrollIndexRef.current = safeIndex;
+      const remaining = items.length - 1 - safeIndex;
+      if (remaining <= FEED_WARM_AHEAD) void loadMore();
+    });
   }
 
   function toggleLike(id: string) {
@@ -641,6 +694,8 @@ export function DiscoverReel({
       ref={rootRef}
       className={["hf-page", "hf-page--embed", live ? "is-active" : "is-inactive"].join(" ")}
       aria-label="Discover video reel"
+      // Off-screen embed: skip the whole reel in Tab order.
+      {...(!live ? { inert: true, "aria-hidden": true as const } : {})}
     >
       <div className="hf-stage">
         {status === "loaded" && items.length > 1 ? (
@@ -650,11 +705,7 @@ export function DiscoverReel({
               className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Previous creator"
               data-no-feed-drag
-              disabled={resolvedActiveIndex <= 0}
-              onClick={() => {
-                if (resolvedActiveIndex <= 0) return;
-                goFromUser(-1);
-              }}
+              onClick={() => goFromUser(-1)}
             >
               <ChevronUp className="hf-stepper-icon" aria-hidden="true" />
             </button>
@@ -663,11 +714,7 @@ export function DiscoverReel({
               className="hf-stepper-btn glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label="Next creator"
               data-no-feed-drag
-              disabled={resolvedActiveIndex >= items.length - 1}
-              onClick={() => {
-                if (resolvedActiveIndex >= items.length - 1) return;
-                goFromUser(1);
-              }}
+              onClick={() => goFromUser(1)}
             >
               <ChevronDown className="hf-stepper-icon" aria-hidden="true" />
             </button>
@@ -727,14 +774,27 @@ export function DiscoverReel({
             >
               {(() => {
                 return items.map((item, index) => {
-                  const warm = isWarmFeedIndex(index, resolvedActiveIndex);
+                  const mountVideo = isFeedMountIndex(index, resolvedActiveIndex);
+                  const eagerPreload =
+                    live && isFeedPreloadAutoIndex(index, resolvedActiveIndex);
+                  const slideActive = live && item.id === activeId;
 
                   return (
-                    <div key={item.id} className="hf-slide">
+                    <div
+                      key={item.id}
+                      className="hf-slide"
+                      // Infinite reel: only the visible card is a Tab stop; use
+                      // stepper / arrows to change creators, then Tab leaves the section.
+                      {...(slideActive
+                        ? {}
+                        : { inert: true, "aria-hidden": true as const })}
+                    >
                       <CreatorFeedCard
                         item={item}
-                        active={live && item.id === activeId}
-                        warm={warm}
+                        active={slideActive}
+                        warm={mountVideo}
+                        eagerPreload={eagerPreload}
+                        feedScrolling={feedScrolling || !live}
                         buyCta="pillGoldCTA"
                         onLike={() => toggleLike(item.id)}
                         onEnsureLike={() => ensureLike(item.id)}

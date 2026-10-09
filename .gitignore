@@ -37,3 +37,10 @@ _incoming/
 
 # Local mkcert HTTPS pair (regenerate with: npm run certs)
 certs/
+
+# Lighthouse output from scripts/perf-audit.mjs
+.perf/
+
+# Headless Chrome leftovers (never part of the app)
+.chrome-foil/
+.foilshot*.png

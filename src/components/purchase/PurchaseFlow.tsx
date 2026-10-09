@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { AnimatePresence, m, type PanInfo } from "framer-motion";
 import {
   AlertTriangle,
   Check,
@@ -16,11 +16,11 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { isScratchTutorialCompleted } from "@/services/scratchTutorial";
-import { CoverFlowCarousel } from "@/features/packs/CoverFlowCarousel";
 import {
-  CoverFlowCarouselV2,
+  CoverFlowCarousel,
+  HOME_COVERFLOW_PRESET,
   type CoverFlowCameraSettings,
-} from "@/features/packs/CoverFlowCarouselV2";
+} from "@/features/packs/CoverFlowCarousel";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { packItemToIteration } from "@/features/packs/types";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
@@ -40,7 +40,7 @@ import { loadFanDrag } from "@/features/reveal/lib/fanDrag";
 import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { PACK_PHOTOS, resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   isVideoSrc,
@@ -74,7 +74,7 @@ import {
   type PackQuantity,
   type PurchaseFlowPack,
 } from "@/services/purchase";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,
@@ -103,7 +103,7 @@ import {
   trackScratchEvent,
   upsertReadyToScratch,
 } from "@/services/readyToScratch";
-import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
+import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
 import {
   motionPlayHref,
   navigateTo,
@@ -830,7 +830,10 @@ export function PurchaseFlow({
     const currentId =
       instanceId ??
       openResume?.instanceId ??
-      peekUnopenedInstance(pack.packId)?.instanceId;
+      pack.tearInstanceIds?.[0] ??
+      peekUnopenedInstance(pack.packId)?.instanceId ??
+      (purchaseId ? nextUnopenedInPurchase(purchaseId)?.instanceId : null) ??
+      null;
     if (!currentId) {
       setStage("opening-interrupted");
       return;
@@ -844,20 +847,49 @@ export function PurchaseFlow({
       const live = sessionRef.current;
 
       if (authed && !isDemoMode() && !isLocalPackInstanceId(currentId)) {
-        const result = await openPackInstance(currentId);
-        upsertInstancesFromApi([result.instance]);
-        openingIdRef.current = result.openingId;
-        opened = getPackInstance(currentId);
-        next = live?.foilFaceUrl
-          ? {
-              ...result.session,
-              foilFaceUrl: live.foilFaceUrl,
-              foilLabel: live.foilLabel,
-            }
-          : result.session;
-        scratchedIds = result.scratched;
-        scratchedIds.forEach((id) => awardedIds.current.add(id));
-        serverRevealCardIdsRef.current = next.cards.map((card) => card.id);
+        try {
+          const result = await openPackInstance(currentId);
+          upsertInstancesFromApi([
+            { ...result.instance, status: "opened" },
+          ]);
+          openingIdRef.current = result.openingId;
+          opened =
+            getPackInstance(currentId) ?? markPackOpened(currentId) ?? opened;
+          next = live?.foilFaceUrl
+            ? {
+                ...result.session,
+                foilFaceUrl: live.foilFaceUrl,
+                foilLabel: live.foilLabel,
+              }
+            : result.session;
+          scratchedIds = result.scratched;
+          scratchedIds.forEach((id) => awardedIds.current.add(id));
+          serverRevealCardIdsRef.current = next.cards.map((card) => card.id);
+        } catch {
+          // Soft-continue after a paid purchase — open API blips shouldn't
+          // dead-end the tear (pack stays owned locally as opened).
+          if (!getPackInstance(currentId)) {
+            upsertInstancesFromApi([
+              {
+                instanceId: currentId,
+                catalogPackId: pack.packId,
+                packName: pack.packName,
+                creator: pack.creator,
+                themeName: pack.themeName ?? pack.packName,
+                coverUrl: "",
+                status: "unopened",
+                purchaseId:
+                  purchaseId ?? pack.purchaseId ?? `local-${currentId}`,
+                savedAt: Date.now(),
+              },
+            ]);
+          }
+          opened = markPackOpened(currentId) ?? getPackInstance(currentId);
+          next = live?.foilFaceUrl
+            ? live
+            : live ?? buildOpeningSession(1, currentId);
+          scratchedIds = [];
+        }
       } else {
         opened = markPackOpened(currentId);
         next = live?.foilFaceUrl
@@ -865,6 +897,9 @@ export function PurchaseFlow({
           : live ?? buildOpeningSession(1, currentId);
       }
 
+      if (!opened || opened.status !== "opened") {
+        opened = markPackOpened(currentId);
+      }
       if (!opened || opened.status !== "opened") {
         tearLocked.current = false;
         setStage("opening-interrupted");
@@ -950,8 +985,10 @@ export function PurchaseFlow({
       const card = session.cards.find((entry) => entry.id === cardId);
       recordGameReveal({
         cardId,
-        cardName: card?.rarity ? `${card.rarity} Card` : "Card",
-        cardImageUrl: card?.faceUrl,
+        cardName:
+          session.foilLabel?.trim() ||
+          (card?.rarity ? `${card.rarity} Card` : "Card"),
+        cardImageUrl: card?.faceUrl || session.foilFaceUrl,
         packInstanceId: historyIds.packInstanceId,
         packId: historyIds.packId,
         packName: pack.packName,
@@ -1210,7 +1247,7 @@ export function PurchaseFlow({
     setSavingLater(true);
     void persistCurrentAndLeave(from).then((ok) => {
       setSavingLater(false);
-      if (ok) setStage("saved");
+      if (ok) leaveSaved();
     });
   }
 
@@ -1544,7 +1581,7 @@ export function PurchaseFlow({
       )}
 
       <AnimatePresence mode="wait">
-        <motion.div
+        <m.div
           key={stage}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1705,7 +1742,7 @@ export function PurchaseFlow({
                 onClick={() => scratchLater("decision")}
                 disabled={savingLater}
               >
-                Save for Later
+                Save to Collection
               </button>
               {readyPackCount > 1 ? (
                 <button
@@ -1865,7 +1902,7 @@ export function PurchaseFlow({
               }}
             />
           ) : null}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
 
       {!isScratchTutorialCompleted() &&
@@ -2027,6 +2064,8 @@ function ChoosePackStage({
         <div className="packs-circle packs-circle--core" />
       </div>
       <CoverFlowCarousel
+        preset={HOME_COVERFLOW_PRESET}
+        disablePackOpenReveal
         items={items}
         selectedId={selectedId}
         onSelect={setSelectedId}
@@ -2337,7 +2376,7 @@ function ReadyStage({
           <div className="packs-circle packs-circle--bloom" />
           <div className="packs-circle packs-circle--core" />
         </div>
-        <CoverFlowCarouselV2
+        <CoverFlowCarousel
           items={items}
           selectedId={selectedId}
           cameraSettings={cameraSettings}
@@ -2500,7 +2539,7 @@ function MotionRevealStage({
             onClick={onSaveLater}
             disabled={launching}
           >
-            Save for Later
+            Save to Collection
           </button>
           {onSaveAndOpenNext ? (
             <button
@@ -2628,9 +2667,9 @@ function ScratchStage({
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-5 z-10">
           <p className="text-[20px] font-bold">{card.rarity}</p>
-          <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Sugar Coins</p>
+          <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Coins</p>
         </div>
-        <motion.button
+        <m.button
           type="button"
           aria-label="Scratch card cover"
           drag={revealed ? false : "x"}
@@ -2646,10 +2685,10 @@ function ScratchStage({
           <span className="absolute inset-x-0 bottom-7 text-[11px] font-bold tracking-[0.16em] uppercase">
             Drag or tap to scratch
           </span>
-        </motion.button>
+        </m.button>
       </div>
       {revealed ? (
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-7 flex w-full max-w-sm flex-col items-center"
@@ -2677,7 +2716,7 @@ function ScratchStage({
               Finish Later
             </button>
           ) : null}
-        </motion.div>
+        </m.div>
       ) : (
         <p className="mt-5 text-[13px] text-white/45">Drag across the card or tap three times.</p>
       )}

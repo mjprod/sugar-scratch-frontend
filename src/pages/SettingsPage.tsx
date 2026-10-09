@@ -1,4 +1,5 @@
-import { useAuth } from "@/contexts/AuthContext";
+import "@/components/settings/SettingsScreen.css";
+import { useAuth } from "@/contexts/useAuth";
 import { SettingsScreen } from "@/components/settings/SettingsScreen";
 
 export function SettingsPage() {
@@ -6,7 +7,7 @@ export function SettingsPage() {
   return (
     <SettingsScreen
       onBack={() => closeSecondary("settings")}
-      onReplayTutorials={() => requestTab("home")}
+      onReplayTutorials={() => requestTab("bag")}
     />
   );
 }

@@ -3,7 +3,6 @@ import {
   Clock,
   Loader2,
   Lock,
-  Play,
   RefreshCw,
   XCircle,
 } from "lucide-react";
@@ -12,37 +11,28 @@ import { createPortal } from "react-dom";
 import {
   claimRewardedAd,
   clearPurchaseSession,
+  COIN_EXCHANGE_OPTIONS,
   createPurchaseSession,
+  DAILY_AD_LIMIT,
   fetchStoreProducts,
   loadPurchaseSession,
   resumePurchaseSession,
   returnFromGateway,
   type GatewayOutcome,
   type PurchaseSession,
-  type StoreBadge,
   type StoreLoadResult,
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
-import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
-import { useAuth } from "@/contexts/AuthContext";
+import { GetDiamondsCatalog } from "@/components/store/GetDiamondsCatalog";
+import { useAuth } from "@/contexts/useAuth";
 import type { RedeemReward } from "@/services/redeem";
-import { CoinLottie } from "@/components/ui/CoinLottie";
-import { DiamondLottie } from "@/components/ui/DiamondLottie";
 
 type LoadState =
   | { status: "loading" }
   | { status: "ok"; products: StoreProduct[] }
   | { status: "empty" }
   | { status: "error"; message: string };
-
-function packageCoinAmount(product: StoreProduct): number | null {
-  const coins = product.coins;
-  if (typeof coins !== "number" || !Number.isFinite(coins) || coins < 0) {
-    return null;
-  }
-  return Math.trunc(coins);
-}
 
 /** Paid purchase stages after product selection. */
 type Flow =
@@ -68,12 +58,19 @@ type Flow =
 export function StoreScreen({
   onBack,
   onPurchaseSuccess,
+  onCoinExchange,
+  coinBalance,
   onDiamondReward,
   onPackReward,
   onOpenPack,
 }: {
   onBack: () => void;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
+  coinBalance: number;
+  onCoinExchange: (
+    diamonds: number,
+    coins: number,
+  ) => boolean | Promise<boolean>;
   onDiamondReward?: (amount: number) => void;
   onPackReward?: (
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -87,10 +84,11 @@ export function StoreScreen({
     instanceId?: string;
   }) => void;
 }) {
-  const { requireAuth } = useAuth();
+  const { authed, requireAuth } = useAuth();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [flow, setFlow] = useState<Flow>({ step: "idle" });
-  const [claimedAds, setClaimedAds] = useState<string[]>([]);
+  const [adClaimsToday, setAdClaimsToday] = useState(0);
+  const [exchangingId, setExchangingId] = useState<string | null>(null);
   const resumed = useRef(false);
   const locking = useRef(false);
 
@@ -249,14 +247,14 @@ export function StoreScreen({
 
   async function runRewardedAd(product: StoreProduct) {
     if (locking.current || busy) return;
-    if (claimedAds.includes(product.id)) return;
+    if (adClaimsToday >= DAILY_AD_LIMIT) return;
     locking.current = true;
     setFlow({ step: "ad-processing", product });
     try {
       const result = await claimRewardedAd(product);
       if (result.status === "success") {
         onPurchaseSuccess({ diamonds: result.diamonds, coins: result.coins });
-        setClaimedAds((ids) => (ids.includes(product.id) ? ids : [...ids, product.id]));
+        setAdClaimsToday((n) => n + 1);
         setFlow({
           step: "result",
           kind: "success",
@@ -281,6 +279,10 @@ export function StoreScreen({
   function onSelect(product: StoreProduct) {
     if (busy) return;
     if (product.kind === "rewarded-ad") {
+      if (!authed) {
+        requireAuth({ type: "store" });
+        return;
+      }
       void runRewardedAd(product);
       return;
     }
@@ -294,6 +296,26 @@ export function StoreScreen({
       clearPurchaseSession();
     }
     setFlow({ step: "idle" });
+  }
+
+  async function handleCoinExchange(diamonds: number, coins: number) {
+    if (busy || locking.current) return false;
+    const option = COIN_EXCHANGE_OPTIONS.find(
+      (entry) => entry.diamonds === diamonds && entry.coins === coins,
+    );
+    if (!option) return false;
+    locking.current = true;
+    setExchangingId(option.id);
+    // Yield so React can paint “Exchanging…” before the wallet update.
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 0);
+    });
+    try {
+      return await onCoinExchange(diamonds, coins);
+    } finally {
+      setExchangingId(null);
+      locking.current = false;
+    }
   }
 
   const activeProductId =
@@ -311,7 +333,7 @@ export function StoreScreen({
     <AppPageShell
       variant="secondary"
       aria-label="Store"
-      className="store-page"
+      className="store-page get-diamonds-page"
     >
       {load.status === "loading" ? <StoreSkeleton /> : null}
 
@@ -331,13 +353,17 @@ export function StoreScreen({
       ) : null}
 
       {load.status === "ok" ? (
-        <StoreCatalog
+        <GetDiamondsCatalog
           products={load.products}
-          claimedAds={claimedAds}
+          coinBalance={coinBalance}
+          adClaimsToday={adClaimsToday}
           busy={busy}
           activeProductId={activeProductId}
           flowStep={flow.step}
+          exchangingId={exchangingId}
+          onBack={onBack}
           onSelect={onSelect}
+          onCoinExchange={handleCoinExchange}
           onDiamondReward={onDiamondReward}
           onPackReward={onPackReward}
           onOpenPack={onOpenPack}
@@ -410,291 +436,26 @@ export function StoreScreen({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-
-function StoreCatalog({
-  products,
-  claimedAds,
-  busy,
-  activeProductId,
-  flowStep,
-  onSelect,
-  onDiamondReward,
-  onPackReward,
-  onOpenPack,
-}: {
-  products: StoreProduct[];
-  claimedAds: string[];
-  busy: boolean;
-  activeProductId?: string;
-  flowStep: Flow["step"];
-  onSelect: (product: StoreProduct) => void;
-  onDiamondReward?: (amount: number) => void;
-  onPackReward?: (
-    reward: Extract<RedeemReward, { type: "free_pack" }>,
-  ) =>
-    | { instanceId?: string }
-    | Promise<{ instanceId?: string }>;
-  onOpenPack?: (input: {
-    packId: string;
-    packName: string;
-    creator: string;
-    instanceId?: string;
-  }) => void;
-}) {
-  const ads = products.filter((p) => p.kind === "rewarded-ad");
-  const packs = products.filter((p) => p.kind === "diamonds");
-
-  function isProcessing(productId: string) {
-    return (
-      busy &&
-      activeProductId === productId &&
-      (flowStep === "creating" ||
-        flowStep === "verifying" ||
-        flowStep === "ad-processing")
-    );
-  }
-
-  return (
-    <div className="mt-6 flex flex-col gap-7">
-      {ads.map((product) => (
-        <WatchAdCard
-          key={product.id}
-          product={product}
-          claimed={claimedAds.includes(product.id)}
-          processing={isProcessing(product.id)}
-          disabled={busy}
-          onSelect={() => onSelect(product)}
-        />
-      ))}
-
-      <section aria-labelledby="buy-diamonds-heading">
-        <h2
-          id="buy-diamonds-heading"
-          className="text-[18px] font-bold tracking-[-0.02em]"
-        >
-          Buy Diamonds
-        </h2>
-        <div className="store-packages mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-3.5 xl:grid-cols-5">
-          {packs.map((product) => (
-            <PackageCard
-              key={product.id}
-              product={product}
-              processing={isProcessing(product.id)}
-              disabled={busy}
-              onSelect={() => onSelect(product)}
-            />
-          ))}
-        </div>
-      </section>
-
-      {onDiamondReward && onPackReward && onOpenPack ? (
-        <HubRedeemSection
-          onDiamondReward={onDiamondReward}
-          onPackReward={onPackReward}
-          onOpenPack={onOpenPack}
-        />
-      ) : null}
-
-      <StoreInfo />
-    </div>
-  );
-}
-
-function WatchAdCard({
-  product,
-  claimed,
-  processing,
-  disabled,
-  onSelect,
-}: {
-  product: StoreProduct;
-  claimed: boolean;
-  processing: boolean;
-  disabled: boolean;
-  onSelect: () => void;
-}) {
-  const unavailable = claimed;
-
-  return (
-    <button
-      type="button"
-      disabled={disabled || unavailable}
-      aria-busy={processing}
-      onClick={onSelect}
-      className={[
-        "store-watch-ad flex w-full items-center gap-3 rounded-[18px] border px-3.5 py-3.5 text-left transition",
-        unavailable
-          ? "cursor-not-allowed border-white/[0.06] bg-white/[0.03] opacity-60"
-          : "border-[oklch(0.711_0.203_357.66)]/25 bg-gradient-to-r from-[oklch(0.711_0.203_357.66)]/12 to-[oklch(0.593_0.265_300.18)]/12 hover:border-[oklch(0.711_0.203_357.66)]/40 active:scale-[0.99]",
-        "disabled:cursor-not-allowed",
-      ].join(" ")}
-    >
-      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[oklch(0.711_0.203_357.66)]/18 text-white">
-        {processing ? (
-          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
-        ) : (
-          <Play className="size-5" strokeWidth={1.75} aria-hidden="true" />
-        )}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold tracking-[-0.01em]">
-          {product.title}
-        </span>
-        <span className="mt-0.5 block text-[13px] text-white/55">
-          {product.subtitle ?? `Earn ${product.diamonds} Diamonds`}
-        </span>
-      </span>
-      <span
-        className={[
-          "shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-[0.06em] uppercase",
-          unavailable
-            ? "border-white/10 text-white/40"
-            : "border-emerald-400/35 bg-emerald-400/15 text-emerald-300",
-        ].join(" ")}
-      >
-        {unavailable ? "Claimed" : processing ? "…" : "FREE"}
-      </span>
-    </button>
-  );
-}
-
-function PackageCard({
-  product,
-  processing,
-  disabled,
-  onSelect,
-}: {
-  product: StoreProduct;
-  processing: boolean;
-  disabled: boolean;
-  onSelect: () => void;
-}) {
-  const featured = product.badge === "Best Value";
-  const coinAmount = packageCoinAmount(product);
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-busy={processing}
-      onClick={onSelect}
-      className={[
-        "store-package relative flex flex-col items-center rounded-[18px] border px-3 pb-3.5 pt-3 text-center transition",
-        featured
-          ? "border-[oklch(0.711_0.203_357.66)]/40 bg-[oklch(0.2_0.017_307.52)] shadow-[0_0_24px_oklch(0.711_0.203_357.66_/_0.12)]"
-          : "border-white/[0.08] bg-[oklch(0.19_0.01_294.59)] hover:border-white/[0.16]",
-        "active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55",
-      ].join(" ")}
-    >
-      {product.badge ? <BadgeMark badge={product.badge} /> : null}
-
-      <span className="mt-5 grid size-11 place-items-center rounded-full bg-sky-300/10">
-        {processing ? (
-          <Loader2 className="size-5 animate-spin text-sky-200" aria-hidden="true" />
-        ) : (
-          <DiamondLottie
-            className="store-package-diamond"
-            size={24}
-            aria-hidden
-          />
-        )}
-      </span>
-
-      <span className="mt-3 text-[26px] font-bold tabular-nums tracking-[-0.03em] leading-none">
-        {product.diamonds.toLocaleString()}
-      </span>
-      <span className="mt-1 text-[12px] font-medium text-white/50">Diamonds</span>
-
-      {coinAmount != null ? (
-        <span
-          className="store-package-coins mt-1.5 text-[12px] font-semibold tabular-nums text-white/70"
-          aria-label={`${coinAmount.toLocaleString()} coins`}
-        >
-          <CoinLottie
-            className="store-package-coin"
-            size={37}
-            style={{ width: 48, height: 48 }}
-            aria-hidden
-          />
-          <span className="store-package-coins-value">
-            {coinAmount.toLocaleString()}
-          </span>
-        </span>
-      ) : null}
-
-      <span className="mt-3 text-center text-[14px] font-semibold tabular-nums text-white/90">
-        {processing ? "Processing…" : product.priceLabel}
-      </span>
-    </button>
-  );
-}
-
-function BadgeMark({
-  badge,
-  muted,
-  label,
-}: {
-  badge: StoreBadge;
-  muted?: boolean;
-  label?: string;
-}) {
-  const tone = muted
-    ? "border-white/10 bg-black/55 text-white/55"
-    : badge === "FREE"
-      ? "border-emerald-400/35 bg-emerald-400/15 text-emerald-300"
-      : badge === "Best Value"
-        ? "border-[oklch(0.711_0.203_357.66)]/45 bg-[oklch(0.711_0.203_357.66)]/15 text-[oklch(0.808_0.127_352.48)]"
-        : badge === "Popular"
-          ? "border-sky-400/40 bg-sky-400/15 text-sky-300"
-          : badge === "Limited Time"
-            ? "border-[oklch(0.711_0.166_22.22)]/40 bg-[oklch(0.711_0.166_22.22)]/15 text-[oklch(0.808_0.103_19.57)]"
-            : badge === "Bonus"
-              ? "border-[oklch(0.811_0.101_293.57)]/40 bg-[oklch(0.606_0.219_292.72)]/20 text-[oklch(0.811_0.101_293.57)]"
-              : "border-white/20 bg-white/10 text-white";
-
-  return (
-    <span
-      className={[
-        "absolute top-2.5 left-2.5 z-10 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.06em] uppercase backdrop-blur-md",
-        tone,
-      ].join(" ")}
-    >
-      {label ?? badge}
-    </span>
-  );
-}
-
-function StoreInfo() {
-  return (
-    <p
-      className="pb-2 text-center text-[12px] leading-relaxed text-white/40"
-      aria-label="Store information"
-    >
-      Secure payment
-      <span className="mx-1.5 text-white/20" aria-hidden="true">
-        ·
-      </span>
-      Instant delivery
-      <span className="mx-1.5 text-white/20" aria-hidden="true">
-        ·
-      </span>
-      Trusted checkout
-    </p>
-  );
-}
 
 function StoreSkeleton() {
   return (
-    <div className="mt-6 flex flex-col gap-7" aria-busy="true" aria-label="Loading store">
-      <div className="h-[72px] animate-pulse rounded-[18px] bg-white/[0.06]" />
-      <div className="store-packages grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-3.5 xl:grid-cols-5">
+    <div className="get-diamonds-stack" aria-busy="true" aria-label="Loading store">
+      <div className="get-diamonds-hero-band">
+        <div className="get-diamonds-hero get-diamonds-hero--band">
+          <div className="h-[72px] max-w-[280px] animate-pulse rounded-[10px] bg-white/[0.08]" />
+        </div>
+      </div>
+      <div className="get-diamonds-packages">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="h-[148px] animate-pulse rounded-[18px] bg-white/[0.06]"
+            className="h-[200px] animate-pulse rounded-[14px] bg-white/[0.06]"
           />
         ))}
+      </div>
+      <div className="get-diamonds-earn">
+        <div className="h-[220px] animate-pulse rounded-[14px] bg-white/[0.06]" />
+        <div className="h-[220px] animate-pulse rounded-[14px] bg-white/[0.06]" />
       </div>
     </div>
   );
@@ -908,7 +669,7 @@ function PaymentGateway({
               disabled={submitting}
               onChange={(e) => setCardName(e.target.value)}
               placeholder="Jane Collector"
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-[15px] text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
             />
           </label>
 
@@ -925,7 +686,7 @@ function PaymentGateway({
               disabled={submitting}
               onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
               placeholder="4242 4242 4242 4242"
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-[15px] tracking-wide text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-base tracking-wide text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
             />
           </label>
 
@@ -943,7 +704,7 @@ function PaymentGateway({
                 disabled={submitting}
                 onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                 placeholder="MM/YY"
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-[15px] text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-base text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
               />
             </label>
             <label className="block">
@@ -961,7 +722,7 @@ function PaymentGateway({
                   setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
                 }
                 placeholder="123"
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-[15px] text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
+                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-base text-slate-900 outline-none ring-sky-400 placeholder:text-slate-300 focus:ring-2 disabled:opacity-60"
               />
             </label>
           </div>
@@ -1002,9 +763,11 @@ function PaymentGateway({
 }
 
 function StatusOverlay({ title, body }: { title: string; body: string }) {
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="absolute inset-0 z-40 grid place-items-center bg-black/55 px-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[1100] grid place-items-center bg-black/55 px-6 backdrop-blur-[2px]"
       role="status"
       aria-live="polite"
     >
@@ -1013,7 +776,8 @@ function StatusOverlay({ title, body }: { title: string; body: string }) {
         <p className="mt-4 text-[15px] font-semibold">{title}</p>
         <p className="mt-1 max-w-[240px] text-[12px] text-white/45">{body}</p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1104,11 +868,18 @@ function ModalShell({
       if (event.key === "Escape") onDismiss();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onDismiss]);
 
-  return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-black/70 px-6 backdrop-blur-sm">
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/70 px-6 backdrop-blur-sm">
       <div
         role="dialog"
         aria-modal="true"
@@ -1116,6 +887,7 @@ function ModalShell({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

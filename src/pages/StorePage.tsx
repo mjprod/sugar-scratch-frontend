@@ -1,7 +1,10 @@
-import { useAuth } from "@/contexts/AuthContext";
+import "@/components/store/StoreScreen.css";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
+import { useGoBack } from "@/hooks/useGoBack";
 import { isDemoMode } from "@/lib/demo";
+import { Paths } from "@/routes/Paths";
 import {
   addUnopenedFromPurchase,
   peekNewestUnopenedInstance,
@@ -9,15 +12,17 @@ import {
   upsertInstancesFromApi,
 } from "@/services/packInventory";
 import type { RedeemReward } from "@/services/redeem";
+import { exchangeCoinsForDiamonds } from "@/services/store";
 
 export function StorePage() {
+  const goBackToProfile = useGoBack(Paths.profile);
   const {
-    closeSecondary,
     openPurchase,
     bumpInventoryRevision,
     setPurchasedPacks,
   } = useAuth();
-  const { addCoins, addDiamonds, refreshWallet } = useWallet();
+  const { addCoins, addDiamonds, applyWallet, coins, diamonds, refreshWallet } =
+    useWallet();
 
   async function onPackReward(
     reward: Extract<RedeemReward, { type: "free_pack" }>,
@@ -69,7 +74,17 @@ export function StorePage() {
 
   return (
     <StoreScreen
-      onBack={() => closeSecondary("store")}
+      coinBalance={coins}
+      onCoinExchange={async (diamondAmount, coinCost) => {
+        const result = await exchangeCoinsForDiamonds(
+          { diamonds: diamondAmount, coins: coinCost },
+          { diamonds, coins },
+        );
+        if (result.status !== "success") return false;
+        applyWallet({ diamonds: result.diamonds, coins: result.coins });
+        return true;
+      }}
+      onBack={goBackToProfile}
       onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
         addDiamonds(gained);
         addCoins(gainedCoins);

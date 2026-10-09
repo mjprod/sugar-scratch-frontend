@@ -1,18 +1,17 @@
-import { useNavigate } from "react-router-dom";
-import { saveSwipePreferences } from "@/services/recommendation";
-import { useAuth } from "@/contexts/AuthContext";
-import { Paths } from "@/routes/Paths";
+import "@/components/recommend/PersonalizationSwipeScreen.css";
+import { markRecommendationExplicitCompleted, saveSwipePreferences } from "@/services/recommendation";
+import { useAuth } from "@/contexts/useAuth";
 import { PersonalizationSwipeScreen } from "@/components/recommend/PersonalizationSwipeScreen";
 
 export function RecSwipePage() {
-  const navigate = useNavigate();
-  const { setPendingAfterRecFromSwipe } = useAuth();
+  const { finishRecommendationAndResume, setPendingAfterRecFromSwipe } = useAuth();
   return (
     <PersonalizationSwipeScreen
       onContinue={(result) => {
         saveSwipePreferences(result);
         setPendingAfterRecFromSwipe(result.liked, result.passed);
-        navigate(Paths.recommendDone);
+        markRecommendationExplicitCompleted();
+        finishRecommendationAndResume();
       }}
     />
   );

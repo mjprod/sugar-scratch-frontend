@@ -1,13 +1,12 @@
-import { useEffect, useLayoutEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useLayoutEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
-import { GameExitConfirmModal } from "@/features/game/GameExitConfirmModal";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
-import { motionCardIdFromPhotoScratchId } from "@/features/collection/lib/photoSlots";
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
-import { Paths } from "@/routes/Paths";
-import { useAuth } from "@/contexts/AuthContext";
+import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   loadGameSession,
@@ -17,10 +16,8 @@ import {
 import "@/features/game/game.css";
 
 export function PhotoScratchPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
-  const { addDiamonds } = useWallet();
+  const { addCoins, addDiamonds } = useWallet();
   const { bumpInventoryRevision } = useAuth();
 
   useLayoutEffect(() => {
@@ -43,10 +40,15 @@ export function PhotoScratchPage() {
   }, [scratchCss]);
 
   const card = searchParams.get("card")?.trim();
-  const model = searchParams.get("model")?.trim() || "";
   const gameMode = searchParams.get("game") === "1";
+  const freePlay = searchParams.get("freeplay") === "1";
 
-  function leaveGameForCollection() {
+  // Leave from the pause overlay — progress is saved, so no second confirm.
+  function leaveGame() {
+    if (!gameMode) {
+      memoryNavigate(gameReturnHrefFromSearch());
+      return;
+    }
     const session = loadGameSession();
     // TOTAL WIN / last-card overlay: settle credit + collection before leaving.
     if (
@@ -57,46 +59,28 @@ export function PhotoScratchPage() {
           session.completedPhotoIds.includes(id),
         ))
     ) {
-      settleDonePhotoHand(addDiamonds);
+      settleDonePhotoHand(addDiamonds, addCoins);
       bumpInventoryRevision();
     } else {
       persistGameProgress();
     }
-    setExitConfirmOpen(false);
-    navigate(Paths.collection);
+    memoryNavigate(gameReturnHrefFromSearch());
   }
 
   return (
-    <div className="app-shell app-shell--game">
-      <div className="stage-game">
-        <button
-          type="button"
-          className="stage-game__exit"
-          data-tutorial-target="collection"
-          aria-label={gameMode ? "Leave game" : "Back to collection"}
-          onClick={() => {
-            if (gameMode) {
-              setExitConfirmOpen(true);
-              return;
-            }
-            const motionCardId = card
-              ? motionCardIdFromPhotoScratchId(card)
-              : "";
-            navigate(collectionReturnHref(model, motionCardId));
-          }}
-        >
-          ‹
-        </button>
-        <PhotoScratch key={card || "default"} />
-        <FirstPlayTutorial scene="foil" />
-        <GameExitConfirmModal
-          open={exitConfirmOpen}
-          copy="Your progress is saved. Continue scratching whenever you're ready."
-          onStay={() => setExitConfirmOpen(false)}
-          onExit={leaveGameForCollection}
-        />
+    <PaidCardPlayGate
+      kind="photo"
+      cardId={card || ""}
+      skip={gameMode || freePlay}
+      onLeave={leaveGame}
+    >
+      <div className="app-shell app-shell--game">
+        <div className="stage-game">
+          <PhotoScratch key={`${card || "default"}-${freePlay ? "free" : "paid"}`} onLeave={leaveGame} />
+          <FirstPlayTutorial scene="foil" />
+        </div>
       </div>
-    </div>
+    </PaidCardPlayGate>
   );
 }
 

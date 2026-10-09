@@ -51,9 +51,9 @@ const DEMO_CODES: Record<
     kind: "ok",
     reward: {
       type: "free_pack",
-      packId: "ep1",
+      packId: "mina-pack",
       creatorHandle: "Mina",
-      sceneName: "Neon Rain",
+      sceneName: "Starter",
     },
   },
   WELCOME100: { kind: "error", errorType: "already_redeemed" },
@@ -88,6 +88,14 @@ function writeHistoryCodes(codes: string[]) {
 function markRedeemed(code: string) {
   const next = [code, ...readHistoryCodes().filter((c) => c !== code)];
   writeHistoryCodes(next);
+}
+
+export function clearRedeemHistory() {
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** `?demo=1` only — offline fixture catalog when the API is unreachable. */

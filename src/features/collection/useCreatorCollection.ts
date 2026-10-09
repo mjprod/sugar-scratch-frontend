@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  fetchCards,
   fetchCollectionCatalogPaginated,
   type BackendCollectionCatalog,
   type BackendCollectionGroup,
@@ -95,7 +96,7 @@ function themeChipFromGroup(
       themeIdOf(group),
     collected: Math.min(filled, total),
     total,
-    coverUrl: themeCoverUrl(group) || "/img/placeholder.png",
+    coverUrl: themeCoverUrl(group) || "/img/placeholder.webp",
     avatarUrl: group.avatarUrl,
   };
 }
@@ -134,6 +135,9 @@ export function useCreatorCollection(
 ): CreatorCollectionState {
   const catalogCtx = useCatalog();
   const [catalog, setCatalog] = useState<BackendCollectionCatalog | null>(null);
+  const [motionTemplateIds, setMotionTemplateIds] = useState<Set<string> | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -174,12 +178,39 @@ export function useCreatorCollection(
     };
   }, [catalogCtx.productSharedMedia.girlName, modelId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCards().then((cards) => {
+      if (cancelled || !cards) return;
+      const ids = new Set<string>();
+      for (const card of cards) {
+        const motion =
+          card.foreground?.trim() || card.background?.trim() || "";
+        if (card.id && motion) ids.add(card.id);
+      }
+      setMotionTemplateIds(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [modelId]);
+
   return useMemo(() => {
     const { themes, groupByThemeId } = buildThemes(catalog, modelId);
-    const backendGroups =
+    const backendGroups = (
       catalog?.groups.filter(
         (group) => !modelId || group.modelId === modelId,
-      ) ?? [];
+      ) ?? []
+    ).map((group) => ({
+      ...group,
+      cards: group.cards.map((card) => ({
+        ...card,
+        motionUrl:
+          card.motionUrl?.trim() ||
+          (motionTemplateIds?.has(card.id) ? card.id : "") ||
+          null,
+      })),
+    }));
     const overlay = cardFaceOverlayFromShared(
       catalogCtx.resolveProductSharedMedia(modelId),
     );
@@ -204,8 +235,12 @@ export function useCreatorCollection(
         cardsByThemeId[theme.id] = [];
         continue;
       }
+      const memberIds = new Set(group.cards.map((card) => card.id));
       cardsByThemeId[theme.id] = deck.cards.filter(
-        (card) => card.groupId === group.id,
+        (card) =>
+          memberIds.has(card.id) ||
+          card.groupId === group.id ||
+          card.groupId === theme.id,
       );
     }
 
@@ -219,7 +254,7 @@ export function useCreatorCollection(
       cardsByThemeId,
       groupByThemeId,
     };
-  }, [catalog, catalogCtx, loading, modelId]);
+  }, [catalog, catalogCtx, loading, modelId, motionTemplateIds]);
 }
 
 export type { CardConfig };

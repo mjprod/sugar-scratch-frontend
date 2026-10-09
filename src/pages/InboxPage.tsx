@@ -1,5 +1,8 @@
-import { useAuth } from "@/contexts/AuthContext";
+import "@/components/inbox/InboxScreen.css";
+import { useAuth } from "@/contexts/useAuth";
 import { InboxScreen } from "@/components/inbox/InboxScreen";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
+import { Paths } from "@/routes/Paths";
 import type { InboxMessage } from "@/services/inbox";
 
 export function InboxPage() {
@@ -13,11 +16,11 @@ export function InboxPage() {
         return;
       }
       if (cta.action === "open_pack" || cta.action === "view_pack") {
-        requestTab("bag");
+        memoryNavigate(Paths.collection);
         return;
       }
       if (cta.action === "view_reward") {
-        requestTab("hub");
+        openStore();
         return;
       }
     }

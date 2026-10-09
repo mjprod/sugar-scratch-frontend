@@ -5,7 +5,7 @@ import {
   type ModelRotation,
   type VideoFitMode,
   type VideoTextureTransform,
-} from "@/shared/pack3d";
+} from "@/lib/pack3d";
 
 export type AssetSource = "bundled" | "upload";
 export type { VideoFitMode, VideoTextureTransform, ModelRotation };
@@ -48,6 +48,8 @@ export interface Iteration {
   modelSource: AssetSource;
   modelUrl: string;
   videoUrl: string;
+  /** Pack-face still from the API; used before the video is attached. */
+  posterUrl?: string;
   createdAt: number;
   videoSource: AssetSource;
   fitMode: VideoFitMode;
@@ -64,6 +66,11 @@ export interface Iteration {
   overlayColorStart?: string;
   overlayColorEnd?: string;
   backgroundColor: string;
+  /**
+   * Influencer stage backdrop (API `coverUrl` → swipe poster → pack poster).
+   * Used by home-version2 / coverflow hero backgrounds.
+   */
+  backgroundImageUrl?: string;
 }
 
 export function formatPackCollectionLabel(girlName: string): string {
@@ -94,6 +101,7 @@ export type PackItem = {
   modelUrl: string;
   modelName: string;
   videoUrl: string;
+  posterUrl?: string;
   price: number;
   originalPrice?: number | null;
   girlName: string;
@@ -106,6 +114,7 @@ export type PackItem = {
   overlayColorStart?: string;
   overlayColorEnd?: string;
   backgroundColor: string;
+  backgroundImageUrl?: string;
 };
 
 export function packItemToIteration(item: PackItem): Iteration {
@@ -119,6 +128,7 @@ export function packItemToIteration(item: PackItem): Iteration {
     modelAnchor: { ...DEFAULT_MODEL_ROTATION_ANCHOR },
     modelRotation: { ...DEFAULT_MODEL_ROTATION },
     videoUrl: item.videoUrl,
+    posterUrl: item.posterUrl?.trim() || undefined,
     videoSource: "bundled",
     fitMode: PACK_VIDEO_FIT_MODE,
     textureTransform: { ...DEFAULT_VIDEO_TEXTURE_TRANSFORM },
@@ -136,5 +146,6 @@ export function packItemToIteration(item: PackItem): Iteration {
     overlayColorStart: item.overlayColorStart,
     overlayColorEnd: item.overlayColorEnd,
     backgroundColor: item.backgroundColor,
+    backgroundImageUrl: item.backgroundImageUrl?.trim() || undefined,
   };
 }

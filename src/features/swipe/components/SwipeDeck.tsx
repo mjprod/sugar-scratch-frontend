@@ -155,8 +155,14 @@ type StampFinish = {
   fallMs?: number
 }
 
-/** Render one extra under-card so its video is warm before it peeks in. */
+/** Render one extra under-card so its face is warm before it peeks in. */
 const MOUNTED_STACK = VISIBLE_STACK + 1
+/**
+ * Max concurrent <video> mounts (front + one warm neighbor).
+ * Deeper stack cards stay on API posters — iOS chokes on a full video pile.
+ * Only the live front (and a leaving flyer) actually call play().
+ */
+const MAX_MOUNTED_VIDEOS = 2
 
 const dragFollow = { tension: 500, friction: 40, precision: 0.01 }
 const settle = { tension: 240, friction: 22, mass: 1.05 }
@@ -1417,13 +1423,17 @@ export function SwipeDeck({
               isFront={isFront}
               // Only depth 0 uses this; behind cards stay flat until promote.
               restRot={heroRestRot}
-              // Warm the next two under-cards so promote doesn't flash a cold <video>.
-              playing={
+              // Mount ≤2 decoders (front + warm next). Only the live front and a
+              // leaving flyer actually play — avoids iOS dual-autoplay first-land fails.
+              // When leave flight ends the flyer unmounts and SwipeCard hard-releases
+              // its decoder (src cleared + load) so swiped clips don't keep iOS buffers.
+              mountVideo={
                 isLeaving ||
-                stackIndex === 0 ||
-                stackIndex === 1 ||
-                stackIndex === 2
+                (stackIndex >= 0 &&
+                  stackIndex <
+                    (leaving ? MAX_MOUNTED_VIDEOS - 1 : MAX_MOUNTED_VIDEOS))
               }
+              playing={isLeaving || isFront}
               drag={isFront ? { x, y, rot, scale } : undefined}
               leave={
                 isLeaving

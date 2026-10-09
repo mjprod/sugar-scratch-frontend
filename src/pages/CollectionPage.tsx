@@ -1,8 +1,14 @@
+import "@/components/collection/CollectionPage.css";
+import { useEffect } from "react";
 import { CollectionPage as CollectionView } from "@/components/collection/CollectionPage";
+import { requestWalletReveal, takeCoinReceipt } from "@/services/coinReceipt";
 import type { ScratchReadyGroup } from "@/services/collection";
 import type { PurchaseFlowPack } from "@/services/purchase";
 import { trackScratchEvent } from "@/services/readyToScratch";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
+
+/** Lets the nav mount (full reload) and the page settle before the popover opens. */
+const COIN_RECEIPT_REVEAL_DELAY_MS = 450;
 
 function CollectionScreen({
   onOpenCreator,
@@ -36,6 +42,15 @@ export function CollectionPage() {
     inventoryRevision,
     requireAuth,
   } = useAuth();
+
+  useEffect(() => {
+    // Take inside the timer so a StrictMode re-run doesn't drop the receipt.
+    const timer = window.setTimeout(() => {
+      const coins = takeCoinReceipt();
+      if (coins > 0) requestWalletReveal(coins);
+    }, COIN_RECEIPT_REVEAL_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <CollectionScreen

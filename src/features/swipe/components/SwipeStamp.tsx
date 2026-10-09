@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { DotLottieReact, type DotLottie } from '@lottiefiles/dotlottie-react'
+import '@/lib/lottie/setupWasm'
 import { lottieRenderConfig } from '@/utils/lottieRender'
 import { COMMIT_FINISH_MS, type StampTransform } from '../constants/swipeFeedback'
 

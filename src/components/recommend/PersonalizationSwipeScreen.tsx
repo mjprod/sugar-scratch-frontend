@@ -1,4 +1,6 @@
 import { animated, useSpring } from "@react-spring/web";
+import { ChevronRight } from "lucide-react";
+import { PersonalizationCompleteScreen } from "@/components/recommend/PersonalizationCompleteScreen";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SwipeCircle } from "@/features/swipe/components/SwipeCircle";
 import { SwipeDeck } from "@/features/swipe/components/SwipeDeck";
@@ -17,16 +19,25 @@ import {
   createSwipeDeckFromModels,
 } from "@/shared/backend/modelProfile";
 import "@/features/swipe/swipe.css";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 export type PersonalizationSwipeResult = {
   liked: string[];
   passed: string[];
 };
 
+/** Swipes needed before Continue appears (fewer if the deck is shorter). */
+const SWIPE_DECISION_GOAL = 4;
+
+/**
+ * Passed so SwipeDeck skips its own "No more cards" interstitial; the footer
+ * Continue is the only way forward, even once the stack is empty.
+ */
+function noop() {}
+
 /**
  * Incoming home swipe deck, used as Recommendation Initialization.
- * Advances when the stack empties (no interstitial empty screen).
+ * Advances only via the footer Continue once enough cards are decided.
  */
 export function PersonalizationSwipeScreen({
   onContinue,
@@ -36,13 +47,26 @@ export function PersonalizationSwipeScreen({
   const [deck, setDeck] = useState<SwipeCardData[]>([]);
   const [productReady, setProductReady] = useState(false);
   const [mediaReady, setMediaReady] = useState(false);
+  /**
+   * Mount the live deck only after the stage is visible.
+   * iOS rejects muted autoplay for <video> created under opacity:0, and then
+   * will not start until a user gesture — which matched "plays only after touch".
+   */
+  const [deckMounted, setDeckMounted] = useState(false);
   useMarkPageReady(productReady && mediaReady);
   const [liked, setLiked] = useState<string[]>([]);
   const [passed, setPassed] = useState<string[]>([]);
+  const decisions = liked.length + passed.length;
+  // Short decks (e.g. the one-card fallback) must still unlock Continue.
+  const decisionGoal = Math.max(1, Math.min(SWIPE_DECISION_GOAL, deck.length));
+  const progress = Math.min(1, decisions / decisionGoal);
+  const canContinue = decisions >= decisionGoal;
+  const deckEmpty = deck.length > 0 && decisions >= deck.length;
   const likedRef = useRef(liked);
   const passedRef = useRef(passed);
   likedRef.current = liked;
   passedRef.current = passed;
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +96,7 @@ export function PersonalizationSwipeScreen({
 
   useEffect(() => {
     setMediaReady(false);
+    setDeckMounted(false);
   }, [deckSignature]);
 
   const handleMediaReady = useCallback(() => setMediaReady(true), []);
@@ -90,11 +115,69 @@ export function PersonalizationSwipeScreen({
     else setPassed((prev) => [...prev, id]);
   }, []);
 
+  // Snap stage fully visible first, then mount videos on the next frames so
+  // WebKit never evaluates autoplay against an opacity-0 ancestor.
   const stageStyle = useSpring({
     opacity: mediaReady ? 1 : 0,
     scale: mediaReady ? 1 : STACK_DISSOLVE_SCALE,
     config: STACK_DISSOLVE_SPRING,
+    immediate: mediaReady,
   });
+
+  useEffect(() => {
+    if (!mediaReady) {
+      setDeckMounted(false);
+      return;
+    }
+
+    let cancelled = false;
+    let outer = 0;
+    let inner = 0;
+
+    outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        if (!cancelled) setDeckMounted(true);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(outer);
+      window.cancelAnimationFrame(inner);
+    };
+  }, [mediaReady]);
+
+  // The card paints past the deck box, so a --card-h offset still overlaps it.
+  // Pin the footer to the front card's real bottom edge instead.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const sync = () => {
+      const card = stage.querySelector(".swipe-card");
+      if (!card) {
+        stage.style.removeProperty("--rec-card-bottom");
+        return;
+      }
+      const stageBox = stage.getBoundingClientRect();
+      const cardBox = card.getBoundingClientRect();
+      stage.style.setProperty(
+        "--rec-card-bottom",
+        `${cardBox.bottom - stageBox.top}px`,
+      );
+    };
+
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(stage);
+    const deck = stage.querySelector(".swipe-deck");
+    if (deck) observer.observe(deck);
+    window.addEventListener("resize", sync);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, [deckMounted, deckEmpty]);
 
   if (!productReady) return null;
 
@@ -102,7 +185,48 @@ export function PersonalizationSwipeScreen({
     <StackBacksDebugProvider>
       <SwipeCircleDebugProvider>
         <NopeTintDebugProvider>
-          <div className="stage-swipe auth7-rec-swipe">
+          <div
+            ref={stageRef}
+            className={`stage-swipe auth7-rec-swipe${deckEmpty ? " is-deck-empty" : ""}`}
+          >
+            <div
+              className="auth7-rec-swipe-done"
+              aria-hidden={deckEmpty ? undefined : true}
+            >
+              <PersonalizationCompleteScreen
+                onStart={() => onContinue(snapshot())}
+              />
+            </div>
+            <div className="auth7-rec-swipe-footer">
+              <div
+                className="auth7-rec-swipe-bar"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={decisionGoal}
+                aria-valuenow={Math.min(decisions, decisionGoal)}
+                aria-label="Swipe progress"
+              >
+                <div
+                  className="auth7-rec-swipe-bar-fill"
+                  style={{ transform: `scaleX(${progress})` }}
+                />
+              </div>
+              {canContinue ? (
+                <button
+                  type="button"
+                  className="auth7-rec-swipe-continue"
+                  onClick={() => onContinue(snapshot())}
+                >
+                  <span className="auth7-rec-swipe-continue-hint">
+                    Keep swiping to continue personalising or…
+                  </span>
+                  <span className="auth7-rec-swipe-continue-label">
+                    Continue to Home
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </span>
+                </button>
+              ) : null}
+            </div>
             <SwipeCircle />
             <div className="home">
               <VideoPreloader cards={deck} onReady={handleMediaReady} />
@@ -116,13 +240,15 @@ export function PersonalizationSwipeScreen({
                   pointerEvents: mediaReady ? "auto" : "none",
                 }}
               >
-                <SwipeDeck
-                  key={deckSignature}
-                  initialCards={deck}
-                  playSwipeHint={mediaReady}
-                  onSwipe={handleSwipe}
-                  onEmpty={() => onContinue(snapshot())}
-                />
+                {deckMounted ? (
+                  <SwipeDeck
+                    key={deckSignature}
+                    initialCards={deck}
+                    playSwipeHint
+                    onSwipe={handleSwipe}
+                    onEmpty={noop}
+                  />
+                ) : null}
               </animated.div>
             </div>
           </div>

@@ -1,71 +1,154 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { X } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import "@/components/auth/VerifyEmailModal.css";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import { ChevronLeft } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import {
+  confirmVerificationCode,
+  requestVerificationEmail,
+  resendCooldownLabel,
+  verificationCodeFailureMessage,
+  verificationSendFailureMessage,
+} from "@/services/auth";
 
 /**
- * Permission System — Email verification modal.
- * Shown only when an unverified email user hits a purchase-gated action.
+ * Permission System — Email verification sheet.
+ * Shown after email registration, and when an unverified user hits a purchase-gated action.
+ * Layout matches AuthenticationSheet (create account / log in).
  */
 export function VerifyEmailModal({
   open,
   email,
-  onLater,
+  fromRegister = false,
+  onBack,
   onVerified,
-  onEmailChanged,
 }: {
   open: boolean;
   email: string;
-  onLater: () => void;
+  /** After Create Account: back returns to create. After login: back dismisses. */
+  fromRegister?: boolean;
+  onBack: () => void;
   onVerified: () => void;
-  onEmailChanged?: (email: string) => void;
 }) {
   const reduce = useReducedMotion();
   const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const initialSendStartedRef = useRef(false);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [changing, setChanging] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+
+  const busy = sending || submitting;
+  const resendLocked = busy || resendCooldown > 0;
 
   useEffect(() => {
     if (!open) {
       setSending(false);
-      setSent(false);
-      setChanging(false);
-      setNewEmail("");
-      setPassword("");
+      setResendCooldown(0);
+      setSubmitting(false);
+      setCode("");
+      setError("");
+      initialSendStartedRef.current = false;
     }
   }, [open]);
 
+  // AC-VE-002: on first open, send once — unless register already sent a code.
+  // Lock Resend while in flight; no cooldown yet.
   useEffect(() => {
     if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onLater();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onLater]);
-
-  async function sendVerify() {
+    if (initialSendStartedRef.current) return;
+    initialSendStartedRef.current = true;
+    if (fromRegister) return;
     setSending(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSending(false);
-    setSent(true);
-    // Prototype: simulate successful verification after send.
-    await new Promise((r) => setTimeout(r, 500));
-    onVerified();
+    void requestVerificationEmail()
+      .then(({ ok }) => {
+        if (!ok) setError(verificationSendFailureMessage());
+      })
+      .finally(() => {
+        setSending(false);
+      });
+  }, [open, fromRegister]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = window.setTimeout(
+      () => setResendCooldown((s) => Math.max(0, s - 1)),
+      1000,
+    );
+    return () => window.clearTimeout(id);
+  }, [resendCooldown]);
+
+  // Initial focus once when the sheet opens — never on cooldown ticks.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      panelRef.current
+        ?.querySelector<HTMLElement>("input:not([disabled])")
+        ?.focus();
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  // ONB-006: keep keyboard focus inside the verify sheet while open.
+  // Query focusables on each Tab so disabled/resend state stays live without
+  // re-running (and re-focusing) every cooldown second.
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab" || !panel) return;
+      const focusables = [
+        ...panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusables.length === 0) return;
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    panel.addEventListener("keydown", onKeyDown);
+    return () => panel.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  async function resendCode() {
+    if (resendLocked) return;
+    setSending(true);
+    setError("");
+    try {
+      const { ok } = await requestVerificationEmail();
+      if (!ok) {
+        setError(verificationSendFailureMessage());
+        return;
+      }
+      setResendCooldown(45);
+    } finally {
+      setSending(false);
+    }
   }
 
-  async function changeEmail() {
-    if (!newEmail.trim() || !password) return;
-    setSending(true);
-    await new Promise((r) => setTimeout(r, 650));
-    setSending(false);
-    onEmailChanged?.(newEmail.trim());
-    setChanging(false);
-    setSent(true);
-    await new Promise((r) => setTimeout(r, 400));
+  async function submitCode(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed || busy) return;
+    setSubmitting(true);
+    setError("");
+    const { ok, message } = await confirmVerificationCode(trimmed);
+    if (!ok) {
+      setError(message?.trim() || verificationCodeFailureMessage());
+      setSubmitting(false);
+      return;
+    }
     onVerified();
   }
 
@@ -73,17 +156,14 @@ export function VerifyEmailModal({
     <AnimatePresence>
       {open ? (
         <div className="auth7-sheet-root" role="presentation">
-          <motion.button
+          <button
             type="button"
             className="auth7-sheet-backdrop"
-            aria-label="Dismiss verification"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0 : 0.2 }}
-            onClick={onLater}
+            aria-label="Verification required"
+            disabled
           />
-          <motion.div
+          <m.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
@@ -93,110 +173,93 @@ export function VerifyEmailModal({
             exit={reduce ? undefined : { opacity: 0, y: 16 }}
             transition={{ duration: 0.22 }}
           >
-            <div className="auth7-sheet-handle" aria-hidden="true" />
-            <button
-              type="button"
-              className="auth7-sheet-close"
-              aria-label="Close"
-              onClick={onLater}
-            >
-              <X className="size-5" aria-hidden />
-            </button>
+            <div className="auth7-sheet-chrome">
+              <div className="auth7-sheet-handle" aria-hidden="true" />
+              <button
+                type="button"
+                className="auth7-sheet-back"
+                aria-label={
+                  fromRegister ? "Back to create account" : "Close verification"
+                }
+                disabled={busy}
+                onClick={onBack}
+              >
+                <ChevronLeft
+                  className="size-5"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
 
-            <h2 id={titleId} className="auth7-sheet-title">
-              Verify Your Email
-            </h2>
-            <p className="auth7-sheet-copy">
-              We&apos;ve sent a verification link to:
-              <br />
-              <strong className="auth7-verify-email">{email || "your email"}</strong>
-            </p>
+            <div className="auth7-sheet-body">
+              <header className="auth7-sheet-head">
+                <h2 id={titleId} className="auth7-sheet-title">
+                  Verify Your Email
+                </h2>
+                <p className="auth7-sheet-copy">
+                  Enter the verification code we sent to:
+                  <br />
+                  <strong className="auth7-verify-email">
+                    {email || "your email"}
+                  </strong>
+                </p>
+              </header>
 
-            {changing ? (
-              <div className="auth7-sheet-form" style={{ marginTop: 16 }}>
+              <form
+                className="auth7-sheet-form"
+                onSubmit={(e) => void submitCode(e)}
+                noValidate
+              >
                 <label className="auth7-field">
-                  <span className="auth7-label">Password</span>
+                  <span className="auth7-label">Verification code</span>
                   <input
-                    type="password"
-                    autoComplete="current-password"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     className="auth7-input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Confirm password"
-                  />
-                </label>
-                <label className="auth7-field">
-                  <span className="auth7-label">New Email</span>
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    className="auth7-input"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="you@email.com"
-                  />
-                </label>
-                <div className="auth7-sheet-primary">
-                  <CtaButton
-                    {...ctaButtonPropsFromTemplate("squircleCTA")}
-                    fillParent
-                    type="button"
-                    label={sending ? "Sending…" : "Send New Verification"}
-                    costAmount={null}
-                    fontSize={15}
-                    strokeWidth={1}
-                    disabled={sending || !newEmail || !password}
-                    onClick={() => void changeEmail()}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="auth7-modal-cancel"
-                  onClick={() => setChanging(false)}
-                >
-                  Back
-                </button>
-              </div>
-            ) : (
-              <div className="auth7-modal-actions">
-                <div className="auth7-sheet-primary">
-                  <CtaButton
-                    {...ctaButtonPropsFromTemplate("squircleCTA")}
-                    fillParent
-                    type="button"
-                    label={
-                      sending
-                        ? "Sending…"
-                        : sent
-                          ? "Verified"
-                          : "Resend Email"
+                    value={code}
+                    disabled={busy}
+                    onChange={(e) =>
+                      // Cap after stripping so formatted pastes (e.g. "123-456") keep all digits.
+                      setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                     }
+                    placeholder="Enter code"
+                  />
+                </label>
+                {error ? (
+                  <p className="auth7-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <div className="auth7-sheet-primary">
+                  <CtaButton
+                    {...ctaButtonPropsFromTemplate("squircleCTA")}
+                    fillParent
+                    type="submit"
+                    label={submitting ? "Verifying…" : "Verify"}
                     costAmount={null}
                     fontSize={15}
                     strokeWidth={1}
-                    disabled={sending}
-                    onClick={() => void sendVerify()}
+                    disabled={busy || !code.trim()}
                   />
                 </div>
-                <button
-                  type="button"
-                  className="auth7-text-link is-strong"
-                  disabled={sending}
-                  onClick={() => setChanging(true)}
-                  style={{ alignSelf: "center" }}
-                >
-                  Wrong email? Change Email
-                </button>
-                <button
-                  type="button"
-                  className="auth7-modal-cancel"
-                  onClick={onLater}
-                >
-                  Later
-                </button>
-              </div>
-            )}
-          </motion.div>
+                <p className="auth7-switch">
+                  Didn&apos;t receive verification code?{" "}
+                  <button
+                    type="button"
+                    className="auth7-text-link is-strong"
+                    disabled={resendLocked}
+                    onClick={() => void resendCode()}
+                  >
+                    {sending
+                      ? "Sending…"
+                      : resendCooldownLabel(resendCooldown)}
+                  </button>
+                </p>
+              </form>
+            </div>
+          </m.div>
         </div>
       ) : null}
     </AnimatePresence>

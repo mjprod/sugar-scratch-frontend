@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useState, type PointerEvent, type ReactNode } from "react";
 import { isVideoSrc } from "@/services/models";
 
@@ -29,7 +29,7 @@ export function HolographicPackCard({
   }
 
   return (
-    <motion.div
+    <m.div
       onPointerMove={move}
       onPointerLeave={() => setLight({ x: 50, y: 35 })}
       whileHover={interactive ? { y: -6, scale: 1.02 } : undefined}
@@ -69,7 +69,7 @@ export function HolographicPackCard({
           }}
         />
         <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(115deg,transparent_0,transparent_8px,oklch(1_0_0_/_0.18)_9px,transparent_10px)]" />
-        <motion.div
+        <m.div
           className="pointer-events-none absolute -inset-y-12 w-1/3 -skew-x-12 bg-white/18 blur-xl"
           animate={{ x: ["-180%", "500%"] }}
           transition={{ duration: 3.8, repeat: Infinity, repeatDelay: 2.5, ease: "easeOut" }}
@@ -86,6 +86,6 @@ export function HolographicPackCard({
         ) : null}
         <div className="absolute inset-x-3 bottom-3 h-px bg-gradient-to-r from-transparent via-white/55 to-transparent" />
       </div>
-    </motion.div>
+    </m.div>
   );
 }

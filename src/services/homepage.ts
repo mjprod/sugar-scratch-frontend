@@ -12,23 +12,27 @@ import {
   MODEL_PACK_PHOTOS,
   PACK_PHOTOS,
 } from "../lib/photos";
-import { getCollectionPageState } from "./collectionState";
+import { getCollectionPageState, fetchCollectionPageStateRemote } from "./collectionState";
+import type { CreatorProgress } from "./collection";
 import { isDemoMode } from "../lib/demo";
 import { canonicalThemeKey, resolveCollectionThemeLabel } from "./collection";
 import {
   formatCollectionLabel,
   loadModels,
+  modelAvatarUrl,
   modelDisplayName,
   modelId,
-  normalizeMediaUrl,
   profileFromModel,
   type BackendModel,
 } from "./models";
+import { normalizeMediaUrl } from "../lib/mediaUrl";
+import { feedPosterUrl } from "./creatorFeed";
 import {
   fetchCards,
   type BackendCard,
 } from "../shared/backend/collection";
 import { loadPackCatalog, packUnitCost } from "./purchase";
+import { listOwnedPacks } from "./packInventory";
 
 const NEW_MODEL_WINDOW_SEC = 14 * 24 * 60 * 60;
 
@@ -47,6 +51,8 @@ export type FeaturedPack = {
   collectionName: string;
   themeName: string;
   coverImageUrl: string;
+  /** API pack-face still; prefer over decoding video for list tiles. */
+  posterUrl?: string;
   price: Price;
   diamondCost: number;
   collected: number;
@@ -126,14 +132,15 @@ export type ContinueCollectingItem = {
   badge?: "NEW" | "Almost Complete" | "Reward Ready";
 };
 
-export type LeaderboardCategory =
-  | "all"
+/** Rank filter chips. */
+export type LeaderboardCategory = "purchased" | "hot" | "all" | "new";
+
+export type LeaderboardTheme =
+  | "police"
   | "teacher"
   | "nurse"
-  | "maid"
-  | "bikini"
-  | "office"
-  | "student";
+  | "gym"
+  | "firefighter";
 
 export type LeaderboardRow = {
   rank: number;
@@ -149,7 +156,8 @@ export type LeaderboardRow = {
   price: Price;
   /** Pack Diamond cost — same currency used by Purchase / Featured. */
   diamondCost: number;
-  category: Exclude<LeaderboardCategory, "all">;
+  category: LeaderboardTheme;
+  createdAt?: number;
 };
 
 export type HomepageData = {
@@ -158,19 +166,33 @@ export type HomepageData = {
   leaderboard: LeaderboardRow[];
 };
 
+/** Split strip: in-progress vs never-collected creators. */
+export function splitContinueCollectingItems(items: ContinueCollectingItem[]): {
+  continueCollecting: ContinueCollectingItem[];
+  justDropIn: ContinueCollectingItem[];
+} {
+  const continueCollecting: ContinueCollectingItem[] = [];
+  const justDropIn: ContinueCollectingItem[] = [];
+  for (const item of items) {
+    if (item.collected > 0) {
+      continueCollecting.push({ ...item, isNew: false });
+    } else {
+      justDropIn.push({ ...item, isNew: true });
+    }
+  }
+  return { continueCollecting, justDropIn };
+}
+
 export function formatPrice(price: Price) {
   if (price.currency === "SC") return `${price.amount} SC`;
   return `$${price.amount.toFixed(2)}`;
 }
 
 export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "teacher", label: "Teacher" },
-  { id: "nurse", label: "Nurse" },
-  { id: "maid", label: "Maid" },
-  { id: "bikini", label: "Bikini" },
-  { id: "office", label: "Office" },
-  { id: "student", label: "Student" },
+  { id: "purchased", label: "Purchased" },
+  { id: "hot", label: "🔥 Hot" },
+  { id: "all", label: "All Time" },
+  { id: "new", label: "New" },
 ];
 
 const FEATURED: FeaturedPack[] = [
@@ -368,14 +390,20 @@ function normalizeCreatorKey(value: string) {
 
 type LedgerProgress = { id: string; name: string; collected: number };
 
-/** Index ledger rows by id, display-name slug, and collapsed alphanumeric keys. */
+/** Index ledger rows by id, display-name slug, and collapsed alphanumeric keys.
+ * When keys collide, keep the row with more collected cards.
+ */
 function indexLedgerProgress(creators: LedgerProgress[]) {
   const index = new Map<string, LedgerProgress>();
   const add = (raw: string, entry: LedgerProgress) => {
     const key = raw.trim();
-    if (key && !index.has(key)) index.set(key, entry);
-    const normalized = normalizeCreatorKey(key);
-    if (normalized && !index.has(normalized)) index.set(normalized, entry);
+    const consider = (k: string) => {
+      if (!k) return;
+      const prev = index.get(k);
+      if (!prev || entry.collected > prev.collected) index.set(k, entry);
+    };
+    consider(key);
+    consider(normalizeCreatorKey(key));
   };
   for (const creator of creators) {
     add(creator.id, creator);
@@ -414,13 +442,15 @@ function ledgerForModel(
 export function continueCollectingFromModels(
   models: BackendModel[],
   cards: BackendCard[] | null,
+  remoteCreators?: CreatorProgress[] | null,
 ): ContinueCollectingItem[] {
   if (!models.length) return [];
 
   const counts = cardCountsByModel(cards);
-  const ledgerByKey = indexLedgerProgress(
-    getCollectionPageState().continueCreators,
-  );
+  const ledgerByKey = indexLedgerProgress([
+    ...(remoteCreators ?? []),
+    ...getCollectionPageState().continueCreators,
+  ]);
   const nowSec = Date.now() / 1000;
 
   const items = models.map((model, index) => {
@@ -428,12 +458,12 @@ export function continueCollectingFromModels(
     const name = modelDisplayName(model);
     const total = counts.get(id) ?? 0;
     const ledger = ledgerForModel(ledgerByKey, model, id, name);
-    const collected =
-      total > 0
-        ? Math.min(total, Math.max(0, ledger?.collected ?? 0))
-        : 0;
+    const collected = Math.max(0, ledger?.collected ?? 0);
+    const capped =
+      total > 0 ? Math.min(total, collected) : collected;
+    const resolvedTotal = total > 0 ? total : capped;
     const percent =
-      total > 0 ? Math.round((collected / total) * 100) : 0;
+      resolvedTotal > 0 ? Math.round((capped / resolvedTotal) * 100) : 0;
     const avatarRaw = model.avatar?.trim() ?? "";
     const avatarUrl = avatarRaw
       ? normalizeMediaUrl(avatarRaw)
@@ -442,8 +472,8 @@ export function continueCollectingFromModels(
       creatorId: id,
       creatorName: name,
       avatarUrl,
-      collected,
-      total,
+      collected: capped,
+      total: resolvedTotal,
       percent,
       isNew: isNewModel(model, nowSec),
     } satisfies ContinueCollectingItem;
@@ -457,37 +487,43 @@ export function continueCollectingFromModels(
 
 async function loadContinueCollecting(): Promise<ContinueCollectingItem[]> {
   try {
-    const [models, cards] = await Promise.all([
+    const [models, cards, remote] = await Promise.all([
       loadModels().catch(() => [] as BackendModel[]),
       fetchCards().catch(() => null),
+      fetchCollectionPageStateRemote().catch(() => null),
     ]);
-    return continueCollectingFromModels(models, cards);
+    return continueCollectingFromModels(
+      models,
+      cards,
+      remote?.continueCreators ?? null,
+    );
   } catch {
     return [];
   }
 }
 
-function themeToLeaderboardCategory(
-  themeName: string,
-): Exclude<LeaderboardCategory, "all"> {
+function themeToLeaderboardCategory(themeName: string): LeaderboardTheme {
   const key = canonicalThemeKey(themeName);
-  const table: Record<string, Exclude<LeaderboardCategory, "all">> = {
+  const table: Record<string, LeaderboardTheme> = {
+    police: "police",
     teacher: "teacher",
     nurse: "nurse",
-    maid: "maid",
-    bikini: "bikini",
-    office: "office",
-    student: "student",
-    police: "office",
-    firegirl: "student",
-    fire: "student",
-    gym: "student",
+    gym: "gym",
+    fitness: "gym",
+    firefighter: "firefighter",
+    firegirl: "firefighter",
+    fire: "firefighter",
+    // Legacy demo theme names → nearest Figma chip.
+    office: "police",
+    maid: "nurse",
+    bikini: "gym",
+    student: "gym",
   };
   if (table[key]) return table[key];
   for (const [needle, category] of Object.entries(table)) {
     if (key.includes(needle)) return category;
   }
-  return "student";
+  return "police";
 }
 
 /** Map `/api/models` foil packs → leaderboard rows (live prototype). */
@@ -536,6 +572,7 @@ export function leaderboardFromModels(
         price: { amount: diamondCost, currency: "SC" },
         diamondCost,
         category: themeToLeaderboardCategory(themeName),
+        createdAt: created,
       });
     }
   }
@@ -590,8 +627,10 @@ export function packLibraryFromModels(
         foil.label?.trim() && !/^pack\s/i.test(foil.label)
           ? foil.label.trim()
           : `${creatorName} Pack`;
-      // Prefer API pack-face media (video/image); avatar only as fallback.
-      const coverImageUrl = foil.videoUrl?.trim() || avatarCover;
+      const videoUrl = foil.videoUrl?.trim() || "";
+      const posterUrl = foil.posterUrl?.trim() || "";
+      // Prefer pack-face video when present (motion tiles); poster / avatar fallback.
+      const coverImageUrl = videoUrl || posterUrl || avatarCover;
 
       packs.push({
         id: foil.id,
@@ -602,6 +641,7 @@ export function packLibraryFromModels(
         collectionName: formatCollectionLabel(creatorName).toUpperCase(),
         themeName,
         coverImageUrl,
+        posterUrl: posterUrl || undefined,
         price: { amount: diamondCost, currency: "SC" },
         diamondCost,
         collected: 0,
@@ -641,9 +681,10 @@ function row(
   packName: string,
   creatorName: string,
   themeName: string,
-  category: Exclude<LeaderboardCategory, "all">,
+  category: LeaderboardTheme,
   purchaseCount: number,
   amount: number,
+  createdAt = 0,
 ): LeaderboardRow {
   const diamondCost = diamondCostForPackId(packId, amount);
   return {
@@ -652,26 +693,27 @@ function row(
     packName,
     creatorName,
     themeName,
-    thumbnailUrl: PACK_PHOTOS[packId] ?? PACK_PHOTOS.ep1,
+    thumbnailUrl: PACK_PHOTOS[packId] ?? HOLO_PACKS.cyberHolo,
     purchaseCount,
     price: { amount: diamondCost, currency: "SC" },
     diamondCost,
     category,
+    createdAt,
   };
 }
 
 const LEADERBOARD: LeaderboardRow[] = [
-  row(1, "ep1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
-  row(2, "ep2", "Teacher Deluxe Pack", "Luna", "Teacher", "teacher", 9102, 6.99),
-  row(3, "ep3", "Office Hours Pack", "Ashley", "Teacher", "teacher", 7801, 3.99),
-  row(1, "en1", "Night Shift Foil Pack", "Emma", "Nurse", "nurse", 11200, 4.99),
-  row(2, "en2", "Clinic Rush Pack", "Mia", "Nurse", "nurse", 6400, 5.99),
-  row(1, "em1", "Velvet Service Pack", "Emma", "Maid", "maid", 8800, 4.49),
-  row(1, "eb1", "Sunset Glow Pack", "Emma", "Bikini", "bikini", 15800, 5.99),
-  row(2, "eb2", "Poolside Pack", "Nancy Allison", "Bikini", "bikini", 9200, 4.99),
-  row(1, "al1", "Edition Zero Pack", "Alex Rivera", "Office", "office", 9900, 7.99),
-  row(1, "sw1", "Bonus Rush Pack", "Sam Chen", "Student", "student", 4300, 2.99),
-  row(2, "nl1", "Daily Drop Foil Pack", "Nancy Allison", "Student", "student", 6200, 3.99),
+  row(1, "teacher-1", "After Class Foil Pack", "Emma", "Teacher", "teacher", 12420, 4.99),
+  row(2, "teacher-2", "Teacher Deluxe Pack", "Luna", "Teacher", "teacher", 9102, 6.99),
+  row(3, "teacher-3", "Office Hours Pack", "Ashley", "Teacher", "teacher", 7801, 3.99),
+  row(1, "nurse-1", "Night Shift Foil Pack", "Emma", "Nurse", "nurse", 11200, 4.99),
+  row(2, "nurse-2", "Clinic Rush Pack", "Mia", "Nurse", "nurse", 6400, 5.99),
+  row(1, "police-1", "Police Lineup Pack", "Juliana", "Police", "police", 15800, 5.99),
+  row(2, "police-2", "Edition Zero Pack", "Alex Rivera", "Police", "police", 9900, 7.99),
+  row(1, "gym-1", "Gym Session Pack", "Juliana", "Gym", "gym", 9200, 4.99),
+  row(2, "gym-2", "Bonus Rush Pack", "Sam Chen", "Gym", "gym", 4300, 2.99),
+  row(1, "fire-1", "Firehouse Pack", "Juliana", "Firefighter", "firefighter", 8800, 4.49),
+  row(2, "fire-2", "Daily Drop Foil Pack", "Nancy Allison", "Firefighter", "firefighter", 6200, 3.99),
 ];
 
 function wait(ms = 420) {
@@ -694,17 +736,54 @@ export async function fetchHomepage(): Promise<HomepageData> {
   };
 }
 
+function ownedPackKeys() {
+  const keys = new Set<string>();
+  for (const pack of listOwnedPacks()) {
+    const catalog = pack.catalogPackId.trim();
+    const name = pack.packName.trim();
+    if (catalog) keys.add(catalog);
+    if (name) keys.add(name);
+  }
+  return keys;
+}
+
+function isPurchasedRow(row: LeaderboardRow, owned: Set<string>) {
+  if (owned.has(row.packId)) return true;
+  if (row.characterId && owned.has(row.characterId)) return true;
+  return owned.has(row.packName);
+}
+
+function rankByPurchases(rows: LeaderboardRow[]) {
+  return [...rows]
+    .sort((a, b) => b.purchaseCount - a.purchaseCount)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
 function filterLeaderboardRows(
   rows: LeaderboardRow[],
   category: LeaderboardCategory,
 ): LeaderboardRow[] {
-  const filtered =
-    category === "all"
-      ? [...rows].sort((a, b) => b.purchaseCount - a.purchaseCount)
-      : rows.filter((r) => r.category === category).sort((a, b) => a.rank - b.rank);
-  return filtered.map((row, index) =>
-    category === "all" ? { ...row, rank: index + 1 } : row,
-  );
+  if (category === "purchased") {
+    const owned = ownedPackKeys();
+    return rankByPurchases(rows.filter((row) => isPurchasedRow(row, owned)));
+  }
+  if (category === "new") {
+    return [...rows]
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+  }
+  if (category === "hot") {
+    const ranked = rankByPurchases(rows);
+    const cutoff = ranked[0]?.purchaseCount
+      ? ranked[0].purchaseCount * 0.6
+      : 0;
+    const hot = ranked.filter((row) => row.purchaseCount >= cutoff);
+    return (hot.length > 0 ? hot : ranked).map((row, index) => ({
+      ...row,
+      rank: index + 1,
+    }));
+  }
+  return rankByPurchases(rows);
 }
 
 export async function fetchLeaderboard(
@@ -791,8 +870,7 @@ export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
   return shuffled.map((model, index) => {
     const id = modelId(model, index);
     const name = modelDisplayName(model);
-    const avatarRaw = model.avatar?.trim() ?? "";
-    const avatarUrl = avatarRaw ? normalizeMediaUrl(avatarRaw) : "";
+    const avatarUrl = modelAvatarUrl(model) ?? "";
     const videoUrl = model.swipeVideoUrl
       ? normalizeMediaUrl(model.swipeVideoUrl)
       : undefined;
@@ -805,7 +883,7 @@ export async function fetchDiscoveryFeed(): Promise<FeedPreview[]> {
       collectionName: packName,
       packId: id,
       packName,
-      posterUrl: avatarUrl,
+      posterUrl: feedPosterUrl(model),
       videoUrl,
       cardCount: 0,
       diamondCost: packUnitCost(id),

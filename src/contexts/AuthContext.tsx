@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -11,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import {
   clearEmailVerified,
   clearHasLoggedIn,
@@ -22,7 +21,6 @@ import {
   isEmailVerified,
   logoutRemote,
   markEmailVerified,
-  markEmailVerifiedRemote,
   needsEmailVerification,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
@@ -42,10 +40,16 @@ import { addPackToCart, type CartAddInput } from "@/services/cart";
 import { followCreator } from "@/services/following";
 import { clearOpening, type PurchaseFlowPack } from "@/services/purchase";
 import { clearPackInventory, syncMyPacks } from "@/services/packInventory";
+import {
+  adoptAccountLocalState,
+  clearAccountLocalState,
+  clearAccountStateOwner,
+  clearUngatedAccountArtifacts,
+} from "@/services/accountLocalState";
 import { isDemoMode } from "@/lib/demo";
 import { clearV8Session, markEntered, markOnboardingDone } from "@/lib/session";
-import { fulfillPendingWelcomeGift } from "@/services/welcome";
-import { resetPageReady } from "@/shared/ui/PageTransition";
+import { fulfillPendingWelcomeGift, hasPendingWelcomeGift } from "@/services/welcome";
+import { resetPageReady } from "@/shared/ui/pageWarmth";
 import type { AppTab, OnboardingData } from "@/types/app";
 import { Paths, pathForTab, PUBLIC_TABS, tabFromPathname } from "@/routes/Paths";
 import {
@@ -56,15 +60,19 @@ import {
   loadGameSessionForPack,
   motionPlayHref,
   photoPlayHref,
-} from "@/features/game/modules/gameSession";
-import { unlockCountdownSound } from "@/features/game/modules/InitialCountdown";
-import {
-  resolveSecondaryBack,
-  SECONDARY_SURFACES,
-} from "@/lib/navigation";
+} from "@/services/gameSessionStore";
+import { unlockCountdownSound } from "@/features/game/modules/countdownSound";
+import { resolveSecondaryBack } from "@/lib/navigation";
 import { navigateBackOr } from "@/hooks/useGoBack";
-
-type SecondarySurfaceId = keyof typeof SECONDARY_SURFACES;
+import {
+  AuthActionsContext,
+  AuthContext,
+  AuthSessionContext,
+  type AuthActionsContextValue,
+  type AuthContextValue,
+  type AuthSessionContextValue,
+  type SecondarySurfaceId,
+} from "@/contexts/useAuth";
 
 const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
   email: "",
@@ -84,7 +92,6 @@ const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
 function actionNeedsVerifiedEmail(action: ProtectedAction) {
   if (action.type === "buy") return true;
   if (action.type === "store") return true;
-  if (action.type === "tab" && action.tab === "hub") return true;
   return false;
 }
 
@@ -92,7 +99,7 @@ function isHighIntentForDefer(action: ProtectedAction) {
   return (
     action.type === "buy" ||
     action.type === "store" ||
-    (action.type === "tab" && action.tab === "hub")
+    (action.type === "tab" && action.tab === "feed")
   );
 }
 
@@ -141,6 +148,11 @@ function applyRemoteUser(
   },
   opts?: { setAuthed?: boolean },
 ) {
+  if (user.id) {
+    adoptAccountLocalState(user.id, {
+      preserveWelcomePending: hasPendingWelcomeGift(),
+    });
+  }
   createSession(user.email, user.provider, user.id);
   if (user.emailVerified) markEmailVerified();
   else clearEmailVerified();
@@ -161,66 +173,6 @@ function applyRemoteUser(
   }));
 }
 
-type AuthContextValue = {
-  /** False until the initial `/api/auth/session` probe finishes. */
-  authReady: boolean;
-  authed: boolean;
-  guest: boolean;
-  hasLoggedInBefore: boolean;
-  guestAuthLabel: "Sign in";
-  profile: Omit<OnboardingData, "coins" | "diamonds">;
-  setProfile: Dispatch<
-    SetStateAction<Omit<OnboardingData, "coins" | "diamonds">>
-  >;
-  authOpen: boolean;
-  authSheetMode: AuthenticationSheetMode;
-  authSheetEmail: string;
-  pending: ProtectedAction | null;
-  emailVerified: boolean;
-  verifyOpen: boolean;
-  resumeLikeId: string | null;
-  navNotice: string;
-  purchasedPacks: number;
-  setPurchasedPacks: Dispatch<SetStateAction<number>>;
-  requireAuth: (action: ProtectedAction) => boolean;
-  requestTab: (tab: AppTab) => void;
-  openStore: () => void;
-  openInbox: () => void;
-  openUnopenedPacks: () => void;
-  openCart: () => void;
-  addToCart: (pack: CartAddInput) => void;
-  openCreator: (id: string, themeId?: string) => void;
-  openPurchase: (pack: PurchaseFlowPack, kind?: "buy-pack" | "open-pack") => void;
-  openSettings: () => void;
-  openPasswordReset: () => void;
-  closeSecondary: (surface: SecondarySurfaceId) => void;
-  inventoryRevision: number;
-  bumpInventoryRevision: () => void;
-  /** Drop in-flight login pack syncs before writing claim/purchase inventory. */
-  invalidatePackSync: () => void;
-  inboxUnread: number;
-  setInboxUnread: Dispatch<SetStateAction<number>>;
-  completeAuth: (result: AuthSuccessResult) => void;
-  dismissAuth: () => void;
-  onVerified: () => void;
-  onVerifyLater: () => void;
-  onEmailChanged: (email: string) => void;
-  notePackPurchaseSeed: (creatorName?: string) => void;
-  finishRecommendationAndResume: () => void;
-  setPendingAfterRecFromSwipe: (
-    liked: string[],
-    passed: string[],
-  ) => void;
-  logout: () => void;
-  restart: () => void;
-  setNavNotice: (msg: string) => void;
-  consumeResumeLike: () => void;
-  applyRecommendationDecision: (action: ProtectedAction | null) => void;
-  invalidateRemoteSession: () => void;
-  verifyEmail: string;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -236,6 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [resumeLikeId, setResumeLikeId] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(() => isEmailVerified());
   const [verifyOpen, setVerifyOpen] = useState(false);
+  /** True only when verify opened right after Create Account (back → recreate). */
+  const [verifyFromRegister, setVerifyFromRegister] = useState(false);
   const [verifyPending, setVerifyPending] = useState<ProtectedAction | null>(
     null,
   );
@@ -314,8 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const captureSecondaryReturn = useCallback(() => {
-    setSecondaryReturnTab(tabFromPathname(window.location.pathname));
-  }, []);
+    setSecondaryReturnTab(tabFromPathname(window.location.pathname, authed));
+  }, [authed]);
 
   const guest = !authed;
   const guestAuthLabel = "Sign in" as const;
@@ -349,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             packSession.packScratch.readyPackId === readyId)
         ) {
           activateGameSessionForPack(readyId);
-          navigate(
+          memoryNavigate(
             motionPlayHref(
               packSession,
               firstMissingMotionCardId(packSession),
@@ -357,7 +311,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
           return;
         }
-        navigate(Paths.purchase(action.pack.packId), {
+        memoryNavigate(Paths.purchase(action.pack.packId), {
           state: { pack: { ...action.pack, entry: "scratch" as const } },
         });
         return;
@@ -379,7 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             packSession.packScratch.readyPackId === packId)
         ) {
           const started = beginPhotoPhase() ?? packSession;
-          navigate(photoPlayHref(started));
+          memoryNavigate(photoPlayHref(started));
           return;
         }
         if (!packId) {
@@ -389,11 +343,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             (session.phase === "photo_reveal" || session.phase === "photo")
           ) {
             const started = beginPhotoPhase() ?? session;
-            navigate(photoPlayHref(started));
+            memoryNavigate(photoPlayHref(started));
             return;
           }
         }
-        navigate(Paths.collection);
+        memoryNavigate(Paths.collection);
         return;
       }
       if (action.type === "buy") {
@@ -401,7 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isBuyPack =
           action.kind !== "open-pack" && action.pack.entry !== "cart-tear";
         if (isBuyPack) clearOpening();
-        navigate(
+        memoryNavigate(
           action.pack.entry === "cart-tear"
             ? Paths.purchaseTearOpen
             : Paths.purchase(action.pack.packId),
@@ -417,7 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "like") {
         setResumeLikeId(action.feedItemId);
-        navigate(Paths.discover);
+        memoryNavigate(Paths.discover);
         return;
       }
       if (action.type === "follow") {
@@ -426,32 +380,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: action.creatorId,
           displayName: action.displayName?.trim() || action.creatorId,
           username: "",
-          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.png",
+          avatarUrl: action.avatarUrl?.trim() || "/img/placeholder.webp",
           followedAt: Date.now(),
           hasUnseenActivity: false,
         });
         if (!window.location.pathname.startsWith("/creator/")) {
-          navigate(Paths.discover);
+          memoryNavigate(Paths.discover);
         }
         return;
       }
       if (action.type === "store") {
         captureSecondaryReturn();
-        navigate(Paths.store);
+        memoryNavigate(Paths.store);
         return;
       }
       if (action.type === "inbox") {
         captureSecondaryReturn();
-        navigate(Paths.inbox);
+        memoryNavigate(Paths.inbox);
         return;
       }
       if (action.type === "unopened-packs") {
-        navigate(Paths.collectionPacks);
+        memoryNavigate(Paths.collectionPacks);
         return;
       }
       if (action.type === "cart") {
         captureSecondaryReturn();
-        navigate(Paths.packPocket);
+        memoryNavigate(Paths.packPocket);
         return;
       }
       if (action.type === "add-to-cart") {
@@ -460,21 +414,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (action.type === "collection") {
         noteCreatorEngagement(action.creatorId);
-        navigate(Paths.creator(action.creatorId));
+        memoryNavigate(Paths.creator(action.creatorId));
         return;
       }
       if (action.type === "resume") {
         const target = action.path.trim();
         if (target.startsWith("/")) {
-          navigate(target);
+          memoryNavigate(target);
         }
         return;
       }
       if (action.type === "tab") {
-        navigate(pathForTab(action.tab));
+        memoryNavigate(pathForTab(action.tab, true));
       }
     },
-    [captureSecondaryReturn, navigate],
+    [captureSecondaryReturn],
   );
 
   const enterAfterOnboarding = useCallback(
@@ -482,21 +436,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       deferred?: ProtectedAction | null;
       scrollToDailyReward?: boolean;
     }) => {
-      // First-run / post-recommend always lands on Discover — not Profile.
-      // Soft-gate from /profile now queues { type: "resume", path } (or the
-      // older tab form); both would otherwise send new users back to Profile.
+      // First-run / post-recommend lands on logged-in Home — not Profile.
+      // Soft-gate from /profile queues { type: "resume", path } (or the older
+      // tab form); both would otherwise send new users back to Profile.
       const deferred = opts?.deferred ?? null;
       const resume =
         deferred && !isProfileOnboardingResume(deferred) ? deferred : null;
 
       if (resume) {
-        navigate(Paths.discover);
+        memoryNavigate(Paths.discover);
         window.setTimeout(() => resumePending(resume), 0);
         return;
       }
-      navigate(Paths.discover);
+      memoryNavigate(Paths.discover);
     },
-    [navigate, resumePending],
+    [resumePending],
   );
 
   const applyRecommendationDecision = useCallback(
@@ -510,7 +464,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (pendingAction && !isHighIntentForDefer(pendingAction)) {
           setPendingAfterRec(pendingAction);
         }
-        navigate(Paths.recommend);
+        memoryNavigate(Paths.recommend);
+        return;
+      }
+
+      // Sign-in / Profile soft-gate must not dump returning users on Profile.
+      if (pendingAction && isProfileOnboardingResume(pendingAction)) {
+        memoryNavigate(Paths.discover);
         return;
       }
 
@@ -521,7 +481,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       enterAfterOnboarding({ scrollToDailyReward: true });
     },
-    [enterAfterOnboarding, navigate, resumePending],
+    [enterAfterOnboarding, resumePending],
   );
 
   const finishRecommendationAndResume = useCallback(() => {
@@ -552,6 +512,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (action: ProtectedAction) => {
       if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
+          setVerifyFromRegister(false);
           setVerifyPending(action);
           setVerifyOpen(true);
           return false;
@@ -571,18 +532,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestTab = useCallback(
     (next: AppTab) => {
       if (PUBLIC_TABS.includes(next) || authed) {
-        navigate(pathForTab(next));
+        memoryNavigate(pathForTab(next, authed));
         return;
       }
       requireAuth({ type: "tab", tab: next });
     },
-    [authed, navigate, requireAuth],
+    [authed, requireAuth],
   );
 
   const openStore = useCallback(() => {
     captureSecondaryReturn();
-    navigate(Paths.store);
-  }, [captureSecondaryReturn, navigate]);
+    memoryNavigate(Paths.store);
+  }, [captureSecondaryReturn]);
 
   const openInbox = useCallback(() => {
     if (!requireAuth({ type: "inbox" })) return;
@@ -610,9 +571,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const query = themeId?.trim()
         ? `?theme=${encodeURIComponent(themeId.trim())}`
         : "";
-      navigate(`${Paths.creator(id)}${query}`);
+      memoryNavigate(`${Paths.creator(id)}${query}`);
     },
-    [navigate],
+    [],
   );
 
   const openPurchase = useCallback(
@@ -629,8 +590,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     captureSecondaryReturn();
-    navigate(Paths.settings);
-  }, [captureSecondaryReturn, guest, navigate, requireAuth]);
+    memoryNavigate(Paths.settings);
+  }, [captureSecondaryReturn, guest, requireAuth]);
 
   const openPasswordReset = useCallback(() => {
     setPending(null);
@@ -639,18 +600,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthOpen(true);
   }, []);
 
+  const openCreateAccount = useCallback(() => {
+    if (authed) return;
+    setPending(null);
+    setAuthSheetMode("create-account");
+    setAuthSheetEmail("");
+    setAuthOpen(true);
+  }, [authed]);
+
   const closeSecondary = useCallback(
     (surface: SecondarySurfaceId) => {
       setSecondaryReturnTab(null);
       // Prefer the real previous step (Discover → Creator → back, etc.).
-      navigateBackOr(navigate, pathForTab(resolveSecondaryBack(secondaryReturnTab, surface)));
+      navigateBackOr(
+        navigate,
+        pathForTab(resolveSecondaryBack(secondaryReturnTab, surface), authed),
+      );
     },
-    [navigate, secondaryReturnTab],
+    [authed, navigate, secondaryReturnTab],
   );
 
   const completeAuth = useCallback(
     (result: AuthSuccessResult) => {
       const action = pending;
+      const openedFromRegister = result.source === "register";
       sessionSyncEpochRef.current += 1;
       setReturningUser(true);
 
@@ -698,11 +671,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthed(true);
           // Resume only after authed flips — SoftGate must see authed=true.
           window.setTimeout(() => {
-            if (
-              action &&
-              actionNeedsVerifiedEmail(action) &&
-              needsEmailVerification()
-            ) {
+            const needsVerify =
+              needsEmailVerification() &&
+              (openedFromRegister ||
+                (action != null && actionNeedsVerifiedEmail(action)));
+            if (needsVerify) {
+              setVerifyFromRegister(openedFromRegister);
               setVerifyPending(action);
               setVerifyOpen(true);
               return;
@@ -723,10 +697,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const onVerified = useCallback(() => {
+    // Confirm already set email_verified_at on the server; mirror locally.
     markEmailVerified();
-    void markEmailVerifiedRemote();
     setEmailVerified(true);
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     const action = verifyPending;
     setVerifyPending(null);
     window.setTimeout(() => applyRecommendationDecision(action), 0);
@@ -734,8 +709,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const onVerifyLater = useCallback(() => {
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
+    const action = verifyPending;
     setVerifyPending(null);
-  }, []);
+    // Registration always opens verify; Later still resumes non-purchase journeys.
+    if (!action || !actionNeedsVerifiedEmail(action)) {
+      window.setTimeout(() => applyRecommendationDecision(action), 0);
+    }
+  }, [applyRecommendationDecision, verifyPending]);
+
+  /**
+   * Back on verify sheet:
+   * - After Create Account → drop unverified session, reopen create sheet.
+   * - Already signed in (login / gated action) → close sheet only; stay authed.
+   */
+  const onVerifyBack = useCallback(() => {
+    if (!verifyFromRegister) {
+      onVerifyLater();
+      return;
+    }
+
+    const action = verifyPending;
+    const email = profile.email || getAuthEmail();
+    setVerifyOpen(false);
+    setVerifyFromRegister(false);
+    setVerifyPending(null);
+
+    // Drop the unverified session so create-account can be submitted again.
+    sessionSyncEpochRef.current += 1;
+    void logoutRemote();
+    destroySession();
+    clearEmailVerified();
+    setAuthed(false);
+    setEmailVerified(false);
+
+    setPending(action);
+    setAuthSheetEmail(email);
+    setAuthSheetMode("create-account");
+    setAuthOpen(true);
+  }, [onVerifyLater, profile.email, verifyFromRegister, verifyPending]);
 
   const onEmailChanged = useCallback((email: string) => {
     setProfile((d) => ({ ...d, email }));
@@ -761,6 +773,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     destroySession();
     clearEmailVerified();
     clearPackInventory();
+    clearUngatedAccountArtifacts();
     setAuthed(false);
     setEmailVerified(false);
     setInboxUnread(0);
@@ -775,14 +788,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void logoutRemote();
     destroySession();
     clearPackInventory();
+    clearUngatedAccountArtifacts();
     setAuthed(false);
     setPending(null);
     setAuthOpen(false);
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
-    navigate(Paths.discover);
-  }, [navigate]);
+    memoryNavigate(Paths.discover);
+  }, []);
 
   const restart = useCallback(() => {
     sessionSyncEpochRef.current += 1;
@@ -794,21 +809,103 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearHasLoggedIn();
     destroySession();
     clearHomeFeedCache();
-    clearPackInventory();
+    clearAccountLocalState();
+    clearAccountStateOwner();
     setProfile(initialProfile);
     setAuthed(false);
     setReturningUser(false);
     setEmailVerified(false);
     setVerifyOpen(false);
+    setVerifyFromRegister(false);
     setVerifyPending(null);
     setPendingAfterRec(null);
     setPurchasedPacks(0);
     setPending(null);
     setAuthOpen(false);
-    navigate(Paths.home);
-  }, [navigate]);
+    memoryNavigate(Paths.home);
+  }, []);
 
   const consumeResumeLike = useCallback(() => setResumeLikeId(null), []);
+
+  const sessionValue = useMemo<AuthSessionContextValue>(
+    () => ({
+      authReady,
+      authed,
+      guest,
+      hasLoggedInBefore: returningUser,
+      emailVerified,
+    }),
+    [authReady, authed, emailVerified, guest, returningUser],
+  );
+
+  const actionsValue = useMemo<AuthActionsContextValue>(
+    () => ({
+      requireAuth,
+      requestTab,
+      openStore,
+      openInbox,
+      openUnopenedPacks,
+      openCart,
+      addToCart,
+      openCreator,
+      openPurchase,
+      openSettings,
+      openPasswordReset,
+      openCreateAccount,
+      closeSecondary,
+      bumpInventoryRevision,
+      invalidatePackSync,
+      completeAuth,
+      dismissAuth,
+      onVerified,
+      onVerifyLater,
+      onVerifyBack,
+      onEmailChanged,
+      notePackPurchaseSeed,
+      finishRecommendationAndResume,
+      setPendingAfterRecFromSwipe,
+      logout,
+      restart,
+      setNavNotice,
+      setPurchasedPacks,
+      consumeResumeLike,
+      applyRecommendationDecision,
+      invalidateRemoteSession,
+    }),
+    [
+      addToCart,
+      applyRecommendationDecision,
+      bumpInventoryRevision,
+      closeSecondary,
+      completeAuth,
+      consumeResumeLike,
+      dismissAuth,
+      finishRecommendationAndResume,
+      invalidatePackSync,
+      invalidateRemoteSession,
+      logout,
+      notePackPurchaseSeed,
+      onEmailChanged,
+      onVerified,
+      onVerifyLater,
+      onVerifyBack,
+      openCart,
+      openCreateAccount,
+      openCreator,
+      openInbox,
+      openPasswordReset,
+      openPurchase,
+      openSettings,
+      openStore,
+      openUnopenedPacks,
+      requireAuth,
+      requestTab,
+      restart,
+      setNavNotice,
+      setPendingAfterRecFromSwipe,
+      setPurchasedPacks,
+    ],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -825,6 +922,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pending,
       emailVerified,
       verifyOpen,
+      verifyFromRegister,
       resumeLikeId,
       navNotice,
       purchasedPacks,
@@ -840,6 +938,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openPurchase,
       openSettings,
       openPasswordReset,
+      openCreateAccount,
       closeSecondary,
       inventoryRevision,
       bumpInventoryRevision,
@@ -850,6 +949,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dismissAuth,
       onVerified,
       onVerifyLater,
+      onVerifyBack,
       onEmailChanged,
       notePackPurchaseSeed,
       finishRecommendationAndResume,
@@ -883,6 +983,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onEmailChanged,
       onVerified,
       onVerifyLater,
+      onVerifyBack,
       bumpInventoryRevision,
       invalidatePackSync,
       closeSecondary,
@@ -893,6 +994,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openUnopenedPacks,
       openCart,
       addToCart,
+      openCreateAccount,
       openPasswordReset,
       openPurchase,
       openSettings,
@@ -907,14 +1009,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resumeLikeId,
       setPendingAfterRecFromSwipe,
       verifyOpen,
+      verifyFromRegister,
     ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  return (
+    <AuthSessionContext.Provider value={sessionValue}>
+      <AuthActionsContext.Provider value={actionsValue}>
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+      </AuthActionsContext.Provider>
+    </AuthSessionContext.Provider>
+  );
 }

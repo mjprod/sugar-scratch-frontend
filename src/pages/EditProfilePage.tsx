@@ -1,5 +1,6 @@
+import "@/components/profile/EditProfileScreen.css";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { EditProfileScreen } from "@/components/profile/EditProfileScreen";
 import { Paths } from "@/routes/Paths";
 
@@ -13,6 +14,7 @@ export function EditProfilePage() {
         displayName: profile.displayName || profile.username || "",
         username: profile.username || "",
         avatar: profile.avatar,
+        email: profile.email || "",
       }}
       onBack={() => navigate(Paths.profile)}
       onSaved={(next) => {

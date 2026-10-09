@@ -12,8 +12,7 @@ import {
   countUnopened,
   listOwnedPacks,
 } from "./packInventory";
-import { CREATOR_PHOTOS } from "../lib/photos";
-import { listStoredGameSessions } from "@/features/game/modules/gameSession";
+import { listStoredGameSessions } from "@/services/gameSessionStore";
 import { listReadyToScratch } from "./readyToScratch";
 import {
   creatorHasAnyThemeCompletionClaim,
@@ -106,16 +105,17 @@ function slugId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
 }
 
+/** Stable API avatar path — never fixture / placeholder pack art. */
 function avatarFor(creatorId: string, name: string) {
-  const key = creatorId.toLowerCase();
-  const byKey = (CREATOR_PHOTOS as Record<string, { avatar: string }>)[key];
-  if (byKey?.avatar) return byKey.avatar;
-  const nameKey = name.trim().toLowerCase();
-  const match = Object.entries(CREATOR_PHOTOS).find(
-    ([id, photo]) =>
-      id === nameKey || photo.avatar.toLowerCase().includes(nameKey),
-  );
-  return match?.[1].avatar ?? Object.values(CREATOR_PHOTOS)[0]?.avatar ?? "";
+  const slug = (creatorId || name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9_-]/g, "");
+  if (slug && /^[a-z0-9_-]+$/i.test(slug)) {
+    return `/models/${slug}/avatar.jpeg`;
+  }
+  return "";
 }
 
 function themeLabelFromPack(
@@ -288,6 +288,17 @@ function mergeStartedCreators(
     }
   }
   return creators;
+}
+
+/** True when the player has no packs / cards / continue progress yet. */
+export function isNewUserForHomepageHero(): boolean {
+  const s = getCollectionPageState();
+  return (
+    s.totalPurchasedPacks === 0 &&
+    s.collectedCardCount === 0 &&
+    s.continueCreators.length === 0 &&
+    s.unscratchedCardCount === 0
+  );
 }
 
 /** Live Collection page visibility + summary inputs. */

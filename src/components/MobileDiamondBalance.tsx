@@ -9,9 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation } from "react-router-dom";
-import { CurrencyBalances, formatBalance } from "@/components/CurrencyBalances";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
+import { formatBalance } from "@/lib/formatBalance";
 import "@/components/LiquidGlassNav.css";
 
 type MobileTopTarget = "pack-pocket" | "search";
@@ -537,11 +538,13 @@ export function MobileDiamondUtility({
           <span className="flex-1" aria-hidden />
         )}
         <div className="top-nav-mobile-utils flex items-center gap-1.5">
-          <CurrencyBalances
-            coins={coins ?? null}
-            diamonds={balance}
-            onOpenStore={onOpenStore}
-          />
+          {!guest ? (
+            <CurrencyBalances
+              coins={coins ?? null}
+              diamonds={balance}
+              onOpenStore={onOpenStore}
+            />
+          ) : null}
           {trailing ? (
             <div
               ref={trailingRef}

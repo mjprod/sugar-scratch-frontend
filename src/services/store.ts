@@ -11,6 +11,135 @@ export type StoreBadge =
 
 export type StoreProductKind = "rewarded-ad" | "diamonds";
 
+/** Soft-currency exchange — intentionally worse $/Diamond than cash at higher tiers (GD-AC22). */
+export const COIN_EXCHANGE_OPTIONS = [
+  { id: "x100", diamonds: 100, coins: 100 },
+  { id: "x500", diamonds: 500, coins: 780 },
+  { id: "x1200", diamonds: 1200, coins: 2400 },
+  { id: "x2500", diamonds: 2500, coins: 5800 },
+  { id: "x5000", diamonds: 5000, coins: 13000 },
+] as const;
+
+export type CoinExchangeOption = (typeof COIN_EXCHANGE_OPTIONS)[number];
+
+/** Highest diamond tier the player can afford with current Coins. */
+export function bestAffordableCoinExchange(
+  coinBalance: number,
+): CoinExchangeOption | null {
+  if (!Number.isFinite(coinBalance) || coinBalance <= 0) return null;
+  let best: CoinExchangeOption | null = null;
+  for (const option of COIN_EXCHANGE_OPTIONS) {
+    if (coinBalance < option.coins) continue;
+    if (!best || option.diamonds > best.diamonds) best = option;
+  }
+  return best;
+}
+
+/** Compact amount only for hover UI, e.g. "+5K" / "+500" (icon shown separately). */
+export function formatExchangeDiamondAmount(diamonds: number): string {
+  if (!Number.isFinite(diamonds) || diamonds <= 0) return "+0";
+  if (diamonds >= 1000 && diamonds % 1000 === 0) {
+    return `+${diamonds / 1000}K`;
+  }
+  if (diamonds >= 1000) {
+    const compact = (diamonds / 1000).toFixed(diamonds % 100 === 0 ? 1 : 2);
+    return `+${compact.replace(/\.0$/, "")}K`;
+  }
+  return `+${diamonds.toLocaleString("en-US")}`;
+}
+
+/** Screen-reader / aria form, e.g. "+5K Diamonds". */
+export function formatExchangeDiamondPreview(diamonds: number): string {
+  return `${formatExchangeDiamondAmount(diamonds)} Diamonds`;
+}
+
+export type CoinExchangeResult =
+  | { status: "success"; diamonds: number; coins: number }
+  | { status: "failed"; message: string };
+
+function resolveCoinExchangeOption(
+  option: CoinExchangeOption | { id?: string; diamonds: number; coins: number },
+): CoinExchangeOption | null {
+  const byId =
+    option.id != null
+      ? COIN_EXCHANGE_OPTIONS.find((entry) => entry.id === option.id)
+      : undefined;
+  if (byId) return byId;
+  return (
+    COIN_EXCHANGE_OPTIONS.find(
+      (entry) =>
+        entry.diamonds === option.diamonds && entry.coins === option.coins,
+    ) ?? null
+  );
+}
+
+/**
+ * Dust → Diamonds exchange.
+ * Live path persists via POST /api/store/exchange and returns server wallet.
+ * Demo path applies the tier locally so HUD still works offline.
+ */
+export async function exchangeCoinsForDiamonds(
+  option: CoinExchangeOption | { id?: string; diamonds: number; coins: number },
+  current?: { diamonds: number; coins: number },
+): Promise<CoinExchangeResult> {
+  const resolved = resolveCoinExchangeOption(option);
+  if (!resolved) {
+    return { status: "failed", message: "That exchange option is unavailable." };
+  }
+  if (
+    current &&
+    (!Number.isFinite(current.coins) || current.coins < resolved.coins)
+  ) {
+    return { status: "failed", message: "Not enough Coins." };
+  }
+
+  try {
+    const data = await apiMutate<{
+      diamonds?: number;
+      coins?: number;
+      wallet?: { diamonds?: number; coins?: number };
+    }>("/api/store/exchange", {
+      method: "POST",
+      body: JSON.stringify({
+        optionId: resolved.id,
+        diamonds: resolved.diamonds,
+        coins: resolved.coins,
+      }),
+    });
+    const diamonds = data.wallet?.diamonds ?? data.diamonds;
+    const coins = data.wallet?.coins ?? data.coins;
+    if (
+      typeof diamonds === "number" &&
+      Number.isFinite(diamonds) &&
+      typeof coins === "number" &&
+      Number.isFinite(coins)
+    ) {
+      return {
+        status: "success",
+        diamonds: Math.max(0, Math.trunc(diamonds)),
+        coins: Math.max(0, Math.trunc(coins)),
+      };
+    }
+  } catch {
+    /* fall through to demo / fail-closed */
+  }
+
+  if (isDemoMode() && current) {
+    return {
+      status: "success",
+      diamonds: current.diamonds + resolved.diamonds,
+      coins: Math.max(0, current.coins - resolved.coins),
+    };
+  }
+
+  return {
+    status: "failed",
+    message: "Exchange could not be completed. Please try again.",
+  };
+}
+
+export const DAILY_AD_LIMIT = 3;
+
 export type StoreProduct = {
   id: string;
   kind: StoreProductKind;
@@ -18,9 +147,14 @@ export type StoreProduct = {
   /** Short line under the title for rewarded ads / bonuses. */
   subtitle?: string;
   priceLabel: string;
-  /** Diamonds granted on success. */
+  /** Diamonds granted on success (inclusive of bonusDiamonds when present). */
   diamonds: number;
-  /** Bonus Sugar Coins granted with this product. */
+  /**
+   * Explanatory bonus portion already included in `diamonds` (GD-AC10).
+   * Display only — not added again on purchase.
+   */
+  bonusDiamonds?: number;
+  /** Bonus Coins granted with this product (not shown on cash package cards). */
   coins?: number;
   badge?: StoreBadge;
   /** Artwork URL — CSS fallback used when empty. */
@@ -110,7 +244,6 @@ const CATALOG: StoreProduct[] = [
     title: "100 Diamonds",
     priceLabel: "$3.99",
     diamonds: 100,
-    coins: 4000,
     order: 2,
     available: true,
   },
@@ -120,7 +253,6 @@ const CATALOG: StoreProduct[] = [
     title: "500 Diamonds",
     priceLabel: "$7.99",
     diamonds: 500,
-    coins: 8000,
     badge: "Popular",
     order: 3,
     available: true,
@@ -131,7 +263,7 @@ const CATALOG: StoreProduct[] = [
     title: "1200 Diamonds",
     priceLabel: "$19.99",
     diamonds: 1200,
-    coins: 20000,
+    bonusDiamonds: 200,
     badge: "Best Value",
     order: 4,
     available: true,
@@ -142,7 +274,7 @@ const CATALOG: StoreProduct[] = [
     title: "2500 Diamonds",
     priceLabel: "$39.99",
     diamonds: 2500,
-    coins: 40000,
+    bonusDiamonds: 500,
     badge: "Bonus",
     order: 5,
     available: true,
@@ -153,7 +285,7 @@ const CATALOG: StoreProduct[] = [
     title: "5000 Diamonds",
     priceLabel: "$69.99",
     diamonds: 5000,
-    coins: 70000,
+    bonusDiamonds: 1200,
     order: 6,
     available: true,
   },
@@ -182,7 +314,11 @@ function normalizeProductCoins(value: unknown): number | undefined {
 
 function normalizeStoreProduct(product: StoreProduct): StoreProduct {
   const coins = normalizeProductCoins(product.coins);
-  return coins === undefined ? product : { ...product, coins };
+  const bonusDiamonds = normalizeProductCoins(product.bonusDiamonds);
+  let next = product;
+  if (coins !== undefined) next = { ...next, coins };
+  if (bonusDiamonds !== undefined) next = { ...next, bonusDiamonds };
+  return next;
 }
 
 export function listAvailableProducts(source: StoreProduct[] = CATALOG): StoreProduct[] {

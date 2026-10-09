@@ -95,7 +95,7 @@
   border-radius: 10px;
   background: oklch(0.18 0.02 280);
   color: oklch(1 0 0 / 0.85);
-  font-size: 0.8125rem;
+  font-size: max(1rem, 16px);
   font-weight: 600;
 }
 

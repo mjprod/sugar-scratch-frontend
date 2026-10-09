@@ -321,6 +321,11 @@ export type SwipeCardData = {
   socialhandle?: string;
   mediaType: MediaType;
   mediaUrl: string;
+  /**
+   * Still frame under / instead of video on non-active stack cards.
+   * Keeps iOS from decoding every back-card clip at once.
+   */
+  posterUrl?: string;
   backUrl: string;
   /** Optional HTML identity overlay (girl name / location / flag). */
   overlay?: SwipeCardOverlayData | null;

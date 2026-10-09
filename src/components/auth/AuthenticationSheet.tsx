@@ -1,4 +1,13 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import "@/components/auth/AuthenticationSheet.css";
+import {
+  AnimatePresence,
+  animate,
+  m,
+  useDragControls,
+  useMotionValue,
+  useReducedMotion,
+  type PanInfo,
+} from "framer-motion";
 import { ChevronLeft, Loader2, X } from "lucide-react";
 import {
   useEffect,
@@ -6,28 +15,57 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   AUTH_PASSWORD_MIN_LENGTH,
+  appleAuthFailureMessage,
   authFailureMessage,
   createAccountFailureMessage,
+  duplicateEmailMessage,
   forgotPasswordSuccessMessage,
+  googleAuthFailureMessage,
+  isDuplicateEmailRegisterError,
   isValidAuthPassword,
+  loginWithApple,
   loginWithEmail,
+  loginWithGoogle,
   loginWithOAuth,
   registerWithEmail,
   requestPasswordReset,
-  supportingCopyForTrigger,
   type AuthenticationSheetMode,
   type AuthSuccessResult,
   type ProtectedActionType,
 } from "@/services/auth";
-import { isValidEmail } from "@/types/app";
+import { isValidEmail } from "@/lib/validation";
 import { STUB_OAUTH_ENABLED } from "@/env";
+import {
+  GOOGLE_LOGIN_ENABLED,
+  GoogleSignInError,
+  loadGoogleIdentity,
+  requestGoogleCode,
+} from "@/lib/googleIdentity";
+import {
+  APPLE_LOGIN_ENABLED,
+  AppleSignInError,
+  loadAppleIdentity,
+  requestAppleSignIn,
+} from "@/lib/appleIdentity";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import iconApple from "@/assets/auth/iconApple.svg";
 import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
+
+const APPLE_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const ANTICIPATE_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const DROP_EASE: [number, number, number, number] = [0.48, 0.04, 0.72, 0.12];
+
+const SHOW_GOOGLE_BUTTON = GOOGLE_LOGIN_ENABLED || STUB_OAUTH_ENABLED;
+const SHOW_APPLE_BUTTON = APPLE_LOGIN_ENABLED || STUB_OAUTH_ENABLED;
+const SHOW_SOCIAL_BUTTONS = SHOW_GOOGLE_BUTTON || SHOW_APPLE_BUTTON;
+
+const DRAG_DISMISS_PX = 88;
+const DRAG_FLICK_VY = 640;
 
 /**
  * Spec-revised Authentication Sheet — Google, Apple, and email in one surface.
@@ -35,7 +73,6 @@ import iconGoogleNeutral from "@/assets/auth/iconGoogleNeutral.svg";
  */
 export function AuthenticationSheet({
   open,
-  trigger,
   onDismiss,
   onSuccess,
   initialMode = "login",
@@ -52,6 +89,12 @@ export function AuthenticationSheet({
   const reduce = useReducedMotion();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
+  const panelY = useMotionValue(0);
+  const panelOpacity = useMotionValue(1);
+  const panelScale = useMotionValue(1);
+  const closing = useRef(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [mode, setMode] = useState<AuthenticationSheetMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,11 +111,32 @@ export function AuthenticationSheet({
 
   const busy = submitting !== null;
   const passwordOk = isValidAuthPassword(password);
-  const canCreateAccount =
-    isValidEmail(email) && passwordOk && acceptedTerms;
+  const emailOk = isValidEmail(email);
+  const emailFormatError =
+    email.trim().length > 0 && !emailOk
+      ? "Enter a valid email address."
+      : "";
+  const canLogin = emailOk && password.length > 0;
+  const canCreateAccount = emailOk && passwordOk && acceptedTerms;
+  const canSubmitPrimary =
+    mode === "create-account" ? canCreateAccount : canLogin;
 
   useEffect(() => {
     if (!open) return;
+    closing.current = false;
+    setIsClosing(false);
+    if (reduce) {
+      panelY.set(0);
+      panelOpacity.set(1);
+      panelScale.set(1);
+    } else {
+      panelY.set(36);
+      panelOpacity.set(0);
+      panelScale.set(0.96);
+      void animate(panelY, 0, { duration: 0.55, ease: APPLE_EASE });
+      void animate(panelOpacity, 1, { duration: 0.55, ease: APPLE_EASE });
+      void animate(panelScale, 1, { duration: 0.55, ease: APPLE_EASE });
+    }
     setMode(initialMode);
     setEmail(initialEmail);
     setPassword("");
@@ -82,6 +146,16 @@ export function AuthenticationSheet({
     setAcceptedTerms(false);
     setConsentError(false);
     setLegalDoc(null);
+    if (GOOGLE_LOGIN_ENABLED) {
+      void loadGoogleIdentity().catch(() => {
+        /* retried on click */
+      });
+    }
+    if (APPLE_LOGIN_ENABLED) {
+      void loadAppleIdentity().catch(() => {
+        /* retried on click */
+      });
+    }
     const t = window.setTimeout(() => {
       panelRef.current
         ?.querySelector<HTMLElement>(
@@ -95,36 +169,112 @@ export function AuthenticationSheet({
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !busy) onDismiss();
+      if (e.key === "Escape" && !busy) dismissWithAnticipation();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, busy, onDismiss]);
+  }, [open, busy]);
+
+  // ONB-006: keep keyboard focus inside the sheet while open.
+  useEffect(() => {
+    if (!open) return;
+    const root = panelRef.current;
+    if (!root) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab" || !root) return;
+      const focusables = [
+        ...root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusables.length === 0) return;
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    root.addEventListener("keydown", onKeyDown);
+    return () => root.removeEventListener("keydown", onKeyDown);
+  }, [open, mode, busy, legalDoc]);
 
   const title =
     mode === "create-account"
-      ? "Create Your Sugar Account"
+      ? "Create Account"
       : mode === "forgot-password" || mode === "reset-sent"
         ? "Reset Your Password"
-        : "Continue Your Journey";
+        : "Log In";
 
   const subtitle =
-    mode === "create-account"
-      ? "Save your collection and continue your journey."
-      : mode === "forgot-password"
-        ? "Enter your email and we’ll send password-reset instructions."
-        : mode === "reset-sent"
-          ? forgotPasswordSuccessMessage()
-          : supportingCopyForTrigger(trigger);
+    mode === "forgot-password"
+      ? "Enter your email and we’ll send password-reset instructions."
+      : mode === "reset-sent"
+        ? forgotPasswordSuccessMessage()
+        : "";
+
+  async function finishGoogle() {
+    setSubmitting("google");
+    setError("");
+    try {
+      const code = await requestGoogleCode();
+      const { user } = await loginWithGoogle(code);
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
+    } catch (err) {
+      setSubmitting(null);
+      if (err instanceof GoogleSignInError && err.reason === "cancelled") return;
+      setError(googleAuthFailureMessage());
+    }
+  }
+
+  async function finishApple() {
+    setSubmitting("apple");
+    setError("");
+    try {
+      const result = await requestAppleSignIn();
+      const { user } = await loginWithApple(result);
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
+    } catch (err) {
+      setSubmitting(null);
+      if (err instanceof AppleSignInError && err.reason === "cancelled") return;
+      setError(appleAuthFailureMessage());
+    }
+  }
 
   async function finishSocial(provider: "Google" | "Apple") {
+    if (provider === "Google" && GOOGLE_LOGIN_ENABLED) {
+      await finishGoogle();
+      return;
+    }
+    if (provider === "Apple" && APPLE_LOGIN_ENABLED) {
+      await finishApple();
+      return;
+    }
     setSubmitting(provider === "Google" ? "google" : "apple");
     setError("");
     try {
       const kind = provider === "Google" ? "google" : "apple";
       const emailAddr = `${kind}@sugar.app`;
       const { user } = await loginWithOAuth(kind, emailAddr);
-      onSuccess({ email: user.email, provider: user.provider, user });
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "oauth",
+      });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -145,7 +295,12 @@ export function AuthenticationSheet({
     setError("");
     try {
       const { user } = await loginWithEmail(email.trim(), password);
-      onSuccess({ email: user.email, provider: user.provider, user });
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "login",
+      });
     } catch {
       setSubmitting(null);
       setError(authFailureMessage());
@@ -172,10 +327,19 @@ export function AuthenticationSheet({
     setConsentError(false);
     try {
       const { user } = await registerWithEmail(email.trim(), password);
-      onSuccess({ email: user.email, provider: user.provider, user });
-    } catch (error) {
+      onSuccess({
+        email: user.email,
+        provider: user.provider,
+        user,
+        source: "register",
+      });
+    } catch (err) {
       setSubmitting(null);
-      setError(createAccountFailureMessage());
+      setError(
+        isDuplicateEmailRegisterError(err)
+          ? duplicateEmailMessage()
+          : createAccountFailureMessage(),
+      );
     }
   }
 
@@ -212,47 +376,148 @@ export function AuthenticationSheet({
     setLegalDoc(doc);
   }
 
+  function startHandleDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (busy || reduce || closing.current) return;
+    dragControls.start(event);
+  }
+
+  function fadeDownFromCurrent() {
+    if (closing.current) return;
+    closing.current = true;
+    setIsClosing(true);
+    const fromY = panelY.get();
+    const dropTo = Math.max(fromY + 320, window.innerHeight * 0.55);
+    void Promise.all([
+      animate(panelY, dropTo, { duration: 0.28, ease: DROP_EASE }),
+      animate(panelOpacity, 0, { duration: 0.28, ease: DROP_EASE }),
+      animate(panelScale, 0.92, { duration: 0.28, ease: DROP_EASE }),
+    ]).then(() => onDismiss());
+  }
+
+  function dismissWithAnticipation() {
+    if (busy || closing.current) return;
+    if (reduce) {
+      onDismiss();
+      return;
+    }
+    closing.current = true;
+    setIsClosing(true);
+    void (async () => {
+      await Promise.all([
+        animate(panelY, -28, { duration: 0.095, ease: ANTICIPATE_EASE }),
+        animate(panelScale, 1.035, { duration: 0.095, ease: ANTICIPATE_EASE }),
+      ]);
+      if (!closing.current) return;
+      const fromY = panelY.get();
+      await Promise.all([
+        animate(panelY, Math.max(fromY + 320, window.innerHeight * 0.55), {
+          duration: 0.28,
+          ease: DROP_EASE,
+        }),
+        animate(panelOpacity, 0, { duration: 0.28, ease: DROP_EASE }),
+        animate(panelScale, 0.78, { duration: 0.28, ease: DROP_EASE }),
+      ]);
+      onDismiss();
+    })();
+  }
+
+  function onHandleDrag(_: unknown, info: PanInfo) {
+    const dy = Math.max(0, info.offset.y);
+    panelOpacity.set(Math.max(0.35, 1 - dy / 420));
+  }
+
+  function onHandleDragEnd(_: unknown, info: PanInfo) {
+    if (busy || closing.current) return;
+    if (info.offset.y > DRAG_DISMISS_PX || info.velocity.y > DRAG_FLICK_VY) {
+      fadeDownFromCurrent();
+      return;
+    }
+    void animate(panelY, 0, {
+      type: "spring",
+      stiffness: 420,
+      damping: 38,
+      mass: 0.8,
+    });
+    void animate(panelOpacity, 1, {
+      type: "spring",
+      stiffness: 420,
+      damping: 38,
+      mass: 0.8,
+    });
+    void animate(panelScale, 1, {
+      type: "spring",
+      stiffness: 420,
+      damping: 38,
+      mass: 0.8,
+    });
+  }
+
   return (
     <AnimatePresence>
       {open ? (
         <div className="auth7-sheet-root" role="presentation">
-          <motion.button
+          <m.button
             type="button"
             className="auth7-sheet-backdrop"
             aria-label="Dismiss authentication"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0 : 0.22 }}
-            disabled={busy}
+            transition={{ duration: reduce ? 0 : 0.28, ease: DROP_EASE }}
+            disabled={busy || isClosing}
             onClick={() => {
-              if (!busy) onDismiss();
+              if (!busy) dismissWithAnticipation();
             }}
           />
-          <motion.div
+          <m.div
             ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
             className="auth7-sheet-panel"
-            initial={reduce ? false : { opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? undefined : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            style={{ y: panelY, opacity: panelOpacity, scale: panelScale }}
+            drag={reduce || busy || isClosing ? false : "y"}
+            dragControls={dragControls}
+            dragListener={false}
+            dragMomentum={false}
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0.08, bottom: 0.18 }}
+            onDrag={onHandleDrag}
+            onDragEnd={onHandleDragEnd}
           >
-            <div className="auth7-sheet-handle" aria-hidden="true" />
-            <button
-              type="button"
-              className="auth7-sheet-close"
-              aria-label="Close"
-              disabled={busy}
-              onClick={onDismiss}
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
+            <div className="auth7-sheet-chrome">
+              <div
+                className="auth7-sheet-handle"
+                aria-hidden="true"
+                onPointerDown={startHandleDrag}
+              />
+              {mode === "forgot-password" || mode === "reset-sent" ? (
+                <button
+                  type="button"
+                  className="auth7-sheet-back"
+                  aria-label="Back"
+                  disabled={busy || isClosing}
+                  onClick={() => {
+                    if (initialMode === "forgot-password") onDismiss();
+                    else switchMode("login");
+                  }}
+                >
+                  <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="auth7-sheet-close"
+                aria-label="Close"
+                disabled={busy || isClosing}
+                onClick={dismissWithAnticipation}
+              >
+                <X className="size-5" aria-hidden="true" />
+              </button>
+            </div>
 
             <AnimatePresence mode="wait">
-              <motion.div
+              <m.div
                 key={legalDoc ? `legal-${legalDoc}` : mode}
                 initial={reduce ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -269,24 +534,12 @@ export function AuthenticationSheet({
                 ) : (
                   <>
                     <header className="auth7-sheet-head">
-                  {mode === "forgot-password" || mode === "reset-sent" ? (
-                    <button
-                      type="button"
-                      className="auth7-sheet-back"
-                      aria-label="Back"
-                      disabled={busy}
-                      onClick={() => {
-                        if (initialMode === "forgot-password") onDismiss();
-                        else switchMode("login");
-                      }}
-                    >
-                      <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  ) : null}
                       <h2 id={titleId} className="auth7-sheet-title">
                         {title}
                       </h2>
-                      <p className="auth7-sheet-copy">{subtitle}</p>
+                      {subtitle ? (
+                        <p className="auth7-sheet-copy">{subtitle}</p>
+                      ) : null}
                     </header>
 
                     {mode === "reset-sent" ? (
@@ -352,9 +605,10 @@ export function AuthenticationSheet({
                       </form>
                     ) : (
                       <>
-                        {STUB_OAUTH_ENABLED ? (
+                        {SHOW_SOCIAL_BUTTONS ? (
                         <>
                         <div className="auth7-sheet-social">
+                          {SHOW_GOOGLE_BUTTON ? (
                           <div className="auth7-social-btn is-google">
                             <CtaButton
                               {...ctaButtonPropsFromTemplate("squircleCTA")}
@@ -379,6 +633,8 @@ export function AuthenticationSheet({
                               onClick={() => void finishSocial("Google")}
                             />
                           </div>
+                          ) : null}
+                          {SHOW_APPLE_BUTTON ? (
                           <button
                             type="button"
                             className="auth7-social-btn"
@@ -401,6 +657,7 @@ export function AuthenticationSheet({
                             )}
                             Continue with Apple
                           </button>
+                          ) : null}
                         </div>
 
                         <div className="auth7-sheet-divider" role="separator">
@@ -428,9 +685,20 @@ export function AuthenticationSheet({
                               value={email}
                               placeholder="you@email.com"
                               disabled={busy}
-                              onChange={(e) => setEmail(e.target.value)}
+                              aria-invalid={emailFormatError ? true : undefined}
+                              onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (error === "Enter a valid email address.") {
+                                  setError("");
+                                }
+                              }}
                             />
                           </label>
+                          {emailFormatError ? (
+                            <p className="auth7-error" role="alert">
+                              {emailFormatError}
+                            </p>
+                          ) : null}
 
                           <div className="auth7-field">
                             <label
@@ -593,7 +861,7 @@ export function AuthenticationSheet({
                             </div>
                           ) : null}
 
-                          {error ? (
+                          {error && error !== emailFormatError ? (
                             <p className="auth7-error" role="alert">
                               {error}
                             </p>
@@ -614,10 +882,7 @@ export function AuthenticationSheet({
                               costAmount={null}
                               fontSize={15}
                               strokeWidth={1}
-                              disabled={
-                                busy ||
-                                (mode === "create-account" && !canCreateAccount)
-                              }
+                              disabled={busy || !canSubmitPrimary}
                             />
                           </div>
                         </form>
@@ -637,7 +902,7 @@ export function AuthenticationSheet({
                             </>
                           ) : (
                             <>
-                              New to Sugar?{" "}
+                              New to Sugar Scratch?{" "}
                               <button
                                 type="button"
                                 className="auth7-text-link is-strong"
@@ -653,9 +918,9 @@ export function AuthenticationSheet({
                     )}
                   </>
                 )}
-              </motion.div>
+              </m.div>
             </AnimatePresence>
-          </motion.div>
+          </m.div>
         </div>
       ) : null}
     </AnimatePresence>

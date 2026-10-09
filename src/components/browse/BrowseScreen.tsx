@@ -1,27 +1,32 @@
-import { useCallback, useEffect, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { DailyRewardHero } from "@/components/rewards/DailyRewardHero";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { ContinueCollecting } from "@/components/home/ContinueCollecting";
 import { DiscoverReel } from "@/components/home/DiscoverReel";
-import { FeaturedCoverFlow } from "@/components/home/FeaturedCoverFlow";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
-import { PackLibrary } from "@/components/home/PackLibrary";
+import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
-import { useAuth } from "@/contexts/AuthContext";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import { useAuth } from "@/contexts/useAuth";
+import { useSearch } from "@/contexts/SearchContext";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
+import { isNewUserForHomepageHero } from "@/services/collectionState";
 import {
   fetchHomepage,
   fetchLeaderboard,
+  splitContinueCollectingItems,
   type ContinueCollectingItem,
-  type FeaturedPack,
   type HomepageData,
   type LeaderboardCategory,
   type LeaderboardRow,
 } from "@/services/homepage";
+
+const FeaturedCoverFlow = lazy(() =>
+  import("@/components/home/FeaturedCoverFlow").then((m) => ({
+    default: m.FeaturedCoverFlow,
+  })),
+);
 
 type PageStatus = "loading" | "loaded" | "error";
 
@@ -173,35 +178,17 @@ export function HomeScreen({
   const location = useLocation();
   const navigate = useNavigate();
   const { guest } = useAuth();
+  const { openSearch } = useSearch();
   const [status, setStatus] = useState<PageStatus>("loading");
   const [home, setHome] = useState<HomepageData | null>(null);
-  const [category, setCategory] = useState<LeaderboardCategory>("all");
+  const [category, setCategory] = useState<LeaderboardCategory>("purchased");
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const [boardLoading, setBoardLoading] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [heroReady, setHeroReady] = useState(false);
+  const isNewUser = isNewUserForHomepageHero();
 
   useMarkPageReady(status === "error" || heroReady);
-
-  // Search HUD / Discover → Home opens the pack-library search sheet.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const state = location.state as { openPackLibrary?: boolean } | null;
-    const shouldOpen =
-      params.get("library") === "1" || Boolean(state?.openPackLibrary);
-    if (!shouldOpen) return;
-
-    setLibraryOpen(true);
-
-    // Clear the flag so back/refresh doesn't keep reopening.
-    if (params.get("library") === "1" || state?.openPackLibrary) {
-      navigate(
-        { pathname: location.pathname, search: "" },
-        { replace: true, state: {} },
-      );
-    }
-  }, [location.pathname, location.search, location.state, navigate]);
 
   const load = useCallback(async () => {
     setHeroReady(false);
@@ -209,7 +196,7 @@ export function HomeScreen({
     try {
       const data = await fetchHomepage();
       setHome(data);
-      setBoard(await fetchLeaderboard("all"));
+      setBoard(await fetchLeaderboard("purchased"));
       setStatus("loaded");
     } catch {
       setStatus("error");
@@ -225,7 +212,7 @@ export function HomeScreen({
     if (!state?.scrollToDailyReward || status !== "loaded") return;
 
     // Desktop stays at the top of Home; mobile docks to the daily reward.
-    if (window.matchMedia("(min-width: 507px)").matches) {
+    if (window.matchMedia("(min-width: 769px)").matches) {
       navigate(location.pathname, { replace: true, state: {} });
       return;
     }
@@ -281,18 +268,6 @@ export function HomeScreen({
       price: String(pack.diamondCost),
       creator: pack.creatorName,
       characterId: pack.id,
-    });
-  }
-
-  function playFeatured(pack: FeaturedPack) {
-    const foilId = pack.id !== pack.creatorId ? pack.id : undefined;
-    playPack({
-      id: foilId ? pack.creatorId : pack.id,
-      foilId,
-      name: pack.name,
-      creatorName: pack.creatorName,
-      diamondCost: pack.diamondCost,
-      themeName: pack.themeName,
     });
   }
 
@@ -355,6 +330,10 @@ export function HomeScreen({
     );
   }
 
+  const { continueCollecting, justDropIn } = splitContinueCollectingItems(
+    home.continueCollecting,
+  );
+
   return (
     <section
       data-page-scroll
@@ -377,11 +356,17 @@ export function HomeScreen({
             : "",
         ].join(" ")}
       >
-        <FeaturedCoverFlow
-          featured={home.featured}
-          onPlay={playPack}
-          onReady={() => setHeroReady(true)}
-        />
+        <Suspense
+          fallback={
+            <div className="home-featured-coverflow is-loading" aria-hidden="true" />
+          }
+        >
+          <FeaturedCoverFlow
+            featured={home.featured}
+            onPlay={playPack}
+            onReady={() => setHeroReady(true)}
+          />
+        </Suspense>
       </div>
 
       {showTutorial ? (
@@ -411,104 +396,57 @@ export function HomeScreen({
         Content width is constrained by the inner wrapper (same as other pages).
       */}
       <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
-        <div className="home-view-all-packs mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setLibraryOpen(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-5 py-2.5 text-[13px] font-semibold text-white/85 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(0.606_0.219_292.72)]"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              className="size-5 shrink-0"
-              aria-hidden="true"
-            >
-              <path
-                fill="currentColor"
-                d="M5.75 3h8.5A2.75 2.75 0 0 1 17 5.75v8.5A2.75 2.75 0 0 1 14.25 17h-4.129l-1-1h5.129A1.75 1.75 0 0 0 16 14.25v-8.5A1.75 1.75 0 0 0 14.25 4h-8.5A1.75 1.75 0 0 0 4 5.75v3.277a4.5 4.5 0 0 0-1 .23V5.75A2.75 2.75 0 0 1 5.75 3M9.5 14a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1zm-2-6.75a.75.75 0 1 1-1.5 0a.75.75 0 0 1 1.5 0m2-.25a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1zm-5 7c.786 0 1.512-.26 2.096-.697l2.55 2.55a.5.5 0 1 0 .708-.707l-2.55-2.55A3.5 3.5 0 1 0 4.5 17m0-1a2.5 2.5 0 1 1 0-5a2.5 2.5 0 0 1 0 5"
-              />
-            </svg>
-            View All Packs
-          </button>
-        </div>
+        {isNewUser || guest ? <PlaySteps /> : null}
 
-        {guest ? <PlaySteps /> : null}
+        {onClaimDaily ? (
+          <PlayerWelcomeBar
+            onClaimed={onClaimDaily}
+            onClaimAttempt={onClaimAttempt}
+          />
+        ) : null}
 
-        <div className="hub-today-bento mt-8">
-          {onClaimDaily ? (
-            <section
-              className="hub-module hub-module--today"
-              aria-labelledby="daily-reward"
-            >
-              <DailyRewardHero
-                onClaimed={onClaimDaily}
-                onClaimAttempt={onClaimAttempt}
-              />
-            </section>
-          ) : null}
-
+        <div className="hub-today-bento mt-4">
           <aside className="hub-today-bento-reel" aria-label="Discover video reel">
             <div className="hub-today-bento-reel-frame">
-              <DiscoverReel
-                onBuyPack={(pack) => onStartPlaying?.(pack)}
-                onLikeAttempt={onLikeAttempt}
-                onOpenCreator={onOpenCreator}
-                resumeLikeId={resumeLikeId}
-                onResumeLikeConsumed={onResumeLikeConsumed}
-              />
+              {heroReady ? (
+                <DiscoverReel
+                  onBuyPack={(pack) => onStartPlaying?.(pack)}
+                  onLikeAttempt={onLikeAttempt}
+                  onOpenCreator={onOpenCreator}
+                  resumeLikeId={resumeLikeId}
+                  onResumeLikeConsumed={onResumeLikeConsumed}
+                />
+              ) : null}
             </div>
           </aside>
 
           <div className="hub-today-bento-stack">
             {!guest ? (
-              <ContinueCollecting
-                items={home.continueCollecting}
-                onOpen={openCollection}
-                onSeeAllClick={() => setLibraryOpen(true)}
-              />
+              <>
+                <ContinueCollecting
+                  title="CONTINUE COLLECTING"
+                  items={continueCollecting}
+                  onOpen={openCollection}
+                  onSeeAllClick={openSearch}
+                />
+                {continueCollecting.length === 0 ? (
+                  <ContinueCollecting
+                    title="JUST DROP IN"
+                    ariaLabel="Just drop in"
+                    hideProgress
+                    icon={
+                      <Sparkles
+                        className="continue-collecting-heart"
+                        aria-hidden="true"
+                      />
+                    }
+                    items={justDropIn}
+                    onOpen={openCollection}
+                    onSeeAllClick={openSearch}
+                  />
+                ) : null}
+              </>
             ) : null}
-
-            <section
-              className="continue-collecting hub-upcoming-card"
-              aria-labelledby="browse-upcoming-heading"
-            >
-              <div className="continue-collecting-header">
-                <div className="continue-collecting-title-row">
-                  <CalendarDays
-                    className="continue-collecting-heart"
-                    aria-hidden="true"
-                  />
-                  <h2
-                    id="browse-upcoming-heading"
-                    className="continue-collecting-title"
-                  >
-                    Upcoming Events
-                  </h2>
-                </div>
-              </div>
-              <div className="hub-upcoming-empty">
-                <span className="hub-upcoming-empty-icon" aria-hidden="true">
-                  <CalendarDays className="size-5" />
-                </span>
-                <div className="hub-upcoming-empty-copy">
-                  <p className="hub-upcoming-empty-title">No live events right now.</p>
-                  <p className="hub-upcoming-empty-sub">Check back tomorrow.</p>
-                </div>
-                <span className="hub-upcoming-empty-atmosphere" aria-hidden="true" />
-              </div>
-              <div className="hub-upcoming-notify-wrap">
-                <div className="hub-upcoming-notify">
-                  <CtaButton
-                    {...ctaButtonPropsFromTemplate("pillPurpleCTA")}
-                    fillParent
-                    label="Notify Me"
-                    costAmount={null}
-                    fontSize={14}
-                  />
-                </div>
-              </div>
-            </section>
           </div>
         </div>
       </div>
@@ -544,14 +482,6 @@ export function HomeScreen({
         </div>
       ) : null}
 
-      <PackLibrary
-        open={libraryOpen}
-        onClose={() => setLibraryOpen(false)}
-        onPlay={(pack) => {
-          setLibraryOpen(false);
-          playFeatured(pack);
-        }}
-      />
     </section>
   );
 }

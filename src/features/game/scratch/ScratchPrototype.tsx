@@ -1,6 +1,21 @@
-import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
+import { useAuth } from "@/contexts/useAuth";
+import { useWallet } from "@/contexts/WalletContext";
+import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
+import {
+  effectiveSoundEffect,
+  setGameSoundOn,
+  subscribeGameAudioPrefs,
+} from "@/services/gameAudioPrefs";
+import { noteCoinsReceived } from "@/services/coinReceipt";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
-import { useMarkPageReady } from "@/shared/ui/PageTransition";
+import {
+  isScratchHandQuotaExhausted,
+  persistScratchCoins,
+  startScratchHand,
+} from "@/services/scratchCoinReward";
+import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import { Volume2, VolumeX } from "lucide-react";
 import {
   useCallback,
@@ -8,7 +23,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type AnimationEvent,
   type CSSProperties,
+  type RefObject,
 } from "react";
 import { flushSync } from "react-dom";
 import {
@@ -18,29 +35,54 @@ import {
   type ParticleType,
 } from "../cursorFx/FairyDustCursor";
 import { loadLottieUrlSource } from "../cursorFx/loadLottieSource";
-import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { GamePauseButton } from "../GamePauseButton";
 import {
-  InitialCountdown,
-  isCountdownSoundUnlocked,
-  TOP_BAR_DOCK_MS,
-  TOP_BAR_DOCK_NEXT_CARD_MS,
-  unlockCountdownSound,
-} from "../modules/InitialCountdown";
+  shouldUpdateBodyMarkers,
+  shouldUpdateChestFollow,
+} from "../modules/chestFollowGate";
 import {
-  ScratchFrameProgress,
-  type SymbolDiscoveryBatch,
-} from "../modules/ScratchFrameProgress";
+  shouldClearStagePicture,
+  shouldDeferCardVideoAttach,
+  shouldReviveGameVideos,
+} from "../modules/currencyResultMedia";
 import {
-  TOP_BAR_SHOWCASE_MS,
-  TopSymbolBar,
-  type TopBarPhase,
-} from "../modules/TopSymbolBar";
-import { MotionWinReveal } from "../modules/MotionWinReveal";
-import { NoMatchOutcome } from "../modules/NoMatchOutcome";
+  celebrateBurstCount,
+  celebrateDurationMs,
+  celebrateParticleBoost,
+  crossedProgressMilestones,
+  CURSOR_FX_EMIT_MODE,
+  CURSOR_FX_MOBILE_BURST_SIZE_MUL,
+  CURSOR_FX_FALL_GRAVITY,
+  CURSOR_FX_FALL_VELOCITY,
+  resolveCursorFxDeviceProfile,
+} from "../modules/cursorFxCelebrate";
 import {
-  awardMotionCardPhotos,
+  fairyDustSpawnMinDistancePx,
+  shouldSampleFabricAlpha,
+  shouldSpawnFairyDust,
+} from "../modules/fairyDustSpawnPolicy";
+import {
+  finaleHaptics,
+  playFinaleBoomSound,
+  playFinaleChargeSound,
+} from "../modules/finaleFx";
+import { resolveGameCanvasPixelRatio } from "../modules/gameCanvasPixelRatio";
+import {
+  chargeAmount,
+  explosionOrigin,
+  finaleHidesForeground,
+  finalePhaseAt,
+  finaleTimeline,
+  garmentRevealSatisfied,
+  shouldExplodeGarment,
+  type FinalePhase,
+  type FinaleTimeline,
+} from "../modules/garmentExplosion";
+import {
+  awardMotionCardCurrency,
   clearPendingMotionResult,
   finishMotionHand,
+  isFreePlayUrl,
   isGameModeUrl,
   loadGameSession,
   navigateTo,
@@ -48,11 +90,18 @@ import {
   themeForMotionCard,
   type GameSession,
 } from "../modules/gameSession";
+import { GameSymbolIcon } from "../modules/GameSymbolIcon";
+import { shouldHalfRateBottomUploads } from "../modules/halfRateBottom";
 import {
-  inferThemeFromLabel,
-  loadGameCatalog,
-  type PhotoCard,
-} from "../modules/session";
+  InitialCountdown,
+  isCountdownSoundUnlocked,
+  resumeCountdownAudioIfActive,
+  stopCountdownAudio,
+  TOP_BAR_DOCK_MS,
+  TOP_BAR_DOCK_NEXT_CARD_MS,
+  unlockCountdownSound,
+} from "../modules/InitialCountdown";
+import { MatchFlight } from "../modules/MatchFlight";
 import {
   advanceHuntHintCycle,
   applyBodyFindHits,
@@ -70,17 +119,111 @@ import {
   type HuntHintCycle,
   type MatchGameOutcome,
 } from "../modules/matchGame";
+import { MotionCurrencyReveal } from "../modules/MotionCurrencyReveal";
+import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { PackProgress } from "../modules/PackProgress";
+import {
+  ScratchFrameProgress,
+  type SymbolDiscoveryBatch,
+} from "../modules/ScratchFrameProgress";
+import {
+  syncMotionScratchBgm,
+  unlockMotionScratchBgm,
+} from "../modules/motionScratchBgm";
+import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import {
+  gameAudioStartTime,
+  getGameAudioContext,
+  getGameAudioOutput,
+} from "../shared/gameAudioContext";
+import { soundMixOutput } from "../shared/soundMix";
+import {
+  clearPendingScratchMove,
+  createScratchInputCoalesce,
+  notePendingScratchMove,
+  takePendingScratchMove,
+} from "../modules/scratchInputCoalesce";
+import {
+  clearScratchMarks,
+  createScratchMarksRing,
+  pushScratchMark,
+  scratchMarksSome,
+  type ScratchMark as RingScratchMark,
+} from "../modules/scratchMarksRing";
+import {
+  createScratchCoverage,
+  createStrokeFreshness,
+  noteStrokeStamp,
+  rebuildScratchCoverage,
+  resetScratchCoverage,
+  resetStrokeFreshness,
+  SCRATCH_COVERAGE_SIZE,
+  stampScratchCoverage,
+} from "../modules/scratchCoverage";
+import {
+  createFabricAlphaCache,
+  createSymbolScratchProbeCache,
+  isSymbolNearAnyStroke,
+  isSymbolNearStroke,
+  readCachedFabricAlpha,
+  readCachedSymbolScratchAmount,
+  writeCachedFabricAlpha,
+  writeCachedSymbolScratchAmount,
+} from "../modules/scratchProbeCache";
+import {
+  resolveAutoScratchBudget,
+  resolveManualScratchBudget,
+} from "../modules/scratchStampBudget";
+import { inferThemeFromLabel } from "../modules/session";
+import {
+  COIN_BADGE_AWARD_HOLD_MS,
+  COIN_BADGE_IDLE_HIDE_MS,
+  rollSparkleCoinAward,
+} from "../modules/sparkleCoinAward";
+import {
+  playSparkleCoinSound,
+  preloadSparkleCoinSounds,
+  stopSparkleCoinSounds,
+} from "../modules/sparkleCoinSound";
+import {
+  endScratchSoundStroke,
+  noteScratchStamp,
+  preloadScratchSounds,
+  stopScratchSounds,
+} from "../modules/scratchSound";
+import {
+  preloadLottieUrls,
+  shouldFreezeSymbolLottie,
+  shouldPreferStaticSymbolLottie,
+} from "../modules/symbolLottiePolicy";
 import { getSymbolRotationStats } from "../modules/symbolPlaybackRotation";
 import {
+  TOP_BAR_SHOWCASE_MS,
+  TopSymbolBar,
+  type TopBarPhase,
+} from "../modules/TopSymbolBar";
+import {
+  createVideoSyncState,
+  decideVideoSync,
+  shortestMediaDrift,
+  type VideoSyncState,
+} from "../modules/videoSync";
+import {
   fetchCatalogMotionCards,
+  withPreferredVideoQuality,
 } from "../shared/catalog";
 import {
+  applyBoundThemeIntroSound,
+  bindThemeIntroVideo,
   loadVideoSrc,
   playThemeIntro,
   releaseMediaElement,
+  setThemeIntroSound,
+  unbindThemeIntroVideo,
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
+import { StageCoinCount } from "../StageCoinCount";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import {
   MirrorSlideTransition,
   nextTemplateId,
@@ -100,6 +243,72 @@ import {
   type Vec2,
 } from "./meshGeometry";
 import { fetchModels, type ModelInfo } from "./models";
+
+// Debug readouts that tick several times a second own their state, so updates
+// re-render only them instead of the whole ScratchPrototype tree.
+function CursorFxPerfReadout() {
+  const [perf, setPerf] = useState({ active: 0, peak: 0, avgFrameMs: 0 });
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const active = fairyDustPerf.active;
+      const peak = fairyDustPerf.peak;
+      const avgFrameMs = Math.round(fairyDustPerf.avgFrameMs * 100) / 100;
+      setPerf((current) =>
+        current.active === active &&
+        current.peak === peak &&
+        current.avgFrameMs === avgFrameMs
+          ? current
+          : { active, peak, avgFrameMs },
+      );
+    }, UI_STATE_UPDATE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <p className="auto-scratch-hint">
+      Active {perf.active} · peak {perf.peak} · {perf.avgFrameMs.toFixed(2)}
+      ms/frame
+      {perf.peak >= 220 ? " — near cap (250)" : ""}
+    </p>
+  );
+}
+
+function VideoTimelineSlider({
+  duration,
+  onSeek,
+  videoRef,
+}: {
+  duration: number;
+  onSeek: (time: number) => void;
+  videoRef: RefObject<HTMLVideoElement | null>;
+}) {
+  const [currentTime, setCurrentTime] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const time = videoRef.current?.currentTime;
+      if (typeof time === "number") setCurrentTime(time);
+    }, UI_STATE_UPDATE_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [videoRef]);
+
+  return (
+    <input
+      aria-label="Video timeline"
+      max={duration || 0}
+      min={0}
+      onChange={(event) => {
+        const time = Number(event.currentTarget.value);
+        onSeek(time);
+        setCurrentTime(time);
+      }}
+      step={0.05}
+      type="range"
+      value={Math.min(currentTime, duration || currentTime)}
+    />
+  );
+}
 
 // On-screen diagnostics (FPS, layer drift, raw video state) shown only when the
 // page is opened with ?debug=1. Self-contained: it polls the DOM/video elements
@@ -162,8 +371,8 @@ function DebugHud() {
       const [bottom, foreground] = vids;
       const out: string[] = [`render ${fps}fps`];
 
-      // Cursor FX cost: concurrent particles drive drawImage count; fadeSpeed
-      // and particles-per-move are the main knobs that grow this under load.
+      // Cursor FX cost: concurrent particles drive drawImage count; particles
+      // stay until they leave the stage, so particles-per-move is the main knob.
       const fx = fairyDustPerf;
       out.push(
         `fx ${fx.active} particles (peak ${fx.peak}) ${fx.avgFrameMs.toFixed(2)}ms avg`,
@@ -296,12 +505,6 @@ function DebugHud() {
   );
 }
 
-type ScratchMark = {
-  u: number;
-  v: number;
-  radius: number;
-};
-
 // A coin that animates from the scratch origin up to a symbol slot in the top
 // bar each time a new symbol ("coin") is earned. Positions are stage-relative
 // pixels; the CSS keyframe arcs the coin from `from*` to `to*`.
@@ -312,8 +515,10 @@ type FlyingCoin = {
   fromY: number;
   toX: number;
   toY: number;
-  midX: number;
-  midY: number;
+  /** Waypoint for the plain `coinFly` keyframe. Match flights compute their
+      own bezier control point, so they leave these unset. */
+  midX?: number;
+  midY?: number;
   delayMs: number;
   /** Body-hunt match flight: source body index + destination top slot. */
   bodyIndex?: number;
@@ -322,7 +527,6 @@ type FlyingCoin = {
 
 const COIN_FLIGHT_DURATION_MS = 620;
 const COIN_FLIGHT_STAGGER_MS = 80;
-const MATCH_FLIGHT_DURATION_MS = 1250;
 const MATCH_FLIGHT_STAGGER_MS = 90;
 // A card pairs the reveal (bottom) video, the green-screen foreground video, and
 // the tracked mesh generated from that foreground. Switching cards swaps all
@@ -373,6 +577,7 @@ const DEFAULT_CARDS: Card[] = [
     foreground: "/cards/juliana_1/foreground.mp4",
     mesh: "juliana_1.json",
     chromaKey: false,
+    model_id: "julianaval",
   },
   {
     id: "juliana_2",
@@ -381,6 +586,7 @@ const DEFAULT_CARDS: Card[] = [
     foreground: "/cards/juliana_2/foreground.mp4",
     mesh: "juliana_2.json",
     chromaKey: false,
+    model_id: "julianaval",
   },
   {
     id: "chinese_1",
@@ -419,7 +625,9 @@ function playlistCardsForGameSession(
 async function loadCards(): Promise<Card[]> {
   try {
     const cards = await fetchCatalogMotionCards();
-    return cards.length > 0 ? cards : DEFAULT_CARDS;
+    return cards.length > 0
+      ? cards.map((card) => withPreferredVideoQuality(card))
+      : DEFAULT_CARDS;
   } catch {
     return DEFAULT_CARDS;
   }
@@ -427,7 +635,6 @@ async function loadCards(): Promise<Card[]> {
 
 const MESH_INDEX_SRC = "/mesh/index.json";
 const MESH_DIRECTORY_SRC = "/mesh";
-const DEFAULT_MESH_FILE = "tracked-mesh.json";
 const SYMBOL_SLOT_COUNT = SYMBOL_POINT_COUNT;
 const SYMBOL_REVEAL_STEP_MANUAL = 0.056;
 const SYMBOL_REVEAL_STEP_AUTO = 0.083;
@@ -439,7 +646,6 @@ const UI_STATE_UPDATE_INTERVAL_MS = 250;
 const INTRO_REVEAL_MS = 380;
 const SCRATCH_ZOOM_STORAGE_KEY = "sugar-scratchie:scratch-zoom-v2";
 const LEGACY_SCRATCH_ZOOM_STORAGE_KEYS = ["sugar-scratchie:scratch-zoom"];
-const SOUND_STORAGE_KEY = "sugar-scratchie:sound";
 // Slightly larger than the manual brush so a scratch that covers the mark counts.
 /** Skip GPU sample when the stroke is nowhere near the symbol. */
 const SYMBOL_REVEAL_UV_RADIUS = 0.06;
@@ -448,7 +654,7 @@ const SYMBOL_REVEAL_UV_RADIUS = 0.06;
 const SYMBOL_SCRATCH_REVEAL_THRESHOLD = 0.55;
 /** Lottie backing store matches the CSS marker so the find-bounce doesn't
  * upscale a soft canvas. */
-const BODY_SYMBOL_ICON_PX = 36;
+const BODY_SYMBOL_ICON_PX = 44;
 
 type ScratchZoomSettings = {
   enabled: boolean;
@@ -510,14 +716,8 @@ type SymbolAudioState = {
 
 function ensureSymbolAudio(state: SymbolAudioState) {
   if (typeof window === "undefined") return null;
-  if (!state.ctx) {
-    const AudioCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return null;
-    state.ctx = new AudioCtor();
-  }
+  state.ctx ??= getGameAudioContext();
+  if (!state.ctx) return null;
   if (state.ctx.state === "suspended") void state.ctx.resume();
   return state.ctx;
 }
@@ -529,7 +729,7 @@ function symbolSlotFrequency(slotIndex: number) {
 function playSymbolSlotNote(state: SymbolAudioState, slotIndex: number) {
   const ctx = ensureSymbolAudio(state);
   if (!ctx || slotIndex < 0 || slotIndex >= SYMBOL_SLOT_COUNT) return;
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "triangle";
@@ -538,7 +738,7 @@ function playSymbolSlotNote(state: SymbolAudioState, slotIndex: number) {
   gain.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + SYMBOL_NOTE_DURATION_S);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(soundMixOutput("symbols") ?? getGameAudioOutput(ctx));
   osc.start(now);
   osc.stop(now + SYMBOL_NOTE_DURATION_S + 0.02);
 }
@@ -563,11 +763,12 @@ function playMatchFindSound(
   if (!enabled) return;
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return;
-  const t = ctx.currentTime + startOffsetS;
-  // Bright ascending ding — claims a top-bar slot.
-  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle");
-  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine");
-  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine");
+  const t = gameAudioStartTime(ctx) + startOffsetS;
+  // Bright ascending ding — claims a top-bar slot. Level is the match bus.
+  const out = soundMixOutput("match") ?? getGameAudioOutput(ctx);
+  scheduleTone(ctx, t, 659.25, 0.1, 0.2, "triangle", out);
+  scheduleTone(ctx, t + 0.055, 880, 0.12, 0.18, "sine", out);
+  scheduleTone(ctx, t + 0.11, 1174.66, 0.14, 0.12, "sine", out);
 }
 
 /** Per newly revealed body icon: ding only when it claims a top-bar slot. */
@@ -598,16 +799,17 @@ function scheduleTone(
   durationS: number,
   volume: number,
   type: OscillatorType = "triangle",
+  output: AudioNode = getGameAudioOutput(ctx),
 ) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, startAt);
   gain.gain.setValueAtTime(0.0001, startAt);
-  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.015);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.0001), startAt + 0.015);
   gain.gain.exponentialRampToValueAtTime(0.0001, startAt + durationS);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(output);
   osc.start(startAt);
   osc.stop(startAt + durationS + 0.02);
 }
@@ -622,7 +824,18 @@ function playGameOutcomeSound(
   const ctx = ensureSymbolAudio(state);
   if (!ctx) return 1800;
 
-  const now = ctx.currentTime;
+  const now = gameAudioStartTime(ctx);
+  const out =
+    soundMixOutput(outcome === "win" ? "win" : "lose") ?? getGameAudioOutput(ctx);
+  const tone = (
+    startAt: number,
+    frequency: number,
+    durationS: number,
+    volume: number,
+    type: OscillatorType = "triangle",
+  ) => {
+    scheduleTone(ctx, startAt, frequency, durationS, volume, type, out);
+  };
 
   if (outcome === "win") {
     const sparkle = [
@@ -631,10 +844,9 @@ function playGameOutcomeSound(
     ];
     const sparkleStep = 0.048;
     sparkle.forEach((freq, index) => {
-      scheduleTone(ctx, now + index * sparkleStep, freq, 0.09, 0.17, "sine");
+      tone(now + index * sparkleStep, freq, 0.09, 0.17, "sine");
       if (index % 2 === 0) {
-        scheduleTone(
-          ctx,
+        tone(
           now + index * sparkleStep + 0.012,
           freq * 2,
           0.055,
@@ -648,28 +860,27 @@ function playGameOutcomeSound(
     const fanfare = [523.25, 659.25, 783.99, 987.77, 1174.66];
     fanfare.forEach((freq, index) => {
       const t = fanfareStart + index * 0.1;
-      scheduleTone(ctx, t, freq, 0.15, 0.3, "square");
-      scheduleTone(ctx, t, freq * 0.5, 0.15, 0.14, "sawtooth");
-      scheduleTone(ctx, t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
+      tone(t, freq, 0.15, 0.3, "square");
+      tone(t, freq * 0.5, 0.15, 0.14, "sawtooth");
+      tone(t + 0.04, freq * 1.5, 0.08, 0.08, "triangle");
     });
 
     const chordAt = fanfareStart + fanfare.length * 0.1 + 0.1;
     const chord = [261.63, 392, 523.25, 659.25, 783.99, 1046.5, 1318.51];
     chord.forEach((freq, index) => {
       const type: OscillatorType = index < 2 ? "sawtooth" : "triangle";
-      scheduleTone(ctx, chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
+      tone(chordAt, freq, 0.78, index < 2 ? 0.11 : 0.13, type);
     });
 
     const glitterStart = chordAt + 0.12;
     const glitter = [2093, 2349, 2637, 2793, 3136, 3520];
     glitter.forEach((freq, index) => {
-      scheduleTone(ctx, glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
+      tone(glitterStart + index * 0.045, freq, 0.11, 0.11, "sine");
     });
 
     const shimmerStart = glitterStart + glitter.length * 0.045 + 0.08;
     for (let i = 0; i < 6; i += 1) {
-      scheduleTone(
-        ctx,
+      tone(
         shimmerStart + i * 0.06,
         1760 + i * 110,
         0.07,
@@ -684,8 +895,8 @@ function playGameOutcomeSound(
 
   // No match is a resolved outcome, not a loss — a soft low chime that settles,
   // never a descending "you lost" sting.
-  scheduleTone(ctx, now, 523.25, 0.34, 0.09, "sine");
-  scheduleTone(ctx, now + 0.13, 392, 0.5, 0.075, "sine");
+  tone(now, 523.25, 0.34, 0.09, "sine");
+  tone(now + 0.13, 392, 0.5, 0.075, "sine");
   return 700 + GAME_OUTCOME_OVERLAY_PAD_MS;
 }
 
@@ -693,17 +904,7 @@ function scratchZoomEasing(bounce: boolean) {
   return bounce ? "cubic-bezier(0.34, 1.56, 0.64, 1)" : "ease-out";
 }
 
-function loadSoundEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const raw = localStorage.getItem(SOUND_STORAGE_KEY);
-    if (!raw) return true;
-    const parsed = JSON.parse(raw) as { enabled?: boolean };
-    return parsed.enabled ?? true;
-  } catch {
-    return true;
-  }
-}
+const loadSoundEnabled = () => effectiveSoundEffect();
 
 // Rect-taking variant, for callers that project several points per frame: the
 // two getBoundingClientRect reads are identical for every point, so hoisting
@@ -776,27 +977,21 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
 }
 
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";
-const SCRATCH_RADIUS = 0.045;
-// Max canvas-space step between manual scratch stamps so fast swipes stay continuous.
-const MANUAL_SCRATCH_PATH_STEP = SCRATCH_RADIUS * 0.65 * CANVAS_HEIGHT;
-const MANUAL_SCRATCH_MAX_POINTS = 40;
+const SCRATCH_RADIUS = 0.03;
+// Densify / auto stamp caps live in scratchStampBudget (Phase 9 coarse vs fine).
 const AUTO_SCRATCH_RADIUS = 0.092;
 const AUTO_SCRATCH_DIAGONAL_LINES = 18;
 // Step along each ↘ stroke (top-left → bottom-right) so brush circles overlap.
 const AUTO_SCRATCH_PATH_STEP_UV = AUTO_SCRATCH_RADIUS * 0.72;
-const AUTO_SCRATCH_FILL_BATCH = 36;
-const AUTO_SCRATCH_MAX_PER_FRAME = 32;
 
 type AutoScratchSettings = {
   enabled: boolean;
   speed: number;
-  flakes: boolean;
 };
 
 const AUTO_SCRATCH_DEFAULTS: AutoScratchSettings = {
   enabled: false,
   speed: 58,
-  flakes: false,
 };
 
 function loadAutoScratchSettings(): AutoScratchSettings {
@@ -812,14 +1007,13 @@ function loadAutoScratchSettings(): AutoScratchSettings {
         1,
         120,
       ),
-      flakes: parsed.flakes ?? AUTO_SCRATCH_DEFAULTS.flakes,
     };
   } catch {
     return AUTO_SCRATCH_DEFAULTS;
   }
 }
 
-const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v7";
+const CURSOR_FX_STORAGE_KEY = "sugar-scratchie:cursor-fx-v13";
 const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx",
   "sugar-scratchie:cursor-fx-v1",
@@ -828,6 +1022,12 @@ const LEGACY_CURSOR_FX_STORAGE_KEYS = [
   "sugar-scratchie:cursor-fx-v4",
   "sugar-scratchie:cursor-fx-v5",
   "sugar-scratchie:cursor-fx-v6",
+  "sugar-scratchie:cursor-fx-v7",
+  "sugar-scratchie:cursor-fx-v8",
+  "sugar-scratchie:cursor-fx-v9",
+  "sugar-scratchie:cursor-fx-v10",
+  "sugar-scratchie:cursor-fx-v11",
+  "sugar-scratchie:cursor-fx-v12",
 ];
 
 type CursorFxSettings = {
@@ -838,24 +1038,40 @@ type CursorFxSettings = {
   fadeSpeed: number;
 };
 
+function detectCursorFxDeviceProfile() {
+  if (typeof window === "undefined") {
+    return resolveCursorFxDeviceProfile({
+      reducedMotion: false,
+      coarsePointer: false,
+      narrowViewport: false,
+    });
+  }
+  return resolveCursorFxDeviceProfile({
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)")
+      .matches,
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+    narrowViewport: window.matchMedia("(max-width: 700px)").matches,
+  });
+}
+
+const CURSOR_FX_DEVICE = detectCursorFxDeviceProfile();
+
 const CURSOR_FX_DEFAULTS: CursorFxSettings = {
-  fairyDust: true,
-  particleSize: 64,
-  particleCount: 5,
-  gravity: 0.1,
-  // Slightly longer life so a scratch leaves a denser coin trail.
+  fairyDust: CURSOR_FX_DEVICE.fairyDust,
+  particleSize: CURSOR_FX_DEVICE.particleSize,
+  particleCount: CURSOR_FX_DEVICE.particleCount,
+  // Fall like symbols-foil flakes (not a fireworks fountain).
+  gravity: CURSOR_FX_FALL_GRAVITY,
+  // Kept for the settings slider; coins no longer fade with this value.
   fadeSpeed: 0.96,
 };
 
-const CURSOR_FX_INITIAL_VELOCITY = { min: 0.5, max: 1.5 };
+const CURSOR_FX_INITIAL_VELOCITY = CURSOR_FX_FALL_VELOCITY;
 /** Skip diamond-coin spawn on keyed-out / empty pixels. */
 const CURSOR_FX_MESH_ALPHA_MIN = 0.12;
 
 const CURSOR_FX_LOTTIE_PRESETS: { url: string; name: string }[] = [
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
-  { url: "/cursor-fx/Diamond Coin.lottie", name: "Diamond Coin.lottie" },
+  { url: COIN_LOTTIE_SRC, name: "Diamond Coin.lottie" },
 ];
 
 function loadCursorFxSettings(): CursorFxSettings {
@@ -872,17 +1088,17 @@ function loadCursorFxSettings(): CursorFxSettings {
       particleSize: clampValue(
         Number(parsed.particleSize) || CURSOR_FX_DEFAULTS.particleSize,
         10,
-        64,
+        96,
       ),
       particleCount: clampValue(
         Number(parsed.particleCount) || CURSOR_FX_DEFAULTS.particleCount,
         1,
-        8,
+        12,
       ),
       gravity: clampValue(
         Number(parsed.gravity) || CURSOR_FX_DEFAULTS.gravity,
         0,
-        0.1,
+        0.4,
       ),
       fadeSpeed: clampValue(
         Number(parsed.fadeSpeed) || CURSOR_FX_DEFAULTS.fadeSpeed,
@@ -927,7 +1143,10 @@ const CHEST_ANCHOR_UV = { x: 0.5, y: 0.4 };
 const CHEST_TARGET_UV = { x: 0.5, y: 0.4 };
 const CHEST_FOLLOW_STRENGTH = 0.7;
 const CHEST_CAM_MAX = Math.min(0.05, PRESENT_ZOOM - 1);
-const CHEST_SMOOTH = 0.08;
+/** Slightly snappier than 0.08 so follow doesn't feel laggy behind the mesh. */
+const CHEST_SMOOTH = 0.14;
+/** Snap when within ~0.5px — stops asymptotic drip without stepping the pan. */
+const CHEST_CAM_EPS = 1 / CANVAS_WIDTH;
 
 // Show a pulsar on one unfound body mark at a time once this many (or fewer)
 // remain, but only after the player has been idle for HINT_IDLE_MS. Hold each
@@ -941,32 +1160,17 @@ const HINT_PULSE_GAP_MS = 1600;
 // get its current canvas-pixel location (the mesh UV grid is regular 0..1).
 // sampleMeshUvToWorld lives in meshGeometry.ts
 
-// Drift past this (seconds) is a genuine discontinuity (loop wrap) and is
-// corrected immediately with a hard seek. Seeks stall the decoder, and on
-// Safari, whose currentTime is coarse, a low threshold makes us seek constantly
-// (every stale reading crosses it) which reads as continuous lag — so keep it
-// high.
-const HARD_SEEK_DRIFT = 0.45;
+// Dual-clip sync: prefer tolerating 1–2 frames over seeking. Loop wrap used to
+// look like an ~duration discontinuity and fire an immediate hard seek (the
+// multi-hundred-ms hitch). Shortest-path drift + cooldown on every seek softens
+// that; see modules/videoSync.ts.
+const videoSyncState = new WeakMap<HTMLVideoElement, VideoSyncState>();
 
-// Smaller but persistent drift (a startup offset between the two play() calls,
-// a decode stall, tab-suspend catch-up) is closed with a rare one-shot seek:
-// drift must hold past SOFT_SEEK_DRIFT for SOFT_SEEK_CONFIRM_MS before we act,
-// and corrections are spaced by SOFT_SEEK_COOLDOWN_MS so a single stale
-// currentTime reading (Safari updates at ~4 Hz) can't cause a seek storm.
-// 0.05s catches a 2-frame offset at 24fps (2×0.042=0.083s) and at 30fps
-// (2×0.033=0.067s), which 0.09s would silently ignore.
-// 150ms confirm is long enough to outlast one Safari polling interval (~250ms)
-// while still snapping within the first visible loop.
-const SOFT_SEEK_DRIFT = 0.05;
-const SOFT_SEEK_CONFIRM_MS = 150;
-const SOFT_SEEK_COOLDOWN_MS = 2000;
-
-const videoSyncState = new WeakMap<
-  HTMLVideoElement,
-  { driftSince: number; lastSeekAt: number }
->();
-
-function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
+function syncVideoTime(
+  source: HTMLVideoElement,
+  target: HTMLVideoElement,
+  opts?: { isScratching?: boolean },
+) {
   if (source.paused && !target.paused) {
     target.pause();
   }
@@ -989,43 +1193,31 @@ function syncVideoTime(source: HTMLVideoElement, target: HTMLVideoElement) {
   if (target.seeking) return;
 
   // Let the foreground free-run at 1×. Continuously steering playbackRate
-  // knocks Safari's video decoder off its smooth-decode path, which starves the
-  // foreground to a few fps and makes it fall behind — the opposite of what the
-  // steering is trying to do. Corrections below are seeks only, and rare.
+  // knocks Safari's video decoder off its smooth-decode path.
   if (target.playbackRate !== 1) target.playbackRate = 1;
 
   const targetTime = foregroundTimeFromBottom(source, target);
-  const drift = targetTime - target.currentTime;
+  const duration = target.duration;
+  const actualTime = target.currentTime;
+  const drift = shortestMediaDrift(targetTime, actualTime, duration);
   const now = performance.now();
   let state = videoSyncState.get(target);
   if (!state) {
-    state = { driftSince: 0, lastSeekAt: 0 };
+    state = createVideoSyncState();
     videoSyncState.set(target, state);
   }
 
-  // A genuine discontinuity (loop wrap): snap immediately.
-  if (Math.abs(drift) > HARD_SEEK_DRIFT) {
+  const decision = decideVideoSync({
+    drift,
+    now,
+    state,
+    desiredTime: targetTime,
+    actualTime,
+    duration,
+    isScratching: opts?.isScratching,
+  });
+  if (decision.action === "seek") {
     target.currentTime = targetTime;
-    state.driftSince = 0;
-    state.lastSeekAt = now;
-    return;
-  }
-
-  // Sub-wrap drift: require it to persist before correcting, and never correct
-  // more often than the cooldown, so coarse/stale readings can't cause a storm.
-  if (Math.abs(drift) > SOFT_SEEK_DRIFT) {
-    if (state.driftSince === 0) {
-      state.driftSince = now;
-    } else if (
-      now - state.driftSince >= SOFT_SEEK_CONFIRM_MS &&
-      now - state.lastSeekAt >= SOFT_SEEK_COOLDOWN_MS
-    ) {
-      target.currentTime = targetTime;
-      state.driftSince = 0;
-      state.lastSeekAt = now;
-    }
-  } else {
-    state.driftSince = 0;
   }
 }
 
@@ -1186,9 +1378,44 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
   return sparse;
 }
 
-export function ScratchPrototype() {
+export function ScratchPrototype({
+  skipToPlay = false,
+  loopFromIntro = false,
+  onLeave,
+  onFirstProgressMilestone,
+  onRevealedSymbolsChange,
+}: {
+  /**
+   * Lab/sandbox: skip intro video + foil bar scratch + countdown.
+   * Open already in hunt play with the symbol bar docked at the top.
+   */
+  skipToPlay?: boolean;
+  /** Audio lab: after a card finishes, replay it from the theme intro. */
+  loopFromIntro?: boolean;
+  /** When set, pause control is rendered in the top chrome left gutter. */
+  onLeave?: () => void;
+  /**
+   * Fires once the first time crossedProgressMilestone returns a band
+   * (10% scratch progress). Used by /game-ui lab bonus diamond.
+   */
+  onFirstProgressMilestone?: () => void;
+  /** Body/foil icons found so far (0…SYMBOL_SLOT_COUNT). Lab bonus diamond lock. */
+  onRevealedSymbolsChange?: (count: number) => void;
+} = {}) {
+  const { authed } = useAuth();
+  const { addCoins, coins, diamonds } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
+  const handIdRef = useRef("");
+  const handStartGenRef = useRef(0);
+  /** Card id the current handId was issued for — skip remount/mesh restarts. */
+  const handCardIdRef = useRef<string | null>(null);
+  /** Theme toggle only. A paid launch always awards, even on an owned card. */
+  const freePlayLaunch = isFreePlayUrl();
+  const practiceRef = useRef(freePlayLaunch);
+  /** Lab restart token the current hand was started for — a bump needs a fresh hand. */
+  const handLabRestartTokenRef = useRef(0);
   // FairyDust must paint in stage space: the product embed wraps play in a
   // transformed phone frame, which makes position:fixed + clientX/Y land off-canvas.
   const [cursorHost, setCursorHost] = useState<HTMLDivElement | null>(null);
@@ -1216,7 +1443,8 @@ export function ScratchPrototype() {
   /** After claim, FG is paused + rVFC-unhooked so it stops decoding. */
   const fgParkedRef = useRef(false);
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
-  const marksRef = useRef<ScratchMark[]>([]);
+  const marksRef = useRef(createScratchMarksRing());
+  const scratchInputCoalesceRef = useRef(createScratchInputCoalesce());
   const hoverPointRef = useRef<Vec2 | null>(null);
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const drawingRef = useRef(false);
@@ -1227,6 +1455,13 @@ export function ScratchPrototype() {
   const revealSamplesRef = useRef<Vec2[]>([]);
   const revealedRef = useRef<boolean[]>([]);
   const revealedCountRef = useRef(0);
+  // Fine UV record of cleared fabric; scratch audio + cursor FX only fire
+  // while the latest stamps cleared something new.
+  const scratchCoverageRef = useRef(createScratchCoverage());
+  const strokeFreshnessRef = useRef(createStrokeFreshness());
+  const lastStampUvRef = useRef<{ u: number; v: number } | null>(null);
+  const strokeFreshRef = useRef(false);
+  const cursorFxSpawnGate = useCallback(() => strokeFreshRef.current, []);
   const [trackedMesh, setTrackedMesh] = useState<TrackedMesh | null>(null);
   const trackedSampleRef = useRef<TrackedMeshSample | null>(null);
   const trackedMeshRef = useRef<TrackedMesh | null>(null);
@@ -1236,34 +1471,60 @@ export function ScratchPrototype() {
   const cameraRef = useRef({ x: 0, y: 0 });
   const [meshFiles, setMeshFiles] = useState<string[]>([]);
   const [cards, setCards] = useState<Card[]>(DEFAULT_CARDS);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [cardsReady, setCardsReady] = useState(false);
-  useMarkPageReady(cardsReady);
-  const [selectedMeshFile, setSelectedMeshFile] = useState(
-    DEFAULT_CARDS[1].mesh,
+  const [models, setModels] = useState<ModelInfo[]>(() =>
+    skipToPlay ? [{ id: "julianaval", label: "Juliana", avatar: null }] : [],
   );
-  const [meshReloadToken, setMeshReloadToken] = useState(0);
-  const [activeModelId, setActiveModelId] = useState(() => {
-    if (typeof window === "undefined") return "";
+  // Lab is ready immediately from DEFAULT_CARDS — no API wait for mobile preview.
+  const [cardsReady, setCardsReady] = useState(() => skipToPlay);
+  useMarkPageReady(cardsReady);
+  // Empty until the active card resolves — a placeholder mesh here is a wasted
+  // multi-hundred-KB fetch on every /game load.
+  const [selectedMeshFile, setSelectedMeshFile] = useState(() => {
+    if (!skipToPlay) return "";
+    if (typeof window === "undefined") return "juliana_1.json";
+    const fromUrl =
+      new URLSearchParams(window.location.search).get("card")?.trim() ||
+      "juliana_1";
     return (
-      new URLSearchParams(window.location.search).get("model")?.trim() || ""
+      DEFAULT_CARDS.find((entry) => entry.id === fromUrl)?.mesh ??
+      "juliana_1.json"
+    );
+  });
+  const [meshReloadToken, setMeshReloadToken] = useState(0);
+  /** Lab only: bump to force the same card to fully reset after a find. */
+  const [labRestartToken, setLabRestartToken] = useState(0);
+  const [activeModelId, setActiveModelId] = useState(() => {
+    if (typeof window === "undefined") return skipToPlay ? "julianaval" : "";
+    return (
+      new URLSearchParams(window.location.search).get("model")?.trim() ||
+      (skipToPlay ? "julianaval" : "")
     );
   });
   const [selectedCardId, setSelectedCardId] = useState(() => {
-    if (typeof window === "undefined") return "";
+    if (typeof window === "undefined") return skipToPlay ? "juliana_1" : "";
     return (
-      new URLSearchParams(window.location.search).get("card")?.trim() || ""
+      new URLSearchParams(window.location.search).get("card")?.trim() ||
+      (skipToPlay ? "juliana_1" : "")
     );
   });
   /** StageNav / bare /game → full model hand. Collection Play Game omits playlist=1. */
   const [playlistMode, setPlaylistMode] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (skipToPlay) return false;
     return new URLSearchParams(window.location.search).get("playlist") === "1";
   });
   /** Locked card for single-play so clearing selectedCardId doesn't empty the hand. */
   const singleCardIdRef = useRef(
     (() => {
-      if (typeof window === "undefined") return "";
+      if (typeof window === "undefined") {
+        return skipToPlay ? "juliana_1" : "";
+      }
+      if (skipToPlay) {
+        return (
+          new URLSearchParams(window.location.search).get("card")?.trim() ||
+          "juliana_1"
+        );
+      }
       const params = new URLSearchParams(window.location.search);
       if (params.get("playlist") === "1" || isGameModeUrl()) return "";
       return params.get("card")?.trim() || "";
@@ -1299,7 +1560,8 @@ export function ScratchPrototype() {
   );
   const [motionResult, setMotionResult] = useState<{
     win: boolean;
-    photos: PhotoCard[];
+    coins: number;
+    diamonds: number;
     current: number;
     total: number;
     resultId: string;
@@ -1400,12 +1662,14 @@ export function ScratchPrototype() {
   const useBodySymbols =
     trackedMesh?.symbolPoints?.length === SYMBOL_SLOT_COUNT;
   useBodySymbolsRef.current = useBodySymbols;
-  const [progress, setProgress] = useState(0);
   // Mirrors drawingRef for the body-symbol icons, which hold their animation
   // while a stroke is in progress — that is exactly the window where the two
   // videos compete with Lottie for the main thread. Flips twice per stroke, not
   // per move, so it does not add render churn to the drag itself.
   const [isScratching, setIsScratching] = useState(false);
+  /** Cards-left pill: visible until first scratch touch, then animates out. */
+  const [packProgressShown, setPackProgressShown] = useState(true);
+  const [packProgressLeaving, setPackProgressLeaving] = useState(false);
   /** True only while the active stroke maps onto the deforming mesh. */
   const [cursorOnMesh, setCursorOnMesh] = useState(false);
   const [claimed, setClaimed] = useState(false);
@@ -1416,7 +1680,10 @@ export function ScratchPrototype() {
   );
   const matchOutcomeRef = useRef<MatchGameOutcome | null>(null);
   const [topSymbols, setTopSymbols] = useState(buildTopSymbols);
-  const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>("center");
+  const [dockHidden, setDockHidden] = useState(false);
+  const [topBarPhase, setTopBarPhase] = useState<TopBarPhase>(() =>
+    skipToPlay ? "docked" : "center",
+  );
   const [topBarRound, setTopBarRound] = useState(0);
   /** Locks body scratch / video from dock through countdown end. */
   const [introGateActive, setIntroGateActive] = useState(false);
@@ -1429,8 +1696,6 @@ export function ScratchPrototype() {
   const [introCover, setIntroCover] = useState(false);
   /** Crossfading the frozen intro out over the live game stage. */
   const [introLeaving, setIntroLeaving] = useState(false);
-  /** Starts muted for autoplay policy; may unmute after playThemeIntro succeeds. */
-  const [introMuted, setIntroMuted] = useState(true);
   const introActiveRef = useRef(false);
   introActiveRef.current = introActive;
   const introCoverRef = useRef(false);
@@ -1438,13 +1703,20 @@ export function ScratchPrototype() {
   const introLeavingRef = useRef(false);
   introLeavingRef.current = introLeaving;
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
+  const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
+    const prev = introVideoElRef.current;
+    if (prev && prev !== el) unbindThemeIntroVideo(prev);
+    introVideoElRef.current = el;
+    if (el) bindThemeIntroVideo(el);
+  }, []);
   const introFreezeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const introFadeTimerRef = useRef<number | null>(null);
-  const handStartIntroDoneRef = useRef(false);
+  /** Lab skipToPlay: already past intro — keep in sync with handStartIntroResolved. */
+  const handStartIntroDoneRef = useRef(skipToPlay);
   /** True when 3-2-1 already played over the hand-start theme intro. */
   const handStartCountdownOverIntroRef = useRef(false);
   /** One 3-2-1 per hand — later cards skip straight to play after the top bar. */
-  const handCountdownDoneRef = useRef(false);
+  const handCountdownDoneRef = useRef(skipToPlay);
   /**
    * Resume after Save & Exit mid win-reveal: don't arm intro/countdown on the
    * finished card under the restored overlay. Clear once selectedCardId moves on.
@@ -1455,15 +1727,19 @@ export function ScratchPrototype() {
   const [handStartCountdownPending, setHandStartCountdownPending] =
     useState(false);
   const themeIntroByKeyRef = useRef<Map<string, string>>(new Map());
-  const [themeIntrosReady, setThemeIntrosReady] = useState(false);
+  /** Lab skipToPlay never fetches themes — ready immediately. */
+  const [themeIntrosReady, setThemeIntrosReady] = useState(() => skipToPlay);
   /** True once we've decided whether to show a hand-start intro (or skipped it). */
-  const [handStartIntroResolved, setHandStartIntroResolved] = useState(false);
+  const [handStartIntroResolved, setHandStartIntroResolved] = useState(
+    () => skipToPlay,
+  );
   /**
    * Don't unlock the scratch bar until the card clips have a frame.
    * Avoids the black stage that shows if the bar appears while Safari is still
    * attaching decoders after the theme intro.
+   * Lab skipToPlay can show chrome immediately — video readiness still gates play.
    */
-  const [gameVideosReady, setGameVideosReady] = useState(false);
+  const [gameVideosReady, setGameVideosReady] = useState(() => skipToPlay);
   /**
    * Cold refresh has no audio gesture — wait for Tap to play so theme-intro
    * autoplay + game-clip play() land inside a user gesture (otherwise the
@@ -1471,6 +1747,8 @@ export function ScratchPrototype() {
    */
   const [entryReady, setEntryReady] = useState(() => {
     if (typeof window === "undefined") return false;
+    // Lab opens straight into play — no Tap-to-play gate.
+    if (skipToPlay) return true;
     if (!loadSoundEnabled()) return true;
     return isCountdownSoundUnlocked();
   });
@@ -1478,6 +1756,12 @@ export function ScratchPrototype() {
   entryReadyRef.current = entryReady;
   const [sessionSymbols, setSessionSymbols] = useState(buildSessionSymbols);
   const [revealedSymbols, setRevealedSymbols] = useState(0);
+  const onRevealedSymbolsChangeRef = useRef(onRevealedSymbolsChange);
+  onRevealedSymbolsChangeRef.current = onRevealedSymbolsChange;
+  const publishRevealedSymbols = useCallback((count: number) => {
+    setRevealedSymbols(count);
+    onRevealedSymbolsChangeRef.current?.(count);
+  }, []);
   const [frameDiscoveryBatches, setFrameDiscoveryBatches] = useState<
     SymbolDiscoveryBatch[]
   >([]);
@@ -1493,16 +1777,25 @@ export function ScratchPrototype() {
   const [litTopSlots, setLitTopSlots] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
+  const [shakingTopSlots, setShakingTopSlots] = useState<boolean[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
+  );
+  const [shakeDelayMs, setShakeDelayMs] = useState<number[]>(() =>
+    Array.from({ length: TOP_SYMBOL_COUNT }, () => 0),
+  );
+  const [litSymbolSlots, setLitSymbolSlots] = useState<boolean[]>(() =>
+    Array.from({ length: SYMBOL_SLOT_COUNT }, () => false),
+  );
   const claimedTopSlotsRef = useRef<boolean[]>(
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
   const topBarSlotElsRef = useRef<(HTMLDivElement | null)[]>(
     Array.from({ length: TOP_SYMBOL_COUNT }, () => null),
   );
-  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(18.8);
   const [isPaused, setIsPaused] = useState(false);
-  const progressRef = useRef(progress);
+  /** Live reveal progress. Not React state — nothing renders it. */
+  const progressRef = useRef(0);
   const claimedRef = useRef(claimed);
   const gameResultRef = useRef<GameResult | null>(gameResult);
   gameResultRef.current = gameResult;
@@ -1523,7 +1816,7 @@ export function ScratchPrototype() {
   const revealedSymbolsRef = useRef(revealedSymbols);
   revealedSymbolsRef.current = revealedSymbols;
   const uiStateRef = useRef({
-    currentTime,
+    currentTime: 0,
     duration,
     isPaused,
     lastUpdatedAt: 0,
@@ -1538,16 +1831,64 @@ export function ScratchPrototype() {
   );
   const autoScratchRef = useRef(autoScratch);
   autoScratchRef.current = autoScratch;
+  /** Auto-clear garment after all body symbols found — not the settings toggle. */
+  const finishAutoActiveRef = useRef(false);
+  /** Hunt-complete finale (charge → shatter → hold); driven from the rAF loop. */
+  const finaleStartRef = useRef<number | null>(null);
+  const finaleTimelineRef = useRef<FinaleTimeline | null>(null);
+  const finalePhaseRef = useRef<FinalePhase | null>(null);
+  const finaleOriginRef = useRef<Vec2>({
+    x: CANVAS_WIDTH / 2,
+    y: CANVAS_HEIGHT / 2,
+  });
+  const garmentExplodedRef = useRef(false);
+  const finaleBurstKeyRef = useRef(0);
+  const [finalePhase, setFinalePhase] = useState<FinalePhase | null>(null);
+  const [finaleBurst, setFinaleBurst] = useState<{
+    key: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [cursorFx, setCursorFx] =
     useState<CursorFxSettings>(loadCursorFxSettings);
+  const cursorFxRef = useRef(cursorFx);
+  cursorFxRef.current = cursorFx;
+  /** Live progress for celebrate milestones (independent of throttled React progress). */
+  const celebrateProgressRef = useRef(0);
+  /** Ensures onFirstProgressMilestone runs only once per mount. */
+  const firstProgressMilestoneFiredRef = useRef(false);
+  const celebrateUntilRef = useRef(0);
+  const celebrateTimerRef = useRef<number | null>(null);
+  const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
+  const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
+  const [cursorFxBurstCount, setCursorFxBurstCount] = useState(() =>
+    celebrateBurstCount(1, CURSOR_FX_DEVICE.coarsePointer),
+  );
+  /** Bumps StageCoinCount scale-pop on each crossedProgressMilestone. */
+  const [coinPopNonce, setCoinPopNonce] = useState(0);
+  /** Last 10% award amount — floating +N chip on StageCoinCount. */
+  const [coinAwardFlash, setCoinAwardFlash] = useState(0);
+  /** Bottom coin badge — visible on paid play; free play hides it until an award (there is none). */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(!freePlayLaunch);
+  const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
+  /** Remount shell so enter-bl replays when re-showing from hidden. */
+  const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
+  const coinBadgeShownRef = useRef(coinBadgeShown);
+  const coinBadgeLeavingRef = useRef(coinBadgeLeaving);
+  const isScratchingRef = useRef(false);
+  const coinBadgeIdleTimerRef = useRef<number | null>(null);
+  coinBadgeShownRef.current = coinBadgeShown;
+  coinBadgeLeavingRef.current = coinBadgeLeaving;
+  /** Bumped each rAF — fabric/symbol GPU probes run at most once per frame. */
+  const probeFrameIdRef = useRef(0);
+  const fabricAlphaCacheRef = useRef(createFabricAlphaCache());
+  const symbolScratchProbeCacheRef = useRef(
+    createSymbolScratchProbeCache(SYMBOL_SLOT_COUNT),
+  );
+  const cursorOnMeshRef = useRef(false);
   const [cursorFxParticleTypes, setCursorFxParticleTypes] = useState<
     ParticleType[]
   >([]);
-  const [cursorFxPerf, setCursorFxPerf] = useState({
-    active: 0,
-    peak: 0,
-    avgFrameMs: 0,
-  });
   const [soundEnabled, setSoundEnabled] = useState(loadSoundEnabled);
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
@@ -1555,11 +1896,223 @@ export function ScratchPrototype() {
   const autoPathIndexRef = useRef(0);
   const autoPathProgressRef = useRef(0);
   const applyScratchAtUvRef = useRef<
-    (u: number, v: number, radius: number, worldPoint?: Vec2 | null) => void
+    (
+      u: number,
+      v: number,
+      radius: number,
+      worldPoint?: Vec2 | null,
+      finalize?: boolean,
+      strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
+    ) => void
   >(() => undefined);
+  const addScratchRef = useRef<(clientX: number, clientY: number) => void>(
+    () => undefined,
+  );
   const tryResolveGameRef = useRef<() => void>(() => undefined);
   const resetScratchRef = useRef<() => void>(() => undefined);
   const symbolAudioRef = useRef<SymbolAudioState>({ ctx: null });
+
+  function resetStrokeFresh() {
+    resetStrokeFreshness(strokeFreshnessRef.current);
+    lastStampUvRef.current = null;
+    strokeFreshRef.current = false;
+  }
+
+  function publishCursorOnMesh(onMesh: boolean) {
+    cursorOnMeshRef.current = onMesh;
+    setCursorOnMesh((prev) => (prev === onMesh ? prev : onMesh));
+  }
+
+  function endScratchStroke() {
+    const pending = takePendingScratchMove(scratchInputCoalesceRef.current);
+    if (pending) addScratchRef.current(pending.x, pending.y);
+    endScratchSoundStroke();
+    resetStrokeFresh();
+    drawingRef.current = false;
+    isScratchingRef.current = false;
+    setIsScratching(false);
+    publishCursorOnMesh(false);
+    lastScratchWorldRef.current = null;
+    // Stroke ended — start 2s idle hide if badge is visible.
+    scheduleCoinBadgeIdleHide();
+  }
+
+  function clearCelebrateTimer() {
+    if (celebrateTimerRef.current !== null) {
+      window.clearTimeout(celebrateTimerRef.current);
+      celebrateTimerRef.current = null;
+    }
+  }
+
+  function clearCoinBadgeIdleTimer() {
+    if (coinBadgeIdleTimerRef.current !== null) {
+      window.clearTimeout(coinBadgeIdleTimerRef.current);
+      coinBadgeIdleTimerRef.current = null;
+    }
+  }
+
+  function showCoinBadge() {
+    clearCoinBadgeIdleTimer();
+    const wasShown = coinBadgeShownRef.current;
+    const wasLeaving = coinBadgeLeavingRef.current;
+    if (!wasShown || wasLeaving) {
+      setCoinBadgeEnterKey((k) => k + 1);
+    }
+    // Sync refs immediately so same-tick callers (e.g. milestone microtask) see the updated state.
+    coinBadgeLeavingRef.current = false;
+    coinBadgeShownRef.current = true;
+    setCoinBadgeLeaving(false);
+    setCoinBadgeShown(true);
+  }
+
+  function beginCoinBadgeIdleLeave() {
+    // Paid play keeps the coin count up. Free play never awards, so it stays hidden.
+    if (!freePlayLaunch) return;
+    if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
+    if (isScratchingRef.current) return;
+
+    let reduced = false;
+    try {
+      reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      reduced = false;
+    }
+    if (reduced) {
+      coinBadgeShownRef.current = false;
+      setCoinBadgeShown(false);
+      setCoinBadgeLeaving(false);
+      return;
+    }
+    setCoinBadgeLeaving(true);
+  }
+
+  function scheduleCoinBadgeIdleHide(holdMs = COIN_BADGE_IDLE_HIDE_MS) {
+    clearCoinBadgeIdleTimer();
+    if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
+    coinBadgeIdleTimerRef.current = window.setTimeout(() => {
+      coinBadgeIdleTimerRef.current = null;
+      if (isScratchingRef.current) return;
+      beginCoinBadgeIdleLeave();
+    }, holdMs);
+  }
+
+  function onCoinBadgeLeaveEnd(event: AnimationEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (!coinBadgeLeavingRef.current) return;
+    const name = event.animationName || "";
+    if (name && !name.includes("pack-progress-leave-bl")) return;
+    coinBadgeShownRef.current = false;
+    setCoinBadgeShown(false);
+    setCoinBadgeLeaving(false);
+  }
+
+  function beginScratchHand(
+    cardId?: string | null,
+    opts?: { force?: boolean },
+  ) {
+    // Session may still be resolving on first paint — leave hand empty; the
+    // card+auth effect re-runs once `authed` becomes true.
+    if (!authed || freePlayLaunch) {
+      handStartGenRef.current += 1;
+      handIdRef.current = "";
+      handCardIdRef.current = null;
+      practiceRef.current = freePlayLaunch;
+      return;
+    }
+    if (isScratchHandQuotaExhausted()) return;
+    const key = cardId?.trim() || "";
+    // Mesh reload / Strict Mode remount for the same card must not burn quota.
+    if (!opts?.force && handIdRef.current && handCardIdRef.current === key) {
+      return;
+    }
+    handIdRef.current = "";
+    handCardIdRef.current = key;
+    practiceRef.current = false;
+    const gen = ++handStartGenRef.current;
+    void startScratchHand(cardId || undefined).then((result) => {
+      if (gen !== handStartGenRef.current) return;
+      if (result?.handId) {
+        handIdRef.current = result.handId;
+        handCardIdRef.current = key;
+        // Owned-card replays still award. Only the theme toggle skips minting.
+        practiceRef.current = freePlayLaunch;
+        return;
+      }
+      // Failed / quota — allow a later force retry if needed.
+      practiceRef.current = false;
+      if (handCardIdRef.current === key) handCardIdRef.current = null;
+    });
+  }
+
+  /** 10% progress beat: credit wallet coins; arm fairy-dust when FX allows. */
+  function maybeCelebrateScratchProgress(nextProgress: number) {
+    const milestones = crossedProgressMilestones(
+      celebrateProgressRef.current,
+      nextProgress,
+    );
+    celebrateProgressRef.current = nextProgress;
+    if (milestones.length === 0) return;
+    const crossed = milestones[milestones.length - 1];
+
+    if (onFirstProgressMilestone && !firstProgressMilestoneFiredRef.current) {
+      firstProgressMilestoneFiredRef.current = true;
+      onFirstProgressMilestone();
+    }
+    // Award local sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    // Batched frames can cross several bands; each band is its own award.
+    for (const milestone of milestones) {
+      if (freePlayLaunch || practiceRef.current) break;
+      const award = rollSparkleCoinAward();
+      const handId = handIdRef.current;
+      const cardId = selectedCardId || undefined;
+      queueMicrotask(() => {
+        showCoinBadge();
+        addCoins(award.amount);
+        noteCoinsReceived(award.amount);
+        setCoinAwardFlash(award.amount);
+        setCoinPopNonce((n) => n + 1);
+        playSparkleCoinSound(award.soundSrc);
+        // Persist only with a server-issued hand — forged client ids are rejected.
+        // Do not merge the persist wallet snapshot (see scratchCoinReward).
+        if (authed && handId) {
+          persistScratchCoins({
+            handId,
+            milestone,
+            cardId,
+            amount: award.amount,
+          });
+        }
+        // Milestone counts as activity — hold longer so +N / count-up can read.
+        huntHintActivityAtRef.current = performance.now();
+        scheduleCoinBadgeIdleHide(COIN_BADGE_AWARD_HOLD_MS);
+      });
+    }
+
+    let reducedMotion = false;
+    try {
+      reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      reducedMotion = false;
+    }
+    if (!cursorFxRef.current.fairyDust || reducedMotion) return;
+
+    const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
+    celebrateUntilRef.current = performance.now() + celebrateMs;
+    setCursorFxCelebrate(true);
+    setCursorFxBurstCount(
+      celebrateBurstCount(crossed, CURSOR_FX_DEVICE.coarsePointer),
+    );
+    setCursorFxBurstNonce((n) => n + 1);
+    clearCelebrateTimer();
+    celebrateTimerRef.current = window.setTimeout(() => {
+      celebrateTimerRef.current = null;
+      if (performance.now() >= celebrateUntilRef.current) {
+        setCursorFxCelebrate(false);
+      }
+    }, celebrateMs + 40);
+  }
   // Phones hide the side panel, so the scratch-zoom config lives behind a gear
   // button that opens this sheet.
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
@@ -1620,10 +2173,15 @@ export function ScratchPrototype() {
     setIntroCover(false);
     introCoverRef.current = false;
     setIntroVideoUrl("");
-    setIntroMuted(true);
   }
 
   function isBodyScratchLocked() {
+    // Garment finale owns the stage — a finger still down must not paint.
+    if (finaleStartRef.current !== null || garmentExplodedRef.current) {
+      return true;
+    }
+    // Lab opens in docked hunt play — never gate on theme intro / fetchThemes.
+    if (skipToPlay) return false;
     if (!entryReadyRef.current) return true;
     if (introActiveRef.current || introCoverRef.current) return true;
     // Themes still loading / intro not armed yet for this visit.
@@ -1641,8 +2199,11 @@ export function ScratchPrototype() {
 
   function onMatchEntryTap() {
     unlockCountdownSound();
+    unlockMotionScratchBgm();
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
+    // Warm symbol lottie HTTP cache before hunt workers spin up (Phase 7).
+    void preloadLottieUrls(SYMBOL_TYPES.map((entry) => entry.src));
     // Flush so the intro <video> mounts inside this user gesture — async
     // effect play() is often aborted (readyState 0 / background-media pause).
     flushSync(() => {
@@ -1653,11 +2214,19 @@ export function ScratchPrototype() {
     });
     const video = introVideoElRef.current;
     if (video && introActiveRef.current) {
-      void playThemeIntro(video, soundEnabled).then((result) => {
-        if (!introActiveRef.current) return;
-        if (!result.playing) return;
-        setIntroMuted(result.muted);
-      });
+      void playThemeIntro(video, () => effectiveSoundEffect()).then(
+        (result) => {
+          if (!introActiveRef.current) return;
+          if (!result.playing) return;
+          // Entry tap is a user gesture — safe to unmute if sound pref is on.
+          setThemeIntroSound(video, effectiveSoundEffect(), {
+            forceUnmute: true,
+          });
+          if (effectiveSoundEffect()) {
+            void video.play().catch(() => undefined);
+          }
+        },
+      );
     }
   }
 
@@ -1691,7 +2260,8 @@ export function ScratchPrototype() {
 
   function kickGameVideos() {
     if (uiStateRef.current.isPaused) return;
-    if (cardTransitionActiveRef.current && !cardTransitionHandoffRef.current) return;
+    if (cardTransitionActiveRef.current && !cardTransitionHandoffRef.current)
+      return;
     const bottomVideo = bottomVideoRef.current;
     const foregroundVideo = foregroundVideoRef.current;
     if (!bottomVideo || !foregroundVideo) return;
@@ -1722,6 +2292,7 @@ export function ScratchPrototype() {
 
     // Free the intro decoder before attaching the game pair (Safari).
     if (intro) releaseMediaElement(intro);
+    unbindThemeIntroVideo(intro);
     setIntroActive(false);
     introActiveRef.current = false;
     setIntroVideoUrl("");
@@ -1750,9 +2321,6 @@ export function ScratchPrototype() {
   function armStartIntro(themeKey: string) {
     if (handStartIntroDoneRef.current) return;
     handStartIntroDoneRef.current = true;
-    const url = themeKey
-      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
-      : "";
     clearIntroDockTimer();
     clearIntroFadeTimer();
     setShowIntroCountdown(false);
@@ -1761,6 +2329,28 @@ export function ScratchPrototype() {
     handStartCountdownOverIntroRef.current = false;
     setIntroLeaving(false);
     introLeavingRef.current = false;
+
+    // Lab: jump straight to hunt play with the match bar already docked.
+    if (skipToPlay) {
+      setIntroVideoUrl("");
+      setIntroActive(false);
+      introActiveRef.current = false;
+      setIntroCover(false);
+      introCoverRef.current = false;
+      setHandStartIntroResolved(true);
+      handCountdownDoneRef.current = true;
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
+      setGameVideosReady(false);
+      requestAnimationFrame(() => kickGameVideos());
+      return;
+    }
+
+    const url = themeKey
+      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
+      : "";
     // Always park game clips until intro/countdown finish — playlist used to
     // start with gameVideosReady=true and immediately dissolve the cover.
     setGameVideosReady(false);
@@ -1816,19 +2406,34 @@ export function ScratchPrototype() {
 
   function resetMatchRound() {
     clearIntroDockTimer();
+    // New card / round: bring cards-left back until the first scratch touch.
+    setPackProgressShown(true);
+    setPackProgressLeaving(false);
     setTopSymbols(buildTopSymbols());
-    setTopBarPhase("center");
-    topBarPhaseRef.current = "center";
-    // Card-load effect runs after armHandStartIntro in the same commit. Don't
-    // wipe a hand-start 3-2-1 that was just armed (or the over-intro flag stays
-    // set and the post-dock countdown is skipped forever).
-    const preserveHandStartCountdown =
-      handStartCountdownOverIntroRef.current || handStartCountdownPending;
-    if (!preserveHandStartCountdown) {
+    if (skipToPlay && !loopFromIntro) {
+      // Lab stays in docked hunt UI across card resets.
+      setTopBarPhase("docked");
+      topBarPhaseRef.current = "docked";
       setIntroGateActive(false);
       introGateActiveRef.current = false;
       setShowIntroCountdown(false);
       showIntroCountdownRef.current = false;
+      handStartIntroDoneRef.current = true;
+      handCountdownDoneRef.current = true;
+    } else {
+      setTopBarPhase("center");
+      topBarPhaseRef.current = "center";
+      // Card-load effect runs after armHandStartIntro in the same commit. Don't
+      // wipe a hand-start 3-2-1 that was just armed (or the over-intro flag stays
+      // set and the post-dock countdown is skipped forever).
+      const preserveHandStartCountdown =
+        handStartCountdownOverIntroRef.current || handStartCountdownPending;
+      if (!preserveHandStartCountdown) {
+        setIntroGateActive(false);
+        introGateActiveRef.current = false;
+        setShowIntroCountdown(false);
+        showIntroCountdownRef.current = false;
+      }
     }
     setTopBarRound((n) => n + 1);
     setSessionSymbols(buildBodySymbols());
@@ -1850,6 +2455,13 @@ export function ScratchPrototype() {
   function onTopBarAllRevealed() {
     setTopBarPhase("docked");
     topBarPhaseRef.current = "docked";
+    // Lab: land docked with icons locked in; no countdown gate.
+    if (skipToPlay) {
+      setIntroGateActive(false);
+      introGateActiveRef.current = false;
+      clearIntroDockTimer();
+      return;
+    }
     setIntroGateActive(true);
     introGateActiveRef.current = true;
     clearIntroDockTimer();
@@ -1880,6 +2492,18 @@ export function ScratchPrototype() {
     scheduleIntroCountdown();
   }
 
+  function skipIntro() {
+    handCountdownDoneRef.current = true;
+    handStartCountdownOverIntroRef.current = false;
+    setShowIntroCountdown(false);
+    showIntroCountdownRef.current = false;
+    setHandStartCountdownPending(false);
+    setIntroGateActive(false);
+    introGateActiveRef.current = false;
+    clearIntroDockTimer();
+    dismissThemeIntro();
+  }
+
   function onIntroCountdownComplete() {
     handCountdownDoneRef.current = true;
     setShowIntroCountdown(false);
@@ -1902,6 +2526,16 @@ export function ScratchPrototype() {
   );
 
   useEffect(() => {
+    // Lab /game-ui: local cards only — never wait on fetchThemes or reset
+    // intro-done (that left isBodyScratchLocked true until the network returned).
+    if (skipToPlay) {
+      handStartIntroDoneRef.current = true;
+      handCountdownDoneRef.current = true;
+      setHandStartIntroResolved(true);
+      themeIntroByKeyRef.current = new Map();
+      setThemeIntrosReady(true);
+      return;
+    }
     // Product shell opens /game?model&card without ?game=1 — still load theme
     // intros so the clip + 3-2-1 can arm. Hub game-mode uses the same map.
     if (!gameMode && !activeModelId) {
@@ -1938,7 +2572,7 @@ export function ScratchPrototype() {
     return () => {
       cancelled = true;
     };
-  }, [gameMode, activeModelId]);
+  }, [gameMode, activeModelId, skipToPlay]);
 
   useEffect(() => {
     if (
@@ -1981,9 +2615,12 @@ export function ScratchPrototype() {
   // Game clips stay unloaded while introActive (Safari can't decode three
   // videos). On end we hold the last intro frame as a cover until the game
   // pair has a frame, then crossfade the overlay away.
+  //
+  // Do NOT depend on soundEnabled here — mute/unmute must only adjust volume
+  // via the prefs subscriber. Re-running this effect calls playThemeIntro,
+  // which forces muted=true and can permanently silence the clip.
   useEffect(() => {
     if (!introActive || !introVideoUrl) {
-      setIntroMuted(true);
       return;
     }
     let cancelled = false;
@@ -1992,15 +2629,17 @@ export function ScratchPrototype() {
     const kick = () => {
       const video = introVideoElRef.current;
       if (!video) return false;
-      void playThemeIntro(video, soundEnabled).then((result) => {
-        if (cancelled) return;
-        if (!result.playing) {
-          // Keep the cover — autoPlay / a later gesture kick may still start.
-          // Only the 20s safety timer / onError tears the overlay down.
-          return;
-        }
-        setIntroMuted(result.muted);
-      });
+      void playThemeIntro(video, () => effectiveSoundEffect()).then(
+        (result) => {
+          if (cancelled) return;
+          if (!result.playing) {
+            // Keep the cover — autoPlay / a later gesture kick may still start.
+            // Only the 20s safety timer / onError tears the overlay down.
+            return;
+          }
+          setThemeIntroSound(video, effectiveSoundEffect());
+        },
+      );
       return true;
     };
 
@@ -2010,12 +2649,13 @@ export function ScratchPrototype() {
       });
     }
 
-    // Chrome may pause "background" media mid-intro — keep nudging play while
-    // the overlay is supposed to be running.
+    // Chrome may pause "background" muted media mid-intro — nudge play only
+    // while still muted. Unmuted resume needs a user gesture; a failed play()
+    // here after the mute button unmutes leaves the intro stuck paused.
     const onPause = () => {
       if (cancelled || !introActiveRef.current) return;
       const video = introVideoElRef.current;
-      if (!video || video.ended) return;
+      if (!video || video.ended || !video.muted) return;
       void video.play().catch(() => undefined);
     };
     const videoEl = introVideoElRef.current;
@@ -2031,7 +2671,7 @@ export function ScratchPrototype() {
       window.clearTimeout(safetyId);
       videoEl?.removeEventListener("pause", onPause);
     };
-  }, [introActive, introVideoUrl, soundEnabled]);
+  }, [introActive, introVideoUrl]);
 
   // Once the intro has ended and game clips have a frame, run the reveal.
   useEffect(() => {
@@ -2102,7 +2742,14 @@ export function ScratchPrototype() {
       const canvas = canvasRef.current;
       if (!canvas) return null;
       try {
-        renderer = new GarmentGLRenderer(canvas, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const pixelRatio = resolveGameCanvasPixelRatio({
+          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+          devicePixelRatio:
+            typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+        });
+        renderer = new GarmentGLRenderer(canvas, CANVAS_WIDTH, CANVAS_HEIGHT, {
+          pixelRatio,
+        });
         glRendererRef.current = renderer;
         setGlError(null);
         return renderer;
@@ -2118,8 +2765,22 @@ export function ScratchPrototype() {
     const render = () => {
       try {
         if (cancelled) return;
+        // Showcase / result owns the screen — skip GL + video sync.
+        if (motionResultRef.current || topBarPhaseRef.current === "showcase") {
+          return;
+        }
         const active = ensureRenderer();
         if (!active) return;
+        probeFrameIdRef.current += 1;
+        // One densified scratch apply per rAF while the finger moves (Phase 7).
+        if (drawingRef.current) {
+          const pending = takePendingScratchMove(
+            scratchInputCoalesceRef.current,
+          );
+          if (pending) addScratchRef.current(pending.x, pending.y);
+        } else {
+          clearPendingScratchMove(scratchInputCoalesceRef.current);
+        }
         const now = performance.now();
         const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
         lastFrameTime = now;
@@ -2142,11 +2803,13 @@ export function ScratchPrototype() {
         const videoTime = bottomVideo?.currentTime ?? time;
 
         // Subtle chest-follow camera: pan toward keeping the chest anchor at its
-        // target framing point, clamped + smoothed.
+        // target framing point, clamped + smoothed. Freeze while the finger is
+        // down (Phase 8) so camMoved doesn't force extra GL presents during scratch.
         const camera = cameraRef.current;
-        let targetCamX = 0;
-        let targetCamY = 0;
-        if (trackedSample) {
+        if (
+          shouldUpdateChestFollow({ isScratching: drawingRef.current }) &&
+          trackedSample
+        ) {
           const chest = sampleMeshUvToWorld(
             trackedSample,
             CHEST_ANCHOR_UV.x,
@@ -2156,53 +2819,67 @@ export function ScratchPrototype() {
           const targetPy = CANVAS_HEIGHT * CHEST_TARGET_UV.y;
           const shiftX = (targetPx - chest.x) * CHEST_FOLLOW_STRENGTH;
           const shiftY = (targetPy - chest.y) * CHEST_FOLLOW_STRENGTH;
-          targetCamX = clampValue(
+          const targetCamX = clampValue(
             shiftX / (CANVAS_WIDTH / 2),
             -CHEST_CAM_MAX,
             CHEST_CAM_MAX,
           );
-          targetCamY = clampValue(
+          const targetCamY = clampValue(
             -shiftY / (CANVAS_HEIGHT / 2),
             -CHEST_CAM_MAX,
             CHEST_CAM_MAX,
           );
+          const dx = targetCamX - camera.x;
+          const dy = targetCamY - camera.y;
+          if (Math.abs(dx) <= CHEST_CAM_EPS && Math.abs(dy) <= CHEST_CAM_EPS) {
+            camera.x = targetCamX;
+            camera.y = targetCamY;
+          } else {
+            const nextX = camera.x + dx * CHEST_SMOOTH;
+            const nextY = camera.y + dy * CHEST_SMOOTH;
+            camera.x =
+              Math.abs(targetCamX - nextX) <= CHEST_CAM_EPS
+                ? targetCamX
+                : nextX;
+            camera.y =
+              Math.abs(targetCamY - nextY) <= CHEST_CAM_EPS
+                ? targetCamY
+                : nextY;
+          }
         }
-        camera.x += (targetCamX - camera.x) * CHEST_SMOOTH;
-        camera.y += (targetCamY - camera.y) * CHEST_SMOOTH;
 
         const autoSettings = autoScratchRef.current;
-        // Never auto-finish while body-symbol hunt is still in progress — otherwise a
-        // persisted "enabled" flag (or premature toggle) wipes the dress before the player finds them all.
+        const autoActive = finishAutoActiveRef.current || autoSettings.enabled;
+        // Post-hunt finish-auto waits for all body symbols. Explicit player
+        // enable (HUD / panel) may run during the hunt.
         const huntComplete =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        const autoBudget = resolveAutoScratchBudget({
+          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+        });
         if (
-          autoSettings.enabled &&
-          huntComplete &&
+          autoActive &&
+          (autoSettings.enabled || huntComplete) &&
           !isBodyScratchLocked() &&
           trackedSample &&
           gameResultPendingRef.current === null
         ) {
+          // Paint every stamp, but finalize (symbol GPU probes, progress,
+          // milestones, resolve) once per frame — same as manual strokes.
+          const autoStamps: { u: number; v: number }[] = [];
           const path = autoPathRef.current;
           if (path.length > 0 && autoPathIndexRef.current < path.length) {
             autoPathProgressRef.current += autoSettings.speed * dt;
-            let scratched = 0;
             while (
               autoPathProgressRef.current >= 1 &&
               autoPathIndexRef.current < path.length &&
-              scratched < AUTO_SCRATCH_MAX_PER_FRAME
+              autoStamps.length < autoBudget.maxPerFrame
             ) {
               autoPathProgressRef.current -= 1;
               const pt = path[autoPathIndexRef.current];
-              const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
-              applyScratchAtUvRef.current(
-                pt.x,
-                pt.y,
-                AUTO_SCRATCH_RADIUS,
-                worldPos,
-              );
+              autoStamps.push({ u: pt.x, v: pt.y });
               autoPathIndexRef.current += 1;
-              scratched += 1;
             }
           }
 
@@ -2221,20 +2898,27 @@ export function ScratchPrototype() {
             let filled = 0;
             for (
               let i = 0;
-              i < samples.length && filled < AUTO_SCRATCH_FILL_BATCH;
+              i < samples.length && filled < autoBudget.fillBatch;
               i += 1
             ) {
               if (revealed[i]) continue;
               const pt = samples[i];
-              const worldPos = sampleMeshUvToWorld(trackedSample, pt.x, pt.y);
-              applyScratchAtUvRef.current(
-                pt.x,
-                pt.y,
-                AUTO_SCRATCH_RADIUS,
-                worldPos,
-              );
+              autoStamps.push({ u: pt.x, v: pt.y });
               filled += 1;
             }
+          }
+
+          for (let i = 0; i < autoStamps.length; i += 1) {
+            const stamp = autoStamps[i];
+            const isLast = i === autoStamps.length - 1;
+            applyScratchAtUvRef.current(
+              stamp.u,
+              stamp.v,
+              AUTO_SCRATCH_RADIUS,
+              sampleMeshUvToWorld(trackedSample, stamp.u, stamp.v),
+              isLast,
+              isLast ? autoStamps : undefined,
+            );
           }
         }
 
@@ -2245,7 +2929,9 @@ export function ScratchPrototype() {
           bottomVideo.readyState >= 2 &&
           foregroundVideo.readyState >= 2
         ) {
-          syncVideoTime(bottomVideo, foregroundVideo);
+          syncVideoTime(bottomVideo, foregroundVideo, {
+            isScratching: drawingRef.current,
+          });
         }
 
         if (bottomVideo) {
@@ -2260,15 +2946,17 @@ export function ScratchPrototype() {
             Math.abs(videoTime - uiStateRef.current.currentTime) > 1;
 
           if (shouldUpdateUi) {
+            const prevUi = uiStateRef.current;
             uiStateRef.current = {
               currentTime: videoTime,
               duration: nextDuration,
               isPaused: nextPaused,
               lastUpdatedAt: now,
             };
-            setCurrentTime(videoTime);
-            setDuration(nextDuration);
-            setIsPaused(nextPaused);
+            // The timeline slider polls currentTime itself; re-rendering this
+            // whole component on every clock tick stalled phones mid-scratch.
+            if (nextDuration !== prevUi.duration) setDuration(nextDuration);
+            if (nextPaused !== prevUi.isPaused) setIsPaused(nextPaused);
           }
         }
 
@@ -2277,15 +2965,26 @@ export function ScratchPrototype() {
         const canClaim =
           !useBodySymbolsRef.current ||
           revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
+        const finaleStart = finaleStartRef.current;
+        const finaleTl = finaleTimelineRef.current;
+        let finaleHide: boolean | null = null;
+        if (finaleStart !== null && finaleTl) {
+          const elapsed = now - finaleStart;
+          const phase = finalePhaseAt(elapsed, finaleTl);
+          active.setForegroundCharge(chargeAmount(elapsed, finaleTl));
+          if (phase !== finalePhaseRef.current) advanceGarmentFinale(phase);
+          finaleHide = finaleHidesForeground(phase);
+        }
         const hideForeground =
-          claimedRef.current ||
-          (canClaim &&
-            isGarmentFullyRevealed(
-              progressRef.current,
-              revealedCountRef.current,
-              sampleCount,
-              autoMode,
-            ));
+          finaleHide ??
+          (claimedRef.current ||
+            (canClaim &&
+              isGarmentFullyRevealed(
+                progressRef.current,
+                revealedCountRef.current,
+                sampleCount,
+                autoMode,
+              )));
         if (
           hideForeground &&
           !claimedRef.current &&
@@ -2307,8 +3006,12 @@ export function ScratchPrototype() {
           hideForeground,
           chromaKeyRef.current,
           PRESENT_ZOOM,
-          // Body hunt (docked bar): half-rate bottom uploads; FG stays full rate.
-          useBodySymbolsRef.current && topBarPhaseRef.current === "docked",
+          // Phase 8: half-rate underlay only while scratching on coarse pointers.
+          shouldHalfRateBottomUploads({
+            hideForeground,
+            isScratching: drawingRef.current,
+            coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+          }),
         );
 
         // Skip body-marker transforms while the intro countdown covers the stage —
@@ -2318,6 +3021,7 @@ export function ScratchPrototype() {
         const stage = stageRef.current;
         const canvas = canvasRef.current;
         if (
+          shouldUpdateBodyMarkers({ isScratching: drawingRef.current }) &&
           !showIntroCountdownRef.current &&
           bodyPoints &&
           bodyPoints.length === SYMBOL_SLOT_COUNT &&
@@ -2464,10 +3168,11 @@ export function ScratchPrototype() {
     return () => {
       cancelled = true;
       cancelAnimationFrame(animationId);
-      // Dispose GL only. Keep the WebGL2 context — StrictMode / card remounts
-      // recreate GarmentGLRenderer on the same canvas; losing the context leaves
-      // getContext stuck on a dead handle and the stage paints black forever.
-      renderer?.dispose({ loseContext: false });
+      // Default loseContext:false keeps Safari same-canvas remounts alive.
+      // Real route leave arms consumeLoseGlContextOnUnmount via memory purge.
+      renderer?.dispose({
+        loseContext: consumeLoseGlContextOnUnmount(),
+      });
       if (glRendererRef.current === renderer) glRendererRef.current = null;
       renderer = null;
     };
@@ -2475,12 +3180,46 @@ export function ScratchPrototype() {
 
   useEffect(() => {
     let isCancelled = false;
+
+    // Lab /game-ui: never wait on API/auth. Mount local DEFAULT_CARDS + mesh
+    // immediately so phones can preview without a session or media key.
+    if (skipToPlay) {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get("card")?.trim() || "juliana_1";
+      const modelFromUrl = params.get("model")?.trim() || "julianaval";
+      const labCards = DEFAULT_CARDS.map((entry) =>
+        entry.id.startsWith("juliana")
+          ? { ...entry, model_id: entry.model_id ?? "julianaval" }
+          : entry,
+      );
+      const labCard =
+        labCards.find((entry) => entry.id === fromUrl) ??
+        labCards.find((entry) => entry.id === "juliana_1") ??
+        labCards[0]!;
+      setCards(labCards);
+      setModels([
+        {
+          id: modelFromUrl,
+          label: "Juliana",
+          avatar: null,
+        },
+      ]);
+      singleCardIdRef.current = labCard.id;
+      setPlaylistMode(false);
+      setActiveModelId(modelFromUrl);
+      setSelectedCardId(labCard.id);
+      setSelectedMeshFile(labCard.mesh);
+      setCardsReady(true);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
     Promise.all([loadCards(), fetchModels()])
       .then(([loaded, loadedModels]) => {
         if (isCancelled) return;
         setCards(loaded);
         setModels(loadedModels);
-        setCardsReady(true);
         const params = new URLSearchParams(window.location.search);
         const fromUrl = params.get("card")?.trim() || "";
         let modelFromUrl = params.get("model")?.trim() || "";
@@ -2525,28 +3264,19 @@ export function ScratchPrototype() {
             }
             setSelectedCardId(startId);
             if (pending) {
-              void loadGameCatalog()
-                .then((catalog) => {
-                  const photos = pending.photoIds
-                    .map((id) => catalog.photos.find((photo) => photo.id === id))
-                    .filter((photo): photo is PhotoCard => Boolean(photo));
-                  setMotionResult({
-                    win: pending.prize > 0 && photos.length > 0,
-                    photos,
-                    current: pending.current,
-                    total: pending.total,
-                    resultId: `${pending.cardId}:${pending.photoIds.join(",")}:${pending.current}`,
-                  });
-                })
-                .catch(() => {
-                  setMotionResult({
-                    win: false,
-                    photos: [],
-                    current: pending.current,
-                    total: pending.total,
-                    resultId: `pending-error:${pending.cardId}`,
-                  });
-                });
+              const coins = Math.max(0, pending.coins ?? 0);
+              const diamonds = Math.max(
+                0,
+                pending.diamonds ?? (pending.prize > 0 ? pending.prize : 0),
+              );
+              setMotionResult({
+                win: pending.prize > 0 && (coins > 0 || diamonds > 0),
+                coins,
+                diamonds,
+                current: pending.current,
+                total: pending.total,
+                resultId: `${pending.cardId}:${coins}:${diamonds}:${pending.current}`,
+              });
             }
             return;
           }
@@ -2588,11 +3318,14 @@ export function ScratchPrototype() {
             : ordered[0]!.id;
         setSelectedCardId(startId);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!isCancelled) setCardsReady(true);
+      });
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [skipToPlay]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !cardsReady) return;
@@ -2611,6 +3344,7 @@ export function ScratchPrototype() {
     else url.searchParams.delete("game");
     if (playlistMode && !gameMode) url.searchParams.set("playlist", "1");
     else url.searchParams.delete("playlist");
+    if (freePlayLaunch) url.searchParams.set("freeplay", "1");
     const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams}` : ""}`;
     window.history.replaceState(null, "", next);
   }, [
@@ -2658,16 +3392,8 @@ export function ScratchPrototype() {
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (isCancelled || !data) return;
-        const files = parseMeshIndex(data);
-        setMeshFiles(files);
-        setSelectedMeshFile(
-          (currentFile) =>
-            currentFile ||
-            (files.includes(DEFAULT_MESH_FILE)
-              ? DEFAULT_MESH_FILE
-              : files[0]) ||
-            "",
-        );
+        // Dropdown list only — the active card owns selectedMeshFile.
+        setMeshFiles(parseMeshIndex(data));
       })
       .catch(() => undefined);
 
@@ -2708,7 +3434,9 @@ export function ScratchPrototype() {
       return;
     }
     setSelectedMeshFile(card.mesh);
-    marksRef.current = [];
+    clearScratchMarks(marksRef.current);
+    resetScratchCoverage(scratchCoverageRef.current);
+    resetStrokeFresh();
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
     if (!cardTransitionActiveRef.current) {
@@ -2718,6 +3446,15 @@ export function ScratchPrototype() {
     revealedRef.current = [];
     revealedCountRef.current = 0;
     progressRef.current = 0;
+    celebrateProgressRef.current = 0;
+    clearCelebrateTimer();
+    setCursorFxCelebrate(false);
+    setCoinPopNonce(0);
+    setCoinAwardFlash(0);
+    clearCoinBadgeIdleTimer();
+    setCoinBadgeLeaving(false);
+    coinBadgeShownRef.current = !freePlayLaunch;
+    setCoinBadgeShown(!freePlayLaunch);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -2731,9 +3468,9 @@ export function ScratchPrototype() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     resetMatchRound();
-    setProgress(0);
     setClaimed(false);
-    setRevealedSymbols(0);
+    publishRevealedSymbols(0);
+    setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -2743,24 +3480,43 @@ export function ScratchPrototype() {
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
     );
     setFlyingCoins([]);
     setGameResult(null);
+    finishAutoActiveRef.current = false;
+    resetGarmentFinale();
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCardId, card?.id, card?.mesh]);
+  }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
+
+  // One server hand per card identity (not per mesh reload). Re-runs when auth
+  // lands so a cold first paint that skipped while `!authed` still gets a hand.
+  // A lab replay of the same card must start a new hand: the old one's
+  // milestones are already claimed server-side.
+  useEffect(() => {
+    if (!card?.id) return;
+    const labRestarted = handLabRestartTokenRef.current !== labRestartToken;
+    if (authed) handLabRestartTokenRef.current = labRestartToken;
+    beginScratchHand(card.id, labRestarted ? { force: true } : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- beginScratchHand closes over authed
+  }, [selectedCardId, card?.id, labRestartToken, authed]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
   // wiping the countdown before the first paint).
+  // Lab skipToPlay: arm immediately (themeIntrosReady is sync-true; no network).
   useEffect(() => {
     if (gameMode) return;
-    if (!entryReady || !card || !themeIntrosReady) return;
+    if (!entryReady || !card) return;
+    if (!skipToPlay && !themeIntrosReady) return;
     armStartIntro(themeKeyForCard(card));
-  }, [gameMode, entryReady, themeIntrosReady, card?.id]);
+  }, [gameMode, entryReady, themeIntrosReady, card?.id, skipToPlay, labRestartToken]);
 
   // Rebuild the reveal sample grid whenever the mesh changes, recomputing which
   // samples are already revealed from the current marks (usually empty after a
@@ -2769,22 +3525,44 @@ export function ScratchPrototype() {
     const samples = buildRevealSamples(trackedMesh);
     revealSamplesRef.current = samples;
     const revealed = samples.map((p) =>
-      marksRef.current.some(
+      scratchMarksSome(
+        marksRef.current,
         (m) => Math.hypot((m.u - p.x) / m.radius, (m.v - p.y) / m.radius) <= 1,
       ),
     );
     revealedRef.current = revealed;
     revealedCountRef.current = revealed.reduce((n, r) => n + (r ? 1 : 0), 0);
+    const coverage = createScratchCoverage(
+      SCRATCH_COVERAGE_SIZE,
+      trackedMesh?.garment,
+      trackedMesh?.cols,
+      trackedMesh?.rows,
+    );
+    const liveMarks: RingScratchMark[] = [];
+    scratchMarksSome(marksRef.current, (m) => {
+      liveMarks.push(m);
+      return false;
+    });
+    rebuildScratchCoverage(coverage, liveMarks);
+    scratchCoverageRef.current = coverage;
     const next = samples.length ? revealedCountRef.current / samples.length : 0;
     progressRef.current = next;
-    setProgress(next);
+    celebrateProgressRef.current = next;
     const hasBodySymbols =
       trackedMesh?.symbolPoints?.length === SYMBOL_SLOT_COUNT;
     const nextSymbolCount = hasBodySymbols
       ? revealedPointsRef.current.filter(Boolean).length
       : revealedSymbolCount(next, autoScratchRef.current.enabled);
     revealedSymbolsRef.current = nextSymbolCount;
-    setRevealedSymbols(nextSymbolCount);
+    publishRevealedSymbols(nextSymbolCount);
+    if (!hasBodySymbols && nextSymbolCount > 0) {
+      setLitSymbolSlots(
+        Array.from(
+          { length: SYMBOL_SLOT_COUNT },
+          (_, index) => index < nextSymbolCount,
+        ),
+      );
+    }
     if (hasBodySymbols && nextSymbolCount < SYMBOL_SLOT_COUNT) {
       setAutoScratch((current) =>
         current.enabled ? { ...current, enabled: false } : current,
@@ -2812,18 +3590,33 @@ export function ScratchPrototype() {
   }, [trackedMesh]);
 
   useEffect(() => {
+    // Stage (and its <video> nodes) only mount after cardsReady. Without this
+    // dep, skip-to-play never toggles introActive so the first null-ref run
+    // never retries and the stage stays black.
+    if (!cardsReady || !card) return;
+
     const bottomVideo = bottomVideoRef.current;
     const foregroundVideo = foregroundVideoRef.current;
-    if (!bottomVideo || !foregroundVideo || !card) return;
+    if (!bottomVideo || !foregroundVideo) return;
 
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
     // intro is up, fully unload the card clips so only the intro decodes.
-    if (introActiveRef.current) {
-      releaseMediaElement(bottomVideo);
-      releaseMediaElement(foregroundVideo);
-      glRendererRef.current?.resetForeground();
-      setGameVideosReady(false);
+    // Currency result also owns media (static backdrop + next-card warm load).
+    if (
+      shouldDeferCardVideoAttach({
+        introActive: introActiveRef.current,
+        resultOverlayActive:
+          motionResultRef.current != null ||
+          topBarPhaseRef.current === "showcase",
+      })
+    ) {
+      if (introActiveRef.current) {
+        releaseMediaElement(bottomVideo);
+        releaseMediaElement(foregroundVideo);
+        glRendererRef.current?.resetForeground();
+        setGameVideosReady(false);
+      }
       return;
     }
 
@@ -2899,7 +3692,14 @@ export function ScratchPrototype() {
         // ignore
       }
     };
-  }, [card?.id, card?.bottom, card?.foreground, introActive]);
+  }, [
+    cardsReady,
+    card?.id,
+    card?.bottom,
+    card?.foreground,
+    introActive,
+    motionResult != null,
+  ]);
 
   // Mobile browsers (notably iOS Safari) will suspend a second, simultaneously
   // playing <video> after a few seconds to save power — which here drops the
@@ -2908,11 +3708,18 @@ export function ScratchPrototype() {
   // out from under us (and on tab re-focus), as long as the user hasn't paused.
   useEffect(() => {
     const keepPlaying = () => {
-      if (uiStateRef.current.isPaused) return;
-      // Don't steal the decoder from the theme intro (causes black stage after
-      // 3-2-1 on Safari / Android when three <video>s fight).
-      if (introActiveRef.current) return;
-      if (cardTransitionActiveRef.current) return;
+      if (
+        !shouldReviveGameVideos({
+          userPaused: uiStateRef.current.isPaused,
+          introActive: introActiveRef.current,
+          cardTransitionActive: cardTransitionActiveRef.current,
+          resultOverlayActive:
+            motionResultRef.current != null ||
+            topBarPhaseRef.current === "showcase",
+        })
+      ) {
+        return;
+      }
       const bottomVideo = bottomVideoRef.current;
       const foregroundVideo = foregroundVideoRef.current;
       if (bottomVideo?.paused) void bottomVideo.play().catch(() => undefined);
@@ -2945,23 +3752,6 @@ export function ScratchPrototype() {
   }, [cursorFx]);
 
   useEffect(() => {
-    if (!cursorFx.fairyDust) return;
-    const id = window.setInterval(() => {
-      const active = fairyDustPerf.active;
-      const peak = fairyDustPerf.peak;
-      const avgFrameMs = Math.round(fairyDustPerf.avgFrameMs * 100) / 100;
-      setCursorFxPerf((current) =>
-        current.active === active &&
-        current.peak === peak &&
-        current.avgFrameMs === avgFrameMs
-          ? current
-          : { active, peak, avgFrameMs },
-      );
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [cursorFx.fairyDust]);
-
-  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
@@ -2986,12 +3776,37 @@ export function ScratchPrototype() {
     };
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem(
-      SOUND_STORAGE_KEY,
-      JSON.stringify({ enabled: soundEnabled }),
-    );
-  }, [soundEnabled]);
+  // The pause overlay and profile settings write the same store, so follow it
+  // rather than owning the flag. Notifications are synchronous, which keeps the
+  // unlock below inside the click that flipped the switch — Safari requires
+  // AudioContext work to happen in a user gesture.
+  useEffect(
+    () =>
+      subscribeGameAudioPrefs(() => {
+        const next = effectiveSoundEffect();
+        // Keep the ref in sync inside this click before any async intro
+        // callbacks read it — otherwise a late playThemeIntro then() can
+        // undo the mute/unmute the user just chose.
+        soundEnabledRef.current = next;
+        if (next) {
+          ensureSymbolAudio(symbolAudioRef.current);
+          unlockCountdownSound();
+          unlockMotionScratchBgm();
+          preloadSparkleCoinSounds();
+          preloadScratchSounds();
+          resumeCountdownAudioIfActive();
+        } else {
+          stopCountdownAudio();
+          stopSparkleCoinSounds();
+          stopScratchSounds();
+        }
+        applyBoundThemeIntroSound(next);
+        setSoundEnabled(next);
+      }),
+    [],
+  );
+
+  useEffect(() => stopScratchSounds, []);
 
   function syncScratchZoomTransition(
     canvas: HTMLCanvasElement,
@@ -3017,12 +3832,9 @@ export function ScratchPrototype() {
   }
 
   function updateAutoScratch(patch: Partial<AutoScratchSettings>) {
-    if (
-      patch.enabled &&
-      (isBodyScratchLocked() ||
-        (useBodySymbolsRef.current &&
-          revealedSymbolsRef.current < SYMBOL_SLOT_COUNT))
-    ) {
+    // HUD / panel can enable during the body hunt — player opted in.
+    // Intro / center-foil lock still blocks via isBodyScratchLocked.
+    if (patch.enabled && isBodyScratchLocked()) {
       return;
     }
     if (patch.enabled && soundEnabledRef.current)
@@ -3046,11 +3858,121 @@ export function ScratchPrototype() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     if (soundEnabledRef.current) ensureSymbolAudio(symbolAudioRef.current);
-    // Sync the ref immediately — setState alone would leave this frame's auto path off.
-    autoScratchRef.current = { ...autoScratchRef.current, enabled: true };
-    setAutoScratch((current) =>
-      current.enabled ? current : { ...current, enabled: true },
+    finishAutoActiveRef.current = true;
+  }
+
+  /** Last symbol found: charge up, then shatter the remaining clothes. */
+  function startGarmentFinale(newlyRevealed: readonly number[]): boolean {
+    if (
+      !shouldExplodeGarment({
+        useBodySymbols: useBodySymbolsRef.current,
+        found: revealedSymbolsRef.current,
+        total: SYMBOL_SLOT_COUNT,
+        alreadyStarted:
+          finaleStartRef.current !== null || garmentExplodedRef.current,
+        packRevealBlocked: packRevealBlockedRef.current,
+      })
+    ) {
+      return false;
+    }
+    const sample = trackedSampleRef.current;
+    const bodyPoints = trackedMeshRef.current?.symbolPoints;
+    finaleOriginRef.current = explosionOrigin(
+      newlyRevealed.map((index) => {
+        const point = bodyPoints?.[index];
+        return sample && point
+          ? sampleMeshUvToWorld(sample, point.u, point.v)
+          : null;
+      }),
+      { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
     );
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const timeline = finaleTimeline({
+      reducedMotion: reducedMotion || !glRendererRef.current,
+    });
+    finaleTimelineRef.current = timeline;
+    finalePhaseRef.current = null;
+    finaleStartRef.current = performance.now();
+    finishAutoActiveRef.current = false;
+    // Drop the queued move first: we're inside addScratch, and replaying it
+    // from endScratchStroke would re-enter the hunt-complete path.
+    clearPendingScratchMove(scratchInputCoalesceRef.current);
+    endScratchStroke();
+    clearScratchZoom();
+    claimedRef.current = true;
+    if (!timeline.reducedMotion) {
+      if (soundEnabledRef.current) {
+        playFinaleChargeSound(timeline.burstAtMs / 1000);
+      }
+      finaleHaptics("charge");
+    }
+    return true;
+  }
+
+  /** Runs on the first rAF of each finale phase (phases may be skipped on a slow frame). */
+  function advanceGarmentFinale(phase: FinalePhase) {
+    finalePhaseRef.current = phase;
+    const timeline = finaleTimelineRef.current;
+    if (!timeline) return;
+    if (phase !== "charge" && !garmentExplodedRef.current) {
+      fireGarmentBurst(timeline);
+    }
+    setFinalePhase(phase === "done" ? null : phase);
+    if (phase === "done") {
+      finaleStartRef.current = null;
+      setFinaleBurst(null);
+      tryResolveGameRef.current();
+    }
+  }
+
+  function fireGarmentBurst(timeline: FinaleTimeline) {
+    garmentExplodedRef.current = true;
+    const renderer = glRendererRef.current;
+    const origin = finaleOriginRef.current;
+    renderer?.setForegroundCharge(0);
+    if (!timeline.reducedMotion) {
+      renderer?.explodeForeground(origin.x, origin.y);
+    }
+    setClaimed(true);
+    if (soundEnabledRef.current) playFinaleBoomSound();
+    if (timeline.reducedMotion) return;
+    finaleHaptics("burst");
+    const stagePoint = worldToStagePoint(origin);
+    const stage = stageRef.current;
+    finaleBurstKeyRef.current += 1;
+    setFinaleBurst({
+      key: finaleBurstKeyRef.current,
+      x: stagePoint?.x ?? (stage?.clientWidth ?? 0) / 2,
+      y: stagePoint?.y ?? (stage?.clientHeight ?? 0) / 2,
+    });
+    if (cursorFxRef.current.fairyDust) {
+      const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
+      celebrateUntilRef.current = performance.now() + celebrateMs;
+      setCursorFxCelebrate(true);
+      setCursorFxBurstCount(
+        celebrateBurstCount(10, CURSOR_FX_DEVICE.coarsePointer),
+      );
+      setCursorFxBurstNonce((n) => n + 1);
+      clearCelebrateTimer();
+      celebrateTimerRef.current = window.setTimeout(() => {
+        celebrateTimerRef.current = null;
+        if (performance.now() >= celebrateUntilRef.current) {
+          setCursorFxCelebrate(false);
+        }
+      }, celebrateMs + 40);
+    }
+  }
+
+  function resetGarmentFinale() {
+    finaleStartRef.current = null;
+    finaleTimelineRef.current = null;
+    finalePhaseRef.current = null;
+    garmentExplodedRef.current = false;
+    glRendererRef.current?.clearExplosion();
+    setFinalePhase(null);
+    setFinaleBurst(null);
   }
 
   // Hold top-bar until theme intro + 3-2-1 finish and card clips have a frame.
@@ -3062,6 +3984,27 @@ export function ScratchPrototype() {
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  useMotionScratchBgm({
+    warm:
+      useBodySymbols &&
+      matchStartUnlocked &&
+      !introGateActive &&
+      !introActive &&
+      !gameResult,
+    topBarPhase,
+    skipToPlay,
+  });
+  // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
+  // load). Keep this separate from matchStartUnlocked so scratch stays gated.
+  const topChromeBarReady =
+    topBarPhase === "docked" && (skipToPlay || matchStartUnlocked);
+  // Center foil / docked icon revealer — same window as TopSymbolBar. Cards-left
+  // must not paint over theme intro video; it enters with this pad.
+  const iconRevealerShown =
+    (useBodySymbols || skipToPlay) &&
+    (topChromeBarReady ||
+      (matchStartUnlocked && topBarPhase !== "docked") ||
+      (skipToPlay && topBarPhase === "center"));
   const symbolsHuntComplete =
     useBodySymbols && revealedSymbols >= SYMBOL_SLOT_COUNT;
   const huntPhase = resolveHuntPhase({
@@ -3078,9 +4021,96 @@ export function ScratchPrototype() {
   });
   const motionOutcome = resolveScratchOutcome({
     scratchCompleted: motionResult != null,
-    photoCardFound: Boolean(motionResult?.win && motionResult.photos.length > 0),
-    diamondFound: false,
+    photoCardFound: false,
+    diamondFound: Boolean(
+      motionResult?.win &&
+      ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
+    ),
   });
+  /** Showcase + win/no-match — clear theme video for look + perf. */
+  const clearStageForResult = shouldClearStagePicture({
+    topBarPhase,
+    motionOutcome,
+  });
+
+  // Pause theme decoders as soon as the symbol bar showcase takes the screen
+  // (before YOU WON / NO MATCH mounts). Full unload stays on the result effect.
+  useEffect(() => {
+    if (topBarPhase !== "showcase") return;
+    const bottom = bottomVideoRef.current;
+    const foreground = foregroundVideoRef.current;
+    try {
+      bottom?.pause();
+    } catch {
+      // ignore
+    }
+    try {
+      foreground?.pause();
+    } catch {
+      // ignore
+    }
+    parkForegroundDecoder();
+    if (bottom) glRendererRef.current?.detachVideoFrames(bottom);
+  }, [topBarPhase]);
+
+  // Tear down finished-card decoders while the static result is up, then
+  // warm the next motion card so Skip / auto-advance is not a cold dual-attach.
+  useEffect(() => {
+    if (motionOutcome !== "diamond" && motionOutcome !== "no-match") return;
+    const bottom = bottomVideoRef.current;
+    const foreground = foregroundVideoRef.current;
+    if (bottom) {
+      try {
+        bottom.pause();
+      } catch {
+        // ignore
+      }
+      glRendererRef.current?.detachVideoFrames(bottom);
+      releaseMediaElement(bottom);
+    }
+    if (foreground) {
+      try {
+        foreground.pause();
+      } catch {
+        // ignore
+      }
+      glRendererRef.current?.detachVideoFrames(foreground);
+      releaseMediaElement(foreground);
+    }
+    fgParkedRef.current = true;
+    glRendererRef.current?.resetForeground();
+    setGameVideosReady(false);
+
+    const finishedId = selectedCardId;
+    const nextCard =
+      finishedId == null
+        ? null
+        : modelCards.find(
+            (entry) =>
+              entry.id !== finishedId &&
+              !completedCardIdsRef.current.includes(entry.id),
+          );
+    if (!nextCard || !bottom || !foreground) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await Promise.all([
+          loadVideoSrc(bottom, nextCard.bottom),
+          loadVideoSrc(foreground, nextCard.foreground),
+        ]);
+      } catch {
+        return;
+      }
+      if (cancelled) return;
+      // Stay paused — static result owns the screen until handoff.
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [motionOutcome, motionResult?.resultId, selectedCardId, modelCards]);
+
   // Keep the frame mounted through the no-match beat so its energy can drain
   // instead of vanishing with the rest of the gameplay HUD.
   const frameSettling = useBodySymbols && motionOutcome === "no-match";
@@ -3094,12 +4124,13 @@ export function ScratchPrototype() {
       topBarPhase !== "center" &&
       (huntPhase === "hunt" || revealedSymbols >= SYMBOL_SLOT_COUNT)) ||
     frameSettling;
+  // Lock only while play isn't ready yet — not for the body-symbol hunt.
+  // (Finish-auto still waits for hunt; HUD enable can run during hunt.)
   const autoScratchLocked =
     !matchStartUnlocked ||
     introActive ||
     introCover ||
-    (useBodySymbols &&
-      (!symbolsHuntComplete || topBarPhase === "center" || introGateActive));
+    (useBodySymbols && (topBarPhase === "center" || introGateActive));
   // Sparkles only during the hunt play window (after countdown, before all
   // symbols found); cards without body symbols have no countdown gate.
   const cursorFxPlayWindow =
@@ -3108,10 +4139,28 @@ export function ScratchPrototype() {
     !introCover &&
     (!useBodySymbols ||
       (topBarPhase !== "center" && !introGateActive && !symbolsHuntComplete));
-  // Also require an active stroke that actually hit the mesh — coins stay
-  // glued to fabric, not the empty canvas around it.
-  const cursorFxSpawnActive =
-    cursorFxPlayWindow && isScratching && cursorOnMesh;
+  // Win-feel trail: coins only in the celebrate window after each +10%, and
+  // only over fresh fabric (spawnGate); fabric probes skip mid-scratch on coarse.
+  const cursorFxSpawnActive = shouldSpawnFairyDust({
+    playWindow: cursorFxPlayWindow,
+    celebrate: cursorFxCelebrate,
+    isScratching,
+    cursorOnMesh,
+    coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+  });
+  const cursorFxSpawnCount = cursorFxCelebrate
+    ? celebrateParticleBoost(
+        cursorFx.particleCount,
+        CURSOR_FX_DEVICE.coarsePointer,
+      )
+    : cursorFx.particleCount;
+
+  useEffect(() => {
+    return () => {
+      clearCelebrateTimer();
+      clearCoinBadgeIdleTimer();
+    };
+  }, []);
 
   // Drop a persisted/stale auto-scratch enable while the hunt is still locked.
   useEffect(() => {
@@ -3124,11 +4173,20 @@ export function ScratchPrototype() {
   }, [autoScratchLocked, autoScratch.enabled]);
 
   function updateSoundEnabled(enabled: boolean) {
+    applyBoundThemeIntroSound(enabled);
     if (enabled) {
-      ensureSymbolAudio(symbolAudioRef.current);
       unlockCountdownSound();
+      preloadSparkleCoinSounds();
+      preloadScratchSounds();
+      unlockMotionScratchBgm();
+      resumeCountdownAudioIfActive();
+    } else {
+      stopCountdownAudio();
+      stopSparkleCoinSounds();
+      stopScratchSounds();
     }
-    setSoundEnabled(enabled);
+    // Master mute, same as StageMuteButton — Settings switches stay put.
+    setGameSoundOn(enabled);
   }
 
   function isPhoneLayout() {
@@ -3147,7 +4205,10 @@ export function ScratchPrototype() {
   }
 
   function resetScratch() {
-    marksRef.current = [];
+    clearScratchMarks(marksRef.current);
+    resetScratchCoverage(scratchCoverageRef.current);
+    resetStrokeFresh();
+    clearPendingScratchMove(scratchInputCoalesceRef.current);
     lastScratchWorldRef.current = null;
     glRendererRef.current?.clearScratch();
     glRendererRef.current?.clearFlakes();
@@ -3156,6 +4217,16 @@ export function ScratchPrototype() {
     );
     revealedCountRef.current = 0;
     progressRef.current = 0;
+    celebrateProgressRef.current = 0;
+    clearCelebrateTimer();
+    setCursorFxCelebrate(false);
+    beginScratchHand(selectedCardId, { force: true });
+    setCoinPopNonce(0);
+    setCoinAwardFlash(0);
+    clearCoinBadgeIdleTimer();
+    setCoinBadgeLeaving(false);
+    coinBadgeShownRef.current = !freePlayLaunch;
+    setCoinBadgeShown(!freePlayLaunch);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3169,9 +4240,9 @@ export function ScratchPrototype() {
     autoPathIndexRef.current = 0;
     autoPathProgressRef.current = 0;
     resetMatchRound();
-    setProgress(0);
     setClaimed(false);
-    setRevealedSymbols(0);
+    publishRevealedSymbols(0);
+    setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
     setBodyRevealed(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
@@ -3181,11 +4252,16 @@ export function ScratchPrototype() {
       () => false,
     );
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
+    setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
     claimedTopSlotsRef.current = Array.from(
       { length: TOP_SYMBOL_COUNT },
       () => false,
     );
     setFlyingCoins([]);
+    finishAutoActiveRef.current = false;
+    resetGarmentFinale();
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) => ({ ...current, enabled: false }));
   }
   resetScratchRef.current = resetScratch;
@@ -3196,7 +4272,7 @@ export function ScratchPrototype() {
   ): Promise<boolean> {
     const session = loadGameSession();
     if (session?.packScratch) {
-      const settle = await settlePackMotionCard(cardId);
+      const settle = await settlePackMotionCard(cardId, prize);
       if (!settle.ok) return false;
       if (settle.session) setGameSession(settle.session);
     }
@@ -3227,15 +4303,51 @@ export function ScratchPrototype() {
     }
   }
 
+  /** Lab: after symbols are found, replay this card instead of leaving. */
+  function restartCurrentCardLab() {
+    if (!skipToPlay && !loopFromIntro) return;
+    if (loopFromIntro) {
+      handStartIntroDoneRef.current = false;
+      handCountdownDoneRef.current = false;
+      handStartCountdownOverIntroRef.current = false;
+    }
+    finishAutoActiveRef.current = false;
+    resetGarmentFinale();
+    clearGameResultTimer();
+    if (gameResultLeaveTimerRef.current !== null) {
+      window.clearTimeout(gameResultLeaveTimerRef.current);
+      gameResultLeaveTimerRef.current = null;
+    }
+    clearPendingMotionResult();
+    setMotionResult(null);
+    setPackRevealFailed(false);
+    setPackRevealRetrying(false);
+    packRevealBlockedRef.current = false;
+    cardTransitionActiveRef.current = false;
+    cardTransitionHandoffRef.current = false;
+    setCardTransition(null);
+    setCardTransitionReady(false);
+    // Keep the same card selected; token forces the card-load reset effect.
+    setLabRestartToken((n) => n + 1);
+    requestAnimationFrame(() => kickGameVideos());
+  }
+
   async function presentMotionResult() {
     const finishedId = selectedCardId;
     if (!finishedId) return;
+    // Lab: never advance / navigate — loop the same card for UI testing.
+    if (skipToPlay || loopFromIntro) {
+      restartCurrentCardLab();
+      return;
+    }
     if (completedCardIdsRef.current.includes(finishedId)) return;
     const match = matchOutcomeRef.current ?? matchOutcome;
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
     let prize = 0;
-    if (match) {
+    if (practiceRef.current) {
+      prize = 0;
+    } else if (match) {
       prize = match.prize;
     } else if (result === "win") {
       prize = 1;
@@ -3247,22 +4359,15 @@ export function ScratchPrototype() {
         abortPackRevealAttempt();
         return;
       }
-      // One catalog fetch for award + overlay photos (used to load twice).
-      const catalog = prize > 0 ? await loadGameCatalog() : null;
-      const awarded = await awardMotionCardPhotos(
-        finishedId,
-        prize,
-        catalog ?? undefined,
-      );
+      const awarded = awardMotionCardCurrency(finishedId, prize);
       if (awarded) setGameSession(awarded);
       const pending = awarded?.pendingMotionResult;
-      const photoIds = pending?.photoIds ?? awarded?.lastMotionWinPhotoIds ?? [];
-      const photos = catalog
-        ? photoIds
-            .map((id) => catalog.photos.find((photo) => photo.id === id))
-            .filter((photo): photo is PhotoCard => Boolean(photo))
-        : [];
-      const current = pending?.current ?? completedCardIdsRef.current.length + 1;
+      const coins = Math.max(0, pending?.coins ?? 0);
+      const diamonds = Math.max(0, pending?.diamonds ?? 0);
+      // Hub coins bank into session.coinTotal and settle once at done
+      // (same path as diamonds). Pack coins credit via PACK_OPENING_REWARD_EVENT.
+      const current =
+        pending?.current ?? completedCardIdsRef.current.length + 1;
       const total = awarded?.motionCardIds.length ?? modelCards.length;
       if (!completedCardIdsRef.current.includes(finishedId)) {
         const nextCompleted = [...completedCardIdsRef.current, finishedId];
@@ -3270,11 +4375,12 @@ export function ScratchPrototype() {
         setCompletedCardIds(nextCompleted);
       }
       setMotionResult({
-        win: prize > 0 && photos.length > 0,
-        photos,
+        win: prize > 0 && (coins > 0 || diamonds > 0),
+        coins,
+        diamonds,
         current,
         total,
-        resultId: `${finishedId}:${photoIds.join(",")}:${current}`,
+        resultId: `${finishedId}:${coins}:${diamonds}:${current}`,
       });
       return;
     }
@@ -3311,6 +4417,11 @@ export function ScratchPrototype() {
   function goToNextMotionCard() {
     const finishedId = selectedCardId;
     if (!finishedId) return;
+    finishAutoActiveRef.current = false;
+    resetGarmentFinale();
+    revealedSymbolsRef.current = 0;
+    autoPathIndexRef.current = 0;
+    autoPathProgressRef.current = 0;
     clearPendingMotionResult();
     setMotionResult(null);
     const nextCompleted = completedCardIdsRef.current.includes(finishedId)
@@ -3398,6 +4509,11 @@ export function ScratchPrototype() {
   }
 
   async function advanceAfterScratch() {
+    // Lab: same-card loop — never leave /game-ui after a find.
+    if (skipToPlay) {
+      restartCurrentCardLab();
+      return;
+    }
     const finishedId = selectedCardId;
     if (!finishedId || completedCardIdsRef.current.includes(finishedId)) return;
     if (cardTransitionActiveRef.current) return;
@@ -3406,7 +4522,9 @@ export function ScratchPrototype() {
     const result =
       gameResultPendingRef.current ?? gameResultRef.current ?? gameResult;
     let prize = 0;
-    if (match) {
+    if (practiceRef.current) {
+      prize = 0;
+    } else if (match) {
       prize = match.prize;
     } else if (result === "win") {
       prize = 1;
@@ -3419,12 +4537,7 @@ export function ScratchPrototype() {
     const finishedCard =
       modelCards.find((entry) => entry.id === finishedId) ?? card;
 
-    if (
-      nextCard &&
-      !gameMode &&
-      finishedCard?.bottom &&
-      nextCard.foreground
-    ) {
+    if (nextCard && !gameMode && finishedCard?.bottom && nextCard.foreground) {
       const { id: templateId, nextIndex } = nextTemplateId(
         transitionTemplateIndexRef.current,
       );
@@ -3474,10 +4587,9 @@ export function ScratchPrototype() {
       });
       return;
     }
-    // Collection single-card play — no Next card, return to the album.
+    // Single-card play — return to parent motion card (or collection fallback).
     if (!playlistMode) {
-      const params = new URLSearchParams(window.location.search);
-      navigateTo(collectionReturnHref(params.get("model"), params.get("card")));
+      navigateTo(gameReturnHrefFromSearch());
     }
   }
   advanceAfterScratchRef.current = advanceAfterScratch;
@@ -3485,15 +4597,20 @@ export function ScratchPrototype() {
   function tryResolveGame() {
     if (gameResultPendingRef.current !== null) return;
     if (packRevealBlockedRef.current) return;
+    // The finale resolves the game itself once its hold ends.
+    if (finaleStartRef.current !== null) return;
     const autoMode = autoScratchRef.current.enabled;
     const sampleCount = revealSamplesRef.current.length;
     if (
-      !isGarmentFullyRevealed(
-        progressRef.current,
-        revealedCountRef.current,
-        sampleCount,
-        autoMode,
-      )
+      !garmentRevealSatisfied({
+        exploded: garmentExplodedRef.current,
+        fullyRevealed: isGarmentFullyRevealed(
+          progressRef.current,
+          revealedCountRef.current,
+          sampleCount,
+          autoMode,
+        ),
+      })
     ) {
       return;
     }
@@ -3529,6 +4646,8 @@ export function ScratchPrototype() {
     matchOutcomeRef.current = match;
     gameResultRef.current = outcome;
     setMatchOutcome(match);
+    finishAutoActiveRef.current = false;
+    autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
     setAutoScratch((current) =>
       current.enabled ? { ...current, enabled: false } : current,
     );
@@ -3556,10 +4675,13 @@ export function ScratchPrototype() {
       return;
     }
     // Plain scratch: don't wait on the multi-second win fanfare before advancing.
-    gameResultTimerRef.current = window.setTimeout(() => {
-      gameResultTimerRef.current = null;
-      void presentMotionResult();
-    }, Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS));
+    gameResultTimerRef.current = window.setTimeout(
+      () => {
+        gameResultTimerRef.current = null;
+        void presentMotionResult();
+      },
+      Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS),
+    );
   }
   tryResolveGameRef.current = tryResolveGame;
 
@@ -3631,6 +4753,25 @@ export function ScratchPrototype() {
   ) {
     const stage = stageRef.current;
     if (!stage || nextCount <= prevCount) return;
+
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setLitSymbolSlots((prev) => {
+        const next = prev.slice();
+        let changed = false;
+        for (let slot = prevCount; slot < nextCount; slot += 1) {
+          if (!next[slot]) {
+            next[slot] = true;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      return;
+    }
+
     const stageRect = stage.getBoundingClientRect();
 
     const autoMode = autoScratchRef.current.enabled;
@@ -3653,7 +4794,15 @@ export function ScratchPrototype() {
     const coins: FlyingCoin[] = [];
     for (let slot = prevCount; slot < nextCount; slot += 1) {
       const slotEl = symbolSlotRefs.current[slot];
-      if (!slotEl) continue;
+      if (!slotEl) {
+        setLitSymbolSlots((prev) => {
+          if (prev[slot]) return prev;
+          const next = prev.slice();
+          next[slot] = true;
+          return next;
+        });
+        continue;
+      }
       const slotRect = slotEl.getBoundingClientRect();
       const toX = slotRect.left - stageRect.left + slotRect.width / 2;
       const toY = slotRect.top - stageRect.top + slotRect.height / 2;
@@ -3670,6 +4819,7 @@ export function ScratchPrototype() {
         midX,
         midY,
         delayMs: (slot - prevCount) * COIN_FLIGHT_STAGGER_MS,
+        topSlot: slot,
       });
     }
     if (coins.length > 0) {
@@ -3684,7 +4834,22 @@ export function ScratchPrototype() {
       if (coin && typeof coin.topSlot === "number" && coin.topSlot >= 0) {
         const slot = coin.topSlot;
         queueMicrotask(() => {
-          setLitTopSlots((prev) => {
+          setShakingTopSlots((prev) => {
+            if (!prev[slot]) return prev;
+            const next = prev.slice();
+            next[slot] = false;
+            return next;
+          });
+          if (useBodySymbolsRef.current) {
+            setLitTopSlots((prev) => {
+              if (prev[slot]) return prev;
+              const next = prev.slice();
+              next[slot] = true;
+              return next;
+            });
+            return;
+          }
+          setLitSymbolSlots((prev) => {
             if (prev[slot]) return prev;
             const next = prev.slice();
             next[slot] = true;
@@ -3788,9 +4953,6 @@ export function ScratchPrototype() {
       const slotRect = slotEl.getBoundingClientRect();
       const toX = slotRect.left - stageRect.left + slotRect.width / 2;
       const toY = slotRect.top - stageRect.top + slotRect.height / 2;
-      // Arc hangs near the find, then rises hard into the slot.
-      const midX = from.x + (toX - from.x) * 0.28;
-      const midY = Math.min(from.y - 28, toY + (from.y - toY) * 0.55) - 36;
       coins.push({
         id: (coinIdRef.current += 1),
         typeId,
@@ -3798,8 +4960,6 @@ export function ScratchPrototype() {
         fromY: from.y,
         toX,
         toY,
-        midX,
-        midY,
         delayMs: flightIndex * MATCH_FLIGHT_STAGGER_MS,
         bodyIndex,
         topSlot,
@@ -3809,6 +4969,24 @@ export function ScratchPrototype() {
 
     claimedTopSlotsRef.current = claimed;
     if (coins.length > 0) {
+      setShakingTopSlots((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (typeof coin.topSlot === "number" && coin.topSlot >= 0) {
+            next[coin.topSlot] = true;
+          }
+        }
+        return next;
+      });
+      setShakeDelayMs((prev) => {
+        const next = prev.slice();
+        for (const coin of coins) {
+          if (typeof coin.topSlot === "number" && coin.topSlot >= 0) {
+            next[coin.topSlot] = coin.delayMs;
+          }
+        }
+        return next;
+      });
       setFlyingCoins((current) => [...current, ...coins]);
     }
   }
@@ -3819,17 +4997,27 @@ export function ScratchPrototype() {
     radius: number,
     worldPoint?: Vec2 | null,
     finalize = true,
-  ) {
-    if (gameResultPendingRef.current !== null) return;
-    if (packRevealBlockedRef.current) return;
+    strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
+  ): number {
+    if (gameResultPendingRef.current !== null) return 0;
+    if (packRevealBlockedRef.current) return 0;
     if (isBodyScratchLocked()) {
-      return;
+      return 0;
     }
 
     if (finalize) huntHintActivityAtRef.current = performance.now();
 
-    marksRef.current = [...marksRef.current, { u, v, radius }].slice(-180);
+    pushScratchMark(marksRef.current, u, v, radius);
     glRendererRef.current?.paintScratch(u, v, radius);
+    const freshCells = stampScratchCoverage(
+      scratchCoverageRef.current,
+      u,
+      v,
+      radius,
+    );
+    if (worldPoint && freshCells > 0) {
+      glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
+    }
 
     const samples = revealSamplesRef.current;
     const revealed = revealedRef.current;
@@ -3844,39 +5032,60 @@ export function ScratchPrototype() {
         revealedCountRef.current += 1;
       }
     }
-    if (!finalize) return;
-
-    if (autoScratchRef.current.flakes && worldPoint) {
-      glRendererRef.current?.spawnFlakes(worldPoint.x, worldPoint.y);
-    }
+    if (!finalize) return freshCells;
 
     const nextProgress = samples.length
       ? revealedCountRef.current / samples.length
       : 0;
     progressRef.current = nextProgress;
-    setProgress(nextProgress);
+    maybeCelebrateScratchProgress(nextProgress);
     const autoMode = autoScratchRef.current.enabled;
     if (useBodySymbolsRef.current && trackedMeshRef.current?.symbolPoints) {
       const bodyPoints = trackedMeshRef.current.symbolPoints;
       const newlyRevealed: number[] = [];
       const revealedBefore = revealedPointsRef.current.slice();
       const renderer = glRendererRef.current;
+      const probeFrame = probeFrameIdRef.current;
+      const symbolProbeCache = symbolScratchProbeCacheRef.current;
       for (let index = 0; index < bodyPoints.length; index += 1) {
         if (revealedPointsRef.current[index]) continue;
-        const distance = Math.hypot(
-          u - bodyPoints[index].u,
-          v - bodyPoints[index].v,
-        );
-        if (distance > SYMBOL_REVEAL_UV_RADIUS) continue;
-        // Must have actually punched the clothing at this UV — proximity alone
-        // used to pop icons on top of still-blue foil.
-        if (
-          !renderer ||
-          renderer.scratchAmountAt(bodyPoints[index].u, bodyPoints[index].v) <
-            SYMBOL_SCRATCH_REVEAL_THRESHOLD
-        ) {
+        const nearStroke = strokeUvs
+          ? isSymbolNearAnyStroke(
+              strokeUvs,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+              SYMBOL_REVEAL_UV_RADIUS,
+            )
+          : isSymbolNearStroke(
+              u,
+              v,
+              bodyPoints[index].u,
+              bodyPoints[index].v,
+              SYMBOL_REVEAL_UV_RADIUS,
+            );
+        if (!nearStroke) {
           continue;
         }
+        // Must have actually punched the clothing at this UV — proximity alone
+        // used to pop icons on top of still-blue foil. Reuse a same-frame GPU
+        // sample only once it already meets the reveal threshold — a miss must
+        // not stick after later stamps in this rAF add more paint.
+        if (!renderer) continue;
+        let amount = readCachedSymbolScratchAmount(
+          symbolProbeCache,
+          probeFrame,
+          index,
+          SYMBOL_SCRATCH_REVEAL_THRESHOLD,
+        );
+        if (amount === null) {
+          amount = writeCachedSymbolScratchAmount(
+            symbolProbeCache,
+            probeFrame,
+            index,
+            renderer.scratchAmountAt(bodyPoints[index].u, bodyPoints[index].v),
+          );
+        }
+        if (amount < SYMBOL_SCRATCH_REVEAL_THRESHOLD) continue;
         revealedPointsRef.current[index] = true;
         newlyRevealed.push(index);
       }
@@ -3884,7 +5093,7 @@ export function ScratchPrototype() {
         const nextSymbolCount =
           revealedPointsRef.current.filter(Boolean).length;
         revealedSymbolsRef.current = nextSymbolCount;
-        setRevealedSymbols(nextSymbolCount);
+        publishRevealedSymbols(nextSymbolCount);
         setBodyRevealed(revealedPointsRef.current.slice());
         setBodyFindHits((prev) => {
           const next = applyBodyFindHits(
@@ -3907,7 +5116,10 @@ export function ScratchPrototype() {
         );
         pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
         spawnBodyMatchFlights(newlyRevealed);
-        if (nextSymbolCount >= SYMBOL_SLOT_COUNT) {
+        if (
+          nextSymbolCount >= SYMBOL_SLOT_COUNT &&
+          !startGarmentFinale(newlyRevealed)
+        ) {
           beginFinishAutoScratch();
         }
       }
@@ -3916,7 +5128,7 @@ export function ScratchPrototype() {
       if (nextSymbolCount !== revealedSymbolsRef.current) {
         const prevCount = revealedSymbolsRef.current;
         revealedSymbolsRef.current = nextSymbolCount;
-        setRevealedSymbols(nextSymbolCount);
+        publishRevealedSymbols(nextSymbolCount);
         playNewSymbolNotes(
           symbolAudioRef.current,
           prevCount,
@@ -3931,6 +5143,7 @@ export function ScratchPrototype() {
       revealedSymbolsRef.current >= SYMBOL_SLOT_COUNT;
     if (
       canClaimGarment &&
+      finaleStartRef.current === null &&
       !packRevealBlockedRef.current &&
       isGarmentFullyRevealed(
         nextProgress,
@@ -3943,6 +5156,7 @@ export function ScratchPrototype() {
       setClaimed(true);
     }
     tryResolveGame();
+    return freshCells;
   }
   applyScratchAtUvRef.current = applyScratchAtUv;
 
@@ -3957,41 +5171,90 @@ export function ScratchPrototype() {
     if (!trackedSample) return;
 
     const last = lastScratchWorldRef.current;
+    const manualBudget = resolveManualScratchBudget({
+      coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+    });
     const strokePoints =
       last !== null
         ? densifyStrokeSegment(
             last,
             point,
-            MANUAL_SCRATCH_PATH_STEP,
-            MANUAL_SCRATCH_MAX_POINTS,
+            manualBudget.pathStep,
+            manualBudget.maxPoints,
           )
         : [point];
 
-    let applied = false;
+    // Map first so we finalize the last *on-mesh* stamp. A coalesced swipe
+    // often ends off the garment; finalizing `strokePoints.at(-1)` skipped
+    // symbol probes even when an intermediate stamp punched a mark.
+    const appliedStamps: { u: number; v: number; worldPoint: Vec2 }[] = [];
     for (let i = 0; i < strokePoints.length; i += 1) {
       const strokePoint = strokePoints[i];
       const uv = trackedWorldToUv(trackedSample, strokePoint);
       if (!uv) continue;
-      const isLast = i === strokePoints.length - 1;
-      applyScratchAtUv(
-        uv.x,
-        uv.y,
+      appliedStamps.push({ u: uv.x, v: uv.y, worldPoint: strokePoint });
+    }
+
+    let applied = false;
+    let fresh = false;
+    for (let i = 0; i < appliedStamps.length; i += 1) {
+      const stamp = appliedStamps[i];
+      const isLast = i === appliedStamps.length - 1;
+      const newCells = applyScratchAtUv(
+        stamp.u,
+        stamp.v,
         SCRATCH_RADIUS,
-        isLast ? point : null,
+        stamp.worldPoint,
         isLast,
+        isLast ? appliedStamps : undefined,
       );
+      const prev = lastStampUvRef.current;
+      fresh = noteStrokeStamp(
+        strokeFreshnessRef.current,
+        newCells,
+        prev ? Math.hypot(stamp.u - prev.u, stamp.v - prev.v) : 0,
+        SCRATCH_RADIUS,
+        scratchCoverageRef.current.size,
+      );
+      lastStampUvRef.current = { u: stamp.u, v: stamp.v };
       applied = true;
     }
 
-    if (applied) lastScratchWorldRef.current = point;
+    if (applied) {
+      lastScratchWorldRef.current = point;
+      strokeFreshRef.current = fresh;
+      noteScratchStamp(fresh);
+    } else {
+      strokeFreshRef.current = false;
+    }
 
     const uvAtPointer = trackedWorldToUv(trackedSample, point);
-    const fabricAlpha =
-      glRendererRef.current?.foregroundAlphaAt(point.x, point.y) ?? -1;
-    const onFabric = fabricAlpha < 0 || fabricAlpha >= CURSOR_FX_MESH_ALPHA_MIN;
+    // Fabric alpha is only for fairy-dust spawn gating. Skip readPixels when
+    // dust is off or coarse mid-stroke (Phase 9 defers spawn to pointer-up).
+    let onFabric = true;
+    if (
+      shouldSampleFabricAlpha({
+        fairyDust: cursorFxRef.current.fairyDust,
+        coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+        isScratching: drawingRef.current,
+      })
+    ) {
+      const probeFrame = probeFrameIdRef.current;
+      const fabricCache = fabricAlphaCacheRef.current;
+      let fabricAlpha = readCachedFabricAlpha(fabricCache, probeFrame);
+      if (fabricAlpha === null) {
+        fabricAlpha = writeCachedFabricAlpha(
+          fabricCache,
+          probeFrame,
+          glRendererRef.current?.foregroundAlphaAt(point.x, point.y) ?? -1,
+        );
+      }
+      onFabric = fabricAlpha < 0 || fabricAlpha >= CURSOR_FX_MESH_ALPHA_MIN;
+    }
     const onMesh = applied && uvAtPointer !== null && onFabric;
-    setCursorOnMesh((prev) => (prev === onMesh ? prev : onMesh));
+    publishCursorOnMesh(onMesh);
   }
+  addScratchRef.current = addScratch;
 
   function setVideoTime(time: number) {
     const bottomVideo = bottomVideoRef.current;
@@ -4016,7 +5279,6 @@ export function ScratchPrototype() {
       currentTime: nextTime,
       lastUpdatedAt: performance.now(),
     };
-    setCurrentTime(nextTime);
   }
 
   function togglePlayback() {
@@ -4114,10 +5376,10 @@ export function ScratchPrototype() {
           {introActive || introCover
             ? "Intro + countdown — play unlocks when both finish."
             : topBarPhase === "center"
-              ? "Scratch the foil, then match symbols on her — auto scratch finishes the reveal."
+              ? "Scratch the foil to unlock play controls."
               : introGateActive
                 ? "Get ready — play starts after the countdown."
-                : `Find all ${SYMBOL_SLOT_COUNT} matches first — auto scratch finishes the reveal.`}
+                : "Wait for play to unlock."}
         </p>
       ) : null}
       <label className="checkbox-label">
@@ -4144,16 +5406,6 @@ export function ScratchPrototype() {
           type="range"
           value={autoScratch.speed}
         />
-      </label>
-      <label className="checkbox-label">
-        <input
-          checked={autoScratch.flakes}
-          onChange={(event) =>
-            updateAutoScratch({ flakes: event.currentTarget.checked })
-          }
-          type="checkbox"
-        />
-        Flying flakes
       </label>
     </fieldset>
   );
@@ -4214,7 +5466,7 @@ export function ScratchPrototype() {
         Gravity ({cursorFx.gravity.toFixed(3)})
         <input
           disabled={!cursorFx.fairyDust}
-          max={0.1}
+          max={0.4}
           min={0}
           onChange={(event) =>
             updateCursorFx({ gravity: Number(event.currentTarget.value) })
@@ -4238,13 +5490,7 @@ export function ScratchPrototype() {
           value={cursorFx.fadeSpeed}
         />
       </label>
-      {cursorFx.fairyDust ? (
-        <p className="auto-scratch-hint">
-          Active {cursorFxPerf.active} · peak {cursorFxPerf.peak} ·{" "}
-          {cursorFxPerf.avgFrameMs.toFixed(2)}ms/frame
-          {cursorFxPerf.peak >= 220 ? " — near cap (250)" : ""}
-        </p>
-      ) : null}
+      {cursorFx.fairyDust ? <CursorFxPerfReadout /> : null}
     </fieldset>
   );
 
@@ -4375,40 +5621,47 @@ export function ScratchPrototype() {
 
   // Keep the playable stage mounted while the catalog loads so the dual-video
   // elements aren't torn down/recreated (cold decoder attach = lag + desync).
-  if (!cardsReady || !card) {
-    if (!cardsReady || activeModelId || gameMode) {
-      return (
-        <main className="app-shell">
-          <div className="prototype">
-            <div className="stage" aria-busy="true" />
-          </div>
-        </main>
-      );
-    }
+  if (!cardsReady) {
+    return (
+      <main className="app-shell">
+        <div className="prototype">
+          <div className="stage" aria-busy="true" />
+        </div>
+      </main>
+    );
+  }
+
+  if (!card) {
+    const missingCardCopy = playlistFinished
+      ? "All her motion cards are scratched — none left to repeat."
+      : gameMode
+        ? "Couldn't load this game hand. Try leaving and starting again from your pack."
+        : selectedCardId || singleCardIdRef.current
+          ? "This motion card isn't available right now. It may have been removed or belongs to another model."
+          : "This girl has no motion cards yet.";
     return (
       <main className="app-shell home-picker">
         <section className="home-picker-panel">
           <p className="eyebrow">Sugar Scratchie</p>
-          <h1>{activeModel?.label ?? "No cards"}</h1>
-          <p className="home-picker-copy">
-            {playlistFinished
-              ? "All her motion cards are scratched — none left to repeat."
-              : "This girl has no motion cards yet."}
-          </p>
+          <h1>{activeModel?.label ?? "Can't play this card"}</h1>
+          <p className="home-picker-copy">{missingCardCopy}</p>
           <div className="home-picker-links">
-            <button
-              type="button"
-              className="linkish"
-              onClick={() => {
-                setActiveModelId("");
-                setSelectedCardId("");
-                setCompletedCardIds([]);
-                completedCardIdsRef.current = [];
-              }}
-            >
-              Choose another girl
-            </button>
-            <a href="/dashboard/models">Models</a>
+            {!gameMode ? (
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => {
+                  setActiveModelId("");
+                  setSelectedCardId("");
+                  singleCardIdRef.current = "";
+                  setCompletedCardIds([]);
+                  completedCardIdsRef.current = [];
+                }}
+              >
+                Choose another girl
+              </button>
+            ) : null}
+            <a href="/collection">My Collection</a>
           </div>
         </section>
       </main>
@@ -4421,8 +5674,8 @@ export function ScratchPrototype() {
         <div
           ref={setStageNode}
           className={`stage${gameResult ? " is-game-over" : ""}${
-            topBarPhase === "showcase" ? " is-showcase-phase" : ""
-          }${
+            clearStageForResult ? " is-result-clear" : ""
+          }${topBarPhase === "showcase" ? " is-showcase-phase" : ""}${
             useBodySymbols &&
             matchStartUnlocked &&
             topBarPhase === "center" &&
@@ -4431,18 +5684,39 @@ export function ScratchPrototype() {
               : ""
           }${useBodySymbols && introGateActive ? " is-countdown-phase" : ""}${
             introCover ? " is-intro-video-phase" : ""
-          }${introLeaving ? " is-intro-revealing" : ""}`}
+          }${introLeaving ? " is-intro-revealing" : ""}${
+            finalePhase === "charge" ? " is-finale-charge" : ""
+          }${
+            finalePhase === "burst" || finalePhase === "hold"
+              ? " is-finale-burst"
+              : ""
+          }`}
         >
           {cursorFx.fairyDust && cursorHost ? (
             <FairyDustCursor
               element={cursorHost}
               particleTypes={cursorFxParticleTypes}
-              particleSize={cursorFx.particleSize}
-              particleCount={cursorFx.particleCount}
+              particleSize={
+                cursorFx.particleSize * CURSOR_FX_DEVICE.displaySizeMul
+              }
+              burstSizeMul={
+                CURSOR_FX_DEVICE.coarsePointer
+                  ? CURSOR_FX_MOBILE_BURST_SIZE_MUL
+                  : undefined
+              }
+              particleCount={cursorFxSpawnCount}
               gravity={cursorFx.gravity}
               fadeSpeed={cursorFx.fadeSpeed}
               initialVelocity={CURSOR_FX_INITIAL_VELOCITY}
+              emitMode={CURSOR_FX_EMIT_MODE}
               spawnEnabled={cursorFxSpawnActive}
+              spawnMinDistance={fairyDustSpawnMinDistancePx(
+                CURSOR_FX_DEVICE.coarsePointer,
+              )}
+              maxDevicePixelRatio={CURSOR_FX_DEVICE.maxOverlayDpr}
+              burstNonce={cursorFxBurstNonce}
+              burstCount={cursorFxBurstCount}
+              spawnGate={cursorFxSpawnGate}
             />
           ) : null}
           {glError ? (
@@ -4465,10 +5739,11 @@ export function ScratchPrototype() {
               </div>
             </div>
           ) : null}
-          {motionResult && motionOutcome === "photo-card" ? (
-            <MotionWinReveal
+          {motionResult && motionOutcome === "diamond" ? (
+            <MotionCurrencyReveal
               key={motionResult.resultId}
-              photos={motionResult.photos}
+              coins={motionResult.coins}
+              diamonds={motionResult.diamonds}
               resultId={motionResult.resultId}
               onComplete={afterMotionResultPresentation}
             />
@@ -4508,9 +5783,11 @@ export function ScratchPrototype() {
               <div className="photo-scratch-intro-media">
                 {introActive && introVideoUrl ? (
                   <video
-                    ref={introVideoElRef}
+                    ref={(el) => {
+                      setIntroVideoEl(el);
+                      if (el) bindThemeIntroVideo(el);
+                    }}
                     autoPlay
-                    muted={introMuted}
                     playsInline
                     preload="auto"
                     src={introVideoUrl}
@@ -4525,16 +5802,200 @@ export function ScratchPrototype() {
               </div>
               <div className="photo-scratch-intro-flash" />
               <div className="photo-scratch-intro-ring" />
+              {introActive ? (
+                <button
+                  type="button"
+                  className="photo-scratch-intro-skip"
+                  onClick={skipIntro}
+                >
+                  Skip intro
+                </button>
+              ) : null}
             </div>
           ) : null}
-          {useBodySymbols && matchStartUnlocked ? (
+          {/* Top chrome — two rows:
+                row 1: pause | icon-bar track | mute
+                row 2: blank | progress toast slot | cards left
+              Body-match bar is stage-absolute (center foil → dock fly). */}
+          <div
+            className={`stage-game__top-chrome${
+              topBarPhase === "docked" ? " is-docked" : ""
+            }`}
+          >
+            <div className="stage-game__top-chrome-row is-controls">
+              <div className="stage-game__top-chrome-side is-start">
+                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+              </div>
+              <div className="stage-game__top-chrome-center">
+                {iconRevealerShown &&
+                dockHidden &&
+                (skipToPlay || hasPlayableCard) &&
+                !motionResult ? (
+                  <button
+                    type="button"
+                    className={[
+                      "stage-game__auto-scratch",
+                      autoScratch.enabled ? "is-active" : "",
+                      symbolsHuntComplete ? "is-symbols-complete" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={autoScratchLocked}
+                    aria-label={
+                      autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                    }
+                    aria-pressed={autoScratch.enabled}
+                    onClick={() =>
+                      updateAutoScratch({ enabled: !autoScratch.enabled })
+                    }
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18.45 16.95"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M9.28,9.47c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5ZM7.57,8.19c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0s.2.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM12.27,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM7.14,6.49h-.85c-.28,0-.5-.22-.5-.5s.22-.5.5-.5h.85c.28,0,.5.22.5.5s-.22.5-.5.5ZM8.08,5.29c-.13,0-.26-.05-.35-.15l-.51-.51c-.2-.19-.2-.51,0-.71s.51-.2.71,0l.51.51c.2.19.2.51,0,.71-.1.1-.23.15-.35.15ZM10.47,5.29c-.13,0-.26-.05-.35-.15-.2-.2-.2-.51,0-.71l.51-.51c.2-.2.51-.2.71,0,.19.2.19.51,0,.71l-.51.51c-.1.1-.23.15-.35.15ZM9.28,4.35c-.28,0-.5-.22-.5-.5v-.85c0-.28.22-.5.5-.5s.5.22.5.5v.85c0,.28-.22.5-.5.5Z" />
+                      <rect x="13.27" y="5.83" width="1.5" height="9.79" transform="translate(-3.48 13.06) rotate(-45)" />
+                      <path d="M9.21,13.38c-.19,0-.38-.07-.53-.22L3.1,7.59c-.29-.29-.29-.77,0-1.06s.77-.29,1.06,0l5.57,5.57c.29.29.29.77,0,1.06-.15.15-.34.22-.53.22Z" />
+                      <rect x="8.53" y="5.48" width="2.09" height="1.5" transform="translate(7.21 -4.95) rotate(45)" />
+                      <path d="M6.26,13.51c-.16,0-.32-.06-.44-.18l-2.78-2.78c-.24-.24-.24-.64,0-.88s.64-.24.88,0l2.78,2.78c.24.24.24.64,0,.88-.12.12-.28.18-.44.18Z" />
+                      <path d="M4.25,13.75c-.1,0-.19-.04-.27-.11l-.91-.91c-.15-.15-.15-.38,0-.53s.38-.15.53,0l.91.91c.15.15.15.38,0,.53-.07.07-.17.11-.27.11Z" />
+                      <path d="M13.3,12.13v1.17c0,.61-.49,1.1-1.1,1.1H3.2c-.61,0-1.1-.49-1.1-1.1V3.3c0-.61.49-1.1,1.1-1.1h9c.61,0,1.1.49,1.1,1.1v4.58l1.8,1.8V3.3c0-1.6-1.3-2.9-2.9-2.9H3.2C1.6.4.3,1.7.3,3.3v10c0,1.6,1.3,2.9,2.9,2.9h9c1.4,0,2.58-1,2.84-2.33l-1.74-1.74Z" />
+                    </svg>
+                    <span className="stage-game__auto-scratch-label">AutoScratch</span>
+                  </button>
+                ) : null}
+                {!useBodySymbols && !skipToPlay && matchStartUnlocked ? (
+                  /* Legacy foil path: always 6 top slots (never body 12). */
+                  <div
+                    className={`symbol-bar${
+                      revealedSymbols >= TOP_SYMBOL_COUNT
+                        ? " is-symbols-complete"
+                        : ""
+                    }${claimed ? " is-fully-revealed" : ""}`}
+                    aria-label="Game symbols"
+                  >
+                    {topSymbols
+                      .slice(0, TOP_SYMBOL_COUNT)
+                      .map((typeId, index) => (
+                        <div
+                          key={index}
+                          ref={(el) => {
+                            symbolSlotRefs.current[index] = el;
+                          }}
+                          className={`symbol-slot${
+                            litSymbolSlots[index] ? " is-revealed" : ""
+                          }`}
+                          title={
+                            litSymbolSlots[index]
+                              ? SYMBOL_TYPES[typeId]?.label
+                              : undefined
+                          }
+                        >
+                          {litSymbolSlots[index] ? (
+                            <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
+                          ) : null}
+                        </div>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="stage-game__top-chrome-side is-end">
+                {topBarPhase === "docked" ? (
+                  <div className="stage-game__diamond-enter">
+                    <CurrencyBalances
+                      coins={coins}
+                      diamonds={diamonds}
+                      compact
+                      diamondsOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {/* Status row: [ auto + cards-left | notifications ] */}
+            <div className="stage-game__top-chrome-row is-status">
+              <div className="stage-game__top-chrome-status-cards">
+                {packProgressShown &&
+                iconRevealerShown &&
+                (skipToPlay ||
+                  (modelCards.length > 1 &&
+                    completedCardIds.length < modelCards.length &&
+                    hasPlayableCard)) ? (
+                  <div
+                    className={[
+                      "pack-progress-shell",
+                      packProgressLeaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={() => {
+                      if (!packProgressLeaving) return;
+                      setPackProgressShown(false);
+                      setPackProgressLeaving(false);
+                    }}
+                  >
+                    {skipToPlay ? (
+                      /* Lab always shows pack-progress for layout. */
+                      <PackProgress current={1} total={5} />
+                    ) : (
+                      <PackProgress
+                        current={
+                          motionResult?.current ??
+                          Math.min(
+                            completedCardIds.length + 1,
+                            modelCards.length,
+                          )
+                        }
+                        total={modelCards.length}
+                      />
+                    )}
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="stage-game__top-chrome-status-notes"
+                data-progress-toast-slot="1"
+              />
+            </div>
+          </div>
+          {/* One TopSymbolBar for the whole match sequence:
+              center (scratch foil) → docked (fly to top) → showcase. */}
+          {iconRevealerShown ? (
             <TopSymbolBar
               symbols={topSymbols}
               phase={topBarPhase}
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
+              shakingSlots={shakingTopSlots}
+              shakeDelayMs={shakeDelayMs}
               slotElsOutRef={topBarSlotElsRef}
+              forceRevealed={skipToPlay}
               onAllRevealed={onTopBarAllRevealed}
+              onScratchStart={() => {
+                // First foil stroke: reverse-animate cards-left away for this card.
+                if (packProgressShown && !packProgressLeaving) {
+                  setPackProgressLeaving(true);
+                }
+              }}
+              freezeSymbols={shouldFreezeSymbolLottie({
+                basePaused: false,
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                isScratching,
+              })}
+              preferStaticSymbols={shouldPreferStaticSymbolLottie({
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+              })}
+              quietDecorativeLottie={shouldPreferStaticSymbolLottie({
+                coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+              })}
+              onDockHiddenChange={setDockHidden}
             />
           ) : null}
           <ScratchFrameProgress
@@ -4544,31 +6005,50 @@ export function ScratchPrototype() {
             batches={frameDiscoveryBatches}
             settling={frameSettling}
           />
-          {!useBodySymbols && matchStartUnlocked ? (
-            <div
-              className={`symbol-bar${revealedSymbols >= SYMBOL_SLOT_COUNT ? " is-symbols-complete" : ""}${claimed ? " is-fully-revealed" : ""}`}
-              aria-label="Game symbols"
-            >
-              {sessionSymbols.map((typeId, index) => (
-                <div
-                  key={index}
-                  ref={(el) => {
-                    symbolSlotRefs.current[index] = el;
-                  }}
-                  className={`symbol-slot${index < revealedSymbols ? " is-revealed" : ""}`}
-                  title={
-                    index < revealedSymbols
-                      ? SYMBOL_TYPES[typeId]?.label
-                      : undefined
-                  }
-                >
-                  {index < revealedSymbols ? (
-                    <GameSymbolIcon typeId={typeId} pixelScale={1.2} />
-                  ) : null}
-                </div>
-              ))}
+
+          {/* Bottom HUD: [ coin count | Sugar Scratch logo ]. Badge idle-hides. */}
+          <div className="stage-game__bottom-chrome">
+            <div className="stage-game__bottom-chrome-row is-status">
+              <div className="stage-game__bottom-chrome-status-cards">
+                {freePlayLaunch ? (
+                  <span className="stage-game__free-play-pill">
+                    Free play · no rewards
+                  </span>
+                ) : null}
+                {coinBadgeShown && topBarPhase === "docked" ? (
+                  <div
+                    key={coinBadgeEnterKey}
+                    className={[
+                      "stage-game__cards-left",
+                      "pack-progress-shell",
+                      "pack-progress-shell--bottom-left",
+                      coinBadgeLeaving ? "is-leaving" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onAnimationEnd={onCoinBadgeLeaveEnd}
+                  >
+                    <StageCoinCount
+                      popNonce={coinPopNonce}
+                      awardAmount={coinAwardFlash}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="stage-game__bottom-chrome-brand"
+                aria-hidden="true"
+              >
+                <img
+                  src="/svg/logoSugarScratch.svg"
+                  alt=""
+                  className="stage-game__bottom-chrome-logo"
+                  draggable={false}
+                  decoding="async"
+                />
+              </div>
             </div>
-          ) : null}
+          </div>
           {showIntroCountdown ? (
             <InitialCountdown
               onComplete={onIntroCountdownComplete}
@@ -4597,6 +6077,9 @@ export function ScratchPrototype() {
                         typeId={typeId}
                         size={BODY_SYMBOL_ICON_PX}
                         pixelScale={1.2}
+                        preferStatic={shouldPreferStaticSymbolLottie({
+                          coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                        })}
                         paused
                       />
                     </span>
@@ -4624,8 +6107,8 @@ export function ScratchPrototype() {
                     {
                       "--coin-from-x": `${coin.fromX}px`,
                       "--coin-from-y": `${coin.fromY}px`,
-                      "--coin-mid-x": `${coin.midX}px`,
-                      "--coin-mid-y": `${coin.midY}px`,
+                      "--coin-mid-x": `${coin.midX ?? coin.fromX}px`,
+                      "--coin-mid-y": `${coin.midY ?? coin.fromY}px`,
                       "--coin-to-x": `${coin.toX}px`,
                       "--coin-to-y": `${coin.toY}px`,
                       animationDuration: `${COIN_FLIGHT_DURATION_MS}ms`,
@@ -4635,46 +6118,26 @@ export function ScratchPrototype() {
                   onAnimationEnd={() => removeFlyingCoin(coin.id)}
                   aria-hidden="true"
                 >
-                  <GameSymbolIcon typeId={coin.typeId} pixelScale={1.15} />
+                  <GameSymbolIcon
+                    typeId={coin.typeId}
+                    pixelScale={1.15}
+                    preferStatic={shouldPreferStaticSymbolLottie({
+                      coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
+                    })}
+                  />
                 </div>
               ))
             : flyingCoins.map((coin) => (
-                <div
+                <MatchFlight
                   key={coin.id}
-                  className="flying-coin is-match-fly"
-                  style={
-                    {
-                      "--coin-from-x": `${coin.fromX}px`,
-                      "--coin-from-y": `${coin.fromY}px`,
-                      "--coin-mid-x": `${coin.midX}px`,
-                      "--coin-mid-y": `${coin.midY}px`,
-                      "--coin-to-x": `${coin.toX}px`,
-                      "--coin-to-y": `${coin.toY}px`,
-                      animationDuration: `${MATCH_FLIGHT_DURATION_MS}ms`,
-                      animationDelay: `${coin.delayMs}ms`,
-                    } as CSSProperties
-                  }
-                  onAnimationEnd={(event) => {
-                    if (event.target !== event.currentTarget) return;
-                    removeFlyingCoin(coin.id);
-                  }}
-                  aria-hidden="true"
-                >
-                  <span className="flying-coin-spin">
-                    <span
-                      className="flying-coin-plane flying-coin-plane--back"
-                      aria-hidden="true"
-                    />
-                    <span className="flying-coin-face flying-coin-plane flying-coin-plane--mid">
-                      <GameSymbolIcon
-                        typeId={coin.typeId}
-                        size={34}
-                        pixelScale={2.2}
-                        paused
-                      />
-                    </span>
-                  </span>
-                </div>
+                  typeId={coin.typeId}
+                  fromX={coin.fromX}
+                  fromY={coin.fromY}
+                  toX={coin.toX}
+                  toY={coin.toY}
+                  delayMs={coin.delayMs}
+                  onArrive={() => removeFlyingCoin(coin.id)}
+                />
               ))}
           <video
             ref={bottomVideoRef}
@@ -4704,9 +6167,16 @@ export function ScratchPrototype() {
             }
             onPointerDown={(event) => {
               if (cardTransitionActiveRef.current) return;
+              if (finaleStartRef.current !== null) return;
               huntHintActivityAtRef.current = performance.now();
-              if (soundEnabledRef.current)
+              if (soundEnabledRef.current) {
                 ensureSymbolAudio(symbolAudioRef.current);
+                preloadSparkleCoinSounds();
+                preloadScratchSounds();
+              }
+              // Re-assert Web Audio unlock inside this gesture (Safari).
+              unlockMotionScratchBgm();
+              syncMotionScratchBgm();
               const bottomVideo = bottomVideoRef.current;
               const foregroundVideo = foregroundVideoRef.current;
               if (bottomVideo?.paused)
@@ -4714,8 +6184,14 @@ export function ScratchPrototype() {
               if (!fgParkedRef.current && foregroundVideo?.paused)
                 void foregroundVideo.play().catch(() => undefined);
               drawingRef.current = true;
+              isScratchingRef.current = true;
               setIsScratching(true);
+              // First scratch touch: animate cards-left away for this card.
+              if (packProgressShown && !packProgressLeaving) {
+                setPackProgressLeaving(true);
+              }
               lastScratchWorldRef.current = null;
+              clearPendingScratchMove(scratchInputCoalesceRef.current);
               lastPointerClientRef.current = {
                 x: event.clientX,
                 y: event.clientY,
@@ -4736,32 +6212,45 @@ export function ScratchPrototype() {
                 event.clientY,
               );
               if (!drawingRef.current) return;
-              addScratch(event.clientX, event.clientY);
+              // Coalesce to one densified apply per rAF (Phase 7).
+              notePendingScratchMove(
+                scratchInputCoalesceRef.current,
+                event.clientX,
+                event.clientY,
+              );
             }}
             onPointerUp={() => {
-              drawingRef.current = false;
-              setIsScratching(false);
-              setCursorOnMesh(false);
-              lastScratchWorldRef.current = null;
+              endScratchStroke();
               clearScratchZoom();
             }}
             onPointerLeave={() => {
-              drawingRef.current = false;
-              setIsScratching(false);
-              setCursorOnMesh(false);
-              lastScratchWorldRef.current = null;
+              endScratchStroke();
               hoverPointRef.current = null;
               clearScratchZoom();
             }}
             onPointerCancel={() => {
-              drawingRef.current = false;
-              setIsScratching(false);
-              setCursorOnMesh(false);
-              lastScratchWorldRef.current = null;
+              endScratchStroke();
               hoverPointRef.current = null;
               clearScratchZoom();
             }}
           />
+          {finaleBurst ? (
+            <div
+              key={finaleBurst.key}
+              className="finale-burst"
+              aria-hidden="true"
+              style={
+                {
+                  "--finale-x": `${finaleBurst.x}px`,
+                  "--finale-y": `${finaleBurst.y}px`,
+                } as CSSProperties
+              }
+            >
+              <div className="finale-flash" />
+              <div className="finale-shockwave" />
+              <div className="finale-shockwave is-late" />
+            </div>
+          ) : null}
           {packRevealFailed && gameSession?.packScratch ? (
             <div
               className="game-result game-result--static"
@@ -4815,17 +6304,6 @@ export function ScratchPrototype() {
               )}
             </button>
           </div>
-          {modelCards.length > 1 &&
-          completedCardIds.length < modelCards.length &&
-          hasPlayableCard ? (
-            <PackProgress
-              current={
-                motionResult?.current ??
-                Math.min(completedCardIds.length + 1, modelCards.length)
-              }
-              total={modelCards.length}
-            />
-          ) : null}
           {/* Phones hide the dev panel, so surface compact controls on the stage
               itself. Hidden on desktop where the panel is used. */}
           <div className="mobile-controls-wrap">
@@ -4910,7 +6388,7 @@ export function ScratchPrototype() {
                   disabled={autoScratchLocked}
                   aria-label={
                     autoScratchLocked
-                      ? `Find all ${SYMBOL_SLOT_COUNT} matches first`
+                      ? "Auto scratch unlocks when play starts"
                       : autoScratch.enabled
                         ? "Auto scratch running"
                         : "Enable auto scratch"
@@ -4985,7 +6463,7 @@ export function ScratchPrototype() {
                 ? ` · scratched ${completedCardIds.length}`
                 : ""}
               {gameMode && gameSession
-                ? ` · photos banked ${gameSession.photoPrizeTotal}`
+                ? ` · prizes ${gameSession.photoPrizeTotal}`
                 : ""}
             </p>
           </div>
@@ -5048,16 +6526,10 @@ export function ScratchPrototype() {
             </select>
           </label>
           <div className="timeline-controls">
-            <input
-              aria-label="Video timeline"
-              max={duration || 0}
-              min={0}
-              onChange={(event) =>
-                setVideoTime(Number(event.currentTarget.value))
-              }
-              step={0.05}
-              type="range"
-              value={Math.min(currentTime, duration || currentTime)}
+            <VideoTimelineSlider
+              duration={duration}
+              onSeek={setVideoTime}
+              videoRef={bottomVideoRef}
             />
           </div>
           <div className="button-row">

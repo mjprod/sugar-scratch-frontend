@@ -7,6 +7,10 @@ import {
 } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import {
+  isImageAvatar,
+  ProfileAvatar,
+} from "@/components/profile/ProfileAvatar";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   DISPLAY_NAME_MAX_LENGTH,
@@ -24,6 +28,7 @@ export type EditProfileValues = {
   displayName: string;
   username: string;
   avatar: string | null;
+  email: string;
 };
 
 export function EditProfileScreen({
@@ -33,10 +38,11 @@ export function EditProfileScreen({
 }: {
   initial: EditProfileValues;
   onBack: () => void;
-  onSaved: (next: EditProfileValues) => void;
+  onSaved: (next: Omit<EditProfileValues, "email">) => void;
 }) {
   const nameId = useId();
   const usernameId = useId();
+  const emailId = useId();
   const discardTitleId = useId();
 
   const [displayName, setDisplayName] = useState(initial.displayName);
@@ -46,6 +52,7 @@ export function EditProfileScreen({
   const [avatar, setAvatar] = useState<string | null>(
     initial.avatar || AVATAR_OPTIONS[0],
   );
+  const email = initial.email.trim();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [nameError, setNameError] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -59,6 +66,9 @@ export function EditProfileScreen({
     initial.username.replace(/^@/, ""),
   );
   const baselineAvatar = initial.avatar || AVATAR_OPTIONS[0];
+  const avatarOptions: readonly string[] = isImageAvatar(initial.avatar)
+    ? [initial.avatar, ...AVATAR_OPTIONS]
+    : AVATAR_OPTIONS;
 
   const nextName = normalizeDisplayName(displayName);
   const nextUsername = normalizeUsername(username);
@@ -106,7 +116,7 @@ export function EditProfileScreen({
         setFormError(updateProfileErrorMessage());
         return;
       }
-      const saved: EditProfileValues = {
+      const saved = {
         displayName: result.user?.displayName ?? nextName,
         username: result.user?.username ?? nextUsername,
         avatar: result.user?.avatarUrl ?? avatar,
@@ -147,7 +157,7 @@ export function EditProfileScreen({
               onClick={() => setPickerOpen((v) => !v)}
             >
               <span className="edit-profile-avatar" aria-hidden="true">
-                {avatar || "✨"}
+                <ProfileAvatar value={avatar} />
               </span>
               <span className="edit-profile-avatar-badge" aria-hidden="true">
                 <Camera className="size-3.5" />
@@ -167,7 +177,7 @@ export function EditProfileScreen({
                 role="listbox"
                 aria-label="Choose avatar"
               >
-                {AVATAR_OPTIONS.map((option) => (
+                {avatarOptions.map((option) => (
                   <button
                     key={option}
                     type="button"
@@ -185,7 +195,7 @@ export function EditProfileScreen({
                       setPickerOpen(false);
                     }}
                   >
-                    {option}
+                    <ProfileAvatar value={option} />
                   </button>
                 ))}
               </div>
@@ -263,6 +273,28 @@ export function EditProfileScreen({
                 {usernameError}
               </p>
             ) : null}
+          </div>
+
+          <div className="auth7-field">
+            <label className="auth7-label" htmlFor={emailId}>
+              Email
+            </label>
+            <span className="auth7-input-wrap">
+              <input
+                id={emailId}
+                type="email"
+                className="auth7-input edit-profile-email-input"
+                value={email}
+                placeholder="—"
+                readOnly
+                autoComplete="email"
+                aria-describedby={`${emailId}-hint`}
+                aria-readonly="true"
+              />
+            </span>
+            <p id={`${emailId}-hint`} className="edit-profile-hint">
+              Your account email.
+            </p>
           </div>
 
           {formError ? (

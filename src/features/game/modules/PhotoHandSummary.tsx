@@ -94,7 +94,7 @@ export function PhotoHandSummary({
   diamondTotal,
   onCollect,
 }: PhotoHandSummaryProps) {
-  const { addDiamonds } = useWallet();
+  const { addCoins, addDiamonds } = useWallet();
   const noDiamonds = diamondTotal <= 0;
   const reducedMotion = prefersReducedMotion();
   const gradientId = useId().replace(/:/g, "");
@@ -111,13 +111,15 @@ export function PhotoHandSummary({
   onCollectRef.current = onCollect;
   const addDiamondsRef = useRef(addDiamonds);
   addDiamondsRef.current = addDiamonds;
+  const addCoinsRef = useRef(addCoins);
+  addCoinsRef.current = addCoins;
 
   const finishHand = useCallback(
     (opts?: { navigate?: boolean }) => {
       if (finishedRef.current) return;
       finishedRef.current = true;
       setCounting(false);
-      settleDonePhotoHand(addDiamondsRef.current);
+      settleDonePhotoHand(addDiamondsRef.current, addCoinsRef.current);
       setCredited(true);
       if (opts?.navigate !== false) {
         onCollectRef.current();
@@ -152,13 +154,9 @@ export function PhotoHandSummary({
       // ponytail: ignore Strict Mode's instant remount — settle only on real unmount.
       if (Date.now() - mountedAtRef.current < 250) return;
       finishedRef.current = true;
-      settleDonePhotoHand(addDiamondsRef.current);
+      settleDonePhotoHand(addDiamondsRef.current, addCoinsRef.current);
     };
   }, []);
-
-  function handleCollect() {
-    finishHand();
-  }
 
   return (
     <div
@@ -177,7 +175,10 @@ export function PhotoHandSummary({
           <PackNoMatchResult subtitle="No diamonds this pack." />
         ) : (
         <div className="photo-hand-summary__stack">
-          <p className="photo-hand-summary__title">TOTAL WIN</p>
+          <p className="photo-hand-summary__title">PACK COMPLETE</p>
+          <p className="photo-hand-summary__subtitle">
+            {diamondTotal} Diamond{diamondTotal === 1 ? "" : "s"} Earned
+          </p>
           <div
             className={[
               "photo-hand-summary__reward-wrap",
@@ -207,7 +208,7 @@ export function PhotoHandSummary({
             <p className="sr-only" aria-live="polite">
               {credited
                 ? "Diamonds added to your balance."
-                : "Tap Collect to claim now. Diamonds are added and you leave automatically when the ring completes."}
+                : "Tap Continue to claim now. Diamonds are added and you leave automatically when the ring completes."}
             </p>
           </div>
         </div>
@@ -219,11 +220,11 @@ export function PhotoHandSummary({
             {...ctaButtonPropsFromTemplate("squircleCTA")}
             fillParent
             type="button"
-            label={noDiamonds ? "Done" : "Collect"}
+            label={noDiamonds ? "Done" : "Continue"}
             costAmount={null}
             fontSize={15}
             strokeWidth={1}
-            onClick={handleCollect}
+            onClick={() => finishHand()}
           />
         </div>
       </div>

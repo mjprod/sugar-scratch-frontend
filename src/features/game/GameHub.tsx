@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { memoryNavigate } from '@/lib/memory/memoryNavigate'
 import { CtaButton, ctaButtonPropsFromTemplate } from '@/components/cta'
+import { CoinLottie } from '@/components/ui/CoinLottie'
 import { DiamondLottie } from '@/components/ui/DiamondLottie'
 import { CardFan } from '@/features/reveal/components/CardFan'
 import {
@@ -11,8 +12,9 @@ import { HOLO_EFFECTS } from '@/features/reveal/lib/effects'
 import { loadFanDrag } from '@/features/reveal/lib/fanDrag'
 import { loadFanLayout } from '@/features/reveal/lib/fanLayout'
 import { useCatalog } from '@/shared/catalog/CatalogContext'
-import { useMarkPageReady } from '@/shared/ui/PageTransition'
+import { useMarkPageReady } from '@/shared/ui/usePageReady'
 import { unlockCountdownSound } from './modules/InitialCountdown'
+import { unlockMotionScratchBgm } from './modules/motionScratchBgm'
 import { PackNoMatchResult } from './modules/PackNoMatchResult'
 import { useWallet } from '@/contexts/WalletContext'
 import { Paths } from '@/routes/Paths'
@@ -22,7 +24,7 @@ import {
   gameSessionStorageKey,
   firstMissingMotionCardId,
   loadGameSession,
-  markWalletCredited,
+  settleHubWalletFromSession,
   motionPlayHref,
   persistGameProgress,
   photoPlayHref,
@@ -121,27 +123,76 @@ function HubCtaButton({
   )
 }
 
-function HubRewardTally({ amount }: { amount: number }) {
+function HubRewardTally({
+  diamonds,
+  coins = 0,
+}: {
+  diamonds: number;
+  coins?: number;
+}) {
+  const showCoins = coins > 0;
+  const showDiamonds = diamonds > 0;
+  const noRewards = !showCoins && !showDiamonds;
+  const parts = [
+    showCoins ? `${coins} coin${coins === 1 ? "" : "s"}` : null,
+    showDiamonds
+      ? `${diamonds} diamond${diamonds === 1 ? "" : "s"}`
+      : null,
+  ].filter(Boolean);
   return (
     <div
       className="game-hub-pack__tally"
       role="status"
-      aria-label={`${amount} diamonds won`}
+      aria-label={
+        noRewards
+          ? "Game complete. No rewards this pack."
+          : `Game complete. ${parts.join(" and ")} earned.`
+      }
     >
-      <div className="game-hub-pack__tally-reward">
-        <div className="game-hub-pack__tally-icon" aria-hidden="true">
-          <DiamondLottie size={88} />
+      <p className="game-hub-pack__kicker">GAME COMPLETE</p>
+      <h2 className="game-hub-pack__tally-title">
+        {noRewards ? "Pack Finished" : "Rewards Earned"}
+      </h2>
+      <p className="game-hub-pack__tally-subtitle">
+        {noRewards
+          ? "No coins or diamonds this round — try another pack."
+          : "Added to your wallet from this pack."}
+      </p>
+      {!noRewards ? (
+        <div className="game-hub-pack__tally-reward">
+          {showDiamonds ? (
+            <div className="game-hub-pack__tally-item is-diamonds">
+              <div className="game-hub-pack__tally-stack">
+                <div className="game-hub-pack__tally-icon" aria-hidden="true">
+                  <DiamondLottie size={72} />
+                </div>
+                <p className="game-hub-pack__tally-value">{diamonds}</p>
+                <p className="game-hub-pack__tally-label">
+                  Diamond{diamonds === 1 ? "" : "s"}
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {showCoins ? (
+            <div className="game-hub-pack__tally-item">
+              <div className="game-hub-pack__tally-pair">
+                <div className="game-hub-pack__tally-icon" aria-hidden="true">
+                  <CoinLottie size={44} loop autoplay />
+                </div>
+                <p className="game-hub-pack__tally-value">{coins}</p>
+              </div>
+              <p className="game-hub-pack__tally-label">Coins</p>
+            </div>
+          ) : null}
         </div>
-        <p className="game-hub-pack__tally-value">{amount}</p>
-      </div>
+      ) : null}
     </div>
-  )
+  );
 }
 
 export function GameHub() {
-  const navigate = useNavigate()
   const catalog = useCatalog()
-  const { addDiamonds } = useWallet()
+  const { addCoins, addDiamonds } = useWallet()
   const [phase, setPhase] = useState<Phase>('loading')
   const [motionPool, setMotionPool] = useState<ThemedMotionCard[]>([])
   const [photoPool, setPhotoPool] = useState<PhotoCard[]>([])
@@ -180,7 +231,10 @@ export function GameHub() {
   )
 
   useEffect(() => {
-    const warm = () => unlockCountdownSound()
+    const warm = () => {
+      unlockCountdownSound()
+      unlockMotionScratchBgm()
+    }
     window.addEventListener('pointerdown', warm, { capture: true, once: true })
     return () => window.removeEventListener('pointerdown', warm, true)
   }, [])
@@ -242,12 +296,11 @@ export function GameHub() {
     if (phase !== 'done' || !session) return
     if (session.walletCredited || walletCreditRef.current) return
     walletCreditRef.current = true
-    if (session.diamondTotal > 0) {
-      addDiamonds(session.diamondTotal)
-    }
-    const marked = markWalletCredited()
+    // Hub: apply coinTotal + diamondTotal once. Pack: motion already credited
+    // via reveal/event; settle still applies any photo-hand diamonds.
+    const marked = settleHubWalletFromSession(addDiamonds, addCoins)
     if (marked) setSession(marked)
-  }, [phase, session, addDiamonds])
+  }, [phase, session, addCoins, addDiamonds])
 
   useEffect(() => {
     if (phase !== 'photo_reveal' || resumedRef.current || wonPhotos.length === 0) {
@@ -340,19 +393,20 @@ export function GameHub() {
   function playMotionHand() {
     if (busy || hand.length === 0) return
     unlockCountdownSound()
+    unlockMotionScratchBgm()
     const existing = loadGameSession()
     if (existing?.phase === 'motion' || existing?.phase === 'photo') {
       if (existing.phase === 'photo') {
         const started = beginPhotoPhase() ?? existing
-        navigate(photoPlayHref(started))
+        memoryNavigate(photoPlayHref(started))
         return
       }
-      navigate(motionPlayHref(existing, firstMissingMotionCardId(existing)))
+      memoryNavigate(motionPlayHref(existing, firstMissingMotionCardId(existing)))
       return
     }
     const created = startMotionSession(hand)
     setSession(created)
-    navigate(motionPlayHref(created))
+    memoryNavigate(motionPlayHref(created))
   }
 
   function playPhotoHand() {
@@ -362,14 +416,15 @@ export function GameHub() {
       return
     }
     unlockCountdownSound()
+    unlockMotionScratchBgm()
     const started = beginPhotoPhase() ?? current
     setSession(started)
-    navigate(photoPlayHref(started))
+    memoryNavigate(photoPlayHref(started))
   }
 
   function savePhotoCardsForLater() {
     persistGameProgress()
-    navigate(Paths.collection)
+    memoryNavigate(Paths.collection)
   }
 
   function deleteGame() {
@@ -484,7 +539,10 @@ export function GameHub() {
           ) : null}
 
           {phase === 'done' && session ? (
-            <HubRewardTally amount={session.diamondTotal} />
+            <HubRewardTally
+              diamonds={session.diamondTotal}
+              coins={session.coinTotal ?? 0}
+            />
           ) : null}
         </section>
 
@@ -509,7 +567,7 @@ export function GameHub() {
                 className="game-hub-pack__link reveal-replay"
                 onClick={savePhotoCardsForLater}
               >
-                Save for Later
+                Save to Collection
               </button>
             </>
           ) : null}
@@ -522,7 +580,7 @@ export function GameHub() {
                 label="View Collection"
                 onClick={() => {
                   persistGameProgress()
-                  navigate(Paths.collection)
+                  memoryNavigate(Paths.collection)
                 }}
               />
               <button
@@ -532,7 +590,7 @@ export function GameHub() {
                   clearGameSession(
                     session ? gameSessionStorageKey(session) : "hub",
                   )
-                  navigate(Paths.home)
+                  memoryNavigate(Paths.home)
                 }}
               >
                 Done
@@ -546,7 +604,7 @@ export function GameHub() {
                 label="View Collection"
                 onClick={() => {
                   persistGameProgress()
-                  navigate(Paths.collection)
+                  memoryNavigate(Paths.collection)
                 }}
               />
               <button
@@ -556,7 +614,7 @@ export function GameHub() {
                   clearGameSession(
                     session ? gameSessionStorageKey(session) : "hub",
                   )
-                  navigate(Paths.home)
+                  memoryNavigate(Paths.home)
                 }}
               >
                 Done

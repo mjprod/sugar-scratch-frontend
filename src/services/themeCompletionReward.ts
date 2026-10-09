@@ -30,14 +30,19 @@ const DEFAULT_DIAMONDS = 50;
 /** In-memory fallback when localStorage is missing (tests / private mode). */
 let memoryLedger: ClaimLedger | null = null;
 
-/** Test helper — clears persisted + memory claim ledger. */
-export function resetThemeCompletionRewardsForTests() {
+/** Clears persisted + memory claim ledger. */
+export function clearThemeCompletionRewards() {
   memoryLedger = null;
   try {
     localStorage.removeItem(KEY);
   } catch {
     /* ignore */
   }
+}
+
+/** Test helper — clears persisted + memory claim ledger. */
+export function resetThemeCompletionRewardsForTests() {
+  clearThemeCompletionRewards();
 }
 
 function emptyLedger(): ClaimLedger {

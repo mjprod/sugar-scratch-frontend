@@ -1,8 +1,10 @@
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import type { CSSProperties } from "react";
+import { DeferredLottie } from "@/lib/lottie/DeferredLottie";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
-export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond Coin.lottie";
+export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond%20Coin.lottie";
+/** Still coin shown until the deferred Lottie mounts. */
+const COIN_STILL_SRC = "/images/coin.webp";
 
 type CoinLottieProps = {
   className?: string;
@@ -17,7 +19,8 @@ type CoinLottieProps = {
 };
 
 /**
- * Inline coin mark powered by the media-proxied cursor-fx Diamond Coin Lottie.
+ * Inline coin mark for the top-nav HUD and other coin chips.
+ * Source art has a transparent margin — scale + clip so the coin fills the box.
  */
 export function CoinLottie({
   className,
@@ -42,17 +45,31 @@ export function CoinLottie({
         flex: "0 0 auto",
         lineHeight: 0,
         verticalAlign: "middle",
+        overflow: "hidden",
         ...style,
       }}
       aria-hidden={ariaHidden}
     >
-      <DotLottieReact
+      <DeferredLottie
+        fallback={
+          <img
+            src={COIN_STILL_SRC}
+            alt=""
+            draggable={false}
+            style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+          />
+        }
         src={COIN_LOTTIE_SRC}
         autoplay={autoplay}
         loop={loop}
         speed={speed}
         renderConfig={lottieRenderConfig()}
-        style={{ width: "100%", height: "100%" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: "scale(1.38)",
+          transformOrigin: "center",
+        }}
       />
     </span>
   );

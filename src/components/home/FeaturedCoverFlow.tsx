@@ -1,22 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  CoverFlowCarousel,
-  DEFAULT_COVERFLOW_CAMERA,
-  MOBILE_COVERFLOW_CAMERA,
+  DesktopCoverFlow,
+  HOME_COVERFLOW_CAMERA,
+} from "@/components/home/DesktopCoverFlow";
+import { MobileCoverFlow } from "@/components/home/MobileCoverFlow";
+import { BuyPackQuantityModal } from "@/components/home/BuyPackQuantityModal";
+import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
+import {
+  HOME_MOBILE_COVERFLOW_CAMERA,
   type CoverFlowCameraSettings,
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
   PACK_MODEL_URL,
-  PACK_TEXTURE_SIZE,
   PACK_VIDEO_FIT_MODE,
   makeVideoTextureCacheKey,
   preloadVideoTexture,
+  resolvePackTextureSize,
   subscribeVideoTextureReady,
 } from "@/lib/pack3d";
 import { isDemoMode } from "@/lib/demo";
@@ -27,6 +32,9 @@ import { isPackInCart, subscribeCart } from "@/services/cart";
 import {
   loadModels,
   matchModel,
+  modelCoverUrl,
+  modelDisplayName,
+  modelSwipePosterUrl,
   profileFromModel,
   type BackendModel,
 } from "@/services/models";
@@ -36,12 +44,13 @@ import {
 } from "@/services/packInventory";
 import {
   PurchaseError,
-  commitPurchaseIdempotencyKey,
+  clampBuyPackQuantity,
+  commitLinearPurchaseIdempotencyKey,
+  linearPackTotalCost,
   loadPackCatalog,
-  packCost,
   packUnitCost,
   resolvePurchasePackId,
-  submitPurchase,
+  submitLinearPackPurchase,
   type CatalogPackProduct,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
@@ -73,21 +82,8 @@ function isMobileCoverflowViewport() {
   );
 }
 
-/** Desktop homepage hero — locked from center debug. */
-const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
-  ...DEFAULT_COVERFLOW_CAMERA,
-  packsX: 0.015,
-  packsY: -1.25,
-  modelY: -0.02,
-  cameraX: 0.11,
-  cameraY: 0.27,
-  cameraZ: 5.9,
-  lookAtY: 0.1,
-  fov: 36,
-};
-
 function defaultHeroDebug(isMobile: boolean): HeroDebugState {
-  const camera = isMobile ? MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
+  const camera = isMobile ? HOME_MOBILE_COVERFLOW_CAMERA : HOME_COVERFLOW_CAMERA;
   return {
     headingX: 0,
     headingY: isMobile ? 5.25 : 7.1,
@@ -147,17 +143,65 @@ type CoverFlowCatalog = {
   playById: Map<string, FeaturedCoverFlowPlayTarget>;
 };
 
-function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
+function normalizeCreatorKey(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function modelMatchesCreator(
+  model: BackendModel,
+  creatorId: string | null | undefined,
+) {
+  const wanted = normalizeCreatorKey(creatorId);
+  if (!wanted) return true;
+  const profile = profileFromModel(model);
+  const candidates = [
+    profile.id,
+    model.id,
+    model.label,
+    modelDisplayName(model),
+  ];
+  return candidates.some((value) => {
+    const key = normalizeCreatorKey(value);
+    return key === wanted || key.includes(wanted) || wanted.includes(key);
+  });
+}
+
+function featuredMatchesCreator(
+  pack: FeaturedPack,
+  creatorId: string | null | undefined,
+) {
+  const wanted = normalizeCreatorKey(creatorId);
+  if (!wanted) return true;
+  const candidates = [pack.creatorId, pack.creatorName, pack.id];
+  return candidates.some((value) => {
+    const key = normalizeCreatorKey(value);
+    return key === wanted || key.includes(wanted) || wanted.includes(key);
+  });
+}
+
+function iterationsFromModels(
+  models: BackendModel[],
+  options?: { creatorId?: string | null; maxPacks?: number },
+): CoverFlowCatalog {
   const items: Iteration[] = [];
   const playById = new Map<string, FeaturedCoverFlowPlayTarget>();
+  const maxPacks = options?.maxPacks ?? MAX_HOME_PACKS;
+  const filtered = options?.creatorId
+    ? models.filter((model) => modelMatchesCreator(model, options.creatorId))
+    : models;
 
-  for (const model of models) {
+  for (const model of filtered) {
     const profile = profileFromModel(model);
     for (const foil of profile.packs) {
-      if (items.length >= MAX_HOME_PACKS) {
+      if (items.length >= maxPacks) {
         return { items, playById };
       }
       const diamondCost = packUnitCost(profile.id);
+      const backgroundImageUrl =
+        modelCoverUrl(model) ||
+        modelSwipePosterUrl(model) ||
+        foil.posterUrl ||
+        undefined;
       items.push(
         packItemToIteration({
           id: foil.id,
@@ -166,12 +210,14 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           modelUrl: PACK_MODEL_URL,
           modelName: "card2.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: diamondCost,
           girlName: profile.name,
           packNumber: foil.slot === 1 ? 101 : 102,
           packName: foil.label,
           flagEmoji: profile.flagEmoji ?? "",
           backgroundColor: profile.overlayColorEnd ?? DEFAULT_GLOW,
+          backgroundImageUrl,
         }),
       );
       playById.set(foil.id, {
@@ -193,11 +239,17 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
   return { items, playById };
 }
 
-function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
+function iterationsFromFeatured(
+  packs: FeaturedPack[],
+  options?: { creatorId?: string | null },
+): CoverFlowCatalog {
   const items: Iteration[] = [];
   const playById = new Map<string, FeaturedCoverFlowPlayTarget>();
+  const filtered = options?.creatorId
+    ? packs.filter((pack) => featuredMatchesCreator(pack, options.creatorId))
+    : packs;
 
-  for (const pack of packs) {
+  for (const pack of filtered) {
     items.push(
       packItemToIteration({
         id: pack.id,
@@ -206,12 +258,14 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
         modelUrl: PACK_MODEL_URL,
         modelName: "card2.glb",
         videoUrl: "",
+        posterUrl: pack.posterUrl || pack.coverImageUrl,
         price: pack.diamondCost,
         girlName: pack.creatorName,
         packNumber: 101,
         packName: pack.packTitle.replace(/\n/g, " "),
         flagEmoji: "",
         backgroundColor: pack.accentColors.primary,
+        backgroundImageUrl: pack.coverImageUrl || pack.posterUrl,
       }),
     );
     playById.set(pack.id, {
@@ -266,26 +320,36 @@ export function FeaturedCoverFlow({
   featured,
   onPlay,
   onReady,
+  influencerBackdrop = false,
+  showStatusPager = false,
+  creatorId = null,
 }: {
   featured: FeaturedPack[];
   /** Existing Pack Pocket add flow (auth-gated by the parent). */
   onPlay: (pack: FeaturedCoverFlowPlayTarget) => void;
   onReady?: () => void;
+  /** Use influencer API cover/swipe poster as the slider stage background. */
+  influencerBackdrop?: boolean;
+  /** Figma status capsule + dots under the carousel (home-version2). */
+  showStatusPager?: boolean;
+  /** When set, only packs for this creator are shown. */
+  creatorId?: string | null;
 }) {
+  const { authed } = useAuthSession();
   const {
-    authed,
     openPurchase,
     openStore,
     requireAuth,
     bumpInventoryRevision,
     setPurchasedPacks,
     setNavNotice,
-  } = useAuth();
+  } = useAuthActions();
   const { diamonds, coins, setDiamonds, setCoins } = useWallet();
   const [catalog, setCatalog] = useState<CoverFlowCatalog | null>(null);
   const [models, setModels] = useState<BackendModel[] | null>(null);
   const [packCatalog, setPackCatalog] = useState<CatalogPackProduct[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
   const [isMobileViewport, setIsMobileViewport] = useState(
     isMobileCoverflowViewport,
@@ -297,6 +361,8 @@ export function FeaturedCoverFlow({
   const [copyLabel, setCopyLabel] = useState("Copy");
   const [addedToPocket, setAddedToPocket] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [qtyModalItem, setQtyModalItem] = useState<Iteration | null>(null);
+  const [qtyModalQuantity, setQtyModalQuantity] = useState(1);
   const buyingRef = useRef(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -310,6 +376,13 @@ export function FeaturedCoverFlow({
     return () => media.removeEventListener("change", apply);
   }, []);
 
+  // Desktop-only qty modal — drop stale state if the viewport flips to mobile.
+  useEffect(() => {
+    if (!isMobileViewport) return;
+    setQtyModalItem(null);
+    setQtyModalQuantity(1);
+  }, [isMobileViewport]);
+
   useEffect(() => {
     if (!HERO_DEBUG_ENABLED || typeof window === "undefined") return;
     window.localStorage.setItem(HERO_DEBUG_STORAGE_KEY, JSON.stringify(debug));
@@ -317,25 +390,33 @@ export function FeaturedCoverFlow({
 
   useEffect(() => {
     let cancelled = false;
+    const filter = { creatorId };
+    // Creator page can show every foil for one model; home still caps the hero.
+    const maxPacks = creatorId ? Number.POSITIVE_INFINITY : MAX_HOME_PACKS;
     void Promise.all([loadModels(), loadPackCatalog()])
       .then(([loadedModels, loadedCatalog]) => {
         if (cancelled) return;
         setModels(loadedModels);
         setPackCatalog(loadedCatalog);
-        const fromModels = iterationsFromModels(loadedModels);
+        const fromModels = iterationsFromModels(loadedModels, {
+          ...filter,
+          maxPacks,
+        });
         setCatalog(
           fromModels.items.length
             ? fromModels
-            : iterationsFromFeatured(featured),
+            : iterationsFromFeatured(featured, filter),
         );
       })
       .catch(() => {
-        if (!cancelled) setCatalog(iterationsFromFeatured(featured));
+        if (!cancelled) {
+          setCatalog(iterationsFromFeatured(featured, filter));
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [featured]);
+  }, [creatorId, featured]);
 
   const items = catalog?.items ?? [];
   const focusedItem = items.find((item) => item.id === selectedId) ?? null;
@@ -354,14 +435,23 @@ export function FeaturedCoverFlow({
   }, [catalog, focusedItem]);
 
   useEffect(() => {
-    if (!selectedId && items[0]) {
-      setSelectedId(items[0].id);
-      setGlow(items[0].backgroundColor || DEFAULT_GLOW);
+    // Drop stale focus when the pack list is rebuilt (creator filter / catalog).
+    if (!items.length) {
+      setSelectedId(null);
+      setFocusedIndex(0);
+      return;
     }
+    const stillPresent =
+      selectedId != null && items.some((item) => item.id === selectedId);
+    if (stillPresent) return;
+    setSelectedId(items[0]!.id);
+    setFocusedIndex(0);
+    setGlow(items[0]!.backgroundColor || DEFAULT_GLOW);
   }, [items, selectedId]);
 
   useEffect(() => {
-    if (!catalog) return;
+    // Mobile uses the Swiper CSS carousel; it reports ready itself.
+    if (!catalog || isMobileViewport) return;
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -372,7 +462,7 @@ export function FeaturedCoverFlow({
       fitMode: first.fitMode || PACK_VIDEO_FIT_MODE,
       textureTransform: first.textureTransform || DEFAULT_VIDEO_TEXTURE_TRANSFORM,
       flipY: true,
-      textureSize: PACK_TEXTURE_SIZE,
+      textureSize: resolvePackTextureSize(false),
     };
     const release = preloadVideoTexture(input);
     const unsubscribe = subscribeVideoTextureReady(
@@ -384,11 +474,11 @@ export function FeaturedCoverFlow({
       unsubscribe();
       release();
     };
-  }, [catalog]);
+  }, [catalog, isMobileViewport]);
 
   const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
     const base = isMobileViewport
-      ? MOBILE_COVERFLOW_CAMERA
+      ? HOME_MOBILE_COVERFLOW_CAMERA
       : HOME_COVERFLOW_CAMERA;
     return {
       ...base,
@@ -439,20 +529,36 @@ export function FeaturedCoverFlow({
   );
 
   const handleAddToPocket = useCallback(
-    (item: Iteration) => {
+    (
+      item: Iteration,
+      quantity = 1,
+      options?: { allowDuplicates?: boolean },
+    ) => {
       const target = resolveTarget(item);
       if (!target) return;
-      if (isPackInCart(item.id, target.foilId, target.id)) return;
-      onPlay(target);
+      const qty = clampBuyPackQuantity(quantity);
+      const allowDuplicates = options?.allowDuplicates === true;
+      // HUD Juliana: skip if already pocketed (single add). Modal always adds qty lines.
+      if (
+        !allowDuplicates &&
+        qty === 1 &&
+        isPackInCart(item.id, target.foilId, target.id)
+      ) {
+        return;
+      }
+      for (let i = 0; i < qty; i += 1) {
+        onPlay(target);
+      }
     },
     [onPlay, resolveTarget],
   );
 
   const handleBuyPack = useCallback(
-    async (item: Iteration) => {
+    async (item: Iteration, quantity = 1) => {
       if (buyingRef.current) return;
       const target = resolveTarget(item);
       if (!target) return;
+      const qty = clampBuyPackQuantity(quantity);
 
       // Guest / email-verify gate only. When already authed+verified, skip
       // requireAuth — it would resumePending and navigate before purchase.
@@ -498,10 +604,11 @@ export function FeaturedCoverFlow({
           }
         }
 
-        const cost =
-          packCost(1, purchasePackId) ||
+        const unit =
+          packUnitCost(purchasePackId) ||
           target.diamondCost ||
           packUnitCost(target.id);
+        const cost = linearPackTotalCost(purchasePackId, qty) || unit * qty;
 
         if (cost > diamonds) {
           setNavNotice("Not enough diamonds to buy this pack.");
@@ -537,12 +644,12 @@ export function FeaturedCoverFlow({
           packName;
 
         let purchaseId = "";
-        let instanceId = "";
+        let instanceIds: string[] = [];
         let diamondCost = cost;
 
         if (authed && !isDemoMode()) {
-          const result = await submitPurchase(
-            1,
+          const result = await submitLinearPackPurchase(
+            qty,
             diamonds,
             purchasePackId,
             undefined,
@@ -551,9 +658,13 @@ export function FeaturedCoverFlow({
           setDiamonds(result.wallet.diamonds);
           setCoins(result.wallet.coins);
           const owned = upsertInstancesFromApi(result.instances);
-          instanceId =
-            result.instances[0]?.instanceId ?? owned[0]?.instanceId ?? "";
-          if (!instanceId) {
+          instanceIds = result.instances
+            .map((pack) => pack.instanceId)
+            .filter(Boolean);
+          if (!instanceIds.length && owned[0]?.instanceId) {
+            instanceIds = [owned[0].instanceId];
+          }
+          if (!instanceIds.length) {
             throw new PurchaseError("failed", "Pack ownership failed.");
           }
           purchaseId = result.purchaseId;
@@ -563,10 +674,10 @@ export function FeaturedCoverFlow({
             packId: purchasePackId,
             packName: result.instances[0]?.packName || packName,
             creatorName: result.instances[0]?.creator || creatorName,
-            quantity: result.instances.length || 1,
+            quantity: result.instances.length || qty,
             diamondCost,
           });
-          commitPurchaseIdempotencyKey(purchasePackId, 1);
+          commitLinearPurchaseIdempotencyKey(purchasePackId, qty);
         } else {
           purchaseId = `coverflow-${Date.now().toString(36)}`;
           const created = addUnopenedFromPurchase({
@@ -574,11 +685,11 @@ export function FeaturedCoverFlow({
             catalogPackId: purchasePackId,
             packName,
             creator: creatorName,
-            count: 1,
+            count: qty,
             themeName,
           });
-          instanceId = created[0]?.instanceId ?? "";
-          if (!instanceId) {
+          instanceIds = created.map((pack) => pack.instanceId).filter(Boolean);
+          if (!instanceIds.length) {
             throw new PurchaseError("failed", "Pack ownership failed.");
           }
           if (cost > 0) {
@@ -589,13 +700,13 @@ export function FeaturedCoverFlow({
             packId: purchasePackId,
             packName,
             creatorName,
-            quantity: 1,
+            quantity: qty,
             diamondCost: cost,
           });
         }
 
         bumpInventoryRevision();
-        setPurchasedPacks((count) => count + 1);
+        setPurchasedPacks((count) => count + qty);
 
         openPurchase(
           {
@@ -605,10 +716,10 @@ export function FeaturedCoverFlow({
             creator: creatorName,
             themeName,
             entry: "cart-tear",
-            unopenedPacks: 1,
-            instanceId,
+            unopenedPacks: instanceIds.length,
+            instanceId: instanceIds[0],
             purchaseId,
-            tearInstanceIds: [instanceId],
+            tearInstanceIds: instanceIds,
             cartFoils: [
               {
                 id: foil?.id || target.foilId || item.id,
@@ -655,6 +766,21 @@ export function FeaturedCoverFlow({
     ],
   );
 
+  useEffect(() => {
+    if (!qtyModalItem) return;
+    if (selectedId !== qtyModalItem.id) {
+      setQtyModalItem(null);
+    }
+  }, [selectedId, qtyModalItem]);
+
+  const qtyModalTarget = qtyModalItem ? resolveTarget(qtyModalItem) : null;
+  const qtyModalUnitPrice = qtyModalItem
+    ? qtyModalTarget?.diamondCost ||
+      packUnitCost(qtyModalItem.characterId || qtyModalItem.id) ||
+      qtyModalItem.price ||
+      0
+    : 0;
+
   if (!catalog) {
     return (
       <div
@@ -666,49 +792,116 @@ export function FeaturedCoverFlow({
 
   if (!items.length) return null;
 
-  return (
-    <div
-      className="home-featured-coverflow"
-      style={{
-        ["--overlay-gradient-color-end" as string]: glow,
-      }}
-    >
-      <div className="stage-packs">
-        <div
-          className="packs-glow-stack packs-glow-stack--base"
-          aria-hidden="true"
-        >
-          <div className="packs-circle packs-circle--bloom" />
-          <div className="packs-circle packs-circle--core" />
-        </div>
-        <CoverFlowCarousel
+  const statusPager =
+    showStatusPager && items.length > 1 ? (
+      <CoverflowStatusPager
+        count={items.length}
+        activeIndex={focusedIndex}
+        onSelectIndex={(index) => {
+          const item = items[index];
+          if (!item) return;
+          setFocusedIndex(index);
+          setSelectedId(item.id);
+        }}
+      />
+    ) : null;
+
+  if (isMobileViewport) {
+    return (
+      <div className="home-featured-coverflow-frame">
+        <MobileCoverFlow
           items={items}
           selectedId={selectedId}
+          glow={glow}
+          buying={buying}
+          addedToPocket={addedToPocket}
+          influencerBackdrop={influencerBackdrop}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
-          cameraSettings={cameraSettings}
           onFocusChange={(item) => {
             setGlow(item?.backgroundColor || DEFAULT_GLOW);
+            if (!item) return;
+            const index = items.findIndex((entry) => entry.id === item.id);
+            if (index >= 0) setFocusedIndex(index);
           }}
-          formatPrice={(price) => String(price)}
-          disableSwipeDownDeactivate
-          disableWheelPaging
-          buyLabel="Buy Pack"
-          confirmBuy
-          buyDisabled={buying}
-          addToPocketDisabled={addedToPocket}
-          onBuy={(item) => {
-            void handleBuyPack(item);
+          onBuy={(item, quantity) => {
+            void handleBuyPack(item, quantity ?? 1);
           }}
-          onAddToPocket={handleAddToPocket}
+          onAddToPocket={(item) => {
+            handleAddToPocket(item);
+          }}
+          onReady={() => onReadyRef.current?.()}
         />
-        {HERO_DEBUG_ENABLED && debugOpen ? (
-          <div className="coverflow-center-guide" aria-hidden="true">
-            <span className="coverflow-center-guide__line" />
-            <span className="coverflow-center-guide__label">center</span>
-          </div>
-        ) : null}
+        {statusPager}
       </div>
+    );
+  }
+
+  const focusedIsJuliana = true;
+
+  return (
+    <>
+      <div className="home-featured-coverflow-frame">
+        <DesktopCoverFlow
+          items={items}
+          selectedId={selectedId}
+          glow={glow}
+          buying={buying}
+          addedToPocket={addedToPocket}
+          cameraSettings={cameraSettings}
+          showCenterGuide={HERO_DEBUG_ENABLED && debugOpen}
+          confirmBuy={focusedIsJuliana}
+          influencerBackdrop={influencerBackdrop}
+          onSelect={setSelectedId}
+          onDeselect={() => {
+            setSelectedId(null);
+            setQtyModalItem(null);
+          }}
+          onFocusChange={(item) => {
+            setGlow(item?.backgroundColor || DEFAULT_GLOW);
+            if (item) {
+              const index = items.findIndex((entry) => entry.id === item.id);
+              if (index >= 0) setFocusedIndex(index);
+            }
+            if (qtyModalItem && item?.id !== qtyModalItem.id) {
+              setQtyModalItem(null);
+            }
+          }}
+          onBuy={(item, quantity) => {
+            void handleBuyPack(item, quantity ?? 1);
+          }}
+          onAddToPocket={focusedIsJuliana ? handleAddToPocket : undefined}
+        />
+        {statusPager}
+      </div>
+      {qtyModalItem ? (
+        <BuyPackQuantityModal
+          packTitle={
+            qtyModalTarget?.name ||
+            qtyModalItem.packName ||
+            qtyModalItem.girlName ||
+            "Pack"
+          }
+          unitPrice={qtyModalUnitPrice}
+          quantity={qtyModalQuantity}
+          buyDisabled={buying}
+          formatPrice={(price) => String(price)}
+          onQuantityChange={setQtyModalQuantity}
+          onClose={() => setQtyModalItem(null)}
+          onBuy={() => {
+            const item = qtyModalItem;
+            const qty = qtyModalQuantity;
+            setQtyModalItem(null);
+            void handleBuyPack(item, qty);
+          }}
+          onAddToPocket={() => {
+            const item = qtyModalItem;
+            const qty = qtyModalQuantity;
+            setQtyModalItem(null);
+            handleAddToPocket(item, qty, { allowDuplicates: true });
+          }}
+        />
+      ) : null}
       {HERO_DEBUG_ENABLED && typeof document !== "undefined"
         ? createPortal(
             <aside
@@ -850,6 +1043,6 @@ export function FeaturedCoverFlow({
             document.body,
           )
         : null}
-    </div>
+    </>
   );
 }

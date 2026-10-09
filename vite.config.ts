@@ -66,6 +66,33 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(rootDir, "./src"),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+manualChunks(id) {
+  const normalized = id.split(path.sep).join("/");
+  // Shared runtime pieces must not land in a lazy vendor chunk, or the
+  // entry imports that whole chunk (three was preloaded on every page).
+  if (
+    /\/node_modules\/(react|react-dom|scheduler)\//.test(normalized) ||
+    normalized.includes("vite/preload-helper") ||
+    normalized.includes("commonjsHelpers")
+  ) {
+    return "vendor";
+  }
+  if (
+    normalized.includes("/node_modules/three/") ||
+    normalized.includes("/node_modules/@react-three/")
+  ) {
+    return "three";
+  }
+  if (normalized.includes("/node_modules/@lottiefiles/")) {
+    return "lottie";
+  }
+}
+        },
+      },
+    },
     server: {
       // Default 0.0.0.0 so phones can hit https://<lan-ip>:5173 (mkcert workflow).
       // Override with VITE_DEV_HOST=localhost to bind loopback only.
@@ -80,18 +107,21 @@ export default defineConfig(({ mode }) => {
       allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
         "/api": proxyTo(apiTarget),
+        // Trailing slash is load-bearing: Vite matches by string prefix, and
+        // "/photo-scratch" is also an SPA route here. Without the slash a reload
+        // on /photo-scratch?card=… is served the media origin's operator app.
         ...Object.fromEntries(
           [
-            "/cards",
-            "/models",
-            "/photo-scratch",
-            "/mesh",
-            "/lotties",
-            "/symbols",
-            "/sounds",
-            "/themes",
-            "/scratch",
-            "/cursor-fx",
+            "/cards/",
+            "/models/",
+            "/photo-scratch/",
+            "/mesh/",
+            "/lotties/",
+            "/symbols/",
+            "/sounds/",
+            "/themes/",
+            "/scratch/",
+            "/cursor-fx/",
           ].map((route) => [route, proxyTo(mediaTarget)]),
         ),
       },

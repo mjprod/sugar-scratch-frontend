@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Gift, Lock } from "lucide-react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import type { CardConfig } from "@/features/collection/lib/cards";
 import type { ThemeCardData, ThemeDetailData } from "@/services/collection";

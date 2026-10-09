@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useLayoutEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
-import { GameExitConfirmModal } from "@/features/game/GameExitConfirmModal";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
+import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
 import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import {
   persistGameProgress,
@@ -14,9 +15,7 @@ import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
 function ScratchGameEmbed() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
   // Mark embed before ScratchPrototype mounts so zoom stays off on first paint.
   useLayoutEffect(() => {
@@ -40,52 +39,51 @@ function ScratchGameEmbed() {
 
   const gameMode = searchParams.get("game") === "1";
   const playlistMode = searchParams.get("playlist") === "1";
+  const freePlay = searchParams.get("freeplay") === "1";
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
+  const creator = searchParams.get("creator")?.trim() || "";
 
-  function leaveGameForCollection() {
-    persistGameProgress();
-    setExitConfirmOpen(false);
-    navigate(Paths.collection);
+  // Leave from the pause overlay — progress is saved, so no second confirm.
+  function leaveGame() {
+    if (gameMode) {
+      persistGameProgress();
+      memoryNavigate(
+        collectionReturnHref({
+          creatorId: creator,
+          modelId: model,
+          cardId: card,
+        }),
+      );
+      return;
+    }
+    if (playlistMode) {
+      memoryNavigate(Paths.home);
+      return;
+    }
+    memoryNavigate(
+      collectionReturnHref({
+        creatorId: creator,
+        modelId: model,
+        cardId: card,
+      }),
+    );
   }
 
   return (
-    <div className="app-shell app-shell--game">
-      <div className="stage-game">
-        <button
-          type="button"
-          className="stage-game__exit"
-          data-tutorial-target="collection"
-          aria-label={
-            gameMode
-              ? "Leave game"
-              : playlistMode
-                ? "Back to home"
-                : "Back to collection"
-          }
-          onClick={() => {
-            if (gameMode) {
-              setExitConfirmOpen(true);
-              return;
-            }
-            if (playlistMode) {
-              navigate(Paths.home);
-              return;
-            }
-            navigate(collectionReturnHref(model, card));
-          }}
-        >
-          ‹
-        </button>
-        <ScratchPrototype />
-        <FirstPlayTutorial scene="foil" />
-        <GameExitConfirmModal
-          open={exitConfirmOpen}
-          onStay={() => setExitConfirmOpen(false)}
-          onExit={leaveGameForCollection}
-        />
+    <PaidCardPlayGate
+      kind="motion"
+      cardId={card}
+      skip={gameMode || playlistMode || freePlay}
+      onLeave={leaveGame}
+    >
+      <div className="app-shell app-shell--game">
+        <div className="stage-game">
+          <ScratchPrototype onLeave={leaveGame} />
+          <FirstPlayTutorial scene="foil" />
+        </div>
       </div>
-    </div>
+    </PaidCardPlayGate>
   );
 }
 
@@ -98,7 +96,7 @@ export function GamePage() {
   if (model && card) {
     return (
       <ScratchGameEmbed
-        key={`${model}-${card}-${searchParams.get("game") ?? ""}`}
+        key={`${model}-${card}-${searchParams.get("game") ?? ""}-${searchParams.get("freeplay") ?? ""}`}
       />
     );
   }

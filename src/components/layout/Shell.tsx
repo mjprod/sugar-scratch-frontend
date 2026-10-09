@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 
 export function AppShell({
   children,
@@ -71,10 +71,9 @@ export function OnboardShell({
       aria-label="Personalization"
     >
       {intro ? (
-        <div className="auth7-intro-card">
-          {header}
-          {main}
-        </div>
+        <div className="auth7-intro-card">{main}</div>
+      ) : swipe ? (
+        main
       ) : (
         <>
           {header}
@@ -88,7 +87,7 @@ export function OnboardShell({
 function Stage({ children }: { children: ReactNode }) {
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <m.div
         className="flex min-h-0 flex-1 flex-col"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -96,7 +95,7 @@ function Stage({ children }: { children: ReactNode }) {
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       >
         {children}
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

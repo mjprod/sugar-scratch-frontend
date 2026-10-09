@@ -42,6 +42,7 @@ export function ResetPasswordScreen({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const passwordOk = isValidAuthPassword(password);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -49,7 +50,7 @@ export function ResetPasswordScreen({
       setError(resetPasswordFailureMessage());
       return;
     }
-    if (!isValidAuthPassword(password)) {
+    if (!passwordOk) {
       setError(`Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
@@ -136,7 +137,13 @@ export function ResetPasswordScreen({
       </label>
 
       {passwordFocused || password.length > 0 ? (
-        <p className="auth2-hint">
+        <p
+          className={["auth2-hint", passwordOk ? "is-ok" : ""]
+            .filter(Boolean)
+            .join(" ")}
+          aria-live="polite"
+        >
+          <span aria-hidden="true">{passwordOk ? "✓" : "○"}</span>{" "}
           Use at least {AUTH_PASSWORD_MIN_LENGTH} characters.
         </p>
       ) : null}

@@ -6,7 +6,8 @@ import {
   formatSocialHandle,
 } from "@/shared/catalog/characters";
 import type { SwipeCardData } from "@/features/swipe/constants/cards";
-import { normalizeMediaUrl, type BackendModel } from "./collection";
+import { type BackendModel } from "./collection";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 
 function optionalApiString(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -56,6 +57,10 @@ export function createSwipeDeckFromModels(
     const name = modelDisplayName(model);
     const swipeUrl =
       optionalApiMediaUrl(model.swipeVideoUrl) || DEFAULT_SWIPE_VIDEO_URL;
+    const posterUrl =
+      optionalApiMediaUrl(model.swipePosterUrl) ||
+      optionalApiMediaUrl(model.avatar) ||
+      undefined;
     const handleRaw =
       optionalApiString(model.label) ?? optionalApiString(model.id);
     const handle = handleRaw ? formatSocialHandle(handleRaw) : "";
@@ -69,6 +74,7 @@ export function createSwipeDeckFromModels(
       socialhandle: handle,
       mediaType: "video" as const,
       mediaUrl: swipeUrl,
+      posterUrl,
       backUrl: CARD_BACK_URL,
       overlay: {
         name,

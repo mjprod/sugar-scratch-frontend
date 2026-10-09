@@ -6,7 +6,7 @@ import {
   loadGameSessionForPack,
   motionPlayHref,
   photoPlayHref,
-} from "@/features/game/modules/gameSession";
+} from "@/services/gameSessionStore";
 import { resolveInventoryCoverUrl } from "@/lib/photos";
 import {
   getReadyToScratch,

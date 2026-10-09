@@ -1,9 +1,16 @@
 /**
  * Game History — client ledger of confirmed scratch/reveal results.
  * Appended at reveal settle; mock seed when empty for demo filters.
+ * Display enrich resolves real motion/photo titles + stills from `/api/cards`.
  */
 
+import { catalogMotionIdFromRevealId } from "@/features/game/modules/session";
+import {
+  fetchCatalogMotionCards,
+  fetchCatalogPhotoCards,
+} from "@/features/game/shared/catalog";
 import { isDemoMode } from "../lib/demo";
+import { isVideoSrc } from "./models";
 import { getPackInstance } from "./packInventory";
 
 export type GameHistoryResult = "win" | "no_prize" | "reversed";
@@ -199,6 +206,7 @@ export function recordGameReveal(input: {
   const diamonds = input.rewardDiamonds ?? 0;
   const isWin = coins > 0 || diamonds > 0;
   const now = new Date().toISOString();
+  const image = stillSnapshotUrl(input.cardImageUrl);
 
   const row: GameHistoryRecord = {
     id: newId("gh"),
@@ -207,7 +215,7 @@ export function recordGameReveal(input: {
     revealedAt: now,
     cardId: input.cardId,
     cardNameSnapshot: input.cardName || "Card",
-    cardImageSnapshotUrl: input.cardImageUrl ?? "",
+    cardImageSnapshotUrl: image,
     packInstanceId: input.packInstanceId ?? input.packId,
     packId: input.packId,
     packNameSnapshot: input.packName,
@@ -257,8 +265,106 @@ function mergeHistory(ledger: GameHistoryRecord[]): GameHistoryRecord[] {
   return seedMockIfNeeded(ledger).sort(sortNewest);
 }
 
+function isGenericCardName(name: string) {
+  return /^(Rare|Super Rare|Ultra Rare)?\s*Card$/i.test(name.trim());
+}
+
+function stillSnapshotUrl(url: string | undefined): string {
+  const trimmed = url?.trim() ?? "";
+  if (!trimmed || isVideoSrc(trimmed)) return "";
+  return trimmed;
+}
+
+/**
+ * Upgrade generic rarity labels / missing thumbs using the live card catalog.
+ * Safe no-op when the catalog is unreachable.
+ */
+export async function enrichGameHistoryRows(
+  rows: GameHistoryRecord[],
+): Promise<GameHistoryRecord[]> {
+  if (!rows.length) return rows;
+  const needsWork = rows.some(
+    (row) =>
+      isGenericCardName(row.cardNameSnapshot) ||
+      !stillSnapshotUrl(row.cardImageSnapshotUrl),
+  );
+  if (!needsWork) return rows;
+
+  try {
+    const [motion, photos] = await Promise.all([
+      fetchCatalogMotionCards(),
+      fetchCatalogPhotoCards(),
+    ]);
+    const motionById = new Map(motion.map((card) => [card.id, card]));
+    const photoById = new Map(photos.map((card) => [card.id, card]));
+
+    let changed = false;
+    const next = rows.map((row) => {
+      const motionId = catalogMotionIdFromRevealId(row.cardId);
+      const motionCard =
+        motionById.get(row.cardId) ?? motionById.get(motionId) ?? null;
+      if (motionCard) {
+        const name = isGenericCardName(row.cardNameSnapshot)
+          ? motionCard.label
+          : row.cardNameSnapshot;
+        const image =
+          stillSnapshotUrl(row.cardImageSnapshotUrl) ||
+          stillSnapshotUrl(motionCard.bottom) ||
+          stillSnapshotUrl(motionCard.foreground);
+        if (
+          name === row.cardNameSnapshot &&
+          image === row.cardImageSnapshotUrl
+        ) {
+          return row;
+        }
+        changed = true;
+        return {
+          ...row,
+          cardNameSnapshot: name,
+          cardImageSnapshotUrl: image,
+        };
+      }
+
+      const photo = photoById.get(row.cardId);
+      if (photo) {
+        const name = isGenericCardName(row.cardNameSnapshot)
+          ? photo.label
+          : row.cardNameSnapshot;
+        const image =
+          stillSnapshotUrl(row.cardImageSnapshotUrl) ||
+          stillSnapshotUrl(photo.background);
+        if (
+          name === row.cardNameSnapshot &&
+          image === row.cardImageSnapshotUrl
+        ) {
+          return row;
+        }
+        changed = true;
+        return {
+          ...row,
+          cardNameSnapshot: name,
+          cardImageSnapshotUrl: image,
+        };
+      }
+
+      // Drop video face URLs that can't render in <img>.
+      const still = stillSnapshotUrl(row.cardImageSnapshotUrl);
+      if (still !== row.cardImageSnapshotUrl) {
+        changed = true;
+        return { ...row, cardImageSnapshotUrl: still };
+      }
+      return row;
+    });
+
+    if (changed) writeLedger(next);
+    return next;
+  } catch {
+    return rows;
+  }
+}
+
 export async function loadGameHistory(): Promise<GameHistoryRecord[]> {
-  return mergeHistory(readLedger());
+  return enrichGameHistoryRows(mergeHistory(readLedger()));
 }
 
 export type GameDateGroup = {
@@ -339,7 +445,8 @@ export function rewardOutcomeLabel(row: GameHistoryRecord): string {
 export function rewardStatusLabel(status: GameRewardStatus): string {
   switch (status) {
     case "added_to_wallet":
-      return "Added to wallet";
+      // Default win path — amount alone is enough (no "· Added to wallet").
+      return "";
     case "pending":
       return "Pending";
     case "claim_required":

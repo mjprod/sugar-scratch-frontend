@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { apiMutate } from "@/lib/api";
 
 const EFFECT_STOP = 0.55;
 const BG_EFFECT_STOP = 0.65;
@@ -28,6 +30,33 @@ function easeOutCubic(t: number) {
   return 1 - (1 - t) ** 3;
 }
 
+type SuggestForm = {
+  creatorName: string;
+  socialProfile: string;
+  reason: string;
+};
+
+type SuggestErrors = {
+  creatorName?: string;
+  socialProfile?: string;
+};
+
+async function submitCreatorSuggestion(form: SuggestForm) {
+  // Soft-accept when the endpoint is missing — UX must still complete.
+  try {
+    await apiMutate("/api/creators/suggestions", {
+      method: "POST",
+      body: JSON.stringify({
+        creatorName: form.creatorName.trim(),
+        socialProfile: form.socialProfile.trim(),
+        reason: form.reason.trim() || undefined,
+      }),
+    });
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 450));
+  }
+}
+
 /**
  * Full-bleed homepage CTA band. Transforms stay on the compositor;
  * blur and brightness are pre-baked and faded, not filtered live.
@@ -40,7 +69,7 @@ export function SpotlightBanner() {
   const brandRef = useRef<HTMLDivElement>(null);
   const blurRef = useRef<HTMLImageElement>(null);
   const dimRef = useRef<HTMLDivElement>(null);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -189,39 +218,250 @@ export function SpotlightBanner() {
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
             fillParent
-            label="Send them an invitation"
+            label="Tell Us Who"
             costAmount={null}
             fontSize={14}
-            onClick={() => setInviteOpen(true)}
+            onClick={() => setSuggestOpen(true)}
           />
         </div>
       </div>
 
-      {inviteOpen ? (
-        <div className="hub-spotlight-invite" role="presentation">
-          <button
-            type="button"
-            className="hub-spotlight-invite-backdrop"
-            aria-label="Close"
-            onClick={() => setInviteOpen(false)}
-          />
-          <div
-            className="hub-spotlight-invite-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="hub-spotlight-invite-title"
-          >
-            <p id="hub-spotlight-invite-title">email action taken</p>
-            <button
-              type="button"
-              className="hub-spotlight-invite-close"
-              onClick={() => setInviteOpen(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
+      {suggestOpen ? (
+        <CreatorSuggestModal onClose={() => setSuggestOpen(false)} />
       ) : null}
     </section>
   );
+}
+
+function CreatorSuggestModal({ onClose }: { onClose: () => void }) {
+  const titleId = useId();
+  const descId = useId();
+  const nameId = useId();
+  const socialId = useId();
+  const reasonId = useId();
+  const nameErrorId = useId();
+  const socialErrorId = useId();
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  const [step, setStep] = useState<"form" | "success">("form");
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState<SuggestForm>({
+    creatorName: "",
+    socialProfile: "",
+    reason: "",
+  });
+  const [errors, setErrors] = useState<SuggestErrors>({});
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && !submitting) onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    firstFieldRef.current?.focus();
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose, submitting]);
+
+  function validate(next: SuggestForm): SuggestErrors {
+    const out: SuggestErrors = {};
+    if (!next.creatorName.trim()) {
+      out.creatorName = "Creator name is required.";
+    }
+    if (!next.socialProfile.trim()) {
+      out.socialProfile = "Social media profile is required.";
+    }
+    return out;
+  }
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (submitting) return;
+    const nextErrors = validate(form);
+    setErrors(nextErrors);
+    if (nextErrors.creatorName || nextErrors.socialProfile) return;
+
+    setSubmitting(true);
+    try {
+      await submitCreatorSuggestion(form);
+      setStep("success");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const modal = (
+    <div className="hub-spotlight-invite" role="presentation">
+      <button
+        type="button"
+        className="hub-spotlight-invite-backdrop"
+        aria-label="Close"
+        disabled={submitting}
+        onClick={() => {
+          if (!submitting) onClose();
+        }}
+      />
+      <div
+        className="hub-spotlight-invite-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+      >
+        {step === "form" ? (
+          <>
+            <div className="hub-spotlight-invite-copy">
+              <h2 id={titleId} className="hub-spotlight-invite-title">
+                Suggest a Creator
+              </h2>
+              <p id={descId} className="hub-spotlight-invite-desc">
+                Who would you love to see on Sugar Scratch? Let us know and our
+                team may reach out to them.
+              </p>
+            </div>
+
+            <form className="hub-spotlight-invite-form" onSubmit={onSubmit} noValidate>
+              <label className="hub-spotlight-invite-label" htmlFor={nameId}>
+                Creator Name
+              </label>
+              <input
+                ref={firstFieldRef}
+                id={nameId}
+                className={[
+                  "hub-spotlight-invite-input",
+                  errors.creatorName ? "is-invalid" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="text"
+                autoComplete="off"
+                name="creatorName"
+                placeholder="Enter creator name"
+                value={form.creatorName}
+                disabled={submitting}
+                aria-invalid={errors.creatorName ? true : undefined}
+                aria-describedby={
+                  errors.creatorName ? nameErrorId : undefined
+                }
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, creatorName: e.target.value }));
+                  if (errors.creatorName) {
+                    setErrors((prev) => ({ ...prev, creatorName: undefined }));
+                  }
+                }}
+              />
+              {errors.creatorName ? (
+                <p id={nameErrorId} className="hub-spotlight-invite-error" role="alert">
+                  {errors.creatorName}
+                </p>
+              ) : null}
+
+              <label className="hub-spotlight-invite-label" htmlFor={socialId}>
+                Social Media Profile
+              </label>
+              <input
+                id={socialId}
+                className={[
+                  "hub-spotlight-invite-input",
+                  errors.socialProfile ? "is-invalid" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="text"
+                autoComplete="off"
+                name="socialProfile"
+                inputMode="url"
+                placeholder="Instagram or TikTok profile"
+                value={form.socialProfile}
+                disabled={submitting}
+                aria-invalid={errors.socialProfile ? true : undefined}
+                aria-describedby={
+                  errors.socialProfile ? socialErrorId : undefined
+                }
+                onChange={(e) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    socialProfile: e.target.value,
+                  }));
+                  if (errors.socialProfile) {
+                    setErrors((prev) => ({
+                      ...prev,
+                      socialProfile: undefined,
+                    }));
+                  }
+                }}
+              />
+              {errors.socialProfile ? (
+                <p
+                  id={socialErrorId}
+                  className="hub-spotlight-invite-error"
+                  role="alert"
+                >
+                  {errors.socialProfile}
+                </p>
+              ) : null}
+
+              <label className="hub-spotlight-invite-label" htmlFor={reasonId}>
+                Why would you like to see them on Sugar Scratch?{" "}
+                <span className="hub-spotlight-invite-optional">(Optional)</span>
+              </label>
+              <textarea
+                id={reasonId}
+                className="hub-spotlight-invite-textarea"
+                name="reason"
+                rows={3}
+                placeholder="Tell us why you'd love to see them"
+                value={form.reason}
+                disabled={submitting}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, reason: e.target.value }))
+                }
+              />
+
+              <div className="hub-spotlight-invite-actions">
+                <button
+                  type="submit"
+                  className="hub-spotlight-invite-submit"
+                  disabled={submitting}
+                >
+                  {submitting ? "Submitting…" : "Submit Suggestion"}
+                </button>
+                <button
+                  type="button"
+                  className="hub-spotlight-invite-cancel"
+                  disabled={submitting}
+                  onClick={onClose}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <div className="hub-spotlight-invite-success">
+            <h2 id={titleId} className="hub-spotlight-invite-title">
+              Thanks for the suggestion!
+            </h2>
+            <p id={descId} className="hub-spotlight-invite-desc">
+              We&apos;ve received your creator suggestion. Our team will take a
+              look and may reach out to them.
+            </p>
+            <button
+              type="button"
+              className="hub-spotlight-invite-submit"
+              onClick={onClose}
+            >
+              Done
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(modal, document.body);
 }

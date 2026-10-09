@@ -1,6 +1,7 @@
 /** Creator models and foil packs from `/api/models`. */
 
 import { apiFetch } from "../lib/api";
+import { normalizeMediaUrl } from "../lib/mediaUrl";
 
 export type BackendModel = {
   id?: string | null;
@@ -20,7 +21,17 @@ export type BackendModel = {
   cardPackName2?: string | null;
   packFaceVideoUrl?: string | null;
   packFaceVideoUrl2?: string | null;
+  packFacePosterUrl?: string | null;
+  packFacePosterUrl2?: string | null;
   swipeVideoUrl?: string | null;
+  swipePosterUrl?: string | null;
+
+  /** Ultra card video trailer, e.g. "/models/julianaval/ultra-card-trailer.mp4". */
+  ultraCardTrailerUrl?: string | null;
+
+  ultraCardTrailerPosterUrl?: string | null;
+  /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
+  coverUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
   tags?: string[];
 };
@@ -32,6 +43,8 @@ export type FoilPack = {
   id: string;
   label: string;
   videoUrl: string;
+  /** Still frame for the pack face; cheap to paint before the video decoder runs. */
+  posterUrl?: string;
 };
 
 export type ModelProfile = {
@@ -47,14 +60,6 @@ export type ModelProfile = {
   swipeVideoUrl: string | null;
   packs: FoilPack[];
 };
-
-const PROXIED_MEDIA_PREFIXES = [
-  "/api/",
-  "/cards/",
-  "/models/",
-  "/photo-scratch/",
-  "/mesh/",
-] as const;
 
 export function formatCollectionLabel(name: string) {
   const trimmed = name.trim();
@@ -77,34 +82,6 @@ function normalizeKey(value: string) {
     .toLowerCase()
     .replace(/^@+/, "")
     .replace(/[^a-z0-9]+/g, "");
-}
-
-function isProxiedMediaPath(pathname: string) {
-  return PROXIED_MEDIA_PREFIXES.some(
-    (prefix) => pathname === prefix.slice(0, -1) || pathname.startsWith(prefix),
-  );
-}
-
-/** Rewrite API media onto the Vite proxy so videos load same-origin. */
-export function normalizeMediaUrl(value: string): string {
-  const raw = value.trim();
-  if (!raw) return "";
-  if (raw.startsWith("blob:") || raw.startsWith("data:")) return raw;
-
-  if (/^(?:https?:)?\/\//i.test(raw)) {
-    try {
-      const absolute = new URL(raw, "https://placeholder.local");
-      const pathWithSearch = `${absolute.pathname}${absolute.search}${absolute.hash}`;
-      if (isProxiedMediaPath(absolute.pathname)) return pathWithSearch;
-      if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) return raw;
-      return pathWithSearch;
-    } catch {
-      return raw;
-    }
-  }
-
-  const withoutPublic = raw.replace(/^\.?\/?public\//, "");
-  return withoutPublic.startsWith("/") ? withoutPublic : `/${withoutPublic}`;
 }
 
 function optionalMedia(value: unknown): string | null {
@@ -171,6 +148,8 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
   const id = modelId(model);
   const face1 = optionalMedia(model.packFaceVideoUrl);
   const face2 = optionalMedia(model.packFaceVideoUrl2);
+  const poster1 = optionalMedia(model.packFacePosterUrl) ?? undefined;
+  const poster2 = optionalMedia(model.packFacePosterUrl2) ?? undefined;
   const packs: FoilPack[] = [];
   if (face1) {
     packs.push({
@@ -178,6 +157,7 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
       id: `${id}-1`,
       label: optionalString(model.cardPackName) ?? "Pack 1",
       videoUrl: face1,
+      posterUrl: poster1,
     });
   }
   if (face2) {
@@ -186,6 +166,7 @@ export function foilsFromModel(model: BackendModel): FoilPack[] {
       id: `${id}-2`,
       label: optionalString(model.cardPackName2) ?? "Pack 2",
       videoUrl: face2,
+      posterUrl: poster2,
     });
   }
   return packs;
@@ -262,8 +243,48 @@ export function packFaceVideoFromModel(
   return foil?.videoUrl ?? optionalMedia(model.packFaceVideoUrl);
 }
 
+/** API pack-face still for inventory tiles (cheap under / before the decoder). */
+export function packFacePosterFromModel(
+  model: BackendModel | null | undefined,
+  hints: {
+    packId?: string | null;
+    packName?: string | null;
+    themeName?: string | null;
+  } = {},
+): string | null {
+  if (!model) return null;
+  const foil = foilForInventoryHints(model, hints);
+  return (
+    foil?.posterUrl?.trim() ||
+    optionalMedia(model.packFacePosterUrl) ||
+    null
+  );
+}
+
 export function modelAvatarUrl(model: BackendModel | null | undefined) {
   return optionalMedia(model?.avatar);
+}
+
+export function modelCoverUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.coverUrl);
+}
+
+export function modelSwipePosterUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.swipePosterUrl);
+}
+
+/** API Ultra Card trailer video for the creator page teaser. */
+export function modelUltraCardTrailerUrl(
+  model: BackendModel | null | undefined,
+) {
+  return optionalMedia(model?.ultraCardTrailerUrl);
+}
+
+/** API Ultra Card trailer poster / still frame. */
+export function modelUltraCardTrailerPosterUrl(
+  model: BackendModel | null | undefined,
+) {
+  return optionalMedia(model?.ultraCardTrailerPosterUrl);
 }
 
 export function profileFromModel(model: BackendModel): ModelProfile {

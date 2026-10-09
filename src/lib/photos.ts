@@ -121,6 +121,6 @@ export function resolveInventoryCoverUrl(input: {
     return CREATOR_CARD_PHOTOS.juliana;
   }
 
-  return PACK_PHOTOS.ep1;
+  return HOLO_PACKS.cyberHolo;
 }
 

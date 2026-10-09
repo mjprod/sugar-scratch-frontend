@@ -92,7 +92,7 @@ export const RECOMMENDATION_CARDS: RecommendationCard[] = [
     creatorId: "riley",
     name: "Riley Brooks",
     theme: "Fantasy Realm",
-    tagline: "Mage series with coin surprises",
+    tagline: "Mage series with dust surprises",
   },
   {
     id: "oc9",
@@ -194,7 +194,7 @@ export function isRecommendationInitialized() {
 export function isHighIntentPending(pending: ProtectedAction | null) {
   if (!pending) return false;
   if (pending.type === "buy") return true;
-  if (pending.type === "tab" && pending.tab === "hub") return true;
+  if (pending.type === "tab" && pending.tab === "feed") return true;
   return false;
 }
 

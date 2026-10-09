@@ -80,6 +80,8 @@ export type AuthSuccessResult = {
   provider: AuthProvider;
   /** Server user from login/register/oauth when available. */
   user?: AuthUser;
+  /** Which auth entry produced this session. */
+  source?: "login" | "register" | "oauth";
 };
 
 export function isAuthenticated() {
@@ -176,6 +178,38 @@ export async function loginWithOAuth(
   );
 }
 
+/** Exchange a Google Identity Services auth code for a server session. */
+export async function loginWithGoogle(code: string) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export function googleAuthFailureMessage() {
+  return "We couldn’t sign you in with Google. Please try again.";
+}
+
+/** Exchange a Sign in with Apple ID token (+ raw nonce) for a server session. */
+export async function loginWithApple(input: {
+  idToken: string;
+  nonce: string;
+  name: string | null;
+}) {
+  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/apple", {
+    method: "POST",
+    body: JSON.stringify({
+      id_token: input.idToken,
+      nonce: input.nonce,
+      name: input.name,
+    }),
+  });
+}
+
+export function appleAuthFailureMessage() {
+  return "We couldn’t sign you in with Apple. Please try again.";
+}
+
 export async function logoutRemote() {
   try {
     await apiMutate("/api/auth/logout", { method: "POST" });
@@ -202,12 +236,75 @@ export function resetPasswordFailureMessage() {
   return "This reset link is invalid or has expired. Request a new one.";
 }
 
-export async function markEmailVerifiedRemote() {
+/** Ask the server to (re)send the verification email for the current session. */
+export async function requestVerificationEmail(): Promise<{ ok: boolean }> {
   try {
-    await apiMutate("/api/auth/verify-email/mark", { method: "POST" });
-  } catch {
-    /* ignore */
+    const result = await apiMutate<{ ok?: boolean }>(
+      "/api/auth/verify-email/send",
+      { method: "POST" },
+    );
+    // Email may already be out; only treat an explicit ok:false as failure.
+    if (result && typeof result === "object" && result.ok === false) {
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch (error) {
+    // Timeouts can mean the mail was queued but the HTTP response never
+    // arrived — fail open so the user can still enter a code they received.
+    // Real network/HTTP failures should surface so we don't start cooldown.
+    const timedOut =
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError");
+    return { ok: timedOut };
   }
+}
+
+/** Confirm the email with the one-time code from the verification message. */
+export async function confirmVerificationCode(
+  code: string,
+): Promise<{ ok: boolean; message?: string }> {
+  // Strip spaces / dashes so pasted codes from email still match.
+  const trimmed = code.trim().replace(/[\s-]/g, "");
+  if (!trimmed) return { ok: false, message: "Enter the verification code." };
+  try {
+    const result = await apiMutate<{ ok?: boolean; detail?: string }>(
+      "/api/auth/verify-email/confirm",
+      {
+        method: "POST",
+        body: JSON.stringify({ code: trimmed }),
+      },
+    );
+    if (result && typeof result === "object" && result.ok === false) {
+      return {
+        ok: false,
+        message:
+          typeof result.detail === "string" && result.detail.trim()
+            ? result.detail
+            : undefined,
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    const message =
+      error instanceof ApiError && error.message.trim()
+        ? error.message
+        : undefined;
+    return { ok: false, message };
+  }
+}
+
+export function verificationCodeFailureMessage() {
+  return "That code is invalid or has expired. Try again or resend.";
+}
+
+export function verificationSendFailureMessage() {
+  return "We’re having a technical issue right now. Please try again in a little while.";
+}
+
+/** AC-VE-003/005: idle "Resend"; cooldown "Resend in {X}s". */
+export function resendCooldownLabel(secondsRemaining: number): string {
+  if (secondsRemaining > 0) return `Resend in ${secondsRemaining}s`;
+  return "Resend";
 }
 
 export function createSession(
@@ -308,7 +405,25 @@ export function createAccountFailureMessage() {
 }
 
 export function duplicateEmailMessage() {
-  return createAccountFailureMessage();
+  return "An account with this email already exists.";
+}
+
+/** True when /api/auth/register failed because the email is taken. */
+export function isDuplicateEmailRegisterError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  const hay =
+    `${error.message} ${typeof error.body === "string" ? error.body : JSON.stringify(error.body ?? "")}`.toLowerCase();
+  if (error.status === 409) return true;
+  if (error.status === 400 || error.status === 422) {
+    return (
+      hay.includes("already") ||
+      hay.includes("exist") ||
+      hay.includes("taken") ||
+      hay.includes("duplicate") ||
+      hay.includes("registered")
+    );
+  }
+  return false;
 }
 
 export function forgotPasswordSuccessMessage() {
@@ -495,8 +610,7 @@ export function triggerFromAction(
     return "view-profile";
   }
   if (action.type === "tab") {
-    if (action.tab === "bag") return "view-collection";
-    if (action.tab === "hub") return "view-rewards";
+    if (action.tab === "hub") return "view-collection";
     if (action.tab === "profile") return "view-profile";
   }
   return undefined;

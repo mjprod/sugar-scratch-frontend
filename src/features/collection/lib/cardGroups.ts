@@ -601,10 +601,16 @@ export function createBackendDeck(
     return group.cards.map((card, slot) => {
       const overlay =
         lookup?.overlayForGroup?.(group) ?? lookup?.overlay ?? undefined
+      const trailer = card.trailerUrl?.trim() || ''
+      const motionUrl = card.motionUrl?.trim() || ''
       const mediaUrl =
-        (card.trailerUrl && card.trailerUrl.trim()) ||
-        (card.videoUrl && card.videoUrl.trim()) ||
-        ''
+        trailer || (card.videoUrl && card.videoUrl.trim()) || ''
+      // Catalog tiles need a still even when the face is a motion clip.
+      // Prefer API posters; fall back to the card's published motion still.
+      const posterUrl =
+        card.trailerPosterUrl?.trim() ||
+        card.motionPosterUrl?.trim() ||
+        (card.id ? `/cards/${card.id}/motion-poster.webp` : '')
       const hasMedia = Boolean(mediaUrl)
       // Catalog browse lists every published card as a preview. Ownership only
       // comes from buying/opening packs — until that ledger is wired per card,
@@ -618,6 +624,8 @@ export function createBackendDeck(
         modelId: group.modelId,
         mediaType: hasMedia ? 'video' : 'image',
         mediaUrl: hasMedia ? mediaUrl : PLACEHOLDER_MEDIA_URL,
+        posterUrl: posterUrl || undefined,
+        motionUrl: motionUrl || undefined,
         videoCardCount: 0,
         photoFilledCount: Math.max(
           0,

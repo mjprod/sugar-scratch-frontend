@@ -1,6 +1,7 @@
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { DotLottieWorker } from "@lottiefiles/dotlottie-web";
 import type { DotLottie } from "@lottiefiles/dotlottie-web";
+import "@/lib/lottie/setupWasm";
 import { useEffect, useRef, useState } from "react";
 import { lottieDevicePixelRatio, lottieRenderConfig } from "@/utils/lottieRender";
 import { SYMBOL_TYPES } from "./matchGame";
@@ -167,6 +168,7 @@ export function GameSymbolIcon({
   size = 24,
   paused = false,
   pixelScale = 1,
+  preferStatic = false,
 }: {
   typeId: number;
   size?: number;
@@ -182,6 +184,12 @@ export function GameSymbolIcon({
    * play again (e.g. a top slot that just matched).
    */
   paused?: boolean;
+  /**
+   * Prefer main-thread DotLottie (no OffscreenCanvas worker).
+   * This is an opt-in escape hatch for environments where the worker path is
+   * problematic; the default policy may still prefer worker-backed rendering.
+   */
+  preferStatic?: boolean;
 }) {
   const entry = SYMBOL_TYPES[typeId] ?? SYMBOL_TYPES[0];
   const [player, setPlayer] = useState<DotLottie | null>(null);
@@ -233,7 +241,7 @@ export function GameSymbolIcon({
     turn.setReady(true);
   }, [player, paused]);
 
-  if (SUPPORTS_OFFSCREEN) {
+  if (SUPPORTS_OFFSCREEN && !preferStatic) {
     return (
       <WorkerSymbolIcon
         key={entry.src}

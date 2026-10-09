@@ -1,4 +1,4 @@
-import { apiFetch, apiMutate } from "../lib/api";
+import { ApiError, apiFetch, apiMutate } from "../lib/api";
 import { isDemoMode } from "../lib/demo";
 
 export type PackQuantity = 1 | 5;
@@ -130,17 +130,7 @@ function catalogUnitCost(packId: string): number | null {
 
 /** Demo / offline fixture costs when GET /api/packs has no match yet. */
 const DEMO_PACK_DIAMOND_COSTS: Record<string, number> = {
-  ep1: 50,
-  ep2: 70,
-  ep3: 40,
-  en1: 50,
-  en2: 60,
-  em1: 45,
-  eb1: 60,
-  eb2: 50,
-  al1: 80,
-  sw1: 30,
-  nl1: 40,
+  starter: 50,
 };
 
 function demoUnitCost(packId: string, fallbackUsd?: number) {
@@ -157,6 +147,41 @@ function demoUnitCost(packId: string, fallbackUsd?: number) {
  */
 export function packUnitCost(packId = "pack", fallbackUsd?: number) {
   return catalogUnitCost(packId) ?? demoUnitCost(packId, fallbackUsd);
+}
+
+/** Coverflow / Buy Pack — linear per-pack pricing, capped at 10. */
+export const BUY_PACK_MAX_QUANTITY = 10;
+
+/**
+ * A/B coverflow buy path for Juliana packs.
+ * Juliana: Buy Pack + Add to Pocket on HUD, with the legacy inline qty confirm.
+ * Everyone else: Buy Pack only → opens BuyPackQuantityModal.
+ */
+export function isJulianaCoverflowBuyAb(
+  candidate: string | null | undefined,
+): boolean {
+  const id = (candidate ?? "").trim().toLowerCase();
+  if (!id) return false;
+  if (
+    id === "julianaval" ||
+    id === "julianaval-pack" ||
+    id.startsWith("julianaval-")
+  ) {
+    return true;
+  }
+  // Display-name / handle fallback (e.g. "Juliana", "@julianaval").
+  const compact = id.replace(/[^a-z0-9]/g, "");
+  return compact === "juliana" || compact.startsWith("julianaval");
+}
+
+export function clampBuyPackQuantity(quantity: number): number {
+  const n = Math.floor(quantity);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(BUY_PACK_MAX_QUANTITY, n);
+}
+
+export function linearPackTotalCost(packId: string, quantity: number): number {
+  return packUnitCost(packId) * clampBuyPackQuantity(quantity);
 }
 
 export function packCost(quantity: PackQuantity, packId = "pack") {
@@ -313,6 +338,38 @@ function newDemoPurchaseId() {
 }
 
 /** `?demo=1` only — offline fixture when the API is unreachable. */
+function purchaseLinearFromDemoFixture(
+  quantity: number,
+  balance: number,
+  packId: string,
+  coinBalance: number,
+): PurchaseResult {
+  const q = clampBuyPackQuantity(quantity);
+  const diamondCost = packUnitCost(packId) * q;
+  if (diamondCost > balance) throw new PurchaseError("insufficient");
+  const purchaseId = newDemoPurchaseId();
+  const instances: PackInstanceApi[] = Array.from({ length: q }, () => ({
+    instanceId: newDemoInstanceId(),
+    catalogPackId: packId,
+    packName: packId,
+    creator: "Sugar",
+    themeName: packId,
+    coverUrl: "",
+    status: "unopened",
+    purchaseId,
+    savedAt: Date.now(),
+  }));
+  return {
+    purchaseId,
+    instances,
+    wallet: {
+      diamonds: Math.max(0, balance - diamondCost),
+      coins: coinBalance,
+    },
+    diamondCost,
+  };
+}
+
 function purchaseFromDemoFixture(
   quantity: PackQuantity,
   balance: number,
@@ -340,6 +397,170 @@ function purchaseFromDemoFixture(
       diamonds: Math.max(0, balance - diamondCost),
       coins: coinBalance,
     },
+    diamondCost,
+  };
+}
+
+function linearPurchaseIdempotencyStorageKey(packId: string, quantity: number) {
+  return `sugar.purchase.idempotency.linear:${packId}:${quantity}`;
+}
+
+function getLinearPurchaseIdempotencyKey(
+  packId: string,
+  quantity: number,
+  override?: string,
+) {
+  if (override?.trim()) return override.trim();
+  try {
+    const key = linearPurchaseIdempotencyStorageKey(packId, quantity);
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+    const created = `pack-buy-linear:${packId}:${quantity}:${newIdempotencyToken()}`;
+    sessionStorage.setItem(key, created);
+    return created;
+  } catch {
+    return `pack-buy-linear:${packId}:${quantity}:${newIdempotencyToken()}`;
+  }
+}
+
+function clearLinearPurchaseIdempotencyKey(packId: string, quantity: number) {
+  try {
+    sessionStorage.removeItem(
+      linearPurchaseIdempotencyStorageKey(packId, quantity),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+export function commitLinearPurchaseIdempotencyKey(
+  packId: string,
+  quantity: number,
+) {
+  const q = clampBuyPackQuantity(quantity);
+  clearLinearPurchaseIdempotencyKey(packId, q);
+  // qty 1|5 delegates to submitPurchase (legacy session keys).
+  // Other quantities may fall back to N× qty-1, which also writes the legacy qty-1 key.
+  if (q === 1 || q === 5) {
+    clearPurchaseIdempotencyKey(packId, q);
+  } else {
+    clearPurchaseIdempotencyKey(packId, 1);
+  }
+}
+
+function isInsufficientPurchaseError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  if (message === "insufficient" || message.includes("insufficient")) return true;
+  if (error instanceof ApiError && (error.status === 402 || error.status === 409)) {
+    return true;
+  }
+  return false;
+}
+
+/** Quantity × unit price (not the legacy 5-pack bundle rate). */
+export async function submitLinearPackPurchase(
+  quantity: number,
+  balance: number,
+  packId = "pack",
+  idempotencyKey?: string,
+  coinBalance = 0,
+): Promise<PurchaseResult> {
+  const q = clampBuyPackQuantity(quantity);
+  // Reuse the proven 1|5 purchase path — same pricing + idempotency the app already ships.
+  if (q === 1 || q === 5) {
+    return submitPurchase(q, balance, packId, idempotencyKey, coinBalance);
+  }
+
+  const catalog = await loadPackCatalog();
+  const purchasePackId = resolvePurchasePackId(catalog, packId);
+  const diamondCost = linearPackTotalCost(purchasePackId, q);
+  if (diamondCost > balance) throw new PurchaseError("insufficient");
+  if (failureMode() === "purchase") {
+    throw new PurchaseError("failed", "Purchase could not be completed.");
+  }
+  const key = getLinearPurchaseIdempotencyKey(
+    purchasePackId,
+    q,
+    idempotencyKey,
+  );
+  try {
+    const remote = await apiMutate<{
+      purchaseId: string;
+      instances: PackInstanceApi[];
+      wallet: { diamonds: number; coins: number };
+    }>(`/api/packs/${encodeURIComponent(purchasePackId)}/purchase`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ quantity: q }),
+    });
+    const instances = Array.isArray(remote.instances) ? remote.instances : [];
+    if (!instances.length) {
+      throw new PurchaseError("failed", "Pack ownership failed.");
+    }
+    return {
+      purchaseId: remote.purchaseId,
+      instances,
+      wallet: remote.wallet,
+      diamondCost,
+    };
+  } catch (error) {
+    if (isInsufficientPurchaseError(error)) {
+      clearLinearPurchaseIdempotencyKey(purchasePackId, q);
+      throw new PurchaseError("insufficient");
+    }
+    // Backend may only accept quantity 1|5 — buy N single packs and merge.
+    if (!isDemoMode()) {
+      try {
+        return await purchaseLinearAsSingles(
+          q,
+          balance,
+          purchasePackId,
+          coinBalance,
+        );
+      } catch (fallbackError) {
+        if (isInsufficientPurchaseError(fallbackError)) {
+          throw new PurchaseError("insufficient");
+        }
+        throw new PurchaseError("failed", "Purchase could not be completed.");
+      }
+    }
+    return purchaseLinearFromDemoFixture(q, balance, purchasePackId, coinBalance);
+  }
+}
+
+/** ponytail: N× qty-1 when the API rejects multi-qty linear buys. */
+async function purchaseLinearAsSingles(
+  quantity: number,
+  balance: number,
+  packId: string,
+  coinBalance: number,
+): Promise<PurchaseResult> {
+  const q = clampBuyPackQuantity(quantity);
+  let diamonds = balance;
+  let coins = coinBalance;
+  let purchaseId = "";
+  const instances: PackInstanceApi[] = [];
+  let diamondCost = 0;
+  for (let i = 0; i < q; i++) {
+    // Fresh Idempotency-Key each iteration — reusing the legacy qty-1 session
+    // key would make buys 2..N look like retries of the first purchase.
+    const singleKey = `pack-buy-linear-single:${packId}:${i}:${newIdempotencyToken()}`;
+    const result = await submitPurchase(1, diamonds, packId, singleKey, coins);
+    clearPurchaseIdempotencyKey(packId, 1);
+    diamonds = result.wallet.diamonds;
+    coins = result.wallet.coins;
+    diamondCost += result.diamondCost;
+    purchaseId = result.purchaseId;
+    instances.push(...(Array.isArray(result.instances) ? result.instances : []));
+  }
+  if (!instances.length) {
+    throw new PurchaseError("failed", "Pack ownership failed.");
+  }
+  return {
+    purchaseId,
+    instances,
+    wallet: { diamonds, coins },
     diamondCost,
   };
 }
@@ -378,8 +599,7 @@ export async function submitPurchase(
       diamondCost,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "insufficient") {
+    if (isInsufficientPurchaseError(error)) {
       clearPurchaseIdempotencyKey(purchasePackId, quantity);
       throw new PurchaseError("insufficient");
     }
@@ -438,18 +658,22 @@ export type RevealCardResult = {
   wallet: { diamonds: number; coins: number };
 };
 
-/** Reveal one scratched card — credits diamonds and collection on the server. */
+/** Reveal one scratched card — credits pack reward + optional motion prize. */
 export async function revealPackCard(
   openingId: string,
   cardId: string,
+  opts?: { prize?: number },
 ): Promise<RevealCardResult> {
   try {
+    const prize = Math.max(0, Math.floor(opts?.prize ?? 0));
     const remote = await apiMutate<{
       card: { id: string; revealStatus: string; reward: number };
       scratched: string[];
       wallet: { diamonds: number; coins: number };
     }>(`/api/me/openings/${openingId}/cards/${cardId}/reveal`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(prize > 0 ? { prize } : {}),
     });
     return {
       card: remote.card,

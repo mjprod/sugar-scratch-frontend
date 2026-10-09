@@ -38,8 +38,10 @@ import {
 } from '../lib/photoSlots'
 import { useNavigate } from 'react-router-dom'
 import { Paths } from '@/routes/Paths'
-import { unlockCountdownSound } from '@/features/game/modules/InitialCountdown'
+import { unlockCountdownSound } from '@/features/game/modules/countdownSound'
 import { useCollectionActions } from '../CollectionActionsContext'
+import { usePlayedCards } from '@/hooks/usePlayedCards'
+import { useRegisterCardPlay } from '@/hooks/useRegisterCardPlay'
 import {
   DESKTOP_LAYOUT,
   getLoadedIndexRange,
@@ -195,15 +197,41 @@ const DeckItem = memo(function DeckItem({
 }: DeckItemProps) {
   const navigate = useNavigate()
   const actions = useCollectionActions()
+  const registerPlay = useRegisterCardPlay()
+  const { isPlayed } = usePlayedCards()
+  const motionPlayed =
+    card.id.includes('-placeholder-') || isPlayed('motion', card.id)
   // Keep a neutral effect object so HoloCard props stay stable while holos are off.
   const effect =
     HOLO_EFFECTS[clampEffectIndex(card.effectIndex)] ??
     HOLO_EFFECTS[DEFAULT_EFFECT_INDEX]!
 
-  const [faceReady, setFaceReady] = useState(false)
+  /**
+   * A still poster is already visible face media. Seed / reset from that so
+   * captions do not get stuck on LOADING: HoloCard reports ready on first
+   * paint when a poster exists, and this child's effect runs *before* a
+   * parent `setFaceReady(false)` reset — so a false reset would never hear
+   * a second `true` (ready stays true, callback deps do not change).
+   *
+   * Do not put `posterUrl` in the media key. Clearing a poster while the
+   * decoded video / still image is already ready keeps HoloCard's
+   * `faceMediaReady` true, so its one-shot effect never re-fires — a reset
+   * to `posterReady === false` would leave captions stuck on LOADING.
+   * Poster add/clear is driven by HoloCard's callback instead.
+   */
+  const posterReady = Boolean(card.posterUrl?.trim())
+  const faceMediaKey = `${card.id}\0${card.mediaUrl}\0${card.mediaType}`
+  const [faceReadyState, setFaceReady] = useState(posterReady)
+  const [faceMediaKeySeen, setFaceMediaKeySeen] = useState(faceMediaKey)
+
+  const faceReady =
+    faceMediaKeySeen !== faceMediaKey ? posterReady : faceReadyState
+
   useEffect(() => {
-    setFaceReady(false)
-  }, [card.id, card.mediaUrl, card.mediaType])
+    if (faceMediaKeySeen === faceMediaKey) return
+    setFaceMediaKeySeen(faceMediaKey)
+    setFaceReady(posterReady)
+  }, [faceMediaKey, faceMediaKeySeen, posterReady])
 
   const handleFaceMediaReady = useCallback(
     (ready: boolean) => {
@@ -213,24 +241,38 @@ const DeckItem = memo(function DeckItem({
     [card.id, onFaceMediaReady],
   )
 
+  // Sync lock: a state flag would still let two taps in the same frame both buy.
+  const buyingPhotoRef = useRef(false)
+
   const handlePlayPhotoCard = useCallback(
     (slotIndex: number) => {
+      if (buyingPhotoRef.current) return
       const motion = card.id.trim()
       if (!motion) return
       const photoId = photoScratchIdForSlot(motion, slotIndex)
       const model = (card.modelId || '').trim()
+      buyingPhotoRef.current = true
       unlockCountdownSound()
-      if (actions.onPlayPhotoCard) {
-        actions.onPlayPhotoCard(model, photoId, slotIndex)
-        return
-      }
-      navigate(
-        Paths.photoScratchPlay(photoId, {
-          modelId: model || undefined,
-        }),
-      )
+      void (async () => {
+        let ok = false
+        try {
+          ok = await registerPlay('photo', photoId)
+        } finally {
+          buyingPhotoRef.current = false
+        }
+        if (!ok) return
+        if (actions.onPlayPhotoCard) {
+          actions.onPlayPhotoCard(model, photoId, slotIndex)
+          return
+        }
+        navigate(
+          Paths.photoScratchPlay(photoId, {
+            modelId: model || undefined,
+          }),
+        )
+      })()
     },
-    [actions, card.id, card.modelId, navigate],
+    [actions, card.id, card.modelId, navigate, registerPlay],
   )
 
   // One source of truth for the play meta "Nx" and the stack-back layers.
@@ -252,7 +294,9 @@ const DeckItem = memo(function DeckItem({
       ref={(node) => registerNode(card.id, node)}
       className={`coverflow__item${isActiveItem ? ' is-active-item' : ''}${
         isDimmed ? ' is-dimmed' : ''
-      }${isInactiveGroupItem ? ' is-inactive-group-item' : ''}`}
+      }${isInactiveGroupItem ? ' is-inactive-group-item' : ''}${
+        motionPlayed ? '' : ' is-unplayed'
+      }`}
       data-index={index}
       data-slot-index={slotIndex}
       data-card-id={card.id}
@@ -296,6 +340,7 @@ const DeckItem = memo(function DeckItem({
           overlay={card.overlay}
           src={card.mediaUrl}
           mediaType={card.mediaType}
+          poster={card.posterUrl}
           back={card.backUrl}
           backMediaType={card.backMediaType}
           effect={effect}
@@ -316,6 +361,34 @@ const DeckItem = memo(function DeckItem({
             expandable ? onFocusChange(slotIndex) : onSelectCard(index)
           }
         />
+        {/*
+          Glass caption pill sits on the motion card bottom (~0.5rem inset).
+          Hidden while this item is the active selection.
+        */}
+        <div
+          className={`coverflow__caption${
+            isActiveItem ? ' is-active-hidden' : ''
+          }${faceReady ? '' : ' is-loading'}`}
+        >
+          <p className="coverflow__label">
+            {faceReady ? card.name : 'LOADING'}
+          </p>
+          <div className="coverflow__meta" aria-hidden="true">
+            <span className="coverflow__meta-item">
+              <CardMetaPlayIcon />
+              <span className="coverflow__meta-text">
+                {faceReady ? `${videoCount}x` : 'LOADING'}
+              </span>
+            </span>
+            <span className="coverflow__meta-divider" />
+            <span className="coverflow__meta-item">
+              <CardMetaPhotoIcon />
+              <span className="coverflow__meta-text">
+                {faceReady ? `${photoCount}/${PHOTO_SLOTS}` : 'LOADING'}
+              </span>
+            </span>
+          </div>
+        </div>
       </div>
       {/*
         Mount the photo grid only while this card is the active selection.
@@ -338,30 +411,6 @@ const DeckItem = memo(function DeckItem({
           onPlayPhotoCard={handlePlayPhotoCard}
         />
       )}
-      <div
-        className={`coverflow__caption${
-          isActiveItem ? ' is-active-hidden' : ''
-        }${faceReady ? '' : ' is-loading'}`}
-      >
-        <p className="coverflow__label">
-          {faceReady ? card.name : 'LOADING'}
-        </p>
-        <div className="coverflow__meta" aria-hidden="true">
-          <span className="coverflow__meta-item">
-            <CardMetaPlayIcon />
-            <span className="coverflow__meta-text">
-              {faceReady ? `${videoCount}x` : 'LOADING'}
-            </span>
-          </span>
-          <span className="coverflow__meta-divider" />
-          <span className="coverflow__meta-item">
-            <CardMetaPhotoIcon />
-            <span className="coverflow__meta-text">
-              {faceReady ? `${photoCount}/${PHOTO_SLOTS}` : 'LOADING'}
-            </span>
-          </span>
-        </div>
-      </div>
     </div>
   )
 })

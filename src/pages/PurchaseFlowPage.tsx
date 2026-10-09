@@ -1,13 +1,22 @@
-import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/useAuth";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
+import { RouteChunkFallback } from "@/routes/RouteChunkFallback";
 import { isRecommendationInitialized } from "@/services/recommendation";
-import { PurchaseFlow } from "@/components/purchase/PurchaseFlow";
 import type { PurchaseFlowPack } from "@/services/purchase";
 
+// Lazy so a deep link without pack state redirects before three.js and the
+// carousels download.
+const PurchaseFlow = lazy(() =>
+  import("@/components/purchase/PurchaseFlow").then((m) => ({
+    default: m.PurchaseFlow,
+  })),
+);
+
 export function PurchaseFlowPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { packId } = useParams<{ packId: string }>();
   const {
@@ -17,7 +26,6 @@ export function PurchaseFlowPage() {
     notePackPurchaseSeed,
     applyRecommendationDecision,
     setPurchasedPacks,
-    requestTab,
     bumpInventoryRevision,
   } = useAuth();
   const { coins, diamonds, setDiamonds, setCoins, addCoins } = useWallet();
@@ -38,35 +46,37 @@ export function PurchaseFlowPage() {
   }
 
   return (
-    <PurchaseFlow
-      pack={pack}
-      diamonds={diamonds}
-      coins={coins}
-      onClose={() => {
-        navigate(Paths.home);
-        if (!isRecommendationInitialized()) {
-          applyRecommendationDecision(null);
-        }
-      }}
-      onWalletUpdate={(wallet) => {
-        setDiamonds(wallet.diamonds);
-        setCoins(wallet.coins);
-      }}
-      onComplete={({ cards, coins: rewardCoins }) => {
-        if (rewardCoins > 0) addCoins(rewardCoins);
-        setPurchasedPacks((count) => count + cards);
-        notePackPurchaseSeed(pack.creator);
-        bumpInventoryRevision();
-      }}
-      onGetDiamonds={() => {
-        if (!guest) openStore();
-        else requireAuth({ type: "store" });
-      }}
-      onGoHome={() => navigate(Paths.home)}
-      onViewCollection={() => requestTab("bag")}
-      onGoMyBag={() => requestTab("bag")}
-      onReturnContext={() => requestTab("bag")}
-      onInventoryChange={bumpInventoryRevision}
-    />
+    <Suspense fallback={<RouteChunkFallback />}>
+      <PurchaseFlow
+        pack={pack}
+        diamonds={diamonds}
+        coins={coins}
+        onClose={() => {
+          memoryNavigate(Paths.home);
+          if (!isRecommendationInitialized()) {
+            applyRecommendationDecision(null);
+          }
+        }}
+        onWalletUpdate={(wallet) => {
+          setDiamonds(wallet.diamonds);
+          setCoins(wallet.coins);
+        }}
+        onComplete={({ cards, coins: rewardCoins }) => {
+          if (rewardCoins > 0) addCoins(rewardCoins);
+          setPurchasedPacks((count) => count + cards);
+          notePackPurchaseSeed(pack.creator);
+          bumpInventoryRevision();
+        }}
+        onGetDiamonds={() => {
+          if (!guest) openStore();
+          else requireAuth({ type: "store" });
+        }}
+        onGoHome={() => memoryNavigate(Paths.discover)}
+        onViewCollection={() => memoryNavigate(Paths.collection)}
+        onGoMyBag={() => memoryNavigate(Paths.collection)}
+        onReturnContext={() => memoryNavigate(Paths.collection)}
+        onInventoryChange={bumpInventoryRevision}
+      />
+    </Suspense>
   );
 }

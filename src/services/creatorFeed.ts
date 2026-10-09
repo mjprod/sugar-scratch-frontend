@@ -5,6 +5,8 @@
 
 import {
   loadModels,
+  modelAvatarUrl,
+  modelSwipePosterUrl,
   profileFromModel,
   type BackendModel,
 } from "./models";
@@ -15,6 +17,7 @@ export type HomeFeedCreator = {
   id: string;
   creatorId: string;
   creatorName: string;
+  avatarUrl: string;
   /** @deprecated Prefer packName + tags for feed overlay. */
   collectionName: string;
   /** @deprecated Prefer tags for feed overlay. */
@@ -24,7 +27,7 @@ export type HomeFeedCreator = {
   /** Up to 3 shown on the feed card — theme / style / availability. */
   tags: string[];
   mediaType: "video" | "image";
-  posterUrl: string;
+  swipePosterUrl: string;
   videoUrl?: string;
   diamondCost: number;
   liked: boolean;
@@ -35,6 +38,25 @@ export type HomeFeedPage = {
   nextCursor: string | null;
   hasMore: boolean;
 };
+
+export function feedPosterUrl(model: BackendModel) {
+  return modelSwipePosterUrl(model) ?? modelAvatarUrl(model) ?? "";
+}
+
+export function preloadFeedPosters(
+  items: Array<{ swipePosterUrl?: string | null }>,
+) {
+  if (typeof window === "undefined") return;
+  const seen = new Set<string>();
+  for (const item of items) {
+    const src = item.swipePosterUrl?.trim();
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    const image = new Image();
+    image.decoding = "async";
+    image.src = src;
+  }
+}
 
 function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> {
   const profile = profileFromModel(model);
@@ -48,31 +70,22 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     id: `hf-${profile.id}`,
     creatorId: profile.id,
     creatorName: profile.name,
+    avatarUrl: modelAvatarUrl(model) ?? "",
     collectionName: packName,
     description: profile.collectionLabel,
     packId: profile.id,
     packName,
     tags: [profile.city, profile.country].filter((tag): tag is string => Boolean(tag)),
     mediaType: videoUrl ? "video" : "image",
-    posterUrl: "",
+    swipePosterUrl: feedPosterUrl(model),
     videoUrl,
     diamondCost: packUnitCost(profile.id),
   };
 }
 
 const PAGE_SIZE = 6;
-const FEED_CACHE_VERSION = 15;
-
-function shuffleCatalog<T>(items: T[]): T[] {
-  const next = [...items];
-  for (let i = next.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const current = next[i]!;
-    next[i] = next[j]!;
-    next[j] = current;
-  }
-  return next;
-}
+/** Bump when feed ordering semantics change (e.g. drop shuffle). */
+const FEED_CACHE_VERSION = 19;
 
 function uniqueFeedItems(items: Omit<HomeFeedCreator, "liked">[]) {
   const seen = new Set<string>();
@@ -86,12 +99,18 @@ function uniqueFeedItems(items: Omit<HomeFeedCreator, "liked">[]) {
   return unique;
 }
 
-let shuffledCatalog: Omit<HomeFeedCreator, "liked">[] | null = null;
+/** Stable catalog order from the models source — not shuffled. */
+let feedCatalog: Omit<HomeFeedCreator, "liked">[] | null = null;
 
-/** Upcoming clips to keep buffered beyond the active one. */
-export const FEED_WARM_AHEAD = 2;
-/** Previous clip to keep buffered for a reverse swipe. */
+/** Upcoming clips to mount (poster→video) beyond the active one. */
+export const FEED_WARM_AHEAD = 1;
+/** Previous clip to keep mounted for a reverse swipe. */
 export const FEED_WARM_BEHIND = 1;
+/**
+ * Max concurrent `preload="auto"` videos (active + peeks).
+ * Warm-mounted neighbors beyond this use `metadata` only.
+ */
+export const FEED_PRELOAD_AUTO_CAP = 2;
 
 export function isWarmFeedIndex(index: number, activeIndex: number) {
   const resolved = activeIndex >= 0 ? activeIndex : 0;
@@ -100,6 +119,23 @@ export function isWarmFeedIndex(index: number, activeIndex: number) {
     index >= resolved - FEED_WARM_BEHIND &&
     index <= resolved + FEED_WARM_AHEAD
   );
+}
+
+/** Active ± warm window — mount/decode only these; far slides stay poster-only. */
+export function isFeedMountIndex(index: number, activeIndex: number) {
+  const resolved = activeIndex >= 0 ? activeIndex : 0;
+  return (
+    index >= resolved - FEED_WARM_BEHIND &&
+    index <= resolved + FEED_WARM_AHEAD
+  );
+}
+
+/** Active + limited ahead peeks may fully preload; reverse warm stays metadata. */
+export function isFeedPreloadAutoIndex(index: number, activeIndex: number) {
+  const resolved = activeIndex >= 0 ? activeIndex : 0;
+  if (index === resolved) return true;
+  const aheadSlots = Math.max(0, FEED_PRELOAD_AUTO_CAP - 1);
+  return index > resolved && index <= resolved + aheadSlots;
 }
 
 /** Display-only: drop trailing " Pack" from pack titles on the feed. */
@@ -137,22 +173,18 @@ export function formatFeedLikeCount(count: number): string {
   return `${Math.round(count / 1000)}k`;
 }
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function fetchHomeFeedPage(
   cursor: string | null = null,
 ): Promise<HomeFeedPage> {
-  const [, models] = await Promise.all([
-    wait(cursor ? 380 : 520),
-    Promise.all([loadModels(), loadPackCatalog()]).then(([loaded]) => loaded),
-  ]);
-
-  if (cursor == null || !shuffledCatalog) {
-    shuffledCatalog = shuffleCatalog(uniqueFeedItems(models.map(feedItemFromModel)));
+  // Rebuild only on first page / cold cache — later pages slice the in-memory catalog.
+  if (cursor == null || !feedCatalog) {
+    const models = await Promise.all([loadModels(), loadPackCatalog()]).then(
+      ([loaded]) => loaded,
+    );
+    // Keep source order — do not randomize; randomization made the reel feel jumpy.
+    feedCatalog = uniqueFeedItems(models.map(feedItemFromModel));
   }
-  const catalog = shuffledCatalog;
+  const catalog = feedCatalog;
   const start = cursor ? Number.parseInt(cursor, 10) : 0;
   const safeStart = Number.isFinite(start) && start >= 0 ? start : 0;
   const slice = catalog.slice(safeStart, safeStart + PAGE_SIZE);
@@ -203,7 +235,7 @@ export function writeHomeFeedCache(
 
 export function clearHomeFeedCache() {
   feedCache = null;
-  shuffledCatalog = null;
+  feedCatalog = null;
 }
 
 export function toPurchasePack(item: HomeFeedCreator) {

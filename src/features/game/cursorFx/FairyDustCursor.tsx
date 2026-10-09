@@ -1,6 +1,15 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DotLottie } from "@lottiefiles/dotlottie-web";
+import "@/lib/lottie/setupWasm";
 import { lottieDevicePixelRatio } from "@/utils/lottieRender";
+import {
+  CURSOR_FX_BURST_SIZE_MUL,
+  CURSOR_FX_EMIT_MODE,
+  cursorFxBurstVelocity,
+  cursorFxSpawnVelocity,
+  type CursorFxEmitMode,
+} from "../modules/cursorFxCelebrate";
+import { shouldSpawnFairyDustForMove } from "../modules/fairyDustSpawnPolicy";
 
 // Ported from sugar-scratch-cursor-test-main's FairyDustCursor. The original
 // used `lottie-web` + a hidden DOM host to snapshot animation frames onto
@@ -20,13 +29,35 @@ interface FairyDustCursorProps {
   particleSize?: number;
   particleCount?: number;
   gravity?: number;
+  /** Unused for visibility — coins stay opaque until they leave the overlay. */
   fadeSpeed?: number;
   initialVelocity?: {
     min: number;
     max: number;
   };
-  /** When false, no new particles spawn; existing ones keep fading out. */
+  /**
+   * `fall` = coins drop like symbols-foil flakes (product default).
+   * `fountain` = legacy upward fireworks burst.
+   */
+  emitMode?: CursorFxEmitMode;
+  /** When false, pointer-move spawning is disabled; bursts can still emit particles. */
   spawnEnabled?: boolean;
+  /** Cap overlay backing-store DPR (use 1 on phones). */
+  maxDevicePixelRatio?: number;
+  /** Bump to force a one-shot burst at the last pointer (or canvas center). */
+  burstNonce?: number;
+  /** Particles to emit on burst (defaults to particleCount * 3). */
+  burstCount?: number;
+  /** Milestone-pop size relative to trail coins. Defaults to the desktop pop. */
+  burstSizeMul?: number;
+  /** Pointer must get this far (px) from the last trail coin to emit another. */
+  spawnMinDistance?: number;
+  /**
+   * Checked per trail coin (not bursts); return false to skip, e.g. while the
+   * finger rubs already-scratched fabric. Read through a ref — may change
+   * identity freely without restarting the loop.
+   */
+  spawnGate?: () => boolean;
 }
 
 interface Particle {
@@ -38,8 +69,8 @@ interface Particle {
   color: string;
   vx: number;
   vy: number;
-  lifeSpan: number;
   scale: number;
+  sizeMul: number;
   animOffset: number;
 }
 
@@ -60,16 +91,13 @@ const LOTTIE_RENDER_SIZE_CSS = 128;
 const LOTTIE_MAX_FRAMES = 48;
 const LOTTIE_FPS = 30;
 const EMOJI_RENDER_SIZE_CSS = 72;
-const PARTICLE_LIFESPAN = 100;
-// Particles are culled once they fade past this alpha. At the default fade
-// speed that ends their life around frame 40 rather than the ~75 frames it
-// takes lifeSpan to decay below 0.1, so ~45% of the per-frame work disappears.
-const MIN_VISIBLE_ALPHA = 0.02;
+// Coins stay fully opaque until they leave the overlay. fadeSpeed is kept on
+// the props so saved settings still load, but it no longer drives visibility.
 // Soft cap: under the safer defaults (~128 concurrent at hard scratch) this
 // rarely bites; if someone cranked fade/count it thins the trail before the
 // 2D drawImage loop eats the frame budget.
 const MAX_PARTICLES = 250;
-const SPAWN_DISTANCE_SQ = 1;
+const DEFAULT_SPAWN_MIN_DISTANCE = 14;
 
 /** Live cursor-FX cost counters for the debug HUD / settings panel. */
 export type FairyDustPerfStats = {
@@ -187,11 +215,25 @@ function FairyDustCursorImpl({
   gravity = 0.1,
   fadeSpeed = 0.94,
   initialVelocity = DEFAULT_INITIAL_VELOCITY,
+  emitMode = CURSOR_FX_EMIT_MODE,
   spawnEnabled = true,
+  maxDevicePixelRatio,
+  burstNonce = 0,
+  burstCount,
+  burstSizeMul = CURSOR_FX_BURST_SIZE_MUL,
+  spawnMinDistance = DEFAULT_SPAWN_MIN_DISTANCE,
+  spawnGate,
 }: FairyDustCursorProps) {
+  const spawnGateRef = useRef(spawnGate);
+  spawnGateRef.current = spawnGate;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  const trailAnchorRef = useRef({ x: 0, y: 0 });
+  const hasPointerRef = useRef(false);
+  const pendingBurstRef = useRef(0);
+  const lastBurstNonceRef = useRef(0);
+  const flushBurstApiRef = useRef<() => void>(() => undefined);
   const lottieCacheRef = useRef<Map<string, LottieCacheEntry>>(new Map());
   const lottieSourceCacheRef = useRef<Map<string | ArrayBuffer, Promise<HTMLCanvasElement[]>>>(new Map());
   const glyphCacheRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
@@ -210,7 +252,11 @@ function FairyDustCursorImpl({
     gravity,
     fadeSpeed,
     initialVelocity,
+    emitMode,
     spawnEnabled,
+    maxDevicePixelRatio,
+    spawnMinDistance,
+    burstSizeMul,
   });
   configRef.current = {
     colors,
@@ -219,7 +265,11 @@ function FairyDustCursorImpl({
     gravity,
     fadeSpeed,
     initialVelocity,
+    emitMode,
     spawnEnabled,
+    maxDevicePixelRatio,
+    spawnMinDistance,
+    burstSizeMul,
   };
 
   const resolvedTypes = useMemo(
@@ -304,7 +354,12 @@ function FairyDustCursorImpl({
     if (!context) return;
 
     const { width, height } = canvasSize;
-    const overlayDpr = lottieDevicePixelRatio();
+    const screenDpr = lottieDevicePixelRatio();
+    const dprCap = configRef.current.maxDevicePixelRatio;
+    const overlayDpr =
+      dprCap != null && Number.isFinite(dprCap)
+        ? Math.max(1, Math.min(dprCap, screenDpr))
+        : screenDpr;
     const bufferWidth = Math.max(1, Math.round(width * overlayDpr));
     const bufferHeight = Math.max(1, Math.round(height * overlayDpr));
     if (canvas.width !== bufferWidth) canvas.width = bufferWidth;
@@ -346,7 +401,11 @@ function FairyDustCursorImpl({
       timeMs += dt;
       clearDirty();
 
-      const { particleSize: size, gravity: g, fadeSpeed: fade } = configRef.current;
+      const { particleSize: size, gravity: g, burstSizeMul: burstMul } =
+        configRef.current;
+      // A coin can drift this far past the overlay before it is culled, so a
+      // fast burst doesn't pop out the instant it crosses the edge.
+      const cullPad = size * Math.max(1, burstMul) * 1.4 + 8;
 
       let minX = Infinity;
       let minY = Infinity;
@@ -359,18 +418,21 @@ function FairyDustCursorImpl({
         particle.x += particle.vx;
         particle.y += particle.vy;
         particle.vy += g;
-        particle.lifeSpan *= fade;
 
-        const scale = particle.lifeSpan / PARTICLE_LIFESPAN;
-        if (scale <= MIN_VISIBLE_ALPHA) continue;
+        if (
+          particle.x < -cullPad ||
+          particle.x > width + cullPad ||
+          particle.y < -cullPad ||
+          particle.y > height + cullPad
+        ) {
+          continue;
+        }
 
-        particle.scale = scale;
+        particle.scale = 1;
         particles[write] = particle;
         write += 1;
 
-        context.globalAlpha = scale;
-
-        let drawSize = size * scale;
+        let drawSize = size * particle.sizeMul;
         if (particle.kind === "lottie") {
           const entry = lottieCacheRef.current.get(particle.typeId);
           if (entry?.ready) {
@@ -410,7 +472,6 @@ function FairyDustCursorImpl({
       }
 
       particles.length = write;
-      context.globalAlpha = 1;
 
       if (write > 0) {
         dirtyX = Math.max(0, Math.floor(minX));
@@ -454,15 +515,24 @@ function FairyDustCursorImpl({
       animationFrameId = requestAnimationFrame(animate);
     };
 
-    const spawn = (x: number, y: number) => {
+    const spawn = (x: number, y: number, countOverride?: number, burst = false) => {
       const types = typesRef.current;
       if (types.length === 0) return;
 
-      const { colors: palette, particleCount: count, initialVelocity: velocity } = configRef.current;
-      const spawnCount = Math.min(count, MAX_PARTICLES - particles.length);
+      const {
+        colors: palette,
+        particleCount: count,
+        initialVelocity: velocity,
+        emitMode: mode,
+      } = configRef.current;
+      const want = countOverride ?? count;
+      const spawnCount = Math.min(want, MAX_PARTICLES - particles.length);
 
       for (let i = 0; i < spawnCount; i += 1) {
         const type = types[Math.floor(Math.random() * types.length)];
+        const { vx, vy } = burst
+          ? cursorFxBurstVelocity()
+          : cursorFxSpawnVelocity(mode, velocity);
         particles.push({
           x,
           y,
@@ -470,12 +540,10 @@ function FairyDustCursorImpl({
           kind: type.kind,
           character: type.kind === "emoji" ? type.value : "",
           color: palette[Math.floor(Math.random() * palette.length)],
-          vx:
-            (Math.random() < 0.5 ? -1 : 1) *
-            (Math.random() * (velocity.max - velocity.min) + velocity.min),
-          vy: -(Math.random() * velocity.max),
-          lifeSpan: PARTICLE_LIFESPAN,
+          vx,
+          vy,
           scale: 1,
+          sizeMul: burst ? configRef.current.burstSizeMul : 1,
           animOffset: Math.random(),
         });
       }
@@ -483,23 +551,63 @@ function FairyDustCursorImpl({
       if (spawnCount > 0) ensureRunning();
     };
 
-    const spawnIfMoved = (x: number, y: number) => {
-      if (!configRef.current.spawnEnabled) return;
-      const dx = x - lastPosRef.current.x;
-      const dy = y - lastPosRef.current.y;
-      if (dx * dx + dy * dy <= SPAWN_DISTANCE_SQ) return;
+    const flushPendingBurst = () => {
+      const pending = pendingBurstRef.current;
+      if (pending <= 0) return;
+      pendingBurstRef.current = 0;
+      const x = hasPointerRef.current ? lastPosRef.current.x : width * 0.5;
+      const y = hasPointerRef.current ? lastPosRef.current.y : height * 0.4;
+      spawn(x, y, pending, true);
+    };
+
+    const resetTrailAt = (x: number, y: number) => {
+      hasPointerRef.current = true;
       lastPosRef.current.x = x;
       lastPosRef.current.y = y;
+      trailAnchorRef.current.x = x;
+      trailAnchorRef.current.y = y;
+    };
+
+    const spawnIfMoved = (x: number, y: number) => {
+      hasPointerRef.current = true;
+      lastPosRef.current.x = x;
+      lastPosRef.current.y = y;
+      flushPendingBurst();
+      const anchor = trailAnchorRef.current;
+      const gate = spawnGateRef.current;
+      if (!configRef.current.spawnEnabled || (gate && !gate())) {
+        anchor.x = x;
+        anchor.y = y;
+        return;
+      }
+      const min = configRef.current.spawnMinDistance ?? DEFAULT_SPAWN_MIN_DISTANCE;
+      if (!shouldSpawnFairyDustForMove(x - anchor.x, y - anchor.y, min)) return;
+      anchor.x = x;
+      anchor.y = y;
       spawn(x, y);
     };
 
+    const toLocal = (clientX: number, clientY: number) => {
+      if (!element) return { x: clientX, y: clientY };
+      const rect = targetElement.getBoundingClientRect();
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const p = toLocal(e.clientX, e.clientY);
+      resetTrailAt(p.x, p.y);
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (element) {
-        const rect = targetElement.getBoundingClientRect();
-        spawnIfMoved(e.clientX - rect.left, e.clientY - rect.top);
-      } else {
-        spawnIfMoved(e.clientX, e.clientY);
-      }
+      const p = toLocal(e.clientX, e.clientY);
+      spawnIfMoved(p.x, p.y);
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      const p = toLocal(touch.clientX, touch.clientY);
+      resetTrailAt(p.x, p.y);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
@@ -508,25 +616,37 @@ function FairyDustCursorImpl({
       e.preventDefault();
       const touch = e.touches[0];
       if (!touch) return;
-
-      if (element) {
-        const rect = targetElement.getBoundingClientRect();
-        spawnIfMoved(touch.clientX - rect.left, touch.clientY - rect.top);
-      } else {
-        spawnIfMoved(touch.clientX, touch.clientY);
-      }
+      const p = toLocal(touch.clientX, touch.clientY);
+      spawnIfMoved(p.x, p.y);
     };
 
+    targetElement.addEventListener("mousedown", handleMouseDown);
     targetElement.addEventListener("mousemove", handleMouseMove);
+    targetElement.addEventListener("touchstart", handleTouchStart, { passive: true });
     targetElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    flushBurstApiRef.current = flushPendingBurst;
     if (particles.length > 0) ensureRunning();
+    flushPendingBurst();
 
     return () => {
+      flushBurstApiRef.current = () => undefined;
+      targetElement.removeEventListener("mousedown", handleMouseDown);
       targetElement.removeEventListener("mousemove", handleMouseMove);
+      targetElement.removeEventListener("touchstart", handleTouchStart);
       targetElement.removeEventListener("touchmove", handleTouchMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [element, canvasSize]);
+  }, [element, canvasSize, maxDevicePixelRatio]);
+
+  useEffect(() => {
+    if (!burstNonce || burstNonce === lastBurstNonceRef.current) return;
+    lastBurstNonceRef.current = burstNonce;
+    const count =
+      burstCount ??
+      Math.min(MAX_PARTICLES, Math.max(1, (configRef.current.particleCount || 1) * 3));
+    pendingBurstRef.current = count;
+    flushBurstApiRef.current();
+  }, [burstNonce, burstCount]);
 
   return (
     <canvas

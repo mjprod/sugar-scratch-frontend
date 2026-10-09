@@ -1,0 +1,215 @@
+/* theme.css rules owned by EditProfilePage (lazy route CSS). */
+body[data-theme="v8"] .edit-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+body[data-theme="v8"] .edit-profile-avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+body[data-theme="v8"] .edit-profile-avatar-btn {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .edit-profile-avatar-btn:focus-visible {
+  outline: 2px solid oklch(0.757 0.168 353.61);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+body[data-theme="v8"] .edit-profile-avatar {
+  display: grid;
+  width: 96px;
+  height: 96px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.15);
+  background: linear-gradient(145deg,
+      oklch(0.627 0.233 303.9),
+      oklch(0.359 0.135 278.7));
+  font-size: 40px;
+  box-shadow: 0 10px 28px oklch(0.45 0.18 300 / 0.35);
+}
+
+body[data-theme="v8"] .edit-profile-avatar-option .profile-avatar-img {
+  border-radius: inherit;
+}
+
+body[data-theme="v8"] .edit-profile-avatar-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.18);
+  background: oklch(0.22 0 0 / 0.92);
+  color: oklch(0.92 0.02 0);
+}
+
+body[data-theme="v8"] .edit-profile-change-avatar {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: oklch(0.757 0.168 353.61);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .edit-profile-change-avatar:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+body[data-theme="v8"] .edit-profile-avatar-picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+  margin-top: 4px;
+}
+
+body[data-theme="v8"] .edit-profile-avatar-option {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(1 0 0 / 0.04);
+  font-size: 22px;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+body[data-theme="v8"] .edit-profile-hint {
+  margin: 2px 0 0;
+  color: oklch(1 0 0 / 0.45);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+body[data-theme="v8"] .edit-profile-username-wrap {
+  position: relative;
+  display: block;
+}
+
+body[data-theme="v8"] .edit-profile-at {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: oklch(1 0 0 / 0.45);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .edit-profile-username-input {
+  padding-left: 28px !important;
+}
+
+body[data-theme="v8"] .edit-profile-email-input {
+  color: oklch(1 0 0 / 0.72);
+  cursor: default;
+}
+
+body[data-theme="v8"] .edit-profile-email-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+body[data-theme="v8"] .edit-profile-cta {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  height: 52px;
+  margin-top: 4px;
+  overflow: visible;
+}
+
+body[data-theme="v8"] .edit-profile-discard {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: oklch(0 0 0 / 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+body[data-theme="v8"] .edit-profile-discard-card {
+  width: min(100%, 360px);
+  border-radius: 20px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  background: oklch(0.2 0 0);
+  padding: 20px;
+  box-shadow: 0 18px 48px oklch(0 0 0 / 0.45);
+}
+
+body[data-theme="v8"] .edit-profile-discard-title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+body[data-theme="v8"] .edit-profile-discard-body {
+  margin: 8px 0 0;
+  color: oklch(1 0 0 / 0.55);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body[data-theme="v8"] .edit-profile-discard-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+body[data-theme="v8"] .edit-profile-discard-keep,
+body[data-theme="v8"] .edit-profile-discard-confirm {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .edit-profile-discard-keep {
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.88);
+}
+
+body[data-theme="v8"] .edit-profile-discard-confirm {
+  background: oklch(0.4 0.12 25 / 0.9);
+  border-color: oklch(0.711 0.166 22.22 / 0.45);
+  color: oklch(0.94 0.03 18);
+}

@@ -61,26 +61,71 @@ export function stripPackFaceAlbedo(material: TexturableMaterial) {
   }
 }
 
-/** Deep-clone a GLB scene with independent materials per instance. */
+let packInstanceSeq = 0
+
+function nextPackInstanceId(): number {
+  packInstanceSeq += 1
+  return packInstanceSeq
+}
+
+function cloneMaterialSlot(material: Material, ownerId: number): Material {
+  const unique = material.clone()
+  unique.userData.packInstanceId = ownerId
+  return unique
+}
+
+/** Scene graph clone that shares geometry. Only the pack-face material is unique. */
 export function cloneSceneWithMaterials(sourceScene: Group | Object3D): Group {
   const cloned = sourceScene.clone(true) as Group
+  const ownerId = nextPackInstanceId()
+  cloned.userData.packInstanceId = ownerId
+  const face = resolveTargetMaterial(cloned)
+  if (!face) return cloned
 
+  const uniqueFace = cloneMaterialSlot(face, ownerId)
   cloned.traverse((object) => {
     const mesh = object as Mesh
     if (!mesh.isMesh) return
 
     if (Array.isArray(mesh.material)) {
-      mesh.material = mesh.material.map((material) => material.clone())
+      mesh.material = mesh.material.map((material) =>
+        material === face ? uniqueFace : material,
+      )
       return
     }
 
-    mesh.material = mesh.material.clone()
+    if (mesh.material === face) {
+      mesh.material = uniqueFace
+    }
   })
 
-  const face = resolveTargetMaterial(cloned)
-  if (face) stripPackFaceAlbedo(face)
-
+  stripPackFaceAlbedo(uniqueFace as TexturableMaterial)
   return cloned
+}
+
+function packOwnerId(mesh: Mesh): number | undefined {
+  let node: Object3D | null = mesh
+  while (node) {
+    const id = node.userData.packInstanceId
+    if (typeof id === 'number') return id
+    node = node.parent
+  }
+  return undefined
+}
+
+/** Clone a mesh material the first time this instance writes opacity. */
+export function uniquifyMeshMaterial(mesh: Mesh, material: Material): Material {
+  const ownerId = packOwnerId(mesh)
+  if (ownerId != null && material.userData.packInstanceId === ownerId) {
+    return material
+  }
+  const unique = cloneMaterialSlot(material, ownerId ?? nextPackInstanceId())
+  if (Array.isArray(mesh.material)) {
+    mesh.material = mesh.material.map((slot) => (slot === material ? unique : slot))
+  } else {
+    mesh.material = unique
+  }
+  return unique
 }
 
 export function collectStandardMaterials(
