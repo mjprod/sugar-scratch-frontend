@@ -42,12 +42,14 @@ body[data-theme="v8"] .cpv2-profile-pin {
 
 @media (min-width: 768px) and (max-width: 1023px) {
   body[data-theme="v8"] .cpv2-profile-pin {
+    top: calc(var(--app-diamond-offset, 64px) - 3px);
     width: min(calc(100% - 40px), var(--app-content-max));
   }
 }
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .cpv2-profile-pin {
+    top: calc(var(--app-diamond-offset, 64px) - 3px);
     width: min(calc(100% - 64px), var(--app-content-max));
   }
 }
@@ -373,7 +375,7 @@ body[data-theme="v8"] .cpv2-profile-card-handle {
 body[data-theme="v8"] .cpv2-profile-card-location {
   margin: 0;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.24px;
   line-height: 1.2;
@@ -388,6 +390,13 @@ body[data-theme="v8"] .cpv2-profile-card-socials {
   padding: 0;
   list-style: none;
   justify-self: end;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .cpv2-profile-card-socials {
+    grid-template-columns: repeat(3, 32px);
+    grid-template-rows: 32px;
+  }
 }
 
 body[data-theme="v8"] .cpv2-profile-card-social {
