@@ -6383,6 +6383,26 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   outline: none;
 }
 
+.wallet-balances-popover.is-diamonds-only {
+  width: 5rem;
+  min-width: 5rem;
+  max-width: min(5rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.55rem;
+  transform-origin: 100% 0;
+}
+
+.wallet-balances-popover.is-diamonds-only::before {
+  left: calc(50% + 18px);
+}
+
+.wallet-balances-popover.is-diamonds-only .wallet-balances-popover__row--diamonds {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+  height: auto;
+}
+
 .wallet-balances-popover__row {
   display: flex;
   align-items: center;

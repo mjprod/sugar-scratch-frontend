@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { m } from "framer-motion";
 import { X } from "lucide-react";
@@ -42,15 +42,33 @@ function PhotoCardsExpandIcon() {
   return (
     <svg
       aria-hidden="true"
-      width="16"
-      height="16"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
-      className="block size-4 shrink-0 text-white"
+      className="block size-[18px] shrink-0 text-white"
     >
       <path
         fill="currentColor"
         d="M18.25 3H5.75A2.755 2.755 0 0 0 3 5.75v12.5A2.755 2.755 0 0 0 5.75 21h12.5A2.755 2.755 0 0 0 21 18.25V5.75A2.755 2.755 0 0 0 18.25 3M11 17v1.5H6.75c-.69 0-1.25-.56-1.25-1.25V13H7v2.94l3.22-3.22l1.06 1.06L8.06 17zm7.5-6H17V8.06l-3.22 3.22l-1.06-1.06L15.94 7H13V5.5h4.25c.69 0 1.25.56 1.25 1.25z"
+      />
+    </svg>
+  );
+}
+
+function PhotoCardsContractIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      xmlns="http://www.w3.org/2000/svg"
+      className="block size-[18px] shrink-0 text-white"
+    >
+      <path
+        fill="currentColor"
+        d="M13.69,2.25H4.31c-1.14,0-2.06.92-2.06,2.06v9.38c0,1.14.92,2.06,2.06,2.06h9.38c1.14,0,2.06-.92,2.06-2.06V4.31c0-1.14-.92-2.06-2.06-2.06M4.34,10.67v-1.12h3.19c.52,0,.94.42.94.94v3.19h-1.12v-2.21l-2.42,2.42-.8-.8,2.42-2.41h-2.2ZM9.54,4.34h1.12v2.2l2.42-2.42.8.79-2.42,2.42h2.2v1.12h-3.19c-.52,0-.94-.42-.94-.94v-3.19Z"
       />
     </svg>
   );
@@ -89,8 +107,71 @@ function PhotoCardStrip({
   cards: StaticCarouselItem[];
   animate?: boolean;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startScroll: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || event.pointerType !== "mouse") return;
+    const el = scrollerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth + 1) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScroll: el.scrollLeft,
+      moved: false,
+    };
+    el.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const el = scrollerRef.current;
+    if (!drag || !el || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    if (!drag.moved && Math.abs(dx) <= 4) return;
+    drag.moved = true;
+    suppressClickRef.current = true;
+    el.classList.add("is-dragging");
+    el.scrollLeft = drag.startScroll - dx;
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    const el = scrollerRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    el?.classList.remove("is-dragging");
+    if (el?.hasPointerCapture(event.pointerId)) {
+      el.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function onClickCapture(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!suppressClickRef.current) return;
+    suppressClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   return (
-    <div className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto">
+    <div
+      ref={scrollerRef}
+      className="static-carousel__scroller flex w-full items-start gap-2 overflow-x-auto"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={(event) => {
+        suppressClickRef.current = false;
+        endDrag(event);
+      }}
+      onClickCapture={onClickCapture}
+    >
       {cards.map((item, index) => (
         <m.div
           key={item.id}
@@ -257,6 +338,16 @@ export function StaticCarousel({
                 className="static-carousel-overlay__panel static-carousel static-carousel--expanded"
                 onClick={(event) => event.stopPropagation()}
               >
+                <div className="flex w-full justify-end">
+                  <button
+                    type="button"
+                    className="static-carousel__expand"
+                    aria-label="Close photo cards"
+                    onClick={closeOverlay}
+                  >
+                    <PhotoCardsContractIcon />
+                  </button>
+                </div>
                 <div className="flex w-full items-center justify-between">
                   <div className="flex items-center gap-1">
                     <PhotoCardsIcon />

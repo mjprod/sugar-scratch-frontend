@@ -32,6 +32,7 @@ import {
 } from "./glRenderer";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageCoinCount } from "../StageCoinCount";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import {
@@ -839,7 +840,7 @@ function motionStatusLabel(status: string) {
 export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
   const { authed, bumpInventoryRevision } = useAuth();
-  const { addCoins, addDiamonds } = useWallet();
+  const { addCoins, addDiamonds, coins, diamonds } = useWallet();
   /** Server-issued scratch hand — required to persist 10% coin awards. */
   const handIdRef = useRef("");
   const handCardIdRef = useRef<string | null>(null);
@@ -3619,7 +3620,18 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                   </button>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end" />
+              <div className="stage-game__top-chrome-side is-end">
+                {topBarPhase === "docked" ? (
+                  <div className="stage-game__diamond-enter">
+                    <CurrencyBalances
+                      coins={coins}
+                      diamonds={diamonds}
+                      compact
+                      diamondsOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className="stage-game__top-chrome-row is-status">
               <div className="stage-game__top-chrome-status-cards">
@@ -3674,7 +3686,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                     Free play · no rewards
                   </span>
                 ) : null}
-                {coinBadge.shown ? (
+                {coinBadge.shown && topBarPhase === "docked" ? (
                   <div
                     key={coinBadge.enterKey}
                     className={[

@@ -51,7 +51,6 @@ import {
   packUnitCost,
   resolvePurchasePackId,
   submitLinearPackPurchase,
-  isJulianaCoverflowBuyAb,
   type CatalogPackProduct,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
@@ -279,20 +278,6 @@ function iterationsFromFeatured(
   }
 
   return { items, playById };
-}
-
-function iterationIsJuliana(
-  item: Iteration,
-  target: FeaturedCoverFlowPlayTarget | null,
-) {
-  return (
-    isJulianaCoverflowBuyAb(item.characterId) ||
-    isJulianaCoverflowBuyAb(item.id) ||
-    isJulianaCoverflowBuyAb(target?.id) ||
-    isJulianaCoverflowBuyAb(target?.foilId) ||
-    isJulianaCoverflowBuyAb(item.girlName) ||
-    isJulianaCoverflowBuyAb(target?.creatorName)
-  );
 }
 
 function HeroDebugField({
@@ -852,9 +837,7 @@ export function FeaturedCoverFlow({
     );
   }
 
-  const focusedIsJuliana = focusedItem
-    ? iterationIsJuliana(focusedItem, resolveTarget(focusedItem))
-    : false;
+  const focusedIsJuliana = true;
 
   return (
     <>
@@ -885,13 +868,7 @@ export function FeaturedCoverFlow({
             }
           }}
           onBuy={(item, quantity) => {
-            if (iterationIsJuliana(item, resolveTarget(item))) {
-              void handleBuyPack(item, quantity ?? 1);
-              return;
-            }
-            /* Rosa / others: Buy Pack opens the quantity modal. */
-            setQtyModalQuantity(1);
-            setQtyModalItem(item);
+            void handleBuyPack(item, quantity ?? 1);
           }}
           onAddToPocket={focusedIsJuliana ? handleAddToPocket : undefined}
         />

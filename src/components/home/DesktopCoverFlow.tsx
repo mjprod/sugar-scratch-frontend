@@ -32,6 +32,8 @@ export type HomeCoverFlowViewProps = {
   confirmBuy?: boolean;
   /** When true, stage uses influencer API image backdrop (cover/swipe poster). */
   influencerBackdrop?: boolean;
+  /** Collection continue: play-only squircle under the pack number. */
+  playOnlyCta?: boolean;
   onSelect: (id: string) => void;
   onDeselect: () => void;
   onFocusChange: (item: Iteration | null) => void;
@@ -61,6 +63,7 @@ export function DesktopCoverFlow({
   showCenterGuide = false,
   confirmBuy = true,
   influencerBackdrop = false,
+  playOnlyCta = false,
   onSelect,
   onDeselect,
   onFocusChange,
@@ -118,6 +121,7 @@ export function DesktopCoverFlow({
         <CoverFlowCarousel
           preset={HOME_COVERFLOW_PRESET}
           disablePackOpenReveal
+          playOnlyCta={playOnlyCta}
           items={items}
           selectedId={selectedId}
           onSelect={onSelect}

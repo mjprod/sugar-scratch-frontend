@@ -223,6 +223,7 @@ import {
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
+import { CurrencyBalances } from "@/components/CurrencyBalances";
 import {
   MirrorSlideTransition,
   nextTemplateId,
@@ -1402,7 +1403,7 @@ export function ScratchPrototype({
   onRevealedSymbolsChange?: (count: number) => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins } = useWallet();
+  const { addCoins, coins, diamonds } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
@@ -5905,7 +5906,18 @@ export function ScratchPrototype({
                   </div>
                 ) : null}
               </div>
-              <div className="stage-game__top-chrome-side is-end" />
+              <div className="stage-game__top-chrome-side is-end">
+                {topBarPhase === "docked" ? (
+                  <div className="stage-game__diamond-enter">
+                    <CurrencyBalances
+                      coins={coins}
+                      diamonds={diamonds}
+                      compact
+                      diamondsOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}
             <div className="stage-game__top-chrome-row is-status">
@@ -6003,7 +6015,7 @@ export function ScratchPrototype({
                     Free play · no rewards
                   </span>
                 ) : null}
-                {coinBadgeShown ? (
+                {coinBadgeShown && topBarPhase === "docked" ? (
                   <div
                     key={coinBadgeEnterKey}
                     className={[

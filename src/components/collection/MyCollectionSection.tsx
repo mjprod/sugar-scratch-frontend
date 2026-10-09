@@ -135,9 +135,14 @@ export function MyCollectionSection({
   }, [creators, sort]);
 
   const visibleCreators = useMemo(() => {
-    if (creatorFilter === "all") return sortedCreators;
-    return sortedCreators.filter((creator) => creator.id === creatorFilter);
-  }, [sortedCreators, creatorFilter]);
+    // Local ledger can still name retired fixtures (ep1 / Neon Rain). Only
+    // creators that exist on GET /api/models belong on this list.
+    const known = sortedCreators.filter(
+      (creator) => modelByCreator.get(creator.id) != null,
+    );
+    if (creatorFilter === "all") return known;
+    return known.filter((creator) => creator.id === creatorFilter);
+  }, [sortedCreators, creatorFilter, modelByCreator]);
 
   const creatorFilterLabel =
     creatorFilter === "all"

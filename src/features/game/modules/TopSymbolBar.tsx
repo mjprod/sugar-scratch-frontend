@@ -1440,7 +1440,11 @@ export function TopSymbolBar({
         : null}
       {scratchTextPlay && particleHost
         ? createPortal(
-            <div className="scratch-text-lottie" aria-hidden="true">
+            <div
+              className="scratch-text-lottie"
+              aria-hidden="true"
+              style={{ pointerEvents: "none" }}
+            >
               <DotLottieReact
                 key={`scratch-text-${roundKey}`}
                 src={SCRATCH_TEXT_LOTTIE_SRC}
@@ -1448,6 +1452,11 @@ export function TopSymbolBar({
                 loop={false}
                 className="scratch-text-lottie-player"
                 renderConfig={lottieRenderConfig({ autoResize: false })}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                }}
               />
             </div>,
             particleHost,

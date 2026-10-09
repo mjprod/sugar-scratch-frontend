@@ -184,49 +184,53 @@ export function CreatorHeader({
       >
         <ProfileCardBackground coverUrl={coverUrl} />
 
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={onBack}
-          className={`cpv2-profile-card-back ${GLASS_PILL}`}
-        >
-          <ChevronLeft className="size-5" strokeWidth={2.2} />
-        </button>
+        <div className="cpv2-profile-card-toolbar">
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={onBack}
+            className={`cpv2-profile-card-back ${GLASS_PILL}`}
+          >
+            <ChevronLeft className="size-5" strokeWidth={2.2} />
+          </button>
 
-        <div className="cpv2-profile-card-actions">
-          {onToggleFollow ? (
-            <button
-              type="button"
-              className={[
-                "cpv2-profile-card-follow",
-                GLASS_PILL,
-                following ? "is-following" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-pressed={following}
-              onClick={onToggleFollow}
-            >
-              {following ? "Following" : "Follow"}
-            </button>
-          ) : null}
+          <div className="cpv2-profile-card-actions">
+            {onToggleFollow ? (
+              <button
+                type="button"
+                className={[
+                  "cpv2-profile-card-follow",
+                  GLASS_PILL,
+                  following ? "is-following" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-pressed={following}
+                onClick={onToggleFollow}
+              >
+                {following ? "Following" : "Follow"}
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="cpv2-profile-card-body">
-          <div className="cpv2-profile-card-avatar">
-            {/* Always the stable creator avatar — never theme/cover swaps. */}
-            <img src={avatarSrc} alt="" decoding="async" />
-          </div>
-          <div className="cpv2-profile-card-meta">
-            <div className="cpv2-profile-card-identity">
-              <h1 className="cpv2-profile-card-name">{name}</h1>
-              {username ? (
-                <p className="cpv2-profile-card-handle">{username}</p>
-              ) : null}
+          <div className="cpv2-profile-card-row">
+            <div className="cpv2-profile-card-main">
+              <div className="cpv2-profile-card-avatar">
+                {/* Always the stable creator avatar — never theme/cover swaps. */}
+                <img src={avatarSrc} alt="" decoding="async" />
+              </div>
+              <div className="cpv2-profile-card-identity">
+                <h1 className="cpv2-profile-card-name">{name}</h1>
+                {username ? (
+                  <p className="cpv2-profile-card-handle">{username}</p>
+                ) : null}
+                {location ? (
+                  <p className="cpv2-profile-card-location">{location}</p>
+                ) : null}
+              </div>
             </div>
-            {location ? (
-              <p className="cpv2-profile-card-location">{location}</p>
-            ) : null}
             <ul className="cpv2-profile-card-socials" aria-label="Social links">
               <li>
                 <span className="cpv2-profile-card-social" aria-hidden="true">

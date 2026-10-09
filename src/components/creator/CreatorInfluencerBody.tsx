@@ -231,30 +231,34 @@ export function CreatorInfluencerBody({
       >
         <h3 className="cpv2-progress-title">Collection Progress</h3>
         <ul className="cpv2-progress-list">
-          {loading && themes.length === 0
-            ? Array.from({ length: 4 }, (_, i) => (
-                <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
-              ))
-            : themes.map((theme) => {
-                const pct =
-                  theme.total > 0
-                    ? Math.min(
-                        100,
-                        Math.round((theme.collected / theme.total) * 100),
-                      )
-                    : 0;
-                return (
-                  <li key={theme.id} className="cpv2-progress-row">
-                    <span className="cpv2-progress-label">{theme.name}</span>
-                    <div className="cpv2-progress-track">
-                      <span
-                        className="cpv2-progress-fill"
-                        style={{ width: `${showPersonalProgress ? pct : 0}%` }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
+          <li className="cpv2-progress-themes">
+            <ul className="cpv2-progress-grid">
+              {loading && themes.length === 0
+                ? Array.from({ length: 4 }, (_, i) => (
+                    <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
+                  ))
+                : themes.map((theme) => {
+                    const pct =
+                      theme.total > 0
+                        ? Math.min(
+                            100,
+                            Math.round((theme.collected / theme.total) * 100),
+                          )
+                        : 0;
+                    return (
+                      <li key={theme.id} className="cpv2-progress-row">
+                        <span className="cpv2-progress-label">{theme.name}</span>
+                        <div className="cpv2-progress-track">
+                          <span
+                            className="cpv2-progress-fill"
+                            style={{ width: `${showPersonalProgress ? pct : 0}%` }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+            </ul>
+          </li>
           <li className="cpv2-progress-row is-total">
             <span className="cpv2-progress-label">Total</span>
             <div className="cpv2-progress-track">
@@ -613,7 +617,9 @@ function ThemeCollectionCard({
 
   return (
     <section
-      className="cpv2-theme-card"
+      className={["cpv2-theme-card", freePlay ? "is-free-play" : ""]
+        .filter(Boolean)
+        .join(" ")}
       id={`creator-theme-${theme.id}`}
       aria-label={theme.name}
     >

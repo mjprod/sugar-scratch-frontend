@@ -1,5 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  DesktopCoverFlow,
+  HOME_COVERFLOW_CAMERA,
+} from "@/components/home/DesktopCoverFlow";
 import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
 import {
   packItemToIteration,
@@ -88,12 +92,14 @@ export function ReadyToReveal({
     [scratchGroups, inventoryRevision],
   );
 
-  const tiles = useMemo<ContinueTile[]>(() => {
-    const packTiles: ContinueTile[] = packs.map((pack) => {
+  const tiles = useMemo(() => {
+    const packTiles = packs.map((pack) => {
       const model = matchModel(models, {
         packId: pack.catalogPackId ?? pack.id,
         name: pack.creator,
       });
+      // Retired local fixtures (ep1 / Neon Rain) are not in GET /api/models.
+      if (!model) return null;
       const foilHints = {
         packId: pack.catalogPackId ?? pack.id,
         packName: pack.name,
@@ -132,11 +138,12 @@ export function ReadyToReveal({
       };
     });
 
-    const cardTiles: ContinueTile[] = scratches.map((group) => {
+    const cardTiles = scratches.map((group) => {
       const model = matchModel(models, {
         packId: group.id.replace(/^(photo|motion):/, ""),
         name: group.creatorName,
       });
+      if (!model) return null;
       const foilHints = {
         packId: group.id.replace(/^(photo|motion):/, ""),
         packName: group.collectionName,
@@ -176,7 +183,9 @@ export function ReadyToReveal({
       };
     });
 
-    return [...packTiles, ...cardTiles];
+    return [...packTiles, ...cardTiles].flatMap((tile) =>
+      tile ? [tile] : [],
+    );
   }, [packs, scratches, models, onOpenPack, onScratch]);
 
   // Hide the whole continue card when there is nothing to open or play,
@@ -215,6 +224,26 @@ function tileToIteration(tile: ContinueTile): Iteration {
   });
 }
 
+const CONTINUE_DESKTOP_QUERY = "(min-width: 1024px)";
+
+function useContinueDesktop() {
+  const [desktop, setDesktop] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(CONTINUE_DESKTOP_QUERY).matches,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(CONTINUE_DESKTOP_QUERY);
+    const apply = () => setDesktop(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  return desktop;
+}
+
 function ContinueSection({
   tiles,
   revealPacks,
@@ -229,6 +258,7 @@ function ContinueSection({
   inventoryRevision: number;
 }) {
   const items = useMemo(() => tiles.map(tileToIteration), [tiles]);
+  const desktop = useContinueDesktop();
   const activateById = useMemo(() => {
     const map = new Map(tiles.map((tile) => [tile.id, tile.onActivate]));
     return (item: Iteration) => {
@@ -266,11 +296,28 @@ function ContinueSection({
         </h2>
         {items.length > 0 ? (
           <div className="mc-continue-carousel">
-            <MobileCssCarousel
-              items={items}
-              compact
-              onSelect={activateById}
-            />
+            {desktop ? (
+              <DesktopCoverFlow
+                items={items}
+                selectedId={null}
+                glow="oklch(0.798 0.104 207.84)"
+                playOnlyCta
+                cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
+                buying={false}
+                addedToPocket={false}
+                confirmBuy={false}
+                onSelect={() => {}}
+                onDeselect={() => {}}
+                onFocusChange={() => {}}
+                onBuy={activateById}
+              />
+            ) : (
+              <MobileCssCarousel
+                items={items}
+                compact
+                onSelect={activateById}
+              />
+            )}
           </div>
         ) : (
           <div className="mc-continue-row" role="list" />

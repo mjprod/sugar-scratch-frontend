@@ -62,6 +62,9 @@ export function CurrencyBalances({
   diamonds,
   onOpenStore: _onOpenStore,
   storeActive = false,
+  interactive = true,
+  compact = false,
+  diamondsOnly = false,
 }: {
   coins: number | null;
   diamonds: number | null;
@@ -69,6 +72,12 @@ export function CurrencyBalances({
   onOpenStore?: () => void;
   /** Subtle contextual highlight while Store is open. */
   storeActive?: boolean;
+  /** False keeps the count visible without the wallet / conversion popup. */
+  interactive?: boolean;
+  /** Icon only — used by the game HUD. */
+  compact?: boolean;
+  /** Popup shows the diamond balance only, no dust or convert. */
+  diamondsOnly?: boolean;
 }) {
   const { coins: walletCoins, diamonds: walletDiamonds, applyWallet } =
     useWallet();
@@ -99,6 +108,7 @@ export function CurrencyBalances({
 
   useEffect(() => {
     function onWalletReveal(event: Event) {
+      if (!interactive) return;
       const detail = (event as CustomEvent<WalletRevealDetail>).detail;
       const coins = detail?.coins ?? 0;
       if (!detail || detail.handled || !(coins > 0)) return;
@@ -118,7 +128,7 @@ export function CurrencyBalances({
     return () => {
       window.removeEventListener(WALLET_REVEAL_EVENT, onWalletReveal);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot listener; uses refs/stable setters
+  }, [interactive]);
 
   function clearReceiptTimer() {
     if (receiptTimerRef.current != null) {
@@ -199,14 +209,17 @@ export function CurrencyBalances({
         autoplay
         aria-hidden
       />
-      <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
-        {diamondLabel}
-      </span>
+      {compact ? null : (
+        <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
+          {diamondLabel}
+        </span>
+      )}
     </>
   );
 
   const diamondActionClass = [
     "top-nav-resource top-nav-resource--action top-nav-resource--diamond inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-1.5 transition active:scale-95",
+    compact ? "is-compact" : "",
     storeActive ? "top-nav-resource--store-active" : "",
     walletOpen && !walletLeaving ? "is-wallet-open" : "",
   ]
@@ -218,34 +231,50 @@ export function CurrencyBalances({
       className="top-nav-resources flex min-w-0 shrink-0 items-center gap-2"
       aria-live="polite"
     >
-      <button
-        type="button"
-        ref={diamondAnchorRef as RefObject<HTMLButtonElement>}
-        onClick={toggleWallet}
-        aria-label={`${diamondLabel} Diamonds, wallet details`}
-        aria-haspopup="dialog"
-        aria-expanded={walletOpen && !walletLeaving}
-        aria-controls="top-nav-wallet-balances"
-        className={diamondActionClass}
-      >
-        {diamondInner}
-      </button>
+      {interactive ? (
+        <button
+          type="button"
+          ref={diamondAnchorRef as RefObject<HTMLButtonElement>}
+          onClick={toggleWallet}
+          aria-label={
+            diamondsOnly
+              ? `${diamondLabel} Diamonds`
+              : `${diamondLabel} Diamonds, wallet details`
+          }
+          aria-haspopup="dialog"
+          aria-expanded={walletOpen && !walletLeaving}
+          aria-controls="top-nav-wallet-balances"
+          className={diamondActionClass}
+        >
+          {diamondInner}
+        </button>
+      ) : (
+        <span
+          className={diamondActionClass}
+          aria-label={`${diamondLabel} Diamonds`}
+        >
+          {diamondInner}
+        </span>
+      )}
 
-      <WalletBalancesPopover
-        open={walletOpen}
-        leaving={walletLeaving}
-        diamonds={diamonds}
-        coins={coins}
-        coinReceipt={receiptCoins}
-        anchorRef={diamondAnchorRef}
-        onClose={closeWallet}
-        onLeaveEnd={() => {
-          const epoch = activeLeaveEpochRef.current;
-          if (epoch == null) return;
-          completeLeave(epoch);
-        }}
-        onConvertDust={handleConvertDust}
-      />
+      {interactive ? (
+        <WalletBalancesPopover
+          open={walletOpen}
+          leaving={walletLeaving}
+          diamonds={diamonds}
+          coins={coins}
+          coinReceipt={receiptCoins}
+          anchorRef={diamondAnchorRef}
+          onClose={closeWallet}
+          onLeaveEnd={() => {
+            const epoch = activeLeaveEpochRef.current;
+            if (epoch == null) return;
+            completeLeave(epoch);
+          }}
+          onConvertDust={diamondsOnly ? undefined : handleConvertDust}
+          diamondsOnly={diamondsOnly}
+        />
+      ) : null}
     </div>
   );
 }

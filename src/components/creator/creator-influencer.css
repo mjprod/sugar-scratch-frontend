@@ -1,5 +1,17 @@
 /* InnerInfluencer (Figma 93:144) — creator profile page */
 
+@property --cpv2-theme-stop-start {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: rgba(170, 170, 170, 0.25);
+}
+
+@property --cpv2-theme-stop-end {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: rgba(169, 169, 169, 0.25);
+}
+
 body[data-theme="v8"] .cpv2-influencer {
   display: flex;
   flex-direction: column;
@@ -30,12 +42,14 @@ body[data-theme="v8"] .cpv2-profile-pin {
 
 @media (min-width: 768px) and (max-width: 1023px) {
   body[data-theme="v8"] .cpv2-profile-pin {
+    top: calc(var(--app-diamond-offset, 64px) - 3px);
     width: min(calc(100% - 40px), var(--app-content-max));
   }
 }
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .cpv2-profile-pin {
+    top: calc(var(--app-diamond-offset, 64px) - 3px);
     width: min(calc(100% - 64px), var(--app-content-max));
   }
 }
@@ -207,11 +221,19 @@ body[data-theme="v8"] .cpv2-profile-card-glow {
   pointer-events: none;
 }
 
-body[data-theme="v8"] .cpv2-profile-card-back {
+body[data-theme="v8"] .cpv2-profile-card-toolbar {
   position: absolute;
   top: 12px;
   left: 9px;
+  right: 12px;
   z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-back {
   display: grid;
   place-items: center;
   width: 38px;
@@ -233,15 +255,10 @@ body[data-theme="v8"] .cpv2-profile-card-back {
 }
 
 body[data-theme="v8"] .cpv2-profile-card-actions {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
   display: flex;
   align-items: center;
   gap: 7px;
   height: 38px;
-  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-actions > * {
@@ -281,10 +298,25 @@ body[data-theme="v8"] .cpv2-profile-card-body {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 16px;
   height: 100%;
-  padding: 58px 16px 14px 32px;
+  padding: 58px 12px 14px 9px;
   box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-avatar {
@@ -343,18 +375,28 @@ body[data-theme="v8"] .cpv2-profile-card-handle {
 body[data-theme="v8"] .cpv2-profile-card-location {
   margin: 0;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.24px;
   line-height: 1.2;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-socials {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 32px);
+  grid-template-rows: repeat(2, 32px);
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
+  justify-self: end;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .cpv2-profile-card-socials {
+    grid-template-columns: repeat(3, 32px);
+    grid-template-rows: 32px;
+  }
 }
 
 body[data-theme="v8"] .cpv2-profile-card-social {
@@ -529,6 +571,35 @@ body[data-theme="v8"] .cpv2-progress-list {
   list-style: none;
 }
 
+/* Desktop prefers 3 columns; the floor drops to 2, then 1, when a row can't fit. */
+body[data-theme="v8"] .cpv2-progress-themes {
+  display: block;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: cpv2-progress;
+}
+
+body[data-theme="v8"] .cpv2-progress-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container cpv2-progress (min-width: 520px) {
+  body[data-theme="v8"] .cpv2-progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container cpv2-progress (min-width: 760px) {
+  body[data-theme="v8"] .cpv2-progress-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 body[data-theme="v8"] .cpv2-progress-row {
   display: flex;
   align-items: center;
@@ -544,8 +615,9 @@ body[data-theme="v8"] .cpv2-progress-row.is-skeleton {
 }
 
 body[data-theme="v8"] .cpv2-progress-label {
-  flex: 0 0 109px;
-  width: 109px;
+  flex: 0 1 60px;
+  width: auto;
+  max-width: 60px;
   color: #fff;
   font-size: 12px;
   font-weight: 500;
@@ -618,14 +690,27 @@ body[data-theme="v8"] .cpv2-theme-card {
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 16px;
   box-sizing: border-box;
-  /* Figma 126:3380 glass plate */
+  --cpv2-theme-stop-start: rgba(170, 170, 170, 0.25);
+  --cpv2-theme-stop-end: rgba(169, 169, 169, 0.25);
+  transition:
+    --cpv2-theme-stop-start 300ms cubic-bezier(0.77, 0, 0.175, 1),
+    --cpv2-theme-stop-end 300ms cubic-bezier(0.77, 0, 0.175, 1),
+    border-color 300ms cubic-bezier(0.77, 0, 0.175, 1);
+  /* Figma 126:3380 glass plate. Stops are registered colors so free play can interpolate. */
   background-image: linear-gradient(
     238deg,
-    rgba(170, 170, 170, 0.25) 0%,
+    var(--cpv2-theme-stop-start) 0%,
     rgba(68, 68, 68, 0.1) 24%,
     rgba(0, 0, 0, 0.3) 50%,
-    rgba(169, 169, 169, 0.25) 85%
+    var(--cpv2-theme-stop-end) 85%
   );
+}
+
+body[data-theme="v8"] .cpv2-theme-card.is-free-play {
+  border-width: 1px;
+  border-color: #d4145a;
+  --cpv2-theme-stop-start: oklch(0.51 0.23 4.89 / 0.5);
+  --cpv2-theme-stop-end: oklch(0.65 0.3 28.96 / 0.2);
 }
 
 /* Figma 126:3345 — bottom-left glow group (two blurred ellipses). */
@@ -1922,5 +2007,9 @@ body[data-theme="v8"] .cpv2-skeleton-theme {
   body[data-theme="v8"] .cpv2-skeleton-avatar,
   body[data-theme="v8"] .cpv2-skeleton-back {
     animation: none;
+  }
+
+  body[data-theme="v8"] .cpv2-theme-card {
+    transition: none;
   }
 }
