@@ -12,6 +12,8 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
+import { PackPreview } from "@/components/pack-preview/PackPreview";
+import "@/components/pack-preview/PackPreview.css";
 import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import {
   feedLikeCount,
@@ -448,62 +450,6 @@ export function CreatorFeedCard({
           >
             {following ? "Following" : "Follow"}
           </button>
-          <div className="hf-name-row">
-            {canOpenCreator ? (
-              <button
-                type="button"
-                className="hf-creator hf-creator--link"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenCreator?.(item.creatorId);
-                }}
-              >
-                {item.creatorName}
-              </button>
-            ) : (
-              <h2 className="hf-creator">{item.creatorName}</h2>
-            )}
-          </div>
-          {tags.length > 0 ? (
-            <ul className="hf-tags" aria-label="Pack tags">
-              {tags.map((tag) => (
-                <li key={tag} className="hf-tag">
-                  {tag}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-
-        <div className="hf-actions">
-          <div className="hf-buy">
-            <CtaButton
-              {...ctaButtonPropsFromTemplate(buyCta)}
-              fillParent
-              label="Buy Pack"
-              costAmount={item.diamondCost}
-              fontSize={15}
-              /* Hairline on-button ring (iOS-safe stroke layer). */
-              strokeWidth={1}
-              /*
-                Viewport-scoped motion:
-                - active + warm neighbors when settled: aurora / particles / orbit
-                - while scrubbing: pause CTA shaders (video decode already busy)
-                - far slides: static CTA only
-                - diamond Lottie stays active-only (heavier wasm loop)
-              */
-              glowOuterBloom={ctaMotionLive ? "lite" : "off"}
-              glowAlwaysOn={ctaMotionLive}
-              auroraPaused={skipAurora}
-              costIconAnimated={active && !reducedMotion}
-              aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onBuy();
-              }}
-            />
-          </div>
-
           <div className="hf-like-wrap">
             <button
               ref={likeBtnRef}
@@ -539,6 +485,77 @@ export function CreatorFeedCard({
             <span className="hf-like-caption" aria-hidden="true">
               {likeCountLabel}
             </span>
+          </div>
+          <div className="hf-name-row">
+            {canOpenCreator ? (
+              <button
+                type="button"
+                className="hf-creator hf-creator--link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCreator?.(item.creatorId);
+                }}
+              >
+                {item.creatorName}
+              </button>
+            ) : (
+              <h2 className="hf-creator">{item.creatorName}</h2>
+            )}
+          </div>
+          {tags.length > 0 ? (
+            <ul className="hf-tags" aria-label="Pack tags">
+              {tags.map((tag) => (
+                <li key={tag} className="hf-tag">
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        <div className="hf-actions">
+          <div
+            className={[
+              "hf-buy",
+              item.packPosters.length >= 2 ? "has-pack-preview" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <CtaButton
+              {...ctaButtonPropsFromTemplate(buyCta)}
+              fillParent
+              label="Buy Pack"
+              costAmount={item.diamondCost}
+              fontSize={15}
+              /* Hairline on-button ring (iOS-safe stroke layer). */
+              strokeWidth={1}
+              /*
+                Viewport-scoped motion:
+                - active + warm neighbors when settled: aurora / particles / orbit
+                - while scrubbing: pause CTA shaders (video decode already busy)
+                - far slides: static CTA only
+                - diamond Lottie stays active-only (heavier wasm loop)
+              */
+              glowOuterBloom={ctaMotionLive ? "lite" : "off"}
+              glowAlwaysOn={ctaMotionLive}
+              auroraPaused={skipAurora}
+              costIconAnimated={active && !reducedMotion}
+              aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuy();
+              }}
+            />
+          </div>
+          <div className="hf-pack-slot" aria-hidden={item.packPosters.length < 2}>
+            {item.packPosters.length >= 2 ? (
+              <PackPreview
+                left={item.packPosters[0]!}
+                right={item.packPosters[1]!}
+                open={active}
+              />
+            ) : null}
           </div>
         </div>
         </div>

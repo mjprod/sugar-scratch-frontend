@@ -16,7 +16,7 @@ body[data-theme="v8"] .hf-name-row {
 }
 
 body[data-theme="v8"] .hf-info > .hf-follow {
-  align-self: flex-start;
+  align-self: center;
 }
 
 body[data-theme="v8"] .hf-creator {
@@ -146,7 +146,7 @@ body[data-theme="v8"] .hf-overlay-inner {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 4px;
   opacity: 0.88;
   transform: translate3d(0, 8px, 0);
   backface-visibility: hidden;
@@ -164,12 +164,13 @@ body[data-theme="v8"] .hf-overlay.is-visible .hf-overlay-inner {
 
 body[data-theme="v8"] .hf-actions {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
   width: 100%;
   max-width: 22rem;
-  margin-top: 4px;
+  container-type: inline-size;
+  margin-top: 0;
   overflow: visible;
   -webkit-user-select: none;
   user-select: none;
@@ -180,8 +181,9 @@ body[data-theme="v8"] .hf-actions {
 body[data-theme="v8"] .hf-buy {
   position: relative;
   z-index: 3;
-  flex: 1 1 auto;
-  width: auto;
+  flex: 0 0 240px;
+  width: 240px;
+  max-width: 240px;
   min-width: 0;
   height: 56px;
   min-height: 56px;
@@ -197,13 +199,28 @@ body[data-theme="v8"] .hf-buy {
   }
 }
 
+body[data-theme="v8"] .hf-buy.has-pack-preview .cta-button__label {
+  justify-content: flex-start;
+  padding-right: 40px;
+}
+
+body[data-theme="v8"] .hf-pack-slot {
+  position: relative;
+  z-index: 4;
+  flex: 0 0 72px;
+  width: 72px;
+  height: 86px;
+  margin-left: -36px;
+  transform: translateY(-5px);
+}
+
 body[data-theme="v8"] .hf-like-wrap {
   display: flex;
   flex: 0 0 auto;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 2px;
-  width: 44px;
+  width: auto;
 }
 
 body[data-theme="v8"] .hf-like {

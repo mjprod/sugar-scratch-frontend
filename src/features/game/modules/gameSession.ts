@@ -361,7 +361,10 @@ function recordAwardedPhotoCards(session: GameSession): GameSession {
   const creatorName = session.packScratch?.creator ?? session.themes[0] ?? "Game";
   recordWonPhotoCards({
     count: pending.length,
-    creatorId: creatorName.trim().toLowerCase().replace(/\s+/g, "-") || "game",
+    creatorId:
+      session.packScratch?.creatorId?.trim() ||
+      session.modelId?.trim() ||
+      "",
     creatorName,
   });
   return {

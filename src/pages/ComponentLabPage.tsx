@@ -24,8 +24,25 @@ import {
   type StaticCarouselItem,
 } from "@/components/static-card/StaticCarousel";
 import { fetchCatalogPhotoCards } from "@/features/game/shared/catalog";
-import { loadModels, profileFromModel } from "@/services/models";
+import { PackPreview } from "@/components/pack-preview/PackPreview";
+import "@/components/pack-preview/PackPreview.css";
+import {
+  loadModels,
+  modelDisplayName,
+  profileFromModel,
+} from "@/services/models";
 import figmaPoster from "@/assets/component-lab/1e21a68ca6be26dfd06df3fc4951ef8f06b7f7d2.png";
+
+function packPostersFromModel(
+  model: Parameters<typeof profileFromModel>[0],
+) {
+  const name = modelDisplayName(model);
+  return profileFromModel(model).packs.flatMap((pack) =>
+    pack.posterUrl
+      ? [{ src: pack.posterUrl, alt: `${name} ${pack.label}` }]
+      : [],
+  );
+}
 
 const MOTION_STATES: Array<[MotionCardState, string]> = [
   ["locked-unselected", "Locked unselected"],
@@ -45,6 +62,9 @@ export function ComponentLabPage() {
     useState<MotionCardState>("locked-unselected");
   const [motionTheme, setMotionTheme] = useState<MotionCardTheme>("police");
   const [posterUrl, setPosterUrl] = useState(figmaPoster);
+  const [packPosters, setPackPosters] = useState<
+    Array<{ src: string; alt: string }>
+  >([]);
   const [videoUrl, setVideoUrl] = useState("");
   const [staticState, setStaticState] =
     useState<StaticCardHolderState>("locked");
@@ -98,6 +118,8 @@ export function ComponentLabPage() {
           pack?.videoUrl?.trim() ||
           juliana.swipeVideoUrl?.trim() ||
           "";
+        const posters = models.flatMap((model) => packPostersFromModel(model));
+        setPackPosters(posters.slice(0, 2));
         if (nextPoster) setPosterUrl(nextPoster);
         if (nextVideo) setVideoUrl(nextVideo);
         if (nextPoster || nextVideo) {
@@ -165,6 +187,24 @@ export function ComponentLabPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Pack preview</h2>
+            <p className="mt-1 text-[12px] text-ink-tertiary">
+              Two creator pack posters from /api/models.
+            </p>
+          </div>
+          <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            {packPosters.length >= 2 ? (
+              <PackPreview left={packPosters[0]!} right={packPosters[1]!} />
+            ) : (
+              <p className="text-[12px] text-ink-tertiary">
+                Waiting for two creator posters.
+              </p>
+            )}
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>

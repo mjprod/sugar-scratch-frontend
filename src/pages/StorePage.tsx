@@ -4,7 +4,12 @@ import { useWallet } from "@/contexts/WalletContext";
 import { StoreScreen } from "@/components/store/StoreScreen";
 import { useGoBack } from "@/hooks/useGoBack";
 import { isDemoMode } from "@/lib/demo";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
+import {
+  clearPackPurchaseHold,
+  readPackPurchaseHold,
+} from "@/services/packPurchaseHold";
 import {
   addUnopenedFromPurchase,
   peekNewestUnopenedInstance,
@@ -15,7 +20,9 @@ import type { RedeemReward } from "@/services/redeem";
 import { exchangeCoinsForDiamonds } from "@/services/store";
 
 export function StorePage() {
-  const goBackToProfile = useGoBack(Paths.profile);
+  const purchaseHold = readPackPurchaseHold();
+  const goBack = useGoBack(purchaseHold?.returnPath || Paths.profile);
+  const backLabel = purchaseHold ? "Back" : "Back to profile";
   const {
     openPurchase,
     bumpInventoryRevision,
@@ -82,16 +89,29 @@ export function StorePage() {
         );
         if (result.status !== "success") return false;
         applyWallet({ diamonds: result.diamonds, coins: result.coins });
+        if (result.diamonds > diamonds && readPackPurchaseHold()) {
+          clearPackPurchaseHold();
+          memoryNavigate(Paths.packPocket);
+        }
         return true;
       }}
-      onBack={goBackToProfile}
+      onBack={goBack}
+      backLabel={backLabel}
       onPurchaseSuccess={({ diamonds: gained, coins: gainedCoins }) => {
         addDiamonds(gained);
         addCoins(gainedCoins);
+        if ((gained > 0 || gainedCoins > 0) && readPackPurchaseHold()) {
+          clearPackPurchaseHold();
+          memoryNavigate(Paths.packPocket);
+        }
       }}
       onDiamondReward={(amount) => {
         if (isDemoMode()) addDiamonds(amount);
         else void refreshWallet();
+        if (amount > 0 && readPackPurchaseHold()) {
+          clearPackPurchaseHold();
+          memoryNavigate(Paths.packPocket);
+        }
       }}
       onPackReward={onPackReward}
       onOpenPack={({ packId, packName, creator, instanceId }) => {

@@ -166,9 +166,11 @@ export function HistoryPrevNext({
 export function HistoryPageHeader({
   title,
   onBack,
+  backLabel = "Back",
 }: {
   title: string;
   onBack: () => void;
+  backLabel?: string;
 }) {
   return (
     <header className="history-page-head">
@@ -176,7 +178,7 @@ export function HistoryPageHeader({
         type="button"
         className="history-back-btn"
         onClick={onBack}
-        aria-label="Back to profile"
+        aria-label={backLabel}
       >
         <ChevronLeft className="size-5" aria-hidden="true" />
       </button>

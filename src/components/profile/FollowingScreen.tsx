@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   hydrateFollowingFromModelsIfEmpty,
@@ -360,13 +361,16 @@ function FollowingEmpty({ onDiscover }: { onDiscover: () => void }) {
       <p className="following-empty-copy">
         Follow creators you like to find them here again.
       </p>
-      <button
-        type="button"
-        className="following-empty-cta"
-        onClick={onDiscover}
-      >
-        Discover Creators
-      </button>
+      <div className="following-empty-cta">
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          label="Discover Creators"
+          costAmount={null}
+          fontSize={14}
+          onClick={onDiscover}
+        />
+      </div>
     </div>
   );
 }

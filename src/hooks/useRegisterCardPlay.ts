@@ -29,12 +29,13 @@ export function useRegisterCardPlayOutcome() {
       kind: CardKind,
       cardId: string,
       handoff?: CardPlayHandoff,
+      freePlay?: boolean,
     ): Promise<CardPlayOutcome> => {
       const id = cardId.trim();
       if (!id) return "failed";
       if (!authed) return "ok";
       try {
-        const result = await playCard(kind, id, { handoff });
+        const result = await playCard(kind, id, { handoff, freePlay });
         if (result.pricePaid > 0) applyWallet(result.wallet);
         return "ok";
       } catch (error) {
@@ -62,8 +63,12 @@ export function useRegisterCardPlayOutcome() {
 export function useRegisterCardPlay() {
   const registerPlay = useRegisterCardPlayOutcome();
   return useCallback(
-    async (kind: CardKind, cardId: string): Promise<boolean> =>
-      (await registerPlay(kind, cardId, "offer")) !== "store",
+    async (
+      kind: CardKind,
+      cardId: string,
+      freePlay?: boolean,
+    ): Promise<boolean> =>
+      (await registerPlay(kind, cardId, "offer", freePlay)) !== "store",
     [registerPlay],
   );
 }

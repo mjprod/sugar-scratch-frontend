@@ -33,6 +33,10 @@ import {
   loadPackCatalog,
   type PurchaseFlowPack,
 } from "@/services/purchase";
+import {
+  fetchCreatorBoard,
+  type CreatorBoard,
+} from "@/services/creatorBoard";
 import "./creator-collection.css";
 import "./creator-influencer.css";
 
@@ -117,12 +121,27 @@ function CreatorScreenInner({
     () => searchParams.get("card"),
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [board, setBoard] = useState<CreatorBoard | null>(null);
   const followId = (model?.id ?? creatorId).trim();
   const [following, setFollowing] = useState(() => isFollowing(followId));
 
   useEffect(() => {
     setFollowing(isFollowing(followId));
   }, [followId, authed]);
+
+  useEffect(() => {
+    if (!authed) {
+      setBoard(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchCreatorBoard(creatorId).then((next) => {
+      if (!cancelled) setBoard(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, creatorId]);
 
   const themes: ThemeCardData[] = useMemo(
     () =>
@@ -228,19 +247,25 @@ function CreatorScreenInner({
     setSearchParams(next, { replace: true });
   }
 
-  async function handlePlayGame(playModelId: string, cardId: string, _cardName: string) {
+  async function handlePlayGame(
+    playModelId: string,
+    cardId: string,
+    _cardName: string,
+    freePlay = false,
+  ) {
     const card = cardId.trim();
     const playModel = playModelId.trim();
     if (!card || !playModel || buying) return;
     setBuying(true);
     try {
-      const ok = await registerPlay("motion", card);
+      const ok = await registerPlay("motion", card, freePlay);
       if (!ok) return;
       syncCardParam(card, selectedThemeId);
       navigate(
         Paths.gamePlay(playModel, card, {
           creatorId,
           themeId: selectedThemeId,
+          freePlay,
         }),
       );
     } finally {
@@ -248,18 +273,8 @@ function CreatorScreenInner({
     }
   }
 
-  function handlePlayGameFree(playModelId: string, cardId: string, _cardName: string) {
-    const card = cardId.trim();
-    const playModel = playModelId.trim();
-    if (!card || !playModel || buying) return;
-    syncCardParam(card, selectedThemeId);
-    navigate(
-      Paths.gamePlay(playModel, card, {
-        creatorId,
-        themeId: selectedThemeId,
-        freePlay: true,
-      }),
-    );
+  function handlePlayGameFree(playModelId: string, cardId: string, cardName: string) {
+    void handlePlayGame(playModelId, cardId, cardName, true);
   }
 
   function handleToggleFollow() {
@@ -341,6 +356,10 @@ function CreatorScreenInner({
           avatarUrl={avatarUrl}
           coverUrl={coverUrl}
           locationLabel={locationLabel}
+          instagramUrl={board?.creator.instagramUrl}
+          tiktokUrl={board?.creator.tiktokUrl}
+          xUrl={board?.creator.xUrl}
+          onlyfansUrl={board?.creator.onlyfansUrl}
           onBack={onBack}
           following={following}
           onToggleFollow={handleToggleFollow}
@@ -354,6 +373,7 @@ function CreatorScreenInner({
           ultraPosterUrl={ultraPosterUrl}
           themes={themes}
           cardsByThemeId={collection.cardsByThemeId}
+          board={board}
           showPersonalProgress={authed}
           loading={collection.loading}
           onAddPackToPocket={addCoverflowPackToPocket}

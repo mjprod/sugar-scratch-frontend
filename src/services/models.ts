@@ -144,6 +144,26 @@ export function matchModel(
   return models.length === 1 ? models[0]! : null;
 }
 
+/**
+ * Creator id for `/api/me/creators/{id}/board` and `/creator/:id`.
+ * That id is the catalog model id (`julianaval`), never a display-name slug
+ * (`juliana`) — the slug 404s on the board endpoint.
+ */
+export function canonicalCreatorId(
+  models: BackendModel[],
+  hints: { packId?: string | null; name?: string | null; creatorId?: string | null } = {},
+): string {
+  const model = matchModel(models, {
+    packId: hints.packId || hints.creatorId,
+    name: hints.name,
+  });
+  if (model?.id) return model.id;
+  const explicit = optionalString(hints.creatorId);
+  if (explicit) return explicit;
+  const name = optionalString(hints.name);
+  return name ? normalizeKey(name) : "";
+}
+
 export function foilsFromModel(model: BackendModel): FoilPack[] {
   const id = modelId(model);
   const face1 = optionalMedia(model.packFaceVideoUrl);

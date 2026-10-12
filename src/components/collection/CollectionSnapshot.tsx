@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Images, Layers, Users } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 
 export type CollectionSummaryData = {
   cardsCollected: number;
@@ -44,23 +45,16 @@ export function CollectionSnapshot({
           <p className="collection-snapshot-empty-copy">
             Cards you reveal will appear in your Collection.
           </p>
-          {hasPendingReveal ? (
-            <button
-              type="button"
-              className="collection-snapshot-cta"
-              onClick={onFocusReadyToReveal}
-            >
-              Go to Ready to Reveal
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="collection-snapshot-cta"
-              onClick={onExplorePacks}
-            >
-              Explore Packs
-            </button>
-          )}
+          <div className="collection-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label={hasPendingReveal ? "Go to Ready to Reveal" : "Explore Packs"}
+              costAmount={null}
+              fontSize={14}
+              onClick={hasPendingReveal ? onFocusReadyToReveal : onExplorePacks}
+            />
+          </div>
         </div>
       ) : (
         <div

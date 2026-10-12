@@ -121,11 +121,11 @@ export function isInsufficientPlayError(error: unknown): boolean {
 export async function playCard(
   kind: CardKind,
   cardId: string,
-  opts?: { handoff?: "offer" | "claim"; now?: number },
+  opts?: { handoff?: "offer" | "claim"; now?: number; freePlay?: boolean },
 ): Promise<PlayCardResult> {
   const key = playedCardKey(kind, cardId);
   const ownerId = getAuthUserId();
-  const inFlightKey = `${ownerId ?? "anonymous"}:${key}`;
+  const inFlightKey = `${ownerId ?? "anonymous"}:${opts?.freePlay ? "free:" : ""}${key}`;
   const pending = playInFlight.get(inFlightKey);
   if (pending) return pending;
 
@@ -141,7 +141,11 @@ export async function playCard(
 
   const request = apiMutate<PlayCardResult>("/api/me/cards/play", {
     method: "POST",
-    body: JSON.stringify({ cardKind: kind, cardId: cardId.trim() }),
+    body: JSON.stringify({
+      cardKind: kind,
+      cardId: cardId.trim(),
+      ...(opts?.freePlay ? { freePlay: true } : {}),
+    }),
   })
     .then((result) => {
       if (opts?.handoff === "offer") {

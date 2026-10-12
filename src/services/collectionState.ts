@@ -19,6 +19,7 @@ import {
   isThemeCompletionClaimed,
 } from "./themeCompletionReward";
 import { apiFetch } from "../lib/api";
+import { canonicalCreatorId, type BackendModel } from "./models";
 
 type CreatorLedger = {
   id: string;
@@ -105,6 +106,18 @@ function slugId(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, "-") || "creator";
 }
 
+/** Board creator id when the catalog is already loaded; otherwise the stored id. */
+function boardCreatorId(
+  models: BackendModel[],
+  hints: { creatorId?: string | null; name?: string | null; packId?: string | null },
+): string {
+  if (!models.length) return (hints.creatorId || slugId(hints.name ?? "")).trim();
+  return (
+    canonicalCreatorId(models, hints) ||
+    (hints.creatorId || slugId(hints.name ?? "")).trim()
+  );
+}
+
 /** Stable API avatar path — never fixture / placeholder pack art. */
 function avatarFor(creatorId: string, name: string) {
   const slug = (creatorId || name || "")
@@ -138,7 +151,7 @@ export function noteCreatorStarted(
   creatorName: string,
   themeName?: string,
 ) {
-  const id = creatorId || slugId(creatorName);
+  const id = creatorId.trim() || slugId(creatorName);
   const ledger = readLedger();
   const theme = themeLabelFromPack(themeName);
   const existing = ledger.creators[id];
@@ -179,7 +192,7 @@ export function recordRevealedCards(input: {
   ledger.motionCards += motion;
   ledger.photoCards += photo;
 
-  const id = input.creatorId || slugId(input.creatorName);
+  const id = input.creatorId.trim() || slugId(input.creatorName);
   const theme = themeLabelFromPack(input.themeName);
   const existing = ledger.creators[id];
   if (existing) {
@@ -256,10 +269,26 @@ export type CollectionPageState = {
 
 function mergeStartedCreators(
   ledger: CollectionLedger,
+  models: BackendModel[] = [],
 ): Record<string, CreatorLedger> {
-  const creators: Record<string, CreatorLedger> = { ...ledger.creators };
+  const creators: Record<string, CreatorLedger> = {};
+  for (const creator of Object.values(ledger.creators)) {
+    const id = boardCreatorId(models, {
+      creatorId: creator.id,
+      name: creator.name,
+    });
+    const row = { ...creator, id };
+    const existing = creators[id];
+    if (!existing || row.collected > existing.collected) {
+      creators[id] = row;
+    }
+  }
   for (const pack of listOwnedPacks()) {
-    const id = pack.creatorId || slugId(pack.creator);
+    const id = boardCreatorId(models, {
+      creatorId: pack.creatorId,
+      name: pack.creator,
+      packId: pack.catalogPackId,
+    });
     const theme = themeLabelFromPack(
       pack.themeName,
       pack.packName,
@@ -302,7 +331,9 @@ export function isNewUserForHomepageHero(): boolean {
 }
 
 /** Live Collection page visibility + summary inputs. */
-export function getCollectionPageState(): CollectionPageState {
+export function getCollectionPageState(
+  models: BackendModel[] = [],
+): CollectionPageState {
   const owned = countOwnedPacks();
   const unopenedPackCount = countUnopened();
   const unscratchedCardCount =
@@ -310,7 +341,7 @@ export function getCollectionPageState(): CollectionPageState {
     countOrphanMotionFromSession() +
     countReadyPhotoScratch();
   const ledger = readLedger();
-  const creators = mergeStartedCreators(ledger);
+  const creators = mergeStartedCreators(ledger, models);
 
   const collectedCardCount = ledger.collectedCardCount;
   const hasEverPurchasedPack = owned > 0;
@@ -334,7 +365,11 @@ export function getCollectionPageState(): CollectionPageState {
       const packTheme = ownedPacks
         .filter(
           (pack) =>
-            (pack.creatorId || slugId(pack.creator)) === creator.id,
+            boardCreatorId(models, {
+              creatorId: pack.creatorId,
+              name: pack.creator,
+              packId: pack.catalogPackId,
+            }) === creator.id,
         )
         .sort((a, b) => b.savedAt - a.savedAt)
         .map((pack) =>

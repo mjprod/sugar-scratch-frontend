@@ -31,6 +31,7 @@ export type HomeFeedCreator = {
   videoUrl?: string;
   diamondCost: number;
   liked: boolean;
+  packPosters: Array<{ src: string; alt: string }>;
 };
 
 export type HomeFeedPage = {
@@ -80,12 +81,17 @@ function feedItemFromModel(model: BackendModel): Omit<HomeFeedCreator, "liked"> 
     swipePosterUrl: feedPosterUrl(model),
     videoUrl,
     diamondCost: packUnitCost(profile.id),
+    packPosters: profile.packs.flatMap((pack) =>
+      pack.posterUrl
+        ? [{ src: pack.posterUrl, alt: `${profile.name} ${pack.label}` }]
+        : [],
+    ),
   };
 }
 
 const PAGE_SIZE = 6;
 /** Bump when feed ordering semantics change (e.g. drop shuffle). */
-const FEED_CACHE_VERSION = 19;
+const FEED_CACHE_VERSION = 20;
 
 function uniqueFeedItems(items: Omit<HomeFeedCreator, "liked">[]) {
   const seen = new Set<string>();

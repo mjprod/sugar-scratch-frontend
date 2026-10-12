@@ -60,8 +60,12 @@ function persistPackMotionSettle(
   return next;
 }
 
-function slugCreatorId(creator: string) {
-  return creator.trim().toLowerCase().replace(/\s+/g, "-");
+function boardCreatorId(packScratch: { creator: string; creatorId?: string }) {
+  const explicit = packScratch.creatorId?.trim();
+  if (explicit) return explicit;
+  return (
+    packScratch.creator.trim().toLowerCase().replace(/[^a-z0-9]+/g, "") || "creator"
+  );
 }
 
 async function appendGameHistoryFromSettle(
@@ -75,7 +79,7 @@ async function appendGameHistoryFromSettle(
   const card = packScratch.openingSession.cards.find(
     (entry) => entry.id === openingId,
   );
-  const creatorId = slugCreatorId(packScratch.creator);
+  const creatorId = boardCreatorId(packScratch);
   const historyIds = packHistoryIds(packScratch.readyPackId);
   const revealSessionId = packScratch.serverOpeningId
     ? `${packScratch.serverOpeningId}:${openingId}`
@@ -144,7 +148,7 @@ export async function settlePackMotionCard(
       });
       recordRevealedCards({
         count: 1,
-        creatorId: slugCreatorId(packScratch.creator),
+        creatorId: boardCreatorId(packScratch),
         creatorName: packScratch.creator,
         themeName: packScratch.themeName || packScratch.packName,
       });
@@ -184,7 +188,7 @@ export async function settlePackMotionCard(
 
   recordRevealedCards({
     count: 1,
-    creatorId: slugCreatorId(packScratch.creator),
+    creatorId: boardCreatorId(packScratch),
     creatorName: packScratch.creator,
     themeName: packScratch.themeName || packScratch.packName,
   });

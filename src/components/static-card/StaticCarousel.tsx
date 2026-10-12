@@ -16,6 +16,7 @@ export type StaticCarouselItem = {
   topLayerUrl?: string;
   playCost?: number;
   freePlay?: boolean;
+  freePlayable?: boolean;
   slotIndex?: number;
   onPlay?: () => void;
 };

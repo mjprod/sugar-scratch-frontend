@@ -47,6 +47,12 @@ function ProfileCardBackground({ coverUrl }: { coverUrl: string }) {
   );
 }
 
+function socialHref(url: string): string {
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export function CreatorHeader({
   name,
   username,
@@ -56,6 +62,10 @@ export function CreatorHeader({
   onBack,
   following = false,
   onToggleFollow,
+  instagramUrl,
+  tiktokUrl,
+  xUrl,
+  onlyfansUrl,
 }: {
   name: string;
   username: string;
@@ -65,6 +75,10 @@ export function CreatorHeader({
   onBack: () => void;
   following?: boolean;
   onToggleFollow?: () => void;
+  instagramUrl?: string | null;
+  tiktokUrl?: string | null;
+  xUrl?: string | null;
+  onlyfansUrl?: string | null;
 }) {
   const location = locationLabel?.trim() || "";
   const cardRef = useRef<HTMLElement | null>(null);
@@ -232,21 +246,58 @@ export function CreatorHeader({
               </div>
             </div>
             <ul className="cpv2-profile-card-socials" aria-label="Social links">
-              <li>
-                <span className="cpv2-profile-card-social" aria-hidden="true">
-                  <Instagram className="size-3.5" strokeWidth={1.8} />
-                </span>
-              </li>
-              <li>
-                <span className="cpv2-profile-card-social" aria-hidden="true">
-                  <TikTokIcon className="size-3.5" />
-                </span>
-              </li>
-              <li>
-                <span className="cpv2-profile-card-social" aria-hidden="true">
-                  <XIcon className="size-3.5" />
-                </span>
-              </li>
+              {instagramUrl ? (
+                <li>
+                  <a
+                    className="cpv2-profile-card-social"
+                    href={socialHref(instagramUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="size-3.5" strokeWidth={1.8} />
+                  </a>
+                </li>
+              ) : null}
+              {tiktokUrl ? (
+                <li>
+                  <a
+                    className="cpv2-profile-card-social"
+                    href={socialHref(tiktokUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="TikTok"
+                  >
+                    <TikTokIcon className="size-3.5" />
+                  </a>
+                </li>
+              ) : null}
+              {xUrl ? (
+                <li>
+                  <a
+                    className="cpv2-profile-card-social"
+                    href={socialHref(xUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="X"
+                  >
+                    <XIcon className="size-3.5" />
+                  </a>
+                </li>
+              ) : null}
+              {onlyfansUrl ? (
+                <li>
+                  <a
+                    className="cpv2-profile-card-social"
+                    href={socialHref(onlyfansUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="OnlyFans"
+                  >
+                    OF
+                  </a>
+                </li>
+              ) : null}
             </ul>
           </div>
         </div>

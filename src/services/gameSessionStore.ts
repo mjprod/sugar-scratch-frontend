@@ -6,6 +6,8 @@ export type PackScratchLink = {
   readyPackId: string;
   packName: string;
   creator: string;
+  /** Board creator id (`GET /api/me/creators/{id}/board`). Display name is `creator`. */
+  creatorId?: string;
   coverUrl?: string;
   themeName?: string;
   openingSession: OpeningSession;

@@ -29,6 +29,7 @@ import { needsEmailVerification } from "@/services/auth";
 import { type FeaturedPack } from "@/services/homepage";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import { isPackInCart, subscribeCart } from "@/services/cart";
+import { holdPackForDiamondTopUp } from "@/services/packPurchaseHold";
 import {
   loadModels,
   matchModel,
@@ -528,6 +529,31 @@ export function FeaturedCoverFlow({
     [catalog],
   );
 
+  const holdUnpaidPack = useCallback(
+    (item: Iteration, target: FeaturedCoverFlowPlayTarget, quantity: number) => {
+      holdPackForDiamondTopUp(
+        {
+          packId: target.foilId ?? target.id,
+          packName: target.name,
+          creator: target.creatorName,
+          characterId: target.id,
+          price: target.diamondCost,
+          videoUrl: item.videoUrl,
+          packNumber: item.packNumber,
+          flagEmoji: item.flagEmoji,
+          flagSvgUrl: item.flagSvgUrl,
+          city: item.city,
+          country: item.country,
+          overlayColorStart: item.overlayColorStart,
+          overlayColorEnd: item.overlayColorEnd,
+          backgroundColor: item.backgroundColor,
+        },
+        quantity,
+      );
+    },
+    [],
+  );
+
   const handleAddToPocket = useCallback(
     (
       item: Iteration,
@@ -611,7 +637,8 @@ export function FeaturedCoverFlow({
         const cost = linearPackTotalCost(purchasePackId, qty) || unit * qty;
 
         if (cost > diamonds) {
-          setNavNotice("Not enough diamonds to buy this pack.");
+          holdUnpaidPack(item, target, qty);
+          setNavNotice("Not enough diamonds. Pack saved to Pack Pocket.");
           window.setTimeout(() => setNavNotice(""), 3200);
           openStore();
           return;
@@ -741,6 +768,7 @@ export function FeaturedCoverFlow({
         setNavNotice(message);
         window.setTimeout(() => setNavNotice(""), 3200);
         if (error instanceof PurchaseError && error.kind === "insufficient") {
+          holdUnpaidPack(item, target, qty);
           openStore();
         }
       } finally {

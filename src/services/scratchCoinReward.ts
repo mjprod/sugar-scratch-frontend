@@ -26,11 +26,17 @@ export type ScratchHandResult = {
   rewardsEnabled: boolean;
   milestonesRemaining: number;
   handsRemainingToday: number;
+  /** "coins" on standard cards, "diamonds" on Premium / Ultra. */
+  currency?: "coins" | "diamonds";
+  maxWin?: number;
 };
 
 export type ScratchCoinClaimResult = {
   ok: true;
   coins: number;
+  diamonds?: number;
+  /** Which balance this claim paid. Absent on older responses — treat as coins. */
+  currency?: "coins" | "diamonds";
   alreadyClaimed?: boolean;
   wallet: ScratchWallet;
 };
@@ -105,11 +111,14 @@ export function resetScratchHandQuotaForTests(): void {
 /** Ask the server for a new scratch hand id (rate-limited; 24/day). */
 export function startScratchHand(
   cardId?: string,
+  opts?: { freePlay?: boolean },
 ): Promise<ScratchHandResult | null> {
   const ownerId = getAuthUserId();
-  if (isScratchHandQuotaExhausted(ownerId)) return Promise.resolve(null);
+  const freePlay = Boolean(opts?.freePlay);
+  // Free play mints nothing, so a spent reward quota must not block the hand.
+  if (!freePlay && isScratchHandQuotaExhausted(ownerId)) return Promise.resolve(null);
 
-  const key = `${ownerId ?? ""}:${cardId?.trim() || ""}`;
+  const key = `${ownerId ?? ""}:${freePlay ? "free:" : ""}${cardId?.trim() || ""}`;
   const pending = scratchHandInFlight.get(key);
   if (pending) return pending;
 
@@ -125,7 +134,10 @@ export function startScratchHand(
         "/api/rewards/scratch/hands",
         {
           method: "POST",
-          body: JSON.stringify(cardId ? { cardId } : {}),
+          body: JSON.stringify({
+            ...(cardId ? { cardId } : {}),
+            ...(freePlay ? { freePlay: true } : {}),
+          }),
         },
       );
       settle(hand);

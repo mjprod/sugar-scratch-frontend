@@ -75,6 +75,7 @@ import {
   type PurchaseFlowPack,
 } from "@/services/purchase";
 import { useAuth } from "@/contexts/useAuth";
+import { holdPackForDiamondTopUp } from "@/services/packPurchaseHold";
 import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,
@@ -692,10 +693,26 @@ export function PurchaseFlow({
     onInventoryChange?.();
   }
 
+  function holdUnpaidPack(quantity: number) {
+    if (pack.entry && pack.entry !== "purchase") return;
+    holdPackForDiamondTopUp(
+      {
+        packId: pack.packId,
+        packName: pack.packName,
+        creator: pack.creator,
+        characterId: pack.packId,
+        price: pack.price,
+        videoUrl: packCoverUrl,
+      },
+      quantity,
+    );
+  }
+
   async function purchase(quantity: PackQuantity, foil?: FoilPack) {
     if (submitting) return;
     const cost = packCost(quantity, pack.packId);
     if (cost > diamonds) {
+      holdUnpaidPack(quantity);
       setModal("insufficient");
       return;
     }
@@ -780,7 +797,10 @@ export function PurchaseFlow({
       setStage("ready");
     } catch (error) {
       const kind = error instanceof PurchaseError ? error.kind : "failed";
-      if (kind === "insufficient") setModal("insufficient");
+      if (kind === "insufficient") {
+        holdUnpaidPack(quantity);
+        setModal("insufficient");
+      }
       else if (kind === "assets") setStage("load-failed");
       else setModal("failed");
     } finally {
@@ -979,7 +999,7 @@ export function PurchaseFlow({
     if (!session) return;
     const packInstanceId = instanceId ?? pack.packId;
     const historyIds = packHistoryIds(packInstanceId);
-    const creatorId = pack.creator.trim().toLowerCase().replace(/\s+/g, "-");
+    const creatorId = model?.id ?? pack.creator;
     const openingId = openingIdRef.current;
     for (const cardId of cardIds) {
       const card = session.cards.find((entry) => entry.id === cardId);
@@ -1079,7 +1099,7 @@ export function PurchaseFlow({
           }
           recordRevealedCards({
             count: fresh.length,
-            creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+            creatorId: model?.id ?? pack.creator,
             creatorName: pack.creator,
             themeName: collectionTheme,
           });
@@ -1105,7 +1125,7 @@ export function PurchaseFlow({
         .reduce((total, card) => total + card.reward, 0);
       recordRevealedCards({
         count: fresh.length,
-        creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+        creatorId: model?.id ?? pack.creator,
         creatorName: pack.creator,
         themeName: collectionTheme,
       });
@@ -1435,6 +1455,7 @@ export function PurchaseFlow({
           readyPackId: readyId,
           packName: pack.packName,
           creator: pack.creator,
+          creatorId: model?.id,
           coverUrl: packCoverUrl,
           themeName: collectionTheme,
           openingSession: active,
@@ -2666,7 +2687,9 @@ function ScratchStage({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-5 z-10">
-          <p className="text-[20px] font-bold">{card.rarity}</p>
+          <p className="text-[20px] font-bold">
+            {card.cardKind && card.cardId ? `${card.cardKind} card` : card.rarity}
+          </p>
           <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Coins</p>
         </div>
         <m.button

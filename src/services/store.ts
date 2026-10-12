@@ -1,4 +1,4 @@
-import { apiFetch, apiMutate } from "../lib/api";
+import { ApiError, apiFetch, apiMutate } from "../lib/api";
 import { isDemoMode } from "../lib/demo";
 
 export type StoreBadge =
@@ -100,6 +100,11 @@ export async function exchangeCoinsForDiamonds(
       wallet?: { diamonds?: number; coins?: number };
     }>("/api/store/exchange", {
       method: "POST",
+      headers: {
+        "Idempotency-Key":
+          globalThis.crypto?.randomUUID?.() ??
+          `exchange-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
       body: JSON.stringify({
         optionId: resolved.id,
         diamonds: resolved.diamonds,
@@ -120,8 +125,19 @@ export async function exchangeCoinsForDiamonds(
         coins: Math.max(0, Math.trunc(coins)),
       };
     }
-  } catch {
-    /* fall through to demo / fail-closed */
+  } catch (error) {
+    if (error instanceof ApiError) {
+      const code = error.message.toLowerCase();
+      if (error.status === 400 && code.includes("insufficient")) {
+        return { status: "failed", message: "Not enough Coins." };
+      }
+      if (error.status === 409 && code.includes("exchange_rate_changed")) {
+        return {
+          status: "failed",
+          message: "Exchange rates changed. Refresh and try again.",
+        };
+      }
+    }
   }
 
   if (isDemoMode() && current) {

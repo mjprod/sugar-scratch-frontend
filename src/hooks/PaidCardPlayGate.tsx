@@ -18,12 +18,14 @@ export function PaidCardPlayGate({
   kind,
   cardId,
   skip,
+  freePlay = false,
   onLeave,
   children,
 }: {
   kind: CardKind;
   cardId: string;
   skip?: boolean;
+  freePlay?: boolean;
   onLeave: () => void;
   children: ReactNode;
 }) {
@@ -56,11 +58,11 @@ export function PaidCardPlayGate({
     // would take the guest path and mount a signed-in user's card unpaid.
     if (!authReady) return;
     let cancelled = false;
-    const key = `${attempt}:${kind}:${id}`;
+    const key = `${attempt}:${kind}:${id}:${freePlay ? "free" : "paid"}`;
     if (pendingRef.current?.key !== key) {
       pendingRef.current = {
         key,
-        request: registerPlayRef.current(kind, id, "claim"),
+        request: registerPlayRef.current(kind, id, "claim", freePlay),
       };
     }
     void pendingRef.current.request.then((outcome) => {
@@ -71,7 +73,7 @@ export function PaidCardPlayGate({
     return () => {
       cancelled = true;
     };
-  }, [attempt, authReady, bypass, id, kind]);
+  }, [attempt, authReady, bypass, freePlay, id, kind]);
 
   if (status === "ready") return children;
   return (
