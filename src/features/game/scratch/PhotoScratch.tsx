@@ -148,6 +148,7 @@ import {
   unbindThemeIntroVideo,
 } from "../shared/media";
 import { soundMixOutput } from "../shared/soundMix";
+import { THEME_INTROS_ENABLED } from "../shared/themes";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
@@ -1256,7 +1257,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       return;
     }
     pendingIntroEntryRef.current = null;
-    const url = entry ? entry.intro?.trim() : "";
+    const url = THEME_INTROS_ENABLED && entry ? entry.intro?.trim() : "";
     const themeId = entry ? entry.theme_id?.trim() : "";
     if (!url || !themeId || introShownForThemeRef.current.has(themeId)) {
       setIntroVideoUrl("");
