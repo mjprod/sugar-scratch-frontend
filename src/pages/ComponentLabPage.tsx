@@ -25,12 +25,17 @@ import {
 } from "@/components/static-card/StaticCarousel";
 import { fetchCatalogPhotoCards } from "@/features/game/shared/catalog";
 import { PackPreview } from "@/components/pack-preview/PackPreview";
+import {
+  PhotoGateway,
+  type PhotoGatewayCard,
+} from "@/components/photo-gateway/PhotoGateway";
 import "@/components/pack-preview/PackPreview.css";
 import {
   loadModels,
   modelDisplayName,
   profileFromModel,
 } from "@/services/models";
+import { loadCreatorBoard } from "@/services/creatorBoard";
 import figmaPoster from "@/assets/component-lab/1e21a68ca6be26dfd06df3fc4951ef8f06b7f7d2.png";
 
 function packPostersFromModel(
@@ -65,6 +70,13 @@ export function ComponentLabPage() {
   const [packPosters, setPackPosters] = useState<
     Array<{ src: string; alt: string }>
   >([]);
+  const [photoGatewayCards, setPhotoGatewayCards] = useState<
+    PhotoGatewayCard[]
+  >([]);
+  const [photoGatewayCount, setPhotoGatewayCount] = useState({
+    collected: 0,
+    total: 0,
+  });
   const [videoUrl, setVideoUrl] = useState("");
   const [staticState, setStaticState] =
     useState<StaticCardHolderState>("locked");
@@ -144,6 +156,62 @@ export function ComponentLabPage() {
         const topLayer = photo.clothes?.trim() || photo.bikini?.trim() || "";
         if (background) setStaticBackgroundUrl(background);
         if (topLayer) setStaticTopLayerUrl(topLayer);
+        const creatorId =
+          photos.find((entry) => entry.model_id === "julianaval")?.model_id ||
+          photo.model_id ||
+          "";
+        const forCreator = creatorId
+          ? photos.filter((entry) => entry.model_id === creatorId)
+          : photos;
+        const themeId =
+          forCreator.find((entry) => entry.theme_id)?.theme_id ||
+          photo.theme_id ||
+          "";
+        const gatewaySource = (
+          themeId
+            ? forCreator.filter((entry) => entry.theme_id === themeId)
+            : forCreator
+        );
+        const themeCards = gatewaySource.length > 0 ? gatewaySource : forCreator;
+        setPhotoGatewayCards(
+          themeCards.flatMap((entry) => {
+            const backgroundUrl = entry.background?.trim() || "";
+            const topLayerUrl =
+              entry.clothes?.trim() || entry.bikini?.trim() || "";
+            if (!backgroundUrl && !topLayerUrl) return [];
+            return [
+              {
+                id: entry.id,
+                backgroundUrl: backgroundUrl || topLayerUrl,
+                topLayerUrl,
+                alt: entry.label,
+              },
+            ];
+          }),
+        );
+        if (!creatorId) return;
+        void loadCreatorBoard(creatorId).then((board) => {
+          if (cancelled || !board) return;
+          const theme =
+            board.themes.find((entry) => entry.id === themeId) ??
+            board.themes[0];
+          if (!theme) return;
+          const collected = theme.motionCards.reduce(
+            (sum, card) =>
+              sum +
+              Math.max(
+                card.staticCards.filter((slot) => slot.owned).length,
+                card.staticCardsOwned,
+              ),
+            0,
+          );
+          const total = theme.motionCards.reduce(
+            (sum, card) =>
+              sum + (card.staticCardsTotal || card.staticCards.length),
+            0,
+          );
+          setPhotoGatewayCount({ collected, total });
+        });
         if (typeof photo.cardPrice === "number") {
           setStaticPlayCost(photo.cardPrice);
         }
@@ -187,6 +255,29 @@ export function ComponentLabPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div>
+            <h2 className="text-[15px] font-semibold">Photo gateway</h2>
+            <p className="mt-1 text-[12px] text-ink-tertiary">
+              Creator photo cards from /api/photo-scratch, scattered behind the
+              collection CTA.
+            </p>
+          </div>
+          <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            {photoGatewayCards.length > 0 ? (
+              <PhotoGateway
+                cards={photoGatewayCards}
+                collected={photoGatewayCount.collected}
+                total={photoGatewayCount.total}
+              />
+            ) : (
+              <p className="text-[12px] text-ink-tertiary">
+                Waiting for this creator&apos;s photo cards.
+              </p>
+            )}
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-surface p-5">
           <div>
             <h2 className="text-[15px] font-semibold">Pack preview</h2>

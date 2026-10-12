@@ -26,6 +26,11 @@ type StaticCarouselProps = {
   theme?: MotionCardTheme;
   motionCardNumber?: number;
   motionCardTotal?: number;
+  /** Increment to open the photo-card overlay from outside the carousel. */
+  openSignal?: number;
+  onExpandedChange?: (open: boolean) => void;
+  /** Overlay-only mount: skip the inline strip. */
+  overlayOnly?: boolean;
   className?: string;
 };
 
@@ -38,6 +43,7 @@ const THEME_LABEL: Record<MotionCardTheme, string> = {
 };
 
 const STATIC_CARD_TOTAL = 10;
+const REVEAL_STAGGER_MS = 80;
 
 function PhotoCardsExpandIcon() {
   return (
@@ -204,18 +210,68 @@ export function StaticCarousel({
   theme = "police",
   motionCardNumber = 1,
   motionCardTotal = 3,
+  openSignal = 0,
+  onExpandedChange,
+  overlayOnly = false,
   className,
 }: StaticCarouselProps) {
   const [expanded, setExpanded] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
   const unlocked = cards.filter((item) => item.state === "unlocked").length;
   const total = STATIC_CARD_TOTAL;
 
   function openOverlay() {
     setLeaving(false);
+    setRevealed(false);
     setExpanded(true);
   }
+
+  useEffect(() => {
+    if (!expanded) return;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setRevealed(true);
+      return;
+    }
+    let frame = 0;
+    frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => setRevealed(true));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expanded]);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!expanded || !grid) return;
+    const update = () => {
+      setCanScrollDown(grid.scrollHeight - grid.scrollTop - grid.clientHeight > 8);
+    };
+    update();
+    grid.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(grid);
+    return () => {
+      grid.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [expanded, cards.length]);
+
+  const lastOpenSignal = useRef(openSignal);
+  useEffect(() => {
+    if (openSignal === lastOpenSignal.current) return;
+    lastOpenSignal.current = openSignal;
+    if (openSignal > 0) openOverlay();
+  }, [openSignal]);
+
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
 
   function closeOverlay() {
     if (!expanded || leaving) return;
@@ -261,6 +317,7 @@ export function StaticCarousel({
         .filter(Boolean)
         .join(" ")}
     >
+      {overlayOnly ? null : (
       <div className="flex w-full flex-col">
         <p className="static-carousel__title font-medium text-white">
           {THEME_LABEL[theme]} Motion Card
@@ -270,7 +327,9 @@ export function StaticCarousel({
           {String(motionCardTotal).padStart(2, "0")}
         </p>
       </div>
+      )}
 
+      {overlayOnly ? null : (
       <div className="flex h-4 w-full items-center justify-between">
           <div className="flex items-center gap-1">
           <PhotoCardsIcon />
@@ -292,9 +351,11 @@ export function StaticCarousel({
           </button>
         </div>
       </div>
+      )}
 
-      <PhotoCardStrip cards={cards} />
+      {overlayOnly || expanded ? null : <PhotoCardStrip cards={cards} />}
 
+      {overlayOnly ? null : (
       <m.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -309,6 +370,7 @@ export function StaticCarousel({
           className="h-[0.25rem] w-full"
         />
       </m.div>
+      )}
 
       {expanded && typeof document !== "undefined"
         ? createPortal(
@@ -327,48 +389,68 @@ export function StaticCarousel({
                 finishClose();
               }}
             >
-              <button
-                type="button"
-                className="static-carousel-overlay__close"
-                aria-label="Close photo cards"
-                onClick={closeOverlay}
-              >
-                <X className="size-5" />
-              </button>
               <div
                 className="static-carousel-overlay__panel static-carousel static-carousel--expanded"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="flex w-full justify-end">
+                <div className="flex w-full items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <PhotoCardsIcon />
+                    <p className="static-carousel__title min-w-0 font-medium text-white">
+                      {THEME_LABEL[theme]}{" "}
+                      {String(motionCardNumber).padStart(2, "0")} // Photo Cards
+                    </p>
+                  </div>
+                  <p className="static-carousel__title shrink-0 font-medium text-white">
+                    {unlocked}/{total}
+                  </p>
                   <button
                     type="button"
-                    className="static-carousel__expand"
+                    className="static-carousel__close"
                     aria-label="Close photo cards"
                     onClick={closeOverlay}
                   >
-                    <PhotoCardsContractIcon />
+                    <X className="size-5" />
                   </button>
                 </div>
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <PhotoCardsIcon />
-                    <p className="static-carousel__title font-medium text-white">
-                      Photo Cards
-                    </p>
-                  </div>
-                  <p className="static-carousel__title font-medium text-white">
-                    {unlocked}/{total}
-                  </p>
-                </div>
-                <PhotoCardStrip cards={cards} animate={false} />
                 <StaticCardMeter
                   includeMotionTick={false}
                   staticTotal={total}
                   collectedIndexes={cards.flatMap((item, index) =>
                     item.state === "unlocked" ? [index] : [],
                   )}
-                  className="h-[0.25rem] w-full"
+                  className="h-[0.25rem] w-full shrink-0"
                 />
+                <div
+                  ref={gridRef}
+                  className={`static-carousel__grid${canScrollDown ? " can-scroll-down" : ""}`}
+                >
+                  {cards.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`static-carousel__cell${revealed ? " is-ready" : ""}`}
+                      style={{
+                        ["--static-reveal-delay" as string]: `${index * REVEAL_STAGGER_MS}ms`,
+                      }}
+                    >
+                      <div className="static-carousel__bone" aria-hidden="true">
+                        <div className="static-carousel__bone-face" />
+                        <div className="static-carousel__bone-cta" />
+                      </div>
+                      <div className="static-carousel__cell-real">
+                        <StaticCardHolder
+                          state={item.state}
+                          backgroundUrl={item.backgroundUrl}
+                          topLayerUrl={item.topLayerUrl}
+                          playCost={item.playCost}
+                          freePlay={item.freePlay}
+                          onPlay={item.onPlay}
+                          plainCta
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>,
             document.body,

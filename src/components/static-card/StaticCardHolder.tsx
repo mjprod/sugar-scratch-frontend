@@ -16,6 +16,8 @@ type StaticCardHolderProps = {
   freePlay?: boolean;
   onPlay?: () => void;
   className?: string;
+  /** Overlay grid: CSS plate instead of a live aurora shader. */
+  plainCta?: boolean;
 };
 
 const SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
@@ -62,11 +64,20 @@ export function StaticCardHolder({
   freePlay = false,
   onPlay,
   className,
+  plainCta = false,
 }: StaticCardHolderProps) {
   const locked = state === "locked";
   const top = topLayerUrl?.trim() || "";
   const ctaRef = useRef<HTMLDivElement>(null);
   const [confirm, setConfirm] = useState(false);
+
+  const activate = () => {
+    if (freePlay) {
+      onPlay?.();
+      return;
+    }
+    setConfirm((open) => !open);
+  };
 
   return (
     <div
@@ -78,13 +89,33 @@ export function StaticCardHolder({
         .join(" ")}
       data-state={state}
     >
-      <div className="static-card-holder__face relative h-[78px] w-[52px] overflow-hidden rounded">
+      <div
+        className="static-card-holder__face relative h-[78px] w-[52px] overflow-hidden rounded"
+        role={locked ? undefined : "button"}
+        tabIndex={locked ? undefined : 0}
+        aria-label={
+          locked ? undefined : freePlay ? "Free play" : `Play for ${playCost} diamonds`
+        }
+        onClick={locked ? undefined : activate}
+        onKeyDown={
+          locked
+            ? undefined
+            : (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  activate();
+                }
+              }
+        }
+      >
         <img
           src={backgroundUrl}
           alt=""
           className="absolute inset-0 size-full object-cover"
           style={{ filter: locked ? "saturate(0)" : "none" }}
           draggable={false}
+          loading="lazy"
+          decoding="async"
         />
         {top ? (
           <img
@@ -93,6 +124,8 @@ export function StaticCardHolder({
             className="absolute inset-0 size-full object-cover"
             style={{ filter: locked ? "saturate(0)" : "none" }}
             draggable={false}
+            loading="lazy"
+            decoding="async"
           />
         ) : null}
         {locked ? (
@@ -110,6 +143,8 @@ export function StaticCardHolder({
           {...SQUIRCLE_CTA}
           fillParent
           label=""
+          auroraPaused={plainCta}
+          glowEnabled={!plainCta}
           leadingIcon={
             freePlay ? (
               <Play
@@ -138,13 +173,7 @@ export function StaticCardHolder({
           cornerRadius={999}
           aria-label={freePlay ? "Free play" : `Play for ${playCost} diamonds`}
           aria-expanded={freePlay ? undefined : confirm}
-          onClick={() => {
-            if (freePlay) {
-              onPlay?.();
-              return;
-            }
-            setConfirm((open) => !open);
-          }}
+          onClick={activate}
         />
         {!freePlay && confirm && ctaRef.current ? (
           <PlayConfirm
