@@ -130,56 +130,58 @@ export function buildThemes(
   return { themes, groupByThemeId };
 }
 
+type CatalogFetchState = {
+  modelId: string | null;
+  catalog: BackendCollectionCatalog | null;
+  loading: boolean;
+};
+
 /**
  * `enabled: false` holds off every fetch (and keeps `loading`) — pass it while
  * the caller is still resolving `modelId`, so no unscoped catalog is fetched.
+ *
+ * The fetched catalog is keyed by the `modelId` it was requested for and only
+ * surfaced while it still matches, so a caller that stays mounted across
+ * creator switches never sees the previous creator's collection.
  */
 export function useCreatorCollection(
   modelId: string | null,
   { enabled = true }: { enabled?: boolean } = {},
 ): CreatorCollectionState {
   const catalogCtx = useCatalog();
-  const [catalog, setCatalog] = useState<BackendCollectionCatalog | null>(null);
+  const [fetchState, setFetchState] = useState<CatalogFetchState | null>(null);
   const [motionTemplateIds, setMotionTemplateIds] = useState<Set<string> | null>(
     null,
   );
-  const [loading, setLoading] = useState(true);
+  const current =
+    enabled && fetchState?.modelId === modelId ? fetchState : null;
+  const catalog = current?.catalog ?? null;
+  const loading = current?.loading ?? true;
 
   useEffect(() => {
     if (!enabled) {
-      setCatalog(null);
-      setMotionTemplateIds(null);
-      setLoading(true);
+      setFetchState(null);
       return;
     }
     let cancelled = false;
-    setLoading(true);
+    setFetchState({ modelId, catalog: null, loading: true });
     const timeout = window.setTimeout(() => {
       if (cancelled) return;
-      setLoading(false);
+      setFetchState((prev) =>
+        prev?.modelId === modelId
+          ? { ...prev, loading: false }
+          : { modelId, catalog: null, loading: false },
+      );
     }, 2500);
+    const settle = (result: BackendCollectionCatalog | null) => {
+      if (cancelled) return;
+      setFetchState({ modelId, catalog: result, loading: false });
+      window.clearTimeout(timeout);
+    };
 
-    void fetchCollectionCatalogPaginated({
-      modelId,
-      onPage: (result) => {
-        if (cancelled) return;
-        setCatalog(result);
-        setLoading(false);
-        window.clearTimeout(timeout);
-      },
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setCatalog(result);
-        setLoading(false);
-        window.clearTimeout(timeout);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setCatalog(null);
-        setLoading(false);
-        window.clearTimeout(timeout);
-      });
+    void fetchCollectionCatalogPaginated({ modelId, onPage: settle })
+      .then(settle)
+      .catch(() => settle(null));
 
     return () => {
       cancelled = true;
