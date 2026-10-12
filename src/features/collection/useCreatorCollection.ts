@@ -146,10 +146,14 @@ export function useCreatorCollection(
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setCatalog(null);
+      setMotionTemplateIds(null);
+      setLoading(true);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
-
     const timeout = window.setTimeout(() => {
       if (cancelled) return;
       setLoading(false);
