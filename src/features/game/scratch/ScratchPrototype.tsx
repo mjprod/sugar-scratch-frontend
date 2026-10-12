@@ -2609,6 +2609,11 @@ export function ScratchPrototype({
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
     setHandStartIntroResolved(false);
+    if (!THEME_INTROS_ENABLED) {
+      themeIntroByKeyRef.current = new Map();
+      setThemeIntrosReady(true);
+      return;
+    }
     setThemeIntrosReady(false);
     let cancelled = false;
     void fetchThemes()
