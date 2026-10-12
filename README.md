@@ -72,6 +72,7 @@ Guests see **0 coins / 0 diamonds** until login. Session comes from `GET /api/au
 | `npm run self-check` | Offline invariant checks (`*.self-check.ts`) |
 | `npm run lint:ui` | aura-lint against theme tokens |
 | `npm run perf:audit` / `perf:runtime` | Lighthouse / headless runtime perf pass (see below) |
+| `npm run perf:flow` | Signed-in end-to-end player flow against the local API (see below) |
 
 ## Before you open a PR
 
@@ -126,6 +127,7 @@ src/
 
 - **On-device HUD:** add `?perf=1` to any route (persists; `?perf=0` turns it off). It shows FPS, frame p50/p95/p99, long frames, heap (Chromium) and DOM/canvas/video counts. In the console: `__sugarPerf.snapshot()` / `__sugarPerf.reset()`. Measure against `npm run build && npm run preview`, not dev.
 - **Whole-app pass:** `npm run build && npx vite preview --port 4174 --strictPort`, then `npm run perf:audit` (Lighthouse mobile per route → `.perf/summary.json`) and `npm run perf:runtime` (headless Chrome, phone viewport, 4× CPU → `.perf/runtime.json`; its swipe/game-ui scenarios need a `VITE_ENABLE_LABS=1` build). Set `PERF_COOKIE="sugar_session=…"` to include signed-in routes. Runtime uses the desktop GPU, so confirm WebGL/video costs on a phone.
+- **Signed-in player flow:** with the local stack up (`npm run dev:all` in the repo root), serve the build against it with `VITE_API_PROXY=http://127.0.0.1:8090 VITE_MEDIA_PROXY=https://localhost:5080 npx vite preview --port 4174 --strictPort`, then `npm run perf:flow`. It registers a fresh player and walks home → store (buy diamonds) → creator (buy pack) → pack pocket (open + reveal) → collection → scratch game → transactions → home. Per step it reports API-settled time, every `/api` call (browser vs `X-Response-Time-Ms` server time), bytes, frame stats and heap → `.perf/flow.json`. It exits 1 on a failed `/api` call, and refuses to run if the app proxies `/api` to anything but `PERF_API`. Set `DASHBOARD_TOKEN` to delete the perf player afterwards.
 - Targets for `/game` on a phone: frame p99 ≤ ~16–32 ms, `readPixels` ~0/s when idle, full GC pauses well under 100 ms.
 
 ## Notes

@@ -130,8 +130,13 @@ export function buildThemes(
   return { themes, groupByThemeId };
 }
 
+/**
+ * `enabled: false` holds off every fetch (and keeps `loading`) — pass it while
+ * the caller is still resolving `modelId`, so no unscoped catalog is fetched.
+ */
 export function useCreatorCollection(
   modelId: string | null,
+  { enabled = true }: { enabled?: boolean } = {},
 ): CreatorCollectionState {
   const catalogCtx = useCatalog();
   const [catalog, setCatalog] = useState<BackendCollectionCatalog | null>(null);
@@ -141,6 +146,7 @@ export function useCreatorCollection(
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     setLoading(true);
 
@@ -150,7 +156,6 @@ export function useCreatorCollection(
     }, 2500);
 
     void fetchCollectionCatalogPaginated({
-      catalogGirlName: catalogCtx.productSharedMedia.girlName || undefined,
       modelId,
       onPage: (result) => {
         if (cancelled) return;
@@ -176,9 +181,10 @@ export function useCreatorCollection(
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [catalogCtx.productSharedMedia.girlName, modelId]);
+  }, [enabled, modelId]);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     void fetchCards().then((cards) => {
       if (cancelled || !cards) return;
@@ -193,7 +199,7 @@ export function useCreatorCollection(
     return () => {
       cancelled = true;
     };
-  }, [modelId]);
+  }, [enabled]);
 
   return useMemo(() => {
     const { themes, groupByThemeId } = buildThemes(catalog, modelId);

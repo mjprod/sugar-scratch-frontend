@@ -1,6 +1,7 @@
 /** Creator models and foil packs from `/api/models`. */
 
 import { apiFetch } from "../lib/api";
+import { CATALOG_TTL_MS, cachedRequest } from "../lib/cachedRequest";
 import { normalizeMediaUrl } from "../lib/mediaUrl";
 
 export type BackendModel = {
@@ -319,16 +320,14 @@ function sortModels(models: BackendModel[]) {
   });
 }
 
-let modelsPromise: Promise<BackendModel[]> | null = null;
-
 export async function fetchModels(): Promise<BackendModel[]> {
   const data = await apiFetch<{ models?: BackendModel[] }>("/api/models");
   return data && Array.isArray(data.models) ? sortModels(data.models) : [];
 }
 
+/** Preferred entry point: shares one `/api/models` request across the screen. */
 export function loadModels() {
-  modelsPromise ??= fetchModels();
-  return modelsPromise;
+  return cachedRequest("/api/models", CATALOG_TTL_MS, fetchModels);
 }
 
 export async function loadModelProfile(
