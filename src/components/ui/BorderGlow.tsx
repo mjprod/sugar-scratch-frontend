@@ -165,6 +165,33 @@ function resolveOuterBloomMode(
 
 const DEFAULT_COLORS = ["#c084fc", "#f472b6", "#38bdf8"];
 const MIN_ORBIT_DURATION_S = 0.5;
+/** Resume the orbit slightly before a glow scrolls into view. */
+const ORBIT_VISIBILITY_MARGIN = "120px";
+
+let orbitVisibilityObserver: IntersectionObserver | null = null;
+
+/**
+ * The orbit animates an inherited @property every frame, forcing style +
+ * mask repaint for the whole card subtree — pause it (and the wrapped CTA's
+ * own loops) while off screen or fully clipped. One observer for every glow.
+ * A data attribute (not a class) so React className updates can't drop it.
+ */
+function observeOrbitVisibility(el: HTMLElement): () => void {
+  if (typeof IntersectionObserver === "undefined") return () => {};
+  orbitVisibilityObserver ??= new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        entry.target.toggleAttribute("data-orbit-offscreen", !entry.isIntersecting);
+      }
+    },
+    { rootMargin: ORBIT_VISIBILITY_MARGIN },
+  );
+  orbitVisibilityObserver.observe(el);
+  return () => {
+    orbitVisibilityObserver?.unobserve(el);
+    el.removeAttribute("data-orbit-offscreen");
+  };
+}
 
 export function BorderGlow({
   children,
@@ -350,6 +377,12 @@ export function BorderGlow({
       card.classList.remove("border-glow-orbiting", "is-css-orbit");
     };
   }, [orbit]);
+
+  const orbiting = (alwaysOn && !disabled && orbitSpeed > 0) || orbit;
+  useEffect(() => {
+    if (!orbiting || !cardRef.current) return;
+    return observeOrbitVisibility(cardRef.current);
+  }, [orbiting]);
 
   // Ensure bloom is fully off while disabled (even if a previous orbit left proximity high).
   useEffect(() => {

@@ -591,3 +591,11 @@
   overflow: auto;
   z-index: 1;
 }
+
+/* Off-screen / fully clipped (set by BorderGlow's observer): freeze every loop. */
+.border-glow-card[data-orbit-offscreen],
+.border-glow-card[data-orbit-offscreen] *,
+.border-glow-card[data-orbit-offscreen] *::before,
+.border-glow-card[data-orbit-offscreen] *::after {
+  animation-play-state: paused !important;
+}
