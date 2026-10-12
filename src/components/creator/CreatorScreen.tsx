@@ -117,7 +117,9 @@ function CreatorScreenInner({
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const modelId = model?.id ?? null;
-  const collection = useCreatorCollection(modelId, { enabled: modelResolved });
+  const collection = useCreatorCollection(modelId, {
+    enabled: modelResolved && modelId != null,
+  });
   const pageLoading = !model || collection.loading;
   useMarkPageReady(
     packsReady &&
@@ -337,7 +339,11 @@ function CreatorScreenInner({
     });
   }
 
-  if (!packsReady || (pageLoading && themes.length === 0)) {
+  if (
+    !packsReady ||
+    !modelResolved ||
+    (pageLoading && themes.length === 0)
+  ) {
     return (
       <section
         ref={pageRef}
