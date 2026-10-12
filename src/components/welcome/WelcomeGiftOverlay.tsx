@@ -48,6 +48,10 @@ export function WelcomeGiftOverlay({
   const location = useLocation();
   const skip =
     Boolean((location.state as { skipWelcomeGift?: boolean } | null)?.skipWelcomeGift);
+  // Local visual preview only (`?welcome=1`). Does not grant the pack.
+  const forcePreview =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("welcome") === "1";
   const titleId = useId();
   const claimSlotRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -60,11 +64,11 @@ export function WelcomeGiftOverlay({
   useEffect(() => {
     // Guests browse freely — gift only after sign-in + verified email.
     const waitingOnEmailVerify = authed && !emailVerified;
-    if (!authed || authOpen || verifyOpen || waitingOnEmailVerify) {
+    if (!forcePreview && (!authed || authOpen || verifyOpen || waitingOnEmailVerify)) {
       setOpen(false);
       return;
     }
-    if (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed, authed)) {
+    if (forcePreview || (!skip && shouldShowWelcomeOverlay(profile.welcomeClaimed, authed))) {
       setExitPhase("idle");
       setOpen(true);
       return;
@@ -79,6 +83,7 @@ export function WelcomeGiftOverlay({
     emailVerified,
     verifyOpen,
     skip,
+    forcePreview,
     profile.welcomeClaimed,
   ]);
 
@@ -263,7 +268,7 @@ export function WelcomeGiftOverlay({
           <div className="welcome-gift-offer">
             <div className="welcome-gift-pill">
               <span className="welcome-gift-pill-icon" aria-hidden="true" />
-              Free Scratch ×1
+              FREE Demo Motion Pack
             </div>
 
             {phase === "confirm" ? (
@@ -303,7 +308,7 @@ export function WelcomeGiftOverlay({
                     .filter(Boolean)
                     .join(" ")}
                 >
-                  + Your first one is on us +
+                  + Keep the Diamonds you Win +
                 </p>
               </>
             )}
