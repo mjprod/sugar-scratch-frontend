@@ -283,7 +283,7 @@ export function MotionCardHolder({
                   </p>
                 </div>
                 {(activeCard.state ?? "").startsWith("locked") ? null : (
-                <div className="motion-card-holder__play h-[34px] w-[64px] shrink-0 max-[980px]:w-full" ref={playCtaRef}>
+                <div className="motion-card-holder__play h-[34px] w-full shrink-0" ref={playCtaRef}>
                     <CtaButton
                       {...SQUIRCLE_CTA}
                       fillParent

@@ -203,19 +203,17 @@
   }
 }
 
-@media (max-width: 980px) {
-  .motion-card-holder__head {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 6px 10px;
-    background: #0000003d;
-    border-radius: 1rem;
-    border: 1px solid #ffffff1c;
-  }
+.motion-card-holder__head {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 6px 10px;
+  background: #0000003d;
+  border-radius: 1rem;
+  border: 1px solid #ffffff1c;
+}
 
-  .motion-card-holder__play {
-    width: 100%;
-  }
+.motion-card-holder__play {
+  width: 100%;
 }
 
 .motion-card-holder__panel .photo-gateway {
@@ -507,11 +505,13 @@
 @media (min-width: 1024px) {
   .static-carousel-overlay__panel {
     width: min(100%, 64rem);
+    max-height: min(90dvh, 860px);
     gap: 16px;
     padding: 20px 20px 18px;
   }
 
   .static-carousel__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px 12px;
   }
 }
