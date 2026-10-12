@@ -262,7 +262,7 @@ export function StaticCarousel({
     };
   }, [expanded, cards.length]);
 
-  const lastOpenSignal = useRef(openSignal);
+  const lastOpenSignal = useRef(0);
   useEffect(() => {
     if (openSignal === lastOpenSignal.current) return;
     lastOpenSignal.current = openSignal;
