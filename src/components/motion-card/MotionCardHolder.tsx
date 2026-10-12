@@ -158,6 +158,8 @@ export function MotionCardHolder({
     };
   }, []);
 
+
+
   return (
     <div
       className={[
@@ -221,6 +223,7 @@ export function MotionCardHolder({
                 freePlay={item.freePlay}
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
+                duplicateCount={item.duplicateCount}
                 hideMeter={selected && detailsReady}
                 onBuy={() => {
                   closeActive(item);
@@ -295,7 +298,7 @@ export function MotionCardHolder({
                               </span>
                             </>
                           )}
-                          <span>Play Motion</span>
+                          <span>{activeCard.freePlay ? "Free Play" : "Play Motion"}</span>
                           <Play
                             className="motion-card-play-cta__triangle"
                             size={11}
@@ -310,7 +313,7 @@ export function MotionCardHolder({
                       cornerRadius={999}
                       aria-label={
                         activeCard.freePlay
-                          ? "Free play"
+                          ? "Free Play"
                           : `Play for ${activeCard.playCost ?? packUnitCost()} diamonds`
                       }
                       aria-expanded={activeCard.freePlay ? undefined : confirmPlay}

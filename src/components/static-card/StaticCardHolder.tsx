@@ -94,7 +94,7 @@ export function StaticCardHolder({
         role={locked ? undefined : "button"}
         tabIndex={locked ? undefined : 0}
         aria-label={
-          locked ? undefined : freePlay ? "Free play" : `Play for ${playCost} diamonds`
+          locked ? undefined : freePlay ? "Free" : `Play for ${playCost} diamonds`
         }
         onClick={locked ? undefined : activate}
         onKeyDown={
@@ -138,7 +138,7 @@ export function StaticCardHolder({
         ) : null}
       </div>
 
-      <div className="static-card-play-cta" ref={ctaRef}>
+      <div className={freePlay ? "static-card-play-cta is-free" : "static-card-play-cta"} ref={ctaRef}>
         <CtaButton
           {...SQUIRCLE_CTA}
           fillParent
@@ -147,13 +147,7 @@ export function StaticCardHolder({
           glowEnabled={!plainCta}
           leadingIcon={
             freePlay ? (
-              <Play
-                className="motion-card-play-cta__triangle"
-                size={11}
-                strokeWidth={2.4}
-                fill="currentColor"
-                aria-hidden
-              />
+              <span className="motion-card-play-cta__price">Free</span>
             ) : (
               <>
                 <DiamondLottie size={11} aria-hidden />
@@ -171,7 +165,7 @@ export function StaticCardHolder({
           costAmount={null}
           fontSize={10}
           cornerRadius={999}
-          aria-label={freePlay ? "Free play" : `Play for ${playCost} diamonds`}
+          aria-label={freePlay ? "Free" : `Play for ${playCost} diamonds`}
           aria-expanded={freePlay ? undefined : confirm}
           onClick={activate}
         />

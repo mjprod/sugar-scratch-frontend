@@ -1,6 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { m, useAnimate, useReducedMotion } from "framer-motion";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import "@/lib/lottie/setupWasm";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
   LockStatusBanner,
   type LockStatus,
@@ -50,10 +53,14 @@ export type MotionCardProps = {
   theme?: MotionCardTheme;
   posterUrl: string;
   videoUrl?: string;
+  /** Copies owned. Shown bottom-left only when the card is unlocked and > 1. */
+  duplicateCount?: number;
   onBuy?: () => void;
   onSelect?: (next: MotionCardState) => void;
   className?: string;
 };
+
+const CARD_COUNTDOWN_LOTTIE_SRC = "/lottie/lottieCardCountdown.lottie";
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
 const CARD_MOTION = { duration: 0.42, ease: APPLE_EASE };
@@ -75,6 +82,7 @@ export function MotionCard({
   theme = "police",
   posterUrl,
   videoUrl = "",
+  duplicateCount,
   onBuy,
   onSelect,
   className,
@@ -86,6 +94,10 @@ export function MotionCard({
   const prevTease = useRef<boolean | null>(null);
   const locked = state.startsWith("locked");
   const selected = state.endsWith("-selected");
+  const copies =
+    !locked && typeof duplicateCount === "number" && duplicateCount > 1
+      ? Math.round(duplicateCount)
+      : 0;
   const playVideo = state === "unlocked-selected" && Boolean(videoUrl);
   const showTease = state === "locked-unselected-banner";
   const instant = reduceMotion ? { duration: 0 } : CARD_MOTION;
@@ -254,6 +266,28 @@ export function MotionCard({
       <div className="absolute top-[3.5px] left-1/2 z-10 -translate-x-1/2">
         <LockStatusBanner status={bannerStatus(state)} />
       </div>
+
+      {copies > 1 ? (
+        <span
+          className="motion-dupe-badge"
+          aria-label={`${copies} copies`}
+        >
+          <DotLottieReact
+            src={
+              typeof window !== "undefined"
+                ? new URL(CARD_COUNTDOWN_LOTTIE_SRC, window.location.href).href
+                : CARD_COUNTDOWN_LOTTIE_SRC
+            }
+            autoplay
+            loop={false}
+            className="motion-dupe-badge__lottie"
+            renderConfig={lottieRenderConfig({ extraScale: 1.75, autoResize: false })}
+          />
+          <span className="motion-dupe-badge__count" aria-hidden="true">
+            {copies}
+          </span>
+        </span>
+      ) : null}
 
       {locked ? (
         <m.div
