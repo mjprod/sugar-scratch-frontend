@@ -364,7 +364,7 @@ function recordAwardedPhotoCards(session: GameSession): GameSession {
     creatorId:
       session.packScratch?.creatorId?.trim() ||
       session.modelId?.trim() ||
-      creatorName,
+      "",
     creatorName,
   });
   return {
