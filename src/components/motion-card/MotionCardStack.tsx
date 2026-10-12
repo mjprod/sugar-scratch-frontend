@@ -12,8 +12,6 @@ type MotionCardStackProps = MotionCardProps & {
   hideMeter?: boolean;
   duplicateCount?: number;
   freePlay?: boolean;
-  playCost?: number;
-  onPlay?: () => void;
 };
 
 function motionUnlocked(state: MotionCardState | undefined) {
@@ -30,16 +28,13 @@ export function MotionCardStack({
   className,
   ...cardProps
 }: MotionCardStackProps) {
-  const { playCost, onPlay, ...motionProps } = cardProps;
-  void playCost;
-  void onPlay;
   return (
     <div
       className={["flex h-full w-full flex-col items-center gap-2", className]
         .filter(Boolean)
         .join(" ")}
     >
-      <MotionCard {...motionProps} />
+      <MotionCard {...cardProps} />
       <m.div
         initial={false}
         animate={{

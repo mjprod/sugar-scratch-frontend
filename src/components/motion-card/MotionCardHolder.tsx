@@ -219,7 +219,6 @@ export function MotionCardHolder({
                 theme={item.theme}
                 posterUrl={item.posterUrl}
                 videoUrl={item.videoUrl}
-                playCost={item.playCost}
                 freePlay={item.freePlay}
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
@@ -229,7 +228,6 @@ export function MotionCardHolder({
                   closeActive(item);
                   window.requestAnimationFrame(() => item.onBuy?.());
                 }}
-                onPlay={item.onPlay}
                 onSelect={() => {
                   if (detailsTimer.current != null) {
                     window.clearTimeout(detailsTimer.current);
