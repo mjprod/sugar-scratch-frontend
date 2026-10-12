@@ -201,6 +201,10 @@
   .motion-card-holder__panel {
     overflow: visible;
   }
+
+  .motion-card-holder__play {
+    height: 34px;
+  }
 }
 
 .motion-card-holder__head {
@@ -214,6 +218,7 @@
 
 .motion-card-holder__play {
   width: 100%;
+  height: 48px;
 }
 
 .motion-card-holder__panel .photo-gateway {

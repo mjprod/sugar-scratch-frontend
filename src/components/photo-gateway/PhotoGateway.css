@@ -20,8 +20,8 @@
 }
 
 .photo-gateway__title {
-  font-size: clamp(13px, 8cqi, 22px);
-  line-height: 1.15;
+  font-size: 1rem;
+  line-height: 1.3;
 }
 
 @media (max-width: 980px) {

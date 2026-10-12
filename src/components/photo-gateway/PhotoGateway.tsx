@@ -32,10 +32,10 @@ type ScatterPose = {
 
 /** Desktop scatter, as a fraction of the gateway box. */
 const DESKTOP_SCATTER: ScatterPose[] = [
-  { x: 0.02, y: 0.04, rotate: -14, scale: 0.96 },
-  { x: 0.62, y: 0.02, rotate: 12, scale: 0.92 },
-  { x: 0.06, y: 0.52, rotate: 10, scale: 0.94 },
-  { x: 0.62, y: 0.48, rotate: -11, scale: 1 },
+  { x: 0, y: 0, rotate: 15, scale: 1.26 },
+  { x: 0.76, y: 0.02, rotate: -13, scale: 1.5 },
+  { x: 0.04, y: 0.54, rotate: -23, scale: 1.42 },
+  { x: 0.72, y: 0.52, rotate: 11, scale: 1.42 },
 ];
 
 /** Tuned on a 193px-wide mobile panel. Scaled to the live gateway width. */
