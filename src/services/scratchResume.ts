@@ -20,6 +20,18 @@ import {
 } from "@/services/packInventory";
 import type { UnopenedPack } from "@/services/collection";
 
+/** Display-name fallback for Paths.creator, which does not encode. */
+function creatorRouteId(creatorId: string | undefined, creator: string | undefined, fallback: string) {
+  const stored = creatorId?.trim();
+  if (stored) return stored;
+  const slug = creator
+    ?.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || fallback;
+}
+
 function photoScratchGroupFromSession(
   session: NonNullable<ReturnType<typeof loadGameSession>>,
 ): ReadyScratchGroup | null {
@@ -34,7 +46,7 @@ function photoScratchGroupFromSession(
   const readyPackId = pack?.readyPackId ?? "session";
   return {
     id: `photo:${readyPackId}`,
-    creatorId: pack?.creatorId?.trim() || pack?.creator || "photo",
+    creatorId: creatorRouteId(pack?.creatorId, pack?.creator, "photo"),
     creatorName: pack?.creator ?? "Photo Cards",
     collectionName: pack?.packName
       ? `${pack.packName} · Photos`
@@ -63,7 +75,7 @@ function motionScratchGroupFromSession(
   if (packId && getReadyToScratch(packId)) return null;
   return {
     id: packId ?? `motion:${session.motionCardIds.join(",")}`,
-    creatorId: pack?.creatorId?.trim() || pack?.creator || "motion",
+    creatorId: creatorRouteId(pack?.creatorId, pack?.creator, "motion"),
     creatorName: pack?.creator ?? "Motion Cards",
     collectionName: pack?.packName
       ? `${pack.packName} · Motion`
