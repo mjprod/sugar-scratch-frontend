@@ -61,7 +61,11 @@ function persistPackMotionSettle(
 }
 
 function boardCreatorId(packScratch: { creator: string; creatorId?: string }) {
-  return packScratch.creatorId?.trim() || packScratch.creator.trim();
+  const explicit = packScratch.creatorId?.trim();
+  if (explicit) return explicit;
+  return (
+    packScratch.creator.trim().toLowerCase().replace(/[^a-z0-9]+/g, "") || "creator"
+  );
 }
 
 async function appendGameHistoryFromSettle(
