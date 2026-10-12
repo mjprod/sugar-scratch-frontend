@@ -11,7 +11,7 @@ import { noteCoinsReceived } from "@/services/coinReceipt";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
   isScratchHandQuotaExhausted,
-  persistScratchCoins,
+  claimScratchCoins,
   scratchCoinAwardAction,
   startScratchHand,
 } from "@/services/scratchCoinReward";
@@ -224,6 +224,8 @@ import {
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { formatBalance } from "@/lib/formatBalance";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
 import {
   MirrorSlideTransition,
@@ -1404,7 +1406,7 @@ export function ScratchPrototype({
   onRevealedSymbolsChange?: (count: number) => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins, coins, diamonds } = useWallet();
+  const { addCoins, addDiamonds, coins, diamonds } = useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
@@ -1417,6 +1419,7 @@ export function ScratchPrototype({
   const practiceRef = useRef(freePlayLaunch);
   /** Quota spent / hand start failed — skip sparkle coins only, not card prizes. */
   const coinAwardsDisabledRef = useRef(false);
+  const [handCurrency, setHandCurrency] = useState<"coins" | "diamonds">("coins");
   /** 10% bands crossed while the paid hand POST is still in flight. */
   const pendingMilestonesRef = useRef<number[]>([]);
   /** Lab restart token the current hand was started for — a bump needs a fresh hand. */
@@ -2017,7 +2020,7 @@ export function ScratchPrototype({
   ) {
     // Session may still be resolving on first paint — leave hand empty; the
     // card+auth effect re-runs once `authed` becomes true.
-    if (!authed || freePlayLaunch) {
+    if (!authed) {
       handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
@@ -2044,11 +2047,12 @@ export function ScratchPrototype({
     coinAwardsDisabledRef.current = false;
     pendingMilestonesRef.current = [];
     const gen = ++handStartGenRef.current;
-    void startScratchHand(cardId || undefined).then((result) => {
+    void startScratchHand(cardId || undefined, { freePlay: freePlayLaunch }).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
         handCardIdRef.current = key;
+        setHandCurrency(result.currency === "diamonds" ? "diamonds" : "coins");
         // Owned-card replays still award. Only the theme toggle skips minting.
         practiceRef.current = freePlayLaunch;
         flushHeldScratchMilestones(result.handId);
@@ -2065,21 +2069,29 @@ export function ScratchPrototype({
   function creditScratchMilestone(milestone: number, handId: string) {
     const award = rollSparkleCoinAward();
     const cardId = selectedCardId || undefined;
+    const paysDiamonds = handCurrency === "diamonds";
     queueMicrotask(() => {
       showCoinBadge();
-      addCoins(award.amount);
-      noteCoinsReceived(award.amount);
+      if (!paysDiamonds) {
+        addCoins(award.amount);
+        noteCoinsReceived(award.amount);
+      }
       setCoinAwardFlash(award.amount);
       setCoinPopNonce((n) => n + 1);
       playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       // Do not merge the persist wallet snapshot (see scratchCoinReward).
       if (handId && authed) {
-        persistScratchCoins({
+        void claimScratchCoins({
           handId,
           milestone,
           cardId,
           amount: award.amount,
+        }).then((claimed) => {
+          if (!claimed || claimed.currency !== "diamonds") return;
+          const paid = Math.max(0, Math.trunc(claimed.diamonds ?? 0));
+          if (paid <= 0) return;
+          addDiamonds(paid);
         });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
@@ -6072,10 +6084,20 @@ export function ScratchPrototype({
                       .join(" ")}
                     onAnimationEnd={onCoinBadgeLeaveEnd}
                   >
-                    <StageCoinCount
-                      popNonce={coinPopNonce}
-                      awardAmount={coinAwardFlash}
-                    />
+                    {handCurrency === "diamonds" ? (
+                      <div
+                        className="stage-game__coin-count"
+                        aria-label={`${formatBalance(diamonds)} diamonds`}
+                      >
+                        <DiamondLottie size={22} aria-hidden />
+                        <span className="tabular-nums">{formatBalance(diamonds)}</span>
+                      </div>
+                    ) : (
+                      <StageCoinCount
+                        popNonce={coinPopNonce}
+                        awardAmount={coinAwardFlash}
+                      />
+                    )}
                   </div>
                 ) : null}
               </div>

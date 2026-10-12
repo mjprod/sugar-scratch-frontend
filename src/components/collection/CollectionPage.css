@@ -506,17 +506,6 @@ body[data-theme="v8"] .mc-continue-row::-webkit-scrollbar {
   display: none;
 }
 
-body[data-theme="v8"] .mc-continue-empty-cta {
-  min-height: 36px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: linear-gradient(180deg, rgba(255, 77, 141, 0.9), #aa004f);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
 
 /* Choose a Model */
 body[data-theme="v8"] .mc-models {

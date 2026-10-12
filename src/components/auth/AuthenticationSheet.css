@@ -133,7 +133,7 @@ body[data-theme="v8"] .auth7-consent {
 body[data-theme="v8"] .auth7-consent-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 0;
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
@@ -141,10 +141,10 @@ body[data-theme="v8"] .auth7-consent-row {
 
 body[data-theme="v8"] .auth7-consent-box {
   display: grid;
-  width: 44px;
+  width: 28px;
   height: 44px;
   flex-shrink: 0;
-  margin: -10px 0 -10px -10px;
+  margin: -10px 0 -10px -6px;
   place-items: center;
   border: 0;
   background: transparent;
@@ -251,7 +251,7 @@ body[data-theme="v8"] .auth7-consent-error {
   }
 
   body[data-theme="v8"] .auth7-consent-row {
-    gap: 8px;
+    gap: 0;
   }
 
   body[data-theme="v8"] .auth7-consent-box {

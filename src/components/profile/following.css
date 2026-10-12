@@ -473,15 +473,12 @@
 }
 
 .following-empty-cta {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 240px);
+  height: 44px;
   margin-top: 12px;
-  padding: 12px 20px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--color-accent, oklch(0.656 0.212 354.31));
-  color: oklch(1 0 0);
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
+  overflow: visible;
 }
 
 /* —— Skeletons —— */

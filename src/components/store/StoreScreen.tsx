@@ -24,6 +24,7 @@ import {
   type StoreProduct,
 } from "@/services/store";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { GetDiamondsCatalog } from "@/components/store/GetDiamondsCatalog";
 import { useAuth } from "@/contexts/useAuth";
 import type { RedeemReward } from "@/services/redeem";
@@ -516,13 +517,16 @@ function ConfirmModal({
         You’ll continue to a secure third-party payment page. Sugar never sees your
         card details.
       </p>
-      <button
-        type="button"
-        onClick={onConfirm}
-        className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[14px] font-semibold text-[oklch(0.147_0.011_285.01)] transition active:scale-[0.98]"
-      >
-        Continue to payment
-      </button>
+      <div className="mt-6 h-12 w-full">
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          label="Continue to payment"
+          costAmount={null}
+          fontSize={14}
+          onClick={onConfirm}
+        />
+      </div>
       <button
         type="button"
         onClick={onCancel}
@@ -610,7 +614,7 @@ function PaymentGateway({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1100] flex flex-col overflow-y-auto bg-[oklch(0.972_0.003_247.86)] text-[oklch(0.208_0.04_265.75)]"
+      className="fixed inset-0 z-[1100] mt-[calc(max(12px,env(safe-area-inset-top,0px))+56px)] flex flex-col overflow-y-auto bg-[oklch(0.972_0.003_247.86)] text-[oklch(0.208_0.04_265.75)] md:mt-0"
       role="dialog"
       aria-modal="true"
       aria-label="Payment gateway"
@@ -630,7 +634,7 @@ function PaymentGateway({
         </button>
       </header>
 
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 py-6 pb-10">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 py-6 pb-[calc(96px+env(safe-area-inset-bottom,0px)+24px)] md:pb-10">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
           Leaving Sugar · Third-party payment
         </p>
@@ -825,23 +829,29 @@ function ResultModal({
       <h2 className="mt-4 text-[18px] font-bold">{title}</h2>
       <p className="mt-2 text-[13px] leading-relaxed text-white/55">{body}</p>
       {kind === "success" || kind === "cancelled" ? (
-        <button
-          type="button"
-          onClick={onContinue}
-          className="mt-6 h-12 w-full rounded-full bg-[oklch(0.606_0.219_292.72)] text-[14px] font-semibold transition active:scale-[0.98]"
-        >
-          Back to Store
-        </button>
+        <div className="mt-6 h-12 w-full">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("pillBlackCTA")}
+            fillParent
+            label="Back to Store"
+            costAmount={null}
+            fontSize={14}
+            onClick={onContinue}
+          />
+        </div>
       ) : (
         <>
           {onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-6 h-12 w-full rounded-full bg-[oklch(0.606_0.219_292.72)] text-[14px] font-semibold transition active:scale-[0.98]"
-            >
-              {retryLabel}
-            </button>
+            <div className="mt-6 h-12 w-full">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("pillBlackCTA")}
+                fillParent
+                label={retryLabel}
+                costAmount={null}
+                fontSize={14}
+                onClick={onRetry}
+              />
+            </div>
           ) : null}
           <button
             type="button"

@@ -20,6 +20,10 @@ import { photoScratchIdForSlot } from "@/features/collection/lib/photoSlots";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { isDemoMode } from "@/lib/demo";
 import { packUnitCost } from "@/services/purchase";
+import type {
+  BoardMotionCard,
+  CreatorBoard,
+} from "@/services/creatorBoard";
 import type { ThemeCardData } from "@/services/collection";
 import type { FeaturedPack } from "@/services/homepage";
 import { Paths } from "@/routes/Paths";
@@ -95,21 +99,28 @@ function motionVideoUrl(card: CardConfig): string {
 function photoItemsForCard(
   card: CardConfig,
   demo = false,
+  motion?: BoardMotionCard,
 ): StaticCarouselItem[] {
-  const urls = (card.photoUrls ?? []).slice(0, 10);
-  while (urls.length < 10) urls.push("");
+  const total = motion?.staticCardsTotal || 10;
+  const urls = (card.photoUrls ?? []).slice(0, total);
+  while (urls.length < total) urls.push("");
   const filled = demo
-    ? 4
-    : Math.max(0, Math.min(10, Math.round(card.photoFilledCount ?? 0)));
+    ? Math.min(4, total)
+    : motion
+      ? motion.staticCards.filter((slot) => slot.owned || slot.unlocked).length
+      : Math.max(0, Math.min(total, Math.round(card.photoFilledCount ?? 0)));
   return urls.map((url, index) => {
+    const slot = motion?.staticCards[index];
     const src = url.trim();
+    const owned = demo ? index < filled : slot ? slot.owned || slot.unlocked : index < filled;
     return {
-      id: `${card.id}-photo-${index}`,
-      state: index < filled ? "unlocked" : "locked",
+      id: slot?.id || `${card.id}-photo-${index}`,
+      state: owned ? "unlocked" : "locked",
       backgroundUrl: src,
       topLayerUrl: "",
-      playCost: packUnitCost(),
+      playCost: slot?.price ?? packUnitCost(),
       slotIndex: index,
+      freePlayable: Boolean(slot?.freePlayable),
     } satisfies StaticCarouselItem;
   });
 }
@@ -138,6 +149,7 @@ export function CreatorInfluencerBody({
   onOpenCard,
   onPlayGame,
   onPlayGameFree,
+  board,
 }: {
   creatorName: string;
   creatorId: string;
@@ -154,6 +166,7 @@ export function CreatorInfluencerBody({
   onOpenCard: (cardId: string, themeId: string) => void;
   onPlayGame: (modelId: string, cardId: string, cardName: string) => void;
   onPlayGameFree?: (modelId: string, cardId: string, cardName: string) => void;
+  board?: CreatorBoard | null;
 }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -281,17 +294,16 @@ export function CreatorInfluencerBody({
             glyph={themeGlyph(theme)}
             avatarUrl={theme.thumbnailUrl || avatarUrl}
             cards={cardsByThemeId[theme.id] ?? []}
+            boardTheme={board?.themes.find((entry) => entry.id === theme.id)}
             demoLockedBanner={demo}
             onOpenCard={(cardId) => onOpenCard(cardId, theme.id)}
             onPlayGame={onPlayGame}
             onPlayGameFree={onPlayGameFree}
             openCardId={openCardId}
-            onPlayPhoto={async (cardId, slotIndex, modelId, freePlay) => {
-              const photoId = photoScratchIdForSlot(cardId, slotIndex);
-              if (!freePlay) {
-                const ok = await registerPlay("photo", photoId);
-                if (!ok) return;
-              }
+            onPlayPhoto={async (cardId, slotIndex, modelId, freePlay, photoCardId) => {
+              const photoId = photoCardId || photoScratchIdForSlot(cardId, slotIndex);
+              const ok = await registerPlay("photo", photoId, freePlay);
+              if (!ok) return;
               navigate(
                 Paths.photoScratchPlay(photoId, {
                   modelId: modelId || undefined,
@@ -328,7 +340,9 @@ export function CreatorInfluencerBody({
         <div className="cpv2-ultra-glow" aria-hidden="true" />
         <p className="cpv2-ultra-reward">
           Complete {creatorName}&rsquo;s Collection for your chance to{" "}
-          <span>win 1000 Diamonds</span>
+          <span>
+            win {board?.ultra?.maxWin ? board.ultra.maxWin : 1000} Diamonds
+          </span>
         </p>
         <div className="cpv2-ultra-card-outline" aria-hidden="true">
           <div className="cpv2-ultra-card-outline-cutout" />
@@ -376,7 +390,7 @@ export function CreatorInfluencerBody({
           {demo ? null : (
             <span className="cpv2-ultra-locked-price" aria-hidden="true">
               <DiamondLottie size={11} aria-hidden />
-              50
+              {board?.ultra?.price ?? 50}
             </span>
           )}
           <span className="cpv2-ultra-locked-label">
@@ -467,6 +481,7 @@ function ThemeCollectionCard({
   glyph,
   avatarUrl,
   cards,
+  boardTheme,
   demoLockedBanner = false,
   openCardId = "",
   onOpenCard,
@@ -478,6 +493,7 @@ function ThemeCollectionCard({
   glyph: string;
   avatarUrl: string;
   cards: CardConfig[];
+  boardTheme?: CreatorBoard["themes"][number];
   demoLockedBanner?: boolean;
   openCardId?: string;
   onOpenCard: (cardId: string) => void;
@@ -488,6 +504,7 @@ function ThemeCollectionCard({
     slotIndex: number,
     modelId: string,
     freePlay?: boolean,
+    photoCardId?: string,
   ) => void;
 }) {
   const [freePlay, setFreePlay] = useState(false);
@@ -505,15 +522,26 @@ function ThemeCollectionCard({
         .slice(0, 3),
     [cards],
   );
+  const boardById = useMemo(() => {
+    const map = new Map<string, BoardMotionCard>();
+    for (const card of boardTheme?.motionCards ?? []) map.set(card.id, card);
+    return map;
+  }, [boardTheme]);
+  const freePlayAllowed =
+    demoLockedBanner ||
+    motionCards.some((card) => boardById.get(card.id)?.freePlayable);
   const holderTheme = motionCardThemeFromName(theme);
   const mappedItems = useMemo<ThreeMotionItem[]>(
     () =>
       motionCards.map((card, index) => {
+        const boardCard = boardById.get(card.id);
         const unlocked = demoLockedBanner
           ? index === 0
-          : !card.id.includes("-placeholder-");
-        const photos = photoItemsForCard(card, demoLockedBanner).map((photo) =>
-          unlocked ? photo : { ...photo, state: "locked" as const },
+          : boardCard
+            ? boardCard.status === "unlocked"
+            : !card.id.includes("-placeholder-");
+        const photos = photoItemsForCard(card, demoLockedBanner, boardCard).map(
+          (photo) => (unlocked ? photo : { ...photo, state: "locked" as const }),
         );
         const collectedIndexes = photos.flatMap((photo, photoIndex) =>
           photo.state === "unlocked" ? [photoIndex] : [],
@@ -531,19 +559,21 @@ function ThemeCollectionCard({
           theme: holderTheme,
           posterUrl: motionTileStillUrl(card) || "/img/placeholder.webp",
           videoUrl: motionVideoUrl(card),
-          playCost: packUnitCost(),
-          freePlay,
-          staticTotal: 10,
+          playCost: boardCard?.price ?? packUnitCost(),
+          freePlay: freePlay && (demoLockedBanner || Boolean(boardCard?.freePlayable)),
+          staticTotal: boardCard?.staticCardsTotal || 10,
           collectedIndexes,
           photos: photos.map((photo) => ({
             ...photo,
-            freePlay,
+            freePlay:
+              freePlay && (demoLockedBanner || Boolean(photo.freePlayable)),
             onPlay: () =>
               onPlayPhoto(
                 card.id,
                 photo.slotIndex ?? 0,
                 card.modelId ?? "",
-                freePlay,
+                freePlay && (demoLockedBanner || Boolean(photo.freePlayable)),
+                photo.id,
               ),
           })),
           onPlay: () => {
@@ -577,6 +607,7 @@ function ThemeCollectionCard({
         };
       }),
     [
+      boardById,
       demoLockedBanner,
       freePlay,
       holderTheme,
@@ -644,24 +675,26 @@ function ThemeCollectionCard({
             {theme.name}
           </h3>
         </div>
-        <label className="cpv2-free-play">
-          <span className="cpv2-free-play-clip" aria-hidden="true">
-            <span className={freePlay ? "cpv2-free-play-track is-on" : "cpv2-free-play-track"}>
-              <span className="cpv2-free-play-label">Free Play?</span>
-              <span className="cpv2-free-play-label">Free: <span className="cpv2-free-play-on">ON</span></span>
+        {freePlayAllowed ? (
+          <label className="cpv2-free-play">
+            <span className="cpv2-free-play-clip" aria-hidden="true">
+              <span className={freePlay ? "cpv2-free-play-track is-on" : "cpv2-free-play-track"}>
+                <span className="cpv2-free-play-label">Free Play?</span>
+                <span className="cpv2-free-play-label">Free: <span className="cpv2-free-play-on">ON</span></span>
+              </span>
             </span>
-          </span>
-          <button
-            type="button"
-            className={freePlay ? "cpv2-free-play-switch is-on" : "cpv2-free-play-switch"}
-            role="switch"
-            aria-checked={freePlay}
-            aria-label={`Free play for ${theme.name}`}
-            onClick={() => setFreePlay((on) => !on)}
-          >
-            <span className="cpv2-free-play-knob" />
-          </button>
-        </label>
+            <button
+              type="button"
+              className={freePlay ? "cpv2-free-play-switch is-on" : "cpv2-free-play-switch"}
+              role="switch"
+              aria-checked={freePlay}
+              aria-label={`Free play for ${theme.name}`}
+              onClick={() => setFreePlay((on) => !on)}
+            >
+              <span className="cpv2-free-play-knob" />
+            </button>
+          </label>
+        ) : null}
       </header>
 
       <div className="cpv2-theme-card-row">

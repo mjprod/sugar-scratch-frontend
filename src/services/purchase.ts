@@ -41,6 +41,10 @@ export type OpeningCard = {
   reward: number;
   /** Optional designed face (foil video / image from the model API). */
   faceUrl?: string;
+  /** Real card dealt by the pack — absent on older openings. */
+  cardKind?: string;
+  cardId?: string;
+  photoSlotId?: string;
 };
 
 export type OpeningSession = {
@@ -626,6 +630,26 @@ export type OpenPackResult = {
   instance: PackInstanceApi;
 };
 
+function mapOpeningCard(card: {
+  id: string;
+  rarity: string;
+  reward: number;
+  faceUrl?: string | null;
+  cardKind?: string | null;
+  cardId?: string | null;
+  photoSlotId?: string | null;
+}): OpeningCard {
+  return {
+    id: card.id,
+    rarity: card.rarity as OpeningCard["rarity"],
+    reward: card.reward,
+    faceUrl: card.faceUrl ?? undefined,
+    cardKind: card.cardKind?.trim() || undefined,
+    cardId: card.cardId?.trim() || undefined,
+    photoSlotId: card.photoSlotId?.trim() || undefined,
+  };
+}
+
 function mapOpeningSession(raw: {
   quantity: number;
   diamondCost: number;
@@ -634,6 +658,9 @@ function mapOpeningSession(raw: {
     rarity: string;
     reward: number;
     faceUrl?: string | null;
+    cardKind?: string | null;
+    cardId?: string | null;
+    photoSlotId?: string | null;
   }>;
   foilFaceUrl?: string | null;
   foilLabel?: string | null;
@@ -641,12 +668,7 @@ function mapOpeningSession(raw: {
   return {
     quantity: (raw.quantity === 5 ? 5 : 1) as PackQuantity,
     diamondCost: raw.diamondCost,
-    cards: raw.cards.map((card) => ({
-      id: card.id,
-      rarity: card.rarity as OpeningCard["rarity"],
-      reward: card.reward,
-      faceUrl: card.faceUrl ?? undefined,
-    })),
+    cards: raw.cards.map(mapOpeningCard),
     foilFaceUrl: raw.foilFaceUrl ?? undefined,
     foilLabel: raw.foilLabel ?? undefined,
   };
@@ -701,6 +723,9 @@ export async function openPackInstance(instanceId: string): Promise<OpenPackResu
           rarity: string;
           reward: number;
           faceUrl?: string | null;
+          cardKind?: string | null;
+          cardId?: string | null;
+          photoSlotId?: string | null;
         }>;
         foilFaceUrl?: string | null;
         foilLabel?: string | null;

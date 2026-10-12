@@ -90,7 +90,7 @@
 }
 
 .game-settings-switch.is-on {
-  background: oklch(0.72 0.19 145);
+  background: #d4145a;
 }
 
 .game-settings-switch-knob {

@@ -74,7 +74,8 @@ function ScratchGameEmbed() {
     <PaidCardPlayGate
       kind="motion"
       cardId={card}
-      skip={gameMode || playlistMode || freePlay}
+      freePlay={freePlay}
+      skip={gameMode || playlistMode}
       onLeave={leaveGame}
     >
       <div className="app-shell app-shell--game">

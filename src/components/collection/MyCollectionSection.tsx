@@ -14,6 +14,7 @@ import {
   liveCollectedCount,
   useCreatorsCollectedThemes,
 } from "@/components/collection/MyCollectionLivePanel";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useSearch } from "@/contexts/SearchContext";
 import { useModels } from "@/hooks/useModels";
 import type { CreatorProgress } from "@/services/collection";
@@ -166,23 +167,16 @@ export function MyCollectionSection({
           <p className="collection-empty-copy">
             Cards you reveal will appear here.
           </p>
-          {hasPendingReveal ? (
-            <button
-              type="button"
-              className="mc-continue-empty-cta"
-              onClick={onFocusReadyToReveal}
-            >
-              Go to Ready to Reveal
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="mc-continue-empty-cta"
-              onClick={onExplorePacks}
-            >
-              Explore
-            </button>
-          )}
+          <div className="collection-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label={hasPendingReveal ? "Go to Ready to Reveal" : "Explore"}
+              costAmount={null}
+              fontSize={14}
+              onClick={hasPendingReveal ? onFocusReadyToReveal : onExplorePacks}
+            />
+          </div>
         </div>
       </section>
     );
@@ -282,13 +276,16 @@ export function MyCollectionSection({
         <div className="mc-models-empty">
           <h3 className="collection-empty-title">No collections found</h3>
           <p className="collection-empty-copy">Try another Creator.</p>
-          <button
-            type="button"
-            className="mc-continue-empty-cta"
-            onClick={() => setCreatorFilter("all")}
-          >
-            Clear Filters
-          </button>
+          <div className="collection-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label="Clear Filters"
+              costAmount={null}
+              fontSize={14}
+              onClick={() => setCreatorFilter("all")}
+            />
+          </div>
         </div>
       ) : (
         <div className="mc-model-list" role="list" aria-label="Models">

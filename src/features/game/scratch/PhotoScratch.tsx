@@ -17,7 +17,7 @@ import {
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   isScratchHandQuotaExhausted,
-  persistScratchCoins,
+  claimScratchCoins,
   scratchCoinAwardAction,
   startScratchHand,
 } from "@/services/scratchCoinReward";
@@ -33,6 +33,8 @@ import {
 } from "./glRenderer";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageCoinCount } from "../StageCoinCount";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { formatBalance } from "@/lib/formatBalance";
 import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
@@ -851,6 +853,8 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const practiceRef = useRef(freePlayLaunch);
   /** Quota spent / hand start failed — skip sparkle coins only, not diamonds. */
   const coinAwardsDisabledRef = useRef(false);
+  const handCurrencyRef = useRef<"coins" | "diamonds">("coins");
+  const [handCurrency, setHandCurrency] = useState<"coins" | "diamonds">("coins");
   /** 10% bands crossed while the paid hand POST is still in flight. */
   const pendingMilestonesRef = useRef<number[]>([]);
   const bgImageRef = useRef<HTMLImageElement>(null);
@@ -1109,7 +1113,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   completedCardIdsRef.current = completedCardIds;
   useEffect(() => {
     // Signed out — drop the hand so a later sign-in on the same card starts fresh.
-    if (!authed || freePlayLaunch) {
+    if (!authed) {
       handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
@@ -1135,10 +1139,12 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     coinAwardsDisabledRef.current = false;
     pendingMilestonesRef.current = [];
     const gen = ++handStartGenRef.current;
-    void startScratchHand(key).then((result) => {
+    void startScratchHand(key, { freePlay: freePlayLaunch }).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
+        handCurrencyRef.current = result.currency === "diamonds" ? "diamonds" : "coins";
+        setHandCurrency(handCurrencyRef.current);
         // Owned-card replays still award. Only the theme toggle skips minting.
         practiceRef.current = freePlayLaunch;
         flushHeldScratchMilestones(result.handId);
@@ -2074,18 +2080,26 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function creditScratchMilestone(milestone: number, handId: string) {
     const award = rollSparkleCoinAward();
     const cardId = handCardIdRef.current || undefined;
+    const paysDiamonds = handCurrencyRef.current === "diamonds";
     queueMicrotask(() => {
       coinBadge.award(award.amount);
-      addCoins(award.amount);
-      noteCoinsReceived(award.amount);
+      if (!paysDiamonds) {
+        addCoins(award.amount);
+        noteCoinsReceived(award.amount);
+      }
       playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
       if (handId && authed) {
-        persistScratchCoins({
+        void claimScratchCoins({
           handId,
           milestone,
           cardId,
           amount: award.amount,
+        }).then((claimed) => {
+          if (!claimed || claimed.currency !== "diamonds") return;
+          const paid = Math.max(0, Math.trunc(claimed.diamonds ?? 0));
+          if (paid <= 0) return;
+          addDiamonds(paid);
         });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
@@ -3742,10 +3756,20 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                       .join(" ")}
                     onAnimationEnd={coinBadge.onLeaveEnd}
                   >
-                    <StageCoinCount
-                      popNonce={coinBadge.popNonce}
-                      awardAmount={coinBadge.awardFlash}
-                    />
+                    {handCurrency === "diamonds" ? (
+                      <div
+                        className="stage-game__coin-count"
+                        aria-label={`${formatBalance(diamonds)} diamonds`}
+                      >
+                        <DiamondLottie size={22} aria-hidden />
+                        <span className="tabular-nums">{formatBalance(diamonds)}</span>
+                      </div>
+                    ) : (
+                      <StageCoinCount
+                        popNonce={coinBadge.popNonce}
+                        awardAmount={coinBadge.awardFlash}
+                      />
+                    )}
                   </div>
                 ) : null}
               </div>
