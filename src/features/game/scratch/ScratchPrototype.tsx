@@ -222,7 +222,7 @@ import {
   setThemeIntroSound,
   unbindThemeIntroVideo,
 } from "../shared/media";
-import { fetchThemes } from "../shared/themes";
+import { THEME_INTROS_ENABLED, fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { formatBalance } from "@/lib/formatBalance";
@@ -2407,9 +2407,10 @@ export function ScratchPrototype({
       return;
     }
 
-    const url = themeKey
-      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
-      : "";
+    const url =
+      THEME_INTROS_ENABLED && themeKey
+        ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
+        : "";
     // Always park game clips until intro/countdown finish — playlist used to
     // start with gameVideosReady=true and immediately dissolve the cover.
     setGameVideosReady(false);

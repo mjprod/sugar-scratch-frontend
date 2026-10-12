@@ -14,6 +14,9 @@ export type ThemeInfo = {
   cardLightColor2?: string | null
 }
 
+/** Theme intro clips are off for performance; flip to re-enable. */
+export const THEME_INTROS_ENABLED = false
+
 /** Themes list for motion intro clips (read-only, shared across callers). */
 export function fetchThemes(): Promise<ThemeInfo[]> {
   return cachedRequest('/api/themes', CATALOG_TTL_MS, async () => {
