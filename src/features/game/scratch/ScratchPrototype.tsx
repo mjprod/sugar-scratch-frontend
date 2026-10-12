@@ -4450,7 +4450,7 @@ export function ScratchPrototype({
   }
 
   async function goToPhotoSummary() {
-    setHandFinishing(true);
+    if (gameMode) setHandFinishing(true);
     clearPendingMotionResult();
     setMotionResult(null);
     const finished = await finishMotionHand();
