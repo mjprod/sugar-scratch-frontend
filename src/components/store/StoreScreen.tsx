@@ -58,6 +58,7 @@ type Flow =
  */
 export function StoreScreen({
   onBack,
+  backLabel,
   onPurchaseSuccess,
   onCoinExchange,
   coinBalance,
@@ -66,6 +67,7 @@ export function StoreScreen({
   onOpenPack,
 }: {
   onBack: () => void;
+  backLabel?: string;
   onPurchaseSuccess: (result: { diamonds: number; coins: number }) => void;
   coinBalance: number;
   onCoinExchange: (
@@ -363,6 +365,7 @@ export function StoreScreen({
           flowStep={flow.step}
           exchangingId={exchangingId}
           onBack={onBack}
+          backLabel={backLabel}
           onSelect={onSelect}
           onCoinExchange={handleCoinExchange}
           onDiamondReward={onDiamondReward}

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -10,14 +11,16 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import {
-  liveCollectedCount,
-  useCreatorsCollectedThemes,
-} from "@/components/collection/MyCollectionLivePanel";
+import { useCreatorsCollectedThemes } from "@/components/collection/MyCollectionLivePanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useSearch } from "@/contexts/SearchContext";
 import { useModels } from "@/hooks/useModels";
 import type { CreatorProgress } from "@/services/collection";
+import {
+  collectionProgressFromBoard,
+  loadCreatorBoard,
+  type CreatorBoard,
+} from "@/services/creatorBoard";
 import {
   canonicalCreatorId,
   matchModel,
@@ -113,8 +116,7 @@ export function MyCollectionSection({
   const models = useModels();
 
   const creatorIds = useMemo(() => creators.map((c) => c.id), [creators]);
-  const { themesByCreator, ready: themesReady } =
-    useCreatorsCollectedThemes(creatorIds);
+  const { ready: themesReady } = useCreatorsCollectedThemes(creatorIds);
 
   const modelByCreator = useMemo(() => {
     const map = new Map<string, BackendModel | null>();
@@ -126,6 +128,22 @@ export function MyCollectionSection({
     }
     return map;
   }, [creators, models]);
+
+  const boardIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const creator of creators) {
+      const model = modelByCreator.get(creator.id);
+      if (!model) continue;
+      ids.add(
+        canonicalCreatorId(models, {
+          creatorId: creator.id,
+          name: creator.name,
+        }),
+      );
+    }
+    return [...ids];
+  }, [creators, modelByCreator, models]);
+  const { boards, ready: boardsReady } = useCreatorBoards(boardIds);
 
   const sortedCreators = useMemo(() => {
     const list = [...creators];
@@ -284,7 +302,7 @@ export function MyCollectionSection({
         ) : null}
       </div>
 
-      {!themesReady ? (
+      {!themesReady || !boardsReady ? (
         <div className="mc-model-list is-skeleton" aria-busy="true">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="mc-model-card is-skeleton" />
@@ -309,25 +327,7 @@ export function MyCollectionSection({
         <div className="mc-model-list" role="list" aria-label="Models">
           {visibleCreators.map((creator) => {
             const model = modelByCreator.get(creator.id) ?? null;
-            const count = liveCollectedCount(
-              themesByCreator[creator.id],
-              creator.collected,
-            );
-            const total = Math.max(creator.total || 0, count || 0, 1);
-            const motionTotal = Math.max(1, creator.themesTotal || 16);
-            const motionDone = Math.min(
-              motionTotal,
-              Math.max(0, creator.themesStarted || 0),
-            );
-            const collectedAll = count + motionDone;
-            const totalAll = total + motionTotal;
-            const pct = Math.max(
-              0,
-              Math.min(
-                100,
-                totalAll > 0 ? Math.round((collectedAll / totalAll) * 100) : 0,
-              ),
-            );
+            const progress = collectionProgressFromBoard(boards[creator.id]);
             const name =
               (model ? modelDisplayName(model) : "") || creator.name;
             const place = locationLabel(model);
@@ -339,14 +339,14 @@ export function MyCollectionSection({
                 className="mc-model-card"
                 role="listitem"
                 onClick={() => onOpenCreator(creator.id)}
-                aria-label={`${name}, ${count} of ${total} cards`}
+                aria-label={`${name}, ${progress.owned} of ${progress.total} cards`}
               >
                 <span className="mc-model-card-glow" aria-hidden="true">
                   <span className="mc-model-card-glow-blob mc-model-card-glow-blob--a" />
                   <span className="mc-model-card-glow-blob mc-model-card-glow-blob--b" />
                 </span>
                 <span className="mc-model-avatar-wrap">
-                  <CollectionAvatarRing percent={pct} />
+                  <CollectionAvatarRing percent={progress.pct} />
                   <img
                     src={avatarFor(creator, model)}
                     alt=""
@@ -363,27 +363,28 @@ export function MyCollectionSection({
                   <span className="mc-model-metrics">
                     <span className="mc-model-metric">
                       <Images size={10} strokeWidth={2.4} aria-hidden />
-                      {count}/{total}
+                      {progress.staticOwned}/{progress.staticTotal}
                     </span>
                     <span className="mc-model-metric">
                       <Layers size={10} strokeWidth={2.4} aria-hidden />
-                      {motionDone}/{motionTotal}
+                      {progress.motionOwned}/{progress.motionTotal}
                     </span>
                     <span className="mc-model-metric">
                       <Sparkles size={10} strokeWidth={2.4} aria-hidden />
-                      0/1
+                      {progress.ultraOwned}/{progress.ultraTotal}
                     </span>
                   </span>
                   <span
                     className="mc-model-progress"
                     role="progressbar"
-                    aria-valuenow={pct}
+                    aria-valuenow={progress.pct}
                     aria-valuemin={0}
                     aria-valuemax={100}
+                    aria-label={`${progress.owned} of ${progress.total}`}
                   >
                     <span
                       className="mc-model-progress-fill"
-                      style={{ width: `${pct}%` }}
+                      style={{ width: `${progress.pct}%` }}
                     />
                   </span>
                 </span>
@@ -394,6 +395,44 @@ export function MyCollectionSection({
       )}
     </section>
   );
+}
+
+function useCreatorBoards(creatorIds: string[]): {
+  boards: Record<string, CreatorBoard | null>;
+  ready: boolean;
+} {
+  const [boards, setBoards] = useState<Record<string, CreatorBoard | null>>({});
+  const [ready, setReady] = useState(false);
+  const idsKey = creatorIds.slice().sort().join("|");
+
+  useEffect(() => {
+    let cancelled = false;
+    const ids = idsKey ? idsKey.split("|") : [];
+    if (ids.length === 0) {
+      setBoards({});
+      setReady(true);
+      return;
+    }
+
+    void Promise.all(
+      ids.map(async (creatorId) => {
+        const board = await loadCreatorBoard(creatorId);
+        return [creatorId, board] as const;
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      const next: Record<string, CreatorBoard | null> = {};
+      for (const [creatorId, board] of entries) next[creatorId] = board;
+      setBoards(next);
+      setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [idsKey]);
+
+  return { boards, ready };
 }
 
 const AVATAR_RING_R = 34;

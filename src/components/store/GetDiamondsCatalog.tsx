@@ -48,6 +48,7 @@ export function GetDiamondsCatalog({
   flowStep,
   exchangingId,
   onBack,
+  backLabel,
   onSelect,
   onCoinExchange,
   onDiamondReward,
@@ -62,6 +63,7 @@ export function GetDiamondsCatalog({
   flowStep: GetDiamondsFlowStep;
   exchangingId?: string | null;
   onBack: () => void;
+  backLabel?: string;
   onSelect: (product: StoreProduct) => void;
   onCoinExchange: (diamonds: number, coins: number) => boolean | Promise<boolean>;
   onDiamondReward?: (amount: number) => void;
@@ -95,7 +97,7 @@ export function GetDiamondsCatalog({
 
   return (
     <div className="get-diamonds-stack">
-      <HistoryPageHeader title="Buy Diamonds" onBack={onBack} />
+      <HistoryPageHeader title="Buy Diamonds" onBack={onBack} backLabel={backLabel} />
       <div className="get-diamonds-ambient" aria-hidden="true">
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--a" />
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--b" />

@@ -75,6 +75,7 @@ import {
   type PurchaseFlowPack,
 } from "@/services/purchase";
 import { useAuth } from "@/contexts/useAuth";
+import { holdPackForDiamondTopUp } from "@/services/packPurchaseHold";
 import { isDemoMode } from "@/lib/demo";
 import {
   noteCreatorStarted,
@@ -692,10 +693,26 @@ export function PurchaseFlow({
     onInventoryChange?.();
   }
 
+  function holdUnpaidPack(quantity: number) {
+    if (pack.entry && pack.entry !== "purchase") return;
+    holdPackForDiamondTopUp(
+      {
+        packId: pack.packId,
+        packName: pack.packName,
+        creator: pack.creator,
+        characterId: pack.packId,
+        price: pack.price,
+        videoUrl: packCoverUrl,
+      },
+      quantity,
+    );
+  }
+
   async function purchase(quantity: PackQuantity, foil?: FoilPack) {
     if (submitting) return;
     const cost = packCost(quantity, pack.packId);
     if (cost > diamonds) {
+      holdUnpaidPack(quantity);
       setModal("insufficient");
       return;
     }
@@ -780,7 +797,10 @@ export function PurchaseFlow({
       setStage("ready");
     } catch (error) {
       const kind = error instanceof PurchaseError ? error.kind : "failed";
-      if (kind === "insufficient") setModal("insufficient");
+      if (kind === "insufficient") {
+        holdUnpaidPack(quantity);
+        setModal("insufficient");
+      }
       else if (kind === "assets") setStage("load-failed");
       else setModal("failed");
     } finally {

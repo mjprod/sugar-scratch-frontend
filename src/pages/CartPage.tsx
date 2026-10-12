@@ -33,6 +33,7 @@ import {
   submitPurchase,
 } from "@/services/purchase";
 import { recordPackPurchaseTransaction } from "@/services/transactionHistory";
+import { rememberPackPurchaseReturn } from "@/services/packPurchaseHold";
 import {
   getCardTopDebug,
   setCardTopTearT,
@@ -662,6 +663,27 @@ export function CartPage() {
           kind={checkoutModal}
           onClose={() => setCheckoutModal(null)}
           onGetDiamonds={() => {
+            const waiting = listCartPacks()[0];
+            if (waiting) {
+              rememberPackPurchaseReturn(
+                {
+                  packId: waiting.packId,
+                  packName: waiting.packName,
+                  creator: waiting.creator,
+                  characterId: waiting.characterId,
+                  price: waiting.price,
+                  videoUrl: waiting.videoUrl,
+                  packNumber: waiting.packNumber,
+                  flagEmoji: waiting.flagEmoji,
+                  flagSvgUrl: waiting.flagSvgUrl,
+                  city: waiting.city,
+                  country: waiting.country,
+                  overlayColorStart: waiting.overlayColorStart,
+                  overlayColorEnd: waiting.overlayColorEnd,
+                  backgroundColor: waiting.backgroundColor,
+                },
+              );
+            }
             setCheckoutModal(null);
             if (!guest) openStore();
             else requireAuth({ type: "store" });

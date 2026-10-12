@@ -20,9 +20,10 @@ import { photoScratchIdForSlot } from "@/features/collection/lib/photoSlots";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { isDemoMode } from "@/lib/demo";
 import { packUnitCost } from "@/services/purchase";
-import type {
-  BoardMotionCard,
-  CreatorBoard,
+import {
+  collectionProgressFromBoard,
+  type BoardMotionCard,
+  type CreatorBoard,
 } from "@/services/creatorBoard";
 import type { ThemeCardData } from "@/services/collection";
 import type { FeaturedPack } from "@/services/homepage";
@@ -204,6 +205,11 @@ export function CreatorInfluencerBody({
     return map;
   }, [board]);
 
+  const boardProgress = useMemo(
+    () => collectionProgressFromBoard(board),
+    [board],
+  );
+
   const themeProgress = (theme: ThemeCardData) => {
     const fromBoard = progressByTheme.get(theme.id);
     if (fromBoard) return fromBoard;
@@ -212,21 +218,18 @@ export function CreatorInfluencerBody({
     return { owned: theme.collected, total: theme.total };
   };
 
-  const themeCollected = themes.reduce(
-    (sum, theme) => sum + themeProgress(theme).owned,
-    0,
-  );
-  const themeTotal = themes.reduce(
-    (sum, theme) => sum + themeProgress(theme).total,
-    0,
-  );
-  // Ultra is creator-level. Total cannot read 100% until it is unlocked,
-  // even when every theme bar is full and the board still sends ultra: null.
-  const ultraDone = board?.ultra?.unlocked ? 1 : 0;
-  const totalCollected = themeCollected + (board ? ultraDone : 0);
-  const totalCards = themeTotal + (board ? 1 : 0);
-  const totalPct =
-    totalCards > 0
+  // Same total as the collection model card bar. Ultra is reserved so Total
+  // cannot read 100% until it is unlocked, even when ultra is still null.
+  // Guests have no board, so they keep the catalog theme totals with no Ultra slot.
+  const totalCollected = board
+    ? boardProgress.owned
+    : themes.reduce((sum, theme) => sum + theme.collected, 0);
+  const totalCards = board
+    ? boardProgress.total
+    : themes.reduce((sum, theme) => sum + theme.total, 0);
+  const totalPct = board
+    ? boardProgress.pct
+    : totalCards > 0
       ? Math.min(100, Math.round((totalCollected / totalCards) * 100))
       : 0;
 

@@ -175,3 +175,90 @@ export async function fetchCreatorBoard(
   );
   return parseCreatorBoard(data);
 }
+
+export type CollectionProgressCounts = {
+  staticOwned: number;
+  staticTotal: number;
+  motionOwned: number;
+  motionTotal: number;
+  ultraOwned: number;
+  ultraTotal: number;
+  owned: number;
+  total: number;
+  pct: number;
+};
+
+const EMPTY_PROGRESS: CollectionProgressCounts = {
+  staticOwned: 0,
+  staticTotal: 0,
+  motionOwned: 0,
+  motionTotal: 0,
+  ultraOwned: 0,
+  ultraTotal: 0,
+  owned: 0,
+  total: 0,
+  pct: 0,
+};
+
+/**
+ * Same numbers as the creator Collection Progress bars.
+ * Images = owned static cards. Layers = unlocked motion cards plus one Premium
+ * slot per theme. Sparkles = the creator Ultra card. Total cannot be 100%
+ * until Ultra is unlocked, even when the board still sends ultra: null.
+ */
+export function collectionProgressFromBoard(
+  board: CreatorBoard | null | undefined,
+): CollectionProgressCounts {
+  if (!board) return EMPTY_PROGRESS;
+
+  let staticOwned = 0;
+  let staticTotal = 0;
+  let motionOwned = 0;
+  let motionTotal = 0;
+
+  for (const theme of board.themes) {
+    motionOwned += theme.motionCards.filter(
+      (card) => card.status === "unlocked",
+    ).length;
+    motionOwned += theme.premium?.unlocked ? 1 : 0;
+    motionTotal += theme.motionCards.length + 1;
+
+    for (const card of theme.motionCards) {
+      staticOwned += Math.max(
+        card.staticCards.filter((slot) => slot.owned).length,
+        card.staticCardsOwned,
+      );
+      staticTotal += card.staticCardsTotal || card.staticCards.length;
+    }
+  }
+
+  const ultraOwned = board.ultra?.unlocked ? 1 : 0;
+  const owned = staticOwned + motionOwned + ultraOwned;
+  const total = staticTotal + motionTotal + 1;
+
+  return {
+    staticOwned,
+    staticTotal,
+    motionOwned,
+    motionTotal,
+    ultraOwned,
+    ultraTotal: 1,
+    owned,
+    total,
+    pct: total > 0 ? Math.min(100, Math.round((owned / total) * 100)) : 0,
+  };
+}
+
+const boardPromises = new Map<string, Promise<CreatorBoard | null>>();
+
+/** One in-flight board fetch per creator, shared by the collection cards. */
+export function loadCreatorBoard(creatorId: string): Promise<CreatorBoard | null> {
+  const id = creatorId.trim();
+  if (!id) return Promise.resolve(null);
+  let pending = boardPromises.get(id);
+  if (!pending) {
+    pending = fetchCreatorBoard(id).catch(() => null);
+    boardPromises.set(id, pending);
+  }
+  return pending;
+}
