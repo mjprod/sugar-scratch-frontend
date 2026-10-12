@@ -60,8 +60,8 @@ function persistPackMotionSettle(
   return next;
 }
 
-function slugCreatorId(creator: string) {
-  return creator.trim().toLowerCase().replace(/\s+/g, "-");
+function boardCreatorId(packScratch: { creator: string; creatorId?: string }) {
+  return packScratch.creatorId?.trim() || packScratch.creator.trim();
 }
 
 async function appendGameHistoryFromSettle(
@@ -75,7 +75,7 @@ async function appendGameHistoryFromSettle(
   const card = packScratch.openingSession.cards.find(
     (entry) => entry.id === openingId,
   );
-  const creatorId = slugCreatorId(packScratch.creator);
+  const creatorId = boardCreatorId(packScratch);
   const historyIds = packHistoryIds(packScratch.readyPackId);
   const revealSessionId = packScratch.serverOpeningId
     ? `${packScratch.serverOpeningId}:${openingId}`
@@ -144,7 +144,7 @@ export async function settlePackMotionCard(
       });
       recordRevealedCards({
         count: 1,
-        creatorId: slugCreatorId(packScratch.creator),
+        creatorId: boardCreatorId(packScratch),
         creatorName: packScratch.creator,
         themeName: packScratch.themeName || packScratch.packName,
       });
@@ -184,7 +184,7 @@ export async function settlePackMotionCard(
 
   recordRevealedCards({
     count: 1,
-    creatorId: slugCreatorId(packScratch.creator),
+    creatorId: boardCreatorId(packScratch),
     creatorName: packScratch.creator,
     themeName: packScratch.themeName || packScratch.packName,
   });

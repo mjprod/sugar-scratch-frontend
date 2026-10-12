@@ -34,9 +34,7 @@ function photoScratchGroupFromSession(
   const readyPackId = pack?.readyPackId ?? "session";
   return {
     id: `photo:${readyPackId}`,
-    creatorId: pack?.creator
-      ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
-      : "photo",
+    creatorId: pack?.creatorId?.trim() || pack?.creator || "photo",
     creatorName: pack?.creator ?? "Photo Cards",
     collectionName: pack?.packName
       ? `${pack.packName} · Photos`
@@ -65,9 +63,7 @@ function motionScratchGroupFromSession(
   if (packId && getReadyToScratch(packId)) return null;
   return {
     id: packId ?? `motion:${session.motionCardIds.join(",")}`,
-    creatorId: pack?.creator
-      ? pack.creator.trim().toLowerCase().replace(/\s+/g, "-")
-      : "motion",
+    creatorId: pack?.creatorId?.trim() || pack?.creator || "motion",
     creatorName: pack?.creator ?? "Motion Cards",
     collectionName: pack?.packName
       ? `${pack.packName} · Motion`

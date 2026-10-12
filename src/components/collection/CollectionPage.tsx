@@ -13,6 +13,7 @@ import {
   type CollectionPageState,
 } from "@/services/collectionState";
 import { isDemoMode } from "@/lib/demo";
+import { canonicalCreatorId, loadModels, type BackendModel } from "@/services/models";
 import { syncMyPacks } from "@/services/packInventory";
 import type { PurchaseFlowPack } from "@/services/purchase";
 import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
@@ -22,30 +23,39 @@ import { CollectionSiteFooter } from "./CollectionSiteFooter";
 import { MyCollectionSection } from "./MyCollectionSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
-function creatorKey(id: string, name: string): string {
-  return (id || name).trim().toLowerCase().replace(/\s+/g, "-");
+function boardId(
+  models: BackendModel[],
+  creator: { id: string; name: string },
+): string {
+  return canonicalCreatorId(models, {
+    creatorId: creator.id,
+    name: creator.name,
+  });
 }
 
-/** Remote revealed creators plus locally owned packs, one row per model. */
+/** Remote revealed creators plus locally owned packs, one card per board creator id. */
 function mergeOwnedCreators(
   remote: CollectionPageState["continueCreators"],
   local: CollectionPageState["continueCreators"],
+  models: BackendModel[] = [],
 ) {
   const byKey = new Map<string, (typeof remote)[number]>();
-  for (const creator of remote) {
-    byKey.set(creatorKey(creator.id, creator.name), creator);
-  }
-  for (const creator of local) {
-    const key = creatorKey(creator.id, creator.name);
+  const put = (creator: (typeof remote)[number]) => {
+    const key = boardId(models, creator);
+    const row = { ...creator, id: key };
     const existing = byKey.get(key);
     if (!existing) {
-      byKey.set(key, creator);
-      continue;
+      byKey.set(key, row);
+      return;
     }
-    if (creator.collected > existing.collected) {
-      byKey.set(key, { ...existing, ...creator });
-    }
-  }
+    const keepIncoming =
+      row.collected > existing.collected ||
+      (row.collected === existing.collected &&
+        row.themesStarted > existing.themesStarted);
+    byKey.set(key, keepIncoming ? row : { ...existing, id: key });
+  };
+  for (const creator of remote) put(creator);
+  for (const creator of local) put(creator);
   return [...byKey.values()];
 }
 
@@ -89,6 +99,8 @@ export function CollectionPage({
         await syncMyPacks().catch(() => false);
       }
 
+      const models = await loadModels().catch(() => [] as BackendModel[]);
+
       const remote = isDemoMode()
         ? null
         : await fetchCollectionPageStateRemote().catch(() => null);
@@ -96,7 +108,7 @@ export function CollectionPage({
       if (cancelled) return;
 
       if (remote) {
-        const local = getCollectionPageState();
+        const local = getCollectionPageState(models);
         setState({
           ...remote,
           unopenedPackCount: local.unopenedPackCount,
@@ -117,10 +129,11 @@ export function CollectionPage({
           continueCreators: mergeOwnedCreators(
             remote.continueCreators,
             local.continueCreators,
+            models,
           ),
         });
       } else {
-        const local = getCollectionPageState();
+        const local = getCollectionPageState(models);
         setState({
           ...emptyCollectionPageState(),
           unopenedPackCount: local.unopenedPackCount,

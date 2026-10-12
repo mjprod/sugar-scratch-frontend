@@ -176,8 +176,55 @@ export function CreatorInfluencerBody({
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const legalTitleId = useId();
 
-  const totalCollected = themes.reduce((sum, t) => sum + t.collected, 0);
-  const totalCards = themes.reduce((sum, t) => sum + t.total, 0);
+  const progressByTheme = useMemo(() => {
+    const map = new Map<string, { owned: number; total: number }>();
+    for (const theme of board?.themes ?? []) {
+      const motionDone = theme.motionCards.filter(
+        (card) => card.status === "unlocked",
+      ).length;
+      const staticDone = theme.motionCards.reduce(
+        (sum, card) =>
+          sum +
+          Math.max(
+            card.staticCards.filter((slot) => slot.owned).length,
+            card.staticCardsOwned,
+          ),
+        0,
+      );
+      const staticTotal = theme.motionCards.reduce(
+        (sum, card) => sum + (card.staticCardsTotal || card.staticCards.length),
+        0,
+      );
+      // One Premium motion card per theme, even when the board still sends null.
+      map.set(theme.id, {
+        owned: motionDone + staticDone + (theme.premium?.unlocked ? 1 : 0),
+        total: theme.motionCards.length + staticTotal + 1,
+      });
+    }
+    return map;
+  }, [board]);
+
+  const themeProgress = (theme: ThemeCardData) => {
+    const fromBoard = progressByTheme.get(theme.id);
+    if (fromBoard) return fromBoard;
+    // Board is the player's collection. Catalog photo URLs are not owned cards.
+    if (board) return { owned: 0, total: theme.total };
+    return { owned: theme.collected, total: theme.total };
+  };
+
+  const themeCollected = themes.reduce(
+    (sum, theme) => sum + themeProgress(theme).owned,
+    0,
+  );
+  const themeTotal = themes.reduce(
+    (sum, theme) => sum + themeProgress(theme).total,
+    0,
+  );
+  // Ultra is creator-level. Total cannot read 100% until it is unlocked,
+  // even when every theme bar is full and the board still sends ultra: null.
+  const ultraDone = board?.ultra?.unlocked ? 1 : 0;
+  const totalCollected = themeCollected + (board ? ultraDone : 0);
+  const totalCards = themeTotal + (board ? 1 : 0);
   const totalPct =
     totalCards > 0
       ? Math.min(100, Math.round((totalCollected / totalCards) * 100))
@@ -251,17 +298,25 @@ export function CreatorInfluencerBody({
                     <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
                   ))
                 : themes.map((theme) => {
+                    const progress = themeProgress(theme);
                     const pct =
-                      theme.total > 0
+                      progress.total > 0
                         ? Math.min(
                             100,
-                            Math.round((theme.collected / theme.total) * 100),
+                            Math.round((progress.owned / progress.total) * 100),
                           )
                         : 0;
                     return (
                       <li key={theme.id} className="cpv2-progress-row">
                         <span className="cpv2-progress-label">{theme.name}</span>
-                        <div className="cpv2-progress-track">
+                        <div
+                          className="cpv2-progress-track"
+                          role="progressbar"
+                          aria-valuenow={showPersonalProgress ? pct : 0}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`${theme.name}, ${showPersonalProgress ? progress.owned : 0} of ${progress.total}`}
+                        >
                           <span
                             className="cpv2-progress-fill"
                             style={{ width: `${showPersonalProgress ? pct : 0}%` }}
@@ -274,7 +329,14 @@ export function CreatorInfluencerBody({
           </li>
           <li className="cpv2-progress-row is-total">
             <span className="cpv2-progress-label">Total</span>
-            <div className="cpv2-progress-track">
+            <div
+              className="cpv2-progress-track"
+              role="progressbar"
+              aria-valuenow={showPersonalProgress ? totalPct : 0}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Total, ${showPersonalProgress ? totalCollected : 0} of ${totalCards}`}
+            >
               <span
                 className="cpv2-progress-fill"
                 style={{

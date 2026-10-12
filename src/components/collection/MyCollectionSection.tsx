@@ -19,6 +19,7 @@ import { useSearch } from "@/contexts/SearchContext";
 import { useModels } from "@/hooks/useModels";
 import type { CreatorProgress } from "@/services/collection";
 import {
+  canonicalCreatorId,
   matchModel,
   modelAvatarUrl,
   modelDisplayName,
@@ -137,13 +138,30 @@ export function MyCollectionSection({
 
   const visibleCreators = useMemo(() => {
     // Local ledger can still name retired fixtures (ep1 / Neon Rain). Only
-    // creators that exist on GET /api/models belong on this list.
-    const known = sortedCreators.filter(
-      (creator) => modelByCreator.get(creator.id) != null,
-    );
+    // creators that exist on GET /api/models belong on this list, and a
+    // display-name slug must collapse onto the board creator id.
+    const byBoardId = new Map<string, (typeof sortedCreators)[number]>();
+    for (const creator of sortedCreators) {
+      const model = modelByCreator.get(creator.id);
+      if (!model) continue;
+      const id = canonicalCreatorId(models, {
+        creatorId: creator.id,
+        name: creator.name,
+      });
+      const row = { ...creator, id };
+      const existing = byBoardId.get(id);
+      if (
+        !existing ||
+        row.collected > existing.collected ||
+        (row.collected === existing.collected && row.themesStarted > existing.themesStarted)
+      ) {
+        byBoardId.set(id, row);
+      }
+    }
+    const known = [...byBoardId.values()];
     if (creatorFilter === "all") return known;
     return known.filter((creator) => creator.id === creatorFilter);
-  }, [sortedCreators, creatorFilter, modelByCreator]);
+  }, [sortedCreators, creatorFilter, modelByCreator, models]);
 
   const creatorFilterLabel =
     creatorFilter === "all"
@@ -236,7 +254,7 @@ export function MyCollectionSection({
                   setOpenMenu(null);
                 }}
               />
-              {creators.map((creator) => (
+              {visibleCreators.map((creator) => (
                 <FilterOption
                   key={creator.id}
                   label={creator.name}

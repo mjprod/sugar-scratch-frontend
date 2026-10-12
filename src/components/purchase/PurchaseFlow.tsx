@@ -979,7 +979,7 @@ export function PurchaseFlow({
     if (!session) return;
     const packInstanceId = instanceId ?? pack.packId;
     const historyIds = packHistoryIds(packInstanceId);
-    const creatorId = pack.creator.trim().toLowerCase().replace(/\s+/g, "-");
+    const creatorId = model?.id ?? pack.creator;
     const openingId = openingIdRef.current;
     for (const cardId of cardIds) {
       const card = session.cards.find((entry) => entry.id === cardId);
@@ -1079,7 +1079,7 @@ export function PurchaseFlow({
           }
           recordRevealedCards({
             count: fresh.length,
-            creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+            creatorId: model?.id ?? pack.creator,
             creatorName: pack.creator,
             themeName: collectionTheme,
           });
@@ -1105,7 +1105,7 @@ export function PurchaseFlow({
         .reduce((total, card) => total + card.reward, 0);
       recordRevealedCards({
         count: fresh.length,
-        creatorId: pack.creator.trim().toLowerCase().replace(/\s+/g, "-"),
+        creatorId: model?.id ?? pack.creator,
         creatorName: pack.creator,
         themeName: collectionTheme,
       });
@@ -1435,6 +1435,7 @@ export function PurchaseFlow({
           readyPackId: readyId,
           packName: pack.packName,
           creator: pack.creator,
+          creatorId: model?.id,
           coverUrl: packCoverUrl,
           themeName: collectionTheme,
           openingSession: active,
