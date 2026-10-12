@@ -420,6 +420,7 @@ function useCreatorBoards(creatorIds: string[]): {
         const board = await loadCreatorBoard(creatorId);
         return [creatorId, board] as const;
       }),
+    ).then((entries) => {
       if (cancelled) return;
       const next: Record<string, CreatorBoard | null> = {};
       for (const [creatorId, board] of entries) next[creatorId] = board;
