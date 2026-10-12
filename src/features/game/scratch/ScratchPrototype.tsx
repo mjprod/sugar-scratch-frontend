@@ -1745,6 +1745,12 @@ export function ScratchPrototype({
     () => skipToPlay,
   );
   /**
+   * Bumped whenever hand-start state is reset for a new model so the arming
+   * effects re-run even if `themeIntrosReady` was already true (intros
+   * disabled, or a cached themes response batched with the reset).
+   */
+  const [handStartResetEpoch, setHandStartResetEpoch] = useState(0);
+  /**
    * Don't unlock the scratch bar until the card clips have a frame.
    * Avoids the black stage that shows if the bar appears while Safari is still
    * attaching decoders after the theme intro.
@@ -2609,6 +2615,7 @@ export function ScratchPrototype({
     handStartIntroDoneRef.current = false;
     handCountdownDoneRef.current = false;
     setHandStartIntroResolved(false);
+    setHandStartResetEpoch((n) => n + 1);
     if (!THEME_INTROS_ENABLED) {
       themeIntroByKeyRef.current = new Map();
       setThemeIntrosReady(true);
@@ -2669,7 +2676,14 @@ export function ScratchPrototype({
       setHandStartIntroResolved(false);
     }
     armHandStartIntro(selectedCardId, gameSession);
-  }, [gameMode, gameSession, selectedCardId, themeIntrosReady, entryReady]);
+  }, [
+    gameMode,
+    gameSession,
+    selectedCardId,
+    themeIntrosReady,
+    entryReady,
+    handStartResetEpoch,
+  ]);
 
   // Collection / StageNav playlist entry (no deal hub session).
   // Armed from the card-switch effect below so resetMatchRound can't wipe it.
@@ -3581,7 +3595,15 @@ export function ScratchPrototype({
     if (!entryReady || !card) return;
     if (!skipToPlay && !themeIntrosReady) return;
     armStartIntro(themeKeyForCard(card));
-  }, [gameMode, entryReady, themeIntrosReady, card?.id, skipToPlay, labRestartToken]);
+  }, [
+    gameMode,
+    entryReady,
+    themeIntrosReady,
+    card?.id,
+    skipToPlay,
+    labRestartToken,
+    handStartResetEpoch,
+  ]);
 
   // Rebuild the reveal sample grid whenever the mesh changes, recomputing which
   // samples are already revealed from the current marks (usually empty after a
