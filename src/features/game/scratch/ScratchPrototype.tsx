@@ -1571,6 +1571,9 @@ export function ScratchPrototype({
     total: number;
     resultId: string;
   } | null>(null);
+  // Last card of a game hand is done and we're settling before leaving for
+  // /game. With no card left, render the empty stage, not the picker fallback.
+  const [handFinishing, setHandFinishing] = useState(false);
   const [packRevealFailed, setPackRevealFailed] = useState(false);
   const [packRevealRetrying, setPackRevealRetrying] = useState(false);
   const packRevealBlockedRef = useRef(false);
@@ -4447,6 +4450,7 @@ export function ScratchPrototype({
   }
 
   async function goToPhotoSummary() {
+    setHandFinishing(true);
     clearPendingMotionResult();
     setMotionResult(null);
     const finished = await finishMotionHand();
@@ -4618,6 +4622,7 @@ export function ScratchPrototype({
       setSelectedCardId(nextCard.id);
       return;
     }
+    if (gameMode) setHandFinishing(true);
     setSelectedCardId("");
     if (gameMode) {
       void finishMotionHand().then((finished) => {
@@ -5665,7 +5670,7 @@ export function ScratchPrototype({
 
   // Keep the playable stage mounted while the catalog loads so the dual-video
   // elements aren't torn down/recreated (cold decoder attach = lag + desync).
-  if (!cardsReady) {
+  if (!cardsReady || (!card && handFinishing)) {
     return (
       <main className="app-shell">
         <div className="prototype">
