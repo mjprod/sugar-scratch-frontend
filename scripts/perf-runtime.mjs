@@ -11,20 +11,29 @@
  * Env: PERF_BASE, PERF_CPU (default 4), PERF_OUT (default .perf), CHROME_PATH,
  *      PERF_ONLY=idle,scroll,swipe,scratch,leak (scenario kinds).
  */
-import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import {
+  Cdp,
+  DEFAULT_CHROME,
+  PHONE_VIEW,
+  emulatePhone,
+  heapMb,
+  launchChrome,
+  line,
+  sleep,
+  spaNav,
+  touchDrag,
+} from "./perf-cdp.mjs";
 
 const BASE = (process.env.PERF_BASE || "https://localhost:4174").replace(/\/+$/, "");
 const CPU = Number(process.env.PERF_CPU || 4);
 const OUT = process.env.PERF_OUT || ".perf";
 const COOKIE = process.env.PERF_COOKIE || "";
 const ONLY = (process.env.PERF_ONLY || "").split(",").map((s) => s.trim()).filter(Boolean);
-const CHROME =
-  process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = process.env.CHROME_PATH || DEFAULT_CHROME;
 const PORT = 9333;
-const VIEW = { width: 390, height: 844 };
+const VIEW = PHONE_VIEW;
 
 const GAME = "/game?model=julianaval&card=julianaval_cop";
 
@@ -55,109 +64,7 @@ const SCROLL = ["/", "/discover", "/store", "/creator/julianaval"];
 const AUTH_SCROLL = ["/collection", "/profile"];
 const SWIPE = ["/coverflow-v2", "/mobile-carousel", "/discover"];
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const want = (kind) => !ONLY.length || ONLY.includes(kind);
-
-class Cdp {
-  constructor(url) {
-    this.ws = new WebSocket(url);
-    this.nextId = 1;
-    this.pending = new Map();
-    this.listeners = new Map();
-    this.ws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data);
-      if (msg.id && this.pending.has(msg.id)) {
-        const { resolve, reject } = this.pending.get(msg.id);
-        this.pending.delete(msg.id);
-        if (msg.error) reject(new Error(`${msg.error.message}`));
-        else resolve(msg.result);
-      } else if (msg.method) {
-        for (const cb of this.listeners.get(msg.method) ?? []) cb(msg.params);
-      }
-    };
-  }
-  open() {
-    return new Promise((resolve, reject) => {
-      this.ws.onopen = resolve;
-      this.ws.onerror = reject;
-    });
-  }
-  send(method, params = {}) {
-    const id = this.nextId++;
-    this.ws.send(JSON.stringify({ id, method, params }));
-    return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
-  }
-  once(method, timeoutMs) {
-    return new Promise((resolve) => {
-      const list = this.listeners.get(method) ?? [];
-      const timer = setTimeout(() => done(null), timeoutMs);
-      const done = (p) => {
-        clearTimeout(timer);
-        this.listeners.set(method, (this.listeners.get(method) ?? []).filter((f) => f !== done));
-        resolve(p);
-      };
-      list.push(done);
-      this.listeners.set(method, list);
-    });
-  }
-  async eval(expression) {
-    const r = await this.send("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    });
-    if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? "eval failed");
-    return r.result.value;
-  }
-}
-
-async function launch() {
-  const profile = mkdtempSync(path.join(os.tmpdir(), "sugar-perf-"));
-  const proc = spawn(
-    CHROME,
-    [
-      "--headless=new",
-      `--remote-debugging-port=${PORT}`,
-      `--user-data-dir=${profile}`,
-      "--ignore-certificate-errors",
-      "--autoplay-policy=no-user-gesture-required",
-      "--mute-audio",
-      "--enable-precise-memory-info",
-      `--window-size=${VIEW.width},${VIEW.height}`,
-      "about:blank",
-    ],
-    { stdio: "ignore" },
-  );
-  for (let i = 0; i < 50; i += 1) {
-    try {
-      const list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-      const page = list.find((t) => t.type === "page");
-      if (page) return { proc, wsUrl: page.webSocketDebuggerUrl };
-    } catch {
-      /* not up yet */
-    }
-    await sleep(200);
-  }
-  proc.kill();
-  throw new Error("Chrome did not start");
-}
-
-async function setup(cdp) {
-  await cdp.send("Page.enable");
-  await cdp.send("Runtime.enable");
-  await cdp.send("Network.enable");
-  await cdp.send("Emulation.setDeviceMetricsOverride", {
-    ...VIEW,
-    deviceScaleFactor: 3,
-    mobile: true,
-  });
-  await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
-  await cdp.send("Emulation.setUserAgentOverride", {
-    userAgent:
-      "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36",
-  });
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU });
-}
 
 async function goto(cdp, route, settleMs = 5000) {
   const loaded = cdp.once("Page.loadEventFired", 45000);
@@ -171,12 +78,6 @@ async function goto(cdp, route, settleMs = 5000) {
   await sleep(settleMs);
 }
 
-async function heap(cdp) {
-  await cdp.send("HeapProfiler.collectGarbage").catch(() => {});
-  const { usedSize } = await cdp.send("Runtime.getHeapUsage");
-  return Math.round(usedSize / 1048576);
-}
-
 async function measure(cdp, fn, windowMs) {
   await cdp.eval("__sugarPerf.reset()");
   const started = Date.now();
@@ -186,24 +87,7 @@ async function measure(cdp, fn, windowMs) {
   const s = await cdp.eval(
     "(() => { const s = __sugarPerf.snapshot(); return { route: location.pathname + location.search, fps: s.fps, p50: s.p50Ms, p95: s.p95Ms, p99: s.p99Ms, worst: s.worstMs, slow: s.slowFrames, long: s.longFrames, frames: s.totalFrames, longTasks: s.longTasks, blockingMs: s.blockingMs, dom: s.domNodes, canvases: s.canvases, videos: s.videos }; })()",
   );
-  return { ...s, heapMb: await heap(cdp) };
-}
-
-async function touchDrag(cdp, points, stepMs = 16) {
-  const [first, ...rest] = points;
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [first] });
-  for (const p of rest) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [p] });
-    await sleep(stepMs);
-  }
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-}
-
-function line(x0, y0, x1, y1, steps) {
-  return Array.from({ length: steps + 1 }, (_, i) => ({
-    x: x0 + ((x1 - x0) * i) / steps,
-    y: y0 + ((y1 - y0) * i) / steps,
-  }));
+  return { ...s, heapMb: await heapMb(cdp) };
 }
 
 async function scrollPage(cdp) {
@@ -255,12 +139,6 @@ async function scratch(cdp, durationMs) {
   }
 }
 
-async function spaNav(cdp, route) {
-  await cdp.eval(
-    `history.pushState({}, "", ${JSON.stringify(route)}); dispatchEvent(new PopStateEvent("popstate")); true`,
-  );
-}
-
 async function leakCycle(cdp, cycles) {
   await goto(cdp, "/", 4000);
   const samples = [];
@@ -268,7 +146,7 @@ async function leakCycle(cdp, cycles) {
     const counts = await cdp.eval(
       "({ dom: document.getElementsByTagName('*').length, canvases: document.querySelectorAll('canvas:not([data-perf-hud])').length, videos: document.getElementsByTagName('video').length })",
     );
-    samples.push({ label, heapMb: await heap(cdp), ...counts });
+    samples.push({ label, heapMb: await heapMb(cdp), ...counts });
   };
   await sampleNow("start");
   for (let i = 1; i <= cycles; i += 1) {
@@ -283,10 +161,10 @@ async function leakCycle(cdp, cycles) {
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const { proc, wsUrl } = await launch();
+  const { proc, wsUrl } = await launchChrome({ chrome: CHROME, port: PORT, view: VIEW });
   const cdp = new Cdp(wsUrl);
   await cdp.open();
-  await setup(cdp);
+  await emulatePhone(cdp, { view: VIEW, cpu: CPU });
   const results = { cpuThrottle: CPU, viewport: VIEW, idle: [], scroll: [], swipe: [], scratch: [], leak: {} };
   const save = () => writeFileSync(path.join(OUT, "runtime.json"), JSON.stringify(results, null, 2));
   const log = (kind, pass, r) =>

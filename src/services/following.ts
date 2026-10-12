@@ -3,7 +3,7 @@
  * Activity/NEW flags are only stored when the product sets them; we never invent them.
  */
 import { getAuthUserId } from "./auth";
-import { fetchModels, type BackendModel } from "./models";
+import { loadModels, type BackendModel } from "./models";
 import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { formatSocialHandle } from "@/shared/catalog/characters";
 import { isDemoMode } from "@/lib/demo";
@@ -252,7 +252,7 @@ export async function hydrateFollowingFromModelsIfEmpty(): Promise<
   if (!isDemoMode()) return [];
 
   try {
-    const models = await fetchModels();
+    const models = await loadModels();
     const now = Date.now();
     const seeded: FollowedCreator[] = [];
     for (let i = 0; i < models.length && seeded.length < 6; i++) {
