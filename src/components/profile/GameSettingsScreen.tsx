@@ -7,15 +7,17 @@ import {
   setBackgroundMusicEnabled,
   setSoundEffectEnabled,
 } from "@/services/gameAudioPrefs";
-import {
-  getHdVideoEnabled,
-  setHdVideoEnabled,
-} from "@/services/videoQualityPrefs";
-import "./game-settings.css";
+	import {
+	  getHdVideoEnabled,
+	  setHdVideoEnabled,
+	} from "@/services/videoQualityPrefs";
+	import { HdVideoWarning } from "@/components/profile/HdVideoWarning";
+	import "./game-settings.css";
 
 export function GameSettingsScreen({ onBack }: { onBack: () => void }) {
   const [prefs, setPrefs] = useState(() => getGameAudioPrefs());
-  const [hdVideo, setHdVideo] = useState(() => getHdVideoEnabled());
+	  const [hdVideo, setHdVideo] = useState(() => getHdVideoEnabled());
+	  const [hdWarning, setHdWarning] = useState(false);
 
   function toggleSoundEffect(next: boolean) {
     setSoundEffectEnabled(next);
@@ -27,10 +29,11 @@ export function GameSettingsScreen({ onBack }: { onBack: () => void }) {
     setPrefs((prev) => ({ ...prev, backgroundMusic: next }));
   }
 
-  function toggleHdVideo(next: boolean) {
-    setHdVideoEnabled(next);
-    setHdVideo(next);
-  }
+	  function toggleHdVideo(next: boolean) {
+	    setHdVideoEnabled(next);
+	    setHdVideo(next);
+	    if (next) setHdWarning(true);
+	  }
 
   return (
     <AppPageShell
@@ -77,10 +80,13 @@ export function GameSettingsScreen({ onBack }: { onBack: () => void }) {
             onChange={toggleHdVideo}
           />
         </div>
-      </section>
-    </AppPageShell>
-  );
-}
+	      </section>
+	      {hdWarning ? (
+	        <HdVideoWarning onDismiss={() => setHdWarning(false)} />
+	      ) : null}
+	    </AppPageShell>
+	  );
+	}
 
 function SettingsToggleRow({
   icon: Icon,

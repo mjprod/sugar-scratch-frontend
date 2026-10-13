@@ -126,6 +126,32 @@ function photoItemsForCard(
   });
 }
 
+const THEME_COMPLETE_MOTION = 3;
+const THEME_COMPLETE_STATIC = 30;
+
+function themeIsComplete(
+  theme: CreatorBoard["themes"][number] | undefined,
+): boolean {
+  if (!theme) return false;
+  const motionDone = theme.motionCards.filter(
+    (card) => card.status === "unlocked",
+  ).length;
+  const staticDone = theme.motionCards.reduce(
+    (sum, card) =>
+      sum +
+      Math.max(
+        card.staticCards.filter((slot) => slot.owned).length,
+        card.staticCardsOwned,
+      ),
+    0,
+  );
+  return (
+    motionDone >= THEME_COMPLETE_MOTION &&
+    staticDone >= THEME_COMPLETE_STATIC &&
+    Boolean(theme.premium?.unlocked)
+  );
+}
+
 function themeGlyph(theme: Pick<ThemeCardData, "id" | "name">): string {
   const key = `${theme.id} ${theme.name}`.toLowerCase();
   for (const [id, glyph] of Object.entries(THEME_GLYPH)) {
@@ -253,11 +279,10 @@ export function CreatorInfluencerBody({
 
   return (
     <div className="cpv2-influencer">
-      <h2 className="cpv2-section-title" id="creator-pack-offers">
-        Buy {creatorName} Packs
-      </h2>
-
       <section className="cpv2-pack-section" aria-label="Pack offers">
+        <h2 className="cpv2-section-title" id="creator-pack-offers">
+          Buy {creatorName} Packs
+        </h2>
         <div className="cpv2-pack-coverflow">
           <Suspense
             fallback={
@@ -463,35 +488,29 @@ export function CreatorInfluencerBody({
           </span>
         </button>
         <div className="cpv2-ultra-stars" aria-hidden="true">
-          <svg
-            className="cpv2-ultra-star is-filled"
-            width="25"
-            height="25"
-            viewBox="0 0 25 25"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M12.5 0L14.4411 5.25556L18.75 1.67468L17.8033 7.1967L23.3253 6.25L19.7444 10.5589L25 12.5L19.7444 14.4411L23.3253 18.75L17.8033 17.8033L18.75 23.3253L14.4411 19.7444L12.5 25L10.5589 19.7444L6.25 23.3253L7.1967 17.8033L1.67468 18.75L5.25556 14.4411L0 12.5L5.25556 10.5589L1.67468 6.25L7.1967 7.1967L6.25 1.67468L10.5589 5.25556L12.5 0Z"
-              fill="#E8CC9C"
-            />
-          </svg>
-          {Array.from({ length: 3 }, (_, i) => (
-            <svg
-              key={i}
-              className={demo ? "cpv2-ultra-star is-filled" : "cpv2-ultra-star"}
-              width="19"
-              height="19"
-              viewBox="0 0 19 19"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M9.5 0L10.9753 3.9942L14.25 1.27276L13.5305 5.4695L17.7272 4.75L15.0058 8.0247L19 9.5L15.0058 10.9753L17.7272 14.25L13.5305 13.5305L14.25 17.7272L10.9753 15.0058L9.5 19L8.0247 15.0058L4.75 17.7272L5.4695 13.5305L1.27276 14.25L3.9942 10.9753L0 9.5L3.9942 8.0247L1.27276 4.75L5.4695 5.4695L4.75 1.27276L8.0247 3.9942L9.5 0Z"
-                fill={demo ? "#E8CC9C" : "#2E2E2E"}
-              />
-            </svg>
-          ))}
+          {themes.map((theme) => {
+            const filled =
+              demo ||
+              themeIsComplete(board?.themes.find((row) => row.id === theme.id));
+            return filled ? (
+              <svg
+                key={theme.id}
+                className="cpv2-ultra-star is-filled"
+                width="25"
+                height="25"
+                viewBox="0 0 25 25"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12.5 0L14.4411 5.25556L18.75 1.67468L17.8033 7.1967L23.3253 6.25L19.7444 10.5589L25 12.5L19.7444 14.4411L23.3253 18.75L17.8033 17.8033L18.75 23.3253L14.4411 19.7444L12.5 25L10.5589 19.7444L6.25 23.3253L7.1967 17.8033L1.67468 18.75L5.25556 14.4411L0 12.5L5.25556 10.5589L1.67468 6.25L7.1967 7.1967L6.25 1.67468L10.5589 5.25556L12.5 0Z"
+                  fill="#E8CC9C"
+                />
+              </svg>
+            ) : (
+              <span key={theme.id} className="cpv2-ultra-dot" />
+            );
+          })}
         </div>
       </section>
 

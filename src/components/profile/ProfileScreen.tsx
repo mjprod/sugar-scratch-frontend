@@ -1,8 +1,9 @@
 import {
   Inbox,
   ChevronRight,
-  FileText,
-  Globe2,
+	  FileText,
+	  Film,
+	  Globe2,
   HelpCircle,
   Lock,
   LogOut,
@@ -20,12 +21,17 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
-import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
+	import { HdVideoWarning } from "@/components/profile/HdVideoWarning";
+	import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import { ConvertDustIcon } from "@/components/WalletBalancesPopover";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { useMotion } from "@/features/collection/hooks/useMotion";
+	import { useMotion } from "@/features/collection/hooks/useMotion";
+	import {
+	  getHdVideoEnabled,
+	  setHdVideoEnabled,
+	} from "@/services/videoQualityPrefs";
 import { formatBalance } from "@/lib/formatBalance";
 import {
   bestAffordableCoinExchange,
@@ -93,7 +99,9 @@ export function UserDashboardScreen({
     supported: motionSupported,
     toggleEnabled: toggleMotionEnabled,
   } = useMotion();
-  const tiltActive = motionEnabled && motionPermission === "granted";
+	  const tiltActive = motionEnabled && motionPermission === "granted";
+	  const [hdVideo, setHdVideo] = useState(() => getHdVideoEnabled());
+	  const [hdWarning, setHdWarning] = useState(false);
   const tiltLabel = !motionSupported
     ? "Motion not supported"
     : motionPermission === "denied"
@@ -226,11 +234,34 @@ export function UserDashboardScreen({
                 .join(" ")}
             >
               <Smartphone className="size-5 shrink-0" aria-hidden="true" />
-              <span className="profile-action-label">
-                {tiltActive ? "Tilt on" : "Tilt off"}
-              </span>
-            </button>
-            <span className="profile-action-sep" aria-hidden="true" />
+	              <span className="profile-action-label">
+	                {tiltActive ? "Tilt on" : "Tilt off"}
+	              </span>
+	            </button>
+	            <button
+	              type="button"
+	              aria-label={hdVideo ? "Disable HD videos" : "Enable HD videos"}
+	              title={hdVideo ? "Disable HD videos" : "Enable HD videos"}
+	              aria-pressed={hdVideo}
+	              onClick={() => {
+	                const next = !hdVideo;
+	                setHdVideoEnabled(next);
+	                setHdVideo(next);
+	                if (next) setHdWarning(true);
+	              }}
+	              className={[
+	                "profile-action-btn profile-action-btn--hd",
+	                hdVideo ? "is-active" : "",
+	              ]
+	                .filter(Boolean)
+	                .join(" ")}
+	            >
+	              <Film className="size-5 shrink-0" aria-hidden="true" />
+	              <span className="profile-action-label">
+	                {hdVideo ? "HD on" : "HD off"}
+	              </span>
+	            </button>
+	            <span className="profile-action-sep" aria-hidden="true" />
             <button
               type="button"
               aria-label={loggingOut ? "Logging out" : "Log out"}
@@ -246,9 +277,13 @@ export function UserDashboardScreen({
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="profile-menu-grid">
+	      </div>
+	
+	      {hdWarning ? (
+	        <HdVideoWarning onDismiss={() => setHdWarning(false)} />
+	      ) : null}
+	
+	      <div className="profile-menu-grid">
         <div className="profile-menu-stack">
           <div className="profile-menu-group">
             <h2 className="profile-menu-group-title">Your Balance</h2>

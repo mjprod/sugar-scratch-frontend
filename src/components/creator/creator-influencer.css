@@ -423,6 +423,43 @@ body[data-theme="v8"] .cpv2-section-title {
   line-height: 1.2;
 }
 
+@media (max-width: 1023px) {
+  body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
+    position: relative;
+    z-index: 3;
+    margin-bottom: 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
+    position: absolute;
+    top: 11.5rem;
+    left: 0;
+    z-index: 4;
+    width: 100%;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  /* Pull the stage up behind the profile card. */
+  body[data-theme="v8"] .cpv2-influencer {
+    gap: 0;
+  }
+
+  body[data-theme="v8"] .cpv2-pack-section {
+    margin-top: -10rem;
+  }
+
+  /* Extra height makes up for the stage tucked under the profile card. */
+  body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow,
+  body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
+    height: min(86.4dvh, 912px);
+    min-height: 624px;
+  }
+
+}
+
 /* —— Pack section (homepage coverflow, creator-filtered) —— */
 
 body[data-theme="v8"] .cpv2-pack-section {
@@ -435,8 +472,10 @@ body[data-theme="v8"] .cpv2-pack-section {
 
 body[data-theme="v8"] .cpv2-pack-coverflow {
   position: relative;
-  width: calc(100% + 24px);
-  margin-left: -12px;
+  /* Break out of the centered shell so the slider matches the homepage. */
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
   min-width: 0;
   overflow: visible;
 }
@@ -448,60 +487,10 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow-frame {
 
 body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
   width: 100%;
-  /* ~30% smaller than the previous 52dvh / 460px stage. */
-  height: min(36.4dvh, 322px);
-  min-height: 301px;
   padding-top: 0;
   overflow: visible;
   -webkit-mask-image: none;
   mask-image: none;
-}
-
-body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
-  height: min(36.4dvh, 322px);
-  min-height: 301px;
-}
-
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel-stage {
-  /* Nudge packs + CTA down so Buy Pack text clears the stage edge. */
-  translate: 0 1.25rem;
-}
-
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel-shell {
-  transform: none;
-}
-
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel .swiper-slide {
-  width: 10.08rem; /* 14.4rem * 0.7 */
-}
-
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel__hud .coverflow-buy-pack-cta {
-  transform: scale(0.7);
-  transform-origin: center bottom;
-}
-
-/* Keep the Buy Pack HUD fully below the pack face (not clipped mid-label). */
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel__hud {
-  bottom: 3.4rem;
-}
-
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel__hud.coverflow-active-stack--html,
-body[data-theme="v8"] .cpv2-pack-coverflow
-  .home-featured-coverflow[data-coverflow="mobile-swiper"]
-  .mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
-  transform: translate3d(-50%, 0.35rem, 40px);
 }
 
 body[data-theme="v8"] .cpv2-pack-disclaimer {
@@ -517,6 +506,12 @@ body[data-theme="v8"] .cpv2-pack-disclaimer {
   opacity: 0.3;
   position: relative;
   z-index: 2;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .cpv2-pack-disclaimer {
+    transform: translateY(-2rem);
+  }
 }
 
 body[data-theme="v8"] .cpv2-pack-odds {
@@ -545,12 +540,19 @@ body[data-theme="v8"] .cpv2-progress-panel {
   border-radius: 16px;
   box-sizing: border-box;
   background-image: linear-gradient(
-    216deg,
-    rgba(170, 170, 170, 0.25) 0%,
+    354deg,
+    rgb(170 170 170 / 6%) 0%,
     rgba(68, 68, 68, 0.1) 24%,
     rgba(0, 0, 0, 0.3) 50%,
-    rgba(169, 169, 169, 0.25) 85%
+    rgb(228 0 128 / 21%) 85%
   );
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .cpv2-progress-panel {
+    max-width: 84ch;
+    margin: 2rem auto;
+  }
 }
 
 body[data-theme="v8"] .cpv2-progress-title {
@@ -657,6 +659,9 @@ body[data-theme="v8"] .cpv2-progress-fill {
   min-height: 9px;
   border-radius: 60px 0 0 60px;
   background: linear-gradient(90deg, #aa004f, rgba(170, 0, 79, 0.5));
+  box-shadow:
+    inset 1px 1px 0px -1px #ffffff,
+    inset 1px 1px 0px -0.5px #ff79b7;
 }
 
 /* —— Theme collection cards —— */
@@ -1487,8 +1492,9 @@ body[data-theme="v8"] .cpv2-diamonds-cta {
   gap: 12px;
   width: 100%;
   min-height: 96px;
+  margin-top: 2rem;
   padding: 18px 16px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(213, 3, 255, 0.18);
   border-radius: 16px;
   color: #fff;
@@ -1535,21 +1541,21 @@ body[data-theme="v8"] .cpv2-diamonds-cta-btn {
 
 body[data-theme="v8"] .cpv2-diamonds-orb {
   position: absolute;
-  z-index: 0;
+  z-index: 2;
   pointer-events: none;
   opacity: 0.9;
   filter: drop-shadow(0 4px 10px rgba(180, 0, 255, 0.35));
 }
 
 body[data-theme="v8"] .cpv2-diamonds-orb.is-a {
-  top: -14px;
-  right: 8px;
+  top: -22px;
+  right: -10px;
   transform: rotate(18deg);
 }
 
 body[data-theme="v8"] .cpv2-diamonds-orb.is-b {
-  left: -8px;
-  bottom: 8px;
+  left: -16px;
+  bottom: -14px;
   transform: rotate(-17deg);
 }
 
@@ -1567,6 +1573,7 @@ body[data-theme="v8"] .cpv2-ultra-panel {
   flex-direction: column;
   align-items: center;
   width: 100%;
+  margin-top: 2rem;
   height: var(--cpv2-ultra-panel-h);
   max-height: var(--cpv2-ultra-panel-h);
   padding: 14px 16px 0;
@@ -1813,7 +1820,8 @@ body[data-theme="v8"] .cpv2-ultra-stars {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 112px;
+  width: max-content;
+  min-width: 33px;
   height: 33px;
   padding: 0 8px;
   box-sizing: border-box;
@@ -1830,6 +1838,15 @@ body[data-theme="v8"] .cpv2-ultra-star {
 body[data-theme="v8"] .cpv2-ultra-star.is-filled {
   width: 25px;
   height: 25px;
+}
+
+body[data-theme="v8"] .cpv2-ultra-dot {
+  display: block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2e2e2e;
 }
 
 /* —— Footer —— */

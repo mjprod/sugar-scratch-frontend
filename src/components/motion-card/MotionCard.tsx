@@ -295,7 +295,7 @@ export function MotionCard({
 
       {locked ? (
         <m.div
-          className="absolute right-[3px] bottom-[3px] left-[3px] z-10 h-[34px]"
+          className="absolute right-[3px] bottom-[7px] left-[3px] z-10 h-[34px]"
           initial={false}
           animate={{ y: selected ? 0 : 36 }}
           transition={

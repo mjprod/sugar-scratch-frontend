@@ -22,6 +22,7 @@ import {
 import { BorderGlow } from "@/components/ui/BorderGlow";
 import { useAuth } from "@/contexts/useAuth";
 import type { AppTab } from "@/types/app";
+import { useLocation } from "react-router-dom";
 import { DESKTOP_MIN_PX } from "@/lib/navChrome";
 import "./LiquidGlassNav.css";
 
@@ -239,6 +240,8 @@ export function LiquidGlassNav({
   hideDock = false,
 }: LiquidGlassNavProps) {
   const { authed, guestAuthLabel, inboxUnread, openCreateAccount } = useAuth();
+  const { pathname } = useLocation();
+  const creatorRoute = pathname.startsWith("/creator");
   const desktopTabs = useMemo(
     () => (authed ? DESKTOP_TABS : GUEST_DESKTOP_TABS),
     [authed],
@@ -435,14 +438,14 @@ export function LiquidGlassNav({
     const activeTabConfig = dockTabs[activeIndex];
     const target = dockTabRefs.current[activeIndex];
 
-    // Hero/Collection slot has its own glow treatment — hide shared bubble.
-    // Cart is a top-bar destination, so the dock indicator stays off.
+    // The center slot normally has its own glow, but creator subpages still
+    // need the shared bubble on Collect. Cart keeps the dock indicator off.
     if (
       packsActive ||
       !parent ||
       !target ||
       !activeTabConfig ||
-      activeTabConfig.primary
+      (activeTabConfig.primary && !creatorRoute)
     ) {
       setBubble((prev) => ({
         ...prev,
@@ -481,7 +484,7 @@ export function LiquidGlassNav({
         ready: prev.ready,
       };
     });
-  }, [active, dockTabs, measureUnderCollection, packsActive]);
+  }, [active, creatorRoute, dockTabs, measureUnderCollection, packsActive]);
 
   const updateTopBubble = useCallback(() => {
     if (topBubbleDragRef.current) return;

@@ -143,6 +143,9 @@ export function PlaySteps({
     <section className="home-play-steps" aria-label={title ?? "How to play"}>
       {title ? <h2 className="home-play-steps-heading">{title}</h2> : null}
       <div className="home-play-steps-grid">
+        {steps[0] ? (
+          <PlayStepCard key={`${steps[0].title}-copy`} step={steps[0]} />
+        ) : null}
         {steps.map((step, index) => (
           <PlayStepCard
             key={step.title}
@@ -150,6 +153,9 @@ export function PlaySteps({
             featured={index === 1}
           />
         ))}
+        {steps[0] ? (
+          <PlayStepCard key={`${steps[0].title}-end`} step={steps[0]} />
+        ) : null}
       </div>
     </section>
   );

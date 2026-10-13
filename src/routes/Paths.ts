@@ -138,8 +138,9 @@ export function tabFromPathname(
   pathname: string,
   authed = false,
 ): AppTab | null {
+  // Creator pages are a subpage of Collect, so the indicator stays there.
   if (pathname.startsWith("/creator")) {
-    return null;
+    return authed ? "hub" : "bag";
   }
   if (
     pathname.startsWith("/profile") ||
