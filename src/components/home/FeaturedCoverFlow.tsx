@@ -19,6 +19,7 @@ import {
   DEFAULT_VIDEO_TEXTURE_TRANSFORM,
   PACK_MODEL_URL,
   PACK_VIDEO_FIT_MODE,
+  isMobileCoverflowViewport,
   makeVideoTextureCacheKey,
   preloadVideoTexture,
   resolvePackTextureSize,
@@ -76,11 +77,8 @@ type HeroDebugState = {
   fov: number;
 };
 
-function isMobileCoverflowViewport() {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
-  );
+function readMobileCoverflowViewport() {
+  return isMobileCoverflowViewport();
 }
 
 function defaultHeroDebug(isMobile: boolean): HeroDebugState {
@@ -353,10 +351,10 @@ export function FeaturedCoverFlow({
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [glow, setGlow] = useState(DEFAULT_GLOW);
   const [isMobileViewport, setIsMobileViewport] = useState(
-    isMobileCoverflowViewport,
+    readMobileCoverflowViewport,
   );
   const [debug, setDebug] = useState<HeroDebugState>(() =>
-    loadHeroDebug(isMobileCoverflowViewport()),
+    loadHeroDebug(readMobileCoverflowViewport()),
   );
   const [debugOpen, setDebugOpen] = useState(HERO_DEBUG_ENABLED);
   const [copyLabel, setCopyLabel] = useState("Copy");
@@ -452,7 +450,9 @@ export function FeaturedCoverFlow({
 
   useEffect(() => {
     // Mobile uses the Swiper CSS carousel; it reports ready itself.
-    if (!catalog || isMobileViewport) return;
+    // Also bail on the raw media query: a stale false isMobileViewport must
+    // not attach a decoder before the CSS carousel takes over.
+    if (!catalog || isMobileViewport || readMobileCoverflowViewport()) return;
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -820,6 +820,11 @@ export function FeaturedCoverFlow({
 
   if (!items.length) return null;
 
+  // Phone must not mount the WebGL hero for even one frame. isMobileViewport
+  // starts false before the media-query effect, and that frame is the iOS
+  // webglcontextlost (three pack-face decoders + the coverflow context).
+  const phoneHero = isMobileViewport || readMobileCoverflowViewport();
+
   const statusPager =
     showStatusPager && items.length > 1 ? (
       <CoverflowStatusPager
@@ -834,7 +839,7 @@ export function FeaturedCoverFlow({
       />
     ) : null;
 
-  if (isMobileViewport) {
+  if (phoneHero) {
     return (
       <div className="home-featured-coverflow-frame">
         <MobileCoverFlow

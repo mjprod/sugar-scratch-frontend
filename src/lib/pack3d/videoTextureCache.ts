@@ -18,9 +18,14 @@ const COVERFLOW_MOBILE_QUERY = '(max-width: 980px)'
 const MAX_LIVE_DECODERS_MOBILE = 1
 
 let playingFrameIntervalMs = PLAYING_FRAME_INTERVAL_MS
-let mobileCoverflowViewport = false
+let mobileCoverflowViewport =
+  typeof window !== 'undefined' && window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
 
-function isMobileCoverflowViewport() {
+/** Phone coverflow (≤980px). Read live — the module flag starts false until sync. */
+export function isMobileCoverflowViewport() {
+  if (typeof window !== 'undefined') {
+    mobileCoverflowViewport = window.matchMedia(COVERFLOW_MOBILE_QUERY).matches
+  }
   return mobileCoverflowViewport
 }
 
@@ -363,15 +368,12 @@ function capLiveDecoders(keep: CacheEntry) {
   if (!isMobileCoverflowViewport()) {
     return
   }
-  let playing = 0
+  // Evict every other phone decoder, including ones attached but not yet
+  // counted as playing. The old "already at the cap" check ran after acquire
+  // had started the neighbors, so the triple play still happened.
   for (const entry of cache.values()) {
-    if (entry.playingCount > 0) playing += 1
-  }
-  if (playing < MAX_LIVE_DECODERS_MOBILE) {
-    return
-  }
-  for (const entry of cache.values()) {
-    if (entry === keep || entry.playingCount <= 0) continue
+    if (entry === keep) continue
+    if (entry.playingCount <= 0 && !entry.decoderAttached) continue
     teardownOffscreen(entry)
   }
 }
@@ -478,7 +480,11 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
 export function acquireVideoTexture(input: VideoTextureCacheKeyInput): CacheEntry {
   const entry = ensureEntry(input)
   entry.refCount += 1
-  if (!entry.isReady) {
+  // Phone: never attach on acquire. Home used to start a decoder per visible
+  // pack (center ± 2) — the triple play / webglcontextlost / abort sequence
+  // in the iOS timeline. Playback attaches the one live decoder.
+  // Desktop still warms on acquire so the center pack isn't a black still.
+  if (!entry.isReady && !isMobileCoverflowViewport()) {
     attachDecoder(entry)
   }
   return entry
@@ -581,9 +587,10 @@ export function setVideoTexturePlaying(key: string, playing: boolean) {
 
   if (playing) {
     entry.pausedPlayingCount = 0
+    // Evict other phone decoders before this one attaches, not after.
+    if (entry.playingCount === 0) capLiveDecoders(entry)
     entry.playingCount += 1
     if (entry.playingCount === 1) {
-      capLiveDecoders(entry)
       restoreLiveCanvas(entry)
       attachDecoder(entry)
       void entry.video.play().catch(() => {

@@ -48,6 +48,7 @@ export { useVideoTexture } from './useVideoTexture'
 export {
   acquireVideoTexture,
   clearVideoTextureCache,
+  isMobileCoverflowViewport,
   getVideoTextureCacheStats,
   getVideoTextureForPlayback,
   makeVideoTextureCacheKey,

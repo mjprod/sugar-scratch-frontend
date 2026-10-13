@@ -1694,7 +1694,9 @@ const ctaSize = isMobile ? preset.buyCtaSize.mobile : preset.buyCtaSize.desktop
       flipY: true,
       playing: facePlaying,
       textureSize: resolvePackTextureSize(isMobile, offset),
-      enabled: Boolean(item.videoUrl),
+      // Phone: only the playing pack may hold a decoder. Acquiring one per
+      // visible neighbor (center ± 2) is what jetsams the tab.
+      enabled: Boolean(item.videoUrl) && (!isMobile || facePlaying),
       // Crisp stills for side packs — soft DOF reads as muddy at reduced texture sizes.
       soft: false,
     },
@@ -4371,6 +4373,10 @@ useEffect(() => {
 		              antialias: !isMobileViewportActive,
 		              alpha: true,
 		              premultipliedAlpha: false,
+		              // Default high-performance fights the pack-face decoder
+		              // for the same GPU slot — the iOS webglcontextlost.
+		              powerPreference: 'low-power',
+		              failIfMajorPerformanceCaveat: false,
 		            }}
 	            onCreated={({ gl, scene, invalidate }) => {
 	              // Keep the WebGL clear fully transparent so the CSS gradient is visible.
