@@ -1,14 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Play } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { m, useAnimate, useReducedMotion } from "framer-motion";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import "@/lib/lottie/setupWasm";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
   LockStatusBanner,
   type LockStatus,
 } from "@/components/lock-status/LockStatusBanner";
-import { PlayConfirm } from "@/components/static-card/PlayConfirm";
-import { DiamondLottie } from "@/components/ui/DiamondLottie";
-import { packUnitCost } from "@/services/purchase";
 import "./MotionCard.css";
 
 export type MotionCardState =
@@ -54,14 +53,14 @@ export type MotionCardProps = {
   theme?: MotionCardTheme;
   posterUrl: string;
   videoUrl?: string;
-  playCost?: number;
-  /** Theme Free Play: play without a diamond confirm. */
-  freePlay?: boolean;
+  /** Copies owned. Shown bottom-left only when the card is unlocked and > 1. */
+  duplicateCount?: number;
   onBuy?: () => void;
-  onPlay?: () => void;
   onSelect?: (next: MotionCardState) => void;
   className?: string;
 };
+
+const CARD_COUNTDOWN_LOTTIE_SRC = "/lottie/lottieCardCountdown.lottie";
 
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
 const CARD_MOTION = { duration: 0.42, ease: APPLE_EASE };
@@ -83,30 +82,25 @@ export function MotionCard({
   theme = "police",
   posterUrl,
   videoUrl = "",
-  playCost = packUnitCost(),
-  freePlay = false,
+  duplicateCount,
   onBuy,
-  onPlay,
   onSelect,
   className,
 }: MotionCardProps) {
   const reduceMotion = useReducedMotion();
-  const playCtaRef = useRef<HTMLDivElement>(null);
-  const [confirmPlay, setConfirmPlay] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [teaseRef, animateTease] = useAnimate();
   const frostRef = useRef<HTMLImageElement>(null);
   const prevTease = useRef<boolean | null>(null);
   const locked = state.startsWith("locked");
   const selected = state.endsWith("-selected");
+  const copies =
+    !locked && typeof duplicateCount === "number" && duplicateCount > 1
+      ? Math.round(duplicateCount)
+      : 0;
   const playVideo = state === "unlocked-selected" && Boolean(videoUrl);
-  const ctaInFrame = selected;
   const showTease = state === "locked-unselected-banner";
   const instant = reduceMotion ? { duration: 0 } : CARD_MOTION;
-
-  useEffect(() => {
-    if (!ctaInFrame) setConfirmPlay(false);
-  }, [ctaInFrame]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -273,86 +267,51 @@ export function MotionCard({
         <LockStatusBanner status={bannerStatus(state)} />
       </div>
 
-      <m.div
-        className="absolute right-[3px] bottom-[3px] left-[3px] z-10 h-7"
-        initial={false}
-        animate={{ y: ctaInFrame ? 0 : 36 }}
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { ...CARD_MOTION, delay: ctaInFrame ? 0.2 : 0 }
-        }
-        style={{ pointerEvents: ctaInFrame ? "auto" : "none" }}
-      >
-        {locked ? (
+      {copies > 1 ? (
+        <span
+          className="motion-dupe-badge"
+          aria-label={`${copies} copies`}
+        >
+          <DotLottieReact
+            src={
+              typeof window !== "undefined"
+                ? new URL(CARD_COUNTDOWN_LOTTIE_SRC, window.location.href).href
+                : CARD_COUNTDOWN_LOTTIE_SRC
+            }
+            autoplay
+            loop={false}
+            className="motion-dupe-badge__lottie"
+            renderConfig={lottieRenderConfig({ extraScale: 1.75, autoResize: false })}
+          />
+          <span className="motion-dupe-badge__count" aria-hidden="true">
+            {copies}
+          </span>
+        </span>
+      ) : null}
+
+      {locked ? (
+        <m.div
+          className="absolute right-[3px] bottom-[3px] left-[3px] z-10 h-[34px]"
+          initial={false}
+          animate={{ y: selected ? 0 : 36 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { ...CARD_MOTION, delay: selected ? 0.2 : 0 }
+          }
+          style={{ pointerEvents: selected ? "auto" : "none" }}
+        >
           <CtaButton
             {...SQUIRCLE_CTA}
             fillParent
-            label="Buy a Pack"
+            label="Unlock"
             costAmount={null}
-            fontSize={10}
+            fontSize={14}
             onClick={onBuy}
-            tabIndex={ctaInFrame ? 0 : -1}
+            tabIndex={selected ? 0 : -1}
           />
-        ) : (
-          <div className="motion-card-play-cta" ref={playCtaRef}>
-            <CtaButton
-              {...SQUIRCLE_CTA}
-              fillParent
-              label=""
-              leadingIcon={
-                freePlay ? (
-                  <Play
-                    className="motion-card-play-cta__triangle"
-                    size={11}
-                    strokeWidth={2.4}
-                    fill="currentColor"
-                    aria-hidden
-                  />
-                ) : (
-                  <>
-                    <DiamondLottie size={11} aria-hidden />
-                    <span className="motion-card-play-cta__price">{playCost}</span>
-                    <Play
-                      className="motion-card-play-cta__triangle"
-                      size={11}
-                      strokeWidth={2.4}
-                      fill="currentColor"
-                      aria-hidden
-                    />
-                  </>
-                )
-              }
-              costAmount={null}
-              fontSize={10}
-              cornerRadius={999}
-              aria-label={
-                freePlay ? "Free play" : `Play for ${playCost} diamonds`
-              }
-              aria-expanded={freePlay ? undefined : confirmPlay}
-              onClick={() => {
-                if (freePlay) {
-                  onPlay?.();
-                  return;
-                }
-                setConfirmPlay((open) => !open);
-              }}
-              tabIndex={ctaInFrame ? 0 : -1}
-            />
-            {!freePlay && confirmPlay && playCtaRef.current ? (
-              <PlayConfirm
-                anchor={playCtaRef.current}
-                playCost={playCost}
-                onCancel={() => setConfirmPlay(false)}
-                onConfirm={() => {
-                  setConfirmPlay(false);
-                  onPlay?.();
-                }}
-              />
-            ) : null}
-          </div>
-        )}
-      </m.div>
+        </m.div>
+      ) : null}
     </div>
   );
 }

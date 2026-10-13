@@ -26,6 +26,11 @@ type StaticCarouselProps = {
   theme?: MotionCardTheme;
   motionCardNumber?: number;
   motionCardTotal?: number;
+  /** Increment to open the photo-card overlay from outside the carousel. */
+  openSignal?: number;
+  onExpandedChange?: (open: boolean) => void;
+  /** Overlay-only mount: skip the inline strip. */
+  overlayOnly?: boolean;
   className?: string;
 };
 
@@ -38,6 +43,7 @@ const THEME_LABEL: Record<MotionCardTheme, string> = {
 };
 
 const STATIC_CARD_TOTAL = 10;
+const REVEAL_STAGGER_MS = 80;
 
 function PhotoCardsExpandIcon() {
   return (
@@ -52,24 +58,6 @@ function PhotoCardsExpandIcon() {
       <path
         fill="currentColor"
         d="M18.25 3H5.75A2.755 2.755 0 0 0 3 5.75v12.5A2.755 2.755 0 0 0 5.75 21h12.5A2.755 2.755 0 0 0 21 18.25V5.75A2.755 2.755 0 0 0 18.25 3M11 17v1.5H6.75c-.69 0-1.25-.56-1.25-1.25V13H7v2.94l3.22-3.22l1.06 1.06L8.06 17zm7.5-6H17V8.06l-3.22 3.22l-1.06-1.06L15.94 7H13V5.5h4.25c.69 0 1.25.56 1.25 1.25z"
-      />
-    </svg>
-  );
-}
-
-function PhotoCardsContractIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      width="18"
-      height="18"
-      viewBox="0 0 18 18"
-      xmlns="http://www.w3.org/2000/svg"
-      className="block size-[18px] shrink-0 text-white"
-    >
-      <path
-        fill="currentColor"
-        d="M13.69,2.25H4.31c-1.14,0-2.06.92-2.06,2.06v9.38c0,1.14.92,2.06,2.06,2.06h9.38c1.14,0,2.06-.92,2.06-2.06V4.31c0-1.14-.92-2.06-2.06-2.06M4.34,10.67v-1.12h3.19c.52,0,.94.42.94.94v3.19h-1.12v-2.21l-2.42,2.42-.8-.8,2.42-2.41h-2.2ZM9.54,4.34h1.12v2.2l2.42-2.42.8.79-2.42,2.42h2.2v1.12h-3.19c-.52,0-.94-.42-.94-.94v-3.19Z"
       />
     </svg>
   );
@@ -204,18 +192,68 @@ export function StaticCarousel({
   theme = "police",
   motionCardNumber = 1,
   motionCardTotal = 3,
+  openSignal = 0,
+  onExpandedChange,
+  overlayOnly = false,
   className,
 }: StaticCarouselProps) {
   const [expanded, setExpanded] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
   const unlocked = cards.filter((item) => item.state === "unlocked").length;
   const total = STATIC_CARD_TOTAL;
 
   function openOverlay() {
     setLeaving(false);
+    setRevealed(false);
     setExpanded(true);
   }
+
+  useEffect(() => {
+    if (!expanded) return;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setRevealed(true);
+      return;
+    }
+    let frame = 0;
+    frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => setRevealed(true));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expanded]);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!expanded || !grid) return;
+    const update = () => {
+      setCanScrollDown(grid.scrollHeight - grid.scrollTop - grid.clientHeight > 8);
+    };
+    update();
+    grid.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(grid);
+    return () => {
+      grid.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [expanded, cards.length]);
+
+  const lastOpenSignal = useRef(0);
+  useEffect(() => {
+    if (openSignal === lastOpenSignal.current) return;
+    lastOpenSignal.current = openSignal;
+    if (openSignal > 0) openOverlay();
+  }, [openSignal]);
+
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
 
   function closeOverlay() {
     if (!expanded || leaving) return;
@@ -261,6 +299,7 @@ export function StaticCarousel({
         .filter(Boolean)
         .join(" ")}
     >
+      {overlayOnly ? null : (
       <div className="flex w-full flex-col">
         <p className="static-carousel__title font-medium text-white">
           {THEME_LABEL[theme]} Motion Card
@@ -270,7 +309,9 @@ export function StaticCarousel({
           {String(motionCardTotal).padStart(2, "0")}
         </p>
       </div>
+      )}
 
+      {overlayOnly ? null : (
       <div className="flex h-4 w-full items-center justify-between">
           <div className="flex items-center gap-1">
           <PhotoCardsIcon />
@@ -292,9 +333,11 @@ export function StaticCarousel({
           </button>
         </div>
       </div>
+      )}
 
-      <PhotoCardStrip cards={cards} />
+      {overlayOnly || expanded ? null : <PhotoCardStrip cards={cards} />}
 
+      {overlayOnly ? null : (
       <m.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -309,6 +352,7 @@ export function StaticCarousel({
           className="h-[0.25rem] w-full"
         />
       </m.div>
+      )}
 
       {expanded && typeof document !== "undefined"
         ? createPortal(
@@ -327,48 +371,68 @@ export function StaticCarousel({
                 finishClose();
               }}
             >
-              <button
-                type="button"
-                className="static-carousel-overlay__close"
-                aria-label="Close photo cards"
-                onClick={closeOverlay}
-              >
-                <X className="size-5" />
-              </button>
               <div
                 className="static-carousel-overlay__panel static-carousel static-carousel--expanded"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="flex w-full justify-end">
+                <div className="flex w-full items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <PhotoCardsIcon />
+                    <p className="static-carousel__title min-w-0 font-medium text-white">
+                      {THEME_LABEL[theme]}{" "}
+                      {String(motionCardNumber).padStart(2, "0")} // Photo Cards
+                    </p>
+                  </div>
+                  <p className="static-carousel__title shrink-0 font-medium text-white">
+                    {unlocked}/{total}
+                  </p>
                   <button
                     type="button"
-                    className="static-carousel__expand"
+                    className="static-carousel__close"
                     aria-label="Close photo cards"
                     onClick={closeOverlay}
                   >
-                    <PhotoCardsContractIcon />
+                    <X className="size-5" />
                   </button>
                 </div>
-                <div className="flex w-full items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <PhotoCardsIcon />
-                    <p className="static-carousel__title font-medium text-white">
-                      Photo Cards
-                    </p>
-                  </div>
-                  <p className="static-carousel__title font-medium text-white">
-                    {unlocked}/{total}
-                  </p>
-                </div>
-                <PhotoCardStrip cards={cards} animate={false} />
                 <StaticCardMeter
                   includeMotionTick={false}
                   staticTotal={total}
                   collectedIndexes={cards.flatMap((item, index) =>
                     item.state === "unlocked" ? [index] : [],
                   )}
-                  className="h-[0.25rem] w-full"
+                  className="h-[0.25rem] w-full shrink-0"
                 />
+                <div
+                  ref={gridRef}
+                  className={`static-carousel__grid${canScrollDown ? " can-scroll-down" : ""}`}
+                >
+                  {cards.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`static-carousel__cell${revealed ? " is-ready" : ""}`}
+                      style={{
+                        ["--static-reveal-delay" as string]: `${index * REVEAL_STAGGER_MS}ms`,
+                      }}
+                    >
+                      <div className="static-carousel__bone" aria-hidden="true">
+                        <div className="static-carousel__bone-face" />
+                        <div className="static-carousel__bone-cta" />
+                      </div>
+                      <div className="static-carousel__cell-real">
+                        <StaticCardHolder
+                          state={item.state}
+                          backgroundUrl={item.backgroundUrl}
+                          topLayerUrl={item.topLayerUrl}
+                          playCost={item.playCost}
+                          freePlay={item.freePlay}
+                          onPlay={item.onPlay}
+                          plainCta
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>,
             document.body,

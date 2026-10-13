@@ -624,6 +624,8 @@ function ThemeCollectionCard({
           theme: holderTheme,
           posterUrl: motionTileStillUrl(card) || "/img/placeholder.webp",
           videoUrl: motionVideoUrl(card),
+          // duplicateCount: demo fixture only — real copy count once the board sends one
+          duplicateCount: demoLockedBanner && unlocked && index === 0 ? 3 : undefined,
           playCost: boardCard?.price ?? packUnitCost(),
           freePlay: freePlay && (demoLockedBanner || Boolean(boardCard?.freePlayable)),
           staticTotal: boardCard?.staticCardsTotal || 10,

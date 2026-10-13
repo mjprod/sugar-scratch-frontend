@@ -671,7 +671,7 @@ body[data-theme="v8"] .cpv2-theme-stack {
 @media (min-width: 768px) {
   body[data-theme="v8"] .cpv2-theme-stack {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
   }
 }

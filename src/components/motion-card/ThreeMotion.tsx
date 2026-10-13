@@ -16,6 +16,8 @@ export type ThreeMotionItem = {
   freePlay?: boolean;
   staticTotal?: number;
   collectedIndexes?: number[];
+  /** Copies owned. Badge shows on the unlocked face when > 1. */
+  duplicateCount?: number;
   photos?: import("@/components/static-card/StaticCarousel").StaticCarouselItem[];
   onBuy?: () => void;
   onPlay?: () => void;
@@ -53,12 +55,11 @@ export function ThreeMotion({
           theme={item.theme}
           posterUrl={item.posterUrl}
           videoUrl={item.videoUrl}
-          playCost={item.playCost}
           freePlay={item.freePlay}
           staticTotal={item.staticTotal}
           collectedIndexes={item.collectedIndexes}
+          duplicateCount={item.duplicateCount}
           onBuy={item.onBuy}
-          onPlay={item.onPlay}
           onSelect={
             onSelect
               ? (next: MotionCardState) => onSelect(item.id, next)

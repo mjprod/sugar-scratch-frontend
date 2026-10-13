@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { Play } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { PlayConfirm } from "@/components/static-card/PlayConfirm";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { packUnitCost } from "@/services/purchase";
 import {
   MotionCardStack,
 } from "@/components/motion-card/MotionCardStack";
@@ -11,6 +16,8 @@ import {
   StaticCarousel,
   type StaticCarouselItem,
 } from "@/components/static-card/StaticCarousel";
+import type { MotionCardTheme } from "@/components/motion-card/MotionCard";
+import { PhotoGateway } from "@/components/photo-gateway/PhotoGateway";
 
 type MotionCardHolderProps = {
   items: ThreeMotionItem[];
@@ -50,6 +57,31 @@ function enterDelay(index: number) {
   return (2 - index) * 0.16;
 }
 
+const SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
+
+const THEME_LABEL: Record<MotionCardTheme, string> = {
+  police: "Police",
+  nurse: "Nurse",
+  fire: "Fire",
+  gym: "Gym",
+  teacher: "Teacher",
+};
+
+function gatewayCards(items: StaticCarouselItem[]) {
+  return items.flatMap((item) => {
+    const backgroundUrl = item.backgroundUrl?.trim() || "";
+    const topLayerUrl = item.topLayerUrl?.trim() || "";
+    if (!backgroundUrl && !topLayerUrl) return [];
+    return [
+      {
+        id: item.id,
+        backgroundUrl: backgroundUrl || topLayerUrl,
+        topLayerUrl,
+      },
+    ];
+  });
+}
+
 function exitDuration() {
   return SHIFT.duration;
 }
@@ -71,7 +103,12 @@ export function MotionCardHolder({
   const lastActiveIndex = useRef(0);
   const detailsTimer = useRef<number | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
+  const playCtaRef = useRef<HTMLDivElement>(null);
   const [cardW, setCardW] = useState(108);
+  const [cardH, setCardH] = useState(0);
+  const [confirmPlay, setConfirmPlay] = useState(false);
+  const [photoOpenSignal, setPhotoOpenSignal] = useState(0);
+  const [photoOverlayOpen, setPhotoOverlayOpen] = useState(false);
   const cards = items.slice(0, 3);
   const activeIndex = cards.findIndex((item) => item.id === activeId);
   const active = activeIndex >= 0;
@@ -88,6 +125,7 @@ export function MotionCardHolder({
     }
     setActiveId(null);
     setDetailsReady(false);
+    setConfirmPlay(false);
     onItemSelect?.(
       item.id,
       (item.state ?? "").startsWith("locked")
@@ -100,9 +138,13 @@ export function MotionCardHolder({
     const node = rowRef.current;
     if (!node) return;
     const measure = () => {
+      const slot = node.children[0] as HTMLElement | undefined;
+      if (!slot) return;
+      const face = slot.querySelector(".aspect-\\[108\\/210\\.5\\]");
+      const box = (face ?? slot).getBoundingClientRect();
+      if (box.height > 0) setCardH(box.height);
       if (openRef.current) return;
-      const el = node.children[0] as HTMLElement | undefined;
-      if (el) setCardW(el.getBoundingClientRect().width);
+      setCardW(slot.getBoundingClientRect().width);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -115,6 +157,8 @@ export function MotionCardHolder({
       if (detailsTimer.current != null) window.clearTimeout(detailsTimer.current);
     };
   }, []);
+
+
 
   return (
     <div
@@ -175,16 +219,15 @@ export function MotionCardHolder({
                 theme={item.theme}
                 posterUrl={item.posterUrl}
                 videoUrl={item.videoUrl}
-                playCost={item.playCost}
                 freePlay={item.freePlay}
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
+                duplicateCount={item.duplicateCount}
                 hideMeter={selected && detailsReady}
                 onBuy={() => {
                   closeActive(item);
                   window.requestAnimationFrame(() => item.onBuy?.());
                 }}
-                onPlay={item.onPlay}
                 onSelect={() => {
                   if (detailsTimer.current != null) {
                     window.clearTimeout(detailsTimer.current);
@@ -219,21 +262,108 @@ export function MotionCardHolder({
             className="motion-card-holder__panel absolute top-0 right-0 z-[3]"
             style={{
               left: cardW + PANEL_GAP,
+              height: cardH > 0 ? cardH : undefined,
             }}
             initial={reduceMotion ? false : { opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, x: 16 }}
             transition={instant}
           >
-            <StaticCarousel
-              items={activeCard.photos?.length ? activeCard.photos : photos}
-              theme={activeCard.theme}
-              motionCardNumber={activeIndex + 1}
-              motionCardTotal={cards.length}
-            />
+            <div className="flex h-full min-h-0 w-full flex-col gap-2">
+              <div className="motion-card-holder__head flex w-full shrink-0 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <p className="static-carousel__title min-w-0 font-medium text-white">
+                    {THEME_LABEL[activeCard.theme ?? "police"]} Motion Card
+                  </p>
+                  <p className="static-carousel__title shrink-0 font-medium text-white">
+                    Nº {String(activeIndex + 1).padStart(2, "0")}/
+                    {String(cards.length).padStart(2, "0")}
+                  </p>
+                </div>
+                {(activeCard.state ?? "").startsWith("locked") ? null : (
+                <div className="motion-card-holder__play w-full shrink-0" ref={playCtaRef}>
+                    <CtaButton
+                      {...SQUIRCLE_CTA}
+                      fillParent
+                      label=""
+                      leadingIcon={
+                        <>
+                          {activeCard.freePlay ? null : (
+                            <>
+                              <DiamondLottie size={11} aria-hidden />
+                              <span className="motion-card-play-cta__price">
+                                {activeCard.playCost ?? packUnitCost()}
+                              </span>
+                            </>
+                          )}
+                          <span>{activeCard.freePlay ? "Free Play" : "Play Motion"}</span>
+                          <Play
+                            className="motion-card-play-cta__triangle"
+                            size={11}
+                            strokeWidth={2.4}
+                            fill="currentColor"
+                            aria-hidden
+                          />
+                        </>
+                      }
+                      costAmount={null}
+                      fontSize={14}
+                      cornerRadius={999}
+                      aria-label={
+                        activeCard.freePlay
+                          ? "Free Play"
+                          : `Play for ${activeCard.playCost ?? packUnitCost()} diamonds`
+                      }
+                      aria-expanded={activeCard.freePlay ? undefined : confirmPlay}
+                      onClick={() => {
+                        if (activeCard.freePlay) {
+                          activeCard.onPlay?.();
+                          return;
+                        }
+                        setConfirmPlay((open) => !open);
+                      }}
+                    />
+                  {!activeCard.freePlay &&
+                  confirmPlay &&
+                  playCtaRef.current &&
+                  !(activeCard.state ?? "").startsWith("locked") ? (
+                    <PlayConfirm
+                      anchor={playCtaRef.current}
+                      playCost={activeCard.playCost ?? packUnitCost()}
+                      onCancel={() => setConfirmPlay(false)}
+                      onConfirm={() => {
+                        setConfirmPlay(false);
+                        activeCard.onPlay?.();
+                      }}
+                    />
+                  ) : null}
+                </div>
+                )}
+              </div>
+              <PhotoGateway
+                cards={gatewayCards(activeCard.photos?.length ? activeCard.photos : photos)}
+                heading={`${(activeCard.collectedIndexes ?? []).length > 0 ? "" : `${(activeCard.state ?? "").startsWith("locked") ? "Unlock" : "Play"} `}${THEME_LABEL[activeCard.theme ?? "police"]} Nº ${String(activeIndex + 1).padStart(2, "0")}/${String(cards.length).padStart(2, "0")}`}
+                collected={(activeCard.collectedIndexes ?? []).length}
+                total={activeCard.staticTotal ?? photos.length}
+                quiet={photoOverlayOpen}
+                onViewCollection={() => setPhotoOpenSignal((signal) => signal + 1)}
+                className="h-auto min-h-0 max-w-none flex-1"
+              />
+            </div>
           </m.div>
         ) : null}
       </AnimatePresence>
+      {active && activeCard && photoOpenSignal > 0 ? (
+        <StaticCarousel
+          items={activeCard.photos?.length ? activeCard.photos : photos}
+          theme={activeCard.theme}
+          motionCardNumber={activeIndex + 1}
+          motionCardTotal={cards.length}
+          openSignal={photoOpenSignal}
+          onExpandedChange={setPhotoOverlayOpen}
+          overlayOnly
+        />
+      ) : null}
     </div>
   );
 }

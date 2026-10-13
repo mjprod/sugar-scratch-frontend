@@ -22,9 +22,8 @@ export function PlayConfirm({
   useLayoutEffect(() => {
     const place = () => {
       const rect = anchor.getBoundingClientRect();
-      const height = ref.current?.offsetHeight ?? 84;
       setBox({
-        top: rect.top - height - 8,
+        top: rect.bottom + 8,
         left: rect.left + rect.width / 2,
       });
     };

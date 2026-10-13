@@ -10,6 +10,8 @@ type MotionCardStackProps = MotionCardProps & {
   staticTotal?: number;
   collectedIndexes?: number[];
   hideMeter?: boolean;
+  duplicateCount?: number;
+  freePlay?: boolean;
 };
 
 function motionUnlocked(state: MotionCardState | undefined) {
