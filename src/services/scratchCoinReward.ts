@@ -62,6 +62,8 @@ const scratchHandInFlight = new Map<
   string,
   Promise<ScratchHandResult | null>
 >();
+/** Cards that already received a hand this session. A later open is a replay. */
+const scratchHandIssued = new Set<string>();
 
 /**
  * Client wallet after a scratch-coin persist response.
@@ -106,19 +108,35 @@ export function markScratchHandQuotaExhausted(
 export function resetScratchHandQuotaForTests(): void {
   scratchHandQuotaBlock = null;
   scratchHandInFlight.clear();
+  scratchHandIssued.clear();
 }
 
-/** Ask the server for a new scratch hand id (rate-limited; 24/day). */
+/** True once this card has been issued a hand for the signed-in user. */
+export function scratchHandAlreadyIssued(
+  cardId?: string,
+  ownerId: string | null = getAuthUserId(),
+): boolean {
+  const id = cardId?.trim();
+  if (!id) return false;
+  return scratchHandIssued.has(`${ownerId ?? ""}:${id}`);
+}
+
+/**
+ * Ask the server for a new scratch hand id (rate-limited; 24/day).
+ * `visit` distinguishes a replay of the same card — its previous hand is
+ * already claimed, so sharing that in-flight request would mint no coins.
+ */
 export function startScratchHand(
   cardId?: string,
-  opts?: { freePlay?: boolean },
+  opts?: { freePlay?: boolean; visit?: number },
 ): Promise<ScratchHandResult | null> {
   const ownerId = getAuthUserId();
   const freePlay = Boolean(opts?.freePlay);
   // Free play mints nothing, so a spent reward quota must not block the hand.
   if (!freePlay && isScratchHandQuotaExhausted(ownerId)) return Promise.resolve(null);
 
-  const key = `${ownerId ?? ""}:${freePlay ? "free:" : ""}${cardId?.trim() || ""}`;
+  const visit = opts?.visit ?? 0;
+  const key = `${ownerId ?? ""}:${freePlay ? "free:" : ""}${cardId?.trim() || ""}:${visit}`;
   const pending = scratchHandInFlight.get(key);
   if (pending) return pending;
 
@@ -140,6 +158,9 @@ export function startScratchHand(
           }),
         },
       );
+      if (hand?.handId && cardId?.trim()) {
+        scratchHandIssued.add(`${ownerId ?? ""}:${cardId.trim()}`);
+      }
       settle(hand);
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
@@ -185,9 +206,10 @@ export type ScratchCoinAwardAction = "skip" | "hold" | "persist" | "local";
  *           when `handId` arrives.
  * `persist` — have a hand: credit + POST.
  * `local` — guest juice only (no wallet refresh to wipe it).
- * `skip` — free-play / practice, or coins disabled for this hand (quota spent
- *          or hand start failed): no coins. Only coins — diamonds / card
- *          prizes are gated by `practice` alone in the callers.
+ * `skip` — practice, or coins disabled for this hand (quota spent or hand
+ *          start failed): no coins. Free play is not a skip — the caller shows
+ *          the win and gives the wallet back when the card ends. Only coins —
+ *          diamonds / card prizes are gated by `practice` alone in the callers.
  */
 export function scratchCoinAwardAction(input: {
   freePlay: boolean;
@@ -196,7 +218,7 @@ export function scratchCoinAwardAction(input: {
   authed: boolean;
   handId: string;
 }): ScratchCoinAwardAction {
-  if (input.freePlay || input.practice || input.coinsDisabled) return "skip";
+  if (input.practice || input.coinsDisabled) return "skip";
   if (!input.authed) return "local";
   if (input.handId.trim()) return "persist";
   return "hold";

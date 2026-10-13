@@ -108,6 +108,8 @@ export function MotionCardHolder({
   const [cardW, setCardW] = useState(108);
   const [cardH, setCardH] = useState(0);
   const [confirmPlay, setConfirmPlay] = useState(false);
+  const [confirmLeaving, setConfirmLeaving] = useState(false);
+  const pendingPlayRef = useRef(false);
   const [photoOpenSignal, setPhotoOpenSignal] = useState(0);
   const [photoOverlayOpen, setPhotoOverlayOpen] = useState(false);
   const cards = items.slice(0, 3);
@@ -127,6 +129,8 @@ export function MotionCardHolder({
     setActiveId(null);
     setDetailsReady(false);
     setConfirmPlay(false);
+    setConfirmLeaving(false);
+    pendingPlayRef.current = false;
     setPhotoOpenSignal(0);
     setPhotoOverlayOpen(false);
     onItemSelect?.(
@@ -326,7 +330,13 @@ export function MotionCardHolder({
                           activeCard.onPlay?.();
                           return;
                         }
-                        setConfirmPlay((open) => !open);
+                        if (confirmLeaving) return;
+                        if (confirmPlay) {
+                          pendingPlayRef.current = false;
+                          setConfirmLeaving(true);
+                          return;
+                        }
+                        setConfirmPlay(true);
                       }}
                     />
                   {!activeCard.freePlay &&
@@ -336,10 +346,21 @@ export function MotionCardHolder({
                     <PlayConfirm
                       anchor={playCtaRef.current}
                       playCost={activeCard.playCost ?? packUnitCost()}
-                      onCancel={() => setConfirmPlay(false)}
+                      leaving={confirmLeaving}
+                      onCancel={() => {
+                        pendingPlayRef.current = false;
+                        setConfirmLeaving(true);
+                      }}
                       onConfirm={() => {
+                        pendingPlayRef.current = true;
+                        setConfirmLeaving(true);
+                      }}
+                      onLeaveEnd={() => {
+                        const play = pendingPlayRef.current;
+                        pendingPlayRef.current = false;
                         setConfirmPlay(false);
-                        activeCard.onPlay?.();
+                        setConfirmLeaving(false);
+                        if (play) activeCard.onPlay?.();
                       }}
                     />
                   ) : null}

@@ -99,8 +99,8 @@ const local = { coins: 190, diamonds: 8 };
       coinsDisabled: false,
       authed: true,
       handId: "hand-1",
-    }) === "skip",
-    "theme-toggle free play never awards",
+    }) === "persist",
+    "free play still shows the award; the caller gives the wallet back",
   );
   assert(
     scratchCoinAwardAction({

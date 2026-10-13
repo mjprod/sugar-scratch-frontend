@@ -417,11 +417,10 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   }
 }
 
-/* Bottom-left coin badge: rise from below, leave straight down.
-   Enter waits out the dock fly so it arrives with the diamond. */
+/* Bottom-left coin badge: rise from below when a coin lands, leave straight down. */
 .pack-progress-shell--bottom-left {
   transform-origin: center bottom;
-  animation: pack-progress-enter-bl 980ms cubic-bezier(0.22, 1, 0.36, 1) 720ms both;
+  animation: pack-progress-enter-bl 980ms cubic-bezier(0.22, 1, 0.36, 1) both;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;

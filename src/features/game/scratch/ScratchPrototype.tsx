@@ -10,9 +10,14 @@ import {
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
+  coinsForMotionPrize,
+  diamondsForMotionPrize,
+} from "@/services/gameSessionStore";
+import {
   isScratchHandQuotaExhausted,
   claimScratchCoins,
   scratchCoinAwardAction,
+  scratchHandAlreadyIssued,
   startScratchHand,
 } from "@/services/scratchCoinReward";
 import { gameReturnHrefFromSearch } from "@/shared/navigation/collectionReturn";
@@ -223,6 +228,8 @@ import {
   unbindThemeIntroVideo,
 } from "../shared/media";
 import { fetchThemes } from "../shared/themes";
+/** Theme video intros before play. Off — go straight to the countdown. */
+const THEME_INTRO_ENABLED = false;
 import { StageCoinCount } from "../StageCoinCount";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { formatBalance } from "@/lib/formatBalance";
@@ -1406,7 +1413,8 @@ export function ScratchPrototype({
   onRevealedSymbolsChange?: (count: number) => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins, addDiamonds, coins, diamonds } = useWallet();
+  const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
+    useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
@@ -1414,9 +1422,22 @@ export function ScratchPrototype({
   const handStartGenRef = useRef(0);
   /** Card id the current handId was issued for — skip remount/mesh restarts. */
   const handCardIdRef = useRef<string | null>(null);
+  /** Bumps when this card is opened again, so a replay gets its own hand. */
+  const [playVisit, setPlayVisit] = useState(() =>
+    scratchHandAlreadyIssued(
+      typeof window === "undefined"
+        ? ""
+        : new URLSearchParams(window.location.search).get("card")?.trim() || "",
+    )
+      ? 1
+      : 0,
+  );
   /** Theme toggle only. A paid launch always awards, even on an owned card. */
   const freePlayLaunch = isFreePlayUrl();
-  const practiceRef = useRef(freePlayLaunch);
+  /** Practice zeroes a prize. Free play still shows it, then gives it back. */
+  const practiceRef = useRef(false);
+  /** Free-play juice shown this visit — taken back when the card ends. */
+  const freePlayCreditRef = useRef({ coins: 0, diamonds: 0 });
   /** Quota spent / hand start failed — skip sparkle coins only, not card prizes. */
   const coinAwardsDisabledRef = useRef(false);
   const [handCurrency, setHandCurrency] = useState<"coins" | "diamonds">("coins");
@@ -1438,6 +1459,18 @@ export function ScratchPrototype({
   const coinIdRef = useRef(0);
   const [flyingCoins, setFlyingCoins] = useState<FlyingCoin[]>([]);
   const [, setSymbolCatalogTick] = useState(0);
+
+  useEffect(() => {
+    return () => {
+      if (!freePlayLaunch) return;
+      const credited = freePlayCreditRef.current;
+      if (credited.coins > 0) spendCoins(credited.coins);
+      if (credited.diamonds > 0) spendDiamonds(credited.diamonds);
+    };
+    // Free-play juice is given back when the card ends. The ref is left set
+    // so a Strict Mode setup pass cannot wipe a credit the cleanup just undid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadSymbolTypes()
@@ -1508,13 +1541,22 @@ export function ScratchPrototype({
       (skipToPlay ? "julianaval" : "")
     );
   });
-  const [selectedCardId, setSelectedCardId] = useState(() => {
+  const [selectedCardId, setSelectedCardIdState] = useState(() => {
     if (typeof window === "undefined") return skipToPlay ? "juliana_1" : "";
     return (
       new URLSearchParams(window.location.search).get("card")?.trim() ||
       (skipToPlay ? "juliana_1" : "")
     );
   });
+  /** Choosing the card that is already open is a replay — it needs a new hand. */
+  const selectCard = useCallback((id: string) => {
+    setSelectedCardIdState((current) => {
+      if (current && current === id) setPlayVisit((visit) => visit + 1);
+      else setPlayVisit(0);
+      return id;
+    });
+  }, []);
+  const setSelectedCardId = selectCard;
   /** StageNav / bare /game → full model hand. Collection Play Game omits playlist=1. */
   const [playlistMode, setPlaylistMode] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -1879,8 +1921,8 @@ export function ScratchPrototype({
   const [coinPopNonce, setCoinPopNonce] = useState(0);
   /** Last 10% award amount — floating +N chip on StageCoinCount. */
   const [coinAwardFlash, setCoinAwardFlash] = useState(0);
-  /** Bottom coin badge — visible on paid play; free play hides it until an award (there is none). */
-  const [coinBadgeShown, setCoinBadgeShown] = useState(!freePlayLaunch);
+  /** Bottom coin badge — hidden until a coin lands, then hides after the finger lifts. */
+  const [coinBadgeShown, setCoinBadgeShown] = useState(false);
   const [coinBadgeLeaving, setCoinBadgeLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [coinBadgeEnterKey, setCoinBadgeEnterKey] = useState(0);
@@ -1977,8 +2019,6 @@ export function ScratchPrototype({
   }
 
   function beginCoinBadgeIdleLeave() {
-    // Paid play keeps the coin count up. Free play never awards, so it stays hidden.
-    if (!freePlayLaunch) return;
     if (!coinBadgeShownRef.current || coinBadgeLeavingRef.current) return;
     if (isScratchingRef.current) return;
 
@@ -2027,7 +2067,7 @@ export function ScratchPrototype({
       handStartGenRef.current += 1;
       handIdRef.current = "";
       handCardIdRef.current = null;
-      practiceRef.current = freePlayLaunch;
+      practiceRef.current = false;
       coinAwardsDisabledRef.current = false;
       pendingMilestonesRef.current = [];
       return;
@@ -2040,7 +2080,8 @@ export function ScratchPrototype({
       return;
     }
     const key = cardId?.trim() || "";
-    // Mesh reload / Strict Mode remount for the same card must not burn quota.
+    // Mesh reload / Strict Mode remount for the same visit must not burn quota.
+    // `force` is a replay of this card — its old hand is already claimed.
     if (!opts?.force && handIdRef.current && handCardIdRef.current === key) {
       return;
     }
@@ -2050,14 +2091,17 @@ export function ScratchPrototype({
     coinAwardsDisabledRef.current = false;
     pendingMilestonesRef.current = [];
     const gen = ++handStartGenRef.current;
-    void startScratchHand(cardId || undefined, { freePlay: freePlayLaunch }).then((result) => {
+    void startScratchHand(cardId || undefined, {
+      visit: playVisit,
+    }).then((result) => {
       if (gen !== handStartGenRef.current) return;
       if (result?.handId) {
         handIdRef.current = result.handId;
         handCardIdRef.current = key;
         setHandCurrency(result.currency === "diamonds" ? "diamonds" : "coins");
-        // Owned-card replays still award. Only the theme toggle skips minting.
-        practiceRef.current = freePlayLaunch;
+        // Owned-card replays still award. Free play shows the win, then
+        // gives it back — it must not skip minting.
+        practiceRef.current = false;
         flushHeldScratchMilestones(result.handId);
         return;
       }
@@ -2069,6 +2113,19 @@ export function ScratchPrototype({
     });
   }
 
+  function showFreePlayPrize(coins: number, diamonds: number) {
+    const coinAward = Math.max(0, Math.trunc(coins));
+    const diamondAward = Math.max(0, Math.trunc(diamonds));
+    if (coinAward > 0) {
+      addCoins(coinAward);
+      freePlayCreditRef.current.coins += coinAward;
+    }
+    if (diamondAward > 0) {
+      addDiamonds(diamondAward);
+      freePlayCreditRef.current.diamonds += diamondAward;
+    }
+  }
+
   function creditScratchMilestone(milestone: number, handId: string) {
     const award = rollSparkleCoinAward();
     const cardId = selectedCardId || undefined;
@@ -2077,14 +2134,16 @@ export function ScratchPrototype({
       showCoinBadge();
       if (!paysDiamonds) {
         addCoins(award.amount);
-        noteCoinsReceived(award.amount);
+        if (freePlayLaunch) freePlayCreditRef.current.coins += award.amount;
+        else noteCoinsReceived(award.amount);
       }
       setCoinAwardFlash(award.amount);
       setCoinPopNonce((n) => n + 1);
       playSparkleCoinSound(award.soundSrc);
       // Persist only with a server-issued hand — forged client ids are rejected.
+      // Free play is juice only: the wallet is put back when the card ends.
       // Do not merge the persist wallet snapshot (see scratchCoinReward).
-      if (handId && authed) {
+      if (handId && authed && !freePlayLaunch) {
         void claimScratchCoins({
           handId,
           milestone,
@@ -2095,6 +2154,7 @@ export function ScratchPrototype({
           const paid = Math.max(0, Math.trunc(claimed.diamonds ?? 0));
           if (paid <= 0) return;
           addDiamonds(paid);
+          if (freePlayLaunch) freePlayCreditRef.current.diamonds += paid;
         });
       }
       // Milestone counts as activity — hold longer so +N / count-up can read.
@@ -2125,11 +2185,12 @@ export function ScratchPrototype({
       firstProgressMilestoneFiredRef.current = true;
       onFirstProgressMilestone();
     }
-    // Award sparkle coins on paid hands. Free play (theme toggle) skips awards.
+    // Award sparkle coins on every hand, including a replay. Free play shows
+    // them too, then gives the wallet back when the card ends.
     // Batched frames can cross several bands; each band is its own award.
     // Signed-in awards wait for a server hand — see scratchCoinAwardAction.
     const awardAction = scratchCoinAwardAction({
-      freePlay: freePlayLaunch,
+      freePlay: false,
       practice: practiceRef.current,
       coinsDisabled: coinAwardsDisabledRef.current,
       authed,
@@ -2407,9 +2468,10 @@ export function ScratchPrototype({
       return;
     }
 
-    const url = themeKey
-      ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
-      : "";
+    const url =
+      THEME_INTRO_ENABLED && themeKey
+        ? (themeIntroByKeyRef.current.get(themeKey.toLowerCase()) ?? "")
+        : "";
     // Always park game clips until intro/countdown finish — playlist used to
     // start with gameVideosReady=true and immediately dissolve the cover.
     setGameVideosReady(false);
@@ -2615,7 +2677,7 @@ export function ScratchPrototype({
         if (cancelled) return;
         const map = new Map<string, string>();
         for (const theme of themes) {
-          const url = theme.intro?.trim();
+          const url = THEME_INTRO_ENABLED ? theme.intro?.trim() : "";
           if (!url) continue;
           map.set(theme.id.toLowerCase(), url);
           map.set(theme.label.toLowerCase(), url);
@@ -3512,8 +3574,8 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    coinBadgeShownRef.current = !freePlayLaunch;
-    setCoinBadgeShown(!freePlayLaunch);
+    coinBadgeShownRef.current = false;
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -3554,17 +3616,20 @@ export function ScratchPrototype({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, card?.id, card?.mesh, labRestartToken]);
 
-  // One server hand per card identity (not per mesh reload). Re-runs when auth
+  // One server hand per card visit (not per mesh reload). Re-runs when auth
   // lands so a cold first paint that skipped while `!authed` still gets a hand.
-  // A lab replay of the same card must start a new hand: the old one's
-  // milestones are already claimed server-side.
+  // A later visit of this card needs a new hand: the old one's milestones
+  // are already claimed server-side.
   useEffect(() => {
     if (!card?.id) return;
     const labRestarted = handLabRestartTokenRef.current !== labRestartToken;
     if (authed) handLabRestartTokenRef.current = labRestartToken;
-    beginScratchHand(card.id, labRestarted ? { force: true } : undefined);
+    beginScratchHand(
+      card.id,
+      labRestarted || playVisit > 0 ? { force: true } : undefined,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- beginScratchHand closes over authed
-  }, [selectedCardId, card?.id, labRestartToken, authed]);
+  }, [selectedCardId, card?.id, labRestartToken, authed, playVisit]);
 
   // Product play: arm theme intro + 3-2-1 after Tap to play, in an effect that
   // does NOT share a resetMatchRound with the card-switch path (that race was
@@ -4284,8 +4349,8 @@ export function ScratchPrototype({
     setCoinAwardFlash(0);
     clearCoinBadgeIdleTimer();
     setCoinBadgeLeaving(false);
-    coinBadgeShownRef.current = !freePlayLaunch;
-    setCoinBadgeShown(!freePlayLaunch);
+    coinBadgeShownRef.current = false;
+    setCoinBadgeShown(false);
     claimedRef.current = false;
     fgParkedRef.current = false;
     huntHintActivityAtRef.current = performance.now();
@@ -4411,18 +4476,39 @@ export function ScratchPrototype({
     } else if (result === "win") {
       prize = 1;
     }
+    // Free play shows the win in the wallet, then the card-end rollback
+    // takes it back. Banking it would pay it again at hub settle.
+    const bankedPrize = freePlayLaunch ? 0 : prize;
 
     if (gameMode) {
-      const committed = await commitMotionCardResult(finishedId, prize);
+      const committed = await commitMotionCardResult(finishedId, bankedPrize);
       if (!committed) {
         abortPackRevealAttempt();
         return;
       }
-      const awarded = awardMotionCardCurrency(finishedId, prize);
+      const awarded = awardMotionCardCurrency(finishedId, bankedPrize);
       if (awarded) setGameSession(awarded);
       const pending = awarded?.pendingMotionResult;
-      const coins = Math.max(0, pending?.coins ?? 0);
-      const diamonds = Math.max(0, pending?.diamonds ?? 0);
+      const session = awarded ?? loadGameSession();
+      const packLinked = Boolean(session?.packScratch);
+      const packIndex = session?.motionCardIds.indexOf(finishedId) ?? -1;
+      const openingId =
+        packIndex >= 0 ? session?.packScratch?.openingCardIds[packIndex] : "";
+      const packCoins = openingId
+        ? Math.max(
+            0,
+            session?.packScratch?.openingSession.cards.find(
+              (entry) => entry.id === openingId,
+            )?.reward ?? 0,
+          )
+        : 0;
+      const coins = freePlayLaunch
+        ? coinsForMotionPrize(prize, packCoins, { packLinked })
+        : Math.max(0, pending?.coins ?? 0);
+      const diamonds = freePlayLaunch
+        ? diamondsForMotionPrize(prize)
+        : Math.max(0, pending?.diamonds ?? 0);
+      if (freePlayLaunch) showFreePlayPrize(coins, diamonds);
       // Hub coins bank into session.coinTotal and settle once at done
       // (same path as diamonds). Pack coins credit via PACK_OPENING_REWARD_EVENT.
       const current =
@@ -4617,7 +4703,11 @@ export function ScratchPrototype({
     }
 
     if (gameMode) {
-      const committed = await commitMotionCardResult(finishedId, prize);
+      // Same rule as the overlay path: free play completes the card at prize 0.
+      const committed = await commitMotionCardResult(
+        finishedId,
+        freePlayLaunch ? 0 : prize,
+      );
       if (!committed) {
         abortPackRevealAttempt();
         return;
@@ -6035,6 +6125,7 @@ export function ScratchPrototype({
               roundKey={topBarRound}
               matchedSlots={litTopSlots}
               shakingSlots={shakingTopSlots}
+              matchInFlight={flyingCoins.length > 0}
               shakeDelayMs={shakeDelayMs}
               slotElsOutRef={topBarSlotElsRef}
               forceRevealed={skipToPlay}
