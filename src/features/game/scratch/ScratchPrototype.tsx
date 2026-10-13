@@ -6167,7 +6167,7 @@ export function ScratchPrototype({
                     Free play · no rewards
                   </span>
                 ) : null}
-                {coinBadgeShown && topBarPhase === "docked" ? (
+                {topBarPhase === "docked" ? (
                   <div
                     key={coinBadgeEnterKey}
                     className={[

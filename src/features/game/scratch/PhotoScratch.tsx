@@ -3789,7 +3789,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                     Free play · no rewards
                   </span>
                 ) : null}
-                {coinBadge.shown && topBarPhase === "docked" ? (
+                {topBarPhase === "docked" ? (
                   <div
                     key={coinBadge.enterKey}
                     className={[
