@@ -1,6 +1,10 @@
-import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 import "./PhotoGateway.css";
+
+export const PHOTO_SCRATCH_TEXT_SRC = "/lottie/lottiePhotoScratchText.lottie";
 
 export type PhotoGatewayCard = {
   id: string;
@@ -11,13 +15,11 @@ export type PhotoGatewayCard = {
 
 type PhotoGatewayProps = {
   cards: PhotoGatewayCard[];
-  /** First line, e.g. "Unlock Teacher Nº 02/03". */
-  heading?: string;
   /** Collected static cards for this theme. */
   collected?: number;
   /** Static cards available for this theme. */
   total?: number;
-  onViewCollection?: () => void;
+  onViewCollection?: (event: MouseEvent<HTMLButtonElement>) => void;
   /** Overlay is open: drop scatter decodes and the live CTA shader. */
   quiet?: boolean;
   className?: string;
@@ -83,7 +85,6 @@ function poseStyle(pose: ScatterPose, width: number, height: number, mobile: boo
  */
 export function PhotoGateway({
   cards,
-  heading,
   collected = 0,
   total = 0,
   onViewCollection,
@@ -178,17 +179,14 @@ export function PhotoGateway({
           ref={copyRef}
           className="photo-gateway__copy flex w-full min-w-0 flex-col items-center gap-4"
         >
-          <p className="photo-gateway__title text-center font-semibold tracking-tight text-white">
-            {heading ? (
-              <>
-                {heading}
-                <br />
-                Photo Cards
-              </>
-            ) : (
-              "Photo Cards"
-            )}
-          </p>
+          <div className="photo-gateway__title" aria-hidden="true">
+            <DotLottieReact
+              src={PHOTO_SCRATCH_TEXT_SRC}
+              autoplay
+              loop={false}
+              renderConfig={lottieRenderConfig()}
+            />
+          </div>
           <div
             className="photo-gateway__cta h-12 max-w-full"
             style={{ width: mobile ? mobileWidth : 220 }}
@@ -200,7 +198,7 @@ export function PhotoGateway({
               fillParent
               fontSize={mobile ? 14 : 15}
               auroraPaused={quiet}
-              onClick={onViewCollection}
+              onClick={(event) => onViewCollection?.(event)}
             />
           </div>
         </div>

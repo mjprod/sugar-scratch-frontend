@@ -136,9 +136,13 @@ export function StaticCardHolder({
             </div>
           </>
         ) : null}
-      </div>
 
-      <div className={freePlay ? "static-card-play-cta is-free" : "static-card-play-cta"} ref={ctaRef}>
+      <div
+        className={freePlay ? "static-card-play-cta is-free" : "static-card-play-cta"}
+        ref={ctaRef}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
         <CtaButton
           {...SQUIRCLE_CTA}
           fillParent
@@ -180,6 +184,7 @@ export function StaticCardHolder({
             }}
           />
         ) : null}
+      </div>
       </div>
     </div>
   );

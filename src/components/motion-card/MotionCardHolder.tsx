@@ -126,6 +126,8 @@ export function MotionCardHolder({
     setActiveId(null);
     setDetailsReady(false);
     setConfirmPlay(false);
+    setPhotoOpenSignal(0);
+    setPhotoOverlayOpen(false);
     onItemSelect?.(
       item.id,
       (item.state ?? "").startsWith("locked")
@@ -236,6 +238,8 @@ export function MotionCardHolder({
                   if (activeId !== item.id) {
                     setActiveId(item.id);
                     setDetailsReady(false);
+                    setPhotoOpenSignal(0);
+                    setPhotoOverlayOpen(false);
                     const locked = (item.state ?? "").startsWith("locked");
                     if (locked) {
                       onItemSelect?.(item.id, "locked-selected");
@@ -342,11 +346,13 @@ export function MotionCardHolder({
               </div>
               <PhotoGateway
                 cards={gatewayCards(activeCard.photos?.length ? activeCard.photos : photos)}
-                heading={`${(activeCard.collectedIndexes ?? []).length > 0 ? "" : `${(activeCard.state ?? "").startsWith("locked") ? "Unlock" : "Play"} `}${THEME_LABEL[activeCard.theme ?? "police"]} Nº ${String(activeIndex + 1).padStart(2, "0")}/${String(cards.length).padStart(2, "0")}`}
                 collected={(activeCard.collectedIndexes ?? []).length}
                 total={activeCard.staticTotal ?? photos.length}
                 quiet={photoOverlayOpen}
-                onViewCollection={() => setPhotoOpenSignal((signal) => signal + 1)}
+                onViewCollection={(event) => {
+                  if (event.detail === 0) return;
+                  setPhotoOpenSignal((signal) => signal + 1);
+                }}
                 className="h-auto min-h-0 max-w-none flex-1"
               />
             </div>
