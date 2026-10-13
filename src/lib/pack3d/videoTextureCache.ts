@@ -368,12 +368,16 @@ function capLiveDecoders(keep: CacheEntry) {
   if (!isMobileCoverflowViewport()) {
     return
   }
-  // Evict every other phone decoder, including ones attached but not yet
-  // counted as playing. The old "already at the cap" check ran after acquire
-  // had started the neighbors, so the triple play still happened.
+  // `keep` is about to attach, so the cap is for everyone else. Count
+  // attached-but-not-yet-playing too — acquire used to start neighbors
+  // before playingCount moved, and the old "already at the cap" check
+  // then let the triple play through.
+  let others = 0
   for (const entry of cache.values()) {
     if (entry === keep) continue
     if (entry.playingCount <= 0 && !entry.decoderAttached) continue
+    others += 1
+    if (others < MAX_LIVE_DECODERS_MOBILE) continue
     teardownOffscreen(entry)
   }
 }
