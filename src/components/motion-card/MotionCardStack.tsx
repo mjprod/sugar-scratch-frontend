@@ -10,6 +10,7 @@ type MotionCardStackProps = MotionCardProps & {
   staticTotal?: number;
   collectedIndexes?: number[];
   hideMeter?: boolean;
+  suspendVideo?: boolean;
   duplicateCount?: number;
   freePlay?: boolean;
 };
@@ -25,6 +26,7 @@ export function MotionCardStack({
   staticTotal = 10,
   collectedIndexes = [],
   hideMeter = false,
+  suspendVideo = false,
   className,
   ...cardProps
 }: MotionCardStackProps) {
@@ -34,7 +36,7 @@ export function MotionCardStack({
         .filter(Boolean)
         .join(" ")}
     >
-      <MotionCard {...cardProps} />
+      <MotionCard {...cardProps} suspendVideo={suspendVideo} />
       <m.div
         initial={false}
         animate={{

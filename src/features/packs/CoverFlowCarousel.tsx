@@ -599,8 +599,13 @@ interface CoverFlowCarouselProps {
   cameraSettings?: CoverFlowCameraSettings
   /** Override the built-in desktop/mobile cover-flow spacing. */
   layout?: CoverFlowLayoutSettings
-  /** Homepage: ignore swipe-down deactivate so the page can keep scrolling. */
-  disableSwipeDownDeactivate?: boolean
+	  /** Homepage: ignore swipe-down deactivate so the page can keep scrolling. */
+	  disableSwipeDownDeactivate?: boolean
+	  /**
+	   * Tear page keeps a pack selected, so paging to the next pack opens it.
+	   * That open used to be a right swipe. Require a left swipe instead.
+	   */
+	  openOnLeftSwipe?: boolean
   /** Browse surfaces (cart): ignore global packOpenRequested / auto-open. */
   disablePackOpenReveal?: boolean
   /** Homepage: ignore wheel so it neither pages packs nor traps page scroll. */
@@ -3034,7 +3039,8 @@ export function CoverFlowCarousel({
   onPlayNow,
   cameraSettings: cameraSettingsProp,
   layout: layoutProp,
-  disableSwipeDownDeactivate = false,
+	  disableSwipeDownDeactivate = false,
+	  openOnLeftSwipe = false,
   disablePackOpenReveal = false,
   disableWheelPaging = false,
   tearHud,
@@ -3290,7 +3296,8 @@ const selectedIdRef = useRef(selectedId)
   const onPlayNowRef = useRef(onPlayNow)
   const revealCardsRef = useRef(revealCards)
   const revealModeRef = useRef(revealMode)
-  const disableSwipeDownDeactivateRef = useRef(disableSwipeDownDeactivate)
+		  const disableSwipeDownDeactivateRef = useRef(disableSwipeDownDeactivate)
+	  const openOnLeftSwipeRef = useRef(openOnLeftSwipe)
   const revealShowPlayRef = useRef(false)
   const revealingCharacterIdRef = useRef(revealingCharacterId)
   const focusIndexRef = useRef(0)
@@ -3392,8 +3399,12 @@ useEffect(() => {
   }, [revealMode])
 
   useEffect(() => {
-    disableSwipeDownDeactivateRef.current = disableSwipeDownDeactivate
-  }, [disableSwipeDownDeactivate])
+	    disableSwipeDownDeactivateRef.current = disableSwipeDownDeactivate
+	  }, [disableSwipeDownDeactivate])
+	
+	  useEffect(() => {
+	    openOnLeftSwipeRef.current = openOnLeftSwipe
+	  }, [openOnLeftSwipe])
 
   useEffect(() => {
     revealShowPlayRef.current = sequence.showPlay
@@ -3654,11 +3665,23 @@ useEffect(() => {
         return
       }
 
-      const nextIndex = clamp(
-        focusIndexRef.current + delta,
-        0,
-        items.length - 1,
-      )
+	      // Tear open used to follow a right swipe, which pages to the next pack.
+	      // On this surface a left swipe (negative delta) is that open, and a
+	      // right swipe is ignored. Other carousels keep the normal mapping.
+	      const pageDelta = openOnLeftSwipeRef.current
+	        ? delta < 0
+	          ? 1
+	          : 0
+	        : delta
+	      if (pageDelta === 0) {
+	        return
+	      }
+	
+	      const nextIndex = clamp(
+	        focusIndexRef.current + pageDelta,
+	        0,
+	        items.length - 1,
+	      )
       const nextItem = items[nextIndex]
       const wasActive = selectedIdRef.current !== null
 
@@ -3714,17 +3737,17 @@ useEffect(() => {
         return
       }
 
-      if (key === 'ArrowRight' || key === 'Right') {
-        event.preventDefault()
-        moveFocus(1)
-        return
-      }
-
-      if (key === 'ArrowLeft' || key === 'Left') {
-        event.preventDefault()
-        moveFocus(-1)
-        return
-      }
+	      if (key === 'ArrowRight' || key === 'Right') {
+	        event.preventDefault()
+	        moveFocus(1)
+	        return
+	      }
+	
+	      if (key === 'ArrowLeft' || key === 'Left') {
+	        event.preventDefault()
+	        moveFocus(-1)
+	        return
+	      }
 
       if (key === 'ArrowUp' || key === 'Up') {
         if (!focused) return
@@ -3924,9 +3947,9 @@ useEffect(() => {
         return
       }
 
-      // Slightly longer than the ease so one gesture = one smooth card move.
-      wheelLockUntilRef.current = now + 220
-      moveFocus(dominantDelta > 0 ? 1 : -1)
+	      // Slightly longer than the ease so one gesture = one smooth card move.
+	      wheelLockUntilRef.current = now + 220
+	      moveFocus(dominantDelta > 0 ? 1 : -1)
     }
 
     stage.addEventListener('wheel', handleWheel, { passive: false })
@@ -4013,10 +4036,10 @@ useEffect(() => {
         }, 160)
       }
 
-      const commitSwipe = (direction: number) => {
-        moveFocus(direction)
-        finishGesture('swipe')
-      }
+	      const commitSwipe = (direction: number) => {
+	        moveFocus(direction)
+	        finishGesture('swipe')
+	      }
 
       const commitActivate = (mode: LiveGestureMode = 'activate') => {
         // Pack mesh onClick already selected + focused; don't re-activate the
@@ -4101,9 +4124,9 @@ useEffect(() => {
           absX >= SWIPE_DISTANCE_PX &&
           (speed >= SWIPE_VELOCITY || peakSpeedRef.current >= SWIPE_VELOCITY)
         ) {
-          const direction =
-            swipeX !== 0 ? (swipeX < 0 ? 1 : -1) : mx < 0 ? 1 : -1
-          commitSwipe(direction)
+	          const direction =
+	            swipeX !== 0 ? (swipeX < 0 ? 1 : -1) : mx < 0 ? 1 : -1
+	          commitSwipe(direction)
           event?.preventDefault?.()
           return
         }
@@ -4248,24 +4271,24 @@ useEffect(() => {
           horizontal &&
           absX >= SWIPE_DISTANCE_PX * 0.75)
       ) {
-        // swipeX: -1 left, 1 right. Our carousel: left swipe => next (+1).
-        const direction = swipeX !== 0 ? (swipeX < 0 ? 1 : -1) : mx < 0 ? 1 : -1
-        commitSwipe(direction)
-        return
-      }
-
-      // Fallback: long horizontal drag with enough speed on release.
-      // Uses peak speed so a fast flick still counts even if release slows.
-      if (
-        horizontal &&
-        absX >= SWIPE_DISTANCE_PX &&
-        (motionTiltEnabled ||
-          speed >= SWIPE_VELOCITY ||
-          peakSpeedRef.current >= SWIPE_VELOCITY)
-      ) {
-        commitSwipe(mx < 0 ? 1 : -1)
-        return
-      }
+	        // swipeX: -1 left, 1 right. Our carousel: left swipe => next (+1).
+	        const direction = swipeX !== 0 ? (swipeX < 0 ? 1 : -1) : mx < 0 ? 1 : -1
+	        commitSwipe(direction)
+	        return
+	      }
+	
+	      // Fallback: long horizontal drag with enough speed on release.
+	      // Uses peak speed so a fast flick still counts even if release slows.
+	      if (
+	        horizontal &&
+	        absX >= SWIPE_DISTANCE_PX &&
+	        (motionTiltEnabled ||
+	          speed >= SWIPE_VELOCITY ||
+	          peakSpeedRef.current >= SWIPE_VELOCITY)
+	      ) {
+	        commitSwipe(mx < 0 ? 1 : -1)
+	        return
+	      }
 
       // Non-swipe release (including unfinished scrub) eases upright.
       finishGesture('idle')

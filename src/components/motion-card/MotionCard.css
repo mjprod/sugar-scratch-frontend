@@ -210,6 +210,10 @@
   .motion-card-holder__play {
     height: 34px;
   }
+
+  .motion-card-holder__panel .photo-gateway {
+    border-radius: 1rem;
+  }
 }
 
 .motion-card-holder__head {
@@ -363,8 +367,8 @@
   .static-carousel__logo {
     grid-area: logo;
     justify-self: center;
-    width: 66px;
-    height: 40px;
+    width: 50px;
+    height: 30px;
     margin: 0;
     transform: scale(2);
   }

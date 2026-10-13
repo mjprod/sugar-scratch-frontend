@@ -57,6 +57,8 @@ export type MotionCardProps = {
   duplicateCount?: number;
   onBuy?: () => void;
   onSelect?: (next: MotionCardState) => void;
+  /** Drop the decoder while a photo overlay covers the tile. */
+  suspendVideo?: boolean;
   className?: string;
 };
 
@@ -85,6 +87,7 @@ export function MotionCard({
   duplicateCount,
   onBuy,
   onSelect,
+  suspendVideo = false,
   className,
 }: MotionCardProps) {
   const reduceMotion = useReducedMotion();
@@ -98,7 +101,8 @@ export function MotionCard({
     !locked && typeof duplicateCount === "number" && duplicateCount > 1
       ? Math.round(duplicateCount)
       : 0;
-  const playVideo = state === "unlocked-selected" && Boolean(videoUrl);
+  const playVideo =
+    state === "unlocked-selected" && Boolean(videoUrl) && !suspendVideo;
   const showTease = state === "locked-unselected-banner";
   const instant = reduceMotion ? { duration: 0 } : CARD_MOTION;
 

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { m } from "framer-motion";
 import { X } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { PHOTO_SCRATCH_TEXT_SRC } from "@/components/photo-gateway/PhotoGateway";
+import { PHOTO_SCRATCH_TEXT_SRC, PhotoCountBadge } from "@/components/photo-gateway/PhotoGateway";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
   StaticCardHolder,
@@ -207,7 +207,7 @@ export function StaticCarousel({
   const gridRef = useRef<HTMLDivElement>(null);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
   const unlocked = cards.filter((item) => item.state === "unlocked").length;
-  const total = STATIC_CARD_TOTAL;
+  const total = cards.length;
 
   function openOverlay() {
     setLeaving(false);
@@ -395,9 +395,7 @@ export function StaticCarousel({
                     </p>
                   </div>
                   <div className="static-carousel__actions flex min-w-0 flex-1 items-center justify-end gap-2">
-                    <p className="static-carousel__title shrink-0 font-medium text-white">
-                      {unlocked}/{total}
-                    </p>
+                    <PhotoCountBadge collected={unlocked} total={total} />
                     <button
                       type="button"
                       className="static-carousel__close"

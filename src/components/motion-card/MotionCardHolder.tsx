@@ -18,6 +18,7 @@ import {
 } from "@/components/static-card/StaticCarousel";
 import type { MotionCardTheme } from "@/components/motion-card/MotionCard";
 import { PhotoGateway } from "@/components/photo-gateway/PhotoGateway";
+import { releaseVideos } from "@/components/creator/OffscreenVideo";
 
 type MotionCardHolderProps = {
   items: ThreeMotionItem[];
@@ -222,6 +223,7 @@ export function MotionCardHolder({
                 posterUrl={item.posterUrl}
                 videoUrl={item.videoUrl}
                 freePlay={item.freePlay}
+                suspendVideo={photoOverlayOpen && selected}
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
                 duplicateCount={item.duplicateCount}
@@ -351,6 +353,8 @@ export function MotionCardHolder({
                 quiet={photoOverlayOpen}
                 onViewCollection={(event) => {
                   if (event.detail === 0) return;
+                  releaseVideos();
+                  setPhotoOverlayOpen(true);
                   setPhotoOpenSignal((signal) => signal + 1);
                 }}
                 className="h-auto min-h-0 max-w-none flex-1"

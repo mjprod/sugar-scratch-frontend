@@ -2386,7 +2386,7 @@ function ReadyStage({
               : `${remainingUnopened} packs ready to open`}
           </p>
           <h1 className="mt-2 text-[28px] font-bold">Inspect. Then tear the seal.</h1>
-          <p className="mt-2 text-[13px] text-white/45">Select a pack, then swipe to open.</p>
+	          <p className="mt-2 text-[13px] text-white/45">Select a pack, then swipe left to open.</p>
         </div>
       ) : null}
       <div
@@ -2407,8 +2407,9 @@ function ReadyStage({
             // deselect while disableSwipeDownDeactivate is on).
             openedRef.current = false;
           }}
-          hideActiveCta
-          disableSwipeDownDeactivate
+	          hideActiveCta
+	          disableSwipeDownDeactivate
+	          openOnLeftSwipe
           disableWheelPaging
           tearDrivesReveal
           revealModelId={modelId}

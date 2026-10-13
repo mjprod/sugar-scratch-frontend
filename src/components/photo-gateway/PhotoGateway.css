@@ -1,3 +1,34 @@
+.photo-gateway > .photo-gateway__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 20;
+}
+
+.photo-gateway__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 0.5rem;
+  background: oklch(0 0 0 / 0.6);
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.1),
+    inset 0 1px 0 oklch(1 0 0 / 0.28),
+    inset 0 -1px 0 oklch(1 0 0 / 0.08);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1;
+}
+
+.photo-gateway__badge svg {
+  width: 9px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
 .photo-gateway__scatter {
   animation: photo-gateway-scatter-in 0.7s ease both;
 }
@@ -12,6 +43,10 @@
   .photo-gateway__scatter {
     animation: none;
   }
+}
+
+.photo-gateway__copy {
+  transform: translateY(6px);
 }
 
 .photo-gateway__copy > .cta-button-glow,
@@ -31,8 +66,12 @@
 }
 
 @media (max-width: 980px) {
+  .photo-gateway__badge {
+    font-size: 12px;
+  }
+
   .photo-gateway__title {
-    width: min(100%, 193px);
+    width: min(100%, 145px);
   }
 
   .photo-gateway__cta {
