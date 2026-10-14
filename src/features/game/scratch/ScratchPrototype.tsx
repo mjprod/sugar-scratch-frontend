@@ -14,7 +14,6 @@ import {
   diamondsForMotionPrize,
 } from "@/services/gameSessionStore";
 import {
-  isScratchHandQuotaExhausted,
   claimScratchCoins,
   scratchCoinAwardAction,
   scratchHandAlreadyIssued,
@@ -2059,15 +2058,8 @@ export function ScratchPrototype({
       pendingMilestonesRef.current = [];
       return;
     }
-    if (isScratchHandQuotaExhausted()) {
-      // Already paid to play, but the daily reward-hand quota is spent —
-      // do not optimistic-credit coins that can never persist.
-      coinAwardsDisabledRef.current = true;
-      pendingMilestonesRef.current = [];
-      return;
-    }
     const key = cardId?.trim() || "";
-    // Mesh reload / Strict Mode remount for the same visit must not burn quota.
+    // Mesh reload / Strict Mode remount for the same visit must not start a duplicate hand.
     // `force` is a replay of this card — its old hand is already claimed.
     if (!opts?.force && handIdRef.current && handCardIdRef.current === key) {
       return;

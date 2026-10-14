@@ -16,7 +16,6 @@ import {
 } from "@/services/gameAudioPrefs";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
-  isScratchHandQuotaExhausted,
   claimScratchCoins,
   scratchCoinAwardAction,
   scratchHandAlreadyIssued,
@@ -1140,14 +1139,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     const key = selectedCardId.trim();
     if (!key) return;
-    if (isScratchHandQuotaExhausted()) {
-      // Already paid to play, but the daily reward-hand quota is spent —
-      // do not optimistic-credit coins that can never persist.
-      coinAwardsDisabledRef.current = true;
-      pendingMilestonesRef.current = [];
-      return;
-    }
-    // Remount / effect re-run for the same visit must not burn quota.
+    // Remount / effect re-run for the same visit must not start a duplicate hand.
     // A later visit of this card is a replay — its old hand is already claimed.
     if (playVisit === 0 && handCardIdRef.current === key) return;
     handIdRef.current = "";
