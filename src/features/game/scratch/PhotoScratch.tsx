@@ -950,8 +950,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   /** One completion resolve per card — reset when a new card begins. */
   const scratchCompletionHandledRef = useRef(false);
   const applyScratchAtUvRef = useRef<
-    (u: number, v: number, radius: number) => void
-  >(() => {});
+    (u: number, v: number, radius: number) => number
+  >(() => 0);
   const parallaxStateRef = useRef<ParallaxState | null>({
     fg: { x: 0, y: 0 },
     bg: { x: 0, y: 0 },

@@ -1969,8 +1969,8 @@ export function ScratchPrototype({
       worldPoint?: Vec2 | null,
       finalize?: boolean,
       strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
-    ) => void
-  >(() => undefined);
+    ) => number
+  >(() => 0);
   const addScratchRef = useRef<(clientX: number, clientY: number) => void>(
     () => undefined,
   );
