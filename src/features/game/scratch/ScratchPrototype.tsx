@@ -2003,13 +2003,22 @@ export function ScratchPrototype({
     scheduleCoinBadgeIdleHide();
   }
 
+  function clearCoinBurstTimers() {
+    for (const id of coinBurstTimersRef.current) window.clearTimeout(id);
+    coinBurstTimersRef.current = [];
+  }
+
+  /** Clears the "celebrate off" timer only. Stacked coin pops stay scheduled. */
   function clearCelebrateTimer() {
     if (celebrateTimerRef.current !== null) {
       window.clearTimeout(celebrateTimerRef.current);
       celebrateTimerRef.current = null;
     }
-    for (const id of coinBurstTimersRef.current) window.clearTimeout(id);
-    coinBurstTimersRef.current = [];
+  }
+
+  function clearCelebrateFx() {
+    clearCelebrateTimer();
+    clearCoinBurstTimers();
   }
 
   function clearCoinBadgeIdleTimer() {
@@ -2329,7 +2338,7 @@ export function ScratchPrototype({
     setCursorFxCelebrate(true);
     setCursorFxBurstCount(bursts[0] ?? celebrateBurstCount(crossed, coarse));
     setCursorFxBurstNonce((n) => n + 1);
-    clearCelebrateTimer();
+    clearCelebrateFx();
     for (let i = 1; i < bursts.length; i += 1) {
       const count = bursts[i];
       const id = window.setTimeout(() => {
@@ -3119,72 +3128,114 @@ export function ScratchPrototype({
           trackedSample &&
           gameResultPendingRef.current === null
         ) {
-          // Paint every stamp, but finalize (symbol GPU probes, progress,
-          // milestones, resolve) once per frame — same as manual strokes.
-          const autoStamps: { u: number; v: number }[] = [];
+          // Paint path stamps before the fill pass so reveal flags are current.
+          // Finalize (symbol probes, progress, resolve) once, on the last stamp.
           const path = autoPathRef.current;
+          const pathPoints: { u: number; v: number }[] = [];
           if (path.length > 0 && autoPathIndexRef.current < path.length) {
             autoPathProgressRef.current += autoSettings.speed * dt;
             while (
               autoPathProgressRef.current >= 1 &&
               autoPathIndexRef.current < path.length &&
-              autoStamps.length < autoBudget.maxPerFrame
+              pathPoints.length < autoBudget.maxPerFrame
             ) {
               autoPathProgressRef.current -= 1;
               const pt = path[autoPathIndexRef.current];
-              autoStamps.push({ u: pt.x, v: pt.y });
+              pathPoints.push({ u: pt.x, v: pt.y });
               autoPathIndexRef.current += 1;
             }
           }
 
-          const pathDone =
-            path.length === 0 || autoPathIndexRef.current >= path.length;
-          const sampleCount = revealSamplesRef.current.length;
-          const garmentComplete = isGarmentFullyRevealed(
-            progressRef.current,
-            revealedCountRef.current,
-            sampleCount,
-            true,
-          );
-          if (!garmentComplete && sampleCount > 0 && pathDone) {
-            const samples = revealSamplesRef.current;
-            const revealed = revealedRef.current;
-            let filled = 0;
-            for (
-              let i = 0;
-              i < samples.length && filled < autoBudget.fillBatch;
-              i += 1
-            ) {
-              if (revealed[i]) continue;
-              const pt = samples[i];
-              autoStamps.push({ u: pt.x, v: pt.y });
-              filled += 1;
-            }
-          }
-
           let fresh = false;
-          for (let i = 0; i < autoStamps.length; i += 1) {
-            const stamp = autoStamps[i];
-            const isLast = i === autoStamps.length - 1;
+          let stamped = 0;
+          const paintAutoStamp = (
+            u: number,
+            v: number,
+            finalize: boolean,
+            strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
+          ) => {
             const newCells = applyScratchAtUvRef.current(
-              stamp.u,
-              stamp.v,
+              u,
+              v,
               AUTO_SCRATCH_RADIUS,
-              sampleMeshUvToWorld(trackedSample, stamp.u, stamp.v),
-              isLast,
-              isLast ? autoStamps : undefined,
+              sampleMeshUvToWorld(trackedSample, u, v),
+              finalize,
+              strokeUvs,
             );
             const prev = lastStampUvRef.current;
             fresh = noteStrokeStamp(
               strokeFreshnessRef.current,
               newCells,
-              prev ? Math.hypot(stamp.u - prev.u, stamp.v - prev.v) : 0,
+              prev ? Math.hypot(u - prev.u, v - prev.v) : 0,
               AUTO_SCRATCH_RADIUS,
               scratchCoverageRef.current.size,
             );
-            lastStampUvRef.current = { u: stamp.u, v: stamp.v };
+            lastStampUvRef.current = { u, v };
+            stamped += 1;
+          };
+
+          const pathDone =
+            path.length === 0 || autoPathIndexRef.current >= path.length;
+          if (!pathDone) {
+            for (let i = 0; i < pathPoints.length; i += 1) {
+              const stamp = pathPoints[i];
+              const isLast = i === pathPoints.length - 1;
+              paintAutoStamp(
+                stamp.u,
+                stamp.v,
+                isLast,
+                isLast ? pathPoints : undefined,
+              );
+            }
+          } else {
+            for (const stamp of pathPoints) {
+              paintAutoStamp(stamp.u, stamp.v, false);
+            }
+            const sampleCount = revealSamplesRef.current.length;
+            const garmentComplete = isGarmentFullyRevealed(
+              progressRef.current,
+              revealedCountRef.current,
+              sampleCount,
+              true,
+            );
+            const fillPoints: { u: number; v: number }[] = [];
+            if (!garmentComplete && sampleCount > 0) {
+              const samples = revealSamplesRef.current;
+              const revealed = revealedRef.current;
+              for (
+                let i = 0;
+                i < samples.length && fillPoints.length < autoBudget.fillBatch;
+                i += 1
+              ) {
+                if (revealed[i]) continue;
+                fillPoints.push({ u: samples[i].x, v: samples[i].y });
+              }
+            }
+            const frameStamps = pathPoints.concat(fillPoints);
+            if (fillPoints.length > 0) {
+              for (let i = 0; i < fillPoints.length; i += 1) {
+                const stamp = fillPoints[i];
+                const isLast = i === fillPoints.length - 1;
+                paintAutoStamp(
+                  stamp.u,
+                  stamp.v,
+                  isLast,
+                  isLast ? frameStamps : undefined,
+                );
+              }
+            } else if (pathPoints.length > 0) {
+              const last = pathPoints[pathPoints.length - 1];
+              applyScratchAtUvRef.current(
+                last.u,
+                last.v,
+                AUTO_SCRATCH_RADIUS,
+                sampleMeshUvToWorld(trackedSample, last.u, last.v),
+                true,
+                pathPoints,
+              );
+            }
           }
-          if (autoStamps.length > 0) {
+          if (stamped > 0) {
             noteScratchStamp(fresh);
             autoScratchSoundingRef.current = true;
             autoNotedSound = true;
@@ -3740,7 +3791,7 @@ export function ScratchPrototype({
     revealedCountRef.current = 0;
     progressRef.current = 0;
     celebrateProgressRef.current = 0;
-    clearCelebrateTimer();
+    clearCelebrateFx();
     setCursorFxCelebrate(false);
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
@@ -4267,19 +4318,26 @@ export function ScratchPrototype({
     });
     if (cursorFxRef.current.fairyDust) {
       const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
-      celebrateUntilRef.current = performance.now() + celebrateMs;
+      const now = performance.now();
+      // Keep a banked AutoScratch shower that still has pops left. This burst
+      // used to clear those timers, so the finale ate the coin shower.
+      celebrateUntilRef.current = Math.max(
+        celebrateUntilRef.current,
+        now + celebrateMs,
+      );
       setCursorFxCelebrate(true);
       setCursorFxBurstCount(
         celebrateBurstCount(10, CURSOR_FX_DEVICE.coarsePointer),
       );
       setCursorFxBurstNonce((n) => n + 1);
       clearCelebrateTimer();
+      const waitMs = Math.max(0, celebrateUntilRef.current - now) + 40;
       celebrateTimerRef.current = window.setTimeout(() => {
         celebrateTimerRef.current = null;
         if (performance.now() >= celebrateUntilRef.current) {
           setCursorFxCelebrate(false);
         }
-      }, celebrateMs + 40);
+      }, waitMs);
     }
   }
 
@@ -4477,8 +4535,11 @@ export function ScratchPrototype({
 
   useEffect(() => {
     return () => {
-      clearCelebrateTimer();
+      clearCelebrateFx();
       clearCoinBadgeIdleTimer();
+      // Bumps the coin epoch so a waiting or flight-safety timeout that
+      // already left the timer queue cannot award or resolve after leave.
+      discardDeferredAutoCoins();
     };
   }, []);
 
@@ -4538,7 +4599,7 @@ export function ScratchPrototype({
     revealedCountRef.current = 0;
     progressRef.current = 0;
     celebrateProgressRef.current = 0;
-    clearCelebrateTimer();
+    clearCelebrateFx();
     setCursorFxCelebrate(false);
     beginScratchHand(selectedCardId, { force: true });
     setCoinPopNonce(0);

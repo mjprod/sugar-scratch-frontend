@@ -1812,17 +1812,35 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         !claimedRef.current
       ) {
         const path = autoPathRef.current;
-        const autoStamps: { u: number; v: number }[] = [];
+        let fresh = false;
+        let stamped = 0;
+        const paintAutoStamp = (u: number, v: number) => {
+          const newCells = applyScratchAtUvRef.current(
+            u,
+            v,
+            AUTO_SCRATCH_RADIUS,
+          );
+          const prev = lastStampUvRef.current;
+          fresh = noteStrokeStamp(
+            strokeFreshnessRef.current,
+            newCells,
+            prev ? Math.hypot(u - prev.u, v - prev.v) : 0,
+            AUTO_SCRATCH_RADIUS,
+            scratchCoverageRef.current.size,
+          );
+          lastStampUvRef.current = { u, v };
+          stamped += 1;
+        };
         if (path.length > 0 && autoPathIndexRef.current < path.length) {
           autoPathProgressRef.current += autoSettings.speed * dt;
           while (
             autoPathProgressRef.current >= 1 &&
             autoPathIndexRef.current < path.length &&
-            autoStamps.length < AUTO_SCRATCH_MAX_PER_FRAME
+            stamped < AUTO_SCRATCH_MAX_PER_FRAME
           ) {
             autoPathProgressRef.current -= 1;
             const pt = path[autoPathIndexRef.current];
-            autoStamps.push({ u: pt.x, v: pt.y });
+            paintAutoStamp(pt.x, pt.y);
             autoPathIndexRef.current += 1;
           }
         }
@@ -1843,30 +1861,11 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ) {
             if (revealed[i]) continue;
             const pt = samples[i];
-            autoStamps.push({ u: pt.x, v: pt.y });
+            paintAutoStamp(pt.x, pt.y);
             filled += 1;
           }
         }
-
-        let fresh = false;
-        for (let i = 0; i < autoStamps.length; i += 1) {
-          const stamp = autoStamps[i];
-          const newCells = applyScratchAtUvRef.current(
-            stamp.u,
-            stamp.v,
-            AUTO_SCRATCH_RADIUS,
-          );
-          const prev = lastStampUvRef.current;
-          fresh = noteStrokeStamp(
-            strokeFreshnessRef.current,
-            newCells,
-            prev ? Math.hypot(stamp.u - prev.u, stamp.v - prev.v) : 0,
-            AUTO_SCRATCH_RADIUS,
-            scratchCoverageRef.current.size,
-          );
-          lastStampUvRef.current = { u: stamp.u, v: stamp.v };
-        }
-        if (autoStamps.length > 0) {
+        if (stamped > 0) {
           noteScratchStamp(fresh);
           autoScratchSoundingRef.current = true;
           autoNotedSound = true;
