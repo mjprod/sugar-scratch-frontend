@@ -22,7 +22,9 @@ function themeBgmUrl(catalog: ThemeCatalog | null, themeKey: string): string | n
   for (const theme of catalog.themes) {
     const url = theme.bgm?.trim();
     if (!url) continue;
-    if (theme.id.toLowerCase() === key || theme.label.toLowerCase() === key) return url;
+    const id = theme.id.trim().toLowerCase();
+    const label = theme.label.trim().toLowerCase();
+    if (id === key || label === key) return url;
   }
   return null;
 }
