@@ -44,7 +44,7 @@ export function fetchThemeCatalog(): Promise<ThemeCatalog> {
         themes: Array.isArray(data.themes)
           ? data.themes.map((theme) => {
               const raw = typeof theme?.bgm === 'string' ? theme.bgm.trim() : ''
-              return raw ? { ...theme, bgm: normalizeMediaUrl(raw) || raw } : theme
+              return raw ? { ...theme, bgm: normalizeMediaUrl(raw) } : theme
             })
           : [],
         defaultBgm: defaultBgm || null,
