@@ -1,4 +1,5 @@
 import { CATALOG_TTL_MS, cachedRequest } from '../../../lib/cachedRequest'
+import { normalizeMediaUrl } from '../../../lib/mediaUrl'
 import { api } from '../scratch/api'
 
 export type ThemeInfo = {
@@ -36,9 +37,16 @@ export function fetchThemeCatalog(): Promise<ThemeCatalog> {
         '/api/themes',
       )
       const defaultBgm =
-        typeof data.default_bgm === 'string' ? data.default_bgm.trim() : ''
+        typeof data.default_bgm === 'string'
+          ? normalizeMediaUrl(data.default_bgm.trim())
+          : ''
       return {
-        themes: Array.isArray(data.themes) ? data.themes : [],
+        themes: Array.isArray(data.themes)
+          ? data.themes.map((theme) => {
+              const raw = typeof theme?.bgm === 'string' ? theme.bgm.trim() : ''
+              return raw ? { ...theme, bgm: normalizeMediaUrl(raw) || raw } : theme
+            })
+          : [],
         defaultBgm: defaultBgm || null,
       }
     } catch {

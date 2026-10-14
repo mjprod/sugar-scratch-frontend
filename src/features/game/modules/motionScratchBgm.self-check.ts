@@ -44,6 +44,27 @@ assert(
   "theme track replaces the default",
 );
 assert(
+  resolveMotionScratchBgmSrc(
+    "police",
+    "https://localhost:5080/themes/police/bgm.mp3?v=2",
+    "/bgm/default.mp3",
+  ) === "/themes/police/bgm.mp3?v=2",
+  "absolute media-host theme track is rewritten same-origin",
+);
+assert(
+  resolveMotionScratchBgmSrc(
+    "",
+    null,
+    "https://localhost:5080/themes/default/bgm.mp3",
+  ) === "/themes/default/bgm.mp3",
+  "absolute catalog default is rewritten same-origin",
+);
+assert(
+  resolveMotionScratchBgmSrc("police", "public/themes/police/bgm.mp3", null) ===
+    "/themes/police/bgm.mp3",
+  "workspace public/ theme track becomes a site path",
+);
+assert(
   MOTION_SCRATCH_BGM_SRC.endsWith(".mp3"),
   "BGM src should be an mp3 path",
 );
