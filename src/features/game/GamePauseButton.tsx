@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pause, X } from "lucide-react";
 import { setMotionScratchBgmDucked } from "./modules/motionScratchBgm";
+import { ScratchZoomButton } from "./ScratchZoomButton";
 import { StageMuteButton } from "./StageMuteButton";
 
 /**
@@ -139,6 +140,7 @@ function GamePauseModal({
           Game Paused
         </h2>
         <StageMuteButton className="game-pause__mute" showLabel />
+        <ScratchZoomButton />
         <button
           ref={resumeRef}
           type="button"

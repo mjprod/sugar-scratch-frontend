@@ -14,6 +14,7 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   isScratchHandQuotaExhausted,
@@ -3074,6 +3075,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }, [autoScratch]);
 
   function applyPhotoScratchZoom(clientX: number, clientY: number, zoomIn: boolean) {
+    if (!getScratchZoomEnabled()) return;
     const stage = stageRef.current;
     const canvas = fgCanvasRef.current;
     if (!stage || !canvas) return;

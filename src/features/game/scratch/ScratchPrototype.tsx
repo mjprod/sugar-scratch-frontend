@@ -7,6 +7,7 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
@@ -4831,7 +4832,7 @@ export function ScratchPrototype({
 
   function applyScratchZoom(point: Vec2) {
     const settings = scratchZoomRef.current;
-    if (!settings.enabled) return;
+    if (!settings.enabled || !getScratchZoomEnabled()) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;

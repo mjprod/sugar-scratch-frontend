@@ -75,6 +75,13 @@
   color: #ffe0e8;
 }
 
+.motion-card-holder__play .motion-card-play-cta__cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  margin-right: 6px;
+}
+
 .motion-card-holder__play .cta-button__leading-icon img,
 .motion-card-holder__play .cta-button__leading-icon svg,
 .motion-card-play-cta .cta-button__leading-icon img,

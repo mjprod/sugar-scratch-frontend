@@ -1568,7 +1568,8 @@
   color: oklch(1 0 0 / 0.92);
 }
 
-.game-pause__mute {
+.game-pause__mute,
+.game-pause__zoom {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1590,21 +1591,25 @@
     transform 120ms ease;
 }
 
-.game-pause__mute.is-muted {
+.game-pause__mute.is-muted,
+.game-pause__zoom.is-off {
   color: oklch(1 0 0 / 0.55);
 }
 
-.game-pause__mute:hover {
+.game-pause__mute:hover,
+.game-pause__zoom:hover {
   border-color: oklch(1 0 0 / 0.24);
   background: oklch(1 0 0 / 0.14);
   color: oklch(1 0 0 / 0.95);
 }
 
-.game-pause__mute:active {
+.game-pause__mute:active,
+.game-pause__zoom:active {
   transform: scale(0.98);
 }
 
-.game-pause__mute:focus-visible {
+.game-pause__mute:focus-visible,
+.game-pause__zoom:focus-visible {
   outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
   outline-offset: 2px;
 }

@@ -5183,7 +5183,7 @@ dd {
   filter: none;
 }
 
-.photo-scratch-stage.is-finger-dragging .photo-scratch-fg-drag-scale {
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage.is-finger-dragging .photo-scratch-fg-drag-scale {
   transform: scale(1.1);
   filter: none;
 }
@@ -5213,9 +5213,9 @@ dd {
   z-index: 0;
 }
 
-.photo-scratch-stage.is-finger-dragging .bg-drag-scale,
-.photo-scratch-stage.is-scratching .bg-drag-scale,
-.photo-scratch-stage .bg-drag-scale.is-bg-blurred {
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage.is-finger-dragging .bg-drag-scale,
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage.is-scratching .bg-drag-scale,
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage .bg-drag-scale.is-bg-blurred {
   transform: scale(1.1);
 }
 
