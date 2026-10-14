@@ -1392,8 +1392,6 @@ export function ScratchPrototype({
   skipToPlay = false,
   loopFromIntro = false,
   onLeave,
-  onFirstProgressMilestone,
-  onRevealedSymbolsChange,
 }: {
   /**
    * Lab/sandbox: skip intro video + foil bar scratch + countdown.
@@ -1404,13 +1402,6 @@ export function ScratchPrototype({
   loopFromIntro?: boolean;
   /** When set, pause control is rendered in the top chrome left gutter. */
   onLeave?: () => void;
-  /**
-   * Fires once the first time crossedProgressMilestone returns a band
-   * (10% scratch progress). Used by /game-ui lab bonus diamond.
-   */
-  onFirstProgressMilestone?: () => void;
-  /** Body/foil icons found so far (0…SYMBOL_SLOT_COUNT). Lab bonus diamond lock. */
-  onRevealedSymbolsChange?: (count: number) => void;
 } = {}) {
   const { authed } = useAuth();
   const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
@@ -1809,12 +1800,6 @@ export function ScratchPrototype({
   entryReadyRef.current = entryReady;
   const [sessionSymbols, setSessionSymbols] = useState(buildSessionSymbols);
   const [revealedSymbols, setRevealedSymbols] = useState(0);
-  const onRevealedSymbolsChangeRef = useRef(onRevealedSymbolsChange);
-  onRevealedSymbolsChangeRef.current = onRevealedSymbolsChange;
-  const publishRevealedSymbols = useCallback((count: number) => {
-    setRevealedSymbols(count);
-    onRevealedSymbolsChangeRef.current?.(count);
-  }, []);
   const [frameDiscoveryBatches, setFrameDiscoveryBatches] = useState<
     SymbolDiscoveryBatch[]
   >([]);
@@ -1908,8 +1893,6 @@ export function ScratchPrototype({
   cursorFxRef.current = cursorFx;
   /** Live progress for celebrate milestones (independent of throttled React progress). */
   const celebrateProgressRef = useRef(0);
-  /** Ensures onFirstProgressMilestone runs only once per mount. */
-  const firstProgressMilestoneFiredRef = useRef(false);
   const celebrateUntilRef = useRef(0);
   const celebrateTimerRef = useRef<number | null>(null);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
@@ -2181,10 +2164,6 @@ export function ScratchPrototype({
     if (milestones.length === 0) return;
     const crossed = milestones[milestones.length - 1];
 
-    if (onFirstProgressMilestone && !firstProgressMilestoneFiredRef.current) {
-      firstProgressMilestoneFiredRef.current = true;
-      onFirstProgressMilestone();
-    }
     // Award sparkle coins on every hand, including a replay. Free play shows
     // them too, then gives the wallet back when the card ends.
     // Batched frames can cross several bands; each band is its own award.
@@ -3590,7 +3569,7 @@ export function ScratchPrototype({
     autoPathProgressRef.current = 0;
     resetMatchRound();
     setClaimed(false);
-    publishRevealedSymbols(0);
+    setRevealedSymbols(0);
     setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
@@ -3678,7 +3657,7 @@ export function ScratchPrototype({
       ? revealedPointsRef.current.filter(Boolean).length
       : revealedSymbolCount(next, autoScratchRef.current.enabled);
     revealedSymbolsRef.current = nextSymbolCount;
-    publishRevealedSymbols(nextSymbolCount);
+    setRevealedSymbols(nextSymbolCount);
     if (!hasBodySymbols && nextSymbolCount > 0) {
       setLitSymbolSlots(
         Array.from(
@@ -4365,7 +4344,7 @@ export function ScratchPrototype({
     autoPathProgressRef.current = 0;
     resetMatchRound();
     setClaimed(false);
-    publishRevealedSymbols(0);
+    setRevealedSymbols(0);
     setLitSymbolSlots(Array.from({ length: SYMBOL_SLOT_COUNT }, () => false));
     setFrameDiscoveryBatches([]);
     frameDiscoveryKeyRef.current = 0;
@@ -5244,7 +5223,7 @@ export function ScratchPrototype({
         const nextSymbolCount =
           revealedPointsRef.current.filter(Boolean).length;
         revealedSymbolsRef.current = nextSymbolCount;
-        publishRevealedSymbols(nextSymbolCount);
+        setRevealedSymbols(nextSymbolCount);
         setBodyRevealed(revealedPointsRef.current.slice());
         setBodyFindHits((prev) => {
           const next = applyBodyFindHits(
@@ -5279,7 +5258,7 @@ export function ScratchPrototype({
       if (nextSymbolCount !== revealedSymbolsRef.current) {
         const prevCount = revealedSymbolsRef.current;
         revealedSymbolsRef.current = nextSymbolCount;
-        publishRevealedSymbols(nextSymbolCount);
+        setRevealedSymbols(nextSymbolCount);
         playNewSymbolNotes(
           symbolAudioRef.current,
           prevCount,
