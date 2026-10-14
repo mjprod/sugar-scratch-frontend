@@ -14,7 +14,6 @@ import {
   diamondsForMotionPrize,
 } from "@/services/gameSessionStore";
 import {
-  isScratchHandQuotaExhausted,
   claimScratchCoins,
   scratchCoinAwardAction,
   scratchHandAlreadyIssued,
@@ -2056,13 +2055,6 @@ export function ScratchPrototype({
       handCardIdRef.current = null;
       practiceRef.current = false;
       coinAwardsDisabledRef.current = false;
-      pendingMilestonesRef.current = [];
-      return;
-    }
-    if (isScratchHandQuotaExhausted()) {
-      // Already paid to play, but the daily reward-hand quota is spent —
-      // do not optimistic-credit coins that can never persist.
-      coinAwardsDisabledRef.current = true;
       pendingMilestonesRef.current = [];
       return;
     }

@@ -25,7 +25,8 @@ export type ScratchHandResult = {
   /** False only for an explicit free-play hand: the server mints nothing. */
   rewardsEnabled: boolean;
   milestonesRemaining: number;
-  handsRemainingToday: number;
+  /** Present on older servers that counted a daily hand cap. Unused. */
+  handsRemainingToday?: number;
   /** "coins" on standard cards, "diamonds" on Premium / Ultra. */
   currency?: "coins" | "diamonds";
   maxWin?: number;
@@ -50,8 +51,8 @@ export type ScratchCoinClaimBody = {
 };
 
 /**
- * Backend SCRATCH_HANDS_PER_DAY is a rolling 24h window per user, so a slot can
- * free up at any time — back off after a 429 instead of latching forever.
+ * Scratch hands are not daily-capped. These helpers stay for tests; a 429
+ * fails only the start that received it.
  */
 export const SCRATCH_HAND_QUOTA_BACKOFF_MS = 15 * 60 * 1000;
 
@@ -122,7 +123,7 @@ export function scratchHandAlreadyIssued(
 }
 
 /**
- * Ask the server for a new scratch hand id (rate-limited; 24/day).
+ * Ask the server for a new scratch hand id.
  * `visit` distinguishes a replay of the same card — its previous hand is
  * already claimed, so sharing that in-flight request would mint no coins.
  */
@@ -132,9 +133,6 @@ export function startScratchHand(
 ): Promise<ScratchHandResult | null> {
   const ownerId = getAuthUserId();
   const freePlay = Boolean(opts?.freePlay);
-  // Free play mints nothing, so a spent reward quota must not block the hand.
-  if (!freePlay && isScratchHandQuotaExhausted(ownerId)) return Promise.resolve(null);
-
   const visit = opts?.visit ?? 0;
   const key = `${ownerId ?? ""}:${freePlay ? "free:" : ""}${cardId?.trim() || ""}:${visit}`;
   const pending = scratchHandInFlight.get(key);
@@ -164,12 +162,9 @@ export function startScratchHand(
       settle(hand);
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
-        markScratchHandQuotaExhausted(ownerId);
         try {
           if (import.meta.env?.DEV) {
-            console.warn(
-              "[scratchCoinReward] daily scratch-hand quota reached — backing off",
-            );
+            console.warn("[scratchCoinReward] hand start was rate-limited");
           }
         } catch {
           // import.meta.env unavailable outside Vite
