@@ -1139,7 +1139,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     const key = selectedCardId.trim();
     if (!key) return;
-    // Remount / effect re-run for the same visit must not burn quota.
+    // Remount / effect re-run for the same visit must not start a duplicate hand.
     // A later visit of this card is a replay — its old hand is already claimed.
     if (playVisit === 0 && handCardIdRef.current === key) return;
     handIdRef.current = "";
