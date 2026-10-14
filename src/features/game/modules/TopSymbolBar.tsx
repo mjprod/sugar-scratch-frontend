@@ -125,6 +125,8 @@ type TopSymbolBarProps = {
   matchedSlots?: boolean[];
   /** Docked hunt: matching type is shaking with the flying body icon. */
   shakingSlots?: boolean[];
+  /** A matched symbol is still flying home — hold the dock until it lands. */
+  matchInFlight?: boolean;
   /** Per-slot extra delay (ms) so concurrent matches stagger like the flights. */
   shakeDelayMs?: number[];
   /** Optional mirror of slot DOM nodes for fly-to-slot animations. */
@@ -382,6 +384,7 @@ export function TopSymbolBar({
   forceRevealed = false,
   matchedSlots,
   shakingSlots,
+  matchInFlight = false,
   shakeDelayMs,
   slotElsOutRef,
   freezeSymbols = false,
@@ -438,10 +441,11 @@ export function TopSymbolBar({
   const [dockAutohide, setDockAutohide] = useState(false);
   const dockPeekRef = useRef(false);
   dockPeekRef.current = dockPeek;
+  const matchInFlightRef = useRef(matchInFlight);
+  matchInFlightRef.current = matchInFlight;
+  const wasMatchInFlightRef = useRef(matchInFlight);
   const onDockHiddenChangeRef = useRef(onDockHiddenChange);
   onDockHiddenChangeRef.current = onDockHiddenChange;
-  /** First hide waits before AutoScratch; later swaps don't. */
-  const dockHiddenOnceRef = useRef(false);
   const prevPhaseRef = useRef<TopBarPhase>(phase);
   /** Last center-phase bar rect (viewport coords). */
   const centerBarRectRef = useRef<DOMRect | null>(null);
@@ -862,7 +866,8 @@ export function TopSymbolBar({
   }, [phase, showCoating, roundKey]);
 
   // After the dock fly + grayscale cascade settle, slide the bar up out of view.
-  // A finger on the screen brings it back; lifting hides it again.
+  // A finger on the screen brings it back; lifting hides it again. A symbol
+  // still flying home holds the dock until it lands.
   useEffect(() => {
     if (phase !== "docked" || dockExiting) {
       setDockPeek(false);
@@ -872,12 +877,23 @@ export function TopSymbolBar({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let hideTimer = 0;
+    // Last symbol just landed on a dock we were holding — slide it now,
+    // don't wait out another foil-settle.
+    const landedWhileHeld =
+      wasMatchInFlightRef.current && !matchInFlight && !dockPeekRef.current;
+    wasMatchInFlightRef.current = matchInFlight;
+
     const armHide = () => {
       window.clearTimeout(hideTimer);
+      // A symbol still climbing into a visible dock has to land first.
+      // Once the dock is already up, later matches don't pull it back.
+      if (matchInFlightRef.current && !dockPeekRef.current) return;
+      const wait = landedWhileHeld ? 0 : DOCK_SETTLE_MS;
       hideTimer = window.setTimeout(() => {
+        if (matchInFlightRef.current && !dockPeekRef.current) return;
         setDockAutohide(true);
         setDockPeek(true);
-      }, DOCK_SETTLE_MS);
+      }, wait);
     };
     const show = () => {
       window.clearTimeout(hideTimer);
@@ -909,25 +925,13 @@ export function TopSymbolBar({
       window.removeEventListener("pointercancel", onPointerEnd, true);
       onDockHiddenChangeRef.current?.(false);
     };
-  }, [phase, dockExiting, roundKey]);
+  }, [phase, dockExiting, roundKey, matchInFlight]);
 
-  // Hold AutoScratch on the first hide so it isn't an immediate tap. Later
-  // swaps show it as soon as the dock leaves. A returning dock cancels the wait.
+  // AutoScratch fills the slot as soon as the dock leaves. A returning dock
+  // hides it again.
   useEffect(() => {
     const hidden = phase === "docked" && !dockExiting && dockPeek;
-    if (!hidden) {
-      onDockHiddenChangeRef.current?.(false);
-      return;
-    }
-    if (dockHiddenOnceRef.current) {
-      onDockHiddenChangeRef.current?.(true);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      dockHiddenOnceRef.current = true;
-      onDockHiddenChangeRef.current?.(true);
-    }, 1500);
-    return () => window.clearTimeout(timer);
+    onDockHiddenChangeRef.current?.(hidden);
   }, [phase, dockExiting, dockPeek]);
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom";
 export function useTabNav() {
   const location = useLocation();
   const { authed, requestTab, openStore, openSettings } = useAuth();
-  /** null on secondary surfaces that aren't under a primary tab (e.g. creator). */
+  /** null on secondary surfaces that aren't under a primary tab (e.g. store). */
   const activeTab: AppTab | null = tabFromPathname(location.pathname, authed);
   return { activeTab, requestTab, openStore, openSettings };
 }

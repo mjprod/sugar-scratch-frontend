@@ -33,7 +33,7 @@ export const TEAR_TUTORIAL_STEP = {
   id: "tear",
   title: "Tear Open the Pack",
   description:
-    "Drag across the seal to tear it open and reveal your scratch card.",
+	    "Swipe left across the seal to tear it open and reveal your scratch card.",
 } as const;
 
 export const FOIL_TUTORIAL_STEPS = [

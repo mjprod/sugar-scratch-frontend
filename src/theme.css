@@ -1806,7 +1806,7 @@ body[data-theme="v8"] .hub-spotlight-invite-success .hub-spotlight-invite-submit
   body[data-theme="v8"] .hub-spotlight-band-bg {
     mask-image: none;
     -webkit-mask-image: none;
-    transform: translate3d(0, -95px, 0) scale(3.5);
+    transform: translate3d(0, -150px, 0) scale(3.5);
   }
 
   body[data-theme="v8"] .hub-spotlight-band-bg-blur,
@@ -1848,7 +1848,7 @@ body[data-theme="v8"] .hub-spotlight-invite-success .hub-spotlight-invite-submit
   body[data-theme="v8"] .hub-spotlight-band-bg {
     mask-image: none;
     -webkit-mask-image: none;
-    transform: translate3d(0, -95px, 0) scale(3.5);
+    transform: translate3d(0, -150px, 0) scale(3.5);
   }
 
   body[data-theme="v8"] .hub-spotlight-band-logo {
@@ -5425,9 +5425,10 @@ body[data-theme="v8"] .profile-action-btn {
     opacity 160ms ease;
 }
 
-body[data-theme="v8"] .profile-action-btn--tilt.is-active {
-  border-color: oklch(0.798 0.104 207.84 / 0.55);
-  color: oklch(0.963 0.028 216.4);
+body[data-theme="v8"] .profile-action-btn--tilt.is-active,
+body[data-theme="v8"] .profile-action-btn--hd.is-active {
+  border-color: color-mix(in oklch, var(--color-success) 55%, transparent);
+  color: var(--color-success);
 }
 
 body[data-theme="v8"] .profile-menu-grid {
@@ -5500,25 +5501,27 @@ body[data-theme="v8"] .profile-menu-row {
     background: oklch(1 0 0 / 0.1);
   }
 
-  body[data-theme="v8"] .profile-action-btn {
-    width: 100%;
-    min-height: 48px;
-    justify-content: center;
-    padding: 0 10px;
-    border: 0;
-    border-radius: 12px;
-    background: transparent;
-  }
+	  body[data-theme="v8"] .profile-action-btn {
+	    width: 100%;
+	    min-width: 0;
+	    min-height: 48px;
+	    justify-content: center;
+	    padding: 0 6px;
+	    border: 0;
+	    border-radius: 12px;
+	    background: transparent;
+	  }
 
   body[data-theme="v8"] .profile-action-btn:hover:not(:disabled),
   body[data-theme="v8"] .profile-action-btn:active:not(:disabled) {
     background: oklch(1 0 0 / 0.05);
   }
 
-  body[data-theme="v8"] .profile-action-btn--tilt.is-active {
-    border-color: transparent;
-    color: oklch(0.963 0.028 216.4);
-  }
+	  body[data-theme="v8"] .profile-action-btn--tilt.is-active,
+	  body[data-theme="v8"] .profile-action-btn--hd.is-active {
+	    border-color: transparent;
+	    color: var(--color-success);
+	  }
 }
 
 /* Edit Profile page */
@@ -6465,11 +6468,11 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   flex: 0 0 auto;
 }
 
-.wallet-balances-popover__value {
-  flex: 0 0 auto;
-  min-width: 0;
-  color: oklch(0.971 0.003 286.35 / 0.94);
-  font-size: 15px;
+	.wallet-balances-popover__value {
+	  flex: 0 0 auto;
+	  min-width: 0;
+	  color: oklch(0.971 0.003 286.35 / 0.94);
+	  font-size: 13px;
   font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -7686,13 +7689,13 @@ body[data-theme="v8"] .packs-influencer-backdrop {
 
 body[data-theme="v8"] .packs-influencer-backdrop__img {
   position: absolute;
-  inset: -8%;
-  width: 116%;
-  height: 116%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
   object-fit: cover;
   object-position: center 28%;
   filter: blur(0.5px) saturate(1.05);
-  transform: scale(1.04);
 }
 
 body[data-theme="v8"] .packs-influencer-backdrop__scrim {
@@ -7774,6 +7777,9 @@ body[data-theme="v8"] .home-v2 .home-play-steps-card--featured {
   border-color: rgba(122, 122, 122, 0.1);
 }
 
+
+
+
 body[data-theme="v8"] .home-v2 .home-play-steps-art {
   position: relative;
   display: block;
@@ -7837,43 +7843,91 @@ body[data-theme="v8"] .home-v2 .home-play-steps-copy {
 }
 
 @media (max-width: 639px) {
+  body[data-theme="v8"] .home-v2 .home-play-steps {
+    overflow: hidden;
+    padding-inline: 0;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-heading {
+    padding-inline: 14px;
+  }
+
   body[data-theme="v8"] .home-v2 .home-play-steps-grid {
-    grid-template-columns: 1fr !important;
-    gap: 8px;
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: stretch;
+    gap: 12px;
     height: auto;
+    width: 100%;
+    margin-inline: 0;
+    padding-inline: 14px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-grid::-webkit-scrollbar {
+    display: none;
   }
 
   body[data-theme="v8"] .home-v2 .home-play-steps-card,
   body[data-theme="v8"] .home-v2 .home-play-steps-card:first-child {
-    flex-direction: row;
+    flex: 0 0 min(72vw, 240px);
+    flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    text-align: left;
+    text-align: center;
     height: auto;
+    aspect-ratio: 3 / 4;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 16px 14px 18px;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-grid > .home-play-steps-card:first-child,
+  body[data-theme="v8"] .home-v2 .home-play-steps-grid > .home-play-steps-card:last-child {
+    flex-basis: min(13.122vw, 43.74px);
+    visibility: hidden;
   }
 
   body[data-theme="v8"] .home-v2 .home-play-steps-art,
   body[data-theme="v8"] .home-v2 .home-play-steps-art.is-win {
-    width: 87px;
-    height: 51px;
-    flex-shrink: 0;
+    width: 100%;
+    height: auto;
+    flex: 1 1 auto;
+    border-radius: 16px;
+  }
+
+  body[data-theme="v8"] .home-v2 .home-play-steps-art img,
+  body[data-theme="v8"] .home-v2 .home-play-steps-art.is-win img,
+  body[data-theme="v8"] .home-v2 .home-play-steps-art.is-collect img {
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    object-fit: contain;
   }
 
   body[data-theme="v8"] .home-v2 .home-play-steps-text {
     display: flex;
     min-width: 0;
-    flex: 1;
+    flex: 0 0 auto;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 4px;
-    text-align: left;
+    text-align: center;
   }
 
   body[data-theme="v8"] .home-v2 .home-play-steps-title,
   body[data-theme="v8"] .home-v2 .home-play-steps-copy {
-    text-align: left;
+    text-align: center;
+  }
+}
+
+@media (min-width: 640px) {
+  body[data-theme="v8"] .home-v2 .home-play-steps-grid > .home-play-steps-card:first-child,
+  body[data-theme="v8"] .home-v2 .home-play-steps-grid > .home-play-steps-card:last-child {
+    display: none;
   }
 }
 

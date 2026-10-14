@@ -18,6 +18,7 @@ import {
 } from "@/components/static-card/StaticCarousel";
 import type { MotionCardTheme } from "@/components/motion-card/MotionCard";
 import { PhotoGateway } from "@/components/photo-gateway/PhotoGateway";
+import { releaseVideos } from "@/components/creator/OffscreenVideo";
 
 type MotionCardHolderProps = {
   items: ThreeMotionItem[];
@@ -107,6 +108,8 @@ export function MotionCardHolder({
   const [cardW, setCardW] = useState(108);
   const [cardH, setCardH] = useState(0);
   const [confirmPlay, setConfirmPlay] = useState(false);
+  const [confirmLeaving, setConfirmLeaving] = useState(false);
+  const pendingPlayRef = useRef(false);
   const [photoOpenSignal, setPhotoOpenSignal] = useState(0);
   const [photoOverlayOpen, setPhotoOverlayOpen] = useState(false);
   const cards = items.slice(0, 3);
@@ -126,6 +129,10 @@ export function MotionCardHolder({
     setActiveId(null);
     setDetailsReady(false);
     setConfirmPlay(false);
+    setConfirmLeaving(false);
+    pendingPlayRef.current = false;
+    setPhotoOpenSignal(0);
+    setPhotoOverlayOpen(false);
     onItemSelect?.(
       item.id,
       (item.state ?? "").startsWith("locked")
@@ -220,6 +227,7 @@ export function MotionCardHolder({
                 posterUrl={item.posterUrl}
                 videoUrl={item.videoUrl}
                 freePlay={item.freePlay}
+                suspendVideo={photoOverlayOpen && selected}
                 staticTotal={item.staticTotal}
                 collectedIndexes={item.collectedIndexes}
                 duplicateCount={item.duplicateCount}
@@ -236,6 +244,8 @@ export function MotionCardHolder({
                   if (activeId !== item.id) {
                     setActiveId(item.id);
                     setDetailsReady(false);
+                    setPhotoOpenSignal(0);
+                    setPhotoOverlayOpen(false);
                     const locked = (item.state ?? "").startsWith("locked");
                     if (locked) {
                       onItemSelect?.(item.id, "locked-selected");
@@ -320,7 +330,13 @@ export function MotionCardHolder({
                           activeCard.onPlay?.();
                           return;
                         }
-                        setConfirmPlay((open) => !open);
+                        if (confirmLeaving) return;
+                        if (confirmPlay) {
+                          pendingPlayRef.current = false;
+                          setConfirmLeaving(true);
+                          return;
+                        }
+                        setConfirmPlay(true);
                       }}
                     />
                   {!activeCard.freePlay &&
@@ -330,10 +346,21 @@ export function MotionCardHolder({
                     <PlayConfirm
                       anchor={playCtaRef.current}
                       playCost={activeCard.playCost ?? packUnitCost()}
-                      onCancel={() => setConfirmPlay(false)}
+                      leaving={confirmLeaving}
+                      onCancel={() => {
+                        pendingPlayRef.current = false;
+                        setConfirmLeaving(true);
+                      }}
                       onConfirm={() => {
+                        pendingPlayRef.current = true;
+                        setConfirmLeaving(true);
+                      }}
+                      onLeaveEnd={() => {
+                        const play = pendingPlayRef.current;
+                        pendingPlayRef.current = false;
                         setConfirmPlay(false);
-                        activeCard.onPlay?.();
+                        setConfirmLeaving(false);
+                        if (play) activeCard.onPlay?.();
                       }}
                     />
                   ) : null}
@@ -342,11 +369,14 @@ export function MotionCardHolder({
               </div>
               <PhotoGateway
                 cards={gatewayCards(activeCard.photos?.length ? activeCard.photos : photos)}
-                heading={`${(activeCard.collectedIndexes ?? []).length > 0 ? "" : `${(activeCard.state ?? "").startsWith("locked") ? "Unlock" : "Play"} `}${THEME_LABEL[activeCard.theme ?? "police"]} Nº ${String(activeIndex + 1).padStart(2, "0")}/${String(cards.length).padStart(2, "0")}`}
                 collected={(activeCard.collectedIndexes ?? []).length}
                 total={activeCard.staticTotal ?? photos.length}
                 quiet={photoOverlayOpen}
-                onViewCollection={() => setPhotoOpenSignal((signal) => signal + 1)}
+                onViewCollection={() => {
+                  releaseVideos();
+                  setPhotoOverlayOpen(true);
+                  setPhotoOpenSignal((signal) => signal + 1);
+                }}
                 className="h-auto min-h-0 max-w-none flex-1"
               />
             </div>

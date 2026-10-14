@@ -70,13 +70,22 @@ export function StaticCardHolder({
   const top = topLayerUrl?.trim() || "";
   const ctaRef = useRef<HTMLDivElement>(null);
   const [confirm, setConfirm] = useState(false);
+  const [confirmLeaving, setConfirmLeaving] = useState(false);
+  const pendingPlayRef = useRef(false);
+
+  const dismissConfirm = (play: boolean) => {
+    pendingPlayRef.current = play;
+    setConfirmLeaving(true);
+  };
 
   const activate = () => {
     if (freePlay) {
       onPlay?.();
       return;
     }
-    setConfirm((open) => !open);
+    if (confirmLeaving) return;
+    if (confirm) dismissConfirm(false);
+    else setConfirm(true);
   };
 
   return (
@@ -136,9 +145,13 @@ export function StaticCardHolder({
             </div>
           </>
         ) : null}
-      </div>
 
-      <div className={freePlay ? "static-card-play-cta is-free" : "static-card-play-cta"} ref={ctaRef}>
+      <div
+        className={freePlay ? "static-card-play-cta is-free" : "static-card-play-cta"}
+        ref={ctaRef}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
         <CtaButton
           {...SQUIRCLE_CTA}
           fillParent
@@ -173,13 +186,18 @@ export function StaticCardHolder({
           <PlayConfirm
             anchor={ctaRef.current}
             playCost={playCost}
-            onCancel={() => setConfirm(false)}
-            onConfirm={() => {
+            leaving={confirmLeaving}
+            onCancel={() => dismissConfirm(false)}
+            onConfirm={() => dismissConfirm(true)}
+            onLeaveEnd={() => {
               setConfirm(false);
-              onPlay?.();
+              setConfirmLeaving(false);
+              if (pendingPlayRef.current) onPlay?.();
+              pendingPlayRef.current = false;
             }}
           />
         ) : null}
+      </div>
       </div>
     </div>
   );

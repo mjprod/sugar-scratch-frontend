@@ -44,17 +44,15 @@ function prefersReducedMotion() {
 
 /**
  * Bottom-left StageCoinCount badge for 10% scratch coin awards: hidden until
- * an award, idle-hides after scrub activity stops, replays enter on re-show.
+ * an award, then animates away 3s after the finger lifts. Replays enter on
+ * the next award.
  */
 export function useScratchCoinBadge({
   isScratchingRef,
-  initiallyShown = false,
 }: {
   isScratchingRef: MutableRefObject<boolean>;
-  /** Paid play shows the coin count from the start; free play stays hidden. */
-  initiallyShown?: boolean;
 }) {
-  const [shown, setShown] = useState(initiallyShown);
+  const [shown, setShown] = useState(false);
   const [leaving, setLeaving] = useState(false);
   /** Remount shell so enter-bl replays when re-showing from hidden. */
   const [enterKey, setEnterKey] = useState(0);
@@ -62,7 +60,7 @@ export function useScratchCoinBadge({
   const [popNonce, setPopNonce] = useState(0);
   /** Last award amount — floating +N chip on StageCoinCount. */
   const [awardFlash, setAwardFlash] = useState(0);
-  const shownRef = useRef(initiallyShown);
+  const shownRef = useRef(false);
   const leavingRef = useRef(false);
   const idleTimerRef = useRef<number | null>(null);
 
@@ -81,8 +79,6 @@ export function useScratchCoinBadge({
   }, []);
 
   const beginIdleLeave = useCallback(() => {
-    // Paid play keeps the coin count visible for the whole hand.
-    if (initiallyShown) return;
     if (!shownRef.current || leavingRef.current) return;
     if (isScratchingRef.current) return;
     if (prefersReducedMotion()) {
@@ -91,7 +87,7 @@ export function useScratchCoinBadge({
     }
     leavingRef.current = true;
     setLeaving(true);
-  }, [hideNow, initiallyShown, isScratchingRef]);
+  }, [hideNow, isScratchingRef]);
 
   const scheduleIdleHide = useCallback(
     (holdMs: number = COIN_BADGE_IDLE_HIDE_MS) => {
@@ -139,10 +135,9 @@ export function useScratchCoinBadge({
     setLeaving(false);
     setPopNonce(0);
     setAwardFlash(0);
-    // Paid play (`initiallyShown`) must stay visible across asset loads; free play hides.
-    shownRef.current = initiallyShown;
-    setShown(initiallyShown);
-  }, [clearIdleTimer, initiallyShown]);
+    shownRef.current = false;
+    setShown(false);
+  }, [clearIdleTimer]);
 
   useEffect(() => clearIdleTimer, [clearIdleTimer]);
 

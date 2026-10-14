@@ -13,7 +13,7 @@ const OFFSETS = {
 } as const;
 
 const MOBILE_OFFSETS = {
-  bg: { start: -95, end: -73.01 },
+  bg: { start: -150, end: -48 },
   women: { start: 19.01, end: 2.07 },
   logo: { start: -32, end: -39 },
 } as const;
@@ -111,7 +111,7 @@ export function SpotlightBanner() {
       const viewH = scroller ? scroller.clientHeight : window.innerHeight;
       const t = clamp((viewTop + viewH - rect.top) / viewH, 0, 1);
       const effectStop = mobile.matches ? 1 : EFFECT_STOP;
-      const bgEffectStop = mobile.matches ? 1 : BG_EFFECT_STOP;
+      const bgEffectStop = mobile.matches ? 0.55 : BG_EFFECT_STOP;
       const effectT = easeOutCubic(clamp(t / effectStop, 0, 1));
       const bgEffectT = easeOutCubic(clamp(t / bgEffectStop, 0, 1));
       const key = `${effectT.toFixed(3)}:${bgEffectT.toFixed(3)}:${mobile.matches ? "m" : "d"}`;

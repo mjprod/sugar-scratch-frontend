@@ -5,6 +5,16 @@ import { useEffect, useRef } from "react";
  * Safari keeps a decoded frame (and often the whole buffer) for every
  * attached <video src>, which is what was blowing the creator page.
  */
+/** iOS keeps a decoded buffer until src is removed and load() runs. */
+export function releaseVideos(root: ParentNode = document) {
+  root.querySelectorAll("video").forEach((video) => {
+    video.pause();
+    if (!video.getAttribute("src") && !video.currentSrc) return;
+    video.removeAttribute("src");
+    video.load();
+  });
+}
+
 export function OffscreenVideo({
   src,
   poster,

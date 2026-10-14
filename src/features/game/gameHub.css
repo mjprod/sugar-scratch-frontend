@@ -462,9 +462,9 @@
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }
 
-  .game-hub-pack__cta {
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  }
+	  .game-hub-pack__cta {
+	    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+	  }
 }
 
 /* Pack finished with zero photo cards. The stage's own packs-circle bloom

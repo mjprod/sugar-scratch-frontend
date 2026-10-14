@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useWallet } from "@/contexts/WalletContext";
 import { formatBalance } from "@/lib/formatBalance";
 import { coinCountMountState } from "./modules/useScratchCoinBadge";
@@ -6,8 +7,9 @@ import { coinCountMountState } from "./modules/useScratchCoinBadge";
 /** Static dust mark — still frame (no Lottie runtime / canvas). */
 const COIN_WEBP_SRC = "/images/coin.webp";
 const COUNT_BASE_MS = 720;
-/** How long the +N chip / value pop stay when CSS animations are disabled. */
-const REDUCED_MOTION_FLASH_MS = 900;
+/** How long the +N chip stays up. A timer, not animationend: the chip is portaled
+ *  to body, and animationend there is not reliable (HMR, reduced motion). */
+const AWARD_CHIP_MS = 1400;
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
@@ -57,9 +59,32 @@ export function StageCoinCount({
   const displayRef = useRef(mount.display);
   const animRef = useRef<number | null>(null);
   const coinImgRef = useRef<HTMLImageElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [awardBox, setAwardBox] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const prevPopNonceRef = useRef(mount.prevPopNonce);
   const [flashAward, setFlashAward] = useState(0);
   const [valuePopping, setValuePopping] = useState(false);
+
+  // Chip is portaled to body: the badge shell animates transform for 980ms,
+  // which cancels a child's float for longer than the chip lasts. Track the
+  // pill's own rect — the shell's layout box ignores its centering transform.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || flashAward <= 0) return;
+    const place = () => {
+      const pill = root.getBoundingClientRect();
+      setAwardBox({ x: pill.left + pill.width / 2, y: pill.top });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [flashAward]);
 
   // Restart scale-pop on the same img node (avoids key-remount blank frame).
   useEffect(() => {
@@ -83,17 +108,17 @@ export function StageCoinCount({
     img.classList.add("is-popping");
   }, [popNonce, awardAmount]);
 
-  // Reduced-motion CSS sets award/value animations to `none`, so
-  // onAnimationEnd never fires — clear flash/pop on a timer instead.
   useEffect(() => {
-    if (flashAward <= 0 && !valuePopping) return;
-    if (!prefersReducedMotion()) return;
-    const timer = window.setTimeout(() => {
-      setFlashAward(0);
-      setValuePopping(false);
-    }, REDUCED_MOTION_FLASH_MS);
+    if (flashAward <= 0) return;
+    const timer = window.setTimeout(() => setFlashAward(0), AWARD_CHIP_MS);
     return () => window.clearTimeout(timer);
-  }, [flashAward, valuePopping, popNonce]);
+  }, [flashAward, popNonce]);
+
+  useEffect(() => {
+    if (!valuePopping || !prefersReducedMotion()) return;
+    const timer = window.setTimeout(() => setValuePopping(false), AWARD_CHIP_MS);
+    return () => window.clearTimeout(timer);
+  }, [valuePopping]);
 
   useEffect(() => {
     const from = displayRef.current;
@@ -142,8 +167,36 @@ export function StageCoinCount({
 
   const label = formatBalance(display);
 
+  const awardChip =
+    flashAward > 0 ? (
+      <span
+        key={`${popNonce}-${flashAward}`}
+        className="stage-game__coin-count-award"
+        style={
+          awardBox
+            ? { left: awardBox.x, top: awardBox.y }
+            : { visibility: "hidden" }
+        }
+        aria-hidden="true"
+      >
+        <span className="stage-game__coin-count-award-sign">+</span>
+        <img
+          className="stage-game__coin-count-award-img"
+          src={COIN_WEBP_SRC}
+          alt=""
+          width={14}
+          height={14}
+          draggable={false}
+          decoding="async"
+        />
+        <span className="stage-game__coin-count-award-amount tabular-nums">
+          {flashAward}
+        </span>
+      </span>
+    ) : null;
+
   return (
-    <div className="stage-game__coin-count">
+    <div ref={rootRef} className="stage-game__coin-count">
       <span className="visually-hidden" aria-live="polite">
         {formatBalance(target)} coins
         {flashAward > 0 ? `, plus ${flashAward}` : ""}
@@ -183,31 +236,7 @@ export function StageCoinCount({
         </p>
         <p className="stage-game__coin-count-label">Coins</p>
       </div>
-      {flashAward > 0 ? (
-        <span
-          key={`${popNonce}-${flashAward}`}
-          className="stage-game__coin-count-award"
-          aria-hidden="true"
-          onAnimationEnd={(e) => {
-            if (e.target !== e.currentTarget) return;
-            setFlashAward(0);
-          }}
-        >
-          <span className="stage-game__coin-count-award-sign">+</span>
-          <img
-            className="stage-game__coin-count-award-img"
-            src={COIN_WEBP_SRC}
-            alt=""
-            width={14}
-            height={14}
-            draggable={false}
-            decoding="async"
-          />
-          <span className="stage-game__coin-count-award-amount tabular-nums">
-            {flashAward}
-          </span>
-        </span>
-      ) : null}
+      {awardChip ? createPortal(awardChip, document.body) : null}
     </div>
   );
 }

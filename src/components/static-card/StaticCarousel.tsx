@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { createPortal } from "react-dom";
 import { m } from "framer-motion";
 import { X } from "lucide-react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { PHOTO_SCRATCH_TEXT_SRC, PhotoCountBadge } from "@/components/photo-gateway/PhotoGateway";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
   StaticCardHolder,
   type StaticCardHolderState,
@@ -204,7 +207,7 @@ export function StaticCarousel({
   const gridRef = useRef<HTMLDivElement>(null);
   const cards = items.slice(0, STATIC_CARD_TOTAL);
   const unlocked = cards.filter((item) => item.state === "unlocked").length;
-  const total = STATIC_CARD_TOTAL;
+  const total = cards.length;
 
   function openOverlay() {
     setLeaving(false);
@@ -375,25 +378,33 @@ export function StaticCarousel({
                 className="static-carousel-overlay__panel static-carousel static-carousel--expanded"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="flex w-full items-center gap-2">
-                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                <div className="static-carousel__head">
+                  <div className="static-carousel__logo" aria-hidden="true">
+                    <DotLottieReact
+                      src={PHOTO_SCRATCH_TEXT_SRC}
+                      autoplay
+                      loop={false}
+                      renderConfig={lottieRenderConfig()}
+                    />
+                  </div>
+                  <div className="static-carousel__meta-row flex min-w-0 flex-1 items-center gap-1">
                     <PhotoCardsIcon />
                     <p className="static-carousel__title min-w-0 font-medium text-white">
                       {THEME_LABEL[theme]}{" "}
                       {String(motionCardNumber).padStart(2, "0")} // Photo Cards
                     </p>
                   </div>
-                  <p className="static-carousel__title shrink-0 font-medium text-white">
-                    {unlocked}/{total}
-                  </p>
-                  <button
-                    type="button"
-                    className="static-carousel__close"
-                    aria-label="Close photo cards"
-                    onClick={closeOverlay}
-                  >
-                    <X className="size-5" />
-                  </button>
+                  <div className="static-carousel__actions flex min-w-0 flex-1 items-center justify-end gap-2">
+                    <PhotoCountBadge collected={unlocked} total={total} />
+                    <button
+                      type="button"
+                      className="static-carousel__close"
+                      aria-label="Close photo cards"
+                      onClick={closeOverlay}
+                    >
+                      <X className="size-5" />
+                    </button>
+                  </div>
                 </div>
                 <StaticCardMeter
                   includeMotionTick={false}
