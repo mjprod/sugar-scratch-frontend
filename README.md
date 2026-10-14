@@ -39,7 +39,7 @@ Browser calls stay same-origin (`/api/...`, `/models/...`). Vite proxies them:
 | Path | Env | Default |
 |------|-----|---------|
 | `/api` | `VITE_API_PROXY` | `http://127.0.0.1:8090` |
-| `/models/`, `/cards/`, `/photo-scratch/`, … | `VITE_MEDIA_PROXY` | `https://localhost:5080` |
+| `/models/`, `/cards/`, `/photo-scratch/`, `/themes/`, … | `VITE_MEDIA_PROXY` | `https://localhost:5080` |
 
 Media prefixes are proxied **with a trailing slash** on purpose. Vite matches by string prefix, and some of them (e.g. `/photo-scratch`) are also SPA routes here. Without the slash, a reload on such a page is served by the operator app instead. For the same reason, don't put static assets under a path starting with a proxied prefix (see `scratchSound.ts`).
 
