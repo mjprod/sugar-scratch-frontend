@@ -1,7 +1,8 @@
 import { apiFetch } from '../../lib/api'
+import { CATALOG_TTL_MS, cachedRequest } from '../../lib/cachedRequest'
 import { normalizeMediaUrl } from '../../lib/mediaUrl'
 import {
-  fetchModels as fetchServiceModels,
+  loadModels,
   type BackendModel as ServiceBackendModel,
 } from '../../services/models'
 import {
@@ -516,9 +517,9 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
   }
 }
 
-/** Single network path: services/models → apiFetch('/api/models'). */
+/** Single network path: services/models.loadModels (shared, cached). */
 export async function fetchModels(): Promise<BackendModel[] | null> {
-  const models = await fetchServiceModels()
+  const models = await loadModels()
   if (!models.length) return null
   const catalog = models
     .map(toCatalogModel)
@@ -526,9 +527,12 @@ export async function fetchModels(): Promise<BackendModel[] | null> {
   return catalog.length ? catalog : null
 }
 
-export async function fetchCards(): Promise<BackendCard[] | null> {
-  const data = await apiFetch<{ cards?: BackendCard[] }>('/api/cards')
-  return data && Array.isArray(data.cards) ? data.cards : null
+/** Shared across callers on a screen; treat the returned array as read-only. */
+export function fetchCards(): Promise<BackendCard[] | null> {
+  return cachedRequest('/api/cards', CATALOG_TTL_MS, async () => {
+    const data = await apiFetch<{ cards?: BackendCard[] }>('/api/cards')
+    return data && Array.isArray(data.cards) ? data.cards : null
+  })
 }
 
 export async function fetchVideoFlowThemes(): Promise<Map<string, string>> {

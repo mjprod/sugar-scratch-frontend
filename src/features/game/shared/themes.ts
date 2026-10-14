@@ -1,3 +1,4 @@
+import { CATALOG_TTL_MS, cachedRequest } from '../../../lib/cachedRequest'
 import { api } from '../scratch/api'
 
 export type ThemeInfo = {
@@ -13,12 +14,17 @@ export type ThemeInfo = {
   cardLightColor2?: string | null
 }
 
-/** Themes list for motion intro clips (read-only). */
-export async function fetchThemes(): Promise<ThemeInfo[]> {
-  try {
-    const data = await api<{ themes: ThemeInfo[] }>('/api/themes')
-    return Array.isArray(data.themes) ? data.themes : []
-  } catch {
-    return []
-  }
+/** Theme intro clips are off for performance; flip to re-enable. */
+export const THEME_INTROS_ENABLED = false
+
+/** Themes list for motion intro clips (read-only, shared across callers). */
+export function fetchThemes(): Promise<ThemeInfo[]> {
+  return cachedRequest('/api/themes', CATALOG_TTL_MS, async () => {
+    try {
+      const data = await api<{ themes: ThemeInfo[] }>('/api/themes')
+      return Array.isArray(data.themes) ? data.themes : []
+    } catch {
+      return []
+    }
+  })
 }

@@ -151,6 +151,7 @@ import {
 /** Theme video intros before play. Off — go straight to the card. */
 const THEME_INTRO_ENABLED = false;
 import { soundMixOutput } from "../shared/soundMix";
+import { THEME_INTROS_ENABLED } from "../shared/themes";
 import { useMotion } from "@/features/collection/hooks/useMotion";
 import { useDeviceParallax, type ParallaxState } from "../useDeviceParallax";
 import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
@@ -1278,7 +1279,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     pendingIntroEntryRef.current = null;
     const url =
-      THEME_INTRO_ENABLED && entry ? entry.intro?.trim() : "";
+      THEME_INTROS_ENABLED && entry ? entry.intro?.trim() : "";
     const themeId = entry ? entry.theme_id?.trim() : "";
     if (!url || !themeId || introShownForThemeRef.current.has(themeId)) {
       setIntroVideoUrl("");

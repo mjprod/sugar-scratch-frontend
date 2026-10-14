@@ -3236,7 +3236,10 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
 
   // Prefetch fan media for the focused model. Never clear cards to null while
   // revealing — that left a black stage after the pack ducked behind a missing fan.
+  // Items arrive after first render; skip the throwaway unscoped prefetch then.
+  const fanPrefetchReady = revealingModelId != null || revealMode
   useEffect(() => {
+    if (!fanPrefetchReady) return
     let cancelled = false
     void fetchPackFanCatalog(revealingModelId).then(async (result) => {
       if (cancelled) return
@@ -3247,7 +3250,7 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
     return () => {
       cancelled = true
     }
-  }, [revealingModelId])
+  }, [fanPrefetchReady, revealingModelId])
 
   // Stable key so reveal auto-starts as soon as the seal opens — even if the
   // focused pack id briefly flickers during foil swap.

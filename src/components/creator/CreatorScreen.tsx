@@ -52,23 +52,37 @@ export function CreatorScreen({
   onBack: () => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
-  const [resolvedModel, setResolvedModel] = useState<BackendModel | null>(
-    null,
-  );
+  const [resolution, setResolution] = useState<{
+    creatorId: string;
+    model: BackendModel | null;
+  } | null>(null);
+  const [packsReady, setPacksReady] = useState(false);
 
+  // Model first so `/api/collection` starts without waiting on `/api/packs`.
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([
-      resolveModelIdForCreator(creatorId),
-      loadPackCatalog(),
-    ]).then(([{ model }]) => {
-      if (!cancelled) setResolvedModel(model);
+    void resolveModelIdForCreator(creatorId).then(({ model }) => {
+      if (!cancelled) setResolution({ creatorId, model });
     });
     return () => {
       cancelled = true;
     };
   }, [creatorId]);
 
+  // `packUnitCost()` reads the pack catalog synchronously; hold the page
+  // skeleton until it is loaded so prices never render from demo fallback.
+  useEffect(() => {
+    let cancelled = false;
+    void loadPackCatalog().finally(() => {
+      if (!cancelled) setPacksReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const modelResolved = resolution?.creatorId === creatorId;
+  const resolvedModel = modelResolved ? resolution.model : null;
   const preferredModelId = resolvedModel?.id ?? null;
 
   return (
@@ -76,6 +90,8 @@ export function CreatorScreen({
       <CreatorScreenInner
         creatorId={creatorId}
         model={resolvedModel}
+        modelResolved={modelResolved}
+        packsReady={packsReady}
         onBack={onBack}
         onBuyPack={onBuyPack}
       />
@@ -92,21 +108,28 @@ function titleCaseSlug(value: string): string {
 function CreatorScreenInner({
   creatorId,
   model,
+  modelResolved,
+  packsReady,
   onBack,
   onBuyPack,
 }: {
   creatorId: string;
   model: BackendModel | null;
+  modelResolved: boolean;
+  packsReady: boolean;
   onBack: () => void;
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const modelId = model?.id ?? null;
-  const collection = useCreatorCollection(modelId);
+  const collection = useCreatorCollection(modelId, {
+    enabled: modelResolved && modelId != null,
+  });
   const pageLoading = !model || collection.loading;
   useMarkPageReady(
-    !pageLoading ||
-      collection.themes.length > 0 ||
-      collection.cards.length > 0,
+    packsReady &&
+      (!pageLoading ||
+        collection.themes.length > 0 ||
+        collection.cards.length > 0),
   );
   const navigate = useNavigate();
   const { authed, requireAuth } = useAuth();
@@ -331,7 +354,11 @@ function CreatorScreenInner({
     });
   }
 
-  if (pageLoading && themes.length === 0) {
+  if (
+    !packsReady ||
+    !modelResolved ||
+    (pageLoading && themes.length === 0)
+  ) {
     return (
       <section
         ref={pageRef}
