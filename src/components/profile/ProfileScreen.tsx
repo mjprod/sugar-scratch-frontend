@@ -10,6 +10,7 @@ import {
   Pencil,
   Receipt,
   Settings,
+  SlidersHorizontal,
   Smartphone,
   ShieldCheck,
   Sparkles,
@@ -52,6 +53,7 @@ export function UserDashboardScreen({
   onOpenEditProfile,
   onOpenFollowing,
   onOpenGameSettings,
+  onOpenContentPreferences,
   onOpenInbox,
   onBuyMoreDiamonds,
   onConvertDust,
@@ -69,6 +71,7 @@ export function UserDashboardScreen({
   onOpenEditProfile: () => void;
   onOpenFollowing?: () => void;
   onOpenGameSettings?: () => void;
+  onOpenContentPreferences?: () => void;
   onOpenInbox?: () => void;
   onBuyMoreDiamonds?: () => void;
   onConvertDust?: (
@@ -130,6 +133,10 @@ export function UserDashboardScreen({
     }
     if (label === "Game Settings") {
       onOpenGameSettings?.();
+      return;
+    }
+    if (label === "Content Preferences") {
+      onOpenContentPreferences?.();
       return;
     }
     if (label === "Transaction History") {
@@ -234,9 +241,9 @@ export function UserDashboardScreen({
                 .join(" ")}
             >
               <Smartphone className="size-5 shrink-0" aria-hidden="true" />
-	              <span className="profile-action-label">
-	                {tiltActive ? "Tilt on" : "Tilt off"}
-	              </span>
+		              <span className="profile-action-label">
+		                {tiltActive ? "Tilt ON" : "Tilt OFF"}
+		              </span>
 	            </button>
 	            <button
 	              type="button"
@@ -257,11 +264,10 @@ export function UserDashboardScreen({
 	                .join(" ")}
 	            >
 	              <Film className="size-5 shrink-0" aria-hidden="true" />
-	              <span className="profile-action-label">
-	                {hdVideo ? "HD on" : "HD off"}
-	              </span>
-	            </button>
-	            <span className="profile-action-sep" aria-hidden="true" />
+		              <span className="profile-action-label">
+		                {hdVideo ? "HD ON" : "HD OFF"}
+		              </span>
+		            </button>
             <button
               type="button"
               aria-label={loggingOut ? "Logging out" : "Log out"}
@@ -438,6 +444,7 @@ export function UserDashboardScreen({
           items={[
             { label: "Language", icon: Globe2 },
             { label: "Game Settings", icon: Settings },
+            { label: "Content Preferences", icon: SlidersHorizontal },
             { label: "Help Centre", icon: HelpCircle },
             { label: "Privacy Policy", icon: ShieldCheck },
             { label: "Terms of Service", icon: FileText },

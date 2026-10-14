@@ -176,6 +176,12 @@ export function unfollowCreator(creatorId: string) {
   write(read().filter((entry) => entry.id !== id));
 }
 
+/** Empty the following list and keep the demo seed from refilling it. */
+export function resetFollowing() {
+  write([]);
+  markSeededOnce();
+}
+
 /** Clear unseen badge after opening the creator (local only). */
 export function markFollowingCreatorSeen(creatorId: string) {
   const id = creatorId.trim();

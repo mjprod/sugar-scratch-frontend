@@ -38,6 +38,7 @@ export const Paths = {
   changePassword: "/profile/change-password",
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
+  contentPreferences: "/profile/content-preferences",
   /** Wallet / purchase ledger (Profile → History). */
   transactions: "/profile/transactions",
   /** Completed scratch/reveal results (Profile → History). */

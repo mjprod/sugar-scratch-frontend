@@ -91,6 +91,11 @@ const GameSettingsPage = lazy(() =>
     default: m.GameSettingsPage,
   })),
 );
+const ContentPreferencesPage = lazy(() =>
+  import("@/pages/ContentPreferencesPage").then((m) => ({
+    default: m.ContentPreferencesPage,
+  })),
+);
 const PurchaseFlowPage = lazy(() =>
   import("@/pages/PurchaseFlowPage").then((m) => ({
     default: m.PurchaseFlowPage,
@@ -322,6 +327,14 @@ export function AppRoutes() {
               element={
                 <SoftGate tab="profile">
                   <GameSettingsPage />
+                </SoftGate>
+              }
+            />
+            <Route
+              path="profile/content-preferences"
+              element={
+                <SoftGate tab="profile">
+                  <ContentPreferencesPage />
                 </SoftGate>
               }
             />

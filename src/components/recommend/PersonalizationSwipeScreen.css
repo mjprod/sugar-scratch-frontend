@@ -9,6 +9,66 @@ body[data-theme="v8"] .auth7-rec-swipe .swipe-deck {
   transform: translateY(calc(var(--rec-deck-lift) * -1));
 }
 
+body[data-theme="v8"] .auth7-rec-swipe-top {
+  position: absolute;
+  z-index: 40;
+  top: var(--rec-card-bottom, 70%);
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  pointer-events: none;
+  filter: blur(0);
+  transition:
+    opacity 320ms ease,
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 320ms ease;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe.is-goal-met .auth7-rec-swipe-top {
+  opacity: 0;
+  transform: translateY(calc(-50% + 28px));
+  filter: blur(8px);
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-pair {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-pair--left {
+  grid-template-columns: 1fr 2.1rem;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-pair--right {
+  grid-template-columns: 2.1rem 1fr;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-top svg {
+  width: 36px;
+  height: 36px;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-top .auth7-rec-swipe-circle {
+  opacity: 0.2;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-top .auth7-rec-swipe-check {
+  width: 36px;
+  height: 36px;
+}
+
+body[data-theme="v8"] .auth7-rec-swipe-top .auth7-rec-swipe-x {
+  width: 12px;
+  height: 12px;
+}
+
 body[data-theme="v8"] .auth7-rec-swipe-footer {
   position: absolute;
   z-index: 40;
