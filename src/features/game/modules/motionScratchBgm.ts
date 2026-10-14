@@ -20,6 +20,7 @@ import {
   getGameAudioOutput,
   peekGameAudioContext,
 } from "../shared/gameAudioContext";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { soundMixOutput } from "../shared/soundMix";
 import { resolveMotionScratchBgmGain } from "./motionScratchBgmPolicy";
 
@@ -127,7 +128,10 @@ function resumeContextForGesture(audioCtx: AudioContext): void {
 
 function activeBgmSrc(src?: string | null): string {
   const trimmed = src?.trim() || "";
-  return trimmed || MOTION_SCRATCH_BGM_SRC;
+  if (!trimmed) return MOTION_SCRATCH_BGM_SRC;
+  // Catalog URLs are often absolute media-host paths. Rewrite those under
+  // Vite proxy prefixes so fetch() stays same-origin (CORS-safe decode).
+  return normalizeMediaUrl(trimmed);
 }
 
 /**
@@ -139,7 +143,7 @@ export function resolveMotionScratchBgmSrc(
   themeSrc: string | null | undefined,
   defaultSrc: string | null | undefined,
 ): string {
-  if (themeKey.trim() && themeSrc?.trim()) return themeSrc.trim();
+  if (themeKey.trim() && themeSrc?.trim()) return activeBgmSrc(themeSrc);
   return activeBgmSrc(defaultSrc);
 }
 
