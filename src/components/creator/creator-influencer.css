@@ -434,7 +434,7 @@ body[data-theme="v8"] .cpv2-section-title {
 @media (min-width: 1024px) {
   body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
     position: absolute;
-    top: 11.5rem;
+    top: 18.5rem;
     left: 0;
     z-index: 4;
     width: 100%;
