@@ -99,7 +99,7 @@ import {
   syncMotionScratchBgm,
   unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
-import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import { useMotionScratchBgm, useScratchBgmSrc } from "../modules/useMotionScratchBgm";
 import {
   gameAudioStartTime,
   getGameAudioContext,
@@ -3125,6 +3125,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     !gameResult &&
     (!hasBodySymbols || (!introGateActive && !symbolsHuntComplete));
   const cursorFxSpawnGate = useCallback(() => strokeFreshRef.current, []);
+  const photoThemeKey =
+    playlist.find((entry) => entry.id === selectedCardId)?.theme_id?.trim() || "";
+  const bgmSrc = useScratchBgmSrc(photoThemeKey);
   useMotionScratchBgm({
     warm:
       hasBodySymbols &&
@@ -3133,6 +3136,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       !introGateActive &&
       !gameResult,
     topBarPhase,
+    src: bgmSrc,
   });
   const huntPhase = resolveHuntPhase({
     active:

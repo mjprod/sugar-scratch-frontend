@@ -135,7 +135,7 @@ import {
   syncMotionScratchBgm,
   unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
-import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import { useMotionScratchBgm, useScratchBgmSrc } from "../modules/useMotionScratchBgm";
 import {
   gameAudioStartTime,
   getGameAudioContext,
@@ -4104,6 +4104,7 @@ export function ScratchPrototype({
     (!introCover || introLeaving) &&
     !handStartCountdownPending &&
     (!gameMode || gameVideosReady);
+  const bgmSrc = useScratchBgmSrc(card ? themeKeyForCard(card) : "");
   useMotionScratchBgm({
     warm:
       useBodySymbols &&
@@ -4113,6 +4114,7 @@ export function ScratchPrototype({
       !gameResult,
     topBarPhase,
     skipToPlay,
+    src: bgmSrc,
   });
   // Docked 6-slot chrome can paint before play unlock (lab first paint / mesh
   // load). Keep this separate from matchStartUnlocked so scratch stays gated.
