@@ -52,6 +52,8 @@ import {
 } from "../modules/currencyResultMedia";
 import {
   celebrateBurstCount,
+  STACKED_COIN_BURST_STAGGER_MS,
+  stackedCelebrateBurstCounts,
   celebrateDurationMs,
   celebrateParticleBoost,
   crossedProgressMilestones,
@@ -107,6 +109,7 @@ import {
   unlockCountdownSound,
 } from "../modules/InitialCountdown";
 import { MatchFlight } from "../modules/MatchFlight";
+import { MATCH_SEQUENCE_MS } from "../modules/matchFlightPath";
 import {
   advanceHuntHintCycle,
   applyBodyFindHits,
@@ -175,6 +178,11 @@ import {
   writeCachedFabricAlpha,
   writeCachedSymbolScratchAmount,
 } from "../modules/scratchProbeCache";
+import {
+  AUTO_SCRATCH_COIN_REVEAL_MS,
+  queueDeferredMatchIndices,
+  shouldDeferAutoScratchCoins,
+} from "../modules/autoScratchPresent";
 import {
   resolveAutoScratchBudget,
   resolveManualScratchBudget,
@@ -1815,6 +1823,22 @@ export function ScratchPrototype({
   );
   const bodyFindHitsRef = useRef(bodyFindHits);
   bodyFindHitsRef.current = bodyFindHits;
+  /** Match flights queued while AutoScratch is still finding symbols. */
+  const deferredMatchIndicesRef = useRef<number[]>([]);
+  /** Hit flags for those queued finds. Unpublished so icons stay on the body. */
+  const pendingBodyFindHitsRef = useRef<boolean[] | null>(null);
+  /** Legacy (no body anchors) coin range, flown after the hunt. */
+  const deferredSymbolCoinsRef = useRef<{
+    from: number;
+    to: number;
+    world: Vec2 | null;
+  } | null>(null);
+  const autoCoinRevealTimerRef = useRef<number | null>(null);
+  /** Blocks sparkle coins and game resolve until the delayed coin reveal. */
+  const autoCoinsHeldRef = useRef(false);
+  const autoCoinEpochRef = useRef(0);
+  /** waiting = hunt done, coins not shown yet. flying = coins on screen. */
+  const autoCoinPhaseRef = useRef<"idle" | "waiting" | "flying">("idle");
   const [litTopSlots, setLitTopSlots] = useState<boolean[]>(() =>
     Array.from({ length: TOP_SYMBOL_COUNT }, () => false),
   );
@@ -1872,6 +1896,8 @@ export function ScratchPrototype({
   );
   const autoScratchRef = useRef(autoScratch);
   autoScratchRef.current = autoScratch;
+  /** True while AutoScratch is the stroke keeping the scratch clips alive. */
+  const autoScratchSoundingRef = useRef(false);
   /** Auto-clear garment after all body symbols found — not the settings toggle. */
   const finishAutoActiveRef = useRef(false);
   /** Hunt-complete finale (charge → shatter → hold); driven from the rAF loop. */
@@ -1898,6 +1924,7 @@ export function ScratchPrototype({
   const celebrateProgressRef = useRef(0);
   const celebrateUntilRef = useRef(0);
   const celebrateTimerRef = useRef<number | null>(null);
+  const coinBurstTimersRef = useRef<number[]>([]);
   const [cursorFxCelebrate, setCursorFxCelebrate] = useState(false);
   const [cursorFxBurstNonce, setCursorFxBurstNonce] = useState(0);
   const [cursorFxBurstCount, setCursorFxBurstCount] = useState(() =>
@@ -1942,8 +1969,8 @@ export function ScratchPrototype({
       worldPoint?: Vec2 | null,
       finalize?: boolean,
       strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
-    ) => void
-  >(() => undefined);
+    ) => number
+  >(() => 0);
   const addScratchRef = useRef<(clientX: number, clientY: number) => void>(
     () => undefined,
   );
@@ -1976,11 +2003,22 @@ export function ScratchPrototype({
     scheduleCoinBadgeIdleHide();
   }
 
+  function clearCoinBurstTimers() {
+    for (const id of coinBurstTimersRef.current) window.clearTimeout(id);
+    coinBurstTimersRef.current = [];
+  }
+
+  /** Clears the "celebrate off" timer only. Stacked coin pops stay scheduled. */
   function clearCelebrateTimer() {
     if (celebrateTimerRef.current !== null) {
       window.clearTimeout(celebrateTimerRef.current);
       celebrateTimerRef.current = null;
     }
+  }
+
+  function clearCelebrateFx() {
+    clearCelebrateTimer();
+    clearCoinBurstTimers();
   }
 
   function clearCoinBadgeIdleTimer() {
@@ -2150,8 +2188,107 @@ export function ScratchPrototype({
     }
   }
 
+  function discardDeferredAutoCoins() {
+    autoCoinEpochRef.current += 1;
+    if (autoCoinRevealTimerRef.current !== null) {
+      window.clearTimeout(autoCoinRevealTimerRef.current);
+      autoCoinRevealTimerRef.current = null;
+    }
+    deferredMatchIndicesRef.current = [];
+    pendingBodyFindHitsRef.current = null;
+    deferredSymbolCoinsRef.current = null;
+    autoCoinsHeldRef.current = false;
+    autoCoinPhaseRef.current = "idle";
+  }
+
+  /** Last coin landed (or the safety timer): the result may proceed. */
+  function releaseAutoCoinFlightHold() {
+    if (autoCoinPhaseRef.current !== "flying") return;
+    if (autoCoinRevealTimerRef.current !== null) {
+      window.clearTimeout(autoCoinRevealTimerRef.current);
+      autoCoinRevealTimerRef.current = null;
+    }
+    autoCoinPhaseRef.current = "idle";
+    autoCoinsHeldRef.current = false;
+    tryResolveGame();
+  }
+
+  function armAutoCoinFlightHold(flown: number) {
+    autoCoinPhaseRef.current = "flying";
+    autoCoinsHeldRef.current = true;
+    const epoch = autoCoinEpochRef.current;
+    const staggerMs = Math.max(COIN_FLIGHT_STAGGER_MS, MATCH_FLIGHT_STAGGER_MS);
+    const safetyMs =
+      MATCH_SEQUENCE_MS + staggerMs * Math.max(0, flown - 1) + 500;
+    if (autoCoinRevealTimerRef.current !== null) {
+      window.clearTimeout(autoCoinRevealTimerRef.current);
+    }
+    autoCoinRevealTimerRef.current = window.setTimeout(() => {
+      autoCoinRevealTimerRef.current = null;
+      if (epoch !== autoCoinEpochRef.current) return;
+      releaseAutoCoinFlightHold();
+    }, safetyMs);
+  }
+
+  /** Fly queued matches and credit sparkle coins now that the hunt is done. */
+  function flushDeferredAutoCoins() {
+    if (autoCoinPhaseRef.current === "flying") return;
+    if (autoCoinRevealTimerRef.current !== null) {
+      window.clearTimeout(autoCoinRevealTimerRef.current);
+      autoCoinRevealTimerRef.current = null;
+    }
+    const indices = deferredMatchIndicesRef.current;
+    deferredMatchIndicesRef.current = [];
+    const hits = pendingBodyFindHitsRef.current;
+    pendingBodyFindHitsRef.current = null;
+    const symbolCoins = deferredSymbolCoinsRef.current;
+    deferredSymbolCoinsRef.current = null;
+
+    if (hits) {
+      bodyFindHitsRef.current = hits;
+      setBodyFindHits(hits);
+    }
+    const flown = indices.length > 0 ? spawnBodyMatchFlights(indices) : 0;
+    const legacyFlown =
+      symbolCoins && symbolCoins.to > symbolCoins.from
+        ? spawnSymbolCoins(symbolCoins.from, symbolCoins.to, symbolCoins.world)
+        : 0;
+    const showing = flown + legacyFlown;
+    // Drop the hold for this call so the banked sparkle bands can credit.
+    autoCoinsHeldRef.current = false;
+    autoCoinPhaseRef.current = "idle";
+    maybeCelebrateScratchProgress(progressRef.current);
+    if (showing > 0) {
+      armAutoCoinFlightHold(showing);
+    } else {
+      tryResolveGame();
+    }
+  }
+
+  function scheduleAutoCoinReveal() {
+    autoCoinsHeldRef.current = true;
+    autoCoinPhaseRef.current = "waiting";
+    if (autoCoinRevealTimerRef.current !== null) return;
+    const epoch = autoCoinEpochRef.current;
+    autoCoinRevealTimerRef.current = window.setTimeout(() => {
+      autoCoinRevealTimerRef.current = null;
+      if (epoch !== autoCoinEpochRef.current) return;
+      flushDeferredAutoCoins();
+    }, AUTO_SCRATCH_COIN_REVEAL_MS);
+  }
+
   /** 10% progress beat: credit wallet coins; arm fairy-dust when FX allows. */
   function maybeCelebrateScratchProgress(nextProgress: number) {
+    if (
+      shouldDeferAutoScratchCoins({
+        autoEnabled: autoScratchRef.current.enabled,
+        symbolsFound: revealedSymbolsRef.current,
+        symbolTotal: SYMBOL_SLOT_COUNT,
+        revealPending: autoCoinPhaseRef.current === "waiting",
+      })
+    ) {
+      return;
+    }
     const milestones = crossedProgressMilestones(
       celebrateProgressRef.current,
       nextProgress,
@@ -2193,20 +2330,36 @@ export function ScratchPrototype({
     }
     if (!cursorFxRef.current.fairyDust || reducedMotion) return;
 
-    const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
-    celebrateUntilRef.current = performance.now() + celebrateMs;
+    const coarse = CURSOR_FX_DEVICE.coarsePointer;
+    const bursts = stackedCelebrateBurstCounts(milestones, coarse);
+    const celebrateMs = celebrateDurationMs(coarse);
+    const showerMs = Math.max(0, bursts.length - 1) * STACKED_COIN_BURST_STAGGER_MS;
+    celebrateUntilRef.current = performance.now() + celebrateMs + showerMs;
     setCursorFxCelebrate(true);
-    setCursorFxBurstCount(
-      celebrateBurstCount(crossed, CURSOR_FX_DEVICE.coarsePointer),
-    );
+    setCursorFxBurstCount(bursts[0] ?? celebrateBurstCount(crossed, coarse));
     setCursorFxBurstNonce((n) => n + 1);
-    clearCelebrateTimer();
+    clearCelebrateFx();
+    for (let i = 1; i < bursts.length; i += 1) {
+      const count = bursts[i];
+      const id = window.setTimeout(() => {
+        coinBurstTimersRef.current = coinBurstTimersRef.current.filter(
+          (timerId) => timerId !== id,
+        );
+        setCursorFxBurstCount(count);
+        setCursorFxBurstNonce((n) => n + 1);
+        celebrateUntilRef.current = Math.max(
+          celebrateUntilRef.current,
+          performance.now() + 700,
+        );
+      }, i * STACKED_COIN_BURST_STAGGER_MS);
+      coinBurstTimersRef.current.push(id);
+    }
     celebrateTimerRef.current = window.setTimeout(() => {
       celebrateTimerRef.current = null;
       if (performance.now() >= celebrateUntilRef.current) {
         setCursorFxCelebrate(false);
       }
-    }, celebrateMs + 40);
+    }, celebrateMs + showerMs + 40);
   }
   // Phones hide the side panel, so the scratch-zoom config lives behind a gear
   // button that opens this sheet.
@@ -2967,6 +3120,7 @@ export function ScratchPrototype({
         const autoBudget = resolveAutoScratchBudget({
           coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
         });
+        let autoNotedSound = false;
         if (
           autoActive &&
           (autoSettings.enabled || huntComplete) &&
@@ -2974,61 +3128,142 @@ export function ScratchPrototype({
           trackedSample &&
           gameResultPendingRef.current === null
         ) {
-          // Paint every stamp, but finalize (symbol GPU probes, progress,
-          // milestones, resolve) once per frame — same as manual strokes.
-          const autoStamps: { u: number; v: number }[] = [];
+          // Paint path stamps before the fill pass so reveal flags are current.
+          // Finalize (symbol probes, progress, resolve) once, on the last stamp.
           const path = autoPathRef.current;
+          const pathPoints: { u: number; v: number }[] = [];
           if (path.length > 0 && autoPathIndexRef.current < path.length) {
             autoPathProgressRef.current += autoSettings.speed * dt;
             while (
               autoPathProgressRef.current >= 1 &&
               autoPathIndexRef.current < path.length &&
-              autoStamps.length < autoBudget.maxPerFrame
+              pathPoints.length < autoBudget.maxPerFrame
             ) {
               autoPathProgressRef.current -= 1;
               const pt = path[autoPathIndexRef.current];
-              autoStamps.push({ u: pt.x, v: pt.y });
+              pathPoints.push({ u: pt.x, v: pt.y });
               autoPathIndexRef.current += 1;
             }
           }
 
+          let fresh = false;
+          let stamped = 0;
+          const paintAutoStamp = (
+            u: number,
+            v: number,
+            finalize: boolean,
+            strokeUvs?: ReadonlyArray<{ u: number; v: number }>,
+          ) => {
+            const newCells = applyScratchAtUvRef.current(
+              u,
+              v,
+              AUTO_SCRATCH_RADIUS,
+              sampleMeshUvToWorld(trackedSample, u, v),
+              finalize,
+              strokeUvs,
+            );
+            const prev = lastStampUvRef.current;
+            fresh = noteStrokeStamp(
+              strokeFreshnessRef.current,
+              newCells,
+              prev ? Math.hypot(u - prev.u, v - prev.v) : 0,
+              AUTO_SCRATCH_RADIUS,
+              scratchCoverageRef.current.size,
+            );
+            lastStampUvRef.current = { u, v };
+            stamped += 1;
+          };
+
           const pathDone =
             path.length === 0 || autoPathIndexRef.current >= path.length;
-          const sampleCount = revealSamplesRef.current.length;
-          const garmentComplete = isGarmentFullyRevealed(
-            progressRef.current,
-            revealedCountRef.current,
-            sampleCount,
-            true,
-          );
-          if (!garmentComplete && sampleCount > 0 && pathDone) {
-            const samples = revealSamplesRef.current;
-            const revealed = revealedRef.current;
-            let filled = 0;
-            for (
-              let i = 0;
-              i < samples.length && filled < autoBudget.fillBatch;
-              i += 1
-            ) {
-              if (revealed[i]) continue;
-              const pt = samples[i];
-              autoStamps.push({ u: pt.x, v: pt.y });
-              filled += 1;
+          if (!pathDone) {
+            for (let i = 0; i < pathPoints.length; i += 1) {
+              const stamp = pathPoints[i];
+              const isLast = i === pathPoints.length - 1;
+              paintAutoStamp(
+                stamp.u,
+                stamp.v,
+                isLast,
+                isLast ? pathPoints : undefined,
+              );
+            }
+          } else {
+            for (const stamp of pathPoints) {
+              paintAutoStamp(stamp.u, stamp.v, false);
+            }
+            const sampleCount = revealSamplesRef.current.length;
+            const garmentComplete = isGarmentFullyRevealed(
+              progressRef.current,
+              revealedCountRef.current,
+              sampleCount,
+              true,
+            );
+            const fillPoints: { u: number; v: number }[] = [];
+            if (!garmentComplete && sampleCount > 0) {
+              const samples = revealSamplesRef.current;
+              const revealed = revealedRef.current;
+              for (
+                let i = 0;
+                i < samples.length && fillPoints.length < autoBudget.fillBatch;
+                i += 1
+              ) {
+                if (revealed[i]) continue;
+                fillPoints.push({ u: samples[i].x, v: samples[i].y });
+              }
+            }
+            const frameStamps = pathPoints.concat(fillPoints);
+            if (fillPoints.length > 0) {
+              for (let i = 0; i < fillPoints.length; i += 1) {
+                const stamp = fillPoints[i];
+                const isLast = i === fillPoints.length - 1;
+                paintAutoStamp(
+                  stamp.u,
+                  stamp.v,
+                  isLast,
+                  isLast ? frameStamps : undefined,
+                );
+              }
+            } else if (pathPoints.length > 0) {
+              const last = pathPoints[pathPoints.length - 1];
+              applyScratchAtUvRef.current(
+                last.u,
+                last.v,
+                AUTO_SCRATCH_RADIUS,
+                sampleMeshUvToWorld(trackedSample, last.u, last.v),
+                true,
+                pathPoints,
+              );
             }
           }
-
-          for (let i = 0; i < autoStamps.length; i += 1) {
-            const stamp = autoStamps[i];
-            const isLast = i === autoStamps.length - 1;
-            applyScratchAtUvRef.current(
-              stamp.u,
-              stamp.v,
-              AUTO_SCRATCH_RADIUS,
-              sampleMeshUvToWorld(trackedSample, stamp.u, stamp.v),
-              isLast,
-              isLast ? autoStamps : undefined,
-            );
+          if (stamped > 0) {
+            noteScratchStamp(fresh);
+            autoScratchSoundingRef.current = true;
+            autoNotedSound = true;
           }
+        }
+        const autoStillScratching =
+          autoActive &&
+          (autoSettings.enabled || huntComplete) &&
+          !isBodyScratchLocked() &&
+          trackedSample != null &&
+          gameResultPendingRef.current === null &&
+          !isGarmentFullyRevealed(
+            progressRef.current,
+            revealedCountRef.current,
+            revealSamplesRef.current.length,
+            true,
+          );
+        if (
+          autoScratchSoundingRef.current &&
+          !autoNotedSound &&
+          !drawingRef.current &&
+          !autoStillScratching
+        ) {
+          // Stroke finished — let the clip ring out, same as lifting a finger.
+          endScratchSoundStroke();
+          resetStrokeFreshness(strokeFreshnessRef.current);
+          lastStampUvRef.current = null;
+          autoScratchSoundingRef.current = false;
         }
 
         if (
@@ -3556,7 +3791,7 @@ export function ScratchPrototype({
     revealedCountRef.current = 0;
     progressRef.current = 0;
     celebrateProgressRef.current = 0;
-    clearCelebrateTimer();
+    clearCelebrateFx();
     setCursorFxCelebrate(false);
     setCoinPopNonce(0);
     setCoinAwardFlash(0);
@@ -3588,6 +3823,7 @@ export function ScratchPrototype({
       { length: SYMBOL_SLOT_COUNT },
       () => false,
     );
+    discardDeferredAutoCoins();
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
     setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
     setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
@@ -3957,8 +4193,21 @@ export function ScratchPrototype({
     if (patch.enabled && isBodyScratchLocked()) {
       return;
     }
-    if (patch.enabled && soundEnabledRef.current)
+    if (patch.enabled && soundEnabledRef.current) {
       ensureSymbolAudio(symbolAudioRef.current);
+      preloadScratchSounds();
+    }
+    if (patch.enabled === false && autoScratchRef.current.enabled) {
+      autoScratchRef.current = { ...autoScratchRef.current, enabled: false };
+      if (autoCoinPhaseRef.current !== "flying") {
+        const queued =
+          deferredMatchIndicesRef.current.length > 0 ||
+          deferredSymbolCoinsRef.current !== null ||
+          autoCoinPhaseRef.current === "waiting" ||
+          celebrateProgressRef.current + 1e-6 < progressRef.current;
+        if (queued) flushDeferredAutoCoins();
+      }
+    }
     setAutoScratch((current) => ({ ...current, ...patch }));
   }
 
@@ -4069,19 +4318,26 @@ export function ScratchPrototype({
     });
     if (cursorFxRef.current.fairyDust) {
       const celebrateMs = celebrateDurationMs(CURSOR_FX_DEVICE.coarsePointer);
-      celebrateUntilRef.current = performance.now() + celebrateMs;
+      const now = performance.now();
+      // Keep a banked AutoScratch shower that still has pops left. This burst
+      // used to clear those timers, so the finale ate the coin shower.
+      celebrateUntilRef.current = Math.max(
+        celebrateUntilRef.current,
+        now + celebrateMs,
+      );
       setCursorFxCelebrate(true);
       setCursorFxBurstCount(
         celebrateBurstCount(10, CURSOR_FX_DEVICE.coarsePointer),
       );
       setCursorFxBurstNonce((n) => n + 1);
       clearCelebrateTimer();
+      const waitMs = Math.max(0, celebrateUntilRef.current - now) + 40;
       celebrateTimerRef.current = window.setTimeout(() => {
         celebrateTimerRef.current = null;
         if (performance.now() >= celebrateUntilRef.current) {
           setCursorFxCelebrate(false);
         }
-      }, celebrateMs + 40);
+      }, waitMs);
     }
   }
 
@@ -4279,8 +4535,11 @@ export function ScratchPrototype({
 
   useEffect(() => {
     return () => {
-      clearCelebrateTimer();
+      clearCelebrateFx();
       clearCoinBadgeIdleTimer();
+      // Bumps the coin epoch so a waiting or flight-safety timeout that
+      // already left the timer queue cannot award or resolve after leave.
+      discardDeferredAutoCoins();
     };
   }, []);
 
@@ -4340,7 +4599,7 @@ export function ScratchPrototype({
     revealedCountRef.current = 0;
     progressRef.current = 0;
     celebrateProgressRef.current = 0;
-    clearCelebrateTimer();
+    clearCelebrateFx();
     setCursorFxCelebrate(false);
     beginScratchHand(selectedCardId, { force: true });
     setCoinPopNonce(0);
@@ -4373,6 +4632,7 @@ export function ScratchPrototype({
       { length: SYMBOL_SLOT_COUNT },
       () => false,
     );
+    discardDeferredAutoCoins();
     setLitTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
     setShakingTopSlots(Array.from({ length: TOP_SYMBOL_COUNT }, () => false));
     setShakeDelayMs(Array.from({ length: TOP_SYMBOL_COUNT }, () => 0));
@@ -4744,6 +5004,7 @@ export function ScratchPrototype({
   advanceAfterScratchRef.current = advanceAfterScratch;
 
   function tryResolveGame() {
+    if (autoCoinsHeldRef.current) return;
     if (gameResultPendingRef.current !== null) return;
     if (packRevealBlockedRef.current) return;
     // The finale resolves the game itself once its hold ends.
@@ -4899,9 +5160,9 @@ export function ScratchPrototype({
     prevCount: number,
     nextCount: number,
     worldPoint?: Vec2 | null,
-  ) {
+  ): number {
     const stage = stageRef.current;
-    if (!stage || nextCount <= prevCount) return;
+    if (!stage || nextCount <= prevCount) return 0;
 
     const reduceMotion =
       typeof window !== "undefined" &&
@@ -4918,7 +5179,7 @@ export function ScratchPrototype({
         }
         return changed ? next : prev;
       });
-      return;
+      return 0;
     }
 
     const stageRect = stage.getBoundingClientRect();
@@ -4974,6 +5235,7 @@ export function ScratchPrototype({
     if (coins.length > 0) {
       setFlyingCoins((current) => [...current, ...coins]);
     }
+    return coins.length;
   }
 
   function removeFlyingCoin(id: number) {
@@ -5005,6 +5267,9 @@ export function ScratchPrototype({
             return next;
           });
         });
+      }
+      if (autoCoinPhaseRef.current === "flying" && rest.length === 0) {
+        queueMicrotask(() => releaseAutoCoinFlightHold());
       }
       return rest;
     });
@@ -5052,11 +5317,11 @@ export function ScratchPrototype({
     ]);
   }
 
-  function spawnBodyMatchFlights(newlyRevealed: readonly number[]) {
+  function spawnBodyMatchFlights(newlyRevealed: readonly number[]): number {
     const stage = stageRef.current;
     const sample = trackedSampleRef.current;
     const bodyPoints = trackedMeshRef.current?.symbolPoints;
-    if (!stage || !sample || !bodyPoints || newlyRevealed.length === 0) return;
+    if (!stage || !sample || !bodyPoints || newlyRevealed.length === 0) return 0;
 
     const reduceMotion =
       typeof window !== "undefined" &&
@@ -5138,6 +5403,7 @@ export function ScratchPrototype({
       });
       setFlyingCoins((current) => [...current, ...coins]);
     }
+    return coins.length;
   }
 
   function applyScratchAtUv(
@@ -5244,17 +5510,27 @@ export function ScratchPrototype({
         revealedSymbolsRef.current = nextSymbolCount;
         setRevealedSymbols(nextSymbolCount);
         setBodyRevealed(revealedPointsRef.current.slice());
-        setBodyFindHits((prev) => {
-          const next = applyBodyFindHits(
-            topSymbolsRef.current,
-            sessionSymbolsRef.current,
-            revealedBefore,
+        const nextHits = applyBodyFindHits(
+          topSymbolsRef.current,
+          sessionSymbolsRef.current,
+          revealedBefore,
+          newlyRevealed,
+          pendingBodyFindHitsRef.current ?? bodyFindHitsRef.current,
+        );
+        const deferCoins = autoScratchRef.current.enabled;
+        if (deferCoins) {
+          // Keep match icons on the body until every symbol is found.
+          pendingBodyFindHitsRef.current = nextHits;
+          deferredMatchIndicesRef.current = queueDeferredMatchIndices(
+            deferredMatchIndicesRef.current,
             newlyRevealed,
-            prev,
           );
-          bodyFindHitsRef.current = next;
-          return next;
-        });
+        } else {
+          pendingBodyFindHitsRef.current = null;
+          bodyFindHitsRef.current = nextHits;
+          setBodyFindHits(nextHits);
+          spawnBodyMatchFlights(newlyRevealed);
+        }
         playBodyFindSounds(
           symbolAudioRef.current,
           topSymbolsRef.current,
@@ -5264,12 +5540,14 @@ export function ScratchPrototype({
           soundEnabledRef.current,
         );
         pushFrameDiscoveryBatch(newlyRevealed, nextSymbolCount);
-        spawnBodyMatchFlights(newlyRevealed);
         if (
           nextSymbolCount >= SYMBOL_SLOT_COUNT &&
           !startGarmentFinale(newlyRevealed)
         ) {
           beginFinishAutoScratch();
+        }
+        if (deferCoins && nextSymbolCount >= SYMBOL_SLOT_COUNT) {
+          scheduleAutoCoinReveal();
         }
       }
     } else {
@@ -5284,7 +5562,17 @@ export function ScratchPrototype({
           nextSymbolCount,
           soundEnabledRef.current,
         );
-        spawnSymbolCoins(prevCount, nextSymbolCount, worldPoint);
+        if (autoMode) {
+          const queued = deferredSymbolCoinsRef.current;
+          deferredSymbolCoinsRef.current = {
+            from: queued?.from ?? prevCount,
+            to: nextSymbolCount,
+            world: worldPoint ?? queued?.world ?? null,
+          };
+          if (nextSymbolCount >= SYMBOL_SLOT_COUNT) scheduleAutoCoinReveal();
+        } else {
+          spawnSymbolCoins(prevCount, nextSymbolCount, worldPoint);
+        }
       }
     }
     const canClaimGarment =
