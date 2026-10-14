@@ -372,8 +372,7 @@ export function MotionCardHolder({
                 collected={(activeCard.collectedIndexes ?? []).length}
                 total={activeCard.staticTotal ?? photos.length}
                 quiet={photoOverlayOpen}
-                onViewCollection={(event) => {
-                  if (event.detail === 0) return;
+                onViewCollection={() => {
                   releaseVideos();
                   setPhotoOverlayOpen(true);
                   setPhotoOpenSignal((signal) => signal + 1);
