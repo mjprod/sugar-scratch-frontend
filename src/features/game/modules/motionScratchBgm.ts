@@ -131,7 +131,7 @@ function activeBgmSrc(src?: string | null): string {
   if (!trimmed) return MOTION_SCRATCH_BGM_SRC;
   // Catalog URLs are often absolute media-host paths. Rewrite those under
   // Vite proxy prefixes so fetch() stays same-origin (CORS-safe decode).
-  return normalizeMediaUrl(trimmed) || MOTION_SCRATCH_BGM_SRC;
+  return normalizeMediaUrl(trimmed);
 }
 
 /**
