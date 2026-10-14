@@ -24,9 +24,10 @@ export function formatBalance(value: number | null) {
 	
 	  for (const tier of tiers) {
 	    if (n >= tier.div) {
-	      const scaled = n / tier.div;
-	      const rounded = scaled.toFixed(1).replace(/\.0$/, "");
-	      return `${sign}${rounded}${tier.suffix}`;
+      const scaled = n / tier.div;
+      const floored = Math.floor(scaled * 10) / 10;
+      const rounded = floored.toFixed(1).replace(/\.0$/, "");
+      return `${sign}${rounded}${tier.suffix}`;
 	    }
 	  }
 
