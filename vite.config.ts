@@ -33,6 +33,10 @@ function localThemeBgmPlugin(): Plugin {
     name: "local-theme-bgm",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
+        if (req.method && req.method !== "GET" && req.method !== "HEAD") {
+          next();
+          return;
+        }
         const pathname = (req.url ?? "").split("?")[0] ?? "";
         const match = pathname.match(/^\/themes\/([a-z0-9_]+)\/bgm\.mp3$/);
         if (!match) {
@@ -47,7 +51,13 @@ function localThemeBgmPlugin(): Plugin {
         res.statusCode = 200;
         res.setHeader("Content-Type", "audio/mpeg");
         res.setHeader("Cache-Control", "no-cache");
-        createReadStream(file).pipe(res);
+        if (req.method === "HEAD") {
+          res.end();
+          return;
+        }
+        const stream = createReadStream(file);
+        stream.on("error", (err) => next(err));
+        stream.pipe(res);
       });
     },
   };
