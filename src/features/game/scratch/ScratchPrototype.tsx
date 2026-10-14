@@ -2059,7 +2059,7 @@ export function ScratchPrototype({
       return;
     }
     const key = cardId?.trim() || "";
-    // Mesh reload / Strict Mode remount for the same visit must not burn quota.
+    // Mesh reload / Strict Mode remount for the same visit must not start a duplicate hand.
     // `force` is a replay of this card — its old hand is already claimed.
     if (!opts?.force && handIdRef.current && handCardIdRef.current === key) {
       return;
