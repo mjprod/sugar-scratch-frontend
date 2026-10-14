@@ -674,8 +674,8 @@ type ScratchZoomSettings = {
 
 const SCRATCH_ZOOM_DEFAULTS: ScratchZoomSettings = {
   enabled: true,
-  scale: 1.3,
-  zoomInMs: 1200,
+  scale: 1.5,
+  zoomInMs: 1500,
   zoomOutMs: 400,
   bounce: false,
 };

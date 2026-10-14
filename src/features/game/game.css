@@ -267,7 +267,7 @@
   transform: translate(-50%, -50%);
   width: max(100cqw, calc(100cqh * 390 / 672)) !important;
   height: max(100cqh, calc(100cqw * 672 / 390)) !important;
-  transition: transform var(--scratch-zoom-duration, 1000ms)
+  transition: transform var(--scratch-zoom-duration, 1500ms)
     var(--scratch-zoom-easing, ease-out);
 }
 
