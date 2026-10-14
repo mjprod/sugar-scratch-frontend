@@ -1083,6 +1083,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     loadAutoScratchSettings,
   );
   const autoScratchRef = useRef(autoScratch);
+  /** True while AutoScratch is the stroke keeping the scratch clips alive. */
+  const autoScratchSoundingRef = useRef(false);
   autoScratchRef.current = autoScratch;
   /** Auto-clear garment after all body symbols found — not the settings toggle. */
   const finishAutoActiveRef = useRef(false);
@@ -1778,6 +1780,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       const huntComplete = hasBodySymbolsRef.current
         ? revealedSymbolsRef.current >= SYMBOL_POINT_COUNT
         : true;
+      const autoSampleCount = revealSamplesRef.current.length;
+      const autoStillScratching =
+        autoActive &&
+        (autoSettings.enabled || huntComplete) &&
+        !isBodyScratchLocked() &&
+        !introActiveRef.current &&
+        cardFlowStateRef.current !== "showing-result" &&
+        packFlowStateRef.current !== "complete" &&
+        !cardTransitionRef.current &&
+        !scratchCompletionHandledRef.current &&
+        sample != null &&
+        gameResultPendingRef.current === null &&
+        !claimedRef.current &&
+        !(
+          autoSampleCount > 0 &&
+          revealedCountRef.current >= autoSampleCount
+        );
+      let autoNotedSound = false;
       if (
         autoActive &&
         (autoSettings.enabled || huntComplete) &&
@@ -1792,19 +1812,18 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         !claimedRef.current
       ) {
         const path = autoPathRef.current;
+        const autoStamps: { u: number; v: number }[] = [];
         if (path.length > 0 && autoPathIndexRef.current < path.length) {
           autoPathProgressRef.current += autoSettings.speed * dt;
-          let scratched = 0;
           while (
             autoPathProgressRef.current >= 1 &&
             autoPathIndexRef.current < path.length &&
-            scratched < AUTO_SCRATCH_MAX_PER_FRAME
+            autoStamps.length < AUTO_SCRATCH_MAX_PER_FRAME
           ) {
             autoPathProgressRef.current -= 1;
             const pt = path[autoPathIndexRef.current];
-            applyScratchAtUvRef.current(pt.x, pt.y, AUTO_SCRATCH_RADIUS);
+            autoStamps.push({ u: pt.x, v: pt.y });
             autoPathIndexRef.current += 1;
-            scratched += 1;
           }
         }
 
@@ -1824,10 +1843,45 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ) {
             if (revealed[i]) continue;
             const pt = samples[i];
-            applyScratchAtUvRef.current(pt.x, pt.y, AUTO_SCRATCH_RADIUS);
+            autoStamps.push({ u: pt.x, v: pt.y });
             filled += 1;
           }
         }
+
+        let fresh = false;
+        for (let i = 0; i < autoStamps.length; i += 1) {
+          const stamp = autoStamps[i];
+          const newCells = applyScratchAtUvRef.current(
+            stamp.u,
+            stamp.v,
+            AUTO_SCRATCH_RADIUS,
+          );
+          const prev = lastStampUvRef.current;
+          fresh = noteStrokeStamp(
+            strokeFreshnessRef.current,
+            newCells,
+            prev ? Math.hypot(stamp.u - prev.u, stamp.v - prev.v) : 0,
+            AUTO_SCRATCH_RADIUS,
+            scratchCoverageRef.current.size,
+          );
+          lastStampUvRef.current = { u: stamp.u, v: stamp.v };
+        }
+        if (autoStamps.length > 0) {
+          noteScratchStamp(fresh);
+          autoScratchSoundingRef.current = true;
+          autoNotedSound = true;
+        }
+      }
+      if (
+        autoScratchSoundingRef.current &&
+        !autoNotedSound &&
+        !isScratchingRef.current &&
+        !autoStillScratching
+      ) {
+        endScratchSoundStroke();
+        resetStrokeFreshness(strokeFreshnessRef.current);
+        lastStampUvRef.current = null;
+        autoScratchSoundingRef.current = false;
       }
 
       // Synced bikini + clothes idle sway (up/down + diagonal to the right).
@@ -2558,6 +2612,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     if (patch.enabled && soundEnabledRef.current) {
       ensureSymbolAudio(symbolAudioRef.current);
+      preloadScratchSounds();
     }
     setAutoScratch((current) => ({ ...current, ...patch }));
   }

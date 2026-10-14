@@ -160,6 +160,27 @@ export function celebrateBurstCount(
   return coarsePointer ? 5 + band : 10 + band * 2;
 }
 
+/** Gap between pops when several 10% bands pay in one beat (AutoScratch). */
+export const STACKED_COIN_BURST_STAGGER_MS = 140;
+
+/**
+ * One pop per crossed band. A single band stays on `celebrateBurstCount`.
+ * Several bands (AutoScratch banking the whole card) each pop at 2× so the
+ * finale is a coin shower, still capped so a phone stays under the particle pool.
+ */
+export function stackedCelebrateBurstCounts(
+  milestones: readonly number[],
+  coarsePointer: boolean,
+): number[] {
+  const stacked = milestones.length > 1;
+  const cap = coarsePointer ? 22 : 36;
+  return milestones.map((milestone) => {
+    const base = celebrateBurstCount(milestone, coarsePointer);
+    if (!stacked) return base;
+    return Math.min(cap, base * 2);
+  });
+}
+
 /** Upward fan (±70° off vertical) so a milestone pops like a win, not a spill. */
 export function cursorFxBurstVelocity(
   velocity: { min: number; max: number } = CURSOR_FX_BURST_VELOCITY,
