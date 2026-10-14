@@ -5425,11 +5425,11 @@ body[data-theme="v8"] .profile-action-btn {
     opacity 160ms ease;
 }
 
-	body[data-theme="v8"] .profile-action-btn--tilt.is-active,
-	body[data-theme="v8"] .profile-action-btn--hd.is-active {
-	  border-color: color-mix(in oklch, var(--color-success) 55%, transparent);
-	  color: var(--color-success);
-	}
+body[data-theme="v8"] .profile-action-btn--tilt.is-active,
+body[data-theme="v8"] .profile-action-btn--hd.is-active {
+  border-color: color-mix(in oklch, var(--color-success) 55%, transparent);
+  color: var(--color-success);
+}
 
 body[data-theme="v8"] .profile-menu-grid {
   display: grid;
