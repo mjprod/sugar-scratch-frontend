@@ -148,8 +148,6 @@ import {
   setThemeIntroSound,
   unbindThemeIntroVideo,
 } from "../shared/media";
-/** Theme video intros before play. Off — go straight to the card. */
-const THEME_INTRO_ENABLED = false;
 import { soundMixOutput } from "../shared/soundMix";
 import { THEME_INTROS_ENABLED } from "../shared/themes";
 import { useMotion } from "@/features/collection/hooks/useMotion";

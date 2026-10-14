@@ -2666,7 +2666,7 @@ export function ScratchPrototype({
         if (cancelled) return;
         const map = new Map<string, string>();
         for (const theme of themes) {
-          const url = THEME_INTRO_ENABLED ? theme.intro?.trim() : "";
+          const url = theme.intro?.trim() || "";
           if (!url) continue;
           map.set(theme.id.toLowerCase(), url);
           map.set(theme.label.toLowerCase(), url);
