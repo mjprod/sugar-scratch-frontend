@@ -6151,6 +6151,9 @@ export function ScratchPrototype({
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
               })}
               onDockHiddenChange={setDockHidden}
+              holdAfterPointerMs={
+                scratchZoom.enabled ? scratchZoom.zoomOutMs : 0
+              }
             />
           ) : null}
           <ScratchFrameProgress

@@ -5937,6 +5937,7 @@ body[data-theme="v8"] .auth7-intro-dir-marks svg {
   body[data-theme="v8"] .auth7-intro-card {
     max-width: 500px;
     padding: 20px 36px 28px;
+    max-height: 53rem;
   }
 }
 

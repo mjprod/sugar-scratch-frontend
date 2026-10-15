@@ -3796,6 +3796,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
               onDockHiddenChange={setDockHidden}
+              holdAfterPointerMs={getScratchZoomEnabled() ? 600 : 0}
             />
           ) : null}
           <ScratchFrameProgress

@@ -297,7 +297,7 @@ export function MotionCard({
         <m.div
           className="absolute right-[3px] bottom-[7px] left-[3px] z-10 h-[34px]"
           initial={false}
-          animate={{ y: selected ? 0 : 36 }}
+          animate={{ y: selected ? 0 : 46 }}
           transition={
             reduceMotion
               ? { duration: 0 }
