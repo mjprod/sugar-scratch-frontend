@@ -20,7 +20,7 @@ export function ScratchZoomButton({
     <button
       type="button"
       className={`${className}${enabled ? "" : " is-off"}`}
-      aria-label={enabled ? "Zoom enabled" : "Zoom disabled"}
+      aria-label={enabled ? "Disable zoom" : "Enable zoom"}
       aria-pressed={enabled}
       onClick={() => setScratchZoomEnabled(!enabled)}
     >
