@@ -31,6 +31,7 @@ export function ProfilePage() {
       onOpenChangePassword={() => navigate(Paths.changePassword)}
       onOpenFollowing={() => navigate(Paths.following)}
       onOpenGameSettings={() => navigate(Paths.gameSettings)}
+      onOpenContentPreferences={() => navigate(Paths.contentPreferences)}
       onOpenInbox={openInbox}
       onBuyMoreDiamonds={openStore}
       onOpenTransactionHistory={() => navigate(Paths.transactions)}

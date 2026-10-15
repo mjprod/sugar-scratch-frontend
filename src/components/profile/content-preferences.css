@@ -1,0 +1,31 @@
+/* Content Preferences — reset row actions. Dialogs reuse the HD warning markup. */
+
+.content-pref-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.content-pref-row:hover {
+  background: oklch(1 0 0 / 0.05);
+}
+
+.content-pref-row:focus-visible {
+  outline: 2px solid oklch(0.757 0.168 353.61);
+  outline-offset: -2px;
+}
+
+.content-pref-dialog-dismiss {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid oklch(1 0 0 / 0.12);
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.72);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}

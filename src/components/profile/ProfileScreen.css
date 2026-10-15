@@ -77,7 +77,8 @@ body[data-theme="v8"] .profile-hero-divider {
 }
 
 body[data-theme="v8"] .profile-hero-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
@@ -132,15 +133,33 @@ body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert.
   bottom: auto;
   top: 0;
   z-index: 3;
-  transform: translateY(-1rem);
+  transform: translateY(calc(-1rem - 8px));
+  opacity: 1;
 }
 
 body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover {
-  transform: translateY(-1rem) scale(1.06);
+  transform: translateY(calc(-1rem - 8px)) scale(1.06);
 }
 
 body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled) {
-  transform: translateY(-1rem) scale(0.94);
+  transform: translateY(calc(-1rem - 8px)) scale(0.94);
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert::before,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover::before,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:focus::before,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled)::before,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:disabled::before,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert.is-disabled::before {
+  background: #0f0f11;
+  border-color: #1d1d1f;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:disabled .wallet-balances-popover__convert-icon,
+body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert.is-disabled .wallet-balances-popover__convert-icon {
+  opacity: 0.35;
 }
 
 body[data-theme="v8"] .profile-balance-row:hover {

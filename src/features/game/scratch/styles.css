@@ -163,7 +163,7 @@ textarea:focus-visible {
   display: block;
   height: 100%;
   position: relative;
-  transition: transform var(--scratch-zoom-duration, 180ms)
+  transition: transform var(--scratch-zoom-duration, 1500ms)
     var(--scratch-zoom-easing, ease-out);
   width: 100%;
 }
@@ -1021,7 +1021,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 }
 
 .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant .game-symbol-lottie {
-  filter: saturate(0) brightness(1.05);
+  filter: saturate(0) brightness(0.8) contrast(1.2);
   opacity: 1;
   animation: top-bar-slot-go-dormant 520ms cubic-bezier(0.33, 1, 0.4, 1) both;
 }
@@ -1060,16 +1060,16 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 
 @keyframes top-bar-slot-go-dormant {
   0% {
-    filter: saturate(1) brightness(1);
+    filter: saturate(1) brightness(1) contrast(1);
     transform: scale(1) translateX(0);
     opacity: 1;
   }
   45% {
-    filter: saturate(0.35) brightness(1.08);
+    filter: saturate(0.35) brightness(0.9) contrast(1.1);
     transform: scale(0.9) translateX(-6px);
   }
   100% {
-    filter: saturate(0) brightness(1.05);
+    filter: saturate(0) brightness(0.8) contrast(1.2);
     transform: scale(1) translateX(0);
     opacity: 1;
   }
@@ -1134,7 +1134,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 
 @keyframes top-bar-slot-reactivate {
   0% {
-    filter: saturate(0) brightness(1.05);
+    filter: saturate(0) brightness(0.8) contrast(1.2);
     transform: scale(1);
     opacity: 1;
   }
@@ -1200,7 +1200,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 .top-symbol-bar.is-phase-showcase
   .top-symbol-slot.is-dormant
   .game-symbol-lottie {
-  filter: saturate(0) brightness(1.05);
+  filter: saturate(0) brightness(0.8) contrast(1.2);
   opacity: 1;
 }
 
@@ -2259,7 +2259,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   .top-symbol-bar.is-phase-showcase
     .top-symbol-slot.is-dormant
     .game-symbol-lottie {
-    filter: saturate(0) brightness(1.05) !important;
+    filter: saturate(0) brightness(0.8) contrast(1.2) !important;
     opacity: 1 !important;
   }
 
@@ -2738,7 +2738,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   gap: 10px;
   justify-items: center;
   max-width: min(340px, 78vw);
-  animation: game-result-card-in 500ms ease-out 450ms both;
+  animation: game-result-card-in 1000ms ease-out 450ms both;
 }
 
 .game-result-title {
@@ -4252,7 +4252,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    transition: transform var(--scratch-zoom-duration, 180ms)
+    transition: transform var(--scratch-zoom-duration, 1500ms)
       var(--scratch-zoom-easing, ease-out);
     width: max(100dvw, 100dvh * 390 / 672);
   }
@@ -4265,7 +4265,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    transition: transform var(--scratch-zoom-duration, 180ms)
+    transition: transform var(--scratch-zoom-duration, 1500ms)
       var(--scratch-zoom-easing, ease-out);
     width: max(100dvw, 100dvh * 390 / 672);
   }
@@ -5177,16 +5177,14 @@ dd {
   inset: 0;
   z-index: 1;
   transform: scale(1);
-  transform-origin: center center;
-  /* Girl layers stay put while scratching — no drag zoom. */
-  transition: none;
-  will-change: auto;
+  transform-origin: var(--scratch-zoom-x, 50%) var(--scratch-zoom-y, 50%);
+  transition: transform var(--scratch-zoom-duration, 600ms) ease-out;
   pointer-events: none;
   filter: none;
 }
 
-.photo-scratch-stage.is-finger-dragging .photo-scratch-fg-drag-scale {
-  transform: scale(1);
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage.is-finger-dragging .photo-scratch-fg-drag-scale {
+  transform: scale(1.1);
   filter: none;
 }
 
@@ -5209,18 +5207,16 @@ dd {
   position: absolute;
   inset: 0;
   transform: scale(1);
-  transform-origin: center center;
-  transition: transform 1100ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: transform;
+  transform-origin: var(--scratch-zoom-x, 50%) var(--scratch-zoom-y, 50%);
+  transition: transform var(--scratch-zoom-duration, 600ms) ease-out;
   pointer-events: none;
   z-index: 0;
 }
 
-.photo-scratch-stage.is-finger-dragging .bg-drag-scale,
-.photo-scratch-stage.is-scratching .bg-drag-scale,
-.photo-scratch-stage .bg-drag-scale.is-bg-blurred {
-  transform: scale(1.03);
-  transition: transform 1000ms cubic-bezier(0.22, 0.61, 0.36, 1);
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage.is-finger-dragging .bg-drag-scale,
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage.is-scratching .bg-drag-scale,
+html:not([data-scratch-zoom="off"]) .photo-scratch-stage .bg-drag-scale.is-bg-blurred {
+  transform: scale(1.1);
 }
 
 .photo-scratch-stage .bg-drag-scale .layer-bg,
@@ -7251,9 +7247,9 @@ dd {
 .stage.is-finale-charge .game-stage-canvas,
 .stage.is-finale-charge .photo-scratch-fg-drag-scale,
 .stage.is-finale-charge .bg-drag-scale {
-  animation: finale-tremble 500ms linear both;
+  animation: finale-tremble 1000ms linear both;
   scale: 1.06;
-  transition: scale 500ms cubic-bezier(0.55, 0, 1, 0.45);
+  transition: scale 1000ms cubic-bezier(0.55, 0, 1, 0.45);
 }
 
 /* Whole-canvas tremble (bikini + clothes move together, so no ghosting),

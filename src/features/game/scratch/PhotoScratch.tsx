@@ -14,6 +14,7 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   claimScratchCoins,
@@ -3119,6 +3120,28 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
   }, [autoScratch]);
 
+  function applyPhotoScratchZoom(clientX: number, clientY: number, zoomIn: boolean) {
+    if (!getScratchZoomEnabled()) return;
+    const stage = stageRef.current;
+    const canvas = fgCanvasRef.current;
+    if (!stage || !canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      stage.style.setProperty(
+        "--scratch-zoom-x",
+        `${((clientX - rect.left) / rect.width) * 100}%`,
+      );
+      stage.style.setProperty(
+        "--scratch-zoom-y",
+        `${((clientY - rect.top) / rect.height) * 100}%`,
+      );
+    }
+    stage.style.setProperty(
+      "--scratch-zoom-duration",
+      zoomIn ? "1000ms" : "600ms",
+    );
+  }
+
   function trackFingerParallax(clientX: number, clientY: number) {
     const last = lastPointerRef.current;
     lastPointerRef.current = { x: clientX, y: clientY };
@@ -3145,6 +3168,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     setIsScratching(true);
     lastScratchWorldRef.current = null;
     lastPointerRef.current = { x: clientX, y: clientY };
+    applyPhotoScratchZoom(clientX, clientY, true);
     addScratch(clientX, clientY);
   }
 
@@ -3158,6 +3182,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function onPointerUp() {
     // Idle window starts when the finger lifts, so holding still mid-stroke
     // doesn't make the hint appear the instant they let go.
+    const last = lastPointerRef.current;
+    if (last) applyPhotoScratchZoom(last.x, last.y, false);
     huntHintActivityAtRef.current = performance.now();
     endScratchSoundStroke();
     resetStrokeFresh();
@@ -3820,6 +3846,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
               onDockHiddenChange={setDockHidden}
+              holdAfterPointerMs={getScratchZoomEnabled() ? 600 : 0}
             />
           ) : null}
           <ScratchFrameProgress

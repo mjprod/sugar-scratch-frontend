@@ -21,6 +21,7 @@ import {
 } from "./matchFlightPath";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
 import { noteScratchSoundActivity, stopScratchSounds } from "./scratchSound";
+import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
 
 const BRUSH_RADIUS_CSS = 12;
 const SLOT_REVEAL_THRESHOLD = 0.55;
@@ -141,6 +142,8 @@ type TopSymbolBarProps = {
   onScratchStart?: () => void;
   /** Docked bar has slid off-screen (finger-down brings it back). */
   onDockHiddenChange?: (hidden: boolean) => void;
+  /** After lift, wait this long so zoom-out can finish before AutoScratch drops in. */
+  holdAfterPointerMs?: number;
 };
 
 let scratchTexture: HTMLImageElement | null = null;
@@ -392,6 +395,7 @@ export function TopSymbolBar({
   quietDecorativeLottie = false,
   onScratchStart,
   onDockHiddenChange,
+  holdAfterPointerMs = 0,
 }: TopSymbolBarProps) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
@@ -883,17 +887,17 @@ export function TopSymbolBar({
       wasMatchInFlightRef.current && !matchInFlight && !dockPeekRef.current;
     wasMatchInFlightRef.current = matchInFlight;
 
-    const armHide = () => {
+    const hideDock = () => {
+      if (matchInFlightRef.current && !dockPeekRef.current) return;
+      setDockAutohide(true);
+      setDockPeek(true);
+    };
+    const armHide = (delay: number) => {
       window.clearTimeout(hideTimer);
       // A symbol still climbing into a visible dock has to land first.
       // Once the dock is already up, later matches don't pull it back.
       if (matchInFlightRef.current && !dockPeekRef.current) return;
-      const wait = landedWhileHeld ? 0 : DOCK_SETTLE_MS;
-      hideTimer = window.setTimeout(() => {
-        if (matchInFlightRef.current && !dockPeekRef.current) return;
-        setDockAutohide(true);
-        setDockPeek(true);
-      }, wait);
+      hideTimer = window.setTimeout(hideDock, delay);
     };
     const show = () => {
       window.clearTimeout(hideTimer);
@@ -911,10 +915,15 @@ export function TopSymbolBar({
       show();
     };
     const onPointerEnd = () => {
-      if (!dockPeekRef.current) armHide();
+      if (dockPeekRef.current) return;
+      const zoomHold =
+        getScratchZoomEnabled() && holdAfterPointerMs > 0
+          ? holdAfterPointerMs
+          : 0;
+      armHide(Math.max(DOCK_SETTLE_MS, zoomHold));
     };
 
-    armHide();
+    armHide(landedWhileHeld ? 0 : DOCK_SETTLE_MS);
     window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("pointerup", onPointerEnd, true);
     window.addEventListener("pointercancel", onPointerEnd, true);
@@ -925,7 +934,7 @@ export function TopSymbolBar({
       window.removeEventListener("pointercancel", onPointerEnd, true);
       onDockHiddenChangeRef.current?.(false);
     };
-  }, [phase, dockExiting, roundKey, matchInFlight]);
+  }, [phase, dockExiting, roundKey, matchInFlight, holdAfterPointerMs]);
 
   // AutoScratch fills the slot as soon as the dock leaves. A returning dock
   // hides it again.

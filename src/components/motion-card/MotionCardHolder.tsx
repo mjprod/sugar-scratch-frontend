@@ -299,12 +299,12 @@ export function MotionCardHolder({
                       leadingIcon={
                         <>
                           {activeCard.freePlay ? null : (
-                            <>
+                            <span className="motion-card-play-cta__cost">
                               <DiamondLottie size={11} aria-hidden />
                               <span className="motion-card-play-cta__price">
                                 {activeCard.playCost ?? packUnitCost()}
                               </span>
-                            </>
+                            </span>
                           )}
                           <span>{activeCard.freePlay ? "Free Play" : "Play Motion"}</span>
                           <Play

@@ -7,6 +7,7 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
+import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import { settlePackMotionCard } from "@/services/packMotionSettle";
 import {
@@ -674,14 +675,16 @@ const BODY_SYMBOL_ICON_PX = 44;
 type ScratchZoomSettings = {
   enabled: boolean;
   scale: number;
-  durationMs: number;
+  zoomInMs: number;
+  zoomOutMs: number;
   bounce: boolean;
 };
 
 const SCRATCH_ZOOM_DEFAULTS: ScratchZoomSettings = {
-  enabled: false,
-  scale: 1.35,
-  durationMs: 180,
+  enabled: true,
+  scale: 1.5,
+  zoomInMs: 1500,
+  zoomOutMs: 400,
   bounce: false,
 };
 
@@ -971,7 +974,10 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
   try {
     const raw = localStorage.getItem(SCRATCH_ZOOM_STORAGE_KEY);
     if (!raw) return SCRATCH_ZOOM_DEFAULTS;
-    const parsed = JSON.parse(raw) as Partial<ScratchZoomSettings>;
+    const parsed = JSON.parse(raw) as Partial<ScratchZoomSettings> & {
+      durationMs?: number;
+    };
+    const legacyDuration = Number(parsed.durationMs);
     return {
       enabled: parsed.enabled ?? SCRATCH_ZOOM_DEFAULTS.enabled,
       scale: clampValue(
@@ -979,10 +985,19 @@ function loadScratchZoomSettings(): ScratchZoomSettings {
         1,
         2,
       ),
-      durationMs: clampValue(
-        Number(parsed.durationMs) || SCRATCH_ZOOM_DEFAULTS.durationMs,
+      zoomInMs: clampValue(
+        Number(parsed.zoomInMs) ||
+          legacyDuration ||
+          SCRATCH_ZOOM_DEFAULTS.zoomInMs,
         50,
-        800,
+        2000,
+      ),
+      zoomOutMs: clampValue(
+        Number(parsed.zoomOutMs) ||
+          legacyDuration ||
+          SCRATCH_ZOOM_DEFAULTS.zoomOutMs,
+        50,
+        2000,
       ),
       bounce: parsed.bounce ?? SCRATCH_ZOOM_DEFAULTS.bounce,
     };
@@ -4166,12 +4181,10 @@ export function ScratchPrototype({
 
   function syncScratchZoomTransition(
     canvas: HTMLCanvasElement,
+    durationMs: number,
     settings = scratchZoomRef.current,
   ) {
-    canvas.style.setProperty(
-      "--scratch-zoom-duration",
-      `${settings.durationMs}ms`,
-    );
+    canvas.style.setProperty("--scratch-zoom-duration", `${durationMs}ms`);
     canvas.style.setProperty(
       "--scratch-zoom-easing",
       scratchZoomEasing(settings.bounce),
@@ -4180,7 +4193,7 @@ export function ScratchPrototype({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas) syncScratchZoomTransition(canvas);
+    if (canvas) syncScratchZoomTransition(canvas, scratchZoom.zoomInMs);
   }, [scratchZoom]);
 
   function updateScratchZoom(patch: Partial<ScratchZoomSettings>) {
@@ -5102,11 +5115,11 @@ export function ScratchPrototype({
 
   function applyScratchZoom(point: Vec2) {
     const settings = scratchZoomRef.current;
-    if (!settings.enabled) return;
+    if (!settings.enabled || !getScratchZoomEnabled()) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    syncScratchZoomTransition(canvas, settings);
+    syncScratchZoomTransition(canvas, settings.zoomInMs, settings);
     canvas.style.transformOrigin = `${(point.x / CANVAS_WIDTH) * 100}% ${(point.y / CANVAS_HEIGHT) * 100}%`;
     canvas.style.transform = `${canvasBaseTransform()}scale(${settings.scale})`;
   }
@@ -5117,7 +5130,7 @@ export function ScratchPrototype({
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    syncScratchZoomTransition(canvas, settings);
+    syncScratchZoomTransition(canvas, settings.zoomOutMs, settings);
     canvas.style.transform = `${canvasBaseTransform()}scale(1)`;
   }
 
@@ -5764,17 +5777,31 @@ export function ScratchPrototype({
         />
       </label>
       <label>
-        Animation ({scratchZoom.durationMs} ms)
+        Zoom in ({scratchZoom.zoomInMs} ms)
         <input
           disabled={!scratchZoom.enabled}
-          max={800}
+          max={2000}
           min={50}
           onChange={(event) =>
-            updateScratchZoom({ durationMs: Number(event.currentTarget.value) })
+            updateScratchZoom({ zoomInMs: Number(event.currentTarget.value) })
           }
           step={10}
           type="range"
-          value={scratchZoom.durationMs}
+          value={scratchZoom.zoomInMs}
+        />
+      </label>
+      <label>
+        Zoom out ({scratchZoom.zoomOutMs} ms)
+        <input
+          disabled={!scratchZoom.enabled}
+          max={2000}
+          min={50}
+          onChange={(event) =>
+            updateScratchZoom({ zoomOutMs: Number(event.currentTarget.value) })
+          }
+          step={10}
+          type="range"
+          value={scratchZoom.zoomOutMs}
         />
       </label>
       <label className="checkbox-label">
@@ -6434,6 +6461,9 @@ export function ScratchPrototype({
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
               })}
               onDockHiddenChange={setDockHidden}
+              holdAfterPointerMs={
+                scratchZoom.enabled ? scratchZoom.zoomOutMs : 0
+              }
             />
           ) : null}
           <ScratchFrameProgress

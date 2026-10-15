@@ -134,15 +134,29 @@ function measureBubbleForTab(
   parent: HTMLElement,
   target: HTMLElement,
   tabId: AppTab,
+  authedHome: boolean,
 ): Omit<DockBubble, "visible" | "ready" | "underCollection"> {
   const parentRect = parent.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
   const bubbleH = remToPx(DOCK_BUBBLE_H_REM);
   const bubbleW = remToPx(DOCK_BUBBLE_W_REM);
-  // Vertically center the fixed-height bubble, then nudge up ~5px
-  // so the indicator sits with the icon/label cluster.
-  const bubbleY =
-    rect.top - parentRect.top + (rect.height - bubbleH) / 2 - 5;
+  // Center Home: circle centered on the raised heart, not the stretched slot.
+  // Logged-in Home is the center heart (bag). Guests put Home on the feed slot.
+  if ((tabId === "bag" && authedHome) || (tabId === "feed" && !authedHome)) {
+    const heart = target.querySelector(".nav-test-dock-primary-icon, .nav-test-dock-primary-guest-card");
+    const heartRect = heart?.getBoundingClientRect() ?? rect;
+    const size = Math.max(heartRect.width, heartRect.height) + 11;
+    return {
+      x: heartRect.left - parentRect.left + (heartRect.width - size) / 2,
+      y: heartRect.top - parentRect.top + (heartRect.height - size) / 2,
+      w: size,
+      h: size,
+      radius: "50%",
+    };
+  }
+  // Fixed inside the dock row. Measuring off the tab cell lets a taller
+  // viewport stretch the cell and slide the indicator up and down.
+  const bubbleY = Math.max(0, parentRect.height - bubbleH - 20);
 
   // Center the fixed-width bubble on the tab cell (works with dock-items gap).
   let bubbleX =
@@ -285,6 +299,7 @@ export function LiquidGlassNav({
     moved: boolean;
     width: number;
     height: number;
+    radius: string;
   } | null>(null);
   const topBubbleDragRef = useRef<{
     pointerId: number;
@@ -438,14 +453,14 @@ export function LiquidGlassNav({
     const activeTabConfig = dockTabs[activeIndex];
     const target = dockTabRefs.current[activeIndex];
 
-    // The center slot normally has its own glow, but creator subpages still
-    // need the shared bubble on Collect. Cart keeps the dock indicator off.
+    // Cart keeps the dock indicator off. The center heart keeps its own glow
+    // except on Home, where the shared indicator becomes a circle under it.
     if (
       packsActive ||
       !parent ||
       !target ||
       !activeTabConfig ||
-      (activeTabConfig.primary && !creatorRoute)
+      (activeTabConfig.primary && !(authed && active === "bag"))
     ) {
       setBubble((prev) => ({
         ...prev,
@@ -457,7 +472,7 @@ export function LiquidGlassNav({
       return;
     }
 
-    const measured = measureBubbleForTab(parent, target, activeTabConfig.id);
+    const measured = measureBubbleForTab(parent, target, activeTabConfig.id, authed);
     const under = measureUnderCollection(measured.x, measured.w);
     setBubble((prev) => {
       // Pre-ready geometry drift = layout still settling — push arm deadline.
@@ -681,6 +696,7 @@ export function LiquidGlassNav({
         moved: false,
         width: bubble.w,
         height: bubble.h,
+        radius: bubble.radius,
       };
 
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -688,7 +704,7 @@ export function LiquidGlassNav({
       setDragHoverTab(active);
       event.preventDefault();
     },
-    [active, bubble.h, bubble.visible, bubble.w, bubble.x, bubble.y],
+    [active, bubble.h, bubble.radius, bubble.visible, bubble.w, bubble.x, bubble.y],
   );
 
   const handleBubblePointerMove = useCallback(
@@ -711,33 +727,19 @@ export function LiquidGlassNav({
       const hoverId = nearest?.id ?? null;
       setDragHoverTab(hoverId);
 
-      // Morph toward nearest tab geometry while dragging on X only.
-      if (nearest) {
-        const measured = measureBubbleForTab(parent, nearest.el, nearest.id);
-        setBubble((prev) => ({
-          ...prev,
-          x: nextX,
-          y: nextY,
-          w: measured.w,
-          h: measured.h,
-          radius: measured.radius,
-          underCollection: measureUnderCollection(nextX, measured.w),
-          visible: true,
-          ready: true,
-        }));
-      } else {
-        setBubble((prev) => {
-          const w = prev.w || drag.width;
-          return {
-            ...prev,
-            x: nextX,
-            y: nextY,
-            underCollection: measureUnderCollection(nextX, w),
-            visible: true,
-            ready: true,
-          };
-        });
-      }
+      // Follow X only. Size and shape stay as they were at pointer-down so the
+      // indicator doesn't balloon into a circle while crossing the center.
+      setBubble((prev) => ({
+        ...prev,
+        x: nextX,
+        y: nextY,
+        w: drag.width,
+        h: drag.height,
+        radius: drag.radius,
+        underCollection: measureUnderCollection(nextX, drag.width),
+        visible: true,
+        ready: true,
+      }));
     },
     [findNearestDraggableTab, measureUnderCollection],
   );
@@ -775,7 +777,12 @@ export function LiquidGlassNav({
         if (nearest) {
           // Collection is never selected via bubble drag.
           onTabChange(nearest.id);
-          const measured = measureBubbleForTab(parent, nearest.el, nearest.id);
+          const measured = measureBubbleForTab(
+            parent,
+            nearest.el,
+            nearest.id,
+            authed,
+          );
           setBubble({
             ...measured,
             underCollection: measureUnderCollection(measured.x, measured.w),
@@ -790,6 +797,7 @@ export function LiquidGlassNav({
       updateDockBubble();
     },
     [
+      authed,
       findNearestDraggableTab,
       measureUnderCollection,
       onTabChange,
@@ -1061,19 +1069,14 @@ export function LiquidGlassNav({
   const topTabIndex = topNavKeyboard ? undefined : -1;
   const dockTabIndex = dockKeyboard ? undefined : -1;
 
-  // Soften under Collection: fade + blur + duck scale (handle stays interactive)
-  const under = bubble.underCollection;
   // Show as soon as we have measured geometry. Transitions stay duration:0 until
   // `ready` so hard-refresh layout settle snaps instead of easing downward.
   const dockBubbleMeasured =
     (bubble.visible && bubble.w > 0) || isDraggingBubble;
-  const bubbleVisualOpacity =
-    bubble.visible && dockBubbleMeasured ? 1 - under * 0.99 : 0;
-  const bubbleVisualBlur = under * 10;
-  const glowVisualOpacity =
-    bubble.visible && dockBubbleMeasured ? 0.5 * (1 - under) : 0;
-  // Duck hard under Collection — scale down to ~72%
-  const bubbleVisualScale = 1 - under * 0.28;
+  const bubbleVisualOpacity = bubble.visible && dockBubbleMeasured ? 1 : 0;
+  const bubbleVisualBlur = 0;
+  const glowVisualOpacity = bubble.visible && dockBubbleMeasured ? 0.5 : 0;
+  const bubbleVisualScale = 1;
 
   const dockBubbleStyle = {
     // Always use measured geometry once we have it — only the transition duration
@@ -1083,7 +1086,10 @@ export function LiquidGlassNav({
     ["--dock-bubble-y" as string]: `${bubble.y}px`,
     ["--dock-bubble-w" as string]:
       bubble.w > 0 ? `${bubble.w}px` : `${DOCK_BUBBLE_W_REM}rem`,
-    ["--dock-bubble-h" as string]: `${DOCK_BUBBLE_H_REM}rem`,
+    ["--dock-bubble-h" as string]:
+      bubble.radius === "50%" && bubble.h > 0
+        ? `${bubble.h}px`
+        : `${DOCK_BUBBLE_H_REM}rem`,
     ["--dock-bubble-radius" as string]: bubble.radius,
     ["--dock-bubble-opacity" as string]: String(bubbleVisualOpacity),
     ["--dock-bubble-blur" as string]: `${bubbleVisualBlur}px`,
