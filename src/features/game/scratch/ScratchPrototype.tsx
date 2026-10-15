@@ -965,17 +965,45 @@ function worldPointToStage(
 function loadScratchZoomSettings(): ScratchZoomSettings {
   if (typeof window === "undefined") return SCRATCH_ZOOM_DEFAULTS;
   try {
-    for (const key of [
-      ...LEGACY_SCRATCH_ZOOM_STORAGE_KEYS,
-      SCRATCH_ZOOM_STORAGE_KEY,
-    ]) {
+    for (const key of LEGACY_SCRATCH_ZOOM_STORAGE_KEYS) {
       localStorage.removeItem(key);
     }
   } catch {
     // ignore
   }
-  // ponytail: ignore a saved toggle for this test — an old "off" would hide the zoom.
-  return SCRATCH_ZOOM_DEFAULTS;
+  try {
+    const raw = localStorage.getItem(SCRATCH_ZOOM_STORAGE_KEY);
+    if (!raw) return SCRATCH_ZOOM_DEFAULTS;
+    const parsed = JSON.parse(raw) as Partial<ScratchZoomSettings> & {
+      durationMs?: number;
+    };
+    const legacyDuration = Number(parsed.durationMs);
+    return {
+      enabled: parsed.enabled ?? SCRATCH_ZOOM_DEFAULTS.enabled,
+      scale: clampValue(
+        Number(parsed.scale) || SCRATCH_ZOOM_DEFAULTS.scale,
+        1,
+        2,
+      ),
+      zoomInMs: clampValue(
+        Number(parsed.zoomInMs) ||
+          legacyDuration ||
+          SCRATCH_ZOOM_DEFAULTS.zoomInMs,
+        50,
+        2000,
+      ),
+      zoomOutMs: clampValue(
+        Number(parsed.zoomOutMs) ||
+          legacyDuration ||
+          SCRATCH_ZOOM_DEFAULTS.zoomOutMs,
+        50,
+        2000,
+      ),
+      bounce: parsed.bounce ?? SCRATCH_ZOOM_DEFAULTS.bounce,
+    };
+  } catch {
+    return SCRATCH_ZOOM_DEFAULTS;
+  }
 }
 
 const AUTO_SCRATCH_STORAGE_KEY = "sugar-scratchie:auto-scratch";

@@ -920,7 +920,7 @@ export function TopSymbolBar({
         getScratchZoomEnabled() && holdAfterPointerMs > 0
           ? holdAfterPointerMs
           : 0;
-      armHide(zoomHold);
+      armHide(Math.max(DOCK_SETTLE_MS, zoomHold));
     };
 
     armHide(landedWhileHeld ? 0 : DOCK_SETTLE_MS);
