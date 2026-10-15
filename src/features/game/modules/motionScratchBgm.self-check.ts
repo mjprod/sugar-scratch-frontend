@@ -10,6 +10,7 @@ import {
   MOTION_SCRATCH_BGM_FADE_OUT_MS,
   MOTION_SCRATCH_BGM_FULL_GAIN,
   MOTION_SCRATCH_BGM_SRC,
+  resolveMotionScratchBgmSrc,
   isMotionScratchBgmPlaying,
   preloadMotionScratchBgm,
   setMotionScratchBgmActive,
@@ -26,7 +27,42 @@ function assert(cond: unknown, msg: string): asserts cond {
 
 assert(
   MOTION_SCRATCH_BGM_SRC.startsWith("/bgm/"),
-  "BGM must live under /bgm (Vite proxies /sounds to media host)",
+  "BGM fallback must live under /bgm (Vite proxies /sounds and /themes to the media host)",
+);
+assert(
+  resolveMotionScratchBgmSrc("", null, null) === MOTION_SCRATCH_BGM_SRC,
+  "missing catalog falls back to the shipped default",
+);
+assert(
+  resolveMotionScratchBgmSrc("police", null, "/bgm/default.mp3?v=1") ===
+    "/bgm/default.mp3?v=1",
+  "theme without a track uses the default",
+);
+assert(
+  resolveMotionScratchBgmSrc("police", "/themes/police/bgm.mp3?v=2", "/bgm/default.mp3") ===
+    "/themes/police/bgm.mp3?v=2",
+  "theme track replaces the default",
+);
+assert(
+  resolveMotionScratchBgmSrc(
+    "police",
+    "https://localhost:5080/themes/police/bgm.mp3?v=2",
+    "/bgm/default.mp3",
+  ) === "/themes/police/bgm.mp3?v=2",
+  "absolute media-host theme track is rewritten same-origin",
+);
+assert(
+  resolveMotionScratchBgmSrc(
+    "",
+    null,
+    "https://localhost:5080/themes/default/bgm.mp3",
+  ) === "/themes/default/bgm.mp3",
+  "absolute catalog default is rewritten same-origin",
+);
+assert(
+  resolveMotionScratchBgmSrc("police", "public/themes/police/bgm.mp3", null) ===
+    "/themes/police/bgm.mp3",
+  "workspace public/ theme track becomes a site path",
 );
 assert(
   MOTION_SCRATCH_BGM_SRC.endsWith(".mp3"),

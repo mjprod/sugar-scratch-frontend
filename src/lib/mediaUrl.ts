@@ -9,6 +9,7 @@ const PROXIED_MEDIA_PREFIXES = [
   "/models/",
   "/photo-scratch/",
   "/mesh/",
+  "/themes/",
 ] as const;
 
 function isProxiedMediaPath(pathname: string): boolean {

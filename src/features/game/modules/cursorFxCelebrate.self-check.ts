@@ -4,6 +4,7 @@
  */
 import {
   celebrateBurstCount,
+  stackedCelebrateBurstCounts,
   celebrateParticleBoost,
   crossedProgressMilestone,
   crossedProgressMilestones,
@@ -148,6 +149,16 @@ for (const coarse of [true, false]) {
 }
 assert(celebrateBurstCount(10, true) <= 16, "coarse burst stays phone-cheap");
 assert(celebrateBurstCount(10, false) <= 30, "desktop burst hard-capped");
+
+const oneBand = stackedCelebrateBurstCounts([4], false);
+assert(oneBand.length === 1 && oneBand[0] === celebrateBurstCount(4, false), "one band is unchanged");
+for (const coarse of [true, false]) {
+  const bands = stackedCelebrateBurstCounts([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], coarse);
+  assert(bands.length === 10, "one pop per banked band");
+  const sum = bands.reduce((total, count) => total + count, 0);
+  assert(sum > celebrateBurstCount(10, coarse) * 4, "banked bands shower more coins than one pop");
+  assert(bands.every((count, index) => count >= bands[Math.max(0, index - 1)]), "later bands pop at least as big");
+}
 
 for (let i = 0; i < 40; i += 1) {
   const burst = cursorFxBurstVelocity(CURSOR_FX_BURST_VELOCITY, () => (i % 10) / 10);

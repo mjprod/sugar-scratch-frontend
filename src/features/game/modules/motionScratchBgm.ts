@@ -20,10 +20,14 @@ import {
   getGameAudioOutput,
   peekGameAudioContext,
 } from "../shared/gameAudioContext";
+import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { soundMixOutput } from "../shared/soundMix";
 import { resolveMotionScratchBgmGain } from "./motionScratchBgmPolicy";
 
-/** Local public/ path (not under Vite media proxy routes like /sounds). */
+/**
+ * Shipped loop in the player `public/bgm` folder (not a media-proxy path).
+ * The themes API replaces this with the dashboard default, or a theme track.
+ */
 export const MOTION_SCRATCH_BGM_SRC = "/bgm/magnific-nuestra-madre_01.mp3";
 
 /** Quiet bed under foil scratch (linear gain 0–1). */
@@ -49,9 +53,11 @@ export type MotionScratchBgmOptions = {
   fadeOutMs?: number;
 };
 
-let buffer: AudioBuffer | null = null;
-let bufferPromise: Promise<AudioBuffer | null> | null = null;
-let lastLoadFailureAt = 0;
+const buffers = new Map<string, AudioBuffer>();
+const bufferPromises = new Map<string, Promise<AudioBuffer | null>>();
+const lastLoadFailureAt = new Map<string, number>();
+/** URL the stage wants looping. Falls back to the shipped default. */
+let requestedSrc = MOTION_SCRATCH_BGM_SRC;
 let source: AudioBufferSourceNode | null = null;
 let gain: GainNode | null = null;
 /** Wall-clock when the current source started (ctx time). */
@@ -120,20 +126,54 @@ function resumeContextForGesture(audioCtx: AudioContext): void {
   }
 }
 
-async function ensureBuffer(): Promise<AudioBuffer | null> {
-  if (buffer) return buffer;
-  if (bufferPromise) return bufferPromise;
-  if (
-    lastLoadFailureAt > 0 &&
-    Date.now() - lastLoadFailureAt < MOTION_SCRATCH_BGM_RETRY_MS
-  ) {
+function activeBgmSrc(src?: string | null): string {
+  const trimmed = src?.trim() || "";
+  if (!trimmed) return MOTION_SCRATCH_BGM_SRC;
+  // Catalog URLs are often absolute media-host paths. Rewrite those under
+  // Vite proxy prefixes so fetch() stays same-origin (CORS-safe decode).
+  return normalizeMediaUrl(trimmed);
+}
+
+/**
+ * Theme track wins when both a theme key and a theme URL are set.
+ * Otherwise the catalog default, then the shipped `/bgm/default.mp3`.
+ */
+export function resolveMotionScratchBgmSrc(
+  themeKey: string,
+  themeSrc: string | null | undefined,
+  defaultSrc: string | null | undefined,
+): string {
+  if (themeKey.trim() && themeSrc?.trim()) return activeBgmSrc(themeSrc);
+  return activeBgmSrc(defaultSrc);
+}
+
+/** Switch the loop. A different URL restarts from the beginning. */
+export function setMotionScratchBgmSrc(src: string): void {
+  const next = activeBgmSrc(src);
+  if (next === requestedSrc) return;
+  requestedSrc = next;
+  sourceOffset = 0;
+  if (source || fadeStopTimer != null) {
+    stopSource(false);
+    if (gain) gain.gain.value = 0;
+  }
+  if (desiredPlaying) syncMotionScratchBgm();
+}
+
+async function ensureBuffer(src: string): Promise<AudioBuffer | null> {
+  const cached = buffers.get(src);
+  if (cached) return cached;
+  const pending = bufferPromises.get(src);
+  if (pending) return pending;
+  const failedAt = lastLoadFailureAt.get(src) ?? 0;
+  if (failedAt > 0 && Date.now() - failedAt < MOTION_SCRATCH_BGM_RETRY_MS) {
     return null;
   }
-  bufferPromise = (async () => {
+  const promise = (async () => {
     const audioCtx = getGameAudioContext();
     if (!audioCtx) return null;
     try {
-      const res = await fetch(soundUrl(MOTION_SCRATCH_BGM_SRC));
+      const res = await fetch(soundUrl(src));
       if (!res.ok) return null;
       const data = await res.arrayBuffer();
       // copy before decode — some engines detach the buffer
@@ -142,22 +182,24 @@ async function ensureBuffer(): Promise<AudioBuffer | null> {
       return null;
     }
   })().then((decoded) => {
-    bufferPromise = null;
+    bufferPromises.delete(src);
     if (decoded) {
-      buffer = decoded;
-      lastLoadFailureAt = 0;
+      buffers.set(src, decoded);
+      lastLoadFailureAt.delete(src);
       return decoded;
     }
-    lastLoadFailureAt = Date.now();
+    lastLoadFailureAt.set(src, Date.now());
     return null;
   });
-  return bufferPromise;
+  bufferPromises.set(src, promise);
+  return promise;
 }
 
 function elapsedOffset(audioCtx: AudioContext): number {
-  if (!source || !buffer) return sourceOffset;
+  const buf = source?.buffer;
+  if (!source || !buf) return sourceOffset;
   const elapsed = Math.max(0, audioCtx.currentTime - sourceStartedAt);
-  const dur = buffer.duration;
+  const dur = buf.duration;
   if (dur <= 0) return 0;
   return (sourceOffset + elapsed) % dur;
 }
@@ -165,7 +207,7 @@ function elapsedOffset(audioCtx: AudioContext): number {
 function stopSource(keepOffset: boolean) {
   clearFadeStopTimer();
   const audioCtx = peekGameAudioContext();
-  if (source && audioCtx && keepOffset && buffer) {
+  if (source && audioCtx && keepOffset && source.buffer) {
     sourceOffset = elapsedOffset(audioCtx);
   }
   if (!keepOffset) sourceOffset = 0;
@@ -254,9 +296,9 @@ function startSourceAt(
 export function unlockMotionScratchBgm(): void {
   const audioCtx = getGameAudioContext();
   if (!audioCtx) return;
-  if (audioCtx.state === "running" && buffer) return;
+  if (audioCtx.state === "running" && buffers.has(requestedSrc)) return;
   resumeContextForGesture(audioCtx);
-  void ensureBuffer();
+  void ensureBuffer(requestedSrc);
 }
 
 /**
@@ -282,8 +324,12 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
     );
     // Already looping at this level — nothing to do (every scratch touch
     // lands here, so keep it allocation-free). A live slider move snaps.
+    const src = requestedSrc;
+    const cached = buffers.get(src);
     if (
       source &&
+      cached &&
+      source.buffer === cached &&
       fadeStopTimer == null &&
       audioCtx.state === "running"
     ) {
@@ -295,9 +341,19 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
     // Safari: resume + silent tick MUST run before any await (gesture token).
     resumeContextForGesture(audioCtx);
     void (async () => {
-      const buf = await ensureBuffer();
-      if (gen !== syncGeneration || !buf || !desiredPlaying || !bgmAllowed()) {
+      const buf = await ensureBuffer(src);
+      if (
+        gen !== syncGeneration ||
+        !buf ||
+        requestedSrc !== src ||
+        !desiredPlaying ||
+        !bgmAllowed()
+      ) {
         return;
+      }
+      if (source && source.buffer !== buf) {
+        sourceOffset = 0;
+        stopSource(false);
       }
       // Context may still be catching up after a sync resume(); don't await.
       if (audioCtx.state === "suspended") {
@@ -378,7 +434,7 @@ export function setMotionScratchBgmDucked(next: boolean): void {
 }
 
 export function preloadMotionScratchBgm(): void {
-  void ensureBuffer();
+  void ensureBuffer(requestedSrc);
 }
 
 /** True while the buffer source is actually outputting. */

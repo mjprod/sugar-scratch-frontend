@@ -17,7 +17,6 @@ import {
 import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
-  isScratchHandQuotaExhausted,
   claimScratchCoins,
   scratchCoinAwardAction,
   scratchHandAlreadyIssued,
@@ -101,7 +100,7 @@ import {
   syncMotionScratchBgm,
   unlockMotionScratchBgm,
 } from "../modules/motionScratchBgm";
-import { useMotionScratchBgm } from "../modules/useMotionScratchBgm";
+import { useMotionScratchBgm, useScratchBgmSrc } from "../modules/useMotionScratchBgm";
 import {
   gameAudioStartTime,
   getGameAudioContext,
@@ -952,8 +951,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   /** One completion resolve per card — reset when a new card begins. */
   const scratchCompletionHandledRef = useRef(false);
   const applyScratchAtUvRef = useRef<
-    (u: number, v: number, radius: number) => void
-  >(() => {});
+    (u: number, v: number, radius: number) => number
+  >(() => 0);
   const parallaxStateRef = useRef<ParallaxState | null>({
     fg: { x: 0, y: 0 },
     bg: { x: 0, y: 0 },
@@ -1085,6 +1084,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     loadAutoScratchSettings,
   );
   const autoScratchRef = useRef(autoScratch);
+  /** True while AutoScratch is the stroke keeping the scratch clips alive. */
+  const autoScratchSoundingRef = useRef(false);
   autoScratchRef.current = autoScratch;
   /** Auto-clear garment after all body symbols found — not the settings toggle. */
   const finishAutoActiveRef = useRef(false);
@@ -1141,14 +1142,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     const key = selectedCardId.trim();
     if (!key) return;
-    if (isScratchHandQuotaExhausted()) {
-      // Already paid to play, but the daily reward-hand quota is spent —
-      // do not optimistic-credit coins that can never persist.
-      coinAwardsDisabledRef.current = true;
-      pendingMilestonesRef.current = [];
-      return;
-    }
-    // Remount / effect re-run for the same visit must not burn quota.
+    // Remount / effect re-run for the same visit must not start a duplicate hand.
     // A later visit of this card is a replay — its old hand is already claimed.
     if (playVisit === 0 && handCardIdRef.current === key) return;
     handIdRef.current = "";
@@ -1787,6 +1781,24 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       const huntComplete = hasBodySymbolsRef.current
         ? revealedSymbolsRef.current >= SYMBOL_POINT_COUNT
         : true;
+      const autoSampleCount = revealSamplesRef.current.length;
+      const autoStillScratching =
+        autoActive &&
+        (autoSettings.enabled || huntComplete) &&
+        !isBodyScratchLocked() &&
+        !introActiveRef.current &&
+        cardFlowStateRef.current !== "showing-result" &&
+        packFlowStateRef.current !== "complete" &&
+        !cardTransitionRef.current &&
+        !scratchCompletionHandledRef.current &&
+        sample != null &&
+        gameResultPendingRef.current === null &&
+        !claimedRef.current &&
+        !(
+          autoSampleCount > 0 &&
+          revealedCountRef.current >= autoSampleCount
+        );
+      let autoNotedSound = false;
       if (
         autoActive &&
         (autoSettings.enabled || huntComplete) &&
@@ -1801,19 +1813,36 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
         !claimedRef.current
       ) {
         const path = autoPathRef.current;
+        let fresh = false;
+        let stamped = 0;
+        const paintAutoStamp = (u: number, v: number) => {
+          const newCells = applyScratchAtUvRef.current(
+            u,
+            v,
+            AUTO_SCRATCH_RADIUS,
+          );
+          const prev = lastStampUvRef.current;
+          fresh = noteStrokeStamp(
+            strokeFreshnessRef.current,
+            newCells,
+            prev ? Math.hypot(u - prev.u, v - prev.v) : 0,
+            AUTO_SCRATCH_RADIUS,
+            scratchCoverageRef.current.size,
+          );
+          lastStampUvRef.current = { u, v };
+          stamped += 1;
+        };
         if (path.length > 0 && autoPathIndexRef.current < path.length) {
           autoPathProgressRef.current += autoSettings.speed * dt;
-          let scratched = 0;
           while (
             autoPathProgressRef.current >= 1 &&
             autoPathIndexRef.current < path.length &&
-            scratched < AUTO_SCRATCH_MAX_PER_FRAME
+            stamped < AUTO_SCRATCH_MAX_PER_FRAME
           ) {
             autoPathProgressRef.current -= 1;
             const pt = path[autoPathIndexRef.current];
-            applyScratchAtUvRef.current(pt.x, pt.y, AUTO_SCRATCH_RADIUS);
+            paintAutoStamp(pt.x, pt.y);
             autoPathIndexRef.current += 1;
-            scratched += 1;
           }
         }
 
@@ -1833,10 +1862,26 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           ) {
             if (revealed[i]) continue;
             const pt = samples[i];
-            applyScratchAtUvRef.current(pt.x, pt.y, AUTO_SCRATCH_RADIUS);
+            paintAutoStamp(pt.x, pt.y);
             filled += 1;
           }
         }
+        if (stamped > 0) {
+          noteScratchStamp(fresh);
+          autoScratchSoundingRef.current = true;
+          autoNotedSound = true;
+        }
+      }
+      if (
+        autoScratchSoundingRef.current &&
+        !autoNotedSound &&
+        !isScratchingRef.current &&
+        !autoStillScratching
+      ) {
+        endScratchSoundStroke();
+        resetStrokeFreshness(strokeFreshnessRef.current);
+        lastStampUvRef.current = null;
+        autoScratchSoundingRef.current = false;
       }
 
       // Synced bikini + clothes idle sway (up/down + diagonal to the right).
@@ -2567,6 +2612,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     }
     if (patch.enabled && soundEnabledRef.current) {
       ensureSymbolAudio(symbolAudioRef.current);
+      preloadScratchSounds();
     }
     setAutoScratch((current) => ({ ...current, ...patch }));
   }
@@ -3159,6 +3205,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     !gameResult &&
     (!hasBodySymbols || (!introGateActive && !symbolsHuntComplete));
   const cursorFxSpawnGate = useCallback(() => strokeFreshRef.current, []);
+  const photoThemeKey =
+    playlist.find((entry) => entry.id === selectedCardId)?.theme_id?.trim() || "";
+  const bgmSrc = useScratchBgmSrc(photoThemeKey);
   useMotionScratchBgm({
     warm:
       hasBodySymbols &&
@@ -3167,6 +3216,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       !introGateActive &&
       !gameResult,
     topBarPhase,
+    src: bgmSrc,
   });
   const huntPhase = resolveHuntPhase({
     active:

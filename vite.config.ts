@@ -1,8 +1,8 @@
-import { defineConfig, loadEnv, type ServerOptions } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ServerOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 import tailwindcss from "@tailwindcss/vite";
-import { existsSync, readFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +23,43 @@ function loadLocalHttps(): ServerOptions["https"] | null {
   return {
     cert: readFileSync(certFile),
     key: readFileSync(keyFile),
+  };
+}
+
+/** Dashboard BGM is written under the operator `public/themes` tree. */
+function localThemeBgmPlugin(): Plugin {
+  const themesDir = path.resolve(rootDir, "../public/themes");
+  return {
+    name: "local-theme-bgm",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.method && req.method !== "GET" && req.method !== "HEAD") {
+          next();
+          return;
+        }
+        const pathname = (req.url ?? "").split("?")[0] ?? "";
+        const match = pathname.match(/^\/themes\/([a-z0-9_]+)\/bgm\.mp3$/);
+        if (!match) {
+          next();
+          return;
+        }
+        const file = path.join(themesDir, match[1] ?? "", "bgm.mp3");
+        if (!existsSync(file)) {
+          next();
+          return;
+        }
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("Cache-Control", "no-cache");
+        if (req.method === "HEAD") {
+          res.end();
+          return;
+        }
+        const stream = createReadStream(file);
+        stream.on("error", (err) => next(err));
+        stream.pipe(res);
+      });
+    },
   };
 }
 
@@ -60,7 +97,7 @@ export default defineConfig(({ mode }) => {
   );
 
   return {
-    plugins: [react(), tailwindcss(), ...(localHttps ? [] : [basicSsl()])],
+    plugins: [localThemeBgmPlugin(), react(), tailwindcss(), ...(localHttps ? [] : [basicSsl()])],
     resolve: {
       alias: {
         "@": path.resolve(rootDir, "./src"),
@@ -106,6 +143,10 @@ manualChunks(id) {
       // Cloudflare quick tunnels rotate hostnames; allow the whole suffix.
       allowedHosts: [".trycloudflare.com", ".local"],
       proxy: {
+        // Dashboard uploads live on the local API and :5080, even when the
+        // rest of the catalog is proxied to a remote host. This key must stay
+        // ahead of "/api" so the themes list is not swallowed by that prefix.
+        "/api/themes": proxyTo("http://127.0.0.1:8090"),
         "/api": proxyTo(apiTarget),
         // Trailing slash is load-bearing: Vite matches by string prefix, and
         // "/photo-scratch" is also an SPA route here. Without the slash a reload
