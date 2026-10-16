@@ -185,7 +185,7 @@ function defaultGiftTextDesktop(
   fromName: string,
 ): GiftTextDebugState {
   const to = toName.trim() || 'Admin'
-  const from = fromName.trim() || 'Juliana'
+  const from = fromName.trim()
   // Locked desktop layout (do not retune via debug — debug edits mobile only).
   return {
     dear: {
@@ -219,7 +219,7 @@ function defaultGiftTextMobile(
   fromName: string,
 ): GiftTextDebugState {
   const to = toName.trim() || 'Admin'
-  const from = fromName.trim() || 'Juliana'
+  const from = fromName.trim()
   return {
     dear: {
       lead: 'Thank you for playing',
@@ -493,11 +493,11 @@ function PlayingPopup({
   videoUrl,
   giftCard = false,
   giftToName = 'Admin',
-  giftFromName = 'Juliana',
+  giftFromName = '',
   onDismiss,
 }: PlayingPopupProps) {
   const toSeed = (giftToName || 'Admin').trim() || 'Admin'
-  const fromSeed = (giftFromName || 'Juliana').trim() || 'Juliana'
+  const fromSeed = giftFromName.trim()
   // Desktop/mobile layouts are code-locked; pick by viewport at render time.
   const [giftPresets, setGiftPresets] = useState<GiftTextPresets>(() =>
     loadGiftTextPresets(toSeed, fromSeed),

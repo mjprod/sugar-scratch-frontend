@@ -93,10 +93,10 @@ function cardsForModel(
   motionPool: ThemedMotionCard[],
   modelId?: string | null,
 ): ThemedMotionCard[] {
-  const scope = modelId?.trim();
+  const scope = modelId?.trim().toLowerCase();
   if (!scope) return motionPool;
   return motionPool.filter(
-    (card) => (card.model_id?.trim() || "") === scope,
+    (card) => (card.model_id?.trim().toLowerCase() || "") === scope,
   );
 }
 
