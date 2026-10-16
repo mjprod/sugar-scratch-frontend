@@ -1000,8 +1000,7 @@ export default function ActiveCardPanel({
   const [playingVideoUrl, setPlayingVideoUrl] = useState<string | undefined>()
   const [playingGiftCard, setPlayingGiftCard] = useState(false)
   const catalog = useCatalog()
-  const giftFromName =
-    catalog.productSharedMedia.girlName.trim() || 'Juliana'
+  const giftFromName = catalog.productSharedMedia.girlName.trim()
   // Demo recipient until a real collector profile name exists.
   const giftToName = 'Admin'
 const visibleRef = useRef(visible)

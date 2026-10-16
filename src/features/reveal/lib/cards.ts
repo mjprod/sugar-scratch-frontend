@@ -6,7 +6,6 @@ import {
 import {
   CHARACTER_BY_ID,
   CHARACTER_IDS,
-  DEFAULT_SWIPE_VIDEO_URL,
   formatCardNumber,
   formatCharacterDisplayName,
   MOTION_VIDEO_COUNT,
@@ -15,7 +14,10 @@ import {
   type CharacterId,
   type PackFaceSlot,
 } from '@/shared/catalog/characters'
-import type { BackendFanCatalog } from '@/shared/backend/collection'
+import {
+  sameModelId,
+  type BackendFanCatalog,
+} from '@/shared/backend/collection'
 
 /** Local pack-back art (missing /img/SugarScratch.png used to 404). */
 export const DEFAULT_BACK_URL = '/images/logoSugar.png'
@@ -61,13 +63,11 @@ function resolveMotionUrl(character: Character, motionSlot: number): string {
   const slot = Math.max(0, Math.min(MOTION_VIDEO_COUNT - 1, motionSlot))
   const fromMotion = (character.motionVideos[slot] ?? '').trim()
   if (fromMotion) return fromMotion
-  // Prefer any filled motion variant before falling back to swipe face.
   for (const url of character.motionVideos) {
     const trimmed = (url ?? '').trim()
     if (trimmed) return trimmed
   }
-  // Roles ship empty locally — use the shared swipe clip, never a missing PNG.
-  return character.videoUrl.trim() || DEFAULT_SWIPE_VIDEO_URL
+  return character.videoUrl.trim()
 }
 
 /** True random 0..n-1 — used so every open/replay redraws fresh. */
@@ -124,13 +124,15 @@ export function createCharacterPackCards(
 }
 
 export type MixedPackCardsOptions = {
-  /** Live catalog roles (admin overrides / published Juliana motions). */
+  /** Live catalog roles (admin overrides / published model motions). */
   characters?: readonly Character[]
   /**
-   * Published backend motion cards. When present, each theme picks one API
-   * clip instead of the local admin catalog motions.
+   * Published backend motion cards for this pack's model. When present, each
+   * theme picks one API clip instead of a local role video.
    */
   backendFan?: BackendFanCatalog | null
+  /** Drop clips that belong to a different creator. */
+  modelId?: string | null
   /** Foil pack slot (1 or 2) — retained for callers; draw is always random. */
   packSlot?: PackFaceSlot
   /**
@@ -157,6 +159,7 @@ export function createMixedCategoryPackCards(
     backendFan = null,
     girlName = null,
     overlay = null,
+    modelId = null,
   } = options
   // Touch seed so callers that pass runId still invalidate memo caches even
   // though the draw itself is Math.random (not a hash of the seed).
@@ -171,25 +174,61 @@ export function createMixedCategoryPackCards(
       }
     : null
 
-  // One card per theme, then shuffle fan positions so order is never fixed.
-  const themed = CHARACTER_IDS.map((characterId) => {
+  // One card per theme that this model actually published. Never pad empty
+  // roles with another creator's clip (Juliana swipe used to leak into Halli).
+  const themed = CHARACTER_IDS.flatMap((characterId) => {
     const character = byId[characterId] ?? CHARACTER_BY_ID[characterId]
-    const apiPool = backendFan?.byRole[characterId] ?? []
+    const apiPool = (backendFan?.byRole[characterId] ?? []).filter((card) =>
+      modelId ? sameModelId(card.modelId, modelId) : true,
+    )
 
     if (apiPool.length > 0) {
       const pick = randomIndex(apiPool.length)
       const apiCard = apiPool[pick]!
       const roleName = formatCharacterDisplayName(character.name, girlName)
       const variantLabel = String(pick + 1).padStart(2, '0')
-      return {
-        id: `reveal-api-${apiCard.id}`,
+      return [
+        {
+          id: `reveal-api-${apiCard.id}`,
+          name: `${roleName} · ${variantLabel}`,
+          mediaType: 'video' as const,
+          mediaUrl: apiCard.videoUrl,
+          backUrl: character.backUrl || DEFAULT_BACK_URL,
+          effect: effectForIndex(0),
+          characterId,
+          motionSlot: pick,
+          ...(overlayBase
+            ? {
+                overlay: {
+                  ...overlayBase,
+                  name: overlayBase.name || girlName?.trim() || roleName,
+                  cardNumber:
+                    overlayBase.cardNumber ||
+                    formatCardNumber(characterId, pick),
+                },
+              }
+            : {}),
+        } satisfies RevealCard,
+      ]
+    }
+
+    const motionSlot = randomIndex(MOTION_VIDEO_COUNT)
+    const mediaUrl = resolveMotionUrl(character, motionSlot)
+    if (!mediaUrl) return []
+
+    const roleName = formatCharacterDisplayName(character.name, girlName)
+    const variantLabel = String(motionSlot + 1).padStart(2, '0')
+
+    return [
+      {
+        id: revealCardId(characterId, motionSlot),
         name: `${roleName} · ${variantLabel}`,
         mediaType: 'video' as const,
-        mediaUrl: apiCard.videoUrl,
+        mediaUrl,
         backUrl: character.backUrl || DEFAULT_BACK_URL,
         effect: effectForIndex(0),
         characterId,
-        motionSlot: pick,
+        motionSlot,
         ...(overlayBase
           ? {
               overlay: {
@@ -197,39 +236,12 @@ export function createMixedCategoryPackCards(
                 name: overlayBase.name || girlName?.trim() || roleName,
                 cardNumber:
                   overlayBase.cardNumber ||
-                  formatCardNumber(characterId, pick),
+                  formatCardNumber(characterId, motionSlot),
               },
             }
           : {}),
-      } satisfies RevealCard
-    }
-
-    const motionSlot = randomIndex(MOTION_VIDEO_COUNT)
-    const mediaUrl = resolveMotionUrl(character, motionSlot)
-    const roleName = formatCharacterDisplayName(character.name, girlName)
-    const variantLabel = String(motionSlot + 1).padStart(2, '0')
-
-    return {
-      id: revealCardId(characterId, motionSlot),
-      name: `${roleName} · ${variantLabel}`,
-      mediaType: 'video' as const,
-      mediaUrl,
-      backUrl: character.backUrl || DEFAULT_BACK_URL,
-      effect: effectForIndex(0),
-      characterId,
-      motionSlot,
-      ...(overlayBase
-        ? {
-            overlay: {
-              ...overlayBase,
-              name: overlayBase.name || girlName?.trim() || roleName,
-              cardNumber:
-                overlayBase.cardNumber ||
-                formatCardNumber(characterId, motionSlot),
-            },
-          }
-        : {}),
-    } satisfies RevealCard
+      } satisfies RevealCard,
+    ]
   })
 
   return shuffleCopy(themed).map((card, index) => ({

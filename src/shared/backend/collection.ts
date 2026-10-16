@@ -641,23 +641,29 @@ function toBackendFanCard(card: BackendCard): BackendFanCard | null {
   }
 }
 
+export function sameModelId(
+  left?: string | null,
+  right?: string | null,
+): boolean {
+  const a = (left ?? '').trim().toLowerCase()
+  const b = (right ?? '').trim().toLowerCase()
+  return Boolean(a) && a === b
+}
+
 /**
  * Published motion cards for the pack-open fan (one random pick per role).
- * Returns null when the backend is unreachable.
+ * Pass a model id to keep the fan on that creator — never mix in another
+ * model's cards. Returns null when the backend is unreachable.
  */
-export async function fetchPackFanCatalog(
+export function packFanCatalogFromCards(
+  cards: readonly BackendCard[],
   modelId?: string | null,
-): Promise<BackendFanCatalog | null> {
-  const cards = await fetchCards()
-  if (!cards) return null
-
+): BackendFanCatalog {
+  const scope = (modelId ?? '').trim()
   const published = cards
     .map(toBackendFanCard)
     .filter((card): card is BackendFanCard => Boolean(card))
-    .filter((card) => {
-      if (!modelId) return true
-      return card.modelId.trim().toLowerCase() === modelId.trim().toLowerCase()
-    })
+    .filter((card) => (scope ? sameModelId(card.modelId, scope) : true))
     .sort(
       (a, b) =>
         a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
@@ -676,6 +682,14 @@ export async function fetchPackFanCatalog(
   }
 
   return { byRole, cards: published }
+}
+
+export async function fetchPackFanCatalog(
+  modelId?: string | null,
+): Promise<BackendFanCatalog | null> {
+  const cards = await fetchCards()
+  if (!cards) return null
+  return packFanCatalogFromCards(cards, modelId)
 }
 
 /** Prefer API influencerName, then model label, then model id. */

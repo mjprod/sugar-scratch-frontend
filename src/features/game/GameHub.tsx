@@ -211,10 +211,15 @@ export function GameHub() {
   const [fanLayout] = useState(() => loadFanLayout())
   const [fanDrag] = useState(() => loadFanDrag())
 
-  const shared = catalog.productSharedMedia
+  const shared = catalog.resolveProductSharedMedia(
+    session?.modelId || session?.packScratch?.creatorId,
+  )
   const overlay = useMemo(
     () => ({
-      name: shared.girlName.trim() || 'Juliana',
+      name:
+        shared.girlName.trim() ||
+        session?.packScratch?.creator?.trim() ||
+        '',
       city: shared.influencerCity,
       country: shared.influencerCountry,
       flagEmoji: shared.flagEmoji,
@@ -222,7 +227,16 @@ export function GameHub() {
       gradientColor: shared.overlayBackgroundColor,
       gradientColorEnd: shared.overlayBackgroundColorEnd,
     }),
-    [shared],
+    [
+      session?.packScratch?.creator,
+      shared.flagEmoji,
+      shared.flagSvgUrl,
+      shared.girlName,
+      shared.influencerCity,
+      shared.influencerCountry,
+      shared.overlayBackgroundColor,
+      shared.overlayBackgroundColorEnd,
+    ],
   )
 
   const revealCards = useMemo(

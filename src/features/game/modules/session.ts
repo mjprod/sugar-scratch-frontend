@@ -89,6 +89,17 @@ export function themeHintFromRevealId(cardId: string): string | null {
   return REVEAL_ROLE_THEME[role] ?? null;
 }
 
+function cardsForModel(
+  motionPool: ThemedMotionCard[],
+  modelId?: string | null,
+): ThemedMotionCard[] {
+  const scope = modelId?.trim();
+  if (!scope) return motionPool;
+  return motionPool.filter(
+    (card) => (card.model_id?.trim() || "") === scope,
+  );
+}
+
 function pickUnusedThemeMatch(
   motionPool: ThemedMotionCard[],
   themeHint: string,
@@ -133,7 +144,8 @@ export function resolveMotionHandFromIds(
   motionPool: ThemedMotionCard[],
   options?: { modelId?: string },
 ): ThemedMotionCard[] {
-  const byId = new Map(motionPool.map((card) => [card.id, card]));
+  const scoped = cardsForModel(motionPool, options?.modelId);
+  const byId = new Map(scoped.map((card) => [card.id, card]));
   const resolved: ThemedMotionCard[] = [];
   const seen = new Set<string>();
 
@@ -152,24 +164,17 @@ export function resolveMotionHandFromIds(
 
     const themeHint = themeHintFromRevealId(rawId);
     if (!themeHint) continue;
-    const match = pickUnusedThemeMatch(motionPool, themeHint, seen);
+    const match = pickUnusedThemeMatch(scoped, themeHint, seen);
     if (!match) continue;
     seen.add(match.id);
     resolved.push(match);
   }
 
   if (resolved.length > 0) {
-    return fillMotionHand(resolved, motionPool, seen);
+    return fillMotionHand(resolved, scoped, seen);
   }
 
-  const modelId = options?.modelId?.trim();
-  const pool = modelId
-    ? motionPool.filter(
-        (card) => (card.model_id?.trim() || "") === modelId,
-      )
-    : motionPool;
-  const fallback = buildDealtRound(pool.length > 0 ? pool : motionPool);
-  return fallback?.cards ?? [];
+  return buildDealtRound(scoped)?.cards ?? [];
 }
 
 const LABEL_THEME_HINTS: Array<{ theme: string; pattern: RegExp }> = [

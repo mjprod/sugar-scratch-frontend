@@ -452,11 +452,11 @@ function CreatorPageSkeleton({ onBack }: { onBack: () => void }) {
         </span>
       </div>
       <div className="cpv2-influencer" aria-hidden="true">
-        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
-        <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
         <span className="cpv2-skeleton-block cpv2-skeleton-progress" />
         <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
         <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
+        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
+        <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
       </div>
     </div>
   );

@@ -2486,12 +2486,8 @@ function MotionRevealStage({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchPackFanCatalog(modelId).then(async (result) => {
-      if (cancelled) return;
-      const fan =
-        result && result.cards.length > 0 ? result : await fetchPackFanCatalog();
-      if (cancelled || !fan) return;
-      setBackendFan(fan);
+    void fetchPackFanCatalog(modelId).then((result) => {
+      if (!cancelled) setBackendFan(result);
     });
     return () => {
       cancelled = true;
@@ -2506,6 +2502,7 @@ function MotionRevealStage({
   const cards = useMemo(() => {
     return createMixedCategoryPackCards({
       backendFan,
+      modelId,
       seed: `${modelId}:${sequence.runId}`,
       girlName,
       overlay: {

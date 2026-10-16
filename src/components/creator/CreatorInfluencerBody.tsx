@@ -277,42 +277,16 @@ export function CreatorInfluencerBody({
     return { videoUrl, posterUrl };
   }, [avatarUrl, ultraPosterUrl, ultraVideoUrl]);
 
+  const widestProgressLabel = useMemo(() => {
+    let widest = "";
+    for (const theme of themes) {
+      if (theme.name.length > widest.length) widest = theme.name;
+    }
+    return widest;
+  }, [themes]);
+
   return (
     <div className="cpv2-influencer">
-      <section className="cpv2-pack-section" aria-label="Pack offers">
-        <h2 className="cpv2-section-title" id="creator-pack-offers">
-          Buy {creatorName} Packs
-        </h2>
-        <div className="cpv2-pack-coverflow">
-          <Suspense
-            fallback={
-              <div
-                className="home-featured-coverflow is-loading"
-                aria-hidden="true"
-              />
-            }
-          >
-            <FeaturedCoverFlow
-              featured={EMPTY_FEATURED}
-              creatorId={creatorId}
-              onPlay={onAddPackToPocket}
-              influencerBackdrop
-            />
-          </Suspense>
-        </div>
-        <p className="cpv2-pack-disclaimer">
-          *Motion Cards Themes are randomised in packs.
-          <br />
-          <button
-            type="button"
-            className="cpv2-pack-odds"
-            onClick={() => setLegal("terms")}
-          >
-            Read Disclosure Odds
-          </button>
-        </p>
-      </section>
-
       <section
         className="cpv2-progress-panel"
         aria-label="Collection progress"
@@ -320,7 +294,17 @@ export function CreatorInfluencerBody({
         <h3 className="cpv2-progress-title">Collection Progress</h3>
         <ul className="cpv2-progress-list">
           <li className="cpv2-progress-themes">
-            <ul className="cpv2-progress-grid">
+            <ul
+              className="cpv2-progress-grid"
+              style={
+                widestProgressLabel
+                  ? {
+                      ["--cpv2-progress-widest" as string]:
+                        JSON.stringify(widestProgressLabel),
+                    }
+                  : undefined
+              }
+            >
               {loading && themes.length === 0
                 ? Array.from({ length: 4 }, (_, i) => (
                     <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
@@ -512,6 +496,40 @@ export function CreatorInfluencerBody({
             );
           })}
         </div>
+      </section>
+
+      <section className="cpv2-pack-section" aria-label="Pack offers">
+        <h2 className="cpv2-section-title" id="creator-pack-offers">
+          Buy {creatorName} Packs
+        </h2>
+        <div className="cpv2-pack-coverflow">
+          <Suspense
+            fallback={
+              <div
+                className="home-featured-coverflow is-loading"
+                aria-hidden="true"
+              />
+            }
+          >
+            <FeaturedCoverFlow
+              featured={EMPTY_FEATURED}
+              creatorId={creatorId}
+              onPlay={onAddPackToPocket}
+              influencerBackdrop
+            />
+          </Suspense>
+        </div>
+        <p className="cpv2-pack-disclaimer">
+          *Motion Cards Themes are randomised in packs.
+          <br />
+          <button
+            type="button"
+            className="cpv2-pack-odds"
+            onClick={() => setLegal("terms")}
+          >
+            Read Disclosure Odds
+          </button>
+        </p>
       </section>
 
       <footer className="cpv2-site-footer">

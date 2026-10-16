@@ -18,7 +18,6 @@ body[data-theme="v8"] .cpv2-influencer {
   gap: 27px;
   width: 100%;
   min-width: 0;
-  /* Extra space under the sticky profile banner before "Buy … Packs". */
   margin-top: 1rem;
 }
 
@@ -423,41 +422,10 @@ body[data-theme="v8"] .cpv2-section-title {
   line-height: 1.2;
 }
 
-@media (max-width: 1023px) {
-  body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
-    position: relative;
-    z-index: 3;
-    margin-bottom: 0.75rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
-    position: absolute;
-    top: 18.5rem;
-    left: 0;
-    z-index: 4;
-    width: 100%;
-    margin: 0;
-    pointer-events: none;
-  }
-
-  /* Pull the stage up behind the profile card. */
-  body[data-theme="v8"] .cpv2-influencer {
-    gap: 0;
-  }
-
-  body[data-theme="v8"] .cpv2-pack-section {
-    margin-top: -10rem;
-  }
-
-  /* Extra height makes up for the stage tucked under the profile card. */
-  body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow,
-  body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow.is-loading {
-    height: min(86.4dvh, 912px);
-    min-height: 624px;
-  }
-
+body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
+  position: relative;
+  z-index: 3;
+  margin-bottom: 0.75rem;
 }
 
 /* —— Pack section (homepage coverflow, creator-filtered) —— */
@@ -573,7 +541,6 @@ body[data-theme="v8"] .cpv2-progress-list {
   list-style: none;
 }
 
-/* Desktop prefers 3 columns; the floor drops to 2, then 1, when a row can't fit. */
 body[data-theme="v8"] .cpv2-progress-themes {
   display: block;
   min-width: 0;
@@ -596,12 +563,6 @@ body[data-theme="v8"] .cpv2-progress-grid {
   }
 }
 
-@container cpv2-progress (min-width: 760px) {
-  body[data-theme="v8"] .cpv2-progress-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 body[data-theme="v8"] .cpv2-progress-row {
   display: flex;
   align-items: center;
@@ -617,17 +578,23 @@ body[data-theme="v8"] .cpv2-progress-row.is-skeleton {
 }
 
 body[data-theme="v8"] .cpv2-progress-label {
-  flex: 0 1 60px;
-  width: auto;
-  max-width: 60px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  justify-items: start;
   color: #fff;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.24px;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+body[data-theme="v8"] .cpv2-progress-grid .cpv2-progress-label::after {
+  content: var(--cpv2-progress-widest, "");
+  height: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-progress-row.is-total {

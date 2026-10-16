@@ -3234,23 +3234,22 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
   const focusedOwnerId = focusedPackId ? ownerIdFromPackId(focusedPackId) : null
   catalog.resolveProductSharedMedia(revealingModelId ?? focusedOwnerId)
 
-  // Prefetch fan media for the focused model. Never clear cards to null while
-  // revealing — that left a black stage after the pack ducked behind a missing fan.
-  // Items arrive after first render; skip the throwaway unscoped prefetch then.
-  const fanPrefetchReady = revealingModelId != null || revealMode
+  // Prefetch this model's fan only. Never call fetchPackFanCatalog() without a
+  // model id — that used to dump Juliana cards into a Halli open.
   useEffect(() => {
-    if (!fanPrefetchReady) return
+    if (!revealingModelId) {
+      setBackendFan(null)
+      return
+    }
     let cancelled = false
-    void fetchPackFanCatalog(revealingModelId).then(async (result) => {
-      if (cancelled) return
-      const fan =
-        result && result.cards.length > 0 ? result : await fetchPackFanCatalog()
-      if (!cancelled && fan) setBackendFan(fan)
+    setBackendFan(null)
+    void fetchPackFanCatalog(revealingModelId).then((result) => {
+      if (!cancelled) setBackendFan(result)
     })
     return () => {
       cancelled = true
     }
-  }, [fanPrefetchReady, revealingModelId])
+  }, [revealingModelId])
 
   // Stable key so reveal auto-starts as soon as the seal opens — even if the
   // focused pack id briefly flickers during foil swap.
@@ -3266,14 +3265,13 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
     autoStartKey: revealAutoStartKey,
     autoStartDelayMs: 80,
   })
-  // Don't wait on backendFan — local role videos fill empty API pools so the
-  // fan always has cards once revealMode is on (avoids post-tear black screen).
   const revealCards = useMemo(
     () =>
       revealMode
         ? createMixedCategoryPackCards({
           characters: catalog.characters,
           backendFan,
+          modelId: revealingModelId,
           packSlot: revealingPackSlot,
           seed: sequence.runId,
           girlName: fanGirlName,
@@ -3285,6 +3283,7 @@ const [isMobileViewportActive, setIsMobileViewportActive] = useState(() =>
       revealMode,
       revealingPackId,
       revealingPackSlot,
+      revealingModelId,
       sequence.runId,
       backendFan,
       catalog.characters,

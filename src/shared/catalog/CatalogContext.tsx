@@ -120,10 +120,9 @@ export function CatalogProvider({
   const resolveProductSharedMedia = useCallback(
     (modelId?: string | null, themeId?: string | null) => {
       const key = (modelId ?? preferredModelId ?? "").trim();
-      const fromModel =
-        key && modelsById[key]
-          ? sharedFromModel(modelsById[key])
-          : sharedFromModel(Object.values(modelsById)[0]);
+      const fromModel = key
+        ? sharedFromModel(modelsById[key])
+        : { ...DEFAULT_SHARED_MEDIA };
       const themeKey = (themeId ?? "").trim();
       return applyThemeOverlay(
         fromModel,
