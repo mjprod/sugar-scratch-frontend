@@ -11,6 +11,9 @@ function formatFollowers(value: string) {
   return Number(digits).toLocaleString("en-US");
 }
 
+const MARQUEE_COPY =
+  "15% of the global population buys scratchies every week. Regular spenders can spend between $20-50 a month. With Sugar Scratch you can earn from other influencers if you refer users";
+
 export function LpBuildPage4() {
   const navigate = useNavigate();
   const fieldId = useId();
@@ -29,9 +32,9 @@ export function LpBuildPage4() {
   const weeklyIncome = convertedCount * 15;
   const income =
     period === "Per Month"
-      ? weeklyIncome * 4.5
+      ? weeklyIncome * 4
       : period === "Per Year"
-        ? weeklyIncome * 4.5 * 52
+        ? weeklyIncome * 52
         : weeklyIncome;
 
   const setFromClientX = useCallback((clientX: number) => {
@@ -139,6 +142,12 @@ export function LpBuildPage4() {
           </div>
         </div>
       </div>
+      </div>
+      <div className="lp-build-page4-marquee" aria-label={MARQUEE_COPY}>
+        <div className="lp-build-page4-marquee-track">
+          <span>{MARQUEE_COPY}</span>
+          <span aria-hidden="true">{MARQUEE_COPY}</span>
+        </div>
       </div>
       <div className="lp-build-page4-income-block">
         <div className="lp-build-page4-row lp-build-page4-row--income">
