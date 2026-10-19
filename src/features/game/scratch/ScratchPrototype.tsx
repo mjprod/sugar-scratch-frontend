@@ -1412,6 +1412,7 @@ export function ScratchPrototype({
   skipToPlay = false,
   loopFromIntro = false,
   onLeave,
+  onFinish,
 }: {
   /**
    * Lab/sandbox: skip intro video + foil bar scratch + countdown.
@@ -1422,6 +1423,8 @@ export function ScratchPrototype({
   loopFromIntro?: boolean;
   /** When set, pause control is rendered in the top chrome left gutter. */
   onLeave?: () => void;
+  /** Single-card play: called instead of returning to collection. */
+  onFinish?: () => void;
 } = {}) {
   const { authed } = useAuth();
   const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
@@ -1669,6 +1672,8 @@ export function ScratchPrototype({
     remainingCards.length === 0;
   const chromaKeyRef = useRef(card?.chromaKey ?? false);
   chromaKeyRef.current = card?.chromaKey ?? false;
+  const onFinishRef = useRef(onFinish);
+  onFinishRef.current = onFinish;
   const advanceAfterScratchRef = useRef<() => void>(() => undefined);
   const transitionTemplateIndexRef = useRef(0);
   const cardTransitionActiveRef = useRef(false);
@@ -5011,6 +5016,10 @@ export function ScratchPrototype({
     }
     // Single-card play — return to parent motion card (or collection fallback).
     if (!playlistMode) {
+      if (onFinishRef.current) {
+        onFinishRef.current();
+        return;
+      }
       navigateTo(gameReturnHrefFromSearch());
     }
   }

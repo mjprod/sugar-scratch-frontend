@@ -32,6 +32,7 @@
     "@use-gesture/react": "^10.3.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.539.0",
+    "motion": "^12.43.0",
     "ogl": "^1.0.11",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
+import { Paths } from "@/routes/Paths";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
@@ -9,6 +10,7 @@ const MODEL = "julianaval";
 const CARD = "juliana_1";
 
 export function LpBuildPage1() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
@@ -59,6 +61,7 @@ export function LpBuildPage1() {
               `${window.location.pathname}${window.location.search}`,
             );
           }}
+          onFinish={() => navigate(Paths.lpBuildPage2)}
         />
       </div>
     </div>
