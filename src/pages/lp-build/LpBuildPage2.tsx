@@ -84,56 +84,58 @@ export function LpBuildPage2() {
 
   return (
     <LpBuildShell>
-      <div className="lp-build-copy-wrap">
-        <img
-          src="/svg/scratchHeartBg.svg"
-          alt=""
-          className="lp-build-copy-heart"
-          aria-hidden="true"
-          draggable={false}
-        />
-        <p className="lp-build-copy">
-          <span className="lp-build-username">{username}</span> we're building
-          a Sugar Scratch game for fans like yours.{" "}
-          <span>We'd love to put you in the game!</span>
-        </p>
-      </div>
-      {face ? (
-        <div className="lp-build-pack-stack">
-          <PackFace
-            src={face.src}
-            poster={face.poster}
-            className="lp-build-pack--back"
-          />
-          <PackFace
-            src={face.src}
-            poster={face.poster}
-            className="lp-build-pack--front"
-          />
-        </div>
-      ) : null}
-      <div className="lp-build-headline glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-50 glass-surface">
-        <CoinLottie
-          className="lp-build-headline-coin lp-build-headline-coin--tr"
-          size={75}
-        />
-        <CoinLottie className="lp-build-headline-coin lp-build-headline-coin--bl" size={60} />
-        Scratch{" "}
-        <span className="lp-build-headline-play">
+      <div className="lp-build-hero">
+        <div className="lp-build-copy-wrap">
           <img
-            src="/svg/squiggle.svg"
+            src="/svg/scratchHeartBg.svg"
             alt=""
-            className="lp-build-headline-squiggle"
+            className="lp-build-copy-heart"
             aria-hidden="true"
             draggable={false}
           />
-          <span className="lp-build-headline-play-text">to Play</span>
-        </span>
-        <br />
-        Sugar in your Bank
-        <p className="lp-build-subhead">
-          Your fans scratch. <span>You earn money.</span>
-        </p>
+          <p className="lp-build-copy">
+            <span className="lp-build-username">{username}</span> we're building
+            a Sugar Scratch game for fans like yours.{" "}
+            <span>We'd love to put you in the game!</span>
+          </p>
+        </div>
+        {face ? (
+          <div className="lp-build-pack-stack">
+            <PackFace
+              src={face.src}
+              poster={face.poster}
+              className="lp-build-pack--back"
+            />
+            <PackFace
+              src={face.src}
+              poster={face.poster}
+              className="lp-build-pack--front"
+            />
+          </div>
+        ) : null}
+        <div className="lp-build-headline glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-50 glass-surface">
+          <CoinLottie
+            className="lp-build-headline-coin lp-build-headline-coin--tr"
+            size={75}
+          />
+          <CoinLottie className="lp-build-headline-coin lp-build-headline-coin--bl" size={60} />
+          Scratch{" "}
+          <span className="lp-build-headline-play">
+            <img
+              src="/svg/squiggle.svg"
+              alt=""
+              className="lp-build-headline-squiggle"
+              aria-hidden="true"
+              draggable={false}
+            />
+            <span className="lp-build-headline-play-text">to Play</span>
+          </span>
+          <br />
+          Sugar in your Bank
+          <p className="lp-build-subhead">
+            Your fans scratch. <span>You earn money.</span>
+          </p>
+        </div>
       </div>
       <p className="lp-build-scroll-hint">or scroll down to find out more</p>
     </LpBuildShell>

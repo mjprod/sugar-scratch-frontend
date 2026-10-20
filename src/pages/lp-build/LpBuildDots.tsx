@@ -6,7 +6,6 @@ const LP_DOTS = [
   { to: Paths.lpBuildPage3, label: "Page 3" },
   { to: Paths.lpBuildPage4, label: "Page 4" },
   { to: Paths.lpBuildPage5, label: "Page 5" },
-  { to: Paths.lpBuildPage6, label: "Page 6" },
 ] as const;
 
 export function LpBuildDots() {

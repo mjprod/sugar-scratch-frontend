@@ -99,9 +99,7 @@ export function LpBuildPage3() {
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const cards = [
-      ...scroller.querySelectorAll<HTMLElement>(
-        ".lp-build-page3-card:not(.lp-build-page3-card--spacer)",
-      ),
+      ...scroller.querySelectorAll<HTMLElement>(".lp-build-page3-card"),
     ];
     if (!cards.length) return;
     const mid = scroller.scrollLeft + scroller.clientWidth / 2;
@@ -120,6 +118,7 @@ export function LpBuildPage3() {
 
   return (
     <LpBuildShell>
+      <div className="lp-build-page3-wrap">
       <div className="lp-build-page3-headline">
         Fun for your fans.
         <br />
@@ -137,11 +136,13 @@ export function LpBuildPage3() {
       <div className="lp-build-page3-carousel-wrap">
         <div
           ref={scrollerRef}
-          className={
-            grabbing
-              ? "lp-build-page3-carousel is-grabbing"
-              : "lp-build-page3-carousel"
-          }
+          className={[
+            "lp-build-page3-carousel",
+            grabbing ? "is-grabbing" : "",
+            active === MOCK_CARDS.length - 1 ? "is-end" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           aria-label="How it works"
           onScroll={syncActive}
           onPointerDown={(event) => {
@@ -176,10 +177,7 @@ export function LpBuildPage3() {
             setGrabbing(false);
           }}
         >
-          <article
-            className="lp-build-page3-card lp-build-page3-card--spacer"
-            aria-hidden="true"
-          />
+          <div className="lp-build-page3-carousel-spacer" aria-hidden="true" />
           {MOCK_CARDS.map((card) => (
             <article key={card.title} className="lp-build-page3-card">
               {coverUrl ? (
@@ -202,13 +200,10 @@ export function LpBuildPage3() {
               </div>
             </article>
           ))}
-          <article
-            className="lp-build-page3-card lp-build-page3-card--spacer"
-            aria-hidden="true"
-          />
+          <div className="lp-build-page3-carousel-spacer" aria-hidden="true" />
         </div>
         <nav
-          className="lp-build-page3-carousel-dots glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+          className="lp-build-page3-carousel-dots glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-80 glass-surface"
           aria-label="Carousel"
         >
           {MOCK_CARDS.map((card, index) => (
@@ -235,6 +230,7 @@ export function LpBuildPage3() {
             onClick={() => navigate(Paths.lpBuildPage4)}
           />
         </div>
+      </div>
       </div>
       <p className="lp-build-scroll-hint">or scroll down to find out more</p>
     </LpBuildShell>

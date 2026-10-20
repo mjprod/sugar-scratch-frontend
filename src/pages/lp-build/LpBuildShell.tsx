@@ -16,9 +16,8 @@ function MeshPair({ className }: { className: string }) {
 export function LpBuildShell({ children }: { children?: ReactNode }) {
   const { pathname } = useLocation();
   const dotsHigh =
-    pathname === Paths.lpBuildPage4 ||
-    pathname === Paths.lpBuildPage5 ||
-    pathname === Paths.lpBuildPage6;
+    pathname === Paths.lpBuildPage4 || pathname === Paths.lpBuildPage5;
+  const showDots = pathname !== Paths.lpBuildPage6;
 
   return (
     <main
@@ -37,7 +36,7 @@ export function LpBuildShell({ children }: { children?: ReactNode }) {
         />
       </header>
       {children}
-      <LpBuildDots />
+      {showDots ? <LpBuildDots /> : null}
     </main>
   );
 }
