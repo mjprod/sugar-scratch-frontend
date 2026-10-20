@@ -150,34 +150,9 @@ const GameHistoryPage = lazy(() =>
     default: m.GameHistoryPage,
   })),
 );
-const LpBuildPage1 = lazy(() =>
-  import("@/pages/lp-build/LpBuildPage1").then((m) => ({
-    default: m.LpBuildPage1,
-  })),
-);
-const LpBuildPage2 = lazy(() =>
-  import("@/pages/lp-build/LpBuildPage2").then((m) => ({
-    default: m.LpBuildPage2,
-  })),
-);
-const LpBuildPage3 = lazy(() =>
-  import("@/pages/lp-build/LpBuildPage3").then((m) => ({
-    default: m.LpBuildPage3,
-  })),
-);
-const LpBuildPage4 = lazy(() =>
-  import("@/pages/lp-build/LpBuildPage4").then((m) => ({
-    default: m.LpBuildPage4,
-  })),
-);
-const LpBuildPage5 = lazy(() =>
-  import("@/pages/lp-build/LpBuildPage5").then((m) => ({
-    default: m.LpBuildPage5,
-  })),
-);
-const LpBuildPage6 = lazy(() =>
-  import("@/pages/lp-build/LpBuildPage6").then((m) => ({
-    default: m.LpBuildPage6,
+const LpBuildExperience = lazy(() =>
+  import("@/pages/lp-build/LpBuildExperience").then((m) => ({
+    default: m.LpBuildExperience,
   })),
 );
 
@@ -266,16 +241,15 @@ export function AppRoutes() {
               </OnboardShell>
             }
           />
-          <Route
-            path={Paths.lpBuild}
-            element={<Navigate to={Paths.lpBuildPage1} replace />}
-          />
-          <Route path={Paths.lpBuildPage1} element={<LpBuildPage1 />} />
-          <Route path={Paths.lpBuildPage2} element={<LpBuildPage2 />} />
-          <Route path={Paths.lpBuildPage3} element={<LpBuildPage3 />} />
-          <Route path={Paths.lpBuildPage4} element={<LpBuildPage4 />} />
-          <Route path={Paths.lpBuildPage5} element={<LpBuildPage5 />} />
-          <Route path={Paths.lpBuildPage6} element={<LpBuildPage6 />} />
+          <Route element={<LpBuildExperience />}>
+            <Route path={Paths.lpBuild} />
+            <Route path={Paths.lpBuildPage1} />
+            <Route path={Paths.lpBuildPage2} />
+            <Route path={Paths.lpBuildPage3} />
+            <Route path={Paths.lpBuildPage4} />
+            <Route path={Paths.lpBuildPage5} />
+            <Route path={Paths.lpBuildPage6} />
+          </Route>
 
           <Route
             element={

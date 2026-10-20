@@ -1,7 +1,5 @@
-import type { ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import type { ReactNode, Ref } from "react";
 import { LpBuildDots } from "@/pages/lp-build/LpBuildDots";
-import { Paths } from "@/routes/Paths";
 import "./lp-build.css";
 
 function MeshPair({ className }: { className: string }) {
@@ -13,16 +11,35 @@ function MeshPair({ className }: { className: string }) {
   );
 }
 
-export function LpBuildShell({ children }: { children?: ReactNode }) {
-  const { pathname } = useLocation();
-  const dotsHigh =
-    pathname === Paths.lpBuildPage4 || pathname === Paths.lpBuildPage5;
-  const showDots = pathname !== Paths.lpBuildPage6;
+export function LpBuildShell({
+  children,
+  showDots,
+  dotsHigh,
+  isDesktop,
+  scrollerRef,
+  activeIndex,
+  onSelectDot,
+  onPlayAgain,
+}: {
+  children?: ReactNode;
+  showDots: boolean;
+  dotsHigh: boolean;
+  isDesktop: boolean;
+  scrollerRef?: Ref<HTMLElement>;
+  activeIndex: number;
+  onSelectDot: (index: number) => void;
+  onPlayAgain: () => void;
+}) {
+  const className = [
+    "lp-build-shell",
+    isDesktop ? "lp-build-shell--desktop" : "lp-build-shell--mobile",
+    dotsHigh ? "lp-build-shell--dots-high" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <main
-      className={dotsHigh ? "lp-build-shell lp-build-shell--dots-high" : "lp-build-shell"}
-    >
+    <main ref={scrollerRef} className={className}>
       <div className="lp-build-mesh-layer" aria-hidden="true">
         <MeshPair className="lp-build-mesh--top-right" />
         <MeshPair className="lp-build-mesh--bottom-left" />
@@ -34,9 +51,18 @@ export function LpBuildShell({ children }: { children?: ReactNode }) {
           className="lp-build-logo"
           draggable={false}
         />
+        <button
+          type="button"
+          className="lp-build-play-again glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-80 glass-surface"
+          onClick={onPlayAgain}
+        >
+          Play Again
+        </button>
       </header>
       {children}
-      {showDots ? <LpBuildDots /> : null}
+      {showDots ? (
+        <LpBuildDots activeIndex={activeIndex} onSelect={onSelectDot} />
+      ) : null}
     </main>
   );
 }

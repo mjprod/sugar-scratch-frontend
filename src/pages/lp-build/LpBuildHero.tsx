@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { openDeferredLotties } from "@/lib/lottie/DeferredLottie";
-import { LpBuildShell } from "@/pages/lp-build/LpBuildShell";
 import { foilsFromModel, loadModels } from "@/services/models";
 
 function toTitleCase(value: string) {
@@ -17,13 +16,18 @@ function PackFace({
   src,
   poster,
   className,
+  style,
 }: {
   src: string;
   poster?: string;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <div className={className ? `lp-build-pack ${className}` : "lp-build-pack"}>
+    <div
+      className={className ? `lp-build-pack ${className}` : "lp-build-pack"}
+      style={style}
+    >
       {poster ? (
         <img
           className="lp-build-pack-poster"
@@ -46,7 +50,15 @@ function PackFace({
   );
 }
 
-export function LpBuildPage2() {
+export function LpBuildHero({
+  showScrollHint = false,
+  hintOpacity = 1,
+  parallax = 0,
+}: {
+  showScrollHint?: boolean;
+  hintOpacity?: number;
+  parallax?: number;
+}) {
   const [searchParams] = useSearchParams();
   const modelId =
     searchParams.get("model")?.trim() ||
@@ -83,9 +95,12 @@ export function LpBuildPage2() {
   }, [modelId]);
 
   return (
-    <LpBuildShell>
+    <>
       <div className="lp-build-hero">
-        <div className="lp-build-copy-wrap">
+        <div
+          className="lp-build-copy-wrap"
+          style={{ transform: `translate3d(0, ${-parallax * 0.22}px, 0)` }}
+        >
           <img
             src="/svg/scratchHeartBg.svg"
             alt=""
@@ -100,20 +115,32 @@ export function LpBuildPage2() {
           </p>
         </div>
         {face ? (
-          <div className="lp-build-pack-stack">
+          <div
+            className="lp-build-pack-stack"
+            style={{ opacity: Math.max(0, 1 - parallax / 420) }}
+          >
             <PackFace
               src={face.src}
               poster={face.poster}
               className="lp-build-pack--back"
+              style={{
+                transform: `translate(-50%, -50%) translateX(${10 - (parallax / 420) * 10}%) rotate(${9 - (parallax / 420) * 9}deg)`,
+              }}
             />
             <PackFace
               src={face.src}
               poster={face.poster}
               className="lp-build-pack--front"
+              style={{
+                transform: `translate(0, 0) translateX(${-15 + (parallax / 420) * 15}%) rotate(${-9 + (parallax / 420) * 9}deg)`,
+              }}
             />
           </div>
         ) : null}
-        <div className="lp-build-headline glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-50 glass-surface">
+        <div
+          className="lp-build-headline glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-50 glass-surface"
+          style={{ transform: `translate3d(0, ${-parallax * 0.55}px, 0)` }}
+        >
           <CoinLottie
             className="lp-build-headline-coin lp-build-headline-coin--tr"
             size={75}
@@ -137,7 +164,14 @@ export function LpBuildPage2() {
           </p>
         </div>
       </div>
-      <p className="lp-build-scroll-hint">or scroll down to find out more</p>
-    </LpBuildShell>
+      {showScrollHint ? (
+        <p
+          className="lp-build-scroll-hint"
+          style={{ opacity: hintOpacity }}
+        >
+          or scroll down to find out more
+        </p>
+      ) : null}
+    </>
   );
 }
