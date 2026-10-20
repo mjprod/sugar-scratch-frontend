@@ -265,13 +265,12 @@ export function LpBuildBenefits({
               const amount = Math.max(leave, arrive);
               const fromLeft = cardIndex % 2 === 0;
               const stackX = (fromLeft ? 1 : -1) * amount * 42;
-              const stackY = amount * cardIndex * 10;
               return (
               <article
                 key={card.title}
                 className="lp-build-page3-card"
                 style={{
-                  transform: `translate3d(${stackX}px, ${stackY}px, 0)`,
+                  transform: `translate3d(${stackX}px, 0, 0)`,
                   zIndex: MOCK_CARDS.length - cardIndex,
                 }}
               >

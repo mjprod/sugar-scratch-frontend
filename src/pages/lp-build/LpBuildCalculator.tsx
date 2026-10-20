@@ -30,6 +30,7 @@ export function LpBuildCalculator({
   const [period, setPeriod] = useState("Per Week");
   const [infoOpen, setInfoOpen] = useState(false);
   const [handleHeld, setHandleHeld] = useState(false);
+  const [tip, setTip] = useState(0);
   const closeInfo = useCallback(() => setInfoOpen(false), []);
   const floating = focused || followers.length > 0;
 
@@ -47,10 +48,18 @@ export function LpBuildCalculator({
     };
   }, [closeInfo, infoOpen]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setTip((index) => (index + 1) % TIPS.length);
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, []);
+
 
   const HANDLE_MIN = 10;
   const HANDLE_SPAN = 80;
   const handleLeft = HANDLE_MIN + (percent / 100) * HANDLE_SPAN;
+  const caretLeft = 12 + (percent / 100) * 52;
   const followerCount = Number(followers.replace(/\D/g, "")) || 0;
   const convertedCount = Math.round(followerCount * (percent / 100));
   const weeklyIncome = convertedCount * 15;
@@ -86,11 +95,14 @@ export function LpBuildCalculator({
   return (
     <div className="lp-build-page3-wrap lp-build-page4">
       <div className="lp-build-page4-tip lp-build-page4-tip--mobile">
-        <div className="lp-build-page4-tip-track">
-          {[...TIPS, ...TIPS].map((copy, index) => (
-            <p key={`mobile-${index}`}>{copy}</p>
-          ))}
-        </div>
+        {TIPS.map((copy, index) => (
+          <p
+            key={copy}
+            style={{ opacity: index === tip ? 1 : 0 }}
+          >
+            {copy}
+          </p>
+        ))}
       </div>
       <div
         className="lp-build-page3-headline"
@@ -183,11 +195,14 @@ export function LpBuildCalculator({
           </div>
         </div>
         <div className="lp-build-page4-tip lp-build-page4-tip--desktop">
-          <div className="lp-build-page4-tip-track">
-            {[...TIPS, ...TIPS].map((copy, index) => (
-              <p key={`desktop-${index}`}>{copy}</p>
-            ))}
-          </div>
+          {TIPS.map((copy, index) => (
+            <p
+              key={copy}
+              style={{ opacity: index === tip ? 1 : 0 }}
+            >
+              {copy}
+            </p>
+          ))}
         </div>
       </div>
       <div className="lp-build-page4-col lp-build-page4-col--right">
@@ -198,16 +213,19 @@ export function LpBuildCalculator({
           <div className="lp-build-page4-convert-body">
             <div className="lp-build-page4-row">
               <span className="lp-build-page4-row-title">If you convert…</span>
-              <CountUp
-                className="lp-build-page4-row-followers"
-                to={convertedCount}
-                mode="roll"
-                easing="easeOut"
-                format="standard"
-                separator=","
-                trigger="view"
-                duration={0.5}
-              />
+              <span className="lp-build-page4-row-followers-wrap">
+                <CountUp
+                  className="lp-build-page4-row-followers"
+                  to={convertedCount}
+                  mode="roll"
+                  easing="easeOut"
+                  format="standard"
+                  separator=","
+                  trigger="view"
+                  duration={0.5}
+                />
+                <span className="lp-build-page4-row-followers-label">Users</span>
+              </span>
             </div>
             <div
               ref={trackRef}
@@ -243,7 +261,12 @@ export function LpBuildCalculator({
                     ? "lp-build-page4-progress-handle is-held"
                     : "lp-build-page4-progress-handle"
                 }
-                style={{ left: `${handleLeft}%` }}
+                style={{
+                  left: `${handleLeft}%`,
+                  transform: `translateX(calc(-50% - ${(percent / 100) * 18}px))${
+                    handleHeld ? " scale(1.3)" : ""
+                  }`,
+                }}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
@@ -254,9 +277,22 @@ export function LpBuildCalculator({
                   alt=""
                   className="lp-build-page4-progress-caret"
                   draggable={false}
-                  style={{ left: `${12 + (percent / 100) * 32}px` }}
+                  style={{ left: `${caretLeft}px` }}
                 />
                 <div className="lp-build-page4-progress-bubble">
+                  <svg
+                    className="lp-build-page4-progress-grip"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M9 3h2v2H9zm4 0h2v2h-2zM9 7h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2zm-4 4h2v2H9zm4 0h2v2h-2z"
+                    />
+                  </svg>
                   <span className="lp-build-page4-progress-value">
                     {Math.round(percent)}
                   </span>

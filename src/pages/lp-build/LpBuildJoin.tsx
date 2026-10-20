@@ -1,5 +1,7 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type InputHTMLAttributes } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DeferredLottie, openDeferredLotties } from "@/lib/lottie/DeferredLottie";
+import { lottieRenderConfig } from "@/utils/lottieRender";
 
 function Field({
   id,
@@ -9,6 +11,7 @@ function Field({
   onChange,
   autoComplete,
   prefix,
+  enterKeyHint,
 }: {
   id: string;
   label: string;
@@ -17,6 +20,7 @@ function Field({
   onChange: (value: string) => void;
   autoComplete?: string;
   prefix?: string;
+  enterKeyHint?: InputHTMLAttributes<HTMLInputElement>["enterKeyHint"];
 }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -54,6 +58,7 @@ function Field({
         type={type}
         value={value}
         autoComplete={autoComplete}
+        enterKeyHint={enterKeyHint}
         onChange={(event) => onChange(event.target.value.replace(/^@+/, ""))}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -81,7 +86,7 @@ function ThankYou({ onReset }: { onReset: () => void }) {
         </p>
       </div>
       <p className="lp-build-page6-contact">
-        Any questions? <a href="mailto:hello@sugarscratch.com">Email Us</a>
+        Any questions? <a href="mailto:info@mjproductions.app">Email Us</a>
       </p>
       <p className="lp-build-page6-contact">
         <button type="button" className="lp-build-page6-reset" onClick={onReset}>
@@ -112,8 +117,9 @@ export function LpBuildJoin({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [tossed, setTossed] = useState(false);
+  const [fieldFocused, setFieldFocused] = useState(false);
   const ready = handle && firstName && lastName && email;
-  const enter = Math.min(1, Math.max(0, progress));
+  const enter = fieldFocused ? 1 : Math.min(1, Math.max(0, progress));
   const titleShift = (1 - enter) * 28;
   const fieldsShift = (1 - enter) * 64;
   const handOpacity = enter >= 0.92 ? Math.min(1, (enter - 0.92) / 0.08) : 0;
@@ -142,6 +148,7 @@ export function LpBuildJoin({
           onSubmit={(event) => {
             event.preventDefault();
             if (!ready || tossed) return;
+            openDeferredLotties();
             setTossed(true);
           }}
         >
@@ -154,6 +161,12 @@ export function LpBuildJoin({
           <div
             className="lp-build-page5-fields"
             style={{ transform: `translate3d(0, ${fieldsShift}px, 0)` }}
+            onFocusCapture={() => setFieldFocused(true)}
+            onBlurCapture={(event) => {
+              const next = event.relatedTarget;
+              if (next instanceof Node && event.currentTarget.contains(next)) return;
+              setFieldFocused(false);
+            }}
           >
           <Field
             id={handleId}
@@ -162,6 +175,7 @@ export function LpBuildJoin({
             value={handle}
             onChange={setHandle}
             autoComplete="username"
+            enterKeyHint="next"
           />
           <div className="lp-build-page5-name-row">
             <Field
@@ -170,6 +184,7 @@ export function LpBuildJoin({
               value={firstName}
               onChange={setFirstName}
               autoComplete="given-name"
+              enterKeyHint="next"
             />
             <Field
               id={lastId}
@@ -177,6 +192,7 @@ export function LpBuildJoin({
               value={lastName}
               onChange={setLastName}
               autoComplete="family-name"
+              enterKeyHint="next"
             />
           </div>
           <Field
@@ -186,6 +202,7 @@ export function LpBuildJoin({
             value={email}
             onChange={setEmail}
             autoComplete="email"
+            enterKeyHint="done"
           />
           <div className="lp-build-page5-cta">
             <CtaButton
@@ -201,6 +218,16 @@ export function LpBuildJoin({
           </div>
         </form>
       )}
+      {tossed && !submitted ? (
+        <DeferredLottie
+          className="lp-build-page5-scratch-fx"
+          src="/lottie/lottieScratchEffect.lottie"
+          autoplay
+          loop={false}
+              speed={0.75}
+          renderConfig={lottieRenderConfig()}
+        />
+      ) : null}
       {!submitted ? (
         <div
           className="lp-build-page5-hand-stage"
