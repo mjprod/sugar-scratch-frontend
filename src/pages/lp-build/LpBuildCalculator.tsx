@@ -172,6 +172,9 @@ export function LpBuildCalculator({
         className="lp-build-page4-col"
         style={{ transform: `translate3d(0, ${-parallax * 0.22}px, 0)` }}
       >
+        <span className="lp-build-page4-row-title lp-build-page4-followers-heading">
+          Followers
+        </span>
         <div
           className={
             floating

@@ -64,11 +64,13 @@ export function LpBuildBenefits({
   onBack,
   parallax = 0,
   enter = 1,
+  disableStackAnimation = false,
 }: {
   onContinue: () => void;
   onBack: () => void;
   parallax?: number;
   enter?: number;
+  disableStackAnimation?: boolean;
 }) {
   const [searchParams] = useSearchParams();
   const modelId =
@@ -206,14 +208,18 @@ export function LpBuildBenefits({
         </div>
         <div
           className="lp-build-page3-carousel-wrap"
-          style={{
-            opacity:
-              1 -
-              Math.max(
-                Math.min(1, Math.max(0, parallax / 280)),
-                1 - Math.min(1, Math.max(0, enter)),
-              ),
-          }}
+          style={
+            disableStackAnimation
+              ? undefined
+              : {
+                  opacity:
+                    1 -
+                    Math.max(
+                      Math.min(1, Math.max(0, parallax / 280)),
+                      1 - Math.min(1, Math.max(0, enter)),
+                    ),
+                }
+          }
         >
           <div
             ref={scrollerRef}
@@ -262,17 +268,23 @@ export function LpBuildBenefits({
             {MOCK_CARDS.map((card, cardIndex) => {
               const leave = Math.min(1, Math.max(0, parallax / 280));
               const arrive = 1 - Math.min(1, Math.max(0, enter));
-              const amount = Math.max(leave, arrive);
+              const amount = disableStackAnimation
+                ? 0
+                : Math.max(leave, arrive);
               const fromLeft = cardIndex % 2 === 0;
               const stackX = (fromLeft ? 1 : -1) * amount * 42;
               return (
               <article
                 key={card.title}
                 className="lp-build-page3-card"
-                style={{
-                  transform: `translate3d(${stackX}px, 0, 0)`,
-                  zIndex: MOCK_CARDS.length - cardIndex,
-                }}
+                style={
+                  disableStackAnimation
+                    ? undefined
+                    : {
+                        transform: `translate3d(${stackX}px, 0, 0)`,
+                        zIndex: MOCK_CARDS.length - cardIndex,
+                      }
+                }
               >
                 {coverUrl ? (
                   <div className="lp-build-page3-card-bg" aria-hidden="true">

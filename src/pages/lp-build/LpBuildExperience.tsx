@@ -243,8 +243,9 @@ export function LpBuildExperience() {
           <LpBuildBenefits
             onContinue={() => goTo(2)}
             onBack={() => goTo(0)}
-            parallax={reduceMotion ? 0 : benefitsParallax}
-            enter={reduceMotion ? 1 : benefitsEnter}
+            parallax={reduceMotion || isDesktop ? 0 : benefitsParallax}
+            enter={reduceMotion || isDesktop ? 1 : benefitsEnter}
+            disableStackAnimation={isDesktop}
           />
         </section>
         <section
