@@ -449,6 +449,13 @@
   line-height: 2.6875rem;
 }
 
+@media (max-width: 768px) {
+  .lp-build-page4-row--income .lp-build-page4-row-title {
+    font-size: 1.625rem;
+    line-height: 2.4375rem;
+  }
+}
+
 .lp-build-page4-row-title {
   color: #fff;
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25);
@@ -646,6 +653,7 @@
 }
 
 .lp-build-page5-form .lp-build-page4-field input {
+  height: 3.75rem;
   font-size: 1.125rem;
 }
 
@@ -683,7 +691,7 @@
   color: rgb(255 255 255 / 0.7);
   font-family: Inter, system-ui, sans-serif;
   font-size: clamp(0.95rem, 14cqi, 1.125rem);
-  line-height: 3.7rem;
+  line-height: 3.75rem;
   text-align: center;
   pointer-events: none;
   background: linear-gradient(45deg, #00000033, #00000000);
@@ -1659,6 +1667,38 @@
 }
 
 @media (min-width: 769px) {
+  .lp-build-mesh--top-right {
+    width: min(70vw, 1100px);
+    height: min(70vw, 1100px);
+    transform: translate(28%, -22%);
+  }
+
+  .lp-build-mesh--bottom-left {
+    width: min(74vw, 1180px);
+    height: min(74vw, 1180px);
+    transform: translate(-28%, 22%);
+  }
+
+  .lp-build-mesh-orb {
+    filter: blur(96px);
+  }
+
+  .lp-build-mesh-orb--a {
+    width: 640px;
+    height: 600px;
+  }
+
+  .lp-build-mesh-orb--b {
+    width: 880px;
+    height: 830px;
+  }
+
+  .lp-build-mesh--top-right .lp-build-mesh-orb--a,
+  .lp-build-mesh--top-right .lp-build-mesh-orb--b {
+    width: 640px;
+    height: 600px;
+  }
+
   .lp-build-hero {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1683,6 +1723,7 @@
 
   .lp-build-hero .lp-build-copy-wrap {
     grid-area: copy;
+    z-index: 20;
     margin: 0;
     max-width: 38ch;
   }
@@ -1721,12 +1762,8 @@
     transform: scaleX(-1) translateX(9rem);
   }
 
-  .lp-build-page3-cta-title {
-    font-size: 5.625rem;
-  }
-
-  .lp-build-page3-cta {
-    height: 4.5rem;
+  .lp-build-page3-cta-block {
+    display: none;
   }
 
   .lp-build-page4-row-title {
@@ -1755,6 +1792,16 @@
     width: 100%;
     max-width: 75rem;
     margin-inline: auto;
+  }
+
+  .lp-build-page3-carousel {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 12rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 12rem), transparent);
+  }
+
+  .lp-build-page3-carousel.is-end {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 12rem);
+    mask-image: linear-gradient(to right, transparent, #000 12rem);
   }
 
   .lp-build-page3-carousel-spacer {
@@ -1792,12 +1839,20 @@
     margin-inline: auto;
   }
 
+  .lp-build-page5-thanks .lp-build-page6-copy .lp-build-copy-heart {
+    width: 282px;
+    height: 246px;
+  }
+
   .lp-build-section--join {
     position: relative;
     overflow: hidden;
+    height: 100dvh;
+    min-height: 100dvh;
   }
 
   .lp-build-join {
+    height: 100%;
     min-height: 100%;
   }
 
@@ -1819,7 +1874,7 @@
   .lp-build-page5-scratch-fx {
     top: auto;
     bottom: 0;
-    height: 25.78125rem;
+    height: 38.671875rem;
   }
 
   .lp-build-page4 {
