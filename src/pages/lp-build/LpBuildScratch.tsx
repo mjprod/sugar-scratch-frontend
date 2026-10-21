@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
+import { purgeRouteMemory } from "@/lib/memory/purgeRouteMemory";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
@@ -41,6 +42,18 @@ export function LpBuildScratch({ onFinish }: { onFinish: () => void }) {
     };
   }, [scratchCss]);
 
+  const handleFinish = useCallback(() => {
+    // In-page swap to the landing hero — no route change, so MemoryTransition
+    // never purges. Unload Safari decoder buffers and arm loseContext before
+    // the second page mounts its own pack videos.
+    purgeRouteMemory({ from: "game", to: "light" });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        onFinish();
+      });
+    });
+  }, [onFinish]);
+
   if (!model || !card) {
     return (
       <div className="app-shell app-shell--game">
@@ -54,12 +67,13 @@ export function LpBuildScratch({ onFinish }: { onFinish: () => void }) {
       <div className="stage-game">
         <ScratchPrototype
           key={`${model}-${card}`}
+          requireEntryTap
           onLeave={() => {
             window.location.replace(
               `${window.location.pathname}${window.location.search}`,
             );
           }}
-          onFinish={onFinish}
+          onFinish={handleFinish}
         />
       </div>
     </div>

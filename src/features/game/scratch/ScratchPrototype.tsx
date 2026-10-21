@@ -1411,6 +1411,7 @@ function buildAutoScratchPath(mesh: TrackedMesh | null): Vec2[] {
 export function ScratchPrototype({
   skipToPlay = false,
   loopFromIntro = false,
+  requireEntryTap = false,
   onLeave,
   onFinish,
 }: {
@@ -1421,6 +1422,12 @@ export function ScratchPrototype({
   skipToPlay?: boolean;
   /** Audio lab: after a card finishes, replay it from the theme intro. */
   loopFromIntro?: boolean;
+  /**
+   * Always show Tap to play before starting clips. iOS Safari often will not
+   * decode muted autoplay until a user gesture, which leaves the WebGL stage
+   * black until the first scratch.
+   */
+  requireEntryTap?: boolean;
   /** When set, pause control is rendered in the top chrome left gutter. */
   onLeave?: () => void;
   /** Single-card play: called instead of returning to collection. */
@@ -1822,6 +1829,8 @@ export function ScratchPrototype({
    */
   const [entryReady, setEntryReady] = useState(() => {
     if (typeof window === "undefined") return false;
+    // Landing / cold iOS: force a gesture so muted clips can decode.
+    if (requireEntryTap) return false;
     // Lab opens straight into play — no Tap-to-play gate.
     if (skipToPlay) return true;
     if (!loadSoundEnabled()) return true;
@@ -2480,6 +2489,11 @@ export function ScratchPrototype({
         armStartIntro(themeKeyForCard(card));
       }
     });
+    // Theme intros are off in product builds — the game pair must start inside
+    // this gesture or iOS leaves the WebGL stage black until the first scratch.
+    if (!introActiveRef.current) {
+      kickGameVideos();
+    }
     const video = introVideoElRef.current;
     if (video && introActiveRef.current) {
       void playThemeIntro(video, () => effectiveSoundEffect()).then(
@@ -3975,6 +3989,17 @@ export function ScratchPrototype({
     const foregroundVideo = foregroundVideoRef.current;
     if (!bottomVideo || !foregroundVideo) return;
 
+    const prepareMutedInline = (video: HTMLVideoElement) => {
+      video.muted = true;
+      video.defaultMuted = true;
+      video.setAttribute("muted", "");
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+    };
+    prepareMutedInline(bottomVideo);
+    prepareMutedInline(foregroundVideo);
+
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
     // intro is up, fully unload the card clips so only the intro decodes.
@@ -4003,11 +4028,8 @@ export function ScratchPrototype({
     setGameVideosReady(false);
 
     let kicked = false;
-    const kickPlayback = () => {
+    const markReady = () => {
       if (cancelled || kicked) return;
-      // Wait until BOTH videos have at least HAVE_CURRENT_DATA so their first
-      // decoded frame is ready. Firing play() on one while the other is still
-      // buffering creates a startup offset that the soft-seek must then chase.
       if (bottomVideo.readyState < 2 || foregroundVideo.readyState < 2) return;
       if (bottomVideo.videoWidth < 2 || foregroundVideo.videoWidth < 2) return;
       kicked = true;
@@ -4018,29 +4040,32 @@ export function ScratchPrototype({
         isPaused: false,
       };
       setDuration(nextDuration);
-
-      const startPair = () => {
-        if (cancelled) return;
-        void Promise.all([bottomVideo.play(), foregroundVideo.play()])
-          .then(() => {
-            if (!cancelled) setGameVideosReady(true);
-          })
-          .catch(() => undefined);
-      };
-
-      // Play from the already-decoded first frame. Seeking to 0 after a src
-      // attach fires waiting and flashes a black decoder frame.
-      startPair();
+      setGameVideosReady(true);
+    };
+    const kickPlayback = () => {
+      if (cancelled) return;
+      // iOS often will not decode a first frame until play() — don't wait for
+      // HAVE_CURRENT_DATA before calling it or the stage stays black.
+      void Promise.all([bottomVideo.play(), foregroundVideo.play()])
+        .then(() => {
+          markReady();
+        })
+        .catch(() => undefined);
+      markReady();
     };
 
     // Reuse the same two <video> elements and swap src (no React key remount).
     // Safari releases the previous decoder only when we unload before load.
     void (async () => {
+      const loading = Promise.all([
+        loadVideoSrc(bottomVideo, card.bottom),
+        loadVideoSrc(foregroundVideo, card.foreground),
+      ]);
+      // Kick decode immediately; loadVideoSrc waits on a frame that iOS will
+      // not produce until play() has been attempted.
+      kickPlayback();
       try {
-        await Promise.all([
-          loadVideoSrc(bottomVideo, card.bottom),
-          loadVideoSrc(foregroundVideo, card.foreground),
-        ]);
+        await loading;
       } catch {
         if (!cancelled) setGameVideosReady(true);
         return;
@@ -6630,6 +6655,8 @@ export function ScratchPrototype({
             ref={bottomVideoRef}
             className="source-video"
             muted
+            defaultMuted
+            autoPlay
             loop
             playsInline
             preload="auto"
@@ -6638,6 +6665,8 @@ export function ScratchPrototype({
             ref={foregroundVideoRef}
             className="source-video"
             muted
+            defaultMuted
+            autoPlay
             loop
             playsInline
             preload="auto"
