@@ -1,21 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LpBuildBenefits } from "@/pages/lp-build/LpBuildBenefits";
 import { LpBuildCalculator } from "@/pages/lp-build/LpBuildCalculator";
 import { LpBuildHero } from "@/pages/lp-build/LpBuildHero";
 import { LpBuildJoin } from "@/pages/lp-build/LpBuildJoin";
 import { LpBuildScratch } from "@/pages/lp-build/LpBuildScratch";
 import { LpBuildShell } from "@/pages/lp-build/LpBuildShell";
-import { Paths } from "@/routes/Paths";
 
 const DESKTOP_MQ = "(min-width: 769px)";
-
-const MARKETING_PATHS = [
-  Paths.lpBuildPage2,
-  Paths.lpBuildPage3,
-  Paths.lpBuildPage4,
-  Paths.lpBuildPage5,
-] as const;
 
 const SECTION_IDS = [
   "lp-hero",
@@ -24,40 +15,18 @@ const SECTION_IDS = [
   "lp-join",
 ] as const;
 
-const SLIDE_COUNT = MARKETING_PATHS.length;
-
-function isScratchPath(pathname: string) {
-  return pathname === Paths.lpBuild || pathname === Paths.lpBuildPage1;
-}
-
-function marketingIndexFromPath(pathname: string) {
-  if (pathname === Paths.lpBuildPage6) return 3;
-  const index = MARKETING_PATHS.indexOf(
-    pathname as (typeof MARKETING_PATHS)[number],
-  );
-  return index >= 0 ? index : 0;
-}
-
-function pathFor(index: number, submitted: boolean) {
-  if (submitted) return Paths.lpBuildPage6;
-  return MARKETING_PATHS[Math.max(0, Math.min(index, SLIDE_COUNT - 1))];
-}
+const SLIDE_COUNT = SECTION_IDS.length;
 
 export function LpBuildExperience() {
-  const { pathname, search } = useLocation();
-  const navigate = useNavigate();
   const scrollerRef = useRef<HTMLElement | null>(null);
   const programmaticScroll = useRef(false);
-  const alignedRef = useRef(false);
 
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia(DESKTOP_MQ).matches : false,
   );
-  const [scratchDone, setScratchDone] = useState(() => !isScratchPath(pathname));
-  const [submitted, setSubmitted] = useState(
-    () => pathname === Paths.lpBuildPage6,
-  );
-  const [index, setIndex] = useState(() => marketingIndexFromPath(pathname));
+  const [scratchDone, setScratchDone] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [index, setIndex] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [hintOpacity, setHintOpacity] = useState(1);
   const [parallax, setParallax] = useState(0);
@@ -84,13 +53,6 @@ export function LpBuildExperience() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  useEffect(() => {
-    if (scratchDone) return;
-    if (pathname === Paths.lpBuild) {
-      navigate(`${Paths.lpBuildPage1}${search}`, { replace: true });
-    }
-  }, [navigate, pathname, scratchDone, search]);
-
   const goTo = useCallback(
     (next: number) => {
       if (submitted) return;
@@ -106,38 +68,6 @@ export function LpBuildExperience() {
     },
     [reduceMotion, submitted],
   );
-
-  useEffect(() => {
-    if (!scratchDone) return;
-    if (pathname === Paths.lpBuildPage6) {
-      setSubmitted(true);
-      setIndex(3);
-      return;
-    }
-    if (isScratchPath(pathname)) return;
-    setIndex(marketingIndexFromPath(pathname));
-  }, [pathname, scratchDone]);
-
-  useEffect(() => {
-    if (!scratchDone) return;
-    const nextPath = pathFor(active, submitted);
-    if (pathname === nextPath) return;
-    navigate(`${nextPath}${search}`, { replace: true });
-  }, [active, navigate, pathname, scratchDone, search, submitted]);
-
-  useEffect(() => {
-    alignedRef.current = false;
-  }, [scratchDone]);
-
-  useLayoutEffect(() => {
-    if (!scratchDone || alignedRef.current) return;
-    const el = document.getElementById(SECTION_IDS[active]);
-    if (!el) return;
-    alignedRef.current = true;
-    programmaticScroll.current = true;
-    el.scrollIntoView({ behavior: "auto" });
-    programmaticScroll.current = false;
-  }, [active, scratchDone]);
 
   useEffect(() => {
     if (!scratchDone) return;
@@ -194,25 +124,22 @@ export function LpBuildExperience() {
   const onScratchFinish = useCallback(() => {
     setScratchDone(true);
     setIndex(0);
-    navigate(`${Paths.lpBuildPage2}${search}`, { replace: true });
-  }, [navigate, search]);
+  }, []);
 
   const onSubmitted = useCallback(() => setSubmitted(true), []);
   const onReset = useCallback(() => {
     setSubmitted(false);
     setIndex(0);
-    navigate(`${Paths.lpBuildPage2}${search}`, { replace: true });
     requestAnimationFrame(() => {
       document.getElementById("lp-hero")?.scrollIntoView({ behavior: "auto" });
     });
-  }, [navigate, search]);
+  }, []);
 
   const onPlayAgain = useCallback(() => {
     setSubmitted(false);
     setScratchDone(false);
     setIndex(0);
-    navigate(`${Paths.lpBuildPage1}${search}`, { replace: true });
-  }, [navigate, search]);
+  }, []);
 
   if (!scratchDone) {
     return <LpBuildScratch onFinish={onScratchFinish} />;

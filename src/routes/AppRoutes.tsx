@@ -241,15 +241,7 @@ export function AppRoutes() {
               </OnboardShell>
             }
           />
-          <Route element={<LpBuildExperience />}>
-            <Route path={Paths.lpBuild} />
-            <Route path={Paths.lpBuildPage1} />
-            <Route path={Paths.lpBuildPage2} />
-            <Route path={Paths.lpBuildPage3} />
-            <Route path={Paths.lpBuildPage4} />
-            <Route path={Paths.lpBuildPage5} />
-            <Route path={Paths.lpBuildPage6} />
-          </Route>
+          <Route path={Paths.lpBuild} element={<LpBuildExperience />} />
 
           <Route
             element={
