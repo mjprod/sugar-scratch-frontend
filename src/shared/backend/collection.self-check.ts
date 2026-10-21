@@ -3,8 +3,11 @@
  * Run: npx tsx src/shared/backend/collection.self-check.ts
  */
 import {
+  packFanCatalogFromCards,
   photoScratchSlotPrices,
   regroupCollectionGroups,
+  sameModelId,
+  type BackendCard,
   type BackendCollectionGroup,
 } from "./collection";
 
@@ -115,5 +118,50 @@ assert(prices[0] === 10, "slot 01 uses API card_price");
 assert(prices[1] === 12, "slot 02 rounds API card_price");
 assert(prices[2] === null, "missing card_price stays null");
 assert(prices[9] === null, "unlisted slots stay null");
+
+function fanCard(
+  id: string,
+  modelId: string,
+  themeId: string,
+): BackendCard {
+  return {
+    id,
+    label: `${modelId} ${themeId}`,
+    background: "",
+    foreground: `/cards/${id}.mp4`,
+    model_id: modelId,
+    sort_order: 0,
+    photo_scratch_done: 0,
+    theme_id: themeId,
+    trailer: `/cards/${id}-trailer.mp4`,
+  };
+}
+
+assert(sameModelId("wildhalli", "WILDHALLI"), "model ids match case-insensitively");
+assert(!sameModelId("wildhalli", "julianaval"), "halli is not juliana");
+
+const mixedCards = [
+  fanCard("julianaval_cop", "julianaval", "police"),
+  fanCard("halli_cop", "wildhalli", "police"),
+  fanCard("halli_nurse", "wildhalli", "nurse"),
+];
+const halliFan = packFanCatalogFromCards(mixedCards, "wildhalli");
+assert(
+  halliFan.cards.every((card) => card.modelId === "wildhalli"),
+  "scoped fan never includes juliana cards",
+);
+assert(halliFan.cards.length === 2, "scoped fan keeps only halli motions");
+assert(
+  packFanCatalogFromCards(mixedCards, "wildhalli").cards.some(
+    (card) => card.id === "halli_cop",
+  ),
+  "halli police clip stays in the halli fan",
+);
+assert(
+  !packFanCatalogFromCards(mixedCards, "wildhalli").cards.some(
+    (card) => card.id === "julianaval_cop",
+  ),
+  "juliana police clip is dropped from the halli fan",
+);
 
 console.log("collection regroup self-check: ok");

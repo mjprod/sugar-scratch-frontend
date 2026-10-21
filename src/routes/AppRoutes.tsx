@@ -150,6 +150,11 @@ const GameHistoryPage = lazy(() =>
     default: m.GameHistoryPage,
   })),
 );
+const LpBuildExperience = lazy(() =>
+  import("@/pages/lp-build/LpBuildExperience").then((m) => ({
+    default: m.LpBuildExperience,
+  })),
+);
 
 
 function GameCatalogRoute({ children }: { children: ReactNode }) {
@@ -236,6 +241,7 @@ export function AppRoutes() {
               </OnboardShell>
             }
           />
+          <Route path={Paths.lpBuild} element={<LpBuildExperience />} />
 
           <Route
             element={

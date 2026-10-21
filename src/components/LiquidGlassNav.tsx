@@ -140,9 +140,8 @@ function measureBubbleForTab(
   const rect = target.getBoundingClientRect();
   const bubbleH = remToPx(DOCK_BUBBLE_H_REM);
   const bubbleW = remToPx(DOCK_BUBBLE_W_REM);
-  // Center Home: circle centered on the raised heart, not the stretched slot.
-  // Logged-in Home is the center heart (bag). Guests put Home on the feed slot.
-  if ((tabId === "bag" && authedHome) || (tabId === "feed" && !authedHome)) {
+  // Logged-in Home: circle on the raised heart. Guest Home is a regular dock item.
+  if (tabId === "bag" && authedHome) {
     const heart = target.querySelector(".nav-test-dock-primary-icon, .nav-test-dock-primary-guest-card");
     const heartRect = heart?.getBoundingClientRect() ?? rect;
     const size = Math.max(heartRect.width, heartRect.height) + 11;

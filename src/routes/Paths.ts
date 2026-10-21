@@ -93,6 +93,7 @@ export const Paths = {
   recommendSwipe: "/recommend/swipe",
   welcome: "/welcome",
   resetPassword: "/reset-password",
+  lpBuild: "/join",
   coverflowV2: "/coverflow-v2",
   mobileCarousel: "/mobile-carousel",
   /** @deprecated Design is now the logged-in home at Paths.home. */
