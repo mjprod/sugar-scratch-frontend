@@ -56,7 +56,7 @@ export function LpBuildShell({
           className="lp-build-play-again glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-80 glass-surface"
           onClick={onPlayAgain}
         >
-          Play Again
+          Replay Demo
         </button>
       </header>
       {children}
