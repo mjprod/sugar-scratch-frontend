@@ -6655,7 +6655,6 @@ export function ScratchPrototype({
             ref={bottomVideoRef}
             className="source-video"
             muted
-            defaultMuted
             autoPlay
             loop
             playsInline
@@ -6665,7 +6664,6 @@ export function ScratchPrototype({
             ref={foregroundVideoRef}
             className="source-video"
             muted
-            defaultMuted
             autoPlay
             loop
             playsInline
