@@ -150,8 +150,8 @@ export function LpBuildCalculator({
                   How it's calculated
                 </h2>
                 <p className="mt-4 text-[14px] leading-relaxed text-white/70">
-                  On average the user on our platform will spend $30 a week on
-                  scratchies packs of which you recieve 50%
+                  On average, users on our platform spend $30 a week on
+                  scratchie packs, of which you receive 50%.
                 </p>
                 <div className="mt-6 h-12 w-full">
                   <CtaButton

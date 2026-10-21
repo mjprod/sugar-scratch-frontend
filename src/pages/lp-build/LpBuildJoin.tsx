@@ -80,7 +80,7 @@ function ThankYou({ onReset }: { onReset: () => void }) {
           draggable={false}
         />
         <p className="lp-build-copy">
-          Your account manger{" "}
+          Your account manager{" "}
           <span className="lp-build-username">Jorlyn</span> will contact you
           in the next 24 hours.
         </p>
