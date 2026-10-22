@@ -220,6 +220,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+@media (min-width: 981px) {
+  .coverflow-pack-label__collection,
+  .coverflow-pack-label__pack,
+  .coverflow-pack-label__price {
+    font-size: var(--text-title);
+  }
+}
+
 .coverflow-pack-html-label::before,
 .coverflow-active-stack--html::before {
   content: '';

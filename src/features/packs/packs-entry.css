@@ -466,6 +466,17 @@ p {
   white-space: pre-line;
 }
 
+@media (min-width: 981px) {
+  .coverflow-pack-label__collection,
+  .coverflow-desktop-under-label-text,
+  .coverflow-active-pack-label__collection,
+  .coverflow-pack-label__pack,
+  .coverflow-desktop-under-label-text-pack,
+  .coverflow-active-pack-label__pack {
+    font-size: var(--text-title);
+  }
+}
+
 .coverflow-pack-flag {
   display: inline-block;
   margin-right: 0.15rem;
