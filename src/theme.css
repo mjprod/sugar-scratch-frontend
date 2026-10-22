@@ -3752,7 +3752,9 @@ body[data-theme="v8"] .hf-stepper-icon {
     display: flex;
     align-self: center;
     z-index: 8;
-    margin-right: -2.5rem;
+    order: 1;
+    margin-right: 0;
+    margin-left: -2.5rem;
   }
 }
 
