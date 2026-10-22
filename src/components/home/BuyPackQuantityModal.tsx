@@ -118,7 +118,6 @@ export function BuyPackQuantityModal({
             label="Buy Pack"
             costAmount={formatPrice(total)}
             costIconAnimated={false}
-            fontSize={15}
             glowOuterBloom="off"
             disabled={buyDisabled}
             onClick={onBuy}

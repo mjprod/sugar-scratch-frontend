@@ -21,7 +21,6 @@ export function CollectionEmptyState({
             fillParent
             label="Explore Packs"
             costAmount={null}
-            fontSize={14}
             onClick={onExplorePacks}
           />
         </div>

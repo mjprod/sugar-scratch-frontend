@@ -51,7 +51,6 @@ export function CollectionSnapshot({
               fillParent
               label={hasPendingReveal ? "Go to Ready to Reveal" : "Explore Packs"}
               costAmount={null}
-              fontSize={14}
               onClick={hasPendingReveal ? onFocusReadyToReveal : onExplorePacks}
             />
           </div>

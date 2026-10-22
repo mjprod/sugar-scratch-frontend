@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { OffscreenVideo } from "@/components/creator/OffscreenVideo";
 import { createPortal } from "react-dom";
 import { ChevronLeft, Play } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
@@ -489,7 +489,7 @@ function MotionCardScreenInner({
             Running low on Diamonds?
           </span>
           <span className="cpv2-diamonds-cta-btn">
-            <DiamondLottie size={11} aria-hidden />
+            <DiamondLottie size={14} aria-hidden />
             Get Diamonds
           </span>
           <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
@@ -512,9 +512,7 @@ function MotionCardScreenInner({
             <button type="button" onClick={() => setLegal("terms")}>
               Terms &amp; Conditions
             </button>
-            <button type="button" onClick={() => setLegal("terms")}>
-              Sign up as a influencer
-            </button>
+            <Link to={Paths.lpBuild}>Sign up as a influencer</Link>
           </nav>
         </footer>
       </div>

@@ -133,7 +133,6 @@ export function DailyRewardHero({
                 fillParent
                 label={claiming ? "Claiming…" : "Claim Reward"}
                 costAmount={null}
-                fontSize={14}
                 disabled={claiming}
                 aria-busy={claiming}
                 onClick={handleClaim}

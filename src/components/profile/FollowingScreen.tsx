@@ -367,7 +367,6 @@ function FollowingEmpty({ onDiscover }: { onDiscover: () => void }) {
           fillParent
           label="Discover Creators"
           costAmount={null}
-          fontSize={14}
           onClick={onDiscover}
         />
       </div>

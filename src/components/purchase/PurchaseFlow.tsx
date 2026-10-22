@@ -1,4 +1,4 @@
-import { AnimatePresence, m, type PanInfo } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import {
   AlertTriangle,
   Check,
@@ -7,7 +7,6 @@ import {
   Layers3,
   Loader2,
   PackageOpen,
-  Sparkles,
   TimerOff,
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -41,9 +40,8 @@ import { loadFanLayout } from "@/features/reveal/lib/fanLayout";
 import "@/features/reveal/reveal.css";
 import { PACK_MODEL_URL } from "@/lib/pack3d";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
-import { PACK_PHOTOS, resolveInventoryCoverUrl } from "@/lib/photos";
+import { resolveInventoryCoverUrl } from "@/lib/photos";
 import {
-  isVideoSrc,
   loadModelProfile,
   type FoilPack,
   type ModelProfile,
@@ -164,7 +162,6 @@ function PurchaseCtaButton({
       type="button"
       label={label}
       costAmount={null}
-      fontSize={15}
       strokeWidth={1}
       disabled={disabled}
       className={className}
@@ -314,7 +311,7 @@ export function PurchaseFlow({
     if (noPacksLeft) return "no-packs";
     if (pack.entry === "scratch") {
       if (!bagResume || resumeIndex === null) return "expired";
-      return "scratch";
+      return "cards-ready";
     }
     if (pack.entry === "cart-tear") return "ready";
     if (pack.entry === "open") return openResume ? "ready" : "no-packs";
@@ -322,7 +319,12 @@ export function PurchaseFlow({
     if (restored.status === "expired") return "expired";
     if (resumed) {
       if (resumeIndex === null) return "complete";
-      if (resumed.stage === "preview" || resumed.stage === "cards-ready") {
+      if (
+        resumed.stage === "preview" ||
+        resumed.stage === "cards-ready" ||
+        resumed.stage === "grid" ||
+        resumed.stage === "scratch"
+      ) {
         return "cards-ready";
       }
       if (resumed.stage === "ready") return "ready";
@@ -362,7 +364,6 @@ export function PurchaseFlow({
   );
   const [scratched, setScratched] = useState<string[]>(initialScratched);
   const [scratchProgress, setScratchProgress] = useState(0);
-  const [revealSettling, setRevealSettling] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState<PackQuantity | null>(null);
@@ -423,7 +424,6 @@ export function PurchaseFlow({
       }
     });
   }
-  const revealActionLockedRef = useRef(false);
   const trackedResume = useRef(false);
   const tearLocked = useRef(false);
   /** Skip pack opening when resuming from Collection Ready to Scratch. */
@@ -483,13 +483,6 @@ export function PurchaseFlow({
     });
   }
   const packImage = session?.foilFaceUrl ?? packCoverUrl;
-  const cardImages = useMemo(() => {
-    const faces = session?.cards
-      .map((card) => card.faceUrl)
-      .filter((url): url is string => Boolean(url));
-    if (faces?.length) return faces;
-    return Object.values(PACK_PHOTOS).slice(0, 8);
-  }, [session]);
 
   useEffect(() => {
     let cancelled = false;
@@ -970,10 +963,6 @@ export function PurchaseFlow({
     }
   }
 
-  function scratch(amount = 34) {
-    setScratchProgress((value) => Math.min(100, value + amount));
-  }
-
   function needsServerReveal() {
     const currentId = instanceId ?? pack.instanceId;
     return Boolean(
@@ -1137,66 +1126,6 @@ export function PurchaseFlow({
     }
   }
 
-  async function finishSession(revealedIds: string[]) {
-    const settled = await settleRevealed(revealedIds);
-    if (!settled) return;
-    const readyId = instanceId ?? pack.packId;
-    upsertPackReadyToScratch({
-      packId: readyId,
-      session: session!,
-      revealed: revealedIds,
-    });
-    trackScratchEvent("All Cards Revealed", { packId: readyId });
-
-    const nextPack = nextQueuedTearInstance(
-      pack,
-      instanceId ?? pack.packId,
-      purchaseId,
-    );
-    if (nextPack) {
-      clearOpening();
-      const remainingAfter = Math.max(0, readyPackCount - 1);
-      const openedKey = openedTearFoilKeyRef.current;
-      const remainingFoils = remainingTearFoils(
-        tearFoils,
-        openedKey,
-        remainingAfter,
-      );
-      setTearFoils(remainingFoils);
-      openedTearFoilKeyRef.current = null;
-      const nextFace = remainingFoils[0] ?? purchasedFoil;
-      setPurchasedFoil(nextFace);
-      setInstanceId(nextPack.instanceId);
-      setPurchaseId(nextPack.purchaseId);
-      setSession(
-        nextFace
-          ? {
-              ...buildFoilOpeningSession([nextFace], packCost(1, pack.packId)),
-              foilFaceUrl: nextFace.videoUrl,
-              foilLabel: nextFace.label,
-            }
-          : null,
-      );
-      setReadyPackCount((count) => Math.max(1, count - 1));
-      setScratched([]);
-      setSelectedCard(0);
-      setScratchProgress(0);
-      awardedIds.current = new Set();
-      settlingRevealIdsRef.current.clear();
-      openingIdRef.current = null;
-      serverRevealCardIdsRef.current = null;
-      tearLocked.current = false;
-      setSealTorn(false);
-      bumpInventory();
-      setStage("ready");
-      return;
-    }
-    setTearFoils([]);
-    openedTearFoilKeyRef.current = null;
-    if (pack.entry === "cart-tear") clearCart();
-    setStage("complete");
-  }
-
   async function markCurrentRevealed(): Promise<{ ids: string[]; ok: boolean }> {
     if (!session) return { ids: scratched, ok: true };
     const card = session.cards[selectedCard];
@@ -1221,29 +1150,6 @@ export function PurchaseFlow({
       cardId: card.id,
     });
     return { ids: next, ok: true };
-  }
-
-  async function scratchNext() {
-    if (!session || revealActionLockedRef.current) return;
-    revealActionLockedRef.current = true;
-    setRevealSettling(true);
-    try {
-      trackScratchEvent("Scratch Next Selected", {
-        packId: instanceId ?? pack.packId,
-      });
-      const { ids: revealedIds, ok } = await markCurrentRevealed();
-      if (!ok) return;
-      const next = nextUnscratchedIndex(session, revealedIds);
-      if (next === null) {
-        await finishSession(revealedIds);
-        return;
-      }
-      setSelectedCard(next);
-      setScratchProgress(0);
-    } finally {
-      revealActionLockedRef.current = false;
-      setRevealSettling(false);
-    }
   }
 
   function persistOpened(revealedIds: string[]) {
@@ -1553,20 +1459,6 @@ export function PurchaseFlow({
     stage === "load-failed" ||
     stage === "opening-interrupted";
 
-  const remainingAfterCurrent =
-    session == null
-      ? 0
-      : session.cards.filter((card) => {
-          if (scratched.includes(card.id)) return false;
-          if (
-            scratchProgress >= 100 &&
-            card.id === session.cards[selectedCard]?.id
-          ) {
-            return false;
-          }
-          return true;
-        }).length;
-
   return (
     <section
       role="dialog"
@@ -1593,9 +1485,9 @@ export function PurchaseFlow({
           <ChevronLeft className="size-5" />
         </button>
         <div className="absolute left-1/2 -translate-x-1/2 text-center">
-          <p className="text-[13px] font-semibold">{stageTitle(stage)}</p>
+          <p className="text-caption font-semibold">{stageTitle(stage)}</p>
           {terminal ? null : (
-            <p className="text-[10px] text-white/40">{stageStep(stage)} of 4</p>
+            <p className="text-caption text-white/40">{stageStep(stage)} of 4</p>
           )}
         </div>
       </header>
@@ -1776,32 +1668,6 @@ export function PurchaseFlow({
                 </button>
               ) : null}
             </div>
-          ) : null}
-
-          {stage === "grid" && session ? (
-            <GridStage
-              session={session}
-              selected={selectedCard}
-              scratched={scratched}
-              onSelect={(index) => {
-                setSelectedCard(index);
-                setScratchProgress(0);
-                setStage("scratch");
-              }}
-            />
-          ) : null}
-
-          {stage === "scratch" && session ? (
-            <ScratchStage
-              card={session.cards[selectedCard]}
-              image={cardImages[selectedCard % cardImages.length]}
-              progress={scratchProgress}
-              remainingAfterReveal={remainingAfterCurrent}
-              settling={revealSettling}
-              onScratch={scratch}
-              onScratchNext={scratchNext}
-              onFinishLater={() => scratchLater("finish")}
-            />
           ) : null}
 
           {stage === "saved" ? (
@@ -2002,8 +1868,10 @@ function StateScreen({
       >
         {icon}
       </span>
-      <h1 className="mt-5 text-[24px] font-bold tracking-[-0.02em]">{title}</h1>
-      <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-white/55">{body}</p>
+      <h1 className="mt-5 text-headline font-bold tracking-[-0.02em] text-ink">
+        {title}
+      </h1>
+      <p className="mt-2 max-w-sm text-body leading-relaxed text-white/55">{body}</p>
       <div className="mt-7 h-14 w-full max-w-sm">
         <PurchaseCtaButton
           label={primary.busy ? "Working…" : primary.label}
@@ -2015,7 +1883,7 @@ function StateScreen({
         <button
           type="button"
           onClick={secondary.onClick}
-          className="mt-3 h-11 px-6 text-[13px] font-medium text-white/55 hover:text-white/80"
+          className="mt-3 h-11 px-6 text-caption font-medium text-white/55 hover:text-white/80"
         >
           {secondary.label}
         </button>
@@ -2126,11 +1994,11 @@ function SelectStage({
         <HolographicPackCard src={packImage} name={pack.packName} badge="Featured" compact />
       </div>
       <div className="mt-6 lg:mt-0 lg:flex-1">
-        <p className="text-[13px] text-white/50">{pack.creator}</p>
-        <h1 className="mt-1 text-[30px] leading-tight font-bold tracking-[-0.03em]">
+        <p className="text-caption text-white/50">{pack.creator}</p>
+        <h1 className="mt-1 text-headline leading-tight font-bold tracking-[-0.03em]">
           Choose your opening
         </h1>
-        <p className="mt-2 text-[14px] text-white/55">
+        <p className="mt-2 text-body text-white/55">
           Pick a pack quantity. Your cards stay hidden until you tear the seal.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -2155,14 +2023,14 @@ function SelectStage({
                   )}
                 </span>
                 <span className="ml-3 min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold">
+                  <span className="block text-body font-semibold">
                     {busy ? "Processing purchase…" : option.label}
                   </span>
-                  <span className="mt-0.5 block text-[12px] text-white/45">
+                  <span className="mt-0.5 block text-caption text-white/45">
                     {short > 0 ? `Need ${short} more Diamonds` : option.detail}
                   </span>
                 </span>
-                <span className="flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-[13px] font-semibold">
+                <span className="flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-caption font-semibold">
                   <DiamondLottie size={14} aria-hidden />
                   {cost}
                 </span>
@@ -2171,7 +2039,7 @@ function SelectStage({
           })}
         </div>
         {submitting ? (
-          <p className="mt-3 flex items-center gap-2 text-[13px] text-white/55" role="status">
+          <p className="mt-3 flex items-center gap-2 text-caption text-white/55" role="status">
             <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
             Confirming your purchase…
           </p>
@@ -2380,13 +2248,13 @@ function ReadyStage({
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       {!selectedId ? (
         <div className="pointer-events-none absolute inset-x-0 top-6 z-20 px-5 text-center">
-          <p className="text-[12px] font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
+          <p className="text-caption font-semibold tracking-[0.16em] text-[oklch(0.767_0.139_91.06)] uppercase">
             {remainingUnopened <= 1
               ? "Pack ready"
               : `${remainingUnopened} packs ready to open`}
           </p>
-          <h1 className="mt-2 text-[28px] font-bold">Inspect. Then tear the seal.</h1>
-	          <p className="mt-2 text-[13px] text-white/45">Select a pack, then swipe left to open.</p>
+          <h1 className="mt-2 text-headline font-bold">Inspect. Then tear the seal.</h1>
+	          <p className="mt-2 text-caption text-white/45">Select a pack, then swipe left to open.</p>
         </div>
       ) : null}
       <div
@@ -2572,175 +2440,6 @@ function MotionRevealStage({
           ) : null}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function GridStage({
-  session,
-  selected,
-  scratched,
-  onSelect,
-}: {
-  session: OpeningSession;
-  selected: number;
-  scratched: string[];
-  onSelect: (index: number) => void;
-}) {
-  return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-8">
-      <h1 className="text-[28px] font-bold">Choose a card</h1>
-      <p className="mt-2 text-[14px] text-white/50">
-        {scratched.length
-          ? `${session.cards.length - scratched.length} of ${session.cards.length} cards still sealed.`
-          : "Every card remains unopened."}
-      </p>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {session.cards.map((card, index) => {
-          const done = scratched.includes(card.id);
-          return (
-            <button
-              key={card.id}
-              type="button"
-              disabled={done}
-              onClick={() => onSelect(index)}
-              className={[
-                "aspect-[3/4] rounded-[20px] border bg-[radial-gradient(circle_at_30%_20%,oklch(0.627_0.233_303.9_/_0.7),#151515_58%)] p-3 text-left transition",
-                done
-                  ? "cursor-not-allowed border-white/10 opacity-45"
-                  : "hover:-translate-y-1",
-                selected === index && !done ? "border-[oklch(0.606_0.219_292.72)]" : "border-white/15",
-              ].join(" ")}
-            >
-              <div className="flex size-full flex-col justify-between rounded-[14px] border border-white/20 p-3">
-                {done ? (
-                  <Check className="size-5 text-emerald-300" />
-                ) : (
-                  <Sparkles className="size-5 text-white/45" />
-                )}
-                <span className="text-[11px] font-semibold tracking-wide text-white/55">
-                  {done ? card.rarity.toUpperCase() : `CARD ${index + 1}`}
-                </span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ScratchStage({
-  card,
-  image,
-  progress,
-  remainingAfterReveal,
-  settling = false,
-  onScratch,
-  onScratchNext,
-  onFinishLater,
-}: {
-  card: OpeningSession["cards"][number];
-  image: string;
-  progress: number;
-  remainingAfterReveal: number;
-  settling?: boolean;
-  onScratch: (amount?: number) => void;
-  onScratchNext: () => void;
-  onFinishLater: () => void;
-}) {
-  function drag(_: unknown, info: PanInfo) {
-    onScratch(Math.max(18, Math.min(45, Math.abs(info.offset.x) / 4)));
-  }
-
-  const revealed = progress >= 100;
-  const hasMore = remainingAfterReveal > 0;
-
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-5 py-8 text-center">
-      <p className="text-[12px] font-semibold tracking-[0.15em] text-[oklch(0.767_0.139_91.06)] uppercase">
-        {revealed ? card.rarity : `${Math.round(progress)}% scratched`}
-      </p>
-      <h1 className="mt-2 text-[28px] font-bold">
-        {revealed ? "Card Revealed" : "Scratch to reveal"}
-      </h1>
-      {revealed && hasMore ? (
-        <p className="mt-2 text-[14px] text-white/50">
-          {remainingAfterReveal}{" "}
-          {remainingAfterReveal === 1 ? "Card Remaining" : "Cards Remaining"}
-        </p>
-      ) : null}
-      <div className="relative mt-7 aspect-[3/4] w-[240px] overflow-hidden rounded-[24px] border border-white/20 bg-[oklch(0.196_0_0)] shadow-2xl">
-        {isVideoSrc(card.faceUrl ?? image) ? (
-          <video
-            src={card.faceUrl ?? image}
-            muted
-            loop
-            playsInline
-            autoPlay
-            className="absolute inset-0 size-full object-cover"
-          />
-        ) : (
-          <img src={card.faceUrl ?? image} alt="Revealed collectible" className="absolute inset-0 size-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
-        <div className="absolute inset-x-0 bottom-5 z-10">
-          <p className="text-[20px] font-bold">
-            {card.cardKind && card.cardId ? `${card.cardKind} card` : card.rarity}
-          </p>
-          <p className="text-[13px] text-[oklch(0.767_0.139_91.06)]">+{card.reward} Coins</p>
-        </div>
-        <m.button
-          type="button"
-          aria-label="Scratch card cover"
-          drag={revealed ? false : "x"}
-          dragConstraints={{ left: 0, right: 0 }}
-          onDragEnd={drag}
-          onClick={() => onScratch()}
-          animate={{ opacity: Math.max(0, 1 - progress / 100) }}
-          className="absolute inset-0 z-20 cursor-ew-resize touch-none bg-[linear-gradient(135deg,oklch(0.522_0.12_292.97),#171421_45%,#d4af37_100%)]"
-          style={{ pointerEvents: revealed ? "none" : "auto" }}
-        >
-          <div className="absolute inset-4 rounded-[18px] border border-white/35" />
-          <Sparkles className="absolute top-1/2 left-1/2 size-12 -translate-x-1/2 -translate-y-1/2 text-white/45" />
-          <span className="absolute inset-x-0 bottom-7 text-[11px] font-bold tracking-[0.16em] uppercase">
-            Drag or tap to scratch
-          </span>
-        </m.button>
-      </div>
-      {revealed ? (
-        <m.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-7 flex w-full max-w-sm flex-col items-center"
-        >
-          <div className="h-14 w-full">
-            <PurchaseCtaButton
-              label={
-                settling
-                  ? "Revealing…"
-                  : hasMore
-                    ? "Scratch Next"
-                    : "Finish"
-              }
-              onClick={onScratchNext}
-              disabled={settling}
-            />
-          </div>
-          {hasMore ? (
-            <button
-              type="button"
-              onClick={onFinishLater}
-              disabled={settling}
-              className="mt-3 h-11 px-6 text-[13px] text-white/45 hover:text-white/70"
-            >
-              Finish Later
-            </button>
-          ) : null}
-        </m.div>
-      ) : (
-        <p className="mt-5 text-[13px] text-white/45">Drag across the card or tap three times.</p>
-      )}
     </div>
   );
 }

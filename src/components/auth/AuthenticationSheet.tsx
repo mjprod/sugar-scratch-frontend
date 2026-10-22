@@ -554,7 +554,6 @@ export function AuthenticationSheet({
                               : "Back to Log In"
                           }
                           costAmount={null}
-                          fontSize={15}
                           strokeWidth={1}
                           onClick={() => {
                             if (initialMode === "forgot-password") onDismiss();
@@ -597,7 +596,6 @@ export function AuthenticationSheet({
                                 : "Send Reset Link"
                             }
                             costAmount={null}
-                            fontSize={15}
                             strokeWidth={1}
                             disabled={busy || !email}
                           />
@@ -627,7 +625,6 @@ export function AuthenticationSheet({
                                 />
                               }
                               costAmount={null}
-                              fontSize={15}
                               strokeWidth={1}
                               disabled={busy}
                               onClick={() => void finishSocial("Google")}
@@ -880,7 +877,6 @@ export function AuthenticationSheet({
                                     : "Continue"
                               }
                               costAmount={null}
-                              fontSize={15}
                               strokeWidth={1}
                               disabled={busy || !canSubmitPrimary}
                             />

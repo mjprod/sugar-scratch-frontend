@@ -23,10 +23,87 @@
 :root {
   --font-card-overlay: "CardOverlay", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   --font-maytra: "Maytra", cursive;
+
+  /*
+   * Fluid type: one 0–1 progress over the same viewport, then min + t*(max-min).
+   * Avoids per-step clamp() preferred values that start/stop at different widths
+   * (Kevin Powell, progress()/atan2). Viewport bounds in px; sizes in rem so zoom works.
+   * tan(atan2()) is the unitless 0–1 that older engines can compute; progress() when supported.
+   */
+  --fluid-min-vw: 390px;
+  --fluid-max-vw: 1440px;
+  --fluid: clamp(
+    0,
+    tan(atan2(100vw - var(--fluid-min-vw), var(--fluid-max-vw) - var(--fluid-min-vw))),
+    1
+  );
+
+  --text-caption-min: 0.75rem;
+  --text-caption-max: 0.8125rem;
+  --text-body-min: 0.875rem;
+  --text-body-max: 1rem;
+  --text-title-min: 1rem;
+  --text-title-max: 1.125rem;
+  --text-headline-min: 1.25rem;
+  --text-headline-max: 1.5rem;
+  --text-display-min: 1.5rem;
+  --text-display-max: 2.125rem;
+
+  --text-caption: calc(
+    var(--text-caption-min) + (var(--text-caption-max) - var(--text-caption-min)) * var(--fluid)
+  );
+  --text-body: calc(
+    var(--text-body-min) + (var(--text-body-max) - var(--text-body-min)) * var(--fluid)
+  );
+  --text-title: calc(
+    var(--text-title-min) + (var(--text-title-max) - var(--text-title-min)) * var(--fluid)
+  );
+  --text-headline: calc(
+    var(--text-headline-min) + (var(--text-headline-max) - var(--text-headline-min)) * var(--fluid)
+  );
+  --text-display: calc(
+    var(--text-display-min) + (var(--text-display-max) - var(--text-display-min)) * var(--fluid)
+  );
+  --text-caption--line-height: 1.45;
+  --text-body--line-height: 1.45;
+  --text-title--line-height: 1.35;
+  --text-headline--line-height: 1.15;
+  --text-headline--letter-spacing: -0.02em;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+}
+
+@supports (width: calc(1px * progress(100vw, 390px, 1440px))) {
+  :root {
+    --fluid: clamp(0, progress(100vw, var(--fluid-min-vw), var(--fluid-max-vw)), 1);
+  }
 }
 
 @theme {
   --font-display: "Inter", system-ui, sans-serif;
+
+  --text-caption: calc(
+    var(--text-caption-min) + (var(--text-caption-max) - var(--text-caption-min)) * var(--fluid)
+  );
+  --text-caption--line-height: 1.45;
+  --text-body: calc(
+    var(--text-body-min) + (var(--text-body-max) - var(--text-body-min)) * var(--fluid)
+  );
+  --text-body--line-height: 1.45;
+  --text-title: calc(
+    var(--text-title-min) + (var(--text-title-max) - var(--text-title-min)) * var(--fluid)
+  );
+  --text-title--line-height: 1.35;
+  --text-headline: calc(
+    var(--text-headline-min) + (var(--text-headline-max) - var(--text-headline-min)) * var(--fluid)
+  );
+  --text-headline--line-height: 1.15;
+  --text-headline--letter-spacing: -0.02em;
+  --text-display: calc(
+    var(--text-display-min) + (var(--text-display-max) - var(--text-display-min)) * var(--fluid)
+  );
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
 
   --color-canvas: oklch(0.14 0 0);
   --color-canvas-elevated: oklch(0.196 0 0);

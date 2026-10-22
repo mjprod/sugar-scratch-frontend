@@ -27,7 +27,7 @@
   gap: 8px;
   margin: 0;
   color: oklch(1 0 0);
-  font-size: 16px;
+  font-size: var(--text-title);
   font-weight: 650;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -56,7 +56,7 @@
   border-radius: 999px;
   background: oklch(0.2 0.01 285);
   color: oklch(1 0 0 / 0.62);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -71,7 +71,7 @@
   border: 0;
   background: transparent;
   color: var(--color-accent, oklch(0.656 0.212 354.31));
-  font-size: 13px;
+  font-size: var(--text-caption);
   font-weight: 600;
   cursor: pointer;
 }
@@ -148,7 +148,7 @@
 .following-new-badge {
   margin-top: -2px;
   color: var(--color-accent, oklch(0.656 0.212 354.31));
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 750;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -158,7 +158,7 @@
   max-width: 100%;
   overflow: hidden;
   color: oklch(1 0 0 / 0.88);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -229,7 +229,7 @@
 .following-card-name {
   overflow: hidden;
   color: oklch(1 0 0);
-  font-size: 16px;
+  font-size: var(--text-title);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -240,7 +240,7 @@
 .following-card-handle {
   overflow: hidden;
   color: oklch(1 0 0 / 0.5);
-  font-size: 13px;
+  font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -255,7 +255,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--color-accent, oklch(0.656 0.212 354.31));
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 650;
   line-height: 1;
   cursor: pointer;
@@ -285,7 +285,7 @@
 .following-collection-label {
   margin: 0;
   color: oklch(1 0 0 / 0.42);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -324,7 +324,7 @@
 .following-collection-name {
   overflow: hidden;
   color: oklch(1 0 0 / 0.92);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 650;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -333,14 +333,14 @@
 
 .following-collection-season {
   color: oklch(1 0 0 / 0.45);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1.25;
 }
 
 .following-collection-new {
   color: var(--color-accent, oklch(0.656 0.212 354.31));
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 650;
   line-height: 1.25;
 }
@@ -383,7 +383,7 @@
 .following-sort-title {
   margin: 0 0 12px;
   color: oklch(1 0 0);
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 700;
 }
 
@@ -404,7 +404,7 @@
   border-top: 1px solid oklch(1 0 0 / 0.06);
   background: transparent;
   color: oklch(1 0 0 / 0.88);
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 550;
   text-align: left;
   cursor: pointer;
@@ -459,7 +459,7 @@
 .following-empty-title {
   margin: 0;
   color: oklch(1 0 0);
-  font-size: 20px;
+  font-size: var(--text-title);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -468,7 +468,7 @@
   margin: 0;
   max-width: 28ch;
   color: oklch(1 0 0 / 0.55);
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 1.45;
 }
 

@@ -33,8 +33,8 @@ export function HdVideoWarning({ onDismiss }: { onDismiss: () => void }) {
         <h2 id="hd-video-warning-title" className="sr-only">
           HD video warning
         </h2>
-	        <p className="mt-4 text-[14px] leading-relaxed text-white/70">
-	          <span className="block text-[16px] text-white/85">
+	        <p className="mt-4 text-body leading-relaxed text-white/70">
+	          <span className="block text-title text-white/85">
 	            Higher-Resolution videos on newer phones.
 	          </span>
 	          Uses more data & more CPU processing.
@@ -45,7 +45,6 @@ export function HdVideoWarning({ onDismiss }: { onDismiss: () => void }) {
             fillParent
             label="Dismiss"
             costAmount={null}
-            fontSize={14}
             onClick={onDismiss}
           />
         </div>

@@ -209,7 +209,6 @@ export function MyCollectionSection({
               fillParent
               label={hasPendingReveal ? "Go to Ready to Reveal" : "Explore"}
               costAmount={null}
-              fontSize={14}
               onClick={hasPendingReveal ? onFocusReadyToReveal : onExplorePacks}
             />
           </div>
@@ -230,14 +229,6 @@ export function MyCollectionSection({
 
       <div className="mc-models-filters" role="group" aria-label="Filters">
         <div className="mc-models-filter-left">
-          <button
-            type="button"
-            className="mc-models-search"
-            aria-label="Search creators"
-            onClick={openSearch}
-          >
-            <Search size={16} strokeWidth={2.2} aria-hidden />
-          </button>
           <FilterButton
             label={creatorFilterLabel}
             open={openMenu === "creator"}
@@ -246,6 +237,14 @@ export function MyCollectionSection({
               setOpenMenu((m) => (m === "creator" ? null : "creator"))
             }
           />
+          <button
+            type="button"
+            className="mc-models-search"
+            aria-label="Search creators"
+            onClick={openSearch}
+          >
+            <Search size={16} strokeWidth={2.2} aria-hidden />
+          </button>
         </div>
         <FilterButton
           label={openMenu === "sort" || sort !== "newest" ? sortLabel : "Sort By"}
@@ -318,7 +317,6 @@ export function MyCollectionSection({
               fillParent
               label="Clear Filters"
               costAmount={null}
-              fontSize={14}
               onClick={() => setCreatorFilter("all")}
             />
           </div>
@@ -362,15 +360,15 @@ export function MyCollectionSection({
                   ) : null}
                   <span className="mc-model-metrics">
                     <span className="mc-model-metric">
-                      <Images size={10} strokeWidth={2.4} aria-hidden />
+                      <Images size={12} strokeWidth={2.4} aria-hidden />
                       {progress.staticOwned}/{progress.staticTotal}
                     </span>
                     <span className="mc-model-metric">
-                      <Layers size={10} strokeWidth={2.4} aria-hidden />
+                      <Layers size={12} strokeWidth={2.4} aria-hidden />
                       {progress.motionOwned}/{progress.motionTotal}
                     </span>
                     <span className="mc-model-metric">
-                      <Sparkles size={10} strokeWidth={2.4} aria-hidden />
+                      <Sparkles size={12} strokeWidth={2.4} aria-hidden />
                       {progress.ultraOwned}/{progress.ultraTotal}
                     </span>
                   </span>

@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -39,7 +39,7 @@ export function CollectionSiteFooter() {
       >
         <span className="cpv2-diamonds-cta-title">Running low on Diamonds?</span>
         <span className="cpv2-diamonds-cta-btn">
-          <DiamondLottie size={11} aria-hidden />
+          <DiamondLottie size={14} aria-hidden />
           Get Diamonds
         </span>
         <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
@@ -62,7 +62,7 @@ export function CollectionSiteFooter() {
           <button type="button" onClick={() => setLegal("terms")}>
             Terms &amp; Conditions
           </button>
-          <a href="mailto:creators@sugarscratch.com">Sign up as a influencer</a>
+          <Link to={Paths.lpBuild}>Sign up as a influencer</Link>
         </nav>
       </footer>
 

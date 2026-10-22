@@ -73,7 +73,7 @@
   --cta-cursor-angle: 45deg;
   --cta-aurora-base: oklch(0.244 0.098 3.75);
   --cta-label-color: oklch(0.934 0.036 0.4);
-  --cta-font-size: 18px;
+  --cta-font-size: var(--text-title);
   /* Pointed-hex tip depth (fraction of height; default 0.27). */
   --cta-tip: calc(var(--cta-h) * 0.27);
 

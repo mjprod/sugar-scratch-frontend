@@ -33,7 +33,7 @@
   margin: 0;
   min-width: 0;
   color: oklch(1 0 0);
-  font-size: 1.35rem;
+  font-size: var(--text-headline);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -42,7 +42,7 @@
 .history-related-note {
   margin: -0.35rem 0 0.75rem;
   color: oklch(1 0 0 / 0.55);
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   line-height: 1.4;
 }
 
@@ -68,7 +68,7 @@
   border-radius: 999px;
   background: oklch(1 0 0 / 0.04);
   color: oklch(1 0 0 / 0.7);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   cursor: pointer;
 }
@@ -111,7 +111,7 @@
 .history-pager-range {
   margin: 0;
   color: oklch(1 0 0 / 0.5);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -127,7 +127,7 @@
   border-radius: 10px;
   background: oklch(1 0 0 / 0.04);
   color: oklch(1 0 0 / 0.85);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   cursor: pointer;
 }
@@ -152,7 +152,7 @@
 .history-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
 }
 
 .history-table thead th {
@@ -163,7 +163,7 @@
   border-bottom: 1px solid oklch(1 0 0 / 0.1);
   background: oklch(0.2 0.015 280);
   color: oklch(1 0 0 / 0.55);
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: left;
@@ -225,7 +225,7 @@
 
 .history-cell-muted {
   color: oklch(1 0 0 / 0.5);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 
 .history-change-line.is-pos {
@@ -303,20 +303,20 @@
 
 .history-mobile-title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   font-weight: 650;
 }
 
 .history-mobile-when {
   margin: 0.2rem 0 0;
   color: oklch(1 0 0 / 0.5);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 
 .history-mobile-label {
   margin: 0 0 0.15rem;
   color: oklch(1 0 0 / 0.4);
-  font-size: 0.65rem;
+  font-size: var(--text-caption);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -325,7 +325,7 @@
 .history-mobile-status {
   margin: 0;
   color: oklch(1 0 0 / 0.6);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 
 /* Game history card list */
@@ -336,7 +336,7 @@
 .history-date-label {
   margin: 0 0 0.45rem;
   color: oklch(1 0 0 / 0.45);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -388,14 +388,14 @@
 
 .history-row-title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--text-body);
   font-weight: 600;
 }
 
 .history-row-meta {
   margin: 0.15rem 0 0;
   color: oklch(1 0 0 / 0.48);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
 }
 
 .history-row-values {
@@ -405,7 +405,7 @@
 
 .history-row-amount {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   font-weight: 600;
 }
 
@@ -424,7 +424,7 @@
 
 .history-empty-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--text-title);
   font-weight: 600;
 }
 
@@ -432,7 +432,7 @@
   margin: 0;
   max-width: 22rem;
   color: oklch(1 0 0 / 0.55);
-  font-size: 0.875rem;
+  font-size: var(--text-body);
 }
 
 .history-empty-actions {
@@ -450,7 +450,7 @@
   border-radius: 999px;
   background: oklch(0.55 0.18 330);
   color: white;
-  font-size: 0.875rem;
+  font-size: var(--text-body);
   font-weight: 600;
   cursor: pointer;
 }
@@ -507,14 +507,14 @@
 
 .history-detail-title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--text-title);
   font-weight: 650;
 }
 
 .history-detail-status {
   margin: 0;
   color: oklch(1 0 0 / 0.55);
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
 }
 
 .history-detail-fields {
@@ -527,7 +527,7 @@
   display: grid;
   grid-template-columns: 8.5rem 1fr;
   gap: 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
 }
 
 .history-detail-fields dt {

@@ -75,7 +75,7 @@ export function HolographicPackCard({
           transition={{ duration: 3.8, repeat: Infinity, repeatDelay: 2.5, ease: "easeOut" }}
         />
         {badge ? (
-          <span className="absolute top-3 left-3 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] text-white uppercase backdrop-blur-md">
+          <span className="absolute top-3 left-3 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-caption font-bold tracking-[0.12em] text-white uppercase backdrop-blur-md">
             {badge}
           </span>
         ) : null}

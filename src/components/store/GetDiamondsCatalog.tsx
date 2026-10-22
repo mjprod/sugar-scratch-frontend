@@ -298,7 +298,6 @@ function PackageCard({
             type="button"
             label={processing ? "Processing…" : "Buy"}
             costAmount={null}
-            fontSize={15}
             cornerRadius={999}
             strokeWidth={1}
             disabled={disabled}
@@ -356,7 +355,6 @@ function WatchAdPanel({
           type="button"
           label={processing ? "Loading ad…" : "▶ Watch Ad"}
           costAmount={null}
-          fontSize={14}
           cornerRadius={999}
           disabled={disabled}
           aria-busy={processing}
@@ -447,7 +445,6 @@ function ExchangePanel({
                   leadingIcon={
                     busy ? undefined : <CoinLottie size={22} aria-hidden />
                   }
-                  fontSize={13}
                   cornerRadius={999}
                   disabled={disabled || !canAfford || busy}
                   aria-label={ariaLabel}

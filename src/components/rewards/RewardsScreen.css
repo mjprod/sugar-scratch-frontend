@@ -117,14 +117,14 @@ body[data-theme="v8"] .hub-feature-tile-copy {
 }
 
 body[data-theme="v8"] .hub-feature-tile-title {
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: oklch(1 0 0);
 }
 
 body[data-theme="v8"] .hub-feature-tile-detail {
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 1.35;
   color: oklch(1 0 0 / 0.48);
 }
@@ -151,11 +151,11 @@ body[data-theme="v8"] .hub-feature-tile-chevron {
   }
 
   body[data-theme="v8"] .hub-feature-tile-title {
-    font-size: 16px;
+    font-size: var(--text-title);
   }
 
   body[data-theme="v8"] .hub-feature-tile-detail {
-    font-size: 13px;
+    font-size: var(--text-caption);
   }
 }
 @media (max-width: 1023px) {

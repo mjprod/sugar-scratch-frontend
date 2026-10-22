@@ -527,7 +527,6 @@ export function CreatorFeedCard({
               fillParent
               label="Buy Pack"
               costAmount={item.diamondCost}
-              fontSize={15}
               /* Hairline on-button ring (iOS-safe stroke layer). */
               strokeWidth={1}
               /*

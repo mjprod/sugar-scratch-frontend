@@ -296,7 +296,6 @@ export function WelcomeGiftOverlay({
                     fillParent
                     label={error ? "Try Again" : phase === "claiming" ? "Claiming…" : "Claim Now!"}
                     costAmount={null}
-                    fontSize={15}
                     strokeWidth={1}
                     disabled={claimBusy}
                     aria-busy={claimBusy}

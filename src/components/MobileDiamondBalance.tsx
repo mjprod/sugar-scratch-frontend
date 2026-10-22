@@ -83,7 +83,7 @@ export function MobileDiamondBalance({
   const inner = (
     <>
       <DiamondLottie className="shrink-0" size={14} aria-hidden />
-      <span className="min-w-[1.25ch] text-[13px] font-semibold tabular-nums text-white">
+      <span className="min-w-[1.25ch] text-body font-semibold tabular-nums text-white">
         {label}
       </span>
     </>

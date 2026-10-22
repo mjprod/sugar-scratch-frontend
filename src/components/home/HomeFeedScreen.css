@@ -4,7 +4,7 @@ body[data-theme="v8"] .hf-page--embed .hf-overlay.is-visible .hf-overlay-inner {
 }
 
 body[data-theme="v8"] .hf-page--embed .hf-creator {
-  font-size: 18px;
+  font-size: var(--text-title);
 }
 
 body[data-theme="v8"] .hf-name-row {
@@ -26,7 +26,7 @@ body[data-theme="v8"] .hf-creator {
   background: transparent;
   color: oklch(1 0 0);
   font-family: inherit;
-  font-size: 24px;
+  font-size: var(--text-display);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.15;
@@ -99,7 +99,7 @@ body[data-theme="v8"] .hf-tag {
   border-radius: 999px;
   background: oklch(0 0 0 / 0.28);
   color: oklch(1 0 0 / 0.82);
-  font-size: 12px;
+  font-size: var(--text-body);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -249,7 +249,7 @@ body[data-theme="v8"] .hf-like-icon {
 
 body[data-theme="v8"] .hf-like-caption {
   color: oklch(1 0 0 / 0.78);
-  font-size: 11px;
+  font-size: var(--text-body);
   font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1;

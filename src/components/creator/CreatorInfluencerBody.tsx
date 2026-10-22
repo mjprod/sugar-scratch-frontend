@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import {
@@ -399,7 +399,7 @@ export function CreatorInfluencerBody({
           Running low on Diamonds?
         </span>
         <span className="cpv2-diamonds-cta-btn">
-          <DiamondLottie size={11} aria-hidden />
+          <DiamondLottie size={14} aria-hidden />
           Get Diamonds
         </span>
         <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
@@ -544,9 +544,7 @@ export function CreatorInfluencerBody({
           <button type="button" onClick={() => setLegal("terms")}>
             Terms &amp; Conditions
           </button>
-          <a href="mailto:creators@sugarscratch.com">
-            Sign up as a influencer
-          </a>
+          <Link to={Paths.lpBuild}>Sign up as a influencer</Link>
         </nav>
       </footer>
 

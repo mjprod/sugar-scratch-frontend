@@ -135,7 +135,6 @@ export function ChangePasswordScreen({
               type="button"
               label="Back to Profile"
               costAmount={null}
-              fontSize={15}
               strokeWidth={1}
               onClick={onBack}
             />
@@ -260,7 +259,6 @@ export function ChangePasswordScreen({
             type="submit"
             label={submitting ? "Changing…" : "Change Password"}
             costAmount={null}
-            fontSize={15}
             strokeWidth={1}
             disabled={!canSubmit}
           />

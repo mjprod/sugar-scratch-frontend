@@ -141,8 +141,8 @@ function ResetDialog({
         <h2 id={titleId} className="sr-only">
           {title}
         </h2>
-        <p className="mt-4 text-[14px] leading-relaxed text-white/70">
-          <span className="block text-[16px] text-white/85">{title}</span>
+        <p className="mt-4 text-body leading-relaxed text-white/70">
+          <span className="block text-title text-white/85">{title}</span>
           {lead}
         </p>
         <div className="mt-6 flex flex-col gap-3">
@@ -153,7 +153,6 @@ function ResetDialog({
                 fillParent
                 label="Continue"
                 costAmount={null}
-                fontSize={14}
                 onClick={onContinue}
               />
             </div>
