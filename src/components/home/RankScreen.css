@@ -420,3 +420,11 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
   height: 34px;
   min-height: 34px;
 }
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .category-leaderboard-play,
+  body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-play {
+    width: 116px;
+    min-width: 116px;
+  }
+}

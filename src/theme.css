@@ -1279,7 +1279,7 @@ body[data-theme="v8"] .category-leaderboard-play .cta-button__title-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15em;
+  gap: 8px;
   width: max-content;
   margin-inline: auto;
 }
