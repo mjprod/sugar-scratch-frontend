@@ -400,15 +400,13 @@
 .welcome-gift-hint,
 .welcome-gift-reassure {
   margin: 14px 0 0;
-  color: color-mix(in oklab, var(--color-champagne, #e8c478) 72%, transparent);
-  font-size: var(--text-caption);
-  letter-spacing: 0.04em;
   text-align: center;
 }
 
 .welcome-gift-reassure {
   color: oklch(90.413% 0.10949 86.795);
   font-size: var(--text-body);
+  letter-spacing: 0.04em;
 }
 
 .welcome-gift-hint {
@@ -417,6 +415,7 @@
   display: grid;
   place-items: center;
   color: rgb(255 255 255 / 0.5);
+  font-size: var(--text-caption);
   letter-spacing: 0.08em;
 }
 

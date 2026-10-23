@@ -544,7 +544,7 @@ export function CreatorInfluencerBody({
           <button type="button" onClick={() => setLegal("terms")}>
             Terms &amp; Conditions
           </button>
-          <Link to={Paths.lpBuild}>Sign up as a influencer</Link>
+          <Link to={Paths.lpBuild}>Sign up as an influencer</Link>
         </nav>
       </footer>
 
