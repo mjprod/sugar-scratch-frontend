@@ -11,11 +11,6 @@ body[data-theme="v8"] .profile-site-footer {
   border-top: 1px solid oklch(1 0 0 / 0.08);
   text-align: center;
 }
-@media (min-width: 769px) {
-  body[data-theme="v8"] .profile-site-footer {
-    display: none;
-  }
-}
 
 body[data-theme="v8"] .profile-hero.profile-card {
   height: auto;
@@ -78,7 +73,7 @@ body[data-theme="v8"] .profile-hero-divider {
 
 body[data-theme="v8"] .profile-hero-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   flex-shrink: 0;
   align-items: center;
   gap: var(--space-2);
@@ -95,13 +90,35 @@ body[data-theme="v8"] .profile-action-btn:focus-visible {
   outline-offset: 2px;
 }
 
-body[data-theme="v8"] .profile-action-btn--logout {
-  /* Tailwind @theme --color-danger */
+body[data-theme="v8"] .profile-logout-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-top: var(--space-6);
+  padding: var(--space-3) 0 var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
   color: var(--color-danger);
+  font: inherit;
+  font-size: var(--text-title);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
 }
 
-body[data-theme="v8"] .profile-action-btn--logout svg {
-  color: inherit;
+body[data-theme="v8"] .profile-logout-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+body[data-theme="v8"] .profile-logout-link:focus-visible {
+  outline: 2px solid oklch(0.757 0.168 353.61);
+  outline-offset: 2px;
+}
+
+body[data-theme="v8"] .profile-balance-row .diamond-lottie picture {
+  animation: none;
 }
 
 body[data-theme="v8"] .profile-action-label {
@@ -248,7 +265,7 @@ body[data-theme="v8"] .profile-balance-cta {
 
 	  body[data-theme="v8"] .profile-hero-actions {
 	    display: grid;
-	    grid-template-columns: repeat(3, minmax(0, 1fr));
+	    grid-template-columns: repeat(2, minmax(0, 1fr));
 	    align-items: stretch;
 	    gap: var(--space-1);
 	    width: 100%;
@@ -260,13 +277,6 @@ body[data-theme="v8"] .profile-balance-cta {
 	    display: none;
 	  }
 
-  body[data-theme="v8"] .profile-action-btn--logout {
-    color: var(--color-danger);
-  }
-
-  body[data-theme="v8"] .profile-action-btn--logout svg {
-    color: inherit;
-  }
 
   body[data-theme="v8"] .profile-action-label {
     display: inline;

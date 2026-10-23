@@ -146,7 +146,7 @@ body[data-theme="v8"] .hf-overlay-inner {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: var(--space-1);
+  gap: var(--space-3);
   opacity: 0.88;
   transform: translate3d(0, 8px, 0);
   backface-visibility: hidden;

@@ -602,7 +602,9 @@ export function triggerFromAction(
     const path = action.path.split("?")[0] ?? action.path;
     if (path.startsWith("/collection")) return "view-collection";
     if (path.startsWith("/rewards")) return "view-rewards";
-    if (path.startsWith("/profile")) return "view-profile";
+    if (path.startsWith("/profile") || path.startsWith("/settings")) {
+      return "view-profile";
+    }
     if (path.startsWith("/inbox")) return "view-rewards";
     if (path.startsWith("/pack-pocket") || path.startsWith("/cart")) {
       return "buy-pack";

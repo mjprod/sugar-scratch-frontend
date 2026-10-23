@@ -31,7 +31,7 @@ export type ContinueCollectingSectionProps = {
   ariaLabel?: string;
   /** When true, hides progress rings, percentage and fraction from cards. */
   hideProgress?: boolean;
-  /** See-all control label (default SEE ALL). */
+  /** See-all control label (default Search). */
   seeAllLabel?: string;
   /** Extra class on the section root (e.g. home-v2 title casing). */
   className?: string;
@@ -71,7 +71,7 @@ export function ContinueCollectingSection({
   icon,
   ariaLabel,
   hideProgress = false,
-  seeAllLabel = "SEE ALL",
+  seeAllLabel = "Search",
   className,
   avatarOnly = false,
 }: ContinueCollectingSectionProps) {

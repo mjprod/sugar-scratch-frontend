@@ -11,7 +11,10 @@ import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useAuth } from "@/contexts/useAuth";
 import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
-import { isNewUserForHomepageHero } from "@/services/collectionState";
+import {
+  hasSeenHowToPlay,
+  isNewUserForHomepageHero,
+} from "@/services/collectionState";
 import {
   fetchHomepage,
   fetchLeaderboard,
@@ -145,7 +148,6 @@ export function HomeScreen({
   showTutorial,
   onTutorialDone,
   onSkipTutorial,
-  onRestart,
   onStartPlaying,
   onOpenCreator,
   onClaimDaily,
@@ -396,7 +398,7 @@ export function HomeScreen({
         Content width is constrained by the inner wrapper (same as other pages).
       */}
       <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-page">
-        {isNewUser || guest ? <PlaySteps /> : null}
+        {(isNewUser && !hasSeenHowToPlay()) || guest ? <PlaySteps /> : null}
 
         {onClaimDaily ? (
           <PlayerWelcomeBar
@@ -464,14 +466,6 @@ export function HomeScreen({
             onOpen={playRow}
           />
         </div>
-
-        <button
-          type="button"
-          onClick={onRestart}
-          className="mt-10 mb-2 text-center text-caption text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
-        >
-          Restart prototype (clears first-visit flags)
-        </button>
 
         <HomeSiteFooter />
       </div>

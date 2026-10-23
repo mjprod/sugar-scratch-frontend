@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 
 type LegalKind = "terms" | "privacy";
@@ -43,25 +44,19 @@ export function HomeSiteFooter() {
   return (
     <>
       <footer className="home-site-footer" aria-label="Site">
-        <nav className="home-site-footer-nav" aria-label="Legal">
-          <button
-            type="button"
-            className="home-site-footer-link"
-            onClick={() => setLegal("terms")}
-          >
-            Terms of Service
-          </button>
-          <span className="home-site-footer-dot" aria-hidden="true">
-            ·
-          </span>
-          <button
-            type="button"
-            className="home-site-footer-link"
-            onClick={() => setLegal("privacy")}
-          >
-            Privacy Policy
-          </button>
-        </nav>
+        <img
+          src="/svg/logoSugarScratch.svg"
+          alt="Sugar Scratch"
+          className="home-site-footer-logo"
+          draggable={false}
+        />
+        <p className="home-site-footer-tagline">
+          <span className="is-pink">Real Creators.</span> Real Moments.
+        </p>
+        <SiteLegalLinks
+          onPrivacy={() => setLegal("privacy")}
+          onTerms={() => setLegal("terms")}
+        />
 
         <SiteSocialLinks />
 

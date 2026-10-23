@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import {
   type FeaturedCoverFlowPlayTarget,
 } from "@/components/home/FeaturedCoverFlow";
@@ -18,7 +19,9 @@ import type { StaticCarouselItem } from "@/components/static-card/StaticCarousel
 import { type CardConfig } from "@/features/collection/lib/cards";
 import { photoScratchIdForSlot } from "@/features/collection/lib/photoSlots";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
+import { useWallet } from "@/contexts/WalletContext";
 import { isDemoMode } from "@/lib/demo";
+import { pluralize } from "@/lib/pluralize";
 import { packUnitCost } from "@/services/purchase";
 import {
   collectionProgressFromBoard,
@@ -199,6 +202,7 @@ export function CreatorInfluencerBody({
   const [searchParams] = useSearchParams();
   const openCardId = searchParams.get("card")?.trim() || "";
   const registerPlay = useRegisterCardPlay();
+  const { diamonds } = useWallet();
   const demo = isDemoMode();
   const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const legalTitleId = useId();
@@ -334,6 +338,9 @@ export function CreatorInfluencerBody({
                             style={{ width: `${showPersonalProgress ? pct : 0}%` }}
                           />
                         </div>
+                        <span className="cpv2-progress-value">
+                          {showPersonalProgress ? pct : 0}%
+                        </span>
                       </li>
                     );
                   })}
@@ -356,6 +363,9 @@ export function CreatorInfluencerBody({
                 }}
               />
             </div>
+            <span className="cpv2-progress-value">
+              {showPersonalProgress ? totalPct : 0}%
+            </span>
           </li>
         </ul>
       </section>
@@ -390,25 +400,27 @@ export function CreatorInfluencerBody({
         ))}
       </div>
 
-      <button
-        type="button"
-        className="cpv2-diamonds-cta"
-        onClick={() => navigate(Paths.store)}
-      >
-        <span className="cpv2-diamonds-cta-title">
-          Running low on Diamonds?
-        </span>
-        <span className="cpv2-diamonds-cta-btn">
-          <DiamondLottie size={14} aria-hidden />
-          Get Diamonds
-        </span>
-        <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
-          <DiamondLottie size={34} aria-hidden />
-        </span>
-        <span className="cpv2-diamonds-orb is-b" aria-hidden="true">
-          <DiamondLottie size={24} aria-hidden />
-        </span>
-      </button>
+      {diamonds < 10 ? (
+        <button
+          type="button"
+          className="cpv2-diamonds-cta"
+          onClick={() => navigate(Paths.store)}
+        >
+          <span className="cpv2-diamonds-cta-title">
+            Running low on Diamonds?
+          </span>
+          <span className="cpv2-diamonds-cta-btn">
+            <DiamondLottie size={14} aria-hidden />
+            Get Diamonds
+          </span>
+          <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
+            <DiamondLottie size={34} aria-hidden />
+          </span>
+          <span className="cpv2-diamonds-orb is-b" aria-hidden="true">
+            <DiamondLottie size={24} aria-hidden />
+          </span>
+        </button>
+      ) : null}
 
       <section className="cpv2-ultra-panel" aria-label="Ultra Card">
         <div className="cpv2-ultra-glow" aria-hidden="true" />
@@ -449,7 +461,7 @@ export function CreatorInfluencerBody({
               Collect{" "}
               <strong>
                 {premiumRemaining > 0
-                  ? `${premiumRemaining} Premium motion card${premiumRemaining === 1 ? "" : "s"}`
+                  ? `${premiumRemaining} Premium motion ${pluralize(premiumRemaining, "card")}`
                   : "Premium motion cards"}
               </strong>{" "}
               to unlock the Ultra Card!
@@ -520,14 +532,14 @@ export function CreatorInfluencerBody({
           </Suspense>
         </div>
         <p className="cpv2-pack-disclaimer">
-          *Motion Cards Themes are randomised in packs.
+          *Motion card themes are randomised in packs.
           <br />
           <button
             type="button"
             className="cpv2-pack-odds"
             onClick={() => setLegal("terms")}
           >
-            Read Disclosure Odds
+            Read pack odds
           </button>
         </p>
       </section>
@@ -536,16 +548,10 @@ export function CreatorInfluencerBody({
         <p className="cpv2-site-footer-tagline">
           <span className="is-pink">Real Creators.</span> Real Moments.
         </p>
-        <nav className="cpv2-site-footer-links" aria-label="Legal">
-          <button type="button" onClick={() => setLegal("privacy")}>
-            Privacy Policy
-          </button>
-          <a href="mailto:support@sugarscratch.com">Support</a>
-          <button type="button" onClick={() => setLegal("terms")}>
-            Terms &amp; Conditions
-          </button>
-          <Link to={Paths.lpBuild}>Sign up as an influencer</Link>
-        </nav>
+        <SiteLegalLinks
+          onPrivacy={() => setLegal("privacy")}
+          onTerms={() => setLegal("terms")}
+        />
       </footer>
 
       {legal && typeof document !== "undefined"
@@ -920,7 +926,9 @@ function ThemeCollectionCard({
                   ? `${motionNeeded} more motion`
                   : "motion"}
               </strong>{" "}
-              <strong className="is-gold">cards…</strong>
+              <strong className="is-gold">
+                {pluralize(motionNeeded, "card")}…
+              </strong>
             </p>
             <div className="cpv2-premium-actions">
               <button type="button" className="cpv2-premium-locked" disabled>

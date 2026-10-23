@@ -8,6 +8,10 @@ import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
+  hasSeenHowToPlay,
+  isNewUserForHomepageHero,
+} from "@/services/collectionState";
+import {
   fetchHomepage,
   splitContinueCollectingItems,
   type ContinueCollectingItem,
@@ -26,7 +30,6 @@ type PageStatus = "loading" | "loaded" | "error";
  * Store (pack browse) — Figma Home (node 2:20) without the leaderboard (now on Rank).
  */
 export function HomeVersion2Screen({
-  onRestart,
   onStartPlaying,
   onOpenCreator,
   onClaimDaily,
@@ -171,17 +174,18 @@ export function HomeVersion2Screen({
           <PlayerWelcomeBar
             onClaimed={onClaimDaily}
             onClaimAttempt={onClaimAttempt}
-            claimLabel="Claim Now!"
             readySubtitle="Claim today’s free gift…"
           />
         ) : null}
 
-        <PlaySteps title="How to Play" steps={FIGMA_HOME_PLAY_STEPS} />
+        {isNewUserForHomepageHero() && !hasSeenHowToPlay() ? (
+          <PlaySteps title="How to Play" steps={FIGMA_HOME_PLAY_STEPS} />
+        ) : null}
 
         <ContinueCollecting
           className="is-title-sentence is-avatar-strip"
           title="Continue Collecting"
-          seeAllLabel="See All"
+          seeAllLabel="Search"
           avatarOnly
           items={
             continueCollecting.length > 0 ? continueCollecting : justDropIn
@@ -200,14 +204,6 @@ export function HomeVersion2Screen({
       <SpotlightBanner />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)]">
-        <button
-          type="button"
-          onClick={onRestart}
-          className="mt-10 mb-2 text-center text-caption text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
-        >
-          Restart prototype (clears first-visit flags)
-        </button>
-
         <HomeSiteFooter />
       </div>
 

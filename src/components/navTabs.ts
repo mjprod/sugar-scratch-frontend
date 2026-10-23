@@ -31,7 +31,7 @@ export type TabConfig = {
   primary?: boolean;
 };
 
-/** Logged-in mobile dock: Rank, Shop, Home (center), Collect, Profile. */
+/** Logged-in mobile dock: Rank, Shop, Home (center), Collect, Settings. */
 export const TABS: TabConfig[] = [
   { id: "home", label: MOBILE_DOCK_LABELS[0], icon: RankIcon },
   { id: "feed", label: MOBILE_DOCK_LABELS[1], icon: ShopIcon },
@@ -45,7 +45,7 @@ export const TABS: TabConfig[] = [
   { id: "profile", label: MOBILE_DOCK_LABELS[4], icon: User },
 ];
 
-/** Guest mobile dock: Discover, Home, Collect (center), Store, Profile. */
+/** Guest mobile dock: Discover, Home, Collect (center), Get Diamonds, Profile. */
 export const GUEST_TABS: TabConfig[] = [
   { id: "home", label: GUEST_MOBILE_DOCK_LABELS[0], icon: Compass },
   { id: "feed", label: GUEST_MOBILE_DOCK_LABELS[1], icon: Home },

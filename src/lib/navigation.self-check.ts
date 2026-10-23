@@ -3,7 +3,8 @@
  * Run: npx tsx src/lib/navigation.self-check.ts
  */
 import { formatBalance } from "./formatBalance.ts";
-import { tabFromPathname } from "../routes/Paths.ts";
+import { Paths, tabFromPathname } from "../routes/Paths.ts";
+import { pluralize } from "./pluralize.ts";
 import {
   DESKTOP_MIN_PX,
   DESKTOP_PRIMARY_LABELS,
@@ -35,7 +36,7 @@ assert(isPrimaryTab("bag"), "collection primary");
 assert(SECONDARY_SURFACES.inbox.fallbackTab === "profile", "inbox fallback");
 assert(SECONDARY_SURFACES.store.fallbackTab === "feed", "store fallback");
 assert(SECONDARY_SURFACES.cart.fallbackTab === "feed", "cart fallback");
-assert(SECONDARY_SURFACES.cart.title === "Pack Pocket", "pack pocket title");
+assert(SECONDARY_SURFACES.cart.title === "My Packs", "my packs title");
 assert(resolveSecondaryBack("hub", "inbox") === "hub", "prefer previous");
 assert(resolveSecondaryBack(null, "inbox") === "profile", "direct inbox");
 assert(resolveSecondaryBack("bag", "store") === "bag", "store from home");
@@ -46,7 +47,7 @@ assert(tabFromPathname("/collection", true) === "hub", "authed collection select
 assert(tabFromPathname("/discover") === "home", "guest reel selects Discover");
 assert(tabFromPathname("/discover", true) === "bag", "authed reel selects Home");
 assert(tabFromPathname("/rank", true) === "home", "rank selects Rank");
-assert(tabFromPathname("/get-diamonds") === "hub", "guest store selects Store");
+assert(tabFromPathname("/get-diamonds") === "hub", "guest store selects Get Diamonds");
 
 // AC4 — authenticated primary destinations (desktop top bar)
 assert(
@@ -54,14 +55,14 @@ assert(
   "AC4 desktop primary tabs",
 );
 assert(
-  GUEST_DESKTOP_PRIMARY_LABELS.join("|") === "Home|Discover|Store",
+  GUEST_DESKTOP_PRIMARY_LABELS.join("|") === "Home|Discover|Get Diamonds",
   "guest desktop primary tabs",
 );
 
 // AC8a — mobile dock order + center Home (authed) / Collection (guest)
 assert(
   MOBILE_DOCK_LABELS.join("|") ===
-    "Rank|Shop|Home|Collect|Profile",
+    "Rank|Shop|Home|Collect|Settings",
   "AC8a mobile dock order",
 );
 assert(MOBILE_DOCK_LABELS[2] === "Home", "AC8a center elevated");
@@ -89,9 +90,14 @@ assert(formatBalance(null) === "--", "null balance placeholder");
 // AC26 — guest mobile dock keeps the center Collection slot for symmetry
 assert(
   GUEST_MOBILE_DOCK_LABELS.join("|") ===
-    "Discover|Home|Collect|Store|Profile",
+    "Discover|Home|Collect|Get Diamonds|Profile",
   "AC26 guest dock keeps center Collect slot",
 );
 assert(GUEST_MOBILE_DOCK_LABELS[2] === "Collect", "AC26 center slot reserved");
+
+assert(Paths.profile === "/settings", "settings hub url");
+assert(pluralize(1, "card") === "card", "one card");
+assert(pluralize(0, "card") === "cards", "zero cards");
+assert(pluralize(2, "card") === "cards", "many cards");
 
 console.log("v8 navigation self-check passed");

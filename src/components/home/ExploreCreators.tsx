@@ -100,7 +100,7 @@ export function ExploreCreators({
             className="continue-collecting-see-all explore-creators-see-all"
             onClick={onSeeAllClick}
           >
-            See All
+            Search
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         ) : null}

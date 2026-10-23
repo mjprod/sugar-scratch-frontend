@@ -190,10 +190,21 @@ export function formatPrice(price: Price) {
 
 export const LEADERBOARD_CATEGORIES: { id: LeaderboardCategory; label: string }[] = [
   { id: "purchased", label: "Purchased" },
-  { id: "hot", label: "🔥 Hot" },
+  { id: "hot", label: "🔥 Trending" },
   { id: "all", label: "All Time" },
   { id: "new", label: "New" },
 ];
+
+/** Display cap so leaderboard buys stay in a believable range. */
+export const PURCHASE_COUNT_CAP = 150_000;
+
+export function formatPurchaseCount(count: number): string {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  if (n > PURCHASE_COUNT_CAP) {
+    return `${PURCHASE_COUNT_CAP.toLocaleString("en-US")}+`;
+  }
+  return n.toLocaleString("en-US");
+}
 
 const FEATURED: FeaturedPack[] = [
   {

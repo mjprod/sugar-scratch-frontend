@@ -24,6 +24,7 @@ import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 	import { HdVideoWarning } from "@/components/profile/HdVideoWarning";
 	import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 import { ConvertDustIcon } from "@/components/WalletBalancesPopover";
 import { CoinLottie } from "@/components/ui/CoinLottie";
@@ -116,7 +117,8 @@ export function UserDashboardScreen({
   const handle = (username || name || "collector")
     .replace(/^@/, "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/\s+/g, "");
 
   function open(label: string) {
     if (label === "Change Password") {
@@ -213,7 +215,7 @@ export function UserDashboardScreen({
               >
                 {name || "Collector"}
               </p>
-              <p className="profile-username">@{handle || "collector"}</p>
+              <p className="profile-username">{`@${handle || "collector"}`}</p>
               <span className="profile-edit-link">
                 <Pencil className="size-3.5" aria-hidden="true" />
                 Edit Profile
@@ -268,19 +270,6 @@ export function UserDashboardScreen({
 		                {hdVideo ? "HD ON" : "HD OFF"}
 		              </span>
 		            </button>
-            <button
-              type="button"
-              aria-label={loggingOut ? "Logging out" : "Log out"}
-              onClick={handleLogout}
-              disabled={loggingOut}
-              aria-busy={loggingOut}
-              className="profile-action-btn profile-action-btn--logout"
-            >
-              <LogOut className="size-5 shrink-0" aria-hidden="true" />
-              <span className="profile-action-label">
-                {loggingOut ? "Logging out" : "Log out"}
-              </span>
-            </button>
           </div>
         </div>
 	      </div>
@@ -299,9 +288,6 @@ export function UserDashboardScreen({
                   <DiamondLottie
                     className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
                     size={14}
-                    animated
-                    loop
-                    autoplay
                     aria-hidden
                   />
                 </span>
@@ -334,6 +320,8 @@ export function UserDashboardScreen({
                     <CoinLottie
                       className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
                       size={16}
+                      loop={false}
+                      autoplay={false}
                       aria-hidden
                     />
                   )}
@@ -441,10 +429,10 @@ export function UserDashboardScreen({
         <MenuGroup
           title="Preferences & Support"
           items={[
-            { label: "Language", icon: Globe2 },
+            { label: "Language", icon: Globe2, soon: true },
             { label: "Game Settings", icon: Settings },
             { label: "Content Preferences", icon: SlidersHorizontal },
-            { label: "Help Centre", icon: HelpCircle },
+            { label: "Help Centre", icon: HelpCircle, soon: true },
             { label: "Privacy Policy", icon: ShieldCheck },
             { label: "Terms of Service", icon: FileText },
           ]}
@@ -452,7 +440,26 @@ export function UserDashboardScreen({
         />
       </div>
 
+      <button
+        type="button"
+        className="profile-logout-link"
+        aria-label={loggingOut ? "Logging out" : "Log out"}
+        onClick={handleLogout}
+        disabled={loggingOut}
+        aria-busy={loggingOut}
+      >
+        <LogOut className="size-4 shrink-0" aria-hidden="true" />
+        {loggingOut ? "Logging out" : "Log out"}
+      </button>
+
       <footer className="profile-site-footer" aria-label="Site">
+        <p className="home-site-footer-tagline">
+          <span className="is-pink">Real Creators.</span> Real Moments.
+        </p>
+        <SiteLegalLinks
+          onPrivacy={() => setView("legal-privacy")}
+          onTerms={() => setView("legal-terms")}
+        />
         <SiteSocialLinks />
         <p className="home-site-footer-copy">© 2026 Sugar Scratch</p>
       </footer>
@@ -472,7 +479,12 @@ function MenuGroup({
   onOpen,
 }: {
   title: string;
-  items: { label: string; icon: LucideIcon; badgeCount?: number }[];
+  items: {
+    label: string;
+    icon: LucideIcon;
+    badgeCount?: number;
+    soon?: boolean;
+  }[];
   onOpen: (label: string) => void;
 }) {
   return (
@@ -485,10 +497,15 @@ function MenuGroup({
             <button
               key={item.label}
               type="button"
-              onClick={() => onOpen(item.label)}
+              disabled={item.soon}
+              onClick={() => {
+                if (item.soon) return;
+                onOpen(item.label);
+              }}
               className={[
                 "profile-menu-row",
                 index ? "is-divided" : "",
+                item.soon ? "is-soon" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -500,7 +517,11 @@ function MenuGroup({
                 ) : null}
               </span>
               <span className="flex-1 text-title">{item.label}</span>
-              <ChevronRight className="size-4 text-white/30" />
+              {item.soon ? (
+                <span className="profile-menu-soon">Soon</span>
+              ) : (
+                <ChevronRight className="size-4 text-white/30" />
+              )}
             </button>
           );
         })}

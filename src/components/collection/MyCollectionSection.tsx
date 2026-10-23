@@ -196,7 +196,7 @@ export function MyCollectionSection({
         aria-labelledby="my-collection-heading"
       >
         <h2 id="my-collection-heading" className="mc-models-title">
-          Choose a Model
+          Keep Collecting
         </h2>
         <div className="mc-models-empty">
           <h3 className="collection-empty-title">Your collection starts here</h3>
@@ -224,7 +224,7 @@ export function MyCollectionSection({
       aria-labelledby="my-collection-heading"
     >
       <h2 id="my-collection-heading" className="mc-models-title">
-        Choose a Model
+        Keep Collecting
       </h2>
 
       <div className="mc-models-filters" role="group" aria-label="Filters">

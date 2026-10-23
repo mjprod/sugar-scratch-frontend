@@ -111,6 +111,7 @@ function isProfileOnboardingResume(action: ProtectedAction) {
   return (
     pathname === Paths.profile ||
     pathname.startsWith(`${Paths.profile}/`) ||
+    pathname.startsWith("/profile") ||
     pathname === Paths.settings ||
     pathname.startsWith(`${Paths.settings}/`)
   );

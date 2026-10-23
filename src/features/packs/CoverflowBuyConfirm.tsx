@@ -386,7 +386,7 @@ export function CoverflowBuyConfirm({
               aria-disabled={pocketDisabled || undefined}
               aria-label={
                 pocketAriaLabel ||
-                (pocketDisabled ? "Already in Pack Pocket" : "Add to Pocket")
+                (pocketDisabled ? "Already in My Packs" : "Add to Pocket")
               }
               onClick={(event) => {
                 event.stopPropagation();

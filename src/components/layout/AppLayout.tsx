@@ -234,9 +234,7 @@ export function AppLayout() {
 
   const showTopUtility = !hideChrome;
 
-  const showNav =
-    !hideChrome &&
-    !location.pathname.startsWith("/settings");
+  const showNav = !hideChrome;
 
   // Android-only: Chrome's bottom toolbar overlays the layout viewport while
   // safe-area stays 0. Safari/iOS keep the pre-fix stage (100dvh + safe-area).

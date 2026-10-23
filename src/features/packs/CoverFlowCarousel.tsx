@@ -2768,7 +2768,7 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
                     disabled={pocketDisabled}
                     aria-disabled={pocketDisabled || undefined}
                     aria-label={
-                      pocketDisabled ? 'Already in Pack Pocket' : 'Add to Pocket'
+                      pocketDisabled ? 'Already in My Packs' : 'Add to Pocket'
                     }
                     onClick={(event) => {
                       event.stopPropagation()

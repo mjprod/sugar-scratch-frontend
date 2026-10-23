@@ -30,7 +30,8 @@ export const Paths = {
   /** Collection hub opened on Unopened Packs. */
   collectionPacks: "/collection?reveal=packs",
   rewards: "/rewards",
-  profile: "/profile",
+  /** Settings hub (was /profile). Subpages stay under /profile/*. */
+  profile: "/settings",
   editProfile: "/profile/edit",
   /** Diamond shop (Get Diamonds). */
   store: "/get-diamonds",

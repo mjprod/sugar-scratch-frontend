@@ -433,6 +433,22 @@ export function CreatorFeedCard({
       <div className={["hf-overlay", active ? "is-visible" : ""].join(" ")}>
         <div className="hf-overlay-inner">
         <div className="hf-info">
+          <div className="hf-name-row">
+            {canOpenCreator ? (
+              <button
+                type="button"
+                className="hf-creator hf-creator--link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCreator?.(item.creatorId);
+                }}
+              >
+                {item.creatorName}
+              </button>
+            ) : (
+              <h2 className="hf-creator">{item.creatorName}</h2>
+            )}
+          </div>
           <button
             type="button"
             className={[
@@ -485,22 +501,6 @@ export function CreatorFeedCard({
             <span className="hf-like-caption" aria-hidden="true">
               {likeCountLabel}
             </span>
-          </div>
-          <div className="hf-name-row">
-            {canOpenCreator ? (
-              <button
-                type="button"
-                className="hf-creator hf-creator--link"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenCreator?.(item.creatorId);
-                }}
-              >
-                {item.creatorName}
-              </button>
-            ) : (
-              <h2 className="hf-creator">{item.creatorName}</h2>
-            )}
           </div>
           {tags.length > 0 ? (
             <ul className="hf-tags" aria-label="Pack tags">

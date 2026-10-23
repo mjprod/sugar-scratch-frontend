@@ -1,8 +1,9 @@
-import { Play, Trophy } from "lucide-react";
+import { Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
+  formatPurchaseCount,
   LEADERBOARD_CATEGORIES,
   type LeaderboardCategory,
   type LeaderboardRow,
@@ -72,11 +73,7 @@ export function CategoryLeaderboard({
     >
       <div className="continue-collecting-header">
         <div className="continue-collecting-title-row">
-          <Trophy
-            className="continue-collecting-heart"
-            aria-hidden="true"
-          />
-          <h2 className="continue-collecting-title">{title}</h2>
+          <h1 className="continue-collecting-title">{title}</h1>
         </div>
       </div>
 
@@ -171,7 +168,7 @@ export function CategoryLeaderboard({
                 type="button"
                 onClick={() => onOpen(row)}
                 className="category-leaderboard-thumb"
-                aria-label={`Open ${row.packName}`}
+                aria-label={`Open ${row.creatorName}`}
               >
                 <PackArt
                   src={row.thumbnailUrl}
@@ -185,13 +182,12 @@ export function CategoryLeaderboard({
                 onClick={() => onOpen(row)}
                 className="category-leaderboard-info"
               >
-                {/* Figma 9:60 — 1 col / 3 rows: pack, author, buys */}
-                <p className="category-leaderboard-pack">
-                  Pack Nº {row.packName}
+                <p className="category-leaderboard-pack">{row.creatorName}</p>
+                <p className="category-leaderboard-author">
+                  {row.themeName || row.packName}
                 </p>
-                <p className="category-leaderboard-author">{row.creatorName}</p>
                 <p className="category-leaderboard-stats">
-                  🔥 {row.purchaseCount.toLocaleString()} Buys
+                  🔥 {formatPurchaseCount(row.purchaseCount)} Buys
                 </p>
               </button>
               <div className="category-leaderboard-actions">
@@ -221,7 +217,7 @@ export function CategoryLeaderboard({
                     }
                     costAmount={null}
                     cornerRadius={999}
-                    aria-label={`Play ${row.packName} for ${row.diamondCost} diamonds`}
+                    aria-label={`Play ${row.creatorName} for ${row.diamondCost} diamonds`}
                     onClick={() => onPlay(row)}
                   />
                 </div>

@@ -133,7 +133,7 @@ export function ChangePasswordScreen({
               {...ctaButtonPropsFromTemplate("squircleCTA")}
               fillParent
               type="button"
-              label="Back to Profile"
+              label="Back to Settings"
               costAmount={null}
               strokeWidth={1}
               onClick={onBack}

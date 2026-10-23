@@ -1275,7 +1275,7 @@ export function LiquidGlassNav({
             ]
               .filter(Boolean)
               .join(" ")}
-            aria-label={authed ? "Profile" : guestAuthLabel}
+            aria-label={authed ? "Settings" : guestAuthLabel}
             aria-current={
               !packsActive && active === "profile" ? "page" : undefined
             }

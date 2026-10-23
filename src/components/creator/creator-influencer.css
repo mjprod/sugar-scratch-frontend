@@ -620,6 +620,17 @@ body[data-theme="v8"] .cpv2-progress-track {
   overflow: hidden;
 }
 
+body[data-theme="v8"] .cpv2-progress-value {
+  flex: 0 0 auto;
+  min-width: 2.75em;
+  color: #fff;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+  text-align: right;
+}
+
 body[data-theme="v8"] .cpv2-progress-fill {
   display: block;
   height: 100%;
@@ -1108,7 +1119,7 @@ body[data-theme="v8"] .cpv2-motion-tile-lock-msg {
   right: 2px;
   z-index: 2;
   color: #fff;
-  font-size: 9px;
+  font-size: var(--text-caption);
   font-weight: 500;
   letter-spacing: 0.18px;
   line-height: 1.15;
@@ -1128,7 +1139,7 @@ body[data-theme="v8"] .cpv2-motion-tile-progress {
   border-radius: 30px;
   background: rgba(0, 0, 0, 0.5);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 500;
   letter-spacing: 0.19px;
   line-height: 1;
@@ -1161,7 +1172,7 @@ body[data-theme="v8"] .cpv2-motion-tile-scratch {
   align-items: flex-start;
   gap: var(--space-1);
   color: #fff;
-  font-size: 8px;
+  font-size: var(--text-caption);
   font-weight: 500;
   letter-spacing: 0.16px;
   line-height: 1.15;

@@ -165,8 +165,6 @@ export function GetDiamondsCatalog({
           onOpenPack={onOpenPack}
         />
       ) : null}
-
-      <TrustRow footer />
     </div>
   );
 }
@@ -176,9 +174,9 @@ function GetDiamondsHeroBand() {
     <div className="get-diamonds-hero-band">
       <header className="get-diamonds-hero get-diamonds-hero--band">
         <div className="get-diamonds-hero__copy-block">
-          <h1 className="get-diamonds-hero__title">
+          <p className="get-diamonds-hero__title">
             Get Diamonds <span className="get-diamonds-hero__accent">✦</span>
-          </h1>
+          </p>
           <p className="get-diamonds-hero__copy">
             Diamonds are used to buy Motion Card Packs and unlock exclusive
             rewards.

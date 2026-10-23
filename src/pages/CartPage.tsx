@@ -500,8 +500,8 @@ export function CartPage() {
           if (partialFailure && purchasedLines.length < remaining.length) {
             setNavNotice(
               partialFailure.kind === "insufficient"
-                ? "Some packs purchased. The rest are still in Pack Pocket."
-                : "Some packs purchased. Retry the rest from Pack Pocket.",
+                ? "Some packs purchased. The rest are still in My Packs."
+                : "Some packs purchased. Retry the rest from My Packs.",
             );
             window.setTimeout(() => setNavNotice(""), 3200);
           }
@@ -557,12 +557,12 @@ export function CartPage() {
     return (
       <section
         className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
-        aria-label="Pack Pocket"
+        aria-label="My Packs"
       >
         <div className="flex min-h-0 flex-1 items-center justify-center px-6">
           <EmptyState
             icon={ShoppingBag}
-            title="Your pack pocket is empty"
+            title="Your Packs are empty"
             copy="Buy a pack and it will wait here, ready to check out."
             action={
               <CtaButton
@@ -583,7 +583,7 @@ export function CartPage() {
   return (
     <section
       className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
-      aria-label={showingOwnedUnopened ? "Pack Pocket" : "Cart"}
+      aria-label={showingOwnedUnopened ? "My Packs" : "Cart"}
     >
       <div
         className="stage-packs"
@@ -725,7 +725,7 @@ function CartCheckoutModal({
             icon={<AlertTriangle className="size-7" />}
             tone="danger"
             title="Checkout failed"
-            body="Something went wrong and you were not charged. Your packs are still in Pack Pocket."
+            body="Something went wrong and you were not charged. Your packs are still in My Packs."
             primary={{ label: "Close", onClick: onClose }}
           />
         )}
