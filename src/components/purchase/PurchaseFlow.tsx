@@ -1989,7 +1989,7 @@ function SelectStage({
 }) {
   void catalogRevision;
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-5 py-6 lg:flex-row lg:items-center lg:gap-16 lg:px-10">
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-page py-6 lg:flex-row lg:items-center lg:gap-16">
       <div className="flex justify-center lg:flex-1">
         <HolographicPackCard src={packImage} name={pack.packName} badge="Featured" compact />
       </div>

@@ -76,7 +76,7 @@
 .home__footer {
   display: flex;
   justify-content: center;
-  padding-bottom: 0.25rem;
+  padding-bottom: var(--space-1);
 }
 
 .home__reset {
@@ -184,7 +184,7 @@
   justify-items: center;
   text-align: center;
   gap: 0.35rem;
-  padding: 1.5rem;
+  padding: var(--space-6);
   border-radius: 1.25rem;
   background: oklch(1 0 0 / 0.04);
   border: 1px solid oklch(1 0 0 / 0.08);
@@ -573,13 +573,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 1.5rem 1rem 1.5rem 1rem;
+  padding: var(--space-6) var(--space-4) var(--space-6) var(--space-4);
   border-radius: 1rem 1rem 0 0;
   background: linear-gradient(0deg, oklch(0% 0 0 / 0.9), oklch(0% 0 0 / 0.8));
   backdrop-filter: blur(5px);
   /* Above identity overlay so the name bar stays readable. */
   z-index: 4;
-  gap: 0.75rem;
+  gap: var(--space-3);
   box-shadow: inset -1px 2px 1px -1px oklch(1 0 0 / 0.28), inset -3px 4px 8px -5px oklch(1 0 0 / 0.423);
 }
 
@@ -820,9 +820,9 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
 .sb-debug__header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: flex-start;
-  padding: 1rem 1rem 0.75rem;
+  padding: var(--space-4) var(--space-4) var(--space-3);
   border-bottom: 1px solid oklch(1 0 0 / 0.12);
   position: sticky;
   top: 0;
@@ -875,7 +875,7 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
 .sb-debug__body {
   padding: 0.85rem;
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
   overflow: auto;
   min-height: 0;
 }
@@ -906,7 +906,7 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
 .sb-debug__field {
   display: grid;
   gap: 0.18rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .sb-debug__field:last-child {
@@ -988,7 +988,7 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
 }
 
 .sb-debug__color-row input[type='color']::-webkit-color-swatch-wrapper {
-  padding: 2px;
+  padding: var(--space-0-5);
 }
 
 .sb-debug__color-row input[type='color']::-webkit-color-swatch {
@@ -1027,7 +1027,7 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
 }
 
 .sb-debug__hex-picker input[type='color']::-webkit-color-swatch-wrapper {
-  padding: 2px;
+  padding: var(--space-0-5);
 }
 
 .sb-debug__hex-picker input[type='color']::-webkit-color-swatch {

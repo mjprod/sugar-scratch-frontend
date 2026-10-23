@@ -1,6 +1,6 @@
 /* theme.css rules owned by CollectionPage (lazy route CSS). */
 body[data-theme="v8"] .collection-true-empty-cta {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   width: min(100%, 220px);
   min-width: 180px;
 }
@@ -39,7 +39,7 @@ body[data-theme="v8"] .my-collection-filter-sheet {
   width: 100%;
   max-height: min(52vh, 360px);
   overflow: auto;
-  padding: 12px 10px 8px;
+  padding: var(--space-3) var(--space-2-5) var(--space-2);
   border: 1px solid oklch(1 0 0 / 0.12);
   border-radius: 14px;
   background: oklch(0.18 0.014 289 / 0.98);
@@ -47,7 +47,7 @@ body[data-theme="v8"] .my-collection-filter-sheet {
 }
 
 body[data-theme="v8"] .my-collection-filter-title {
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-2-5);
   color: oklch(1 0 0 / 0.5);
   font-size: var(--text-caption);
   font-weight: 700;
@@ -61,16 +61,16 @@ body[data-theme="v8"] .my-collection-filter-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 body[data-theme="v8"] .my-collection-filter-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   width: 100%;
   margin: 0;
-  padding: 12px 10px;
+  padding: var(--space-3) var(--space-2-5);
   border: 0;
   border-radius: 12px;
   background: transparent;
@@ -93,8 +93,8 @@ body[data-theme="v8"] .my-collection-filter-radio {
 body[data-theme="v8"] .my-collection-preview {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: var(--space-3-5);
+  padding: var(--space-4);
   border: 1px solid oklch(1 0 0 / 0.1);
   border-radius: 18px;
   background: oklch(0.201 0.018 289.78 / 0.96);
@@ -105,7 +105,7 @@ body[data-theme="v8"] .my-collection-preview-top {
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px 16px;
+  gap: var(--space-2-5) var(--space-4);
 }
 
 body[data-theme="v8"] .my-collection-preview-identity {
@@ -118,7 +118,7 @@ body[data-theme="v8"] .my-collection-preview-title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-1-5);
   font-size: var(--text-title);
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -138,7 +138,7 @@ body[data-theme="v8"] .my-collection-preview-theme {
 }
 
 body[data-theme="v8"] .my-collection-preview-count {
-  margin: 6px 0 0;
+  margin: var(--space-1-5) 0 0;
   color: oklch(1 0 0 / 0.55);
   font-size: var(--text-caption);
   font-variant-numeric: tabular-nums;
@@ -163,9 +163,9 @@ body[data-theme="v8"] .my-collection-view-cta:hover {
 
 body[data-theme="v8"] .my-collection-card-strip {
   display: flex;
-  gap: 10px;
+  gap: var(--space-2-5);
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding-bottom: var(--space-0-5);
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -329,8 +329,8 @@ body[data-theme="v8"] .mc-page {
 }
 
 body[data-theme="v8"] .mc-page-content {
-  gap: 24px;
-  padding-top: calc(var(--app-diamond-offset, 12px) + 0.75rem);
+  gap: var(--space-6);
+  padding-top: calc(var(--app-diamond-offset, 12px) + var(--space-3));
 }
 
 body[data-theme="v8"] .mc-greeting {
@@ -402,7 +402,7 @@ body[data-theme="v8"] .mc-hub {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
   align-items: start;
-  gap: 24px;
+  gap: var(--space-6);
   width: 100%;
 }
 
@@ -440,7 +440,7 @@ body[data-theme="v8"] .mc-continue-panel {
   width: 100%;
   min-width: 0;
   min-height: 199px;
-  padding: 16px;
+  padding: var(--space-4);
   box-sizing: border-box;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -494,7 +494,7 @@ body[data-theme="v8"] .mc-continue-row {
   width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  padding-bottom: 18px;
+  padding-bottom: var(--space-4-5);
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -510,7 +510,7 @@ body[data-theme="v8"] .mc-models {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
   min-width: 0;
 }
@@ -531,8 +531,8 @@ body[data-theme="v8"] .mc-models-empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  padding: 18px 16px;
+  gap: var(--space-2-5);
+  padding: var(--space-4-5) var(--space-4);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
@@ -545,7 +545,7 @@ body[data-theme="v8"] .mc-models-filters {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
 }
 
@@ -557,7 +557,7 @@ body[data-theme="v8"] .mc-models-filter-left {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -585,7 +585,7 @@ body[data-theme="v8"] .mc-model-list {
   container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
 }
 
@@ -598,7 +598,7 @@ body[data-theme="v8"] .mc-model-card {
   width: 100%;
   height: auto;
   margin: 0;
-  padding: 16px 12px 16px 0;
+  padding: var(--space-4) var(--space-3) var(--space-4) 0;
   overflow: hidden;
   isolation: isolate;
   border-radius: 12px;
@@ -739,7 +739,7 @@ body[data-theme="v8"] .mc-model-body {
   justify-content: center;
   gap: 0;
   min-width: 0;
-  padding-right: 8px;
+  padding-right: var(--space-2);
 }
 
 body[data-theme="v8"] .mc-model-name {
@@ -763,19 +763,19 @@ body[data-theme="v8"] .mc-model-place {
 }
 
 body[data-theme="v8"] .mc-model-metrics {
-  margin-top: 6px;
+  margin-top: var(--space-1-5);
 }
 
 body[data-theme="v8"] .mc-model-metrics {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 body[data-theme="v8"] .mc-model-metric {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: var(--text-body);
   font-weight: 500;
   letter-spacing: 0.2px;
@@ -787,8 +787,8 @@ body[data-theme="v8"] .mc-model-progress {
   align-items: center;
   width: 100%;
   height: 12px;
-  margin-top: 2px;
-  padding: 2px 14px 2px 2px;
+  margin-top: var(--space-0-5);
+  padding: var(--space-0-5) var(--space-3-5) var(--space-0-5) var(--space-0-5);
   box-sizing: border-box;
   overflow: hidden;
   border-radius: 30px;
@@ -809,13 +809,13 @@ body[data-theme="v8"] .mc-model-progress-fill {
 }
 
 body[data-theme="v8"] .mc-diamonds-cta {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 body[data-theme="v8"] .mc-skeleton {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 @media (min-width: 768px) {
@@ -825,6 +825,6 @@ body[data-theme="v8"] .mc-skeleton {
   }
 
   body[data-theme="v8"] .mc-page-content {
-    gap: 28px;
+    gap: var(--space-7);
   }
 }

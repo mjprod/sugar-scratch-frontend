@@ -4,7 +4,7 @@
   z-index: 5200;
   display: grid;
   place-items: center;
-  padding: 20px 16px;
+  padding: var(--space-5) var(--space-4);
   perspective: 1200px;
   perspective-origin: 50% 40%;
   animation: welcome-gift-fade 0.45s ease both;
@@ -249,7 +249,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   color: rgb(255 255 255 / 0.75);
   font-size: var(--text-caption);
@@ -266,7 +266,7 @@
 }
 
 .welcome-gift-headline {
-  margin: 10px 0 0;
+  margin: var(--space-2-5) 0 0;
   max-width: 16ch;
   color: oklch(0.89 0.14 82.15);
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
@@ -329,13 +329,13 @@
   flex-direction: column;
   align-items: center;
   margin-top: -6rem;
-  padding: 0 28px 4px;
+  padding: 0 var(--space-7) var(--space-1);
 }
 
 .welcome-gift-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 7px 14px;
   border: 1px solid oklch(0.89 0.14 82.15);
   border-radius: 999px;
@@ -364,7 +364,7 @@
   width: min(280px, 100%);
   height: 48px;
   min-height: 48px;
-  margin-top: 2rem;
+  margin-top: var(--space-8);
   overflow: visible;
   transform-origin: 50% 50%;
 }
@@ -399,7 +399,7 @@
 
 .welcome-gift-hint,
 .welcome-gift-reassure {
-  margin: 14px 0 0;
+  margin: var(--space-3-5) 0 0;
   text-align: center;
 }
 
@@ -411,7 +411,7 @@
 
 .welcome-gift-hint {
   min-height: 1.4em;
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: grid;
   place-items: center;
   color: rgb(255 255 255 / 0.5);
@@ -420,7 +420,7 @@
 }
 
 .welcome-gift-copy {
-  margin: 10px 0 0;
+  margin: var(--space-2-5) 0 0;
   max-width: 28ch;
   color: rgba(255 255 255 / 0.75);
   font-size: var(--text-title);
@@ -429,7 +429,7 @@
 }
 
 .welcome-gift-error {
-  margin: 10px 0 0;
+  margin: var(--space-2-5) 0 0;
   color: #ffb4b4;
   font-size: var(--text-caption);
   text-align: center;
@@ -438,7 +438,7 @@
 .welcome-gift-confirm {
   display: grid;
   place-items: center;
-  margin-top: 16px;
+  margin-top: var(--space-4);
   min-height: 48px;
   text-align: center;
   animation: welcome-gift-rise 0.35s ease both;
@@ -452,7 +452,7 @@
 
 .welcome-gift-confirm span {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: rgb(255 255 255 / 0.62);
   font-size: var(--text-caption);
 }

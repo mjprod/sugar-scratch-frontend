@@ -103,7 +103,7 @@
   z-index: 2000;
   /* above carousel cards / active chrome */
   isolation: isolate;
-  padding: 1.5rem;
+  padding: var(--space-6);
   border-right: 1px solid oklch(0.33 0.015 252.31);
   background: oklch(0.22 0.016 256.82);
   overflow-y: auto;
@@ -115,7 +115,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .prototype-controls__close {
@@ -211,18 +211,18 @@
 }
 
 .prototype-controls__header p {
-  margin: 0.5rem 0 1.5rem;
+  margin: var(--space-2) 0 var(--space-6);
   color: oklch(0.662 0.018 250.92);
   font-size: var(--text-body);
   line-height: 1.4;
 }
 
 .prototype-controls__section {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-6);
 }
 
 .prototype-controls__section h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-3);
   font-size: var(--text-body);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -231,8 +231,8 @@
 
 .prototype-controls__toggle {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .prototype-controls__toggle button,
@@ -245,7 +245,7 @@
   background: oklch(0.267 0.015 256.8);
   color: oklch(0.943 0.011 243.66);
   border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
   font: inherit;
 }
@@ -267,8 +267,8 @@
 .prototype-controls__deck-actions {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .prototype-controls__add {
@@ -290,7 +290,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
   font-size: var(--text-body);
 }
 
@@ -313,7 +313,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--space-3);
   font-size: var(--text-caption);
   color: oklch(0.662 0.018 250.92);
 }
@@ -377,7 +377,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .prototype-controls__group-item {
@@ -388,7 +388,7 @@
 }
 
 .prototype-controls__group-item .prototype-controls__field {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .prototype-controls__slots {
@@ -423,7 +423,7 @@
 }
 
 .prototype-controls__effect-name {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-3);
   font-size: var(--text-title);
   font-weight: 600;
 }
@@ -431,12 +431,12 @@
 .prototype-controls__nav {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .prototype-controls__advanced {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }
 
 .prototype-controls__hint-inline {
@@ -458,7 +458,7 @@
 .prototype-controls__slider span {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: baseline;
 }
 
@@ -488,7 +488,7 @@
 }
 
 .prototype-controls__subhead {
-  margin: 1rem 0 0.5rem;
+  margin: var(--space-4) 0 var(--space-2);
   font-size: var(--text-caption);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -499,7 +499,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.4rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 .prototype-controls__toggles button {
@@ -530,7 +530,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
-  margin: 0.75rem 0 1rem;
+  margin: var(--space-3) 0 var(--space-4);
 }
 
 .prototype-controls__clip-presets button {
@@ -557,7 +557,7 @@
   display: flex;
   gap: 0.6rem;
   align-items: flex-start;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
   cursor: pointer;
   font-size: var(--text-body);
 }
@@ -647,7 +647,7 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 1rem 0.5rem 1.25rem;
+  padding: var(--space-4) var(--space-2) var(--space-5);
   box-sizing: border-box;
   overflow: visible;
   /* Shift the whole stage (cards + stroke-relative status pager) down. */
@@ -1254,7 +1254,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   opacity: 0;
   filter: none;
   pointer-events: none;
@@ -1323,7 +1323,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
   width: auto;
   min-height: 2rem;
   margin: 0;
@@ -1439,7 +1439,7 @@
   justify-content: center;
   gap: 0.35em;
   white-space: nowrap;
-  padding: 0 0.75rem;
+  padding: 0 var(--space-3);
 }
 
 .active-card-actions__play .cta-button__title-row,
@@ -1605,8 +1605,8 @@
 	  width: var(--photo-panel-width);
 	  height: auto;
 	  max-height: none;
-  padding-left: 2rem;
-  padding-right: 2rem;
+  padding-left: var(--space-8);
+  padding-right: var(--space-8);
   box-sizing: border-box;
   /* Stay under the active card face so fly-in/out passes behind it. */
   z-index: 2;
@@ -1638,7 +1638,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .active-card-panel__label {
@@ -1726,7 +1726,7 @@
 /* Ported from sugar-scracth3dpack Buy Pack (btn-180) — used for Play Game. */
 .btn-180 {
   border: 1px solid oklch(0.545 0.218 16.03);
-  padding: 8px 20px;
+  padding: var(--space-2) var(--space-5);
   font-size: var(--text-body);
   text-transform: none;
   border-radius: 60px;
@@ -1908,7 +1908,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
   width: 100%;
 }
 
@@ -2260,7 +2260,7 @@
   z-index: 10000;
   display: grid;
   place-items: center;
-  padding: 1.25rem;
+  padding: var(--space-5);
   background: oklch(0.104 0.019 248.34 / 0.62);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -2278,7 +2278,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 1rem;
+  gap: var(--space-4);
   text-align: center;
 }
 
@@ -2327,7 +2327,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   /* Room for the outside top-right close control. */
   padding-top: 0.35rem;
   padding-right: 0.35rem;
@@ -2593,7 +2593,7 @@
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: calc(var(--space-px) * -1);
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -2729,7 +2729,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  padding: 0.75rem;
+  padding: var(--space-3);
   border-radius: 12px;
   border: 1px solid oklch(1 0 0 / 0.08);
   background: oklch(1 0 0 / 0.03);
@@ -2755,7 +2755,7 @@
 .gift-text-debug__field span {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-weight: 650;
 }
 
@@ -2808,7 +2808,7 @@
 
   .static-card-playing.is-gift-card.has-gift-debug .static-card-playing__dialog {
     margin-left: 0;
-    margin-top: 0.5rem;
+    margin-top: var(--space-2);
   }
 
   .gift-text-debug {
@@ -4775,7 +4775,7 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
     width: 1px;
     height: 1px;
     padding: 0;
-    margin: -1px;
+    margin: calc(var(--space-px) * -1);
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;

@@ -299,7 +299,7 @@ export function HomeScreen({
         className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-featured-coverflow is-loading" aria-hidden="true" />
-        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-6 px-5 lg:px-8">
+        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page">
           <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
           <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
         </div>
@@ -313,7 +313,7 @@ export function HomeScreen({
         data-page-scroll
         className="relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
-        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-3 px-5 lg:px-8">
+        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-stack px-page">
           <p className="text-title text-white/70">Couldn’t load homepage.</p>
           <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
@@ -370,7 +370,7 @@ export function HomeScreen({
       </div>
 
       {showTutorial ? (
-        <div className="pointer-events-none relative z-40 mt-4 flex justify-center px-5 lg:px-8">
+        <div className="pointer-events-none relative z-40 mt-4 flex justify-center px-page">
           <div className="pointer-events-auto w-full max-w-md rounded-2xl border border-[oklch(0.656_0.212_354.31)]/40 bg-[oklch(0.19_0.022_333.66)]/95 px-4 py-3 text-center shadow-[0_16px_40px_oklch(0_0_0_/_0.45)] backdrop-blur-md">
             <p className="text-body font-medium text-[oklch(0.823_0.11_346.02)]">
               Swipe the carousel to discover featured packs.
@@ -395,7 +395,7 @@ export function HomeScreen({
         Full-width scroll shell keeps the scrollbar on the viewport edge.
         Content width is constrained by the inner wrapper (same as other pages).
       */}
-      <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
+      <div className="home-page-inner home-page-inner--after-hero mx-auto w-full max-w-[var(--app-content-max,80rem)] px-page">
         {isNewUser || guest ? <PlaySteps /> : null}
 
         {onClaimDaily ? (
@@ -453,7 +453,7 @@ export function HomeScreen({
 
       <SpotlightBanner />
 
-      <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-5 lg:px-8">
+      <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-page">
         <div>
           <CategoryLeaderboard
             category={category}

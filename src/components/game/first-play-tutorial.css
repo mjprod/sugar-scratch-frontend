@@ -50,7 +50,7 @@
   position: absolute;
   z-index: 2;
   width: min(280px, calc(100vw - 32px));
-  padding: 14px 16px max(12px, env(safe-area-inset-bottom));
+  padding: var(--space-3-5) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom));
   border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: 16px;
   background: rgb(12 8 16 / 0.94);
@@ -66,7 +66,7 @@
 }
 
 .fp-tutorial-copy {
-  margin: 6px 0 0;
+  margin: var(--space-1-5) 0 0;
   color: rgb(255 255 255 / 0.68);
   font-size: 13px;
   line-height: 1.4;
@@ -75,8 +75,8 @@
 .fp-tutorial-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .fp-tutorial-step {
@@ -88,7 +88,7 @@
 
 .fp-tutorial-nav button {
   min-height: 36px;
-  padding: 0 14px;
+  padding: 0 var(--space-3-5);
   border: 0;
   border-radius: 999px;
   background: linear-gradient(180deg, #f3de9a 0%, #d4ae5a 48%, #b8892e 100%);
@@ -99,7 +99,7 @@
 }
 
 .fp-tutorial-tip.is-demo {
-  padding: 10px 14px 12px;
+  padding: var(--space-2-5) var(--space-3-5) var(--space-3);
   background: rgb(12 8 16 / 0.82);
 }
 

@@ -723,7 +723,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
 }
 
@@ -1314,7 +1314,7 @@ p {
   background: linear-gradient(180deg, oklch(0.2 0 0 / 0.72) 0%, oklch(0.12 0 0 / 0.94) 100%);
   box-shadow: none;
   color: oklch(1 0 0 / 0.78);
-  margin-top: -24px;
+  margin-top: calc(var(--space-6) * -1);
   right: -26px;
   opacity: 0;
   transform: scale(0.72);
@@ -1411,7 +1411,7 @@ p {
 /* Buy Pack button styles */
 .btn-180 {
   border: 1px solid oklch(0.545 0.218 16.03);
-  padding: 8px 20px;
+  padding: var(--space-2) var(--space-5);
   font-size: 14px;
   text-transform: none;
   border-radius: 60px;
@@ -1617,7 +1617,7 @@ p {
   border: 1px dashed oklch(1 0 0 / 0.16);
   background: oklch(1 0 0 / 0.03);
   color: oklch(0.907 0.019 242.98 / 0.72);
-  padding: 1rem;
+  padding: var(--space-4);
   text-align: center;
 }
 

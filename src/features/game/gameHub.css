@@ -38,7 +38,7 @@
   transform: translateX(-50%);
   z-index: 3;
   margin: 0;
-  padding: 6px 14px;
+  padding: var(--space-1-5) var(--space-3-5);
   border-radius: 999px;
   background: oklch(0.156 0.008 285.38 / 0.72);
   color: oklch(1 0 0 / 0.78);
@@ -57,7 +57,7 @@
   z-index: 3;
   margin: 0;
   max-width: min(90vw, 360px);
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border-radius: 10px;
   background: oklch(0.376 0.133 16.11 / 0.85);
   color: oklch(0.951 0.026 359.93);
@@ -79,7 +79,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: var(--space-4-5);
   text-align: center;
   max-width: 280px;
 }
@@ -142,17 +142,17 @@
   flex-direction: column;
   align-items: center;
   width: min(100%, 420px);
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   text-align: center;
   animation: game-hub-pack-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .game-hub-pack__prizes {
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .game-hub-pack__tally {
-  gap: 14px;
+  gap: var(--space-3-5);
 }
 
 .game-hub-pack__tally-title {
@@ -179,8 +179,8 @@
   flex-wrap: nowrap;
   align-items: stretch;
   justify-content: center;
-  gap: 14px;
-  margin-top: 10px;
+  gap: var(--space-3-5);
+  margin-top: var(--space-2-5);
   padding: 18px 22px;
   border-radius: 20px;
   border: 1px solid oklch(1 0 0 / 0.12);
@@ -201,12 +201,12 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   min-width: 0;
 }
 
 .game-hub-pack__tally-item:not(.is-diamonds) {
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: nowrap;
 }
 
@@ -220,7 +220,7 @@
 }
 
 .game-hub-pack__tally-pair .game-hub-pack__tally-icon {
-  margin-right: -10px;
+  margin-right: calc(var(--space-2-5) * -1);
 }
 
 .game-hub-pack__tally-pair .game-hub-pack__tally-value {
@@ -237,7 +237,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
 }
 
@@ -327,7 +327,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   width: 100%;
 }
 
@@ -374,7 +374,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 4px 6px;
+  padding: var(--space-1) var(--space-1-5);
   background: linear-gradient(transparent, oklch(0 0 0 / 0.75));
   color: oklch(1 0 0);
   font-size: 9px;
@@ -386,14 +386,14 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .game-hub-pack__chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2);
   border-radius: 999px;
   border: 1px solid oklch(1 0 0 / 0.2);
   background: oklch(0.195 0.016 284.82 / 0.8);
@@ -417,7 +417,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: min(92vw, 320px);
 }
 
@@ -431,8 +431,8 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px 16px;
-  margin-top: 10px;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2-5);
 }
 
 .game-hub-pack__link {
@@ -444,7 +444,7 @@
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
-  padding: 4px;
+  padding: var(--space-1);
 }
 
 .game-hub-pack__link:disabled {
@@ -474,7 +474,7 @@
   flex-direction: column;
   align-items: center;
   width: min(100%, 420px);
-  padding: 0 20px;
+  padding: 0 var(--space-5);
   text-align: center;
 }
 
@@ -498,7 +498,7 @@
 }
 
 .pack-no-match__title {
-  margin: 18px 0 0;
+  margin: var(--space-4-5) 0 0;
   color: #ffffff;
   /* Capped so "Nothing Matched" stays on one line inside the 374px phone
      frame, not just the wider hub column. */
@@ -518,7 +518,7 @@
 }
 
 .pack-no-match__subtitle {
-  margin: 14px 0 0;
+  margin: var(--space-3-5) 0 0;
   color: rgba(255, 255, 255, 0.62);
   font-size: 15px;
   font-weight: 400;
@@ -585,7 +585,7 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  margin-top: 24px;
+  margin-top: var(--space-6);
   padding: 13px 20px;
   border: 1px solid rgba(255, 120, 200, 0.35);
   border-radius: 16px;

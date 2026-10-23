@@ -79,8 +79,8 @@ body[data-theme="v8"] .hf-follow:focus-visible {
 body[data-theme="v8"] .hf-tags {
   display: flex;
   flex-wrap: nowrap;
-  gap: 6px;
-  margin: 6px 0 0;
+  gap: var(--space-1-5);
+  margin: var(--space-1-5) 0 0;
   padding: 0;
   list-style: none;
   max-width: 100%;
@@ -94,7 +94,7 @@ body[data-theme="v8"] .hf-tag {
   flex: 0 1 auto;
   min-width: 0;
   max-width: 9.5rem;
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2-5);
   border: 1px solid oklch(1 0 0 / 0.22);
   border-radius: 999px;
   background: oklch(0 0 0 / 0.28);
@@ -146,7 +146,7 @@ body[data-theme="v8"] .hf-overlay-inner {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 4px;
+  gap: var(--space-1);
   opacity: 0.88;
   transform: translate3d(0, 8px, 0);
   backface-visibility: hidden;
@@ -201,7 +201,7 @@ body[data-theme="v8"] .hf-buy {
 
 body[data-theme="v8"] .hf-buy.has-pack-preview .cta-button__label {
   justify-content: flex-start;
-  padding-right: 40px;
+  padding-right: var(--space-10);
 }
 
 body[data-theme="v8"] .hf-pack-slot {
@@ -219,7 +219,7 @@ body[data-theme="v8"] .hf-like-wrap {
   flex: 0 0 auto;
   flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   width: auto;
 }
 

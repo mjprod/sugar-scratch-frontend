@@ -10,11 +10,11 @@
 .mcp-shell {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--space-7);
   width: 100%;
   max-width: 393px;
   margin: 0 auto;
-  padding: 12px 20px 28px;
+  padding: var(--space-3) var(--space-5) var(--space-7);
   box-sizing: border-box;
 }
 
@@ -23,10 +23,10 @@
 .mcp-top {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 38px;
   /* Clear the app top nav / diamond bar */
-  margin-top: calc(var(--app-diamond-offset, 64px) + 12px);
+  margin-top: calc(var(--app-diamond-offset, 64px) + var(--space-3));
 }
 
 .mcp-back {
@@ -67,10 +67,10 @@
   position: relative;
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
   min-height: 164px;
-  padding: 16px 12px 16px 16px;
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--space-4);
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 16px;
@@ -107,8 +107,8 @@ body[data-theme="v8"] .mcp-hero-tile.cpv2-motion-tile {
   flex: 0 0 108px;
   width: 108px;
   max-width: 108px;
-  margin-top: -28px;
-  margin-bottom: 8px;
+  margin-top: calc(var(--space-7) * -1);
+  margin-bottom: var(--space-2);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
@@ -129,15 +129,15 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   justify-content: space-between;
   min-width: 0;
   min-height: 123px;
-  padding-top: 2px;
-  padding-bottom: 2px;
+  padding-top: var(--space-0-5);
+  padding-bottom: var(--space-0-5);
 }
 
 .mcp-hero-copy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .mcp-hero-name {
@@ -154,7 +154,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   align-items: center;
   justify-content: center;
   min-height: 25px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid #ff005d;
   border-radius: 4px;
   color: #ff005d;
@@ -178,7 +178,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-premium-token {
   display: inline-flex;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-1);
   margin: 0;
   color: #d9c694;
   font-size: 10px;
@@ -193,7 +193,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   width: 10px;
   height: 12px;
   flex: 0 0 auto;
-  margin-top: 1px;
+  margin-top: var(--space-px);
 }
 
 /* —— Photo grid —— */
@@ -210,14 +210,14 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
 }
 
 .mcp-photos-title-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -237,7 +237,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 }
 
 .mcp-photos-note {
-  margin: -4px 0 8px;
+  margin: calc(var(--space-1) * -1) 0 var(--space-2);
   color: #fff;
   font-size: 10px;
   font-weight: 500;
@@ -271,7 +271,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-photo-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
 }
 
@@ -294,11 +294,11 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-skeleton-hero {
   display: grid;
   grid-template-columns: 108px minmax(0, 1fr);
-  column-gap: 16px;
+  column-gap: var(--space-4);
   align-items: center;
   width: 100%;
   min-height: 164px;
-  padding: 16px 12px 16px 16px;
+  padding: var(--space-4) var(--space-3) var(--space-4) var(--space-4);
   box-sizing: border-box;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -317,8 +317,8 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   grid-row: 1;
   width: 108px;
   aspect-ratio: 108 / 210.5;
-  margin-top: -28px;
-  margin-bottom: 8px;
+  margin-top: calc(var(--space-7) * -1);
+  margin-bottom: var(--space-2);
   border-radius: 8px;
 }
 
@@ -329,7 +329,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -363,7 +363,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-skeleton-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .mcp-skeleton-photo {
@@ -489,7 +489,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 }
 
 .mcp-photo-play-cta .cta-button__label {
-  padding: 0 6px;
+  padding: 0 var(--space-1-5);
 }
 
 .mcp-photo-play-cta .cta-button__title-row {

@@ -371,7 +371,7 @@
   /* Match green confirm button height; 4px inset around +/- */
   min-height: 2.35rem;
   height: 2.35rem;
-  padding: 4px;
+  padding: var(--space-1);
   border: 1px solid oklch(1 0 0 / 0.14);
   border-radius: 999px;
   background: oklch(1 0 0 / 0.05);
@@ -573,10 +573,10 @@
   z-index: 80;
   display: grid;
   place-items: center;
-  padding: max(1rem, env(safe-area-inset-top, 0px))
-    max(1rem, env(safe-area-inset-right, 0px))
-    max(1rem, env(safe-area-inset-bottom, 0px))
-    max(1rem, env(safe-area-inset-left, 0px));
+  padding: max(var(--space-4), env(safe-area-inset-top, 0px))
+    max(var(--space-4), env(safe-area-inset-right, 0px))
+    max(var(--space-4), env(safe-area-inset-bottom, 0px))
+    max(var(--space-4), env(safe-area-inset-left, 0px));
 }
 
 .buy-pack-qty-modal__scrim {
@@ -789,7 +789,7 @@
   width: 113px;
   height: 42px;
   min-height: 42px;
-  margin: 8px auto 0;
+  margin: var(--space-2) auto 0;
   pointer-events: auto;
   opacity: 1;
   filter: none;
@@ -824,7 +824,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   width: max-content;
   margin-inline: auto;
 }

@@ -18,7 +18,7 @@ body[data-theme="v8"] .cpv2-influencer {
   gap: 27px;
   width: 100%;
   min-width: 0;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 /* —— Profile card: native-scroll open card + compositor-only compact bar —— */
@@ -81,7 +81,7 @@ body[data-theme="v8"] .cpv2-profile-bar-inner {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   height: 100%;
   padding: 0 12px 0 9px;
   box-sizing: border-box;
@@ -145,7 +145,7 @@ body[data-theme="v8"] .cpv2-profile-bar-name {
 }
 
 body[data-theme="v8"] .cpv2-profile-bar-handle {
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
   color: rgba(255, 255, 255, 0.7);
   font-size: var(--text-body);
   font-weight: 400;
@@ -158,7 +158,7 @@ body[data-theme="v8"] .cpv2-profile-card {
   display: block;
   width: 100%;
   height: 178px;
-  margin-top: 20px;
+  margin-top: var(--space-5);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -270,7 +270,7 @@ body[data-theme="v8"] .cpv2-profile-card-follow {
   justify-content: center;
   min-width: 81px;
   height: 38px;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 60px;
   color: #fff;
@@ -306,7 +306,7 @@ body[data-theme="v8"] .cpv2-profile-card-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
 }
 
@@ -314,7 +314,7 @@ body[data-theme="v8"] .cpv2-profile-card-main {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
@@ -340,16 +340,16 @@ body[data-theme="v8"] .cpv2-profile-card-avatar > img {
 body[data-theme="v8"] .cpv2-profile-card-meta {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
-  padding-top: 8px;
+  padding-top: var(--space-2);
 }
 
 body[data-theme="v8"] .cpv2-profile-card-identity {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -384,7 +384,7 @@ body[data-theme="v8"] .cpv2-profile-card-socials {
   display: grid;
   grid-template-columns: repeat(2, 32px);
   grid-template-rows: repeat(2, 32px);
-  gap: 4px;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -425,7 +425,7 @@ body[data-theme="v8"] .cpv2-section-title {
 body[data-theme="v8"] #creator-pack-offers.cpv2-section-title {
   position: relative;
   z-index: 3;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 /* —— Pack section (homepage coverflow, creator-filtered) —— */
@@ -464,7 +464,7 @@ body[data-theme="v8"] .cpv2-pack-coverflow .home-featured-coverflow {
 body[data-theme="v8"] .cpv2-pack-disclaimer {
   /* Coverflow stage is taller than the pack art; sit just under the CTA. */
   margin: calc(-2.25rem + 1rem) 0 0;
-  padding: 0 4px;
+  padding: 0 var(--space-1);
   color: #fff;
   font-size: var(--text-body);
   font-weight: 500;
@@ -501,9 +501,9 @@ body[data-theme="v8"] .cpv2-pack-odds {
 body[data-theme="v8"] .cpv2-progress-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3-5);
   width: 100%;
-  padding: 16px;
+  padding: var(--space-4);
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 16px;
   box-sizing: border-box;
@@ -519,7 +519,7 @@ body[data-theme="v8"] .cpv2-progress-panel {
 @media (min-width: 1024px) {
   body[data-theme="v8"] .cpv2-progress-panel {
     max-width: 84ch;
-    margin: 2rem auto;
+    margin: var(--space-8) auto;
   }
 }
 
@@ -535,7 +535,7 @@ body[data-theme="v8"] .cpv2-progress-title {
 body[data-theme="v8"] .cpv2-progress-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -551,7 +551,7 @@ body[data-theme="v8"] .cpv2-progress-themes {
 body[data-theme="v8"] .cpv2-progress-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px 2rem;
+  gap: var(--space-2) var(--space-8);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -566,7 +566,7 @@ body[data-theme="v8"] .cpv2-progress-grid {
 body[data-theme="v8"] .cpv2-progress-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   min-height: 15px;
 }
@@ -598,7 +598,7 @@ body[data-theme="v8"] .cpv2-progress-grid .cpv2-progress-label::after {
 }
 
 body[data-theme="v8"] .cpv2-progress-row.is-total {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
 }
 
 body[data-theme="v8"] .cpv2-progress-row.is-total .cpv2-progress-label {
@@ -612,7 +612,7 @@ body[data-theme="v8"] .cpv2-progress-track {
   align-items: center;
   min-width: 0;
   height: 15px;
-  padding: 2px 14px 2px 2px;
+  padding: var(--space-0-5) var(--space-3-5) var(--space-0-5) var(--space-0-5);
   border-radius: 30px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.11);
@@ -636,7 +636,7 @@ body[data-theme="v8"] .cpv2-progress-fill {
 body[data-theme="v8"] .cpv2-theme-stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
 }
 
@@ -644,7 +644,7 @@ body[data-theme="v8"] .cpv2-theme-stack {
   body[data-theme="v8"] .cpv2-theme-stack {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: var(--space-4);
   }
 }
 
@@ -655,7 +655,7 @@ body[data-theme="v8"] .cpv2-theme-card {
   flex-direction: column;
   gap: 11px;
   width: 100%;
-  padding: 16px;
+  padding: var(--space-4);
   /* Visible so motion-tile play CTA can hang below the tile. */
   overflow: visible;
   isolation: isolate;
@@ -739,14 +739,14 @@ body[data-theme="v8"] .cpv2-theme-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
 }
 
 body[data-theme="v8"] .cpv2-theme-card-identity {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -795,7 +795,7 @@ body[data-theme="v8"] .cpv2-free-play {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   cursor: pointer;
 }
@@ -876,10 +876,10 @@ body[data-theme="v8"] .cpv2-free-play-switch:focus-visible {
 body[data-theme="v8"] .cpv2-theme-card-row {
   display: flex;
   justify-content: stretch;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   overflow: hidden;
-  padding-bottom: 18px;
+  padding-bottom: var(--space-4-5);
 }
 
 body[data-theme="v8"] .cpv2-motion-tile {
@@ -1124,7 +1124,7 @@ body[data-theme="v8"] .cpv2-motion-tile-progress {
   align-items: center;
   gap: 5px;
   min-width: 61px;
-  padding: 4px 6px;
+  padding: var(--space-1) var(--space-1-5);
   border-radius: 30px;
   background: rgba(0, 0, 0, 0.5);
   color: #fff;
@@ -1159,7 +1159,7 @@ body[data-theme="v8"] .cpv2-motion-tile-scratch {
   z-index: 2;
   display: flex;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-1);
   color: #fff;
   font-size: 8px;
   font-weight: 500;
@@ -1192,9 +1192,9 @@ body[data-theme="v8"] .cpv2-premium-banner {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2-5);
   width: 100%;
-  padding: 10px 12px 12px;
+  padding: var(--space-2-5) var(--space-3) var(--space-3);
   border-radius: 12px;
   border: 1px solid rgba(232, 193, 156, 0.18);
   background: linear-gradient(
@@ -1231,13 +1231,13 @@ body[data-theme="v8"] .cpv2-premium-banner-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 body[data-theme="v8"] .cpv2-premium-banner-title {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   color: #fff;
   font-size: var(--text-title);
   font-weight: 600;
@@ -1249,7 +1249,7 @@ body[data-theme="v8"] .cpv2-premium-locks {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin: 0;
   padding: 5px 8px;
   list-style: none;
@@ -1307,7 +1307,7 @@ body[data-theme="v8"] .cpv2-premium-lock.is-locked {
 body[data-theme="v8"] .cpv2-premium-banner-body {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 body[data-theme="v8"] .cpv2-premium-preview {
@@ -1354,7 +1354,7 @@ body[data-theme="v8"] .cpv2-premium-copy {
   flex: 1;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2-5);
   min-width: 0;
   min-height: 61px;
 }
@@ -1380,7 +1380,7 @@ body[data-theme="v8"] .cpv2-premium-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 body[data-theme="v8"] .cpv2-premium-win {
@@ -1393,8 +1393,8 @@ body[data-theme="v8"] .cpv2-premium-win {
 body[data-theme="v8"] .cpv2-premium-win-amt {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  margin-left: 4px;
+  gap: var(--space-0-5);
+  margin-left: var(--space-1);
   color: #fff;
   font-weight: 600;
 }
@@ -1404,7 +1404,7 @@ body[data-theme="v8"] .cpv2-premium-locked {
   align-items: center;
   gap: 5px;
   min-height: 33px;
-  padding: 6px 12px;
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid rgba(255, 179, 3, 0.2);
   border-radius: 60px;
   color: #ffc640;
@@ -1442,7 +1442,7 @@ body[data-theme="v8"] .cpv2-premium-locked-label {
 body[data-theme="v8"] .cpv2-premium-locked-price {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   color: #fff;
   font-weight: 700;
   line-height: 1;
@@ -1456,11 +1456,11 @@ body[data-theme="v8"] .cpv2-diamonds-cta {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
   min-height: 96px;
-  margin-top: 2rem;
-  padding: 18px 16px;
+  margin-top: var(--space-8);
+  padding: var(--space-4-5) var(--space-4);
   overflow: visible;
   border: 1px solid rgba(213, 3, 255, 0.18);
   border-radius: 16px;
@@ -1489,8 +1489,8 @@ body[data-theme="v8"] .cpv2-diamonds-cta-btn {
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 16px;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid rgba(213, 3, 255, 0.2);
   border-radius: 60px;
   font-size: var(--text-body);
@@ -1540,10 +1540,10 @@ body[data-theme="v8"] .cpv2-ultra-panel {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  margin-top: 2rem;
+  margin-top: var(--space-8);
   height: var(--cpv2-ultra-panel-h);
   max-height: var(--cpv2-ultra-panel-h);
-  padding: 14px 16px 0;
+  padding: var(--space-3-5) var(--space-4) 0;
   /* Let the gold video offset outside the framed panel */
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.13);
@@ -1588,7 +1588,7 @@ body[data-theme="v8"] .cpv2-ultra-card-outline {
   z-index: 1;
   width: calc(var(--cpv2-ultra-card-w) * 1.1 + 10px);
   height: calc(var(--cpv2-ultra-card-h) * 1.1);
-  padding: 2px;
+  padding: var(--space-0-5);
   border-radius: 18px;
   box-sizing: border-box;
   pointer-events: none;
@@ -1711,7 +1711,7 @@ body[data-theme="v8"] .cpv2-ultra-locked {
   align-items: center;
   gap: 5px;
   min-height: 33px;
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid rgba(255, 179, 3, 0.2);
   border-radius: 60px;
   color: #ffc640;
@@ -1750,7 +1750,7 @@ body[data-theme="v8"] .cpv2-ultra-locked-label {
 body[data-theme="v8"] .cpv2-ultra-locked-price {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   color: #fff;
   font-weight: 700;
   line-height: 1;
@@ -1786,11 +1786,11 @@ body[data-theme="v8"] .cpv2-ultra-stars {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   width: max-content;
   min-width: 33px;
   height: 33px;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   box-sizing: border-box;
   border: 1px solid #5c5446;
   border-radius: 16px;
@@ -1822,9 +1822,9 @@ body[data-theme="v8"] .cpv2-site-footer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-3-5);
   width: 100%;
-  padding: 8px 0 4px;
+  padding: var(--space-2) 0 var(--space-1);
   text-align: center;
 }
 
@@ -1846,7 +1846,7 @@ body[data-theme="v8"] .cpv2-site-footer-links {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 4px 8px;
+  gap: var(--space-1) var(--space-2);
   max-width: 320px;
 }
 
@@ -1906,10 +1906,10 @@ body[data-theme="v8"] .cpv2-skeleton-profile {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   width: 100%;
   height: 178px;
-  margin-top: 20px;
+  margin-top: var(--space-5);
   padding: 58px 16px 14px 32px;
   box-sizing: border-box;
   overflow: hidden;
@@ -1939,9 +1939,9 @@ body[data-theme="v8"] .cpv2-skeleton-meta {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
-  padding-top: 8px;
+  padding-top: var(--space-2);
 }
 
 body[data-theme="v8"] .cpv2-skeleton-bar.is-name {
@@ -1970,7 +1970,7 @@ body[data-theme="v8"] .cpv2-skeleton-coverflow {
   width: calc(100% + 24px);
   height: min(52dvh, 460px);
   min-height: 430px;
-  margin-left: -12px;
+  margin-left: calc(var(--space-3) * -1);
   border-radius: 16px;
 }
 

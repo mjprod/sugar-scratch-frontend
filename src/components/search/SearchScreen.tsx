@@ -192,7 +192,7 @@ export function SearchScreen({
       className="search-page relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       aria-label="Search"
     >
-      <div className="search-page-inner mx-auto w-full max-w-[75rem] px-4 pt-3 sm:px-6 lg:px-8">
+      <div className="search-page-inner mx-auto w-full max-w-[75rem] px-page pt-3">
         <m.div
           className="search-bar-row"
           initial={reduce ? false : "hidden"}

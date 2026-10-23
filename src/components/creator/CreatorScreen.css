@@ -18,7 +18,7 @@ body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
 @media (min-width: 1024px) {
 
   body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
-    padding-bottom: 40px;
+    padding-bottom: var(--space-10);
   }
 }
 
@@ -30,7 +30,7 @@ body[data-theme="v8"] .cpv2-toast {
   z-index: 50;
   max-width: min(90vw, 360px);
   transform: translateX(-50%);
-  padding: 10px 16px;
+  padding: var(--space-2-5) var(--space-4);
   border-radius: 999px;
   border: 1px solid oklch(1 0 0 / 0.1);
   background: oklch(0 0 0 / 0.88);
