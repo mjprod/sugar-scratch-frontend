@@ -50,7 +50,7 @@ function LegalLoadError() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[14px] font-medium text-white transition hover:bg-white/15 active:scale-95"
+        className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-body font-medium text-white transition hover:bg-white/15 active:scale-95"
       >
         Reload
       </button>

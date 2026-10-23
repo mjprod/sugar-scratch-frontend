@@ -391,7 +391,11 @@ export function StaticCarousel({
                     <PhotoCardsIcon />
                     <p className="static-carousel__title min-w-0 font-medium text-white">
                       {THEME_LABEL[theme]}{" "}
-                      {String(motionCardNumber).padStart(2, "0")} // Photo Cards
+                      {String(motionCardNumber).padStart(2, "0")}{" "}
+                      <span className="static-carousel__title-sep" aria-hidden="true">
+                        //
+                      </span>{" "}
+                      Photo Cards
                     </p>
                   </div>
                   <div className="static-carousel__actions flex min-w-0 flex-1 items-center justify-end gap-2">

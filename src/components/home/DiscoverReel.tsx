@@ -737,7 +737,6 @@ export function DiscoverReel({
                   type="button"
                   label="Retry"
                   costAmount={null}
-                  fontSize={15}
                   strokeWidth={1}
                   onClick={() => void loadInitial()}
                 />

@@ -232,7 +232,7 @@ export function CtaButton({
   auroraPaused = false,
   costIconAnimated: _costIconAnimated = true,
   labelColor = "#ffe0e8",
-  fontSize = 18,
+  fontSize,
   forceHover = false,
   forcePressed = false,
   glowEnabled = true,
@@ -367,7 +367,7 @@ export function CtaButton({
       : "0s",
     "--cta-aurora-base": auroraBaseColor,
     "--cta-label-color": labelColor,
-    "--cta-font-size": `${fontSize}px`,
+    ...(fontSize != null ? { "--cta-font-size": `${fontSize}px` } : {}),
   } as CSSProperties;
 
   const classes = [

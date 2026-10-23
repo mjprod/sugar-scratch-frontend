@@ -604,6 +604,10 @@
   letter-spacing: 0.28px;
 }
 
+.static-carousel__title-sep {
+  opacity: 0.2;
+}
+
 .motion-card-holder__panel .static-carousel__title {
   white-space: nowrap;
 }

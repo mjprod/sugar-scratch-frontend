@@ -89,14 +89,14 @@ export function RankScreen({
         className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-3 px-5 lg:px-8">
-          <p className="text-[16px] text-white/70">Couldn’t load rankings.</p>
-          <p className="max-w-xs text-center text-[13px] text-white/45">
+          <p className="text-title text-white/70">Couldn’t load rankings.</p>
+          <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
           </p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-[14px] font-semibold"
+            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-body font-semibold"
           >
             Retry
           </button>

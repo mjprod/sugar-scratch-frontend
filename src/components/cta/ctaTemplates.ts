@@ -43,7 +43,6 @@ export type CtaTemplateValues = {
   particleColor: string;
   particleTwinkle: number;
   labelColor: string;
-  fontSize: number;
   glowEnabled: boolean;
   glowAlwaysOn: boolean;
   glowEdgeSensitivity: number;
@@ -102,7 +101,6 @@ export const SQUIRCLE_CTA: CtaTemplate = {
     particleColor: "#fb4b97",
     particleTwinkle: 0.51,
     labelColor: "#ffe0e8",
-    fontSize: 18,
     glowEnabled: true,
     glowAlwaysOn: true,
     glowEdgeSensitivity: 15,
@@ -152,7 +150,6 @@ export const HEX_GOLD_CTA: CtaTemplate = {
     particleColor: "#fff1c2",
     particleTwinkle: 0.62,
     labelColor: "#fff8e6",
-    fontSize: 17,
     glowEnabled: true,
     glowAlwaysOn: true,
     glowEdgeSensitivity: 51,
@@ -202,7 +199,6 @@ export const PILL_GOLD_CTA: CtaTemplate = {
     particleColor: "#fff1c2",
     particleTwinkle: 0.62,
     labelColor: "#fff8e6",
-    fontSize: 18,
     glowEnabled: true,
     glowAlwaysOn: true,
     glowEdgeSensitivity: 51,
@@ -257,7 +253,6 @@ export const PILL_BLACK_CTA: CtaTemplate = {
     particleColor: "#dfe2e8",
     particleTwinkle: 0.55,
     labelColor: "#eceef2",
-    fontSize: 18,
     glowEnabled: true,
     glowAlwaysOn: true,
     glowEdgeSensitivity: 42,
@@ -307,7 +302,6 @@ export const PILL_PURPLE_CTA: CtaTemplate = {
     particleColor: "oklch(0.9 0.02 301.3)",
     particleTwinkle: 0.55,
     labelColor: "oklch(0.94 0.015 301.3)",
-    fontSize: 18,
     glowEnabled: true,
     glowAlwaysOn: true,
     glowEdgeSensitivity: 42,
@@ -385,7 +379,6 @@ export function ctaButtonPropsFromTemplate(
     particleColor: v.particleColor,
     particleTwinkle: v.particleTwinkle,
     labelColor: v.labelColor,
-    fontSize: v.fontSize,
     glowEnabled: v.glowEnabled,
     glowAlwaysOn: v.glowAlwaysOn,
     glowEdgeSensitivity: v.glowEdgeSensitivity,

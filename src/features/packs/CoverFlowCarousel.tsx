@@ -414,17 +414,17 @@ export const HOME_MOBILE_COVERFLOW_CAMERA: CoverFlowCameraSettings = {
   modelY: -0.3,
 }
 
-type BuyPackCtaDims = { width: number; height: number; fontSize: number; strokeWidth: number }
+type BuyPackCtaDims = { width: number; height: number; strokeWidth: number }
 export type BuyPackCtaSize = { desktop: BuyPackCtaDims; mobile: BuyPackCtaDims }
 /** Packs hex CTA size — taller shell with vertically centered title + cost. */
 export const DEFAULT_BUY_PACK_CTA_SIZE: BuyPackCtaSize = {
-  desktop: { width: 187, height: 70, fontSize: 12, strokeWidth: 2 },
-  mobile: { width: 176, height: 60, fontSize: 13, strokeWidth: 2 },
+  desktop: { width: 187, height: 70, strokeWidth: 2 },
+  mobile: { width: 176, height: 60, strokeWidth: 2 },
 }
 /** Compact height so the Pack Pocket text control fits under it (home). */
 export const HOME_BUY_PACK_CTA_SIZE: BuyPackCtaSize = {
-  desktop: { width: 187, height: 48, fontSize: 12, strokeWidth: 2 },
-  mobile: { width: 176, height: 42, fontSize: 13, strokeWidth: 2 },
+  desktop: { width: 187, height: 48, strokeWidth: 2 },
+  mobile: { width: 176, height: 42, strokeWidth: 2 },
 }
 
 /** Per-surface look: everything the home and packs/tear carousels tune differently. */
@@ -2810,7 +2810,6 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
 	      <CtaButton
 	        {...ctaButtonPropsFromTemplate('squircleCTA')}
 		        fillParent
-		        fontSize={12}
 	        strokeWidth={1}
 	        cornerRadius={999}
 	        auroraBaseColor="#42001b"
@@ -4469,7 +4468,6 @@ isMobile={isMobileViewportActive}
                     type="button"
                     label={revealContinueLabel}
                     costAmount={null}
-                    fontSize={15}
                     strokeWidth={1}
                     onClick={() => onRevealContinue(revealCards)}
                   />

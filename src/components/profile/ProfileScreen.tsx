@@ -413,7 +413,6 @@ export function UserDashboardScreen({
                     }
                     label="Get Diamonds"
                     costAmount={null}
-                    fontSize={15}
                     strokeWidth={1}
                     onClick={onBuyMoreDiamonds}
                   />
@@ -459,7 +458,7 @@ export function UserDashboardScreen({
       </footer>
 
       {notice ? (
-        <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">
+        <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-caption backdrop-blur-md">
           {notice}
         </div>
       ) : null}
@@ -500,7 +499,7 @@ function MenuGroup({
                   <InboxUtilityBadge count={item.badgeCount} showZero />
                 ) : null}
               </span>
-              <span className="flex-1 text-[14px]">{item.label}</span>
+              <span className="flex-1 text-title">{item.label}</span>
               <ChevronRight className="size-4 text-white/30" />
             </button>
           );

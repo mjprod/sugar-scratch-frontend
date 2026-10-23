@@ -56,7 +56,7 @@
   z-index: 1;
   transform: translate(-50%, -50%);
   color: oklch(1 0 0 / 0.45);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 500;
   letter-spacing: 0.02em;
   pointer-events: none;
@@ -282,7 +282,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 .nav-test-top-profile-label {
-  font-size: 13px;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -707,7 +707,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 550;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -783,7 +783,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   }
 
   .nav-test-top-utils .top-nav-resource-value {
-    font-size: 12px;
+    font-size: var(--text-body);
   }
 }
 
@@ -1687,7 +1687,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -1926,7 +1926,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   color: oklch(1 0 0 / 0.5);
   max-width: none;
   padding-inline: 0;
-  font-size: 10px;
+  font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -1941,7 +1941,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 /* iPhone-class widths: keep the center Home label on one line */
 @media (max-width: 430px) {
   .nav-test-dock-primary-label {
-    font-size: 9px;
+    font-size: var(--text-caption);
     letter-spacing: -0.02em;
   }
 }

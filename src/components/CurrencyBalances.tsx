@@ -210,7 +210,7 @@ export function CurrencyBalances({
         aria-hidden
       />
       {compact ? null : (
-        <span className="top-nav-resource-value text-[13px] font-semibold tabular-nums">
+        <span className="top-nav-resource-value text-body font-semibold tabular-nums">
           {diamondLabel}
         </span>
       )}

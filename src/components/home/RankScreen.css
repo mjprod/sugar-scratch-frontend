@@ -31,7 +31,7 @@ body[data-theme="v8"] .category-leaderboard-empty {
   border: 1px dashed oklch(1 0 0 / 0.1);
   border-radius: 14px;
   color: oklch(1 0 0 / 0.45);
-  font-size: 13px;
+  font-size: var(--text-caption);
   text-align: center;
 }
 
@@ -54,7 +54,7 @@ body[data-theme="v8"] .category-leaderboard-rank {
   width: 22px;
   flex-shrink: 0;
   color: oklch(1 0 0 / 0.4);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -115,15 +115,21 @@ body[data-theme="v8"] .category-leaderboard-stats {
 
 body[data-theme="v8"] .category-leaderboard-pack {
   color: oklch(1 0 0);
-  font-size: 13px;
+  font-size: var(--text-title);
   font-weight: 600;
   letter-spacing: 0.26px;
 }
 
-body[data-theme="v8"] .category-leaderboard-author,
+body[data-theme="v8"] .category-leaderboard-author {
+  color: oklch(1 0 0 / 0.7);
+  font-size: var(--text-body);
+  font-weight: 400;
+  letter-spacing: 0.24px;
+}
+
 body[data-theme="v8"] .category-leaderboard-stats {
   color: oklch(1 0 0 / 0.7);
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: 0.24px;
 }
@@ -158,9 +164,11 @@ body[data-theme="v8"] .category-leaderboard.rank-leaderboard {
 }
 
 /* Category leaderboard title sentence-ish on v2 */
-body[data-theme="v8"] .home-v2 .category-leaderboard .continue-collecting-title {
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-leaderboard .continue-collecting-title {
   text-transform: none;
   letter-spacing: 0.28px;
+  font-size: var(--text-display);
+  font-weight: 600;
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs::-webkit-scrollbar {
@@ -322,7 +330,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
   width: 29px;
   min-width: 29px;
   height: 29px;
-  font-size: 16px;
+  font-size: var(--text-title);
   font-weight: 700;
   line-height: 1;
 }
@@ -375,17 +383,25 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-pack {
   font-family: Inter, system-ui, sans-serif;
-  font-size: 13px;
+  font-size: var(--text-title);
   font-weight: 600;
   letter-spacing: 0.26px;
   color: #fff;
   line-height: normal;
 }
 
-body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author,
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: var(--text-body);
+  font-weight: 400;
+  letter-spacing: 0.24px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: normal;
+}
+
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-stats {
   font-family: Inter, system-ui, sans-serif;
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: 0.24px;
   color: rgba(255, 255, 255, 0.7);
@@ -403,4 +419,12 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
   min-width: 88px;
   height: 34px;
   min-height: 34px;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .category-leaderboard-play,
+  body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-play {
+    width: 116px;
+    min-width: 116px;
+  }
 }

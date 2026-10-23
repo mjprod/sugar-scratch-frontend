@@ -571,7 +571,6 @@ export function CartPage() {
                 costAmount={null}
                 width={200}
                 height={48}
-                fontSize={14}
                 onClick={() => requestTab("feed")}
               />
             }
@@ -628,7 +627,6 @@ export function CartPage() {
               costAmount={null}
               width={248}
               height={56}
-              fontSize={16}
               aria-label="Open pack"
               disabled={openingOwned}
               onClick={() => openSelectedOwnedPack()}
@@ -649,7 +647,6 @@ export function CartPage() {
               costAmount={null}
               width={248}
               height={56}
-              fontSize={16}
               aria-label={`${combinedPrice} diamonds, Confirm`}
               disabled={checkingOut}
               onClick={() => void continueToTear()}
@@ -765,15 +762,14 @@ function CartCheckoutModalBody({
       >
         {icon}
       </span>
-      <h2 className="mt-5 text-[24px] font-bold tracking-[-0.02em]">{title}</h2>
-      <p className="mt-2 max-w-sm text-[14px] leading-relaxed text-white/55">{body}</p>
+      <h2 className="mt-5 text-headline font-bold tracking-[-0.02em]">{title}</h2>
+      <p className="mt-2 max-w-sm text-body leading-relaxed text-white/55">{body}</p>
       <div className="mt-7 h-14 w-full max-w-sm">
         <CtaButton
           {...ctaButtonPropsFromTemplate("squircleCTA")}
           fillParent
           label={primary.label}
           costAmount={null}
-          fontSize={15}
           strokeWidth={1}
           onClick={primary.onClick}
         />
@@ -782,7 +778,7 @@ function CartCheckoutModalBody({
         <button
           type="button"
           onClick={secondary.onClick}
-          className="mt-3 h-11 px-6 text-[13px] font-medium text-white/55 hover:text-white/80"
+          className="mt-3 h-11 px-6 text-caption font-medium text-white/55 hover:text-white/80"
         >
           {secondary.label}
         </button>

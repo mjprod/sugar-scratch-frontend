@@ -121,14 +121,14 @@ export function HomeVersion2Screen({
         className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-3 px-5 lg:px-8">
-          <p className="text-[16px] text-white/70">Couldn’t load homepage.</p>
-          <p className="max-w-xs text-center text-[13px] text-white/45">
+          <p className="text-title text-white/70">Couldn’t load homepage.</p>
+          <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
           </p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-[14px] font-semibold"
+            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-body font-semibold"
           >
             Retry
           </button>
@@ -203,7 +203,7 @@ export function HomeVersion2Screen({
         <button
           type="button"
           onClick={onRestart}
-          className="mt-10 mb-2 text-center text-[12px] text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
+          className="mt-10 mb-2 text-center text-caption text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
         >
           Restart prototype (clears first-visit flags)
         </button>
@@ -212,7 +212,7 @@ export function HomeVersion2Screen({
       </div>
 
       {toast ? (
-        <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[13px] text-white/85 backdrop-blur-md">
+        <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-caption text-white/85 backdrop-blur-md">
           {toast}
         </div>
       ) : null}

@@ -25,7 +25,7 @@
   border: 1px solid oklch(1 0 0 / 0.12);
   background: oklch(1 0 0 / 0.06);
   color: oklch(1 0 0 / 0.72);
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 650;
   cursor: pointer;
 }

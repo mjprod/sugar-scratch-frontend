@@ -143,7 +143,6 @@ export function RevealInventoryTile({
             fillParent
             label={actionLabel}
             costAmount={null}
-            fontSize={12}
             onClick={onClick}
           />
         </div>

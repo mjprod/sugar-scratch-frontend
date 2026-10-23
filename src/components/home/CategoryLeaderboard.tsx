@@ -1,4 +1,4 @@
-import { Trophy } from "lucide-react";
+import { Play, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -199,16 +199,27 @@ export function CategoryLeaderboard({
                   <CtaButton
                     {...ctaButtonPropsFromTemplate("squircleCTA")}
                     fillParent
-                    label={`${row.diamondCost} Play`}
+                    label="Play"
                     leadingIcon={
-                      <DiamondLottie
-                        className="category-leaderboard-play-diamond"
-                        size={14}
-                        aria-hidden
-                      />
+                      <>
+                        <DiamondLottie
+                          className="category-leaderboard-play-diamond"
+                          size={14}
+                          aria-hidden
+                        />
+                        <span className="category-leaderboard-play-cost">
+                          {row.diamondCost}
+                        </span>
+                        <Play
+                          className="category-leaderboard-play-triangle"
+                          size={11}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
                     }
                     costAmount={null}
-                    fontSize={12}
                     cornerRadius={999}
                     aria-label={`Play ${row.packName} for ${row.diamondCost} diamonds`}
                     onClick={() => onPlay(row)}

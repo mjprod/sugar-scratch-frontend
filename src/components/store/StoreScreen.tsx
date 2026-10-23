@@ -479,11 +479,11 @@ function StateBlock({
       <span className="grid size-14 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/55">
         <RefreshCw className="size-6" aria-hidden="true" />
       </span>
-      <p className="mt-4 max-w-xs text-[15px] text-white/65">{title}</p>
+      <p className="mt-4 max-w-xs text-body text-white/65">{title}</p>
       <button
         type="button"
         onClick={primary.onClick}
-        className="mt-6 h-12 min-w-[160px] rounded-full bg-[oklch(0.606_0.219_292.72)] px-6 text-[14px] font-semibold transition active:scale-[0.98]"
+        className="mt-6 h-12 min-w-[160px] rounded-full bg-[oklch(0.606_0.219_292.72)] px-6 text-body font-semibold transition active:scale-[0.98]"
       >
         {primary.label}
       </button>
@@ -491,7 +491,7 @@ function StateBlock({
         <button
           type="button"
           onClick={secondary.onClick}
-          className="mt-3 h-11 px-5 text-[13px] text-white/55 hover:text-white/80"
+          className="mt-3 h-11 px-5 text-caption text-white/55 hover:text-white/80"
         >
           {secondary.label}
         </button>
@@ -511,12 +511,12 @@ function ConfirmModal({
 }) {
   return (
     <ModalShell onDismiss={onCancel}>
-      <h2 className="text-[18px] font-bold">Confirm purchase</h2>
-      <p className="mt-2 text-[13px] leading-relaxed text-white/55">
+      <h2 className="text-title font-bold">Confirm purchase</h2>
+      <p className="mt-2 text-caption leading-relaxed text-white/55">
         Buy <span className="text-white">{product.title}</span> for{" "}
         <span className="text-white">{product.priceLabel}</span>?
       </p>
-      <p className="mt-3 text-[11px] leading-relaxed text-white/40">
+      <p className="mt-3 text-caption leading-relaxed text-white/40">
         You’ll continue to a secure third-party payment page. Sugar never sees your
         card details.
       </p>
@@ -526,14 +526,13 @@ function ConfirmModal({
           fillParent
           label="Continue to payment"
           costAmount={null}
-          fontSize={14}
           onClick={onConfirm}
         />
       </div>
       <button
         type="button"
         onClick={onCancel}
-        className="mt-2 h-11 w-full text-[13px] text-white/55 hover:text-white/80"
+        className="mt-2 h-11 w-full text-caption text-white/55 hover:text-white/80"
       >
         Cancel
       </button>
@@ -623,7 +622,7 @@ function PaymentGateway({
       aria-label="Payment gateway"
     >
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
-        <div className="flex items-center gap-2 text-[13px] font-medium text-slate-600">
+        <div className="flex items-center gap-2 text-caption font-medium text-slate-600">
           <Lock className="size-3.5 text-emerald-600" aria-hidden="true" />
           checkout.pay · Secure
         </div>
@@ -631,20 +630,20 @@ function PaymentGateway({
           type="button"
           disabled={submitting}
           onClick={() => choose("closed")}
-          className="h-10 px-2 text-[13px] text-slate-500 hover:text-slate-800 disabled:opacity-50"
+          className="h-10 px-2 text-caption text-slate-500 hover:text-slate-800 disabled:opacity-50"
         >
           Close
         </button>
       </header>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 py-6 pb-[calc(96px+env(safe-area-inset-bottom,0px)+24px)] md:pb-10">
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+        <p className="text-caption font-semibold tracking-[0.14em] text-slate-400 uppercase">
           Leaving Sugar · Third-party payment
         </p>
-        <h1 className="mt-2 text-[26px] font-bold tracking-[-0.02em] text-slate-900">
+        <h1 className="mt-2 text-headline font-bold tracking-[-0.02em] text-slate-900">
           Enter card details
         </h1>
-        <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
+        <p className="mt-2 text-caption leading-relaxed text-slate-500">
           Card information is processed by the payment provider. Sugar never
           stores or sees these details.
         </p>
@@ -652,12 +651,12 @@ function PaymentGateway({
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[12px] text-slate-400">Paying Sugar Scratch</p>
-              <p className="mt-1 text-[16px] font-semibold text-slate-900">
+              <p className="text-caption text-slate-400">Paying Sugar Scratch</p>
+              <p className="mt-1 text-title font-semibold text-slate-900">
                 {session.productTitle}
               </p>
             </div>
-            <p className="text-[20px] font-bold tabular-nums text-slate-900">
+            <p className="text-title font-bold tabular-nums text-slate-900">
               {session.priceLabel}
             </p>
           </div>
@@ -665,7 +664,7 @@ function PaymentGateway({
 
         <form className="mt-5 space-y-3" onSubmit={onSubmit} noValidate>
           <label className="block">
-            <span className="mb-1.5 block text-[12px] font-medium text-slate-600">
+            <span className="mb-1.5 block text-caption font-medium text-slate-600">
               Name on card
             </span>
             <input
@@ -681,7 +680,7 @@ function PaymentGateway({
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-[12px] font-medium text-slate-600">
+            <span className="mb-1.5 block text-caption font-medium text-slate-600">
               Card number
             </span>
             <input
@@ -699,7 +698,7 @@ function PaymentGateway({
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-1.5 block text-[12px] font-medium text-slate-600">
+              <span className="mb-1.5 block text-caption font-medium text-slate-600">
                 Expiry
               </span>
               <input
@@ -715,7 +714,7 @@ function PaymentGateway({
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-[12px] font-medium text-slate-600">
+              <span className="mb-1.5 block text-caption font-medium text-slate-600">
                 CVC
               </span>
               <input
@@ -735,11 +734,11 @@ function PaymentGateway({
           </div>
 
           {error ? (
-            <p className="text-[12px] font-medium text-red-600" role="alert">
+            <p className="text-caption font-medium text-red-600" role="alert">
               {error}
             </p>
           ) : (
-            <p className="text-[11px] leading-relaxed text-slate-400">
+            <p className="text-caption leading-relaxed text-slate-400">
               Demo tips: any 16-digit card works · ends in 0000 = decline · ends
               in 0001 = pending
             </p>
@@ -748,7 +747,7 @@ function PaymentGateway({
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[oklch(0.208_0.04_265.75)] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-55"
+            className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[oklch(0.208_0.04_265.75)] text-body font-semibold text-white transition active:scale-[0.99] disabled:opacity-55"
           >
             {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
             {submitting ? "Authorizing…" : `Pay ${session.priceLabel}`}
@@ -759,7 +758,7 @@ function PaymentGateway({
           type="button"
           disabled={submitting}
           onClick={() => choose("cancelled")}
-          className="mt-3 h-11 text-[13px] text-slate-500 hover:text-slate-800 disabled:opacity-50"
+          className="mt-3 h-11 text-caption text-slate-500 hover:text-slate-800 disabled:opacity-50"
         >
           Cancel and return to Sugar
         </button>
@@ -780,8 +779,8 @@ function StatusOverlay({ title, body }: { title: string; body: string }) {
     >
       <div className="flex flex-col items-center rounded-[24px] border border-white/10 bg-[oklch(0.191_0.01_303.57)] px-8 py-7 text-center shadow-2xl">
         <Loader2 className="size-8 animate-spin text-[oklch(0.811_0.101_293.57)]" aria-hidden="true" />
-        <p className="mt-4 text-[15px] font-semibold">{title}</p>
-        <p className="mt-1 max-w-[240px] text-[12px] text-white/45">{body}</p>
+        <p className="mt-4 text-body font-semibold">{title}</p>
+        <p className="mt-1 max-w-[240px] text-caption text-white/45">{body}</p>
       </div>
     </div>,
     document.body,
@@ -829,8 +828,8 @@ function ResultModal({
       >
         {icon}
       </span>
-      <h2 className="mt-4 text-[18px] font-bold">{title}</h2>
-      <p className="mt-2 text-[13px] leading-relaxed text-white/55">{body}</p>
+      <h2 className="mt-4 text-title font-bold">{title}</h2>
+      <p className="mt-2 text-caption leading-relaxed text-white/55">{body}</p>
       {kind === "success" || kind === "cancelled" ? (
         <div className="mt-6 h-12 w-full">
           <CtaButton
@@ -838,7 +837,6 @@ function ResultModal({
             fillParent
             label="Back to Store"
             costAmount={null}
-            fontSize={14}
             onClick={onContinue}
           />
         </div>
@@ -851,7 +849,6 @@ function ResultModal({
                 fillParent
                 label={retryLabel}
                 costAmount={null}
-                fontSize={14}
                 onClick={onRetry}
               />
             </div>
@@ -859,7 +856,7 @@ function ResultModal({
           <button
             type="button"
             onClick={onContinue}
-            className="mt-2 h-11 w-full text-[13px] text-white/55 hover:text-white/80"
+            className="mt-2 h-11 w-full text-caption text-white/55 hover:text-white/80"
           >
             Back to Store
           </button>

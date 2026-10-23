@@ -220,7 +220,6 @@ export function SpotlightBanner() {
             fillParent
             label="Tell Us Who"
             costAmount={null}
-            fontSize={14}
             onClick={() => setSuggestOpen(true)}
           />
         </div>

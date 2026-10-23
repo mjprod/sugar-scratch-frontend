@@ -310,7 +310,6 @@ export function EditProfileScreen({
               type="submit"
               label={submitting ? "Saving…" : "Save Changes"}
               costAmount={null}
-              fontSize={15}
               strokeWidth={1}
               disabled={!canSave}
             />

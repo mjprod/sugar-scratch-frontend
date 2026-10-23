@@ -239,7 +239,6 @@ export function VerifyEmailModal({
                     type="submit"
                     label={submitting ? "Verifying…" : "Verify"}
                     costAmount={null}
-                    fontSize={15}
                     strokeWidth={1}
                     disabled={busy || !code.trim()}
                   />

@@ -28,7 +28,6 @@ import "./MobileCssCarousel.css";
 const BUY_PACK_CTA_SIZE_MOBILE = {
   width: 176,
   height: 60,
-  fontSize: 13,
   strokeWidth: 2,
 };
 
@@ -920,7 +919,6 @@ export function MobileCssCarousel({
                     <CtaButton
                       {...ctaButtonPropsFromTemplate("squircleCTA")}
                       fillParent
-                      fontSize={12}
                       strokeWidth={1}
                       cornerRadius={999}
                       auroraBaseColor="#42001b"

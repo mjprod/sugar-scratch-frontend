@@ -33,7 +33,7 @@ body[data-theme="v8"] .hub-redeem-card {
 
 body[data-theme="v8"] .hub-redeem-lead {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--text-caption);
   line-height: 1.45;
   color: oklch(1 0 0 / 0.55);
 }
@@ -79,7 +79,7 @@ body[data-theme="v8"] .hub-redeem-submit {
   border: 1px solid oklch(1 0 0 / 0.14);
   background: oklch(1 0 0 / 0.08);
   padding: 0 16px;
-  font-size: 13px;
+  font-size: var(--text-caption);
   font-weight: 600;
   color: oklch(1 0 0);
   transition:
@@ -125,7 +125,7 @@ body[data-theme="v8"] .hub-redeem-input:focus-visible {
 
 body[data-theme="v8"] .hub-redeem-error {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: var(--text-caption);
   line-height: 1.4;
   color: oklch(0.808 0.103 19.57);
 }
@@ -145,7 +145,7 @@ body[data-theme="v8"] .hub-redeem-success-kicker {
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -157,7 +157,7 @@ body[data-theme="v8"] .hub-redeem-success-amount {
   align-items: center;
   gap: 8px;
   margin: 10px 0 0;
-  font-size: 28px;
+  font-size: var(--text-headline);
   font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -165,6 +165,6 @@ body[data-theme="v8"] .hub-redeem-success-amount {
 
 body[data-theme="v8"] .hub-redeem-success-body {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: var(--text-caption);
   color: oklch(1 0 0 / 0.55);
 }

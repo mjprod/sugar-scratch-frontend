@@ -15,13 +15,13 @@ export function RouteLoadError() {
       role="alert"
       className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-8 py-16 text-center"
     >
-      <p className="text-[15px] text-white/75">
+      <p className="text-body text-white/75">
         This page didn&apos;t load. Check your connection and try again.
       </p>
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="rounded-full border border-white/15 bg-white/10 px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-white/15 active:scale-95"
+        className="rounded-full border border-white/15 bg-white/10 px-5 py-2.5 text-body font-medium text-white transition hover:bg-white/15 active:scale-95"
       >
         Reload
       </button>

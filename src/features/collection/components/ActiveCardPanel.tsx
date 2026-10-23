@@ -1566,7 +1566,6 @@ const visibleRef = useRef(visible)
                 label={playGameLabel}
                 leadingIcon={playGameLeadingIcon}
                 costAmount={playGameCostAmount}
-                fontSize={14}
                 strokeWidth={1}
                 glowOuterBloom="lite"
                 glowAlwaysOn={open}
@@ -1705,7 +1704,6 @@ if (gridOnly) {
               label={playGameLabel}
               leadingIcon={playGameLeadingIcon}
               costAmount={playGameCostAmount}
-              fontSize={14}
               strokeWidth={1}
               glowOuterBloom="lite"
               glowAlwaysOn={open}

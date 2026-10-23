@@ -51,7 +51,7 @@ body[data-theme="v8"] .profile-username {
   max-width: 100%;
   overflow: hidden;
   color: oklch(1 0 0 / 0.45);
-  font-size: 13px;
+  font-size: var(--text-title);
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -65,7 +65,7 @@ body[data-theme="v8"] .profile-edit-link {
   min-height: 28px;
   /* Match display name above (leo.mjpro) */
   color: oklch(1 0 0);
-  font-size: 13px;
+  font-size: var(--text-body);
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.88;
@@ -105,7 +105,7 @@ body[data-theme="v8"] .profile-action-btn--logout svg {
 }
 
 body[data-theme="v8"] .profile-action-label {
-  font-size: 13px;
+  font-size: var(--text-caption);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
@@ -177,7 +177,7 @@ body[data-theme="v8"] .profile-balance-copy {
 }
 
 body[data-theme="v8"] .profile-balance-value {
-  font-size: 16px;
+  font-size: var(--text-title);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -190,7 +190,7 @@ body[data-theme="v8"] .profile-balance-value.is-exchange-preview {
 
 body[data-theme="v8"] .profile-balance-label {
   color: oklch(1 0 0 / 0.55);
-  font-size: 14px;
+  font-size: var(--text-headline);
 }
 
 body[data-theme="v8"] .profile-balance-cta {
@@ -221,16 +221,16 @@ body[data-theme="v8"] .profile-balance-cta {
   body[data-theme="v8"] .profile-identity-avatar {
     width: 76px;
     height: 76px;
-    font-size: 28px;
+    font-size: var(--text-headline);
     box-shadow: none;
   }
 
   body[data-theme="v8"] .profile-display-name {
-    font-size: 22px;
+    font-size: var(--text-display);
   }
 
   body[data-theme="v8"] .profile-username {
-    font-size: 12px;
+    font-size: var(--text-title);
   }
 
   body[data-theme="v8"] .profile-edit-link {

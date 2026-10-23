@@ -16,7 +16,7 @@
 .game-settings-section-label {
   margin: 0;
   color: oklch(1 0 0 / 0.45);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -64,14 +64,14 @@
 
 .game-settings-row-label {
   color: oklch(1 0 0);
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .game-settings-row-hint {
   color: oklch(1 0 0 / 0.5);
-  font-size: 12px;
+  font-size: var(--text-caption);
   font-weight: 500;
   line-height: 1.35;
 }

@@ -39,7 +39,7 @@ body[data-theme="v8"] .inbox-section-label {
   gap: 8px;
   margin: 0;
   color: oklch(1 0 0 / 0.55);
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -163,7 +163,7 @@ body[data-theme="v8"] .inbox-item-body {
 
 body[data-theme="v8"] .inbox-item-title {
   color: oklch(1 0 0);
-  font-size: 0.95rem;
+  font-size: var(--text-body);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -171,7 +171,7 @@ body[data-theme="v8"] .inbox-item-title {
 
 body[data-theme="v8"] .inbox-item-subtitle {
   color: oklch(1 0 0 / 0.48);
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   line-height: 1.35;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -181,7 +181,7 @@ body[data-theme="v8"] .inbox-item-subtitle {
 
 body[data-theme="v8"] .inbox-item-time {
   color: oklch(1 0 0 / 0.38);
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   font-weight: 500;
   white-space: nowrap;
   justify-self: end;
@@ -213,7 +213,7 @@ body[data-theme="v8"] .inbox-empty-wrap {
   }
 
   body[data-theme="v8"] .inbox-item-title {
-    font-size: 0.9rem;
+    font-size: var(--text-body);
   }
 }
 

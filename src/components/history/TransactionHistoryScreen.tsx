@@ -371,7 +371,7 @@ export function TransactionHistoryScreen({
 
 function HistoryToast({ message }: { message: string }) {
   return (
-    <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-[13px] backdrop-blur-md">
+    <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-caption backdrop-blur-md">
       {message}
     </div>
   );

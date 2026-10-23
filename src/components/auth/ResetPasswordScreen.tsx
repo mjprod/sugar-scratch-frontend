@@ -90,7 +90,6 @@ export function ResetPasswordScreen({
             fillParent
             label="Request a new reset link"
             costAmount={null}
-            fontSize={15}
             strokeWidth={1}
             onClick={onBack}
           />
@@ -188,7 +187,6 @@ export function ResetPasswordScreen({
           type="submit"
           label={loading ? "Saving…" : "Save password"}
           costAmount={null}
-          fontSize={15}
           strokeWidth={1}
           disabled={!password || !confirm || loading}
           auroraPaused={loading}

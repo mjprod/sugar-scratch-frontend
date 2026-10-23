@@ -106,7 +106,7 @@ export function CreatorAvatar({
           className="size-full object-cover"
         />
       ) : (
-        <span className="grid size-full place-items-center bg-[oklch(0.606_0.219_292.72)]/30 text-[13px] font-bold text-white">
+        <span className="grid size-full place-items-center bg-[oklch(0.606_0.219_292.72)]/30 text-caption font-bold text-white">
           {name.slice(0, 1)}
         </span>
       )}

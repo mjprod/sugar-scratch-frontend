@@ -200,10 +200,10 @@ function HubRedeemSuccess({
           <Gift className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold tracking-[-0.01em]">
+          <p className="text-body font-semibold tracking-[-0.01em]">
             {reward.sceneName}
           </p>
-          <p className="mt-0.5 text-[12px] text-white/50">
+          <p className="mt-0.5 text-caption text-white/50">
             From @{reward.creatorHandle} · Unopened Packs
           </p>
         </div>
@@ -212,7 +212,7 @@ function HubRedeemSuccess({
         <button
           type="button"
           onClick={onOpenNow}
-          className="mt-4 h-11 w-full rounded-full bg-white text-[13px] font-semibold text-[oklch(0.147_0.011_285.01)] transition active:scale-[0.98] sm:w-auto sm:px-5"
+          className="mt-4 h-11 w-full rounded-full bg-white text-caption font-semibold text-[oklch(0.147_0.011_285.01)] transition active:scale-[0.98] sm:w-auto sm:px-5"
         >
           Open Now
         </button>
