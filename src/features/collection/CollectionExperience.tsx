@@ -3,6 +3,7 @@ import CardCarousel from './components/CardCarousel'
 import SlideDeck from './components/SlideDeck'
 import { ActiveCardProvider, useActiveCard } from './context/ActiveCardContext'
 import { createCard, type CardConfig } from './lib/cards'
+import { preloadCardMedia } from './lib/preloadCardMedia'
 import {
   DEFAULT_HOLO_TRANSFORM,
   normalizeHoloTransform,
@@ -71,54 +72,6 @@ function resolveFocusIndex(
   if (cardIndex < 0) return 0
   const slot = findCardSlotIndex(layoutSlots, cardIndex)
   return clampSlotIndex(slot >= 0 ? slot : 0, layoutSlots.length)
-}
-
-function preloadCardMedia(card: CardConfig | null | undefined): Promise<void> {
-  if (!card) return Promise.resolve()
-
-  const loadOne = (type: CardConfig['mediaType'], url: string) =>
-    new Promise<void>((resolve) => {
-      if (!url) {
-        resolve()
-        return
-      }
-      if (type === 'image') {
-        const img = new Image()
-        img.onload = () => resolve()
-        img.onerror = () => resolve()
-        img.src = url
-        return
-      }
-      const video = document.createElement('video')
-      video.preload = 'auto'
-      video.muted = true
-      video.playsInline = true
-      let settled = false
-      const done = () => {
-        if (settled) return
-        settled = true
-        video.removeEventListener('loadeddata', done)
-        video.removeEventListener('canplay', done)
-        video.removeEventListener('error', done)
-        resolve()
-      }
-      video.addEventListener('loadeddata', done)
-      video.addEventListener('canplay', done)
-      video.addEventListener('error', done)
-      // Don't block the transition forever on slow media.
-      window.setTimeout(done, 1200)
-      video.src = url
-      try {
-        video.load()
-      } catch {
-        done()
-      }
-    })
-
-  return Promise.all([
-    loadOne(card.mediaType, card.mediaUrl),
-    loadOne(card.backMediaType, card.backUrl),
-  ]).then(() => undefined)
 }
 
 function AppInner({

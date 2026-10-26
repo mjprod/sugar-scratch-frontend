@@ -13,6 +13,7 @@ import {
 import { Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { m, useReducedMotion } from "framer-motion";
 import { useHorizontalScroll } from "@/hooks/useHorizontalScroll";
+import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import {
   filterSearchCatalog,
   loadSearchCatalog,
@@ -556,6 +557,8 @@ function SearchSectionHeader({
   prevLabel?: string;
   nextLabel?: string;
 }) {
+  const holdPrev = useHoldRepeat(() => scroll?.scrollByPage(-1));
+  const holdNext = useHoldRepeat(() => scroll?.scrollByPage(1));
   return (
     <div className="search-section-header">
       <h2 id={id} className="search-section-title">
@@ -568,7 +571,7 @@ function SearchSectionHeader({
             className="continue-collecting-arrow is-prev"
             aria-label={prevLabel ?? "Previous"}
             disabled={!scroll.canScrollLeft}
-            onClick={() => scroll.scrollByPage(-1)}
+            {...holdPrev}
           >
             <ChevronLeft className="size-5" aria-hidden="true" />
           </button>
@@ -577,7 +580,7 @@ function SearchSectionHeader({
             className="continue-collecting-arrow is-next"
             aria-label={nextLabel ?? "Next"}
             disabled={!scroll.canScrollRight}
-            onClick={() => scroll.scrollByPage(1)}
+            {...holdNext}
           >
             <ChevronRight className="size-5" aria-hidden="true" />
           </button>

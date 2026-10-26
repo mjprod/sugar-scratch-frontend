@@ -4,6 +4,7 @@
  */
 import {
   claimMediaDecoder,
+  isIosDecoderCap,
   releaseClaimedDecoder,
 } from "./exclusiveMedia.ts";
 
@@ -74,5 +75,10 @@ assert(second.src === "", "explicit release blanks src");
 claimMediaDecoder(second, "https://cdn.test/d.mp4");
 releaseClaimedDecoder();
 assert(second.src === "", "release with no args drops the current claim");
+
+assert(
+  isIosDecoderCap() === false,
+  "node / non-iOS agent must not enable the decoder cap",
+);
 
 console.log("exclusiveMedia.self-check ok");

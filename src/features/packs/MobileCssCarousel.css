@@ -99,7 +99,9 @@
   pointer-events: none;
 }
 
-.mobile-css-carousel__focus.is-parked {
+/* Park hides the live video only — Buy Pack HUD has to stay in the tree so
+   it can rise in after the slide settles. */
+.mobile-css-carousel__focus.is-parked .mobile-css-carousel__video {
   visibility: hidden;
 }
 
@@ -144,25 +146,56 @@
   z-index: 30;
   touch-action: manipulation;
   width: max-content;
-  transform: translate3d(-50%, 10px, 40px);
-  pointer-events: auto;
+  transform: translate3d(-50%, 0, 40px);
+  pointer-events: none;
   transform-style: flat;
   -webkit-transform-style: flat;
 }
 
-.mobile-css-carousel__hud.coverflow-active-stack--html {
-  transform: translate3d(-50%, 10px, 40px);
-}
-
+.mobile-css-carousel__hud.coverflow-active-stack--html:not(.is-visible),
 .mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
+  opacity: 1;
+  filter: none;
   transform: translate3d(-50%, 0, 40px);
+  transition: none;
 }
 
-.mobile-css-carousel__hud .coverflow-buy-pack-cta {
+.mobile-css-carousel__hud.is-visible {
+  pointer-events: auto;
+}
+
+.mobile-css-carousel__hud .coverflow-buy-pack-cta,
+.mobile-css-carousel__hud.coverflow-active-stack .coverflow-buy-pack-cta,
+.mobile-css-carousel__hud.coverflow-active-stack:not(.is-visible) .coverflow-buy-pack-cta {
   position: relative;
   z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  filter: none;
+  transform: translate3d(0, 8px, 1px);
+  animation: none;
+  transition:
+    opacity 280ms ease-out,
+    transform 280ms ease-out;
+  transition-delay: 0s;
+}
+
+.mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta,
+.mobile-css-carousel__hud.coverflow-active-stack.is-visible .coverflow-buy-pack-cta {
   pointer-events: auto;
-  transform: translateZ(1px);
+  opacity: 1;
+  filter: none;
+  transform: translate3d(0, 0, 1px);
+  animation: none;
+  transition-delay: 0s;
+}
+
+@starting-style {
+  .mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta,
+  .mobile-css-carousel__hud.coverflow-active-stack.is-visible .coverflow-buy-pack-cta {
+    opacity: 0;
+    transform: translate3d(0, 8px, 1px);
+  }
 }
 
 .mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button-glow,
@@ -170,6 +203,12 @@
   pointer-events: auto;
   position: relative;
   z-index: 31;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-css-carousel__hud .coverflow-buy-pack-cta {
+    transition: none;
+  }
 }
 
 /* Compact resume / collection strip: scale coverflow to the parent, no HUD. */
@@ -240,6 +279,18 @@
   top: 50%;
   z-index: 8;
   transform: translateY(-50%);
+}
+
+@media (max-width: 767px) {
+  .mobile-css-carousel-stage.is-compact .mc-popular-arrow {
+    width: 84px;
+    height: 84px;
+  }
+
+  .mobile-css-carousel-stage.is-compact .mc-popular-arrow svg {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-prev {

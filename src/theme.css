@@ -1089,6 +1089,9 @@ body[data-theme="v8"] .continue-collecting-arrow {
   color: oklch(1 0 0 / 0.88);
   cursor: pointer;
   backdrop-filter: blur(8px);
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
   transition:
     background-color 150ms ease,
     color 150ms ease,
@@ -2699,6 +2702,12 @@ body[data-theme="v8"] .player-welcome-claim .cta-button-glow>.border-glow-inner 
 body[data-theme="v8"] .player-welcome-claim .cta-button__title {
   display: inline-flex;
   align-items: center;
+}
+
+body[data-theme="v8"] .player-welcome-claim-diamonds {
+  display: inline-flex;
+  align-items: center;
+  margin-inline: var(--space-2);
 }
 
 /*
@@ -6607,7 +6616,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 	  flex: 0 0 auto;
 	  min-width: 0;
 	  color: oklch(0.971 0.003 286.35 / 0.94);
-	  font-size: var(--text-body);
+	  font-size: var(--text-headline);
   font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -6616,7 +6625,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 }
 
 .wallet-balances-popover__value--dust {
-  font-size: var(--text-body);
+  font-size: var(--text-headline);
   font-weight: 400;
   text-align: center;
 }
@@ -7730,6 +7739,9 @@ body[data-theme="v8"] .explore-creators-arrow {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 body[data-theme="v8"] .explore-creators-arrow:hover:not(:disabled) {
@@ -8317,16 +8329,33 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud .coverflow-buy-pack-cta {
-  transform: scale(1.1);
+  transform: scale(1.1) translateY(8px);
   transform-origin: center bottom;
+  animation: none;
+  filter: none;
+  transition:
+    opacity 280ms ease-out,
+    transform 280ms ease-out;
+  transition-delay: 0s;
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta {
+  transform: scale(1.1) translateY(0);
+  animation: none;
+  filter: none;
+  transition-delay: 0s;
+}
+
+@starting-style {
+  body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta {
+    opacity: 0;
+    transform: scale(1.1) translateY(8px);
+  }
 }
 
 /*
  * Mobile coverflow CTA ↔ status-pager clearance (~0.5rem).
- * HUD is bottom-anchored on the active slide; pager is bottom-anchored on the
- * frame. The prior +Y translate on the visible HUD dropped the Buy Pack button
- * into the pill — keep X centering only so the slide bottom offset leaves the
- * intended gap (same spirit as guest-home footer clearance).
+ * HUD stays at Y=0 so the Buy Pack button clears the status pill.
  */
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud {
   /* Tuned so button bottom → pill top ≈ --coverflow-cta-pager-gap (0.5rem). */
@@ -8420,6 +8449,9 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow {
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
   transform: translateY(-50%);
   transition:
     color 160ms ease,
@@ -8446,6 +8478,20 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-prev {
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow.is-next,
 body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-next {
   right: 0.15rem;
+}
+
+@media (max-width: 767px) {
+  body[data-theme="v8"] .home-v2 .continue-collecting-arrow,
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+    width: 5rem;
+    height: 5rem;
+  }
+
+  body[data-theme="v8"] .home-v2 .continue-collecting-arrow svg,
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow:hover:not(:disabled),
@@ -9254,6 +9300,9 @@ body[data-theme="v8"] .mc-popular-arrow {
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
   cursor: pointer;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 body[data-theme="v8"] .mc-popular-arrow.is-prev {
@@ -9286,7 +9335,7 @@ body[data-theme="v8"] .mc-filter-btn {
     rgba(169, 169, 169, 0.246) 84.617%
   );
   color: #fff;
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: 0.24px;
   white-space: nowrap;

@@ -1,10 +1,8 @@
 /**
  * Poster-first HoloCard face clips: when the selected <video> should start.
  *
- * CollectionExperience preloads the hero trailer into a detached element, so
- * Safari often attaches the cached src on a later mount without re-firing
- * loadeddata/canplay. Decode polling must still call play() — event-only
- * playback misses that path.
+ * Safari can attach a cached src on mount without re-firing loadeddata/canplay.
+ * Decode polling must still call play() — event-only playback misses that path.
  */
 
 /** HAVE_NOTHING — src has not produced metadata yet. */

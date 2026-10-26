@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PackFaceVideo } from "@/components/media/PackFaceVideo";
 import { isVideoSrc } from "@/services/models";
 
 /** Pack artwork with foil overlay + image fallback */
@@ -8,12 +9,14 @@ export function PackArt({
   size = "md",
   fit = "cover",
   className = "",
+  poster,
 }: {
   src: string;
   alt: string;
   size?: "lg" | "md" | "thumb";
   fit?: "cover" | "contain";
   className?: string;
+  poster?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const sizeClass =
@@ -38,13 +41,10 @@ export function PackArt({
     >
       {!failed ? (
         isVideoSrc(src) ? (
-          <video
+          <PackFaceVideo
             src={src}
+            poster={poster}
             className={mediaClass}
-            muted
-            loop
-            playsInline
-            autoPlay
             onError={() => setFailed(true)}
           />
         ) : (

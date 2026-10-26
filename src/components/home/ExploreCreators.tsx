@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import type { ContinueCollectingItem } from "@/services/homepage";
 
 export type ExploreCreatorItem = {
@@ -76,6 +77,9 @@ export function ExploreCreators({
     });
   }, []);
 
+  const holdPrev = useHoldRepeat(() => scrollByPage(-1));
+  const holdNext = useHoldRepeat(() => scrollByPage(1));
+
   if (!items.length) return null;
 
   return (
@@ -112,7 +116,7 @@ export function ExploreCreators({
           className="explore-creators-arrow is-prev glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           aria-label="Previous creators"
           disabled={!canScrollLeft}
-          onClick={() => scrollByPage(-1)}
+          {...holdPrev}
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
@@ -203,7 +207,7 @@ export function ExploreCreators({
           className="explore-creators-arrow is-next glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           aria-label="Next creators"
           disabled={!canScrollRight}
-          onClick={() => scrollByPage(1)}
+          {...holdNext}
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>

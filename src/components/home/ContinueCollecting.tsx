@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import {
   collectionProgressFromBoard,
   loadCreatorBoard,
@@ -154,6 +155,9 @@ export function ContinueCollectingSection({
     });
   }, []);
 
+  const holdPrev = useHoldRepeat(() => scrollByPage(-1));
+  const holdNext = useHoldRepeat(() => scrollByPage(1));
+
   const progressById = useCollectPageProgress(
     hideProgress ? [] : items.map((item) => item.creatorId),
   );
@@ -194,7 +198,7 @@ export function ContinueCollectingSection({
           className="continue-collecting-arrow is-prev glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           aria-label="Previous creators"
           disabled={!canScrollLeft}
-          onClick={() => scrollByPage(-1)}
+          {...holdPrev}
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
@@ -239,7 +243,7 @@ export function ContinueCollectingSection({
           className="continue-collecting-arrow is-next glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
           aria-label="Next creators"
           disabled={!canScrollRight}
-          onClick={() => scrollByPage(1)}
+          {...holdNext}
         >
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>

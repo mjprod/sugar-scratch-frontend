@@ -24,6 +24,7 @@ import {
   claimMediaDecoder,
   releaseClaimedDecoder,
 } from "@/lib/memory/exclusiveMedia";
+import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
@@ -297,6 +298,7 @@ export function MobileCssCarousel({
   const focusRef = useRef<HTMLDivElement | null>(null);
   const liveVideoRef = useRef<HTMLVideoElement | null>(null);
   const parkedRef = useRef(true);
+  const [hudActive, setHudActive] = useState(false);
   const pageVisibleRef = useRef(
     typeof document === "undefined" ? true : document.visibilityState === "visible",
   );
@@ -529,6 +531,7 @@ export function MobileCssCarousel({
   const setParked = useCallback((next: boolean) => {
     parkedRef.current = next;
     focusRef.current?.classList.toggle("is-parked", next);
+    setHudActive(!next);
     syncLiveClass();
   }, [syncLiveClass]);
 
@@ -786,6 +789,19 @@ export function MobileCssCarousel({
     }
   }
 
+  const holdPrev = useHoldRepeat(() => {
+    const swiper = swiperRef.current;
+    if (!swiper || swiper.animating || swiper.activeIndex <= 0) return;
+    swiper.slidePrev();
+  });
+  const holdNext = useHoldRepeat(() => {
+    const swiper = swiperRef.current;
+    if (!swiper || swiper.animating || swiper.activeIndex >= items.length - 1) {
+      return;
+    }
+    swiper.slideNext();
+  });
+
   const stageGlowClass =
     glowPhase === "prep"
       ? " is-glow-prep"
@@ -834,9 +850,10 @@ export function MobileCssCarousel({
               className="mc-popular-arrow is-prev"
               aria-label="Previous packs"
               disabled={activeIndex <= 0}
-              onClick={(event) => {
+              {...holdPrev}
+              onPointerDown={(event) => {
                 event.stopPropagation();
-                swiperRef.current?.slidePrev();
+                holdPrev.onPointerDown(event);
               }}
             >
               <ChevronLeft size={18} aria-hidden />
@@ -846,9 +863,10 @@ export function MobileCssCarousel({
               className="mc-popular-arrow is-next"
               aria-label="Next packs"
               disabled={activeIndex >= items.length - 1}
-              onClick={(event) => {
+              {...holdNext}
+              onPointerDown={(event) => {
                 event.stopPropagation();
-                swiperRef.current?.slideNext();
+                holdNext.onPointerDown(event);
               }}
             >
               <ChevronRight size={18} aria-hidden />
@@ -863,6 +881,8 @@ export function MobileCssCarousel({
           centeredSlides={!compact}
           slidesPerView="auto"
           spaceBetween={compact ? 18 : -72}
+          slidesOffsetBefore={compact && items.length > 1 ? 80 : 0}
+          slidesOffsetAfter={compact && items.length > 1 ? 80 : 0}
           speed={720}
           resistanceRatio={0.85}
           watchSlidesProgress
@@ -974,8 +994,9 @@ export function MobileCssCarousel({
           />
           {compact ? null : items[activeIndex] ? (
             <PackSlideHud
+              key={items[activeIndex].id}
               item={items[activeIndex]}
-              active
+              active={hudActive}
               pocketed={isPackInCart(
                 items[activeIndex].id,
                 items[activeIndex].characterId,

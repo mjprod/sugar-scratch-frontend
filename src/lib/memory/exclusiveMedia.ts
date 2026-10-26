@@ -9,6 +9,14 @@
 
 let claimed: HTMLMediaElement | null = null;
 
+/** iOS attaches a decoder for any src, even preload=metadata + autoPlay. */
+export function isIosDecoderCap(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
 function currentSrc(el: HTMLMediaElement): string {
   return el.getAttribute("src") || el.currentSrc || el.src || "";
 }

@@ -6,6 +6,8 @@ import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { FIGMA_HOME_PLAY_STEPS, PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useSearch } from "@/contexts/SearchContext";
+import { memoryNavigate } from "@/lib/memory/memoryNavigate";
+import { Paths } from "@/routes/Paths";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   hasSeenHowToPlay,
@@ -185,13 +187,13 @@ export function HomeVersion2Screen({
         <ContinueCollecting
           className="is-title-sentence is-avatar-strip"
           title="Continue Collecting"
-          seeAllLabel="Search"
+          seeAllLabel="Continue"
           avatarOnly
           items={
             continueCollecting.length > 0 ? continueCollecting : justDropIn
           }
           onOpen={openCollection}
-          onSeeAllClick={openSearch}
+          onSeeAllClick={() => memoryNavigate(Paths.collection)}
         />
 
         <ExploreCreators
