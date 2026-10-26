@@ -2665,6 +2665,11 @@ body[data-theme="v8"] .player-welcome-claim .cta-button-glow>.border-glow-inner 
   height: 100%;
 }
 
+body[data-theme="v8"] .player-welcome-claim .cta-button__title {
+  display: inline-flex;
+  align-items: center;
+}
+
 /*
  * Claim exit: anticipate (dip + compress) → scale up + fade out.
  * Apple ease-out settle: cubic-bezier(0.22, 1, 0.36, 1).

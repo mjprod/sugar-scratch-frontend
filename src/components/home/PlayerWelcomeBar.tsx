@@ -227,8 +227,14 @@ export function PlayerWelcomeBar({
                 {...ctaButtonPropsFromTemplate("squircleCTA")}
                 fillParent
                 type="button"
-                leadingIcon={<DiamondLottie size={14} aria-hidden />}
                 label={
+                  claiming ? (
+                    "Claiming…"
+                  ) : (
+                    <>Collect <DiamondLottie size={14} aria-hidden />{DAILY_REWARD_DIAMONDS} Now</>
+                  )
+                }
+                aria-label={
                   claiming
                     ? "Claiming…"
                     : `Collect ${DAILY_REWARD_DIAMONDS} Now`

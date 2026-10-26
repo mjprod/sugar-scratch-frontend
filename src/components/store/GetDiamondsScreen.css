@@ -45,6 +45,10 @@ body[data-theme="v8"] .get-diamonds-page .history-page-head {
   margin-bottom: var(--space-5);
 }
 
+body[data-theme="v8"] .get-diamonds-page .history-page-title {
+  color: oklch(0.69 0.21 308.12);
+}
+
 body[data-theme="v8"] .get-diamonds-stack {
   position: relative;
   display: flex;
@@ -174,6 +178,8 @@ body[data-theme="v8"] .get-diamonds-hero__copy-block {
 }
 
 body[data-theme="v8"] .get-diamonds-hero__title {
+  display: inline-flex;
+  align-items: center;
   margin: 0;
   font-size: var(--text-display);
   font-weight: 750;
@@ -183,7 +189,10 @@ body[data-theme="v8"] .get-diamonds-hero__title {
 }
 
 body[data-theme="v8"] .get-diamonds-hero__accent {
-  color: #ff5fa8;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-left: 0.15em;
 }
 
 body[data-theme="v8"] .get-diamonds-hero__copy {
@@ -394,12 +403,6 @@ body[data-theme="v8"] .get-diamonds-section__title {
   font-size: var(--text-title);
   font-weight: 650;
   color: #ffffff;
-}
-
-body[data-theme="v8"] .get-diamonds-section__desc {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-caption);
-  color: rgba(255, 255, 255, 0.5);
 }
 
 /* Package grid */
@@ -982,7 +985,6 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   }
 
   /* Mobile text floor: nothing under 1rem except "Need N more" */
-  body[data-theme="v8"] .get-diamonds-page .get-diamonds-section__desc,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__label,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__bonus,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__price,

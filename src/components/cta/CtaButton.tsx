@@ -102,7 +102,7 @@ function resolveGlowOuterBloom(
 }
 
 export type CtaButtonProps = {
-  label?: string;
+  label?: ReactNode;
   /** Optional mark rendered left of the title (e.g. Google icon). */
   leadingIcon?: ReactNode;
   /** Optional secondary cost row under the title. Empty / null hides the row. */
