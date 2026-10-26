@@ -9,14 +9,14 @@ export function createHoldRepeat(
 ) {
   const delayMs = options?.delayMs ?? HOLD_REPEAT_DELAY_MS;
   const intervalMs = options?.intervalMs ?? HOLD_REPEAT_INTERVAL_MS;
-  let delayId = 0;
-  let intervalId = 0;
+  let delayId: ReturnType<typeof setTimeout> | null = null;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
 
   function stop() {
     if (delayId) clearTimeout(delayId);
     if (intervalId) clearInterval(intervalId);
-    delayId = 0;
-    intervalId = 0;
+    delayId = null;
+    intervalId = null;
   }
 
   function start(isDisabled?: () => boolean) {
@@ -24,7 +24,7 @@ export function createHoldRepeat(
     if (isDisabled?.()) return;
     action();
     delayId = setTimeout(() => {
-      delayId = 0;
+      delayId = null;
       intervalId = setInterval(() => {
         if (isDisabled?.()) {
           stop();
