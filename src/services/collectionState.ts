@@ -330,6 +330,25 @@ export function isNewUserForHomepageHero(): boolean {
   );
 }
 
+const HOW_TO_PLAY_SEEN_KEY = "ss.howto.seen";
+
+/** Guest Home how-to already shown — don't replay it after signup. */
+export function markHowToPlaySeen() {
+  try {
+    localStorage.setItem(HOW_TO_PLAY_SEEN_KEY, "1");
+  } catch {
+    /* private mode */
+  }
+}
+
+export function hasSeenHowToPlay() {
+  try {
+    return localStorage.getItem(HOW_TO_PLAY_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** Live Collection page visibility + summary inputs. */
 export function getCollectionPageState(
   models: BackendModel[] = [],

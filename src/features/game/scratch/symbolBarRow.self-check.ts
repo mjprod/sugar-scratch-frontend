@@ -1,9 +1,8 @@
 /**
- * Self-check for the top-row geometry shared by the symbol bar and the game
- * shell's pause button. Mirrors the CSS in features/game/game.css
- * (--game-symbol-slot, .stage-game__pause) and features/game/scratch/styles.css
- * (.symbol-bar:not(.is-phase-center):not(.is-phase-showcase)) — if those
- * numbers drift apart, this fails.
+ * Self-check for the top-row geometry shared by the docked symbol bar and
+ * the pause / diamond buttons. Mirrors features/game/game.css
+ * (--game-symbol-slot, --game-hud-edge, --game-hud-btn, --game-dock-clear)
+ * and features/game/scratch/styles.css (.top-symbol-bar.is-phase-docked).
  *
  * Run: npx tsx src/features/game/scratch/symbolBarRow.self-check.ts
  */
@@ -12,82 +11,66 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 const BUTTON = 40;
-const BUTTON_LEFT = 12;
-const CLEARANCE = 8;
-const BAR_RIGHT_INSET = 12;
-const BAR_LEFT_INSET = BUTTON_LEFT + BUTTON + CLEARANCE;
-
+const FRAME_INSET_PHONE = 6;
+const FRAME_INSET_DESKTOP = 4;
+const PAST_GOLD = 28;
+const HUD_EDGE_PHONE = FRAME_INSET_PHONE + PAST_GOLD;
+const HUD_EDGE_DESKTOP = FRAME_INSET_DESKTOP + PAST_GOLD;
+const DOCK_CLEAR = 4;
 const SLOT_COUNT = 6;
-const GAP = 5;
-const PAD = 9;
-const BORDER = 1;
-const MAX_SLOT = 44;
-const ICON = 28;
+const GAP = 3;
+const PAD = 8;
+const MAX_SLOT = 40;
+const MIN_SLOT = 24;
 
-/** Row top for both elements: max(12px, safe-area), unnotched. */
-const ROW_TOP = 12;
+const reserved = (hudEdge: number) =>
+  2 * hudEdge + 2 * BUTTON + 2 * DOCK_CLEAR + (SLOT_COUNT - 1) * GAP + 2 * PAD;
 
-/** The `117px` literal baked into --game-symbol-slot. */
-const FIXED_COST =
-  BAR_LEFT_INSET +
-  BAR_RIGHT_INSET +
-  (SLOT_COUNT - 1) * GAP +
-  2 * PAD +
-  2 * BORDER;
-
-const slotAt = (stageW: number) =>
-  Math.min(MAX_SLOT, (stageW - FIXED_COST) / SLOT_COUNT);
+const slotAt = (stageW: number, hudEdge: number) =>
+  Math.min(MAX_SLOT, (stageW - reserved(hudEdge)) / SLOT_COUNT);
 
 const barWidth = (slot: number) =>
-  SLOT_COUNT * slot + (SLOT_COUNT - 1) * GAP + 2 * PAD + 2 * BORDER;
+  SLOT_COUNT * slot + (SLOT_COUNT - 1) * GAP + 2 * PAD;
 
-const barHeight = (slot: number) => slot + 2 * PAD + 2 * BORDER;
+const barLeft = (stageW: number, slot: number) => (stageW - barWidth(slot)) / 2;
 
-/** left/right insets + margin-inline:auto centre the bar in its band, and let
- *  it overflow symmetrically when the slots (flex-shrink:0) can't fit. */
-const barLeft = (stageW: number, slot: number) =>
-  BAR_LEFT_INSET +
-  (stageW - BAR_LEFT_INSET - BAR_RIGHT_INSET - barWidth(slot)) / 2;
-
-const buttonTop = (slot: number) => ROW_TOP + (barHeight(slot) - BUTTON) / 2;
-
-assert(
-  FIXED_COST === 117,
-  `fixed row cost is ${FIXED_COST}, but the CSS hardcodes 117 — update both`,
-);
-
-// Stage widths from a cramped desktop frame up past the design width.
-for (let stageW = 300; stageW <= 600; stageW += 1) {
-  const slot = slotAt(stageW);
+function assertClearsButtons(stageW: number, hudEdge: number, label: string) {
+  const slot = slotAt(stageW, hudEdge);
+  const left = barLeft(stageW, slot);
+  const right = left + barWidth(slot);
+  const pauseRight = hudEdge + BUTTON;
+  const diamondLeft = stageW - hudEdge - BUTTON;
 
   assert(
-    barLeft(stageW, slot) >= BUTTON_LEFT + BUTTON,
-    `bar overlaps the pause button at stage ${stageW} (bar left ${barLeft(stageW, slot)})`,
+    slot >= MIN_SLOT,
+    `${label}: slot ${slot} is smaller than ${MIN_SLOT}px at ${stageW}`,
   );
-
   assert(
-    Math.abs(
-      buttonTop(slot) + BUTTON / 2 - (ROW_TOP + barHeight(slot) / 2),
-    ) < 1e-9,
-    `centre lines diverge at stage ${stageW}`,
+    left + 1e-6 >= pauseRight + DOCK_CLEAR,
+    `${label}: dock overlaps pause at ${stageW} (bar left ${left}, pause right ${pauseRight})`,
   );
-
-  assert(slot <= MAX_SLOT, `slot grew past ${MAX_SLOT} at stage ${stageW}`);
-  assert(slot >= ICON + 2, `icon clips at stage ${stageW} (slot ${slot})`);
+  assert(
+    right - 1e-6 <= diamondLeft - DOCK_CLEAR,
+    `${label}: dock overlaps diamond at ${stageW} (bar right ${right}, diamond left ${diamondLeft})`,
+  );
 }
 
-// 390px is the design width: symbols must stay full size there.
-assert(slotAt(390) === MAX_SLOT, "slot should be 44px at the 390px design width");
+assert(reserved(HUD_EDGE_PHONE) === 187, `phone reserved is ${reserved(HUD_EDGE_PHONE)}, expected 187`);
+assert(reserved(HUD_EDGE_DESKTOP) === 183, `desktop reserved is ${reserved(HUD_EDGE_DESKTOP)}, expected 183`);
 
-// 381px is where the full-size bar exactly fills its band.
-assert(slotAt(381) === MAX_SLOT, "slot should still be 44px at 381px");
-assert(slotAt(380) < MAX_SLOT, "slot should start shrinking below 381px");
+// Phones: iPhone SE 375, 16e 390, 17 402, S25 Ultra 412, plus cramped 360.
+for (const w of [360, 375, 390, 402, 412, 430]) {
+  assertClearsButtons(w, HUD_EDGE_PHONE, `phone ${w}`);
+}
 
-// The bug being fixed: the old 44px/gap-8/pad-14 bar overlapped at 390px.
-const oldBarWidth = SLOT_COUNT * 44 + (SLOT_COUNT - 1) * 8 + 2 * 14 + 2 * BORDER;
-assert(
-  (390 - oldBarWidth) / 2 < BUTTON_LEFT + BUTTON,
-  "regression guard is wrong: the old stage-centred bar did clear the button",
-);
+// Desktop phone-frame shells (701px+ layout, stage ≤ 430).
+for (const w of [374, 398, 430]) {
+  assertClearsButtons(w, HUD_EDGE_DESKTOP, `desktop ${w}`);
+}
+
+// Full-size 40px slots need a 427px stage at phone insets — only the 430
+// desktop shell gets there. 390 phones must shrink.
+assert(slotAt(390, HUD_EDGE_PHONE) < MAX_SLOT, "390px phone should shrink slots so the dock clears pause/diamond");
+assert(slotAt(430, HUD_EDGE_DESKTOP) === MAX_SLOT, "430px desktop shell should keep 40px slots");
 
 console.log("symbolBarRow.self-check: ok");

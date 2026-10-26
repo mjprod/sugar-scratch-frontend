@@ -8,7 +8,7 @@ body[data-theme="v8"] .auth7-intro-panel {
   height: 100%;
   min-height: 0;
   margin: 0 auto;
-  padding: 4px 8px 0;
+  padding: var(--space-1) var(--space-2) 0;
   text-align: center;
 }
 
@@ -42,7 +42,7 @@ body[data-theme="v8"] .auth7-intro-title {
 }
 
 body[data-theme="v8"] .auth7-intro-copy {
-  margin: 8px auto 0;
+  margin: var(--space-2) auto 0;
   max-width: 50ch;
   color: oklch(1 0 0 / 0.58);
   font-size: 1rem;
@@ -60,17 +60,17 @@ body[data-theme="v8"] .auth7-intro-demo {
   grid-template-columns: max-content max-content;
   align-content: center;
   justify-content: center;
-  column-gap: 18px;
+  column-gap: var(--space-4-5);
   width: 100%;
   min-height: 0;
-  margin-top: 28px;
+  margin-top: var(--space-7);
 }
 
 body[data-theme="v8"] .auth7-intro-demo-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   margin: 0;
   min-height: 0;
 }
@@ -101,8 +101,8 @@ body[data-theme="v8"] .auth7-intro-dir {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  margin: 1rem 0 0;
+  gap: var(--space-0-5);
+  margin: var(--space-4) 0 0;
 }
 
 body[data-theme="v8"] .auth7-intro-dir-marks {
@@ -136,7 +136,7 @@ body[data-theme="v8"] .auth7-intro-actions {
   /* Lift the CTA off the viewport edge; scales with dynamic viewport height. */
   margin-bottom: 4dvh;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* Intro start CTA reuses the shared auth CtaButton slot (hf-buy look). */
@@ -152,7 +152,7 @@ body[data-theme="v8"] .auth7-intro-skip {
   position: static;
   width: auto;
   min-height: 40px;
-  padding: 8px 16px 4px;
+  padding: var(--space-2) var(--space-4) var(--space-1);
   border: none;
   background: transparent;
   color: oklch(1 0 0 / 0.5);
@@ -185,7 +185,7 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
 
   body[data-theme="v8"] .auth7-intro-panel {
     max-width: none;
-    padding: 8px 0 0;
+    padding: var(--space-2) 0 0;
   }
 
   body[data-theme="v8"] .auth7-intro-title {
@@ -194,7 +194,7 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
 
   body[data-theme="v8"] .auth7-intro-demo {
     column-gap: 22px;
-    margin-top: 32px;
+    margin-top: var(--space-8);
   }
 
   body[data-theme="v8"] .auth7-intro-demo-card {

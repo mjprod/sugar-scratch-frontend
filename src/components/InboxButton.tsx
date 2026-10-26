@@ -242,8 +242,8 @@ export const PacksButton = forwardRef<
 
   const ariaLabel =
     packCount > 0
-      ? `Pack Pocket, ${packCount} pack${packCount === 1 ? "" : "s"}`
-      : "Pack Pocket";
+      ? `My Packs, ${packCount} pack${packCount === 1 ? "" : "s"}`
+      : "My Packs";
 
   return (
     <button

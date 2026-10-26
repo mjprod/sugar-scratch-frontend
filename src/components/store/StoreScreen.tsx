@@ -335,7 +335,7 @@ export function StoreScreen({
   return (
     <AppPageShell
       variant="secondary"
-      aria-label="Store"
+      aria-label="Get Diamonds"
       className="store-page get-diamonds-page"
     >
       {load.status === "loading" ? <StoreSkeleton /> : null}
@@ -835,7 +835,7 @@ function ResultModal({
           <CtaButton
             {...ctaButtonPropsFromTemplate("pillBlackCTA")}
             fillParent
-            label="Back to Store"
+            label="Back to Get Diamonds"
             costAmount={null}
             onClick={onContinue}
           />
@@ -858,7 +858,7 @@ function ResultModal({
             onClick={onContinue}
             className="mt-2 h-11 w-full text-caption text-white/55 hover:text-white/80"
           >
-            Back to Store
+            Back to Get Diamonds
           </button>
         </>
       )}

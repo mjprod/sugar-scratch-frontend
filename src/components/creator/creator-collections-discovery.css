@@ -3,15 +3,15 @@
 .ccd {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
-  margin: 4px 0 24px;
+  gap: var(--space-3-5);
+  margin: var(--space-1) 0 var(--space-6);
   min-height: 0;
 }
 
 @media (min-width: 900px) {
   .ccd {
     grid-template-columns: minmax(160px, 0.2fr) minmax(0, 0.42fr) minmax(0, 0.38fr);
-    gap: 16px;
+    gap: var(--space-4);
     align-items: stretch;
     min-height: min(62vh, 560px);
   }
@@ -26,11 +26,11 @@
   border: 1px solid oklch(1 0 0 / 0.08);
   border-radius: 16px;
   background: oklch(0.16 0.01 285);
-  padding: 12px 10px;
+  padding: var(--space-3) var(--space-2-5);
 }
 
 .ccd-nav-title {
-  margin: 0 6px 10px;
+  margin: 0 var(--space-1-5) var(--space-2-5);
   color: oklch(1 0 0 / 0.72);
   font-size: 12px;
   font-weight: 650;
@@ -41,10 +41,10 @@
 .ccd-nav-list {
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 2px;
+  padding-bottom: var(--space-0-5);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
@@ -64,10 +64,10 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   width: min(72vw, 220px);
   min-height: 52px;
-  padding: 6px 8px;
+  padding: var(--space-1-5) var(--space-2);
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
@@ -134,7 +134,7 @@
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .ccd-nav-name {
@@ -233,7 +233,7 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2-5);
   padding: 22px 20px 20px;
 }
 
@@ -243,7 +243,7 @@
   right: 12px;
   z-index: 2;
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .ccd-hero-step {
@@ -334,8 +334,8 @@
 .ccd-hero-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 8px;
+  gap: var(--space-2-5);
+  margin-top: var(--space-2);
   max-width: 100%;
 }
 
@@ -355,12 +355,12 @@
   flex: 1 1 auto;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   margin-top: 0;
   min-width: 0;
   max-width: 423px;
   height: 70px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid
     color-mix(
       in oklch,
@@ -393,7 +393,7 @@
 .ccd-progress-body {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   min-height: 0;
 }
 
@@ -402,7 +402,7 @@
   flex: 1 1 auto;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .ccd-progress-track {
@@ -561,7 +561,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex: 0 0 auto;
   height: 44px;
   margin-top: 0;
@@ -569,7 +569,7 @@
   border-radius: 12px;
   background: var(--color-accent, oklch(0.656 0.212 354.31));
   color: oklch(1 0 0);
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -621,13 +621,13 @@
 .ccd-preview {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
   min-height: 0;
   border: 1px solid oklch(1 0 0 / 0.1);
   border-radius: 18px;
   background: oklch(0.16 0.01 285);
-  padding: 16px;
+  padding: var(--space-4);
   animation: ccd-fade 200ms ease;
 }
 
@@ -635,7 +635,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .ccd-preview-title {
@@ -655,7 +655,7 @@
 .ccd-preview-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
   flex: 1;
   align-content: start;
 }
@@ -877,9 +877,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 4px;
-  padding: 14px;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  padding: var(--space-3-5);
   border: 1px solid
     color-mix(
       in oklch,
@@ -954,7 +954,7 @@
 }
 
 .ccd-reward-desc {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   color: oklch(1 0 0 / 0.58);
   font-size: 12px;
   font-weight: 450;
@@ -962,7 +962,7 @@
 }
 
 .ccd-reward-error {
-  margin: 6px 0 0;
+  margin: var(--space-1-5) 0 0;
   color: oklch(0.72 0.16 25);
   font-size: 11px;
   font-weight: 500;
@@ -974,7 +974,7 @@
   border-radius: 999px;
   background: var(--color-accent, oklch(0.656 0.212 354.31));
   color: oklch(1 0 0);
-  padding: 10px 16px;
+  padding: var(--space-2-5) var(--space-4);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;

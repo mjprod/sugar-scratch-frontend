@@ -94,7 +94,7 @@ export function MobileDiamondBalance({
       <button
         type="button"
         onClick={onOpenStore}
-        aria-label={`Diamond balance: ${label}. Open Store.`}
+        aria-label={`Diamond balance: ${label}. Get Diamonds.`}
         className={classes}
       >
         {inner}

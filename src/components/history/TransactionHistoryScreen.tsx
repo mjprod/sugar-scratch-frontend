@@ -197,7 +197,7 @@ export function TransactionHistoryScreen({
         <HistoryEmpty
           title="No transactions yet"
           copy="Your purchases and exchanges will appear here."
-          actionLabel="Visit Store"
+          actionLabel="Get Diamonds"
           onAction={onVisitStore}
         />
       ) : filtered.length === 0 ? (

@@ -21,7 +21,7 @@ export const DESKTOP_PRIMARY_LABELS = [
 export const GUEST_DESKTOP_PRIMARY_LABELS = [
   "Home",
   "Discover",
-  "Store",
+  "Get Diamonds",
 ] as const;
 
 /** Authenticated mobile dock order (labels); index 2 is elevated Home. */
@@ -30,7 +30,7 @@ export const MOBILE_DOCK_LABELS = [
   "Shop",
   "Home",
   "Collect",
-  "Profile",
+  "Settings",
 ] as const;
 
 /** Guest mobile dock order (labels); index 2 is elevated Collect. */
@@ -38,6 +38,6 @@ export const GUEST_MOBILE_DOCK_LABELS = [
   "Discover",
   "Home",
   "Collect",
-  "Store",
+  "Get Diamonds",
   "Profile",
 ] as const;

@@ -432,7 +432,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.28em;
-  padding: 0 18px;
+  padding: 0 var(--space-4-5);
   color: var(--cta-label-color);
   font-size: var(--cta-font-size);
   font-weight: 400;
@@ -449,7 +449,7 @@
   /* Keep copy clear of the pointed tips and vertically centered. */
   box-sizing: border-box;
   height: 100%;
-  padding: 0 calc(var(--cta-tip) * 0.55 + 12px);
+  padding: 0 calc(var(--cta-tip) * 0.55 + var(--space-3));
   gap: 0.22em;
 }
 

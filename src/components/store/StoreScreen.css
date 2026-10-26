@@ -22,7 +22,7 @@ body[data-theme="v8"] .hub-redeem-card {
     inset 0 1px 0 oklch(1 0 0 / 0.18),
     inset 0 -1px 0 oklch(0 0 0 / 0.12),
     0 12px 36px oklch(0 0 0 / 0.22);
-  padding: 14px;
+  padding: var(--space-3-5);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -32,7 +32,7 @@ body[data-theme="v8"] .hub-redeem-card {
 }
 
 body[data-theme="v8"] .hub-redeem-lead {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   font-size: var(--text-caption);
   line-height: 1.45;
   color: oklch(1 0 0 / 0.55);
@@ -42,7 +42,7 @@ body[data-theme="v8"] .hub-redeem-form {
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 body[data-theme="v8"] .hub-redeem-input {
@@ -52,7 +52,7 @@ body[data-theme="v8"] .hub-redeem-input {
   border-radius: 12px;
   border: 1px solid oklch(1 0 0 / 0.12);
   background: oklch(0 0 0 / 0.28);
-  padding: 0 14px;
+  padding: 0 var(--space-3-5);
   font-size: max(1rem, 16px);
   font-weight: 500;
   color: oklch(1 0 0);
@@ -74,11 +74,11 @@ body[data-theme="v8"] .hub-redeem-submit {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   border-radius: 12px;
   border: 1px solid oklch(1 0 0 / 0.14);
   background: oklch(1 0 0 / 0.08);
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   font-size: var(--text-caption);
   font-weight: 600;
   color: oklch(1 0 0);
@@ -124,26 +124,26 @@ body[data-theme="v8"] .hub-redeem-input:focus-visible {
 }
 
 body[data-theme="v8"] .hub-redeem-error {
-  margin: 10px 0 0;
+  margin: var(--space-2-5) 0 0;
   font-size: var(--text-caption);
   line-height: 1.4;
   color: oklch(0.808 0.103 19.57);
 }
 
 body[data-theme="v8"] .hub-redeem-success {
-  margin-top: 14px;
+  margin-top: var(--space-3-5);
   border-radius: 16px;
   border: 1px solid oklch(0.767 0.139 91.06 / 0.28);
   background:
     radial-gradient(circle at 12% 0%, oklch(0.888 0.097 88.03 / 0.14), transparent 55%),
     oklch(1 0 0 / 0.04);
-  padding: 14px 16px;
+  padding: var(--space-3-5) var(--space-4);
 }
 
 body[data-theme="v8"] .hub-redeem-success-kicker {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin: 0;
   font-size: var(--text-caption);
   font-weight: 700;
@@ -155,8 +155,8 @@ body[data-theme="v8"] .hub-redeem-success-kicker {
 body[data-theme="v8"] .hub-redeem-success-amount {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 10px 0 0;
+  gap: var(--space-2);
+  margin: var(--space-2-5) 0 0;
   font-size: var(--text-headline);
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -164,7 +164,7 @@ body[data-theme="v8"] .hub-redeem-success-amount {
 }
 
 body[data-theme="v8"] .hub-redeem-success-body {
-  margin: 6px 0 0;
+  margin: var(--space-1-5) 0 0;
   font-size: var(--text-caption);
   color: oklch(1 0 0 / 0.55);
 }

@@ -784,7 +784,7 @@ export function MobileCssCarousel({
     <div
       className={`stage-packs mobile-css-carousel-stage${stageGlowClass}${
         influencerBackdrop ? " has-influencer-backdrop" : ""
-      }${compact ? " is-compact" : ""}`}
+      }${compact ? " is-compact" : ""}${compact && items.length === 1 ? " is-single" : ""}`}
     >
       {compact ? null : influencerBackdrop ? (
         <div className="packs-influencer-backdrop" aria-hidden="true">

@@ -1,5 +1,5 @@
 /**
- * Guardrail: scoped chrome/flow files must use the five type tokens,
+ * Guardrail: scoped chrome/flow files must use the type tokens,
  * not one-off px/rem font sizes.
  * Run: npx tsx src/theme.typography.self-check.ts
  */
@@ -67,7 +67,7 @@ function allowedFontSize(value: string) {
   const s = value.trim();
   if (s === "0" || s === "inherit") return true;
   if (s === "max(1rem, 16px)") return true;
-  if (/^var\(--text-(caption|body|title|headline|display)\)$/.test(s)) return true;
+  if (/^var\(--text-(caption|body|title|headline|display|page)\)$/.test(s)) return true;
   if (/^var\(--cta-font-size\)$/.test(s)) return true;
   if (/^[\d.]+em$/i.test(s)) return true;
   if (/^calc\(var\(--chevron-size/.test(s)) return true;
@@ -119,6 +119,7 @@ assert(hits.length === 0, `type scale literals:\n${hits.join("\n")}`);
 
 const tokens = readFileSync("src/index.css", "utf8");
 assert(tokens.includes("--text-caption-min"), "caption min token");
+assert(tokens.includes("--text-page-min"), "page min token");
 assert(tokens.includes("--fluid-min-vw"), "shared fluid viewport");
 assert(tokens.includes("tan(atan2("), "fluid 0-1 uses atan2 fallback");
 

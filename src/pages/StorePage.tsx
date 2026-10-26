@@ -22,7 +22,7 @@ import { exchangeCoinsForDiamonds } from "@/services/store";
 export function StorePage() {
   const purchaseHold = readPackPurchaseHold();
   const goBack = useGoBack(purchaseHold?.returnPath || Paths.profile);
-  const backLabel = purchaseHold ? "Back" : "Back to profile";
+  const backLabel = "Back";
   const {
     openPurchase,
     bumpInventoryRevision,

@@ -13,6 +13,7 @@ import {
   type CollectionPageState,
 } from "@/services/collectionState";
 import { isDemoMode } from "@/lib/demo";
+import { pluralize } from "@/lib/pluralize";
 import { canonicalCreatorId, loadModels, type BackendModel } from "@/services/models";
 import { syncMyPacks } from "@/services/packInventory";
 import type { PurchaseFlowPack } from "@/services/purchase";
@@ -160,6 +161,25 @@ export function CollectionPage({
     profile.displayName,
     profile.username,
   );
+  const themesInProgress = state.continueCreators.reduce(
+    (sum, creator) => sum + (creator.themesStarted || 0),
+    0,
+  );
+
+  function renderGreeting() {
+    return (
+      <header className="mc-greeting">
+        <h1 className="mc-greeting-title">Collection</h1>
+        <p className="mc-greeting-text">
+          Hi, {greetingName}, you have{" "}
+          <span className="mc-greeting-count">
+            {themesInProgress} {pluralize(themesInProgress, "theme")}
+          </span>{" "}
+          in progress…
+        </p>
+      </header>
+    );
+  }
 
   function openPack(pack: UnopenedPack) {
     const target = resolveUnopenedOpenTarget(pack);
@@ -212,11 +232,7 @@ export function CollectionPage({
           <CollectionEmptyState onExplorePacks={onExplorePacks} />
         ) : state.isTrueEmpty && revealPacks ? (
           <>
-            <header className="mc-greeting">
-              <h1 className="mc-greeting-text">
-                Hi, {greetingName} let&apos;s keep collecting…
-              </h1>
-            </header>
+            {renderGreeting()}
 
             <ReadyToReveal
               onOpenPack={openPack}
@@ -228,13 +244,7 @@ export function CollectionPage({
           </>
         ) : (
           <>
-            <header className="mc-greeting">
-              <h1 className="mc-greeting-text">
-                Hi, {greetingName} let&apos;s keep collecting…
-              </h1>
-            </header>
-
-            <CollectionPromoCarousel />
+            {renderGreeting()}
 
             <div className="mc-hub">
               <ReadyToReveal
@@ -252,6 +262,8 @@ export function CollectionPage({
                 onFocusReadyToReveal={() => scrollTo("ready-heading")}
               />
             </div>
+
+            <CollectionPromoCarousel />
 
             <CollectionSiteFooter />
           </>

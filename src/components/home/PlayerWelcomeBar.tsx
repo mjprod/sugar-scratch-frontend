@@ -5,7 +5,6 @@ import {
   useState,
   type AnimationEvent,
 } from "react";
-import { useAuth } from "@/contexts/useAuth";
 import { isNewUserForHomepageHero } from "@/services/collectionState";
 import {
   DAILY_REWARD_DIAMONDS,
@@ -14,6 +13,8 @@ import {
   getDailyRewardResetAt,
   isDailyRewardClaimedToday,
 } from "@/services/dailyReward";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   CLAIM_CARD_EXIT_FALLBACK_MS,
   nextClaimUiPhaseOnTick,
@@ -28,21 +29,6 @@ function track(event: string, payload?: Record<string, unknown>) {
   );
 }
 
-function firstNameFromProfile(profile: {
-  displayName: string;
-  username: string;
-  email: string;
-}): string {
-  const raw =
-    profile.displayName.trim() ||
-    profile.username.trim() ||
-    profile.email.split("@")[0]?.trim() ||
-    "";
-  if (!raw) return "there";
-  const first = raw.split(/\s+/)[0] ?? raw;
-  return first.charAt(0).toUpperCase() + first.slice(1);
-}
-
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -54,21 +40,16 @@ function prefersReducedMotion(): boolean {
 export function PlayerWelcomeBar({
   onClaimed,
   onClaimAttempt,
-  claimLabel = "FREE",
   readySubtitle,
 }: {
   onClaimed: (diamonds: number) => void;
   onClaimAttempt?: () => boolean;
-  /** CTA label when the daily gift is available. */
-  claimLabel?: string;
-  /** Override subtitle while the daily gift is still claimable. */
+  /** Override title while the daily gift is still claimable. */
   readySubtitle?: string;
 }) {
-  const { profile } = useAuth();
   const titleId = useId();
   const barRef = useRef<HTMLElement>(null);
   const isNewUser = isNewUserForHomepageHero();
-  const firstName = firstNameFromProfile(profile);
   const [claimed, setClaimed] = useState(() => isDailyRewardClaimedToday());
   const [uiPhase, setUiPhase] = useState<ClaimUiPhase>(() =>
     isDailyRewardClaimedToday() ? "claimed" : "ready",
@@ -180,14 +161,8 @@ export function PlayerWelcomeBar({
   }
 
   const countdown = formatCountdown(remaining);
-  const greetingTitle = isNewUser
-    ? `Welcome to Sugar, ${firstName}!`
-    : `Welcome back, ${firstName}!`;
-  const greetingSubtitle =
-    readySubtitle ??
-    (isNewUser
-      ? "Your collection starts here ✨"
-      : "Keep collecting, you're on a roll ✨");
+  const greetingTitle =
+    readySubtitle ?? "Claim today’s free gift…";
 
   const showCard = uiPhase === "ready" || uiPhase === "exiting";
   const showClaimed = uiPhase === "claimed";
@@ -243,20 +218,34 @@ export function PlayerWelcomeBar({
               <h3 id={titleId} className="player-welcome-title">
                 {greetingTitle}
               </h3>
-              <p className="player-welcome-subtitle">{greetingSubtitle}</p>
             </div>
           </div>
 
           <div className="player-welcome-reward">
-            <button
-              type="button"
-              className="player-welcome-claim"
-              disabled={claiming || uiPhase === "exiting"}
-              aria-busy={claiming || uiPhase === "exiting"}
-              onClick={handleClaim}
-            >
-              {claiming ? "Claiming…" : claimLabel}
-            </button>
+            <div className="player-welcome-claim">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                type="button"
+                label={
+                  claiming ? (
+                    "Claiming…"
+                  ) : (
+                    <>Collect <DiamondLottie size={14} aria-hidden />{DAILY_REWARD_DIAMONDS} Now</>
+                  )
+                }
+                aria-label={
+                  claiming
+                    ? "Claiming…"
+                    : `Collect ${DAILY_REWARD_DIAMONDS} Now`
+                }
+                costAmount={null}
+                strokeWidth={1}
+                disabled={claiming || uiPhase === "exiting"}
+                aria-busy={claiming || uiPhase === "exiting"}
+                onClick={handleClaim}
+              />
+            </div>
 
             {burst ? (
               <span className="player-welcome-burst" aria-hidden="true">

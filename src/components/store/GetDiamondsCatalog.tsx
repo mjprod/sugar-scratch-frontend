@@ -105,16 +105,7 @@ export function GetDiamondsCatalog({
       </div>
       <GetDiamondsHeroBand />
 
-      <section aria-labelledby="buy-cash-heading">
-        <header className="get-diamonds-section__head">
-          <h2 id="buy-cash-heading" className="get-diamonds-section__title">
-            <Zap className="size-4" aria-hidden="true" />
-            Buy with Cash
-          </h2>
-          <p className="get-diamonds-section__desc">
-            Fast, secure and instant
-          </p>
-        </header>
+      <section aria-label="Buy with Cash">
         <div className="get-diamonds-packages">
           {packs.map((product) => (
             <PackageCard
@@ -165,8 +156,6 @@ export function GetDiamondsCatalog({
           onOpenPack={onOpenPack}
         />
       ) : null}
-
-      <TrustRow footer />
     </div>
   );
 }
@@ -176,9 +165,12 @@ function GetDiamondsHeroBand() {
     <div className="get-diamonds-hero-band">
       <header className="get-diamonds-hero get-diamonds-hero--band">
         <div className="get-diamonds-hero__copy-block">
-          <h1 className="get-diamonds-hero__title">
-            Get Diamonds <span className="get-diamonds-hero__accent">✦</span>
-          </h1>
+          <h2 className="get-diamonds-hero__title">
+            Get Diamonds{" "}
+            <span className="get-diamonds-hero__accent" aria-hidden="true">
+              <DiamondLottie size="1em" />
+            </span>
+          </h2>
           <p className="get-diamonds-hero__copy">
             Diamonds are used to buy Motion Card Packs and unlock exclusive
             rewards.

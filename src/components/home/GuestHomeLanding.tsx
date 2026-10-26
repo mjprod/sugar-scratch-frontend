@@ -9,6 +9,7 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoverflowStatusPager } from "@/components/home/CoverflowStatusPager";
 import { useAuth } from "@/contexts/useAuth";
 import { runAfterPaintIdle } from "@/lib/idle";
+import { markHowToPlaySeen } from "@/services/collectionState";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 const GUEST_HOME_VIDEO = "/video/homepagevideo-min.mp4";
@@ -87,6 +88,10 @@ export function GuestHomeLanding() {
   const active = Math.max(0, Math.min(index, slideCount - 1));
 
   useMarkPageReady(posterReady || canPlay || active !== 0);
+
+  useEffect(() => {
+    markHowToPlaySeen();
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -383,7 +388,7 @@ export function GuestHomeLanding() {
         <div className="guest-home-landing__cta">
           <CtaButton
             {...ctaButtonPropsFromTemplate("squircleCTA")}
-            label="Get Started FREE"
+            label="Create account"
             costAmount={null}
             onClick={openCreateAccount}
           />

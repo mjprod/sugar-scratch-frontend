@@ -214,7 +214,6 @@ export function CreatorHeader({
                 type="button"
                 className={[
                   "cpv2-profile-card-follow",
-                  GLASS_PILL,
                   following ? "is-following" : "",
                 ]
                   .filter(Boolean)

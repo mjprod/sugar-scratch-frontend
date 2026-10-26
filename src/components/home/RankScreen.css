@@ -2,10 +2,10 @@
 /* Category Leaderboard — same panel system as Continue Collecting */
 body[data-theme="v8"] .category-leaderboard-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   overflow-x: auto;
-  margin-bottom: 12px;
-  padding-bottom: 2px;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-0-5);
   scrollbar-width: none;
 }
 
@@ -21,13 +21,13 @@ body[data-theme="v8"] .category-leaderboard-tab:focus-visible {
 body[data-theme="v8"] .category-leaderboard-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   transition: opacity 180ms ease;
 }
 
 body[data-theme="v8"] .category-leaderboard-empty {
   margin: 0;
-  padding: 20px 12px;
+  padding: var(--space-5) var(--space-3);
   border: 1px dashed oklch(1 0 0 / 0.1);
   border-radius: 14px;
   color: oklch(1 0 0 / 0.45);
@@ -38,8 +38,8 @@ body[data-theme="v8"] .category-leaderboard-empty {
 body[data-theme="v8"] .category-leaderboard-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: var(--space-2-5);
+  padding: var(--space-2-5);
   border: 1px solid oklch(1 0 0 / 0.06);
   border-radius: 14px;
   background: oklch(1 0 0 / 0.03);
@@ -86,7 +86,7 @@ body[data-theme="v8"] .category-leaderboard-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   flex: 1;
   padding: 0;
@@ -139,7 +139,7 @@ body[data-theme="v8"] .category-leaderboard-actions {
   flex-shrink: 0;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 /* Slot for parent-filled squircle CTA (leaderboard Play). */
@@ -160,15 +160,26 @@ body[data-theme="v8"] .category-leaderboard {
 }
 
 body[data-theme="v8"] .category-leaderboard.rank-leaderboard {
-  margin-top: 2rem;
+  margin-top: var(--gap-section);
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-leaderboard .continue-collecting-header {
+  margin-bottom: var(--space-5);
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board.rank-leaderboard .category-leaderboard-tabs {
+  margin-bottom: var(--space-5);
 }
 
 /* Category leaderboard title sentence-ish on v2 */
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-leaderboard .continue-collecting-title {
+  font-family: var(--font-maytra);
+  color: var(--color-page-title);
   text-transform: none;
-  letter-spacing: 0.28px;
-  font-size: var(--text-display);
-  font-weight: 600;
+  letter-spacing: 0;
+  font-size: var(--text-page);
+  font-weight: 400;
+  line-height: var(--text-page--line-height);
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs::-webkit-scrollbar {
@@ -177,7 +188,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 
 @media (min-width: 1024px) {
   body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs {
-    padding-inline-end: 2rem;
+    padding-inline-end: var(--space-8);
   }
 }
 
@@ -267,13 +278,13 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-list {
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 /* Figma 4thPlace+ neutral cards (9:147). */
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-row {
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3-5);
   border-radius: 20px;
   border: 1px solid #201c2a;
   background-color: #0b0b12;
@@ -378,11 +389,11 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 
 /* Figma pack text container (9:60) — 1 column, 3 rows, 4px gap. */
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-info {
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-pack {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-title);
   font-weight: 600;
   letter-spacing: 0.26px;
@@ -391,7 +402,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-body);
   font-weight: 400;
   letter-spacing: 0.24px;
@@ -400,7 +411,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-stats {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: 0.24px;
@@ -411,7 +422,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-actions {
   flex-direction: row;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-play {

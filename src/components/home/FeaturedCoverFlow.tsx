@@ -638,7 +638,7 @@ export function FeaturedCoverFlow({
 
         if (cost > diamonds) {
           holdUnpaidPack(item, target, qty);
-          setNavNotice("Not enough diamonds. Pack saved to Pack Pocket.");
+          setNavNotice("Not enough diamonds. Pack saved to My Packs.");
           window.setTimeout(() => setNavNotice(""), 3200);
           openStore();
           return;

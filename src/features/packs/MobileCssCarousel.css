@@ -161,8 +161,8 @@
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper,
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper-3d {
-  padding-top: 0;
-  padding-bottom: 0;
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-5);
   padding-left: 0;
   padding-right: 0;
   height: auto;
@@ -204,6 +204,10 @@
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-wrapper {
   justify-content: flex-start;
   transform-style: flat;
+}
+
+.mobile-css-carousel-stage.is-compact.is-single .mobile-css-carousel .swiper-wrapper {
+  justify-content: center;
 }
 
 .mobile-css-carousel-stage.is-compact .mc-popular-arrow {

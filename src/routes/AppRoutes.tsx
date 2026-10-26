@@ -128,9 +128,6 @@ const EditProfilePage = lazy(() =>
     default: m.EditProfilePage,
   })),
 );
-const SettingsPage = lazy(() =>
-  import("@/pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
-);
 const StorePage = lazy(() =>
   import("@/pages/StorePage").then((m) => ({ default: m.StorePage })),
 );
@@ -306,11 +303,7 @@ export function AppRoutes() {
             />
             <Route
               path="profile"
-              element={
-                <SoftGate tab="profile">
-                  <ProfilePage />
-                </SoftGate>
-              }
+              element={<Navigate to={Paths.settings} replace />}
             />
             <Route
               path="profile/edit"
@@ -378,7 +371,7 @@ export function AppRoutes() {
               path="settings"
               element={
                 <SoftGate tab="profile">
-                  <SettingsPage />
+                  <ProfilePage />
                 </SoftGate>
               }
             />

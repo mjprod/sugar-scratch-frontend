@@ -1,9 +1,11 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
+import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useWallet } from "@/contexts/WalletContext";
 import { Paths } from "@/routes/Paths";
 import "@/components/creator/creator-influencer.css";
 
@@ -13,6 +15,7 @@ type LegalKind = "terms" | "privacy";
 export function CollectionSiteFooter() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { diamonds } = useWallet();
   const [legal, setLegal] = useState<LegalKind | null>(null);
   const legalTitleId = useId();
   const open = legal !== null;
@@ -32,38 +35,31 @@ export function CollectionSiteFooter() {
 
   return (
     <>
-      <button
-        type="button"
-        className="cpv2-diamonds-cta mc-diamonds-cta"
-        onClick={() => navigate(Paths.store)}
-      >
-        <span className="cpv2-diamonds-cta-title">Running low on Diamonds?</span>
-        <span className="cpv2-diamonds-cta-btn">
-          <DiamondLottie size={14} aria-hidden />
-          Get Diamonds
-        </span>
-        <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
-          <DiamondLottie size={34} aria-hidden />
-        </span>
-        <span className="cpv2-diamonds-orb is-b" aria-hidden="true">
-          <DiamondLottie size={24} aria-hidden />
-        </span>
-      </button>
+      {diamonds < 10 ? (
+        <button
+          type="button"
+          className="cpv2-diamonds-cta mc-diamonds-cta"
+          onClick={() => navigate(Paths.store)}
+        >
+          <span className="cpv2-diamonds-cta-title">Running low on Diamonds?</span>
+          <span className="cpv2-diamonds-cta-btn">
+            <DiamondLottie size={14} aria-hidden />
+            Get Diamonds
+          </span>
+          <span className="cpv2-diamonds-orb is-a" aria-hidden="true">
+            <DiamondLottie size={34} aria-hidden />
+          </span>
+          <span className="cpv2-diamonds-orb is-b" aria-hidden="true">
+            <DiamondLottie size={24} aria-hidden />
+          </span>
+        </button>
+      ) : null}
 
       <footer className="cpv2-site-footer mc-site-footer">
-        <p className="cpv2-site-footer-tagline">
-          <span className="is-pink">Real Creators.</span> Real Moments.
-        </p>
-        <nav className="cpv2-site-footer-links" aria-label="Legal">
-          <button type="button" onClick={() => setLegal("privacy")}>
-            Privacy Policy
-          </button>
-          <a href="mailto:support@sugarscratch.com">Support</a>
-          <button type="button" onClick={() => setLegal("terms")}>
-            Terms &amp; Conditions
-          </button>
-          <Link to={Paths.lpBuild}>Sign up as an influencer</Link>
-        </nav>
+        <SiteLegalLinks
+          onPrivacy={() => setLegal("privacy")}
+          onTerms={() => setLegal("terms")}
+        />
       </footer>
 
       {legal && typeof document !== "undefined"

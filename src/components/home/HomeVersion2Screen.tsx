@@ -8,6 +8,10 @@ import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
+  hasSeenHowToPlay,
+  isNewUserForHomepageHero,
+} from "@/services/collectionState";
+import {
   fetchHomepage,
   splitContinueCollectingItems,
   type ContinueCollectingItem,
@@ -26,7 +30,6 @@ type PageStatus = "loading" | "loaded" | "error";
  * Store (pack browse) — Figma Home (node 2:20) without the leaderboard (now on Rank).
  */
 export function HomeVersion2Screen({
-  onRestart,
   onStartPlaying,
   onOpenCreator,
   onClaimDaily,
@@ -106,7 +109,7 @@ export function HomeVersion2Screen({
         className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
       >
         <div className="home-featured-coverflow is-loading" aria-hidden="true" />
-        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-6 px-5 lg:px-8">
+        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page">
           <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
           <div className="h-48 animate-pulse rounded-2xl bg-white/10" />
         </div>
@@ -120,7 +123,7 @@ export function HomeVersion2Screen({
         data-page-scroll
         className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
       >
-        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-3 px-5 lg:px-8">
+        <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col items-center justify-center gap-stack px-page">
           <p className="text-title text-white/70">Couldn’t load homepage.</p>
           <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
@@ -166,22 +169,23 @@ export function HomeVersion2Screen({
         />
       </Suspense>
 
-      <div className="home-page-inner home-page-inner--after-hero mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-[15px] px-5 lg:px-8">
+      <div className="home-page-inner home-page-inner--after-hero mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page">
         {onClaimDaily ? (
           <PlayerWelcomeBar
             onClaimed={onClaimDaily}
             onClaimAttempt={onClaimAttempt}
-            claimLabel="Claim Now!"
             readySubtitle="Claim today’s free gift…"
           />
         ) : null}
 
-        <PlaySteps title="How to Play" steps={FIGMA_HOME_PLAY_STEPS} />
+        {isNewUserForHomepageHero() && !hasSeenHowToPlay() ? (
+          <PlaySteps title="How to Play" steps={FIGMA_HOME_PLAY_STEPS} />
+        ) : null}
 
         <ContinueCollecting
           className="is-title-sentence is-avatar-strip"
           title="Continue Collecting"
-          seeAllLabel="See All"
+          seeAllLabel="Search"
           avatarOnly
           items={
             continueCollecting.length > 0 ? continueCollecting : justDropIn
@@ -200,14 +204,6 @@ export function HomeVersion2Screen({
       <SpotlightBanner />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)]">
-        <button
-          type="button"
-          onClick={onRestart}
-          className="mt-10 mb-2 text-center text-caption text-white/30 underline-offset-2 hover:text-white/50 hover:underline"
-        >
-          Restart prototype (clears first-visit flags)
-        </button>
-
         <HomeSiteFooter />
       </div>
 

@@ -68,25 +68,26 @@
   container-type: size;
   /* Pause + docked symbol bar share this top inset (safe-area + ~1.5dvh drop). */
   --game-top-hud: calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh);
-  /* Symbol-bar slot size for the top row, shared with .symbol-bar in
-     features/game/scratch/styles.css. Shrinks so 6 icons + tight gaps fit
-     inside the centered pill without clipping. Fixed cost ≈ pause clear
-     both sides (~56×2) + 5 gaps of 3px + bar padding 16px ≈ 143px.
-     Never read this on .stage-game itself — cqw would resolve against the
-     parent container, not the stage. */
-  --game-symbol-slot: min(40px, calc((100cqw - 143px) / 6));
+  --game-hud-btn: 40px;
+  /* Same gold-stroke inset as .scratch-frame-progress (desktop 4px / phone 6px). */
+  --frame-inset-x: max(
+    4px,
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px)
+  );
+  /* Pause/diamond sit this far inside .stage — px only so slot calc can use it. */
+  --game-hud-edge: max(
+    calc(var(--frame-inset-x) + 28px),
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px)
+  );
+  /* Air between pause/diamond and the 6-icon dock. */
+  --game-dock-clear: 4px;
   /* Docked middle pill is always exactly 6 slots — reserve this width even
      before TopSymbolBar mounts so pause/mute don't jump when the bar appears. */
   --game-top-bar-gap: 3px;
   --game-top-bar-pad-x: 8px;
   --game-top-bar-pad-y: 7px;
-  --game-top-bar-width: calc(
-    (6 * var(--game-symbol-slot)) + (5 * var(--game-top-bar-gap)) +
-      (2 * var(--game-top-bar-pad-x))
-  );
-  --game-top-bar-height: calc(
-    var(--game-symbol-slot) + (2 * var(--game-top-bar-pad-y))
-  );
 }
 
 /* PaidCardPlayGate: play registration failed before the scratch surface mounted. */
@@ -97,8 +98,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 1.5rem;
+  gap: var(--space-2);
+  padding: var(--space-6);
   text-align: center;
   color: white;
 }
@@ -119,9 +120,9 @@
 .play-gate-error__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
   justify-content: center;
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
 }
 
 .play-gate-error__cta {
@@ -170,6 +171,11 @@
     /* Keep stage chrome clear of the home indicator / browser chrome. */
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
+    --frame-inset-x: max(
+      6px,
+      env(safe-area-inset-left, 0px),
+      env(safe-area-inset-right, 0px)
+    );
   }
 
   /*
@@ -254,6 +260,29 @@
   overflow: hidden;
   container-type: size;
   background: oklch(0.184 0.005 67.5);
+  /*
+   * Slot size must be set here: 100cqw on .stage-game itself is the parent
+   * (the window on iPad/laptop). Here cqw is .stage-game = the phone frame.
+   * Reserve both HUD edges, both 40px buttons, dock clear, 5 gaps, bar pad.
+   */
+  --game-symbol-slot: min(
+    40px,
+    calc(
+      (
+          100cqw - (2 * var(--game-hud-edge)) - (2 * var(--game-hud-btn)) -
+            (2 * var(--game-dock-clear)) - (5 * var(--game-top-bar-gap)) -
+            (2 * var(--game-top-bar-pad-x))
+        ) /
+        6
+    )
+  );
+  --game-top-bar-width: calc(
+    (6 * var(--game-symbol-slot)) + (5 * var(--game-top-bar-gap)) +
+      (2 * var(--game-top-bar-pad-x))
+  );
+  --game-top-bar-height: calc(
+    var(--game-symbol-slot) + (2 * var(--game-top-bar-pad-y))
+  );
 }
 
 /* Cover only the stage picture — never UI canvases (foil flakes, coating).
@@ -311,11 +340,12 @@
   --game-top-status-height: 45px;
   position: absolute;
   top: var(--game-top-hud, calc(max(12px, env(safe-area-inset-top, 0px)) + 1.5dvh));
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  width: min(93dvw, calc(100% - 2 * max(8px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px))));
-  max-width: 93dvw;
+  left: var(--game-hud-edge);
+  right: var(--game-hud-edge);
+  width: auto;
+  max-width: none;
+  margin: 0;
+  transform: none;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -333,10 +363,9 @@
 }
 
 .stage-game__top-chrome-row.is-controls {
-  grid-template-columns:
-    minmax(48px, 1fr)
-    var(--game-top-bar-width, 256px)
-    minmax(48px, 1fr);
+  /* Fixed 40px gutters: pause/diamond stay on the chrome edges. AutoScratch
+     shrinks in the middle and cannot shove the diamond past the gold frame. */
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
   min-height: var(--game-top-bar-height, 54px);
 }
 
@@ -363,9 +392,8 @@
   min-height: inherit;
 }
 
-.stage-game__top-chrome-side.is-start,
-.stage-game__top-chrome-side.is-end {
-  justify-content: center;
+.stage-game__top-chrome-side.is-start {
+  justify-content: flex-start;
 }
 
 .stage-game__top-chrome-side.is-end {
@@ -383,6 +411,7 @@
   overflow: visible;
   width: 40px;
   min-width: 40px;
+  max-width: 40px;
   min-height: 40px;
   height: 40px;
   gap: 0;
@@ -421,9 +450,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--game-top-bar-width, 256px);
-  min-width: var(--game-top-bar-width, 256px);
-  max-width: var(--game-top-bar-width, 256px);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   pointer-events: none;
 }
 
@@ -448,7 +477,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   min-height: var(--game-top-status-height, 45px);
   height: 100%;
@@ -471,7 +500,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   box-sizing: border-box;
   width: max-content;
   min-width: 0;
@@ -479,7 +508,7 @@
   height: 40px;
   flex: 0 0 auto;
   margin: 0;
-  padding: 0 1.25rem;
+  padding: 0 var(--space-5);
   border-radius: 999px;
   border: 0;
   outline: none;
@@ -533,7 +562,7 @@
   z-index: 2;
   border-radius: inherit;
   pointer-events: none;
-  padding: 1px;
+  padding: var(--space-px);
   background: linear-gradient(
     146deg,
     #a87a1c 0%,
@@ -675,7 +704,7 @@
 .stage-game__bottom-chrome-row.is-status {
   /* Coin badge keeps intrinsic width; brand fills leftover and may shrink. */
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   width: 100%;
   max-width: 100%;
@@ -708,8 +737,8 @@
 
 /* Replay of an already-played card: the hand earns no coins or diamonds. */
 .stage-game__free-play-pill {
-  margin-right: 8px;
-  padding: 4px 10px;
+  margin-right: var(--space-2);
+  padding: var(--space-1) var(--space-2-5);
   border-radius: 999px;
   background: oklch(0 0 0 / 0.45);
   border: 1px solid oklch(1 0 0 / 0.18);
@@ -860,14 +889,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
   width: max-content;
   max-width: 100%;
   height: var(--bottom-chrome-h) !important;
   max-height: var(--bottom-chrome-h) !important;
   min-height: 0 !important;
   margin: 0;
-  padding: 0 16px 0 12px;
+  padding: 0 var(--space-4) 0 var(--space-3);
   border-radius: var(--pp-radius);
   /* Visible so the 2× coin can overhang without clipping soft edges. */
   overflow: visible;
@@ -1005,7 +1034,7 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 1px;
+  gap: var(--space-px);
   min-width: 0;
   text-align: left;
   user-select: none;
@@ -1258,7 +1287,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: var(--space-0-5);
   min-width: 40px;
   min-height: 44px;
   padding: 5px 8px 6px;
@@ -1322,7 +1351,7 @@
   z-index: 5300;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .game-pause__scrim {
@@ -1340,7 +1369,7 @@
   position: relative;
   z-index: 1;
   width: min(100%, 320px);
-  padding: 20px 18px 16px;
+  padding: var(--space-5) var(--space-4-5) var(--space-4);
   border: 1px solid oklch(1 0 0 / 0.1);
   border-radius: 1.15rem;
   overflow: visible;
@@ -1549,7 +1578,7 @@
   width: auto;
   height: 2.8125rem; /* 2.25rem * 1.25 */
   max-width: min(78%, 13.75rem);
-  margin: 0 auto 12px;
+  margin: 0 auto var(--space-3);
   object-fit: contain;
   opacity: 0.95;
   filter: drop-shadow(0 1px 2px oklch(0 0 0 / 0.35));
@@ -1560,7 +1589,7 @@
 }
 
 .game-pause__title {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-3-5);
   font-size: 15px;
   font-weight: 650;
   letter-spacing: 0.01em;
@@ -1573,10 +1602,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   height: 44px;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   border: 1px solid oklch(1 0 0 / 0.16);
   border-radius: 12px;
   background: oklch(1 0 0 / 0.08);
@@ -1620,7 +1649,7 @@
   justify-content: center;
   width: 100%;
   height: 44px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   border: 1px solid oklch(1 0 0 / 0.16);
   border-radius: 12px;
   background: oklch(1 0 0 / 0.08);
@@ -1651,7 +1680,7 @@
   justify-content: center;
   width: 100%;
   height: 40px;
-  margin-top: 6px;
+  margin-top: var(--space-1-5);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -1767,7 +1796,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(8px, 2cqh, 14px);
+  gap: clamp(var(--space-2), 2cqh, var(--space-3-5));
   padding:
     max(48px, calc(12px + env(safe-area-inset-top, 0px)))
     16px
@@ -1791,7 +1820,7 @@
 }
 
 .motion-win-reveal__count {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   color: oklch(1 0 0 / 0.92);
   font-size: 20px;
   font-weight: 700;
@@ -1802,7 +1831,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 168px;
   perspective: 900px;
   transition:
@@ -1923,7 +1952,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: var(--space-1);
   opacity: 0;
   transform: translateY(6px) scale(0.9);
   transition:
@@ -2040,7 +2069,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: var(--space-3-5);
   padding: 64px 16px 88px;
   box-sizing: border-box;
 }
@@ -2060,7 +2089,7 @@
 }
 
 .photo-diamond-reveal__count {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   color: oklch(1 0 0 / 0.92);
   font-size: 20px;
   font-weight: 700;
@@ -2070,7 +2099,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   opacity: 0;
   transform: scale(0.88);
   transition:
@@ -2121,8 +2150,8 @@
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 10px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2-5);
   border-radius: 999px;
   border: 1px solid oklch(1 0 0 / 0.14);
   background: oklch(0.157 0.013 284.85 / 0.92);
@@ -2273,7 +2302,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: var(--space-4-5);
   padding: 64px 16px 88px;
   box-sizing: border-box;
 }
@@ -2293,7 +2322,7 @@
 }
 
 .motion-currency-reveal__count {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
   color: oklch(1 0 0 / 0.92);
   font-size: 18px;
   font-weight: 700;
@@ -2304,7 +2333,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   opacity: 0;
   transform: scale(0.88);
   transition:
@@ -2313,7 +2342,7 @@
 }
 
 .motion-currency-reveal__stack.has-both {
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .motion-currency-reveal__stack.is-visible {
@@ -2335,7 +2364,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -2349,7 +2378,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
 }
 
@@ -2363,7 +2392,7 @@
 }
 
 .motion-currency-reveal__pair .motion-currency-reveal__icon {
-  margin-right: -10px;
+  margin-right: calc(var(--space-2-5) * -1);
 }
 
 .motion-currency-reveal__pair .motion-currency-reveal__amount {
@@ -2421,8 +2450,8 @@
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 10px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2-5);
   border-radius: 999px;
   border: 1px solid oklch(1 0 0 / 0.14);
   background: oklch(0.157 0.013 284.85 / 0.92);
@@ -2513,7 +2542,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 0 24px;
+  padding: 0 var(--space-6);
 }
 
 /* Readability halo — no card/modal chrome, the result floats on the card. */
@@ -2542,7 +2571,7 @@
 
 .no-match__title {
   position: relative;
-  margin: 14px 0 0;
+  margin: var(--space-3-5) 0 0;
   color: oklch(0.84 0.11 340);
   font-size: 28px;
   font-weight: 600;
@@ -2553,7 +2582,7 @@
 
 .no-match__subtitle {
   position: relative;
-  margin: 10px 0 0;
+  margin: var(--space-2-5) 0 0;
   color: oklch(1 0 0 / 0.68);
   font-size: 14px;
   font-weight: 400;
@@ -2653,9 +2682,9 @@
   align-items: center;
   justify-content: space-between;
   padding:
-    calc(48px + env(safe-area-inset-top, 0px))
-    20px
-    calc(24px + env(safe-area-inset-bottom, 0px));
+    calc(var(--space-12) + env(safe-area-inset-top, 0px))
+    var(--space-5)
+    calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   pointer-events: auto;
   animation: photo-hand-summary-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -2683,7 +2712,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .photo-hand-summary__title {
@@ -2698,7 +2727,7 @@
 }
 
 .photo-hand-summary__subtitle {
-  margin: -8px 0 0;
+  margin: calc(var(--space-2) * -1) 0 0;
   color: oklch(1 0 0 / 0.88);
   font-size: 18px;
   font-weight: 600;
@@ -2769,7 +2798,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   animation: game-hub-tally-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
 }
 
@@ -2804,7 +2833,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: min(100%, 280px);
 }
 

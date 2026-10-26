@@ -290,7 +290,14 @@ function ContinueSection({
       aria-labelledby="ready-heading"
       id="ready-heading-section"
     >
-      <div className="mc-continue-panel">
+      <div
+        className={[
+          "mc-continue-panel",
+          items.length === 1 ? "is-single" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <h2 id="ready-heading" className="mc-continue-title">
           Continue playing…
         </h2>

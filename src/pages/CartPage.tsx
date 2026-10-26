@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, ShoppingBag } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { EmptyState } from "@/components/EmptyState";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -192,6 +192,39 @@ function foilForOwnedInstance(
   const profile = profileFromModel(model);
   const byId = profile.packs.find((foil) => foil.id === pack.catalogPackId);
   return { profile, foil: byId ?? profile.packs[0] ?? null };
+}
+
+function PocketEmptyArt() {
+  return (
+    <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M18 22h60c3.3 0 6 2.7 6 6v22c0 16.6-13.4 32-36 32S12 66.6 12 50V28c0-3.3 2.7-6 6-6Z"
+        fill="url(#pocket-fill)"
+        stroke="#FF2D87"
+        strokeWidth="2.2"
+      />
+      <path
+        d="M20 38h56"
+        stroke="#FF2D87"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
+      <path
+        d="M38 52h20"
+        stroke="#FFE0E8"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        opacity="0.7"
+      />
+      <defs>
+        <linearGradient id="pocket-fill" x1="18" y1="16" x2="78" y2="90">
+          <stop stopColor="#FF4FA0" stopOpacity="0.35" />
+          <stop offset="1" stopColor="#5A0028" stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
 }
 
 /** Owned sealed packs shown in Pack Pocket when the cart itself is empty. */
@@ -500,8 +533,8 @@ export function CartPage() {
           if (partialFailure && purchasedLines.length < remaining.length) {
             setNavNotice(
               partialFailure.kind === "insufficient"
-                ? "Some packs purchased. The rest are still in Pack Pocket."
-                : "Some packs purchased. Retry the rest from Pack Pocket.",
+                ? "Some packs purchased. The rest are still in My Packs."
+                : "Some packs purchased. Retry the rest from My Packs.",
             );
             window.setTimeout(() => setNavNotice(""), 3200);
           }
@@ -557,12 +590,12 @@ export function CartPage() {
     return (
       <section
         className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
-        aria-label="Pack Pocket"
+        aria-label="My Packs"
       >
         <div className="flex min-h-0 flex-1 items-center justify-center px-6">
           <EmptyState
-            icon={ShoppingBag}
-            title="Your pack pocket is empty"
+            art={<PocketEmptyArt />}
+            title="Your Packs are empty"
             copy="Buy a pack and it will wait here, ready to check out."
             action={
               <CtaButton
@@ -583,7 +616,7 @@ export function CartPage() {
   return (
     <section
       className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
-      aria-label={showingOwnedUnopened ? "Pack Pocket" : "Cart"}
+      aria-label={showingOwnedUnopened ? "My Packs" : "Cart"}
     >
       <div
         className="stage-packs"
@@ -725,7 +758,7 @@ function CartCheckoutModal({
             icon={<AlertTriangle className="size-7" />}
             tone="danger"
             title="Checkout failed"
-            body="Something went wrong and you were not charged. Your packs are still in Pack Pocket."
+            body="Something went wrong and you were not charged. Your packs are still in My Packs."
             primary={{ label: "Close", onClick: onClose }}
           />
         )}
