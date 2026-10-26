@@ -68,6 +68,7 @@ function cartFoilsFromPacks(
       id: cartPack.cartItemId,
       label: item?.foil?.label || cartPack.packName,
       videoUrl: item?.foil?.videoUrl || cartPack.videoUrl,
+      posterUrl: item?.foil?.posterUrl,
       slot: item?.foil?.slot,
     };
   });
@@ -161,6 +162,7 @@ function cartPacksToItems(
       modelUrl: PACK_MODEL_URL,
       modelName: "CardPack2-min.glb",
       videoUrl: foil?.videoUrl || pack.videoUrl,
+      posterUrl: foil?.posterUrl,
       price: diamondCostForCartPack(pack, profiles, catalog),
       girlName: profile?.name || pack.creator,
       packNumber: foil?.slot === 2 ? 102 : pack.packNumber,
@@ -245,6 +247,7 @@ function unopenedInstancesToItems(
       modelUrl: PACK_MODEL_URL,
       modelName: "CardPack2-min.glb",
       videoUrl: foil?.videoUrl || pack.coverUrl,
+      posterUrl: foil?.posterUrl,
       price: 0,
       girlName: profile?.name || pack.creator,
       packNumber: foil?.slot === 2 ? 102 : 101,
@@ -299,6 +302,7 @@ function openOwnedUnopenedFlow(input: {
           id: pack.instanceId,
           label: foilMatch?.foil?.label || pack.packName,
           videoUrl: foilMatch?.foil?.videoUrl || pack.coverUrl,
+          posterUrl: foilMatch?.foil?.posterUrl,
           slot: foilMatch?.foil?.slot ?? ((index === 0 ? 1 : 2) as 1 | 2),
         };
       }),

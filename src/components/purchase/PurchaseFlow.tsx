@@ -182,6 +182,7 @@ function cartFoilsForTear(pack: PurchaseFlowPack): FoilPack[] {
     id: foil.id,
     label: foil.label,
     videoUrl: foil.videoUrl,
+    posterUrl: foil.posterUrl,
   }));
 }
 
@@ -1926,6 +1927,7 @@ function ChoosePackStage({
           modelUrl: PACK_MODEL_URL,
           modelName: "card2.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: liveCost,
           girlName,
           packNumber: foil.slot === 1 ? 101 : 102,
@@ -2154,6 +2156,7 @@ function ReadyStage({
           modelUrl: "/assets/CardPack2-min.glb",
           modelName: "CardPack2-min.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: 0,
           girlName,
           packNumber: foil.slot === 1 ? 101 : 102,

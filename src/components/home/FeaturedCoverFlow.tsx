@@ -752,6 +752,7 @@ export function FeaturedCoverFlow({
                 id: foil?.id || target.foilId || item.id,
                 label: packName,
                 videoUrl: foil?.videoUrl || item.videoUrl || "",
+                posterUrl: foil?.posterUrl || item.posterUrl,
                 slot: foil?.slot,
               },
             ],

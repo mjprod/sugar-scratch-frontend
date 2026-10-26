@@ -101,7 +101,7 @@ export function makeVideoTextureCacheKey(input: VideoTextureCacheKeyInput): stri
   ].join('|')
 }
 
-function createCanvasTexture(
+export function createPackFaceCanvas(
   size: number,
   flipY: boolean,
 ): {
@@ -132,20 +132,22 @@ function createCanvasTexture(
   return { canvas, context, texture }
 }
 
-function drawVideoToContext(
-  entry: CacheEntry,
+/** Paint a video frame or poster still onto the pack-face canvas (same UV framing). */
+export function paintPackFaceSource(
   context: CanvasRenderingContext2D,
   texture: CanvasTexture,
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  fitMode: VideoFitMode,
+  textureTransform: VideoTextureTransform,
 ) {
-  const { video, fitMode, textureTransform } = entry
   const textureSize = context.canvas.width
 
-  if (textureSize <= 1 || video.videoWidth === 0 || video.videoHeight === 0) {
+  if (textureSize <= 1 || sourceWidth === 0 || sourceHeight === 0) {
     return
   }
 
-  const sourceWidth = video.videoWidth
-  const sourceHeight = video.videoHeight
   const sourceRatio = sourceWidth / sourceHeight
   const targetRatio = 1
 
@@ -190,7 +192,7 @@ function drawVideoToContext(
   context.rotate((textureTransform.rotation * Math.PI) / 180)
   context.scale(textureTransform.scaleX, textureTransform.scaleY)
   context.drawImage(
-    video,
+    source,
     offsetX - textureSize / 2,
     offsetY - textureSize / 2,
     drawWidth,
@@ -200,6 +202,26 @@ function drawVideoToContext(
   context.filter = 'none'
 
   texture.needsUpdate = true
+}
+
+function drawVideoToContext(
+  entry: CacheEntry,
+  context: CanvasRenderingContext2D,
+  texture: CanvasTexture,
+) {
+  const { video, fitMode, textureTransform } = entry
+  if (video.videoWidth === 0 || video.videoHeight === 0) {
+    return
+  }
+  paintPackFaceSource(
+    context,
+    texture,
+    video,
+    video.videoWidth,
+    video.videoHeight,
+    fitMode,
+    textureTransform,
+  )
 }
 
 function drawLiveFrame(entry: CacheEntry) {
@@ -409,8 +431,8 @@ function ensureEntry(input: VideoTextureCacheKeyInput): CacheEntry {
     return existing
   }
 
-  const still = createCanvasTexture(stillCanvasSize(input.textureSize), input.flipY)
-  const live = createCanvasTexture(1, input.flipY)
+  const still = createPackFaceCanvas(stillCanvasSize(input.textureSize), input.flipY)
+  const live = createPackFaceCanvas(1, input.flipY)
 
   const resolvedVideoUrl = resolveVideoTextureUrl(input.videoUrl)
 

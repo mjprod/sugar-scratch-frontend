@@ -25,6 +25,7 @@ export type PurchaseFlowPack = {
     id: string;
     label: string;
     videoUrl: string;
+    posterUrl?: string;
     slot?: 1 | 2;
   }>;
   /** Specific owned pack instance when resuming Open Pack. */

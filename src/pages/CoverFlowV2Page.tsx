@@ -8,12 +8,6 @@ import {
 } from "@/features/packs/CoverFlowCarousel";
 import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
-import {
-  getCardTopDebug,
-  setCardTopLottieOffset,
-  subscribeCardTopDebug,
-  type CardTopDebugState,
-} from "@/features/packs/cardTopDebug";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
 import { useAuth } from "@/contexts/useAuth";
@@ -122,6 +116,7 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
           modelUrl: PACK_MODEL_URL_V2,
           modelName: "CardPack2-min.glb",
           videoUrl: foil.videoUrl,
+          posterUrl: foil.posterUrl,
           price: diamondCost,
           girlName: profile.name,
           packNumber: foil.slot === 1 ? 101 : 102,
@@ -188,112 +183,6 @@ function CardTopDebugField({
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>
-  );
-}
-
-function TearLottieDebugPanel({ onReplay }: { onReplay: () => void }) {
-  const [debug, setDebug] = useState<CardTopDebugState>(getCardTopDebug);
-  const [open, setOpen] = useState(true);
-  const [copyLabel, setCopyLabel] = useState("Copy");
-
-  useEffect(() => subscribeCardTopDebug(setDebug), []);
-
-  async function copyOffset() {
-    const snippet = [
-      `lottieOffset.x: ${debug.lottieOffset.x},`,
-      `lottieOffset.y: ${debug.lottieOffset.y},`,
-      `lottieOffset.z: ${debug.lottieOffset.z},`,
-    ].join("\n");
-    try {
-      await navigator.clipboard.writeText(snippet);
-      setCopyLabel("Copied");
-    } catch {
-      setCopyLabel("Copy failed");
-    }
-    window.setTimeout(() => setCopyLabel("Copy"), 1600);
-  }
-
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <aside
-      className={["home-hero-debug", open ? "" : "is-collapsed"]
-        .filter(Boolean)
-        .join(" ")}
-      aria-label="Tear lottie position"
-    >
-      <div className="home-hero-debug__head">
-        <p className="home-hero-debug__title">Tear lottie</p>
-        <div className="home-hero-debug__actions">
-          <button
-            type="button"
-            className="home-hero-debug__btn"
-            onClick={onReplay}
-          >
-            Replay
-          </button>
-          <button
-            type="button"
-            className="home-hero-debug__btn"
-            onClick={() =>
-              setCardTopLottieOffset({ x: -0.97, y: 2.26, z: -1.92 })
-            }
-          >
-            Reset
-          </button>
-          <button
-            type="button"
-            className="home-hero-debug__btn"
-            onClick={() => void copyOffset()}
-          >
-            {copyLabel}
-          </button>
-          <button
-            type="button"
-            className="home-hero-debug__btn"
-            onClick={() => setOpen((current) => !current)}
-          >
-            {open ? "Hide" : "Show"}
-          </button>
-        </div>
-      </div>
-      <div className="home-hero-debug__body">
-        <div className="home-hero-debug__section">
-          <p className="home-hero-debug__section-title">Position</p>
-          <CardTopDebugField
-            label="X"
-            value={debug.lottieOffset.x}
-            min={-2}
-            max={2}
-            step={0.01}
-            suffix=""
-            digits={2}
-            onChange={(value) => setCardTopLottieOffset({ x: value })}
-          />
-          <CardTopDebugField
-            label="Y"
-            value={debug.lottieOffset.y}
-            min={-2}
-            max={5}
-            step={0.01}
-            suffix=""
-            digits={2}
-            onChange={(value) => setCardTopLottieOffset({ y: value })}
-          />
-          <CardTopDebugField
-            label="Z"
-            value={debug.lottieOffset.z}
-            min={-2}
-            max={2}
-            step={0.01}
-            suffix=""
-            digits={2}
-            onChange={(value) => setCardTopLottieOffset({ z: value })}
-          />
-        </div>
-      </div>
-    </aside>,
-    document.body,
   );
 }
 
@@ -491,6 +380,7 @@ function iterationsFromFeatured(packs: FeaturedPack[]): CoverFlowCatalog {
         modelUrl: PACK_MODEL_URL_V2,
         modelName: "CardPack2-min.glb",
         videoUrl: "",
+        posterUrl: pack.posterUrl || pack.coverImageUrl,
         price: pack.diamondCost,
         girlName: pack.creatorName,
         packNumber: 101,
@@ -603,7 +493,6 @@ export function CoverFlowV2Page() {
         className="absolute inset-0 z-0 flex min-h-0 flex-col overflow-hidden bg-[oklch(0.14_0_0)]"
         aria-label="Coverflow v2"
       >
-        <TearLottieDebugPanel onReplay={tear.replayTear} />
         <CoverflowCenterDebugPanel
           debug={centerDebug}
           open={centerDebugOpen}
@@ -713,7 +602,6 @@ export function CoverFlowV2Page() {
           </div>
         ) : null}
       </div>
-      <TearLottieDebugPanel onReplay={tear.replayTear} />
       <CoverflowCenterDebugPanel
         debug={centerDebug}
         open={centerDebugOpen}

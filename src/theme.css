@@ -76,6 +76,23 @@ body[data-theme="v8"] {
     radial-gradient(ellipse 70% 45% at 50% -5%, oklch(0.767 0.139 91.06 / 0.16), transparent),
     radial-gradient(ellipse 40% 35% at 100% 100%, oklch(0.656 0.212 354.31 / 0.12), transparent);
   color: oklch(1 0 0);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body[data-theme="v8"] input,
+body[data-theme="v8"] textarea,
+body[data-theme="v8"] select,
+body[data-theme="v8"] [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+body[data-theme="v8"] .auth7-legal-body,
+body[data-theme="v8"] .settings-legal-doc {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 body[data-theme="v8"] :focus-visible {
