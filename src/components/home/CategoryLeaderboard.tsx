@@ -73,7 +73,7 @@ export function CategoryLeaderboard({
     >
       <div className="continue-collecting-header">
         <div className="continue-collecting-title-row">
-          <h1 className="continue-collecting-title">{title}</h1>
+          <h2 className="continue-collecting-title">{title}</h2>
         </div>
       </div>
 
