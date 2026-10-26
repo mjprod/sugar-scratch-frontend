@@ -64,8 +64,19 @@
   z-index: 5 !important;
 }
 
-.mobile-css-carousel .swiper-slide video,
+.mobile-css-carousel__pack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #111;
+}
+
+/* Poster is the cheap base layer. Live video sits in the 2D overlay, not here. */
 .mobile-css-carousel__poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -76,27 +87,43 @@
   pointer-events: none;
 }
 
-.mobile-css-carousel__pack {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #111;
-}
-
-/* Poster is the cheap base layer under the video. */
-.mobile-css-carousel__poster {
+/*
+ * One untransformed <video> over the focused pack. Must stay outside Swiper's
+ * 3D coverflow tree — a 3D ancestor forces iOS off the overlay decoder plane.
+ */
+.mobile-css-carousel__focus {
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  z-index: 6;
+  /* Visible so Buy confirm can paint past the pack; video is sized to the box. */
+  overflow: visible;
+  pointer-events: none;
 }
 
-/* Single active decoder paints above the poster. Neighbors are poster-only. */
-.mobile-css-carousel__pack video,
+.mobile-css-carousel__focus.is-parked {
+  visibility: hidden;
+}
+
 .mobile-css-carousel__video {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mobile-css-carousel__focus.is-ready .mobile-css-carousel__video {
+  opacity: 1;
+}
+
+.mobile-css-carousel__focus .mobile-css-carousel__hud,
+.mobile-css-carousel__focus .mobile-css-carousel__play {
+  pointer-events: auto;
 }
 
 /* Dim inactive slides without filter:brightness (Safari GPU/decode cost). */
@@ -159,8 +186,27 @@
   height: auto;
 }
 
+/* Video sits behind the slides so Play CTAs scroll with their cards. */
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__focus {
+  z-index: 0;
+}
+
+.mobile-css-carousel-stage.is-compact.is-live-video
+  .swiper-slide-active
+  .mobile-css-carousel__pack {
+  background: transparent;
+}
+
+.mobile-css-carousel-stage.is-compact.is-live-video
+  .swiper-slide-active
+  .mobile-css-carousel__poster {
+  opacity: 0;
+}
+
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper,
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel.swiper-3d {
+  position: relative;
+  z-index: 2;
   padding-top: var(--space-5);
   padding-bottom: var(--space-5);
   padding-left: 0;
@@ -172,33 +218,13 @@
   overflow-y: visible;
 }
 
-/* Edge fade while more cards sit off that side. Drops at either end. */
-.mobile-css-carousel-stage.is-compact .mobile-css-carousel.has-fade-right {
-  -webkit-mask-image: linear-gradient(90deg, #000 60%, #0000002e);
-  mask-image: linear-gradient(90deg, #000 60%, #0000002e);
-}
-
-.mobile-css-carousel-stage.is-compact .mobile-css-carousel.has-fade-left {
-  -webkit-mask-image: linear-gradient(270deg, #000 60%, #0000002e);
-  mask-image: linear-gradient(270deg, #000 60%, #0000002e);
-}
-
-.mobile-css-carousel-stage.is-compact
-  .mobile-css-carousel.has-fade-left.has-fade-right {
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    #0000002e,
-    #000 40%,
-    #000 60%,
-    #0000002e
-  );
-  mask-image: linear-gradient(
-    90deg,
-    #0000002e,
-    #000 40%,
-    #000 60%,
-    #0000002e
-  );
+/*
+ * Peek fade on pack art only. A mask on the Swiper itself also faded Play —
+ * WebKit then re-rasterized the label/triangle mid-slide and snapped them
+ * back on settle.
+ */
+.mobile-css-carousel-stage.is-compact .mobile-css-carousel__pack {
+  opacity: calc(1 - var(--slide-dim, 0));
 }
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-wrapper {
@@ -245,6 +271,23 @@
   bottom: 48px;
   z-index: 6;
   margin: 0;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
   overflow: visible;
+  opacity: 1;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.mobile-css-carousel-stage.is-compact
+  .mobile-css-carousel__play
+  .cta-button__label,
+.mobile-css-carousel-stage.is-compact
+  .mobile-css-carousel__play
+  .cta-button__leading-icon,
+.mobile-css-carousel-stage.is-compact
+  .mobile-css-carousel__play
+  .cta-button__title {
+  opacity: 1;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
