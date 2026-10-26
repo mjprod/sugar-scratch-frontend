@@ -4478,23 +4478,27 @@ isMobile={isMobileViewportActive}
                     onClick={() => onRevealContinue(revealCards)}
                   />
                 </div>
-                {onRevealSaveLater ? (
-                  <button
-                    type="button"
-                    className="motion-reveal__later"
-                    onClick={onRevealSaveLater}
-                  >
-                    {revealSaveLaterLabel}
-                  </button>
-                ) : null}
-                {onRevealSaveAndOpenNext ? (
-                  <button
-                    type="button"
-                    className="motion-reveal__later"
-                    onClick={onRevealSaveAndOpenNext}
-                  >
-                    {revealSaveAndOpenNextLabel}
-                  </button>
+                {onRevealSaveLater || onRevealSaveAndOpenNext ? (
+                  <div className="motion-reveal__later-stack">
+                    {onRevealSaveLater ? (
+                      <button
+                        type="button"
+                        className="motion-reveal__later"
+                        onClick={onRevealSaveLater}
+                      >
+                        {revealSaveLaterLabel}
+                      </button>
+                    ) : null}
+                    {onRevealSaveAndOpenNext ? (
+                      <button
+                        type="button"
+                        className="motion-reveal__later"
+                        onClick={onRevealSaveAndOpenNext}
+                      >
+                        {revealSaveAndOpenNextLabel}
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
               </>
             ) : revealingCharacterId ? (

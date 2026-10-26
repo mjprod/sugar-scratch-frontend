@@ -890,7 +890,7 @@
     inset 0 1px 0 oklch(1 0 0 / 0.12),
     0 8px 24px oklch(0 0 0 / 0.28);
   color: oklch(1 0 0 / 0.88);
-  font-size: var(--text-display);
+  font-size: 3.5rem;
   font-weight: 400;
   line-height: 1;
   cursor: pointer;

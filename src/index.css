@@ -163,6 +163,8 @@
   --text-display-max: 2.125rem;
   --text-page-min: 2.25rem;
   --text-page-max: 2.75rem;
+  --text-hero-min: 3rem;
+  --text-hero-max: 3.5rem;
 
   --text-caption: calc(
     var(--text-caption-min) + (var(--text-caption-max) - var(--text-caption-min)) * var(--fluid)
@@ -182,6 +184,9 @@
   --text-page: calc(
     var(--text-page-min) + (var(--text-page-max) - var(--text-page-min)) * var(--fluid)
   );
+  --text-hero: calc(
+    var(--text-hero-min) + (var(--text-hero-max) - var(--text-hero-min)) * var(--fluid)
+  );
   --text-caption--line-height: 1.45;
   --text-body--line-height: 1.45;
   --text-title--line-height: 1.35;
@@ -191,6 +196,8 @@
   --text-display--letter-spacing: -0.02em;
   --text-page--line-height: 1.05;
   --text-page--letter-spacing: 0;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: 0;
 
   /*
    * Spacing scale in rem. Same steps as Tailwind (p-4 = 1rem = --space-4).
@@ -271,6 +278,11 @@
   );
   --text-page--line-height: 1.05;
   --text-page--letter-spacing: 0;
+  --text-hero: calc(
+    var(--text-hero-min) + (var(--text-hero-max) - var(--text-hero-min)) * var(--fluid)
+  );
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: 0;
 
   --color-canvas: oklch(0.14 0 0);
   --color-canvas-elevated: oklch(0.196 0 0);

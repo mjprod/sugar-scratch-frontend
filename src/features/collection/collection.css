@@ -4254,7 +4254,7 @@ body[data-theme="v8"] .coverflow__status-pager-control .coverflow-status-pager__
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: clip;
 }
 
 .coverflow.is-expanded .coverflow__item:not(.is-focused) {

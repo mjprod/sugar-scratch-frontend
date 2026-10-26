@@ -333,6 +333,17 @@ export function CoverflowStatusPager({
     return () => window.removeEventListener("resize", onResize);
   }, [ensureActiveVisible, measure, paintPill]);
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const pinY = () => {
+      if (el.scrollTop) el.scrollTop = 0;
+    };
+    pinY();
+    el.addEventListener("scroll", pinY, { passive: true });
+    return () => el.removeEventListener("scroll", pinY);
+  }, []);
+
   useEffect(
     () => () => {
       stopEdgeHoldLoop();

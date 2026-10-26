@@ -351,10 +351,10 @@ body[data-theme="v8"] .mc-greeting {
 body[data-theme="v8"] .mc-greeting-title {
   margin: 0;
   font-family: var(--font-maytra);
-  font-size: var(--text-page);
+  font-size: var(--text-hero);
   font-weight: 400;
-  letter-spacing: 0;
-  line-height: var(--text-page--line-height);
+  letter-spacing: var(--text-hero--letter-spacing);
+  line-height: var(--text-hero--line-height);
   color: var(--color-page-title);
 }
 

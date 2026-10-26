@@ -1650,24 +1650,26 @@ export function PurchaseFlow({
                   disabled={savingLater}
                 />
               </div>
-              <button
-                type="button"
-                className="motion-reveal__later"
-                onClick={() => scratchLater("decision")}
-                disabled={savingLater}
-              >
-                Save to Collection
-              </button>
-              {readyPackCount > 1 ? (
+              <div className="motion-reveal__later-stack">
                 <button
                   type="button"
                   className="motion-reveal__later"
-                  onClick={openNextPurchasedPack}
+                  onClick={() => scratchLater("decision")}
                   disabled={savingLater}
                 >
-                  Save for later and open another
+                  Save to Collection
                 </button>
-              ) : null}
+                {readyPackCount > 1 ? (
+                  <button
+                    type="button"
+                    className="motion-reveal__later"
+                    onClick={openNextPurchasedPack}
+                    disabled={savingLater}
+                  >
+                    Save for later and open another
+                  </button>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
@@ -2423,24 +2425,26 @@ function MotionRevealStage({
               disabled={launching}
             />
           </div>
-          <button
-            type="button"
-            className="motion-reveal__later"
-            onClick={onSaveLater}
-            disabled={launching}
-          >
-            Save to Collection
-          </button>
-          {onSaveAndOpenNext ? (
+          <div className="motion-reveal__later-stack">
             <button
               type="button"
               className="motion-reveal__later"
-              onClick={onSaveAndOpenNext}
+              onClick={onSaveLater}
               disabled={launching}
             >
-              Save for later and open another
+              Save to Collection
             </button>
-          ) : null}
+            {onSaveAndOpenNext ? (
+              <button
+                type="button"
+                className="motion-reveal__later"
+                onClick={onSaveAndOpenNext}
+                disabled={launching}
+              >
+                Save for later and open another
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

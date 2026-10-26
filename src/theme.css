@@ -22,6 +22,9 @@ body[data-theme="v8"] {
   --text-page: calc(
     var(--text-page-min) + (var(--text-page-max) - var(--text-page-min)) * var(--fluid)
   );
+  --text-hero: calc(
+    var(--text-hero-min) + (var(--text-hero-max) - var(--text-hero-min)) * var(--fluid)
+  );
   --text-caption--line-height: 1.45;
   --text-body--line-height: 1.45;
   --text-title--line-height: 1.35;
@@ -31,6 +34,8 @@ body[data-theme="v8"] {
   --text-display--letter-spacing: -0.02em;
   --text-page--line-height: 1.05;
   --text-page--letter-spacing: 0;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: 0;
 
   --color-canvas: oklch(0.14 0 0);
   --color-canvas-elevated: oklch(0.196 0 0);
@@ -1136,23 +1141,30 @@ body[data-theme="v8"] .continue-collecting-card:focus-visible {
 
 body[data-theme="v8"] .continue-collecting-avatar-wrap {
   position: relative;
+  z-index: 0;
+  display: grid;
+  place-items: center;
   width: var(--cc-avatar-size);
   height: var(--cc-avatar-size);
 }
 
 body[data-theme="v8"] .continue-collecting-ring {
-  position: relative;
-  display: grid;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  place-items: center;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .continue-collecting-ring-svg {
   position: absolute;
   inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .continue-collecting-ring-arc {
@@ -1160,6 +1172,8 @@ body[data-theme="v8"] .continue-collecting-ring-arc {
 }
 
 body[data-theme="v8"] .continue-collecting-avatar {
+  position: relative;
+  z-index: 1;
   width: 88px;
   height: 88px;
   border-radius: 50%;
@@ -8458,29 +8472,75 @@ body[data-theme="v8"] .home-v2 .explore-creators-scroll {
   padding-inline: 0.35rem;
 }
 
-/* Continue collecting — photo + ring only, 3.8rem */
+/* Continue collecting — Collect-page ring (80) around 65 photo */
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip {
-  --cc-avatar-size: 3.8rem;
-  --cc-gap: 10px;
+  --cc-avatar-size: 80px;
+  --cc-gap: 12px;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card,
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card.is-avatar-only {
-  width: 3.8rem;
+  width: 80px;
   gap: 0;
 }
 
-body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar-wrap,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar-wrap {
+  width: 80px;
+  height: 80px;
+  overflow: visible;
+}
+
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring,
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring-svg {
-  width: 3.8rem;
-  height: 3.8rem;
+  inset: 0;
+  width: 80px;
+  height: 80px;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar {
-  width: calc(3.8rem - 10px);
-  height: calc(3.8rem - 10px);
-  border-radius: 999px;
+  position: relative;
+  z-index: 1;
+  width: 65px;
+  height: 65px;
+  border-radius: 60px;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect {
+  overflow: visible;
+  -webkit-mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(0 0 0 / 0) 0deg,
+    rgb(0 0 0 / 0.4) 40deg,
+    #000 110deg,
+    #000
+  );
+  mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(0 0 0 / 0) 0deg,
+    rgb(0 0 0 / 0.4) 40deg,
+    #000 110deg,
+    #000
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-track,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-arc {
+  stroke-width: 5;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-track {
+  stroke: rgba(170, 0, 79, 0.18);
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-arc {
+  stroke: #aa004f;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-meta,
@@ -8706,9 +8766,11 @@ body[data-theme="v8"] .coverflow-status-pager__scroll {
   max-width: 100%;
   height: 100%;
   overflow-x: auto;
-  /* Keep y visible so the taller pink pill isn't clipped top/bottom. */
-  overflow-y: visible;
+  /* overflow-y:visible computes to auto when x is a scrollport.
+     clip (not hidden) so y is not a scroll container — wheel/touch can't nudge dots. */
+  overflow-y: clip;
   overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
@@ -8734,6 +8796,8 @@ body[data-theme="v8"] .coverflow-status-pager__track {
   max-width: none;
   height: 100%;
   min-height: var(--status-pill-h);
+  /* Clip the abspos pill hit-pad so it cannot create a vertical scrollport. */
+  overflow: hidden;
 }
 
 body[data-theme="v8"] .coverflow-status-pager__dot {
