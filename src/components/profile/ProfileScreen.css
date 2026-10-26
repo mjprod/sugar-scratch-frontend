@@ -5,7 +5,7 @@ body[data-theme="v8"] .profile-site-footer {
   flex-direction: column;
   align-items: center;
   gap: var(--space-3-5);
-  margin-top: var(--space-7);
+  margin-top: var(--gap-section);
   margin-bottom: 0;
   padding: var(--space-6) var(--space-2) var(--space-2);
   border-top: 1px solid oklch(1 0 0 / 0.08);
@@ -283,8 +283,8 @@ body[data-theme="v8"] .profile-balance-cta {
   }
 
   body[data-theme="v8"] .profile-menu-grid {
-    margin-top: var(--space-7);
-    gap: var(--space-6);
+    margin-top: var(--gap-section);
+    gap: var(--gap-section);
   }
 
   body[data-theme="v8"] .profile-menu-group-title {

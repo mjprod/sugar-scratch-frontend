@@ -13,6 +13,7 @@ import {
   type CollectionPageState,
 } from "@/services/collectionState";
 import { isDemoMode } from "@/lib/demo";
+import { pluralize } from "@/lib/pluralize";
 import { canonicalCreatorId, loadModels, type BackendModel } from "@/services/models";
 import { syncMyPacks } from "@/services/packInventory";
 import type { PurchaseFlowPack } from "@/services/purchase";
@@ -170,8 +171,11 @@ export function CollectionPage({
       <header className="mc-greeting">
         <h1 className="mc-greeting-title">Collection</h1>
         <p className="mc-greeting-text">
-          Hi, {greetingName}, you have {themesInProgress}{" "}
-          {themesInProgress === 1 ? "theme" : "themes"} in progress…
+          Hi, {greetingName}, you have{" "}
+          <span className="mc-greeting-count">
+            {themesInProgress} {pluralize(themesInProgress, "theme")}
+          </span>{" "}
+          in progress…
         </p>
       </header>
     );

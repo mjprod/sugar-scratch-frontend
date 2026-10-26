@@ -34,10 +34,10 @@
   min-width: 0;
   color: var(--color-page-title);
   font-family: var(--font-maytra);
-  font-size: var(--text-display-max);
+  font-size: var(--text-page);
   font-weight: 400;
   letter-spacing: 0;
-  line-height: var(--text-display--line-height);
+  line-height: var(--text-page--line-height);
 }
 
 .history-related-note {

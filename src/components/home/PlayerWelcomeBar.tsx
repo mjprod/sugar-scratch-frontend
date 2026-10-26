@@ -13,6 +13,7 @@ import {
   getDailyRewardResetAt,
   isDailyRewardClaimedToday,
 } from "@/services/dailyReward";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   CLAIM_CARD_EXIT_FALLBACK_MS,
@@ -221,23 +222,25 @@ export function PlayerWelcomeBar({
           </div>
 
           <div className="player-welcome-reward">
-            <button
-              type="button"
-              className="player-welcome-claim"
-              disabled={claiming || uiPhase === "exiting"}
-              aria-busy={claiming || uiPhase === "exiting"}
-              onClick={handleClaim}
-            >
-              {claiming ? (
-                "Claiming…"
-              ) : (
-                <>
-                  Collect
-                  <DiamondLottie size={14} aria-hidden />
-                  {DAILY_REWARD_DIAMONDS} Now
-                </>
-              )}
-            </button>
+            <div className="player-welcome-claim">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                fillParent
+                type="button"
+                leadingIcon={<DiamondLottie size={14} aria-hidden />}
+                label={
+                  claiming
+                    ? "Claiming…"
+                    : `Collect ${DAILY_REWARD_DIAMONDS} Now`
+                }
+                costAmount={null}
+                strokeWidth={1}
+                fontSize={13}
+                disabled={claiming || uiPhase === "exiting"}
+                aria-busy={claiming || uiPhase === "exiting"}
+                onClick={handleClaim}
+              />
+            </div>
 
             {burst ? (
               <span className="player-welcome-burst" aria-hidden="true">

@@ -186,7 +186,7 @@ export function MyCollectionSection({
       ? "All Creators"
       : (creators.find((c) => c.id === creatorFilter)?.name ?? "All Creators");
   const sortLabel =
-    SORT_OPTIONS.find((option) => option.id === sort)?.label ?? "Sort By";
+    SORT_OPTIONS.find((option) => option.id === sort)?.label ?? "Sort";
 
   if (creators.length === 0) {
     return (
@@ -237,28 +237,28 @@ export function MyCollectionSection({
               setOpenMenu((m) => (m === "creator" ? null : "creator"))
             }
           />
-          <button
-            type="button"
-            className="mc-models-search"
-            aria-label="Search creators"
-            onClick={openSearch}
-          >
-            <Search size={16} strokeWidth={2.2} aria-hidden />
-          </button>
+          <FilterButton
+            label={openMenu === "sort" || sort !== "newest" ? sortLabel : "Sort"}
+            open={openMenu === "sort"}
+            active={sort !== "newest"}
+            leadingIcon={
+              <Layers size={14} strokeWidth={2.2} aria-hidden="true" />
+            }
+            onToggle={() => setOpenMenu((m) => (m === "sort" ? null : "sort"))}
+          />
         </div>
-        <FilterButton
-          label={openMenu === "sort" || sort !== "newest" ? sortLabel : "Sort By"}
-          open={openMenu === "sort"}
-          active={sort !== "newest"}
-          leadingIcon={
-            <Layers size={14} strokeWidth={2.2} aria-hidden="true" />
-          }
-          onToggle={() => setOpenMenu((m) => (m === "sort" ? null : "sort"))}
-        />
+        <button
+          type="button"
+          className="mc-models-search"
+          aria-label="Search creators"
+          onClick={openSearch}
+        >
+          <Search size={16} strokeWidth={2.2} aria-hidden />
+        </button>
         {openMenu ? (
           <FilterSheet
             title={openMenu === "creator" ? "Creators" : "Sort"}
-            anchor={openMenu === "creator" ? "left" : "right"}
+            anchor="left"
             onClose={() => setOpenMenu(null)}
           >
           {openMenu === "creator" ? (

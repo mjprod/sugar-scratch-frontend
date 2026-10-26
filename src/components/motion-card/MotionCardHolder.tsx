@@ -346,6 +346,7 @@ export function MotionCardHolder({
                     <PlayConfirm
                       anchor={playCtaRef.current}
                       playCost={activeCard.playCost ?? packUnitCost()}
+                      label="Play Motion Card?"
                       leaving={confirmLeaving}
                       onCancel={() => {
                         pendingPlayRef.current = false;

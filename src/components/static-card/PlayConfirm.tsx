@@ -17,6 +17,7 @@ const LEAVE_ANIMATIONS = new Set([
 export function PlayConfirm({
   anchor,
   playCost,
+  label = "Play Photo Card?",
   leaving = false,
   onCancel,
   onConfirm,
@@ -24,6 +25,7 @@ export function PlayConfirm({
 }: {
   anchor: HTMLElement;
   playCost: number;
+  label?: string;
   leaving?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -110,7 +112,7 @@ export function PlayConfirm({
         .filter(Boolean)
         .join(" ")}
       role="dialog"
-      aria-label={`Play for ${playCost} diamonds?`}
+      aria-label={`${label.replace(/\?$/, "")} for ${playCost} diamonds?`}
       aria-modal="false"
       style={{
         position: "fixed",
@@ -128,7 +130,7 @@ export function PlayConfirm({
     >
       <div className="static-card-buy-confirm__body">
         <p className="coverflow-cart-remove-confirm__label static-card-buy-confirm__label">
-          <span>PLAY?</span>
+          <span>{label}</span>
           <DiamondLottie size={18} aria-hidden />
           <span className="static-card-buy-confirm__price">{playCost}</span>
         </p>

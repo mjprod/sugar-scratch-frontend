@@ -160,7 +160,15 @@ body[data-theme="v8"] .category-leaderboard {
 }
 
 body[data-theme="v8"] .category-leaderboard.rank-leaderboard {
-  margin-top: var(--space-8);
+  margin-top: var(--gap-section);
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-leaderboard .continue-collecting-header {
+  margin-bottom: var(--space-5);
+}
+
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board.rank-leaderboard .category-leaderboard-tabs {
+  margin-bottom: var(--space-5);
 }
 
 /* Category leaderboard title sentence-ish on v2 */
@@ -169,9 +177,9 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-lead
   color: var(--color-page-title);
   text-transform: none;
   letter-spacing: 0;
-  font-size: var(--text-display-max);
+  font-size: var(--text-page);
   font-weight: 400;
-  line-height: var(--text-display--line-height);
+  line-height: var(--text-page--line-height);
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs::-webkit-scrollbar {
