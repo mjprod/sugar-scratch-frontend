@@ -44,7 +44,7 @@ export function PlayerWelcomeBar({
 }: {
   onClaimed: (diamonds: number) => void;
   onClaimAttempt?: () => boolean;
-  /** Override subtitle while the daily gift is still claimable. */
+  /** Override title while the daily gift is still claimable. */
   readySubtitle?: string;
 }) {
   const titleId = useId();

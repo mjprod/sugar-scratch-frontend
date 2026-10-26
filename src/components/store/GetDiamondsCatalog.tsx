@@ -174,9 +174,9 @@ function GetDiamondsHeroBand() {
     <div className="get-diamonds-hero-band">
       <header className="get-diamonds-hero get-diamonds-hero--band">
         <div className="get-diamonds-hero__copy-block">
-          <p className="get-diamonds-hero__title">
+          <h2 className="get-diamonds-hero__title">
             Get Diamonds <span className="get-diamonds-hero__accent">✦</span>
-          </p>
+          </h2>
           <p className="get-diamonds-hero__copy">
             Diamonds are used to buy Motion Card Packs and unlock exclusive
             rewards.
