@@ -235,7 +235,6 @@ export function PlayerWelcomeBar({
                 }
                 costAmount={null}
                 strokeWidth={1}
-                fontSize={13}
                 disabled={claiming || uiPhase === "exiting"}
                 aria-busy={claiming || uiPhase === "exiting"}
                 onClick={handleClaim}

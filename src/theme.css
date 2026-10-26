@@ -2638,6 +2638,7 @@ body[data-theme="v8"] .player-welcome-gift__bow::after {
 
 /* Slot for parent-filled squircle CTA (daily claim). */
 body[data-theme="v8"] .player-welcome-claim {
+  --cta-font-size: var(--text-caption);
   position: relative;
   z-index: 3;
   display: grid;
@@ -3339,9 +3340,10 @@ body[data-theme="v8"] .my-collection-filter-option:hover {
 }
 
 body[data-theme="v8"] .my-collection-filter-radio.is-on {
-  border-color: oklch(0.711 0.203 357.66);
+  /* #FF0068 */
+  border-color: oklch(0.639 0.256 9.90);
   background:
-    radial-gradient(circle at center, oklch(0.711 0.203 357.66) 0 5px, transparent 6px);
+    radial-gradient(circle at center, oklch(0.639 0.256 9.90) 0 5px, transparent 6px);
 }
 
 body[data-theme="v8"] .collection-page-skeleton {

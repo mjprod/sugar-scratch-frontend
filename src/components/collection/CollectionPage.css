@@ -36,9 +36,11 @@ body[data-theme="v8"] .my-collection-filter-backdrop {
 body[data-theme="v8"] .my-collection-filter-sheet {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-height: min(52vh, 360px);
-  overflow: auto;
+  overflow: hidden;
   padding: var(--space-3) var(--space-2-5) var(--space-2);
   border: 1px solid oklch(1 0 0 / 0.12);
   border-radius: 14px;
@@ -62,6 +64,11 @@ body[data-theme="v8"] .my-collection-filter-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
 }
 
 body[data-theme="v8"] .my-collection-filter-option {
