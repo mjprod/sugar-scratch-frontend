@@ -239,8 +239,8 @@
   --shadow:
     0 24px 60px oklch(0.282 0.05 249.06 / 0.16),
     0 6px 18px oklch(0.282 0.05 249.06 / 0.08);
-  --font-display: "Inter", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-display: "DM Sans", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Consolas', 'Menlo', monospace;
 
   font-synthesis: none;

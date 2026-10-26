@@ -206,6 +206,10 @@
   transform-style: flat;
 }
 
+.mobile-css-carousel-stage.is-compact.is-single .mobile-css-carousel .swiper-wrapper {
+  justify-content: center;
+}
+
 .mobile-css-carousel-stage.is-compact .mc-popular-arrow {
   top: 50%;
   z-index: 8;

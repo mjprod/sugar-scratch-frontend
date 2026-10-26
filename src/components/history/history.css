@@ -32,11 +32,12 @@
 .history-page-title {
   margin: 0;
   min-width: 0;
-  color: oklch(1 0 0);
-  font-size: var(--text-headline);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  color: var(--color-page-title);
+  font-family: var(--font-maytra);
+  font-size: var(--text-display-max);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: var(--text-display--line-height);
 }
 
 .history-related-note {

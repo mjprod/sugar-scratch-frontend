@@ -1,7 +1,7 @@
 /* v8 Home Feed Design System — applied when body[data-theme="v8"] */
 
 body[data-theme="v8"] {
-  --font-display: "Inter", system-ui, sans-serif;
+  --font-display: "DM Sans", system-ui, sans-serif;
   font-family: var(--font-display);
 
   --text-caption: calc(
@@ -41,6 +41,7 @@ body[data-theme="v8"] {
 
   --color-accent: oklch(0.656 0.212 354.31);
   --color-accent-strong: oklch(0.627 0.233 303.9);
+  --color-page-title: oklch(0.639 0.256 9.89);
   --color-brand: oklch(0.606 0.219 292.72);
   --color-champagne: oklch(0.767 0.139 91.06);
   --color-rose: oklch(0.656 0.212 354.31);
@@ -67,8 +68,8 @@ body[data-theme="v8"] {
 
   background-color: oklch(0.14 0 0);
   background-image:
-    radial-gradient(ellipse 70% 45% at 50% -5%, oklch(0.606 0.219 292.72 / 0.18), transparent),
-    radial-gradient(ellipse 40% 35% at 100% 100%, oklch(0.656 0.212 354.31 / 0.08), transparent);
+    radial-gradient(ellipse 70% 45% at 50% -5%, oklch(0.767 0.139 91.06 / 0.16), transparent),
+    radial-gradient(ellipse 40% 35% at 100% 100%, oklch(0.656 0.212 354.31 / 0.12), transparent);
   color: oklch(1 0 0);
 }
 
@@ -243,9 +244,8 @@ body[data-theme="v8"] .guest-home-landing__step-copy {
 body[data-theme="v8"] .guest-home-landing__step-kicker {
   margin: 0;
   font-size: var(--text-caption);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0;
   color: oklch(0.78 0.12 350 / 0.75);
 }
 
@@ -525,10 +525,17 @@ body[data-theme="v8"] .home-site-footer-tagline .is-pink {
 
 body[data-theme="v8"] .home-site-footer-nav {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+body[data-theme="v8"] .home-site-footer-nav-row {
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2) var(--space-2-5);
+  gap: var(--space-2-5);
 }
 
 body[data-theme="v8"] .home-site-footer-link {
@@ -939,7 +946,7 @@ body[data-theme="v8"] .continue-collecting {
   background:
     radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.614 0.251 301.3 / 0.14), transparent 55%),
     var(--cc-bg);
-  font-family: "Outfit", Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
 }
 
 body[data-theme="v8"] .continue-collecting-header {
@@ -1578,7 +1585,7 @@ body[data-theme="v8"] .hub-spotlight-band-copy {
   overflow: hidden;
   white-space: nowrap;
   color: #fff;
-  font-family: "Outfit", Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-display);
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -5419,11 +5426,12 @@ body[data-theme="v8"] .profile-menu-icon .inbox-utility-badge {
 body[data-theme="v8"] .profile-settings-title {
   display: none;
   margin: 0 0 var(--space-3-5);
-  color: oklch(1 0 0);
-  font-size: var(--text-display);
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  color: var(--color-page-title);
+  font-family: var(--font-maytra);
+  font-size: var(--text-display-max);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: var(--text-display--line-height);
 }
 
 body[data-theme="v8"] .profile-hero-row {
@@ -5458,11 +5466,9 @@ body[data-theme="v8"] .profile-identity-avatar {
   place-items: center;
   border-radius: 999px;
   border: 1px solid oklch(1 0 0 / 0.15);
-  background: linear-gradient(145deg,
-      oklch(0.627 0.233 303.9),
-      oklch(0.359 0.135 278.7));
+  background: oklch(0.2 0 0);
   font-size: var(--text-headline);
-  box-shadow: 0 10px 28px oklch(0.45 0.18 300 / 0.28);
+  overflow: hidden;
 }
 
 body[data-theme="v8"] .profile-identity-copy {
@@ -5535,10 +5541,9 @@ body[data-theme="v8"] .profile-menu-group-title {
   margin: 0 0 var(--space-3-5);
   color: oklch(1 0 0 / 0.4);
   font-size: var(--text-title);
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-weight: 400;
+  letter-spacing: 0;
   line-height: 1.2;
-  text-transform: uppercase;
 }
 
 body[data-theme="v8"] .profile-menu-group-card {
@@ -5637,6 +5642,14 @@ body[data-theme="v8"] .profile-identity-avatar,
 body[data-theme="v8"] .edit-profile-avatar,
 body[data-theme="v8"] .edit-profile-avatar-option {
   overflow: hidden;
+}
+
+body[data-theme="v8"] .profile-identity-avatar picture,
+body[data-theme="v8"] .edit-profile-avatar picture,
+body[data-theme="v8"] .edit-profile-avatar-option picture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 body[data-theme="v8"] .profile-avatar-img {
@@ -7204,6 +7217,21 @@ body[data-theme="v8"] .app-empty-icon {
   border: 1px solid oklch(0.711 0.203 357.66 / 0.28);
 }
 
+body[data-theme="v8"] .app-empty-art {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+  margin-bottom: var(--space-1);
+  color: oklch(0.711 0.203 357.66);
+}
+
+body[data-theme="v8"] .app-empty-art svg {
+  display: block;
+  width: 96px;
+  height: 96px;
+}
+
 body[data-theme="v8"] .app-empty-title {
   margin: 0;
   color: oklch(0.967 0.01 320.55);
@@ -8325,6 +8353,15 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence .continue
   font-weight: 600;
 }
 
+body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-leaderboard .continue-collecting-title {
+  font-family: var(--font-maytra);
+  color: var(--color-page-title);
+  letter-spacing: 0;
+  font-size: var(--text-display-max);
+  font-weight: 400;
+  line-height: var(--text-display--line-height);
+}
+
 body[data-theme="v8"] .home-v2 .continue-collecting.is-title-sentence .continue-collecting-see-all,
 body[data-theme="v8"] .home-v2 .explore-creators.is-title-sentence .continue-collecting-see-all {
   text-transform: none;
@@ -8596,7 +8633,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
   );
   background-color: transparent;
   color: #fff;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: 0.28px;

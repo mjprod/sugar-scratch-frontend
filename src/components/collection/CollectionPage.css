@@ -343,11 +343,12 @@ body[data-theme="v8"] .mc-greeting {
 
 body[data-theme="v8"] .mc-greeting-title {
   margin: 0;
-  font-size: var(--text-display);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: #fff;
+  font-family: var(--font-maytra);
+  font-size: var(--text-display-max);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: var(--text-display--line-height);
+  color: var(--color-page-title);
 }
 
 body[data-theme="v8"] .mc-greeting-text {
@@ -463,6 +464,15 @@ body[data-theme="v8"] .mc-continue-panel {
     rgba(0, 0, 0, 0.3) 50.001%,
     rgba(169, 169, 169, 0.246) 84.617%
   );
+}
+
+body[data-theme="v8"] .mc-continue-panel.is-single {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+}
+
+body[data-theme="v8"] .mc-continue-panel.is-single .mc-continue-carousel {
+  display: flex;
+  justify-content: center;
 }
 
 body[data-theme="v8"] .mc-continue-title {

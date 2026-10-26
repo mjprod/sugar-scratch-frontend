@@ -165,10 +165,13 @@ body[data-theme="v8"] .category-leaderboard.rank-leaderboard {
 
 /* Category leaderboard title sentence-ish on v2 */
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-title-sentence.rank-leaderboard .continue-collecting-title {
+  font-family: var(--font-maytra);
+  color: var(--color-page-title);
   text-transform: none;
-  letter-spacing: 0.28px;
-  font-size: var(--text-display);
-  font-weight: 600;
+  letter-spacing: 0;
+  font-size: var(--text-display-max);
+  font-weight: 400;
+  line-height: var(--text-display--line-height);
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tabs::-webkit-scrollbar {
@@ -382,7 +385,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-pack {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-title);
   font-weight: 600;
   letter-spacing: 0.26px;
@@ -391,7 +394,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-body);
   font-weight: 400;
   letter-spacing: 0.24px;
@@ -400,7 +403,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-stats {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: 0.24px;
