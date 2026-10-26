@@ -5569,7 +5569,7 @@ body[data-theme="v8"] .profile-menu-row.is-soon {
 
 body[data-theme="v8"] .profile-menu-soon {
   flex-shrink: 0;
-  padding: 2px 8px;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: 999px;
   background: oklch(1 0 0 / 0.08);
   color: oklch(1 0 0 / 0.55);
