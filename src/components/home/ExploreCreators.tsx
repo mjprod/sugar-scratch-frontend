@@ -1,6 +1,12 @@
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useHoldRepeat } from "@/hooks/useHoldRepeat";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import type { ContinueCollectingItem } from "@/services/homepage";
 
 export type ExploreCreatorItem = {
@@ -34,6 +40,7 @@ export function ExploreCreators({
   onSeeAllClick?: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -60,25 +67,126 @@ export function ExploreCreators({
     };
   }, [items, updateScrollState]);
 
-  const scrollByPage = useCallback((direction: -1 | 1) => {
+  const holdDir = useRef<0 | -1 | 1>(0);
+  const holdT0 = useRef(0);
+  const holdLast = useRef(0);
+  const holdRaf = useRef(0);
+  const holdShift = useRef(0);
+
+  const cardStep = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    const card = el.querySelector<HTMLElement>(".explore-creators-card");
-    const styles = window.getComputedStyle(el);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 8;
-    const cardWidth = card?.offsetWidth ?? 77;
-    const step = cardWidth + gap;
-    const visible = Math.max(1, Math.floor((el.clientWidth + gap) / step));
-    const page = Math.max(1, visible > 1 ? visible - 1 : 1);
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollBy({
-      left: direction * page * step,
-      behavior: reduce ? "auto" : "smooth",
-    });
+    if (!el) return 77;
+    const card = el.querySelector<HTMLElement>(
+      ".explore-creators-card:not(.is-shim)",
+    );
+    const track = trackRef.current;
+    const gapSource = track ?? el;
+    const gap =
+      Number.parseFloat(
+        window.getComputedStyle(gapSource).columnGap ||
+          window.getComputedStyle(gapSource).gap,
+      ) || 8;
+    return (card?.offsetWidth ?? 77) + gap;
   }, []);
 
-  const holdPrev = useHoldRepeat(() => scrollByPage(-1));
-  const holdNext = useHoldRepeat(() => scrollByPage(1));
+  const paintShift = useCallback((shift: number) => {
+    const el = scrollRef.current;
+    const track = trackRef.current;
+    if (!el || !track) return 0;
+    const max = el.scrollWidth - el.clientWidth;
+    const next = Math.max(0, Math.min(max, el.scrollLeft + shift));
+    const applied = next - el.scrollLeft;
+    holdShift.current = applied;
+    track.style.transform = applied
+      ? `translate3d(${-applied}px,0,0)`
+      : "";
+    setCanScrollLeft(next > 4);
+    setCanScrollRight(max - next > 4);
+    return applied;
+  }, []);
+
+  const scrollByCard = useCallback((direction: -1 | 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.style.scrollBehavior = "auto";
+    el.scrollBy({ left: direction * cardStep(), behavior: "auto" });
+    el.style.scrollBehavior = "";
+  }, [cardStep]);
+
+  const stopHold = useCallback(() => {
+    if (holdRaf.current) cancelAnimationFrame(holdRaf.current);
+    holdRaf.current = 0;
+    holdDir.current = 0;
+    const el = scrollRef.current;
+    const track = trackRef.current;
+    const shift = holdShift.current;
+    holdShift.current = 0;
+    if (track) track.style.transform = "";
+    if (el && shift) {
+      el.style.scrollBehavior = "auto";
+      el.scrollLeft += shift;
+      el.style.scrollBehavior = "";
+    }
+  }, []);
+
+  useEffect(() => () => stopHold(), [stopHold]);
+
+  const bindHold = (direction: -1 | 1) => ({
+    onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0 || event.currentTarget.disabled) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      stopHold();
+      holdDir.current = direction;
+      holdT0.current = performance.now();
+      holdLast.current = holdT0.current;
+      paintShift(direction * cardStep());
+      const pump = (now: number) => {
+        const el = scrollRef.current;
+        const dir = holdDir.current;
+        if (!el || !dir) return;
+        const dt = Math.min(0.05, (now - holdLast.current) / 1000);
+        holdLast.current = now;
+        const t = Math.max(0, (now - holdT0.current) / 1000 - 0.07);
+        if (t > 0) {
+          const speed = Math.min(14000, 600 + 18000 * t * t);
+          const applied = paintShift(holdShift.current + dir * speed * dt);
+          const max = el.scrollWidth - el.clientWidth;
+          const visual = el.scrollLeft + applied;
+          if ((dir < 0 && visual <= 0) || (dir > 0 && visual >= max - 1)) {
+            stopHold();
+            return;
+          }
+        }
+        holdRaf.current = requestAnimationFrame(pump);
+      };
+      holdRaf.current = requestAnimationFrame(pump);
+    },
+    onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
+      stopHold();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => {
+      stopHold();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    onClick: (event: MouseEvent<HTMLButtonElement>) => {
+      if (event.detail !== 0) {
+        event.preventDefault();
+        return;
+      }
+      scrollByCard(direction);
+    },
+    onContextMenu: (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+    },
+  });
+
+  const holdPrev = bindHold(-1);
+  const holdNext = bindHold(1);
 
   if (!items.length) return null;
 
@@ -134,6 +242,7 @@ export function ExploreCreators({
             ref={scrollRef}
             className="continue-collecting-scroll explore-creators-scroll"
           >
+            <div ref={trackRef} className="explore-creators-track">
             {/* Invisible left spacer matching a card’s width (Figma left inset). */}
             <div
               className="explore-creators-card is-shim"
@@ -169,7 +278,12 @@ export function ExploreCreators({
                   </span>
                   <span className="explore-creators-name">{card.creatorName}</span>
                   {card.subtitle ? (
-                    <span className="explore-creators-sub">{card.subtitle}</span>
+                    <span className="explore-creators-sub">
+                      <span className="explore-creators-sub-full">
+                        {card.subtitle}
+                      </span>
+                      <span className="explore-creators-sub-short">New</span>
+                    </span>
                   ) : null}
                 </button>
               );
@@ -184,6 +298,7 @@ export function ExploreCreators({
               </span>
               <span className="explore-creators-name">&nbsp;</span>
               <span className="explore-creators-sub">&nbsp;</span>
+            </div>
             </div>
           </div>
           <div

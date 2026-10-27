@@ -141,7 +141,9 @@ export function ContinueCollectingSection({
   const scrollByPage = useCallback((direction: -1 | 1) => {
     const el = scrollRef.current;
     if (!el) return;
-    const card = el.querySelector<HTMLElement>(".continue-collecting-card");
+    const card = el.querySelector<HTMLElement>(
+      ".continue-collecting-card:not(.is-shim)",
+    );
     const styles = window.getComputedStyle(el);
     const gap = Number.parseFloat(styles.columnGap || styles.gap) || 20;
     const cardWidth = card?.offsetWidth ?? 120;
@@ -166,7 +168,13 @@ export function ContinueCollectingSection({
 
   return (
     <section
-      className={["continue-collecting", className].filter(Boolean).join(" ")}
+      className={[
+        "continue-collecting",
+        items.length <= 3 ? "is-few" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={ariaLabel ?? title.toLowerCase()}
     >
       <div className="continue-collecting-header">
@@ -203,8 +211,21 @@ export function ContinueCollectingSection({
           <ChevronLeft className="size-5" aria-hidden="true" />
         </button>
 
-        <div className="continue-collecting-viewport">
+        <div
+          className={[
+            "continue-collecting-viewport",
+            canScrollLeft ? "has-fade-left" : "",
+            canScrollRight ? "has-fade-right" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
           <div ref={scrollRef} className="continue-collecting-scroll">
+            <div className="continue-collecting-track">
+            <div
+              className="continue-collecting-card is-shim"
+              aria-hidden="true"
+            />
             {items.map((item) => {
               const card = toCard(item);
               return (
@@ -221,6 +242,11 @@ export function ContinueCollectingSection({
                 />
               );
             })}
+            <div
+              className="continue-collecting-card is-shim is-shim-end"
+              aria-hidden="true"
+            />
+            </div>
           </div>
           <div
             className={[

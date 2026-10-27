@@ -1077,13 +1077,20 @@ body[data-theme="v8"] .continue-collecting-viewport {
 }
 
 body[data-theme="v8"] .continue-collecting-scroll {
-  display: flex;
-  gap: var(--cc-gap);
+  display: block;
   overflow-x: auto;
   padding-bottom: var(--space-1);
   scrollbar-width: none;
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
+}
+
+body[data-theme="v8"] .continue-collecting-track {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cc-gap);
+  width: max-content;
+  flex-shrink: 0;
 }
 
 body[data-theme="v8"] .continue-collecting-scroll::-webkit-scrollbar {
@@ -1114,6 +1121,7 @@ body[data-theme="v8"] .continue-collecting-fade.is-visible {
 }
 
 body[data-theme="v8"] .continue-collecting-arrow {
+  position: relative;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -7724,14 +7732,21 @@ body[data-theme="v8"] .explore-creators-viewport {
 }
 
 body[data-theme="v8"] .explore-creators-scroll {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  display: block;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
+  scroll-behavior: auto;
   scrollbar-width: none;
   padding: var(--space-1) var(--space-0-5) var(--space-0-5);
+}
+
+body[data-theme="v8"] .explore-creators-track {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: max-content;
+  flex-shrink: 0;
 }
 
 body[data-theme="v8"] .explore-creators-scroll::-webkit-scrollbar {
@@ -7764,6 +7779,7 @@ body[data-theme="v8"] .explore-creators-fade.is-visible {
 }
 
 body[data-theme="v8"] .explore-creators-arrow {
+  position: relative;
   display: none;
   flex-shrink: 0;
   width: 36px;
@@ -8506,6 +8522,22 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface {
     0 8px 24px oklch(0 0 0 / 0.28);
 }
 
+/* iOS: tw-glass displacement drops — same black frost as Collect .mc-popular-arrow. */
+@supports (-webkit-touch-callout: none) {
+  body[data-theme="v8"] .home-v2 .continue-collecting-arrow.glass.glass-surface,
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface {
+    --tw-glass-filter: ;
+    --tw-glass-blur: 8px;
+    --tw-backdrop-blur: blur(8px);
+    --glass-bg-opacity: 0;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: none;
+  }
+}
+
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow.is-prev,
 body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-prev {
   left: 0.15rem;
@@ -8528,6 +8560,35 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-next {
     width: 2.5rem;
     height: 2.5rem;
   }
+
+  body[data-theme="v8"] .home-v2 .continue-collecting.is-few:not(.explore-creators) .continue-collecting-arrow {
+    display: none !important;
+  }
+
+  body[data-theme="v8"] .home-v2 .continue-collecting.is-few:not(.explore-creators) .continue-collecting-card.is-shim {
+    display: none;
+  }
+
+  body[data-theme="v8"] .home-v2 .continue-collecting.is-few:not(.explore-creators) .continue-collecting-track {
+    margin-inline: auto;
+  }
+}
+
+/* Circle owns the tap — Lucide stroke is not the hit target (iOS punch-through). */
+body[data-theme="v8"] .continue-collecting-arrow svg,
+body[data-theme="v8"] .explore-creators-arrow svg,
+body[data-theme="v8"] .mc-popular-arrow svg {
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .continue-collecting-arrow::after,
+body[data-theme="v8"] .explore-creators-arrow::after,
+body[data-theme="v8"] .mc-popular-arrow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.01);
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow:hover:not(:disabled),
@@ -8551,7 +8612,8 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow:disabled {
 
 body[data-theme="v8"] .home-v2 .continue-collecting-scroll,
 body[data-theme="v8"] .home-v2 .explore-creators-scroll {
-  padding-inline: 0.35rem;
+  padding-inline: 0;
+  scroll-behavior: auto;
 }
 
 /* Continue collecting — Collect-page ring (80) around 65 photo */
@@ -8719,6 +8781,20 @@ body[data-theme="v8"] .home-v2 .explore-creators-sub {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+body[data-theme="v8"] .explore-creators-sub-short {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  body[data-theme="v8"] .explore-creators-sub-full {
+    display: none;
+  }
+
+  body[data-theme="v8"] .explore-creators-sub-short {
+    display: inline;
+  }
 }
 
 /* Figma filter chips (node 9:758) — horizontal scroll row.
@@ -9067,23 +9143,46 @@ body[data-theme="v8"] .home-v2 .coverflow-status-pager {
   z-index: 50;
 }
 
-/* Explore Creators edge shims */
-body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim {
-  width: 21px;
+body[data-theme="v8"] .continue-collecting-card.is-shim {
+  display: none;
+}
+
+/* Edge shims — keep first/last avatars off the overlay chevrons. */
+body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim,
+body[data-theme="v8"] .home-v2 .continue-collecting-card.is-shim,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card.is-shim {
+  display: flex;
+  width: 1.5rem;
+  min-width: 1.5rem;
   opacity: 0;
   pointer-events: none;
   user-select: none;
   flex-shrink: 0;
   visibility: hidden;
   overflow: hidden;
+  cursor: default;
 }
 
 body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim .explore-creators-avatar-wrap {
-  width: 21px;
+  width: 1.5rem;
   height: 77px;
 }
 
-/* Home v2 Explore Creators — no side fade gradients */
+@media (max-width: 767px) {
+  body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim,
+  body[data-theme="v8"] .home-v2 .continue-collecting-card.is-shim,
+  body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card.is-shim {
+    width: 3.5rem;
+    min-width: 3.5rem;
+  }
+
+  body[data-theme="v8"] .home-v2 .explore-creators-card.is-shim .explore-creators-avatar-wrap {
+    width: 3.5rem;
+  }
+}
+
+/* Home v2 overlay carousels — mask-image instead of fade plates */
+body[data-theme="v8"] .home-v2 .continue-collecting-fade,
 body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-fade,
 body[data-theme="v8"] .home-v2 .explore-creators .explore-creators-fade {
   display: none !important;
@@ -9132,55 +9231,62 @@ body[data-theme="v8"] .home-v2 .explore-creators .continue-collecting-scroll {
   padding-inline: 0;
 }
 
-/* Explore Creators — side mask-image scroll hints */
-body[data-theme="v8"] .home-v2 .explore-creators-viewport {
+/* Overlay carousels — fade at the wrap edge, not an inset viewport. */
+body[data-theme="v8"] .home-v2 .explore-creators-viewport,
+body[data-theme="v8"] .home-v2 .continue-collecting-viewport {
+  width: 100%;
+  margin-inline: 0;
+  overflow: hidden;
   -webkit-mask-image: none;
   mask-image: none;
 }
 
-body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-left {
+body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-left,
+body[data-theme="v8"] .home-v2 .continue-collecting-viewport.has-fade-left {
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 1.75rem,
+    #000 14px,
     #000 100%
   );
   mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 1.75rem,
+    #000 14px,
     #000 100%
   );
 }
 
-body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-right {
+body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-right,
+body[data-theme="v8"] .home-v2 .continue-collecting-viewport.has-fade-right {
   -webkit-mask-image: linear-gradient(
     90deg,
     #000 0,
-    #000 calc(100% - 1.75rem),
+    #000 calc(100% - 14px),
     transparent 100%
   );
   mask-image: linear-gradient(
     90deg,
     #000 0,
-    #000 calc(100% - 1.75rem),
+    #000 calc(100% - 14px),
     transparent 100%
   );
 }
 
-body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-left.has-fade-right {
+body[data-theme="v8"] .home-v2 .explore-creators-viewport.has-fade-left.has-fade-right,
+body[data-theme="v8"] .home-v2 .continue-collecting-viewport.has-fade-left.has-fade-right {
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 1.75rem,
-    #000 calc(100% - 1.75rem),
+    #000 14px,
+    #000 calc(100% - 14px),
     transparent 100%
   );
   mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 1.75rem,
-    #000 calc(100% - 1.75rem),
+    #000 14px,
+    #000 calc(100% - 14px),
     transparent 100%
   );
 }
@@ -9342,6 +9448,7 @@ body[data-theme="v8"] .mc-popular-arrow {
   border-radius: 999px;
   color: #fff;
   background: rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   cursor: pointer;
   -webkit-touch-callout: none;

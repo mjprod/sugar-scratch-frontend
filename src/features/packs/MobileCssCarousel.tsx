@@ -789,17 +789,52 @@ export function MobileCssCarousel({
     }
   }
 
-  const holdPrev = useHoldRepeat(() => {
+  const holdStartedAt = useRef(0);
+  const holdTarget = useRef(0);
+  const holdingRef = useRef(false);
+
+  const holdSlideSpeed = () => {
+    const t = Date.now() - holdStartedAt.current;
+    if (t < 80) return 360;
+    return Math.max(0, Math.round(300 - (t - 80) * 0.85));
+  };
+
+  const stepHold = (dir: -1 | 1) => {
     const swiper = swiperRef.current;
-    if (!swiper || swiper.animating || swiper.activeIndex <= 0) return;
-    swiper.slidePrev();
-  });
-  const holdNext = useHoldRepeat(() => {
-    const swiper = swiperRef.current;
-    if (!swiper || swiper.animating || swiper.activeIndex >= items.length - 1) {
-      return;
-    }
-    swiper.slideNext();
+    if (!swiper) return;
+    const last = itemsRef.current.length - 1;
+    const dest = Math.max(0, Math.min(last, holdTarget.current + dir));
+    if (dest === holdTarget.current) return;
+    holdTarget.current = dest;
+    swiper.slideTo(dest, holdSlideSpeed());
+  };
+
+  const holdPrev = useHoldRepeat(() => stepHold(-1));
+  const holdNext = useHoldRepeat(() => stepHold(1));
+
+  const bindArrowHold = (hold: ReturnType<typeof useHoldRepeat>) => ({
+    ...hold,
+    onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      holdStartedAt.current = Date.now();
+      holdTarget.current =
+        swiperRef.current?.activeIndex ?? activeIndexRef.current;
+      holdingRef.current = true;
+      setParked(true);
+      hold.onPointerDown(event);
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      holdingRef.current = false;
+      hold.onPointerUp(event);
+      setParked(false);
+      attachActiveVideo();
+    },
+    onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => {
+      holdingRef.current = false;
+      hold.onPointerCancel(event);
+      setParked(false);
+      attachActiveVideo();
+    },
   });
 
   const stageGlowClass =
@@ -850,11 +885,7 @@ export function MobileCssCarousel({
               className="mc-popular-arrow is-prev"
               aria-label="Previous packs"
               disabled={activeIndex <= 0}
-              {...holdPrev}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                holdPrev.onPointerDown(event);
-              }}
+              {...bindArrowHold(holdPrev)}
             >
               <ChevronLeft size={18} aria-hidden />
             </button>
@@ -863,11 +894,7 @@ export function MobileCssCarousel({
               className="mc-popular-arrow is-next"
               aria-label="Next packs"
               disabled={activeIndex >= items.length - 1}
-              {...holdNext}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                holdNext.onPointerDown(event);
-              }}
+              {...bindArrowHold(holdNext)}
             >
               <ChevronRight size={18} aria-hidden />
             </button>
@@ -929,11 +956,12 @@ export function MobileCssCarousel({
             }
           }}
           onTransitionEnd={() => {
+            if (holdingRef.current) return;
             setParked(false);
             attachActiveVideo();
           }}
           onTouchEnd={(swiper) => {
-            if (swiper.animating) return;
+            if (holdingRef.current || swiper.animating) return;
             setParked(false);
             attachActiveVideo();
           }}

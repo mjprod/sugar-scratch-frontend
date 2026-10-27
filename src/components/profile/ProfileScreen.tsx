@@ -513,7 +513,7 @@ function MenuGroup({
               <span className="profile-menu-icon">
                 <Icon className="size-4 text-white/45" />
                 {item.badgeCount != null ? (
-                  <InboxUtilityBadge count={item.badgeCount} showZero />
+                  <InboxUtilityBadge count={item.badgeCount} />
                 ) : null}
               </span>
               <span className="flex-1 text-title">{item.label}</span>
