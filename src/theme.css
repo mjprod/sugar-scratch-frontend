@@ -6551,7 +6551,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   width: 10rem;
   min-width: 10rem;
   max-width: min(10rem, calc(100vw - 2rem));
-  gap: 0.2rem;
+  gap: var(--space-3);
   padding: 0.85rem 0.9rem 0.9rem;
   align-items: stretch;
 }
@@ -6693,8 +6693,8 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   margin-inline-start: 0.4rem;
   padding: 0.15rem 0.4rem;
   border-radius: 999px;
-  background: oklch(0.84 0.14 318 / 0.16);
-  color: oklch(0.84 0.14 318 / 0.98);
+  background: oklch(0.86 0.16 90 / 0.18);
+  color: oklch(0.86 0.16 90);
   font-size: var(--text-caption);
   font-weight: 650;
   line-height: 1;
@@ -8426,6 +8426,48 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
   min-height: 560px;
 }
 
+/* Match Collection `.collection-page-content` — same type + distance from the floating nav. */
+body[data-theme="v8"] .home-v2-greeting {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  padding-top: calc(var(--app-diamond-offset, 12px) + var(--space-4) + var(--space-4));
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  body[data-theme="v8"] .home-v2-greeting {
+    padding-top: calc(var(--app-diamond-offset) + var(--space-5));
+  }
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .home-v2-greeting {
+    padding-top: calc(var(--app-diamond-offset) + 22px);
+  }
+}
+
+body[data-theme="v8"] .home-v2-page-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-maytra);
+  font-size: var(--text-hero);
+  font-weight: 400;
+  letter-spacing: var(--text-hero--letter-spacing);
+  line-height: var(--text-hero--line-height);
+  color: var(--color-page-title);
+}
+
+@media (max-width: 1023px) {
+  body[data-theme="v8"] .home-v2:has(.home-v2-page-title) .home-featured-coverflow {
+    padding-top: calc(
+      var(--app-top-nav-float-inset, 12px) + var(--app-top-nav-height, 56px) +
+        var(--space-2-5) + var(--space-3)
+    );
+  }
+}
+
 /* —— Home v2 strip cards, glass chevrons, avatar-only, figma board —— */
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-title-sentence .continue-collecting-title,
@@ -9491,6 +9533,12 @@ body[data-theme="v8"] .mc-filter-btn {
   letter-spacing: 0.24px;
   white-space: nowrap;
   cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  body[data-theme="v8"] .mc-filter-btn {
+    min-height: 44px;
+  }
 }
 
 body[data-theme="v8"] .mc-model-card.is-skeleton {

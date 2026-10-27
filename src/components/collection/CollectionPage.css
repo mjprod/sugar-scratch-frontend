@@ -610,6 +610,17 @@ body[data-theme="v8"] .mc-models-search {
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  body[data-theme="v8"] .mc-filter-btn {
+    min-height: 44px;
+  }
+
+  body[data-theme="v8"] .mc-models-search {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 body[data-theme="v8"] .mc-filter-btn.is-open,
 body[data-theme="v8"] .mc-filter-btn.is-active {
   border-color: rgba(255, 61, 127, 0.55);
@@ -702,8 +713,8 @@ body[data-theme="v8"] .mc-model-card {
 
 @media (prefers-reduced-motion: no-preference) {
   body[data-theme="v8"] .mc-model-list.is-reveal .mc-model-card {
-    animation: collection-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: calc(min(var(--mc-i, 0), 7) * 40ms);
+    animation: collection-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 7) * 80ms);
   }
 }
 
@@ -888,13 +899,14 @@ body[data-theme="v8"] .mc-model-progress {
   margin-top: var(--space-2);
   padding: var(--space-0-5) var(--space-3-5) var(--space-0-5) var(--space-0-5);
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 30px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.11);
 }
 
 body[data-theme="v8"] .mc-model-progress-fill {
+  position: relative;
   display: block;
   height: 100%;
   min-height: 9px;
@@ -902,7 +914,32 @@ body[data-theme="v8"] .mc-model-progress-fill {
   background: linear-gradient(90deg, #aa004f, rgba(170, 0, 79, 0.5));
   box-shadow:
     inset 1px 1px 0px -1px #ffffff,
-    inset 1px 1px 0px -0.5px #ff79b7;
+    inset 1px 1px 0px -0.5px #ff79b7,
+    0 0px 20px 4px #630020,
+    0px 0px 16px 0px #ff0082;
+}
+
+body[data-theme="v8"] .mc-model-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 1px;
+  height: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(
+    3deg,
+    oklch(0.69 0.32 348.63),
+    oklch(0.75 0.21 54.14) 22%,
+    oklch(0.68 0.31 355.85) 50%,
+    oklch(0.71 0.27 355.85) 78%,
+    oklch(0.75 0.21 54)
+  );
+  box-shadow:
+    0 0 3px oklch(1 0 0 / 0),
+    0 0 8px oklch(0.83 0.16 343.76);
+  transform: translateY(-50%);
 }
 
 body[data-theme="v8"] .mc-model-bone {

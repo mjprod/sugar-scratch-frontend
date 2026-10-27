@@ -17,6 +17,10 @@ export type ExploreCreatorItem = {
   isNew?: boolean;
 };
 
+function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || name;
+}
+
 function toExploreItem(item: ContinueCollectingItem): ExploreCreatorItem {
   return {
     creatorId: item.creatorId,
@@ -261,6 +265,11 @@ export function ExploreCreators({
                   key={card.creatorId}
                   type="button"
                   className="explore-creators-card"
+                  aria-label={
+                    card.subtitle
+                      ? `${card.creatorName}, New`
+                      : card.creatorName
+                  }
                   onClick={() => source && onOpen?.(source)}
                 >
                   <span className="explore-creators-avatar-wrap">
@@ -276,7 +285,9 @@ export function ExploreCreators({
                       <span className="explore-creators-avatar is-fallback" />
                     )}
                   </span>
-                  <span className="explore-creators-name">{card.creatorName}</span>
+                  <span className="explore-creators-name">
+                    {firstName(card.creatorName)}
+                  </span>
                   {card.subtitle ? (
                     <span className="explore-creators-sub">
                       <span className="explore-creators-sub-full">

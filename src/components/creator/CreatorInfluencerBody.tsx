@@ -295,7 +295,7 @@ export function CreatorInfluencerBody({
         className="cpv2-progress-panel"
         aria-label="Collection progress"
       >
-        <h3 className="cpv2-progress-title">Collection Progress</h3>
+        <h2 className="cpv2-progress-title">Collection Progress</h2>
         <ul className="cpv2-progress-list">
           <li className="cpv2-progress-themes">
             <ul
@@ -511,9 +511,9 @@ export function CreatorInfluencerBody({
       </section>
 
       <section className="cpv2-pack-section" aria-label="Pack offers">
-        <h2 className="cpv2-section-title" id="creator-pack-offers">
+        <h3 className="cpv2-section-title" id="creator-pack-offers">
           Buy {creatorName} Packs
-        </h2>
+        </h3>
         <div className="cpv2-pack-coverflow">
           <Suspense
             fallback={
@@ -778,10 +778,10 @@ function ThemeCollectionCard({
               decoding="async"
             />
           </span>
-          <h3 className="cpv2-theme-card-title">
+          <h2 className="cpv2-theme-card-title">
             <span aria-hidden="true">{glyph} </span>
             {theme.name}
-          </h3>
+          </h2>
         </div>
         {freePlayAllowed ? (
           <label className="cpv2-free-play">

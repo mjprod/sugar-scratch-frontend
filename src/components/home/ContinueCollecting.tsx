@@ -318,13 +318,9 @@ function CollectionCard({
         .join(" ")}
       onClick={onClick}
       aria-label={
-        hideProgress || avatarOnly
-          ? `${card.creatorName}${
-              avatarOnly && !hideProgress
-                ? `, ${percent}% collected`
-                : ""
-            }`
-          : `${card.creatorName}, ${percent}% collected, ${progressCurrent} of ${progressTotal}`
+        hideProgress
+          ? card.creatorName
+          : `${card.creatorName}, ${percent}% collected`
       }
     >
       <div className="continue-collecting-avatar-wrap">
