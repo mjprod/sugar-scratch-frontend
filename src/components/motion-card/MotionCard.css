@@ -899,3 +899,69 @@
   letter-spacing: 0.2px;
   text-align: center;
 }
+
+/* Neon core ticks — same recipe as .cpv2-progress-fill, rotated vertical. */
+.scm-tick--collected,
+.scm-tick--motion {
+  position: relative;
+  overflow: visible;
+}
+
+.scm-tick--collected::after,
+.scm-tick--motion::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 50%;
+  width: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.scm-tick--collected {
+  background: linear-gradient(180deg, #aa004f, rgba(170, 0, 79, 0.5));
+  box-shadow:
+    inset 1px 1px 0 -1px #ffffff,
+    inset 1px 1px 0 -0.5px #ff79b7,
+    0 0 8px 2px #630020,
+    0 0 6px 0 #ff0082;
+}
+
+.scm-tick--collected::after {
+  background: linear-gradient(
+    180deg,
+    oklch(0.69 0.32 348.63),
+    oklch(0.75 0.21 54.14) 22%,
+    oklch(0.68 0.31 355.85) 50%,
+    oklch(0.71 0.27 355.85) 78%,
+    oklch(0.75 0.21 54)
+  );
+  box-shadow:
+    0 0 3px oklch(1 0 0 / 0),
+    0 0 6px oklch(0.83 0.16 343.76);
+}
+
+.scm-tick--motion {
+  background: linear-gradient(180deg, #b8862d, rgba(184, 134, 45, 0.5));
+  box-shadow:
+    inset 1px 1px 0 -1px #ffffff,
+    inset 1px 1px 0 -0.5px #ffe0a8,
+    0 0 8px 2px #5a3a10,
+    0 0 6px 0 #e8c19c;
+}
+
+.scm-tick--motion::after {
+  background: linear-gradient(
+    180deg,
+    oklch(0.88 0.14 85),
+    oklch(0.84 0.16 75) 22%,
+    oklch(0.8 0.15 90) 50%,
+    oklch(0.84 0.14 80) 78%,
+    oklch(0.88 0.12 70)
+  );
+  box-shadow:
+    0 0 3px oklch(1 0 0 / 0),
+    0 0 6px oklch(0.86 0.12 85);
+}

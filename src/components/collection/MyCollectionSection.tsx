@@ -360,6 +360,7 @@ export function MyCollectionSection({
         </div>
       ) : (
         <div
+          key={`${creatorFilter}:${sort}`}
           ref={listRef}
           className={["mc-model-list is-reveal", listFadeClass]
             .filter(Boolean)

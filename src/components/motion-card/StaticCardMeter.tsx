@@ -1,3 +1,5 @@
+import "./MotionCard.css";
+
 export type StaticCardMeterProps = {
   /** First tick: champagne when the motion card is unlocked. */
   motionUnlocked?: boolean;
@@ -10,9 +12,7 @@ export type StaticCardMeterProps = {
   className?: string;
 };
 
-const MOTION_UNLOCKED = "#e8c19c";
 const STATIC_LOCKED = "rgba(64,64,64,0.82)";
-const STATIC_COLLECTED = "#d4145a";
 
 /**
  * Figma 229:3123 — 11 ticks under a motion tile.
@@ -39,21 +39,31 @@ export function StaticCardMeter({
     >
       {includeMotionTick ? (
         <span
-          className="h-full min-w-px flex-1 rounded-[2px]"
-          style={{
-            background: motionUnlocked ? MOTION_UNLOCKED : STATIC_LOCKED,
-          }}
+          className={[
+            "scm-tick h-full min-w-px flex-1 rounded-[2px]",
+            motionUnlocked ? "scm-tick--motion" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={
+            motionUnlocked ? undefined : { background: STATIC_LOCKED }
+          }
         />
       ) : null}
       {Array.from({ length: staticTotal }, (_, index) => (
         <span
           key={index}
-          className="h-full min-w-px flex-1 rounded-[2px]"
-          style={{
-            background: collected.has(index)
-              ? STATIC_COLLECTED
-              : STATIC_LOCKED,
-          }}
+          className={[
+            "scm-tick h-full min-w-px flex-1 rounded-[2px]",
+            collected.has(index) ? "scm-tick--collected" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={
+            collected.has(index)
+              ? undefined
+              : { background: STATIC_LOCKED }
+          }
         />
       ))}
     </div>

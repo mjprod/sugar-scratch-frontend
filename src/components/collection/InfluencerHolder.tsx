@@ -1,5 +1,5 @@
 import { Images, Layers } from "lucide-react";
-import type { CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
 import type { CollectionProgressCounts } from "@/services/creatorBoard";
 import "@/components/collection/CollectionPage.css";
 
@@ -28,11 +28,38 @@ function UltraStarIcon() {
 }
 
 function CollectionAvatarRing({ percent }: { percent: number }) {
+  const uid = useId().replace(/:/g, "");
+  const coreId = `mc-ring-${uid}`;
   const clamped = Math.max(0, Math.min(100, percent));
-  const offset = AVATAR_RING_C - (clamped / 100) * AVATAR_RING_C;
+  const offset = AVATAR_RING_C * (1 - clamped / 100);
   return (
-    <span className="mc-model-avatar-ring" aria-hidden="true">
+    <span
+      className="mc-model-avatar-ring"
+      aria-hidden="true"
+      style={
+        {
+          "--mc-ring-c": AVATAR_RING_C,
+          "--mc-ring-offset": offset,
+        } as CSSProperties
+      }
+    >
       <svg viewBox="0 0 80 80">
+        <defs>
+          <linearGradient
+            id={coreId}
+            x1="40"
+            y1="6"
+            x2="40"
+            y2="74"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="oklch(0.75 0.21 54)" />
+            <stop offset="22%" stopColor="oklch(0.69 0.32 348.63)" />
+            <stop offset="50%" stopColor="oklch(0.68 0.31 355.85)" />
+            <stop offset="78%" stopColor="oklch(0.71 0.27 355.85)" />
+            <stop offset="100%" stopColor="oklch(0.75 0.21 54.14)" />
+          </linearGradient>
+        </defs>
         <circle
           className="mc-model-avatar-ring-track"
           cx="40"
@@ -40,16 +67,30 @@ function CollectionAvatarRing({ percent }: { percent: number }) {
           r={AVATAR_RING_R}
           fill="none"
         />
-        <circle
-          className="mc-model-avatar-ring-arc"
-          cx="40"
-          cy="40"
-          r={AVATAR_RING_R}
-          fill="none"
-          strokeDasharray={AVATAR_RING_C}
-          strokeDashoffset={offset}
-          transform="rotate(-90 40 40)"
-        />
+        <g transform="rotate(-90 40 40)">
+          <circle
+            className="mc-model-avatar-ring-glow"
+            cx="40"
+            cy="40"
+            r={AVATAR_RING_R}
+            fill="none"
+          />
+          <circle
+            className="mc-model-avatar-ring-arc"
+            cx="40"
+            cy="40"
+            r={AVATAR_RING_R}
+            fill="none"
+          />
+          <circle
+            className="mc-model-avatar-ring-core"
+            cx="40"
+            cy="40"
+            r={AVATAR_RING_R}
+            fill="none"
+            stroke={`url(#${coreId})`}
+          />
+        </g>
       </svg>
     </span>
   );
@@ -72,9 +113,10 @@ export function InfluencerHolder({
       className="mc-model-card"
       role="listitem"
       style={
-        index == null
-          ? undefined
-          : ({ "--mc-i": index } as CSSProperties)
+        {
+          "--mc-progress": `${progress.pct}%`,
+          ...(index == null ? {} : { "--mc-i": index }),
+        } as CSSProperties
       }
       onClick={onClick}
       aria-label={`${name}, ${progress.owned} of ${progress.total} cards`}
@@ -118,10 +160,7 @@ export function InfluencerHolder({
           aria-valuemax={100}
           aria-label={`${progress.owned} of ${progress.total}`}
         >
-          <span
-            className="mc-model-progress-fill"
-            style={{ width: `${progress.pct}%` }}
-          />
+          <span className="mc-model-progress-fill" />
         </span>
       </span>
     </button>
