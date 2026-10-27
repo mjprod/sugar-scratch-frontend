@@ -36,9 +36,11 @@ import {
 			  PACK_MODEL_URL,
 			  PACK_VIDEO_FIT_MODE,
 			  pauseAllVideoTextures,
+			  pickPackFaceTexture,
 			  resolvePackTextureSize,
 			  resolveTargetMaterial,
 			  uniquifyMeshMaterial,
+		  usePosterTexture,
 		  useVideoTexture,
 		  type VideoTextureTransform,
 	} from '@/lib/pack3d'
@@ -1686,21 +1688,23 @@ const ctaSize = isMobile ? preset.buyCtaSize.mobile : preset.buyCtaSize.desktop
     stageActive &&
     ((isCenter && (!hasActiveSelection || isActive)) ||
       (isRevealHero && revealMode))
-  const { texture } = useVideoTexture(
-    item.videoUrl,
-    item.fitMode || PACK_VIDEO_FIT_MODE,
+  const faceFit = item.fitMode || PACK_VIDEO_FIT_MODE
+  const faceSize = resolvePackTextureSize(isMobile, offset)
+  const { texture: posterTexture } = usePosterTexture(
+    item.posterUrl,
+    faceFit,
     textureTransform,
-    {
-      flipY: true,
-      playing: facePlaying,
-      textureSize: resolvePackTextureSize(isMobile, offset),
-      // Phone: only the playing pack may hold a decoder. Acquiring one per
-      // visible neighbor (center ± 2) is what jetsams the tab.
-      enabled: Boolean(item.videoUrl) && (!isMobile || facePlaying),
-      // Crisp stills for side packs — soft DOF reads as muddy at reduced texture sizes.
-      soft: false,
-    },
+    { flipY: true, textureSize: faceSize },
   )
+  const video = useVideoTexture(item.videoUrl, faceFit, textureTransform, {
+    flipY: true,
+    playing: facePlaying,
+    textureSize: faceSize,
+    // Forefront only — neighbors stay on the poster (no extra decoder).
+    enabled: Boolean(item.videoUrl) && facePlaying,
+    soft: false,
+  })
+  const texture = pickPackFaceTexture(video, posterTexture)
 
 const { scene, cardTop, cardTopRest, cardTopBounds } = useMemo(() => {
     const cloned = cloneSceneWithMaterials(gltf.scene)
@@ -1820,8 +1824,10 @@ useLayoutEffect(() => {
 
 	  useEffect(() => {
 	    if (!targetMaterial || !texture) return
-	    return applyPackFaceMaterial(targetMaterial, texture)
-	  }, [targetMaterial, texture])
+	    const restore = applyPackFaceMaterial(targetMaterial, texture)
+	    invalidate()
+	    return restore
+	  }, [invalidate, targetMaterial, texture])
 
   const setPackBlur = (blurPx: number) => {
     const next = Math.max(0, blurPx)
@@ -4472,23 +4478,27 @@ isMobile={isMobileViewportActive}
                     onClick={() => onRevealContinue(revealCards)}
                   />
                 </div>
-                {onRevealSaveLater ? (
-                  <button
-                    type="button"
-                    className="motion-reveal__later"
-                    onClick={onRevealSaveLater}
-                  >
-                    {revealSaveLaterLabel}
-                  </button>
-                ) : null}
-                {onRevealSaveAndOpenNext ? (
-                  <button
-                    type="button"
-                    className="motion-reveal__later"
-                    onClick={onRevealSaveAndOpenNext}
-                  >
-                    {revealSaveAndOpenNextLabel}
-                  </button>
+                {onRevealSaveLater || onRevealSaveAndOpenNext ? (
+                  <div className="motion-reveal__later-stack">
+                    {onRevealSaveLater ? (
+                      <button
+                        type="button"
+                        className="motion-reveal__later"
+                        onClick={onRevealSaveLater}
+                      >
+                        {revealSaveLaterLabel}
+                      </button>
+                    ) : null}
+                    {onRevealSaveAndOpenNext ? (
+                      <button
+                        type="button"
+                        className="motion-reveal__later"
+                        onClick={onRevealSaveAndOpenNext}
+                      >
+                        {revealSaveAndOpenNextLabel}
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
               </>
             ) : revealingCharacterId ? (

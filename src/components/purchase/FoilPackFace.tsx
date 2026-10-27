@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PackFaceVideo } from "@/components/media/PackFaceVideo";
 import "./FoilPackFace.css";
 
 /** Incoming foil pack plate — designed MP4, no holographic chrome. */
@@ -10,6 +11,7 @@ export function FoilPackFace({
   sealed = false,
   overlayHud = false,
   children,
+  poster,
 }: {
   src: string;
   collection?: string;
@@ -19,6 +21,7 @@ export function FoilPackFace({
   /** Incoming coverflow: labels sit on the pack face. */
   overlayHud?: boolean;
   children?: ReactNode;
+  poster?: string;
 }) {
   const hud =
     collection || packLabel ? (
@@ -39,14 +42,7 @@ export function FoilPackFace({
         .join(" ")}
     >
       <div className="foil-pack__frame">
-        <video
-          src={src}
-          muted
-          loop
-          playsInline
-          autoPlay
-          className="foil-pack__video"
-        />
+        <PackFaceVideo src={src} poster={poster} className="foil-pack__video" />
         {sealed ? <span className="foil-pack__sealed">Sealed</span> : null}
         {overlayHud ? hud : null}
         {children}

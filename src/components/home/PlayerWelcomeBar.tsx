@@ -231,7 +231,12 @@ export function PlayerWelcomeBar({
                   claiming ? (
                     "Claiming…"
                   ) : (
-                    <>Collect <DiamondLottie size={14} aria-hidden />{DAILY_REWARD_DIAMONDS} Now</>
+                    <>
+                      Collect<span className="player-welcome-claim-diamonds">
+                        <DiamondLottie size={14} aria-hidden />
+                        {DAILY_REWARD_DIAMONDS}
+                      </span>Now
+                    </>
                   )
                 }
                 aria-label={

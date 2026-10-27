@@ -351,16 +351,16 @@ body[data-theme="v8"] .mc-greeting {
 body[data-theme="v8"] .mc-greeting-title {
   margin: 0;
   font-family: var(--font-maytra);
-  font-size: var(--text-page);
+  font-size: var(--text-hero);
   font-weight: 400;
-  letter-spacing: 0;
-  line-height: var(--text-page--line-height);
+  letter-spacing: var(--text-hero--letter-spacing);
+  line-height: var(--text-hero--line-height);
   color: var(--color-page-title);
 }
 
 body[data-theme="v8"] .mc-greeting-text {
   margin: 0;
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.35;

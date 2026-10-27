@@ -22,6 +22,9 @@ body[data-theme="v8"] {
   --text-page: calc(
     var(--text-page-min) + (var(--text-page-max) - var(--text-page-min)) * var(--fluid)
   );
+  --text-hero: calc(
+    var(--text-hero-min) + (var(--text-hero-max) - var(--text-hero-min)) * var(--fluid)
+  );
   --text-caption--line-height: 1.45;
   --text-body--line-height: 1.45;
   --text-title--line-height: 1.35;
@@ -31,6 +34,8 @@ body[data-theme="v8"] {
   --text-display--letter-spacing: -0.02em;
   --text-page--line-height: 1.05;
   --text-page--letter-spacing: 0;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: 0;
 
   --color-canvas: oklch(0.14 0 0);
   --color-canvas-elevated: oklch(0.196 0 0);
@@ -76,6 +81,23 @@ body[data-theme="v8"] {
     radial-gradient(ellipse 70% 45% at 50% -5%, oklch(0.767 0.139 91.06 / 0.16), transparent),
     radial-gradient(ellipse 40% 35% at 100% 100%, oklch(0.656 0.212 354.31 / 0.12), transparent);
   color: oklch(1 0 0);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body[data-theme="v8"] input,
+body[data-theme="v8"] textarea,
+body[data-theme="v8"] select,
+body[data-theme="v8"] [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+body[data-theme="v8"] .auth7-legal-body,
+body[data-theme="v8"] .settings-legal-doc {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 body[data-theme="v8"] :focus-visible {
@@ -1067,6 +1089,9 @@ body[data-theme="v8"] .continue-collecting-arrow {
   color: oklch(1 0 0 / 0.88);
   cursor: pointer;
   backdrop-filter: blur(8px);
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
   transition:
     background-color 150ms ease,
     color 150ms ease,
@@ -1119,23 +1144,30 @@ body[data-theme="v8"] .continue-collecting-card:focus-visible {
 
 body[data-theme="v8"] .continue-collecting-avatar-wrap {
   position: relative;
+  z-index: 0;
+  display: grid;
+  place-items: center;
   width: var(--cc-avatar-size);
   height: var(--cc-avatar-size);
 }
 
 body[data-theme="v8"] .continue-collecting-ring {
-  position: relative;
-  display: grid;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  place-items: center;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .continue-collecting-ring-svg {
   position: absolute;
   inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .continue-collecting-ring-arc {
@@ -1143,6 +1175,8 @@ body[data-theme="v8"] .continue-collecting-ring-arc {
 }
 
 body[data-theme="v8"] .continue-collecting-avatar {
+  position: relative;
+  z-index: 1;
   width: 88px;
   height: 88px;
   border-radius: 50%;
@@ -2668,6 +2702,12 @@ body[data-theme="v8"] .player-welcome-claim .cta-button-glow>.border-glow-inner 
 body[data-theme="v8"] .player-welcome-claim .cta-button__title {
   display: inline-flex;
   align-items: center;
+}
+
+body[data-theme="v8"] .player-welcome-claim-diamonds {
+  display: inline-flex;
+  align-items: center;
+  margin-inline: var(--space-2);
 }
 
 /*
@@ -6576,7 +6616,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 	  flex: 0 0 auto;
 	  min-width: 0;
 	  color: oklch(0.971 0.003 286.35 / 0.94);
-	  font-size: var(--text-body);
+	  font-size: var(--text-headline);
   font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -6585,7 +6625,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 }
 
 .wallet-balances-popover__value--dust {
-  font-size: var(--text-body);
+  font-size: var(--text-headline);
   font-weight: 400;
   text-align: center;
 }
@@ -7699,6 +7739,9 @@ body[data-theme="v8"] .explore-creators-arrow {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 body[data-theme="v8"] .explore-creators-arrow:hover:not(:disabled) {
@@ -8286,16 +8329,33 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud .coverflow-buy-pack-cta {
-  transform: scale(1.1);
+  transform: scale(1.1) translateY(8px);
   transform-origin: center bottom;
+  animation: none;
+  filter: none;
+  transition:
+    opacity 280ms ease-out,
+    transform 280ms ease-out;
+  transition-delay: 0s;
+}
+
+body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta {
+  transform: scale(1.1) translateY(0);
+  animation: none;
+  filter: none;
+  transition-delay: 0s;
+}
+
+@starting-style {
+  body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta {
+    opacity: 0;
+    transform: scale(1.1) translateY(8px);
+  }
 }
 
 /*
  * Mobile coverflow CTA ↔ status-pager clearance (~0.5rem).
- * HUD is bottom-anchored on the active slide; pager is bottom-anchored on the
- * frame. The prior +Y translate on the visible HUD dropped the Buy Pack button
- * into the pill — keep X centering only so the slide bottom offset leaves the
- * intended gap (same spirit as guest-home footer clearance).
+ * HUD stays at Y=0 so the Buy Pack button clears the status pill.
  */
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud {
   /* Tuned so button bottom → pill top ≈ --coverflow-cta-pager-gap (0.5rem). */
@@ -8389,6 +8449,9 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow {
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
   transform: translateY(-50%);
   transition:
     color 160ms ease,
@@ -8417,6 +8480,20 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-next {
   right: 0.15rem;
 }
 
+@media (max-width: 767px) {
+  body[data-theme="v8"] .home-v2 .continue-collecting-arrow,
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+    width: 5rem;
+    height: 5rem;
+  }
+
+  body[data-theme="v8"] .home-v2 .continue-collecting-arrow svg,
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow svg {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow:hover:not(:disabled),
 body[data-theme="v8"] .home-v2 .explore-creators-arrow:hover:not(:disabled) {
   border-color: oklch(1 0 0 / 0.1);
@@ -8441,29 +8518,75 @@ body[data-theme="v8"] .home-v2 .explore-creators-scroll {
   padding-inline: 0.35rem;
 }
 
-/* Continue collecting — photo + ring only, 3.8rem */
+/* Continue collecting — Collect-page ring (80) around 65 photo */
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip {
-  --cc-avatar-size: 3.8rem;
-  --cc-gap: 10px;
+  --cc-avatar-size: 80px;
+  --cc-gap: 12px;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card,
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card.is-avatar-only {
-  width: 3.8rem;
+  width: 80px;
   gap: 0;
 }
 
-body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar-wrap,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar-wrap {
+  width: 80px;
+  height: 80px;
+  overflow: visible;
+}
+
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring,
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring-svg {
-  width: 3.8rem;
-  height: 3.8rem;
+  inset: 0;
+  width: 80px;
+  height: 80px;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar {
-  width: calc(3.8rem - 10px);
-  height: calc(3.8rem - 10px);
-  border-radius: 999px;
+  position: relative;
+  z-index: 1;
+  width: 65px;
+  height: 65px;
+  border-radius: 60px;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect {
+  overflow: visible;
+  -webkit-mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(0 0 0 / 0) 0deg,
+    rgb(0 0 0 / 0.4) 40deg,
+    #000 110deg,
+    #000
+  );
+  mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(0 0 0 / 0) 0deg,
+    rgb(0 0 0 / 0.4) 40deg,
+    #000 110deg,
+    #000
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-track,
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-arc {
+  stroke-width: 5;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-track {
+  stroke: rgba(170, 0, 79, 0.18);
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-ring.is-collect .continue-collecting-ring-arc {
+  stroke: #aa004f;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-meta,
@@ -8689,9 +8812,11 @@ body[data-theme="v8"] .coverflow-status-pager__scroll {
   max-width: 100%;
   height: 100%;
   overflow-x: auto;
-  /* Keep y visible so the taller pink pill isn't clipped top/bottom. */
-  overflow-y: visible;
+  /* overflow-y:visible computes to auto when x is a scrollport.
+     clip (not hidden) so y is not a scroll container — wheel/touch can't nudge dots. */
+  overflow-y: clip;
   overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x;
@@ -8717,6 +8842,8 @@ body[data-theme="v8"] .coverflow-status-pager__track {
   max-width: none;
   height: 100%;
   min-height: var(--status-pill-h);
+  /* Clip the abspos pill hit-pad so it cannot create a vertical scrollport. */
+  overflow: hidden;
 }
 
 body[data-theme="v8"] .coverflow-status-pager__dot {
@@ -9173,6 +9300,9 @@ body[data-theme="v8"] .mc-popular-arrow {
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(8px);
   cursor: pointer;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 body[data-theme="v8"] .mc-popular-arrow.is-prev {
@@ -9205,7 +9335,7 @@ body[data-theme="v8"] .mc-filter-btn {
     rgba(169, 169, 169, 0.246) 84.617%
   );
   color: #fff;
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: 0.24px;
   white-space: nowrap;

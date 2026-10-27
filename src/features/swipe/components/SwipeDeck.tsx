@@ -24,6 +24,7 @@ import {
   swipeThresholdPx,
   type SwipeCardData,
 } from '../constants/cards'
+import { isIosDecoderCap } from '@/lib/memory/exclusiveMedia'
 import { useSwipeCircleLivePublisher } from '../context/SwipeCircleDebugContext'
 import { StackBacks } from './StackBacks'
 import { StackSlot } from './StackSlot'
@@ -1393,6 +1394,7 @@ export function SwipeDeck({
       ) : null}
       {displayCards
         .map((card, index) => {
+          const iosCap = isIosDecoderCap()
           const isLeaving = leaving?.card.id === card.id
           // Live deck head stays interactive even while a flyer is leaving
           // (mobile fast flicks / keyboard chain). Flyer keeps display index 0.
@@ -1423,17 +1425,21 @@ export function SwipeDeck({
               isFront={isFront}
               // Only depth 0 uses this; behind cards stay flat until promote.
               restRot={heroRestRot}
-              // Mount ≤2 decoders (front + warm next). Only the live front and a
-              // leaving flyer actually play — avoids iOS dual-autoplay first-land fails.
-              // When leave flight ends the flyer unmounts and SwipeCard hard-releases
-              // its decoder (src cleared + load) so swiped clips don't keep iOS buffers.
+              // Desktop: front + one warm neighbor. iOS: only the live clip
+              // gets src — metadata+autoPlay still attaches a full decoder.
               mountVideo={
-                isLeaving ||
-                (stackIndex >= 0 &&
-                  stackIndex <
-                    (leaving ? MAX_MOUNTED_VIDEOS - 1 : MAX_MOUNTED_VIDEOS))
+                iosCap
+                  ? isLeaving || (isFront && !leaving)
+                  : isLeaving ||
+                    (stackIndex >= 0 &&
+                      stackIndex <
+                        (leaving ? MAX_MOUNTED_VIDEOS - 1 : MAX_MOUNTED_VIDEOS))
               }
-              playing={isLeaving || isFront}
+              playing={
+                iosCap
+                  ? isLeaving || (isFront && !leaving)
+                  : isLeaving || isFront
+              }
               drag={isFront ? { x, y, rot, scale } : undefined}
               leave={
                 isLeaving

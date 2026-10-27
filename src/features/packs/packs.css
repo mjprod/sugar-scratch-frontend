@@ -852,7 +852,8 @@
 
 @media (max-width: 980px) {
   /* Skip aurora on mobile pack CTAs — dark magenta linear plate, keep stroke. */
-  .coverflow-buy-pack-cta .cta-button__inner {
+  .coverflow-buy-pack-cta .cta-button__inner,
+  .coverflow-play-only-cta .cta-button__inner {
     background: linear-gradient(180deg, #670630 0%, #18030b 50%, #4c0624 100%) !important;
   }
 }
@@ -889,7 +890,7 @@
     inset 0 1px 0 oklch(1 0 0 / 0.12),
     0 8px 24px oklch(0 0 0 / 0.28);
   color: oklch(1 0 0 / 0.88);
-  font-size: var(--text-display);
+  font-size: 3.5em;
   font-weight: 400;
   line-height: 1;
   cursor: pointer;

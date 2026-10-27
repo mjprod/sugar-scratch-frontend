@@ -783,7 +783,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   }
 
   .nav-test-top-utils .top-nav-resource-value {
-    font-size: var(--text-body);
+    font-size: var(--text-title);
   }
 }
 

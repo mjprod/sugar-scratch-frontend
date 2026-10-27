@@ -27,6 +27,7 @@ import {
   isFollowing,
   unfollowCreator,
 } from "@/services/following";
+import { isIosDecoderCap } from "@/lib/memory/exclusiveMedia";
 
 const DOUBLE_TAP_MS = 280;
 const TAP_MOVE_PX = 14;
@@ -136,7 +137,7 @@ export function CreatorFeedCard({
     feedLikeCount(item.creatorId, item.liked),
   );
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
-  const shouldBuffer = active || warm;
+  const shouldBuffer = active || (warm && !isIosDecoderCap());
   const videoKey = item.videoUrl || item.id;
 
   useEffect(() => {

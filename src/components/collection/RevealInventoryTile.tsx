@@ -1,6 +1,7 @@
 /** Shared inventory tile for Ready to Reveal (packs + cards). */
 import { useEffect, useRef, useState } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { releaseMediaElement } from "@/features/game/shared/media";
 import { HOLO_PACKS } from "@/lib/photos";
 import { isVideoSrc } from "@/services/models";
 
@@ -55,7 +56,7 @@ export function RevealInventoryTile({
     video.setAttribute("webkit-playsinline", "");
     void video.play().catch(() => {});
     return () => {
-      video.pause();
+      releaseMediaElement(video);
     };
   }, [playVideo, cover]);
 
@@ -94,29 +95,8 @@ export function RevealInventoryTile({
             loop
             playsInline
             autoPlay
-            preload="metadata"
+            preload="none"
             aria-hidden="true"
-            onError={fallbackImg}
-          />
-        ) : null}
-        {!playVideo && coverIsVideo && !poster ? (
-          // No API poster and not in the live budget — static first frame only.
-          <video
-            src={cover}
-            className="ready-reveal-tile-art-img ready-reveal-tile-art-video"
-            muted
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-            onLoadedData={(event) => {
-              const video = event.currentTarget;
-              try {
-                video.pause();
-                if (video.currentTime < 0.05) video.currentTime = 0.001;
-              } catch {
-                /* ignore seek failures */
-              }
-            }}
             onError={fallbackImg}
           />
         ) : null}

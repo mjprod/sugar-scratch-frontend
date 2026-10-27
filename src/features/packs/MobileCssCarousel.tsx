@@ -20,6 +20,11 @@ import {
 } from "@/services/cart";
 import { CoverflowBuyConfirm } from "@/features/packs/CoverflowBuyConfirm";
 import { type Iteration } from "@/features/packs/types";
+import {
+  claimMediaDecoder,
+  releaseClaimedDecoder,
+} from "@/lib/memory/exclusiveMedia";
+import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
@@ -206,102 +211,46 @@ function PackSlideHud({
   );
 }
 
-/**
- * One live decoder only: the focused slide.
- * Neighbors stay on posters — strongest iOS page-memory win.
- * (Keep helper takes prev for call-site symmetry if we raise the limit later.)
- */
-function nextVideoKeep(_prevKeep: number[], nextActive: number): number[] {
-  return Number.isFinite(nextActive) ? [nextActive] : [];
-}
-
-/**
- * Active-slide pack video. Mounted only while this index is the sole keep slot.
- *
- * src discard rules (iOS + React Strict Mode):
- * - Never blank src while the node may remount with the same props (Strict Mode
- *   cleanup→remount): React will not re-apply an unchanged src prop.
- * - On real leave-keep-set unmount, pause immediately, then blank src only after
- *   a macrotask if the element is still disconnected (definitely discarded).
- */
-function PackFaceVideo({
-  src,
-  poster,
-  onReady,
+function CompactPlayButton({
+  item,
+  onPlay,
 }: {
-  src: string;
-  poster?: string;
-  onReady?: () => void;
+  item: Iteration;
+  onPlay: (item: Iteration) => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !src) return;
-
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-    video.setAttribute("muted", "");
-    video.setAttribute("playsinline", "");
-    video.setAttribute("webkit-playsinline", "");
-
-    // Re-attach if a deferred discard won a race (should be rare).
-    if (video.getAttribute("src") !== src) {
-      video.src = src;
-    }
-
-    let cancelled = false;
-    const play = () => {
-      if (cancelled || videoRef.current !== video) return;
-      video.muted = true;
-      void video.play().catch(() => {});
-    };
-
-    video.addEventListener("loadeddata", play);
-    video.addEventListener("canplay", play);
-    play();
-
-    return () => {
-      cancelled = true;
-      video.removeEventListener("loadeddata", play);
-      video.removeEventListener("canplay", play);
-      video.pause();
-
-      // Hard discard only once the node is truly gone (not Strict Mode bounce).
-      const el = video;
-      window.setTimeout(() => {
-        if (el.isConnected) return;
-        if (!el.getAttribute("src") && !el.currentSrc) return;
-        el.removeAttribute("src");
-        try {
-          el.load();
-        } catch {
-          /* ignore */
-        }
-      }, 0);
-    };
-  }, [src]);
-
   return (
-    <video
-      ref={videoRef}
-      className="mobile-css-carousel__video is-active"
-      src={src}
-      poster={poster}
-      muted
-      loop
-      playsInline
-      autoPlay
-      preload="metadata"
-      onLoadedData={() => {
-        onReady?.();
-        const video = videoRef.current;
-        if (!video) return;
-        video.muted = true;
-        void video.play().catch(() => {});
-      }}
-    />
+    <div className="mobile-css-carousel__play coverflow-play-only-cta">
+      <CtaButton
+        {...ctaButtonPropsFromTemplate("squircleCTA")}
+        fillParent
+        strokeWidth={1}
+        cornerRadius={999}
+        auroraBaseColor="#42001b"
+        auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+        glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+        glowColor="326 90 30"
+        strokeColor="rgba(170, 8, 95, 0.42)"
+        labelColor="#ffe0e8"
+        glowOuterBloom="off"
+        auroraPaused
+        label="Play"
+        leadingIcon={
+          <Play
+            className="motion-card-play-cta__triangle"
+            size={11}
+            strokeWidth={2.4}
+            fill="currentColor"
+            aria-hidden
+          />
+        }
+        costAmount={null}
+        aria-label={`Play ${item.packName || item.name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onPlay(item);
+        }}
+      />
+    </div>
   );
 }
 
@@ -336,7 +285,6 @@ export function MobileCssCarousel({
 }) {
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const [edgeFade, setEdgeFade] = useState({ left: false, right: false });
   const onReadyRef = useRef(onReady);
   const onBuyRef = useRef(onBuy);
   const onAddToPocketRef = useRef(onAddToPocket);
@@ -346,12 +294,16 @@ export function MobileCssCarousel({
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
-  /** Live decoder slots. Active-only while visible; emptied on background. */
-  const [videoKeep, setVideoKeep] = useState<number[]>(() => [0]);
-  const videoKeepRef = useRef<number[]>([0]);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const focusRef = useRef<HTMLDivElement | null>(null);
+  const liveVideoRef = useRef<HTMLVideoElement | null>(null);
+  const parkedRef = useRef(true);
+  const [hudActive, setHudActive] = useState(false);
   const pageVisibleRef = useRef(
     typeof document === "undefined" ? true : document.visibilityState === "visible",
   );
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const [pocketTick, setPocketTick] = useState(0);
   const [buyConfirmOpen, setBuyConfirmOpen] = useState(false);
   const [buyConfirmLeaving, setBuyConfirmLeaving] = useState(false);
@@ -556,49 +508,95 @@ export function MobileCssCarousel({
     [activeSurfaceReady, neighborOnScreen],
   );
 
-  const syncEdgeFade = useCallback(
-    (swiper: SwiperClass) => {
-      if (!compact) return;
-      const start = swiper.minTranslate();
-      const end = swiper.maxTranslate();
-      const current = swiper.translate;
-      const next = {
-        left: current < start - 8,
-        right: current > end + 8,
-      };
-      setEdgeFade((prev) =>
-        prev.left === next.left && prev.right === next.right ? prev : next,
-      );
-    },
-    [compact],
-  );
-
   const applySlideDim = useCallback((swiper: SwiperClass) => {
     swiper.slides.forEach((slide) => {
-      if (compact) {
-        slide.style.setProperty("--slide-dim", "0");
-        return;
-      }
       const t = Math.min(1, Math.abs(slide.progress ?? 0));
       const eased = t * t * (3 - 2 * t);
-      // Matches prior brightness(1 - 0.5 * eased) via a black dim overlay.
-      slide.style.setProperty("--slide-dim", String(0.5 * eased));
+      // Compact fades pack art via opacity; coverflow uses a black overlay.
+      // Play sits outside the pack so it stays fully opaque while sliding.
+      slide.style.setProperty(
+        "--slide-dim",
+        String((compact ? 0.45 : 0.5) * eased),
+      );
     });
   }, [compact]);
 
-  const applyKeep = useCallback((keep: number[]) => {
-    videoKeepRef.current = keep;
-    setVideoKeep(keep);
+  const syncLiveClass = useCallback(() => {
+    const live =
+      !parkedRef.current &&
+      Boolean(focusRef.current?.classList.contains("is-ready"));
+    stageRef.current?.classList.toggle("is-live-video", live);
   }, []);
+
+  const setParked = useCallback((next: boolean) => {
+    parkedRef.current = next;
+    focusRef.current?.classList.toggle("is-parked", next);
+    setHudActive(!next);
+    syncLiveClass();
+  }, [syncLiveClass]);
+
+  const layoutFocus = useCallback(() => {
+    const shell = shellRef.current;
+    const focus = focusRef.current;
+    const swiper = swiperRef.current;
+    if (!shell || !focus || !swiper) return;
+    const slide = swiper.slides[swiper.activeIndex] as HTMLElement | undefined;
+    const pack = slide?.querySelector<HTMLElement>(".mobile-css-carousel__pack");
+    if (!pack) return;
+    const shellRect = shell.getBoundingClientRect();
+    const packRect = pack.getBoundingClientRect();
+    focus.style.left = `${packRect.left - shellRect.left}px`;
+    focus.style.top = `${packRect.top - shellRect.top}px`;
+    focus.style.width = `${packRect.width}px`;
+    focus.style.height = `${packRect.height}px`;
+  }, []);
+
+  const attachActiveVideo = useCallback(() => {
+    const video = liveVideoRef.current;
+    const focus = focusRef.current;
+    if (!video) return;
+    layoutFocus();
+    if (!pageVisibleRef.current || parkedRef.current) {
+      if (!pageVisibleRef.current) {
+        releaseClaimedDecoder(video);
+        focus?.classList.remove("is-ready");
+        syncLiveClass();
+      } else {
+        try {
+          video.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+      return;
+    }
+    const src = itemsRef.current[activeIndexRef.current]?.videoUrl?.trim() || "";
+    if (!src) {
+      releaseClaimedDecoder(video);
+      focus?.classList.remove("is-ready");
+      syncLiveClass();
+      return;
+    }
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    claimMediaDecoder(video, src);
+    if (video.readyState >= 2 && video.videoWidth > 1) {
+      focus?.classList.add("is-ready");
+    } else {
+      focus?.classList.remove("is-ready");
+    }
+    syncLiveClass();
+    void video.play().catch(() => {});
+  }, [layoutFocus, syncLiveClass]);
 
   const syncPlayback = useCallback(
     (next: number) => {
       activeIndexRef.current = next;
       setActiveIndex(next);
-      // Background: no decoder at all. Foreground: active slide only.
-      applyKeep(
-        pageVisibleRef.current ? nextVideoKeep(videoKeepRef.current, next) : [],
-      );
       buyConfirmOpenRef.current = false;
       buyConfirmLeavingRef.current = false;
       buyQuantityRef.current = 1;
@@ -607,31 +605,40 @@ export function MobileCssCarousel({
       setBuyQuantity(1);
       fadeGlowTo(glowColorForItem(items[next]));
     },
-    [applyKeep, fadeGlowTo, items],
+    [fadeGlowTo, items],
   );
 
   useEffect(() => {
     return () => clearGlowTimers();
   }, [clearGlowTimers]);
 
-  // Catalog swap / first paint — snap to the focused pack color + reset decoder set.
+  // Catalog swap / first paint — snap to the focused pack color.
   useEffect(() => {
     readySent.current = false;
     setActiveIndex(0);
-    applyKeep(pageVisibleRef.current ? [0] : []);
+    activeIndexRef.current = 0;
     snapGlow(glowColorForItem(items[0]));
-  }, [applyKeep, items, snapGlow]);
+    releaseClaimedDecoder(liveVideoRef.current);
+    focusRef.current?.classList.remove("is-ready");
+    syncLiveClass();
+    if (swiperRef.current && pageVisibleRef.current) {
+      setParked(false);
+      attachActiveVideo();
+    }
+  }, [attachActiveVideo, items, setParked, snapGlow, syncLiveClass]);
 
-  // Tab hide / bfcache: drop the only decoder so iOS can reclaim page memory.
+  // Tab hide / bfcache: drop the decoder so iOS can reclaim page memory.
   useEffect(() => {
     function releaseDecoders() {
       pageVisibleRef.current = false;
-      applyKeep([]);
+      releaseClaimedDecoder(liveVideoRef.current);
+      focusRef.current?.classList.remove("is-ready");
+      syncLiveClass();
     }
 
     function restoreDecoders() {
       pageVisibleRef.current = true;
-      applyKeep(nextVideoKeep([], activeIndexRef.current));
+      if (!parkedRef.current) attachActiveVideo();
     }
 
     function onVisibility() {
@@ -646,8 +653,9 @@ export function MobileCssCarousel({
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", releaseDecoders);
       window.removeEventListener("pageshow", restoreDecoders);
+      releaseClaimedDecoder(liveVideoRef.current);
     };
-  }, [applyKeep]);
+  }, [attachActiveVideo, syncLiveClass]);
 
   // Warm poster bitmaps before any pack video decoder starts.
   useEffect(() => {
@@ -671,6 +679,8 @@ export function MobileCssCarousel({
     applySlideDim(swiper);
     swiper.update();
     applySlideDim(swiper);
+    setParked(false);
+    attachActiveVideo();
     markReady(swiper);
   }
 
@@ -686,7 +696,19 @@ export function MobileCssCarousel({
   useEffect(() => {
     const swiper = swiperRef.current;
     if (swiper) markReady(swiper);
-  }, [activeIndex, items, markReady, videoKeep]);
+  }, [activeIndex, items, markReady]);
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => layoutFocus());
+    observer.observe(shell);
+    window.addEventListener("resize", layoutFocus);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", layoutFocus);
+    };
+  }, [layoutFocus]);
 
   useEffect(() => subscribeCart(() => setPocketTick((n) => n + 1)), []);
 
@@ -767,6 +789,19 @@ export function MobileCssCarousel({
     }
   }
 
+  const holdPrev = useHoldRepeat(() => {
+    const swiper = swiperRef.current;
+    if (!swiper || swiper.animating || swiper.activeIndex <= 0) return;
+    swiper.slidePrev();
+  });
+  const holdNext = useHoldRepeat(() => {
+    const swiper = swiperRef.current;
+    if (!swiper || swiper.animating || swiper.activeIndex >= items.length - 1) {
+      return;
+    }
+    swiper.slideNext();
+  });
+
   const stageGlowClass =
     glowPhase === "prep"
       ? " is-glow-prep"
@@ -782,6 +817,7 @@ export function MobileCssCarousel({
 
   return (
     <div
+      ref={stageRef}
       className={`stage-packs mobile-css-carousel-stage${stageGlowClass}${
         influencerBackdrop ? " has-influencer-backdrop" : ""
       }${compact ? " is-compact" : ""}${compact && items.length === 1 ? " is-single" : ""}`}
@@ -814,9 +850,10 @@ export function MobileCssCarousel({
               className="mc-popular-arrow is-prev"
               aria-label="Previous packs"
               disabled={activeIndex <= 0}
-              onClick={(event) => {
+              {...holdPrev}
+              onPointerDown={(event) => {
                 event.stopPropagation();
-                swiperRef.current?.slidePrev();
+                holdPrev.onPointerDown(event);
               }}
             >
               <ChevronLeft size={18} aria-hidden />
@@ -826,9 +863,10 @@ export function MobileCssCarousel({
               className="mc-popular-arrow is-next"
               aria-label="Next packs"
               disabled={activeIndex >= items.length - 1}
-              onClick={(event) => {
+              {...holdNext}
+              onPointerDown={(event) => {
                 event.stopPropagation();
-                swiperRef.current?.slideNext();
+                holdNext.onPointerDown(event);
               }}
             >
               <ChevronRight size={18} aria-hidden />
@@ -836,15 +874,15 @@ export function MobileCssCarousel({
           </>
         ) : null}
         <Swiper
-          className={`mobile-css-carousel${
-            edgeFade.left ? " has-fade-left" : ""
-          }${edgeFade.right ? " has-fade-right" : ""}`}
+          className="mobile-css-carousel"
           modules={compact ? [] : [EffectCoverflow]}
           effect={compact ? "slide" : "coverflow"}
           grabCursor
           centeredSlides={!compact}
           slidesPerView="auto"
           spaceBetween={compact ? 18 : -72}
+          slidesOffsetBefore={compact && items.length > 1 ? 80 : 0}
+          slidesOffsetAfter={compact && items.length > 1 ? 80 : 0}
           speed={720}
           resistanceRatio={0.85}
           watchSlidesProgress
@@ -864,21 +902,47 @@ export function MobileCssCarousel({
           onProgress={applySlideDim}
           onSetTranslate={(swiper) => {
             applySlideDim(swiper);
-            syncEdgeFade(swiper);
             markReady(swiper);
           }}
-          onSlideChange={(swiper) => syncPlayback(swiper.activeIndex)}
+          onSlideChange={(swiper) => {
+            if (swiper.activeIndex === activeIndexRef.current) return;
+            // Drop the outgoing decoder before the next clip attaches.
+            releaseClaimedDecoder(liveVideoRef.current);
+            focusRef.current?.classList.remove("is-ready");
+            setParked(true);
+            syncPlayback(swiper.activeIndex);
+          }}
+          onTransitionStart={() => {
+            setParked(true);
+            try {
+              liveVideoRef.current?.pause();
+            } catch {
+              /* ignore */
+            }
+          }}
+          onTouchStart={() => {
+            setParked(true);
+            try {
+              liveVideoRef.current?.pause();
+            } catch {
+              /* ignore */
+            }
+          }}
+          onTransitionEnd={() => {
+            setParked(false);
+            attachActiveVideo();
+          }}
+          onTouchEnd={(swiper) => {
+            if (swiper.animating) return;
+            setParked(false);
+            attachActiveVideo();
+          }}
           preventClicks={false}
           preventClicksPropagation={false}
           noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
-            const pocketed = isPackInCart(item.id, item.characterId);
             void pocketTick;
-            const isActive = index === activeIndex;
-            // Mount video only for the active keep slot — poster everywhere else.
-            const keepVideo =
-              Boolean(item.videoUrl) && videoKeep.includes(index);
             const near = Math.abs(index - activeIndex) <= 2;
             return (
               <SwiperSlide key={item.id}>
@@ -897,81 +961,63 @@ export function MobileCssCarousel({
                       }}
                     />
                   ) : null}
-                  {keepVideo ? (
-                    // key=pack id: stable for this slide's lifetime in keep-set.
-                    // Unmount happens only when index leaves keep-set (or background).
-                    <PackFaceVideo
-                      key={item.id}
-                      src={item.videoUrl}
-                      poster={item.posterUrl || undefined}
-                      onReady={() => {
-                        const swiper = swiperRef.current;
-                        if (swiper) markReady(swiper);
-                      }}
-                    />
-                  ) : null}
                   {compact ? null : (
                     <div className="mobile-css-carousel__dim" aria-hidden="true" />
                   )}
                 </div>
                 {compact ? (
-                  <div className="mobile-css-carousel__play coverflow-play-only-cta">
-                    <CtaButton
-                      {...ctaButtonPropsFromTemplate("squircleCTA")}
-                      fillParent
-                      strokeWidth={1}
-                      cornerRadius={999}
-                      auroraBaseColor="#42001b"
-                      auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
-                      glowColors={["#aa085f", "#e00083", "#eb6a00"]}
-                      glowColor="326 90 30"
-                      strokeColor="rgba(170, 8, 95, 0.42)"
-                      labelColor="#ffe0e8"
-                      glowOuterBloom="off"
-                      label="Play"
-                      leadingIcon={
-                        <Play
-                          className="motion-card-play-cta__triangle"
-                          size={11}
-                          strokeWidth={2.4}
-                          fill="currentColor"
-                          aria-hidden
-                        />
-                      }
-                      costAmount={null}
-                      aria-label={`Play ${item.packName || item.name}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onSelectRef.current?.(item);
-                      }}
-                    />
-                  </div>
-                ) : null}
-                {!compact && isActive ? (
-                  <PackSlideHud
+                  <CompactPlayButton
                     item={item}
-                    active
-                    pocketed={pocketed}
-                    buyConfirmOpen={buyConfirmOpen}
-                    buyConfirmLeaving={buyConfirmLeaving}
-                    buyQuantity={buyQuantity}
-                    confirmingAdd={confirmingAdd}
-                    onToggleBuyConfirm={toggleBuyConfirm}
-                    onCloseBuyConfirm={closeBuyConfirm}
-                    onConfirmBuy={confirmActiveBuy}
-                    onBuyQuantityChange={setBuyQuantity}
-                    onAddToPocket={addActiveToPocket}
-                    onBuyConfirmLeaveEnd={() => {
-                      buyConfirmLeavingRef.current = false;
-                      setBuyConfirmLeaving(false);
-                    }}
-                    onConfirmingAddEnd={() => setConfirmingAdd(false)}
+                    onPlay={(pack) => onSelectRef.current?.(pack)}
                   />
                 ) : null}
               </SwiperSlide>
             );
           })}
         </Swiper>
+        <div ref={focusRef} className="mobile-css-carousel__focus is-parked">
+          <video
+            ref={liveVideoRef}
+            className="mobile-css-carousel__video"
+            muted
+            loop
+            playsInline
+            preload="none"
+            aria-hidden
+            onLoadedData={() => {
+              if (parkedRef.current) return;
+              focusRef.current?.classList.add("is-ready");
+              syncLiveClass();
+              const swiper = swiperRef.current;
+              if (swiper) markReady(swiper);
+            }}
+          />
+          {compact ? null : items[activeIndex] ? (
+            <PackSlideHud
+              key={items[activeIndex].id}
+              item={items[activeIndex]}
+              active={hudActive}
+              pocketed={isPackInCart(
+                items[activeIndex].id,
+                items[activeIndex].characterId,
+              )}
+              buyConfirmOpen={buyConfirmOpen}
+              buyConfirmLeaving={buyConfirmLeaving}
+              buyQuantity={buyQuantity}
+              confirmingAdd={confirmingAdd}
+              onToggleBuyConfirm={toggleBuyConfirm}
+              onCloseBuyConfirm={closeBuyConfirm}
+              onConfirmBuy={confirmActiveBuy}
+              onBuyQuantityChange={setBuyQuantity}
+              onAddToPocket={addActiveToPocket}
+              onBuyConfirmLeaveEnd={() => {
+                buyConfirmLeavingRef.current = false;
+                setBuyConfirmLeaving(false);
+              }}
+              onConfirmingAddEnd={() => setConfirmingAdd(false)}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );

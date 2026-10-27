@@ -45,6 +45,7 @@ export {
 } from './packStageLook'
 
 export { useVideoTexture } from './useVideoTexture'
+export { pickPackFaceTexture, usePosterTexture } from './usePosterTexture'
 export {
   acquireVideoTexture,
   clearVideoTextureCache,

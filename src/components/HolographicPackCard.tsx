@@ -1,5 +1,6 @@
 import { m } from "framer-motion";
 import { useState, type PointerEvent, type ReactNode } from "react";
+import { PackFaceVideo } from "@/components/media/PackFaceVideo";
 import { isVideoSrc } from "@/services/models";
 
 export function HolographicPackCard({
@@ -9,6 +10,7 @@ export function HolographicPackCard({
   compact = false,
   interactive = true,
   children,
+  poster,
 }: {
   src: string;
   name: string;
@@ -16,6 +18,7 @@ export function HolographicPackCard({
   compact?: boolean;
   interactive?: boolean;
   children?: ReactNode;
+  poster?: string;
 }) {
   const [light, setLight] = useState({ x: 50, y: 35 });
 
@@ -50,13 +53,10 @@ export function HolographicPackCard({
     >
       <div className="relative size-full overflow-hidden rounded-[21px] bg-[oklch(0.162_0.01_285.17)]">
         {isVideoSrc(src) ? (
-          <video
+          <PackFaceVideo
             src={src}
-            muted
-            loop
-            playsInline
-            autoPlay
-            className="pointer-events-none absolute inset-0 size-full object-cover"
+            poster={poster}
+            className="absolute inset-0 size-full object-cover"
           />
         ) : (
           <img src={src} alt={name} className="absolute inset-0 size-full object-cover" />
