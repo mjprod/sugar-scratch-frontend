@@ -47,11 +47,9 @@ export function RecommendationIntroScreen({
           aria-label="Swipe left means Not for me. Swipe right means I like this."
         >
           <figure className="auth7-intro-demo-col is-pass">
-            <img
-              src={sample}
-              alt=""
-              className="auth7-intro-demo-card auth7-intro-demo-card--left"
-            />
+            <div className="auth7-intro-demo-card auth7-intro-demo-card--left">
+              <img src={sample} alt="" />
+            </div>
             <figcaption className="auth7-intro-dir">
               <span className="auth7-intro-dir-marks" aria-hidden="true">
                 <ArrowLeft strokeWidth={2.4} />
@@ -62,11 +60,9 @@ export function RecommendationIntroScreen({
           </figure>
 
           <figure className="auth7-intro-demo-col is-like">
-            <img
-              src={sample}
-              alt=""
-              className="auth7-intro-demo-card auth7-intro-demo-card--right"
-            />
+            <div className="auth7-intro-demo-card auth7-intro-demo-card--right">
+              <img src={sample} alt="" />
+            </div>
             <figcaption className="auth7-intro-dir">
               <span className="auth7-intro-dir-marks" aria-hidden="true">
                 <Heart fill="currentColor" strokeWidth={0} />

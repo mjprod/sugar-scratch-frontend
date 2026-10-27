@@ -5950,7 +5950,7 @@ body[data-theme="v8"] .auth7-onboard-shell {
   margin: 0 auto;
   padding: var(--space-4) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.628 0.23 297.02 / 0.18), transparent),
+    radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.656 0.212 354.31 / 0.18), transparent),
     oklch(0.146 0.004 285.86);
 }
 
@@ -6113,7 +6113,7 @@ body[data-theme="v8"] .auth7-intro-dir-marks svg {
     justify-content: center;
     padding: var(--space-4) var(--space-6);
     background:
-      radial-gradient(ellipse 55% 45% at 50% 35%, oklch(0.628 0.23 297.02 / 0.14), transparent 70%),
+      radial-gradient(ellipse 55% 45% at 50% 35%, oklch(0.656 0.212 354.31 / 0.14), transparent 70%),
       oklch(0.13 0.005 285.67);
   }
 
