@@ -23,6 +23,10 @@ import {
   StaticCarousel,
   type StaticCarouselItem,
 } from "@/components/static-card/StaticCarousel";
+import {
+  InfluencerHolder,
+  InfluencerHolderSkeleton,
+} from "@/components/collection/InfluencerHolder";
 import { fetchCatalogPhotoCards } from "@/features/game/shared/catalog";
 import { PackPreview } from "@/components/pack-preview/PackPreview";
 import {
@@ -32,10 +36,16 @@ import {
 import "@/components/pack-preview/PackPreview.css";
 import {
   loadModels,
+  modelAvatarUrl,
   modelDisplayName,
+  modelId,
   profileFromModel,
 } from "@/services/models";
-import { loadCreatorBoard } from "@/services/creatorBoard";
+import {
+  collectionProgressFromBoard,
+  loadCreatorBoard,
+  type CollectionProgressCounts,
+} from "@/services/creatorBoard";
 import figmaPoster from "@/assets/component-lab/1e21a68ca6be26dfd06df3fc4951ef8f06b7f7d2.png";
 
 function packPostersFromModel(
@@ -86,6 +96,15 @@ export function ComponentLabPage() {
   const [staticCarouselItems, setStaticCarouselItems] = useState<
     StaticCarouselItem[]
   >([]);
+  const [holderMode, setHolderMode] = useState<"live" | "skeleton">(
+    "skeleton",
+  );
+  const [holderPreview, setHolderPreview] = useState<{
+    name: string;
+    place: string;
+    avatarUrl: string;
+    progress: CollectionProgressCounts;
+  } | null>(null);
   const [threeItems, setThreeItems] = useState<ThreeMotionItem[]>([
     {
       id: "left",
@@ -113,7 +132,7 @@ export function ComponentLabPage() {
   useEffect(() => {
     let cancelled = false;
     void loadModels()
-      .then((models) => {
+      .then(async (models) => {
         if (cancelled) return;
         const juliana =
           models.find((model) => model.id === "julianaval") ?? models[0];
@@ -143,6 +162,17 @@ export function ComponentLabPage() {
             })),
           );
         }
+        const city = juliana.influencerCity?.trim() || "";
+        const country = juliana.influencerCountry?.trim() || "";
+        const id = modelId(juliana);
+        const board = await loadCreatorBoard(id);
+        if (cancelled) return;
+        setHolderPreview({
+          name: modelDisplayName(juliana),
+          place: city && country ? `${city}, ${country}` : city || country,
+          avatarUrl: modelAvatarUrl(juliana) || `/models/${id}/avatar.jpeg`,
+          progress: collectionProgressFromBoard(board),
+        });
       })
       .catch(() => {
         /* Keep the Figma still if the API is down. */
@@ -255,6 +285,60 @@ export function ComponentLabPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Influencer holder</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Collect page row · avatar, name, counts, progress.
+              </p>
+            </div>
+            <div className="flex rounded-full bg-surface-muted p-0.5">
+              {(
+                [
+                  ["skeleton", "Skeleton"],
+                  ["live", "Live"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setHolderMode(value)}
+                  className={[
+                    "rounded-full px-3 py-1 text-[12px] font-medium transition",
+                    holderMode === value
+                      ? "bg-white text-black"
+                      : "text-ink-secondary hover:text-ink",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-6 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-16">
+            <div className="mx-auto w-full max-w-[400px]">
+              {holderMode === "skeleton" ? (
+                <div className="mc-model-list">
+                  <InfluencerHolderSkeleton />
+                  <InfluencerHolderSkeleton />
+                </div>
+              ) : holderPreview ? (
+                <InfluencerHolder
+                  name={holderPreview.name}
+                  place={holderPreview.place}
+                  avatarUrl={holderPreview.avatarUrl}
+                  progress={holderPreview.progress}
+                />
+              ) : (
+                <p className="text-center text-[12px] text-ink-tertiary">
+                  Waiting for a creator from /api/models.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-surface p-5">
           <div>
             <h2 className="text-[15px] font-semibold">Photo gateway</h2>

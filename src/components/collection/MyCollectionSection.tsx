@@ -1,16 +1,16 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { ChevronDown, Layers, Search } from "lucide-react";
 import {
-  ChevronDown,
-  Images,
-  Layers,
-  Search,
-  Sparkles,
-} from "lucide-react";
+  InfluencerHolder,
+  InfluencerHolderSkeleton,
+} from "@/components/collection/InfluencerHolder";
 import { useCreatorsCollectedThemes } from "@/components/collection/MyCollectionLivePanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useSearch } from "@/contexts/SearchContext";
@@ -144,6 +144,17 @@ export function MyCollectionSection({
     return [...ids];
   }, [creators, modelByCreator, models]);
   const { boards, ready: boardsReady } = useCreatorBoards(boardIds);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [fadeTop, setFadeTop] = useState(false);
+  const [fadeBottom, setFadeBottom] = useState(false);
+
+  const updateFades = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    setFadeTop(el.scrollTop > 4);
+    setFadeBottom(max - el.scrollTop > 4);
+  }, []);
 
   const sortedCreators = useMemo(() => {
     const list = [...creators];
@@ -180,6 +191,26 @@ export function MyCollectionSection({
     if (creatorFilter === "all") return known;
     return known.filter((creator) => creator.id === creatorFilter);
   }, [sortedCreators, creatorFilter, modelByCreator, models]);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    updateFades();
+    el.addEventListener("scroll", updateFades, { passive: true });
+    const ro = new ResizeObserver(updateFades);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateFades);
+      ro.disconnect();
+    };
+  }, [updateFades, themesReady, boardsReady, visibleCreators.length]);
+
+  const listFadeClass = [
+    fadeTop ? "has-fade-top" : "",
+    fadeBottom ? "has-fade-bottom" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const creatorFilterLabel =
     creatorFilter === "all"
@@ -302,9 +333,15 @@ export function MyCollectionSection({
       </div>
 
       {!themesReady || !boardsReady ? (
-        <div className="mc-model-list is-skeleton" aria-busy="true">
+        <div
+          ref={listRef}
+          className={["mc-model-list is-skeleton", listFadeClass]
+            .filter(Boolean)
+            .join(" ")}
+          aria-busy="true"
+        >
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="mc-model-card is-skeleton" />
+            <InfluencerHolderSkeleton key={index} />
           ))}
         </div>
       ) : visibleCreators.length === 0 ? (
@@ -322,8 +359,15 @@ export function MyCollectionSection({
           </div>
         </div>
       ) : (
-        <div className="mc-model-list" role="list" aria-label="Models">
-          {visibleCreators.map((creator) => {
+        <div
+          ref={listRef}
+          className={["mc-model-list is-reveal", listFadeClass]
+            .filter(Boolean)
+            .join(" ")}
+          role="list"
+          aria-label="Models"
+        >
+          {visibleCreators.map((creator, index) => {
             const model = modelByCreator.get(creator.id) ?? null;
             const progress = collectionProgressFromBoard(boards[creator.id]);
             const name =
@@ -331,62 +375,15 @@ export function MyCollectionSection({
             const place = locationLabel(model);
 
             return (
-              <button
+              <InfluencerHolder
                 key={creator.id}
-                type="button"
-                className="mc-model-card"
-                role="listitem"
+                index={index}
+                name={name}
+                place={place}
+                avatarUrl={avatarFor(creator, model)}
+                progress={progress}
                 onClick={() => onOpenCreator(creator.id)}
-                aria-label={`${name}, ${progress.owned} of ${progress.total} cards`}
-              >
-                <span className="mc-model-card-glow" aria-hidden="true">
-                  <span className="mc-model-card-glow-blob mc-model-card-glow-blob--a" />
-                  <span className="mc-model-card-glow-blob mc-model-card-glow-blob--b" />
-                </span>
-                <span className="mc-model-avatar-wrap">
-                  <CollectionAvatarRing percent={progress.pct} />
-                  <img
-                    src={avatarFor(creator, model)}
-                    alt=""
-                    className="mc-model-avatar"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </span>
-                <span className="mc-model-body">
-                  <span className="mc-model-name">{name}</span>
-                  {place ? (
-                    <span className="mc-model-place">{place}</span>
-                  ) : null}
-                  <span className="mc-model-metrics">
-                    <span className="mc-model-metric">
-                      <Images size={12} strokeWidth={2.4} aria-hidden />
-                      {progress.staticOwned}/{progress.staticTotal}
-                    </span>
-                    <span className="mc-model-metric">
-                      <Layers size={12} strokeWidth={2.4} aria-hidden />
-                      {progress.motionOwned}/{progress.motionTotal}
-                    </span>
-                    <span className="mc-model-metric">
-                      <Sparkles size={12} strokeWidth={2.4} aria-hidden />
-                      {progress.ultraOwned}/{progress.ultraTotal}
-                    </span>
-                  </span>
-                  <span
-                    className="mc-model-progress"
-                    role="progressbar"
-                    aria-valuenow={progress.pct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`${progress.owned} of ${progress.total}`}
-                  >
-                    <span
-                      className="mc-model-progress-fill"
-                      style={{ width: `${progress.pct}%` }}
-                    />
-                  </span>
-                </span>
-              </button>
+              />
             );
           })}
         </div>
@@ -432,37 +429,6 @@ function useCreatorBoards(creatorIds: string[]): {
   }, [idsKey]);
 
   return { boards, ready };
-}
-
-const AVATAR_RING_R = 34;
-const AVATAR_RING_C = 2 * Math.PI * AVATAR_RING_R;
-
-function CollectionAvatarRing({ percent }: { percent: number }) {
-  const clamped = Math.max(0, Math.min(100, percent));
-  const offset = AVATAR_RING_C - (clamped / 100) * AVATAR_RING_C;
-  return (
-    <span className="mc-model-avatar-ring" aria-hidden="true">
-      <svg viewBox="0 0 80 80">
-        <circle
-          className="mc-model-avatar-ring-track"
-          cx="40"
-          cy="40"
-          r={AVATAR_RING_R}
-          fill="none"
-        />
-        <circle
-          className="mc-model-avatar-ring-arc"
-          cx="40"
-          cy="40"
-          r={AVATAR_RING_R}
-          fill="none"
-          strokeDasharray={AVATAR_RING_C}
-          strokeDashoffset={offset}
-          transform="rotate(-90 40 40)"
-        />
-      </svg>
-    </span>
-  );
 }
 
 function FilterButton({

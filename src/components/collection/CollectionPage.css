@@ -624,6 +624,62 @@ body[data-theme="v8"] .mc-model-list {
   width: 100%;
 }
 
+/* Desktop: four-card window; extra holders scroll inside the column. */
+@media (min-width: 768px) {
+  body[data-theme="v8"] .mc-model-list {
+    max-height: calc(4 * 126px + 3 * var(--space-2));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-top,
+  body[data-theme="v8"] .mc-model-list.has-fade-bottom {
+    padding-inline-end: var(--space-3);
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      #000 0,
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      #000 0,
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-top {
+    -webkit-mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 100%
+    );
+    mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 100%
+    );
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-top.has-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+  }
+}
+
 body[data-theme="v8"] .mc-model-card {
   position: relative;
   z-index: 0;
@@ -642,6 +698,13 @@ body[data-theme="v8"] .mc-model-card {
   color: #fff;
   text-align: left;
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .mc-model-list.is-reveal .mc-model-card {
+    animation: collection-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 7) * 40ms);
+  }
 }
 
 /* Same inset rim stack as liquid-glass nav bubbles, on a plate above the glow. */
@@ -822,7 +885,7 @@ body[data-theme="v8"] .mc-model-progress {
   align-items: center;
   width: 100%;
   height: 15px;
-  margin-top: var(--space-0-5);
+  margin-top: var(--space-2);
   padding: var(--space-0-5) var(--space-3-5) var(--space-0-5) var(--space-0-5);
   box-sizing: border-box;
   overflow: hidden;
@@ -840,6 +903,50 @@ body[data-theme="v8"] .mc-model-progress-fill {
   box-shadow:
     inset 1px 1px 0px -1px #ffffff,
     inset 1px 1px 0px -0.5px #ff79b7;
+}
+
+body[data-theme="v8"] .mc-model-bone {
+  display: block;
+  flex-shrink: 0;
+  background: oklch(1 0 0 / 0.08);
+  animation: search-pulse 1.2s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .mc-model-avatar.mc-model-bone {
+  background: oklch(1 0 0 / 0.08);
+}
+
+body[data-theme="v8"] .mc-model-bone.is-name {
+  width: 140px;
+  max-width: 70%;
+  height: calc(var(--text-headline) * 1.15);
+  border-radius: 6px;
+}
+
+body[data-theme="v8"] .mc-model-bone.is-place {
+  width: 100px;
+  max-width: 50%;
+  height: calc(var(--text-body) * 1.2);
+  margin-top: 2px;
+  border-radius: 5px;
+}
+
+body[data-theme="v8"] .mc-model-bone.is-metric-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+body[data-theme="v8"] .mc-model-bone.is-metric {
+  width: 28px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .mc-model-bone {
+    animation: none;
+  }
 }
 
 body[data-theme="v8"] .mc-diamonds-cta {

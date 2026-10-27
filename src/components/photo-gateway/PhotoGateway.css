@@ -23,6 +23,12 @@
   line-height: 1;
 }
 
+@media (min-width: 981px) {
+  .photo-gateway__badge {
+    font-size: var(--text-title);
+  }
+}
+
 .photo-gateway__badge svg {
   width: 9px;
   height: 12px;

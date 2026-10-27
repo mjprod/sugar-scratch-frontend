@@ -39,6 +39,12 @@ body[data-theme="v8"] .cpv2-profile-pin {
   opacity: 0;
 }
 
+@media (max-width: 767px) {
+  body[data-theme="v8"] .cpv2-profile-pin {
+    margin-top: var(--space-2);
+  }
+}
+
 @media (min-width: 768px) and (max-width: 1023px) {
   body[data-theme="v8"] .cpv2-profile-pin {
     top: calc(var(--app-diamond-offset, 64px) - 3px);
@@ -386,6 +392,12 @@ body[data-theme="v8"] .cpv2-profile-card-socials {
 }
 
 @media (min-width: 768px) {
+  body[data-theme="v8"] .cpv2-profile-card-main {
+    flex: 1;
+    justify-content: center;
+    grid-template-columns: auto auto;
+  }
+
   body[data-theme="v8"] .cpv2-profile-card-socials {
     grid-template-columns: repeat(3, 32px);
     grid-template-rows: 32px;
@@ -781,6 +793,12 @@ body[data-theme="v8"] .cpv2-theme-card-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+  body[data-theme="v8"] .cpv2-theme-card-title {
+    font-size: var(--text-title);
+  }
 }
 
 body[data-theme="v8"] .cpv2-theme-card-count {

@@ -81,9 +81,45 @@ body[data-theme="v8"] {
     radial-gradient(ellipse 70% 45% at 50% -5%, oklch(0.767 0.139 91.06 / 0.16), transparent),
     radial-gradient(ellipse 40% 35% at 100% 100%, oklch(0.656 0.212 354.31 / 0.12), transparent);
   color: oklch(1 0 0);
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(1 0 0 / 0.28) oklch(1 0 0 / 0.08);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+html:has(body[data-theme="v8"]) {
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(1 0 0 / 0.28) oklch(1 0 0 / 0.08);
+}
+
+html:has(body[data-theme="v8"])::-webkit-scrollbar,
+body[data-theme="v8"]::-webkit-scrollbar,
+[data-theme="v8"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html:has(body[data-theme="v8"])::-webkit-scrollbar-track,
+body[data-theme="v8"]::-webkit-scrollbar-track,
+[data-theme="v8"] ::-webkit-scrollbar-track {
+  background: oklch(1 0 0 / 0.08);
+  border-radius: 999px;
+}
+
+html:has(body[data-theme="v8"])::-webkit-scrollbar-thumb,
+body[data-theme="v8"]::-webkit-scrollbar-thumb,
+[data-theme="v8"] ::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.28);
+  border-radius: 999px;
+}
+
+html:has(body[data-theme="v8"])::-webkit-scrollbar-thumb:hover,
+body[data-theme="v8"]::-webkit-scrollbar-thumb:hover,
+[data-theme="v8"] ::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 0.42);
 }
 
 body[data-theme="v8"] input,
@@ -9190,6 +9226,14 @@ body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button {
   --cta-inner-r: calc(0.75rem - var(--cta-stroke, 1px));
   font-size: var(--text-title);
   border-radius: 0.75rem;
+}
+
+/* Desktop: extra block padding on the compact 48px home CTA (inline --cta-h). */
+@media (min-width: 981px) {
+  body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button {
+    --cta-h: calc(3rem + 2 * var(--space-2)) !important;
+    height: var(--cta-h);
+  }
 }
 
 body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button__inner,
