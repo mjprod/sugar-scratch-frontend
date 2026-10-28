@@ -1292,7 +1292,9 @@ export function LiquidGlassNav({
           ) : null}
           {chromeAuthed ? (
           <Link
-            ref={topProfileRef}
+            ref={(node) => {
+              topProfileRef.current = node;
+            }}
             to={pathForTab("profile", true)}
             className={[
               "nav-test-top-profile",
@@ -1335,7 +1337,9 @@ export function LiquidGlassNav({
           </Link>
           ) : (
           <button
-            ref={topProfileRef}
+            ref={(node) => {
+              topProfileRef.current = node;
+            }}
             type="button"
             className={[
               "nav-test-top-profile",
