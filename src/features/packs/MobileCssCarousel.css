@@ -18,10 +18,9 @@
   filter: blur(14px) hue-rotate(304deg);
 }
 
-/* Slightly slower than the shared 480ms packs fade. */
 .mobile-css-carousel-stage.is-glow-fading .packs-glow-stack--base,
 .mobile-css-carousel-stage.is-glow-fading .packs-glow-stack--next {
-  transition: opacity 640ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .mobile-css-carousel-shell {

@@ -735,7 +735,7 @@ export function MobileCssCarousel({
 
   useEffect(() => {
     if (!confirmingAdd) return;
-    const timeout = window.setTimeout(() => setConfirmingAdd(false), 580);
+    const timeout = window.setTimeout(() => setConfirmingAdd(false), 300);
     return () => window.clearTimeout(timeout);
   }, [confirmingAdd]);
 

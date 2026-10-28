@@ -169,7 +169,7 @@ export function CreatorCollectionsDiscovery({
     prevPctRef.current = pct;
     if (was < 100 && pct >= 100 && reward?.status === "claimable") {
       setJustComplete(true);
-      const t = window.setTimeout(() => setJustComplete(false), 1100);
+      const t = window.setTimeout(() => setJustComplete(false), 400);
       return () => window.clearTimeout(t);
     }
   }, [pct, reward?.status, selected, showPersonalProgress]);

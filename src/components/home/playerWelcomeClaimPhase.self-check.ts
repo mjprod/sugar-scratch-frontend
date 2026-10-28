@@ -13,7 +13,7 @@ function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
 }
 
-assert(CLAIM_CARD_EXIT_MS === 620, "matches theme exit duration");
+assert(CLAIM_CARD_EXIT_MS === 280, "matches theme exit duration");
 assert(
   CLAIM_CARD_EXIT_FALLBACK_MS > CLAIM_CARD_EXIT_MS,
   "fallback sits past CSS exit",

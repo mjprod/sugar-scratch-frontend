@@ -25,7 +25,7 @@ body[data-theme="v8"] .cpv2-influencer {
 
 body[data-theme="v8"] .cpv2-profile-pin {
   --cpv2-profile-closed-h: 63px;
-  --cpv2-profile-collapse-duration: 360ms;
+  --cpv2-profile-collapse-duration: 280ms;
   --cpv2-profile-collapse-ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: fixed;
   left: 50%;

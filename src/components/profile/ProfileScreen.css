@@ -39,6 +39,7 @@ body[data-theme="v8"] .profile-identity:focus-visible {
 
 body[data-theme="v8"] .profile-identity:active {
   background: oklch(1 0 0 / 0.06);
+  transform: scale(0.98);
 }
 
 body[data-theme="v8"] .profile-username {

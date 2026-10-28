@@ -255,11 +255,11 @@
   backdrop-filter: blur(0) saturate(1);
   pointer-events: none;
   transition:
-    opacity 480ms ease,
-    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 420ms ease,
-    -webkit-backdrop-filter 520ms ease,
-    backdrop-filter 520ms ease;
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    -webkit-backdrop-filter 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    backdrop-filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Animate glass in when short-height class is applied. */
@@ -308,9 +308,9 @@
   filter: blur(8px);
   transform: translateY(14px);
   transition:
-    opacity 480ms ease,
-    transform 520ms ease,
-    filter 520ms ease;
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform, filter;
 }
 
@@ -321,7 +321,7 @@
   filter: none;
   transform: none;
   visibility: visible;
-  transition: opacity 420ms ease;
+  transition: opacity 240ms cubic-bezier(0.55, 0.06, 0.68, 0.19);
   pointer-events: none;
 }
 
@@ -336,7 +336,7 @@
   opacity: 0;
   visibility: visible;
   pointer-events: none;
-  transition: opacity 420ms ease;
+  transition: opacity 240ms cubic-bezier(0.55, 0.06, 0.68, 0.19);
 }
 
 .coverflow-active-pack-label {
@@ -352,9 +352,9 @@
   transform: translateY(12px);
   pointer-events: none;
   transition:
-    opacity 360ms ease,
-    transform 360ms ease,
-    filter 360ms ease;
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: 0ms;
   will-change: opacity, transform, filter;
 }
@@ -766,15 +766,15 @@
 .coverflow-buy-pack-cta .cta-button__face,
 .coverflow-buy-pack-cta .cta-button__cost {
   transition:
-    opacity 420ms cubic-bezier(0.32, 0.72, 0, 1),
-    filter 420ms cubic-bezier(0.32, 0.72, 0, 1),
-    background 420ms cubic-bezier(0.32, 0.72, 0, 1),
-    background-color 420ms cubic-bezier(0.32, 0.72, 0, 1);
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .coverflow-buy-pack-cta.is-confirming .cta-button-glow {
   transform-origin: center center;
-  animation: coverflow-buy-cta-confirm 560ms both;
+  animation: coverflow-buy-cta-confirm 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1018,9 +1018,9 @@
 	    filter: blur(8px);
 	    transform: translateY(10px);
 	    transition:
-	      opacity 360ms ease,
-	      transform 380ms ease,
-	      filter 380ms ease;
+	      opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+	      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+	      filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
 	  }
 
 	  .coverflow-pack-html--remove.is-visible .coverflow-cart-remove-wrap {

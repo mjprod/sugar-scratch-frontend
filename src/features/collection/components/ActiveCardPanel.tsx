@@ -513,8 +513,8 @@ function PlayingPopup({
   const [giftExiting, setGiftExiting] = useState(false)
   const giftExitTimerRef = useRef<number | null>(null)
   const giftVideoRef = useRef<HTMLVideoElement | null>(null)
-  // Card exit delay (~280ms) + card transition (~820ms).
-  const GIFT_EXIT_MS = 1120
+  // Matches gift-postcard exit (280ms).
+  const GIFT_EXIT_MS = 280
   // Don't block the entrance forever on slow networks.
   const GIFT_VIDEO_READY_FALLBACK_MS = 2200
 

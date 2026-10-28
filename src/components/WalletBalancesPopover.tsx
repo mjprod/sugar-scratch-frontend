@@ -435,7 +435,7 @@ export function WalletBalancesPopover({
           {showPreview ? (
             <DiamondLottie
               className="wallet-balances-popover__icon wallet-balances-popover__icon--preview-diamond"
-              size={14}
+              size="1em"
               animated
               loop
               autoplay
@@ -444,7 +444,7 @@ export function WalletBalancesPopover({
           ) : (
             <CoinLottie
               className="wallet-balances-popover__icon wallet-balances-popover__icon--dust"
-              size={16}
+              size="1em"
               aria-hidden
             />
           )}

@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { CollectionAvatarRing } from "@/components/collection/CollectionAvatarRing";
 import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import {
   collectionProgressFromBoard,
@@ -226,7 +227,7 @@ export function ContinueCollectingSection({
               className="continue-collecting-card is-shim"
               aria-hidden="true"
             />
-            {items.map((item) => {
+            {items.map((item, index) => {
               const card = toCard(item);
               return (
                 <CollectionCard
@@ -235,6 +236,7 @@ export function ContinueCollectingSection({
                   collectProgress={progressById[card.id]}
                   hideProgress={hideProgress}
                   avatarOnly={avatarOnly}
+                  index={index}
                   onClick={() => {
                     onCardClick?.(card.id);
                     onOpen?.(item);
@@ -289,12 +291,14 @@ function CollectionCard({
   onClick,
   hideProgress = false,
   avatarOnly = false,
+  index,
 }: {
   card: CollectionCardData;
   collectProgress?: CollectionProgressCounts;
   onClick: () => void;
   hideProgress?: boolean;
   avatarOnly?: boolean;
+  index: number;
 }) {
   const progressCurrent = collectProgress?.owned ?? card.progressCurrent;
   const progressTotal = collectProgress?.total ?? card.progressTotal;
@@ -324,11 +328,14 @@ function CollectionCard({
       }
     >
       <div className="continue-collecting-avatar-wrap">
-        <ProgressRing
-          percent={hideProgress ? 0 : percent}
-          color={color}
-          collectStyle={avatarOnly}
-        />
+        {avatarOnly ? (
+          <CollectionAvatarRing
+            percent={hideProgress ? 0 : percent}
+            index={index}
+          />
+        ) : (
+          <ProgressRing percent={hideProgress ? 0 : percent} color={color} />
+        )}
         <img
           src={card.avatarUrl}
           alt=""
@@ -378,18 +385,10 @@ function CollectionCard({
   );
 }
 
-function ProgressRing({
-  percent,
-  color,
-  collectStyle = false,
-}: {
-  percent: number;
-  color: string;
-  collectStyle?: boolean;
-}) {
-  const r = collectStyle ? 34 : 54;
+function ProgressRing({ percent, color }: { percent: number; color: string }) {
+  const r = 54;
   const c = 2 * Math.PI * r;
-  const size = collectStyle ? 80 : 120;
+  const size = 120;
   const mid = size / 2;
   const target = c - (Math.min(100, Math.max(0, percent)) / 100) * c;
   const [offset, setOffset] = useState(c);
@@ -406,12 +405,7 @@ function ProgressRing({
 
   return (
     <span
-      className={[
-        "continue-collecting-ring",
-        collectStyle ? "is-collect" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className="continue-collecting-ring"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
@@ -428,16 +422,16 @@ function ProgressRing({
           cy={mid}
           r={r}
           fill="none"
-          stroke={collectStyle ? undefined : "oklch(1 0 0 / 0.08)"}
-          strokeWidth={collectStyle ? undefined : "4"}
+          stroke="oklch(1 0 0 / 0.08)"
+          strokeWidth="4"
         />
         <circle
           cx={mid}
           cy={mid}
           r={r}
           fill="none"
-          stroke={collectStyle ? undefined : color}
-          strokeWidth={collectStyle ? undefined : "4"}
+          stroke={color}
+          strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={offset}

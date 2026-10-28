@@ -23,6 +23,7 @@ body[data-theme="v8"] .settings-row:hover:not(.is-static) .settings-row-chevron 
 
 body[data-theme="v8"] .settings-row:active:not(.is-static) {
   background: oklch(1 0 0 / 0.07);
+  transform: scale(0.98);
 }
 
 body[data-theme="v8"] .settings-row:focus-visible {

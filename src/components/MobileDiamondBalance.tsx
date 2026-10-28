@@ -239,7 +239,7 @@ export function MobileDiamondUtility({
         return;
       }
       setLoginReveal(true);
-      const timer = window.setTimeout(() => setLoginReveal(false), 1550);
+      const timer = window.setTimeout(() => setLoginReveal(false), 400);
       return () => window.clearTimeout(timer);
     }
 
@@ -270,7 +270,7 @@ export function MobileDiamondUtility({
     startTimer = window.setTimeout(() => {
       pendingLogoutRef.current = false;
       setLogoutReveal(true);
-      endTimer = window.setTimeout(() => setLogoutReveal(false), 1100);
+      endTimer = window.setTimeout(() => setLogoutReveal(false), 400);
     }, 0);
 
     return () => {

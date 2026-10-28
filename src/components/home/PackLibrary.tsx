@@ -30,7 +30,7 @@ const ROOT_VARIANTS = {
 const BACKDROP_VARIANTS = {
   hidden: {
     opacity: 0,
-    transition: { duration: 0.22, ease: "easeOut" as const },
+    transition: { duration: 0.22, ease: "easeIn" as const },
   },
   visible: {
     opacity: 1,
