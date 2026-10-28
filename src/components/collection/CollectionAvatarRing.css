@@ -96,8 +96,8 @@ body[data-theme="v8"] .mc-model-avatar-ring svg {
   body[data-theme="v8"] .mc-model-avatar-ring-glow,
   body[data-theme="v8"] .mc-model-avatar-ring-arc,
   body[data-theme="v8"] .mc-model-avatar-ring-core {
-    animation: mc-ring-grow 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: calc(min(var(--mc-i, 0), 7) * 80ms + 160ms);
+    animation: mc-ring-grow 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 3) * 40ms);
   }
 }
 

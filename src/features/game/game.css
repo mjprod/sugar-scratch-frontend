@@ -718,8 +718,10 @@
 
 .stage-game__bottom-chrome-status-cards {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-1);
   /* Never collapse under the brand logo — that was clipping the coin digits. */
   flex: 0 0 auto;
   min-width: max-content;
@@ -735,9 +737,14 @@
   -webkit-user-select: none;
 }
 
+.stage-game__bottom-chrome-status-cards .stage-game__cards-left {
+  align-self: flex-start;
+}
+
 /* Replay of an already-played card: the hand earns no coins or diamonds. */
 .stage-game__free-play-pill {
-  margin-right: var(--space-2);
+  order: 1;
+  margin-right: 0;
   padding: var(--space-1) var(--space-2-5);
   border-radius: 999px;
   background: oklch(0 0 0 / 0.45);

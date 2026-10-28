@@ -609,7 +609,7 @@ body[data-theme="v8"] .home-site-footer-link {
   border: 0;
   background: transparent;
   color: oklch(1 0 0 / 0.48);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 500;
   line-height: 1.1;
   text-decoration: none;
@@ -1215,7 +1215,7 @@ body[data-theme="v8"] .continue-collecting-ring-svg {
 }
 
 body[data-theme="v8"] .continue-collecting-ring-arc {
-  transition: stroke-dashoffset 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: stroke-dashoffset 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body[data-theme="v8"] .continue-collecting-avatar {
@@ -2872,7 +2872,7 @@ body[data-theme="v8"] .player-welcome-claimed.is-enter .player-welcome-next {
 
 body[data-theme="v8"] .player-welcome-claimed-label {
   margin: 0;
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.78);
@@ -2880,7 +2880,7 @@ body[data-theme="v8"] .player-welcome-claimed-label {
 
 body[data-theme="v8"] .player-welcome-next {
   margin: 0;
-  font-size: var(--text-caption);
+  font-size: var(--text-title);
   font-weight: 500;
   letter-spacing: 0.01em;
   color: rgba(255, 255, 255, 0.55);
@@ -6568,10 +6568,10 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 }
 
 .wallet-balances-popover.is-diamonds-only {
-  width: 5rem;
+  width: max-content;
   min-width: 5rem;
-  max-width: min(5rem, calc(100vw - 2rem));
-  padding: 0.7rem 0.55rem;
+  max-width: min(8rem, calc(100vw - 2rem));
+  padding: 0.7rem var(--space-3);
   transform-origin: 100% 0;
 }
 
@@ -6748,6 +6748,8 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   box-shadow: none;
   color: #fff;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
   /* Hang outside the pill: 2.4rem right, 2.55rem down. */
   transform: translate(2.4rem, 2.55rem);
   transition:
@@ -6832,6 +6834,7 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
   height: 1.05rem;
   color: #fff;
   opacity: 0.5;
+  pointer-events: none;
   /* Top solid → bottom transparent; opaque stop lower so more of the shape shows. */
   -webkit-mask-image: linear-gradient(to top, transparent 0%, black 55%);
   mask-image: linear-gradient(to top, transparent 0%, black 55%);
@@ -8666,35 +8669,42 @@ body[data-theme="v8"] .home-v2 .explore-creators-scroll {
   scroll-behavior: auto;
 }
 
-/* Continue collecting — same 65px wrap + neon ring as Collect */
+/* Continue collecting — 1.5× the Collect 65px wrap + neon ring */
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip {
-  --cc-avatar-size: 65px;
-  --cc-gap: 12px;
+  --cc-avatar-size: 97.5px;
+  --cc-gap: var(--space-4);
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card,
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-card.is-avatar-only {
-  width: 80px;
+  width: 97.5px;
   gap: 0;
   overflow: visible;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar-wrap {
-  width: 65px;
-  height: 65px;
+  width: 97.5px;
+  height: 97.5px;
   overflow: visible;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-scroll {
-  padding-block: 24px;
+  padding-block: 36px;
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-avatar {
   position: relative;
   z-index: 1;
-  width: 65px;
-  height: 65px;
+  width: 97.5px;
+  height: 97.5px;
   border-radius: 60px;
+}
+
+body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .mc-model-avatar-ring {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1.5);
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting.is-avatar-strip .continue-collecting-meta,

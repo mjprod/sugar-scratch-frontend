@@ -6,7 +6,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronDown, Layers, Search } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Layers, Search, Users, X } from "lucide-react";
 import {
   InfluencerHolder,
   InfluencerHolderSkeleton,
@@ -33,10 +34,13 @@ import {
 type SortId = "newest" | "oldest" | "progress";
 type FilterMenu = "creator" | "sort" | null;
 
-const SORT_OPTIONS: Array<{ id: SortId; label: string }> = [
-  { id: "newest", label: "Newest first" },
-  { id: "oldest", label: "Oldest first" },
-  { id: "progress", label: "Most complete" },
+const FILTER_MOTION_MS = 220;
+const CREATOR_SHEET_MS = 420;
+
+const SORT_OPTIONS: Array<{ id: SortId; label: string; shortLabel: string }> = [
+  { id: "newest", label: "Newest first", shortLabel: "Newest" },
+  { id: "oldest", label: "Oldest first", shortLabel: "Oldest" },
+  { id: "progress", label: "Most complete", shortLabel: "Complete" },
 ];
 
 function locationLabel(model: BackendModel | null | undefined): string {
@@ -165,7 +169,7 @@ export function MyCollectionSection({
     return list;
   }, [creators, sort]);
 
-  const visibleCreators = useMemo(() => {
+  const collectedCreators = useMemo(() => {
     // Local ledger can still name retired fixtures (ep1 / Neon Rain). Only
     // creators that exist on GET /api/models belong on this list, and a
     // display-name slug must collapse onto the board creator id.
@@ -187,10 +191,26 @@ export function MyCollectionSection({
         byBoardId.set(id, row);
       }
     }
-    const known = [...byBoardId.values()];
-    if (creatorFilter === "all") return known;
-    return known.filter((creator) => creator.id === creatorFilter);
-  }, [sortedCreators, creatorFilter, modelByCreator, models]);
+    return [...byBoardId.values()];
+  }, [sortedCreators, modelByCreator, models]);
+
+  const visibleCreators = useMemo(() => {
+    if (creatorFilter === "all") return collectedCreators;
+    return collectedCreators.filter((creator) => creator.id === creatorFilter);
+  }, [collectedCreators, creatorFilter]);
+
+  const pickerCreators = useMemo(() => {
+    const rows = collectedCreators.map((creator) => {
+      const model = modelByCreator.get(creator.id) ?? null;
+      return {
+        id: creator.id,
+        name: (model ? modelDisplayName(model) : "") || creator.name,
+        avatarUrl: avatarFor(creator, model),
+      };
+    });
+    rows.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    return rows;
+  }, [collectedCreators, modelByCreator]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -215,9 +235,10 @@ export function MyCollectionSection({
   const creatorFilterLabel =
     creatorFilter === "all"
       ? "All Creators"
-      : (creators.find((c) => c.id === creatorFilter)?.name ?? "All Creators");
-  const sortLabel =
-    SORT_OPTIONS.find((option) => option.id === sort)?.label ?? "Sort";
+      : (pickerCreators.find((c) => c.id === creatorFilter)?.name ??
+        "All Creators");
+  const sortShortLabel =
+    SORT_OPTIONS.find((option) => option.id === sort)?.shortLabel ?? "Sort";
 
   if (creators.length === 0) {
     return (
@@ -269,7 +290,7 @@ export function MyCollectionSection({
             }
           />
           <FilterButton
-            label={openMenu === "sort" || sort !== "newest" ? sortLabel : "Sort"}
+            label={sortShortLabel}
             open={openMenu === "sort"}
             active={sort !== "newest"}
             leadingIcon={
@@ -286,50 +307,34 @@ export function MyCollectionSection({
         >
           <Search size={16} strokeWidth={2.2} aria-hidden />
         </button>
-        {openMenu ? (
-          <FilterSheet
-            title={openMenu === "creator" ? "Creators" : "Sort"}
-            anchor="left"
-            onClose={() => setOpenMenu(null)}
-          >
-          {openMenu === "creator" ? (
-            <>
-              <FilterOption
-                label="All Creators"
-                selected={creatorFilter === "all"}
-                onSelect={() => {
-                  setCreatorFilter("all");
-                  setOpenMenu(null);
-                }}
-              />
-              {visibleCreators.map((creator) => (
-                <FilterOption
-                  key={creator.id}
-                  label={creator.name}
-                  selected={creatorFilter === creator.id}
-                  onSelect={() => {
-                    setCreatorFilter(creator.id);
-                    setOpenMenu(null);
-                  }}
-                />
-              ))}
-            </>
-          ) : null}
-          {openMenu === "sort"
-            ? SORT_OPTIONS.map((option) => (
-                <FilterOption
-                  key={option.id}
-                  label={option.label}
-                  selected={sort === option.id}
-                  onSelect={() => {
-                    setSort(option.id);
-                    setOpenMenu(null);
-                  }}
-                />
-              ))
-            : null}
-          </FilterSheet>
-        ) : null}
+        <FilterSheet
+          open={openMenu === "sort"}
+          title="Sort"
+          anchor="left"
+          onClose={() => setOpenMenu(null)}
+        >
+          {SORT_OPTIONS.map((option) => (
+            <FilterOption
+              key={option.id}
+              label={option.label}
+              selected={sort === option.id}
+              onSelect={() => {
+                setSort(option.id);
+                setOpenMenu(null);
+              }}
+            />
+          ))}
+        </FilterSheet>
+        <CreatorPickerOverlay
+          open={openMenu === "creator"}
+          selectedId={creatorFilter}
+          creators={pickerCreators}
+          onSelect={(id) => {
+            setCreatorFilter(id);
+            setOpenMenu(null);
+          }}
+          onClose={() => setOpenMenu(null)}
+        />
       </div>
 
       {!themesReady || !boardsReady ? (
@@ -465,23 +470,178 @@ function FilterButton({
   );
 }
 
+function CreatorPickerOverlay({
+  open,
+  selectedId,
+  creators,
+  onSelect,
+  onClose,
+}: {
+  open: boolean;
+  selectedId: string;
+  creators: Array<{ id: string; name: string; avatarUrl: string }>;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [visible, setVisible] = useState(open);
+  const [leaving, setLeaving] = useState(false);
+  const frozen = useRef(creators);
+  const onCloseRef = useRef(onClose);
+  if (open) frozen.current = creators;
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setLeaving(false);
+      return;
+    }
+    if (!visible) return;
+    setLeaving(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = window.setTimeout(
+      () => {
+        setVisible(false);
+        setLeaving(false);
+      },
+      reduce ? 0 : CREATOR_SHEET_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [open, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const locked: Array<{ el: HTMLElement; overflow: string }> = [];
+    document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((el) => {
+      locked.push({ el, overflow: el.style.overflow });
+      el.style.overflow = "hidden";
+    });
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onCloseRef.current();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      for (const item of locked) item.el.style.overflow = item.overflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [visible]);
+
+  if (!visible || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className={[
+        "pack-library-root",
+        "mc-creator-overlay",
+        "fixed inset-0 z-[5150] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden",
+        leaving ? "is-leaving" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      role="presentation"
+    >
+      <button
+        type="button"
+        className="pack-library-overlay mc-creator-overlay-scrim absolute inset-0"
+        aria-label="Close creators"
+        onClick={onClose}
+      />
+      <div
+        className="pack-library-panel mc-creator-overlay-sheet relative z-[1] mx-auto mt-auto flex min-h-0 w-full max-w-[75rem] flex-1 flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Creators"
+      >
+        <div className="mc-creator-overlay-inner">
+          <div className="mc-creator-overlay-head">
+            <p className="hub-section-label mc-creator-overlay-title">
+              Creators
+            </p>
+            <button
+              type="button"
+              className="mc-creator-overlay-close"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="mc-creator-overlay-scroll">
+            <ul className="mc-creator-overlay-list">
+              <FilterOption
+                label="All Creators"
+                selected={selectedId === "all"}
+                onSelect={() => onSelect("all")}
+                icon={<Users size={18} strokeWidth={2.2} aria-hidden="true" />}
+              />
+              {frozen.current.map((creator) => (
+                <FilterOption
+                  key={creator.id}
+                  label={creator.name}
+                  selected={selectedId === creator.id}
+                  onSelect={() => onSelect(creator.id)}
+                  avatarUrl={creator.avatarUrl}
+                />
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function FilterSheet({
+  open,
   title,
   anchor,
   onClose,
   children,
 }: {
+  open: boolean;
   title: string;
   anchor: "left" | "right";
   onClose: () => void;
   children: ReactNode;
 }) {
+  const [visible, setVisible] = useState(open);
+  const [leaving, setLeaving] = useState(false);
+  const frozen = useRef({ title, children });
+  if (open) frozen.current = { title, children };
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setLeaving(false);
+      return;
+    }
+    if (!visible) return;
+    setLeaving(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = window.setTimeout(
+      () => {
+        setVisible(false);
+        setLeaving(false);
+      },
+      reduce ? 0 : FILTER_MOTION_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [open, visible]);
+
+  if (!visible) return null;
   return (
     <div
       className={[
         "my-collection-filter-overlay",
         anchor === "right" ? "is-anchor-right" : "is-anchor-left",
-      ].join(" ")}
+        leaving ? "is-leaving" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="presentation"
     >
       <button
@@ -494,10 +654,10 @@ function FilterSheet({
         className="my-collection-filter-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={frozen.current.title}
       >
-        <p className="my-collection-filter-title">{title}</p>
-        <ul className="my-collection-filter-list">{children}</ul>
+        <p className="my-collection-filter-title">{frozen.current.title}</p>
+        <ul className="my-collection-filter-list">{frozen.current.children}</ul>
       </div>
     </div>
   );
@@ -507,10 +667,14 @@ function FilterOption({
   label,
   selected,
   onSelect,
+  avatarUrl,
+  icon,
 }: {
   label: string;
   selected: boolean;
   onSelect: () => void;
+  avatarUrl?: string;
+  icon?: ReactNode;
 }) {
   return (
     <li>
@@ -518,6 +682,7 @@ function FilterOption({
         type="button"
         className={[
           "my-collection-filter-option",
+          avatarUrl || icon ? "has-face" : "",
           selected ? "is-selected" : "",
         ]
           .filter(Boolean)
@@ -525,15 +690,29 @@ function FilterOption({
         aria-pressed={selected}
         onClick={onSelect}
       >
-        <span
-          className={[
-            "my-collection-filter-radio",
-            selected ? "is-on" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-hidden="true"
-        />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="mc-creator-overlay-avatar"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : icon ? (
+          <span className="mc-creator-overlay-avatar is-all" aria-hidden="true">
+            {icon}
+          </span>
+        ) : (
+          <span
+            className={[
+              "my-collection-filter-radio",
+              selected ? "is-on" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-hidden="true"
+          />
+        )}
         <span>{label}</span>
       </button>
     </li>

@@ -5,6 +5,8 @@ import { lottieRenderConfig } from "@/utils/lottieRender";
 export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond%20Coin.lottie";
 /** Still coin shown until the deferred Lottie mounts. */
 const COIN_STILL_SRC = "/images/coin.webp";
+/** CSS zoom on the player — pass the same value as extraScale so the canvas stays sharp. */
+const COIN_LOTTIE_ZOOM = 1.6;
 
 type CoinLottieProps = {
   className?: string;
@@ -63,11 +65,11 @@ export function CoinLottie({
         autoplay={autoplay}
         loop={loop}
         speed={speed}
-        renderConfig={lottieRenderConfig()}
+        renderConfig={lottieRenderConfig({ extraScale: COIN_LOTTIE_ZOOM })}
         style={{
           width: "100%",
           height: "100%",
-          transform: "scale(1.38)",
+          transform: `scale(${COIN_LOTTIE_ZOOM})`,
           transformOrigin: "center",
         }}
       />

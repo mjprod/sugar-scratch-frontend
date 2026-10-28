@@ -10,10 +10,10 @@ import {
   useState,
   type AnimationEvent as ReactAnimationEvent,
   type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { useConvertPress } from "@/hooks/useConvertPress";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 	import { formatCompactBalance } from "@/lib/formatBalance";
@@ -37,8 +37,7 @@ export type WalletBalancesPopoverProps = {
   onLeaveEnd?: () => void;
   /**
    * Convert Dust → Diamonds.
-   * Desktop: hover previews max affordable diamonds on the Dust value.
-   * Coarse pointer (mobile): tap runs the exchange immediately.
+   * Hover/hold previews the exchange; tap converts; hold-release cancels.
    */
   onConvertDust?: (option: CoinExchangeOption) => boolean | Promise<boolean>;
   /** Game HUD: same shell, diamond balance only — no dust or convert. */
@@ -109,7 +108,6 @@ export function WalletBalancesPopover({
 }: WalletBalancesPopoverProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState<FixedBox | null>(null);
-  const [previewExchange, setPreviewExchange] = useState(false);
   const [converting, setConverting] = useState(false);
   const convertingRef = useRef(false);
 
@@ -118,11 +116,15 @@ export function WalletBalancesPopover({
     [coins],
   );
   const canConvert = Boolean(onConvertDust && affordable && !converting);
+  const { preview: previewExchange, clearPreview, convertButtonProps } =
+    useConvertPress(canConvert, () => {
+      void runConvert();
+    });
 
   useLayoutEffect(() => {
     if (!open && !leaving) {
       setBox(null);
-      setPreviewExchange(false);
+      clearPreview();
       setConverting(false);
       convertingRef.current = false;
       return;
@@ -141,7 +143,7 @@ export function WalletBalancesPopover({
             // Inset from the button's top-right so the bubble clears the progress border.
             top: rect.top + 50,
             left: rect.right - 40,
-            width: 5 * 16,
+            width: 0,
           }
         : {
             // Sit directly under the Diamonds top-nav control.
@@ -289,21 +291,13 @@ export function WalletBalancesPopover({
     try {
       const ok = await onConvertDust(affordable);
       if (ok) {
-        setPreviewExchange(false);
+        clearPreview();
         onClose();
       }
     } finally {
       convertingRef.current = false;
       setConverting(false);
     }
-  }
-
-  function handleConvertClick(event: ReactMouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    event.preventDefault();
-    if (!canConvert) return;
-    // Mobile: tap converts immediately. Desktop: click also converts after hover preview.
-    void runConvert();
   }
 
   if (!open && !leaving) return null;
@@ -313,20 +307,17 @@ export function WalletBalancesPopover({
   const previewAmount = affordable
     ? formatExchangeDiamondAmount(affordable.diamonds)
     : null;
-  // Default always Dust balance; diamond exchange amount only while hovering convert.
   const showPreview =
-    previewExchange &&
-    Boolean(previewAmount) &&
-    !isCoarsePointer() &&
-    !converting;
+    previewExchange && Boolean(previewAmount) && !converting;
 
   const style: CSSProperties | undefined = box
     ? {
         position: "fixed",
         top: box.top,
         left: box.left,
-        width: box.width,
-        minWidth: box.width,
+        ...(diamondsOnly
+          ? {}
+          : { width: box.width, minWidth: box.width }),
         transform: diamondsOnly ? "translateX(-100%)" : "translateX(-50%)",
         transformOrigin: diamondsOnly ? "100% 0" : undefined,
         zIndex: 5200,
@@ -405,13 +396,7 @@ export function WalletBalancesPopover({
               .join(" ")}
             aria-label={convertAria}
             disabled={!canConvert}
-            onMouseEnter={() => {
-              // Preview only on pointer hover — never on focus (dialog autofocus
-              // would otherwise swap Dust → diamonds immediately on open).
-              if (affordable && !isCoarsePointer()) setPreviewExchange(true);
-            }}
-            onMouseLeave={() => setPreviewExchange(false)}
-            onClick={handleConvertClick}
+            {...convertButtonProps}
           >
             <ConvertDustIcon className="wallet-balances-popover__convert-icon" />
           </button>
@@ -444,7 +429,7 @@ export function WalletBalancesPopover({
           ) : (
             <CoinLottie
               className="wallet-balances-popover__icon wallet-balances-popover__icon--dust"
-              size="1em"
+              size="1.5em"
               aria-hidden
             />
           )}

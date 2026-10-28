@@ -31,7 +31,7 @@ import "@/features/packs/packs.css";
 import "./MobileCssCarousel.css";
 
 const BUY_PACK_CTA_SIZE_MOBILE = {
-  width: 176,
+  width: 159,
   height: 60,
   strokeWidth: 2,
 };
