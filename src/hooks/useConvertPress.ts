@@ -77,6 +77,12 @@ export function useConvertPress(canConvert: boolean, onTap: () => void) {
       stopTouchHold();
     },
     convertButtonProps: {
+      onPointerMove: (event: PointerEvent<HTMLButtonElement>) => {
+        if (!canConvertRef.current) return;
+        if (event.pointerType !== "mouse") return;
+        if (event.buttons !== 0) return;
+        setPreview(true);
+      },
       onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
         if (!canConvertRef.current) return;
         heldRef.current = false;
