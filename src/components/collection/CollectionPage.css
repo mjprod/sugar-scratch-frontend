@@ -786,10 +786,11 @@ body[data-theme="v8"] .mc-model-avatar-wrap {
 
 body[data-theme="v8"] .mc-model-avatar-ring {
   position: absolute;
-  inset: -7.5px;
+  /* 16px pad around the 80px ring so the SVG glow filter isn't mask-clipped. */
+  inset: -23.5px;
   z-index: 0;
-  width: 80px;
-  height: 80px;
+  width: 112px;
+  height: 112px;
   pointer-events: none;
   overflow: visible;
   /* Hide the stroke's start cap (and its glow) at 12 o'clock. Fade in after. */
@@ -853,15 +854,10 @@ body[data-theme="v8"] .mc-model-avatar-ring-glow {
 body[data-theme="v8"] .mc-model-avatar-ring-arc {
   stroke: #aa004f;
   stroke-width: 5;
-  filter:
-    drop-shadow(0 0 1px #ffffff)
-    drop-shadow(0 0 4px #ff79b7)
-    drop-shadow(0 0 8px #ff0082);
 }
 
 body[data-theme="v8"] .mc-model-avatar-ring-core {
   stroke-width: 0.5;
-  filter: drop-shadow(0 0 4px oklch(0.83 0.16 343.76));
 }
 
 @media (prefers-reduced-motion: no-preference) {

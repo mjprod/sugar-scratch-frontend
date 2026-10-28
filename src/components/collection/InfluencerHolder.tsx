@@ -44,6 +44,15 @@ function CollectionAvatarRing({ percent }: { percent: number }) {
       }
     >
       <svg viewBox="0 0 80 80">
+        <circle
+          className="mc-model-avatar-ring-track"
+          cx="40"
+          cy="40"
+          r={AVATAR_RING_R}
+          fill="none"
+        />
+      </svg>
+      <svg className="mc-model-avatar-ring-progress" viewBox="0 0 80 80">
         <defs>
           <linearGradient
             id={coreId}
@@ -60,13 +69,6 @@ function CollectionAvatarRing({ percent }: { percent: number }) {
             <stop offset="100%" stopColor="oklch(0.75 0.21 54.14)" />
           </linearGradient>
         </defs>
-        <circle
-          className="mc-model-avatar-ring-track"
-          cx="40"
-          cy="40"
-          r={AVATAR_RING_R}
-          fill="none"
-        />
         <g transform="rotate(-90 40 40)">
           <circle
             className="mc-model-avatar-ring-glow"
