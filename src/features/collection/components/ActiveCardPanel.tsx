@@ -178,7 +178,7 @@ type GiftTextViewport = 'desktop' | 'mobile'
 type GiftTextPresets = Record<GiftTextViewport, GiftTextDebugState>
 
 const GIFT_TEXT_DEBUG_STORAGE_KEY = 'sugar.giftTextDebug.v4'
-const GIFT_TEXT_MOBILE_MQ = '(max-width: 720px)'
+const GIFT_TEXT_MOBILE_MQ = '(max-width: 820px)'
 
 function defaultGiftTextDesktop(
   toName: string,

@@ -57,7 +57,7 @@ body[data-theme="v8"] .settings-row-chevron {
   transition: color 0.15s ease;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 821px) {
 
   body[data-theme="v8"] .settings-row {
     min-height: 58px;

@@ -6,7 +6,7 @@ import { LpBuildJoin } from "@/pages/lp-build/LpBuildJoin";
 import { LpBuildScratch } from "@/pages/lp-build/LpBuildScratch";
 import { LpBuildShell } from "@/pages/lp-build/LpBuildShell";
 
-const DESKTOP_MQ = "(min-width: 769px)";
+const DESKTOP_MQ = "(min-width: 821px)";
 
 const SECTION_IDS = [
   "lp-hero",

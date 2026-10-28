@@ -445,20 +445,25 @@
 }
 
 .history-empty-cta {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 240px);
+  height: 44px;
+  min-height: 44px;
+  overflow: visible;
+}
+
+.history-empty-cta--ghost {
   min-height: 2.75rem;
   padding: 0.55rem 1.15rem;
   border: 0;
   border-radius: 999px;
-  background: oklch(0.55 0.18 330);
-  color: white;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.8);
   font-size: var(--text-body);
   font-weight: 600;
   cursor: pointer;
-}
-
-.history-empty-cta--ghost {
-  background: oklch(1 0 0 / 0.08);
-  color: oklch(1 0 0 / 0.8);
 }
 
 .history-skeleton {

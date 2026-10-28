@@ -117,7 +117,7 @@
   mix-blend-mode: screen;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 820px) {
 
   /* Mobile bloom pose (DEFAULT_SWIPE_CIRCLE_MOBILE). */
   .packs-circle--bloom {

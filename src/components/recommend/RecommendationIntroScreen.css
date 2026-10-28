@@ -189,7 +189,7 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 821px) {
 
   body[data-theme="v8"] .auth7-intro-panel {
     max-width: none;
