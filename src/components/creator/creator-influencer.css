@@ -276,7 +276,7 @@ body[data-theme="v8"] .cpv2-profile-card-follow {
   justify-content: center;
   min-height: 44px;
   min-width: 44px;
-  padding: 0 14px;
+  padding: 0 var(--space-3-5);
   border: 1px solid oklch(1 0 0 / 0.22);
   border-radius: 999px;
   background: oklch(1 0 0 / 0.14);
