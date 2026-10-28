@@ -215,9 +215,9 @@ export function PlayerWelcomeBar({
               <span className="player-welcome-gift__bow" />
             </span>
             <div className="player-welcome-copy">
-              <h3 id={titleId} className="player-welcome-title">
+              <h2 id={titleId} className="player-welcome-title">
                 {greetingTitle}
-              </h3>
+              </h2>
             </div>
           </div>
 

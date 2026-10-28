@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Search, User } from "lucide-react";
@@ -22,9 +23,19 @@ import {
 import { BorderGlow } from "@/components/ui/BorderGlow";
 import { useAuth } from "@/contexts/useAuth";
 import type { AppTab } from "@/types/app";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { pathForTab } from "@/routes/Paths";
 import { DESKTOP_MIN_PX } from "@/lib/navChrome";
 import "./LiquidGlassNav.css";
+
+function isModifiedClick(event: {
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+}) {
+  return event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
+}
 
 const DESKTOP_MQ = `(min-width: ${DESKTOP_MIN_PX}px)`;
 
@@ -252,23 +263,25 @@ export function LiquidGlassNav({
   searchActive = false,
   hideDock = false,
 }: LiquidGlassNavProps) {
-  const { authed, guestAuthLabel, inboxUnread, openCreateAccount } = useAuth();
+  const { authed, authReady, hasLoggedInBefore, guestAuthLabel, inboxUnread, openCreateAccount } =
+    useAuth();
+  const chromeAuthed = authReady ? authed : hasLoggedInBefore;
   const { pathname } = useLocation();
   const creatorRoute = pathname.startsWith("/creator");
   const desktopTabs = useMemo(
-    () => (authed ? DESKTOP_TABS : GUEST_DESKTOP_TABS),
-    [authed],
+    () => (chromeAuthed ? DESKTOP_TABS : GUEST_DESKTOP_TABS),
+    [chromeAuthed],
   );
   // Guests keep the center Collection slot on the mobile dock so the 5-column
   // layout stays symmetrical around the notch (AC26). Desktop still omits it.
   const dockTabs = useMemo(() => {
-    const source = authed ? TABS : GUEST_TABS;
+    const source = chromeAuthed ? TABS : GUEST_TABS;
     return source.map((tab) =>
-      tab.id === "profile" && !authed
+      tab.id === "profile" && !chromeAuthed
         ? { ...tab, label: guestAuthLabel, icon: LoginIcon }
         : tab,
     );
-  }, [authed, guestAuthLabel]);
+  }, [chromeAuthed, guestAuthLabel]);
   const active = packsActive ? null : activeTab;
   const [isDesktop, setIsDesktop] = useState(isDesktopViewport);
   const [handoff, setHandoff] = useState<NavHandoff>("none");
@@ -288,7 +301,7 @@ export function LiquidGlassNav({
   const topBarRef = useRef<HTMLElement>(null);
   const topItemsRef = useRef<HTMLDivElement>(null);
   const topTabRefs = useRef<Array<HTMLElement | null>>([]);
-  const topProfileRef = useRef<HTMLButtonElement>(null);
+  const topProfileRef = useRef<HTMLElement>(null);
   const topCartRef = useRef<HTMLButtonElement>(null);
   const bubbleDragRef = useRef<{
     pointerId: number;
@@ -459,7 +472,7 @@ export function LiquidGlassNav({
       !parent ||
       !target ||
       !activeTabConfig ||
-      (activeTabConfig.primary && !(authed && active === "bag"))
+      (activeTabConfig.primary && !(chromeAuthed && active === "bag"))
     ) {
       setBubble((prev) => ({
         ...prev,
@@ -471,7 +484,7 @@ export function LiquidGlassNav({
       return;
     }
 
-    const measured = measureBubbleForTab(parent, target, activeTabConfig.id, authed);
+    const measured = measureBubbleForTab(parent, target, activeTabConfig.id, chromeAuthed);
     const under = measureUnderCollection(measured.x, measured.w);
     setBubble((prev) => {
       // Pre-ready geometry drift = layout still settling — push arm deadline.
@@ -498,7 +511,7 @@ export function LiquidGlassNav({
         ready: prev.ready,
       };
     });
-  }, [active, creatorRoute, dockTabs, measureUnderCollection, packsActive]);
+  }, [active, chromeAuthed, creatorRoute, dockTabs, measureUnderCollection, packsActive]);
 
   const updateTopBubble = useCallback(() => {
     if (topBubbleDragRef.current) return;
@@ -780,7 +793,7 @@ export function LiquidGlassNav({
             parent,
             nearest.el,
             nearest.id,
-            authed,
+            chromeAuthed,
           );
           setBubble({
             ...measured,
@@ -796,7 +809,7 @@ export function LiquidGlassNav({
       updateDockBubble();
     },
     [
-      authed,
+      chromeAuthed,
       findNearestDraggableTab,
       measureUnderCollection,
       onTabChange,
@@ -834,11 +847,22 @@ export function LiquidGlassNav({
     [active, authed, onReselect, onTabChange, openCreateAccount],
   );
 
+  const onPrimaryNavClick = useCallback(
+    (id: AppTab) => (event: ReactMouseEvent<HTMLAnchorElement>) => {
+      if (isModifiedClick(event)) return;
+      event.preventDefault();
+      selectTab(id);
+    },
+    [selectTab],
+  );
+
   /** Logo always leaves secondary/immersive routes (tear, pack pocket, etc.). */
   const goHome = useCallback(() => {
     if (suppressTabClickRef.current) return;
-    onTabChange(authed ? "bag" : "feed");
-  }, [authed, onTabChange]);
+    onTabChange(chromeAuthed ? "bag" : "feed");
+  }, [chromeAuthed, onTabChange]);
+
+  const homeHref = pathForTab(chromeAuthed ? "bag" : "feed", chromeAuthed);
 
   const handleTopBubblePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1019,11 +1043,11 @@ export function LiquidGlassNav({
       const phase: NavHandoff = matches ? "to-desktop" : "to-mobile";
       setHandoff(phase);
       publishChromeMode(matches, phase);
-      // Dock/top sequences peak ~1s; hold chrome mode until both settle.
+      // Dock/top sequences peak ~300ms; hold chrome mode until both settle.
       settleTimer = window.setTimeout(() => {
         setHandoff("none");
         publishChromeMode(matches, "none");
-      }, 1100);
+      }, 400);
     };
 
     const sync = (animate: boolean) => apply(isDesktopViewport(), animate);
@@ -1096,7 +1120,7 @@ export function LiquidGlassNav({
     ["--dock-bubble-scale" as string]: String(bubbleVisualScale),
     // Instant follow while dragging / first placement; smooth snap/morph otherwise
     ["--dock-bubble-duration" as string]:
-      isDraggingBubble || !bubble.ready ? "0ms" : "420ms",
+      isDraggingBubble || !bubble.ready ? "0ms" : "280ms",
     // Keep first reveal + settle snaps opaque-instant; ease only after ready.
     ["--dock-bubble-opacity-duration" as string]:
       isDraggingBubble || bubble.ready ? "70ms" : "0ms",
@@ -1116,7 +1140,7 @@ export function LiquidGlassNav({
         : "0",
     ["--top-bubble-scale" as string]: String(1 - utilsOverlap * 0.4),
     ["--top-bubble-duration" as string]:
-      isDraggingTopBubble || !topBubble.ready ? "0ms" : "420ms",
+      isDraggingTopBubble || !topBubble.ready ? "0ms" : "280ms",
     ["--top-bubble-opacity-duration" as string]:
       !topBubbleMeasured || !topBubble.ready
         ? "0ms"
@@ -1165,12 +1189,16 @@ export function LiquidGlassNav({
           onPointerUp={endTopBubbleDrag}
           onPointerCancel={endTopBubbleDrag}
         />
-        <button
-          type="button"
+        <Link
+          to={homeHref}
           className="nav-test-top-brand"
           aria-label="Sugar Scratch Home"
           tabIndex={topTabIndex}
-          onClick={goHome}
+          onClick={(event) => {
+            if (isModifiedClick(event)) return;
+            event.preventDefault();
+            goHome();
+          }}
         >
           <img
             src="/svg/logoSugarScratch.svg"
@@ -1178,7 +1206,7 @@ export function LiquidGlassNav({
             className="nav-test-top-brand-logo"
             draggable={false}
           />
-        </button>
+        </Link>
 
         <div className="nav-test-top-items" ref={topItemsRef}>
           {desktopTabs.map((tab, index) => {
@@ -1189,12 +1217,12 @@ export function LiquidGlassNav({
 
             return (
               <div key={tab.id} className="nav-test-top-slot">
-                <button
+                <Link
                   ref={(node) => {
                     topTabRefs.current[index] = node;
                     topTabRefs.current.length = desktopTabs.length;
                   }}
-                  type="button"
+                  to={pathForTab(tab.id, chromeAuthed)}
                   className={[
                     "nav-test-top-item",
                     tab.primary ? "is-primary" : "",
@@ -1206,7 +1234,7 @@ export function LiquidGlassNav({
                   aria-current={isActive ? "page" : undefined}
                   aria-label={tab.label}
                   tabIndex={topTabIndex}
-                  onClick={() => selectTab(tab.id)}
+                  onClick={onPrimaryNavClick(tab.id)}
                 >
                   <Icon
                     className="nav-test-top-icon"
@@ -1216,7 +1244,7 @@ export function LiquidGlassNav({
                     aria-hidden="true"
                   />
                   <span className="nav-test-top-label">{tab.label}</span>
-                </button>
+                </Link>
               </div>
             );
           })}
@@ -1262,12 +1290,12 @@ export function LiquidGlassNav({
               }
             />
           ) : null}
-          <button
+          {chromeAuthed ? (
+          <Link
             ref={topProfileRef}
-            type="button"
+            to={pathForTab("profile", true)}
             className={[
               "nav-test-top-profile",
-              authed ? "" : "is-login",
               !packsActive && active === "profile" ? "is-active" : "",
               isDraggingTopBubble && topDragHoverTab === "profile"
                 ? "is-drag-target"
@@ -1275,14 +1303,13 @@ export function LiquidGlassNav({
             ]
               .filter(Boolean)
               .join(" ")}
-            aria-label={authed ? "Settings" : guestAuthLabel}
+            aria-label="Settings"
             aria-current={
               !packsActive && active === "profile" ? "page" : undefined
             }
             tabIndex={topTabIndex}
-            onClick={() => selectTab("profile")}
+            onClick={onPrimaryNavClick("profile")}
           >
-            {authed ? (
               <User
                 className="nav-test-top-profile-icon"
                 strokeWidth={
@@ -1305,22 +1332,39 @@ export function LiquidGlassNav({
                 }
                 aria-hidden="true"
               />
-            ) : (
-              <>
-                <LoginIcon className="nav-test-top-profile-icon" />
-                <span className="nav-test-top-profile-label">{guestAuthLabel}</span>
-              </>
-            )}
+          </Link>
+          ) : (
+          <button
+            ref={topProfileRef}
+            type="button"
+            className={[
+              "nav-test-top-profile",
+              "is-login",
+              !packsActive && active === "profile" ? "is-active" : "",
+              isDraggingTopBubble && topDragHoverTab === "profile"
+                ? "is-drag-target"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label={guestAuthLabel}
+            tabIndex={topTabIndex}
+            onClick={() => selectTab("profile")}
+          >
+            <LoginIcon className="nav-test-top-profile-icon" />
+            <span className="nav-test-top-profile-label">{guestAuthLabel}</span>
           </button>
+          )}
         </div>
       </nav>
 
       <div
         className="nav-test-dock-wrap"
+        hidden={!dockKeyboard && handoff === "none"}
         aria-hidden={dockKeyboard ? undefined : true}
         {...(!dockKeyboard ? { inert: true } : {})}
       >
-        <nav className="nav-test-dock" aria-label="Primary">
+        <nav className="nav-test-dock" aria-label="Mobile">
           {/*
             Glass fill — SVG mask-image from public/svg/bottomNavClip.svg
             (not clip-path) so backdrop-filter is shaped.
@@ -1410,7 +1454,7 @@ export function LiquidGlassNav({
                     className={[
                       "nav-test-dock-primary",
                       isActive ? "is-active" : "",
-                      !authed ? "is-guest-disabled" : "",
+                      !chromeAuthed ? "is-guest-disabled" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -1431,6 +1475,21 @@ export function LiquidGlassNav({
                       colors={[...COLLECTION_GLOW_COLORS]}
                       style={CUTOUT_STYLE}
                     >
+                      {chromeAuthed ? (
+                      <Link
+                        to={pathForTab(tab.id, true)}
+                        className="nav-test-dock-primary-btn"
+                        aria-current={isActive ? "page" : undefined}
+                        aria-label={tab.label}
+                        tabIndex={dockTabIndex}
+                        onClick={onPrimaryNavClick(tab.id)}
+                      >
+                        <Icon
+                          className="nav-test-dock-primary-icon"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                      ) : (
                       <button
                         type="button"
                         className="nav-test-dock-primary-btn"
@@ -1439,17 +1498,11 @@ export function LiquidGlassNav({
                         tabIndex={dockTabIndex}
                         onClick={() => selectTab(tab.id)}
                       >
-                        {authed ? (
-                          <Icon
-                            className="nav-test-dock-primary-icon"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <GuestCollectionIcon className="nav-test-dock-primary-guest-card" />
-                        )}
+                        <GuestCollectionIcon className="nav-test-dock-primary-guest-card" />
                       </button>
+                      )}
                     </BorderGlow>
-                    {authed ? (
+                    {chromeAuthed ? (
                       <span className="nav-test-dock-primary-label" aria-hidden="true">
                         {tab.label}
                       </span>
@@ -1458,31 +1511,20 @@ export function LiquidGlassNav({
                 );
               }
 
-              const showInboxBadge = tab.id === "profile" && authed;
+              const showInboxBadge = tab.id === "profile" && chromeAuthed;
               const itemLabel =
                 showInboxBadge && inboxUnread > 0
                   ? `${tab.label}, ${inboxUnread} unread`
                   : tab.label;
-
-              return (
-                <button
-                  key={tab.id}
-                  ref={(node) => {
-                    dockTabRefs.current[index] = node;
-                  }}
-                  type="button"
-                  className={[
-                    "nav-test-dock-item",
-                    isActive ? "is-active" : "",
-                    isDragTarget ? "is-drag-target" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={itemLabel}
-                  tabIndex={dockTabIndex}
-                  onClick={() => selectTab(tab.id)}
-                >
+              const itemClass = [
+                "nav-test-dock-item",
+                isActive ? "is-active" : "",
+                isDragTarget ? "is-drag-target" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+              const itemInner = (
+                <>
                   <span className="nav-test-dock-icon-wrap">
                     <Icon
                       className="nav-test-dock-icon"
@@ -1496,7 +1538,42 @@ export function LiquidGlassNav({
                     ) : null}
                   </span>
                   <span className="nav-test-dock-label">{tab.label}</span>
-                </button>
+                </>
+              );
+
+              if (tab.id === "profile" && !chromeAuthed) {
+                return (
+                  <button
+                    key={tab.id}
+                    ref={(node) => {
+                      dockTabRefs.current[index] = node;
+                    }}
+                    type="button"
+                    className={itemClass}
+                    aria-label={itemLabel}
+                    tabIndex={dockTabIndex}
+                    onClick={() => selectTab(tab.id)}
+                  >
+                    {itemInner}
+                  </button>
+                );
+              }
+
+              return (
+                <Link
+                  key={tab.id}
+                  ref={(node) => {
+                    dockTabRefs.current[index] = node;
+                  }}
+                  to={pathForTab(tab.id, chromeAuthed)}
+                  className={itemClass}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={itemLabel}
+                  tabIndex={dockTabIndex}
+                  onClick={onPrimaryNavClick(tab.id)}
+                >
+                  {itemInner}
+                </Link>
               );
             })}
           </div>

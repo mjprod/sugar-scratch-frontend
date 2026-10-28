@@ -439,3 +439,11 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
     min-width: 116px;
   }
 }
+
+body[data-theme="v8"] .home-v2:has(.rank-leaderboard) .home-page-inner {
+  min-height: 100%;
+}
+
+body[data-theme="v8"] .home-v2:has(.rank-leaderboard) .home-site-footer {
+  margin-top: auto;
+}

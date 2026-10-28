@@ -17,7 +17,7 @@ export function SoftGate({
   action?: ProtectedAction;
   children: ReactNode;
 }) {
-  const { authed, authReady, requireAuth } = useAuth();
+  const { authed, authReady, hasLoggedInBefore, requireAuth } = useAuth();
   const location = useLocation();
   const wasAuthedRef = useRef(authed);
 
@@ -38,7 +38,8 @@ export function SoftGate({
   }, [authReady, authed]);
 
   if (!authReady) {
-    return null;
+    // Returning visitors keep the last chrome; first-time guests wait.
+    return hasLoggedInBefore ? <>{children}</> : null;
   }
 
   if (!authed) {

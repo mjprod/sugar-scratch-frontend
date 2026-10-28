@@ -149,6 +149,10 @@
   cursor: default;
 }
 
+.coverflow-nav-chevron:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.98);
+}
+
 .coverflow-chevron-icon {
   position: relative;
   z-index: 1;

@@ -5507,7 +5507,6 @@ body[data-theme="v8"] .profile-menu-icon .inbox-utility-badge {
 
 /* Profile Hero / Compact Profile Card */
 body[data-theme="v8"] .profile-settings-title {
-  display: none;
   margin: 0 0 var(--space-4);
   color: var(--color-page-title);
   font-family: var(--font-maytra);

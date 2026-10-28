@@ -228,9 +228,10 @@ export function UserDashboardScreen({
           <div className="profile-hero-actions">
             <button
               type="button"
+              role="switch"
               aria-label={tiltLabel}
               title={tiltLabel}
-              aria-pressed={tiltActive}
+              aria-checked={tiltActive}
               disabled={!motionSupported}
               onClick={() => {
                 void toggleMotionEnabled();
@@ -249,9 +250,10 @@ export function UserDashboardScreen({
 	            </button>
 	            <button
 	              type="button"
+	              role="switch"
 	              aria-label={hdVideo ? "Disable HD videos" : "Enable HD videos"}
 	              title={hdVideo ? "Disable HD videos" : "Enable HD videos"}
-	              aria-pressed={hdVideo}
+	              aria-checked={hdVideo}
 	              onClick={() => {
 	                const next = !hdVideo;
 	                setHdVideoEnabled(next);

@@ -10,10 +10,13 @@ export function BrowsePage() {
     openCreator,
     requireAuth,
     authed,
+    authReady,
+    hasLoggedInBefore,
   } = useAuth();
   const { addDiamonds } = useWallet();
+  const showGuestHome = authReady ? !authed : !hasLoggedInBefore;
 
-  if (!authed) {
+  if (showGuestHome) {
     return <GuestHomeLanding />;
   }
 
