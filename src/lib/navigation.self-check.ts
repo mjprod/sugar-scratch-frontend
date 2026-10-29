@@ -68,7 +68,7 @@ assert(
 assert(MOBILE_DOCK_LABELS[2] === "Home", "AC8a center elevated");
 
 // AC8b / AC8c breakpoints
-assert(DESKTOP_MIN_PX === 769, "chrome swap at 769");
+assert(DESKTOP_MIN_PX === 821, "chrome swap at 821");
 assert(NAV_LABEL_MIN_PX === 990, "AC8c labels from 990");
 assert(NAV_LABEL_MIN_PX > DESKTOP_MIN_PX, "tablet icon-only band exists");
 

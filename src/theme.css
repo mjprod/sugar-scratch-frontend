@@ -386,7 +386,7 @@ body[data-theme="v8"] .guest-home-landing__footer {
 }
 
 /* Desktop top chrome — dock is off-screen; don't reserve mobile dock space. */
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .guest-home-landing__footer {
     --guest-cta-dock-clearance: 2rem;
     padding-bottom: max(8dvh, var(--guest-cta-dock-clearance));
@@ -547,7 +547,7 @@ body[data-theme="v8"] .home-page-inner--after-hero {
   }
 }
 
-/* Homepage site footer — show when bottom dock is hidden (desktop ≥769px). */
+/* Homepage site footer — show when bottom dock is hidden (desktop ≥821px). */
 body[data-theme="v8"] .home-site-footer {
   display: flex;
   flex-direction: column;
@@ -1453,7 +1453,7 @@ body[data-theme="v8"] .store-page .app-page-shell-inner {
   gap: var(--gap);
 }
 
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.store-page {
     padding-top: var(--app-diamond-offset);
     padding-bottom: var(--space-12);
@@ -2726,7 +2726,7 @@ body[data-theme="v8"] .player-welcome-claim {
   z-index: 3;
   display: grid;
   flex-shrink: 0;
-  width: 11rem;
+  width: calc(11rem + 2 * var(--space-3));
   max-width: 100%;
   height: 44px;
   min-height: 44px;
@@ -2746,6 +2746,10 @@ body[data-theme="v8"] .player-welcome-claim .cta-button--fill {
 body[data-theme="v8"] .player-welcome-claim .cta-button-glow>.border-glow-inner {
   width: 100%;
   height: 100%;
+}
+
+body[data-theme="v8"] .player-welcome-claim .cta-button__label {
+  padding-inline: var(--space-4);
 }
 
 body[data-theme="v8"] .player-welcome-claim .cta-button__title {
@@ -3814,7 +3818,7 @@ body[data-theme="v8"] .hf-stepper-icon {
   height: 2.5rem;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .hf-page {
     --hf-bottom-clearance: 24px;
     --hf-next-peek: 0px;
@@ -5798,7 +5802,7 @@ body[data-theme="v8"] .settings-app-version {
   text-align: left;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.settings-page {
     padding-top: max(var(--gap-stack), env(safe-area-inset-top, 0px));
     padding-bottom: var(--space-12);
@@ -6159,7 +6163,7 @@ body[data-theme="v8"] .inbox-page {
 }
 
 /* Desktop Inbox sits below the liquid top nav so Back + filter stay visible. */
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .app-layout--hud .app-page-shell.inbox-page {
     padding-top: var(--app-diamond-offset);
     padding-bottom: var(--space-12);
@@ -6178,7 +6182,7 @@ body[data-theme="v8"] .inbox-page {
 }
 
 /* Mobile Inbox keeps the liquid bottom dock — clear the footer chrome. */
-@media (max-width: 768.98px) {
+@media (max-width: 820.98px) {
   body[data-theme="v8"] .app-page-shell.inbox-page {
     padding-bottom: var(--app-footer-offset);
   }
@@ -7207,7 +7211,7 @@ body[data-theme="v8"] .nav-test-top-utils .inbox-utility-btn--ghost .inbox-utili
    * Keep plain frosted blur so the header never loses backdrop entirely.
    */
 
-  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (769px+). */
+  /* Home frame under HUD chrome — top clearance from --hf-top-clearance (821px+). */
   body[data-theme="v8"] .app-layout--hud .hf-stage {
     margin-top: 5%;
     margin-bottom: 0;
@@ -7264,7 +7268,7 @@ body[data-theme="v8"] .app-page-shell-inner {
   margin-inline: auto;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .app-page-shell--primary {
     padding-top: var(--app-diamond-offset);
     padding-inline: 0;
@@ -7350,7 +7354,7 @@ body[data-theme="v8"] .app-page-shell--profile {
   padding-top: calc(var(--app-diamond-offset) + var(--space-4));
 }
 
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .app-page-shell--profile {
     padding-top: var(--app-diamond-offset);
   }
@@ -7460,7 +7464,7 @@ body[data-theme="v8"] .pack-added-toast__copy {
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .pack-added-toast-stack {
     left: auto;
     right: max(16px, calc((100% - min(var(--app-content-max, 80rem), calc(100% - 32px))) / 2));

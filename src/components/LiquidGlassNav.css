@@ -68,7 +68,7 @@
  *  - desktop: top liquid nav [logo | tabs | balances/cart]
  *  - to-desktop / to-mobile: staged so HUDs don't overlap mid-handoff
  *
- * Fallback without JS attribute still uses the 769px MQ.
+ * Fallback without JS attribute still uses the 821px MQ.
  *
  * NOTE: .top-nav-mobile already uses transform: translateX(-50%) for centering.
  * Handoff motion only animates opacity/filter/visibility so we don't fight that.
@@ -131,7 +131,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Fallback when data-liquid-nav isn't set yet (SSR / first paint) */
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"]:not([data-liquid-nav]) .app-layout--hud .top-nav-mobile {
     display: none !important;
   }
@@ -729,11 +729,11 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /*
- * Compact top nav densifies after the chrome swap (769px)
+ * Compact top nav densifies after the chrome swap (821px)
  * and stays icon-only until 990px, where labeled tabs fit.
- * Below 769px stays bottom dock + mobile HUD — no top-nav label band.
+ * Below 821px stays bottom dock + mobile HUD — no top-nav label band.
  */
-@media (min-width: 769px) and (max-width: 989px) {
+@media (min-width: 821px) and (max-width: 989px) {
   .nav-test-top {
     gap: var(--space-2);
     padding-inline: var(--space-2-5) var(--space-2);
@@ -781,7 +781,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Narrow tablet desktop: smaller logo / balance type after the swap */
-@media (min-width: 769px) and (max-width: 900px) {
+@media (min-width: 821px) and (max-width: 900px) {
   .nav-test-top-brand-logo {
     height: 1.85rem;
   }
@@ -996,10 +996,10 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /*
- * Hard swap at 769px. JS `.is-desktop` can lag a few pixels
+ * Hard swap at 821px. JS `.is-desktop` can lag a few pixels
  * (scrollbar / matchMedia), so CSS owns the chrome below this width.
  */
-@media (max-width: 768.98px) {
+@media (max-width: 820.98px) {
   .nav-test.is-desktop .nav-test-top,
   .nav-test.is-handoff-to-desktop .nav-test-top,
   .nav-test.is-handoff-to-mobile .nav-test-top {

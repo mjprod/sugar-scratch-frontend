@@ -9,6 +9,7 @@ import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useAuth } from "@/contexts/useAuth";
+import { DESKTOP_MIN_PX } from "@/lib/navChrome";
 import { useSearch } from "@/contexts/SearchContext";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
@@ -214,7 +215,7 @@ export function HomeScreen({
     if (!state?.scrollToDailyReward || status !== "loaded") return;
 
     // Desktop stays at the top of Home; mobile docks to the daily reward.
-    if (window.matchMedia("(min-width: 769px)").matches) {
+    if (window.matchMedia(`(min-width: ${DESKTOP_MIN_PX}px)`).matches) {
       navigate(location.pathname, { replace: true, state: {} });
       return;
     }
