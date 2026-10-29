@@ -137,7 +137,7 @@ export function CoverflowStatusPager({
     if (!sample) return;
     const x = sample.center - pillWRef.current / 2;
     pill.style.transition = animate
-      ? "transform 320ms cubic-bezier(0.34, 1.45, 0.48, 1)"
+      ? "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)"
       : "none";
     pill.style.transform = `translate3d(${x}px, -50%, 0)`;
   }, []);

@@ -64,3 +64,20 @@ export function historyIndex(): number {
 export function pushDirection(prevIdx: number, nextIdx: number): 1 | -1 {
   return nextIdx < prevIdx ? -1 : 1;
 }
+
+/** Creator is a Collect subpage — leaving it is a pop even if history idx increases. */
+export function isCreatorBackHop(fromPath: string, toPath: string): boolean {
+  const from = pushPathname(fromPath);
+  const to = pushPathname(toPath);
+  return from.startsWith("/creator/") && to.startsWith("/collection");
+}
+
+export function pagePushDirection(
+  fromPath: string,
+  toPath: string,
+  prevIdx: number,
+  nextIdx: number,
+): 1 | -1 {
+  if (isCreatorBackHop(fromPath, toPath)) return -1;
+  return pushDirection(prevIdx, nextIdx);
+}

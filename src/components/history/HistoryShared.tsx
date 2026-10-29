@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import "./history.css";
+
+const HISTORY_CTA = ctaButtonPropsFromTemplate("squircleCTA");
 
 export function HistoryEmpty({
   title,
@@ -17,9 +20,15 @@ export function HistoryEmpty({
     <div className="history-empty">
       <p className="history-empty-title">{title}</p>
       <p className="history-empty-copy">{copy}</p>
-      <button type="button" className="history-empty-cta" onClick={onAction}>
-        {actionLabel}
-      </button>
+      <div className="history-empty-cta">
+        <CtaButton
+          {...HISTORY_CTA}
+          fillParent
+          label={actionLabel}
+          costAmount={null}
+          onClick={onAction}
+        />
+      </div>
     </div>
   );
 }
@@ -38,13 +47,19 @@ export function HistoryError({
       <p className="history-empty-title">{message}</p>
       <p className="history-empty-copy">Check your connection, then try again.</p>
       <div className="history-empty-actions">
-        <button type="button" className="history-empty-cta" onClick={onRetry}>
-          Try again
-        </button>
+        <div className="history-empty-cta">
+          <CtaButton
+            {...HISTORY_CTA}
+            fillParent
+            label="Try again"
+            costAmount={null}
+            onClick={onRetry}
+          />
+        </div>
         {onHelp ? (
           <button
             type="button"
-            className="history-empty-cta history-empty-cta--ghost"
+            className="history-empty-cta--ghost"
             onClick={onHelp}
           >
             Get help

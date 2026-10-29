@@ -4,7 +4,7 @@ body[data-theme="v8"] .inbox-page .app-page-shell-inner {
   flex-direction: column;
   gap: var(--space-5);
 }
-@media (min-width: 769px) {
+@media (min-width: 821px) {
 
   body[data-theme="v8"] .inbox-header-filter .inbox-filter-label {
     display: inline;

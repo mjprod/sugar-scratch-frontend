@@ -110,6 +110,7 @@ export function HomeVersion2Screen({
         data-page-scroll
         className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
       >
+        <ShopPageTitle />
         <div className="home-featured-coverflow is-loading" aria-hidden="true" />
         <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page">
           <div className="h-28 animate-pulse rounded-2xl bg-white/10" />
@@ -157,6 +158,7 @@ export function HomeVersion2Screen({
       data-page-scroll
       className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[var(--app-footer-offset)] lg:pb-12"
     >
+      <ShopPageTitle />
       <Suspense
         fallback={
           <div className="home-featured-coverflow is-loading" aria-hidden="true" />
@@ -215,5 +217,13 @@ export function HomeVersion2Screen({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ShopPageTitle() {
+  return (
+    <header className="home-v2-greeting page-container">
+      <h1 className="home-v2-page-title">Shop for Packs</h1>
+    </header>
   );
 }

@@ -421,12 +421,12 @@ export type BuyPackCtaSize = { desktop: BuyPackCtaDims; mobile: BuyPackCtaDims }
 /** Packs hex CTA size — taller shell with vertically centered title + cost. */
 export const DEFAULT_BUY_PACK_CTA_SIZE: BuyPackCtaSize = {
   desktop: { width: 187, height: 70, strokeWidth: 2 },
-  mobile: { width: 176, height: 60, strokeWidth: 2 },
+  mobile: { width: 159, height: 60, strokeWidth: 2 },
 }
 /** Compact height so the Pack Pocket text control fits under it (home). */
 export const HOME_BUY_PACK_CTA_SIZE: BuyPackCtaSize = {
   desktop: { width: 187, height: 48, strokeWidth: 2 },
-  mobile: { width: 176, height: 42, strokeWidth: 2 },
+  mobile: { width: 159, height: 42, strokeWidth: 2 },
 }
 
 /** Per-surface look: everything the home and packs/tear carousels tune differently. */
@@ -1201,7 +1201,7 @@ function CoverFlowPack({
 
   useEffect(() => {
     if (!confirmingAdd) return
-    const timeout = window.setTimeout(() => setConfirmingAdd(false), 580)
+    const timeout = window.setTimeout(() => setConfirmingAdd(false), 300)
     return () => window.clearTimeout(timeout)
   }, [confirmingAdd])
 

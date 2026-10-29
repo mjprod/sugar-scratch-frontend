@@ -1,0 +1,112 @@
+/* Collect-page neon progress ring — shared with home Continue Collecting. */
+
+body[data-theme="v8"] .mc-model-avatar-ring {
+  position: absolute;
+  /* 16px pad around the 80px ring so the SVG glow filter isn't mask-clipped. */
+  inset: -23.5px;
+  z-index: 0;
+  width: 112px;
+  height: 112px;
+  pointer-events: none;
+  overflow: visible;
+  /* Hide the stroke's start cap (and its glow) at 12 o'clock. Fade in after. */
+  -webkit-mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(0 0 0 / 0) 0deg,
+    rgb(0 0 0 / 0) 24deg,
+    rgb(0 0 0 / 0.5) 52deg,
+    #000 92deg,
+    #000 348deg,
+    rgb(0 0 0 / 0) 360deg
+  );
+  mask-image: conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(0 0 0 / 0) 0deg,
+    rgb(0 0 0 / 0) 24deg,
+    rgb(0 0 0 / 0.5) 52deg,
+    #000 92deg,
+    #000 348deg,
+    rgb(0 0 0 / 0) 360deg
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-mode: alpha;
+  mask-mode: alpha;
+}
+
+@property --mc-ring-c {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 213.628;
+}
+
+@property --mc-ring-offset {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 213.628;
+}
+
+body[data-theme="v8"] .mc-model-avatar-ring-track {
+  stroke: rgba(170, 0, 79, 0.18);
+  stroke-width: 5;
+}
+
+body[data-theme="v8"] .mc-model-avatar-ring-glow,
+body[data-theme="v8"] .mc-model-avatar-ring-arc,
+body[data-theme="v8"] .mc-model-avatar-ring-core {
+  stroke-dasharray: var(--mc-ring-c, 213.628);
+  stroke-dashoffset: var(--mc-ring-offset, 213.628);
+  stroke-linecap: butt;
+}
+
+body[data-theme="v8"] .mc-model-avatar-ring-glow {
+  stroke: #ff0082;
+  stroke-width: 9;
+  opacity: 0.38;
+  /* On the dashed circle so bloom follows the arc, not the full SVG. */
+  filter:
+    drop-shadow(0 0 1px #ffffff)
+    drop-shadow(0 0 4px #ff79b7)
+    drop-shadow(0 0 8px #ff0082);
+}
+
+body[data-theme="v8"] .mc-model-avatar-ring-arc {
+  stroke: #aa004f;
+  stroke-width: 5;
+}
+
+body[data-theme="v8"] .mc-model-avatar-ring-core {
+  stroke-width: 0.5;
+}
+
+body[data-theme="v8"] .mc-model-avatar-ring svg {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: block;
+  width: 80px;
+  height: 80px;
+  overflow: visible;
+}
+
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .mc-model-avatar-ring-glow,
+  body[data-theme="v8"] .mc-model-avatar-ring-arc,
+  body[data-theme="v8"] .mc-model-avatar-ring-core {
+    animation: mc-ring-grow 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 3) * 40ms);
+  }
+}
+
+@keyframes mc-ring-grow {
+  from {
+    stroke-dashoffset: var(--mc-ring-c, 213.628);
+  }
+
+  to {
+    stroke-dashoffset: var(--mc-ring-offset, 213.628);
+  }
+}

@@ -68,7 +68,7 @@
  *  - desktop: top liquid nav [logo | tabs | balances/cart]
  *  - to-desktop / to-mobile: staged so HUDs don't overlap mid-handoff
  *
- * Fallback without JS attribute still uses the 769px MQ.
+ * Fallback without JS attribute still uses the 821px MQ.
  *
  * NOTE: .top-nav-mobile already uses transform: translateX(-50%) for centering.
  * Handoff motion only animates opacity/filter/visibility so we don't fight that.
@@ -89,13 +89,13 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud .top-nav-mo
 }
 
 /*
-  Desktop → mobile: liquid top exits first (~0–940ms total with delays).
+  Desktop → mobile: liquid top exits first (~300ms total).
   Hold the mobile HUD invisible until the top bar is mostly gone, then fade in.
 */
 body[data-theme="v8"][data-liquid-nav="to-mobile"] .app-layout--hud .top-nav-mobile {
   pointer-events: none;
   /* Animation owns opacity/filter/visibility for the delayed enter */
-  animation: liquid-nav-mobile-hud-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) 640ms both;
+  animation: liquid-nav-mobile-hud-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
 }
 
 @keyframes liquid-nav-mobile-hud-enter {
@@ -131,7 +131,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Fallback when data-liquid-nav isn't set yet (SSR / first paint) */
-@media (min-width: 769px) {
+@media (min-width: 821px) {
   body[data-theme="v8"]:not([data-liquid-nav]) .app-layout--hud .top-nav-mobile {
     display: none !important;
   }
@@ -211,7 +211,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   z-index: 1;
   transform: scale(0.8);
   transform-origin: center center;
-  transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Icon-only Profile — sits after bell. Guest mode adds a Log in label. */
@@ -229,6 +229,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   border-radius: 10px;
   background: transparent;
   color: oklch(1 0 0 / 0.55);
+  text-decoration: none;
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
@@ -278,7 +279,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   height: 18px;
   transform: scale(1);
   transform-origin: center center;
-  transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-test-top-profile-label {
@@ -361,8 +362,8 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
     (mobile HUD doesn't use will-change either).
   */
   transition:
-    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    max-width 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1),
     background 160ms ease,
     border-color 160ms ease;
 }
@@ -381,6 +382,8 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   border: 0;
   background: transparent;
   line-height: 0;
+  text-decoration: none;
+  color: inherit;
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
@@ -608,6 +611,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   border-radius: 12px;
   background: transparent;
   color: oklch(1 0 0 / 0.5);
+  text-decoration: none;
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
@@ -663,7 +667,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   z-index: 1;
   transform: scale(1);
   transform-origin: center center;
-  transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .nav-test-top-item.is-active .nav-test-top-icon,
@@ -725,11 +729,11 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /*
- * Compact top nav densifies after the chrome swap (769px)
+ * Compact top nav densifies after the chrome swap (821px)
  * and stays icon-only until 990px, where labeled tabs fit.
- * Below 769px stays bottom dock + mobile HUD — no top-nav label band.
+ * Below 821px stays bottom dock + mobile HUD — no top-nav label band.
  */
-@media (min-width: 769px) and (max-width: 989px) {
+@media (min-width: 821px) and (max-width: 989px) {
   .nav-test-top {
     gap: var(--space-2);
     padding-inline: var(--space-2-5) var(--space-2);
@@ -777,7 +781,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /* Narrow tablet desktop: smaller logo / balance type after the swap */
-@media (min-width: 769px) and (max-width: 900px) {
+@media (min-width: 821px) and (max-width: 900px) {
   .nav-test-top-brand-logo {
     height: 1.85rem;
   }
@@ -977,6 +981,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   transform: translate3d(0, calc(100% + env(safe-area-inset-bottom, 0px) + 28px), 0);
   filter: blur(10px);
   pointer-events: none;
+  visibility: hidden;
 }
 
 .nav-test.is-desktop .nav-test-dock .nav-test-dock-items {
@@ -991,10 +996,10 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 /*
- * Hard swap at 769px. JS `.is-desktop` can lag a few pixels
+ * Hard swap at 821px. JS `.is-desktop` can lag a few pixels
  * (scrollbar / matchMedia), so CSS owns the chrome below this width.
  */
-@media (max-width: 768.98px) {
+@media (max-width: 820.98px) {
   .nav-test.is-desktop .nav-test-top,
   .nav-test.is-handoff-to-desktop .nav-test-top,
   .nav-test.is-handoff-to-mobile .nav-test-top {
@@ -1045,8 +1050,13 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
  * Mobile → desktop: bottom dock exits first, top enters after.
  * Keep top hidden until dock exit has a head start so bars don't stack.
  */
+.nav-test.is-handoff-to-desktop .nav-test-dock-wrap,
+.nav-test.is-handoff-to-mobile .nav-test-dock-wrap {
+  visibility: visible;
+}
+
 .nav-test.is-handoff-to-desktop .nav-test-dock-wrap {
-  animation: nav-test-dock-exit 820ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
+  animation: nav-test-dock-exit 280ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
   pointer-events: none;
 }
 
@@ -1057,23 +1067,22 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test.is-handoff-to-desktop .nav-test-dock-surface,
 .nav-test.is-handoff-to-desktop .nav-test-dock-rims,
 .nav-test.is-handoff-to-desktop .nav-test-dock-primary {
-  animation: nav-test-dock-shell-fade 720ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+  animation: nav-test-dock-shell-fade 280ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
   transition: none;
 }
 
 .nav-test.is-handoff-to-desktop .nav-test-dock-item:nth-child(1),
 .nav-test.is-handoff-to-desktop .nav-test-dock-item:nth-child(5) {
-  animation: nav-test-dock-item-exit 520ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
+  animation: nav-test-dock-item-exit 240ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
 }
 
 .nav-test.is-handoff-to-desktop .nav-test-dock-item:nth-child(2),
 .nav-test.is-handoff-to-desktop .nav-test-dock-item:nth-child(4) {
-  animation: nav-test-dock-item-exit 520ms cubic-bezier(0.33, 1, 0.32, 1) 80ms both;
+  animation: nav-test-dock-item-exit 240ms cubic-bezier(0.33, 1, 0.32, 1) 40ms both;
 }
 
 .nav-test.is-handoff-to-desktop .nav-test-top {
-  /* Wait for dock exit to lead (~420ms) before top glass enters */
-  animation: nav-test-top-enter 680ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both;
+  animation: nav-test-top-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
   pointer-events: auto;
   /* Ensure glass is live for the settled end of the enter animation. */
   filter: none;
@@ -1088,8 +1097,8 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
  * then bottom dock enters from below.
  */
 .nav-test.is-handoff-to-mobile .nav-test-top {
-  /* Exit immediately — mobile HUD waits ~640ms before fading in */
-  animation: nav-test-top-exit 720ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
+  /* Exit immediately — mobile HUD waits ~40ms before fading in */
+  animation: nav-test-top-exit 280ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
   pointer-events: none;
 }
 
@@ -1100,21 +1109,21 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 /* Outside-in: Home+Profile, then Browse+Rewards, then Collection */
 .nav-test.is-handoff-to-mobile .nav-test-top-slot:nth-child(1) .nav-test-top-item,
 .nav-test.is-handoff-to-mobile .nav-test-top-slot:nth-child(5) .nav-test-top-item {
-  animation: nav-test-top-item-exit 560ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
+  animation: nav-test-top-item-exit 240ms cubic-bezier(0.33, 1, 0.32, 1) 0ms both;
 }
 
 .nav-test.is-handoff-to-mobile .nav-test-top-slot:nth-child(2) .nav-test-top-item,
 .nav-test.is-handoff-to-mobile .nav-test-top-slot:nth-child(4) .nav-test-top-item {
-  animation: nav-test-top-item-exit 560ms cubic-bezier(0.33, 1, 0.32, 1) 100ms both;
+  animation: nav-test-top-item-exit 240ms cubic-bezier(0.33, 1, 0.32, 1) 40ms both;
 }
 
 .nav-test.is-handoff-to-mobile .nav-test-top-slot:nth-child(3) .nav-test-top-item {
-  animation: nav-test-top-item-exit 560ms cubic-bezier(0.33, 1, 0.32, 1) 160ms both;
+  animation: nav-test-top-item-exit 240ms cubic-bezier(0.33, 1, 0.32, 1) 40ms both;
 }
 
 /* Bottom dock waits for top exit to lead, then animates in */
 .nav-test.is-handoff-to-mobile .nav-test-dock-wrap {
-  animation: nav-test-dock-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) 360ms both;
+  animation: nav-test-dock-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
   pointer-events: none;
 }
 
@@ -1125,18 +1134,18 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test.is-handoff-to-mobile .nav-test-dock-surface,
 .nav-test.is-handoff-to-mobile .nav-test-dock-rims,
 .nav-test.is-handoff-to-mobile .nav-test-dock-primary {
-  animation: nav-test-dock-shell-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) 380ms both;
+  animation: nav-test-dock-shell-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
   transition: none;
 }
 
 .nav-test.is-handoff-to-mobile .nav-test-dock-item:nth-child(1),
 .nav-test.is-handoff-to-mobile .nav-test-dock-item:nth-child(5) {
-  animation: nav-test-dock-item-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both;
+  animation: nav-test-dock-item-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
 }
 
 .nav-test.is-handoff-to-mobile .nav-test-dock-item:nth-child(2),
 .nav-test.is-handoff-to-mobile .nav-test-dock-item:nth-child(4) {
-  animation: nav-test-dock-item-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) 440ms both;
+  animation: nav-test-dock-item-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
 }
 
 /* After mobile handoff settles, restore item pointer events */
@@ -1254,7 +1263,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 .nav-test-dock-rims,
 .nav-test-dock-primary {
   opacity: 1;
-  transition: opacity 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: 0ms;
 }
 
@@ -1598,6 +1607,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   border-radius: 0.5rem;
   background: transparent;
   color: oklch(1 0 0 / 0.5);
+  text-decoration: none;
   cursor: pointer;
   transition: color 180ms ease;
   -webkit-user-select: none;
@@ -1623,7 +1633,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   z-index: 1;
   transform: translate3d(0, 0, 0) scale(1);
   transform-origin: center bottom;
-  transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -1876,6 +1886,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
   border-radius: 50%;
   background: transparent;
   color: oklch(0.779 0.139 1.41);
+  text-decoration: none;
   cursor: pointer;
   transition: transform 160ms ease, color 180ms ease;
 }

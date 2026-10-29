@@ -7,7 +7,7 @@
 export const NAV_LABEL_MIN_PX = 990;
 
 /** Bottom dock ↔ top chrome swap (mobile vs tablet/desktop). */
-export const DESKTOP_MIN_PX = 769;
+export const DESKTOP_MIN_PX = 821;
 
 /** Authenticated desktop primary destinations (labels). */
 export const DESKTOP_PRIMARY_LABELS = [
@@ -21,7 +21,7 @@ export const DESKTOP_PRIMARY_LABELS = [
 export const GUEST_DESKTOP_PRIMARY_LABELS = [
   "Home",
   "Discover",
-  "Get Diamonds",
+  "TopUp",
 ] as const;
 
 /** Authenticated mobile dock order (labels); index 2 is elevated Home. */
@@ -38,6 +38,6 @@ export const GUEST_MOBILE_DOCK_LABELS = [
   "Discover",
   "Home",
   "Collect",
-  "Get Diamonds",
+  "TopUp",
   "Profile",
 ] as const;

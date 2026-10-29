@@ -28,15 +28,12 @@ export function InboxUtilityBadge({
   count = 0,
   bump = false,
   tone = "inbox",
-  showZero = false,
 }: {
   count?: number;
   bump?: boolean;
   tone?: "pack" | "inbox";
-  /** When true, render a "0" badge instead of hiding empty counts. */
-  showZero?: boolean;
 }) {
-  if (count < 0 || (count === 0 && !showZero)) return null;
+  if (count <= 0) return null;
   const badgeLabel = count > 9 ? "9+" : String(count);
   return (
     <span

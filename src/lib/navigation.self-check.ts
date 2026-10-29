@@ -55,7 +55,7 @@ assert(
   "AC4 desktop primary tabs",
 );
 assert(
-  GUEST_DESKTOP_PRIMARY_LABELS.join("|") === "Home|Discover|Get Diamonds",
+  GUEST_DESKTOP_PRIMARY_LABELS.join("|") === "Home|Discover|TopUp",
   "guest desktop primary tabs",
 );
 
@@ -68,7 +68,7 @@ assert(
 assert(MOBILE_DOCK_LABELS[2] === "Home", "AC8a center elevated");
 
 // AC8b / AC8c breakpoints
-assert(DESKTOP_MIN_PX === 769, "chrome swap at 769");
+assert(DESKTOP_MIN_PX === 821, "chrome swap at 821");
 assert(NAV_LABEL_MIN_PX === 990, "AC8c labels from 990");
 assert(NAV_LABEL_MIN_PX > DESKTOP_MIN_PX, "tablet icon-only band exists");
 
@@ -90,7 +90,7 @@ assert(formatBalance(null) === "--", "null balance placeholder");
 // AC26 — guest mobile dock keeps the center Collection slot for symmetry
 assert(
   GUEST_MOBILE_DOCK_LABELS.join("|") ===
-    "Discover|Home|Collect|Get Diamonds|Profile",
+    "Discover|Home|Collect|TopUp|Profile",
   "AC26 guest dock keeps center Collect slot",
 );
 assert(GUEST_MOBILE_DOCK_LABELS[2] === "Collect", "AC26 center slot reserved");

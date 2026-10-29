@@ -77,16 +77,24 @@ body[data-theme="v8"] .auth7-intro-demo-col {
 
 body[data-theme="v8"] .auth7-intro-demo-card {
   display: block;
+  overflow: hidden;
   width: auto;
   height: clamp(125px, 26dvh, 179px);
   aspect-ratio: 164 / 285;
-  object-fit: cover;
-  object-position: center top;
   border-radius: 12px;
   border: 1px solid oklch(1 0 0 / 0.14);
   box-shadow: 0 10px 24px oklch(0 0 0 / 0.42);
   background: oklch(0.198 0.01 285.46);
   zoom: 1.2;
+}
+
+body[data-theme="v8"] .auth7-intro-demo-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transform: rotate(357.1deg) scale(1.04);
 }
 
 body[data-theme="v8"] .auth7-intro-demo-card--left {
@@ -181,7 +189,7 @@ body[data-theme="v8"] .auth7-intro-start .cta-button:focus-visible {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 821px) {
 
   body[data-theme="v8"] .auth7-intro-panel {
     max-width: none;

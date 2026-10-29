@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/useAuth";
 import { Paths } from "@/routes/Paths";
+import { shouldPromptLoginOnSoftGate } from "@/routes/softGateAuth";
 import type { ProtectedAction } from "@/services/auth";
 import type { AppTab } from "@/types/app";
 
@@ -18,15 +19,20 @@ export function SoftGate({
 }) {
   const { authed, authReady, requireAuth } = useAuth();
   const location = useLocation();
+  const wasAuthedRef = useRef(authed);
 
   useEffect(() => {
-    if (!authReady || authed) return;
-    requireAuth(
-      action ?? {
-        type: "resume",
-        path: `${location.pathname}${location.search}`,
-      },
-    );
+    if (
+      shouldPromptLoginOnSoftGate(authReady, authed, wasAuthedRef.current)
+    ) {
+      requireAuth(
+        action ?? {
+          type: "resume",
+          path: `${location.pathname}${location.search}`,
+        },
+      );
+    }
+    if (authReady) wasAuthedRef.current = authed;
     // Gate once session is known; path/action captured on that first guest hit.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- gate once after authReady
   }, [authReady, authed]);

@@ -5020,7 +5020,7 @@ dd {
   padding: 0;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   .models-card-list-row {
     padding: 10px 12px;
     gap: 10px;

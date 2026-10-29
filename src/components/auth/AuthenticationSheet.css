@@ -21,7 +21,7 @@ body[data-theme="v8"] .auth7-sheet-close:disabled {
   cursor: not-allowed;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .auth7-sheet-close {
     top: 1.7rem;
     right: 0.9rem;
@@ -225,7 +225,7 @@ body[data-theme="v8"] .auth7-consent-link:focus-visible {
 body[data-theme="v8"] .auth7-consent-error {
   margin: 0;
 }
-@media (max-width: 767px) {
+@media (max-width: 820px) {
 
   body[data-theme="v8"] .auth7-sheet-close {
     top: 0.7rem;

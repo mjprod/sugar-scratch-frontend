@@ -4,7 +4,7 @@ import { useLocation, useOutlet } from "react-router-dom";
 import { isMemoryTransitioning } from "@/lib/memory/memoryNavigate";
 import {
   historyIndex,
-  pushDirection,
+  pagePushDirection,
   shouldSkipPushHop,
 } from "@/lib/pagePushTransition";
 
@@ -50,7 +50,12 @@ export function PagePushStage() {
     trail.current = {
       pathname: location.pathname,
       idx,
-      direction: pushDirection(trail.current.idx, idx),
+      direction: pagePushDirection(
+        trail.current.pathname,
+        location.pathname,
+        trail.current.idx,
+        idx,
+      ),
     };
   } else {
     trail.current.idx = idx;

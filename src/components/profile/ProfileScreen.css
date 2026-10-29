@@ -39,6 +39,7 @@ body[data-theme="v8"] .profile-identity:focus-visible {
 
 body[data-theme="v8"] .profile-identity:active {
   background: oklch(1 0 0 / 0.06);
+  transform: scale(0.98);
 }
 
 body[data-theme="v8"] .profile-username {
@@ -146,12 +147,28 @@ body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:
 body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:active:not(:disabled),
 body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:disabled,
 body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert.is-disabled {
+  --wallet-convert-visual: var(--space-10);
+  --wallet-convert-hit-pad: 0;
   right: 0.75rem;
   bottom: auto;
   top: 0;
   z-index: 3;
+  flex: none;
+  width: var(--wallet-convert-visual);
+  height: var(--wallet-convert-visual);
+  min-width: var(--wallet-convert-visual);
+  min-height: var(--wallet-convert-visual);
+  background: #0f0f11;
   transform: translateY(calc(-1rem - 8px));
   opacity: 1;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+body[data-theme="v8"] .profile-balance-convert .wallet-balances-popover__convert-icon {
+  width: 0.72rem;
+  height: 1.35rem;
 }
 
 body[data-theme="v8"] .profile-balance-convert.wallet-balances-popover__convert:hover {
@@ -198,6 +215,13 @@ body[data-theme="v8"] .profile-balance-value {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+}
+
+body[data-theme="v8"] .profile-balance-value.is-rolling {
+  display: inline-block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
 }
 
 body[data-theme="v8"] .profile-balance-value.is-exchange-preview {

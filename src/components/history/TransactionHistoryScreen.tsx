@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Receipt } from "lucide-react";
 import { AppPageShell } from "@/components/AppPageShell";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   HistoryDateRangeSelect,
@@ -31,6 +32,7 @@ import {
 import "./history.css";
 
 const PAGE_SIZE = 20;
+const HISTORY_CTA = ctaButtonPropsFromTemplate("squircleCTA");
 
 const FILTERS: { id: TransactionFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -473,15 +475,21 @@ function TransactionDetail({
       </div>
       <div className="history-detail-actions">
         {row.type === "diamond_purchase" ? (
-          <button type="button" className="history-empty-cta" onClick={onReceipt}>
-            <Receipt className="mr-1 inline size-4" aria-hidden="true" />
-            View receipt
-          </button>
+          <div className="history-empty-cta">
+            <CtaButton
+              {...HISTORY_CTA}
+              fillParent
+              label="View receipt"
+              leadingIcon={<Receipt className="size-4" aria-hidden="true" />}
+              costAmount={null}
+              onClick={onReceipt}
+            />
+          </div>
         ) : null}
         {showGameLink ? (
           <button
             type="button"
-            className="history-empty-cta history-empty-cta--ghost"
+            className="history-empty-cta--ghost"
             onClick={onViewGameHistory}
           >
             View related game history
@@ -489,14 +497,14 @@ function TransactionDetail({
         ) : null}
         <button
           type="button"
-          className="history-empty-cta history-empty-cta--ghost"
+          className="history-empty-cta--ghost"
           onClick={onReport}
         >
           Report an issue
         </button>
         <button
           type="button"
-          className="history-empty-cta history-empty-cta--ghost"
+          className="history-empty-cta--ghost"
           onClick={onHelp}
         >
           Get help

@@ -1,16 +1,17 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
+import { ChevronDown, Layers, Search, Users, X } from "lucide-react";
 import {
-  ChevronDown,
-  Images,
-  Layers,
-  Search,
-  Sparkles,
-} from "lucide-react";
+  InfluencerHolder,
+  InfluencerHolderSkeleton,
+} from "@/components/collection/InfluencerHolder";
 import { useCreatorsCollectedThemes } from "@/components/collection/MyCollectionLivePanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useSearch } from "@/contexts/SearchContext";
@@ -33,10 +34,13 @@ import {
 type SortId = "newest" | "oldest" | "progress";
 type FilterMenu = "creator" | "sort" | null;
 
-const SORT_OPTIONS: Array<{ id: SortId; label: string }> = [
-  { id: "newest", label: "Newest first" },
-  { id: "oldest", label: "Oldest first" },
-  { id: "progress", label: "Most complete" },
+const FILTER_MOTION_MS = 220;
+const CREATOR_SHEET_MS = 420;
+
+const SORT_OPTIONS: Array<{ id: SortId; label: string; shortLabel: string }> = [
+  { id: "newest", label: "Newest first", shortLabel: "Newest" },
+  { id: "oldest", label: "Oldest first", shortLabel: "Oldest" },
+  { id: "progress", label: "Most complete", shortLabel: "Complete" },
 ];
 
 function locationLabel(model: BackendModel | null | undefined): string {
@@ -144,6 +148,17 @@ export function MyCollectionSection({
     return [...ids];
   }, [creators, modelByCreator, models]);
   const { boards, ready: boardsReady } = useCreatorBoards(boardIds);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [fadeTop, setFadeTop] = useState(false);
+  const [fadeBottom, setFadeBottom] = useState(false);
+
+  const updateFades = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    setFadeTop(el.scrollTop > 4);
+    setFadeBottom(max - el.scrollTop > 4);
+  }, []);
 
   const sortedCreators = useMemo(() => {
     const list = [...creators];
@@ -154,7 +169,7 @@ export function MyCollectionSection({
     return list;
   }, [creators, sort]);
 
-  const visibleCreators = useMemo(() => {
+  const collectedCreators = useMemo(() => {
     // Local ledger can still name retired fixtures (ep1 / Neon Rain). Only
     // creators that exist on GET /api/models belong on this list, and a
     // display-name slug must collapse onto the board creator id.
@@ -176,17 +191,54 @@ export function MyCollectionSection({
         byBoardId.set(id, row);
       }
     }
-    const known = [...byBoardId.values()];
-    if (creatorFilter === "all") return known;
-    return known.filter((creator) => creator.id === creatorFilter);
-  }, [sortedCreators, creatorFilter, modelByCreator, models]);
+    return [...byBoardId.values()];
+  }, [sortedCreators, modelByCreator, models]);
+
+  const visibleCreators = useMemo(() => {
+    if (creatorFilter === "all") return collectedCreators;
+    return collectedCreators.filter((creator) => creator.id === creatorFilter);
+  }, [collectedCreators, creatorFilter]);
+
+  const pickerCreators = useMemo(() => {
+    const rows = collectedCreators.map((creator) => {
+      const model = modelByCreator.get(creator.id) ?? null;
+      return {
+        id: creator.id,
+        name: (model ? modelDisplayName(model) : "") || creator.name,
+        avatarUrl: avatarFor(creator, model),
+      };
+    });
+    rows.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    return rows;
+  }, [collectedCreators, modelByCreator]);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    updateFades();
+    el.addEventListener("scroll", updateFades, { passive: true });
+    const ro = new ResizeObserver(updateFades);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateFades);
+      ro.disconnect();
+    };
+  }, [updateFades, themesReady, boardsReady, visibleCreators.length]);
+
+  const listFadeClass = [
+    fadeTop ? "has-fade-top" : "",
+    fadeBottom ? "has-fade-bottom" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const creatorFilterLabel =
     creatorFilter === "all"
       ? "All Creators"
-      : (creators.find((c) => c.id === creatorFilter)?.name ?? "All Creators");
-  const sortLabel =
-    SORT_OPTIONS.find((option) => option.id === sort)?.label ?? "Sort";
+      : (pickerCreators.find((c) => c.id === creatorFilter)?.name ??
+        "All Creators");
+  const sortShortLabel =
+    SORT_OPTIONS.find((option) => option.id === sort)?.shortLabel ?? "Sort";
 
   if (creators.length === 0) {
     return (
@@ -238,7 +290,7 @@ export function MyCollectionSection({
             }
           />
           <FilterButton
-            label={openMenu === "sort" || sort !== "newest" ? sortLabel : "Sort"}
+            label={sortShortLabel}
             open={openMenu === "sort"}
             active={sort !== "newest"}
             leadingIcon={
@@ -255,56 +307,46 @@ export function MyCollectionSection({
         >
           <Search size={16} strokeWidth={2.2} aria-hidden />
         </button>
-        {openMenu ? (
-          <FilterSheet
-            title={openMenu === "creator" ? "Creators" : "Sort"}
-            anchor="left"
-            onClose={() => setOpenMenu(null)}
-          >
-          {openMenu === "creator" ? (
-            <>
-              <FilterOption
-                label="All Creators"
-                selected={creatorFilter === "all"}
-                onSelect={() => {
-                  setCreatorFilter("all");
-                  setOpenMenu(null);
-                }}
-              />
-              {visibleCreators.map((creator) => (
-                <FilterOption
-                  key={creator.id}
-                  label={creator.name}
-                  selected={creatorFilter === creator.id}
-                  onSelect={() => {
-                    setCreatorFilter(creator.id);
-                    setOpenMenu(null);
-                  }}
-                />
-              ))}
-            </>
-          ) : null}
-          {openMenu === "sort"
-            ? SORT_OPTIONS.map((option) => (
-                <FilterOption
-                  key={option.id}
-                  label={option.label}
-                  selected={sort === option.id}
-                  onSelect={() => {
-                    setSort(option.id);
-                    setOpenMenu(null);
-                  }}
-                />
-              ))
-            : null}
-          </FilterSheet>
-        ) : null}
+        <FilterSheet
+          open={openMenu === "sort"}
+          title="Sort"
+          anchor="left"
+          onClose={() => setOpenMenu(null)}
+        >
+          {SORT_OPTIONS.map((option) => (
+            <FilterOption
+              key={option.id}
+              label={option.label}
+              selected={sort === option.id}
+              onSelect={() => {
+                setSort(option.id);
+                setOpenMenu(null);
+              }}
+            />
+          ))}
+        </FilterSheet>
+        <CreatorPickerOverlay
+          open={openMenu === "creator"}
+          selectedId={creatorFilter}
+          creators={pickerCreators}
+          onSelect={(id) => {
+            setCreatorFilter(id);
+            setOpenMenu(null);
+          }}
+          onClose={() => setOpenMenu(null)}
+        />
       </div>
 
       {!themesReady || !boardsReady ? (
-        <div className="mc-model-list is-skeleton" aria-busy="true">
+        <div
+          ref={listRef}
+          className={["mc-model-list is-skeleton", listFadeClass]
+            .filter(Boolean)
+            .join(" ")}
+          aria-busy="true"
+        >
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="mc-model-card is-skeleton" />
+            <InfluencerHolderSkeleton key={index} />
           ))}
         </div>
       ) : visibleCreators.length === 0 ? (
@@ -322,8 +364,16 @@ export function MyCollectionSection({
           </div>
         </div>
       ) : (
-        <div className="mc-model-list" role="list" aria-label="Models">
-          {visibleCreators.map((creator) => {
+        <div
+          key={`${creatorFilter}:${sort}`}
+          ref={listRef}
+          className={["mc-model-list is-reveal", listFadeClass]
+            .filter(Boolean)
+            .join(" ")}
+          role="list"
+          aria-label="Models"
+        >
+          {visibleCreators.map((creator, index) => {
             const model = modelByCreator.get(creator.id) ?? null;
             const progress = collectionProgressFromBoard(boards[creator.id]);
             const name =
@@ -331,62 +381,15 @@ export function MyCollectionSection({
             const place = locationLabel(model);
 
             return (
-              <button
+              <InfluencerHolder
                 key={creator.id}
-                type="button"
-                className="mc-model-card"
-                role="listitem"
+                index={index}
+                name={name}
+                place={place}
+                avatarUrl={avatarFor(creator, model)}
+                progress={progress}
                 onClick={() => onOpenCreator(creator.id)}
-                aria-label={`${name}, ${progress.owned} of ${progress.total} cards`}
-              >
-                <span className="mc-model-card-glow" aria-hidden="true">
-                  <span className="mc-model-card-glow-blob mc-model-card-glow-blob--a" />
-                  <span className="mc-model-card-glow-blob mc-model-card-glow-blob--b" />
-                </span>
-                <span className="mc-model-avatar-wrap">
-                  <CollectionAvatarRing percent={progress.pct} />
-                  <img
-                    src={avatarFor(creator, model)}
-                    alt=""
-                    className="mc-model-avatar"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </span>
-                <span className="mc-model-body">
-                  <span className="mc-model-name">{name}</span>
-                  {place ? (
-                    <span className="mc-model-place">{place}</span>
-                  ) : null}
-                  <span className="mc-model-metrics">
-                    <span className="mc-model-metric">
-                      <Images size={12} strokeWidth={2.4} aria-hidden />
-                      {progress.staticOwned}/{progress.staticTotal}
-                    </span>
-                    <span className="mc-model-metric">
-                      <Layers size={12} strokeWidth={2.4} aria-hidden />
-                      {progress.motionOwned}/{progress.motionTotal}
-                    </span>
-                    <span className="mc-model-metric">
-                      <Sparkles size={12} strokeWidth={2.4} aria-hidden />
-                      {progress.ultraOwned}/{progress.ultraTotal}
-                    </span>
-                  </span>
-                  <span
-                    className="mc-model-progress"
-                    role="progressbar"
-                    aria-valuenow={progress.pct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`${progress.owned} of ${progress.total}`}
-                  >
-                    <span
-                      className="mc-model-progress-fill"
-                      style={{ width: `${progress.pct}%` }}
-                    />
-                  </span>
-                </span>
-              </button>
+              />
             );
           })}
         </div>
@@ -434,37 +437,6 @@ function useCreatorBoards(creatorIds: string[]): {
   return { boards, ready };
 }
 
-const AVATAR_RING_R = 34;
-const AVATAR_RING_C = 2 * Math.PI * AVATAR_RING_R;
-
-function CollectionAvatarRing({ percent }: { percent: number }) {
-  const clamped = Math.max(0, Math.min(100, percent));
-  const offset = AVATAR_RING_C - (clamped / 100) * AVATAR_RING_C;
-  return (
-    <span className="mc-model-avatar-ring" aria-hidden="true">
-      <svg viewBox="0 0 80 80">
-        <circle
-          className="mc-model-avatar-ring-track"
-          cx="40"
-          cy="40"
-          r={AVATAR_RING_R}
-          fill="none"
-        />
-        <circle
-          className="mc-model-avatar-ring-arc"
-          cx="40"
-          cy="40"
-          r={AVATAR_RING_R}
-          fill="none"
-          strokeDasharray={AVATAR_RING_C}
-          strokeDashoffset={offset}
-          transform="rotate(-90 40 40)"
-        />
-      </svg>
-    </span>
-  );
-}
-
 function FilterButton({
   label,
   open,
@@ -498,23 +470,178 @@ function FilterButton({
   );
 }
 
+function CreatorPickerOverlay({
+  open,
+  selectedId,
+  creators,
+  onSelect,
+  onClose,
+}: {
+  open: boolean;
+  selectedId: string;
+  creators: Array<{ id: string; name: string; avatarUrl: string }>;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [visible, setVisible] = useState(open);
+  const [leaving, setLeaving] = useState(false);
+  const frozen = useRef(creators);
+  const onCloseRef = useRef(onClose);
+  if (open) frozen.current = creators;
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setLeaving(false);
+      return;
+    }
+    if (!visible) return;
+    setLeaving(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = window.setTimeout(
+      () => {
+        setVisible(false);
+        setLeaving(false);
+      },
+      reduce ? 0 : CREATOR_SHEET_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [open, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const locked: Array<{ el: HTMLElement; overflow: string }> = [];
+    document.querySelectorAll<HTMLElement>("[data-page-scroll]").forEach((el) => {
+      locked.push({ el, overflow: el.style.overflow });
+      el.style.overflow = "hidden";
+    });
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onCloseRef.current();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      for (const item of locked) item.el.style.overflow = item.overflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [visible]);
+
+  if (!visible || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className={[
+        "pack-library-root",
+        "mc-creator-overlay",
+        "fixed inset-0 z-[5150] flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden",
+        leaving ? "is-leaving" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      role="presentation"
+    >
+      <button
+        type="button"
+        className="pack-library-overlay mc-creator-overlay-scrim absolute inset-0"
+        aria-label="Close creators"
+        onClick={onClose}
+      />
+      <div
+        className="pack-library-panel mc-creator-overlay-sheet relative z-[1] mx-auto mt-auto flex min-h-0 w-full max-w-[75rem] flex-1 flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Creators"
+      >
+        <div className="mc-creator-overlay-inner">
+          <div className="mc-creator-overlay-head">
+            <p className="hub-section-label mc-creator-overlay-title">
+              Creators
+            </p>
+            <button
+              type="button"
+              className="mc-creator-overlay-close"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="mc-creator-overlay-scroll">
+            <ul className="mc-creator-overlay-list">
+              <FilterOption
+                label="All Creators"
+                selected={selectedId === "all"}
+                onSelect={() => onSelect("all")}
+                icon={<Users size={18} strokeWidth={2.2} aria-hidden="true" />}
+              />
+              {frozen.current.map((creator) => (
+                <FilterOption
+                  key={creator.id}
+                  label={creator.name}
+                  selected={selectedId === creator.id}
+                  onSelect={() => onSelect(creator.id)}
+                  avatarUrl={creator.avatarUrl}
+                />
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function FilterSheet({
+  open,
   title,
   anchor,
   onClose,
   children,
 }: {
+  open: boolean;
   title: string;
   anchor: "left" | "right";
   onClose: () => void;
   children: ReactNode;
 }) {
+  const [visible, setVisible] = useState(open);
+  const [leaving, setLeaving] = useState(false);
+  const frozen = useRef({ title, children });
+  if (open) frozen.current = { title, children };
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setLeaving(false);
+      return;
+    }
+    if (!visible) return;
+    setLeaving(true);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = window.setTimeout(
+      () => {
+        setVisible(false);
+        setLeaving(false);
+      },
+      reduce ? 0 : FILTER_MOTION_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [open, visible]);
+
+  if (!visible) return null;
   return (
     <div
       className={[
         "my-collection-filter-overlay",
         anchor === "right" ? "is-anchor-right" : "is-anchor-left",
-      ].join(" ")}
+        leaving ? "is-leaving" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="presentation"
     >
       <button
@@ -527,10 +654,10 @@ function FilterSheet({
         className="my-collection-filter-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={frozen.current.title}
       >
-        <p className="my-collection-filter-title">{title}</p>
-        <ul className="my-collection-filter-list">{children}</ul>
+        <p className="my-collection-filter-title">{frozen.current.title}</p>
+        <ul className="my-collection-filter-list">{frozen.current.children}</ul>
       </div>
     </div>
   );
@@ -540,10 +667,14 @@ function FilterOption({
   label,
   selected,
   onSelect,
+  avatarUrl,
+  icon,
 }: {
   label: string;
   selected: boolean;
   onSelect: () => void;
+  avatarUrl?: string;
+  icon?: ReactNode;
 }) {
   return (
     <li>
@@ -551,6 +682,7 @@ function FilterOption({
         type="button"
         className={[
           "my-collection-filter-option",
+          avatarUrl || icon ? "has-face" : "",
           selected ? "is-selected" : "",
         ]
           .filter(Boolean)
@@ -558,15 +690,29 @@ function FilterOption({
         aria-pressed={selected}
         onClick={onSelect}
       >
-        <span
-          className={[
-            "my-collection-filter-radio",
-            selected ? "is-on" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-hidden="true"
-        />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="mc-creator-overlay-avatar"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : icon ? (
+          <span className="mc-creator-overlay-avatar is-all" aria-hidden="true">
+            {icon}
+          </span>
+        ) : (
+          <span
+            className={[
+              "my-collection-filter-radio",
+              selected ? "is-on" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-hidden="true"
+          />
+        )}
         <span>{label}</span>
       </button>
     </li>

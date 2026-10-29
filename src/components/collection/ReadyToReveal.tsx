@@ -299,7 +299,7 @@ function ContinueSection({
           .join(" ")}
       >
         <h2 id="ready-heading" className="mc-continue-title">
-          Continue playing…
+          Continue playing
         </h2>
         {items.length > 0 ? (
           <div className="mc-continue-carousel">

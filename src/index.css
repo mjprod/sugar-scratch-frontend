@@ -236,7 +236,7 @@
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 821px) {
   :root {
     --pad-page: var(--space-6);
   }
@@ -249,6 +249,7 @@
 }
 
 @theme {
+  --breakpoint-md: 51.25rem; /* 820px tablet */
   --font-display: "DM Sans", system-ui, sans-serif;
 
   --text-caption: calc(

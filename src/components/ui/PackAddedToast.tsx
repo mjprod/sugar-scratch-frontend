@@ -3,7 +3,7 @@ import { countCartPacks, subscribeCart } from "@/services/cart";
 
 const TOAST_MS = 2000;
 const MAX_VISIBLE = 3;
-const EXIT_MS = 320;
+const EXIT_MS = 240;
 
 type ToastItem = {
   id: number;

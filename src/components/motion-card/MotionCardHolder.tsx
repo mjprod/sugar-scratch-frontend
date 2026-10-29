@@ -291,6 +291,7 @@ export function MotionCardHolder({
                   </p>
                 </div>
                 {(activeCard.state ?? "").startsWith("locked") ? null : (
+                <div className="motion-card-holder__play-slot">
                 <div className="motion-card-holder__play w-full shrink-0" ref={playCtaRef}>
                     <CtaButton
                       {...SQUIRCLE_CTA}
@@ -365,6 +366,7 @@ export function MotionCardHolder({
                       }}
                     />
                   ) : null}
+                </div>
                 </div>
                 )}
               </div>

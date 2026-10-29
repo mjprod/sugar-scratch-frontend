@@ -1,38 +1,48 @@
-/** Press-and-hold: fire once, then keep firing until release. */
+/** Press-and-hold: fire once, then keep firing faster until release. */
 
-export const HOLD_REPEAT_DELAY_MS = 400;
-export const HOLD_REPEAT_INTERVAL_MS = 300;
+export const HOLD_REPEAT_DELAY_MS = 100;
+export const HOLD_REPEAT_INTERVAL_MS = 50;
+export const HOLD_REPEAT_MIN_INTERVAL_MS = 16;
+export const HOLD_REPEAT_ACCEL = 0.5;
 
 export function createHoldRepeat(
   action: () => void,
-  options?: { delayMs?: number; intervalMs?: number },
+  options?: {
+    delayMs?: number;
+    intervalMs?: number;
+    minIntervalMs?: number;
+    accel?: number;
+  },
 ) {
   const delayMs = options?.delayMs ?? HOLD_REPEAT_DELAY_MS;
   const intervalMs = options?.intervalMs ?? HOLD_REPEAT_INTERVAL_MS;
-  let delayId: ReturnType<typeof setTimeout> | null = null;
-  let intervalId: ReturnType<typeof setInterval> | null = null;
+  const minIntervalMs = options?.minIntervalMs ?? HOLD_REPEAT_MIN_INTERVAL_MS;
+  const accel = options?.accel ?? HOLD_REPEAT_ACCEL;
+  let tickId: ReturnType<typeof setTimeout> | null = null;
 
   function stop() {
-    if (delayId) clearTimeout(delayId);
-    if (intervalId) clearInterval(intervalId);
-    delayId = null;
-    intervalId = null;
+    if (tickId) clearTimeout(tickId);
+    tickId = null;
   }
 
   function start(isDisabled?: () => boolean) {
     stop();
     if (isDisabled?.()) return;
     action();
-    delayId = setTimeout(() => {
-      delayId = null;
-      intervalId = setInterval(() => {
+    let gap = intervalMs;
+    function arm(ms: number) {
+      tickId = setTimeout(() => {
+        tickId = null;
         if (isDisabled?.()) {
           stop();
           return;
         }
         action();
-      }, intervalMs);
-    }, delayMs);
+        arm(gap);
+        gap = Math.max(minIntervalMs, Math.round(gap * accel));
+      }, ms);
+    }
+    arm(delayMs);
   }
 
   return { start, stop };

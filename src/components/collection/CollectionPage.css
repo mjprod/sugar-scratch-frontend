@@ -29,7 +29,7 @@ body[data-theme="v8"] .my-collection-filter-backdrop {
   position: fixed;
   inset: 0;
   border: 0;
-  background: transparent;
+  background: oklch(0 0 0 / 0.45);
   cursor: pointer;
 }
 
@@ -46,6 +46,187 @@ body[data-theme="v8"] .my-collection-filter-sheet {
   border-radius: 14px;
   background: oklch(0.18 0.014 289 / 0.98);
   box-shadow: 0 18px 48px oklch(0 0 0 / 0.45);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .my-collection-filter-backdrop {
+    animation: mc-filter-backdrop-in 220ms ease-out both;
+  }
+
+  body[data-theme="v8"] .my-collection-filter-sheet {
+    animation: mc-filter-sheet-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  body[data-theme="v8"] .my-collection-filter-overlay.is-leaving .my-collection-filter-backdrop {
+    animation: mc-filter-backdrop-out 200ms ease-in both;
+  }
+
+  body[data-theme="v8"] .my-collection-filter-overlay.is-leaving .my-collection-filter-sheet {
+    animation: mc-filter-sheet-out 200ms cubic-bezier(0.55, 0.06, 0.68, 0.19) both;
+  }
+}
+
+@keyframes mc-filter-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mc-filter-backdrop-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes mc-filter-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes mc-filter-sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+body[data-theme="v8"] .mc-creator-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 0;
+  flex: 1 1 auto;
+  padding: var(--space-3) var(--space-5) 0;
+}
+
+body[data-theme="v8"] .mc-creator-overlay-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--app-footer-offset);
+}
+
+body[data-theme="v8"] .mc-creator-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+body[data-theme="v8"] .mc-creator-overlay-title {
+  margin: 0;
+}
+
+body[data-theme="v8"] .mc-creator-overlay-close {
+  display: grid;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  border-radius: 999px;
+  background: transparent;
+  color: oklch(1 0 0 / 0.55);
+  cursor: pointer;
+}
+
+body[data-theme="v8"] .mc-creator-overlay-close:hover {
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.85);
+}
+
+body[data-theme="v8"] .mc-creator-overlay-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+body[data-theme="v8"] .mc-creator-overlay .my-collection-filter-option.has-face {
+  min-height: 52px;
+  padding-block: var(--space-2);
+}
+
+body[data-theme="v8"] .mc-creator-overlay-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  object-fit: cover;
+  background: oklch(0 0 0 / 0.35);
+}
+
+body[data-theme="v8"] .mc-creator-overlay-avatar.is-all {
+  display: grid;
+  place-items: center;
+  color: oklch(1 0 0 / 0.7);
+  background: oklch(1 0 0 / 0.08);
+  border: 1px solid oklch(1 0 0 / 0.12);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .mc-creator-overlay:not(.is-leaving) .pack-library-overlay {
+    animation: mc-filter-backdrop-in 280ms ease-out both;
+  }
+
+  body[data-theme="v8"] .mc-creator-overlay:not(.is-leaving) .pack-library-panel {
+    animation: mc-creator-sheet-in 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  body[data-theme="v8"] .mc-creator-overlay.is-leaving .pack-library-overlay {
+    animation: mc-filter-backdrop-out 220ms ease-in both;
+  }
+
+  body[data-theme="v8"] .mc-creator-overlay.is-leaving .pack-library-panel {
+    animation: mc-creator-sheet-out 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+
+@keyframes mc-creator-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes mc-creator-sheet-out {
+  from {
+    transform: none;
+  }
+
+  to {
+    transform: translateY(100%);
+  }
 }
 
 body[data-theme="v8"] .my-collection-filter-title {
@@ -265,7 +446,7 @@ body[data-theme="v8"] .my-collection-preview-lock {
   transform: translate(-50%, -50%);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 820px) {
 
   body[data-theme="v8"] .my-collection-preview-card {
     width: 78px;
@@ -445,9 +626,9 @@ body[data-theme="v8"] .mc-hub > :only-child {
   width: 100%;
 }
 
-/* Below 720px the 280px floor squeezes Continue into a sliver. A container
+/* Below 820px the 280px floor squeezes Continue into a sliver. A container
    query cannot restyle .mc-hub itself, so this is a viewport media query. */
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   body[data-theme="v8"] .mc-hub {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -501,7 +682,7 @@ body[data-theme="v8"] .mc-continue-carousel {
   overflow: visible;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 820px) {
   body[data-theme="v8"] .mc-continue-panel {
     flex-direction: column;
     align-items: stretch;
@@ -610,6 +791,17 @@ body[data-theme="v8"] .mc-models-search {
   cursor: pointer;
 }
 
+@media (max-width: 820px) {
+  body[data-theme="v8"] .mc-filter-btn {
+    min-height: 44px;
+  }
+
+  body[data-theme="v8"] .mc-models-search {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 body[data-theme="v8"] .mc-filter-btn.is-open,
 body[data-theme="v8"] .mc-filter-btn.is-active {
   border-color: rgba(255, 61, 127, 0.55);
@@ -622,6 +814,62 @@ body[data-theme="v8"] .mc-model-list {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: var(--space-2);
   width: 100%;
+}
+
+/* Two-column hub only: four-card window; extra holders scroll inside the column. */
+@media (min-width: 821px) {
+  body[data-theme="v8"] .mc-model-list {
+    max-height: calc(4 * 126px + 3 * var(--space-2));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-top,
+  body[data-theme="v8"] .mc-model-list.has-fade-bottom {
+    padding-inline-end: var(--space-3);
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      #000 0,
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      #000 0,
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-top {
+    -webkit-mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 100%
+    );
+    mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 100%
+    );
+  }
+
+  body[data-theme="v8"] .mc-model-list.has-fade-top.has-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      transparent 0,
+      #000 var(--space-10),
+      #000 calc(100% - var(--space-10)),
+      transparent 100%
+    );
+  }
 }
 
 body[data-theme="v8"] .mc-model-card {
@@ -642,6 +890,13 @@ body[data-theme="v8"] .mc-model-card {
   color: #fff;
   text-align: left;
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .mc-model-list.is-reveal .mc-model-card {
+    animation: collection-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 7) * 80ms);
+  }
 }
 
 /* Same inset rim stack as liquid-glass nav bubbles, on a plate above the glow. */
@@ -710,53 +965,9 @@ body[data-theme="v8"] .mc-model-avatar-wrap {
   background: transparent;
 }
 
-body[data-theme="v8"] .mc-model-avatar-ring {
-  position: absolute;
-  inset: -7.5px;
-  width: 80px;
-  height: 80px;
-  pointer-events: none;
-  overflow: visible;
-  /* HTML wrapper — mask-image on <svg> is ignored in WebKit. 0deg = 12 o'clock,
-     matching the progress arc start (SVG circles start at 3 o'clock, then -90°). */
-  -webkit-mask-image: conic-gradient(
-    from 0deg at 50% 50%,
-    rgb(0 0 0 / 0) 0deg,
-    rgb(0 0 0 / 0.4) 40deg,
-    #000 110deg,
-    #000
-  );
-  mask-image: conic-gradient(
-    from 0deg at 50% 50%,
-    rgb(0 0 0 / 0) 0deg,
-    rgb(0 0 0 / 0.4) 40deg,
-    #000 110deg,
-    #000
-  );
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-mode: alpha;
-  mask-mode: alpha;
-}
-
-body[data-theme="v8"] .mc-model-avatar-ring-track,
-body[data-theme="v8"] .mc-model-avatar-ring-arc {
-  stroke-width: 5;
-}
-
-body[data-theme="v8"] .mc-model-avatar-ring-track {
-  stroke: rgba(170, 0, 79, 0.18);
-}
-
-body[data-theme="v8"] .mc-model-avatar-ring-arc {
-  stroke: #aa004f;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 900ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 body[data-theme="v8"] .mc-model-avatar {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
@@ -822,24 +1033,118 @@ body[data-theme="v8"] .mc-model-progress {
   align-items: center;
   width: 100%;
   height: 15px;
-  margin-top: var(--space-0-5);
+  margin-top: var(--space-2);
   padding: var(--space-0-5) var(--space-3-5) var(--space-0-5) var(--space-0-5);
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 30px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.11);
 }
 
+@property --mc-progress {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+
 body[data-theme="v8"] .mc-model-progress-fill {
+  position: relative;
   display: block;
+  width: var(--mc-progress, 0%);
   height: 100%;
   min-height: 9px;
   border-radius: 60px 0 0 60px;
   background: linear-gradient(90deg, #aa004f, rgba(170, 0, 79, 0.5));
   box-shadow:
     inset 1px 1px 0px -1px #ffffff,
-    inset 1px 1px 0px -0.5px #ff79b7;
+    inset 1px 1px 0px -0.5px #ff79b7,
+    0 0px 20px 4px #630020,
+    0px 0px 16px 0px #ff0082;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .mc-model-progress-fill {
+    animation: mc-progress-grow 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 3) * 40ms);
+  }
+}
+
+@keyframes mc-progress-grow {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: var(--mc-progress, 0%);
+  }
+}
+
+body[data-theme="v8"] .mc-model-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 1px;
+  height: 2px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(
+    3deg,
+    oklch(0.69 0.32 348.63),
+    oklch(0.75 0.21 54.14) 22%,
+    oklch(0.68 0.31 355.85) 50%,
+    oklch(0.71 0.27 355.85) 78%,
+    oklch(0.75 0.21 54)
+  );
+  box-shadow:
+    0 0 3px oklch(1 0 0 / 0),
+    0 0 8px oklch(0.83 0.16 343.76);
+  transform: translateY(-50%);
+}
+
+body[data-theme="v8"] .mc-model-bone {
+  display: block;
+  flex-shrink: 0;
+  background: oklch(1 0 0 / 0.08);
+  animation: search-pulse 1.2s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .mc-model-avatar.mc-model-bone {
+  background: oklch(1 0 0 / 0.08);
+}
+
+body[data-theme="v8"] .mc-model-bone.is-name {
+  width: 140px;
+  max-width: 70%;
+  height: calc(var(--text-headline) * 1.15);
+  border-radius: 6px;
+}
+
+body[data-theme="v8"] .mc-model-bone.is-place {
+  width: 100px;
+  max-width: 50%;
+  height: calc(var(--text-body) * 1.2);
+  margin-top: var(--space-0-5);
+  border-radius: 5px;
+}
+
+body[data-theme="v8"] .mc-model-bone.is-metric-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+body[data-theme="v8"] .mc-model-bone.is-metric {
+  width: 28px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .mc-model-bone {
+    animation: none;
+  }
 }
 
 body[data-theme="v8"] .mc-diamonds-cta {
@@ -852,7 +1157,7 @@ body[data-theme="v8"] .mc-skeleton {
   gap: var(--space-6);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 821px) {
   body[data-theme="v8"] .mc-promo-track,
   body[data-theme="v8"] .mc-promo-slide {
     height: 400px;

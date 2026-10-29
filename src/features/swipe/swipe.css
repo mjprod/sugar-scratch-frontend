@@ -706,8 +706,8 @@
   }
 }
 
-/* Mobile card pivot (matches JS SWIPE_DESKTOP_MIN_WIDTH = 768). */
-@media (max-width: 767px) {
+/* Mobile card pivot (matches JS SWIPE_DESKTOP_MIN_WIDTH = 821). */
+@media (max-width: 820px) {
   .swipe-deck__slot {
     transform-origin: 50% 50%;
   }
@@ -1088,7 +1088,7 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
 }
 
 /* Desktop: keep deck fully readable — almost no dim, drawer only on the right. */
-@media (min-width: 768px) {
+@media (min-width: 821px) {
   .sb-debug__backdrop {
     background: transparent;
   }
@@ -1098,7 +1098,7 @@ body:has(.sb-debug.is-open) .sb-debug__fab {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 820px) {
   .sb-debug__backdrop {
     background: transparent;
   }

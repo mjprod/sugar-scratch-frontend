@@ -638,7 +638,7 @@ button {
   line-height: 1.35;
 }
 
-@media (min-width: 720px) {
+@media (min-width: 821px) {
   .debug-modal {
     place-items: center end;
     padding-right: var(--space-5);

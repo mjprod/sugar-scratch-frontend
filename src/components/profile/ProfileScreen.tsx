@@ -17,7 +17,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import CountUp from "@/pages/lp-build/CountUp.jsx";
 import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { InboxUtilityBadge } from "@/components/InboxButton";
@@ -34,6 +35,7 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 	  getHdVideoEnabled,
 	  setHdVideoEnabled,
 	} from "@/services/videoQualityPrefs";
+import { useConvertPress } from "@/hooks/useConvertPress";
 import { formatBalance } from "@/lib/formatBalance";
 import {
   bestAffordableCoinExchange,
@@ -42,6 +44,32 @@ import {
 } from "@/services/store";
 
 type ProfileView = "main" | "legal-terms" | "legal-privacy";
+
+const SETTINGS_ROW_KEY = "settings-menu-row";
+
+function rememberSettingsRow(label: string) {
+  try {
+    sessionStorage.setItem(SETTINGS_ROW_KEY, label);
+  } catch {
+    /* private mode */
+  }
+}
+
+function peekSettingsRow(): string | null {
+  try {
+    return sessionStorage.getItem(SETTINGS_ROW_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function clearSettingsRow() {
+  try {
+    sessionStorage.removeItem(SETTINGS_ROW_KEY);
+  } catch {
+    /* private mode */
+  }
+}
 
 export function UserDashboardScreen({
   name,
@@ -85,17 +113,45 @@ export function UserDashboardScreen({
   const [notice, setNotice] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   const [converting, setConverting] = useState(false);
-  const [previewExchange, setPreviewExchange] = useState(false);
+  const [roll, setRoll] = useState<{
+    fromCoins: number;
+    toCoins: number;
+    fromDiamonds: number;
+    toDiamonds: number;
+  } | null>(null);
   const [view, setView] = useState<ProfileView>("main");
   const affordable = useMemo(
     () => bestAffordableCoinExchange(coins),
     [coins],
   );
   const canConvert = Boolean(onConvertDust && affordable && !converting);
+  const { preview: previewExchange, convertButtonProps } = useConvertPress(
+    canConvert,
+    () => {
+      if (!onConvertDust || !affordable) return;
+      const option = affordable;
+      const fromCoins = coins;
+      const fromDiamonds = diamonds;
+      setConverting(true);
+      void Promise.resolve(onConvertDust(option)).then((ok) => {
+        if (!ok) {
+          setConverting(false);
+          return;
+        }
+        setRoll({
+          fromCoins,
+          toCoins: fromCoins - option.coins,
+          fromDiamonds,
+          toDiamonds: fromDiamonds + option.diamonds,
+        });
+      });
+    },
+  );
   const previewAmount = affordable
     ? formatExchangeDiamondAmount(affordable.diamonds)
     : null;
-  const showPreview = previewExchange && Boolean(previewAmount) && !converting;
+  const showPreview =
+    previewExchange && Boolean(previewAmount) && !converting && !roll;
   const legalTitleId = useId();
   const {
     enabled: motionEnabled,
@@ -120,7 +176,42 @@ export function UserDashboardScreen({
     .toLowerCase()
     .replace(/\s+/g, "");
 
+  useEffect(() => {
+    if (view !== "main") return;
+    // Peek (don't consume) until the row is on screen — StrictMode re-runs
+    // this effect and would drop the label before the surviving mount paints.
+    let frames = 0;
+    let raf = 0;
+    const tryScroll = () => {
+      const label = peekSettingsRow();
+      if (!label) return;
+      const row = document.querySelector<HTMLElement>(
+        `[data-settings-row="${CSS.escape(label)}"]`,
+      );
+      if (!row) {
+        if (frames++ < 24) raf = window.requestAnimationFrame(tryScroll);
+        return;
+      }
+      clearSettingsRow();
+      const scroller = row.closest<HTMLElement>("[data-page-scroll]");
+      if (scroller) {
+        const rowBox = row.getBoundingClientRect();
+        const scrollerBox = scroller.getBoundingClientRect();
+        scroller.scrollTop +=
+          rowBox.top -
+          scrollerBox.top -
+          scroller.clientHeight / 2 +
+          rowBox.height / 2;
+      } else {
+        row.scrollIntoView({ block: "center", behavior: "auto" });
+      }
+    };
+    raf = window.requestAnimationFrame(tryScroll);
+    return () => window.cancelAnimationFrame(raf);
+  }, [view]);
+
   function open(label: string) {
+    rememberSettingsRow(label);
     if (label === "Change Password") {
       onOpenChangePassword();
       return;
@@ -228,9 +319,10 @@ export function UserDashboardScreen({
           <div className="profile-hero-actions">
             <button
               type="button"
+              role="switch"
               aria-label={tiltLabel}
               title={tiltLabel}
-              aria-pressed={tiltActive}
+              aria-checked={tiltActive}
               disabled={!motionSupported}
               onClick={() => {
                 void toggleMotionEnabled();
@@ -249,9 +341,10 @@ export function UserDashboardScreen({
 	            </button>
 	            <button
 	              type="button"
+	              role="switch"
 	              aria-label={hdVideo ? "Disable HD videos" : "Enable HD videos"}
 	              title={hdVideo ? "Disable HD videos" : "Enable HD videos"}
-	              aria-pressed={hdVideo}
+	              aria-checked={hdVideo}
 	              onClick={() => {
 	                const next = !hdVideo;
 	                setHdVideoEnabled(next);
@@ -292,8 +385,32 @@ export function UserDashboardScreen({
                   />
                 </span>
                 <span className="profile-balance-copy">
-                  <span className="profile-balance-value">
-                    {formatBalance(diamonds)}
+                  <span
+                    className={[
+                      "profile-balance-value",
+                      roll ? "is-rolling" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {roll ? (
+                      <CountUp
+                        from={roll.fromDiamonds}
+                        to={roll.toDiamonds}
+                        mode="roll"
+                        easing="easeOut"
+                        format="standard"
+                        separator=","
+                        trigger="load"
+                        duration={0.5}
+                        onEnd={() => {
+                          setRoll(null);
+                          setConverting(false);
+                        }}
+                      />
+                    ) : (
+                      formatBalance(diamonds)
+                    )}
                   </span>
                   <span className="profile-balance-label">Diamond Balance</span>
                 </span>
@@ -331,14 +448,28 @@ export function UserDashboardScreen({
                     className={[
                       "profile-balance-value",
                       showPreview ? "is-exchange-preview" : "",
+                      roll ? "is-rolling" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
                     aria-live="polite"
                   >
-                    {showPreview && previewAmount
-                      ? previewAmount
-                      : formatBalance(coins)}
+                    {roll ? (
+                      <CountUp
+                        from={roll.fromCoins}
+                        to={roll.toCoins}
+                        mode="roll"
+                        easing="easeOut"
+                        format="standard"
+                        separator=","
+                        trigger="load"
+                        duration={0.5}
+                      />
+                    ) : showPreview && previewAmount ? (
+                      previewAmount
+                    ) : (
+                      formatBalance(coins)
+                    )}
                   </span>
                   <span className="profile-balance-label">
                     {showPreview ? "Convert?" : "Coin Balance"}
@@ -361,23 +492,7 @@ export function UserDashboardScreen({
                         : "Not enough Coins to convert"
                     }
                     disabled={!canConvert}
-                    onPointerEnter={() => {
-                      if (affordable) setPreviewExchange(true);
-                    }}
-                    onPointerLeave={() => setPreviewExchange(false)}
-                    onPointerDown={() => {
-                      if (affordable) setPreviewExchange(true);
-                    }}
-                    onPointerUp={() => setPreviewExchange(false)}
-                    onPointerCancel={() => setPreviewExchange(false)}
-                    onClick={() => {
-                      if (!onConvertDust || !affordable || converting) return;
-                      setPreviewExchange(false);
-                      setConverting(true);
-                      void Promise.resolve(onConvertDust(affordable)).finally(
-                        () => setConverting(false),
-                      );
-                    }}
+                    {...convertButtonProps}
                   >
                     <ConvertDustIcon className="wallet-balances-popover__convert-icon" />
                   </button>
@@ -497,6 +612,7 @@ function MenuGroup({
             <button
               key={item.label}
               type="button"
+              data-settings-row={item.label}
               disabled={item.soon}
               onClick={() => {
                 if (item.soon) return;
@@ -513,7 +629,7 @@ function MenuGroup({
               <span className="profile-menu-icon">
                 <Icon className="size-4 text-white/45" />
                 {item.badgeCount != null ? (
-                  <InboxUtilityBadge count={item.badgeCount} showZero />
+                  <InboxUtilityBadge count={item.badgeCount} />
                 ) : null}
               </span>
               <span className="flex-1 text-title">{item.label}</span>

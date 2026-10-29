@@ -21,6 +21,7 @@ import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
 import { CollectionEmptyState } from "./CollectionEmptyState";
 import { CollectionPromoCarousel } from "./CollectionPromoCarousel";
 import { CollectionSiteFooter } from "./CollectionSiteFooter";
+import { InfluencerHolderSkeleton } from "./InfluencerHolder";
 import { MyCollectionSection } from "./MyCollectionSection";
 import { ReadyToReveal } from "./ReadyToReveal";
 
@@ -297,22 +298,26 @@ function CollectionPageSkeleton() {
       <header className="mc-greeting">
         <SkeletonBar className="search-skeleton-title" width={240} height={19} />
       </header>
+      <div className="mc-hub">
+        <div className="mc-continue-panel is-skeleton" aria-hidden="true">
+          <SkeletonBar width={220} height={19} />
+          <div className="mc-continue-row">
+            {Array.from({ length: 4 }, (_, i) => (
+              <SkeletonBar key={i} width="9.072rem" height="16.128rem" />
+            ))}
+          </div>
+        </div>
+        <section className="mc-models">
+          <h2 className="mc-models-title">Keep Collecting</h2>
+          <div className="mc-model-list" aria-busy="true">
+            {Array.from({ length: 4 }, (_, index) => (
+              <InfluencerHolderSkeleton key={index} />
+            ))}
+          </div>
+        </section>
+      </div>
       <div className="mc-promo is-skeleton" aria-hidden="true">
         <SkeletonBar width="100%" height={100} />
-      </div>
-      <div className="mc-continue-panel is-skeleton" aria-hidden="true">
-        <SkeletonBar width={220} height={19} />
-        <div className="mc-continue-row">
-          {Array.from({ length: 4 }, (_, i) => (
-            <SkeletonBar key={i} width="9.072rem" height="16.128rem" />
-          ))}
-        </div>
-      </div>
-      <div className="mc-models is-skeleton" aria-hidden="true">
-        <SkeletonBar width={160} height={24} />
-        <SkeletonBar width="100%" height={163} />
-        <SkeletonBar width="100%" height={103} />
-        <SkeletonBar width="100%" height={103} />
       </div>
     </div>
   );

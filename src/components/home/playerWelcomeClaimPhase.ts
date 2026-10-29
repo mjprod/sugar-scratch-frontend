@@ -6,7 +6,7 @@
 export type ClaimUiPhase = "ready" | "exiting" | "claimed";
 
 /** Matches `player-welcome-card-exit` duration in theme.css. */
-export const CLAIM_CARD_EXIT_MS = 620;
+export const CLAIM_CARD_EXIT_MS = 280;
 
 /**
  * Fallback if `animationend` is skipped (backgrounded tab, interrupted animation).

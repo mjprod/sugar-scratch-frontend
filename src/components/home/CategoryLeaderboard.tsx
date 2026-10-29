@@ -25,6 +25,7 @@ export function CategoryLeaderboard({
   onPlay,
   onOpen,
   title = "Top packs by purchase",
+  titleTag = "h2",
   className,
 }: {
   category: LeaderboardCategory;
@@ -34,6 +35,7 @@ export function CategoryLeaderboard({
   onPlay: (row: LeaderboardRow) => void;
   onOpen: (row: LeaderboardRow) => void;
   title?: string;
+  titleTag?: "h1" | "h2";
   className?: string;
 }) {
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -61,6 +63,8 @@ export function CategoryLeaderboard({
     };
   }, [category, updateTabsScrollState]);
 
+  const Title = titleTag;
+
   return (
     <section
       className={[
@@ -73,7 +77,7 @@ export function CategoryLeaderboard({
     >
       <div className="continue-collecting-header">
         <div className="continue-collecting-title-row">
-          <h2 className="continue-collecting-title">{title}</h2>
+          <Title className="continue-collecting-title">{title}</Title>
         </div>
       </div>
 

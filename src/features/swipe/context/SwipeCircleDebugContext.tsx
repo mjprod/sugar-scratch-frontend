@@ -174,7 +174,7 @@ export function SwipeCircleDebugProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const mql = window.matchMedia(`(min-width: 768px)`)
+    const mql = window.matchMedia(`(min-width: 821px)`)
     const apply = () => setIsDesktop(mql.matches)
     apply()
     mql.addEventListener('change', apply)

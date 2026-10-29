@@ -180,7 +180,7 @@ export const SWIPE_EXIT_OVERSHOOT_VW = 0.15;
  */
 export const SWIPE_CLAMP_COMMIT_T = 0.9;
 /** Min width treated as desktop for the horizontal drag cap. */
-export const SWIPE_DESKTOP_MIN_WIDTH = 768;
+export const SWIPE_DESKTOP_MIN_WIDTH = 821;
 
 export function isSwipeDesktop(
   viewportWidth = typeof window !== "undefined"

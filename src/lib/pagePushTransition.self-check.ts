@@ -3,8 +3,10 @@
  * Run: npx tsx src/lib/pagePushTransition.self-check.ts
  */
 import {
+  isCreatorBackHop,
   isPurchaseFlowPath,
   isScratchGamePath,
+  pagePushDirection,
   pushDirection,
   shouldSkipPushHop,
   shouldSkipPushTransition,
@@ -47,5 +49,16 @@ assert(!shouldSkipPushHop("/profile", "/settings"), "profile to settings pushes"
 assert(pushDirection(2, 3) === 1, "forward is push from the right");
 assert(pushDirection(3, 2) === -1, "back is pop from the left");
 assert(pushDirection(4, 4) === 1, "replace is a push");
+
+assert(isCreatorBackHop("/creator/wildhalli", "/collection"), "creator to collect is back");
+assert(!isCreatorBackHop("/collection", "/creator/wildhalli"), "collect to creator is not back");
+assert(
+  pagePushDirection("/creator/x", "/collection", 2, 3) === -1,
+  "creator back pops even when history idx increases",
+);
+assert(
+  pagePushDirection("/collection", "/creator/x", 2, 3) === 1,
+  "opening creator still pushes",
+);
 
 console.log("pagePushTransition.self-check: ok");

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
@@ -295,7 +295,7 @@ export function CreatorInfluencerBody({
         className="cpv2-progress-panel"
         aria-label="Collection progress"
       >
-        <h3 className="cpv2-progress-title">Collection Progress</h3>
+        <h2 className="cpv2-progress-title">Collection Progress</h2>
         <ul className="cpv2-progress-list">
           <li className="cpv2-progress-themes">
             <ul
@@ -313,7 +313,7 @@ export function CreatorInfluencerBody({
                 ? Array.from({ length: 4 }, (_, i) => (
                     <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
                   ))
-                : themes.map((theme) => {
+                : themes.map((theme, i) => {
                     const progress = themeProgress(theme);
                     const pct =
                       progress.total > 0
@@ -322,31 +322,39 @@ export function CreatorInfluencerBody({
                             Math.round((progress.owned / progress.total) * 100),
                           )
                         : 0;
+                    const shown = showPersonalProgress ? pct : 0;
                     return (
-                      <li key={theme.id} className="cpv2-progress-row">
+                      <li
+                        key={theme.id}
+                        className="cpv2-progress-row"
+                        style={{ "--cpv2-i": i } as CSSProperties}
+                      >
                         <span className="cpv2-progress-label">{theme.name}</span>
                         <div
                           className="cpv2-progress-track"
                           role="progressbar"
-                          aria-valuenow={showPersonalProgress ? pct : 0}
+                          aria-valuenow={shown}
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-label={`${theme.name}, ${showPersonalProgress ? progress.owned : 0} of ${progress.total}`}
                         >
                           <span
                             className="cpv2-progress-fill"
-                            style={{ width: `${showPersonalProgress ? pct : 0}%` }}
+                            style={
+                              { "--cpv2-progress": `${shown}%` } as CSSProperties
+                            }
                           />
                         </div>
-                        <span className="cpv2-progress-value">
-                          {showPersonalProgress ? pct : 0}%
-                        </span>
+                        <span className="cpv2-progress-value">{shown}%</span>
                       </li>
                     );
                   })}
             </ul>
           </li>
-          <li className="cpv2-progress-row is-total">
+          <li
+            className="cpv2-progress-row is-total"
+            style={{ "--cpv2-i": themes.length } as CSSProperties}
+          >
             <span className="cpv2-progress-label">Total</span>
             <div
               className="cpv2-progress-track"
@@ -358,9 +366,11 @@ export function CreatorInfluencerBody({
             >
               <span
                 className="cpv2-progress-fill"
-                style={{
-                  width: `${showPersonalProgress ? totalPct : 0}%`,
-                }}
+                style={
+                  {
+                    "--cpv2-progress": `${showPersonalProgress ? totalPct : 0}%`,
+                  } as CSSProperties
+                }
               />
             </div>
             <span className="cpv2-progress-value">
@@ -511,9 +521,9 @@ export function CreatorInfluencerBody({
       </section>
 
       <section className="cpv2-pack-section" aria-label="Pack offers">
-        <h2 className="cpv2-section-title" id="creator-pack-offers">
+        <h3 className="cpv2-section-title" id="creator-pack-offers">
           Buy {creatorName} Packs
-        </h2>
+        </h3>
         <div className="cpv2-pack-coverflow">
           <Suspense
             fallback={
@@ -778,10 +788,10 @@ function ThemeCollectionCard({
               decoding="async"
             />
           </span>
-          <h3 className="cpv2-theme-card-title">
+          <h2 className="cpv2-theme-card-title">
             <span aria-hidden="true">{glyph} </span>
             {theme.name}
-          </h3>
+          </h2>
         </div>
         {freePlayAllowed ? (
           <label className="cpv2-free-play">

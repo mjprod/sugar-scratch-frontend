@@ -289,6 +289,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   const setEnabled = useCallback(
     async (next: boolean): Promise<boolean> => {
       if (!next) {
+        enabledRef.current = false
         setEnabledState(false)
         writeStoredEnabled(false)
         // Clear last sample so consumers don't keep a stale pose.
@@ -297,18 +298,29 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       }
 
       if (!supported) {
+        enabledRef.current = false
         setEnabledState(false)
         writeStoredEnabled(false)
         return false
+      }
+
+      // Permission already in hand — flip the label in this click, not next frame.
+      if (permissionRef.current === 'granted') {
+        enabledRef.current = true
+        setEnabledState(true)
+        writeStoredEnabled(true)
+        return true
       }
 
       const granted = await requestPermission()
       if (!granted) {
+        enabledRef.current = false
         setEnabledState(false)
         writeStoredEnabled(false)
         return false
       }
 
+      enabledRef.current = true
       setEnabledState(true)
       writeStoredEnabled(true)
       return true
