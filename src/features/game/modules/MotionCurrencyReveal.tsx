@@ -18,7 +18,7 @@ type Phase =
   | "complete";
 
 /** Per-card currency result hold before auto-advance to the next motion card. */
-export const CARD_CURRENCY_RESULT_MS = 5000;
+export const CARD_CURRENCY_RESULT_MS = 8000;
 const SAFETY_MS = CARD_CURRENCY_RESULT_MS + 800;
 const COUNT_MS = 900;
 
@@ -74,7 +74,7 @@ function useCountUp(target: number, active: boolean, durationMs: number) {
 /**
  * Per-card coin + diamond win reveal — presentation only.
  * Session/wallet rewards must already be persisted before this mounts.
- * Auto-advances after 5s (or Skip); navigation is handled by the parent.
+ * Auto-advances after 8s (or Skip); navigation is handled by the parent.
  */
 export function MotionCurrencyReveal({
   coins,

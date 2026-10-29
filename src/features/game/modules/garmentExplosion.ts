@@ -10,7 +10,7 @@ export const FINALE_CHARGE_MS = 500;
 /** Shard flight; keep in sync with `EXPLODE_LIFE_S` in glRenderer. */
 export const FINALE_BURST_MS = 1100;
 /** Linger on the revealed performer before the result overlay. */
-export const FINALE_HOLD_MS = 600;
+export const FINALE_HOLD_MS = 5000;
 /** Reduced motion: no charge or shards, quick fade then result. */
 export const FINALE_REDUCED_MOTION_MS = 400;
 
