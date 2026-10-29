@@ -292,7 +292,8 @@ export function CreatorInfluencerBody({
   return (
     <div className="cpv2-influencer">
       <section
-        className="cpv2-progress-panel"
+        className="cpv2-progress-panel cpv2-enter"
+        style={{ "--cpv2-enter-i": 0 } as CSSProperties}
         aria-label="Collection progress"
       >
         <h2 className="cpv2-progress-title">Collection Progress</h2>
@@ -381,10 +382,11 @@ export function CreatorInfluencerBody({
       </section>
 
       <div className="cpv2-theme-stack">
-        {themes.map((theme) => (
+        {themes.map((theme, i) => (
           <ThemeCollectionCard
             key={theme.id}
             theme={theme}
+            enterIndex={1 + i}
             glyph={themeGlyph(theme)}
             avatarUrl={theme.thumbnailUrl || avatarUrl}
             cards={cardsByThemeId[theme.id] ?? []}
@@ -432,7 +434,11 @@ export function CreatorInfluencerBody({
         </button>
       ) : null}
 
-      <section className="cpv2-ultra-panel" aria-label="Ultra Card">
+      <section
+        className="cpv2-ultra-panel cpv2-enter"
+        style={{ "--cpv2-enter-i": 1 + themes.length } as CSSProperties}
+        aria-label="Ultra Card"
+      >
         <div className="cpv2-ultra-glow" aria-hidden="true" />
         <p className="cpv2-ultra-reward">
           Complete {creatorName}&rsquo;s Collection for your chance to{" "}
@@ -520,7 +526,11 @@ export function CreatorInfluencerBody({
         </div>
       </section>
 
-      <section className="cpv2-pack-section" aria-label="Pack offers">
+      <section
+        className="cpv2-pack-section cpv2-enter"
+        style={{ "--cpv2-enter-i": 2 + themes.length } as CSSProperties}
+        aria-label="Pack offers"
+      >
         <h3 className="cpv2-section-title" id="creator-pack-offers">
           Buy {creatorName} Packs
         </h3>
@@ -597,6 +607,7 @@ function ThemeCollectionCard({
   glyph,
   avatarUrl,
   cards,
+  enterIndex,
   boardTheme,
   demoLockedBanner = false,
   openCardId = "",
@@ -609,6 +620,7 @@ function ThemeCollectionCard({
   glyph: string;
   avatarUrl: string;
   cards: CardConfig[];
+  enterIndex: number;
   boardTheme?: CreatorBoard["themes"][number];
   demoLockedBanner?: boolean;
   openCardId?: string;
@@ -766,9 +778,14 @@ function ThemeCollectionCard({
 
   return (
     <section
-      className={["cpv2-theme-card", freePlay ? "is-free-play" : ""]
+      className={[
+        "cpv2-theme-card",
+        "cpv2-enter",
+        freePlay ? "is-free-play" : "",
+      ]
         .filter(Boolean)
         .join(" ")}
+      style={{ "--cpv2-enter-i": enterIndex } as CSSProperties}
       id={`creator-theme-${theme.id}`}
       aria-label={theme.name}
     >

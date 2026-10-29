@@ -948,3 +948,52 @@
     0 0 3px oklch(1 0 0 / 0),
     0 0 6px oklch(0.86 0.12 85);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .scm-meter:not(.is-inview) .scm-tick--collected,
+  .scm-meter:not(.is-inview) .scm-tick--motion,
+  body:has(.site-preloader) .scm-tick--collected,
+  body:has(.site-preloader) .scm-tick--motion {
+    filter: brightness(0.55) saturate(0);
+    box-shadow: none;
+  }
+
+  .scm-meter:not(.is-inview) .scm-tick--collected::after,
+  .scm-meter:not(.is-inview) .scm-tick--motion::after,
+  body:has(.site-preloader) .scm-tick--collected::after,
+  body:has(.site-preloader) .scm-tick--motion::after {
+    opacity: 0;
+  }
+
+  .scm-meter.is-inview .scm-tick--collected,
+  .scm-meter.is-inview .scm-tick--motion {
+    animation: scm-tick-light 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--scm-i, 0) * 80ms);
+  }
+
+  .scm-meter.is-inview .scm-tick--collected::after,
+  .scm-meter.is-inview .scm-tick--motion::after {
+    animation: scm-tick-glow 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--scm-i, 0) * 80ms);
+  }
+
+  body:has(.site-preloader) .scm-meter.is-inview .scm-tick--collected,
+  body:has(.site-preloader) .scm-meter.is-inview .scm-tick--motion,
+  body:has(.site-preloader) .scm-meter.is-inview .scm-tick--collected::after,
+  body:has(.site-preloader) .scm-meter.is-inview .scm-tick--motion::after {
+    animation: none;
+  }
+}
+
+@keyframes scm-tick-light {
+  from {
+    filter: brightness(0.55) saturate(0);
+    box-shadow: none;
+  }
+}
+
+@keyframes scm-tick-glow {
+  from {
+    opacity: 0;
+  }
+}

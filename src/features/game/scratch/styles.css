@@ -787,6 +787,9 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 .top-symbol-bar.is-phase-center {
   top: 50%;
   transform: translateY(-50%);
+  gap: var(--game-center-gap, 0.55rem);
+  padding: var(--game-center-pad-y, 0.7rem) var(--game-center-pad-x, 0.9rem);
+  max-width: min(92cqw, calc(100% - 1.5rem));
   pointer-events: auto;
   box-shadow:
     0 18px 48px oklch(0 0 0 / 0.55),
@@ -1269,6 +1272,12 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   }
 }
 
+.top-symbol-bar.is-phase-center .top-symbol-slot {
+  width: var(--game-center-slot, 2.75rem);
+  height: var(--game-center-slot, 2.75rem);
+  flex: 0 0 var(--game-center-slot, 2.75rem);
+}
+
 .top-symbol-bar .top-symbol-slot {
   position: relative;
   z-index: 1;
@@ -1416,7 +1425,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   height: 100%;
   overflow: hidden;
   pointer-events: none;
-  transform: scale(1.25);
+  transform: translateY(-0.5dvh) scale(1.39);
   left: 3px;
   animation: top-bar-peel-pop 700ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
 }
@@ -1424,11 +1433,11 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
 @keyframes top-bar-peel-pop {
   0% {
     opacity: 0;
-    transform: scale(0.7) translateX(-8px);
+    transform: translateY(-0.5dvh) scale(0.7) translateX(-8px);
   }
   100% {
     opacity: 1;
-    transform: scale(1.25) translateX(0);
+    transform: translateY(-0.5dvh) scale(1.39) translateX(0);
   }
 }
 

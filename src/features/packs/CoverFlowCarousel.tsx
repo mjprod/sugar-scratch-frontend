@@ -16,6 +16,7 @@ import {
 	  type MutableRefObject,
 	  type ReactNode,
 	} from 'react'
+import { createPortal } from 'react-dom'
 import type { Group, Object3D, PerspectiveCamera } from 'three'
 import {
   Box3,
@@ -995,6 +996,81 @@ function TearLottieHud({
   )
 }
 
+/**
+ * drei Html lives under a CSS transform + pointer-events:none ancestors.
+ * Cursor's embedded browser (and some Electron builds) click the canvas
+ * instead. Portal the real control to document.body, like Buy Pack confirm.
+ */
+function PortaledCartRemove({
+  confirmAbove,
+  children,
+}: {
+  confirmAbove: boolean
+  children: ReactNode
+}) {
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<{ top: number; left: number } | null>(null)
+
+  useLayoutEffect(() => {
+    let raf = 0
+    let live = true
+    const tick = () => {
+      if (!live) return
+      const el = anchorRef.current
+      if (el) {
+        const r = el.getBoundingClientRect()
+        if (r.width + r.height > 0) {
+          const top = r.top
+          const left = r.left + r.width / 2
+          setBox((prev) =>
+            prev &&
+            Math.abs(prev.top - top) < 0.5 &&
+            Math.abs(prev.left - left) < 0.5
+              ? prev
+              : { top, left },
+          )
+        }
+      }
+      raf = window.requestAnimationFrame(tick)
+    }
+    raf = window.requestAnimationFrame(tick)
+    return () => {
+      live = false
+      window.cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  return (
+    <>
+      <div
+        ref={anchorRef}
+        className="coverflow-cart-remove-anchor"
+        aria-hidden="true"
+      />
+      {box
+        ? createPortal(
+            <div
+              className={`coverflow-cart-remove-portaled${
+                confirmAbove ? ' is-confirm-above' : ''
+              }`}
+              style={{
+                position: 'fixed',
+                top: box.top,
+                left: box.left,
+                transform: 'translateX(-50%)',
+                zIndex: 5200,
+                pointerEvents: 'auto',
+              }}
+            >
+              {children}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  )
+}
+
 function CoverFlowPack({
 	  item,
 	  index,
@@ -1307,6 +1383,7 @@ useEffect(() => {
 
 	  const removeControl =
 	    onRemove && !isRemoving ? (
+	      <PortaledCartRemove confirmAbove={!isMobile}>
 	      <div className="coverflow-cart-remove-wrap">
 	        <button
 	          type="button"
@@ -1314,6 +1391,7 @@ useEffect(() => {
 	          aria-label={`Remove ${item.packName || item.girlName} from cart`}
 	          aria-expanded={removeConfirmOpen || removeConfirmLeaving}
 	          aria-controls={`coverflow-cart-remove-confirm-${item.id}`}
+	          onPointerDown={(event) => event.stopPropagation()}
 	          onClick={(event) => {
 	            event.stopPropagation()
 	            if (removeConfirmOpen) closeRemoveConfirm()
@@ -1368,6 +1446,7 @@ useEffect(() => {
 	          </div>
 	        ) : null}
 	      </div>
+	      </PortaledCartRemove>
 	    ) : null
 
   useEffect(() => {
@@ -2555,7 +2634,7 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
                           : ''
                     }${shortHudGlass ? ' is-short-glass' : ''}`}
                     aria-hidden={playOnlyCta ? !isCenter : !browseHudVisible}
-                    {...(playOnlyCta && !isCenter
+                    {...(!browseHudVisible || (playOnlyCta && !isCenter)
                       ? { inert: true }
                       : {})}
                   >
@@ -2584,7 +2663,6 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
 		                </span>
 		              </p>
 		            )}
-			{isMobile ? null : removeControl}
 			          </div>
 		        </Html>
 		      ) : null}

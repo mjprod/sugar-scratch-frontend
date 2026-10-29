@@ -894,8 +894,8 @@ body[data-theme="v8"] .mc-model-card {
 
 @media (prefers-reduced-motion: no-preference) {
   body[data-theme="v8"] .mc-model-list.is-reveal .mc-model-card {
-    animation: collection-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: calc(min(var(--mc-i, 0), 7) * 80ms);
+    animation: collection-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--mc-i, 0), 7) * 200ms);
   }
 }
 
@@ -1066,7 +1066,7 @@ body[data-theme="v8"] .mc-model-progress-fill {
 @media (prefers-reduced-motion: no-preference) {
   body[data-theme="v8"] .mc-model-progress-fill {
     animation: mc-progress-grow 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: calc(min(var(--mc-i, 0), 3) * 40ms);
+    animation-delay: calc(min(var(--mc-i, 0), 7) * 200ms);
   }
 }
 

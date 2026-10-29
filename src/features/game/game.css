@@ -276,6 +276,12 @@
         6
     )
   );
+  /* Mid-screen foil bar — a bit larger than the docked pill, same fraction of
+     the phone frame on every device. Docked --game-symbol-slot stays put. */
+  --game-center-slot: clamp(2.7rem, 12.6cqw, 3.3rem);
+  --game-center-gap: calc(var(--game-center-slot) * 0.18);
+  --game-center-pad-y: calc(var(--game-center-slot) * 0.24);
+  --game-center-pad-x: calc(var(--game-center-slot) * 0.32);
   --game-top-bar-width: calc(
     (6 * var(--game-symbol-slot)) + (5 * var(--game-top-bar-gap)) +
       (2 * var(--game-top-bar-pad-x))
@@ -446,6 +452,10 @@
   z-index: 1;
 }
 
+.stage-game__top-chrome-side.is-end .top-nav-resource--diamond .top-nav-resource-icon--diamond {
+  transform: scale(1.25);
+}
+
 .stage-game__top-chrome-center {
   display: flex;
   align-items: center;
@@ -505,7 +515,7 @@
   width: max-content;
   min-width: 0;
   max-width: 100%;
-  height: 40px;
+  height: 44px;
   flex: 0 0 auto;
   margin: 0;
   padding: 0 var(--space-5);
@@ -2442,7 +2452,7 @@
 .motion-currency-reveal__actions {
   position: absolute;
   left: 50%;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(8dvh + env(safe-area-inset-bottom, 0px));
   z-index: 5;
   width: min(280px, calc(100% - 48px));
   transform: translateX(-50%);

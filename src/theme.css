@@ -7330,6 +7330,18 @@ body[data-theme="v8"] .app-empty-art svg {
   height: 96px;
 }
 
+body[data-theme="v8"] .app-empty-art:has(.cart-empty-pack-art) {
+  width: auto;
+  height: auto;
+}
+
+body[data-theme="v8"] .cart-empty-pack-art {
+  display: block;
+  width: 9rem;
+  height: auto;
+  rotate: -9deg;
+}
+
 body[data-theme="v8"] .app-empty-title {
   margin: 0;
   color: oklch(0.967 0.01 320.55);
