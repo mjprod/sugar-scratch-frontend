@@ -16,6 +16,8 @@ type CoinLottieProps = {
   autoplay?: boolean;
   /** Playback multiplier. Default 1.25. */
   speed?: number;
+  /** Extra canvas DPR on top of the art-fill zoom. Default 1. */
+  extraScale?: number;
   style?: CSSProperties;
   "aria-hidden"?: boolean | "true" | "false";
 };
@@ -30,6 +32,7 @@ export function CoinLottie({
   loop = true,
   autoplay = true,
   speed = 1.25,
+  extraScale = 1,
   style,
   "aria-hidden": ariaHidden = true,
 }: CoinLottieProps) {
@@ -65,7 +68,7 @@ export function CoinLottie({
         autoplay={autoplay}
         loop={loop}
         speed={speed}
-        renderConfig={lottieRenderConfig({ extraScale: COIN_LOTTIE_ZOOM })}
+        renderConfig={lottieRenderConfig({ extraScale: COIN_LOTTIE_ZOOM * extraScale })}
         style={{
           width: "100%",
           height: "100%",

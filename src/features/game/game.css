@@ -2210,7 +2210,6 @@
 }
 
 .photo-diamond-reveal__skip,
-.motion-currency-reveal__skip,
 .no-match__skip {
   margin: 0;
   padding: 10px 22px;
@@ -2228,16 +2227,20 @@
 }
 
 .photo-diamond-reveal__skip:active,
-.motion-currency-reveal__skip:active,
 .no-match__skip:active {
   transform: scale(0.97);
   background: oklch(0.2 0.016 284 / 0.88);
 }
 
-.photo-diamond-reveal__cta-primary {
+.photo-diamond-reveal__cta-primary,
+.motion-currency-reveal__cta {
   width: 100%;
   height: 56px;
   touch-action: manipulation;
+}
+
+.motion-currency-reveal .cta-button {
+  --cta-font-size: var(--text-headline);
 }
 
 .motion-currency-reveal {
@@ -2247,6 +2250,7 @@
   pointer-events: auto;
   overflow: hidden;
   touch-action: none;
+  background: #000;
 }
 
 .motion-currency-reveal.is-fading {
@@ -2257,11 +2261,35 @@
 .motion-currency-reveal__backdrop {
   position: absolute;
   inset: 0;
-  /* Fully opaque — hide the scratched theme video (wrong look + decode cost). */
-  background: oklch(0.1 0.012 284);
+  background: #000;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  animation: motion-win-dim 320ms ease-out both;
+  animation: none;
+}
+
+.motion-currency-reveal__art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  -webkit-mask-image: radial-gradient(
+    ellipse 72% 68% at 50% 48%,
+    #000 28%,
+    transparent 74%
+  );
+  mask-image: radial-gradient(
+    ellipse 72% 68% at 50% 48%,
+    #000 28%,
+    transparent 74%
+  );
+}
+
+.motion-currency-reveal__art picture,
+.motion-currency-reveal__art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Pause the stage picture while the currency result owns the screen. */
@@ -2271,21 +2299,82 @@
   pointer-events: none !important;
 }
 
-.motion-currency-reveal__glow {
+/* Same mesh orbs as lp-build landing — corner blooms on the solid fill. */
+.motion-currency-reveal__mesh {
   position: absolute;
-  left: 50%;
-  top: 42%;
-  width: min(88%, 320px);
-  height: 240px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    oklch(0.78 0.14 330 / 0.28) 0%,
-    oklch(0.82 0.14 90 / 0.14) 40%,
-    transparent 72%
-  );
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+
+.motion-currency-reveal__mesh-pair {
+  position: absolute;
+}
+
+.motion-currency-reveal__mesh-pair.is-top-right {
+  top: 0;
+  right: 0;
+  width: min(72cqw, 640px);
+  height: min(72cqw, 640px);
+  transform: translate(78%, -102%);
+}
+
+.motion-currency-reveal__mesh-pair.is-bottom-left {
+  bottom: 0;
+  left: 0;
+  width: min(78cqw, 700px);
+  height: min(78cqw, 700px);
+  transform: translate(-110%, 100%);
+  mix-blend-mode: screen;
+}
+
+.motion-currency-reveal__mesh-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+}
+
+.motion-currency-reveal__mesh-orb.is-a {
+  width: 375px;
+  height: 353px;
+  background: #fff2c49e;
+  z-index: 2;
+}
+
+.motion-currency-reveal__mesh-orb.is-b {
+  width: 524px;
+  height: 493px;
+  background: #7d1010b3;
+  z-index: 1;
+  mix-blend-mode: soft-light;
+}
+
+.motion-currency-reveal__mesh-pair.is-top-right .motion-currency-reveal__mesh-orb.is-a,
+.motion-currency-reveal__mesh-pair.is-top-right .motion-currency-reveal__mesh-orb.is-b {
+  width: 375px;
+  height: 353px;
+}
+
+.motion-currency-reveal__mesh-pair.is-top-right .motion-currency-reveal__mesh-orb.is-a {
+  top: -12%;
+  right: 10%;
+  background: rgb(35 0 132 / 70%);
+}
+
+.motion-currency-reveal__mesh-pair.is-top-right .motion-currency-reveal__mesh-orb.is-b {
+  top: 14%;
+  right: 10%;
+  background: rgb(247 0 255 / 47%);
+}
+
+.motion-currency-reveal__mesh-pair.is-bottom-left .motion-currency-reveal__mesh-orb.is-a {
+  bottom: 10%;
+  left: 8%;
+}
+
+.motion-currency-reveal__mesh-pair.is-bottom-left .motion-currency-reveal__mesh-orb.is-b {
+  bottom: 0;
+  left: 0;
 }
 
 .motion-currency-reveal__particles {
@@ -2325,23 +2414,56 @@
 }
 
 .motion-currency-reveal__header {
+  position: absolute;
+  top: calc(6dvh + env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding-inline: 16px;
   text-align: center;
   animation: motion-win-header-in 420ms ease-out both;
 }
 
 .motion-currency-reveal__won {
-  margin: 0;
+  display: block;
+  width: min(94%, 520px);
+  aspect-ratio: 540 / 292;
+  margin: 0 auto;
+  overflow: visible;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.motion-currency-reveal__won.is-text {
+  width: auto;
+  aspect-ratio: auto;
   color: oklch(0.937 0.086 91.56);
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.18em;
+  line-height: 1;
   text-shadow: 0 0 18px oklch(0.937 0.086 91.56 / 0.35);
+}
+
+.motion-currency-reveal__won-player,
+.motion-currency-reveal__won-player canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+  pointer-events: none;
 }
 
 .motion-currency-reveal__count {
   margin: var(--space-2) 0 0;
   color: oklch(1 0 0 / 0.92);
-  font-size: 18px;
+  font-size: var(--text-headline);
+  font-weight: 500;
+  line-height: var(--text-headline--line-height);
+  letter-spacing: var(--text-headline--letter-spacing);
+}
+
+.motion-currency-reveal__count-prize {
   font-weight: 700;
 }
 
@@ -2351,6 +2473,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2-5);
+  margin-top: 10dvh;
   opacity: 0;
   transform: scale(0.88);
   transition:
@@ -2390,6 +2513,22 @@
   width: 100%;
 }
 
+.motion-currency-reveal__hero.is-diamonds .motion-currency-reveal__amount {
+  font-size: var(--text-hero);
+  line-height: var(--text-hero--line-height);
+  background: linear-gradient(180deg, #fef2ff, #ea8ffb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0px 2px 0px #9e00bb);
+}
+
+.motion-currency-reveal__hero.is-diamonds .motion-currency-reveal__label {
+  color: #d19bfc;
+}
+
 .motion-currency-reveal__stack-col {
   display: flex;
   flex-direction: column;
@@ -2409,16 +2548,38 @@
 }
 
 .motion-currency-reveal__pair .motion-currency-reveal__icon {
+  width: 92px;
+  height: 92px;
+  overflow: hidden;
+  contain: size;
   margin-right: calc(var(--space-2-5) * -1);
 }
 
 .motion-currency-reveal__pair .motion-currency-reveal__amount {
   flex: 0 0 auto;
   white-space: nowrap;
+  color: #ffe280;
+  text-shadow: 0 0 24px #ffe28059;
+}
+
+.motion-currency-reveal__pair .motion-currency-reveal__stack-col {
+  align-items: center;
+  width: max-content;
+  font-size: 40px;
+}
+
+.motion-currency-reveal__pair .motion-currency-reveal__label {
+  color: #ffe280;
+  font-size: 0.45em;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .motion-currency-reveal__hero.is-coins {
   flex-wrap: nowrap;
+  transform: translateX(-5dvw);
 }
 
 .motion-currency-reveal__stack.has-both .motion-currency-reveal__hero.is-coins {
@@ -2443,8 +2604,9 @@
 .motion-currency-reveal__label {
   margin: 0;
   color: oklch(1 0 0 / 0.7);
-  font-size: 12px;
+  font-size: var(--text-title);
   font-weight: 700;
+  line-height: var(--text-title--line-height);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

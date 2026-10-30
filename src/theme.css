@@ -7377,7 +7377,7 @@ body[data-theme="v8"] .pack-added-toast-stack {
   --pack-added-toast-nav-top: max(12px, env(safe-area-inset-top, 0px));
   --pack-added-toast-nav-height: 56px;
   position: fixed;
-  top: calc(var(--pack-added-toast-nav-top) + var(--pack-added-toast-nav-height) + 16px);
+  top: calc(var(--pack-added-toast-nav-top) + var(--pack-added-toast-nav-height) + var(--space-6));
   left: 50%;
   right: auto;
   z-index: 5005;
@@ -7469,7 +7469,7 @@ body[data-theme="v8"] .pack-added-toast__copy {
   body[data-theme="v8"] .pack-added-toast-stack {
     --pack-added-toast-nav-top: max(8px, env(safe-area-inset-top, 0px));
     --pack-added-toast-nav-height: 44px;
-    top: calc(var(--mobile-top-hud-height) + 16px);
+    top: calc(var(--mobile-top-hud-height) + var(--space-6));
     left: 50%;
     right: auto;
     transform: translate3d(-50%, 0, 0);

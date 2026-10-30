@@ -896,11 +896,13 @@
   position: absolute;
   top: 1px;
   bottom: 1px;
-  left: 50%;
-  width: 2px;
+  right: -0.5px;
+  width: 1px;
   border-radius: 999px;
   pointer-events: none;
   transform: translateX(-50%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, black, transparent 100%);
 }
 
 .scm-tick--collected {

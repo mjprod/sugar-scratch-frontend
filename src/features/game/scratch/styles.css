@@ -1095,21 +1095,20 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-slot-reactivate 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
-/* Matching type: pop the slot up and tilt ±5° so it reads next to the flying icon. */
-.stage-game__top-chrome-center
-  .top-symbol-bar.is-phase-docked:has(.is-match-shaking) {
-  overflow: visible;
-}
-
+/* Grow in-place inside the dock; one shot so looping scale doesn't snap. */
 .top-symbol-bar.is-phase-docked .top-symbol-slot.is-match-shaking {
   z-index: 6;
-  overflow: visible;
+  overflow: hidden;
   filter: none;
   background: var(--symbol-slot-fill, #a74479) !important;
+  transform-origin: center;
+  will-change: transform;
   animation-name: top-bar-match-shake;
-  animation-duration: var(--match-shake-cycle-ms);
+  animation-duration: calc(
+    var(--match-shake-cycle-ms) * var(--match-shake-cycles)
+  );
   animation-delay: calc(var(--match-delay-ms, 0ms) + var(--match-shake-start-ms));
-  animation-iteration-count: var(--match-shake-cycles);
+  animation-iteration-count: 1;
   animation-timing-function: ease-in-out;
   animation-fill-mode: both;
 }
@@ -1125,20 +1124,32 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   0% {
     transform: scale(1) rotate(0deg);
   }
-  12% {
-    transform: scale(1.45) rotate(0deg);
+  10% {
+    transform: scale(1.16) rotate(0deg);
   }
-  25% {
-    transform: scale(1.45) rotate(5deg);
+  22% {
+    transform: scale(1.16) rotate(5deg);
   }
-  50% {
-    transform: scale(1.45) rotate(0deg);
+  34% {
+    transform: scale(1.16) rotate(0deg);
   }
-  75% {
-    transform: scale(1.45) rotate(-5deg);
+  46% {
+    transform: scale(1.16) rotate(-5deg);
+  }
+  58% {
+    transform: scale(1.16) rotate(0deg);
+  }
+  70% {
+    transform: scale(1.16) rotate(5deg);
+  }
+  82% {
+    transform: scale(1.16) rotate(0deg);
+  }
+  90% {
+    transform: scale(1.16) rotate(0deg);
   }
   100% {
-    transform: scale(1.45) rotate(0deg);
+    transform: scale(1) rotate(0deg);
   }
 }
 

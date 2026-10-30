@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { lottieRenderConfig } from "@/utils/lottieRender";
+
+const YOU_WIN_LOTTIE_SRC = "/lottie/lottieYouWinText.lottie";
+const WIN_BG = "/images/imageWinBg";
 
 export type MotionCurrencyRevealProps = {
   coins: number;
@@ -21,6 +27,8 @@ type Phase =
 export const CARD_CURRENCY_RESULT_MS = 8000;
 const SAFETY_MS = CARD_CURRENCY_RESULT_MS + 800;
 const COUNT_MS = 900;
+/** Temporary: stay up until Skip so we can inspect the layout. */
+const HOLD_UNTIL_DISMISS = true;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -125,6 +133,12 @@ export function MotionCurrencyReveal({
 
     const holdMs = reduced ? 2500 : CARD_CURRENCY_RESULT_MS;
 
+    if (HOLD_UNTIL_DISMISS) {
+      at(reduced ? 120 : 200, () => setPhase("appearing"));
+      at(reduced ? 500 : 900, () => setPhase("confirmed"));
+      return () => clearTimers();
+    }
+
     if (reduced) {
       at(120, () => setPhase("appearing"));
       at(500, () => setPhase("confirmed"));
@@ -175,7 +189,35 @@ export function MotionCurrencyReveal({
         .join(" and ")}
     >
       <div className="motion-currency-reveal__backdrop" aria-hidden="true" />
-      <div className="motion-currency-reveal__glow" aria-hidden="true" />
+      <div className="motion-currency-reveal__art" aria-hidden="true">
+        <picture>
+          <source
+            type="image/jxl"
+            srcSet={`${WIN_BG}@1x.jxl 1x, ${WIN_BG}@2x.jxl 2x`}
+          />
+          <source
+            type="image/webp"
+            srcSet={`${WIN_BG}@1x.webp 1x, ${WIN_BG}@2x.webp 2x`}
+          />
+          <img
+            src={`${WIN_BG}@1x.webp`}
+            srcSet={`${WIN_BG}@1x.webp 1x, ${WIN_BG}@2x.webp 2x`}
+            alt=""
+            draggable={false}
+            decoding="async"
+          />
+        </picture>
+      </div>
+      <div className="motion-currency-reveal__mesh" aria-hidden="true">
+        <div className="motion-currency-reveal__mesh-pair is-top-right">
+          <span className="motion-currency-reveal__mesh-orb is-a" />
+          <span className="motion-currency-reveal__mesh-orb is-b" />
+        </div>
+        <div className="motion-currency-reveal__mesh-pair is-bottom-left">
+          <span className="motion-currency-reveal__mesh-orb is-a" />
+          <span className="motion-currency-reveal__mesh-orb is-b" />
+        </div>
+      </div>
       <div className="motion-currency-reveal__particles" aria-hidden="true">
         {Array.from({ length: 10 }, (_, i) => (
           <span key={i} style={{ "--i": i } as CSSProperties} />
@@ -185,18 +227,38 @@ export function MotionCurrencyReveal({
       <div className="motion-currency-reveal__center">
         {showHeader ? (
           <div className="motion-currency-reveal__header">
-            <p className="motion-currency-reveal__won">YOU WON!</p>
+            {reduced ? (
+              <p className="motion-currency-reveal__won is-text">YOU WON!</p>
+            ) : (
+              <>
+                <div className="motion-currency-reveal__won" aria-hidden="true">
+                  <DotLottieReact
+                    src={YOU_WIN_LOTTIE_SRC}
+                    autoplay
+                    loop
+                    className="motion-currency-reveal__won-player"
+                    renderConfig={lottieRenderConfig({
+                      extraScale: 2,
+                      autoResize: false,
+                    })}
+                    style={{ width: "100%", height: "100%", pointerEvents: "none" }}
+                  />
+                </div>
+                <p className="sr-only">YOU WON!</p>
+              </>
+            )}
             <p className="motion-currency-reveal__count">
-              {[
-                showDiamonds
-                  ? `${diamonds} Diamond${diamonds === 1 ? "" : "s"}`
-                  : null,
-                showCoins
-                  ? `${coins} Coin${coins === 1 ? "" : "s"}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+              {showDiamonds ? (
+                <span className="motion-currency-reveal__count-prize">
+                  {diamonds} Diamond{diamonds === 1 ? "" : "s"}
+                </span>
+              ) : null}
+              {showDiamonds && showCoins ? " · " : null}
+              {showCoins ? (
+                <span>
+                  {coins} Coin{coins === 1 ? "" : "s"}
+                </span>
+              ) : null}
             </p>
           </div>
         ) : null}
@@ -219,12 +281,14 @@ export function MotionCurrencyReveal({
             <div className="motion-currency-reveal__hero is-diamonds">
               <div className="motion-currency-reveal__stack-col">
                 <div className="motion-currency-reveal__icon" aria-hidden="true">
-                  <DiamondLottie size={72} />
+                  <DiamondLottie size={130} animated />
                 </div>
                 <p className="motion-currency-reveal__amount tabular-nums">
                   {diamondDisplay}
                 </p>
-                <p className="motion-currency-reveal__label">Diamonds</p>
+                <p className="motion-currency-reveal__label">
+                  {diamonds === 1 ? "Diamond" : "Diamonds"}
+                </p>
               </div>
             </div>
           ) : null}
@@ -232,13 +296,21 @@ export function MotionCurrencyReveal({
             <div className="motion-currency-reveal__hero is-coins">
               <div className="motion-currency-reveal__pair">
                 <div className="motion-currency-reveal__icon" aria-hidden="true">
-                  <CoinLottie size={44} loop autoplay />
+                  <CoinLottie
+                    size={88}
+                    extraScale={2}
+                    loop
+                    autoplay
+                    style={{ width: "100%", height: "100%" }}
+                  />
                 </div>
-                <p className="motion-currency-reveal__amount tabular-nums">
-                  {coinDisplay}
-                </p>
+                <div className="motion-currency-reveal__stack-col">
+                  <p className="motion-currency-reveal__amount tabular-nums">
+                    {coinDisplay}
+                  </p>
+                  <p className="motion-currency-reveal__label">Coins</p>
+                </div>
               </div>
-              <p className="motion-currency-reveal__label">Coins</p>
             </div>
           ) : null}
         </div>
@@ -246,13 +318,17 @@ export function MotionCurrencyReveal({
 
       {showSkip ? (
         <div className="motion-currency-reveal__actions">
-          <button
-            type="button"
-            className="motion-currency-reveal__skip"
-            onClick={skipNow}
-          >
-            Next Card
-          </button>
+          <div className="motion-currency-reveal__cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="button"
+              label="Next Card"
+              costAmount={null}
+              strokeWidth={1}
+              onClick={skipNow}
+            />
+          </div>
         </div>
       ) : null}
 
