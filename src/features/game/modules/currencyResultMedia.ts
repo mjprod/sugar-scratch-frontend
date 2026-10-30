@@ -1,6 +1,6 @@
 /**
- * Theme-video policy while a per-card result owns the screen:
- * symbol-bar showcase, YOU WON, or NO MATCH. Static backdrop — keep decoders quiet.
+ * Theme-video policy while NO MATCH owns the stage.
+ * Showcase keeps the performer (win is `/game/win`).
  */
 
 /** Watchdog / play-nudge must not revive theme clips under the result. */
@@ -8,7 +8,7 @@ export function shouldReviveGameVideos(opts: {
   userPaused: boolean;
   introActive: boolean;
   cardTransitionActive: boolean;
-  /** Showcase / currency win / no-match covering the stage. */
+  /** No-match overlay covering the stage. */
   resultOverlayActive: boolean;
 }): boolean {
   if (opts.userPaused) return false;
@@ -26,11 +26,10 @@ export function shouldDeferCardVideoAttach(opts: {
   return opts.introActive || opts.resultOverlayActive;
 }
 
-/** Stage picture must hide for showcase + final result overlays. */
+/** Hide the stage picture under NO MATCH / leftover overlay wins — not showcase. */
 export function shouldClearStagePicture(opts: {
   topBarPhase: string;
   motionOutcome: string | null | undefined;
 }): boolean {
-  if (opts.topBarPhase === "showcase") return true;
   return opts.motionOutcome === "diamond" || opts.motionOutcome === "no-match";
 }

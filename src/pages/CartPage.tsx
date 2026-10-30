@@ -196,36 +196,30 @@ function foilForOwnedInstance(
   return { profile, foil: byId ?? profile.packs[0] ?? null };
 }
 
+const EMPTY_PACK_ART = "/images/packs/imageEmptyPack";
+
 function PocketEmptyArt() {
   return (
-    <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M18 22h60c3.3 0 6 2.7 6 6v22c0 16.6-13.4 32-36 32S12 66.6 12 50V28c0-3.3 2.7-6 6-6Z"
-        fill="url(#pocket-fill)"
-        stroke="#FF2D87"
-        strokeWidth="2.2"
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${EMPTY_PACK_ART}@1x.jxl 1x, ${EMPTY_PACK_ART}@2x.jxl 2x`}
       />
-      <path
-        d="M20 38h56"
-        stroke="#FF2D87"
-        strokeWidth="2"
-        strokeLinecap="round"
-        opacity="0.85"
+      <source
+        type="image/webp"
+        srcSet={`${EMPTY_PACK_ART}@1x.webp 1x, ${EMPTY_PACK_ART}@2x.webp 2x`}
       />
-      <path
-        d="M38 52h20"
-        stroke="#FFE0E8"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        opacity="0.7"
+      <img
+        className="cart-empty-pack-art"
+        src={`${EMPTY_PACK_ART}@1x.png`}
+        srcSet={`${EMPTY_PACK_ART}@1x.png 1x, ${EMPTY_PACK_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={532}
+        decoding="async"
+        draggable={false}
       />
-      <defs>
-        <linearGradient id="pocket-fill" x1="18" y1="16" x2="78" y2="90">
-          <stop stopColor="#FF4FA0" stopOpacity="0.35" />
-          <stop offset="1" stopColor="#5A0028" stopOpacity="0.55" />
-        </linearGradient>
-      </defs>
-    </svg>
+    </picture>
   );
 }
 

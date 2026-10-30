@@ -12,8 +12,10 @@ import {
   type GameSession,
 } from "./gameSession";
 
+import { MOTION_WIN_HOLD_MS } from "./motionWinPage";
+
 /** Keep in sync with MotionCurrencyReveal.CARD_CURRENCY_RESULT_MS */
-const CARD_CURRENCY_RESULT_MS = 5000;
+const CARD_CURRENCY_RESULT_MS = MOTION_WIN_HOLD_MS;
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
@@ -37,7 +39,7 @@ const local = new Map<string, string>();
   location: { search: "", href: "http://localhost/" },
 };
 
-assert(CARD_CURRENCY_RESULT_MS === 5000, "currency result holds 5 seconds");
+assert(CARD_CURRENCY_RESULT_MS === 7000, "currency result holds 7 seconds");
 
 assert(diamondsForMotionPrize(0) === 0, "no prize → no diamonds");
 assert(diamondsForMotionPrize(3) === 3, "prize units map 1:1 to diamonds");

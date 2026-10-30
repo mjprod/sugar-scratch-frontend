@@ -47,6 +47,19 @@ const SCRATCH_TEXT_LEAD_MS = 180;
 const DOCK_FLY_MS = 280;
 /** Peak CSS blur during dock climb (px) — light motion-blur read. */
 const DOCK_FLY_BLUR_PX = 14;
+/** Fallback shrink if --game-top-bar-width cannot be measured. */
+const DOCK_FLY_SCALE_END = 0.84;
+
+function dockedBarWidth(from: HTMLElement): number {
+  const host = from.closest(".stage");
+  if (!(host instanceof HTMLElement)) return 0;
+  const probe = host.appendChild(document.createElement("div"));
+  probe.style.cssText =
+    "position:absolute;visibility:hidden;pointer-events:none;width:var(--game-top-bar-width)";
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
+}
 /** Last dormant cascade delay (200ms) + 520ms fade, then a beat before hide. */
 const DOCK_SETTLE_MS = 200 + 520 + 280;
 
@@ -114,7 +127,7 @@ function rgbBytesToOklch(r: number, g: number, b: number) {
 export type TopBarPhase = "center" | "docked" | "showcase";
 
 /** Fly back to center + pulse matched finds before advancing. */
-export const TOP_BAR_SHOWCASE_MS = 400;
+export const TOP_BAR_SHOWCASE_MS = 4000;
 
 type TopSymbolBarProps = {
   symbols: number[];
@@ -722,6 +735,11 @@ export function TopSymbolBar({
         prevPhaseRef.current = "docked";
         return;
       }
+      const dockW = dockedBarWidth(el);
+      const scaleEnd =
+        dockW > 8 && origin.width > 8
+          ? dockW / origin.width
+          : DOCK_FLY_SCALE_END;
 
       const stage = el.closest(".stage");
       const stageTop =
@@ -819,7 +837,7 @@ export function TopSymbolBar({
           // smoothstep climb
           const e = u * u * (3 - 2 * u);
           ty = 14 + (dy - 14) * e;
-          scale = 1.08 + (0.84 - 1.08) * e;
+          scale = 1.08 + (scaleEnd - 1.08) * e;
           // blur peaks mid-climb then clears for land
           blur = DOCK_FLY_BLUR_PX * Math.sin(Math.PI * u);
         }
