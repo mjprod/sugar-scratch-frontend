@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
-import { DeferredLottie } from "@/lib/lottie/DeferredLottie";
+import { useEffect, type CSSProperties } from "react";
+import { DeferredLottie, openDeferredLotties } from "@/lib/lottie/DeferredLottie";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const COIN_LOTTIE_SRC = "/cursor-fx/Diamond%20Coin.lottie";
@@ -18,6 +18,8 @@ type CoinLottieProps = {
   speed?: number;
   /** Extra canvas DPR on top of the art-fill zoom. Default 1. */
   extraScale?: number;
+  /** Skip the still WebP and open the Lottie gate immediately. */
+  eager?: boolean;
   style?: CSSProperties;
   "aria-hidden"?: boolean | "true" | "false";
 };
@@ -33,9 +35,14 @@ export function CoinLottie({
   autoplay = true,
   speed = 1.25,
   extraScale = 1,
+  eager = false,
   style,
   "aria-hidden": ariaHidden = true,
 }: CoinLottieProps) {
+  useEffect(() => {
+    if (eager) openDeferredLotties();
+  }, [eager]);
+
   const edge =
     typeof size === "number" ? `${size * 1.3}px` : `calc(${size} * 1.3)`;
 
@@ -57,12 +64,14 @@ export function CoinLottie({
     >
       <DeferredLottie
         fallback={
-          <img
-            src={COIN_STILL_SRC}
-            alt=""
-            draggable={false}
-            style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
-          />
+          eager ? null : (
+            <img
+              src={COIN_STILL_SRC}
+              alt=""
+              draggable={false}
+              style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+            />
+          )
         }
         src={COIN_LOTTIE_SRC}
         autoplay={autoplay}

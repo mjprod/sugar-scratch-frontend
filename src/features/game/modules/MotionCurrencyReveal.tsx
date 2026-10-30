@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -7,6 +14,19 @@ import { lottieRenderConfig } from "@/utils/lottieRender";
 
 const YOU_WIN_LOTTIE_SRC = "/lottie/lottieYouWinText.lottie";
 const WIN_BG = "/images/imageWinBg";
+const WON_IN_MS = 840;
+/** Covers the 1.22 bounce peak after the bitmap is sized at scale(1). */
+const WON_EXTRA_SCALE = 3;
+const WON_IN_FRAMES: Keyframe[] = [
+  { transform: "scale(0)", opacity: 1, offset: 0 },
+  { transform: "scale(0.14)", opacity: 1, offset: 0.14 },
+  { transform: "scale(0)", opacity: 1, offset: 0.22 },
+  { transform: "scale(1.22)", opacity: 1, offset: 0.52 },
+  { transform: "scale(0.88)", opacity: 1, offset: 0.66 },
+  { transform: "scale(1.08)", opacity: 1, offset: 0.8 },
+  { transform: "scale(0.97)", opacity: 1, offset: 0.9 },
+  { transform: "scale(1)", opacity: 1, offset: 1 },
+];
 
 export type MotionCurrencyRevealProps = {
   coins: number;
@@ -91,10 +111,30 @@ export function MotionCurrencyReveal({
   onComplete,
 }: MotionCurrencyRevealProps) {
   const [phase, setPhase] = useState<Phase>("entering");
+  const [wonBox, setWonBox] = useState({ w: 0, h: 0 });
   const completedRef = useRef(false);
   const timersRef = useRef<number[]>([]);
+  const wonPlayerRef = useRef<DotLottie | null>(null);
+  const wonBoxRef = useRef<HTMLDivElement | null>(null);
+  const wonAnimRef = useRef<Animation | null>(null);
+  const wonScaleDoneRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const wonRenderConfig = useMemo(
+    () => lottieRenderConfig({ extraScale: WON_EXTRA_SCALE, autoResize: false }),
+    [],
+  );
+
+  function playWonLottie() {
+    const player = wonPlayerRef.current;
+    if (!player) return;
+    try {
+      player.setLoop(true);
+      void player.play();
+    } catch {
+      /* player may not be ready yet */
+    }
+  }
   const reduced = prefersReducedMotion();
   const counting = phase === "appearing" || phase === "confirmed";
   const coinDisplay = useCountUp(coins, counting, COUNT_MS);
@@ -124,6 +164,10 @@ export function MotionCurrencyReveal({
 
   useEffect(() => {
     completedRef.current = false;
+    wonScaleDoneRef.current = false;
+    wonAnimRef.current?.cancel();
+    wonAnimRef.current = null;
+    setWonBox({ w: 0, h: 0 });
     setPhase("entering");
     clearTimers();
 
@@ -166,6 +210,22 @@ export function MotionCurrencyReveal({
   const fading = phase === "complete";
   const showCoins = coins > 0;
   const showDiamonds = diamonds > 0;
+
+  useLayoutEffect(() => {
+    if (!showHeader || reduced) return;
+    const el = wonBoxRef.current;
+    if (!el) return;
+    const apply = () => {
+      const w = Math.round(el.offsetWidth);
+      const h = Math.round(el.offsetHeight);
+      if (w <= 0 || h <= 0) return;
+      setWonBox((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showHeader, reduced, resultId]);
 
   return (
     <div
@@ -231,18 +291,58 @@ export function MotionCurrencyReveal({
               <p className="motion-currency-reveal__won is-text">YOU WON!</p>
             ) : (
               <>
-                <div className="motion-currency-reveal__won" aria-hidden="true">
-                  <DotLottieReact
-                    src={YOU_WIN_LOTTIE_SRC}
-                    autoplay
-                    loop
-                    className="motion-currency-reveal__won-player"
-                    renderConfig={lottieRenderConfig({
-                      extraScale: 2,
-                      autoResize: false,
-                    })}
-                    style={{ width: "100%", height: "100%", pointerEvents: "none" }}
-                  />
+                <div
+                  ref={wonBoxRef}
+                  className="motion-currency-reveal__won"
+                  aria-hidden="true"
+                >
+                  {wonBox.w > 0 ? (
+                    <DotLottieReact
+                      src={YOU_WIN_LOTTIE_SRC}
+                      autoplay={false}
+                      loop
+                      className="motion-currency-reveal__won-player"
+                      renderConfig={wonRenderConfig}
+                      dotLottieRefCallback={(player) => {
+                        if (!player) return;
+                        wonPlayerRef.current = player;
+                        const hooked = player as DotLottie & {
+                          __wonHooked?: boolean;
+                        };
+                        if (hooked.__wonHooked) {
+                          if (wonScaleDoneRef.current) playWonLottie();
+                          return;
+                        }
+                        hooked.__wonHooked = true;
+                        wonAnimRef.current?.cancel();
+                        wonAnimRef.current = null;
+                        wonScaleDoneRef.current = false;
+                        const startBounce = () => {
+                          const host = wonBoxRef.current;
+                          if (!host || wonAnimRef.current) return;
+                          // Size the bitmap at scale(1) — resize() reads
+                          // getBoundingClientRect, which includes WAAPI scale.
+                          try {
+                            player.resize();
+                          } catch {
+                            /* player may not be ready yet */
+                          }
+                          const anim = host.animate(WON_IN_FRAMES, {
+                            duration: WON_IN_MS,
+                            easing: "linear",
+                            fill: "forwards",
+                          });
+                          wonAnimRef.current = anim;
+                          anim.onfinish = () => {
+                            wonScaleDoneRef.current = true;
+                            playWonLottie();
+                          };
+                        };
+                        player.addEventListener("load", startBounce);
+                        if (player.isLoaded) startBounce();
+                      }}
+                    />
+                  ) : null}
                 </div>
                 <p className="sr-only">YOU WON!</p>
               </>
@@ -299,6 +399,7 @@ export function MotionCurrencyReveal({
                   <CoinLottie
                     size={88}
                     extraScale={2}
+                    eager
                     loop
                     autoplay
                     style={{ width: "100%", height: "100%" }}
@@ -352,7 +453,7 @@ export function MotionCurrencyReveal({
         {showCoins ? (
           <>
             <span className="motion-currency-reveal__mini-icon" aria-hidden="true">
-              <CoinLottie size={22} loop={false} autoplay />
+              <CoinLottie size={22} eager loop={false} autoplay />
             </span>
             <span className="motion-currency-reveal__mini-new">+{coins}</span>
           </>
