@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
@@ -9,8 +9,13 @@ import { collectionReturnHref } from "@/shared/navigation/collectionReturn";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import {
+  loadGameSession,
   persistGameProgress,
 } from "@/features/game/modules/gameSession";
+import {
+  motionWinHref,
+  motionWinPayloadFromPending,
+} from "@/features/game/modules/motionWinPage";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
@@ -89,9 +94,25 @@ function ScratchGameEmbed() {
 }
 
 export function GamePage() {
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const model = searchParams.get("model")?.trim();
   const card = searchParams.get("card")?.trim();
+
+  // Don't attach scratch videos when a currency win is waiting — /game/win
+  // is the page that lets iOS drop the previous decoder.
+  const pendingWin = motionWinPayloadFromPending(
+    loadGameSession()?.pendingMotionResult,
+  );
+  if (pendingWin) {
+    return (
+      <Navigate
+        to={motionWinHref(location.search)}
+        replace
+        state={pendingWin}
+      />
+    );
+  }
 
   // Bare /game → pack-fan hub. model+card → scratch (collection or ?game=1 hand).
   if (model && card) {

@@ -7,6 +7,7 @@ import {
   explosionOrigin,
   FINALE_BURST_MS,
   FINALE_CHARGE_MS,
+  FINALE_HOLD_MS,
   FINALE_REDUCED_MOTION_MS,
   finaleHidesForeground,
   finalePhaseAt,
@@ -29,6 +30,7 @@ for (let ms = 0; ms <= full.resultAtMs + 100; ms += 10) {
   assert(idx >= last, `phase went backwards at ${ms}ms`);
   last = idx;
 }
+assert(FINALE_HOLD_MS === 4000, "hold after shatter is 4s");
 assert(finalePhaseAt(0, full) === "charge", "finale starts charging");
 assert(
   finalePhaseAt(FINALE_CHARGE_MS, full) === "burst",

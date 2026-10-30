@@ -53,8 +53,8 @@ assert(
 );
 
 assert(
-  shouldClearStagePicture({ topBarPhase: "showcase", motionOutcome: null }),
-  "showcase clears stage picture",
+  !shouldClearStagePicture({ topBarPhase: "showcase", motionOutcome: null }),
+  "showcase keeps the performer under the pulsing dock",
 );
 
 assert(

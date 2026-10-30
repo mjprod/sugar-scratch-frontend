@@ -2316,7 +2316,7 @@
   right: 0;
   width: min(72cqw, 640px);
   height: min(72cqw, 640px);
-  transform: translate(78%, -102%);
+  transform: translate(78%, -82%);
 }
 
 .motion-currency-reveal__mesh-pair.is-bottom-left {
@@ -2324,8 +2324,7 @@
   left: 0;
   width: min(78cqw, 700px);
   height: min(78cqw, 700px);
-  transform: translate(-110%, 100%);
-  mix-blend-mode: screen;
+  transform: translate(-70%, 98%);
 }
 
 .motion-currency-reveal__mesh-orb {
@@ -2458,12 +2457,16 @@
 }
 
 .motion-currency-reveal__count {
-  margin: var(--space-2) 0 0;
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  flex-shrink: 0;
   color: oklch(1 0 0 / 0.92);
   font-size: var(--text-headline);
   font-weight: 500;
   line-height: var(--text-headline--line-height);
   letter-spacing: var(--text-headline--letter-spacing);
+  text-align: center;
 }
 
 .motion-currency-reveal__count-prize {
@@ -2596,13 +2599,26 @@
 }
 
 .motion-currency-reveal__hero.is-diamonds .motion-currency-reveal__icon {
-  transform: scale(0);
+  width: 190px;
+  height: 190px;
   transform-origin: center;
+  overflow: hidden;
 }
 
-.motion-currency-reveal__stack.is-visible
-  .motion-currency-reveal__hero.is-diamonds
-  .motion-currency-reveal__icon {
+/*
+ * Comp is 1080². Lock CSS + canvas to 190² before the pop-in scale.
+ * autoResize on a scale(0) host made the bitmap tall and squashed X.
+ */
+.motion-currency-reveal__hero.is-diamonds .diamond-lottie,
+.motion-currency-reveal__hero.is-diamonds .diamond-lottie canvas {
+  width: 190px !important;
+  height: 190px !important;
+  aspect-ratio: 1 !important;
+  object-fit: contain;
+}
+
+.motion-currency-reveal__hero.is-diamonds
+  .motion-currency-reveal__icon.is-diamond-in {
   animation: motion-currency-diamond-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

@@ -10,6 +10,7 @@ import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { MOTION_WIN_HOLD_MS } from "./motionWinPage";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 const YOU_WIN_LOTTIE_SRC = "/lottie/lottieYouWinText.lottie";
@@ -44,11 +45,9 @@ type Phase =
   | "complete";
 
 /** Per-card currency result hold before auto-advance to the next motion card. */
-export const CARD_CURRENCY_RESULT_MS = 8000;
+export const CARD_CURRENCY_RESULT_MS = MOTION_WIN_HOLD_MS;
 const SAFETY_MS = CARD_CURRENCY_RESULT_MS + 800;
 const COUNT_MS = 900;
-/** Temporary: stay up until Skip so we can inspect the layout. */
-const HOLD_UNTIL_DISMISS = true;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
@@ -102,7 +101,7 @@ function useCountUp(target: number, active: boolean, durationMs: number) {
 /**
  * Per-card coin + diamond win reveal — presentation only.
  * Session/wallet rewards must already be persisted before this mounts.
- * Auto-advances after 8s (or Skip); navigation is handled by the parent.
+ * Auto-advances after 7s (or Next Card); navigation is handled by the parent.
  */
 export function MotionCurrencyReveal({
   coins,
@@ -118,6 +117,8 @@ export function MotionCurrencyReveal({
   const wonBoxRef = useRef<HTMLDivElement | null>(null);
   const wonAnimRef = useRef<Animation | null>(null);
   const wonScaleDoneRef = useRef(false);
+  const diamondHostRef = useRef<HTMLDivElement | null>(null);
+  const diamondSizedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const wonRenderConfig = useMemo(
@@ -165,6 +166,8 @@ export function MotionCurrencyReveal({
   useEffect(() => {
     completedRef.current = false;
     wonScaleDoneRef.current = false;
+    diamondSizedRef.current = false;
+    diamondHostRef.current?.classList.remove("is-diamond-in");
     wonAnimRef.current?.cancel();
     wonAnimRef.current = null;
     setWonBox({ w: 0, h: 0 });
@@ -176,12 +179,6 @@ export function MotionCurrencyReveal({
     };
 
     const holdMs = reduced ? 2500 : CARD_CURRENCY_RESULT_MS;
-
-    if (HOLD_UNTIL_DISMISS) {
-      at(reduced ? 120 : 200, () => setPhase("appearing"));
-      at(reduced ? 500 : 900, () => setPhase("confirmed"));
-      return () => clearTimers();
-    }
 
     if (reduced) {
       at(120, () => setPhase("appearing"));
@@ -347,19 +344,6 @@ export function MotionCurrencyReveal({
                 <p className="sr-only">YOU WON!</p>
               </>
             )}
-            <p className="motion-currency-reveal__count">
-              {showDiamonds ? (
-                <span className="motion-currency-reveal__count-prize">
-                  {diamonds} Diamond{diamonds === 1 ? "" : "s"}
-                </span>
-              ) : null}
-              {showDiamonds && showCoins ? " · " : null}
-              {showCoins ? (
-                <span>
-                  {coins} Coin{coins === 1 ? "" : "s"}
-                </span>
-              ) : null}
-            </p>
           </div>
         ) : null}
 
@@ -377,11 +361,47 @@ export function MotionCurrencyReveal({
             .filter(Boolean)
             .join(" ")}
         >
+          <p className="motion-currency-reveal__count">
+            {showDiamonds ? (
+              <span className="motion-currency-reveal__count-prize">
+                {diamonds} Diamond{diamonds === 1 ? "" : "s"}
+              </span>
+            ) : null}
+            {showDiamonds && showCoins ? " · " : null}
+            {showCoins ? (
+              <span>
+                {coins} Coin{coins === 1 ? "" : "s"}
+              </span>
+            ) : null}
+          </p>
           {showDiamonds ? (
             <div className="motion-currency-reveal__hero is-diamonds">
               <div className="motion-currency-reveal__stack-col">
-                <div className="motion-currency-reveal__icon" aria-hidden="true">
-                  <DiamondLottie size={130} animated />
+                <div
+                  ref={diamondHostRef}
+                  className="motion-currency-reveal__icon"
+                  aria-hidden="true"
+                >
+                  <DiamondLottie
+                    size={190}
+                    animated
+                    eager
+                    extraScale={2}
+                    autoResize={false}
+                    style={{ width: 190, height: 190 }}
+                    dotLottieRefCallback={(player) => {
+                      if (!player || diamondSizedRef.current) return;
+                      diamondSizedRef.current = true;
+                      // Size the bitmap at scale(1). The pop-in transform
+                      // would make autoResize / resize() see a tall rect.
+                      try {
+                        player.resize();
+                      } catch {
+                        /* player may not be ready yet */
+                      }
+                      diamondHostRef.current?.classList.add("is-diamond-in");
+                    }}
+                  />
                 </div>
                 <p className="motion-currency-reveal__amount tabular-nums">
                   {diamondDisplay}
