@@ -2418,7 +2418,7 @@
   left: 0;
   right: 0;
   z-index: 1;
-  padding-inline: 16px;
+  padding-inline: var(--space-4);
   text-align: center;
   animation: motion-win-header-in 420ms ease-out both;
 }
