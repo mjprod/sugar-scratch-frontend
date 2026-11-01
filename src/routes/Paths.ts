@@ -55,6 +55,8 @@ export const Paths = {
   purchaseTearOpen: "/purchase/tear-open",
   purchaseTearOpenSlug: "tear-open",
   game: "/game",
+  /** Currency-win result — scratch canvas is unmounted so iOS can drop decoders. */
+  gameWin: "/game/win",
   /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
   gameUi: "/game-ui",
   /** Isolated workshop for assembling Figma pieces one at a time. */

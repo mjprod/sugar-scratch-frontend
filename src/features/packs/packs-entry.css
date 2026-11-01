@@ -588,6 +588,7 @@ p {
 .coverflow-pack-html-label.is-active-hidden,
 .coverflow-pack-html--browse.is-active-hidden .coverflow-pack-html-label {
   opacity: 0;
+  pointer-events: none;
   transform: translateY(-14px);
   filter: blur(8px);
   transition:
@@ -1160,6 +1161,28 @@ p {
   transform: translateX(-50%) rotate(45deg);
 }
 
+/* Desktop × sits under the pack — open confirm above so it isn't lost in the dock. */
+.coverflow-active-stack .coverflow-cart-remove-confirm,
+.coverflow-cart-remove-portaled.is-confirm-above .coverflow-cart-remove-confirm {
+  top: auto;
+  bottom: calc(100% + 0.55rem);
+  transform-origin: bottom center;
+}
+
+.coverflow-active-stack .coverflow-cart-remove-confirm::before,
+.coverflow-cart-remove-portaled.is-confirm-above .coverflow-cart-remove-confirm::before {
+  top: auto;
+  bottom: -6px;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+.coverflow-cart-remove-anchor {
+  flex: 0 0 auto;
+  width: 5rem;
+  height: 5rem;
+  pointer-events: none;
+}
+
 .coverflow-cart-remove-confirm__label {
   margin: 0;
   color: oklch(1 0 0 / 0.78);
@@ -1221,6 +1244,38 @@ p {
   border-color: oklch(1 0 0 / 0.24);
   background: oklch(1 0 0 / 0.14);
   color: oklch(1 0 0 / 0.9);
+}
+
+@media (min-width: 821px) {
+  .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm {
+    min-width: 10.5rem;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+
+  .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm::before {
+    top: -7px;
+    width: 12px;
+    height: 12px;
+  }
+
+  .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__label {
+    font-size: var(--text-body);
+  }
+
+  .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__actions {
+    gap: var(--space-3);
+  }
+
+  .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__btn {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__btn svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
 }
 
 /* Confirm CTA — circle check in the 1fr column (beats icon-btn defaults). */

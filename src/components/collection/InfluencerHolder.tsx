@@ -12,6 +12,8 @@ export type InfluencerHolderProps = {
   onClick?: () => void;
   /** 0-based list index — used for load-in stagger. */
   index?: number;
+  /** Stable id for returning to this row after a creator-page hop. */
+  creatorId?: string;
 };
 
 function UltraStarIcon() {
@@ -35,12 +37,14 @@ export function InfluencerHolder({
   progress,
   onClick,
   index,
+  creatorId,
 }: InfluencerHolderProps) {
   return (
     <button
       type="button"
       className="mc-model-card"
       role="listitem"
+      data-collect-creator={creatorId}
       style={
         {
           "--mc-progress": `${progress.pct}%`,

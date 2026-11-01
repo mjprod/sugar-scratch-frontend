@@ -31,13 +31,48 @@ import {
   type BackendModel,
 } from "@/services/models";
 
-type SortId = "newest" | "oldest" | "progress";
+type SortId = "default" | "newest" | "oldest" | "progress";
 type FilterMenu = "creator" | "sort" | null;
 
 const FILTER_MOTION_MS = 220;
 const CREATOR_SHEET_MS = 420;
+const COLLECT_ROW_KEY = "collect-model-row";
+
+function rememberCollectPlace(id: string, scrollTop: number) {
+  try {
+    sessionStorage.setItem(
+      COLLECT_ROW_KEY,
+      JSON.stringify({ id, scrollTop }),
+    );
+  } catch {
+    /* private mode */
+  }
+}
+
+function peekCollectPlace(): { id: string; scrollTop: number } | null {
+  try {
+    const raw = sessionStorage.getItem(COLLECT_ROW_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: unknown; scrollTop?: unknown };
+    if (typeof parsed?.id !== "string" || typeof parsed.scrollTop !== "number") {
+      return null;
+    }
+    return { id: parsed.id, scrollTop: parsed.scrollTop };
+  } catch {
+    return null;
+  }
+}
+
+function clearCollectPlace() {
+  try {
+    sessionStorage.removeItem(COLLECT_ROW_KEY);
+  } catch {
+    /* private mode */
+  }
+}
 
 const SORT_OPTIONS: Array<{ id: SortId; label: string; shortLabel: string }> = [
+  { id: "default", label: "Default", shortLabel: "Default" },
   { id: "newest", label: "Newest first", shortLabel: "Newest" },
   { id: "oldest", label: "Oldest first", shortLabel: "Oldest" },
   { id: "progress", label: "Most complete", shortLabel: "Complete" },
@@ -191,8 +226,17 @@ export function MyCollectionSection({
         byBoardId.set(id, row);
       }
     }
-    return [...byBoardId.values()];
-  }, [sortedCreators, modelByCreator, models]);
+    const rows = [...byBoardId.values()];
+    if (sort !== "default") return rows;
+    const nameOf = (creator: (typeof rows)[number]) => {
+      const model = modelByCreator.get(creator.id);
+      return ((model && modelDisplayName(model)) || creator.name).trim();
+    };
+    rows.sort((a, b) =>
+      nameOf(a).localeCompare(nameOf(b), undefined, { sensitivity: "base" }),
+    );
+    return rows;
+  }, [sortedCreators, modelByCreator, models, sort]);
 
   const visibleCreators = useMemo(() => {
     if (creatorFilter === "all") return collectedCreators;
@@ -224,6 +268,44 @@ export function MyCollectionSection({
       ro.disconnect();
     };
   }, [updateFades, themesReady, boardsReady, visibleCreators.length]);
+
+  useEffect(() => {
+    if (!themesReady || !boardsReady) return;
+    // Peek until the row paints — StrictMode would drop the key if we consumed first.
+    let frames = 0;
+    let raf = 0;
+    const tryScroll = () => {
+      const place = peekCollectPlace();
+      if (!place) return;
+      const row = document.querySelector<HTMLElement>(
+        `[data-collect-creator="${CSS.escape(place.id)}"]`,
+      );
+      if (!row) {
+        if (frames++ < 24) raf = window.requestAnimationFrame(tryScroll);
+        return;
+      }
+      clearCollectPlace();
+      const scroller = row.closest<HTMLElement>("[data-page-scroll]");
+      if (scroller) {
+        scroller.scrollTop = place.scrollTop;
+        const rowBox = row.getBoundingClientRect();
+        const scrollerBox = scroller.getBoundingClientRect();
+        const above = rowBox.top < scrollerBox.top;
+        const below = rowBox.bottom > scrollerBox.bottom;
+        if (above || below) {
+          scroller.scrollTop +=
+            rowBox.top -
+            scrollerBox.top -
+            scroller.clientHeight / 2 +
+            rowBox.height / 2;
+        }
+      } else {
+        row.scrollIntoView({ block: "nearest", behavior: "auto" });
+      }
+    };
+    raf = window.requestAnimationFrame(tryScroll);
+    return () => window.cancelAnimationFrame(raf);
+  }, [themesReady, boardsReady, visibleCreators]);
 
   const listFadeClass = [
     fadeTop ? "has-fade-top" : "",
@@ -367,7 +449,11 @@ export function MyCollectionSection({
         <div
           key={`${creatorFilter}:${sort}`}
           ref={listRef}
-          className={["mc-model-list is-reveal", listFadeClass]
+          className={[
+            "mc-model-list",
+            peekCollectPlace() ? "" : "is-reveal",
+            listFadeClass,
+          ]
             .filter(Boolean)
             .join(" ")}
           role="list"
@@ -383,12 +469,18 @@ export function MyCollectionSection({
             return (
               <InfluencerHolder
                 key={creator.id}
+                creatorId={creator.id}
                 index={index}
                 name={name}
                 place={place}
                 avatarUrl={avatarFor(creator, model)}
                 progress={progress}
-                onClick={() => onOpenCreator(creator.id)}
+                onClick={() => {
+                  const scroller =
+                    document.querySelector<HTMLElement>("[data-page-scroll]");
+                  rememberCollectPlace(creator.id, scroller?.scrollTop ?? 0);
+                  onOpenCreator(creator.id);
+                }}
               />
             );
           })}
