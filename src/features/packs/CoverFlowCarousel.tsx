@@ -1014,29 +1014,59 @@ function PortaledCartRemove({
   useLayoutEffect(() => {
     let raf = 0
     let live = true
-    const tick = () => {
-      if (!live) return
+    let stale = 0
+    const last = { top: NaN, left: NaN }
+
+    const measure = () => {
       const el = anchorRef.current
-      if (el) {
-        const r = el.getBoundingClientRect()
-        if (r.width + r.height > 0) {
-          const top = r.top
-          const left = r.left + r.width / 2
-          setBox((prev) =>
-            prev &&
-            Math.abs(prev.top - top) < 0.5 &&
-            Math.abs(prev.left - left) < 0.5
-              ? prev
-              : { top, left },
-          )
-        }
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      if (r.width + r.height <= 0) return false
+      const top = r.top
+      const left = r.left + r.width / 2
+      if (
+        Math.abs(last.top - top) < 0.5 &&
+        Math.abs(last.left - left) < 0.5
+      ) {
+        return false
       }
-      raf = window.requestAnimationFrame(tick)
+      last.top = top
+      last.left = left
+      setBox({ top, left })
+      return true
     }
-    raf = window.requestAnimationFrame(tick)
+
+    const tick = () => {
+      raf = 0
+      if (!live) return
+      if (measure()) stale = 0
+      else stale += 1
+      // drei Html keeps translating after pointerup — chase until it settles.
+      if (stale < 45) raf = window.requestAnimationFrame(tick)
+    }
+
+    const kick = () => {
+      if (!live) return
+      stale = 0
+      if (!raf) raf = window.requestAnimationFrame(tick)
+    }
+
+    kick()
+    window.addEventListener('resize', kick)
+    window.addEventListener('scroll', kick, true)
+    window.addEventListener('pointerdown', kick)
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', kick)
+    vv?.addEventListener('scroll', kick)
+
     return () => {
       live = false
-      window.cancelAnimationFrame(raf)
+      if (raf) window.cancelAnimationFrame(raf)
+      window.removeEventListener('resize', kick)
+      window.removeEventListener('scroll', kick, true)
+      window.removeEventListener('pointerdown', kick)
+      vv?.removeEventListener('resize', kick)
+      vv?.removeEventListener('scroll', kick)
     }
   }, [])
 

@@ -18,8 +18,6 @@ export const COLLECT_COUNTDOWN_MS = 8000;
 const RING_RADIUS = 100;
 /** No ring to watch when nothing was won — just long enough to read the result. */
 const NO_MATCH_HOLD_MS = 4500;
-/** Temporary: stay up until Continue/Done so we can inspect the layout. */
-const HOLD_UNTIL_DISMISS = true;
 
 type PhotoHandSummaryProps = {
   diamondTotal: number;
@@ -105,9 +103,7 @@ export function PhotoHandSummary({
   );
   const [credited, setCredited] = useState(walletAlreadyCreditedRef.current);
   const [counting, setCounting] = useState(
-    !HOLD_UNTIL_DISMISS &&
-      !walletAlreadyCreditedRef.current &&
-      !reducedMotion,
+    !walletAlreadyCreditedRef.current && !reducedMotion,
   );
   const finishedRef = useRef(false);
   const mountedAtRef = useRef(Date.now());
@@ -135,7 +131,6 @@ export function PhotoHandSummary({
 
   // Always auto-leave when the ring finishes — even if wallet was credited on reload.
   useEffect(() => {
-    if (HOLD_UNTIL_DISMISS) return;
     if (finishedRef.current) return;
     // The no-match beat ignores the credited shortcut: a 600ms exit would cut
     // off its own entry animation.

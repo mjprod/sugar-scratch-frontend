@@ -219,6 +219,7 @@ export function MotionCurrencyReveal({
       setWonBox((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
     };
     apply();
+    if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(apply);
     ro.observe(el);
     return () => ro.disconnect();
