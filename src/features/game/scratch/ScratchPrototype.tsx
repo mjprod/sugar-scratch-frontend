@@ -2,7 +2,6 @@ import { COIN_LOTTIE_SRC } from "@/components/ui/CoinLottie";
 import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { consumeLoseGlContextOnUnmount } from "@/lib/memory/glContextLeave";
-import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import {
   effectiveSoundEffect,
   setGameSoundOn,
@@ -27,7 +26,6 @@ import { Volume2, VolumeX } from "lucide-react";
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -130,16 +128,7 @@ import {
   type HuntHintCycle,
   type MatchGameOutcome,
 } from "../modules/matchGame";
-import {
-  motionWinHref,
-  motionWinPayloadFromPending,
-  type MotionWinPayload,
-} from "../modules/motionWinPage";
-import {
-  adoptWarmedMotionVideo,
-  releaseWarmedMotionVideos,
-  takeWarmedMotionVideos,
-} from "../modules/nextMotionWarm";
+import { MotionCurrencyReveal } from "../modules/MotionCurrencyReveal";
 import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { PackProgress } from "../modules/PackProgress";
 import {
@@ -1513,30 +1502,6 @@ export function ScratchPrototype({
   }, []);
   const bottomVideoRef = useRef<HTMLVideoElement | null>(null);
   const foregroundVideoRef = useRef<HTMLVideoElement | null>(null);
-  /** Parked win-page videos adopted into the stage — restore after React ref attach. */
-  const adoptedWarmRef = useRef<{
-    bottom: HTMLVideoElement;
-    foreground: HTMLVideoElement;
-  } | null>(null);
-  useLayoutEffect(() => {
-    const pair = adoptedWarmRef.current;
-    if (!pair) return;
-    bottomVideoRef.current = pair.bottom;
-    foregroundVideoRef.current = pair.foreground;
-  });
-  useEffect(
-    () => () => {
-      adoptedWarmRef.current = null;
-      const path =
-        typeof window === "undefined"
-          ? ""
-          : window.location.pathname.split("?")[0]?.split("#")[0] || "/";
-      // Strict remount stays on /game — keep the parked pair for the next commit.
-      if (path === "/game") return;
-      releaseWarmedMotionVideos();
-    },
-    [],
-  );
   /** After claim, FG is paused + rVFC-unhooked so it stops decoding. */
   const fgParkedRef = useRef(false);
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
@@ -3096,8 +3061,8 @@ export function ScratchPrototype({
     const render = () => {
       try {
         if (cancelled) return;
-        // No-match overlay owns the screen — skip GL + video sync.
-        if (motionResultRef.current) {
+        // Showcase / result owns the screen — skip GL + video sync.
+        if (motionResultRef.current || topBarPhaseRef.current === "showcase") {
           return;
         }
         const active = ensureRenderer();
@@ -3671,7 +3636,7 @@ export function ScratchPrototype({
                 ? fromUrl
                 : (remaining[0]?.id ?? ordered[0]!.id);
             if (pending) {
-              // Result first — arm 3-2-1 only for the next card.
+              // Win/no-win overlay first — arm 3-2-1 only for the next card.
               deferIntroForPendingResultRef.current = true;
               pendingResultCardIdRef.current = pending.cardId;
             }
@@ -3682,14 +3647,6 @@ export function ScratchPrototype({
                 0,
                 pending.diamonds ?? (pending.prize > 0 ? pending.prize : 0),
               );
-              const pendingWin = motionWinPayloadFromPending(pending);
-              if (pendingWin) {
-                memoryNavigate(motionWinHref(window.location.search), {
-                  replace: true,
-                  state: pendingWin,
-                });
-                return;
-              }
               setMotionResult({
                 win: pending.prize > 0 && (coins > 0 || diamonds > 0),
                 coins,
@@ -4046,11 +4003,13 @@ export function ScratchPrototype({
     // Theme intro + two game clips = three decoders. Safari/iOS often starves
     // the game pair and leaves a black WebGL stage after 3-2-1. While the
     // intro is up, fully unload the card clips so only the intro decodes.
-    // No-match overlay owns media (static backdrop + next-card warm load).
+    // Currency result also owns media (static backdrop + next-card warm load).
     if (
       shouldDeferCardVideoAttach({
         introActive: introActiveRef.current,
-        resultOverlayActive: motionResultRef.current != null,
+        resultOverlayActive:
+          motionResultRef.current != null ||
+          topBarPhaseRef.current === "showcase",
       })
     ) {
       if (introActiveRef.current) {
@@ -4062,27 +4021,6 @@ export function ScratchPrototype({
       return;
     }
 
-    let liveBottom = bottomVideo;
-    let liveForeground = foregroundVideo;
-    const warmed = takeWarmedMotionVideos(
-      card.id,
-      card.bottom,
-      card.foreground,
-    );
-    if (warmed) {
-      liveBottom = adoptWarmedMotionVideo(bottomVideo, warmed.bottom);
-      liveForeground = adoptWarmedMotionVideo(
-        foregroundVideo,
-        warmed.foreground,
-      );
-      adoptedWarmRef.current = {
-        bottom: liveBottom,
-        foreground: liveForeground,
-      };
-      bottomVideoRef.current = liveBottom;
-      foregroundVideoRef.current = liveForeground;
-    }
-
     let cancelled = false;
     fgParkedRef.current = false;
     uiStateRef.current = { ...uiStateRef.current, isPaused: false };
@@ -4092,10 +4030,10 @@ export function ScratchPrototype({
     let kicked = false;
     const markReady = () => {
       if (cancelled || kicked) return;
-      if (liveBottom.readyState < 2 || liveForeground.readyState < 2) return;
-      if (liveBottom.videoWidth < 2 || liveForeground.videoWidth < 2) return;
+      if (bottomVideo.readyState < 2 || foregroundVideo.readyState < 2) return;
+      if (bottomVideo.videoWidth < 2 || foregroundVideo.videoWidth < 2) return;
       kicked = true;
-      const nextDuration = liveBottom.duration || uiStateRef.current.duration;
+      const nextDuration = bottomVideo.duration || uiStateRef.current.duration;
       uiStateRef.current = {
         ...uiStateRef.current,
         duration: nextDuration,
@@ -4108,7 +4046,7 @@ export function ScratchPrototype({
       if (cancelled) return;
       // iOS often will not decode a first frame until play() — don't wait for
       // HAVE_CURRENT_DATA before calling it or the stage stays black.
-      void Promise.all([liveBottom.play(), liveForeground.play()])
+      void Promise.all([bottomVideo.play(), foregroundVideo.play()])
         .then(() => {
           markReady();
         })
@@ -4118,14 +4056,11 @@ export function ScratchPrototype({
 
     // Reuse the same two <video> elements and swap src (no React key remount).
     // Safari releases the previous decoder only when we unload before load.
-    // Win-page warmup already decoded into parked nodes — skip a second load.
     void (async () => {
-      const loading = warmed
-        ? Promise.resolve()
-        : Promise.all([
-            loadVideoSrc(liveBottom, card.bottom),
-            loadVideoSrc(liveForeground, card.foreground),
-          ]);
+      const loading = Promise.all([
+        loadVideoSrc(bottomVideo, card.bottom),
+        loadVideoSrc(foregroundVideo, card.foreground),
+      ]);
       // Kick decode immediately; loadVideoSrc waits on a frame that iOS will
       // not produce until play() has been attempted.
       kickPlayback();
@@ -4136,8 +4071,8 @@ export function ScratchPrototype({
         return;
       }
       if (cancelled) return;
-      liveBottom.addEventListener("canplay", kickPlayback);
-      liveForeground.addEventListener("canplay", kickPlayback);
+      bottomVideo.addEventListener("canplay", kickPlayback);
+      foregroundVideo.addEventListener("canplay", kickPlayback);
       kickPlayback();
     })();
 
@@ -4149,11 +4084,11 @@ export function ScratchPrototype({
     return () => {
       cancelled = true;
       window.clearTimeout(readySafetyId);
-      liveBottom.removeEventListener("canplay", kickPlayback);
-      liveForeground.removeEventListener("canplay", kickPlayback);
+      bottomVideo.removeEventListener("canplay", kickPlayback);
+      foregroundVideo.removeEventListener("canplay", kickPlayback);
       try {
-        liveBottom.pause();
-        liveForeground.pause();
+        bottomVideo.pause();
+        foregroundVideo.pause();
       } catch {
         // ignore
       }
@@ -4179,7 +4114,9 @@ export function ScratchPrototype({
           userPaused: uiStateRef.current.isPaused,
           introActive: introActiveRef.current,
           cardTransitionActive: cardTransitionActiveRef.current,
-          resultOverlayActive: motionResultRef.current != null,
+          resultOverlayActive:
+            motionResultRef.current != null ||
+            topBarPhaseRef.current === "showcase",
         })
       ) {
         return;
@@ -4511,16 +4448,36 @@ export function ScratchPrototype({
       ((motionResult.coins ?? 0) > 0 || (motionResult.diamonds ?? 0) > 0),
     ),
   });
-  /** No-match overlay — hide the theme picture. Showcase keeps it. */
+  /** Showcase + win/no-match — clear theme video for look + perf. */
   const clearStageForResult = shouldClearStagePicture({
     topBarPhase,
     motionOutcome,
   });
 
-  // No-match overlay still sits on the stage — drop this card's decoders and
-  // warm the next. Currency wins leave /game for /game/win (scratch unmounts).
+  // Pause theme decoders as soon as the symbol bar showcase takes the screen
+  // (before YOU WON / NO MATCH mounts). Full unload stays on the result effect.
   useEffect(() => {
-    if (motionOutcome !== "no-match") return;
+    if (topBarPhase !== "showcase") return;
+    const bottom = bottomVideoRef.current;
+    const foreground = foregroundVideoRef.current;
+    try {
+      bottom?.pause();
+    } catch {
+      // ignore
+    }
+    try {
+      foreground?.pause();
+    } catch {
+      // ignore
+    }
+    parkForegroundDecoder();
+    if (bottom) glRendererRef.current?.detachVideoFrames(bottom);
+  }, [topBarPhase]);
+
+  // Tear down finished-card decoders while the static result is up, then
+  // warm the next motion card so Skip / auto-advance is not a cold dual-attach.
+  useEffect(() => {
+    if (motionOutcome !== "diamond" && motionOutcome !== "no-match") return;
     const bottom = bottomVideoRef.current;
     const foreground = foregroundVideoRef.current;
     if (bottom) {
@@ -4863,29 +4820,14 @@ export function ScratchPrototype({
         completedCardIdsRef.current = nextCompleted;
         setCompletedCardIds(nextCompleted);
       }
-      const result = {
+      setMotionResult({
         win: prize > 0 && (coins > 0 || diamonds > 0),
         coins,
         diamonds,
         current,
         total,
         resultId: `${finishedId}:${coins}:${diamonds}:${current}`,
-      };
-      if (result.win) {
-        const payload: MotionWinPayload = {
-          coins,
-          diamonds,
-          current,
-          total,
-          resultId: result.resultId,
-        };
-        memoryNavigate(motionWinHref(window.location.search), {
-          replace: true,
-          state: payload,
-        });
-        return;
-      }
-      setMotionResult(result);
+      });
       return;
     }
 
@@ -6294,6 +6236,15 @@ export function ScratchPrototype({
                 </div>
               </div>
             </div>
+          ) : null}
+          {motionResult && motionOutcome === "diamond" ? (
+            <MotionCurrencyReveal
+              key={motionResult.resultId}
+              coins={motionResult.coins}
+              diamonds={motionResult.diamonds}
+              resultId={motionResult.resultId}
+              onComplete={afterMotionResultPresentation}
+            />
           ) : null}
           {motionResult && motionOutcome === "no-match" ? (
             <NoMatchOutcome

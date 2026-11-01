@@ -26,9 +26,6 @@ const MotionCardPage = lazy(() =>
 const GamePage = lazy(() =>
   import("@/pages/GamePage").then((m) => ({ default: m.GamePage })),
 );
-const GameWinPage = lazy(() =>
-  import("@/pages/GameWinPage").then((m) => ({ default: m.GameWinPage })),
-);
 const PhotoScratchPage = lazy(() =>
   import("@/pages/PhotoScratchPage").then((m) => ({
     default: m.PhotoScratchPage,
@@ -416,7 +413,6 @@ export function AppRoutes() {
                 </CatalogProvider>
               }
             />
-            <Route path="game/win" element={<GameWinPage />} />
             <Route
               path="game"
               element={

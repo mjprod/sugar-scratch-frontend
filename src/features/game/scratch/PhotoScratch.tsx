@@ -126,11 +126,7 @@ import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
-import {
-  TopSymbolBar,
-  TOP_BAR_SHOWCASE_MS,
-  type TopBarPhase,
-} from "../modules/TopSymbolBar";
+import { TopSymbolBar, type TopBarPhase } from "../modules/TopSymbolBar";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -2820,9 +2816,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       const reduceMotion =
         typeof window !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const showcaseMs = reduceMotion
-        ? 200
-        : Math.min(advanceDelayMs, TOP_BAR_SHOWCASE_MS);
+      const showcaseMs = reduceMotion ? 200 : Math.min(advanceDelayMs, 400);
       gameResultTimerRef.current = window.setTimeout(() => {
         gameResultTimerRef.current = null;
         enterCardResultRef.current();

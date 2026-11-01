@@ -16,7 +16,6 @@ import {
 	  type MutableRefObject,
 	  type ReactNode,
 	} from 'react'
-import { createPortal } from 'react-dom'
 import type { Group, Object3D, PerspectiveCamera } from 'three'
 import {
   Box3,
@@ -996,111 +995,6 @@ function TearLottieHud({
   )
 }
 
-/**
- * drei Html lives under a CSS transform + pointer-events:none ancestors.
- * Cursor's embedded browser (and some Electron builds) click the canvas
- * instead. Portal the real control to document.body, like Buy Pack confirm.
- */
-function PortaledCartRemove({
-  confirmAbove,
-  children,
-}: {
-  confirmAbove: boolean
-  children: ReactNode
-}) {
-  const anchorRef = useRef<HTMLDivElement>(null)
-  const [box, setBox] = useState<{ top: number; left: number } | null>(null)
-
-  useLayoutEffect(() => {
-    let raf = 0
-    let live = true
-    let stale = 0
-    const last = { top: NaN, left: NaN }
-
-    const measure = () => {
-      const el = anchorRef.current
-      if (!el) return false
-      const r = el.getBoundingClientRect()
-      if (r.width + r.height <= 0) return false
-      const top = r.top
-      const left = r.left + r.width / 2
-      if (
-        Math.abs(last.top - top) < 0.5 &&
-        Math.abs(last.left - left) < 0.5
-      ) {
-        return false
-      }
-      last.top = top
-      last.left = left
-      setBox({ top, left })
-      return true
-    }
-
-    const tick = () => {
-      raf = 0
-      if (!live) return
-      if (measure()) stale = 0
-      else stale += 1
-      // drei Html keeps translating after pointerup — chase until it settles.
-      if (stale < 45) raf = window.requestAnimationFrame(tick)
-    }
-
-    const kick = () => {
-      if (!live) return
-      stale = 0
-      if (!raf) raf = window.requestAnimationFrame(tick)
-    }
-
-    kick()
-    window.addEventListener('resize', kick)
-    window.addEventListener('scroll', kick, true)
-    window.addEventListener('pointerdown', kick)
-    const vv = window.visualViewport
-    vv?.addEventListener('resize', kick)
-    vv?.addEventListener('scroll', kick)
-
-    return () => {
-      live = false
-      if (raf) window.cancelAnimationFrame(raf)
-      window.removeEventListener('resize', kick)
-      window.removeEventListener('scroll', kick, true)
-      window.removeEventListener('pointerdown', kick)
-      vv?.removeEventListener('resize', kick)
-      vv?.removeEventListener('scroll', kick)
-    }
-  }, [])
-
-  return (
-    <>
-      <div
-        ref={anchorRef}
-        className="coverflow-cart-remove-anchor"
-        aria-hidden="true"
-      />
-      {box
-        ? createPortal(
-            <div
-              className={`coverflow-cart-remove-portaled${
-                confirmAbove ? ' is-confirm-above' : ''
-              }`}
-              style={{
-                position: 'fixed',
-                top: box.top,
-                left: box.left,
-                transform: 'translateX(-50%)',
-                zIndex: 5200,
-                pointerEvents: 'auto',
-              }}
-            >
-              {children}
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
-  )
-}
-
 function CoverFlowPack({
 	  item,
 	  index,
@@ -1413,7 +1307,6 @@ useEffect(() => {
 
 	  const removeControl =
 	    onRemove && !isRemoving ? (
-	      <PortaledCartRemove confirmAbove={!isMobile}>
 	      <div className="coverflow-cart-remove-wrap">
 	        <button
 	          type="button"
@@ -1421,7 +1314,6 @@ useEffect(() => {
 	          aria-label={`Remove ${item.packName || item.girlName} from cart`}
 	          aria-expanded={removeConfirmOpen || removeConfirmLeaving}
 	          aria-controls={`coverflow-cart-remove-confirm-${item.id}`}
-	          onPointerDown={(event) => event.stopPropagation()}
 	          onClick={(event) => {
 	            event.stopPropagation()
 	            if (removeConfirmOpen) closeRemoveConfirm()
@@ -1476,7 +1368,6 @@ useEffect(() => {
 	          </div>
 	        ) : null}
 	      </div>
-	      </PortaledCartRemove>
 	    ) : null
 
   useEffect(() => {
@@ -2664,7 +2555,7 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
                           : ''
                     }${shortHudGlass ? ' is-short-glass' : ''}`}
                     aria-hidden={playOnlyCta ? !isCenter : !browseHudVisible}
-                    {...(!browseHudVisible || (playOnlyCta && !isCenter)
+                    {...(playOnlyCta && !isCenter
                       ? { inert: true }
                       : {})}
                   >
@@ -2693,6 +2584,7 @@ const handleClick = (event: ThreeEvent<MouseEvent>) => {
 		                </span>
 		              </p>
 		            )}
+			{isMobile ? null : removeControl}
 			          </div>
 		        </Html>
 		      ) : null}

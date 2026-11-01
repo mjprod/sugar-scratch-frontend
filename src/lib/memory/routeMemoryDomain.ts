@@ -15,12 +15,6 @@ export type RouteMemoryDomain =
 export function routeMemoryDomain(pathname: string): RouteMemoryDomain {
   const path = pathname.split("?")[0]?.split("#")[0] || "/";
 
-  // Win is a still page (no <video> / WebGL). Leaving /game for this path
-  // is what purges the iOS decoder from the card that just finished.
-  if (path === Paths.gameWin) {
-    return "light";
-  }
-
   if (
     path === Paths.game ||
     path === Paths.gameUi ||

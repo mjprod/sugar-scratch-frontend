@@ -1,6 +1,5 @@
-import { useEffect, type CSSProperties } from "react";
-import type { DotLottie } from "@lottiefiles/dotlottie-react";
-import { DeferredLottie, openDeferredLotties } from "@/lib/lottie/DeferredLottie";
+import type { CSSProperties } from "react";
+import { DeferredLottie } from "@/lib/lottie/DeferredLottie";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 export const DIAMOND_LOTTIE_SRC = "/lottie/lottieDiamond.lottie";
@@ -18,11 +17,6 @@ type DiamondLottieProps = {
   speed?: number;
   /** Mount the wasm player. Default false — static WebP/PNG mark. */
   animated?: boolean;
-  extraScale?: number;
-  autoResize?: boolean;
-  /** Skip the still mark and open the Lottie gate immediately. */
-  eager?: boolean;
-  dotLottieRefCallback?: (player: DotLottie | null) => void;
   style?: CSSProperties;
   "aria-hidden"?: boolean | "true" | "false";
 };
@@ -52,17 +46,9 @@ export function DiamondLottie({
   autoplay = true,
   speed = 1.25,
   animated = false,
-  extraScale = 1,
-  autoResize = true,
-  eager = false,
-  dotLottieRefCallback,
   style,
   "aria-hidden": ariaHidden = true,
 }: DiamondLottieProps) {
-  useEffect(() => {
-    if (eager) openDeferredLotties();
-  }, [eager]);
-
   const edge =
     typeof size === "number" ? `${size * 1.3}px` : `calc(${size} * 1.3)`;
 
@@ -83,13 +69,12 @@ export function DiamondLottie({
     >
       {animated ? (
         <DeferredLottie
-          fallback={eager ? null : <StaticDiamondMark />}
+          fallback={<StaticDiamondMark />}
           src={DIAMOND_LOTTIE_SRC}
           autoplay={autoplay}
           loop={loop}
           speed={speed}
-          renderConfig={lottieRenderConfig({ extraScale, autoResize })}
-          dotLottieRefCallback={dotLottieRefCallback}
+          renderConfig={lottieRenderConfig()}
           style={{ width: "100%", height: "100%" }}
         />
       ) : (

@@ -206,8 +206,7 @@ function packRewardCoinsForMotionCard(
 }
 
 /**
- * Bank coin + diamond rewards for this Motion Card win and stash pendingMotionResult
- * for the /game/win page.
+ * Bank coin + diamond rewards for this Motion Card win and open the result overlay.
  * Photo cards are no longer awarded from motion wins.
  */
 export function awardMotionCardCurrency(
