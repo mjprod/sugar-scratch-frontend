@@ -302,7 +302,7 @@ export function MobileCssCarousel({
   const pageVisibleRef = useRef(
     typeof document === "undefined" ? true : document.visibilityState === "visible",
   );
-  const heroVisibleRef = useRef(true);
+  const heroVisibleRef = useRef(false);
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const [pocketTick, setPocketTick] = useState(0);
@@ -675,7 +675,12 @@ export function MobileCssCarousel({
       if (heroVisibleRef.current === visible) return;
       heroVisibleRef.current = visible;
       if (visible) {
-        if (pageVisibleRef.current && !parkedRef.current) attachActiveVideo();
+        // Swiper parks on init translate; unpark so the first pack plays on
+        // scroll-in, not only after a swipe.
+        if (pageVisibleRef.current) {
+          setParked(false);
+          attachActiveVideo();
+        }
         return;
       }
       releaseClaimedDecoder(liveVideoRef.current);
@@ -693,7 +698,7 @@ export function MobileCssCarousel({
       window.removeEventListener("resize", queue);
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, [attachActiveVideo, syncLiveClass]);
+  }, [attachActiveVideo, setParked, syncLiveClass]);
 
   // Warm poster bitmaps before any pack video decoder starts.
   useEffect(() => {

@@ -810,6 +810,9 @@ body[data-theme="v8"] .cpv2-theme-card-glow {
   border-top-right-radius: 0;
   pointer-events: none;
   opacity: 0.2;
+  /* Isolate 48px/28px filter blur from CTA orbit invalidation; skip offscreen. */
+  contain: paint;
+  content-visibility: auto;
 }
 
 body[data-theme="v8"] .cpv2-theme-card-glow-blob {

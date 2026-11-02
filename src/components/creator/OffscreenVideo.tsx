@@ -1,4 +1,8 @@
 import { useEffect, useRef } from "react";
+import {
+  claimMediaDecoder,
+  releaseClaimedDecoder,
+} from "@/lib/memory/exclusiveMedia";
 
 /**
  * Looping muted video that drops its decoder while off-screen.
@@ -8,10 +12,8 @@ import { useEffect, useRef } from "react";
 /** iOS keeps a decoded buffer until src is removed and load() runs. */
 export function releaseVideos(root: ParentNode = document) {
   root.querySelectorAll("video").forEach((video) => {
-    video.pause();
     if (!video.getAttribute("src") && !video.currentSrc) return;
-    video.removeAttribute("src");
-    video.load();
+    releaseClaimedDecoder(video);
   });
 }
 
@@ -31,15 +33,12 @@ export function OffscreenVideo({
     if (!video || !src) return;
 
     const attach = () => {
-      if (video.getAttribute("src") !== src) video.src = src;
+      claimMediaDecoder(video, src);
       video.muted = true;
       void video.play().catch(() => {});
     };
     const detach = () => {
-      video.pause();
-      if (!video.getAttribute("src") && !video.currentSrc) return;
-      video.removeAttribute("src");
-      video.load();
+      releaseClaimedDecoder(video);
     };
 
     if (typeof IntersectionObserver === "undefined") {
@@ -47,12 +46,17 @@ export function OffscreenVideo({
       return detach;
     }
 
+    // Viewport root misses iOS nested overflow; the page scroller is the clip.
+    // No rootMargin: Ultra sits on top of packs, and 120px kept both decoders live.
+    const page = video.closest("[data-page-scroll]");
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) attach();
         else detach();
       },
-      { rootMargin: "120px 0px" },
+      {
+        root: page instanceof Element ? page : null,
+      },
     );
     observer.observe(video);
     return () => {

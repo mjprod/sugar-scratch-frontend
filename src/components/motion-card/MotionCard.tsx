@@ -311,6 +311,9 @@ export function MotionCard({
             label="Unlock"
             costAmount={null}
             fontSize={14}
+            // Slides out of the tile when unselected; don't keep aurora/orbit live.
+            auroraPaused={!selected}
+            glowEnabled={selected}
             onClick={onBuy}
             tabIndex={selected ? 0 : -1}
           />
