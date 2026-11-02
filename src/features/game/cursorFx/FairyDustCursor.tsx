@@ -599,47 +599,41 @@ function FairyDustCursorImpl({
       return { x: clientX - rect.left, y: clientY - rect.top };
     };
 
-    const handleMouseDown = (e: MouseEvent) => {
-      const p = toLocal(e.clientX, e.clientY);
-      resetTrailAt(p.x, p.y);
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const p = toLocal(e.clientX, e.clientY);
-      spawnIfMoved(p.x, p.y);
-    };
-
-    const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (!touch) return;
-      const p = toLocal(touch.clientX, touch.clientY);
-      resetTrailAt(p.x, p.y);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
+    const ignorePointer = (e: PointerEvent) => {
+      if (!e.isPrimary) return true;
       const t = e.target as HTMLElement | null;
-      if (t?.closest?.(".panel, .mobile-settings-sheet")) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      if (!touch) return;
-      const p = toLocal(touch.clientX, touch.clientY);
+      return Boolean(t?.closest?.(".panel, .mobile-settings-sheet"));
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (ignorePointer(e)) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const p = toLocal(e.clientX, e.clientY);
+      resetTrailAt(p.x, p.y);
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (ignorePointer(e)) return;
+      const p = toLocal(e.clientX, e.clientY);
       spawnIfMoved(p.x, p.y);
     };
 
-    targetElement.addEventListener("mousedown", handleMouseDown);
-    targetElement.addEventListener("mousemove", handleMouseMove);
-    targetElement.addEventListener("touchstart", handleTouchStart, { passive: true });
-    targetElement.addEventListener("touchmove", handleTouchMove, { passive: false });
+    // Pointer-only: the stage already has touch-action:none, so a non-passive
+    // touchmove preventDefault is wasted main-thread work on every finger sample.
+    targetElement.addEventListener("pointerdown", handlePointerDown, {
+      passive: true,
+    });
+    targetElement.addEventListener("pointermove", handlePointerMove, {
+      passive: true,
+    });
     flushBurstApiRef.current = flushPendingBurst;
     if (particles.length > 0) ensureRunning();
     flushPendingBurst();
 
     return () => {
       flushBurstApiRef.current = () => undefined;
-      targetElement.removeEventListener("mousedown", handleMouseDown);
-      targetElement.removeEventListener("mousemove", handleMouseMove);
-      targetElement.removeEventListener("touchstart", handleTouchStart);
-      targetElement.removeEventListener("touchmove", handleTouchMove);
+      targetElement.removeEventListener("pointerdown", handlePointerDown);
+      targetElement.removeEventListener("pointermove", handlePointerMove);
       cancelAnimationFrame(animationFrameId);
       clearFrameClientRectCache(overlayRectCache);
     };

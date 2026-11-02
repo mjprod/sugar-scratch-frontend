@@ -3968,9 +3968,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 userSelect: "none",
                 WebkitUserSelect: "none",
               }}
-              // No preventDefault on pointerdown: it suppresses the mouse
-              // events FairyDustCursor follows, so the coin trail stops
-              // tracking the cursor mid-stroke.
+              // FairyDustCursor follows bubbling pointer events from this canvas.
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId);
                 onPointerDown(event.clientX, event.clientY);
