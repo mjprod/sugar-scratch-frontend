@@ -692,7 +692,6 @@ html[data-pp-plate-outline="1"] .pack-progress::after {
   transform: translate(-50%, -50%) translate(var(--pp-lottie-x), var(--pp-lottie-y))
     scale(var(--pp-lottie-scale));
   transform-origin: center center;
-  will-change: transform;
 }
 
 .pack-progress__lottie canvas {
@@ -781,7 +780,6 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
     top 480ms cubic-bezier(0.33, 1.15, 0.4, 1),
     transform 480ms cubic-bezier(0.33, 1.15, 0.4, 1),
     box-shadow 320ms ease;
-  will-change: top, transform;
 }
 
 .top-symbol-bar.is-phase-center {
@@ -2113,7 +2111,6 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   position: absolute;
   inset: 0;
   transform-origin: 50% 42%;
-  will-change: transform, filter, opacity;
 }
 
 .photo-scratch-intro-video video,
@@ -2154,6 +2151,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
 }
 
 .photo-scratch-intro-video.is-leaving .photo-scratch-intro-media {
+  will-change: transform, filter, opacity;
   animation: intro-reveal-soft-rush var(--intro-reveal-ms) var(--intro-reveal-ease)
     forwards;
 }
