@@ -1,5 +1,8 @@
 import { useEffect } from 'react'
-import type { SwipeCardData } from '../constants/cards'
+import { VISIBLE_STACK, type SwipeCardData } from '../constants/cards'
+
+/** Posters the live stack will actually show; the rest load as they promote. */
+const WARM_POSTERS = VISIBLE_STACK + 2
 
 type VideoPreloaderProps = {
   cards: SwipeCardData[]
@@ -40,6 +43,7 @@ export function VideoPreloader({ cards, onReady }: VideoPreloaderProps) {
 
     const posterUrls = new Set<string>()
     for (const card of cards) {
+      if (posterUrls.size >= WARM_POSTERS) break
       const poster = card.posterUrl?.trim()
       if (poster) posterUrls.add(poster)
     }

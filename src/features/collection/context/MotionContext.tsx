@@ -153,7 +153,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     if (!supported) return false
     return readStoredEnabled()
   })
-  const [values, setValues] = useState<MotionValues>(DEFAULT_VALUES)
+  const [tiltConsumers, setTiltConsumers] = useState(0)
 
   const valuesRef = useRef<MotionValues>(DEFAULT_VALUES)
   const listenersRef = useRef(new Set<(v: MotionValues) => void>())
@@ -172,13 +172,13 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   const publish = useCallback((next: MotionValues) => {
     valuesRef.current = next
     pendingPublishRef.current = next
-    // Coalesce React state updates to one per animation frame.
+    // Coalesce subscriber notifies to one animation frame. Do not set React
+    // state here — swipe/settings aren't tilt consumers and must not re-render.
     if (rafPublishRef.current !== null) return
     rafPublishRef.current = requestAnimationFrame(() => {
       rafPublishRef.current = null
       const sample = pendingPublishRef.current
       if (!sample) return
-      setValues(sample)
       for (const listener of listenersRef.current) {
         listener(sample)
       }
@@ -187,16 +187,25 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 
   const subscribe = useCallback((listener: (v: MotionValues) => void) => {
     listenersRef.current.add(listener)
+    setTiltConsumers((n) => n + 1)
     // Push current sample immediately so late subscribers aren't stuck at zero.
     listener(valuesRef.current)
     return () => {
       listenersRef.current.delete(listener)
+      setTiltConsumers((n) => n - 1)
     }
   }, [])
 
-  // Single global listener while permission is granted.
+  // Gyro only while tilt is on AND a mounted surface is actually listening.
+  // Swipe / settings otherwise inherit a 60 Hz DeviceOrientation storm.
   useEffect(() => {
-    if (!supported || permission !== 'granted' || typeof window === 'undefined') {
+    if (
+      !supported ||
+      permission !== 'granted' ||
+      !enabled ||
+      tiltConsumers === 0 ||
+      typeof window === 'undefined'
+    ) {
       return
     }
 
@@ -236,7 +245,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
         rafPublishRef.current = null
       }
     }
-  }, [permission, publish, supported])
+  }, [enabled, permission, publish, supported, tiltConsumers])
 
   // Non-iOS: ensure session is marked granted so remounts stay quiet.
   useEffect(() => {
@@ -340,7 +349,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       requestPermission,
       setEnabled,
       toggleEnabled,
-      values,
+      values: valuesRef.current,
       subscribe,
       valuesRef,
     }),
@@ -352,7 +361,6 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       subscribe,
       supported,
       toggleEnabled,
-      values,
     ]
   )
 
