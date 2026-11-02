@@ -63,14 +63,15 @@ body[data-theme="v8"] .get-diamonds-ambient {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  contain: paint;
 }
 
 body[data-theme="v8"] .get-diamonds-ambient__orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(70px);
   opacity: 0.45;
   animation: get-diamonds-orb-drift 18s ease-in-out infinite alternate;
+  will-change: transform;
 }
 
 body[data-theme="v8"] .get-diamonds-ambient__orb--a {
@@ -100,7 +101,6 @@ body[data-theme="v8"] .get-diamonds-ambient__sparkle {
     radial-gradient(circle at 48% 62%, rgba(255, 196, 77, 0.2) 0 1px, transparent 2px),
     radial-gradient(circle at 86% 74%, rgba(255, 143, 196, 0.16) 0 1px, transparent 2px);
   background-size: 220px 220px, 280px 280px, 240px 240px, 300px 300px;
-  animation: get-diamonds-sparkle-shift 24s linear infinite;
 }
 
 @keyframes get-diamonds-orb-drift {
@@ -109,15 +109,6 @@ body[data-theme="v8"] .get-diamonds-ambient__sparkle {
   }
   to {
     transform: translate3d(-24px, 18px, 0) scale(1.08);
-  }
-}
-
-@keyframes get-diamonds-sparkle-shift {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-40px, 28px, 0);
   }
 }
 
@@ -273,6 +264,7 @@ body[data-theme="v8"] .get-diamonds-hero-band__sheen {
     transparent 65%
   );
   animation: get-diamonds-sheen 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* Glow holder — previous size, square box, clipped */
@@ -299,6 +291,7 @@ body[data-theme="v8"] .get-diamonds-hero-band__glow {
   user-select: none;
   transform-origin: center center;
   animation: get-diamonds-glow-spin 19.8s linear infinite;
+  will-change: transform;
 }
 
 @keyframes get-diamonds-glow-spin {
@@ -323,6 +316,7 @@ body[data-theme="v8"] .get-diamonds-hero-band__woman {
   user-select: none;
   transform-origin: center bottom;
   animation: get-diamonds-woman-scale 8s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes get-diamonds-woman-scale {
@@ -345,6 +339,7 @@ body[data-theme="v8"] .get-diamonds-hero-band__float-wrap {
   width: auto;
   pointer-events: none;
   animation: get-diamonds-float-bob 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 body[data-theme="v8"] .get-diamonds-hero-band__float {
@@ -638,6 +633,8 @@ body[data-theme="v8"] .get-diamonds-earn {
   display: grid;
   grid-template-columns: 0.8fr 1.7fr;
   gap: var(--space-3);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 28rem;
 }
 
 body[data-theme="v8"] .get-diamonds-watch-ad {
@@ -1028,5 +1025,20 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   body[data-theme="v8"] .get-diamonds-hero-band__woman,
   body[data-theme="v8"] .get-diamonds-package.is-featured::before {
     animation: none;
+    will-change: auto;
   }
+}
+
+body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__sheen,
+body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__glow,
+body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__float-wrap,
+body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__woman,
+html.get-diamonds-anims-off .get-diamonds-ambient__orb,
+html.get-diamonds-anims-off .get-diamonds-hero-band__sheen,
+html.get-diamonds-anims-off .get-diamonds-hero-band__glow,
+html.get-diamonds-anims-off .get-diamonds-hero-band__float-wrap,
+html.get-diamonds-anims-off .get-diamonds-hero-band__woman,
+html.get-diamonds-anims-off .get-diamonds-package.is-featured::before {
+  animation-play-state: paused;
+  will-change: auto;
 }

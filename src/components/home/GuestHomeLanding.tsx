@@ -14,7 +14,7 @@ import { markHowToPlaySeen } from "@/services/collectionState";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 const GUEST_HOME_VIDEO = "/video/homepagevideo-min.mp4";
-const GUEST_HOME_POSTER = "/video/homepagevideo-poster.webp";
+const GUEST_HOME_POSTER = "/video/imagehomePoster";
 
 type GuestSlide =
   | { id: "video"; kind: "video" }
@@ -135,17 +135,9 @@ export function GuestHomeLanding() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  useEffect(() => {
-    const poster = new Image();
-    const done = () => setPosterReady(true);
-    poster.onload = done;
-    poster.onerror = done;
-    poster.src = GUEST_HOME_POSTER;
-    return () => {
-      poster.onload = null;
-      poster.onerror = null;
-    };
-  }, []);
+  function markPosterReady() {
+    setPosterReady(true);
+  }
 
   useEffect(() => {
     if (reduceMotion || videoSrc) return;
@@ -394,11 +386,32 @@ export function GuestHomeLanding() {
                 className="guest-home-landing__slide guest-home-landing__slide--video"
                 aria-hidden={!isActive}
               >
+                <picture
+                  className={[
+                    "guest-home-landing__poster",
+                    canPlay ? "is-video-ready" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <source type="image/jxl" srcSet={`${GUEST_HOME_POSTER}.jxl`} />
+                  <source type="image/webp" srcSet={`${GUEST_HOME_POSTER}.webp`} />
+                  <img
+                    src={`${GUEST_HOME_POSTER}.png`}
+                    alt=""
+                    width={960}
+                    height={540}
+                    decoding="async"
+                    fetchPriority="high"
+                    draggable={false}
+                    onLoad={markPosterReady}
+                    onError={markPosterReady}
+                  />
+                </picture>
                 <video
                   ref={videoRef}
                   className="guest-home-landing__video"
                   src={videoSrc}
-                  poster={GUEST_HOME_POSTER}
                   autoPlay={!reduceMotion && Boolean(videoSrc) && active === 0}
                   muted
                   loop

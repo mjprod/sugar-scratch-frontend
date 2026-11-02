@@ -232,6 +232,8 @@ body[data-theme="v8"] .guest-home-landing__slide--video {
   background: #0a0610;
 }
 
+body[data-theme="v8"] .guest-home-landing__poster,
+body[data-theme="v8"] .guest-home-landing__poster img,
 body[data-theme="v8"] .guest-home-landing__video {
   position: absolute;
   inset: 0;
@@ -240,6 +242,18 @@ body[data-theme="v8"] .guest-home-landing__video {
   object-fit: cover;
   object-position: center center;
   pointer-events: none;
+}
+
+body[data-theme="v8"] .guest-home-landing__poster {
+  z-index: 1;
+}
+
+body[data-theme="v8"] .guest-home-landing__poster.is-video-ready {
+  visibility: hidden;
+}
+
+body[data-theme="v8"] .guest-home-landing__video {
+  z-index: 0;
 }
 
 body[data-theme="v8"] .guest-home-landing__slide--video[aria-hidden="true"] .guest-home-landing__video {

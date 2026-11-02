@@ -263,9 +263,24 @@ function bufferSize(cssWidth: number, cssHeight: number) {
   };
 }
 
+let visibilityArmed = false;
+
+function armVisibilityPause() {
+  if (visibilityArmed || typeof document === "undefined") return;
+  visibilityArmed = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") startLoop();
+  });
+}
+
 function startLoop() {
   if (loopId) return;
+  armVisibilityPause();
   const tick = (now: number) => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      loopId = 0;
+      return;
+    }
     let live = false;
     for (const layer of layers.values()) {
       if (layer.tick(now)) live = true;
