@@ -123,6 +123,11 @@ import {
   stampScratchCoverage,
 } from "../modules/scratchCoverage";
 import {
+  clearFrameClientRectCache,
+  createFrameClientRectCache,
+  readFrameClientRect,
+} from "../modules/frameClientRect";
+import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
@@ -869,6 +874,7 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const pendingMilestonesRef = useRef<number[]>([]);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRectCacheRef = useRef(createFrameClientRectCache());
   const stageRef = useRef<HTMLDivElement>(null);
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
 const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
@@ -1011,7 +1017,13 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       cancelled = true;
     };
   }, []);
-  useEffect(() => () => clearCelebrateTimer(), []);
+  useEffect(
+    () => () => {
+      clearCelebrateTimer();
+      clearFrameClientRectCache(canvasRectCacheRef.current);
+    },
+    [],
+  );
   const [showMesh, setShowMesh] = useState(false);
   const [scratchCount, setScratchCount] = useState(0);
   const [isScratching, setIsScratching] = useState(false);
@@ -2130,7 +2142,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function getCanvasPoint(clientX: number, clientY: number): Vec2 | null {
     const canvas = fgCanvasRef.current;
     if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
+    const rect = readFrameClientRect(canvasRectCacheRef.current, canvas);
     const presentX = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
     const presentY = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
     const frontCam = fgRendererRef.current?.getFrontPresentCamera() ?? {

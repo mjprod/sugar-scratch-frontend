@@ -164,6 +164,11 @@ import {
   takePendingScratchMove,
 } from "../modules/scratchInputCoalesce";
 import {
+  clearFrameClientRectCache,
+  createFrameClientRectCache,
+  readFrameClientRect,
+} from "../modules/frameClientRect";
+import {
   clearScratchMarks,
   createScratchMarksRing,
   pushScratchMark,
@@ -1542,7 +1547,7 @@ export function ScratchPrototype({
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
   const marksRef = useRef(createScratchMarksRing());
   const scratchInputCoalesceRef = useRef(createScratchInputCoalesce());
-  const hoverPointRef = useRef<Vec2 | null>(null);
+  const canvasRectCacheRef = useRef(createFrameClientRectCache());
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const drawingRef = useRef(false);
   // Reveal progress is measured against a fixed UV sample grid. We track which
@@ -3581,6 +3586,7 @@ export function ScratchPrototype({
     return () => {
       cancelled = true;
       cancelAnimationFrame(animationId);
+      clearFrameClientRectCache(canvasRectCacheRef.current);
       // Default loseContext:false keeps Safari same-canvas remounts alive.
       // Real route leave arms consumeLoseGlContextOnUnmount via memory purge.
       renderer?.dispose({
@@ -5230,7 +5236,8 @@ export function ScratchPrototype({
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
-    const rect = canvas.getBoundingClientRect();
+    // shortcut: live zoomed rect still read 1×/frame, invert CSS zoom in math if layout still spikes during scratch-zoom
+    const rect = readFrameClientRect(canvasRectCacheRef.current, canvas);
     // Screen -> presented canvas pixels.
     const presentX = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
     const presentY = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
@@ -6760,7 +6767,6 @@ export function ScratchPrototype({
                 y: event.clientY,
               };
               const point = getCanvasPoint(event.clientX, event.clientY);
-              hoverPointRef.current = point;
               event.currentTarget.setPointerCapture(event.pointerId);
               if (point) applyScratchZoom(point);
               addScratch(event.clientX, event.clientY);
@@ -6770,10 +6776,6 @@ export function ScratchPrototype({
                 x: event.clientX,
                 y: event.clientY,
               };
-              hoverPointRef.current = getCanvasPoint(
-                event.clientX,
-                event.clientY,
-              );
               if (!drawingRef.current) return;
               // Coalesce to one densified apply per rAF (Phase 7).
               notePendingScratchMove(
@@ -6788,12 +6790,10 @@ export function ScratchPrototype({
             }}
             onPointerLeave={() => {
               endScratchStroke();
-              hoverPointRef.current = null;
               clearScratchZoom();
             }}
             onPointerCancel={() => {
               endScratchStroke();
-              hoverPointRef.current = null;
               clearScratchZoom();
             }}
           />

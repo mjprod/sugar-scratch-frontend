@@ -10,6 +10,11 @@ import {
   type CursorFxEmitMode,
 } from "../modules/cursorFxCelebrate";
 import { shouldSpawnFairyDustForMove } from "../modules/fairyDustSpawnPolicy";
+import {
+  clearFrameClientRectCache,
+  createFrameClientRectCache,
+  readFrameClientRect,
+} from "../modules/frameClientRect";
 
 // Ported from sugar-scratch-cursor-test-main's FairyDustCursor. The original
 // used `lottie-web` + a hidden DOM host to snapshot animation frames onto
@@ -369,6 +374,7 @@ function FairyDustCursorImpl({
     context.setTransform(overlayDpr, 0, 0, overlayDpr, 0, 0);
 
     const particles = particlesRef.current;
+    const overlayRectCache = createFrameClientRectCache();
     let animationFrameId = 0;
     let running = false;
     let timeMs = 0;
@@ -589,7 +595,7 @@ function FairyDustCursorImpl({
 
     const toLocal = (clientX: number, clientY: number) => {
       if (!element) return { x: clientX, y: clientY };
-      const rect = targetElement.getBoundingClientRect();
+      const rect = readFrameClientRect(overlayRectCache, targetElement);
       return { x: clientX - rect.left, y: clientY - rect.top };
     };
 
@@ -635,6 +641,7 @@ function FairyDustCursorImpl({
       targetElement.removeEventListener("touchstart", handleTouchStart);
       targetElement.removeEventListener("touchmove", handleTouchMove);
       cancelAnimationFrame(animationFrameId);
+      clearFrameClientRectCache(overlayRectCache);
     };
   }, [element, canvasSize, maxDevicePixelRatio]);
 
