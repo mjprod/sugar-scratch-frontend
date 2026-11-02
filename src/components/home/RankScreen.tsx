@@ -110,7 +110,7 @@ export function RankScreen({
       data-page-scroll
       className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
     >
-      <div className="home-page-inner mx-auto flex min-h-full w-full max-w-[var(--app-content-max,80rem)] flex-col">
+      <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col">
         <CategoryLeaderboard
           className="is-title-sentence is-figma-board rank-leaderboard"
           title="Top Packs"

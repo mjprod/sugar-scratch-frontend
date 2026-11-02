@@ -25,8 +25,7 @@ import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 	import { HdVideoWarning } from "@/components/profile/HdVideoWarning";
 	import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
-import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
+import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { ConvertDustIcon } from "@/components/WalletBalancesPopover";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -567,17 +566,7 @@ export function UserDashboardScreen({
         {loggingOut ? "Logging out" : "Log out"}
       </button>
 
-      <footer className="profile-site-footer" aria-label="Site">
-        <p className="home-site-footer-tagline">
-          <span className="is-pink">Real Creators.</span> Real Moments.
-        </p>
-        <SiteLegalLinks
-          onPrivacy={() => setView("legal-privacy")}
-          onTerms={() => setView("legal-terms")}
-        />
-        <SiteSocialLinks />
-        <p className="home-site-footer-copy">© 2026 Sugar Scratch</p>
-      </footer>
+      <HomeSiteFooter />
 
       {notice ? (
         <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-caption backdrop-blur-md">

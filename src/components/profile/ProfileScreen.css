@@ -1,17 +1,4 @@
 /* theme.css rules owned by ProfilePage (lazy route CSS). */
-/* Mobile: site links live on Profile (Terms/Privacy already in menu). */
-body[data-theme="v8"] .profile-site-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3-5);
-  margin-top: var(--gap-section);
-  margin-bottom: 0;
-  padding: var(--space-6) var(--space-2) var(--space-2);
-  border-top: 1px solid oklch(1 0 0 / 0.08);
-  text-align: center;
-}
-
 body[data-theme="v8"] .profile-hero.profile-card {
   height: auto;
   border-radius: 32px;

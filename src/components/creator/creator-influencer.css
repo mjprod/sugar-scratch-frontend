@@ -1932,60 +1932,6 @@ body[data-theme="v8"] .cpv2-ultra-dot {
   background: #2e2e2e;
 }
 
-/* —— Footer —— */
-
-body[data-theme="v8"] .cpv2-site-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3-5);
-  width: 100%;
-  padding: var(--space-2) 0 var(--space-1);
-  text-align: center;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-tagline {
-  margin: 0;
-  color: #fff;
-  font-size: var(--text-headline);
-  font-weight: 600;
-  letter-spacing: 0.28px;
-  line-height: 1.2;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-tagline .is-pink {
-  color: #d4145a;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1) var(--space-2);
-  max-width: 320px;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-links > button,
-body[data-theme="v8"] .cpv2-site-footer-links > a {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: var(--text-body);
-  font-weight: 400;
-  letter-spacing: 0.24px;
-  line-height: 1.2;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-links > button:hover,
-body[data-theme="v8"] .cpv2-site-footer-links > a:hover {
-  color: #fff;
-}
-
 /* Shell spacing tweak for influencer layout */
 body[data-theme="v8"] .cpv2-page.no-sticky-cta .cpv2-shell {
   gap: var(--gap-section);
