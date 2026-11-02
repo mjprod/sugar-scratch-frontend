@@ -189,6 +189,11 @@ import {
   stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
 import { useScratchCoinBadge } from "../modules/useScratchCoinBadge";
+import {
+  createDensifyBuffer,
+  densifyStrokeSegment,
+  densifyStrokeStart,
+} from "../modules/scratchDensify";
 
 function detectPhotoCursorFx() {
   if (typeof window === "undefined") {
@@ -772,33 +777,6 @@ async function loadCardAssetsWithFallback(cardId: string) {
   }
 }
 
-function densifyStrokeSegment(
-  from: Vec2,
-  to: Vec2,
-  maxStep: number,
-  maxPoints: number,
-): Vec2[] {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const dist = Math.hypot(dx, dy);
-  if (dist <= maxStep) return [from, to];
-  const steps = Math.ceil(dist / maxStep);
-  const points: Vec2[] = [];
-  for (let i = 0; i <= steps; i += 1) {
-    const t = i / steps;
-    points.push({ x: from.x + dx * t, y: from.y + dy * t });
-  }
-  if (points.length <= maxPoints) return points;
-  const kept: Vec2[] = [points[0]];
-  const lastIndex = points.length - 1;
-  for (let i = 1; i < maxPoints - 1; i += 1) {
-    const idx = Math.round((i / (maxPoints - 1)) * lastIndex);
-    kept.push(points[idx]);
-  }
-  kept.push(points[lastIndex]);
-  return kept;
-}
-
 function toGlSample(
   sample: TrackedMeshSample,
   garment: number[] | null = null,
@@ -909,6 +887,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     phase: "show",
   });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
+  const densifyBufRef = useRef(createDensifyBuffer());
   const isScratchingRef = useRef(false);
   const coinBadge = useScratchCoinBadge({
     isScratchingRef,
@@ -2574,19 +2553,22 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (!point || !sample) return;
 
     const last = lastScratchWorldRef.current;
-    const strokePoints =
+    const strokeBuf = densifyBufRef.current;
+    const strokeCount =
       last !== null
         ? densifyStrokeSegment(
+            strokeBuf,
             last,
             point,
             MANUAL_SCRATCH_PATH_STEP,
             MANUAL_SCRATCH_MAX_POINTS,
           )
-        : [point];
+        : densifyStrokeStart(strokeBuf, point);
 
     let applied = false;
     let fresh = false;
-    for (const strokePoint of strokePoints) {
+    for (let i = 0; i < strokeCount; i += 1) {
+      const strokePoint = strokeBuf[i]!;
       const uv = trackedWorldToUv(sample, strokePoint);
       if (!uv) continue;
       const newCells = applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);

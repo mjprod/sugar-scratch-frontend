@@ -169,6 +169,11 @@ import {
   readFrameClientRect,
 } from "../modules/frameClientRect";
 import {
+  createDensifyBuffer,
+  densifyStrokeSegment,
+  densifyStrokeStart,
+} from "../modules/scratchDensify";
+import {
   clearScratchMarks,
   createScratchMarksRing,
   pushScratchMark,
@@ -1336,24 +1341,6 @@ function densifyScratchPath(points: Vec2[], maxStep: number): Vec2[] {
   return out;
 }
 
-function densifyStrokeSegment(
-  from: Vec2,
-  to: Vec2,
-  maxStep: number,
-  maxPoints: number,
-): Vec2[] {
-  const points = densifyScratchPath([from, to], maxStep);
-  if (points.length <= maxPoints) return points;
-  const kept: Vec2[] = [points[0]];
-  const lastIndex = points.length - 1;
-  for (let i = 1; i < maxPoints - 1; i += 1) {
-    const idx = Math.round((i / (maxPoints - 1)) * lastIndex);
-    kept.push(points[idx]);
-  }
-  kept.push(points[lastIndex]);
-  return kept;
-}
-
 function isGarmentUv(mesh: TrackedMesh | null, u: number, v: number) {
   const garment = mesh?.garment ?? null;
   const cols = mesh?.cols ?? 0;
@@ -1547,6 +1534,7 @@ export function ScratchPrototype({
   const fgParkedRef = useRef(false);
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
   const marksRef = useRef(createScratchMarksRing());
+  const densifyBufRef = useRef(createDensifyBuffer());
   const scratchInputCoalesceRef = useRef(createScratchInputCoalesce());
   const canvasRectCacheRef = useRef(createFrameClientRectCache());
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
@@ -5680,7 +5668,9 @@ export function ScratchPrototype({
           deferredSymbolCoinsRef.current = {
             from: queued?.from ?? prevCount,
             to: nextSymbolCount,
-            world: worldPoint ?? queued?.world ?? null,
+            world: worldPoint
+              ? { x: worldPoint.x, y: worldPoint.y }
+              : (queued?.world ?? null),
           };
           if (nextSymbolCount >= SYMBOL_SLOT_COUNT) scheduleAutoCoinReveal();
         } else {
@@ -5724,22 +5714,24 @@ export function ScratchPrototype({
     const manualBudget = resolveManualScratchBudget({
       coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
     });
-    const strokePoints =
+    const strokeBuf = densifyBufRef.current;
+    const strokeCount =
       last !== null
         ? densifyStrokeSegment(
+            strokeBuf,
             last,
             point,
             manualBudget.pathStep,
             manualBudget.maxPoints,
           )
-        : [point];
+        : densifyStrokeStart(strokeBuf, point);
 
     // Map first so we finalize the last *on-mesh* stamp. A coalesced swipe
     // often ends off the garment; finalizing `strokePoints.at(-1)` skipped
     // symbol probes even when an intermediate stamp punched a mark.
     const appliedStamps: { u: number; v: number; worldPoint: Vec2 }[] = [];
-    for (let i = 0; i < strokePoints.length; i += 1) {
-      const strokePoint = strokePoints[i];
+    for (let i = 0; i < strokeCount; i += 1) {
+      const strokePoint = strokeBuf[i]!;
       const uv = trackedWorldToUv(trackedSample, strokePoint);
       if (!uv) continue;
       appliedStamps.push({ u: uv.x, v: uv.y, worldPoint: strokePoint });
