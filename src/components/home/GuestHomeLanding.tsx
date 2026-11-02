@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -61,6 +62,34 @@ const GUEST_SLIDES: GuestSlide[] = [
 
 const SWIPE_THRESHOLD_PX = 48;
 
+function dropHeroVideoDecoder(video: HTMLVideoElement) {
+  try {
+    video.pause();
+  } catch {
+    // ignore
+  }
+  try {
+    video.removeAttribute("src");
+    video.src = "";
+    video.load();
+  } catch {
+    // ignore
+  }
+}
+
+function writeTrack(
+  track: HTMLDivElement | null,
+  active: number,
+  offsetPx: number,
+  instant: boolean,
+) {
+  if (!track) return;
+  track.style.transform = `translate3d(calc(${-active * 100}% + ${offsetPx}px), 0, 0)`;
+  track.style.transition = instant
+    ? "none"
+    : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)";
+}
+
 export function GuestHomeLanding() {
   const { openCreateAccount } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -75,7 +104,6 @@ export function GuestHomeLanding() {
   } | null>(null);
 
   const [index, setIndex] = useState(0);
-  const [dragOffsetPx, setDragOffsetPx] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [canPlay, setCanPlay] = useState(false);
   const [posterReady, setPosterReady] = useState(false);
@@ -86,6 +114,12 @@ export function GuestHomeLanding() {
 
   const slideCount = GUEST_SLIDES.length;
   const active = Math.max(0, Math.min(index, slideCount - 1));
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
+
+  useLayoutEffect(() => {
+    writeTrack(trackRef.current, active, 0, reduceMotion);
+  }, [active, reduceMotion]);
 
   useMarkPageReady(posterReady || canPlay || active !== 0);
 
@@ -134,7 +168,7 @@ export function GuestHomeLanding() {
     video.setAttribute("webkit-playsinline", "");
 
     if (reduceMotion) {
-      video.pause();
+      dropHeroVideoDecoder(video);
       setCanPlay(true);
       return () => {
         video.removeEventListener("canplay", markCanPlay);
@@ -142,30 +176,67 @@ export function GuestHomeLanding() {
       };
     }
 
-    if (active === 0) {
+    const playHero = () => {
+      if (document.hidden || active !== 0) return;
       const play = video.play();
       if (play && typeof play.catch === "function") {
         void play.catch(() => setCanPlay(true));
       }
+    };
+
+    if (active !== 0) {
+      try {
+        video.pause();
+      } catch {
+        // keep src — dropping it re-decodes on every swipe back
+      }
     } else {
-      video.pause();
+      playHero();
     }
+
+    const onVis = () => {
+      if (document.hidden) {
+        try {
+          video.pause();
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      playHero();
+    };
+    document.addEventListener("visibilitychange", onVis);
 
     if (video.readyState >= 3) setCanPlay(true);
     const fallback = window.setTimeout(() => setCanPlay(true), 2500);
 
     return () => {
       window.clearTimeout(fallback);
+      document.removeEventListener("visibilitychange", onVis);
       video.removeEventListener("canplay", markCanPlay);
       video.removeEventListener("playing", markCanPlay);
+      try {
+        video.pause();
+      } catch {
+        // ignore
+      }
     };
   }, [active, reduceMotion, videoSrc]);
 
+  useEffect(
+    () => () => {
+      const video = videoRef.current;
+      if (video) dropHeroVideoDecoder(video);
+    },
+    [],
+  );
+
   const goTo = useCallback(
     (next: number) => {
-      setIndex(Math.max(0, Math.min(next, slideCount - 1)));
-      setDragOffsetPx(0);
+      const clamped = Math.max(0, Math.min(next, slideCount - 1));
+      setIndex(clamped);
       setIsDragging(false);
+      writeTrack(trackRef.current, clamped, 0, reduceMotionRef.current);
     },
     [slideCount],
   );
@@ -177,7 +248,7 @@ export function GuestHomeLanding() {
       setIsDragging(false);
 
       if (!drag || drag.axis !== "x") {
-        setDragOffsetPx(0);
+        writeTrack(trackRef.current, active, 0, reduceMotionRef.current);
         return;
       }
 
@@ -200,9 +271,12 @@ export function GuestHomeLanding() {
         goTo(active - 1);
         return;
       }
-      setDragOffsetPx(0);
+      writeTrack(trackRef.current, active, 0, reduceMotionRef.current);
+      if (active === 0 && videoSrc && !reduceMotionRef.current && !document.hidden) {
+        void videoRef.current?.play()?.catch(() => undefined);
+      }
     },
-    [active, goTo, slideCount],
+    [active, goTo, slideCount, videoSrc],
   );
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
@@ -245,6 +319,13 @@ export function GuestHomeLanding() {
       drag.axis = "x";
       drag.dragging = true;
       setIsDragging(true);
+      if (active === 0) {
+        try {
+          videoRef.current?.pause();
+        } catch {
+          // ignore
+        }
+      }
     }
 
     if (drag.axis !== "x") return;
@@ -255,7 +336,7 @@ export function GuestHomeLanding() {
     if ((active === 0 && dx > 0) || (active === slideCount - 1 && dx < 0)) {
       offset = dx * 0.35;
     }
-    setDragOffsetPx(offset);
+    writeTrack(trackRef.current, active, offset, true);
     event.preventDefault();
   }, [active, slideCount]);
 
@@ -282,11 +363,6 @@ export function GuestHomeLanding() {
     [endDrag],
   );
 
-  const trackStyle = {
-    transform: `translate3d(calc(${-active * 100}% + ${dragOffsetPx}px), 0, 0)`,
-    transition: isDragging || reduceMotion ? "none" : "transform 420ms cubic-bezier(0.22, 1, 0.36, 1)",
-  } as const;
-
   return (
     <section
       className="guest-home-landing"
@@ -305,7 +381,6 @@ export function GuestHomeLanding() {
         ]
           .filter(Boolean)
           .join(" ")}
-        style={trackStyle}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
@@ -324,7 +399,7 @@ export function GuestHomeLanding() {
                   className="guest-home-landing__video"
                   src={videoSrc}
                   poster={GUEST_HOME_POSTER}
-                  autoPlay={!reduceMotion && Boolean(videoSrc)}
+                  autoPlay={!reduceMotion && Boolean(videoSrc) && active === 0}
                   muted
                   loop
                   playsInline

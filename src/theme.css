@@ -206,7 +206,6 @@ body[data-theme="v8"] .guest-home-landing__track {
   display: flex;
   width: 100%;
   height: 100%;
-  will-change: transform;
   cursor: grab;
   touch-action: pan-x;
   user-select: none;
@@ -215,6 +214,7 @@ body[data-theme="v8"] .guest-home-landing__track {
 
 body[data-theme="v8"] .guest-home-landing__track.is-dragging {
   cursor: grabbing;
+  will-change: transform;
 }
 
 body[data-theme="v8"] .guest-home-landing__slide {
@@ -240,6 +240,10 @@ body[data-theme="v8"] .guest-home-landing__video {
   object-fit: cover;
   object-position: center center;
   pointer-events: none;
+}
+
+body[data-theme="v8"] .guest-home-landing__slide--video[aria-hidden="true"] .guest-home-landing__video {
+  visibility: hidden;
 }
 
 body[data-theme="v8"] .guest-home-landing__slide--step {
@@ -8990,8 +8994,8 @@ body[data-theme="v8"] .coverflow-status-pager__track {
   max-width: none;
   height: 100%;
   min-height: var(--status-pill-h);
-  /* Clip the abspos pill hit-pad so it cannot create a vertical scrollport. */
-  overflow: hidden;
+  /* Visible: iOS drops an abspos + translate3d layer inside overflow:hidden. */
+  overflow: visible;
 }
 
 body[data-theme="v8"] .coverflow-status-pager__dot {
@@ -9118,11 +9122,13 @@ body[data-theme="v8"] .coverflow-status-pager__pill {
   max-width: none;
   height: var(--status-pill-h);
   margin: 0;
+  margin-top: calc(var(--status-pill-h) / -2);
   padding: 0;
   box-sizing: border-box;
   background: transparent;
   border: 0;
-  transform: translate3d(0, -50%, 0);
+  /* X-only translate — iOS goes transparent if -50% Y is mixed into transform. */
+  transform: translate3d(0, 0, 0);
   cursor: grab;
   touch-action: none;
   pointer-events: auto;
@@ -9143,15 +9149,18 @@ body[data-theme="v8"] .coverflow-status-pager__pill-face {
   width: 100%;
   height: 100%;
   border-radius: 999px;
-  border: 1px solid rgba(215, 0, 101, 0.1);
+  border: 1px solid rgba(215, 0, 101, 0.18);
+  background-color: #c4005c;
   background-image: linear-gradient(
     180deg,
-    rgba(255, 33, 137, 0.55) 0%,
-    rgba(151, 0, 71, 0.55) 100%
+    #ff2189 0%,
+    #970047 100%
   );
   box-shadow:
     inset -0.5px 0.75px 0 rgba(255, 255, 255, 0.1),
     inset 1.5px -2.5px 0 -2px rgba(255, 255, 255, 0.1);
+  /* Keep a stable compositor layer so iOS doesn't drop the fill mid-swipe. */
+  transform: translateZ(0);
   pointer-events: none;
 }
 
@@ -9161,7 +9170,7 @@ body[data-theme="v8"] .coverflow-status-pager__pill.is-held {
 
 body[data-theme="v8"] .coverflow-status-pager__pill.is-held .coverflow-status-pager__pill-face {
   filter: brightness(1.08);
-  transform: scale(1.04);
+  transform: translateZ(0) scale(1.04);
 }
 
 body[data-theme="v8"] .home-v2 .home-featured-coverflow-frame {
