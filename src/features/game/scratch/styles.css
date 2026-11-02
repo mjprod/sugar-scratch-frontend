@@ -2240,6 +2240,7 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   display: block;
   height: 100%;
   position: relative;
+  transition: none;
   width: 100%;
 }
 

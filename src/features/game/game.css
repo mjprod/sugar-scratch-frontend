@@ -332,6 +332,7 @@
   position: relative !important;
   top: auto !important;
   transform: none !important;
+  transition: none;
   width: 100% !important;
 }
 
@@ -2294,6 +2295,7 @@
 
 /* Pause the stage picture while the currency result owns the screen. */
 .stage-game .stage.is-result-clear > canvas.game-stage-canvas,
+.stage-game .stage.is-result-clear .game-stage-canvas-wrap,
 .stage-game .stage.is-result-clear .source-video {
   visibility: hidden !important;
   pointer-events: none !important;

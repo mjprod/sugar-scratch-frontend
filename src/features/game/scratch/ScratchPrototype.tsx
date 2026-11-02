@@ -1453,6 +1453,7 @@ export function ScratchPrototype({
   const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
     useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
   const handIdRef = useRef("");
@@ -4279,20 +4280,20 @@ export function ScratchPrototype({
   useEffect(() => stopScratchSounds, []);
 
   function syncScratchZoomTransition(
-    canvas: HTMLCanvasElement,
+    host: HTMLElement,
     durationMs: number,
     settings = scratchZoomRef.current,
   ) {
-    canvas.style.setProperty("--scratch-zoom-duration", `${durationMs}ms`);
-    canvas.style.setProperty(
+    host.style.setProperty("--scratch-zoom-duration", `${durationMs}ms`);
+    host.style.setProperty(
       "--scratch-zoom-easing",
       scratchZoomEasing(settings.bounce),
     );
   }
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) syncScratchZoomTransition(canvas, scratchZoom.zoomInMs);
+    const wrap = canvasWrapRef.current;
+    if (wrap) syncScratchZoomTransition(wrap, scratchZoom.zoomInMs);
   }, [scratchZoom]);
 
   function updateScratchZoom(patch: Partial<ScratchZoomSettings>) {
@@ -5206,8 +5207,8 @@ export function ScratchPrototype({
   }
   tryResolveGameRef.current = tryResolveGame;
 
-  // On phones the canvas is centered with a translate that fills the screen, so
-  // the magnify scale has to be composed on top of it rather than replacing it.
+  // Cover-center lives on the wrap (see game.css). Compose magnify on that,
+  // not the WebGL canvas — scaling the canvas box forces layout every frame.
   const canvasBaseTransform = () =>
     isPhoneLayout() ? "translate(-50%, -50%) " : "";
 
@@ -5215,21 +5216,21 @@ export function ScratchPrototype({
     const settings = scratchZoomRef.current;
     if (!settings.enabled || !getScratchZoomEnabled()) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    syncScratchZoomTransition(canvas, settings.zoomInMs, settings);
-    canvas.style.transformOrigin = `${(point.x / CANVAS_WIDTH) * 100}% ${(point.y / CANVAS_HEIGHT) * 100}%`;
-    canvas.style.transform = `${canvasBaseTransform()}scale(${settings.scale})`;
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    syncScratchZoomTransition(wrap, settings.zoomInMs, settings);
+    wrap.style.transformOrigin = `${(point.x / CANVAS_WIDTH) * 100}% ${(point.y / CANVAS_HEIGHT) * 100}%`;
+    wrap.style.transform = `${canvasBaseTransform()}scale(${settings.scale})`;
   }
 
   function clearScratchZoom() {
     const settings = scratchZoomRef.current;
     if (!settings.enabled) return;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    syncScratchZoomTransition(canvas, settings.zoomOutMs, settings);
-    canvas.style.transform = `${canvasBaseTransform()}scale(1)`;
+    const wrap = canvasWrapRef.current;
+    if (!wrap) return;
+    syncScratchZoomTransition(wrap, settings.zoomOutMs, settings);
+    wrap.style.transform = `${canvasBaseTransform()}scale(1)`;
   }
 
   function getCanvasPoint(clientX: number, clientY: number) {
@@ -6725,7 +6726,8 @@ export function ScratchPrototype({
             playsInline
             preload="auto"
           />
-          <canvas
+          <div ref={canvasWrapRef} className="game-stage-canvas-wrap">
+            <canvas
             ref={canvasRef}
             className="game-stage-canvas"
             width={CANVAS_WIDTH}
@@ -6796,7 +6798,8 @@ export function ScratchPrototype({
               endScratchStroke();
               clearScratchZoom();
             }}
-          />
+            />
+          </div>
           {finaleBurst ? (
             <div
               key={finaleBurst.key}
