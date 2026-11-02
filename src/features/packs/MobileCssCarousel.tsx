@@ -302,6 +302,7 @@ export function MobileCssCarousel({
   const pageVisibleRef = useRef(
     typeof document === "undefined" ? true : document.visibilityState === "visible",
   );
+  const heroVisibleRef = useRef(true);
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const [pocketTick, setPocketTick] = useState(0);
@@ -556,8 +557,8 @@ export function MobileCssCarousel({
     const focus = focusRef.current;
     if (!video) return;
     layoutFocus();
-    if (!pageVisibleRef.current || parkedRef.current) {
-      if (!pageVisibleRef.current) {
+    if (!pageVisibleRef.current || !heroVisibleRef.current || parkedRef.current) {
+      if (!pageVisibleRef.current || !heroVisibleRef.current) {
         releaseClaimedDecoder(video);
         focus?.classList.remove("is-ready");
         syncLiveClass();
@@ -621,7 +622,7 @@ export function MobileCssCarousel({
     releaseClaimedDecoder(liveVideoRef.current);
     focusRef.current?.classList.remove("is-ready");
     syncLiveClass();
-    if (swiperRef.current && pageVisibleRef.current) {
+    if (swiperRef.current && pageVisibleRef.current && heroVisibleRef.current) {
       setParked(false);
       attachActiveVideo();
     }
@@ -654,6 +655,42 @@ export function MobileCssCarousel({
       window.removeEventListener("pagehide", releaseDecoders);
       window.removeEventListener("pageshow", restoreDecoders);
       releaseClaimedDecoder(liveVideoRef.current);
+    };
+  }, [attachActiveVideo, syncLiveClass]);
+
+  // Drop the pack decoder when the page scroller hides the hero.
+  useEffect(() => {
+    const shell = shellRef.current;
+    const scroller = shell?.closest<HTMLElement>("[data-page-scroll]");
+    if (!shell || !scroller) return;
+    let raf = 0;
+    const sync = () => {
+      raf = 0;
+      const rect = shell.getBoundingClientRect();
+      const root = scroller.getBoundingClientRect();
+      const visibleH =
+        Math.min(rect.bottom, root.bottom) - Math.max(rect.top, root.top);
+      const visible = rect.height > 0 && visibleH / rect.height >= 0.35;
+      if (heroVisibleRef.current === visible) return;
+      heroVisibleRef.current = visible;
+      if (visible) {
+        if (pageVisibleRef.current && !parkedRef.current) attachActiveVideo();
+        return;
+      }
+      releaseClaimedDecoder(liveVideoRef.current);
+      focusRef.current?.classList.remove("is-ready");
+      syncLiveClass();
+    };
+    const queue = () => {
+      if (!raf) raf = window.requestAnimationFrame(sync);
+    };
+    scroller.addEventListener("scroll", queue, { passive: true });
+    window.addEventListener("resize", queue, { passive: true });
+    sync();
+    return () => {
+      scroller.removeEventListener("scroll", queue);
+      window.removeEventListener("resize", queue);
+      if (raf) window.cancelAnimationFrame(raf);
     };
   }, [attachActiveVideo, syncLiveClass]);
 

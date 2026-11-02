@@ -6,6 +6,7 @@ import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { FIGMA_HOME_PLAY_STEPS, PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useSearch } from "@/contexts/SearchContext";
+import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
@@ -59,6 +60,7 @@ export function HomeVersion2Screen({
   const [heroReady, setHeroReady] = useState(false);
 
   useMarkPageReady(status === "error" || heroReady);
+  const pageScrolling = usePageScrollActive();
 
   const load = useCallback(async () => {
     setHeroReady(false);
@@ -179,6 +181,7 @@ export function HomeVersion2Screen({
             onClaimed={onClaimDaily}
             onClaimAttempt={onClaimAttempt}
             readySubtitle="Claim today’s free gift…"
+            auroraPaused={pageScrolling}
           />
         ) : null}
 
@@ -205,7 +208,7 @@ export function HomeVersion2Screen({
         />
       </div>
 
-      <SpotlightBanner />
+      <SpotlightBanner auroraPaused={pageScrolling} />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)]">
         <HomeSiteFooter />

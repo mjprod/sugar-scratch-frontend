@@ -41,11 +41,14 @@ export function PlayerWelcomeBar({
   onClaimed,
   onClaimAttempt,
   readySubtitle,
+  auroraPaused = false,
 }: {
   onClaimed: (diamonds: number) => void;
   onClaimAttempt?: () => boolean;
   /** Override title while the daily gift is still claimable. */
   readySubtitle?: string;
+  /** Pause live aurora while the page scroller is moving. */
+  auroraPaused?: boolean;
 }) {
   const titleId = useId();
   const barRef = useRef<HTMLElement>(null);
@@ -246,6 +249,7 @@ export function PlayerWelcomeBar({
                 }
                 costAmount={null}
                 strokeWidth={1}
+                auroraFrozen={auroraPaused}
                 disabled={claiming || uiPhase === "exiting"}
                 aria-busy={claiming || uiPhase === "exiting"}
                 onClick={handleClaim}
