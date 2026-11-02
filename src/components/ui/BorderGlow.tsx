@@ -168,27 +168,29 @@ const MIN_ORBIT_DURATION_S = 0.5;
 /** Resume the orbit slightly before a glow scrolls into view. */
 const ORBIT_VISIBILITY_MARGIN = "120px";
 
-let orbitVisibilityObserver: IntersectionObserver | null = null;
-
 /**
  * The orbit animates an inherited @property every frame, forcing style +
  * mask repaint for the whole card subtree — pause it (and the wrapped CTA's
- * own loops) while off screen or fully clipped. One observer for every glow.
+ * own loops) while off screen or fully clipped.
+ * Root is the app page scroller so iOS nested overflow actually reports hide.
  * A data attribute (not a class) so React className updates can't drop it.
  */
 function observeOrbitVisibility(el: HTMLElement): () => void {
   if (typeof IntersectionObserver === "undefined") return () => {};
-  orbitVisibilityObserver ??= new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        entry.target.toggleAttribute("data-orbit-offscreen", !entry.isIntersecting);
-      }
+  const root = el.closest("[data-page-scroll]");
+  const io = new IntersectionObserver(
+    ([entry]) => {
+      if (!entry) return;
+      el.toggleAttribute("data-orbit-offscreen", !entry.isIntersecting);
     },
-    { rootMargin: ORBIT_VISIBILITY_MARGIN },
+    {
+      root: root instanceof Element ? root : null,
+      rootMargin: ORBIT_VISIBILITY_MARGIN,
+    },
   );
-  orbitVisibilityObserver.observe(el);
+  io.observe(el);
   return () => {
-    orbitVisibilityObserver?.unobserve(el);
+    io.disconnect();
     el.removeAttribute("data-orbit-offscreen");
   };
 }

@@ -35,6 +35,7 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 	  setHdVideoEnabled,
 	} from "@/services/videoQualityPrefs";
 import { useConvertPress } from "@/hooks/useConvertPress";
+import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { formatBalance } from "@/lib/formatBalance";
 import {
   bestAffordableCoinExchange,
@@ -159,6 +160,7 @@ export function UserDashboardScreen({
     toggleEnabled: toggleMotionEnabled,
   } = useMotion();
 	  const tiltActive = motionEnabled && motionPermission === "granted";
+  const pageScrolling = usePageScrollActive();
 	  const [hdVideo, setHdVideo] = useState(() => getHdVideoEnabled());
 	  const [hdWarning, setHdWarning] = useState(false);
   const tiltLabel = !motionSupported
@@ -436,8 +438,7 @@ export function UserDashboardScreen({
                     <CoinLottie
                       className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
                       size={16}
-                      loop={false}
-                      autoplay={false}
+                      animated={false}
                       aria-hidden
                     />
                   )}
@@ -516,6 +517,14 @@ export function UserDashboardScreen({
                     label="Get Diamonds"
                     costAmount={null}
                     strokeWidth={1}
+                    strokeColor="rgba(141, 0, 170, 0.42)"
+                    auroraBaseColor="#1b0042"
+                    auroraColorStops={["#8a3cb0", "#c42eea", "#1b0042", "#6b3e93"]}
+                    glowColors={["#8d00aa", "#d503ff", "#b44bff"]}
+                    glowColor="292 80 28"
+                    particleColor="#e08aff"
+                    labelColor="#f0e0ff"
+                    auroraFrozen={pageScrolling}
                     onClick={onBuyMoreDiamonds}
                   />
                 </div>

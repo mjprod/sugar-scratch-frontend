@@ -142,6 +142,7 @@ export default function Aurora(props: AuroraProps) {
     ro?.observe(ctn);
     window.addEventListener("resize", applySize);
 
+    const page = ctn.closest("[data-page-scroll]");
     const io =
       typeof IntersectionObserver === "undefined"
         ? null
@@ -150,7 +151,10 @@ export default function Aurora(props: AuroraProps) {
               visibleRef.current = Boolean(entry?.isIntersecting);
               applySleep();
             },
-            { rootMargin: "120px" },
+            {
+              root: page instanceof Element ? page : null,
+              rootMargin: "120px",
+            },
           );
     io?.observe(ctn);
 
