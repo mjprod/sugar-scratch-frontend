@@ -48,6 +48,12 @@ function releaseDecoder(el: HTMLMediaElement): void {
   }
 }
 
+/** Blank src + load() without touching the exclusive claim (feed neighbors). */
+export function dropMediaSrc(el: HTMLMediaElement | null | undefined): void {
+  if (!el) return;
+  releaseDecoder(el);
+}
+
 /** Hard-drop whatever is live, then attach `src` on `el`. */
 export function claimMediaDecoder(el: HTMLMediaElement, src: string): void {
   if (!src) {

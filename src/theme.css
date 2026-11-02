@@ -4244,7 +4244,6 @@ body[data-theme="v8"] .hf-overlay {
   transform: translate3d(0, var(--hf-parallax-y), 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  will-change: transform;
 }
 
 /*

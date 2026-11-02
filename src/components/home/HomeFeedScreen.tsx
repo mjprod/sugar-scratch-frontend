@@ -16,6 +16,7 @@ import {
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   FEED_WARM_AHEAD,
+  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
   isFeedMountIndex,
   isFeedPreloadAutoIndex,
@@ -258,7 +259,7 @@ export function HomeFeedScreen({
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
       scrollIndexRef.current = 0;
-      preloadFeedPosters(page.items);
+      preloadFeedPosters(page.items.slice(0, FEED_WARM_AHEAD + 2));
       restoredRef.current = false;
       setStatus("loaded");
       writeHomeFeedCache({
@@ -275,7 +276,13 @@ export function HomeFeedScreen({
 
   useEffect(() => {
     if (cached?.items.length) {
-      preloadFeedPosters(cached.items);
+      const idx = Math.max(0, cached.scrollIndex ?? 0);
+      preloadFeedPosters(
+        cached.items.slice(
+          Math.max(0, idx - FEED_WARM_BEHIND),
+          idx + FEED_WARM_AHEAD + 2,
+        ),
+      );
       return;
     }
     void loadInitial();
@@ -731,25 +738,32 @@ export function HomeFeedScreen({
   }, []);
 
   useEffect(() => {
-    const activeSlide = loopSlides[viewIndex];
-    const activeKey = activeSlide?.key;
+    const syncPlayback = () => {
+      const hidden = document.visibilityState === "hidden";
+      const activeSlide = loopSlides[viewIndex];
+      const activeKey = activeSlide?.key;
 
-    videoRefs.current.forEach((video, id) => {
-      if (!active) {
+      videoRefs.current.forEach((video, id) => {
+        if (!active || hidden) {
+          video.pause();
+          return;
+        }
+
+        if (id === activeKey) {
+          video.muted = true;
+          void video.play().catch(() => {
+            /* poster still shows */
+          });
+          return;
+        }
+
         video.pause();
-        return;
-      }
+      });
+    };
 
-      if (id === activeKey) {
-        video.muted = true;
-        void video.play().catch(() => {
-          /* poster still shows */
-        });
-        return;
-      }
-
-      video.pause();
-    });
+    syncPlayback();
+    document.addEventListener("visibilitychange", syncPlayback);
+    return () => document.removeEventListener("visibilitychange", syncPlayback);
   }, [active, loopSlides, videoRefs, viewIndex]);
 
   // Keep keyboard focus on the parked slide when the loop advances.
@@ -1075,7 +1089,7 @@ export function HomeFeedScreen({
     const holdTop = root?.scrollTop ?? null;
     try {
       const page = await fetchHomeFeedPage(cursor);
-      preloadFeedPosters(page.items);
+      preloadFeedPosters(page.items.slice(0, FEED_WARM_AHEAD + 2));
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(
@@ -1331,6 +1345,7 @@ export function HomeFeedScreen({
             className={[
               "hf-viewport",
               isDesktopDragging ? "is-desktop-dragging" : "",
+              feedScrolling ? "is-feed-scrolling" : "",
             ]
               .filter(Boolean)
               .join(" ")}
