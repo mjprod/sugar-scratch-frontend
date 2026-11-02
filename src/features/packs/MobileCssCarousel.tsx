@@ -376,6 +376,7 @@ export function MobileCssCarousel({
 
   const fadeGlowTo = useCallback(
     (color: string) => {
+      if (compact) return;
       if (prefersReducedMotion()) {
         snapGlow(color);
         return;
@@ -419,7 +420,7 @@ export function MobileCssCarousel({
         });
       });
     },
-    [clearGlowTimers, snapGlow],
+    [clearGlowTimers, compact, snapGlow],
   );
 
   function closeBuyConfirm() {
@@ -532,9 +533,9 @@ export function MobileCssCarousel({
   const setParked = useCallback((next: boolean) => {
     parkedRef.current = next;
     focusRef.current?.classList.toggle("is-parked", next);
-    setHudActive(!next);
+    if (!compact) setHudActive(!next);
     syncLiveClass();
-  }, [syncLiveClass]);
+  }, [compact, syncLiveClass]);
 
   const layoutFocus = useCallback(() => {
     const shell = shellRef.current;
@@ -618,7 +619,7 @@ export function MobileCssCarousel({
     readySent.current = false;
     setActiveIndex(0);
     activeIndexRef.current = 0;
-    snapGlow(glowColorForItem(items[0]));
+    if (!compact) snapGlow(glowColorForItem(items[0]));
     releaseClaimedDecoder(liveVideoRef.current);
     focusRef.current?.classList.remove("is-ready");
     syncLiveClass();
@@ -626,7 +627,7 @@ export function MobileCssCarousel({
       setParked(false);
       attachActiveVideo();
     }
-  }, [attachActiveVideo, items, setParked, snapGlow, syncLiveClass]);
+  }, [attachActiveVideo, compact, items, setParked, snapGlow, syncLiveClass]);
 
   // Tab hide / bfcache: drop the decoder so iOS can reclaim page memory.
   useEffect(() => {
@@ -747,7 +748,10 @@ export function MobileCssCarousel({
     };
   }, [layoutFocus]);
 
-  useEffect(() => subscribeCart(() => setPocketTick((n) => n + 1)), []);
+  useEffect(() => {
+    if (compact) return;
+    return subscribeCart(() => setPocketTick((n) => n + 1));
+  }, [compact]);
 
   useEffect(() => {
     if (!buyConfirmOpen) return;
@@ -874,8 +878,9 @@ export function MobileCssCarousel({
     },
   });
 
-  const stageGlowClass =
-    glowPhase === "prep"
+  const stageGlowClass = compact
+    ? ""
+    : glowPhase === "prep"
       ? " is-glow-prep"
       : glowPhase === "fading"
         ? " is-glow-fading"

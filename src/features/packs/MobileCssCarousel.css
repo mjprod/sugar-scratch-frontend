@@ -318,7 +318,7 @@
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel__play {
   position: absolute;
   left: 50%;
-  bottom: 48px;
+  bottom: 36px;
   z-index: 6;
   margin: 0;
   transform: translate3d(-50%, 0, 0);
@@ -326,6 +326,19 @@
   opacity: 1;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+}
+
+/* Same dark plate as mobile Buy Pack — hide the paused aurora wash. */
+.mobile-css-carousel-stage.is-compact .coverflow-play-only-cta .cta-button__inner {
+  background: linear-gradient(45deg, #670630 0%, #18030b 50%, #4c0624 100%);
+}
+
+.mobile-css-carousel-stage.is-compact .coverflow-play-only-cta .cta-button__aurora,
+.mobile-css-carousel-stage.is-compact .coverflow-play-only-cta .cta-button__aurora-fallback,
+.mobile-css-carousel-stage.is-compact .coverflow-play-only-cta .cta-button__aurora-fallback::before,
+.mobile-css-carousel-stage.is-compact .coverflow-play-only-cta .cta-button__aurora-fallback::after,
+.mobile-css-carousel-stage.is-compact .coverflow-play-only-cta .cta-button__face {
+  display: none;
 }
 
 .mobile-css-carousel-stage.is-compact
