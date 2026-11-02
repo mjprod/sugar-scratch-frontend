@@ -164,16 +164,6 @@ import {
   takePendingScratchMove,
 } from "../modules/scratchInputCoalesce";
 import {
-  clearFrameClientRectCache,
-  createFrameClientRectCache,
-  readFrameClientRect,
-} from "../modules/frameClientRect";
-import {
-  createDensifyBuffer,
-  densifyStrokeSegment,
-  densifyStrokeStart,
-} from "../modules/scratchDensify";
-import {
   clearScratchMarks,
   createScratchMarksRing,
   pushScratchMark,
@@ -1341,6 +1331,24 @@ function densifyScratchPath(points: Vec2[], maxStep: number): Vec2[] {
   return out;
 }
 
+function densifyStrokeSegment(
+  from: Vec2,
+  to: Vec2,
+  maxStep: number,
+  maxPoints: number,
+): Vec2[] {
+  const points = densifyScratchPath([from, to], maxStep);
+  if (points.length <= maxPoints) return points;
+  const kept: Vec2[] = [points[0]];
+  const lastIndex = points.length - 1;
+  for (let i = 1; i < maxPoints - 1; i += 1) {
+    const idx = Math.round((i / (maxPoints - 1)) * lastIndex);
+    kept.push(points[idx]);
+  }
+  kept.push(points[lastIndex]);
+  return kept;
+}
+
 function isGarmentUv(mesh: TrackedMesh | null, u: number, v: number) {
   const garment = mesh?.garment ?? null;
   const cols = mesh?.cols ?? 0;
@@ -1440,7 +1448,6 @@ export function ScratchPrototype({
   const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
     useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   /** Server-issued hand id for scratch sparkle awards (empty until start succeeds). */
   const handIdRef = useRef("");
@@ -1534,9 +1541,8 @@ export function ScratchPrototype({
   const fgParkedRef = useRef(false);
   const glRendererRef = useRef<GarmentGLRenderer | null>(null);
   const marksRef = useRef(createScratchMarksRing());
-  const densifyBufRef = useRef(createDensifyBuffer());
   const scratchInputCoalesceRef = useRef(createScratchInputCoalesce());
-  const canvasRectCacheRef = useRef(createFrameClientRectCache());
+  const hoverPointRef = useRef<Vec2 | null>(null);
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
   const drawingRef = useRef(false);
   // Reveal progress is measured against a fixed UV sample grid. We track which
@@ -3575,7 +3581,6 @@ export function ScratchPrototype({
     return () => {
       cancelled = true;
       cancelAnimationFrame(animationId);
-      clearFrameClientRectCache(canvasRectCacheRef.current);
       // Default loseContext:false keeps Safari same-canvas remounts alive.
       // Real route leave arms consumeLoseGlContextOnUnmount via memory purge.
       renderer?.dispose({
@@ -4268,20 +4273,20 @@ export function ScratchPrototype({
   useEffect(() => stopScratchSounds, []);
 
   function syncScratchZoomTransition(
-    host: HTMLElement,
+    canvas: HTMLCanvasElement,
     durationMs: number,
     settings = scratchZoomRef.current,
   ) {
-    host.style.setProperty("--scratch-zoom-duration", `${durationMs}ms`);
-    host.style.setProperty(
+    canvas.style.setProperty("--scratch-zoom-duration", `${durationMs}ms`);
+    canvas.style.setProperty(
       "--scratch-zoom-easing",
       scratchZoomEasing(settings.bounce),
     );
   }
 
   useEffect(() => {
-    const wrap = canvasWrapRef.current;
-    if (wrap) syncScratchZoomTransition(wrap, scratchZoom.zoomInMs);
+    const canvas = canvasRef.current;
+    if (canvas) syncScratchZoomTransition(canvas, scratchZoom.zoomInMs);
   }, [scratchZoom]);
 
   function updateScratchZoom(patch: Partial<ScratchZoomSettings>) {
@@ -5195,8 +5200,8 @@ export function ScratchPrototype({
   }
   tryResolveGameRef.current = tryResolveGame;
 
-  // Cover-center lives on the wrap (see game.css). Compose magnify on that,
-  // not the WebGL canvas — scaling the canvas box forces layout every frame.
+  // On phones the canvas is centered with a translate that fills the screen, so
+  // the magnify scale has to be composed on top of it rather than replacing it.
   const canvasBaseTransform = () =>
     isPhoneLayout() ? "translate(-50%, -50%) " : "";
 
@@ -5204,29 +5209,28 @@ export function ScratchPrototype({
     const settings = scratchZoomRef.current;
     if (!settings.enabled || !getScratchZoomEnabled()) return;
 
-    const wrap = canvasWrapRef.current;
-    if (!wrap) return;
-    syncScratchZoomTransition(wrap, settings.zoomInMs, settings);
-    wrap.style.transformOrigin = `${(point.x / CANVAS_WIDTH) * 100}% ${(point.y / CANVAS_HEIGHT) * 100}%`;
-    wrap.style.transform = `${canvasBaseTransform()}scale(${settings.scale})`;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    syncScratchZoomTransition(canvas, settings.zoomInMs, settings);
+    canvas.style.transformOrigin = `${(point.x / CANVAS_WIDTH) * 100}% ${(point.y / CANVAS_HEIGHT) * 100}%`;
+    canvas.style.transform = `${canvasBaseTransform()}scale(${settings.scale})`;
   }
 
   function clearScratchZoom() {
     const settings = scratchZoomRef.current;
     if (!settings.enabled) return;
 
-    const wrap = canvasWrapRef.current;
-    if (!wrap) return;
-    syncScratchZoomTransition(wrap, settings.zoomOutMs, settings);
-    wrap.style.transform = `${canvasBaseTransform()}scale(1)`;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    syncScratchZoomTransition(canvas, settings.zoomOutMs, settings);
+    canvas.style.transform = `${canvasBaseTransform()}scale(1)`;
   }
 
   function getCanvasPoint(clientX: number, clientY: number) {
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
-    // shortcut: live zoomed rect still read 1×/frame, invert CSS zoom in math if layout still spikes during scratch-zoom
-    const rect = readFrameClientRect(canvasRectCacheRef.current, canvas);
+    const rect = canvas.getBoundingClientRect();
     // Screen -> presented canvas pixels.
     const presentX = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
     const presentY = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
@@ -5668,9 +5672,7 @@ export function ScratchPrototype({
           deferredSymbolCoinsRef.current = {
             from: queued?.from ?? prevCount,
             to: nextSymbolCount,
-            world: worldPoint
-              ? { x: worldPoint.x, y: worldPoint.y }
-              : (queued?.world ?? null),
+            world: worldPoint ?? queued?.world ?? null,
           };
           if (nextSymbolCount >= SYMBOL_SLOT_COUNT) scheduleAutoCoinReveal();
         } else {
@@ -5714,24 +5716,22 @@ export function ScratchPrototype({
     const manualBudget = resolveManualScratchBudget({
       coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
     });
-    const strokeBuf = densifyBufRef.current;
-    const strokeCount =
+    const strokePoints =
       last !== null
         ? densifyStrokeSegment(
-            strokeBuf,
             last,
             point,
             manualBudget.pathStep,
             manualBudget.maxPoints,
           )
-        : densifyStrokeStart(strokeBuf, point);
+        : [point];
 
     // Map first so we finalize the last *on-mesh* stamp. A coalesced swipe
     // often ends off the garment; finalizing `strokePoints.at(-1)` skipped
     // symbol probes even when an intermediate stamp punched a mark.
     const appliedStamps: { u: number; v: number; worldPoint: Vec2 }[] = [];
-    for (let i = 0; i < strokeCount; i += 1) {
-      const strokePoint = strokeBuf[i]!;
+    for (let i = 0; i < strokePoints.length; i += 1) {
+      const strokePoint = strokePoints[i];
       const uv = trackedWorldToUv(trackedSample, strokePoint);
       if (!uv) continue;
       appliedStamps.push({ u: uv.x, v: uv.y, worldPoint: strokePoint });
@@ -6718,8 +6718,7 @@ export function ScratchPrototype({
             playsInline
             preload="auto"
           />
-          <div ref={canvasWrapRef} className="game-stage-canvas-wrap">
-            <canvas
+          <canvas
             ref={canvasRef}
             className="game-stage-canvas"
             width={CANVAS_WIDTH}
@@ -6761,6 +6760,7 @@ export function ScratchPrototype({
                 y: event.clientY,
               };
               const point = getCanvasPoint(event.clientX, event.clientY);
+              hoverPointRef.current = point;
               event.currentTarget.setPointerCapture(event.pointerId);
               if (point) applyScratchZoom(point);
               addScratch(event.clientX, event.clientY);
@@ -6770,6 +6770,10 @@ export function ScratchPrototype({
                 x: event.clientX,
                 y: event.clientY,
               };
+              hoverPointRef.current = getCanvasPoint(
+                event.clientX,
+                event.clientY,
+              );
               if (!drawingRef.current) return;
               // Coalesce to one densified apply per rAF (Phase 7).
               notePendingScratchMove(
@@ -6784,14 +6788,15 @@ export function ScratchPrototype({
             }}
             onPointerLeave={() => {
               endScratchStroke();
+              hoverPointRef.current = null;
               clearScratchZoom();
             }}
             onPointerCancel={() => {
               endScratchStroke();
+              hoverPointRef.current = null;
               clearScratchZoom();
             }}
-            />
-          </div>
+          />
           {finaleBurst ? (
             <div
               key={finaleBurst.key}

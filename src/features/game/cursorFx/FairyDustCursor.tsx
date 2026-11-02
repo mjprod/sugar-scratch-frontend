@@ -10,11 +10,6 @@ import {
   type CursorFxEmitMode,
 } from "../modules/cursorFxCelebrate";
 import { shouldSpawnFairyDustForMove } from "../modules/fairyDustSpawnPolicy";
-import {
-  clearFrameClientRectCache,
-  createFrameClientRectCache,
-  readFrameClientRect,
-} from "../modules/frameClientRect";
 
 // Ported from sugar-scratch-cursor-test-main's FairyDustCursor. The original
 // used `lottie-web` + a hidden DOM host to snapshot animation frames onto
@@ -374,7 +369,6 @@ function FairyDustCursorImpl({
     context.setTransform(overlayDpr, 0, 0, overlayDpr, 0, 0);
 
     const particles = particlesRef.current;
-    const overlayRectCache = createFrameClientRectCache();
     let animationFrameId = 0;
     let running = false;
     let timeMs = 0;
@@ -595,47 +589,52 @@ function FairyDustCursorImpl({
 
     const toLocal = (clientX: number, clientY: number) => {
       if (!element) return { x: clientX, y: clientY };
-      const rect = readFrameClientRect(overlayRectCache, targetElement);
+      const rect = targetElement.getBoundingClientRect();
       return { x: clientX - rect.left, y: clientY - rect.top };
     };
 
-    const ignorePointer = (e: PointerEvent) => {
-      if (!e.isPrimary) return true;
-      const t = e.target as HTMLElement | null;
-      return Boolean(t?.closest?.(".panel, .mobile-settings-sheet"));
-    };
-
-    const handlePointerDown = (e: PointerEvent) => {
-      if (ignorePointer(e)) return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
+    const handleMouseDown = (e: MouseEvent) => {
       const p = toLocal(e.clientX, e.clientY);
       resetTrailAt(p.x, p.y);
     };
 
-    const handlePointerMove = (e: PointerEvent) => {
-      if (ignorePointer(e)) return;
+    const handleMouseMove = (e: MouseEvent) => {
       const p = toLocal(e.clientX, e.clientY);
       spawnIfMoved(p.x, p.y);
     };
 
-    // Pointer-only: the stage already has touch-action:none, so a non-passive
-    // touchmove preventDefault is wasted main-thread work on every finger sample.
-    targetElement.addEventListener("pointerdown", handlePointerDown, {
-      passive: true,
-    });
-    targetElement.addEventListener("pointermove", handlePointerMove, {
-      passive: true,
-    });
+    const handleTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      const p = toLocal(touch.clientX, touch.clientY);
+      resetTrailAt(p.x, p.y);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.(".panel, .mobile-settings-sheet")) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (!touch) return;
+      const p = toLocal(touch.clientX, touch.clientY);
+      spawnIfMoved(p.x, p.y);
+    };
+
+    targetElement.addEventListener("mousedown", handleMouseDown);
+    targetElement.addEventListener("mousemove", handleMouseMove);
+    targetElement.addEventListener("touchstart", handleTouchStart, { passive: true });
+    targetElement.addEventListener("touchmove", handleTouchMove, { passive: false });
     flushBurstApiRef.current = flushPendingBurst;
     if (particles.length > 0) ensureRunning();
     flushPendingBurst();
 
     return () => {
       flushBurstApiRef.current = () => undefined;
-      targetElement.removeEventListener("pointerdown", handlePointerDown);
-      targetElement.removeEventListener("pointermove", handlePointerMove);
+      targetElement.removeEventListener("mousedown", handleMouseDown);
+      targetElement.removeEventListener("mousemove", handleMouseMove);
+      targetElement.removeEventListener("touchstart", handleTouchStart);
+      targetElement.removeEventListener("touchmove", handleTouchMove);
       cancelAnimationFrame(animationFrameId);
-      clearFrameClientRectCache(overlayRectCache);
     };
   }, [element, canvasSize, maxDevicePixelRatio]);
 

@@ -123,11 +123,6 @@ import {
   stampScratchCoverage,
 } from "../modules/scratchCoverage";
 import {
-  clearFrameClientRectCache,
-  createFrameClientRectCache,
-  readFrameClientRect,
-} from "../modules/frameClientRect";
-import {
   ScratchFrameProgress,
   type SymbolDiscoveryBatch,
 } from "../modules/ScratchFrameProgress";
@@ -189,11 +184,6 @@ import {
   stopSparkleCoinSounds,
 } from "../modules/sparkleCoinSound";
 import { useScratchCoinBadge } from "../modules/useScratchCoinBadge";
-import {
-  createDensifyBuffer,
-  densifyStrokeSegment,
-  densifyStrokeStart,
-} from "../modules/scratchDensify";
 
 function detectPhotoCursorFx() {
   if (typeof window === "undefined") {
@@ -777,6 +767,33 @@ async function loadCardAssetsWithFallback(cardId: string) {
   }
 }
 
+function densifyStrokeSegment(
+  from: Vec2,
+  to: Vec2,
+  maxStep: number,
+  maxPoints: number,
+): Vec2[] {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= maxStep) return [from, to];
+  const steps = Math.ceil(dist / maxStep);
+  const points: Vec2[] = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const t = i / steps;
+    points.push({ x: from.x + dx * t, y: from.y + dy * t });
+  }
+  if (points.length <= maxPoints) return points;
+  const kept: Vec2[] = [points[0]];
+  const lastIndex = points.length - 1;
+  for (let i = 1; i < maxPoints - 1; i += 1) {
+    const idx = Math.round((i / (maxPoints - 1)) * lastIndex);
+    kept.push(points[idx]);
+  }
+  kept.push(points[lastIndex]);
+  return kept;
+}
+
 function toGlSample(
   sample: TrackedMeshSample,
   garment: number[] | null = null,
@@ -852,7 +869,6 @@ export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const pendingMilestonesRef = useRef<number[]>([]);
   const bgImageRef = useRef<HTMLImageElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
-  const canvasRectCacheRef = useRef(createFrameClientRectCache());
   const stageRef = useRef<HTMLDivElement>(null);
   const introVideoElRef = useRef<HTMLVideoElement | null>(null);
 const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
@@ -887,7 +903,6 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     phase: "show",
   });
   const lastScratchWorldRef = useRef<Vec2 | null>(null);
-  const densifyBufRef = useRef(createDensifyBuffer());
   const isScratchingRef = useRef(false);
   const coinBadge = useScratchCoinBadge({
     isScratchingRef,
@@ -996,13 +1011,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
       cancelled = true;
     };
   }, []);
-  useEffect(
-    () => () => {
-      clearCelebrateTimer();
-      clearFrameClientRectCache(canvasRectCacheRef.current);
-    },
-    [],
-  );
+  useEffect(() => () => clearCelebrateTimer(), []);
   const [showMesh, setShowMesh] = useState(false);
   const [scratchCount, setScratchCount] = useState(0);
   const [isScratching, setIsScratching] = useState(false);
@@ -2121,7 +2130,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   function getCanvasPoint(clientX: number, clientY: number): Vec2 | null {
     const canvas = fgCanvasRef.current;
     if (!canvas) return null;
-    const rect = readFrameClientRect(canvasRectCacheRef.current, canvas);
+    const rect = canvas.getBoundingClientRect();
     const presentX = ((clientX - rect.left) / rect.width) * CANVAS_WIDTH;
     const presentY = ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT;
     const frontCam = fgRendererRef.current?.getFrontPresentCamera() ?? {
@@ -2553,22 +2562,19 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
     if (!point || !sample) return;
 
     const last = lastScratchWorldRef.current;
-    const strokeBuf = densifyBufRef.current;
-    const strokeCount =
+    const strokePoints =
       last !== null
         ? densifyStrokeSegment(
-            strokeBuf,
             last,
             point,
             MANUAL_SCRATCH_PATH_STEP,
             MANUAL_SCRATCH_MAX_POINTS,
           )
-        : densifyStrokeStart(strokeBuf, point);
+        : [point];
 
     let applied = false;
     let fresh = false;
-    for (let i = 0; i < strokeCount; i += 1) {
-      const strokePoint = strokeBuf[i]!;
+    for (const strokePoint of strokePoints) {
       const uv = trackedWorldToUv(sample, strokePoint);
       if (!uv) continue;
       const newCells = applyScratchAtUv(uv.x, uv.y, SCRATCH_RADIUS);
@@ -3950,7 +3956,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 userSelect: "none",
                 WebkitUserSelect: "none",
               }}
-              // FairyDustCursor follows bubbling pointer events from this canvas.
+              // No preventDefault on pointerdown: it suppresses the mouse
+              // events FairyDustCursor follows, so the coin trail stops
+              // tracking the cursor mid-stroke.
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId);
                 onPointerDown(event.clientX, event.clientY);
