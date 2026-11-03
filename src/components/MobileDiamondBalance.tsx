@@ -452,8 +452,6 @@ export function MobileDiamondUtility({
     [findNearestTopTarget, onOpenPackPocket, onOpenSearch, updateTopBubble],
   );
 
-  if (!visible) return null;
-
   const cartBubbleStyle = {
     ["--top-bubble-x" as string]: `${cartBubble.x}px`,
     ["--top-bubble-y" as string]: `${cartBubble.y}px`,
@@ -477,10 +475,12 @@ export function MobileDiamondUtility({
         loginReveal ? "is-login-reveal" : "",
         logoutReveal ? "is-logout-reveal" : "",
         isDraggingTopBubble ? "is-dragging-top-bubble" : "",
+        visible ? "" : "is-chrome-hidden",
       ]
         .filter(Boolean)
         .join(" ")}
       aria-label="Utilities"
+      aria-hidden={visible ? undefined : true}
       style={cartBubbleStyle}
       data-top-drag-hover={dragHoverTarget ?? undefined}
     >

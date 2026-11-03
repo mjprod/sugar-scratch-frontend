@@ -59,14 +59,17 @@ function useCollectPageProgress(creatorIds: string[]) {
   const [byId, setById] = useState<Record<string, CollectionProgressCounts>>(
     {},
   );
+  const [ready, setReady] = useState(!idsKey);
 
   useEffect(() => {
     let cancelled = false;
     const ids = idsKey ? idsKey.split("|") : [];
     if (!ids.length) {
       setById({});
+      setReady(true);
       return;
     }
+    setReady(false);
     void Promise.all(
       ids.map(async (creatorId) => {
         const board = await loadCreatorBoard(creatorId);
@@ -77,13 +80,14 @@ function useCollectPageProgress(creatorIds: string[]) {
       const next: Record<string, CollectionProgressCounts> = {};
       for (const [creatorId, progress] of entries) next[creatorId] = progress;
       setById(next);
+      setReady(true);
     });
     return () => {
       cancelled = true;
     };
   }, [idsKey]);
 
-  return byId;
+  return { byId, ready };
 }
 
 function toCard(item: ContinueCollectingItem): CollectionCardData {
@@ -161,7 +165,7 @@ export function ContinueCollectingSection({
   const holdPrev = useHoldRepeat(() => scrollByPage(-1));
   const holdNext = useHoldRepeat(() => scrollByPage(1));
 
-  const progressById = useCollectPageProgress(
+  const { byId: progressById, ready: progressReady } = useCollectPageProgress(
     hideProgress ? [] : items.map((item) => item.creatorId),
   );
 
@@ -234,6 +238,7 @@ export function ContinueCollectingSection({
                   key={card.id}
                   card={card}
                   collectProgress={progressById[card.id]}
+                  progressPending={!hideProgress && !progressReady}
                   hideProgress={hideProgress}
                   avatarOnly={avatarOnly}
                   index={index}
@@ -288,6 +293,7 @@ export function ContinueCollecting(props: ContinueCollectingSectionProps) {
 function CollectionCard({
   card,
   collectProgress,
+  progressPending = false,
   onClick,
   hideProgress = false,
   avatarOnly = false,
@@ -295,6 +301,7 @@ function CollectionCard({
 }: {
   card: CollectionCardData;
   collectProgress?: CollectionProgressCounts;
+  progressPending?: boolean;
   onClick: () => void;
   hideProgress?: boolean;
   avatarOnly?: boolean;
@@ -310,6 +317,7 @@ function CollectionCard({
   // Just Drop In / unread: always show NEW when flagged (even at 0%).
   const showNew = !avatarOnly && Boolean(card.isNew);
   const showMeta = !avatarOnly;
+  const ringPercent = hideProgress || progressPending ? 0 : percent;
 
   return (
     <button
@@ -317,6 +325,7 @@ function CollectionCard({
       className={[
         "continue-collecting-card",
         avatarOnly ? "is-avatar-only" : "",
+        progressPending ? "is-progress-pending" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -324,24 +333,26 @@ function CollectionCard({
       aria-label={
         hideProgress
           ? card.creatorName
-          : `${card.creatorName}, ${percent}% collected`
+          : progressPending
+            ? `${card.creatorName}, loading progress`
+            : `${card.creatorName}, ${percent}% collected`
       }
     >
       <div className="continue-collecting-avatar-wrap">
         {avatarOnly ? (
-          <CollectionAvatarRing
-            percent={hideProgress ? 0 : percent}
-            index={index}
-          />
+          <CollectionAvatarRing percent={ringPercent} index={index} />
         ) : (
-          <ProgressRing percent={hideProgress ? 0 : percent} color={color} />
+          <ProgressRing
+            percent={ringPercent}
+            color={progressPending ? "oklch(1 0 0 / 0.2)" : color}
+          />
         )}
         <img
           src={card.avatarUrl}
           alt=""
           loading="lazy"
           decoding="async"
-          className="continue-collecting-avatar"
+          className="continue-collecting-avatar media-fade-in is-ready"
           style={{ objectFit: "cover", objectPosition: "center 20%" }}
         />
         {showRank ? (
@@ -352,8 +363,13 @@ function CollectionCard({
 
       {showMeta && !hideProgress ? (
         <span
-          className="continue-collecting-dot"
-          style={{ background: color }}
+          className={[
+            "continue-collecting-dot",
+            progressPending ? "is-pending" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={progressPending ? undefined : { background: color }}
           aria-hidden="true"
         />
       ) : null}
@@ -363,22 +379,38 @@ function CollectionCard({
           <span className="continue-collecting-name">{card.creatorName}</span>
           {!hideProgress ? (
             <span
-              className="continue-collecting-pct"
-              style={{
-                color:
-                  percent >= 60
-                    ? "oklch(0.669 0.23 6.08)"
-                    : "oklch(1 0 0 / 0.92)",
-              }}
+              className={[
+                "continue-collecting-pct",
+                progressPending ? "is-pending" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={
+                progressPending
+                  ? undefined
+                  : {
+                      color:
+                        percent >= 60
+                          ? "oklch(0.669 0.23 6.08)"
+                          : "oklch(1 0 0 / 0.92)",
+                    }
+              }
             >
-              {percent}%
+              {progressPending ? "—" : `${percent}%`}
             </span>
           ) : null}
         </div>
       ) : null}
       {showMeta && !hideProgress ? (
-        <p className="continue-collecting-fraction">
-          {progressCurrent} / {progressTotal}
+        <p
+          className={[
+            "continue-collecting-fraction",
+            progressPending ? "is-pending" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {progressPending ? "— / —" : `${progressCurrent} / ${progressTotal}`}
         </p>
       ) : null}
     </button>

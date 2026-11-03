@@ -232,9 +232,11 @@ export function AppLayout() {
     location.pathname.startsWith("/cart");
   const onSearch = searchOpen;
 
-  const showTopUtility = !hideChrome;
-
-  const showNav = !hideChrome;
+  // Keep chrome mounted and fade via CSS (is-chrome-hidden) so game entry
+  // isn't a hard cut. HUD offset still tracks hideChrome so immersive pages
+  // don't reserve top padding for a faded utility bar.
+  const chromeMounted = true;
+  const showHudOffset = !hideChrome;
 
   // Android-only: Chrome's bottom toolbar overlays the layout viewport while
   // safe-area stays 0. Safari/iOS keep the pre-fix stage (100dvh + safe-area).
@@ -325,12 +327,12 @@ export function AppLayout() {
     <div
       className={[
         "relative flex min-h-0 flex-1 flex-col",
-        showTopUtility ? "app-layout--hud" : "",
+        showHudOffset ? "app-layout--hud" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      {showTopUtility ? (
+      {chromeMounted ? (
         <MobileDiamondUtility
           coins={guest ? null : coins}
           balance={guest ? null : diamonds}
@@ -340,7 +342,7 @@ export function AppLayout() {
           onOpenSearch={openSearch}
           packsActive={onPackPocket}
           searchActive={onSearch}
-          visible
+          visible={!hideChrome}
           trailing={mobileTrailing}
         />
       ) : null}
@@ -360,7 +362,7 @@ export function AppLayout() {
 
       <PackAddedToast />
 
-      {showNav ? (
+      {chromeMounted ? (
         <LiquidGlassNav
           activeTab={tab}
           onTabChange={requestTab}
@@ -374,6 +376,7 @@ export function AppLayout() {
           packsActive={onPackPocket}
           searchActive={onSearch}
           hideDock={isPurchase && !isTearOpen}
+          hidden={hideChrome}
         />
       ) : null}
 

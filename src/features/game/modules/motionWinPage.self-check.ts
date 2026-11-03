@@ -48,6 +48,14 @@ assert(
   shouldMemoryTransition("/game/win", "/game"),
   "win → next card crosses back into game",
 );
+assert(
+  shouldMemoryTransition("/", "/purchase/abc"),
+  "home → purchase veils even though both are packs (push is skipped)",
+);
+assert(
+  !shouldMemoryTransition("/game", "/game?card=2"),
+  "same-game query hop stays instant (preserve GL)",
+);
 
 const pendingWin = {
   cardId: "m1",

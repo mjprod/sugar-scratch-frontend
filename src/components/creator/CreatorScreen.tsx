@@ -387,6 +387,7 @@ function CreatorScreenInner({
           tiktokUrl={board?.creator.tiktokUrl}
           xUrl={board?.creator.xUrl}
           onlyfansUrl={board?.creator.onlyfansUrl}
+          socialsPending={authed && board === null}
           onBack={onBack}
           following={following}
           onToggleFollow={handleToggleFollow}
@@ -402,7 +403,7 @@ function CreatorScreenInner({
           cardsByThemeId={collection.cardsByThemeId}
           board={board}
           showPersonalProgress={authed}
-          loading={collection.loading}
+          loading={collection.loading || (authed && board === null)}
           onAddPackToPocket={addCoverflowPackToPocket}
           onOpenCard={(cardId, themeId) => {
             // Open the motion card detail route. Do not also write ?card= on the

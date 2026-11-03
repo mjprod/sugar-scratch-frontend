@@ -24,6 +24,7 @@ import {
   type InboxMessageCTA,
 } from "@/services/inbox";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
 
 /** Inbox — secondary surface; desktop keeps liquid top nav, mobile uses compact header. */
 export function InboxScreen({
@@ -36,11 +37,17 @@ export function InboxScreen({
   const { guest, setInboxUnread, invalidateRemoteSession } = useAuth();
   const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [loadError, setLoadError] = useState("");
+  const [loading, setLoading] = useState(!guest);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
   useEffect(() => {
-    if (guest) return;
+    if (guest) {
+      setLoading(false);
+      setMessages([]);
+      return;
+    }
     let cancelled = false;
+    setLoading(true);
     void fetchInboxMessages().then((result) => {
       if (cancelled) return;
       setMessages(result.messages);
@@ -50,6 +57,7 @@ export function InboxScreen({
           : "",
       );
       setInboxUnread(countUnread(result.messages));
+      setLoading(false);
       if (result.status === "unauthorized") {
         invalidateRemoteSession();
       }
@@ -106,7 +114,9 @@ export function InboxScreen({
         }
       />
 
-      {loadError ? (
+      {loading ? (
+        <InboxSkeleton />
+      ) : loadError ? (
         <EmptyState
           icon={TriangleAlert}
           title="Couldn't load inbox"
@@ -114,7 +124,7 @@ export function InboxScreen({
           copy={loadError}
         />
       ) : emptyAll || emptyFiltered ? (
-        <div className="inbox-empty-wrap">
+        <PageContentEnter className="inbox-empty-wrap">
           <div className="inbox-section-head">
             <span className="inbox-section-label">New</span>
           </div>
@@ -128,9 +138,9 @@ export function InboxScreen({
                 : "New packs, rewards and activity will appear here."
             }
           />
-        </div>
+        </PageContentEnter>
       ) : (
-        <>
+        <PageContentEnter stagger>
           <MessageListSection
             label="New"
             showDot={newer.some((m) => !m.isRead)}
@@ -160,9 +170,35 @@ export function InboxScreen({
               ))}
             </MessageListSection>
           ) : null}
-        </>
+        </PageContentEnter>
       )}
     </AppPageShell>
+  );
+}
+
+function InboxSkeleton() {
+  return (
+    <div className="inbox-section" aria-busy="true" aria-label="Loading inbox">
+      <div className="inbox-section-head">
+        <span className="inbox-section-label">New</span>
+      </div>
+      <ul className="inbox-list">
+        {Array.from({ length: 5 }, (_, i) => (
+          <li key={i} className="inbox-item-row">
+            <div className="inbox-item inbox-item--skeleton" aria-hidden="true">
+              <span className="inbox-item-dot is-hidden" />
+              <span className="inbox-thumb inbox-skeleton-thumb" />
+              <span className="inbox-item-body">
+                <span className="inbox-skeleton-line is-title" />
+                <span className="inbox-skeleton-line is-sub" />
+              </span>
+              <span className="inbox-skeleton-line is-time" />
+              <span className="inbox-skeleton-chevron" />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

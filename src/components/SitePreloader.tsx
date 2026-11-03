@@ -27,10 +27,11 @@ function minCoverMs(pathname: string) {
 /**
  * Official branded splash. Covers the live route until its first useful view
  * is ready, clamped to a brand floor and a hard ceiling.
+ * Marks page `revealed` when hide starts so PageContentEnter can fade in with the veil.
  */
 export function SitePreloader() {
   const location = useLocation();
-  const { ready } = usePageReady();
+  const { ready, markRevealed } = usePageReady();
   const key = `${location.pathname}${location.search}`;
   const [overlay, setOverlay] = useState(() => ({
     key,
@@ -46,6 +47,11 @@ export function SitePreloader() {
     if (visible) shownAtRef.current = performance.now();
   }
 
+  // No splash (warmed / memory veil / static) — reveal as soon as the page is ready.
+  useEffect(() => {
+    if (!overlay.visible && ready) markRevealed();
+  }, [markRevealed, overlay.visible, ready]);
+
   useEffect(() => {
     if (!overlay.visible || overlay.hiding || !ready) return;
 
@@ -53,6 +59,7 @@ export function SitePreloader() {
     const floor = minCoverMs(location.pathname);
     // Instant hide only when ready lands in the same frame as show (no flicker).
     if (elapsed < 16 && floor <= 0) {
+      markRevealed();
       setOverlay((current) =>
         current.visible ? { ...current, visible: false, hiding: false } : current,
       );
@@ -60,33 +67,39 @@ export function SitePreloader() {
     }
 
     const timer = window.setTimeout(() => {
+      markRevealed();
       setOverlay((current) =>
         current.visible ? { ...current, hiding: true } : current,
       );
       fadeTimerRef.current = window.setTimeout(() => {
         setOverlay((current) =>
-          current.visible ? { ...current, visible: false, hiding: false } : current,
+          current.visible
+            ? { ...current, visible: false, hiding: false }
+            : current,
         );
       }, FADE_MS);
     }, Math.max(0, floor - elapsed));
     return () => window.clearTimeout(timer);
-  }, [location.pathname, overlay.hiding, overlay.visible, ready]);
+  }, [location.pathname, overlay.hiding, overlay.visible, ready, markRevealed]);
 
   useEffect(() => {
     if (!overlay.visible || overlay.hiding || ready) return;
     const elapsed = performance.now() - shownAtRef.current;
     const timer = window.setTimeout(() => {
+      markRevealed();
       setOverlay((current) =>
         current.visible ? { ...current, hiding: true } : current,
       );
       fadeTimerRef.current = window.setTimeout(() => {
         setOverlay((current) =>
-          current.visible ? { ...current, visible: false, hiding: false } : current,
+          current.visible
+            ? { ...current, visible: false, hiding: false }
+            : current,
         );
       }, FADE_MS);
     }, Math.max(0, MAX_MS - elapsed));
     return () => window.clearTimeout(timer);
-  }, [overlay.hiding, overlay.visible, ready]);
+  }, [overlay.hiding, overlay.visible, ready, markRevealed]);
 
   useEffect(
     () => () => {

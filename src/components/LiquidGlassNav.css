@@ -20,11 +20,25 @@
   pointer-events: none;
 }
 
+.liquid-glass-nav .nav-test-top,
+.liquid-glass-nav .nav-test-dock-wrap {
+  transition:
+    opacity var(--duration-chrome, 200ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    visibility var(--duration-chrome, 200ms) linear;
+}
+
 .liquid-glass-nav.is-chrome-hidden .nav-test-top,
 .liquid-glass-nav.is-chrome-hidden .nav-test-dock-wrap {
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-nav .nav-test-top,
+  .liquid-glass-nav .nav-test-dock-wrap {
+    transition: none;
+  }
 }
 
 .liquid-glass-nav.is-dock-hidden .nav-test-dock-wrap {

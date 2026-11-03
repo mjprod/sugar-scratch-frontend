@@ -16,20 +16,31 @@ export function PackFaceVideo({
   poster,
   className,
   onError,
+  onReady,
 }: {
   src: string;
   poster?: string;
   className?: string;
   onError?: () => void;
+  /** Fires when poster or first video frame is ready to show. */
+  onReady?: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const ios = isIosDecoderCap();
   const [live, setLive] = useState(() => !ios);
   const posterUrl = poster?.trim() || "";
+  const readyRef = useRef(false);
 
   useEffect(() => {
+    readyRef.current = false;
     setLive(!isIosDecoderCap());
   }, [src]);
+
+  function markReady() {
+    if (readyRef.current) return;
+    readyRef.current = true;
+    onReady?.();
+  }
 
   useEffect(() => {
     const video = ref.current;
@@ -55,7 +66,13 @@ export function PackFaceVideo({
   return (
     <>
       {posterUrl ? (
-        <img src={posterUrl} alt="" className={className} draggable={false} />
+        <img
+          src={posterUrl}
+          alt=""
+          className={className}
+          draggable={false}
+          onLoad={markReady}
+        />
       ) : null}
       <video
         ref={ref}
@@ -67,6 +84,7 @@ export function PackFaceVideo({
         autoPlay={!ios}
         preload="none"
         onError={onError}
+        onLoadedData={markReady}
         onPointerDown={
           ios
             ? () => {

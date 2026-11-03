@@ -310,10 +310,16 @@ export function CreatorInfluencerBody({
                   : undefined
               }
             >
-              {loading && themes.length === 0
-                ? Array.from({ length: 4 }, (_, i) => (
-                    <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
-                  ))
+              {loading && (themes.length === 0 || showPersonalProgress)
+                ? Array.from(
+                    { length: Math.max(4, themes.length || 0) },
+                    (_, i) => (
+                      <li
+                        key={`sk-${themes[i]?.id ?? i}`}
+                        className="cpv2-progress-row is-skeleton"
+                      />
+                    ),
+                  )
                 : themes.map((theme, i) => {
                     const progress = themeProgress(theme);
                     const pct =

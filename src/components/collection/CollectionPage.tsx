@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/useAuth";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
@@ -92,6 +94,24 @@ export function CollectionPage({
     emptyCollectionPageState(),
   );
   const [ready, setReady] = useState(false);
+  const [skeletonVisible, setSkeletonVisible] = useState(true);
+  useMarkPageReady(ready);
+
+  useEffect(() => {
+    if (!ready) {
+      setSkeletonVisible(true);
+      return;
+    }
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setSkeletonVisible(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSkeletonVisible(false), 220);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,13 +246,28 @@ export function CollectionPage({
         } as CSSProperties
       }
     >
-      <div className="collection-page-content mc-page-content page-container">
-        {!ready ? (
-          <CollectionPageSkeleton />
-        ) : state.isTrueEmpty && !revealPacks ? (
-          <CollectionEmptyState onExplorePacks={onExplorePacks} />
-        ) : state.isTrueEmpty && revealPacks ? (
-          <>
+      <div className="collection-page-content mc-page-content page-container mc-reveal-stack">
+        {skeletonVisible ? (
+          <div
+            className={[
+              "mc-reveal-skeleton",
+              ready ? "is-exiting" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <CollectionPageSkeleton />
+          </div>
+        ) : null}
+
+        {ready && state.isTrueEmpty && !revealPacks ? (
+          <PageContentEnter>
+            <CollectionEmptyState onExplorePacks={onExplorePacks} />
+          </PageContentEnter>
+        ) : null}
+
+        {ready && state.isTrueEmpty && revealPacks ? (
+          <PageContentEnter stagger>
             {renderGreeting()}
 
             <ReadyToReveal
@@ -242,9 +277,11 @@ export function CollectionPage({
               inventoryRevision={inventoryRevision}
               forceEmptyReveal
             />
-          </>
-        ) : (
-          <>
+          </PageContentEnter>
+        ) : null}
+
+        {ready && !state.isTrueEmpty ? (
+          <PageContentEnter stagger>
             {renderGreeting()}
 
             <div className="mc-hub">
@@ -267,8 +304,8 @@ export function CollectionPage({
             <CollectionPromoCarousel />
 
             <CollectionSiteFooter />
-          </>
-        )}
+          </PageContentEnter>
+        ) : null}
       </div>
     </section>
   );

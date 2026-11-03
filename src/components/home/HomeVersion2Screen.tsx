@@ -9,6 +9,7 @@ import { useSearch } from "@/contexts/SearchContext";
 import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   hasSeenHowToPlay,
@@ -175,7 +176,10 @@ export function HomeVersion2Screen({
         />
       </Suspense>
 
-      <div className="home-page-inner home-page-inner--after-hero mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page">
+      <PageContentEnter
+        stagger
+        className="home-page-inner home-page-inner--after-hero mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page"
+      >
         {onClaimDaily ? (
           <PlayerWelcomeBar
             onClaimed={onClaimDaily}
@@ -206,7 +210,7 @@ export function HomeVersion2Screen({
           onOpen={openCollection}
           onSeeAllClick={openSearch}
         />
-      </div>
+      </PageContentEnter>
 
       <SpotlightBanner auroraPaused={pageScrolling} />
 

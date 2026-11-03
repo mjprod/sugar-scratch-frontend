@@ -28,6 +28,8 @@ import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { GetDiamondsCatalog } from "@/components/store/GetDiamondsCatalog";
 import { useAuth } from "@/contexts/useAuth";
 import type { RedeemReward } from "@/services/redeem";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
 type LoadState =
   | { status: "loading" }
@@ -94,6 +96,7 @@ export function StoreScreen({
   const [exchangingId, setExchangingId] = useState<string | null>(null);
   const resumed = useRef(false);
   const locking = useRef(false);
+  useMarkPageReady(load.status !== "loading");
 
   const applyCatalog = useCallback((result: StoreLoadResult) => {
     if (result.status === "ok") setLoad({ status: "ok", products: result.products });
@@ -356,22 +359,24 @@ export function StoreScreen({
       ) : null}
 
       {load.status === "ok" ? (
-        <GetDiamondsCatalog
-          products={load.products}
-          coinBalance={coinBalance}
-          adClaimsToday={adClaimsToday}
-          busy={busy}
-          activeProductId={activeProductId}
-          flowStep={flow.step}
-          exchangingId={exchangingId}
-          onBack={onBack}
-          backLabel={backLabel}
-          onSelect={onSelect}
-          onCoinExchange={handleCoinExchange}
-          onDiamondReward={onDiamondReward}
-          onPackReward={onPackReward}
-          onOpenPack={onOpenPack}
-        />
+        <PageContentEnter>
+          <GetDiamondsCatalog
+            products={load.products}
+            coinBalance={coinBalance}
+            adClaimsToday={adClaimsToday}
+            busy={busy}
+            activeProductId={activeProductId}
+            flowStep={flow.step}
+            exchangingId={exchangingId}
+            onBack={onBack}
+            backLabel={backLabel}
+            onSelect={onSelect}
+            onCoinExchange={handleCoinExchange}
+            onDiamondReward={onDiamondReward}
+            onPackReward={onPackReward}
+            onOpenPack={onOpenPack}
+          />
+        </PageContentEnter>
       ) : null}
 
       {flow.step === "confirm" ? (

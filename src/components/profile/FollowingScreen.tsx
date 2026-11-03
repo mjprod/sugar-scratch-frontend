@@ -13,6 +13,7 @@ import {
   type FollowedCreator,
   type FollowingSort,
 } from "@/services/following";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
 import "./following.css";
 
 const SORT_OPTIONS: { id: FollowingSort; label: string }[] = [
@@ -90,9 +91,11 @@ export function FollowingScreen({
       {loading ? (
         <FollowingSkeleton />
       ) : count === 0 ? (
-        <FollowingEmpty onDiscover={onDiscoverCreators} />
+        <PageContentEnter>
+          <FollowingEmpty onDiscover={onDiscoverCreators} />
+        </PageContentEnter>
       ) : (
-        <div className="following-body">
+        <PageContentEnter className="following-body">
           {recent.length > 0 ? (
             <section
               className="following-recent"
@@ -183,7 +186,7 @@ export function FollowingScreen({
               ))}
             </div>
           </section>
-        </div>
+        </PageContentEnter>
       )}
 
       {sortOpen ? (

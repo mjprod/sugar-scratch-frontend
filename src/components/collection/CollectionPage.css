@@ -486,28 +486,6 @@ body[data-theme="v8"] .collection-empty-copy {
   line-height: 1.45;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  body[data-theme="v8"] .collection-page-content>* {
-    animation: collection-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  body[data-theme="v8"] .collection-page-content>*:nth-child(2) {
-    animation-delay: 40ms;
-  }
-
-  body[data-theme="v8"] .collection-page-content>*:nth-child(3) {
-    animation-delay: 80ms;
-  }
-
-  body[data-theme="v8"] .collection-page-content>*:nth-child(4) {
-    animation-delay: 120ms;
-  }
-
-  body[data-theme="v8"] .collection-page-content>*:nth-child(5) {
-    animation-delay: 160ms;
-  }
-}
-
 /* -----------------------------------------------------------------------
  * Collection hub — Figma MyCollection (node 123:469)
  * ----------------------------------------------------------------------- */
@@ -519,6 +497,41 @@ body[data-theme="v8"] .mc-page {
 body[data-theme="v8"] .mc-page-content {
   gap: var(--gap-section);
   padding-top: calc(var(--app-diamond-offset, 12px) + var(--space-3));
+}
+
+/* Skeleton + content share one cell so the swap can crossfade. */
+body[data-theme="v8"] .mc-page-content.mc-reveal-stack {
+  display: grid;
+  gap: 0;
+}
+
+body[data-theme="v8"] .mc-page-content.mc-reveal-stack > * {
+  grid-area: 1 / 1;
+}
+
+body[data-theme="v8"] .mc-reveal-skeleton {
+  z-index: 1;
+  transition: opacity var(--duration-chrome, 200ms)
+    var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+body[data-theme="v8"] .mc-reveal-skeleton.is-exiting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .mc-reveal-skeleton {
+    transition: none;
+  }
+}
+
+/* PageContentEnter wraps hub sections — keep the same column gap as mc-page-content. */
+body[data-theme="v8"] .mc-page-content > .page-content-enter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+  min-width: 0;
 }
 
 body[data-theme="v8"] .mc-greeting {

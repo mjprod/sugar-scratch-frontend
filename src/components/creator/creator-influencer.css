@@ -449,6 +449,28 @@ body[data-theme="v8"] .cpv2-profile-card-social {
   background: rgba(0, 0, 0, 0.25);
 }
 
+body[data-theme="v8"] .cpv2-profile-card-social.is-skeleton {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  animation: cpv2-social-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cpv2-social-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-profile-card-social.is-skeleton {
+    animation: none;
+  }
+}
+
 /* —— Section title —— */
 
 body[data-theme="v8"] .cpv2-section-title {

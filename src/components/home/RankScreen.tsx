@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   fetchLeaderboard,
@@ -110,7 +111,10 @@ export function RankScreen({
       data-page-scroll
       className="home-v2 relative flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto pt-[var(--app-diamond-offset)] pb-[var(--app-footer-offset)] lg:pb-12"
     >
-      <div className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col">
+      <PageContentEnter
+        stagger
+        className="home-page-inner mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-1 flex-col"
+      >
         <CategoryLeaderboard
           className="is-title-sentence is-figma-board rank-leaderboard"
           title="Top Packs"
@@ -123,7 +127,7 @@ export function RankScreen({
           onOpen={playRow}
         />
         <HomeSiteFooter />
-      </div>
+      </PageContentEnter>
     </section>
   );
 }

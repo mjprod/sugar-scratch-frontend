@@ -4,7 +4,10 @@ import { markPageKeyWarmed, pageKey } from "@/shared/ui/pageWarmth";
 
 export type PageReadyValue = {
   ready: boolean;
+  /** True once splash starts dismissing (or no splash) — safe to play content enter. */
+  revealed: boolean;
   markReady: () => void;
+  markRevealed: () => void;
   isWaiting: boolean;
 };
 
@@ -15,7 +18,9 @@ export function usePageReady() {
   if (!ctx) {
     return {
       ready: true,
+      revealed: true,
       markReady: () => {},
+      markRevealed: () => {},
       isWaiting: false,
     };
   }

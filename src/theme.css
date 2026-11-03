@@ -1311,6 +1311,40 @@ body[data-theme="v8"] .continue-collecting-name {
   white-space: nowrap;
 }
 
+body[data-theme="v8"] .continue-collecting-dot.is-pending,
+body[data-theme="v8"] .continue-collecting-pct.is-pending,
+body[data-theme="v8"] .continue-collecting-fraction.is-pending {
+  background: oklch(1 0 0 / 0.12);
+  color: transparent;
+  border-radius: 999px;
+  min-width: 1.75rem;
+  min-height: 0.75rem;
+  animation: continue-collecting-pulse 1.2s ease-in-out infinite;
+}
+
+body[data-theme="v8"] .continue-collecting-fraction.is-pending {
+  min-width: 3.5rem;
+  border-radius: 6px;
+}
+
+@keyframes continue-collecting-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .continue-collecting-dot.is-pending,
+  body[data-theme="v8"] .continue-collecting-pct.is-pending,
+  body[data-theme="v8"] .continue-collecting-fraction.is-pending {
+    animation: none;
+  }
+}
+
 body[data-theme="v8"] .continue-collecting-pct {
   flex-shrink: 0;
   font-size: var(--text-caption);
@@ -7087,6 +7121,18 @@ body[data-theme="v8"] .nav-test-top-utils .inbox-utility-btn--ghost .inbox-utili
     --app-diamond-offset: calc(var(--mobile-top-hud-height) + var(--app-page-top-gap, 12px));
   }
 
+  body[data-theme="v8"] .top-nav-mobile.is-chrome-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body[data-theme="v8"] .top-nav-mobile {
+      transition: none !important;
+    }
+  }
+
   body[data-theme="v8"] .top-nav-mobile {
     --top-nav-surface: linear-gradient(180deg,
         oklch(0.316 0.126 12.15) 0%,
@@ -7100,6 +7146,9 @@ body[data-theme="v8"] .nav-test-top-utils .inbox-utility-btn--ghost .inbox-utili
         oklch(0.467 0.187 14.78 / 0.341) 100%);
     /* Dark frost plate — overrides tw-glass white glass-surface fill. */
     --glass-bg-opacity: 0;
+    transition:
+      opacity var(--duration-chrome, 200ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+      visibility var(--duration-chrome, 200ms) linear;
 
     position: fixed;
     top: max(8px, env(safe-area-inset-top, 0px));
