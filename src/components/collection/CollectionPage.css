@@ -499,23 +499,27 @@ body[data-theme="v8"] .mc-page-content {
   padding-top: calc(var(--app-diamond-offset, 12px) + var(--space-3));
 }
 
-/* Skeleton + content share one cell so the swap can crossfade. */
+/* Soft skeleton → content: keep page a column; exiting skeleton overlays then fades. */
 body[data-theme="v8"] .mc-page-content.mc-reveal-stack {
-  display: grid;
-  gap: 0;
-}
-
-body[data-theme="v8"] .mc-page-content.mc-reveal-stack > * {
-  grid-area: 1 / 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+  width: 100%;
 }
 
 body[data-theme="v8"] .mc-reveal-skeleton {
-  z-index: 1;
+  width: 100%;
+  min-width: 0;
   transition: opacity var(--duration-chrome, 200ms)
     var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 body[data-theme="v8"] .mc-reveal-skeleton.is-exiting {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 1;
   opacity: 0;
   pointer-events: none;
 }
@@ -531,6 +535,7 @@ body[data-theme="v8"] .mc-page-content > .page-content-enter {
   display: flex;
   flex-direction: column;
   gap: var(--gap-section);
+  width: 100%;
   min-width: 0;
 }
 
@@ -1173,7 +1178,38 @@ body[data-theme="v8"] .mc-diamonds-cta {
 body[data-theme="v8"] .mc-skeleton {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--gap-section);
+  width: 100%;
+  min-width: 0;
+}
+
+body[data-theme="v8"] .mc-skeleton > .mc-continue,
+body[data-theme="v8"] .mc-skeleton > .mc-models,
+body[data-theme="v8"] .mc-skeleton > .mc-promo {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Full-bleed coverflow placeholder — matches .mc-continue-carousel sizing. */
+body[data-theme="v8"] .mc-continue-panel.is-skeleton {
+  width: 100%;
+  max-width: none;
+}
+
+body[data-theme="v8"] .mc-continue-panel.is-skeleton .mc-skeleton-coverflow {
+  display: block;
+  width: 100%;
+  height: min(42dvh, 420px);
+  min-height: 220px;
+  border-radius: 14px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 821px) {
+  body[data-theme="v8"] .mc-continue-panel.is-skeleton .mc-skeleton-coverflow {
+    height: min(52dvh, 560px);
+    min-height: 360px;
+  }
 }
 
 @media (min-width: 821px) {

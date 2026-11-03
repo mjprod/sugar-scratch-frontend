@@ -334,25 +334,23 @@ function CollectionPageSkeleton() {
     <div className="collection-page-skeleton mc-skeleton" aria-busy="true">
       <header className="mc-greeting">
         <SkeletonBar className="search-skeleton-title" width={240} height={19} />
+        <SkeletonBar width="70%" height={16} />
       </header>
-      <div className="mc-hub">
-        <div className="mc-continue-panel is-skeleton" aria-hidden="true">
-          <SkeletonBar width={220} height={19} />
-          <div className="mc-continue-row">
-            {Array.from({ length: 4 }, (_, i) => (
-              <SkeletonBar key={i} width="9.072rem" height="16.128rem" />
-            ))}
-          </div>
+      {/* Stack full-width — do not use .mc-hub (2-col grid squeezes Continue on mobile). */}
+      <section className="mc-continue" aria-hidden="true">
+        <div className="mc-continue-panel is-skeleton">
+          <SkeletonBar width={180} height={24} />
+          <span className="search-skeleton mc-skeleton-coverflow" aria-hidden="true" />
         </div>
-        <section className="mc-models">
-          <h2 className="mc-models-title">Keep Collecting</h2>
-          <div className="mc-model-list" aria-busy="true">
-            {Array.from({ length: 4 }, (_, index) => (
-              <InfluencerHolderSkeleton key={index} />
-            ))}
-          </div>
-        </section>
-      </div>
+      </section>
+      <section className="mc-models">
+        <h2 className="mc-models-title">Keep Collecting</h2>
+        <div className="mc-model-list" aria-busy="true">
+          {Array.from({ length: 4 }, (_, index) => (
+            <InfluencerHolderSkeleton key={index} />
+          ))}
+        </div>
+      </section>
       <div className="mc-promo is-skeleton" aria-hidden="true">
         <SkeletonBar width="100%" height={100} />
       </div>
