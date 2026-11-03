@@ -20,8 +20,6 @@ import {
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
 
-const SHOW_SOUNDS_DEBUG = import.meta.env.DEV;
-
 function ScratchGameEmbed() {
   const [searchParams] = useSearchParams();
 
@@ -90,7 +88,7 @@ function ScratchGameEmbed() {
         <div className="stage-game">
           <ScratchPrototype onLeave={leaveGame} />
           <FirstPlayTutorial scene="foil" />
-          {SHOW_SOUNDS_DEBUG ? <StageSoundsDebug /> : null}
+          <StageSoundsDebug />
         </div>
       </div>
     </PaidCardPlayGate>
@@ -130,7 +128,7 @@ export function GamePage() {
   return (
     <div className="app-shell app-shell--game-hub">
       <GameHub />
-      {SHOW_SOUNDS_DEBUG ? <StageSoundsDebug /> : null}
+      <StageSoundsDebug />
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { useEffect, useId, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { resolvePerfHudEnabled } from "@/lib/perf/perfStats";
 import {
   SOUND_MIX_CHANNELS,
   SOUND_MIX_LABELS,
@@ -45,10 +47,16 @@ async function copyTextIosSafe(text: string): Promise<boolean> {
 }
 
 /**
- * Dev-only sounds mixer for /game (and audio-test). Left-edge "Sounds" opens a
- * right sheet with per-channel touch sliders, Reset, and Copy for pasteback.
+ * Sounds mixer for /game (and audio-test). Visible only with `?perf=1`
+ * (same latch as the perf HUD). Left-edge "Sounds" opens a right sheet with
+ * per-channel touch sliders, Reset, and Copy for pasteback.
  */
 export function StageSoundsDebug() {
+  const { search } = useLocation();
+  const enabled = resolvePerfHudEnabled(
+    search,
+    typeof window !== "undefined" ? window.localStorage : null,
+  );
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const [mix, setMix] = useState<SoundMix>(() => getSoundMix());
@@ -56,16 +64,21 @@ export function StageSoundsDebug() {
     "idle",
   );
 
-  useEffect(() => subscribeSoundMix(() => setMix(getSoundMix())), []);
+  useEffect(() => {
+    if (!enabled) return;
+    return subscribeSoundMix(() => setMix(getSoundMix()));
+  }, [enabled]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!enabled || !open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [enabled, open]);
+
+  if (!enabled) return null;
 
   function onSlider(channel: SoundMixChannel, raw: string) {
     setSoundMixGain(channel, Number(raw));

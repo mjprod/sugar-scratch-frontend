@@ -54,7 +54,7 @@ export function AudioTestPage() {
           loopFromIntro
           onLeave={() => navigate(Paths.home)}
         />
-        {import.meta.env.DEV ? <StageSoundsDebug /> : null}
+        <StageSoundsDebug />
       </div>
     </div>
   );

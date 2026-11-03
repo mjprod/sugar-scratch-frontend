@@ -80,7 +80,7 @@ export function PhotoScratchPage() {
         <div className="stage-game">
           <PhotoScratch key={`${card || "default"}-${freePlay ? "free" : "paid"}`} onLeave={leaveGame} />
           <FirstPlayTutorial scene="foil" />
-          {import.meta.env.DEV ? <StageSoundsDebug /> : null}
+          <StageSoundsDebug />
         </div>
       </div>
     </PaidCardPlayGate>
