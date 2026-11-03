@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CategoryLeaderboard } from "@/components/home/CategoryLeaderboard";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { PageContentEnter } from "@/shared/ui/PageContentEnter";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
@@ -94,13 +95,17 @@ export function RankScreen({
           <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
           </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-body font-semibold"
-          >
-            Retry
-          </button>
+          <div className="hf-state-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="button"
+              label="Retry"
+              costAmount={null}
+              strokeWidth={1}
+              onClick={() => void load()}
+            />
+          </div>
         </div>
       </section>
     );

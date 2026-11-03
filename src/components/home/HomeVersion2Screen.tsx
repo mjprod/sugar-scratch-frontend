@@ -5,6 +5,7 @@ import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { FIGMA_HOME_PLAY_STEPS, PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useSearch } from "@/contexts/SearchContext";
 import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
@@ -134,13 +135,17 @@ export function HomeVersion2Screen({
           <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
           </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-body font-semibold"
-          >
-            Retry
-          </button>
+          <div className="hf-state-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="button"
+              label="Retry"
+              costAmount={null}
+              strokeWidth={1}
+              onClick={() => void load()}
+            />
+          </div>
         </div>
       </section>
     );

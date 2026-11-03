@@ -1,5 +1,6 @@
-import { Check, Gift, Loader2, Ticket } from "lucide-react";
+import { Check, Gift, Ticket } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   REDEEM_ERROR_COPY,
@@ -118,20 +119,17 @@ export function HubRedeemSection({
             aria-describedby={error ? "hub-redeem-error" : undefined}
             className="hub-redeem-input"
           />
-          <button
-            type="submit"
-            disabled={busy || !code.trim()}
-            className="hub-redeem-submit"
-          >
-            {busy ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Loading…
-              </>
-            ) : (
-              "Redeem"
-            )}
-          </button>
+          <div className="hub-redeem-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="submit"
+              disabled={busy || !code.trim()}
+              label={busy ? "Loading…" : "Redeem"}
+              costAmount={null}
+              strokeWidth={1}
+            />
+          </div>
         </form>
 
         {error ? (

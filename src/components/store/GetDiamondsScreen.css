@@ -977,7 +977,7 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
     flex-direction: column;
   }
 
-  body[data-theme="v8"] .get-diamonds-page .hub-redeem-submit {
+  body[data-theme="v8"] .get-diamonds-page .hub-redeem-cta {
     width: 100%;
   }
 
@@ -993,7 +993,6 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-exchange-card__unit,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-exchange__hint,
   body[data-theme="v8"] .get-diamonds-page .hub-redeem-lead,
-  body[data-theme="v8"] .get-diamonds-page .hub-redeem-submit,
   body[data-theme="v8"] .get-diamonds-page .hub-redeem-error,
   body[data-theme="v8"] .get-diamonds-page .hub-redeem-success-kicker,
   body[data-theme="v8"] .get-diamonds-page .hub-redeem-success-body {

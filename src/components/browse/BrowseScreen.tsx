@@ -8,6 +8,7 @@ import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useAuth } from "@/contexts/useAuth";
 import { DESKTOP_MIN_PX } from "@/lib/navChrome";
 import { useSearch } from "@/contexts/SearchContext";
@@ -323,13 +324,17 @@ export function HomeScreen({
           <p className="max-w-xs text-center text-caption text-white/45">
             Check your connection, then try again.
           </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-2 min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-5 py-2.5 text-body font-semibold"
-          >
-            Retry
-          </button>
+          <div className="hf-state-cta">
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              type="button"
+              label="Retry"
+              costAmount={null}
+              strokeWidth={1}
+              onClick={() => void load()}
+            />
+          </div>
         </div>
       </section>
     );
@@ -380,17 +385,21 @@ export function HomeScreen({
             <p className="text-body font-medium text-[oklch(0.823_0.11_346.02)]">
               Swipe the carousel to discover featured packs.
             </p>
-            <div className="mt-2 flex justify-center gap-4 text-caption">
+            <div className="mt-2 flex items-center justify-center gap-4 text-caption">
               <button type="button" className="text-[oklch(0.823_0.11_346.02)]/70" onClick={onSkipTutorial}>
                 Skip tutorial
               </button>
-              <button
-                type="button"
-                className="min-h-11 rounded-full bg-[oklch(0.606_0.219_292.72)] px-4 font-semibold text-white"
-                onClick={onTutorialDone}
-              >
-                Got it
-              </button>
+              <div className="hf-state-cta mt-0 h-11 min-h-11 w-[7.5rem]">
+                <CtaButton
+                  {...ctaButtonPropsFromTemplate("squircleCTA")}
+                  fillParent
+                  type="button"
+                  label="Got it"
+                  costAmount={null}
+                  strokeWidth={1}
+                  onClick={onTutorialDone}
+                />
+              </div>
             </div>
           </div>
         </div>

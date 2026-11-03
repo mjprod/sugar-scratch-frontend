@@ -485,13 +485,17 @@ function StateBlock({
         <RefreshCw className="size-6" aria-hidden="true" />
       </span>
       <p className="mt-4 max-w-xs text-body text-white/65">{title}</p>
-      <button
-        type="button"
-        onClick={primary.onClick}
-        className="mt-6 h-12 min-w-[160px] rounded-full bg-[oklch(0.606_0.219_292.72)] px-6 text-body font-semibold transition active:scale-[0.98]"
-      >
-        {primary.label}
-      </button>
+      <div className="hf-state-cta mt-6">
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          type="button"
+          label={primary.label}
+          costAmount={null}
+          strokeWidth={1}
+          onClick={primary.onClick}
+        />
+      </div>
       {secondary ? (
         <button
           type="button"
