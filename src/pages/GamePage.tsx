@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
+import { StageSoundsDebug } from "@/features/game/StageSoundsDebug";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
@@ -18,6 +19,8 @@ import {
 } from "@/features/game/modules/motionWinPage";
 import "@/features/game/game.css";
 import "@/features/packs/packs.css";
+
+const SHOW_SOUNDS_DEBUG = import.meta.env.DEV;
 
 function ScratchGameEmbed() {
   const [searchParams] = useSearchParams();
@@ -87,6 +90,7 @@ function ScratchGameEmbed() {
         <div className="stage-game">
           <ScratchPrototype onLeave={leaveGame} />
           <FirstPlayTutorial scene="foil" />
+          {SHOW_SOUNDS_DEBUG ? <StageSoundsDebug /> : null}
         </div>
       </div>
     </PaidCardPlayGate>
@@ -126,6 +130,7 @@ export function GamePage() {
   return (
     <div className="app-shell app-shell--game-hub">
       <GameHub />
+      {SHOW_SOUNDS_DEBUG ? <StageSoundsDebug /> : null}
     </div>
   );
 }

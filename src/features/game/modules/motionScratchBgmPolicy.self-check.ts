@@ -12,7 +12,7 @@ function assert(cond: unknown, msg: string): asserts cond {
 }
 
 const DOCK_MS = 720;
-const BED = 0.22;
+const DUCK = 0.22;
 
 const plan = (
   warm: boolean,
@@ -29,37 +29,26 @@ for (const phase of ["center", "docked", "showcase"] as const) {
   );
 }
 
-// --- foil bar centered: quiet bed, no step-up ---
-{
-  const p = plan(true, "center");
-  assert(p.level === "bed", "center must play the bed");
-  assert(p.fullAfterMs == null, "center must not schedule full level");
-}
-
-// --- docked stays at the bed; the dock flight must not raise the music ---
-{
-  const p = plan(true, "docked");
-  assert(p.level === "bed", "docked must stay at the bed");
-  assert(p.fullAfterMs == null, "docked must not step up");
-}
-
-assert(plan(true, "center", true).level === "bed", "skipToPlay stays at the bed");
-assert(plan(true, "docked", true).level === "bed", "skipToPlay stays at the bed when docked");
+// --- foil + docked: same on level (no quiet bed / step-up) ---
+assert(plan(true, "center").level === "on", "center must play");
+assert(plan(true, "docked").level === "on", "docked must play");
+assert(plan(true, "center", true).level === "on", "skipToPlay plays");
+assert(plan(true, "docked", true).level === "on", "skipToPlay plays when docked");
 
 // --- showcase leaves the level alone ---
 assert(plan(true, "showcase").level === "keep", "showcase must keep the level");
 
-// --- ducking never raises the level and caps at the bed ---
-assert(resolveMotionScratchBgmGain(1, false, BED) === 1, "unducked full stays full");
-assert(resolveMotionScratchBgmGain(1, true, BED) === BED, "ducked full drops to bed");
+// --- ducking never raises the level and caps at the duck gain ---
+assert(resolveMotionScratchBgmGain(1, false, DUCK) === 1, "unducked full stays full");
+assert(resolveMotionScratchBgmGain(1, true, DUCK) === DUCK, "ducked full drops to duck");
 assert(
-  resolveMotionScratchBgmGain(0.1, true, BED) === 0.1,
-  "ducking must not raise a level already under the bed",
+  resolveMotionScratchBgmGain(0.1, true, DUCK) === 0.1,
+  "ducking must not raise a level already under the duck gain",
 );
-for (const g of [0, 0.1, BED, 0.5, 1]) {
+for (const g of [0, 0.1, DUCK, 0.5, 1]) {
   assert(
-    resolveMotionScratchBgmGain(g, true, BED) <= BED,
-    `ducked gain must never exceed the bed (${g})`,
+    resolveMotionScratchBgmGain(g, true, DUCK) <= DUCK,
+    `ducked gain must never exceed the duck gain (${g})`,
   );
 }
 

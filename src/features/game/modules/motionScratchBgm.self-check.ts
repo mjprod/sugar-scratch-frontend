@@ -4,8 +4,7 @@
  */
 
 import {
-  MOTION_SCRATCH_BGM_BED_GAIN,
-  MOTION_SCRATCH_BGM_BED_TO_FULL_MS,
+  MOTION_SCRATCH_BGM_DUCK_GAIN,
   MOTION_SCRATCH_BGM_FADE_IN_MS,
   MOTION_SCRATCH_BGM_FADE_OUT_MS,
   MOTION_SCRATCH_BGM_FULL_GAIN,
@@ -14,8 +13,6 @@ import {
   isMotionScratchBgmPlaying,
   preloadMotionScratchBgm,
   setMotionScratchBgmActive,
-  setMotionScratchBgmBed,
-  setMotionScratchBgmFull,
   stopMotionScratchBgm,
   syncMotionScratchBgm,
   unlockMotionScratchBgm,
@@ -70,15 +67,12 @@ assert(
 );
 assert(MOTION_SCRATCH_BGM_FADE_IN_MS > 0, "fade-in ms");
 assert(MOTION_SCRATCH_BGM_FADE_OUT_MS > 0, "fade-out ms");
-assert(MOTION_SCRATCH_BGM_BED_TO_FULL_MS > 0, "bed→full ms");
 assert(
-  MOTION_SCRATCH_BGM_BED_GAIN > 0 &&
-    MOTION_SCRATCH_BGM_BED_GAIN < MOTION_SCRATCH_BGM_FULL_GAIN,
-  "bed gain must be quieter than full",
+  MOTION_SCRATCH_BGM_DUCK_GAIN > 0 &&
+    MOTION_SCRATCH_BGM_DUCK_GAIN < MOTION_SCRATCH_BGM_FULL_GAIN,
+  "duck gain must be quieter than full",
 );
 assert(typeof setMotionScratchBgmActive === "function", "setMotionScratchBgmActive export");
-assert(typeof setMotionScratchBgmBed === "function", "setMotionScratchBgmBed export");
-assert(typeof setMotionScratchBgmFull === "function", "setMotionScratchBgmFull export");
 assert(typeof stopMotionScratchBgm === "function", "stopMotionScratchBgm export");
 assert(typeof syncMotionScratchBgm === "function", "syncMotionScratchBgm export");
 assert(typeof preloadMotionScratchBgm === "function", "preloadMotionScratchBgm export");
@@ -89,9 +83,8 @@ assert(typeof isMotionScratchBgmPlaying === "function", "isMotionScratchBgmPlayi
 stopMotionScratchBgm({ fadeOutMs: 0 });
 unlockMotionScratchBgm();
 preloadMotionScratchBgm();
-setMotionScratchBgmBed({ fadeInMs: 100 });
-syncMotionScratchBgm({ targetGain: MOTION_SCRATCH_BGM_BED_GAIN, fadeInMs: 100 });
-setMotionScratchBgmFull({ fadeInMs: 100 });
+setMotionScratchBgmActive(true, { fadeInMs: 100 });
+syncMotionScratchBgm({ targetGain: MOTION_SCRATCH_BGM_FULL_GAIN, fadeInMs: 100 });
 assert(
   isMotionScratchBgmPlaying() === false,
   "Node has no audio context — playing must be false",

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PhotoScratch } from "@/features/game/scratch/PhotoScratch";
+import { StageSoundsDebug } from "@/features/game/StageSoundsDebug";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
 import { PaidCardPlayGate } from "@/hooks/PaidCardPlayGate";
@@ -79,6 +80,7 @@ export function PhotoScratchPage() {
         <div className="stage-game">
           <PhotoScratch key={`${card || "default"}-${freePlay ? "free" : "paid"}`} onLeave={leaveGame} />
           <FirstPlayTutorial scene="foil" />
+          {import.meta.env.DEV ? <StageSoundsDebug /> : null}
         </div>
       </div>
     </PaidCardPlayGate>

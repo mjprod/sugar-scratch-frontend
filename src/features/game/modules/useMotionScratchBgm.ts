@@ -4,8 +4,7 @@ import {
   MOTION_SCRATCH_BGM_SRC,
   preloadMotionScratchBgm,
   resolveMotionScratchBgmSrc,
-  setMotionScratchBgmBed,
-  setMotionScratchBgmFull,
+  setMotionScratchBgmActive,
   setMotionScratchBgmSrc,
   stopMotionScratchBgm,
 } from "./motionScratchBgm";
@@ -85,16 +84,9 @@ export function useMotionScratchBgm({
       stopMotionScratchBgm();
       return;
     }
+    if (plan.level === "keep") return;
     preloadMotionScratchBgm();
-    if (plan.level === "full") {
-      setMotionScratchBgmFull();
-      return;
-    }
-    if (plan.level !== "bed") return;
-    setMotionScratchBgmBed();
-    if (plan.fullAfterMs == null) return;
-    const id = window.setTimeout(setMotionScratchBgmFull, plan.fullAfterMs);
-    return () => window.clearTimeout(id);
+    setMotionScratchBgmActive(true);
   }, [warm, topBarPhase, skipToPlay]);
 
   useEffect(() => () => stopMotionScratchBgm({ fadeOutMs: 0 }), []);

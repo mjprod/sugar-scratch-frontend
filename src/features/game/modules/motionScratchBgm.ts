@@ -4,11 +4,8 @@
  * master mute).
  *
  * Web Audio buffer looping (gapless) on the shared game AudioContext, which
- * is suspended while the page is hidden. Option 1 mix:
- * - foil / center bar: quiet bed
- * - after dock settles: full level
- * - pause menu open: ducked to the bed level
- * - hand end: fade out
+ * is suspended while the page is hidden. One level for the whole stage
+ * (loudness via `SOUND_MIX_DEFAULTS.bgm`); pause menu ducks; hand end fades out.
  */
 
 import {
@@ -30,15 +27,13 @@ import { resolveMotionScratchBgmGain } from "./motionScratchBgmPolicy";
  */
 export const MOTION_SCRATCH_BGM_SRC = "/bgm/magnific-nuestra-madre_01.mp3";
 
-/** Quiet bed under foil scratch (linear gain 0–1). */
-export const MOTION_SCRATCH_BGM_BED_GAIN = 0.22;
-/** Full hunt level after the bar docks. */
+/** Stage play level (linear gain 0–1). Final loudness is `SOUND_MIX_DEFAULTS.bgm`. */
 export const MOTION_SCRATCH_BGM_FULL_GAIN = 1;
+/** Pause-menu duck level (linear gain 0–1). */
+export const MOTION_SCRATCH_BGM_DUCK_GAIN = 0.22;
 
-/** Ease into the foil bed. */
+/** Ease in when the stage arms the loop. */
 export const MOTION_SCRATCH_BGM_FADE_IN_MS = 240;
-/** Bed → full after dock. */
-export const MOTION_SCRATCH_BGM_BED_TO_FULL_MS = 320;
 /** Ease-out when the hand resolves / stage leaves. */
 export const MOTION_SCRATCH_BGM_FADE_OUT_MS = 560;
 /** Duck / unduck when the pause menu opens or closes. */
@@ -68,7 +63,7 @@ let sourceOffset = 0;
 let desiredPlaying = false;
 /** Last requested audible level while desiredPlaying. */
 let desiredGain = MOTION_SCRATCH_BGM_FULL_GAIN;
-/** Pause menu open — cap the level at the bed. */
+/** Pause menu open — cap the level at the duck gain. */
 let ducked = false;
 /** Gain the current source is at or ramping toward. */
 let appliedGain = 0;
@@ -320,7 +315,7 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
     const target = resolveMotionScratchBgmGain(
       desiredGain,
       ducked,
-      MOTION_SCRATCH_BGM_BED_GAIN,
+      MOTION_SCRATCH_BGM_DUCK_GAIN,
     );
     // Already looping at this level — nothing to do (every scratch touch
     // lands here, so keep it allocation-free). A live slider move snaps.
@@ -362,7 +357,7 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
       if (!source) {
         startSourceAt(audioCtx, buf, target, fadeInMs);
       } else {
-        // Already looping — ramp level (bed ↔ full, duck, or unmute restore).
+        // Already looping — ramp level (duck, or unmute restore).
         rampGain(target, fadeInMs);
       }
     })();
@@ -388,7 +383,7 @@ export function syncMotionScratchBgm(options?: MotionScratchBgmOptions): void {
   if (gain) gain.gain.value = 0;
 }
 
-/** Arm or disarm the loop; optional targetGain for bed vs full. */
+/** Arm or disarm the loop at the stage level. */
 export function setMotionScratchBgmActive(
   active: boolean,
   options?: MotionScratchBgmOptions,
@@ -397,36 +392,18 @@ export function setMotionScratchBgmActive(
   desiredPlaying = active;
   if (options?.targetGain != null) {
     desiredGain = clampGain(options.targetGain);
-  } else if (active && desiredGain <= 0) {
+  } else if (active) {
     desiredGain = MOTION_SCRATCH_BGM_FULL_GAIN;
   }
   if (active) preloadMotionScratchBgm();
   syncMotionScratchBgm(options);
 }
 
-/** Convenience: foil bed level. */
-export function setMotionScratchBgmBed(options?: MotionScratchBgmOptions): void {
-  setMotionScratchBgmActive(true, {
-    fadeInMs: MOTION_SCRATCH_BGM_FADE_IN_MS,
-    ...options,
-    targetGain: options?.targetGain ?? MOTION_SCRATCH_BGM_BED_GAIN,
-  });
-}
-
-/** Convenience: full hunt level. */
-export function setMotionScratchBgmFull(options?: MotionScratchBgmOptions): void {
-  setMotionScratchBgmActive(true, {
-    fadeInMs: MOTION_SCRATCH_BGM_BED_TO_FULL_MS,
-    ...options,
-    targetGain: options?.targetGain ?? MOTION_SCRATCH_BGM_FULL_GAIN,
-  });
-}
-
 export function stopMotionScratchBgm(options?: MotionScratchBgmOptions): void {
   setMotionScratchBgmActive(false, options);
 }
 
-/** Pause menu open: cap the loop at the bed level until it closes. */
+/** Pause menu open: cap the loop at the duck level until it closes. */
 export function setMotionScratchBgmDucked(next: boolean): void {
   if (ducked === next) return;
   ducked = next;

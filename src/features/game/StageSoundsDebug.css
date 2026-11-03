@@ -1,0 +1,236 @@
+/* Dev sounds mixer — left toggle, right sheet. Above stage chrome. */
+
+.stage-sounds-debug {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.stage-sounds-debug__toggle {
+  pointer-events: auto;
+  position: absolute;
+  left: max(8px, env(safe-area-inset-left, 0px));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid oklch(1 0 0 / 0.22);
+  border-radius: 999px;
+  background: oklch(0.18 0.02 300 / 0.82);
+  color: oklch(1 0 0 / 0.92);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage-sounds-debug__toggle:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+.stage-sounds-debug__scrim {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: oklch(0 0 0 / 0.45);
+}
+
+.stage-sounds-debug__sheet {
+  pointer-events: auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 320px);
+  padding:
+    max(12px, env(safe-area-inset-top, 0px))
+    max(14px, env(safe-area-inset-right, 0px))
+    max(16px, env(safe-area-inset-bottom, 0px))
+    14px;
+  box-sizing: border-box;
+  background: oklch(0.16 0.015 300 / 0.96);
+  border-left: 1px solid oklch(1 0 0 / 0.12);
+  box-shadow: -16px 0 40px oklch(0 0 0 / 0.45);
+  animation: stage-sounds-debug-slide 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes stage-sounds-debug-slide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-sounds-debug__sheet {
+    animation: none;
+  }
+}
+
+.stage-sounds-debug__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stage-sounds-debug__title {
+  margin: 0;
+  color: oklch(1 0 0);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.stage-sounds-debug__close {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: oklch(1 0 0 / 0.08);
+  color: oklch(1 0 0 / 0.85);
+  font-size: 22px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.stage-sounds-debug__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stage-sounds-debug__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stage-sounds-debug__row-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stage-sounds-debug__label {
+  color: oklch(1 0 0 / 0.88);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stage-sounds-debug__value {
+  color: oklch(1 0 0 / 0.55);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-sounds-debug__slider {
+  --sounds-thumb: 56px;
+  width: 100%;
+  height: var(--sounds-thumb);
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  accent-color: oklch(0.72 0.18 350);
+  touch-action: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.stage-sounds-debug__slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.14);
+}
+
+.stage-sounds-debug__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--sounds-thumb);
+  height: var(--sounds-thumb);
+  margin-top: calc((8px - var(--sounds-thumb)) / 2);
+  border: 2px solid oklch(1 0 0 / 0.35);
+  border-radius: 999px;
+  background: oklch(0.78 0.16 350);
+  box-shadow: 0 4px 14px oklch(0 0 0 / 0.45);
+  cursor: grab;
+}
+
+.stage-sounds-debug__slider:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.stage-sounds-debug__slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: oklch(1 0 0 / 0.14);
+}
+
+.stage-sounds-debug__slider::-moz-range-thumb {
+  width: var(--sounds-thumb);
+  height: var(--sounds-thumb);
+  border: 2px solid oklch(1 0 0 / 0.35);
+  border-radius: 999px;
+  background: oklch(0.78 0.16 350);
+  box-shadow: 0 4px 14px oklch(0 0 0 / 0.45);
+  cursor: grab;
+}
+
+.stage-sounds-debug__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid oklch(1 0 0 / 0.1);
+}
+
+.stage-sounds-debug__action {
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid oklch(1 0 0 / 0.16);
+  border-radius: 12px;
+  background: oklch(1 0 0 / 0.06);
+  color: oklch(1 0 0 / 0.92);
+  font-size: 14px;
+  font-weight: 650;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage-sounds-debug__action.is-primary {
+  border-color: transparent;
+  background: oklch(0.68 0.2 350);
+  color: white;
+}
+
+.stage-sounds-debug__action:active {
+  transform: scale(0.98);
+}
