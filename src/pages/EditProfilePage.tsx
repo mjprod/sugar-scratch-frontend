@@ -1,11 +1,11 @@
 import "@/components/profile/EditProfileScreen.css";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/useAuth";
 import { EditProfileScreen } from "@/components/profile/EditProfileScreen";
+import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";
 
 export function EditProfilePage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack(Paths.profile);
   const { profile, setProfile } = useAuth();
 
   return (
@@ -16,7 +16,7 @@ export function EditProfilePage() {
         avatar: profile.avatar,
         email: profile.email || "",
       }}
-      onBack={() => navigate(Paths.profile)}
+      onBack={goBack}
       onSaved={(next) => {
         setProfile((prev) => ({
           ...prev,

@@ -218,9 +218,51 @@ body[data-theme="v8"] .profile-balance-value.is-exchange-preview {
   font-weight: 600;
 }
 
+body[data-theme="v8"] .profile-balance-value.is-exchange-preview.is-exchange-denied {
+  color: oklch(0.68 0.21 25);
+}
+
 body[data-theme="v8"] .profile-balance-label {
   color: oklch(1 0 0 / 0.55);
   font-size: var(--text-headline);
+}
+
+body[data-theme="v8"] .profile-balance-value--confirm,
+body[data-theme="v8"] .profile-balance-label--confirm {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body[data-theme="v8"] .profile-balance-value--confirm {
+  color: oklch(0.84 0.14 318 / 0.96);
+  font-size: var(--text-headline);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+body[data-theme="v8"] .profile-balance-label--confirm {
+  color: oklch(0.84 0.14 318 / 0.96);
+  font-size: var(--text-headline);
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .profile-balance-value--confirm:active,
+body[data-theme="v8"] .profile-balance-label--confirm:active {
+  transform: scale(0.98);
+}
+
+body[data-theme="v8"] .profile-balance-value--confirm:focus-visible,
+body[data-theme="v8"] .profile-balance-label--confirm:focus-visible {
+  outline: 2px solid oklch(0.757 0.168 353.61);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 body[data-theme="v8"] .profile-balance-cta {

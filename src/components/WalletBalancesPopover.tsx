@@ -21,6 +21,7 @@ import {
   bestAffordableCoinExchange,
   formatExchangeDiamondAmount,
   formatExchangeDiamondPreview,
+  minimumCoinExchange,
   type CoinExchangeOption,
 } from "@/services/store";
 import "@/features/packs/packs-entry.css";
@@ -110,16 +111,28 @@ export function WalletBalancesPopover({
   const [box, setBox] = useState<FixedBox | null>(null);
   const [converting, setConverting] = useState(false);
   const convertingRef = useRef(false);
+  const [iconSwapReady, setIconSwapReady] = useState(false);
 
   const affordable = useMemo(
     () => bestAffordableCoinExchange(coins ?? 0),
     [coins],
   );
+  const previewOption = affordable ?? minimumCoinExchange();
+  const previewDenied = !affordable;
+  const canPreview = Boolean(onConvertDust && !converting);
   const canConvert = Boolean(onConvertDust && affordable && !converting);
-  const { preview: previewExchange, clearPreview, convertButtonProps } =
-    useConvertPress(canConvert, () => {
+  const {
+    preview: previewExchange,
+    clearPreview,
+    confirmPreview,
+    convertButtonProps,
+  } = useConvertPress(
+    canPreview,
+    () => {
       void runConvert();
-    });
+    },
+    canConvert,
+  );
 
   useLayoutEffect(() => {
     if (!open && !leaving) {
@@ -127,6 +140,7 @@ export function WalletBalancesPopover({
       clearPreview();
       setConverting(false);
       convertingRef.current = false;
+      setIconSwapReady(false);
       return;
     }
 
@@ -300,15 +314,51 @@ export function WalletBalancesPopover({
     }
   }
 
+  const showPreview = previewExchange && !converting;
+  useEffect(() => {
+    if (showPreview) setIconSwapReady(true);
+  }, [showPreview]);
+
   if (!open && !leaving) return null;
 
-	  const diamondLabel = formatCompactBalance(diamonds);
+  const diamondLabel = formatCompactBalance(diamonds);
   const dustLabel = formatCompactBalance(coins);
-  const previewAmount = affordable
-    ? formatExchangeDiamondAmount(affordable.diamonds)
-    : null;
-  const showPreview =
-    previewExchange && Boolean(previewAmount) && !converting;
+  const previewAmount = formatExchangeDiamondAmount(
+    previewOption.diamonds,
+    previewDenied ? "denied" : "gain",
+  );
+
+  const exchangeIconStage = (
+    <span
+      className={[
+        "exchange-icon-stage",
+        iconSwapReady ? "is-swap-ready" : "",
+        showPreview ? "is-preview" : "is-idle",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-hidden="true"
+    >
+      <span className="exchange-icon-face exchange-icon-face--coin">
+        <CoinLottie
+          className="wallet-balances-popover__icon wallet-balances-popover__icon--dust"
+          size="1em"
+          animated={false}
+          aria-hidden
+        />
+      </span>
+      <span className="exchange-icon-face exchange-icon-face--diamond">
+        <DiamondLottie
+          className="wallet-balances-popover__icon wallet-balances-popover__icon--preview-diamond"
+          size="1em"
+          animated={showPreview}
+          loop
+          autoplay={showPreview}
+          aria-hidden
+        />
+      </span>
+    </span>
+  );
 
   const style: CSSProperties | undefined = box
     ? {
@@ -336,9 +386,11 @@ export function WalletBalancesPopover({
     ? `Dust balance ${dustLabel}. Received ${coinReceipt.toLocaleString("en-US")} Coins`
     : "Dust balance";
 
-  const convertAria = affordable
-    ? `Convert ${affordable.coins.toLocaleString("en-US")} Coins for ${formatExchangeDiamondPreview(affordable.diamonds)}`
-    : "Not enough Coins to convert";
+  const convertAria = previewDenied
+    ? `Not enough Coins to convert — need ${previewOption.coins.toLocaleString("en-US")} for ${formatExchangeDiamondPreview(previewOption.diamonds, "denied")}`
+    : showPreview
+      ? `Confirm convert ${previewOption.coins.toLocaleString("en-US")} Coins for ${formatExchangeDiamondPreview(previewOption.diamonds)}`
+      : `Convert ${previewOption.coins.toLocaleString("en-US")} Coins for ${formatExchangeDiamondPreview(previewOption.diamonds)}`;
 
   const dialog = (
     <div
@@ -395,7 +447,8 @@ export function WalletBalancesPopover({
               .filter(Boolean)
               .join(" ")}
             aria-label={convertAria}
-            disabled={!canConvert}
+            aria-disabled={!canConvert}
+            disabled={!canPreview}
             {...convertButtonProps}
           >
             <ConvertDustIcon className="wallet-balances-popover__convert-icon" />
@@ -409,6 +462,7 @@ export function WalletBalancesPopover({
           "wallet-balances-popover__row",
           "wallet-balances-popover__row--dust",
           showPreview ? "is-exchange-preview" : "",
+          showPreview && previewDenied ? "is-exchange-denied" : "",
           hasReceipt ? "has-receipt" : "",
         ]
           .filter(Boolean)
@@ -416,45 +470,53 @@ export function WalletBalancesPopover({
         role="group"
         aria-label={dustRowLabel}
       >
-        <div className="wallet-balances-popover__metric wallet-balances-popover__metric--dust">
-          {showPreview ? (
-            <DiamondLottie
-              className="wallet-balances-popover__icon wallet-balances-popover__icon--preview-diamond"
-              size="1em"
-              animated
-              loop
-              autoplay
-              aria-hidden
-            />
-          ) : (
-            <CoinLottie
-              className="wallet-balances-popover__icon wallet-balances-popover__icon--dust"
-              size="1.5em"
-              aria-hidden
-            />
-          )}
-          <span
-            className={[
-              "wallet-balances-popover__value",
-              "wallet-balances-popover__value--dust",
-              "tabular-nums",
-              showPreview ? "is-exchange-preview" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-live="polite"
+        {showPreview && !previewDenied ? (
+          <button
+            type="button"
+            className="wallet-balances-popover__metric wallet-balances-popover__metric--dust wallet-balances-popover__preview-confirm"
+            data-convert-confirm
+            aria-label={convertAria}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              confirmPreview();
+            }}
           >
-            {showPreview && previewAmount ? previewAmount : dustLabel}
-          </span>
-          {hasReceipt && !showPreview ? (
+            {exchangeIconStage}
             <span
-              className="wallet-balances-popover__receipt tabular-nums"
-              aria-hidden="true"
+              className="wallet-balances-popover__value wallet-balances-popover__value--dust tabular-nums is-exchange-preview"
+              aria-live="polite"
             >
-              +{formatCompactBalance(coinReceipt)}
+              {previewAmount}
             </span>
-          ) : null}
-        </div>
+          </button>
+        ) : (
+          <div className="wallet-balances-popover__metric wallet-balances-popover__metric--dust">
+            {exchangeIconStage}
+            <span
+              className={[
+                "wallet-balances-popover__value",
+                "wallet-balances-popover__value--dust",
+                "tabular-nums",
+                showPreview ? "is-exchange-preview" : "",
+                showPreview && previewDenied ? "is-exchange-denied" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-live="polite"
+            >
+              {showPreview ? previewAmount : dustLabel}
+            </span>
+            {hasReceipt && !showPreview ? (
+              <span
+                className="wallet-balances-popover__receipt tabular-nums"
+                aria-hidden="true"
+              >
+                +{formatCompactBalance(coinReceipt)}
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
       )}
     </div>

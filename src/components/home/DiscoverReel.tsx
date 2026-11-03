@@ -13,7 +13,7 @@ import {
 } from "@/components/home/CreatorFeedCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
-  FEED_WARM_AHEAD,
+  FEED_PREFETCH_REMAINING,
   fetchHomeFeedPage,
   isFeedMountIndex,
   isFeedPreloadAutoIndex,
@@ -165,7 +165,17 @@ export function DiscoverReel({
       if (slideHeight <= 0) return;
       const index = Math.round(root.scrollTop / slideHeight);
       const safeIndex = Math.max(0, Math.min(list.length - 1, index));
-      if (Math.abs(root.scrollTop - safeIndex * slideHeight) > 2) return;
+      const targetTop = safeIndex * slideHeight;
+      // Pagination can interrupt a smooth slide and leave the scroller mid-card.
+      if (Math.abs(root.scrollTop - targetTop) > 2) {
+        const prevBehavior = root.style.scrollBehavior;
+        const prevSnap = root.style.scrollSnapType;
+        root.style.scrollBehavior = "auto";
+        root.style.scrollSnapType = "none";
+        root.scrollTop = targetTop;
+        root.style.scrollBehavior = prevBehavior;
+        root.style.scrollSnapType = prevSnap;
+      }
 
       scrollIndexRef.current = safeIndex;
       const next = list[safeIndex];
@@ -614,7 +624,7 @@ export function DiscoverReel({
     const activeIndex = items.findIndex((item) => item.id === activeId);
     const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
     const remaining = items.length - 1 - resolvedActiveIndex;
-    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+    if (remaining <= FEED_PREFETCH_REMAINING) void loadMore();
   }, [activeId, items.length, status]);
 
   function onScroll() {
@@ -646,7 +656,7 @@ export function DiscoverReel({
       const safeIndex = Math.max(0, Math.min(items.length - 1, index));
       scrollIndexRef.current = safeIndex;
       const remaining = items.length - 1 - safeIndex;
-      if (remaining <= FEED_WARM_AHEAD) void loadMore();
+      if (remaining <= FEED_PREFETCH_REMAINING) void loadMore();
     });
   }
 
@@ -763,10 +773,12 @@ export function DiscoverReel({
               onPointerUp={endDesktopPointerDrag}
               onPointerCancel={endDesktopPointerDrag}
               style={
+                // Keep scrollBehavior off the element — scrollTo() sets it per
+                // move. A sticky "smooth" makes any later scrollTop write (and
+                // interrupted pagination) land between slides.
                 reducedMotion
                   ? undefined
                   : ({
-                      scrollBehavior: "smooth",
                       "--hf-snap-ms": `${SNAP_MS}ms`,
                     } as CSSProperties)
               }
