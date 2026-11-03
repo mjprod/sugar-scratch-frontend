@@ -253,7 +253,7 @@ body[data-theme="v8"] .inbox-skeleton-line.is-title {
 body[data-theme="v8"] .inbox-skeleton-line.is-sub {
   width: 78%;
   height: 11px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   opacity: 0.75;
 }
 
