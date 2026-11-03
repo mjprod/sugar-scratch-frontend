@@ -15,7 +15,7 @@
   transform: translateY(-50%);
   z-index: 2;
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   border: 1px solid oklch(1 0 0 / 0.22);
   border-radius: 999px;
   background: oklch(0.18 0.02 300 / 0.82);
@@ -56,10 +56,10 @@
   flex-direction: column;
   width: min(100%, 320px);
   padding:
-    max(12px, env(safe-area-inset-top, 0px))
-    max(14px, env(safe-area-inset-right, 0px))
-    max(16px, env(safe-area-inset-bottom, 0px))
-    14px;
+    max(var(--space-3), env(safe-area-inset-top, 0px))
+    max(var(--space-3-5), env(safe-area-inset-right, 0px))
+    max(var(--space-4), env(safe-area-inset-bottom, 0px))
+    var(--space-3-5);
   box-sizing: border-box;
   background: oklch(0.16 0.015 300 / 0.96);
   border-left: 1px solid oklch(1 0 0 / 0.12);
@@ -86,8 +86,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .stage-sounds-debug__title {
@@ -118,7 +118,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--space-4-5);
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -128,14 +128,14 @@
 .stage-sounds-debug__row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .stage-sounds-debug__row-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .stage-sounds-debug__label {
@@ -152,6 +152,7 @@
 
 .stage-sounds-debug__slider {
   --sounds-thumb: 56px;
+  --sounds-track: 8px;
   width: 100%;
   height: var(--sounds-thumb);
   margin: 0;
@@ -164,7 +165,7 @@
 }
 
 .stage-sounds-debug__slider::-webkit-slider-runnable-track {
-  height: 8px;
+  height: var(--sounds-track);
   border-radius: 999px;
   background: oklch(1 0 0 / 0.14);
 }
@@ -174,7 +175,7 @@
   appearance: none;
   width: var(--sounds-thumb);
   height: var(--sounds-thumb);
-  margin-top: calc((8px - var(--sounds-thumb)) / 2);
+  margin-top: calc((var(--sounds-track) - var(--sounds-thumb)) / 2);
   border: 2px solid oklch(1 0 0 / 0.35);
   border-radius: 999px;
   background: oklch(0.78 0.16 350);
@@ -187,7 +188,7 @@
 }
 
 .stage-sounds-debug__slider::-moz-range-track {
-  height: 8px;
+  height: var(--sounds-track);
   border-radius: 999px;
   background: oklch(1 0 0 / 0.14);
 }
@@ -205,16 +206,16 @@
 .stage-sounds-debug__actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 16px;
-  padding-top: 12px;
+  gap: var(--space-2-5);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px solid oklch(1 0 0 / 0.1);
 }
 
 .stage-sounds-debug__action {
   min-height: 44px;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid oklch(1 0 0 / 0.16);
   border-radius: 12px;
   background: oklch(1 0 0 / 0.06);
