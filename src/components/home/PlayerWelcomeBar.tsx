@@ -227,7 +227,7 @@ export function PlayerWelcomeBar({
           <div className="player-welcome-reward">
             <div className="player-welcome-claim">
               <CtaButton
-                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                {...ctaButtonPropsFromTemplate("pillGoldCTA")}
                 fillParent
                 type="button"
                 label={

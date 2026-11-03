@@ -295,7 +295,7 @@ export function AppLayout() {
   }, [guest, invalidateRemoteSession, setInboxUnread]);
 
   const mobileTrailing = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-[var(--space-5)]">
       <button
         type="button"
         onClick={openSearch}

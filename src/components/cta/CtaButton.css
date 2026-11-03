@@ -331,7 +331,7 @@
       transparent 55%
     ),
     linear-gradient(
-      105deg,
+      var(--cta-aurora-angle, 105deg),
       color-mix(in srgb, var(--cta-stroke-a, oklch(0.483 0.193 357.41)) 35%, transparent) 0%,
       color-mix(in srgb, var(--cta-stroke-b, oklch(0.591 0.242 355.7)) 42%, transparent) 46%,
       color-mix(in srgb, var(--cta-stroke-c, oklch(0.671 0.182 48.12)) 28%, transparent) 100%

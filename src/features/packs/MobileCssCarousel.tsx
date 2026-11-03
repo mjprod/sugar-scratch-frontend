@@ -167,6 +167,7 @@ function PackSlideHud({
             // Force red squircle plate (coverflow used to pin gold hex chrome).
             auroraBaseColor="#42001b"
             auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+            auroraRotation={45}
             glowColors={["#aa085f", "#e00083", "#eb6a00"]}
             glowColor="326 90 30"
             strokeColor="rgba(170, 8, 95, 0.42)"
@@ -182,6 +183,7 @@ function PackSlideHud({
                   (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
               ),
             )}
+            style={{ ["--cta-aurora-angle" as string]: "45deg" }}
             className="coverflow-buy-pack-cta__button"
             tabIndex={revealed ? 0 : -1}
             aria-expanded={buyConfirmOpen || buyConfirmLeaving}
