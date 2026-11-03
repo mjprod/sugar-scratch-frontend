@@ -15,6 +15,8 @@ export function routeNeedsWait(pathname: string) {
   if (pathname.startsWith(Paths.rank)) return true;
   if (pathname.startsWith(Paths.search)) return true;
   if (pathname.startsWith("/creator/")) return true;
+  if (pathname.startsWith(Paths.collection)) return true;
+  if (pathname.startsWith(Paths.store)) return true;
   if (pathname === Paths.recommendSwipe) return true;
   if (pathname.startsWith("/purchase/")) return true;
   if (pathname === Paths.coverflowV2) return true;

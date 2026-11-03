@@ -1,5 +1,6 @@
 import { Heart } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -27,7 +28,7 @@ import {
   isFollowing,
   unfollowCreator,
 } from "@/services/following";
-import { isIosDecoderCap } from "@/lib/memory/exclusiveMedia";
+import { dropMediaSrc, isIosDecoderCap } from "@/lib/memory/exclusiveMedia";
 
 const DOUBLE_TAP_MS = 280;
 const TAP_MOVE_PX = 14;
@@ -139,6 +140,27 @@ export function CreatorFeedCard({
   const canOpenCreator = Boolean(item.creatorId && onOpenCreator);
   const shouldBuffer = active || (warm && !isIosDecoderCap());
   const videoKey = item.videoUrl || item.id;
+  const boundVideoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRefProp = useRef(videoRef);
+  videoRefProp.current = videoRef;
+  const bindVideo = useCallback((node: HTMLVideoElement | null) => {
+    boundVideoRef.current = node;
+    videoRefProp.current(node);
+  }, []);
+
+  // Attach in an effect so StrictMode's extra ref(null) / effect cleanup
+  // can blank src and we put it back on the remount. Dropping inside the
+  // callback ref leaves React thinking src is still set.
+  useEffect(() => {
+    if (!shouldBuffer) return;
+    const el = boundVideoRef.current;
+    const url = item.videoUrl;
+    if (!el || !url) return;
+    if (el.getAttribute("src") !== url) el.src = url;
+    return () => {
+      dropMediaSrc(el);
+    };
+  }, [item.videoUrl, shouldBuffer]);
 
   useEffect(() => {
     setFollowing(isFollowing(item.creatorId));
@@ -354,6 +376,8 @@ export function CreatorFeedCard({
                 alt=""
                 aria-hidden="true"
                 className="hf-media-el hf-media-poster"
+                decoding="async"
+                loading={active || warm ? "eager" : "lazy"}
               />
             ) : !shouldBuffer || !mediaReady ? (
               <div
@@ -365,7 +389,7 @@ export function CreatorFeedCard({
             {shouldBuffer ? (
               <video
                 key={videoKey}
-                ref={videoRef}
+                ref={bindVideo}
                 src={item.videoUrl}
                 playsInline
                 muted

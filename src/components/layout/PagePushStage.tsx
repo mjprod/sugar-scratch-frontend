@@ -8,7 +8,9 @@ import {
   shouldSkipPushHop,
 } from "@/lib/pagePushTransition";
 
+/** Matches CSS --ease-push / --duration-page in index.css */
 const PUSH_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1];
+const PUSH_DURATION_S = 0.34;
 
 const pushVariants = {
   enter: (direction: 1 | -1) => ({
@@ -80,7 +82,7 @@ export function PagePushStage() {
         initial="enter"
         animate="center"
         exit="exit"
-        transition={{ duration: 0.34, ease: PUSH_EASE }}
+        transition={{ duration: PUSH_DURATION_S, ease: PUSH_EASE }}
       >
         {outlet}
       </m.div>

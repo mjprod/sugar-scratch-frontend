@@ -113,6 +113,12 @@ export const FEED_WARM_AHEAD = 1;
 /** Previous clip to keep mounted for a reverse swipe. */
 export const FEED_WARM_BEHIND = 1;
 /**
+ * Start the next page while this many slides remain after the active one.
+ * Keep ahead of FEED_WARM_AHEAD so pagination doesn't land mid-swipe
+ * (page size 6 → 4→5 was freezing when loadMore rewrote scrollTop).
+ */
+export const FEED_PREFETCH_REMAINING = FEED_WARM_AHEAD + 1;
+/**
  * Max concurrent `preload="auto"` videos (active + peeks).
  * Warm-mounted neighbors beyond this use `metadata` only.
  */

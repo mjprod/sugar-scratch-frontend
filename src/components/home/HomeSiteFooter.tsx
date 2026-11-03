@@ -8,7 +8,7 @@ import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
 
 type LegalKind = "terms" | "privacy";
 
-/** Homepage footer when bottom dock is hidden; mobile uses Profile instead. */
+/** Shared site footer — logo, tagline, legal, social. */
 export function HomeSiteFooter() {
   const location = useLocation();
   const [legal, setLegal] = useState<LegalKind | null>(null);

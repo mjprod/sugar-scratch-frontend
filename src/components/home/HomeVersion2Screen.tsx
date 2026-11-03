@@ -6,8 +6,10 @@ import { PlayerWelcomeBar } from "@/components/home/PlayerWelcomeBar";
 import { FIGMA_HOME_PLAY_STEPS, PlaySteps } from "@/components/home/PlaySteps";
 import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useSearch } from "@/contexts/SearchContext";
+import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { memoryNavigate } from "@/lib/memory/memoryNavigate";
 import { Paths } from "@/routes/Paths";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   hasSeenHowToPlay,
@@ -59,6 +61,7 @@ export function HomeVersion2Screen({
   const [heroReady, setHeroReady] = useState(false);
 
   useMarkPageReady(status === "error" || heroReady);
+  const pageScrolling = usePageScrollActive();
 
   const load = useCallback(async () => {
     setHeroReady(false);
@@ -173,12 +176,16 @@ export function HomeVersion2Screen({
         />
       </Suspense>
 
-      <div className="home-page-inner home-page-inner--after-hero mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page">
+      <PageContentEnter
+        stagger
+        className="home-page-inner home-page-inner--after-hero mx-auto flex w-full max-w-[var(--app-content-max,80rem)] flex-col gap-section px-page"
+      >
         {onClaimDaily ? (
           <PlayerWelcomeBar
             onClaimed={onClaimDaily}
             onClaimAttempt={onClaimAttempt}
             readySubtitle="Claim today’s free gift…"
+            auroraPaused={pageScrolling}
           />
         ) : null}
 
@@ -203,9 +210,9 @@ export function HomeVersion2Screen({
           onOpen={openCollection}
           onSeeAllClick={openSearch}
         />
-      </div>
+      </PageContentEnter>
 
-      <SpotlightBanner />
+      <SpotlightBanner auroraPaused={pageScrolling} />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)]">
         <HomeSiteFooter />

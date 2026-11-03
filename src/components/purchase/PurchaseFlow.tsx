@@ -407,7 +407,27 @@ export function PurchaseFlow({
   const [sealTorn, setSealTorn] = useState(false);
   const [catalogRevision, setCatalogRevision] = useState(0);
   const tearTutorialWasReady = useRef(false);
-  useMarkPageReady(!buying || model !== null || stage !== "choose");
+  // Hold splash until the visible stage has model art (or we've left choose/select).
+  const purchaseContentReady =
+    !buying ||
+    model !== null ||
+    (stage !== "choose" && stage !== "select");
+  const [purchasePainted, setPurchasePainted] = useState(purchaseContentReady);
+  useEffect(() => {
+    if (!purchaseContentReady) {
+      setPurchasePainted(false);
+      return;
+    }
+    let inner = 0;
+    const outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => setPurchasePainted(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(outer);
+      window.cancelAnimationFrame(inner);
+    };
+  }, [purchaseContentReady]);
+  useMarkPageReady(purchasePainted);
 
   // Clear leftover tear/open state from a previous pack so Pack Ready isn't a
   // black torn foil on a black stage.

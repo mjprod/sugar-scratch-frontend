@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/useAuth";
+import { PageContentEnter } from "@/shared/ui/PageContentEnter";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   resolveCollectionThemeLabel,
   type ScratchReadyGroup,
@@ -92,6 +94,24 @@ export function CollectionPage({
     emptyCollectionPageState(),
   );
   const [ready, setReady] = useState(false);
+  const [skeletonVisible, setSkeletonVisible] = useState(true);
+  useMarkPageReady(ready);
+
+  useEffect(() => {
+    if (!ready) {
+      setSkeletonVisible(true);
+      return;
+    }
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setSkeletonVisible(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSkeletonVisible(false), 220);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,13 +246,28 @@ export function CollectionPage({
         } as CSSProperties
       }
     >
-      <div className="collection-page-content mc-page-content page-container">
-        {!ready ? (
-          <CollectionPageSkeleton />
-        ) : state.isTrueEmpty && !revealPacks ? (
-          <CollectionEmptyState onExplorePacks={onExplorePacks} />
-        ) : state.isTrueEmpty && revealPacks ? (
-          <>
+      <div className="collection-page-content mc-page-content page-container mc-reveal-stack">
+        {skeletonVisible ? (
+          <div
+            className={[
+              "mc-reveal-skeleton",
+              ready ? "is-exiting" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <CollectionPageSkeleton />
+          </div>
+        ) : null}
+
+        {ready && state.isTrueEmpty && !revealPacks ? (
+          <PageContentEnter>
+            <CollectionEmptyState onExplorePacks={onExplorePacks} />
+          </PageContentEnter>
+        ) : null}
+
+        {ready && state.isTrueEmpty && revealPacks ? (
+          <PageContentEnter stagger>
             {renderGreeting()}
 
             <ReadyToReveal
@@ -242,9 +277,11 @@ export function CollectionPage({
               inventoryRevision={inventoryRevision}
               forceEmptyReveal
             />
-          </>
-        ) : (
-          <>
+          </PageContentEnter>
+        ) : null}
+
+        {ready && !state.isTrueEmpty ? (
+          <PageContentEnter stagger>
             {renderGreeting()}
 
             <div className="mc-hub">
@@ -267,8 +304,8 @@ export function CollectionPage({
             <CollectionPromoCarousel />
 
             <CollectionSiteFooter />
-          </>
-        )}
+          </PageContentEnter>
+        ) : null}
       </div>
     </section>
   );
@@ -297,25 +334,23 @@ function CollectionPageSkeleton() {
     <div className="collection-page-skeleton mc-skeleton" aria-busy="true">
       <header className="mc-greeting">
         <SkeletonBar className="search-skeleton-title" width={240} height={19} />
+        <SkeletonBar width="70%" height={16} />
       </header>
-      <div className="mc-hub">
-        <div className="mc-continue-panel is-skeleton" aria-hidden="true">
-          <SkeletonBar width={220} height={19} />
-          <div className="mc-continue-row">
-            {Array.from({ length: 4 }, (_, i) => (
-              <SkeletonBar key={i} width="9.072rem" height="16.128rem" />
-            ))}
-          </div>
+      {/* Stack full-width — do not use .mc-hub (2-col grid squeezes Continue on mobile). */}
+      <section className="mc-continue" aria-hidden="true">
+        <div className="mc-continue-panel is-skeleton">
+          <SkeletonBar width={180} height={24} />
+          <span className="search-skeleton mc-skeleton-coverflow" aria-hidden="true" />
         </div>
-        <section className="mc-models">
-          <h2 className="mc-models-title">Keep Collecting</h2>
-          <div className="mc-model-list" aria-busy="true">
-            {Array.from({ length: 4 }, (_, index) => (
-              <InfluencerHolderSkeleton key={index} />
-            ))}
-          </div>
-        </section>
-      </div>
+      </section>
+      <section className="mc-models">
+        <h2 className="mc-models-title">Keep Collecting</h2>
+        <div className="mc-model-list" aria-busy="true">
+          {Array.from({ length: 4 }, (_, index) => (
+            <InfluencerHolderSkeleton key={index} />
+          ))}
+        </div>
+      </section>
       <div className="mc-promo is-skeleton" aria-hidden="true">
         <SkeletonBar width="100%" height={100} />
       </div>

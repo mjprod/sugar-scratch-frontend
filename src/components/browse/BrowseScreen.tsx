@@ -11,6 +11,7 @@ import { SpotlightBanner } from "@/components/home/SpotlightBanner";
 import { useAuth } from "@/contexts/useAuth";
 import { DESKTOP_MIN_PX } from "@/lib/navChrome";
 import { useSearch } from "@/contexts/SearchContext";
+import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {
   hasSeenHowToPlay,
@@ -192,6 +193,7 @@ export function HomeScreen({
   const isNewUser = isNewUserForHomepageHero();
 
   useMarkPageReady(status === "error" || heroReady);
+  const pageScrolling = usePageScrollActive();
 
   const load = useCallback(async () => {
     setHeroReady(false);
@@ -405,6 +407,7 @@ export function HomeScreen({
           <PlayerWelcomeBar
             onClaimed={onClaimDaily}
             onClaimAttempt={onClaimAttempt}
+            auroraPaused={pageScrolling}
           />
         ) : null}
 
@@ -454,7 +457,7 @@ export function HomeScreen({
         </div>
       </div>
 
-      <SpotlightBanner />
+      <SpotlightBanner auroraPaused={pageScrolling} />
 
       <div className="home-page-inner mx-auto w-full max-w-[var(--app-content-max,80rem)] px-page">
         <div>

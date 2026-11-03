@@ -72,6 +72,18 @@ export function isCreatorBackHop(fromPath: string, toPath: string): boolean {
   return from.startsWith("/creator/") && to.startsWith("/collection");
 }
 
+/**
+ * Settings hub is `/settings`; subpages live under `/profile/*`.
+ * Leaving a subpage for the hub is a pop even if history idx increases
+ * (e.g. navigate(Paths.profile) instead of history.back).
+ */
+export function isSettingsBackHop(fromPath: string, toPath: string): boolean {
+  const from = pushPathname(fromPath);
+  const to = pushPathname(toPath);
+  if (!from.startsWith("/profile/")) return false;
+  return to === "/settings" || to === "/profile";
+}
+
 export function pagePushDirection(
   fromPath: string,
   toPath: string,
@@ -79,5 +91,6 @@ export function pagePushDirection(
   nextIdx: number,
 ): 1 | -1 {
   if (isCreatorBackHop(fromPath, toPath)) return -1;
+  if (isSettingsBackHop(fromPath, toPath)) return -1;
   return pushDirection(prevIdx, nextIdx);
 }

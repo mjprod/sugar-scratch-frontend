@@ -22,6 +22,11 @@ export const COIN_EXCHANGE_OPTIONS = [
 
 export type CoinExchangeOption = (typeof COIN_EXCHANGE_OPTIONS)[number];
 
+/** Cheapest exchange tier — used for denied preview when the player is short. */
+export function minimumCoinExchange(): CoinExchangeOption {
+  return COIN_EXCHANGE_OPTIONS[0];
+}
+
 /** Highest diamond tier the player can afford with current Coins. */
 export function bestAffordableCoinExchange(
   coinBalance: number,
@@ -35,22 +40,36 @@ export function bestAffordableCoinExchange(
   return best;
 }
 
-/** Compact amount only for hover UI, e.g. "+5K" / "+500" (icon shown separately). */
-export function formatExchangeDiamondAmount(diamonds: number): string {
-  if (!Number.isFinite(diamonds) || diamonds <= 0) return "+0";
+function exchangeDiamondBody(diamonds: number): string {
+  if (!Number.isFinite(diamonds) || diamonds <= 0) return "0";
   if (diamonds >= 1000 && diamonds % 1000 === 0) {
-    return `+${diamonds / 1000}K`;
+    return `${diamonds / 1000}K`;
   }
   if (diamonds >= 1000) {
     const compact = (diamonds / 1000).toFixed(diamonds % 100 === 0 ? 1 : 2);
-    return `+${compact.replace(/\.0$/, "")}K`;
+    return compact.replace(/\.0$/, "") + "K";
   }
-  return `+${diamonds.toLocaleString("en-US")}`;
+  return diamonds.toLocaleString("en-US");
+}
+
+/**
+ * Compact amount for exchange preview UI (icon shown separately).
+ * gain → "+500" / "+5K"; denied (can't afford) → "×500" / "×5K".
+ */
+export function formatExchangeDiamondAmount(
+  diamonds: number,
+  mode: "gain" | "denied" = "gain",
+): string {
+  const body = exchangeDiamondBody(diamonds);
+  return mode === "denied" ? `×${body}` : `+${body}`;
 }
 
 /** Screen-reader / aria form, e.g. "+5K Diamonds". */
-export function formatExchangeDiamondPreview(diamonds: number): string {
-  return `${formatExchangeDiamondAmount(diamonds)} Diamonds`;
+export function formatExchangeDiamondPreview(
+  diamonds: number,
+  mode: "gain" | "denied" = "gain",
+): string {
+  return `${formatExchangeDiamondAmount(diamonds, mode)} Diamonds`;
 }
 
 export type CoinExchangeResult =

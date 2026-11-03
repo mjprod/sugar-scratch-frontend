@@ -4,6 +4,7 @@ import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { packUnitCost } from "@/services/purchase";
 import {
   MotionCardStack,
@@ -99,6 +100,7 @@ export function MotionCardHolder({
   className,
 }: MotionCardHolderProps) {
   const reduceMotion = useReducedMotion();
+  const pageScrolling = usePageScrollActive();
   const [activeId, setActiveId] = useState<string | null>(initialActiveId);
   const [detailsReady, setDetailsReady] = useState(Boolean(initialActiveId));
   const lastActiveIndex = useRef(0);
@@ -297,6 +299,7 @@ export function MotionCardHolder({
                       {...SQUIRCLE_CTA}
                       fillParent
                       label=""
+                      auroraFrozen={pageScrolling}
                       leadingIcon={
                         <>
                           {activeCard.freePlay ? null : (

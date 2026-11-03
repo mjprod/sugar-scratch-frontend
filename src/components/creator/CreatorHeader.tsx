@@ -66,6 +66,7 @@ export function CreatorHeader({
   tiktokUrl,
   xUrl,
   onlyfansUrl,
+  socialsPending = false,
 }: {
   name: string;
   username: string;
@@ -79,6 +80,8 @@ export function CreatorHeader({
   tiktokUrl?: string | null;
   xUrl?: string | null;
   onlyfansUrl?: string | null;
+  /** True while creator board (socials) is still loading. */
+  socialsPending?: boolean;
 }) {
   const location = locationLabel?.trim() || "";
   const cardRef = useRef<HTMLElement | null>(null);
@@ -245,58 +248,74 @@ export function CreatorHeader({
               </div>
             </div>
             <ul className="cpv2-profile-card-socials" aria-label="Social links">
-              {instagramUrl ? (
-                <li>
-                  <a
-                    className="cpv2-profile-card-social"
-                    href={socialHref(instagramUrl)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="Instagram"
-                  >
-                    <Instagram className="size-3.5" strokeWidth={1.8} />
-                  </a>
-                </li>
-              ) : null}
-              {tiktokUrl ? (
-                <li>
-                  <a
-                    className="cpv2-profile-card-social"
-                    href={socialHref(tiktokUrl)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="TikTok"
-                  >
-                    <TikTokIcon className="size-3.5" />
-                  </a>
-                </li>
-              ) : null}
-              {xUrl ? (
-                <li>
-                  <a
-                    className="cpv2-profile-card-social"
-                    href={socialHref(xUrl)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="X"
-                  >
-                    <XIcon className="size-3.5" />
-                  </a>
-                </li>
-              ) : null}
-              {onlyfansUrl ? (
-                <li>
-                  <a
-                    className="cpv2-profile-card-social"
-                    href={socialHref(onlyfansUrl)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="OnlyFans"
-                  >
-                    OF
-                  </a>
-                </li>
-              ) : null}
+              {socialsPending ? (
+                <>
+                  <li aria-hidden="true">
+                    <span className="cpv2-profile-card-social is-skeleton" />
+                  </li>
+                  <li aria-hidden="true">
+                    <span className="cpv2-profile-card-social is-skeleton" />
+                  </li>
+                  <li aria-hidden="true">
+                    <span className="cpv2-profile-card-social is-skeleton" />
+                  </li>
+                </>
+              ) : (
+                <>
+                  {instagramUrl ? (
+                    <li>
+                      <a
+                        className="cpv2-profile-card-social"
+                        href={socialHref(instagramUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Instagram"
+                      >
+                        <Instagram className="size-3.5" strokeWidth={1.8} />
+                      </a>
+                    </li>
+                  ) : null}
+                  {tiktokUrl ? (
+                    <li>
+                      <a
+                        className="cpv2-profile-card-social"
+                        href={socialHref(tiktokUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="TikTok"
+                      >
+                        <TikTokIcon className="size-3.5" />
+                      </a>
+                    </li>
+                  ) : null}
+                  {xUrl ? (
+                    <li>
+                      <a
+                        className="cpv2-profile-card-social"
+                        href={socialHref(xUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="X"
+                      >
+                        <XIcon className="size-3.5" />
+                      </a>
+                    </li>
+                  ) : null}
+                  {onlyfansUrl ? (
+                    <li>
+                      <a
+                        className="cpv2-profile-card-social"
+                        href={socialHref(onlyfansUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="OnlyFans"
+                      >
+                        OF
+                      </a>
+                    </li>
+                  ) : null}
+                </>
+              )}
             </ul>
           </div>
         </div>

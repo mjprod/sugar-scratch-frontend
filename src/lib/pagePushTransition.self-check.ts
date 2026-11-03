@@ -6,6 +6,7 @@ import {
   isCreatorBackHop,
   isPurchaseFlowPath,
   isScratchGamePath,
+  isSettingsBackHop,
   pagePushDirection,
   pushDirection,
   shouldSkipPushHop,
@@ -60,6 +61,18 @@ assert(
 assert(
   pagePushDirection("/collection", "/creator/x", 2, 3) === 1,
   "opening creator still pushes",
+);
+
+assert(isSettingsBackHop("/profile/edit", "/settings"), "edit profile to settings is back");
+assert(isSettingsBackHop("/profile/change-password", "/settings"), "change password to settings is back");
+assert(!isSettingsBackHop("/settings", "/profile/edit"), "opening edit profile is not back");
+assert(
+  pagePushDirection("/profile/edit", "/settings", 2, 3) === -1,
+  "settings back pops even when history idx increases",
+);
+assert(
+  pagePushDirection("/settings", "/profile/edit", 2, 3) === 1,
+  "opening edit profile still pushes",
 );
 
 console.log("pagePushTransition.self-check: ok");

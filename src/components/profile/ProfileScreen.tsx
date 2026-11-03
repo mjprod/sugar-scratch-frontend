@@ -25,8 +25,7 @@ import { InboxUtilityBadge } from "@/components/InboxButton";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 	import { HdVideoWarning } from "@/components/profile/HdVideoWarning";
 	import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
-import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
-import { SiteSocialLinks } from "@/components/site/SiteSocialLinks";
+import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { ConvertDustIcon } from "@/components/WalletBalancesPopover";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -36,10 +35,12 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 	  setHdVideoEnabled,
 	} from "@/services/videoQualityPrefs";
 import { useConvertPress } from "@/hooks/useConvertPress";
+import { usePageScrollActive } from "@/hooks/usePageScrollActive";
 import { formatBalance } from "@/lib/formatBalance";
 import {
   bestAffordableCoinExchange,
   formatExchangeDiamondAmount,
+  minimumCoinExchange,
   type CoinExchangeOption,
 } from "@/services/store";
 
@@ -119,39 +120,54 @@ export function UserDashboardScreen({
     fromDiamonds: number;
     toDiamonds: number;
   } | null>(null);
+  /** Arms coin↔diamond icon swap so the first mount does not play the settle. */
+  const [iconSwapReady, setIconSwapReady] = useState(false);
   const [view, setView] = useState<ProfileView>("main");
   const affordable = useMemo(
     () => bestAffordableCoinExchange(coins),
     [coins],
   );
-  const canConvert = Boolean(onConvertDust && affordable && !converting);
-  const { preview: previewExchange, convertButtonProps } = useConvertPress(
-    canConvert,
-    () => {
-      if (!onConvertDust || !affordable) return;
-      const option = affordable;
-      const fromCoins = coins;
-      const fromDiamonds = diamonds;
-      setConverting(true);
-      void Promise.resolve(onConvertDust(option)).then((ok) => {
-        if (!ok) {
-          setConverting(false);
-          return;
-        }
-        setRoll({
-          fromCoins,
-          toCoins: fromCoins - option.coins,
-          fromDiamonds,
-          toDiamonds: fromDiamonds + option.diamonds,
-        });
+  const previewOption = affordable ?? minimumCoinExchange();
+  const previewDenied = !affordable;
+  const canPreview = Boolean(onConvertDust && !converting && !roll);
+  const canConvert = Boolean(onConvertDust && affordable && !converting && !roll);
+  const runConvert = () => {
+    if (!onConvertDust || !affordable) return;
+    const option = affordable;
+    const fromCoins = coins;
+    const fromDiamonds = diamonds;
+    setConverting(true);
+    void Promise.resolve(onConvertDust(option)).then((ok) => {
+      if (!ok) {
+        setConverting(false);
+        return;
+      }
+      setRoll({
+        fromCoins,
+        toCoins: fromCoins - option.coins,
+        fromDiamonds,
+        toDiamonds: fromDiamonds + option.diamonds,
       });
-    },
+    });
+  };
+  const {
+    preview: previewExchange,
+    confirmPreview,
+    convertButtonProps,
+  } = useConvertPress(canPreview, runConvert, canConvert);
+  const previewAmount = formatExchangeDiamondAmount(
+    previewOption.diamonds,
+    previewDenied ? "denied" : "gain",
   );
-  const previewAmount = affordable
-    ? formatExchangeDiamondAmount(affordable.diamonds)
-    : null;
-  const showPreview =
-    previewExchange && Boolean(previewAmount) && !converting && !roll;
+  const showPreview = previewExchange && !converting && !roll;
+  useEffect(() => {
+    if (showPreview) setIconSwapReady(true);
+  }, [showPreview]);
+  const convertAria = previewDenied
+    ? `Not enough Coins to convert — need ${previewOption.coins} for ${formatExchangeDiamondAmount(previewOption.diamonds, "denied")} Diamonds`
+    : showPreview
+      ? `Confirm convert ${previewOption.coins} Coins for ${formatExchangeDiamondAmount(previewOption.diamonds)} Diamonds`
+      : `Convert ${previewOption.coins} Coins for ${formatExchangeDiamondAmount(previewOption.diamonds)} Diamonds`;
   const legalTitleId = useId();
   const {
     enabled: motionEnabled,
@@ -160,6 +176,7 @@ export function UserDashboardScreen({
     toggleEnabled: toggleMotionEnabled,
   } = useMotion();
 	  const tiltActive = motionEnabled && motionPermission === "granted";
+  const pageScrolling = usePageScrollActive();
 	  const [hdVideo, setHdVideo] = useState(() => getHdVideoEnabled());
 	  const [hdWarning, setHdWarning] = useState(false);
   const tiltLabel = !motionSupported
@@ -419,42 +436,47 @@ export function UserDashboardScreen({
                 className={[
                   "profile-menu-row profile-balance-row is-divided",
                   showPreview ? "is-exchange-preview" : "",
+                  showPreview && previewDenied ? "is-exchange-denied" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
               >
-                <span className="profile-menu-icon">
-                  {showPreview ? (
-                    <DiamondLottie
-                      className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
-                      size={14}
-                      animated
-                      loop
-                      autoplay
-                      aria-hidden
-                    />
-                  ) : (
+                <span
+                  className={[
+                    "profile-menu-icon",
+                    "exchange-icon-stage",
+                    iconSwapReady ? "is-swap-ready" : "",
+                    showPreview ? "is-preview" : "is-idle",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-hidden="true"
+                >
+                  <span className="exchange-icon-face exchange-icon-face--coin">
                     <CoinLottie
                       className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
                       size={16}
-                      loop={false}
-                      autoplay={false}
+                      animated={false}
                       aria-hidden
                     />
-                  )}
+                  </span>
+                  <span className="exchange-icon-face exchange-icon-face--diamond">
+                    <DiamondLottie
+                      className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"
+                      size={14}
+                      animated={showPreview}
+                      loop
+                      autoplay={showPreview}
+                      aria-hidden
+                    />
+                  </span>
                 </span>
                 <span className="profile-balance-copy">
-                  <span
-                    className={[
-                      "profile-balance-value",
-                      showPreview ? "is-exchange-preview" : "",
-                      roll ? "is-rolling" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    aria-live="polite"
-                  >
-                    {roll ? (
+                  {roll ? (
+                    <span
+                      className="profile-balance-value is-rolling"
+                      aria-live="polite"
+                    >
                       <CountUp
                         from={roll.fromCoins}
                         to={roll.toCoins}
@@ -465,15 +487,59 @@ export function UserDashboardScreen({
                         trigger="load"
                         duration={0.5}
                       />
-                    ) : showPreview && previewAmount ? (
-                      previewAmount
-                    ) : (
-                      formatBalance(coins)
-                    )}
-                  </span>
-                  <span className="profile-balance-label">
-                    {showPreview ? "Convert?" : "Coin Balance"}
-                  </span>
+                    </span>
+                  ) : showPreview && !previewDenied ? (
+                    <button
+                      type="button"
+                      className={[
+                        "profile-balance-value",
+                        "profile-balance-value--confirm",
+                        "is-exchange-preview",
+                      ].join(" ")}
+                      data-convert-confirm
+                      aria-label={convertAria}
+                      aria-live="polite"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        confirmPreview();
+                      }}
+                    >
+                      {previewAmount}
+                    </button>
+                  ) : (
+                    <span
+                      className={[
+                        "profile-balance-value",
+                        showPreview ? "is-exchange-preview" : "",
+                        showPreview && previewDenied ? "is-exchange-denied" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      aria-live="polite"
+                    >
+                      {showPreview ? previewAmount : formatBalance(coins)}
+                    </span>
+                  )}
+                  {showPreview && !previewDenied ? (
+                    <button
+                      type="button"
+                      className="profile-balance-label profile-balance-label--confirm"
+                      data-convert-confirm
+                      aria-label={convertAria}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        confirmPreview();
+                      }}
+                    >
+                      Convert?
+                    </button>
+                  ) : (
+                    <span className="profile-balance-label">
+                      {showPreview && previewDenied ? "Need more" : "Coin Balance"}
+                    </span>
+                  )}
                 </span>
                 {onConvertDust ? (
                   <button
@@ -486,12 +552,8 @@ export function UserDashboardScreen({
                     ]
                       .filter(Boolean)
                       .join(" ")}
-                    aria-label={
-                      affordable
-                        ? `Convert ${affordable.coins} Coins for +${formatExchangeDiamondAmount(affordable.diamonds)} Diamonds`
-                        : "Not enough Coins to convert"
-                    }
-                    disabled={!canConvert}
+                    aria-label={convertAria}
+                    disabled={!canPreview}
                     {...convertButtonProps}
                   >
                     <ConvertDustIcon className="wallet-balances-popover__convert-icon" />
@@ -517,6 +579,14 @@ export function UserDashboardScreen({
                     label="Get Diamonds"
                     costAmount={null}
                     strokeWidth={1}
+                    strokeColor="rgba(141, 0, 170, 0.42)"
+                    auroraBaseColor="#1b0042"
+                    auroraColorStops={["#8a3cb0", "#c42eea", "#1b0042", "#6b3e93"]}
+                    glowColors={["#8d00aa", "#d503ff", "#b44bff"]}
+                    glowColor="292 80 28"
+                    particleColor="#e08aff"
+                    labelColor="#f0e0ff"
+                    auroraFrozen={pageScrolling}
                     onClick={onBuyMoreDiamonds}
                   />
                 </div>
@@ -567,17 +637,7 @@ export function UserDashboardScreen({
         {loggingOut ? "Logging out" : "Log out"}
       </button>
 
-      <footer className="profile-site-footer" aria-label="Site">
-        <p className="home-site-footer-tagline">
-          <span className="is-pink">Real Creators.</span> Real Moments.
-        </p>
-        <SiteLegalLinks
-          onPrivacy={() => setView("legal-privacy")}
-          onTerms={() => setView("legal-terms")}
-        />
-        <SiteSocialLinks />
-        <p className="home-site-footer-copy">© 2026 Sugar Scratch</p>
-      </footer>
+      <HomeSiteFooter />
 
       {notice ? (
         <div className="fixed bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/10 bg-black/85 px-4 py-2 text-caption backdrop-blur-md">

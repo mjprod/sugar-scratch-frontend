@@ -441,7 +441,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 }
 
 body[data-theme="v8"] .home-v2:has(.rank-leaderboard) .home-page-inner {
-  min-height: 100%;
+  flex: 1 0 auto;
 }
 
 body[data-theme="v8"] .home-v2:has(.rank-leaderboard) .home-site-footer {

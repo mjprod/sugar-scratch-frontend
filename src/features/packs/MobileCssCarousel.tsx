@@ -167,6 +167,7 @@ function PackSlideHud({
             // Force red squircle plate (coverflow used to pin gold hex chrome).
             auroraBaseColor="#42001b"
             auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+            auroraRotation={45}
             glowColors={["#aa085f", "#e00083", "#eb6a00"]}
             glowColor="326 90 30"
             strokeColor="rgba(170, 8, 95, 0.42)"
@@ -182,6 +183,7 @@ function PackSlideHud({
                   (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
               ),
             )}
+            style={{ ["--cta-aurora-angle" as string]: "45deg" }}
             className="coverflow-buy-pack-cta__button"
             tabIndex={revealed ? 0 : -1}
             aria-expanded={buyConfirmOpen || buyConfirmLeaving}
@@ -302,6 +304,7 @@ export function MobileCssCarousel({
   const pageVisibleRef = useRef(
     typeof document === "undefined" ? true : document.visibilityState === "visible",
   );
+  const heroVisibleRef = useRef(false);
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const [pocketTick, setPocketTick] = useState(0);
@@ -375,6 +378,7 @@ export function MobileCssCarousel({
 
   const fadeGlowTo = useCallback(
     (color: string) => {
+      if (compact) return;
       if (prefersReducedMotion()) {
         snapGlow(color);
         return;
@@ -418,7 +422,7 @@ export function MobileCssCarousel({
         });
       });
     },
-    [clearGlowTimers, snapGlow],
+    [clearGlowTimers, compact, snapGlow],
   );
 
   function closeBuyConfirm() {
@@ -531,9 +535,9 @@ export function MobileCssCarousel({
   const setParked = useCallback((next: boolean) => {
     parkedRef.current = next;
     focusRef.current?.classList.toggle("is-parked", next);
-    setHudActive(!next);
+    if (!compact) setHudActive(!next);
     syncLiveClass();
-  }, [syncLiveClass]);
+  }, [compact, syncLiveClass]);
 
   const layoutFocus = useCallback(() => {
     const shell = shellRef.current;
@@ -556,8 +560,8 @@ export function MobileCssCarousel({
     const focus = focusRef.current;
     if (!video) return;
     layoutFocus();
-    if (!pageVisibleRef.current || parkedRef.current) {
-      if (!pageVisibleRef.current) {
+    if (!pageVisibleRef.current || !heroVisibleRef.current || parkedRef.current) {
+      if (!pageVisibleRef.current || !heroVisibleRef.current) {
         releaseClaimedDecoder(video);
         focus?.classList.remove("is-ready");
         syncLiveClass();
@@ -617,15 +621,15 @@ export function MobileCssCarousel({
     readySent.current = false;
     setActiveIndex(0);
     activeIndexRef.current = 0;
-    snapGlow(glowColorForItem(items[0]));
+    if (!compact) snapGlow(glowColorForItem(items[0]));
     releaseClaimedDecoder(liveVideoRef.current);
     focusRef.current?.classList.remove("is-ready");
     syncLiveClass();
-    if (swiperRef.current && pageVisibleRef.current) {
+    if (swiperRef.current && pageVisibleRef.current && heroVisibleRef.current) {
       setParked(false);
       attachActiveVideo();
     }
-  }, [attachActiveVideo, items, setParked, snapGlow, syncLiveClass]);
+  }, [attachActiveVideo, compact, items, setParked, snapGlow, syncLiveClass]);
 
   // Tab hide / bfcache: drop the decoder so iOS can reclaim page memory.
   useEffect(() => {
@@ -656,6 +660,47 @@ export function MobileCssCarousel({
       releaseClaimedDecoder(liveVideoRef.current);
     };
   }, [attachActiveVideo, syncLiveClass]);
+
+  // Drop the pack decoder when the page scroller hides the hero.
+  useEffect(() => {
+    const shell = shellRef.current;
+    const scroller = shell?.closest<HTMLElement>("[data-page-scroll]");
+    if (!shell || !scroller) return;
+    let raf = 0;
+    const sync = () => {
+      raf = 0;
+      const rect = shell.getBoundingClientRect();
+      const root = scroller.getBoundingClientRect();
+      const visibleH =
+        Math.min(rect.bottom, root.bottom) - Math.max(rect.top, root.top);
+      const visible = rect.height > 0 && visibleH / rect.height >= 0.35;
+      if (heroVisibleRef.current === visible) return;
+      heroVisibleRef.current = visible;
+      if (visible) {
+        // Swiper parks on init translate; unpark so the first pack plays on
+        // scroll-in, not only after a swipe.
+        if (pageVisibleRef.current) {
+          setParked(false);
+          attachActiveVideo();
+        }
+        return;
+      }
+      releaseClaimedDecoder(liveVideoRef.current);
+      focusRef.current?.classList.remove("is-ready");
+      syncLiveClass();
+    };
+    const queue = () => {
+      if (!raf) raf = window.requestAnimationFrame(sync);
+    };
+    scroller.addEventListener("scroll", queue, { passive: true });
+    window.addEventListener("resize", queue, { passive: true });
+    sync();
+    return () => {
+      scroller.removeEventListener("scroll", queue);
+      window.removeEventListener("resize", queue);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [attachActiveVideo, setParked, syncLiveClass]);
 
   // Warm poster bitmaps before any pack video decoder starts.
   useEffect(() => {
@@ -710,7 +755,10 @@ export function MobileCssCarousel({
     };
   }, [layoutFocus]);
 
-  useEffect(() => subscribeCart(() => setPocketTick((n) => n + 1)), []);
+  useEffect(() => {
+    if (compact) return;
+    return subscribeCart(() => setPocketTick((n) => n + 1));
+  }, [compact]);
 
   useEffect(() => {
     if (!buyConfirmOpen) return;
@@ -837,8 +885,9 @@ export function MobileCssCarousel({
     },
   });
 
-  const stageGlowClass =
-    glowPhase === "prep"
+  const stageGlowClass = compact
+    ? ""
+    : glowPhase === "prep"
       ? " is-glow-prep"
       : glowPhase === "fading"
         ? " is-glow-fading"

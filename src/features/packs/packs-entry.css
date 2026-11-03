@@ -1057,7 +1057,12 @@ p {
   .coverflow-buy-pack-cta .cta-button__aurora-fallback,
   .coverflow-buy-pack-cta .cta-button__aurora-fallback::before,
   .coverflow-buy-pack-cta .cta-button__aurora-fallback::after,
-  .coverflow-buy-pack-cta .cta-button__face {
+  .coverflow-buy-pack-cta .cta-button__face,
+  .coverflow-play-only-cta .cta-button__aurora,
+  .coverflow-play-only-cta .cta-button__aurora-fallback,
+  .coverflow-play-only-cta .cta-button__aurora-fallback::before,
+  .coverflow-play-only-cta .cta-button__aurora-fallback::after,
+  .coverflow-play-only-cta .cta-button__face {
     display: none !important;
   }
 }

@@ -15,7 +15,9 @@ import {
 } from "@/components/home/CreatorFeedCard";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
+  FEED_PREFETCH_REMAINING,
   FEED_WARM_AHEAD,
+  FEED_WARM_BEHIND,
   fetchHomeFeedPage,
   isFeedMountIndex,
   isFeedPreloadAutoIndex,
@@ -258,7 +260,7 @@ export function HomeFeedScreen({
       setHasMore(page.hasMore);
       setActiveId(page.items[0]?.id ?? null);
       scrollIndexRef.current = 0;
-      preloadFeedPosters(page.items);
+      preloadFeedPosters(page.items.slice(0, FEED_WARM_AHEAD + 2));
       restoredRef.current = false;
       setStatus("loaded");
       writeHomeFeedCache({
@@ -275,7 +277,13 @@ export function HomeFeedScreen({
 
   useEffect(() => {
     if (cached?.items.length) {
-      preloadFeedPosters(cached.items);
+      const idx = Math.max(0, cached.scrollIndex ?? 0);
+      preloadFeedPosters(
+        cached.items.slice(
+          Math.max(0, idx - FEED_WARM_BEHIND),
+          idx + FEED_WARM_AHEAD + 2,
+        ),
+      );
       return;
     }
     void loadInitial();
@@ -668,8 +676,18 @@ export function HomeFeedScreen({
       if (slideHeight <= 0) return;
       const index = Math.round(root.scrollTop / slideHeight);
       const safeIndex = Math.max(0, Math.min(maxIdx, index));
-      // Only commit React state once the snap has parked on a slide.
-      if (Math.abs(root.scrollTop - safeIndex * slideHeight) > 2) return;
+      const targetTop = safeIndex * slideHeight;
+      // Pagination / interrupted smooth scroll can stop between slides —
+      // park on the nearest card before committing React state.
+      if (Math.abs(root.scrollTop - targetTop) > 2) {
+        const prevBehavior = root.style.scrollBehavior;
+        const prevSnap = root.style.scrollSnapType;
+        root.style.scrollBehavior = "auto";
+        root.style.scrollSnapType = "none";
+        root.scrollTop = targetTop;
+        root.style.scrollBehavior = prevBehavior;
+        root.style.scrollSnapType = prevSnap;
+      }
 
       const slide = slides[safeIndex];
       viewIndexRef.current = safeIndex;
@@ -731,25 +749,32 @@ export function HomeFeedScreen({
   }, []);
 
   useEffect(() => {
-    const activeSlide = loopSlides[viewIndex];
-    const activeKey = activeSlide?.key;
+    const syncPlayback = () => {
+      const hidden = document.visibilityState === "hidden";
+      const activeSlide = loopSlides[viewIndex];
+      const activeKey = activeSlide?.key;
 
-    videoRefs.current.forEach((video, id) => {
-      if (!active) {
+      videoRefs.current.forEach((video, id) => {
+        if (!active || hidden) {
+          video.pause();
+          return;
+        }
+
+        if (id === activeKey) {
+          video.muted = true;
+          void video.play().catch(() => {
+            /* poster still shows */
+          });
+          return;
+        }
+
         video.pause();
-        return;
-      }
+      });
+    };
 
-      if (id === activeKey) {
-        video.muted = true;
-        void video.play().catch(() => {
-          /* poster still shows */
-        });
-        return;
-      }
-
-      video.pause();
-    });
+    syncPlayback();
+    document.addEventListener("visibilitychange", syncPlayback);
+    return () => document.removeEventListener("visibilitychange", syncPlayback);
   }, [active, loopSlides, videoRefs, viewIndex]);
 
   // Keep keyboard focus on the parked slide when the loop advances.
@@ -1070,12 +1095,9 @@ export function HomeFeedScreen({
     if (!hasMore || loadingMoreRef.current || !cursor) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    // Hold absolute scroll while pages append so snap/layout doesn't jump.
-    const root = scrollerRef.current;
-    const holdTop = root?.scrollTop ?? null;
     try {
       const page = await fetchHomeFeedPage(cursor);
-      preloadFeedPosters(page.items);
+      preloadFeedPosters(page.items.slice(0, FEED_WARM_AHEAD + 2));
       setItems((prev) => {
         const seenIds = new Set(prev.map((item) => item.id));
         const seenVideos = new Set(
@@ -1096,20 +1118,8 @@ export function HomeFeedScreen({
       });
       setCursor(page.nextCursor);
       setHasMore(page.hasMore);
-      if (root && holdTop != null) {
-        requestAnimationFrame(() => {
-          const node = scrollerRef.current;
-          if (!node) return;
-          const prevBehavior = node.style.scrollBehavior;
-          const prevSnap = node.style.scrollSnapType;
-          node.style.scrollBehavior = "auto";
-          node.style.scrollSnapType = "none";
-          node.scrollTop = holdTop;
-          node.style.scrollBehavior = prevBehavior;
-          node.style.scrollSnapType = prevSnap;
-          applyScrollFx(node, true);
-        });
-      }
+      // Append-only pages sit below the viewport — do not rewrite scrollTop.
+      // Restoring a mid-swipe holdTop is what froze 4→5 on the first page boundary.
     } catch {
       /* keep browsing loaded cards */
     } finally {
@@ -1123,7 +1133,7 @@ export function HomeFeedScreen({
     const activeIndex = items.findIndex((item) => item.id === activeId);
     const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
     const remaining = items.length - 1 - resolvedActiveIndex;
-    if (remaining <= FEED_WARM_AHEAD) void loadMore();
+    if (remaining <= FEED_PREFETCH_REMAINING) void loadMore();
   }, [activeId, items.length, status]);
 
   function onScroll() {
@@ -1167,7 +1177,7 @@ export function HomeFeedScreen({
 
       const logical = slide?.logicalIndex ?? 0;
       const remaining = items.length - 1 - logical;
-      if (remaining <= FEED_WARM_AHEAD) void loadMore();
+      if (remaining <= FEED_PREFETCH_REMAINING) void loadMore();
 
       // Settled on a loop clone → teleport to the matching real slide.
       if (
@@ -1331,6 +1341,7 @@ export function HomeFeedScreen({
             className={[
               "hf-viewport",
               isDesktopDragging ? "is-desktop-dragging" : "",
+              feedScrolling ? "is-feed-scrolling" : "",
             ]
               .filter(Boolean)
               .join(" ")}

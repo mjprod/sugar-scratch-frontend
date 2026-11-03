@@ -1,11 +1,8 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { OffscreenVideo } from "@/components/creator/OffscreenVideo";
-import { createPortal } from "react-dom";
 import { ChevronLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { AppPageShell } from "@/components/AppPageShell";
-import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
-import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
+import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/useAuth";
@@ -102,11 +99,9 @@ function MotionCardScreenInner({
   const { isPlayed } = usePlayedCards();
   const [buying, setBuying] = useState(false);
   const collection = useCreatorCollection(modelId);
-  const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
   const [slotPrices, setSlotPrices] = useState<Array<number | null>>(
     () => Array.from({ length: PHOTO_SLOTS }, () => null),
   );
-  const legalTitleId = useId();
 
   const card = useMemo(() => {
     return collection.cards.find((entry) => entry.id === cardId) ?? null;
@@ -505,35 +500,8 @@ function MotionCardScreenInner({
           </button>
         ) : null}
 
-        <footer className="cpv2-site-footer">
-          <p className="cpv2-site-footer-tagline">
-            <span className="is-pink">Real Creators.</span> Real Moments.
-          </p>
-          <SiteLegalLinks
-            onPrivacy={() => setLegal("privacy")}
-            onTerms={() => setLegal("terms")}
-          />
-        </footer>
+        <HomeSiteFooter />
       </div>
-
-      {legal
-        ? createPortal(
-            <div className="fixed inset-0 z-[80]">
-              <AppPageShell
-                aria-label={legal === "privacy" ? "Privacy" : "Terms"}
-                className="legal-doc-shell"
-              >
-                <LegalDocPanel
-                  kind={legal}
-                  titleId={legalTitleId}
-                  onBack={() => setLegal(null)}
-                  variant="page"
-                />
-              </AppPageShell>
-            </div>,
-            document.body,
-          )
-        : null}
     </section>
   );
 }

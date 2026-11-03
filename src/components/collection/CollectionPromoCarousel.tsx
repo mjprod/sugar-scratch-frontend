@@ -25,6 +25,7 @@ export function CollectionPromoCarousel() {
   const pauseUntilRef = useRef(0);
   const userScrollingRef = useRef(false);
   const programmaticRef = useRef(false);
+  const visibleRef = useRef(true);
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -152,6 +153,18 @@ export function CollectionPromoCarousel() {
     });
     ro.observe(el);
 
+    const page = el.closest("[data-page-scroll]");
+    const io =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver(
+            ([entry]) => {
+              visibleRef.current = Boolean(entry?.isIntersecting);
+            },
+            { root: page instanceof Element ? page : null, threshold: 0 },
+          );
+    io?.observe(el);
+
     return () => {
       window.clearTimeout(settleTimer);
       el.removeEventListener("scroll", onScroll);
@@ -162,6 +175,7 @@ export function CollectionPromoCarousel() {
       el.removeEventListener("touchstart", markUser);
       el.removeEventListener("wheel", markUser);
       ro.disconnect();
+      io?.disconnect();
     };
   }, [scrollToIndex, syncFromScroll]);
 
@@ -170,6 +184,7 @@ export function CollectionPromoCarousel() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const tick = window.setInterval(() => {
+      if (!visibleRef.current) return;
       if (performance.now() < pauseUntilRef.current) return;
       if (userScrollingRef.current) return;
       if (dragRef.current) return;
@@ -200,7 +215,13 @@ export function CollectionPromoCarousel() {
             className="mc-promo-slide"
             aria-hidden={i !== index}
           >
-            <img src={slide.src} alt={slide.alt} draggable={false} />
+            <img
+              src={slide.src}
+              alt={slide.alt}
+              draggable={false}
+              decoding="async"
+              loading={i === 0 ? "eager" : "lazy"}
+            />
           </div>
         ))}
       </div>

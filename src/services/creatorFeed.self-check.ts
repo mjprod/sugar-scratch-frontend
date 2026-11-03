@@ -7,7 +7,9 @@ import {
   clearHomeFeedCache,
   feedPackLabel,
   feedVisibleTags,
+  FEED_PREFETCH_REMAINING,
   FEED_PRELOAD_AUTO_CAP,
+  FEED_WARM_AHEAD,
   fetchHomeFeedPage,
   isFeedMountIndex,
   isFeedPreloadAutoIndex,
@@ -68,6 +70,10 @@ async function main() {
   assert(
     FEED_PRELOAD_AUTO_CAP >= 1 && FEED_PRELOAD_AUTO_CAP <= 2,
     "preload auto capped to 1–2",
+  );
+  assert(
+    FEED_PREFETCH_REMAINING > FEED_WARM_AHEAD,
+    "prefetch must start before the warm window so 4→5 is not mid-load",
   );
 
   // Paginated pages must reuse the in-memory catalog (stable order, no re-seed).

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PackFaceVideo } from "@/components/media/PackFaceVideo";
 import { isVideoSrc } from "@/services/models";
+import "@/shared/ui/PageContentEnter.css";
 
 /** Pack artwork with foil overlay + image fallback */
 export function PackArt({
@@ -19,15 +20,20 @@ export function PackArt({
   poster?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
   const sizeClass =
     size === "lg" ? "card-pack-lg" : size === "thumb" ? "card-pack-thumb" : "card-pack-md";
   const mediaClass =
     fit === "contain"
       ? "absolute inset-0 size-full object-contain"
       : "absolute inset-0 size-full object-cover";
+  const fadeClass = ["media-fade-in", ready ? "is-ready" : ""]
+    .filter(Boolean)
+    .join(" ");
 
   useEffect(() => {
     setFailed(false);
+    setReady(false);
   }, [src]);
 
   return (
@@ -44,8 +50,9 @@ export function PackArt({
           <PackFaceVideo
             src={src}
             poster={poster}
-            className={mediaClass}
+            className={[mediaClass, fadeClass].join(" ")}
             onError={() => setFailed(true)}
+            onReady={() => setReady(true)}
           />
         ) : (
           <img
@@ -54,7 +61,8 @@ export function PackArt({
             loading="lazy"
             decoding="async"
             onError={() => setFailed(true)}
-            className={mediaClass}
+            onLoad={() => setReady(true)}
+            className={[mediaClass, fadeClass].join(" ")}
           />
         )
       ) : (
@@ -85,6 +93,12 @@ export function CreatorAvatar({
   size?: number;
 }) {
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+    setReady(false);
+  }, [src]);
 
   return (
     <span
@@ -103,7 +117,13 @@ export function CreatorAvatar({
           loading="lazy"
           decoding="async"
           onError={() => setFailed(true)}
-          className="size-full object-cover"
+          onLoad={() => setReady(true)}
+          className={[
+            "size-full object-cover media-fade-in",
+            ready ? "is-ready" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         />
       ) : (
         <span className="grid size-full place-items-center bg-[oklch(0.606_0.219_292.72)]/30 text-caption font-bold text-white">

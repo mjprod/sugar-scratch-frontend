@@ -8,11 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Layers, Search, Users, X } from "lucide-react";
-import {
-  InfluencerHolder,
-  InfluencerHolderSkeleton,
-} from "@/components/collection/InfluencerHolder";
-import { useCreatorsCollectedThemes } from "@/components/collection/MyCollectionLivePanel";
+import { InfluencerHolder } from "@/components/collection/InfluencerHolder";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useSearch } from "@/contexts/SearchContext";
 import { useModels } from "@/hooks/useModels";
@@ -154,9 +150,6 @@ export function MyCollectionSection({
   const [openMenu, setOpenMenu] = useState<FilterMenu>(null);
   const models = useModels();
 
-  const creatorIds = useMemo(() => creators.map((c) => c.id), [creators]);
-  const { ready: themesReady } = useCreatorsCollectedThemes(creatorIds);
-
   const modelByCreator = useMemo(() => {
     const map = new Map<string, BackendModel | null>();
     for (const creator of creators) {
@@ -182,7 +175,7 @@ export function MyCollectionSection({
     }
     return [...ids];
   }, [creators, modelByCreator, models]);
-  const { boards, ready: boardsReady } = useCreatorBoards(boardIds);
+  const { boards, boardPending } = useCreatorBoards(boardIds);
   const listRef = useRef<HTMLDivElement>(null);
   const [fadeTop, setFadeTop] = useState(false);
   const [fadeBottom, setFadeBottom] = useState(false);
@@ -267,10 +260,9 @@ export function MyCollectionSection({
       el.removeEventListener("scroll", updateFades);
       ro.disconnect();
     };
-  }, [updateFades, themesReady, boardsReady, visibleCreators.length]);
+  }, [updateFades, visibleCreators.length]);
 
   useEffect(() => {
-    if (!themesReady || !boardsReady) return;
     // Peek until the row paints — StrictMode would drop the key if we consumed first.
     let frames = 0;
     let raf = 0;
@@ -305,7 +297,7 @@ export function MyCollectionSection({
     };
     raf = window.requestAnimationFrame(tryScroll);
     return () => window.cancelAnimationFrame(raf);
-  }, [themesReady, boardsReady, visibleCreators]);
+  }, [visibleCreators]);
 
   const listFadeClass = [
     fadeTop ? "has-fade-top" : "",
@@ -419,19 +411,7 @@ export function MyCollectionSection({
         />
       </div>
 
-      {!themesReady || !boardsReady ? (
-        <div
-          ref={listRef}
-          className={["mc-model-list is-skeleton", listFadeClass]
-            .filter(Boolean)
-            .join(" ")}
-          aria-busy="true"
-        >
-          {Array.from({ length: 4 }, (_, index) => (
-            <InfluencerHolderSkeleton key={index} />
-          ))}
-        </div>
-      ) : visibleCreators.length === 0 ? (
+      {visibleCreators.length === 0 ? (
         <div className="mc-models-empty">
           <h3 className="collection-empty-title">No collections found</h3>
           <p className="collection-empty-copy">Try another Creator.</p>
@@ -461,6 +441,7 @@ export function MyCollectionSection({
         >
           {visibleCreators.map((creator, index) => {
             const model = modelByCreator.get(creator.id) ?? null;
+            const pending = boardPending(creator.id);
             const progress = collectionProgressFromBoard(boards[creator.id]);
             const name =
               (model ? modelDisplayName(model) : "") || creator.name;
@@ -475,6 +456,7 @@ export function MyCollectionSection({
                 place={place}
                 avatarUrl={avatarFor(creator, model)}
                 progress={progress}
+                progressPending={pending}
                 onClick={() => {
                   const scroller =
                     document.querySelector<HTMLElement>("[data-page-scroll]");
@@ -492,41 +474,60 @@ export function MyCollectionSection({
 
 function useCreatorBoards(creatorIds: string[]): {
   boards: Record<string, CreatorBoard | null>;
-  ready: boolean;
+  /** True until that creator’s board has resolved (success or empty). */
+  boardPending: (creatorId: string) => boolean;
 } {
   const [boards, setBoards] = useState<Record<string, CreatorBoard | null>>({});
-  const [ready, setReady] = useState(false);
+  const [resolved, setResolved] = useState<Record<string, true>>({});
   const idsKey = creatorIds.slice().sort().join("|");
 
   useEffect(() => {
     let cancelled = false;
-    const ids = idsKey ? idsKey.split("|") : [];
+    const ids = idsKey ? idsKey.split("|").filter(Boolean) : [];
     if (ids.length === 0) {
       setBoards({});
-      setReady(true);
+      setResolved({});
       return;
     }
 
-    setReady(false);
-    void Promise.all(
-      ids.map(async (creatorId) => {
-        const board = await loadCreatorBoard(creatorId);
-        return [creatorId, board] as const;
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
+    setBoards((prev) => {
       const next: Record<string, CreatorBoard | null> = {};
-      for (const [creatorId, board] of entries) next[creatorId] = board;
-      setBoards(next);
-      setReady(true);
+      for (const id of ids) {
+        if (Object.prototype.hasOwnProperty.call(prev, id)) next[id] = prev[id]!;
+      }
+      return next;
     });
+    setResolved((prev) => {
+      const next: Record<string, true> = {};
+      for (const id of ids) {
+        if (prev[id]) next[id] = true;
+      }
+      return next;
+    });
+
+    for (const creatorId of ids) {
+      void loadCreatorBoard(creatorId).then((board) => {
+        if (cancelled) return;
+        setBoards((prev) =>
+          prev[creatorId] === board ? prev : { ...prev, [creatorId]: board },
+        );
+        setResolved((prev) =>
+          prev[creatorId] ? prev : { ...prev, [creatorId]: true },
+        );
+      });
+    }
 
     return () => {
       cancelled = true;
     };
   }, [idsKey]);
 
-  return { boards, ready };
+  const boardPending = useCallback(
+    (creatorId: string) => !resolved[creatorId],
+    [resolved],
+  );
+
+  return { boards, boardPending };
 }
 
 function FilterButton({

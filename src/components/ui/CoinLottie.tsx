@@ -8,6 +8,17 @@ const COIN_STILL_SRC = "/images/coin.webp";
 /** CSS zoom on the player — pass the same value as extraScale so the canvas stays sharp. */
 const COIN_LOTTIE_ZOOM = 1.6;
 
+function StaticCoinMark() {
+  return (
+    <img
+      src={COIN_STILL_SRC}
+      alt=""
+      draggable={false}
+      style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+    />
+  );
+}
+
 type CoinLottieProps = {
   className?: string;
   /** Square edge length in CSS px (or any CSS length). Default 1em so it tracks text. */
@@ -18,6 +29,8 @@ type CoinLottieProps = {
   speed?: number;
   /** Extra canvas DPR on top of the art-fill zoom. Default 1. */
   extraScale?: number;
+  /** Mount the wasm player. Default true — set false for a static coin mark. */
+  animated?: boolean;
   /** Skip the still WebP and open the Lottie gate immediately. */
   eager?: boolean;
   style?: CSSProperties;
@@ -35,6 +48,7 @@ export function CoinLottie({
   autoplay = true,
   speed = 1.25,
   extraScale = 1,
+  animated = true,
   eager = false,
   style,
   "aria-hidden": ariaHidden = true,
@@ -62,29 +76,24 @@ export function CoinLottie({
       }}
       aria-hidden={ariaHidden}
     >
-      <DeferredLottie
-        fallback={
-          eager ? null : (
-            <img
-              src={COIN_STILL_SRC}
-              alt=""
-              draggable={false}
-              style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
-            />
-          )
-        }
-        src={COIN_LOTTIE_SRC}
-        autoplay={autoplay}
-        loop={loop}
-        speed={speed}
-        renderConfig={lottieRenderConfig({ extraScale: COIN_LOTTIE_ZOOM * extraScale })}
-        style={{
-          width: "100%",
-          height: "100%",
-          transform: `scale(${COIN_LOTTIE_ZOOM})`,
-          transformOrigin: "center",
-        }}
-      />
+      {animated ? (
+        <DeferredLottie
+          fallback={eager ? null : <StaticCoinMark />}
+          src={COIN_LOTTIE_SRC}
+          autoplay={autoplay}
+          loop={loop}
+          speed={speed}
+          renderConfig={lottieRenderConfig({ extraScale: COIN_LOTTIE_ZOOM * extraScale })}
+          style={{
+            width: "100%",
+            height: "100%",
+            transform: `scale(${COIN_LOTTIE_ZOOM})`,
+            transformOrigin: "center",
+          }}
+        />
+      ) : (
+        <StaticCoinMark />
+      )}
     </span>
   );
 }

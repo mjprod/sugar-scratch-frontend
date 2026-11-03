@@ -3,8 +3,10 @@ import {
   clearPurchaseSession,
   createPurchaseSession,
   exchangeCoinsForDiamonds,
+  formatExchangeDiamondAmount,
   listAvailableProducts,
   loadPurchaseSession,
+  minimumCoinExchange,
   returnFromGateway,
   savePurchaseSession,
   type StoreProduct,
@@ -79,6 +81,12 @@ assert(loadPurchaseSession() === null, "clear removes session");
 const affordable = bestAffordableCoinExchange(900);
 assert(affordable?.id === "x500", "best affordable picks highest tier under balance");
 assert(bestAffordableCoinExchange(50) === null, "below cheapest tier is null");
+assert(minimumCoinExchange().id === "x100", "minimum tier is cheapest exchange");
+assert(formatExchangeDiamondAmount(100) === "+100", "gain preview uses plus");
+assert(
+  formatExchangeDiamondAmount(100, "denied") === "×100",
+  "denied preview uses × instead of plus",
+);
 
 const demoExchange = await exchangeCoinsForDiamonds(
   { id: "x100", diamonds: 100, coins: 100 },

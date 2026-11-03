@@ -19,8 +19,22 @@ export function PackPreview({
       className={["pack-preview", open ? "is-open" : ""].filter(Boolean).join(" ")}
       aria-label="Pack preview"
     >
-      <img className="pack-preview__poster" src={left.src} alt={left.alt} draggable={false} />
-      <img className="pack-preview__poster" src={right.src} alt={right.alt} draggable={false} />
+      <img
+        className="pack-preview__poster"
+        src={left.src}
+        alt={left.alt}
+        draggable={false}
+        decoding="async"
+        loading={open ? "eager" : "lazy"}
+      />
+      <img
+        className="pack-preview__poster"
+        src={right.src}
+        alt={right.alt}
+        draggable={false}
+        decoding="async"
+        loading={open ? "eager" : "lazy"}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { m, useAnimate, useReducedMotion } from "framer-motion";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { dropMediaSrc } from "@/lib/memory/exclusiveMedia";
 import "@/lib/lottie/setupWasm";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 import {
@@ -108,19 +109,12 @@ export function MotionCard({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
-    if (playVideo) {
-      video.preload = "auto";
-      if (!video.getAttribute("src")) video.src = videoUrl;
-      video.currentTime = 0;
-      void video.play().catch(() => {});
-      return;
-    }
-    video.pause();
-    // Drop the decoder while the tile is just a poster. iOS keeps a decoded
-    // frame for every attached src, and this row mounts one per theme.
-    video.removeAttribute("src");
-    video.load();
+    if (!video || !playVideo) return;
+    video.preload = "auto";
+    if (!video.getAttribute("src")) video.src = videoUrl;
+    video.currentTime = 0;
+    void video.play().catch(() => {});
+    return () => dropMediaSrc(video);
   }, [playVideo, videoUrl]);
 
   useLayoutEffect(() => {
@@ -193,7 +187,7 @@ export function MotionCard({
         draggable={false}
       />
 
-      {videoUrl ? (
+      {playVideo ? (
         <video
           ref={videoRef}
           className="pointer-events-none absolute inset-0 size-full object-cover"
@@ -202,11 +196,7 @@ export function MotionCard({
           loop
           playsInline
           preload="none"
-          aria-hidden={!playVideo}
-          style={{
-            opacity: playVideo ? 1 : 0,
-            transition: reduceMotion ? "none" : "opacity 420ms cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
+          aria-hidden
         />
       ) : null}
 
@@ -311,6 +301,9 @@ export function MotionCard({
             label="Unlock"
             costAmount={null}
             fontSize={14}
+            // Slides out of the tile when unselected; don't keep aurora/orbit live.
+            auroraPaused={!selected}
+            glowEnabled={selected}
             onClick={onBuy}
             tabIndex={selected ? 0 : -1}
           />

@@ -4,6 +4,7 @@
  */
 import {
   claimMediaDecoder,
+  dropMediaSrc,
   isIosDecoderCap,
   releaseClaimedDecoder,
 } from "./exclusiveMedia.ts";
@@ -73,6 +74,13 @@ releaseClaimedDecoder(second);
 assert(second.src === "", "explicit release blanks src");
 
 claimMediaDecoder(second, "https://cdn.test/d.mp4");
+const liveClaimSrc = second.src;
+const stray = makeFake("https://cdn.test/feed.mp4");
+dropMediaSrc(stray);
+assert(stray.src === "", "dropMediaSrc blanks a feed node without claiming");
+assert(stray.loadCount >= 1, "dropMediaSrc load() so Safari drops the decoder");
+assert(second.src === liveClaimSrc, "dropMediaSrc must not release a different claimed node");
+
 releaseClaimedDecoder();
 assert(second.src === "", "release with no args drops the current claim");
 

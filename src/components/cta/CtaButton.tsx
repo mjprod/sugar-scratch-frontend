@@ -157,10 +157,14 @@ export type CtaButtonProps = {
   particleColor?: string;
   particleTwinkle?: number;
   /**
-   * Freeze the aurora shader clock (still shows the last/current frame).
-   * Useful on low-power / mobile paths without greying out the button.
+   * Do not mount live aurora (CSS fallback). Use on dense mobile lists.
    */
   auroraPaused?: boolean;
+  /**
+   * Keep the WebGL aurora mounted but freeze the last frame.
+   * Use while scrolling so the button doesn't flash the lighter fallback.
+   */
+  auroraFrozen?: boolean;
   /** Kept for call-site compatibility. Diamond marks are always static. */
   costIconAnimated?: boolean;
   labelColor?: string;
@@ -230,6 +234,7 @@ export function CtaButton({
   particleColor = "#fb4b97",
   particleTwinkle = 0.51,
   auroraPaused = false,
+  auroraFrozen = false,
   costIconAnimated: _costIconAnimated = true,
   labelColor = "#ffe0e8",
   fontSize,
@@ -421,7 +426,7 @@ export function CtaButton({
                   particleOpacity={particleOpacity}
                   particleColor={particleColor}
                   particleTwinkle={particleTwinkle}
-                  paused={false}
+                  paused={auroraFrozen}
                 />
               </Suspense>
             </ChunkErrorBoundary>

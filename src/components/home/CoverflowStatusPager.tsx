@@ -139,7 +139,7 @@ export function CoverflowStatusPager({
     pill.style.transition = animate
       ? "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)"
       : "none";
-    pill.style.transform = `translate3d(${x}px, -50%, 0)`;
+    pill.style.transform = `translate3d(${x}px, 0, 0)`;
   }, []);
 
   const ensureActiveVisible = useCallback(

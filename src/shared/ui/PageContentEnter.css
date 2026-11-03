@@ -1,0 +1,90 @@
+/* Soft content entrance — pair with PageContentEnter.tsx */
+
+@keyframes page-content-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-content-enter.is-pending,
+.page-content-enter.is-pending.is-stagger > * {
+  opacity: 0;
+  animation: none;
+}
+
+.page-content-enter.is-entered {
+  animation: page-content-rise var(--duration-enter, 420ms)
+    var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.page-content-enter.is-entered.is-stagger {
+  animation: none;
+}
+
+.page-content-enter.is-entered.is-stagger > * {
+  animation: page-content-rise var(--duration-enter, 420ms)
+    var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.page-content-enter.is-entered.is-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(2) {
+  animation-delay: 70ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(3) {
+  animation-delay: 140ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(4) {
+  animation-delay: 210ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(5) {
+  animation-delay: 280ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(6) {
+  animation-delay: 350ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(7) {
+  animation-delay: 420ms;
+}
+.page-content-enter.is-entered.is-stagger > *:nth-child(8) {
+  animation-delay: 490ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-content-enter.is-pending,
+  .page-content-enter.is-pending.is-stagger > * {
+    opacity: 1;
+  }
+
+  .page-content-enter.is-entered,
+  .page-content-enter.is-entered.is-stagger > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Pack / avatar media fade after decode */
+.media-fade-in {
+  opacity: 0;
+  transition: opacity var(--duration-enter, 420ms)
+    var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.media-fade-in.is-ready {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-fade-in {
+    opacity: 1;
+    transition: none;
+  }
+}

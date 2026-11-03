@@ -1,39 +1,57 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 
-const HOLD_MS = 280;
 const CLICK_SWALLOW_MS = 500;
 
+export type ConvertTouchPhase = "idle" | "preview";
+
+/** Pure touch state machine — kept out of the hook so self-check can run it. */
+export function nextConvertTouchPhase(
+  phase: ConvertTouchPhase,
+  event: "tap-button" | "tap-away" | "reset",
+): { phase: ConvertTouchPhase; convert: boolean } {
+  if (event === "reset" || event === "tap-away") {
+    return { phase: "idle", convert: false };
+  }
+  if (phase === "idle") {
+    return { phase: "preview", convert: false };
+  }
+  return { phase: "idle", convert: true };
+}
+
+function isConvertSafeTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return false;
+  if (target.closest("[data-convert-confirm]")) return true;
+  return false;
+}
+
 /**
- * Circle convert: hover/hold previews, tap converts, hold-release does nothing.
- * iOS does not synthesize click after setPointerCapture — convert on pointerup.
+ * Mouse: hover previews, click confirms when affordable.
+ * Touch: first tap previews, second tap (arrow or preview) confirms; tap away cancels.
+ * Preview still works when short on Coins (caller shows a denied × amount).
  */
-export function useConvertPress(canConvert: boolean, onTap: () => void) {
-  const heldRef = useRef(false);
-  const tappedRef = useRef(false);
-  const timerRef = useRef(0);
+export function useConvertPress(
+  canPreview: boolean,
+  onConfirm: () => void,
+  canConvert = canPreview,
+) {
+  const handledTouchRef = useRef(false);
   const swallowRef = useRef<((event: Event) => void) | null>(null);
   const swallowTimerRef = useRef(0);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const touchPhaseRef = useRef<ConvertTouchPhase>("idle");
+  const canPreviewRef = useRef(canPreview);
   const canConvertRef = useRef(canConvert);
-  const onTapRef = useRef(onTap);
+  const onConfirmRef = useRef(onConfirm);
+  canPreviewRef.current = canPreview;
   canConvertRef.current = canConvert;
-  onTapRef.current = onTap;
+  onConfirmRef.current = onConfirm;
   const [preview, setPreview] = useState(false);
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(timerRef.current);
-      const swallow = swallowRef.current;
-      if (swallow) document.removeEventListener("click", swallow, true);
-      window.clearTimeout(swallowTimerRef.current);
-    },
-    [],
-  );
-
-  const stopTouchHold = () => {
-    window.clearTimeout(timerRef.current);
-    timerRef.current = 0;
-    setPreview(false);
-  };
 
   const disarmClickSwallow = () => {
     const swallow = swallowRef.current;
@@ -60,57 +78,113 @@ export function useConvertPress(canConvert: boolean, onTap: () => void) {
     );
   };
 
-  const convertFromTouch = (event: PointerEvent<HTMLButtonElement>) => {
+  const clearPreview = () => {
+    touchPhaseRef.current = "idle";
+    handledTouchRef.current = false;
+    disarmClickSwallow();
+    setPreview(false);
+  };
+
+  /** Confirm from the preview label / amount (or a second intentional action). */
+  const confirmPreview = () => {
+    if (!canConvertRef.current) return false;
+    clearPreview();
+    onConfirmRef.current();
+    return true;
+  };
+
+  useEffect(() => {
+    if (!canPreview) clearPreview();
+  }, [canPreview]);
+
+  useEffect(
+    () => () => {
+      disarmClickSwallow();
+    },
+    [],
+  );
+
+  // Pointer down outside the arrow / preview confirm cancels (no transfer).
+  useEffect(() => {
+    if (!preview) return;
+
+    const onPointerDown = (event: Event) => {
+      if (!(event instanceof PointerEvent)) return;
+      const target = event.target;
+      if (isConvertSafeTarget(target)) return;
+      const button = buttonRef.current;
+      if (button && target instanceof Node && button.contains(target)) return;
+      clearPreview();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [preview]);
+
+  const applyTouchTap = (event: PointerEvent<HTMLButtonElement>) => {
     const node = document.elementFromPoint(event.clientX, event.clientY);
     if (node && !event.currentTarget.contains(node)) return;
-    tappedRef.current = true;
+
+    const next = nextConvertTouchPhase(touchPhaseRef.current, "tap-button");
+    handledTouchRef.current = true;
     armClickSwallow();
-    onTapRef.current();
+
+    if (next.convert) {
+      if (!canConvertRef.current) {
+        touchPhaseRef.current = "preview";
+        setPreview(true);
+        return;
+      }
+      touchPhaseRef.current = "idle";
+      setPreview(false);
+      onConfirmRef.current();
+      return;
+    }
+
+    touchPhaseRef.current = "preview";
+    setPreview(true);
   };
 
   return {
     preview,
-    clearPreview: () => {
-      heldRef.current = false;
-      tappedRef.current = false;
-      disarmClickSwallow();
-      stopTouchHold();
-    },
+    clearPreview,
+    confirmPreview,
     convertButtonProps: {
       onPointerMove: (event: PointerEvent<HTMLButtonElement>) => {
-        if (!canConvertRef.current) return;
+        if (!canPreviewRef.current) return;
         if (event.pointerType !== "mouse") return;
         if (event.buttons !== 0) return;
         setPreview(true);
       },
       onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
-        if (!canConvertRef.current) return;
-        heldRef.current = false;
-        tappedRef.current = false;
+        if (!canPreviewRef.current) return;
+        buttonRef.current = event.currentTarget;
+        handledTouchRef.current = false;
         if (event.pointerType === "mouse") {
           setPreview(true);
           return;
         }
         event.currentTarget.setPointerCapture(event.pointerId);
-        timerRef.current = window.setTimeout(() => {
-          heldRef.current = true;
-          setPreview(true);
-        }, HOLD_MS);
       },
       onPointerUp: (event: PointerEvent<HTMLButtonElement>) => {
         if (event.pointerType === "mouse") return;
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
           event.currentTarget.releasePointerCapture(event.pointerId);
         }
-        const held = heldRef.current;
-        stopTouchHold();
-        if (held || !canConvertRef.current) return;
-        convertFromTouch(event);
+        if (!canPreviewRef.current) return;
+        applyTouchTap(event);
       },
-      onPointerCancel: stopTouchHold,
+      onPointerCancel: () => {
+        handledTouchRef.current = false;
+      },
       onPointerLeave: (event: PointerEvent<HTMLButtonElement>) => {
-        if (event.pointerType === "mouse") setPreview(false);
-        else stopTouchHold();
+        if (event.pointerType !== "mouse") return;
+        // Sticky after a touch preview; allow moving onto the preview confirm.
+        if (touchPhaseRef.current === "preview") return;
+        if (isConvertSafeTarget(event.relatedTarget)) return;
+        setPreview(false);
       },
       onContextMenu: (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -118,13 +192,11 @@ export function useConvertPress(canConvert: boolean, onTap: () => void) {
       onClick: (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
-        const held = heldRef.current;
-        const tapped = tappedRef.current;
-        heldRef.current = false;
-        tappedRef.current = false;
-        stopTouchHold();
-        if (held || tapped || !canConvertRef.current) return;
-        onTapRef.current();
+        const handledTouch = handledTouchRef.current;
+        handledTouchRef.current = false;
+        if (handledTouch || !canPreviewRef.current) return;
+        if (!canConvertRef.current) return;
+        onConfirmRef.current();
       },
     },
   };

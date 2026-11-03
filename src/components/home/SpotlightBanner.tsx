@@ -61,7 +61,12 @@ async function submitCreatorSuggestion(form: SuggestForm) {
  * Full-bleed homepage CTA band. Transforms stay on the compositor;
  * blur and brightness are pre-baked and faded, not filtered live.
  */
-export function SpotlightBanner() {
+export function SpotlightBanner({
+  auroraPaused = false,
+}: {
+  /** Pause live aurora while the page scroller is moving. */
+  auroraPaused?: boolean;
+} = {}) {
   const rootRef = useRef<HTMLElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
   const womenRef = useRef<HTMLDivElement>(null);
@@ -220,6 +225,7 @@ export function SpotlightBanner() {
             fillParent
             label="Tell Us Who"
             costAmount={null}
+            auroraFrozen={auroraPaused}
             onClick={() => setSuggestOpen(true)}
           />
         </div>

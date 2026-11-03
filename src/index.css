@@ -228,6 +228,20 @@
   --gap: var(--space-4);
   --gap-section: var(--space-8);
   --gap-stack: var(--space-3);
+
+  /*
+   * Motion tokens — keep PagePushStage / PageContentEnter / chrome fades in sync.
+   * --ease-out: decelerate (enter). --ease-in: accelerate (exit).
+   * --ease-push: iOS page slide (matches PagePushStage PUSH_EASE).
+   */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-push: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-micro: 150ms;
+  --duration-enter: 420ms;
+  --duration-page: 340ms;
+  --duration-chrome: 200ms;
 }
 
 @supports (width: calc(1px * progress(100vw, 390px, 1440px))) {

@@ -1,3 +1,4 @@
+import { shouldSkipPushHop } from "@/lib/pagePushTransition";
 import { Paths } from "@/routes/Paths";
 
 /** Coarse route buckets for memory pressure / purge policy. */
@@ -81,6 +82,8 @@ function isCreatorPushHop(fromPath: string, toPath: string): boolean {
  * light ↔ light stays instant. Same-domain light hops stay instant.
  * Any hop involving packs/game (or crossing heavy domains) transitions.
  * Collection ↔ creator is a page push, not a veil.
+ * Push-skipped hops (scratch/purchase) always veil — PagePushStage won't cover them
+ * (except same-game query tweaks, which must keep GL alive).
  */
 export function shouldMemoryTransition(
   fromPath: string,
@@ -89,10 +92,14 @@ export function shouldMemoryTransition(
   if (isCreatorPushHop(fromPath, toPath)) return false;
   const from = routeMemoryDomain(fromPath);
   const to = routeMemoryDomain(toPath);
+  if (shouldSkipPushHop(fromPath, toPath)) {
+    // Same game surface query tweaks stay instant (preserve GL).
+    if (from === to && from === "game") return false;
+    return true;
+  }
   if (from === to && from === "light") return false;
   if (from === to && !isHeavyMemoryDomain(from)) return false;
-  // Same heavy domain (e.g. /game → /game?card=) — skip full page transition;
-  // in-game card swaps must not black out or lose GL context.
+  // Same heavy domain (e.g. feed → feed) — skip full page transition.
   if (from === to) return false;
   return (
     isHeavyMemoryDomain(from) ||

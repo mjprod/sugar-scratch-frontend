@@ -1,4 +1,9 @@
 import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
   Check,
   Gift,
   Info,
@@ -80,6 +85,20 @@ export function GetDiamondsCatalog({
   }) => void;
 }) {
   const { authed } = useAuth();
+  useEffect(() => {
+    const sync = () => {
+      document.documentElement.classList.toggle(
+        "get-diamonds-anims-off",
+        document.visibilityState === "hidden",
+      );
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      document.documentElement.classList.remove("get-diamonds-anims-off");
+    };
+  }, []);
   const ads = products.filter((p) => p.kind === "rewarded-ad");
   const packs = products.filter((p) => p.kind === "diamonds");
   const adProduct = ads[0] ?? null;
@@ -161,8 +180,30 @@ export function GetDiamondsCatalog({
 }
 
 function GetDiamondsHeroBand() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [motionLive, setMotionLive] = useState(true);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setMotionLive(Boolean(entry?.isIntersecting)),
+      { rootMargin: "80px" },
+    );
+    io.observe(root);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <div className="get-diamonds-hero-band">
+    <div
+      ref={rootRef}
+      className={[
+        "get-diamonds-hero-band",
+        motionLive ? "" : "is-paused",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <header className="get-diamonds-hero get-diamonds-hero--band">
         <div className="get-diamonds-hero__copy-block">
           <h2 className="get-diamonds-hero__title">
@@ -184,7 +225,6 @@ function GetDiamondsHeroBand() {
           src="/images/store/glowCircle1x.webp"
           srcSet="/images/store/glowCircle1x.webp 1x, /images/store/glowCircle2x.webp 2x"
           alt=""
-          loading="lazy"
           decoding="async"
         />
       </div>
@@ -194,7 +234,6 @@ function GetDiamondsHeroBand() {
           src="/images/store/floatingDiamonds.webp"
           srcSet="/images/store/floatingDiamonds.webp 1x, /images/store/floatingDiamonds2x.webp 2x"
           alt=""
-          loading="lazy"
           decoding="async"
         />
       </div>
@@ -203,7 +242,7 @@ function GetDiamondsHeroBand() {
         src="/images/store/diamondWoman1x.webp"
         srcSet="/images/store/diamondWoman1x.webp 1x, /images/store/diamondWoman2x.webp 2x"
         alt=""
-        loading="lazy"
+        fetchPriority="high"
         decoding="async"
       />
     </div>

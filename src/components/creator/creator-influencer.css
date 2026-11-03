@@ -449,6 +449,28 @@ body[data-theme="v8"] .cpv2-profile-card-social {
   background: rgba(0, 0, 0, 0.25);
 }
 
+body[data-theme="v8"] .cpv2-profile-card-social.is-skeleton {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  animation: cpv2-social-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cpv2-social-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-profile-card-social.is-skeleton {
+    animation: none;
+  }
+}
+
 /* —— Section title —— */
 
 body[data-theme="v8"] .cpv2-section-title {
@@ -810,6 +832,9 @@ body[data-theme="v8"] .cpv2-theme-card-glow {
   border-top-right-radius: 0;
   pointer-events: none;
   opacity: 0.2;
+  /* Isolate 48px/28px filter blur from CTA orbit invalidation; skip offscreen. */
+  contain: paint;
+  content-visibility: auto;
 }
 
 body[data-theme="v8"] .cpv2-theme-card-glow-blob {
@@ -1930,60 +1955,6 @@ body[data-theme="v8"] .cpv2-ultra-dot {
   height: 8px;
   border-radius: 50%;
   background: #2e2e2e;
-}
-
-/* —— Footer —— */
-
-body[data-theme="v8"] .cpv2-site-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3-5);
-  width: 100%;
-  padding: var(--space-2) 0 var(--space-1);
-  text-align: center;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-tagline {
-  margin: 0;
-  color: #fff;
-  font-size: var(--text-headline);
-  font-weight: 600;
-  letter-spacing: 0.28px;
-  line-height: 1.2;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-tagline .is-pink {
-  color: #d4145a;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1) var(--space-2);
-  max-width: 320px;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-links > button,
-body[data-theme="v8"] .cpv2-site-footer-links > a {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: var(--text-body);
-  font-weight: 400;
-  letter-spacing: 0.24px;
-  line-height: 1.2;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-body[data-theme="v8"] .cpv2-site-footer-links > button:hover,
-body[data-theme="v8"] .cpv2-site-footer-links > a:hover {
-  color: #fff;
 }
 
 /* Shell spacing tweak for influencer layout */

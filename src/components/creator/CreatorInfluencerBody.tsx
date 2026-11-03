@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
-import { SiteLegalLinks } from "@/components/site/SiteLegalLinks";
+import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import {
   type FeaturedCoverFlowPlayTarget,
 } from "@/components/home/FeaturedCoverFlow";
@@ -310,10 +310,16 @@ export function CreatorInfluencerBody({
                   : undefined
               }
             >
-              {loading && themes.length === 0
-                ? Array.from({ length: 4 }, (_, i) => (
-                    <li key={`sk-${i}`} className="cpv2-progress-row is-skeleton" />
-                  ))
+              {loading && (themes.length === 0 || showPersonalProgress)
+                ? Array.from(
+                    { length: Math.max(4, themes.length || 0) },
+                    (_, i) => (
+                      <li
+                        key={`sk-${themes[i]?.id ?? i}`}
+                        className="cpv2-progress-row is-skeleton"
+                      />
+                    ),
+                  )
                 : themes.map((theme, i) => {
                     const progress = themeProgress(theme);
                     const pct =
@@ -564,15 +570,7 @@ export function CreatorInfluencerBody({
         </p>
       </section>
 
-      <footer className="cpv2-site-footer">
-        <p className="cpv2-site-footer-tagline">
-          <span className="is-pink">Real Creators.</span> Real Moments.
-        </p>
-        <SiteLegalLinks
-          onPrivacy={() => setLegal("privacy")}
-          onTerms={() => setLegal("terms")}
-        />
-      </footer>
+      <HomeSiteFooter />
 
       {legal && typeof document !== "undefined"
         ? createPortal(
