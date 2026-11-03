@@ -9,6 +9,8 @@ export type InfluencerHolderProps = {
   place?: string;
   avatarUrl: string;
   progress: CollectionProgressCounts;
+  /** Board still loading — keep identity, skeleton metrics/progress. */
+  progressPending?: boolean;
   onClick?: () => void;
   /** 0-based list index — used for load-in stagger. */
   index?: number;
@@ -35,6 +37,7 @@ export function InfluencerHolder({
   place,
   avatarUrl,
   progress,
+  progressPending = false,
   onClick,
   index,
   creatorId,
@@ -42,24 +45,37 @@ export function InfluencerHolder({
   return (
     <button
       type="button"
-      className="mc-model-card"
+      className={[
+        "mc-model-card",
+        progressPending ? "is-progress-pending" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="listitem"
       data-collect-creator={creatorId}
+      aria-busy={progressPending || undefined}
       style={
         {
-          "--mc-progress": `${progress.pct}%`,
+          "--mc-progress": `${progressPending ? 0 : progress.pct}%`,
           ...(index == null ? {} : { "--mc-i": index }),
         } as CSSProperties
       }
       onClick={onClick}
-      aria-label={`${name}, ${progress.owned} of ${progress.total} cards`}
+      aria-label={
+        progressPending
+          ? `${name}, loading collection progress`
+          : `${name}, ${progress.owned} of ${progress.total} cards`
+      }
     >
       <span className="mc-model-card-glow" aria-hidden="true">
         <span className="mc-model-card-glow-blob mc-model-card-glow-blob--a" />
         <span className="mc-model-card-glow-blob mc-model-card-glow-blob--b" />
       </span>
       <span className="mc-model-avatar-wrap">
-        <CollectionAvatarRing percent={progress.pct} index={index} />
+        <CollectionAvatarRing
+          percent={progressPending ? 0 : progress.pct}
+          index={index}
+        />
         <img
           src={avatarUrl}
           alt=""
@@ -71,30 +87,52 @@ export function InfluencerHolder({
       <span className="mc-model-body">
         <span className="mc-model-name">{name}</span>
         {place ? <span className="mc-model-place">{place}</span> : null}
-        <span className="mc-model-metrics">
-          <span className="mc-model-metric">
-            <Images size={12} strokeWidth={2.4} aria-hidden />
-            {progress.staticOwned}/{progress.staticTotal}
-          </span>
-          <span className="mc-model-metric">
-            <Layers size={12} strokeWidth={2.4} aria-hidden />
-            {progress.motionOwned}/{progress.motionTotal}
-          </span>
-          <span className="mc-model-metric">
-            <UltraStarIcon />
-            {progress.ultraOwned}/{progress.ultraTotal}
-          </span>
-        </span>
-        <span
-          className="mc-model-progress"
-          role="progressbar"
-          aria-valuenow={progress.pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`${progress.owned} of ${progress.total}`}
-        >
-          <span className="mc-model-progress-fill" />
-        </span>
+        {progressPending ? (
+          <>
+            <span className="mc-model-metrics" aria-hidden="true">
+              <span className="mc-model-metric">
+                <Bone className="is-metric-icon" />
+                <Bone className="is-metric" />
+              </span>
+              <span className="mc-model-metric">
+                <Bone className="is-metric-icon" />
+                <Bone className="is-metric" />
+              </span>
+              <span className="mc-model-metric">
+                <Bone className="is-metric-icon" />
+                <Bone className="is-metric" />
+              </span>
+            </span>
+            <span className="mc-model-progress is-pending" aria-hidden="true" />
+          </>
+        ) : (
+          <>
+            <span className="mc-model-metrics">
+              <span className="mc-model-metric">
+                <Images size={12} strokeWidth={2.4} aria-hidden />
+                {progress.staticOwned}/{progress.staticTotal}
+              </span>
+              <span className="mc-model-metric">
+                <Layers size={12} strokeWidth={2.4} aria-hidden />
+                {progress.motionOwned}/{progress.motionTotal}
+              </span>
+              <span className="mc-model-metric">
+                <UltraStarIcon />
+                {progress.ultraOwned}/{progress.ultraTotal}
+              </span>
+            </span>
+            <span
+              className="mc-model-progress"
+              role="progressbar"
+              aria-valuenow={progress.pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${progress.owned} of ${progress.total}`}
+            >
+              <span className="mc-model-progress-fill" />
+            </span>
+          </>
+        )}
       </span>
     </button>
   );

@@ -1042,6 +1042,10 @@ body[data-theme="v8"] .mc-model-progress {
   background: rgba(255, 255, 255, 0.11);
 }
 
+body[data-theme="v8"] .mc-model-progress.is-pending {
+  animation: search-pulse 1.2s ease-in-out infinite;
+}
+
 @property --mc-progress {
   syntax: "<percentage>";
   inherits: true;
