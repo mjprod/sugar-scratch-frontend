@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
+import { StageSoundsDebug } from "@/features/game/StageSoundsDebug";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
 import { Paths } from "@/routes/Paths";
 import "@/features/game/game.css";
@@ -53,6 +54,7 @@ export function AudioTestPage() {
           loopFromIntro
           onLeave={() => navigate(Paths.home)}
         />
+        <StageSoundsDebug />
       </div>
     </div>
   );

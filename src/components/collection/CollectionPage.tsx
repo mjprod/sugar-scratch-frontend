@@ -336,7 +336,7 @@ function CollectionPageSkeleton() {
         <SkeletonBar className="search-skeleton-title" width={240} height={19} />
         <SkeletonBar width="70%" height={16} />
       </header>
-      {/* Stack full-width — do not use .mc-hub (2-col grid squeezes Continue on mobile). */}
+      {/* Stack full-width — same order as .mc-hub (Continue, then Keep Collecting). */}
       <section className="mc-continue" aria-hidden="true">
         <div className="mc-continue-panel is-skeleton">
           <SkeletonBar width={180} height={24} />

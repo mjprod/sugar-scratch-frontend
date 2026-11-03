@@ -618,13 +618,13 @@ body[data-theme="v8"] .mc-promo-slide {
   }
 }
 
-/* Continue + Choose a Model: 2fr / 1fr until the container is too narrow. */
+/* Continue + Keep Collecting — stacked rows (full width) at all breakpoints. */
 body[data-theme="v8"] .mc-hub {
   position: relative;
   z-index: 1;
   container-type: inline-size;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-6);
   width: 100%;
@@ -632,24 +632,6 @@ body[data-theme="v8"] .mc-hub {
 
 body[data-theme="v8"] .mc-hub:has(.my-collection-filter-overlay) {
   z-index: 5;
-}
-
-/* One child (Continue hidden) fills the parent instead of the 2fr column. */
-body[data-theme="v8"] .mc-hub:not(:has(.mc-continue)) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-body[data-theme="v8"] .mc-hub > :only-child {
-  grid-column: 1 / -1;
-  width: 100%;
-}
-
-/* Below 820px the 280px floor squeezes Continue into a sliver. A container
-   query cannot restyle .mc-hub itself, so this is a viewport media query. */
-@media (max-width: 820px) {
-  body[data-theme="v8"] .mc-hub {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* Continue playing */

@@ -6406,9 +6406,9 @@ body[data-theme="v8"] .inbox-header-filter .inbox-filter {
 }
 
 body[data-theme="v8"] .inbox-filter.is-active {
-  border-color: oklch(0.614 0.251 301.3 / 0.55);
-  background: oklch(0.614 0.251 301.3 / 0.16);
-  color: oklch(0.902 0.06 306.7);
+  border-color: oklch(0.656 0.212 354.31 / 0.55);
+  background: oklch(0.656 0.212 354.31 / 0.16);
+  color: oklch(0.86 0.08 354.31);
 }
 
 /* --------------------------------------------------------------------------

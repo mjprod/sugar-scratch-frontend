@@ -1,40 +1,39 @@
 /**
- * Pure policy for the motion-scratch BGM loop — which level the stage wants,
+ * Pure policy for the motion-scratch BGM loop — on/off from stage warmth,
  * and the gain actually applied once the pause menu ducks it.
  *
- * Option 1 mix: quiet bed while the foil bar is centered, full level once the
- * bar has docked, fade out when the stage is no longer warm.
+ * One level for the whole stage (foil reveal through scratch). Loudness is
+ * owned by `SOUND_MIX_DEFAULTS.bgm`; this module only gates play/stop + duck.
  */
 import type { TopBarPhase } from "./TopSymbolBar";
 
-export type MotionScratchBgmLevel = "off" | "bed" | "full" | "keep";
+export type MotionScratchBgmLevel = "off" | "on" | "keep";
 
 export type MotionScratchBgmPlan = {
   level: MotionScratchBgmLevel;
-  /** Step up to full after this delay (docked: hold bed while the bar flies). */
-  fullAfterMs?: number;
 };
 
 export function resolveMotionScratchBgmPlan(input: {
   warm: boolean;
   topBarPhase: TopBarPhase;
   skipToPlay: boolean;
+  /** Kept for call-site compatibility; no longer schedules a level step. */
   dockMs: number;
 }): MotionScratchBgmPlan {
   if (!input.warm) return { level: "off" };
-  if (input.skipToPlay) return { level: "bed" };
+  if (input.skipToPlay) return { level: "on" };
   if (input.topBarPhase === "center" || input.topBarPhase === "docked") {
-    return { level: "bed" };
+    return { level: "on" };
   }
-  // showcase: leave the level alone until warm clears.
+  // showcase: leave the loop alone until warm clears.
   return { level: "keep" };
 }
 
-/** Pause menu ducks to the bed level; never louder than what the stage asked. */
+/** Pause menu ducks to a quieter level; never louder than what the stage asked. */
 export function resolveMotionScratchBgmGain(
   desiredGain: number,
   ducked: boolean,
-  bedGain: number,
+  duckGain: number,
 ): number {
-  return ducked ? Math.min(desiredGain, bedGain) : desiredGain;
+  return ducked ? Math.min(desiredGain, duckGain) : desiredGain;
 }

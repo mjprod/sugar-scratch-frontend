@@ -5,6 +5,7 @@
  */
 .app-shell.app-shell--game,
 .app-shell.app-shell--game-hub {
+  position: relative;
   background: oklch(0.131 0.01 285);
   width: 100%;
   height: 100%;
