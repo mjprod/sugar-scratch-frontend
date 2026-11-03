@@ -553,7 +553,6 @@ export function UserDashboardScreen({
                       .filter(Boolean)
                       .join(" ")}
                     aria-label={convertAria}
-                    aria-disabled={!canConvert}
                     disabled={!canPreview}
                     {...convertButtonProps}
                   >

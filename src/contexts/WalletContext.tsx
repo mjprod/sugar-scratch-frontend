@@ -30,8 +30,7 @@ type WalletContextValue = {
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 
-// TEMP: 1000 so convert preview / confirm can be tested locally.
-const INITIAL_COINS = 1000;
+const INITIAL_COINS = 0;
 const INITIAL_DIAMONDS = 0;
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -54,8 +53,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       return;
     }
     setDiamonds(data.diamonds);
-    // TEMP: keep a testable Coin balance even if the API wallet is empty.
-    setCoins(Math.max(data.coins, INITIAL_COINS));
+    setCoins(data.coins);
   }, []);
 
   useEffect(() => {
