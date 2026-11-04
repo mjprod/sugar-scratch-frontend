@@ -137,7 +137,7 @@ body[data-theme="v8"] .settings-legal-doc {
 }
 
 body[data-theme="v8"] :focus-visible {
-  outline-color: oklch(0.606 0.219 292.72);
+  outline-color: var(--color-page-title);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6906,8 +6906,16 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 
 .wallet-balances-popover__value--dust {
   font-size: var(--text-headline);
-  font-weight: 400;
+  font-weight: 650;
   text-align: center;
+}
+
+/* Desktop: two steps down the type scale (headline → body). */
+@media (min-width: 1024px) {
+  .wallet-balances-popover__value,
+  .wallet-balances-popover__value--dust {
+    font-size: var(--text-body);
+  }
 }
 
 .wallet-balances-popover__value--dust.is-exchange-preview {
@@ -9120,7 +9128,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
   border-radius: 60px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background-image: linear-gradient(
-    180deg,
+    45deg,
     rgba(170, 170, 170, 0.246) 0%,
     rgba(68, 68, 68, 0.105) 23.558%,
     rgba(0, 0, 0, 0.3) 50.001%,
@@ -9772,7 +9780,7 @@ body[data-theme="v8"] .mc-filter-btn {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: linear-gradient(
-    180deg,
+    45deg,
     rgba(170, 170, 170, 0.246) 0%,
     rgba(68, 68, 68, 0.105) 23.558%,
     rgba(0, 0, 0, 0.3) 50.001%,

@@ -307,7 +307,7 @@ function ContinueSection({
               <DesktopCoverFlow
                 items={items}
                 selectedId={null}
-                glow="oklch(0.798 0.104 207.84)"
+                glow="var(--color-page-title)"
                 playOnlyCta
                 cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
                 buying={false}

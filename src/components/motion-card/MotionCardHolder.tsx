@@ -120,9 +120,6 @@ export function MotionCardHolder({
   const activeCard = active ? cards[activeIndex] : null;
   const instant = reduceMotion ? { duration: 0 } : SHIFT;
 
-  const openRef = useRef(false);
-  openRef.current = active;
-
   const closeActive = (item: ThreeMotionItem) => {
     if (detailsTimer.current != null) {
       window.clearTimeout(detailsTimer.current);
@@ -152,8 +149,12 @@ export function MotionCardHolder({
       const face = slot.querySelector(".aspect-\\[108\\/210\\.5\\]");
       const box = (face ?? slot).getBoundingClientRect();
       if (box.height > 0) setCardH(box.height);
-      if (openRef.current) return;
-      setCardW(slot.getBoundingClientRect().width);
+      // Column width from the 3-col grid — never read a selected slot's inline
+      // width while open (that stuck at default 108 when mounting with ?card=
+      // after returning from a game).
+      const gap = parseFloat(getComputedStyle(node).columnGap) || 0;
+      const colW = (node.clientWidth - gap * 2) / 3;
+      if (colW > 0) setCardW(colW);
     };
     measure();
     const observer = new ResizeObserver(measure);
