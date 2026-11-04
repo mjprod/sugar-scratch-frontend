@@ -27,6 +27,33 @@ const FILTERS: { id: GameHistoryFilter; label: string }[] = [
   { id: "no_prize", label: "No prize" },
 ];
 
+const NO_HISTORY_ART = "/images/history/imageNoHistory";
+
+function GameHistoryEmptyArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${NO_HISTORY_ART}@1x.jxl 1x, ${NO_HISTORY_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${NO_HISTORY_ART}@1x.webp 1x, ${NO_HISTORY_ART}@2x.webp 2x`}
+      />
+      <img
+        className="history-empty-art-img"
+        src={`${NO_HISTORY_ART}@1x.png`}
+        srcSet={`${NO_HISTORY_ART}@1x.png 1x, ${NO_HISTORY_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={330}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
+
 export function GameHistoryScreen({
   onBack,
   onExplorePacks,
@@ -121,6 +148,7 @@ export function GameHistoryScreen({
         <HistoryError onRetry={() => void load()} onHelp={onGetHelp} />
       ) : rows.length === 0 ? (
         <HistoryEmpty
+          art={<GameHistoryEmptyArt />}
           title="No game history yet"
           copy="Cards you reveal will appear here."
           actionLabel="Explore packs"
@@ -128,6 +156,7 @@ export function GameHistoryScreen({
         />
       ) : filtered.length === 0 ? (
         <HistoryEmpty
+          art={<GameHistoryEmptyArt />}
           title="No game results match this filter."
           copy="Try another filter or view everything."
           actionLabel="View all game history"

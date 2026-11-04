@@ -23,6 +23,7 @@ import {
   type SearchPack,
 } from "@/services/search";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { isVideoSrc } from "@/services/models";
 /** Hold the search bar until the pack-library panel has mostly slid up. */
 const BAR_ENTER_DELAY = 0.28;
@@ -32,6 +33,32 @@ const BODY_UPDATE_DELAY = 0.04;
 const BODY_STAGGER = 0.14;
 
 const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const NO_COLLECTION_ART = "/images/collection/imageNoCollection";
+
+function SearchEmptyArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${NO_COLLECTION_ART}@1x.jxl 1x, ${NO_COLLECTION_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${NO_COLLECTION_ART}@1x.webp 1x, ${NO_COLLECTION_ART}@2x.webp 2x`}
+      />
+      <img
+        className="search-empty-art"
+        src={`${NO_COLLECTION_ART}@1x.png`}
+        srcSet={`${NO_COLLECTION_ART}@1x.png 1x, ${NO_COLLECTION_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={330}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
 
 const BAR_ITEM = {
   hidden: { opacity: 0, y: -14 },
@@ -858,6 +885,7 @@ function DefaultDiscovery({
 
       {showLoaded && !showChips && !showCreators && !showPacks ? (
         <SearchReveal className="search-empty">
+          <SearchEmptyArt />
           <p className="search-empty-title">Nothing to explore yet</p>
           <p className="search-empty-sub">
             Check back soon — creators and packs will show up here.
@@ -894,15 +922,23 @@ function EmptyResults({
   return (
     <>
       <SearchReveal className="search-empty">
+        <SearchEmptyArt />
         <p className="search-empty-title">
           No results for &ldquo;{query}&rdquo;
         </p>
         <p className="search-empty-sub">
           Try searching for a creator, pack, card, or theme.
         </p>
-        <button type="button" className="search-empty-cta" onClick={onClear}>
-          Clear search
-        </button>
+        <div className="search-empty-cta-wrap">
+          <CtaButton
+            {...ctaButtonPropsFromTemplate("squircleCTA")}
+            fillParent
+            type="button"
+            label="Clear search"
+            costAmount={null}
+            onClick={onClear}
+          />
+        </div>
       </SearchReveal>
 
       {suggestCreators.length > 0 ? (

@@ -391,6 +391,13 @@ body[data-theme="v8"] .search-empty {
   padding: var(--space-10) var(--space-4) var(--space-6);
 }
 
+body[data-theme="v8"] .search-empty-art {
+  display: block;
+  width: 11rem;
+  height: auto;
+  margin-bottom: var(--space-1);
+}
+
 body[data-theme="v8"] .search-empty-title {
   margin: 0;
   font-size: var(--text-title);
@@ -414,6 +421,27 @@ body[data-theme="v8"] .search-empty-cta {
   color: white;
   font-size: var(--text-caption);
   font-weight: 600;
+}
+
+body[data-theme="v8"] .search-empty-cta-wrap {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 220px);
+  min-height: 48px;
+  height: 48px;
+  margin-top: var(--space-3);
+  overflow: visible;
+}
+
+body[data-theme="v8"] .search-empty-cta-wrap .cta-button-glow,
+body[data-theme="v8"] .search-empty-cta-wrap .cta-button-glow--fill,
+body[data-theme="v8"] .search-empty-cta-wrap .cta-button,
+body[data-theme="v8"] .search-empty-cta-wrap .cta-button--fill {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
 body[data-theme="v8"] .search-skeleton-line {

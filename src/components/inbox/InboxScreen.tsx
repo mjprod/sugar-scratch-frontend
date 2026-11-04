@@ -1,6 +1,5 @@
 import {
   Bell,
-  CheckCheck,
   ChevronRight,
   Crown,
   Filter,
@@ -25,6 +24,33 @@ import {
 } from "@/services/inbox";
 import { SECONDARY_SURFACES } from "@/lib/navigation";
 import { PageContentEnter } from "@/shared/ui/PageContentEnter";
+
+const INBOX_DONE_ART = "/images/inbox/imageInboxDone";
+
+function InboxDoneArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${INBOX_DONE_ART}@1x.jxl 1x, ${INBOX_DONE_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${INBOX_DONE_ART}@1x.webp 1x, ${INBOX_DONE_ART}@2x.webp 2x`}
+      />
+      <img
+        className="inbox-empty-art"
+        src={`${INBOX_DONE_ART}@1x.png`}
+        srcSet={`${INBOX_DONE_ART}@1x.png 1x, ${INBOX_DONE_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={330}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
 
 /** Inbox — secondary surface; desktop keeps liquid top nav, mobile uses compact header. */
 export function InboxScreen({
@@ -129,7 +155,7 @@ export function InboxScreen({
             <span className="inbox-section-label">New</span>
           </div>
           <EmptyState
-            icon={emptyFiltered ? CheckCheck : Bell}
+            art={<InboxDoneArt />}
             title="You're all caught up"
             titleId="inbox-empty-title"
             copy={

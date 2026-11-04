@@ -33,6 +33,32 @@ type FilterMenu = "creator" | "sort" | null;
 const FILTER_MOTION_MS = 220;
 const CREATOR_SHEET_MS = 420;
 const COLLECT_ROW_KEY = "collect-model-row";
+const NO_COLLECTION_ART = "/images/collection/imageNoCollection";
+
+function NoCollectionArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${NO_COLLECTION_ART}@1x.jxl 1x, ${NO_COLLECTION_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${NO_COLLECTION_ART}@1x.webp 1x, ${NO_COLLECTION_ART}@2x.webp 2x`}
+      />
+      <img
+        className="mc-models-empty-art"
+        src={`${NO_COLLECTION_ART}@1x.png`}
+        srcSet={`${NO_COLLECTION_ART}@1x.png 1x, ${NO_COLLECTION_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={330}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
 
 function rememberCollectPlace(id: string, scrollTop: number) {
   try {
@@ -325,6 +351,7 @@ export function MyCollectionSection({
           Keep Collecting
         </h2>
         <div className="mc-models-empty">
+          <NoCollectionArt />
           <h3 className="collection-empty-title">Your collection starts here</h3>
           <p className="collection-empty-copy">
             Cards you reveal will appear here.
@@ -413,6 +440,7 @@ export function MyCollectionSection({
 
       {visibleCreators.length === 0 ? (
         <div className="mc-models-empty">
+          <NoCollectionArt />
           <h3 className="collection-empty-title">No collections found</h3>
           <p className="collection-empty-copy">Try another Creator.</p>
           <div className="collection-cta">

@@ -1089,3 +1089,23 @@
   user-select: none;
   -webkit-touch-callout: none;
 }
+
+body[data-theme="v8"] .app-empty-art:has(.cart-empty-pack-art) {
+  width: auto;
+  height: auto;
+}
+
+body[data-theme="v8"] .cart-empty-pack-art,
+body[data-theme="v8"] .purchase-empty-pack-art {
+  display: block;
+  width: 9rem;
+  height: auto;
+  rotate: -9deg;
+}
+
+/* Match Pack Pocket empty (.app-empty): gap --space-3 + art mb --space-1. */
+body[data-theme="v8"] .purchase-empty-pack-art-wrap {
+  display: block;
+  translate: 0 calc(var(--space-8) * -1);
+  margin-bottom: calc(var(--space-3) + var(--space-1));
+}

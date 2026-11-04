@@ -38,6 +38,32 @@ import { useMarkPageReady } from "@/shared/ui/usePageReady";
 const SNAP_MS = 220;
 /** Hold full preload of ahead slides so the visible clip gets the bandwidth first. */
 const AHEAD_PRELOAD_DELAY_MS = 2500;
+const NO_INFLUENCERS_ART = "/images/discover/imageNoInfluencers";
+
+function NoInfluencersArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${NO_INFLUENCERS_ART}@1x.jxl 1x, ${NO_INFLUENCERS_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${NO_INFLUENCERS_ART}@1x.webp 1x, ${NO_INFLUENCERS_ART}@2x.webp 2x`}
+      />
+      <img
+        className="hf-state-art"
+        src={`${NO_INFLUENCERS_ART}@1x.png`}
+        srcSet={`${NO_INFLUENCERS_ART}@1x.png 1x, ${NO_INFLUENCERS_ART}@2x.png 2x`}
+        alt=""
+        width={354}
+        height={461}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
 /** Overlay lag vs video (0 = locked, 1 = fully detached). */
 const OVERLAY_PARALLAX_MOBILE = 0.33;
 /** Desktop: stronger lag so taller frames still read on scrub. */
@@ -1319,6 +1345,7 @@ export function HomeFeedScreen({
 
         {status === "empty" ? (
           <div className="hf-state">
+            <NoInfluencersArt />
             <p className="hf-state-title">No creators available.</p>
             <p className="hf-state-copy">Please check back later.</p>
             <div className="hf-state-cta">

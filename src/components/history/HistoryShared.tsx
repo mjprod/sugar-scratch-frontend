@@ -10,14 +10,17 @@ export function HistoryEmpty({
   copy,
   actionLabel,
   onAction,
+  art,
 }: {
   title: string;
   copy: string;
   actionLabel: string;
   onAction: () => void;
+  art?: ReactNode;
 }) {
   return (
     <div className="history-empty">
+      {art ? <div className="history-empty-art">{art}</div> : null}
       <p className="history-empty-title">{title}</p>
       <p className="history-empty-copy">{copy}</p>
       <div className="history-empty-cta">

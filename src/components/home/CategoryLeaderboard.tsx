@@ -17,6 +17,33 @@ const RANK_CROWN_SRC: Record<1 | 2 | 3, string> = {
   3: "/images/home-v2/rank-crown-bronze.svg",
 };
 
+const EMPTY_PACK_ART = "/images/packs/imageEmptyPack";
+
+function RankEmptyPackArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${EMPTY_PACK_ART}@1x.jxl 1x, ${EMPTY_PACK_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${EMPTY_PACK_ART}@1x.webp 1x, ${EMPTY_PACK_ART}@2x.webp 2x`}
+      />
+      <img
+        className="category-leaderboard-empty-art"
+        src={`${EMPTY_PACK_ART}@1x.png`}
+        srcSet={`${EMPTY_PACK_ART}@1x.png 1x, ${EMPTY_PACK_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={532}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
+
 export function CategoryLeaderboard({
   category,
   rows,
@@ -127,7 +154,12 @@ export function CategoryLeaderboard({
         ].join(" ")}
       >
         {!rows.length ? (
-          <p className="category-leaderboard-empty">No featured packs available.</p>
+          <div className="category-leaderboard-empty">
+            <RankEmptyPackArt />
+            <p className="category-leaderboard-empty-copy">
+              No featured packs available.
+            </p>
+          </div>
         ) : (
           rows.slice(0, 6).map((row) => (
             <div

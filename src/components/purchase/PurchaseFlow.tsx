@@ -1789,6 +1789,7 @@ export function PurchaseFlow({
 
           {stage === "no-packs" ? (
             <StateScreen
+              art={<PurchaseEmptyPackArt />}
               icon={<PackageOpen className="size-7" />}
               tone="neutral"
               title="No packs left to open"
@@ -1857,10 +1858,38 @@ export function PurchaseFlow({
  * Shared state surfaces
  * ----------------------------------------------------------------------- */
 
+const EMPTY_PACK_ART = "/images/packs/imageEmptyPack";
+
+function PurchaseEmptyPackArt() {
+  return (
+    <picture className="purchase-empty-pack-art-wrap">
+      <source
+        type="image/jxl"
+        srcSet={`${EMPTY_PACK_ART}@1x.jxl 1x, ${EMPTY_PACK_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${EMPTY_PACK_ART}@1x.webp 1x, ${EMPTY_PACK_ART}@2x.webp 2x`}
+      />
+      <img
+        className="purchase-empty-pack-art"
+        src={`${EMPTY_PACK_ART}@1x.png`}
+        srcSet={`${EMPTY_PACK_ART}@1x.png 1x, ${EMPTY_PACK_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={532}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
+
 type CtaConfig = { label: string; onClick: () => void; busy?: boolean };
 
 function StateScreen({
   icon,
+  art,
   tone,
   title,
   body,
@@ -1868,6 +1897,7 @@ function StateScreen({
   secondary,
 }: {
   icon: ReactNode;
+  art?: ReactNode;
   tone: "success" | "danger" | "neutral" | "warn";
   title: string;
   body: string;
@@ -1885,13 +1915,22 @@ function StateScreen({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
-      <span
-        className={["grid size-16 place-items-center rounded-full border", toneClass].join(" ")}
-        aria-hidden="true"
+      {art ? (
+        art
+      ) : (
+        <span
+          className={["grid size-16 place-items-center rounded-full border", toneClass].join(" ")}
+          aria-hidden="true"
+        >
+          {icon}
+        </span>
+      )}
+      <h1
+        className={[
+          "text-headline font-bold tracking-[-0.02em] text-ink",
+          art ? "mt-0" : "mt-5",
+        ].join(" ")}
       >
-        {icon}
-      </span>
-      <h1 className="mt-5 text-headline font-bold tracking-[-0.02em] text-ink">
         {title}
       </h1>
       <p className="mt-2 max-w-sm text-body leading-relaxed text-white/55">{body}</p>

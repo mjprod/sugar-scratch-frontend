@@ -444,16 +444,19 @@
   text-align: center;
 }
 
-.following-empty-icon {
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
+.following-empty > picture {
+  display: block;
+  width: 50%;
+  margin-inline: auto;
   margin-bottom: var(--space-1-5);
-  border-radius: 20px;
-  border: 1px solid oklch(1 0 0 / 0.1);
-  background: oklch(1 0 0 / 0.04);
-  color: oklch(1 0 0 / 0.55);
+}
+
+.following-empty-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 354 / 461;
+  object-fit: contain;
 }
 
 .following-empty-title {

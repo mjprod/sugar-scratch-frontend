@@ -423,6 +423,17 @@
   text-align: center;
 }
 
+.history-empty-art {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.history-empty-art-img {
+  display: block;
+  width: 11rem;
+  height: auto;
+}
+
 .history-empty-title {
   margin: 0;
   font-size: var(--text-title);

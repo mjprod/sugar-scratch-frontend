@@ -486,6 +486,25 @@ body[data-theme="v8"] .collection-empty-copy {
   line-height: 1.45;
 }
 
+body[data-theme="v8"] .app-empty-art:has(.collection-empty-art) {
+  display: block;
+  align-self: stretch;
+  width: calc(100% + 2 * var(--space-4));
+  height: auto;
+  margin-inline: calc(-1 * var(--space-4));
+}
+
+body[data-theme="v8"] .app-empty-art:has(.collection-empty-art) picture {
+  display: block;
+  width: 100%;
+}
+
+body[data-theme="v8"] .collection-empty-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 /* -----------------------------------------------------------------------
  * Collection hub — Figma MyCollection (node 123:469)
  * ----------------------------------------------------------------------- */
@@ -751,6 +770,13 @@ body[data-theme="v8"] .mc-models-empty {
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
+}
+
+body[data-theme="v8"] .mc-models-empty-art {
+  display: block;
+  width: 11rem;
+  height: auto;
+  margin-bottom: var(--space-1);
 }
 
 /* Filters */

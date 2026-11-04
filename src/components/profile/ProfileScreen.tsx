@@ -13,11 +13,10 @@ import {
   SlidersHorizontal,
   Smartphone,
   ShieldCheck,
-  Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ComponentType } from "react";
 import CountUp from "@/pages/lp-build/CountUp.jsx";
 import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
@@ -597,7 +596,7 @@ export function UserDashboardScreen({
             title="History"
             items={[
               { label: "Transaction History", icon: Receipt },
-              { label: "Game History", icon: Sparkles },
+              { label: "Game History", icon: GameHistoryIcon },
             ]}
             onOpen={open}
           />
@@ -648,6 +647,24 @@ export function UserDashboardScreen({
   );
 }
 
+function GameHistoryIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89l.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7s-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.95 8.95 0 0 0 13 21a9 9 0 0 0 0-18m-1 5v5l4.28 2.54l.72-1.21l-3.5-2.08V8z"
+      />
+    </svg>
+  );
+}
+
 function MenuGroup({
   title,
   items,
@@ -656,7 +673,7 @@ function MenuGroup({
   title: string;
   items: {
     label: string;
-    icon: LucideIcon;
+    icon: LucideIcon | ComponentType<{ className?: string }>;
     badgeCount?: number;
     soon?: boolean;
   }[];

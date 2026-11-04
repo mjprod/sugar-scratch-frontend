@@ -383,3 +383,24 @@ body[data-theme="v8"] .hf-heart-burst.is-reduced .hf-heart-burst-piece.is-second
     transform: translate(-50%, -50%) translate(calc(var(--hf-hx, 0px) * 0.22), calc(var(--hf-hy, 0px) * 0.22));
   }
 }
+
+body[data-theme="v8"] .hf-state-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Near full-bleed on mobile, then ~10% smaller than edge-to-edge. */
+body[data-theme="v8"] .hf-state > picture:has(.hf-state-art) {
+  display: block;
+  width: calc((100% + 2 * var(--space-6)) * 0.9);
+  max-width: none;
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  body[data-theme="v8"] .hf-state > picture:has(.hf-state-art) {
+    width: min(22rem, 100%);
+    margin-inline: auto;
+  }
+}
