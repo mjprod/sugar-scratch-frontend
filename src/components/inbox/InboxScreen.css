@@ -287,3 +287,14 @@ body[data-theme="v8"] .inbox-skeleton-chevron {
     animation: none;
   }
 }
+
+body[data-theme="v8"] .app-empty-art:has(.inbox-empty-art) {
+  width: auto;
+  height: auto;
+}
+
+body[data-theme="v8"] .inbox-empty-art {
+  display: block;
+  width: 11rem;
+  height: auto;
+}

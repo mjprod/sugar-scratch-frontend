@@ -486,6 +486,25 @@ body[data-theme="v8"] .collection-empty-copy {
   line-height: 1.45;
 }
 
+body[data-theme="v8"] .app-empty-art:has(.collection-empty-art) {
+  display: block;
+  align-self: stretch;
+  width: calc(100% + 2 * var(--space-4));
+  height: auto;
+  margin-inline: calc(-1 * var(--space-4));
+}
+
+body[data-theme="v8"] .app-empty-art:has(.collection-empty-art) picture {
+  display: block;
+  width: 100%;
+}
+
+body[data-theme="v8"] .collection-empty-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 /* -----------------------------------------------------------------------
  * Collection hub — Figma MyCollection (node 123:469)
  * ----------------------------------------------------------------------- */
