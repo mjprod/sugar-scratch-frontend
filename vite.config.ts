@@ -117,6 +117,14 @@ manualChunks(id) {
   ) {
     return "vendor";
   }
+  // Keep gesture/spring off the three chunk — RecSwipe imports useDrag and must
+  // not pull ~271KB gz of Three.js just because CoverFlow shares the gesture lib.
+  if (normalized.includes("/node_modules/@use-gesture/")) {
+    return "use-gesture";
+  }
+  if (normalized.includes("/node_modules/@react-spring/")) {
+    return "react-spring";
+  }
   if (
     normalized.includes("/node_modules/three/") ||
     normalized.includes("/node_modules/@react-three/")

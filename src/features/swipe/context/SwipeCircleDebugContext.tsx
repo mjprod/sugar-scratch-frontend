@@ -85,7 +85,10 @@ function normalizeByDevice(
 }
 
 function loadByDevice(): SwipeCircleByDevice {
-  if (typeof window === 'undefined') return DEFAULT_SWIPE_CIRCLE_BY_DEVICE
+  // Prod always ships baked defaults — lab localStorage must not alter look.
+  if (!import.meta.env.DEV || typeof window === 'undefined') {
+    return DEFAULT_SWIPE_CIRCLE_BY_DEVICE
+  }
   try {
     const raw = window.localStorage.getItem(SWIPE_CIRCLE_STORAGE_KEY)
     if (!raw) return DEFAULT_SWIPE_CIRCLE_BY_DEVICE
@@ -96,7 +99,7 @@ function loadByDevice(): SwipeCircleByDevice {
 }
 
 function saveByDevice(byDevice: SwipeCircleByDevice) {
-  if (typeof window === 'undefined') return
+  if (!import.meta.env.DEV || typeof window === 'undefined') return
   try {
     // Only persist mobile — desktop is code-baked.
     window.localStorage.setItem(

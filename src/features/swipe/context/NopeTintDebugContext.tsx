@@ -91,7 +91,8 @@ export function normalizeNopeTintTune(
 }
 
 function loadTune(): NopeTintTune {
-  if (typeof window === 'undefined') return defaultNopeTintTune()
+  // Prod always ships baked defaults — lab localStorage must not alter look.
+  if (!import.meta.env.DEV || typeof window === 'undefined') return defaultNopeTintTune()
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultNopeTintTune()
@@ -102,7 +103,7 @@ function loadTune(): NopeTintTune {
 }
 
 function saveTune(tune: NopeTintTune) {
-  if (typeof window === 'undefined') return
+  if (!import.meta.env.DEV || typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tune))
   } catch {

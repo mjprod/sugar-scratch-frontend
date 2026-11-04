@@ -21,6 +21,10 @@ import {
 import "@/features/swipe/swipe.css";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 
+if (import.meta.env.DEV) {
+  void import("@/features/swipe/swipeDebugDev");
+}
+
 export type PersonalizationSwipeResult = {
   liked: string[];
   passed: string[];
@@ -153,7 +157,9 @@ export function PersonalizationSwipeScreen({
     const stage = stageRef.current;
     if (!stage) return;
 
-    const sync = () => {
+    let raf = 0;
+    const syncNow = () => {
+      raf = 0;
       const card = stage.querySelector(".swipe-card");
       if (!card) {
         stage.style.removeProperty("--rec-card-bottom");
@@ -166,8 +172,12 @@ export function PersonalizationSwipeScreen({
         `${cardBox.bottom - stageBox.top}px`,
       );
     };
+    const sync = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(syncNow);
+    };
 
-    sync();
+    syncNow();
     const observer = new ResizeObserver(sync);
     observer.observe(stage);
     const deck = stage.querySelector(".swipe-deck");
@@ -176,6 +186,7 @@ export function PersonalizationSwipeScreen({
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", sync);
+      if (raf) window.cancelAnimationFrame(raf);
     };
   }, [deckMounted, deckEmpty]);
 
