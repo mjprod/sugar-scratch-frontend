@@ -753,6 +753,13 @@ body[data-theme="v8"] .mc-models-empty {
   background: rgba(255, 255, 255, 0.04);
 }
 
+body[data-theme="v8"] .mc-models-empty-art {
+  display: block;
+  width: 11rem;
+  height: auto;
+  margin-bottom: var(--space-1);
+}
+
 /* Filters */
 body[data-theme="v8"] .mc-models-filters {
   position: relative;

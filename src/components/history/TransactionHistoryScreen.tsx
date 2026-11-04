@@ -33,6 +33,32 @@ import "./history.css";
 
 const PAGE_SIZE = 20;
 const HISTORY_CTA = ctaButtonPropsFromTemplate("squircleCTA");
+const NO_TRANSACTION_ART = "/images/history/imageNoTransaction";
+
+function TransactionHistoryEmptyArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${NO_TRANSACTION_ART}@1x.jxl 1x, ${NO_TRANSACTION_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${NO_TRANSACTION_ART}@1x.webp 1x, ${NO_TRANSACTION_ART}@2x.webp 2x`}
+      />
+      <img
+        className="history-empty-art-img"
+        src={`${NO_TRANSACTION_ART}@1x.png`}
+        srcSet={`${NO_TRANSACTION_ART}@1x.png 1x, ${NO_TRANSACTION_ART}@2x.png 2x`}
+        alt=""
+        width={354}
+        height={330}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
 
 const FILTERS: { id: TransactionFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -197,6 +223,7 @@ export function TransactionHistoryScreen({
         />
       ) : rows.length === 0 ? (
         <HistoryEmpty
+          art={<TransactionHistoryEmptyArt />}
           title="No transactions yet"
           copy="Your purchases and exchanges will appear here."
           actionLabel="Get Diamonds"
@@ -204,6 +231,7 @@ export function TransactionHistoryScreen({
         />
       ) : filtered.length === 0 ? (
         <HistoryEmpty
+          art={<TransactionHistoryEmptyArt />}
           title="No transactions match this filter."
           copy="Try another filter or date range."
           actionLabel="View all transactions"

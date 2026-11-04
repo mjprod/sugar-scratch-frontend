@@ -156,3 +156,14 @@ body[data-theme="v8"] .hub-redeem-success-body {
   font-size: var(--text-caption);
   color: oklch(1 0 0 / 0.55);
 }
+
+body[data-theme="v8"] .get-diamonds-empty-art-wrap {
+  display: block;
+  width: 100%;
+}
+
+body[data-theme="v8"] .get-diamonds-empty-art {
+  display: block;
+  width: 100%;
+  height: auto;
+}

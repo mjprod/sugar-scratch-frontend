@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { SubpageHeader } from "@/components/SubpageHeader";
@@ -21,6 +21,33 @@ const SORT_OPTIONS: { id: FollowingSort; label: string }[] = [
   { id: "recently-followed", label: "Recently Followed" },
   { id: "name", label: "Name A–Z" },
 ];
+
+const NO_INFLUENCERS_ART = "/images/discover/imageNoInfluencers";
+
+function FollowingEmptyArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${NO_INFLUENCERS_ART}@1x.jxl 1x, ${NO_INFLUENCERS_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${NO_INFLUENCERS_ART}@1x.webp 1x, ${NO_INFLUENCERS_ART}@2x.webp 2x`}
+      />
+      <img
+        className="following-empty-art"
+        src={`${NO_INFLUENCERS_ART}@1x.png`}
+        srcSet={`${NO_INFLUENCERS_ART}@1x.png 1x, ${NO_INFLUENCERS_ART}@2x.png 2x`}
+        alt=""
+        width={354}
+        height={461}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
 
 export function FollowingScreen({
   onBack,
@@ -357,9 +384,7 @@ function SortSheet({
 function FollowingEmpty({ onDiscover }: { onDiscover: () => void }) {
   return (
     <div className="following-empty">
-      <div className="following-empty-icon" aria-hidden="true">
-        <Users size={28} strokeWidth={1.8} />
-      </div>
+      <FollowingEmptyArt />
       <h2 className="following-empty-title">No creators followed yet</h2>
       <p className="following-empty-copy">
         Follow creators you like to find them here again.

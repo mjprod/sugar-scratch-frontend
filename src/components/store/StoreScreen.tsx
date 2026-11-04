@@ -345,6 +345,7 @@ export function StoreScreen({
 
       {load.status === "empty" ? (
         <StateBlock
+          art={<GetDiamondsEmptyArt />}
           title="No products are currently available."
           primary={{ label: "Refresh", onClick: () => void reload() }}
         />
@@ -470,20 +471,53 @@ function StoreSkeleton() {
   );
 }
 
+const GET_DIAMONDS_EMPTY_ART = "/images/store/imageGetDiamonds";
+
+function GetDiamondsEmptyArt() {
+  return (
+    <picture className="get-diamonds-empty-art-wrap">
+      <source
+        type="image/jxl"
+        srcSet={`${GET_DIAMONDS_EMPTY_ART}@1x.jxl 1x, ${GET_DIAMONDS_EMPTY_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${GET_DIAMONDS_EMPTY_ART}@1x.webp 1x, ${GET_DIAMONDS_EMPTY_ART}@2x.webp 2x`}
+      />
+      <img
+        className="get-diamonds-empty-art"
+        src={`${GET_DIAMONDS_EMPTY_ART}@1x.png`}
+        srcSet={`${GET_DIAMONDS_EMPTY_ART}@1x.png 1x, ${GET_DIAMONDS_EMPTY_ART}@2x.png 2x`}
+        alt=""
+        width={354}
+        height={330}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
+
 function StateBlock({
   title,
   primary,
   secondary,
+  art,
 }: {
   title: string;
   primary: { label: string; onClick: () => void };
   secondary?: { label: string; onClick: () => void };
+  art?: ReactNode;
 }) {
   return (
     <div className="mt-16 flex flex-col items-center px-4 text-center">
-      <span className="grid size-14 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/55">
-        <RefreshCw className="size-6" aria-hidden="true" />
-      </span>
+      {art ? (
+        art
+      ) : (
+        <span className="grid size-14 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/55">
+          <RefreshCw className="size-6" aria-hidden="true" />
+        </span>
+      )}
       <p className="mt-4 max-w-xs text-body text-white/65">{title}</p>
       <div className="hf-state-cta mt-6">
         <CtaButton

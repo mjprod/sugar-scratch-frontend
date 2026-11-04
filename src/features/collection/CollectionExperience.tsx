@@ -74,6 +74,8 @@ function resolveFocusIndex(
   return clampSlotIndex(slot >= 0 ? slot : 0, layoutSlots.length)
 }
 
+const NO_COLLECTION_ART = '/images/collection/imageNoCollection'
+
 function AppInner({
   focusCharacterId,
   focusCardId,
@@ -294,6 +296,28 @@ function AppInner({
       <main className="prototype-preview">
         {cards.length === 0 ? (
           <div className="collection-empty" role="status">
+            {emptyLabel === 'No cards yet' ? (
+              <picture className="collection-empty-art-wrap">
+                <source
+                  type="image/jxl"
+                  srcSet={`${NO_COLLECTION_ART}@1x.jxl 1x, ${NO_COLLECTION_ART}@2x.jxl 2x`}
+                />
+                <source
+                  type="image/webp"
+                  srcSet={`${NO_COLLECTION_ART}@1x.webp 1x, ${NO_COLLECTION_ART}@2x.webp 2x`}
+                />
+                <img
+                  className="collection-featured-empty-art"
+                  src={`${NO_COLLECTION_ART}@1x.png`}
+                  srcSet={`${NO_COLLECTION_ART}@1x.png 1x, ${NO_COLLECTION_ART}@2x.png 2x`}
+                  alt=""
+                  width={355}
+                  height={330}
+                  decoding="async"
+                  draggable={false}
+                />
+              </picture>
+            ) : null}
             <p>{emptyLabel}</p>
           </div>
         ) : (

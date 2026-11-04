@@ -26,13 +26,28 @@ body[data-theme="v8"] .category-leaderboard-list {
 }
 
 body[data-theme="v8"] .category-leaderboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
   margin: 0;
   padding: var(--space-5) var(--space-3);
   border: 1px dashed oklch(1 0 0 / 0.1);
   border-radius: 14px;
+  text-align: center;
+}
+
+body[data-theme="v8"] .category-leaderboard-empty-art {
+  display: block;
+  width: 9rem;
+  height: auto;
+  rotate: -9deg;
+}
+
+body[data-theme="v8"] .category-leaderboard-empty-copy {
+  margin: 0;
   color: oklch(1 0 0 / 0.45);
   font-size: var(--text-caption);
-  text-align: center;
 }
 
 body[data-theme="v8"] .category-leaderboard-row {
