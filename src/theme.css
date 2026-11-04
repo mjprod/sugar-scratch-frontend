@@ -6906,8 +6906,16 @@ body[data-theme="v8"] .top-nav-resource--diamond.is-wallet-open {
 
 .wallet-balances-popover__value--dust {
   font-size: var(--text-headline);
-  font-weight: 400;
+  font-weight: 650;
   text-align: center;
+}
+
+/* Desktop: two steps down the type scale (headline → body). */
+@media (min-width: 1024px) {
+  .wallet-balances-popover__value,
+  .wallet-balances-popover__value--dust {
+    font-size: var(--text-body);
+  }
 }
 
 .wallet-balances-popover__value--dust.is-exchange-preview {
