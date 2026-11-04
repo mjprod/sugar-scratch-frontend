@@ -25,7 +25,7 @@
 .fp-tutorial-hole {
   position: absolute;
   border: 1.5px solid rgb(232 196 120 / 0.7);
-  box-shadow: 0 0 24px rgb(168 88 255 / 0.4);
+  box-shadow: 0 0 24px color-mix(in oklab, var(--color-page-title) 40%, transparent);
   pointer-events: none;
   animation: fp-hole-pulse 1.8s ease-in-out infinite;
 }
@@ -68,8 +68,8 @@
 .fp-tutorial-copy {
   margin: var(--space-1-5) 0 0;
   color: rgb(255 255 255 / 0.68);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
 }
 
 .fp-tutorial-nav {
@@ -91,8 +91,8 @@
   padding: 0 var(--space-3-5);
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f3de9a 0%, #d4ae5a 48%, #b8892e 100%);
-  color: #1a1206;
+  background: var(--app-cta-face);
+  color: var(--app-cta-label);
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
@@ -135,7 +135,7 @@
   overflow: visible;
   box-shadow:
     0 0 0 1px rgb(245 224 160 / 0.35),
-    0 0 28px rgb(168 88 255 / 0.55);
+    0 0 28px color-mix(in oklab, var(--color-page-title) 55%, transparent);
 }
 
 .fp-scratch-demo {
@@ -336,7 +336,7 @@ html[data-scratch-tutorial] .lottie-clipper {
 
 @keyframes fp-hole-pulse {
   50% {
-    box-shadow: 0 0 34px rgb(168 88 255 / 0.62);
+    box-shadow: 0 0 34px color-mix(in oklab, var(--color-page-title) 62%, transparent);
     border-color: rgb(245 224 160 / 0.95);
   }
 }

@@ -200,6 +200,26 @@ body[data-theme="v8"] .inbox-empty-wrap {
   gap: var(--space-2-5);
 }
 
+@media (min-width: 821px) {
+  body[data-theme="v8"] .inbox-page.app-page-shell--secondary {
+    min-height: 100dvh;
+  }
+
+  body[data-theme="v8"] .inbox-page .app-page-shell-inner {
+    flex: 1;
+    min-height: 0;
+  }
+
+  body[data-theme="v8"] .inbox-empty-wrap {
+    flex: 1;
+  }
+
+  body[data-theme="v8"] .inbox-empty-wrap .app-empty {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
 @media (max-width: 1023px) {
   body[data-theme="v8"] .inbox-item {
     grid-template-columns: 6px 40px minmax(0, 1fr) auto 14px;
