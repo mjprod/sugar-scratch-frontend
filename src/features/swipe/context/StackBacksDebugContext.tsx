@@ -84,7 +84,8 @@ function normalizeTune(input: Partial<StackBacksTune> | null | undefined): Stack
 }
 
 function loadTune(): StackBacksTune {
-  if (typeof window === 'undefined') return defaultStackBacksTune()
+  // Prod always ships baked defaults — lab localStorage must not alter look.
+  if (!import.meta.env.DEV || typeof window === 'undefined') return defaultStackBacksTune()
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultStackBacksTune()
@@ -95,7 +96,7 @@ function loadTune(): StackBacksTune {
 }
 
 function saveTune(tune: StackBacksTune) {
-  if (typeof window === 'undefined') return
+  if (!import.meta.env.DEV || typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tune))
   } catch {

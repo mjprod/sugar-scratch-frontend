@@ -357,6 +357,8 @@ export function SwipeDeck({
   const [likeSequence01, setLikeSequence01] = useState(0)
   const [nopeSequence01, setNopeSequence01] = useState(0)
   const [busy, setBusy] = useState(false)
+  /** Finger currently owns the front card (will-change / compositor hint). */
+  const [dragging, setDragging] = useState(false)
   const [stampFinish, setStampFinish] = useState<StampFinish | null>(null)
   /** Finish gate: false while remaining sequence tweens; true runs CSS exit. */
   const [stampExiting, setStampExiting] = useState(false)
@@ -1207,6 +1209,7 @@ export function SwipeDeck({
       // Only busy blocks input (cleared early on fast mobile / keyboard).
       if (!interactiveFront || busyRef.current) {
         cancel?.()
+        setDragging(false)
         return
       }
 
@@ -1215,6 +1218,7 @@ export function SwipeDeck({
       if (first || hintActiveRef.current) {
         cancelSwipeHint({ settle: false })
       }
+      if (first) setDragging(true)
 
       // Up→YES / down→NOPE project onto the same signed axis as left/right.
       // Down is capped at ~5dvh on desktop; progress remaps into left NOPE space.
@@ -1245,6 +1249,8 @@ export function SwipeDeck({
         shouldCommitByDistance(projected.progressT, Math.abs(clampedIntent)) ||
         (Math.abs(intentV) > swipeFlickVelocity() &&
           Math.abs(clampedIntent) > swipeFlickMinPx())
+
+      setDragging(false)
 
       if (shouldCommit) {
         const finalDir: 'left' | 'right' =
@@ -1340,7 +1346,7 @@ export function SwipeDeck({
   return (
     <div className="swipe-deck-root">
     <div
-      className={`swipe-deck${busy ? ' is-busy' : ''}${hintPlaying ? ' is-hinting' : ''}`}
+      className={`swipe-deck${busy ? ' is-busy' : ''}${dragging ? ' is-dragging' : ''}${hintPlaying ? ' is-hinting' : ''}`}
     >
       {/*
         z=0 — always under every real slot (slots use z ≥ 1).
