@@ -1,6 +1,6 @@
 /**
- * Theme-video policy while NO MATCH owns the stage.
- * Showcase keeps the performer (win is `/game/win`).
+ * Theme-video policy while a leftover result overlay owns the stage.
+ * Showcase keeps the performer (motion results are `/game/win` / `/game/nowin`).
  */
 
 /** Watchdog / play-nudge must not revive theme clips under the result. */

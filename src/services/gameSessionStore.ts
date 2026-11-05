@@ -69,7 +69,7 @@ export type GameSession = {
   packScratch?: PackScratchLink;
   /** Photo Cards awarded by the Motion Card that just completed (legacy). */
   lastMotionWinPhotoIds?: string[];
-  /** Currency win waiting on /game/win before auto-advance to the next card. */
+  /** Motion result waiting on /game/win or /game/nowin before the next card. */
   pendingMotionResult?: {
     cardId: string;
     /** Legacy field — motion wins no longer award photo cards. */

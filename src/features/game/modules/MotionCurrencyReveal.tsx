@@ -10,11 +10,16 @@ import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { DeferredLottie } from "@/lib/lottie/DeferredLottie";
 import { MOTION_WIN_HOLD_MS } from "./motionWinPage";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
 const YOU_WIN_LOTTIE_SRC = "/lottie/lottieYouWinText.lottie";
+const YOU_LOSE_LOTTIE_SRC = "/lottie/youLose.lottie";
 const WIN_BG = "/images/imageWinBg";
+const LOSE_BG = "/images/imageLoseBg";
+/** Card no-win / lose hero (design sandbox at `/nowin`). */
+export const NOWIN_HERO_LOTTIE_SRC = "/lottie/heart-break.lottie";
 const WON_IN_MS = 840;
 /** Covers the 1.22 bounce peak after the bitmap is sized at scale(1). */
 const WON_EXTRA_SCALE = 3;
@@ -35,6 +40,11 @@ export type MotionCurrencyRevealProps = {
   /** Stable id for this result — prevents replay on parent re-render. */
   resultId: string;
   onComplete: () => void;
+  /**
+   * Swap the diamond hero for another Lottie (e.g. heart-break on `/nowin`).
+   * Win path leaves this unset.
+   */
+  heroLottieSrc?: string;
 };
 
 type Phase =
@@ -108,6 +118,7 @@ export function MotionCurrencyReveal({
   diamonds,
   resultId,
   onComplete,
+  heroLottieSrc,
 }: MotionCurrencyRevealProps) {
   const [phase, setPhase] = useState<Phase>("entering");
   const [wonBox, setWonBox] = useState({ w: 0, h: 0 });
@@ -205,8 +216,12 @@ export function MotionCurrencyReveal({
   const showSkip =
     phase === "appearing" || phase === "confirmed";
   const fading = phase === "complete";
+  const isNowin = Boolean(heroLottieSrc);
   const showCoins = coins > 0;
-  const showDiamonds = diamonds > 0;
+  // Lose never awards diamonds — keep coin prizes only.
+  const showDiamonds = !isNowin && diamonds > 0;
+  /** Fail hero on lose; diamond Lottie on win. */
+  const showHero = isNowin || showDiamonds;
 
   useLayoutEffect(() => {
     if (!showHeader || reduced) return;
@@ -230,6 +245,7 @@ export function MotionCurrencyReveal({
       className={[
         "motion-currency-reveal",
         `is-${phase}`,
+        isNowin ? "is-nowin" : "",
         reduced ? "is-reduced" : "",
         fading ? "is-fading" : "",
       ]
@@ -237,33 +253,59 @@ export function MotionCurrencyReveal({
         .join(" ")}
       role="status"
       aria-live="polite"
-      aria-label={[
-        coins > 0 ? `${coins} coin${coins === 1 ? "" : "s"}` : null,
-        diamonds > 0
-          ? `${diamonds} diamond${diamonds === 1 ? "" : "s"}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" and ")}
+      aria-label={
+        isNowin
+          ? "You didn't match any symbols"
+          : [
+              coins > 0 ? `${coins} coin${coins === 1 ? "" : "s"}` : null,
+              diamonds > 0
+                ? `${diamonds} diamond${diamonds === 1 ? "" : "s"}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" and ")
+      }
     >
       <div className="motion-currency-reveal__backdrop" aria-hidden="true" />
       <div className="motion-currency-reveal__art" aria-hidden="true">
         <picture>
-          <source
-            type="image/jxl"
-            srcSet={`${WIN_BG}@1x.jxl 1x, ${WIN_BG}@2x.jxl 2x`}
-          />
-          <source
-            type="image/webp"
-            srcSet={`${WIN_BG}@1x.webp 1x, ${WIN_BG}@2x.webp 2x`}
-          />
-          <img
-            src={`${WIN_BG}@1x.webp`}
-            srcSet={`${WIN_BG}@1x.webp 1x, ${WIN_BG}@2x.webp 2x`}
-            alt=""
-            draggable={false}
-            decoding="async"
-          />
+          {isNowin ? (
+            <>
+              <source
+                type="image/jxl"
+                srcSet={`${LOSE_BG}@1x.jxl 1x, ${LOSE_BG}@2x.jxl 2x`}
+              />
+              <source
+                type="image/webp"
+                srcSet={`${LOSE_BG}@1x.webp 1x, ${LOSE_BG}@2x.webp 2x`}
+              />
+              <img
+                src={`${LOSE_BG}@1x.png`}
+                srcSet={`${LOSE_BG}@1x.png 1x, ${LOSE_BG}@2x.png 2x`}
+                alt=""
+                draggable={false}
+                decoding="async"
+              />
+            </>
+          ) : (
+            <>
+              <source
+                type="image/jxl"
+                srcSet={`${WIN_BG}@1x.jxl 1x, ${WIN_BG}@2x.jxl 2x`}
+              />
+              <source
+                type="image/webp"
+                srcSet={`${WIN_BG}@1x.webp 1x, ${WIN_BG}@2x.webp 2x`}
+              />
+              <img
+                src={`${WIN_BG}@1x.webp`}
+                srcSet={`${WIN_BG}@1x.webp 1x, ${WIN_BG}@2x.webp 2x`}
+                alt=""
+                draggable={false}
+                decoding="async"
+              />
+            </>
+          )}
         </picture>
       </div>
       <div className="motion-currency-reveal__mesh" aria-hidden="true">
@@ -286,7 +328,9 @@ export function MotionCurrencyReveal({
         {showHeader ? (
           <div className="motion-currency-reveal__header">
             {reduced ? (
-              <p className="motion-currency-reveal__won is-text">YOU WON!</p>
+              <p className="motion-currency-reveal__won is-text">
+                {isNowin ? "YOU LOSE" : "YOU WON!"}
+              </p>
             ) : (
               <>
                 <div
@@ -296,7 +340,7 @@ export function MotionCurrencyReveal({
                 >
                   {wonBox.w > 0 ? (
                     <DotLottieReact
-                      src={YOU_WIN_LOTTIE_SRC}
+                      src={isNowin ? YOU_LOSE_LOTTIE_SRC : YOU_WIN_LOTTIE_SRC}
                       autoplay={false}
                       loop
                       className="motion-currency-reveal__won-player"
@@ -315,6 +359,23 @@ export function MotionCurrencyReveal({
                         wonAnimRef.current?.cancel();
                         wonAnimRef.current = null;
                         wonScaleDoneRef.current = false;
+                        // Lose: no CSS/WAAPI intro bounce — just play the lottie.
+                        if (isNowin) {
+                          const startLose = () => {
+                            try {
+                              player.resize();
+                            } catch {
+                              /* player may not be ready yet */
+                            }
+                            wonScaleDoneRef.current = true;
+                            const host = wonBoxRef.current;
+                            if (host) host.style.opacity = "1";
+                            playWonLottie();
+                          };
+                          player.addEventListener("load", startLose);
+                          if (player.isLoaded) startLose();
+                          return;
+                        }
                         const startBounce = () => {
                           const host = wonBoxRef.current;
                           if (!host || wonAnimRef.current) return;
@@ -342,7 +403,9 @@ export function MotionCurrencyReveal({
                     />
                   ) : null}
                 </div>
-                <p className="sr-only">YOU WON!</p>
+                <p className="sr-only">
+                  {isNowin ? "YOU LOSE" : "YOU WON!"}
+                </p>
               </>
             )}
           </div>
@@ -362,20 +425,26 @@ export function MotionCurrencyReveal({
             .filter(Boolean)
             .join(" ")}
         >
-          <p className="motion-currency-reveal__count">
-            {showDiamonds ? (
-              <span className="motion-currency-reveal__count-prize">
-                {diamonds} Diamond{diamonds === 1 ? "" : "s"}
-              </span>
-            ) : null}
-            {showDiamonds && showCoins ? " · " : null}
-            {showCoins ? (
-              <span>
-                {coins} Coin{coins === 1 ? "" : "s"}
-              </span>
-            ) : null}
-          </p>
-          {showDiamonds ? (
+          {isNowin ? (
+            <p className="motion-currency-reveal__count">
+              You didn&apos;t match any symbols
+            </p>
+          ) : showDiamonds || showCoins ? (
+            <p className="motion-currency-reveal__count">
+              {showDiamonds ? (
+                <span className="motion-currency-reveal__count-prize">
+                  {diamonds} Diamond{diamonds === 1 ? "" : "s"}
+                </span>
+              ) : null}
+              {showDiamonds && showCoins ? " · " : null}
+              {showCoins ? (
+                <span>
+                  {coins} Coin{coins === 1 ? "" : "s"}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+          {showHero ? (
             <div className="motion-currency-reveal__hero is-diamonds">
               <div className="motion-currency-reveal__stack-col">
                 <div
@@ -383,33 +452,65 @@ export function MotionCurrencyReveal({
                   className="motion-currency-reveal__icon"
                   aria-hidden="true"
                 >
-                  <DiamondLottie
-                    size={190}
-                    animated
-                    eager
-                    extraScale={2}
-                    autoResize={false}
-                    style={{ width: 190, height: 190 }}
-                    dotLottieRefCallback={(player) => {
-                      if (!player || diamondSizedRef.current) return;
-                      diamondSizedRef.current = true;
-                      // Size the bitmap at scale(1). The pop-in transform
-                      // would make autoResize / resize() see a tall rect.
-                      try {
-                        player.resize();
-                      } catch {
-                        /* player may not be ready yet */
-                      }
-                      diamondHostRef.current?.classList.add("is-diamond-in");
-                    }}
-                  />
+                  {heroLottieSrc ? (
+                    <span className="nowin-fail-lottie">
+                      <DeferredLottie
+                        fallback={null}
+                        src={heroLottieSrc}
+                        autoplay
+                        loop
+                        speed={1.35}
+                        renderConfig={lottieRenderConfig({
+                          extraScale: 2,
+                          autoResize: false,
+                        })}
+                        style={{ width: 190, height: 190 }}
+                        dotLottieRefCallback={(player) => {
+                          if (!player || diamondSizedRef.current) return;
+                          diamondSizedRef.current = true;
+                          // Size at scale(1) — no pop-in on lose (animation
+                          // under a scaled ancestor also squashes X).
+                          try {
+                            player.resize();
+                          } catch {
+                            /* player may not be ready yet */
+                          }
+                        }}
+                      />
+                    </span>
+                  ) : (
+                    <DiamondLottie
+                      size={190}
+                      animated
+                      eager
+                      extraScale={2}
+                      autoResize={false}
+                      style={{ width: 190, height: 190 }}
+                      dotLottieRefCallback={(player) => {
+                        if (!player || diamondSizedRef.current) return;
+                        diamondSizedRef.current = true;
+                        // Size the bitmap at scale(1). The pop-in transform
+                        // would make autoResize / resize() see a tall rect.
+                        try {
+                          player.resize();
+                        } catch {
+                          /* player may not be ready yet */
+                        }
+                        diamondHostRef.current?.classList.add("is-diamond-in");
+                      }}
+                    />
+                  )}
                 </div>
-                <p className="motion-currency-reveal__amount tabular-nums">
-                  {diamondDisplay}
-                </p>
-                <p className="motion-currency-reveal__label">
-                  {diamonds === 1 ? "Diamond" : "Diamonds"}
-                </p>
+                {showDiamonds ? (
+                  <>
+                    <p className="motion-currency-reveal__amount tabular-nums">
+                      {diamondDisplay}
+                    </p>
+                    <p className="motion-currency-reveal__label">
+                      {diamonds === 1 ? "Diamond" : "Diamonds"}
+                    </p>
+                  </>
+                ) : null}
               </div>
             </div>
           ) : null}

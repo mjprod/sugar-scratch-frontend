@@ -1,6 +1,6 @@
 /**
- * Park two off-React videos so /game/win can decode the next card the same
- * way no-match does (loadVideoSrc, stay paused) without keeping WebGL alive.
+ * Park two off-React videos so /game/win and /game/nowin can decode the next
+ * card (loadVideoSrc, stay paused) without keeping WebGL alive.
  *
  * data-memory-keep skips purgeRouteMemory / GameWinPage's second detach pass.
  * Scratch adopts the nodes on remount instead of decoding twice.

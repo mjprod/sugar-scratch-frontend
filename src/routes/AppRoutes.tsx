@@ -29,6 +29,12 @@ const GamePage = lazy(() =>
 const GameWinPage = lazy(() =>
   import("@/pages/GameWinPage").then((m) => ({ default: m.GameWinPage })),
 );
+const GameNowinPage = lazy(() =>
+  import("@/pages/GameNowinPage").then((m) => ({ default: m.GameNowinPage })),
+);
+const NowinPage = lazy(() =>
+  import("@/pages/NowinPage").then((m) => ({ default: m.NowinPage })),
+);
 const PhotoScratchPage = lazy(() =>
   import("@/pages/PhotoScratchPage").then((m) => ({
     default: m.PhotoScratchPage,
@@ -417,6 +423,8 @@ export function AppRoutes() {
               }
             />
             <Route path="game/win" element={<GameWinPage />} />
+            <Route path="game/nowin" element={<GameNowinPage />} />
+            <Route path="nowin" element={<NowinPage />} />
             <Route
               path="game"
               element={

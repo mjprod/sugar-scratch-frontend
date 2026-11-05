@@ -1,5 +1,6 @@
 /**
- * Currency-win route must leave the game memory domain so iOS drops decoders.
+ * Currency-win / no-match routes must leave the game memory domain so iOS
+ * drops decoders.
  * Run: npx tsx src/features/game/modules/motionWinPage.self-check.ts
  */
 import { Paths } from "../../../routes/Paths.ts";
@@ -9,7 +10,10 @@ import {
 } from "../../../lib/memory/routeMemoryDomain.ts";
 import {
   MOTION_WIN_HOLD_MS,
+  isMotionNowinPath,
   isMotionWinPath,
+  motionNowinHref,
+  motionNowinPayloadFromPending,
   motionWinHref,
   motionWinPayloadFromPending,
   nextMotionCardId,
@@ -23,10 +27,14 @@ function assert(cond: unknown, msg: string): asserts cond {
 
 assert(MOTION_WIN_HOLD_MS === 7000, "win page holds 7 seconds");
 assert(Paths.gameWin === "/game/win", "win path is /game/win");
+assert(Paths.gameNowin === "/game/nowin", "nowin path is /game/nowin");
 assert(isMotionWinPath("/game/win"), "exact win path");
 assert(isMotionWinPath("/game/win?model=a"), "win path ignores query");
 assert(!isMotionWinPath("/game"), "play is not the win page");
 assert(!isMotionWinPath("/game/winner"), "prefix is not the win page");
+assert(isMotionNowinPath("/game/nowin"), "exact nowin path");
+assert(isMotionNowinPath("/game/nowin?model=a"), "nowin path ignores query");
+assert(!isMotionNowinPath("/nowin"), "sandbox /nowin is not the game nowin");
 
 assert(
   motionWinHref("?model=a&card=b&game=1") ===
@@ -34,10 +42,20 @@ assert(
   "win href keeps the hand query",
 );
 assert(motionWinHref("") === "/game/win", "bare win href");
+assert(
+  motionNowinHref("?model=a&card=b&game=1") ===
+    "/game/nowin?model=a&card=b&game=1",
+  "nowin href keeps the hand query",
+);
+assert(motionNowinHref("") === "/game/nowin", "bare nowin href");
 
 assert(
   routeMemoryDomain("/game/win") === "light",
   "win page is light so leaving play purges",
+);
+assert(
+  routeMemoryDomain("/game/nowin") === "light",
+  "nowin page is light so leaving play purges",
 );
 assert(routeMemoryDomain("/game") === "game", "play stays game");
 assert(
@@ -45,8 +63,16 @@ assert(
   "play → win crosses a heavy boundary (decoder drop)",
 );
 assert(
+  shouldMemoryTransition("/game", "/game/nowin"),
+  "play → nowin crosses a heavy boundary (decoder drop)",
+);
+assert(
   shouldMemoryTransition("/game/win", "/game"),
   "win → next card crosses back into game",
+);
+assert(
+  shouldMemoryTransition("/game/nowin", "/game"),
+  "nowin → next card crosses back into game",
 );
 assert(
   shouldMemoryTransition("/", "/purchase/abc"),
@@ -72,6 +98,20 @@ assert(
   motionWinPayloadFromPending({ ...pendingWin, prize: 0, coins: 0, diamonds: 0 }) ===
     null,
   "no-match pending is not a win page",
+);
+const nowinPayload = motionNowinPayloadFromPending({
+  ...pendingWin,
+  prize: 0,
+  coins: 0,
+  diamonds: 0,
+});
+assert(
+  nowinPayload?.resultId === "m1:0:0:1" && nowinPayload.coins === 0,
+  "no-match pending is a nowin page",
+);
+assert(
+  motionNowinPayloadFromPending(pendingWin) === null,
+  "win pending is not a nowin page",
 );
 
 const session = {
