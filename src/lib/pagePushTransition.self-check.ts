@@ -23,6 +23,7 @@ assert(isScratchGamePath("/photo-scratch"), "photo-scratch is scratch");
 assert(isScratchGamePath("/audio-test"), "audio-test is scratch");
 assert(isScratchGamePath("/game?model=a&card=b"), "game query is scratch");
 assert(isScratchGamePath("/game/win"), "win page skips the canvas slide");
+assert(isScratchGamePath("/game/nowin"), "nowin page skips the canvas slide");
 assert(!isScratchGamePath("/profile/game-history"), "profile history is not scratch");
 assert(!isScratchGamePath("/profile/game-settings"), "game settings is not scratch");
 assert(!isScratchGamePath("/"), "home is not scratch");

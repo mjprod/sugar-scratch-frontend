@@ -2377,6 +2377,27 @@
   left: 0;
 }
 
+/* Lose: dark-blue mesh glow (win keeps gold / magenta). */
+.motion-currency-reveal.is-nowin .motion-currency-reveal__mesh-orb.is-a {
+  background: rgb(12 28 72 / 78%);
+}
+
+.motion-currency-reveal.is-nowin .motion-currency-reveal__mesh-orb.is-b {
+  background: rgb(18 42 96 / 70%);
+}
+
+.motion-currency-reveal.is-nowin
+  .motion-currency-reveal__mesh-pair.is-top-right
+  .motion-currency-reveal__mesh-orb.is-a {
+  background: rgb(10 24 64 / 75%);
+}
+
+.motion-currency-reveal.is-nowin
+  .motion-currency-reveal__mesh-pair.is-top-right
+  .motion-currency-reveal__mesh-orb.is-b {
+  background: rgb(22 48 110 / 55%);
+}
+
 .motion-currency-reveal__particles {
   position: absolute;
   inset: 0;
@@ -2422,6 +2443,22 @@
   padding-inline: var(--space-4);
   text-align: center;
   animation: motion-win-header-in 420ms ease-out both;
+}
+
+.motion-currency-reveal.is-nowin .motion-currency-reveal__header {
+  animation: none;
+}
+
+.motion-currency-reveal.is-nowin .motion-currency-reveal__won:not(.is-text) {
+  opacity: 1;
+  transform: none;
+}
+
+.motion-currency-reveal.is-nowin
+  .motion-currency-reveal__hero.is-diamonds
+  .motion-currency-reveal__icon {
+  animation: none;
+  transform: none;
 }
 
 .motion-currency-reveal__won {
@@ -2589,6 +2626,11 @@
   transform: translateX(-5dvw);
 }
 
+/* Lose: fail hero is truly centered — don't nudge coins left under it. */
+.motion-currency-reveal.is-nowin .motion-currency-reveal__hero.is-coins {
+  transform: none;
+}
+
 .motion-currency-reveal__stack.has-both .motion-currency-reveal__hero.is-coins {
   opacity: 0.92;
 }
@@ -2597,6 +2639,10 @@
   display: grid;
   place-items: center;
   filter: drop-shadow(0 0 22px oklch(0.78 0.16 330 / 0.45));
+}
+
+.motion-currency-reveal.is-nowin .motion-currency-reveal__icon {
+  filter: none;
 }
 
 .motion-currency-reveal__hero.is-diamonds .motion-currency-reveal__icon {
@@ -2611,11 +2657,19 @@
  * autoResize on a scale(0) host made the bitmap tall and squashed X.
  */
 .motion-currency-reveal__hero.is-diamonds .diamond-lottie,
-.motion-currency-reveal__hero.is-diamonds .diamond-lottie canvas {
+.motion-currency-reveal__hero.is-diamonds .diamond-lottie canvas,
+.motion-currency-reveal__hero.is-diamonds .nowin-fail-lottie,
+.motion-currency-reveal__hero.is-diamonds .nowin-fail-lottie canvas {
+  display: block;
   width: 190px !important;
   height: 190px !important;
   aspect-ratio: 1 !important;
   object-fit: contain;
+}
+
+.motion-currency-reveal__hero.is-diamonds .nowin-fail-lottie {
+  line-height: 0;
+  overflow: hidden;
 }
 
 .motion-currency-reveal__hero.is-diamonds

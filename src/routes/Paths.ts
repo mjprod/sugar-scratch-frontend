@@ -57,6 +57,10 @@ export const Paths = {
   game: "/game",
   /** Currency-win result — scratch canvas is unmounted so iOS can drop decoders. */
   gameWin: "/game/win",
+  /** Card no-match / lose result — same unmount + decoder drop as gameWin. */
+  gameNowin: "/game/nowin",
+  /** Design sandbox for the card no-win / lose result (reuses win chrome for now). */
+  nowin: "/nowin",
   /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
   gameUi: "/game-ui",
   /** Isolated workshop for assembling Figma pieces one at a time. */

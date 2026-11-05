@@ -131,8 +131,11 @@ import {
   type MatchGameOutcome,
 } from "../modules/matchGame";
 import {
+  motionNowinHref,
+  motionNowinPayloadFromPending,
   motionWinHref,
   motionWinPayloadFromPending,
+  type MotionNowinPayload,
   type MotionWinPayload,
 } from "../modules/motionWinPage";
 import {
@@ -140,7 +143,6 @@ import {
   releaseWarmedMotionVideos,
   takeWarmedMotionVideos,
 } from "../modules/nextMotionWarm";
-import { NoMatchOutcome } from "../modules/NoMatchOutcome";
 import { PackProgress } from "../modules/PackProgress";
 import {
   ScratchFrameProgress,
@@ -3677,11 +3679,6 @@ export function ScratchPrototype({
             }
             setSelectedCardId(startId);
             if (pending) {
-              const coins = Math.max(0, pending.coins ?? 0);
-              const diamonds = Math.max(
-                0,
-                pending.diamonds ?? (pending.prize > 0 ? pending.prize : 0),
-              );
               const pendingWin = motionWinPayloadFromPending(pending);
               if (pendingWin) {
                 memoryNavigate(motionWinHref(window.location.search), {
@@ -3690,14 +3687,14 @@ export function ScratchPrototype({
                 });
                 return;
               }
-              setMotionResult({
-                win: pending.prize > 0 && (coins > 0 || diamonds > 0),
-                coins,
-                diamonds,
-                current: pending.current,
-                total: pending.total,
-                resultId: `${pending.cardId}:${coins}:${diamonds}:${pending.current}`,
-              });
+              const pendingNowin = motionNowinPayloadFromPending(pending);
+              if (pendingNowin) {
+                memoryNavigate(motionNowinHref(window.location.search), {
+                  replace: true,
+                  state: pendingNowin,
+                });
+                return;
+              }
             }
             return;
           }
@@ -4517,66 +4514,11 @@ export function ScratchPrototype({
     motionOutcome,
   });
 
-  // No-match overlay still sits on the stage — drop this card's decoders and
-  // warm the next. Currency wins leave /game for /game/win (scratch unmounts).
-  useEffect(() => {
-    if (motionOutcome !== "no-match") return;
-    const bottom = bottomVideoRef.current;
-    const foreground = foregroundVideoRef.current;
-    if (bottom) {
-      try {
-        bottom.pause();
-      } catch {
-        // ignore
-      }
-      glRendererRef.current?.detachVideoFrames(bottom);
-      releaseMediaElement(bottom);
-    }
-    if (foreground) {
-      try {
-        foreground.pause();
-      } catch {
-        // ignore
-      }
-      glRendererRef.current?.detachVideoFrames(foreground);
-      releaseMediaElement(foreground);
-    }
-    fgParkedRef.current = true;
-    glRendererRef.current?.resetForeground();
-    setGameVideosReady(false);
+  // No-match / win leave /game for /game/nowin or /game/win (scratch unmounts
+  // → iOS drops decoders; result pages warm the next card off-DOM).
 
-    const finishedId = selectedCardId;
-    const nextCard =
-      finishedId == null
-        ? null
-        : modelCards.find(
-            (entry) =>
-              entry.id !== finishedId &&
-              !completedCardIdsRef.current.includes(entry.id),
-          );
-    if (!nextCard || !bottom || !foreground) return;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        await Promise.all([
-          loadVideoSrc(bottom, nextCard.bottom),
-          loadVideoSrc(foreground, nextCard.foreground),
-        ]);
-      } catch {
-        return;
-      }
-      if (cancelled) return;
-      // Stay paused — static result owns the screen until handoff.
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [motionOutcome, motionResult?.resultId, selectedCardId, modelCards]);
-
-  // Keep the frame mounted through the no-match beat so its energy can drain
-  // instead of vanishing with the rest of the gameplay HUD.
+  // Keep the frame mounted through a leftover no-match beat so its energy can
+  // drain instead of vanishing with the rest of the gameplay HUD.
   const frameSettling = useBodySymbols && motionOutcome === "no-match";
   const frameProgressActive =
     (useBodySymbols &&
@@ -4885,93 +4827,21 @@ export function ScratchPrototype({
         });
         return;
       }
-      setMotionResult(result);
+      const nowinPayload: MotionNowinPayload = {
+        coins,
+        diamonds: 0,
+        current,
+        total,
+        resultId: result.resultId,
+      };
+      memoryNavigate(motionNowinHref(window.location.search), {
+        replace: true,
+        state: nowinPayload,
+      });
       return;
     }
 
     advanceAfterScratchRef.current();
-  }
-
-  function afterMotionResultPresentation() {
-    const result = motionResultRef.current;
-    setMotionResult(null);
-    clearPendingMotionResult();
-    if (!result) return;
-    if (result.current >= result.total) {
-      deferIntroForPendingResultRef.current = false;
-      pendingResultCardIdRef.current = null;
-      void goToPhotoSummary();
-      return;
-    }
-    goToNextMotionCard();
-  }
-
-  async function goToPhotoSummary() {
-    if (gameMode) setHandFinishing(true);
-    clearPendingMotionResult();
-    setMotionResult(null);
-    const finished = await finishMotionHand();
-    if (!finished) {
-      navigateTo("/game");
-      return;
-    }
-    setGameSession(finished);
-    navigateTo("/game");
-  }
-
-  function goToNextMotionCard() {
-    const finishedId = selectedCardId;
-    if (!finishedId) return;
-    finishAutoActiveRef.current = false;
-    resetGarmentFinale();
-    revealedSymbolsRef.current = 0;
-    autoPathIndexRef.current = 0;
-    autoPathProgressRef.current = 0;
-    clearPendingMotionResult();
-    setMotionResult(null);
-    const nextCompleted = completedCardIdsRef.current.includes(finishedId)
-      ? completedCardIdsRef.current
-      : [...completedCardIdsRef.current, finishedId];
-    completedCardIdsRef.current = nextCompleted;
-    setCompletedCardIds(nextCompleted);
-    const nextCard = modelCards.find(
-      (entry) => entry.id !== finishedId && !nextCompleted.includes(entry.id),
-    );
-    const finishedCard =
-      modelCards.find((entry) => entry.id === finishedId) ?? card;
-    resetGameOutcome();
-    setClaimed(false);
-    claimedRef.current = false;
-    fgParkedRef.current = false;
-    // Pack / game hand: hard-cut to the next card. The mirror-slide transition
-    // re-decodes both videos and then waits for stage ready (~1–3s of dead air).
-    if (nextCard && gameMode) {
-      setSelectedCardId(nextCard.id);
-      return;
-    }
-    if (nextCard && finishedCard?.bottom && nextCard.foreground) {
-      const { id: templateId, nextIndex } = nextTemplateId(
-        transitionTemplateIndexRef.current,
-      );
-      transitionTemplateIndexRef.current = nextIndex;
-      cardTransitionActiveRef.current = true;
-      cardTransitionHandoffRef.current = false;
-      setCardTransitionReady(false);
-      setCardTransition({
-        fromBottom: finishedCard.bottom,
-        toForeground: nextCard.foreground,
-        templateId,
-        nextCardId: nextCard.id,
-        finishedId,
-        prize: 0,
-      });
-      return;
-    }
-    if (nextCard) {
-      setSelectedCardId(nextCard.id);
-      return;
-    }
-    void goToPhotoSummary();
   }
 
   async function beginCardTransitionHandoff(transition: CardTransitionState) {
@@ -6294,12 +6164,6 @@ export function ScratchPrototype({
                 </div>
               </div>
             </div>
-          ) : null}
-          {motionResult && motionOutcome === "no-match" ? (
-            <NoMatchOutcome
-              key={motionResult.resultId}
-              onComplete={afterMotionResultPresentation}
-            />
           ) : null}
           {typeof window !== "undefined" &&
           new URLSearchParams(window.location.search).has("debug") ? (

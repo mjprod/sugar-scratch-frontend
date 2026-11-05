@@ -276,7 +276,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-tab.is-active {
   border-color: rgba(255, 3, 121, 0.2);
   background-image: linear-gradient(
-    180deg,
+    45deg,
     rgba(170, 0, 79, 0.41) 0%,
     rgba(68, 0, 32, 0.175) 23.558%,
     rgba(0, 0, 0, 0.5) 50.001%,

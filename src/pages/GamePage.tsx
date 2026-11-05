@@ -14,6 +14,8 @@ import {
   persistGameProgress,
 } from "@/features/game/modules/gameSession";
 import {
+  motionNowinHref,
+  motionNowinPayloadFromPending,
   motionWinHref,
   motionWinPayloadFromPending,
 } from "@/features/game/modules/motionWinPage";
@@ -101,17 +103,26 @@ export function GamePage() {
   const model = searchParams.get("model")?.trim();
   const card = searchParams.get("card")?.trim();
 
-  // Don't attach scratch videos when a currency win is waiting — /game/win
-  // is the page that lets iOS drop the previous decoder.
-  const pendingWin = motionWinPayloadFromPending(
-    loadGameSession()?.pendingMotionResult,
-  );
+  // Don't attach scratch videos when a result page is waiting — /game/win
+  // and /game/nowin unmount play so iOS can drop the previous decoder.
+  const pending = loadGameSession()?.pendingMotionResult;
+  const pendingWin = motionWinPayloadFromPending(pending);
   if (pendingWin) {
     return (
       <Navigate
         to={motionWinHref(location.search)}
         replace
         state={pendingWin}
+      />
+    );
+  }
+  const pendingNowin = motionNowinPayloadFromPending(pending);
+  if (pendingNowin) {
+    return (
+      <Navigate
+        to={motionNowinHref(location.search)}
+        replace
+        state={pendingNowin}
       />
     );
   }
