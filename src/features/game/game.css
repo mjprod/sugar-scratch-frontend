@@ -1,6 +1,7 @@
 /*
  * Scratch play always uses a phone-shaped stage.
- * Wide desktops: centered 390∶672 frame (max 430px). Real phones: full viewport.
+ * Wide desktops: centered 390∶672 frame, height = viewport (100dvh), width scaled
+ * to match. Real phones: full viewport.
  * Canvas always covers that frame so intro / countdown / scratch share one box.
  */
 .app-shell.app-shell--game,
@@ -20,12 +21,13 @@
 @media (min-width: 701px) {
   .app-shell.app-shell--game {
     /* Fit inside the route outlet — avoid position:fixed inside Framer Motion
-       transform ancestors (clips / mis-centers the phone frame). */
-    --game-shell-w: min(430px, 100cqw, calc(100cqh * 390 / 672));
-    width: var(--game-shell-w);
-    height: min(100cqh, calc(var(--game-shell-w) * 672 / 390));
-    max-width: 430px;
-    max-height: 100%;
+       transform ancestors (clips / mis-centers the phone frame).
+       Height fills the dynamic viewport; width follows 390∶672. */
+    --game-shell-h: min(100dvh, 100cqh, calc(100dvw * 672 / 390));
+    height: var(--game-shell-h);
+    width: calc(var(--game-shell-h) * 390 / 672);
+    max-width: 100dvw;
+    max-height: 100dvh;
     aspect-ratio: 390 / 672;
     position: relative;
     left: auto;
@@ -1613,6 +1615,19 @@
   letter-spacing: 0.01em;
   text-align: center;
   color: oklch(1 0 0 / 0.92);
+}
+
+.game-pause__toggles {
+  display: grid;
+  grid-template-columns: 1.5fr 2fr;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0 0 var(--space-6);
+}
+
+.game-pause__toggles .game-pause__mute,
+.game-pause__toggles .game-pause__zoom {
+  margin: 0;
 }
 
 .game-pause__mute,
