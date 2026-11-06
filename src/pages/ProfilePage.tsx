@@ -36,6 +36,8 @@ export function ProfilePage() {
       onBuyMoreDiamonds={openStore}
       onOpenTransactionHistory={() => navigate(Paths.transactions)}
       onOpenGameHistory={() => navigate(Paths.gameHistory)}
+      onOpenHelp={() => navigate(Paths.help)}
+      onOpenDeleteAccount={() => navigate(Paths.deleteAccount)}
       inboxUnreadCount={inboxUnread}
     />
   );

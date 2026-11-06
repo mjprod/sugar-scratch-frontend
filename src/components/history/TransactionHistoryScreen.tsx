@@ -73,12 +73,14 @@ export function TransactionHistoryScreen({
   onVisitStore,
   onOpenGameHistory,
   onGetHelp,
+  onReportIssue,
   initialSelectedId,
 }: {
   onBack: () => void;
   onVisitStore: () => void;
   onOpenGameHistory: (purchaseTransactionId?: string) => void;
-  onGetHelp?: () => void;
+  onGetHelp?: (transactionId?: string) => void;
+  onReportIssue?: (transactionId: string) => void;
   initialSelectedId?: string | null;
 }) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
@@ -180,13 +182,10 @@ export function TransactionHistoryScreen({
             flash("Receipt not available yet");
           }}
           onReport={() => {
-            onGetHelp?.();
-            flash("Report an issue opened in prototype");
+            if (onReportIssue) onReportIssue(selected.id);
+            else onGetHelp?.(selected.id);
           }}
-          onHelp={() => {
-            onGetHelp?.();
-            flash("Help Centre opened in prototype");
-          }}
+          onHelp={() => onGetHelp?.(selected.id)}
         />
         {notice ? <HistoryToast message={notice} /> : null}
       </AppPageShell>
@@ -219,7 +218,7 @@ export function TransactionHistoryScreen({
         <HistoryError
           message="We couldn’t load your transactions."
           onRetry={() => void load()}
-          onHelp={onGetHelp}
+          onHelp={onGetHelp ? () => onGetHelp() : undefined}
         />
       ) : rows.length === 0 ? (
         <HistoryEmpty

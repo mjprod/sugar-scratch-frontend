@@ -156,6 +156,21 @@ const GameHistoryPage = lazy(() =>
     default: m.GameHistoryPage,
   })),
 );
+const HelpCentrePage = lazy(() =>
+  import("@/pages/HelpCentrePage").then((m) => ({
+    default: m.HelpCentrePage,
+  })),
+);
+const PackOddsPage = lazy(() =>
+  import("@/pages/PackOddsPage").then((m) => ({
+    default: m.PackOddsPage,
+  })),
+);
+const DeleteAccountPage = lazy(() =>
+  import("@/pages/DeleteAccountPage").then((m) => ({
+    default: m.DeleteAccountPage,
+  })),
+);
 const LpBuildExperience = lazy(() =>
   import("@/pages/lp-build/LpBuildExperience").then((m) => ({
     default: m.LpBuildExperience,
@@ -364,6 +379,16 @@ export function AppRoutes() {
             />
             <Route path="get-diamonds" element={<StorePage />} />
             <Route path="store" element={<Navigate to={Paths.store} replace />} />
+            <Route path="help" element={<HelpCentrePage />} />
+            <Route path="legal/odds" element={<PackOddsPage />} />
+            <Route
+              path="profile/delete-account"
+              element={
+                <SoftGate tab="profile">
+                  <DeleteAccountPage />
+                </SoftGate>
+              }
+            />
             <Route
               path="profile/change-password"
               element={

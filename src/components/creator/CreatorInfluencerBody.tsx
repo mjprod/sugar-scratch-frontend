@@ -1,8 +1,5 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
+import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AppPageShell } from "@/components/AppPageShell";
-import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import {
   type FeaturedCoverFlowPlayTarget,
@@ -204,8 +201,6 @@ export function CreatorInfluencerBody({
   const registerPlay = useRegisterCardPlay();
   const { diamonds } = useWallet();
   const demo = isDemoMode();
-  const [legal, setLegal] = useState<"privacy" | "terms" | null>(null);
-  const legalTitleId = useId();
 
   const progressByTheme = useMemo(() => {
     const map = new Map<string, { owned: number; total: number }>();
@@ -563,7 +558,7 @@ export function CreatorInfluencerBody({
           <button
             type="button"
             className="cpv2-pack-odds"
-            onClick={() => setLegal("terms")}
+            onClick={() => navigate(Paths.legalOdds)}
           >
             Read pack odds
           </button>
@@ -571,31 +566,6 @@ export function CreatorInfluencerBody({
       </section>
 
       <HomeSiteFooter />
-
-      {legal && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="home-legal-overlay"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={legalTitleId}
-            >
-              <AppPageShell
-                aria-label={
-                  legal === "privacy" ? "Privacy Policy" : "Terms & Conditions"
-                }
-              >
-                <LegalDocPanel
-                  kind={legal === "privacy" ? "privacy" : "terms"}
-                  titleId={legalTitleId}
-                  onBack={() => setLegal(null)}
-                  variant="page"
-                />
-              </AppPageShell>
-            </div>,
-            document.body,
-          )
-        : null}
     </div>
   );
 }

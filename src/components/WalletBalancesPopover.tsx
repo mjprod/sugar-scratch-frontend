@@ -383,8 +383,8 @@ export function WalletBalancesPopover({
 
   const hasReceipt = coinReceipt > 0;
   const dustRowLabel = hasReceipt
-    ? `Dust balance ${dustLabel}. Received ${coinReceipt.toLocaleString("en-US")} Coins`
-    : "Dust balance";
+    ? `Coin balance ${dustLabel}. Received ${coinReceipt.toLocaleString("en-US")} Coins`
+    : "Coin balance";
 
   const convertAria = previewDenied
     ? `Not enough Coins to convert — need ${previewOption.coins.toLocaleString("en-US")} for ${formatExchangeDiamondPreview(previewOption.diamonds, "denied")}`

@@ -80,8 +80,13 @@ export function isCreatorBackHop(fromPath: string, toPath: string): boolean {
 export function isSettingsBackHop(fromPath: string, toPath: string): boolean {
   const from = pushPathname(fromPath);
   const to = pushPathname(toPath);
-  if (!from.startsWith("/profile/")) return false;
-  return to === "/settings" || to === "/profile";
+  if (to !== "/settings" && to !== "/profile") return false;
+  return (
+    from.startsWith("/profile/") ||
+    from === "/help" ||
+    from.startsWith("/help/") ||
+    from === "/legal/odds"
+  );
 }
 
 export function pagePushDirection(
