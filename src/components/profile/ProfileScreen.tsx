@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
   Smartphone,
   ShieldCheck,
+  Trash2,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -88,6 +89,8 @@ export function UserDashboardScreen({
   onConvertDust,
   onOpenTransactionHistory,
   onOpenGameHistory,
+  onOpenHelp,
+  onOpenDeleteAccount,
   inboxUnreadCount = 0,
 }: {
   name: string;
@@ -108,6 +111,8 @@ export function UserDashboardScreen({
   ) => boolean | Promise<boolean>;
   onOpenTransactionHistory?: () => void;
   onOpenGameHistory?: () => void;
+  onOpenHelp?: () => void;
+  onOpenDeleteAccount?: () => void;
   inboxUnreadCount?: number;
 }) {
   const [notice, setNotice] = useState("");
@@ -254,6 +259,14 @@ export function UserDashboardScreen({
     }
     if (label === "Game History") {
       onOpenGameHistory?.();
+      return;
+    }
+    if (label === "Help Centre") {
+      onOpenHelp?.();
+      return;
+    }
+    if (label === "Delete account") {
+      onOpenDeleteAccount?.();
       return;
     }
     if (label === "Privacy Policy") {
@@ -606,6 +619,7 @@ export function UserDashboardScreen({
               { label: "Inbox", icon: Inbox, badgeCount: inboxUnreadCount },
               { label: "Following", icon: Users },
               { label: "Change Password", icon: Lock },
+              { label: "Delete account", icon: Trash2 },
             ]}
             onOpen={open}
           />
@@ -616,7 +630,7 @@ export function UserDashboardScreen({
             { label: "Language", icon: Globe2, soon: true },
             { label: "Game Settings", icon: Settings },
             { label: "Content Preferences", icon: SlidersHorizontal },
-            { label: "Help Centre", icon: HelpCircle, soon: true },
+            { label: "Help Centre", icon: HelpCircle },
             { label: "Privacy Policy", icon: ShieldCheck },
             { label: "Terms of Service", icon: FileText },
           ]}

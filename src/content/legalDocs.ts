@@ -2,8 +2,10 @@
  * Contact / entity constants — update when Legal finalizes the operating company. */
 const LEGAL_EFFECTIVE_DATE = "August 25, 2026";
 const LEGAL_COMPANY_NAME = "Sugar Scratch";
-const LEGAL_SUPPORT_EMAIL = "support@sugarscratch.com";
-const LEGAL_PRIVACY_EMAIL = "privacy@sugarscratch.com";
+export const LEGAL_SUPPORT_EMAIL = "support@sugarscratch.com";
+export const LEGAL_PRIVACY_EMAIL = "privacy@sugarscratch.com";
+/** Apple’s refund request page. Not a Sugar Scratch checkout. */
+export const APPLE_REFUND_URL = "https://reportaproblem.apple.com";
 
 export type LegalBlock =
   | { type: "lede"; text: string }
@@ -53,21 +55,21 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "2.4 One account per person. Creating multiple accounts to exploit promotions, missions, or Daily Rewards is prohibited and may result in forfeiture of Diamonds, Diamond Dust, and collected items.",
+    text: "2.4 One account per person. Creating multiple accounts to exploit promotions, missions, or Daily Rewards is prohibited and may result in forfeiture of Diamonds, Coins, and collected items.",
   },
-  { type: "h2", text: "3. Virtual Currencies (Diamonds & Diamond Dust)" },
+  { type: "h2", text: "3. Virtual Currencies (Diamonds & Coins)" },
   {
     type: "p",
-    text: "3.1 Diamonds are the primary paid virtual currency, purchasable with real money through our payment processor. Diamond Dust is a secondary soft currency earned through gameplay, missions, and promotions, and cannot be purchased directly.",
+    text: "3.1 Diamonds are the paid virtual currency, bought with real money. Every purchase in the Service is made with Diamonds. Coins are earned through gameplay, missions, and promotions, and cannot be purchased. Coins can be converted to Diamonds at the rate shown in the Service.",
   },
-  { type: "p", text: "3.2 Diamonds and Diamond Dust:" },
+  { type: "p", text: "3.2 Diamonds and Coins:" },
   {
     type: "ul",
     items: [
       "Have no real-world monetary value and are not redeemable for cash, except where required by applicable law.",
       "Are non-transferable between accounts and cannot be sold, traded, gifted, or exchanged outside the Service.",
       "Are licensed to you for use within the Service, not sold — you acquire a limited, revocable, non-exclusive right to use them.",
-      "May expire or be forfeited if your account is terminated for violation of these Terms.",
+      "Do not expire. Unused Diamonds and Coins are forfeited only if your account is terminated for a violation of these Terms, to the extent permitted by law.",
     ],
   },
   {
@@ -77,7 +79,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "4. Purchases, Card Packs & Virtual Items" },
   {
     type: "p",
-    text: "4.1 Diamonds may be spent on Card Packs and other in-Service offerings. Exclusive Packs are purchasable with Diamond Dust only and cannot be bought directly with Diamonds or real money.",
+    text: "4.1 All purchases in the Service, including Card Packs, are made with Diamonds. Coins are not spent on purchases. Coins can be converted to Diamonds, and those Diamonds are what you spend.",
   },
   {
     type: "p",
@@ -97,7 +99,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "4.6 All purchases are processed by our third-party payment provider (currently Stripe). We do not store your full payment card details. Payment terms, currency, and applicable taxes are shown at checkout.",
+    text: "4.6 On the website, Diamond purchases are processed by our payment provider (currently Stripe). In the iOS app, Diamond purchases are processed by Apple In-App Purchase. We do not store your full payment card details. Payment terms, currency, and applicable taxes are shown at checkout. The iOS app does not send you to the website to buy Diamonds.",
   },
   { type: "h2", text: "5. Refund Policy" },
   {
@@ -118,11 +120,15 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: `5.3 To request a refund review, contact ${LEGAL_SUPPORT_EMAIL} within 14 days of the transaction, including your account ID and transaction reference.`,
+    text: `5.3 Website (Stripe) purchases. To request a refund review, contact ${LEGAL_SUPPORT_EMAIL} within 14 days of the transaction, including your account ID and transaction reference. We review payment failures, duplicate charges, and technical errors on our part. Support can review a Stripe charge. Support cannot reverse a charge billed by Apple.`,
   },
   {
     type: "p",
-    text: "5.4 Nothing in this Section limits any non-waivable statutory right you may have under the law of your country of residence.",
+    text: `5.4 App Store purchases. Apple bills you. Request a refund from Apple at ${APPLE_REFUND_URL}. Deleting your account does not refund an Apple charge and does not cancel billing Apple is still collecting.`,
+  },
+  {
+    type: "p",
+    text: "5.5 Nothing in this Section limits any non-waivable statutory right you may have under the law of your country of residence.",
   },
   { type: "h2", text: "6. Daily Rewards, Missions & Promotions" },
   {
@@ -170,7 +176,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
     items: [
       "Use bots, scripts, or automation to interact with the Service;",
       "Exploit bugs, glitches, or unintended mechanics for unfair advantage;",
-      "Buy, sell, or trade accounts, Diamonds, Diamond Dust, or virtual items outside the Service;",
+      "Buy, sell, or trade accounts, Diamonds, Coins, or virtual items outside the Service;",
       "Harass creators, staff, or other users;",
       "Attempt unauthorized access to accounts, systems, or data;",
       "Use the Service for any unlawful purpose or in violation of these Terms.",
@@ -192,7 +198,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "11. Termination" },
   {
     type: "p",
-    text: `11.1 You may stop using the Service and request account deletion at any time via Profile settings or ${LEGAL_SUPPORT_EMAIL}.`,
+    text: `11.1 You may stop using the Service and delete your account at any time from Settings → Delete account, also linked from the Help Centre. Deletion removes the account and personal data, except records we must keep by law (such as tax and payment records). If you used Sign in with Apple, we revoke that credential when the account is deleted. You can also email ${LEGAL_SUPPORT_EMAIL} if the in-app request cannot be submitted. Deletion does not refund charges already made.`,
   },
   {
     type: "p",
@@ -200,7 +206,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: "11.3 Upon termination for cause, unused Diamonds, Diamond Dust, and collected items may be forfeited without compensation, to the extent permitted by law.",
+    text: "11.3 Upon termination for cause, unused Diamonds, Coins, and collected items may be forfeited without compensation, to the extent permitted by law.",
   },
   { type: "h2", text: "12. Disclaimers" },
   {
@@ -260,7 +266,7 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
     type: "ul",
     items: [
       "Account data: email address, username/display name, password (hashed), date of birth (for age verification).",
-      "Payment data: handled by our payment processor (Stripe) — we do not store full card numbers. We retain transaction records (amount, date, Diamond package purchased, order ID).",
+      "Payment data: website purchases are handled by Stripe and iOS purchases by Apple In-App Purchase. We do not store full card numbers. We retain transaction records (amount, date, Diamond package purchased, order ID).",
       "Support communications: anything you send us via support email or in-app reporting (e.g., content reports, refund requests).",
     ],
   },
@@ -391,7 +397,7 @@ export const PRIVACY_BLOCKS: LegalBlock[] = [
   },
   {
     type: "p",
-    text: `To exercise these rights, contact us at ${LEGAL_PRIVACY_EMAIL}. We may need to verify your identity before fulfilling a request. Note that deleting your account will result in forfeiture of Diamonds, Diamond Dust, and collected items, consistent with the Terms.`,
+    text: `You can delete your account from Settings → Delete account. To exercise these rights another way, contact us at ${LEGAL_PRIVACY_EMAIL}. We may need to verify your identity before fulfilling a request. Deleting your account forfeits Diamonds, Coins, and collected items, consistent with the Terms. We keep tax and payment records where the law requires it.`,
   },
   { type: "h2", text: "10. Data Security" },
   {

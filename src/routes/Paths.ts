@@ -40,6 +40,11 @@ export const Paths = {
   following: "/profile/following",
   gameSettings: "/profile/game-settings",
   contentPreferences: "/profile/content-preferences",
+  /** Public support URL (App Store Connect). */
+  help: "/help",
+  /** Pack rarity disclosure. Linked before purchase and from Help. */
+  legalOdds: "/legal/odds",
+  deleteAccount: "/profile/delete-account",
   /** Wallet / purchase ledger (Profile → History). */
   transactions: "/profile/transactions",
   /** Completed scratch/reveal results (Profile → History). */
@@ -154,7 +159,9 @@ export function tabFromPathname(
   if (
     pathname.startsWith("/profile") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/inbox")
+    pathname.startsWith("/inbox") ||
+    pathname.startsWith("/help") ||
+    pathname.startsWith("/legal")
   ) {
     return "profile";
   }

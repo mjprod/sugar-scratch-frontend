@@ -66,6 +66,9 @@ assert(
 
 assert(isSettingsBackHop("/profile/edit", "/settings"), "edit profile to settings is back");
 assert(isSettingsBackHop("/profile/change-password", "/settings"), "change password to settings is back");
+assert(isSettingsBackHop("/help", "/settings"), "help to settings is back");
+assert(isSettingsBackHop("/profile/delete-account", "/settings"), "delete account to settings is back");
+assert(isSettingsBackHop("/legal/odds", "/settings"), "odds to settings is back");
 assert(!isSettingsBackHop("/settings", "/profile/edit"), "opening edit profile is not back");
 assert(
   pagePushDirection("/profile/edit", "/settings", 2, 3) === -1,

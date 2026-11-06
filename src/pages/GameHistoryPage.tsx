@@ -13,6 +13,7 @@ export function GameHistoryPage() {
     <GameHistoryScreen
       onBack={goBack}
       onExplorePacks={() => navigate(Paths.home)}
+      onGetHelp={() => navigate(Paths.help)}
       purchaseFilterId={purchaseFilterId}
     />
   );
