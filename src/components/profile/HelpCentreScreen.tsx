@@ -4,6 +4,7 @@ import { AppPageShell } from "@/components/AppPageShell";
 import { LegalDocPanel } from "@/components/auth/LegalDocPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { SubpageHeader } from "@/components/SubpageHeader";
+import { useAuthSession } from "@/contexts/useAuth";
 import {
   APPLE_REFUND_URL,
   HELP_APP_VERSION,
@@ -29,7 +30,8 @@ const HELP_CTA = ctaButtonPropsFromTemplate("squircleCTA");
 
 export function HelpCentreScreen() {
   const navigate = useNavigate();
-  const goBack = useGoBack(Paths.discover);
+  const { authed } = useAuthSession();
+  const goBack = useGoBack(authed ? Paths.settings : Paths.discover);
   const [params, setParams] = useSearchParams();
   const contact = params.get("contact");
   const doc = params.get("doc");
@@ -67,7 +69,7 @@ export function HelpCentreScreen() {
       <SubpageHeader
         title="Help Centre"
         onBack={goBack}
-        backLabel="Back to Settings"
+        backLabel={authed ? "Back to Settings" : "Back"}
       />
 
       <SupportForm
@@ -182,6 +184,7 @@ function SupportForm({
   const formId = useId();
   const [email, setEmail] = useState(() => getAuthEmail() ?? "");
   const accountId = getAuthUserId() ?? "";
+  const [refSource, setRefSource] = useState(transactionRef);
   const [ref, setRef] = useState(transactionRef);
   const [reportTarget, setReportTarget] = useState("");
   const [message, setMessage] = useState("");
@@ -189,6 +192,10 @@ function SupportForm({
   const [mailto, setMailto] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  if (transactionRef !== refSource) {
+    setRefSource(transactionRef);
+    setRef(transactionRef);
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();

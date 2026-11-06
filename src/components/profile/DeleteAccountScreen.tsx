@@ -4,6 +4,7 @@ import { SubpageHeader } from "@/components/SubpageHeader";
 import {
   DELETE_ACCOUNT_CONFIRM,
   DELETE_ACCOUNT_POINTS,
+  matchesDeleteConfirm,
 } from "@/content/helpCenter";
 import { useGoBack } from "@/hooks/useGoBack";
 import { Paths } from "@/routes/Paths";
@@ -17,11 +18,11 @@ export function DeleteAccountScreen() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const ready = confirm === DELETE_ACCOUNT_CONFIRM && !submitting;
+  const ready = matchesDeleteConfirm(confirm) && !submitting;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (confirm !== DELETE_ACCOUNT_CONFIRM) {
+    if (!matchesDeleteConfirm(confirm)) {
       setError(`Type ${DELETE_ACCOUNT_CONFIRM} to confirm.`);
       return;
     }

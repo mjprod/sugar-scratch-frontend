@@ -47,7 +47,7 @@ export function helpContactPath(
 export const HELP_FAQS: { q: string; a: string }[] = [
   {
     q: "What are Diamonds and Coins?",
-    a: "Diamonds are the paid currency. You spend them on card packs. Coins are earned from play, missions, and promotions, and cannot be bought. Neither has cash value.",
+    a: "Diamonds are the paid currency. Every purchase, including card packs, is made with Diamonds. Coins are earned from play, missions, and promotions, and cannot be bought. Coins can be converted to Diamonds. Neither has cash value.",
   },
   {
     q: "What is in a card pack?",
@@ -95,6 +95,10 @@ export const DELETE_ACCOUNT_POINTS = [
 ] as const;
 
 export const DELETE_ACCOUNT_CONFIRM = "DELETE";
+
+export function matchesDeleteConfirm(value: string): boolean {
+  return value.trim().toUpperCase() === DELETE_ACCOUNT_CONFIRM;
+}
 
 /** In-help destinations. No store or checkout URLs. */
 export const HELP_LINKS = [

@@ -60,7 +60,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "3. Virtual Currencies (Diamonds & Coins)" },
   {
     type: "p",
-    text: "3.1 Diamonds are the primary paid virtual currency, purchasable with real money through our payment processor. Coins are a secondary soft currency earned through gameplay, missions, and promotions, and cannot be purchased directly.",
+    text: "3.1 Diamonds are the paid virtual currency, bought with real money. Every purchase in the Service is made with Diamonds. Coins are earned through gameplay, missions, and promotions, and cannot be purchased. Coins can be converted to Diamonds at the rate shown in the Service.",
   },
   { type: "p", text: "3.2 Diamonds and Coins:" },
   {
@@ -79,7 +79,7 @@ export const TERMS_BLOCKS: LegalBlock[] = [
   { type: "h2", text: "4. Purchases, Card Packs & Virtual Items" },
   {
     type: "p",
-    text: "4.1 Diamonds may be spent on Card Packs and other in-Service offerings. Exclusive Packs are purchasable with Coins only and cannot be bought directly with Diamonds or real money.",
+    text: "4.1 All purchases in the Service, including Card Packs, are made with Diamonds. Coins are not spent on purchases. Coins can be converted to Diamonds, and those Diamonds are what you spend.",
   },
   {
     type: "p",

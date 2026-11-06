@@ -15,10 +15,12 @@ import {
   REFUND_WEB_COPY,
   helpContactPath,
   isSupportTopic,
+  matchesDeleteConfirm,
   supportMailto,
   supportTopicLabel,
 } from "./helpCenter.ts";
 import { PRIVACY_BLOCKS, TERMS_BLOCKS, type LegalBlock } from "./legalDocs.ts";
+import { explicitFailureDetail } from "../services/support.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -105,6 +107,13 @@ assert(
 );
 
 assert(DELETE_ACCOUNT_CONFIRM === "DELETE", "delete confirmation word");
+assert(matchesDeleteConfirm(" delete "), "delete confirm ignores space");
+assert(matchesDeleteConfirm("delete"), "delete confirm ignores case");
+assert(!matchesDeleteConfirm("DEL"), "partial delete confirm fails");
+assert(explicitFailureDetail({ ok: false, detail: " Nope " }) === "Nope", "ok false uses detail");
+assert(explicitFailureDetail({ ok: false }) === "", "ok false without detail still fails");
+assert(explicitFailureDetail({ ok: true }) === null, "ok true is success");
+assert(explicitFailureDetail(null) === null, "empty body is success");
 assert(
   DELETE_ACCOUNT_POINTS.some((line) => /tax/i.test(line)),
   "deletion names tax retention",
@@ -122,6 +131,15 @@ assert(terms.includes(APPLE_REFUND_URL), "terms send Apple refunds to Apple");
 assert(
   terms.includes("does not send you to the website to buy Diamonds"),
   "terms do not steer iOS to the website",
+);
+assert(!terms.includes("Coins only"), "packs are not bought with Coins");
+assert(
+  terms.includes("All purchases in the Service, including Card Packs, are made with Diamonds"),
+  "purchases are made with Diamonds",
+);
+assert(
+  terms.includes("Coins can be converted to Diamonds"),
+  "coins convert to diamonds",
 );
 assert(terms.includes("Delete account"), "terms point at in-app deletion");
 assert(/tax and payment records/i.test(terms), "terms name retained records");
