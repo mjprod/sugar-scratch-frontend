@@ -139,8 +139,10 @@ function GamePauseModal({
         <h2 id={titleId} className="game-pause__title">
           Game Paused
         </h2>
-        <StageMuteButton className="game-pause__mute" showLabel />
-        <ScratchZoomButton />
+        <div className="game-pause__toggles">
+          <StageMuteButton className="game-pause__mute" showLabel />
+          <ScratchZoomButton />
+        </div>
         <button
           ref={resumeRef}
           type="button"
