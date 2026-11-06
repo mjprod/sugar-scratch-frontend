@@ -1,14 +1,31 @@
 /* theme.css rules owned by ProfilePage (lazy route CSS). */
 body[data-theme="v8"] .profile-hero.profile-card {
+  position: relative;
   height: auto;
   border-radius: 32px;
   border: 1px solid oklch(1 0 0 / 0.08);
-  background:
-    radial-gradient(circle at 90% 0%,
-      oklch(0.606 0.219 292.72 / 0.3),
-      transparent 42%),
-    oklch(0.196 0 0);
+  background: oklch(0.196 0 0);
   padding: var(--space-6) var(--space-7);
+}
+
+body[data-theme="v8"] .profile-hero.profile-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--space-px);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 26% 48% at 0% 0%, oklch(1 0 0 / 0.95), transparent 70%),
+    radial-gradient(ellipse 26% 48% at 100% 100%, oklch(1 0 0 / 0.85), transparent 70%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
 }
 
 body[data-theme="v8"] .profile-identity:hover {

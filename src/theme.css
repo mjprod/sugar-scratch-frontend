@@ -9635,9 +9635,10 @@ body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button {
   border-radius: 0.75rem;
 }
 
-/* Desktop: extra block padding on the compact 48px home CTA (inline --cta-h). */
+/* Desktop: extra block padding on the compact 48px coverflow CTA (inline --cta-h). */
 @media (min-width: 981px) {
-  body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button {
+  body[data-theme="v8"] .home-v2 .coverflow-buy-pack-cta .cta-button,
+  body[data-theme="v8"] .cpv2-pack-coverflow .coverflow-buy-pack-cta .cta-button {
     --cta-h: calc(3rem + 2 * var(--space-2)) !important;
     height: var(--cta-h);
   }
