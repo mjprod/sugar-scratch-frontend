@@ -612,7 +612,7 @@ function CandyHeart({
         <linearGradient id={fillId} x1="14%" y1="6%" x2="86%" y2="94%">
           <stop offset="0%" stopColor={soft ? "oklch(0.848 0.097 351.66)" : "oklch(0.876 0.077 351.45)"} />
           <stop offset="38%" stopColor="oklch(0.692 0.223 356.89)" />
-          <stop offset="72%" stopColor="oklch(0.656 0.212 354.31)" />
+          <stop offset="72%" stopColor="oklch(0.639 0.256 9.89)" />
           <stop offset="100%" stopColor="oklch(0.508 0.188 355.38)" />
         </linearGradient>
         <radialGradient id={shineId} cx="34%" cy="26%" r="42%">

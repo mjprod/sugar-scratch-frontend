@@ -313,7 +313,7 @@ body[data-theme="v8"] .my-collection-preview-title {
 }
 
 body[data-theme="v8"] .my-collection-preview-creator {
-  color: oklch(0.711 0.203 357.66);
+  color: oklch(0.639 0.256 9.89);
 }
 
 body[data-theme="v8"] .my-collection-preview-slash {
@@ -337,7 +337,7 @@ body[data-theme="v8"] .my-collection-view-cta {
   padding: 0;
   border: 0;
   background: transparent;
-  color: oklch(0.711 0.203 357.66);
+  color: oklch(0.639 0.256 9.89);
   font: inherit;
   font-size: var(--text-caption);
   font-weight: 700;

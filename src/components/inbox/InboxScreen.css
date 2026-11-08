@@ -90,7 +90,7 @@ body[data-theme="v8"] .inbox-item:hover .inbox-item-chevron {
 }
 
 body[data-theme="v8"] .inbox-item:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66 / 0.7);
+  outline: 2px solid oklch(0.639 0.256 9.89 / 0.7);
   outline-offset: -2px;
 }
 
@@ -114,7 +114,7 @@ body[data-theme="v8"] .inbox-thumb {
 
 body[data-theme="v8"] .inbox-thumb--avatar {
   border-radius: 999px;
-  border: 1px solid oklch(0.711 0.203 357.66 / 0.35);
+  border: 1px solid oklch(0.639 0.256 9.89 / 0.35);
 }
 
 body[data-theme="v8"] .inbox-thumb--pack {
@@ -135,7 +135,7 @@ body[data-theme="v8"] .inbox-thumb--icon.is-bell {
 }
 
 body[data-theme="v8"] .inbox-thumb--icon.is-gift {
-  background: oklch(0.656 0.212 354.31 / 0.18);
+  background: oklch(0.639 0.256 9.89 / 0.18);
   color: oklch(0.823 0.11 346.02);
 }
 

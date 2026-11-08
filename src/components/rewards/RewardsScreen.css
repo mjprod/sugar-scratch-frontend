@@ -87,7 +87,7 @@ body[data-theme="v8"] .hub-feature-tile:active {
 }
 
 body[data-theme="v8"] .hub-feature-tile:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: 2px;
 }
 

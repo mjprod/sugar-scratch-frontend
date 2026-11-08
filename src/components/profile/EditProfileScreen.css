@@ -23,7 +23,7 @@ body[data-theme="v8"] .edit-profile-avatar-btn {
 }
 
 body[data-theme="v8"] .edit-profile-avatar-btn:focus-visible {
-  outline: 2px solid oklch(0.757 0.168 353.61);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: 3px;
   border-radius: 999px;
 }
@@ -63,7 +63,7 @@ body[data-theme="v8"] .edit-profile-change-avatar {
   padding: 0;
   border: 0;
   background: transparent;
-  color: oklch(0.757 0.168 353.61);
+  color: oklch(0.639 0.256 9.89);
   font-size: var(--text-caption);
   font-weight: 600;
   cursor: pointer;

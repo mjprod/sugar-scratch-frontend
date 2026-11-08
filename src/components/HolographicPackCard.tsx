@@ -65,7 +65,7 @@ export function HolographicPackCard({
         <div
           className="pointer-events-none absolute inset-0 opacity-40 mix-blend-color-dodge transition-opacity group-hover:opacity-65"
           style={{
-            background: `radial-gradient(circle at ${light.x}% ${light.y}%, oklch(1 0 0 / 0.8), transparent 18%), conic-gradient(from 210deg at ${light.x}% ${light.y}%, oklch(0.606 0.219 292.72 / 0.18), oklch(0.656 0.212 354.31 / 0.2), oklch(0.773 0.153 163.22 / 0.12), oklch(0.767 0.139 91.06 / 0.18), oklch(0.606 0.219 292.72 / 0.18))`,
+            background: `radial-gradient(circle at ${light.x}% ${light.y}%, oklch(1 0 0 / 0.8), transparent 18%), conic-gradient(from 210deg at ${light.x}% ${light.y}%, oklch(0.606 0.219 292.72 / 0.18), oklch(0.639 0.256 9.89 / 0.2), oklch(0.773 0.153 163.22 / 0.12), oklch(0.767 0.139 91.06 / 0.18), oklch(0.606 0.219 292.72 / 0.18))`,
           }}
         />
         <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(115deg,transparent_0,transparent_8px,oklch(1_0_0_/_0.18)_9px,transparent_10px)]" />

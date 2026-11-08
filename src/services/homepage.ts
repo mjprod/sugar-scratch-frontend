@@ -294,7 +294,7 @@ const FEATURED: FeaturedPack[] = [
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 84).toISOString(),
     accentColors: {
       primary: "oklch(0.85 0.123 82.79)",
-      secondary: "oklch(0.656 0.212 354.31)",
+      secondary: "oklch(0.639 0.256 9.89)",
       glow: "oklch(0.85 0.123 82.79 / 0.28)",
     },
     rewardHint: "Complete theme for Replay Mode",
@@ -318,7 +318,7 @@ const FEATURED: FeaturedPack[] = [
     rarity: "rare",
     accentColors: {
       primary: "oklch(0.714 0.143 254.62)",
-      secondary: "oklch(0.656 0.212 354.31)",
+      secondary: "oklch(0.639 0.256 9.89)",
       glow: "oklch(0.714 0.143 254.62 / 0.28)",
     },
     rewardHint: "Earn Diamond bonuses",
@@ -604,7 +604,7 @@ async function loadLeaderboard(): Promise<LeaderboardRow[]> {
 
 const LIVE_PACK_ACCENT = {
   primary: "oklch(0.85 0.123 82.79)",
-  secondary: "oklch(0.656 0.212 354.31)",
+  secondary: "oklch(0.639 0.256 9.89)",
   glow: "oklch(0.85 0.123 82.79 / 0.22)",
 };
 
@@ -818,7 +818,7 @@ export async function fetchPackLibrary(): Promise<FeaturedPack[]> {
     collectionTotal: 15,
     accentColors: {
       primary: "oklch(0.85 0.123 82.79)",
-      secondary: "oklch(0.656 0.212 354.31)",
+      secondary: "oklch(0.639 0.256 9.89)",
       glow: "oklch(0.85 0.123 82.79 / 0.22)",
     },
     isAvailable: true as const,

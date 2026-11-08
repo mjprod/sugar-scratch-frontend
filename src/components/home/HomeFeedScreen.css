@@ -310,7 +310,7 @@ body[data-theme="v8"] .hf-heart-burst-piece.is-depth-mid .hf-candy-heart {
 
 body[data-theme="v8"] .hf-heart-burst-piece.is-depth-bg .hf-candy-heart {
   filter:
-    blur(1.1px) drop-shadow(0 6px 10px oklch(0 0 0 / 0.22)) drop-shadow(0 0 10px oklch(0.656 0.212 354.31 / 0.18));
+    blur(1.1px) drop-shadow(0 6px 10px oklch(0 0 0 / 0.22)) drop-shadow(0 0 10px oklch(0.639 0.256 9.89 / 0.18));
 }
 
 body[data-theme="v8"] .hf-heart-burst-piece.is-primary {

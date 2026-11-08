@@ -175,7 +175,7 @@ body[data-theme="v8"] .auth7-rec-swipe-continue:hover {
 }
 
 body[data-theme="v8"] .auth7-rec-swipe-continue:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66 / 0.7);
+  outline: 2px solid oklch(0.639 0.256 9.89 / 0.7);
   outline-offset: 3px;
   border-radius: 8px;
 }
@@ -215,14 +215,14 @@ body[data-theme="v8"] .auth7-complete-mark {
   margin: 0 0 var(--space-1);
   border-radius: 999px;
   border: 1px solid color-mix(in oklch,
-      var(--color-accent, oklch(0.656 0.212 354.31)) 45%,
+      var(--color-accent, oklch(0.639 0.256 9.89)) 45%,
       transparent);
   background: color-mix(in oklch,
-      var(--color-accent, oklch(0.656 0.212 354.31)) 16%,
+      var(--color-accent, oklch(0.639 0.256 9.89)) 16%,
       oklch(0.16 0.01 285));
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  color: var(--color-accent, oklch(0.639 0.256 9.89));
   box-shadow: 0 0 24px color-mix(in oklch,
-      var(--color-accent, oklch(0.656 0.212 354.31)) 20%,
+      var(--color-accent, oklch(0.639 0.256 9.89)) 20%,
       transparent);
 }
 

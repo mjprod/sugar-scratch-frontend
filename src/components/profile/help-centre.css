@@ -120,7 +120,7 @@ body[data-theme="v8"] .help-link:first-child {
 
 body[data-theme="v8"] .help-link:focus-visible,
 body[data-theme="v8"] .help-faq summary:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: -2px;
 }
 
@@ -190,7 +190,7 @@ body[data-theme="v8"] .help-form textarea.auth7-input {
 }
 
 body[data-theme="v8"] .help-mailto {
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  color: var(--color-accent, oklch(0.639 0.256 9.89));
   font-weight: 600;
 }
 
@@ -212,7 +212,7 @@ body[data-theme="v8"] .help-danger:disabled {
 }
 
 body[data-theme="v8"] .help-danger:focus-visible {
-  outline: 2px solid oklch(0.757 0.168 353.61);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: 2px;
 }
 
