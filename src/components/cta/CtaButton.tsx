@@ -284,8 +284,11 @@ export function CtaButton({
     if (!el || typeof ResizeObserver === "undefined") return;
 
     const apply = (width: number, height: number) => {
-      const nextW = Math.max(1, Math.round(width));
-      const nextH = Math.max(1, Math.round(height));
+      const nextW = Math.round(width);
+      const nextH = Math.round(height);
+      // % boxes can report 0 before the slot lays out. Flooring that to 1×1
+      // used to freeze --cta-r at 0.5px (square Unlock on MotionCard).
+      if (nextW < 2 || nextH < 2) return;
       setMeasured((prev) =>
         prev.width === nextW && prev.height === nextH
           ? prev
@@ -307,7 +310,8 @@ export function CtaButton({
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fillParent, widthProp, heightProp]);
+    // Remeasure when glow wraps/unwraps the button in BorderGlow.
+  }, [fillParent, widthProp, heightProp, glowEnabled]);
 
   const width = fillParent ? measured.width : (widthProp ?? DEFAULT_WIDTH);
   const height = fillParent ? measured.height : (heightProp ?? DEFAULT_HEIGHT);

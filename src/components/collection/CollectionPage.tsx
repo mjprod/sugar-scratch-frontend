@@ -242,7 +242,7 @@ export function CollectionPage({
       style={
         {
           "--bg-primary": "oklch(0.13 0.005 285.67)",
-          "--accent-pink": "oklch(0.711 0.203 357.66)",
+          "--accent-pink": "oklch(0.639 0.256 9.89)",
         } as CSSProperties
       }
     >

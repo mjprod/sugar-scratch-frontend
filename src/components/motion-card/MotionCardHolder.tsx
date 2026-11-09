@@ -31,6 +31,8 @@ type MotionCardHolderProps = {
 const APPLE_EASE = [0.22, 1, 0.36, 1] as const;
 const SHIFT = { duration: 1.04, ease: APPLE_EASE };
 const DETAILS_DELAY = 0.15;
+/** Let the selected card settle before Play Motion + Photo Scratch slide in. */
+const PANEL_IN_DELAY = 0.32;
 const GAP = 12;
 const PANEL_GAP = 16;
 
@@ -56,6 +58,11 @@ function exitDelay(index: number, activeIndex: number) {
 
 function enterDelay(index: number) {
   return (2 - index) * 0.16;
+}
+
+/** Right-hand cards travel farther left — start their open a touch later. */
+function openDelay(index: number) {
+  return index * 0.12;
 }
 
 const SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
@@ -185,7 +192,7 @@ export function MotionCardHolder({
           if (active) lastActiveIndex.current = activeIndex;
           const delay = active
             ? selected
-              ? 0
+              ? openDelay(index)
               : exitDelay(index, activeIndex)
             : enterDelay(index);
 
@@ -249,7 +256,7 @@ export function MotionCardHolder({
                       if (!locked) {
                         onItemSelect?.(item.id, "unlocked-selected");
                       }
-                    }, DETAILS_DELAY * 1000);
+                    }, (DETAILS_DELAY + openDelay(index)) * 1000);
                     return;
                   }
                   closeActive(item);
@@ -269,9 +276,21 @@ export function MotionCardHolder({
               height: cardH > 0 ? cardH : undefined,
             }}
             initial={reduceMotion ? false : { opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, x: 16 }}
-            transition={instant}
+            animate={{
+              opacity: 1,
+              x: 0,
+              transition: reduceMotion
+                ? { duration: 0 }
+                : {
+                    ...SHIFT,
+                    delay: PANEL_IN_DELAY + openDelay(activeIndex),
+                  },
+            }}
+            exit={
+              reduceMotion
+                ? undefined
+                : { opacity: 0, x: 16, transition: instant }
+            }
           >
             <div className="flex h-full min-h-0 w-full flex-col gap-2">
               <div className="motion-card-holder__head flex w-full shrink-0 items-center gap-2">

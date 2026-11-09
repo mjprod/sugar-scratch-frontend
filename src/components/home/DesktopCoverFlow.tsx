@@ -6,6 +6,7 @@ import {
   type CoverFlowCameraSettings,
 } from "@/features/packs/CoverFlowCarousel";
 import type { Iteration } from "@/features/packs/types";
+import "@/components/home/home-hero-debug.css";
 
 /** Desktop homepage hero — locked from center debug. */
 export const HOME_COVERFLOW_CAMERA: CoverFlowCameraSettings = {

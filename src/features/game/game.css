@@ -1589,7 +1589,7 @@
 }
 
 .game-pause__close:focus-visible {
-  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline: 2px solid color-mix(in oklab, oklch(0.639 0.256 9.89) 70%, white);
   outline-offset: 2px;
 }
 
@@ -1672,7 +1672,7 @@
 
 .game-pause__mute:focus-visible,
 .game-pause__zoom:focus-visible {
-  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline: 2px solid color-mix(in oklab, oklch(0.639 0.256 9.89) 70%, white);
   outline-offset: 2px;
 }
 
@@ -1735,7 +1735,7 @@
 
 .game-pause__resume:focus-visible,
 .game-pause__leave:focus-visible {
-  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline: 2px solid color-mix(in oklab, oklch(0.639 0.256 9.89) 70%, white);
   outline-offset: 2px;
 }
 
