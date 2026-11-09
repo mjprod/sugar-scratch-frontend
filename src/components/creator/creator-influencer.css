@@ -650,10 +650,10 @@ body[data-theme="v8"] .cpv2-progress-label {
   display: inline-grid;
   justify-items: start;
   /*
-    rem (not em): Total uses a larger font — em would widen its column and
-    shove its track right of the theme bars.
+    rem so Total’s larger font doesn’t widen its column. 4rem clears the
+    widest glyph (Teacher ≈54px) — char-count “Firegirl” is narrower in this face.
   */
-  min-width: 5.5rem;
+  min-width: 4rem;
   color: #fff;
   font-size: var(--text-body);
   font-weight: 500;
