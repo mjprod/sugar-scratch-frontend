@@ -3,7 +3,6 @@ import {
   Clock,
   Loader2,
   Lock,
-  RefreshCw,
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -353,6 +352,7 @@ export function StoreScreen({
 
       {load.status === "error" ? (
         <StateBlock
+          art={<EmptyPackArt />}
           title={load.message || "Unable to load store items."}
           primary={{ label: "Retry", onClick: () => void reload() }}
           secondary={{ label: "Back", onClick: onBack }}
@@ -472,6 +472,7 @@ function StoreSkeleton() {
 }
 
 const GET_DIAMONDS_EMPTY_ART = "/images/store/imageGetDiamonds";
+const EMPTY_PACK_ART = "/images/packs/imageEmptyPack";
 
 function GetDiamondsEmptyArt() {
   return (
@@ -498,6 +499,32 @@ function GetDiamondsEmptyArt() {
   );
 }
 
+/** Same open-pack art as Pack Pocket / route-load empty states. */
+function EmptyPackArt() {
+  return (
+    <picture>
+      <source
+        type="image/jxl"
+        srcSet={`${EMPTY_PACK_ART}@1x.jxl 1x, ${EMPTY_PACK_ART}@2x.jxl 2x`}
+      />
+      <source
+        type="image/webp"
+        srcSet={`${EMPTY_PACK_ART}@1x.webp 1x, ${EMPTY_PACK_ART}@2x.webp 2x`}
+      />
+      <img
+        className="store-empty-pack-art"
+        src={`${EMPTY_PACK_ART}@1x.png`}
+        srcSet={`${EMPTY_PACK_ART}@1x.png 1x, ${EMPTY_PACK_ART}@2x.png 2x`}
+        alt=""
+        width={355}
+        height={532}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  );
+}
+
 function StateBlock({
   title,
   primary,
@@ -507,17 +534,11 @@ function StateBlock({
   title: string;
   primary: { label: string; onClick: () => void };
   secondary?: { label: string; onClick: () => void };
-  art?: ReactNode;
+  art: ReactNode;
 }) {
   return (
     <div className="mt-16 flex flex-col items-center px-4 text-center">
-      {art ? (
-        art
-      ) : (
-        <span className="grid size-14 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-white/55">
-          <RefreshCw className="size-6" aria-hidden="true" />
-        </span>
-      )}
+      {art}
       <p className="mt-4 max-w-xs text-body text-white/65">{title}</p>
       <div className="hf-state-cta mt-6">
         <CtaButton

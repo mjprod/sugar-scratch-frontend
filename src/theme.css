@@ -1983,7 +1983,7 @@ body[data-theme="v8"] .hub-daily-hero {
   border: 1px solid oklch(0.639 0.256 9.89 / 0.22);
   background:
     radial-gradient(ellipse at 50% 42%, oklch(0.639 0.256 9.89 / 0.26), transparent 55%),
-    radial-gradient(ellipse at 12% 90%, oklch(0.639 0.256 9.90 / 0.16), transparent 48%),
+    radial-gradient(ellipse at 12% 90%, oklch(0.639 0.256 9.89 / 0.16), transparent 48%),
     linear-gradient(160deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
   background-color: oklch(0.156 0.015 354.31);
   padding: var(--space-4) var(--space-4) var(--space-3-5);
@@ -2196,7 +2196,7 @@ body[data-theme="v8"] .hub-daily-stage-bloom {
   border-radius: 999px;
   background: radial-gradient(circle,
       oklch(0.639 0.256 9.89 / 0.42) 0%,
-      oklch(0.639 0.256 9.90 / 0.16) 40%,
+      oklch(0.639 0.256 9.89 / 0.16) 40%,
       transparent 68%);
   filter: blur(4px);
 }
@@ -2282,7 +2282,7 @@ body[data-theme="v8"] .hub-daily-stage-gift {
     text-align: center;
     background:
       radial-gradient(ellipse at 50% 18%, oklch(0.639 0.256 9.89 / 0.28), transparent 52%),
-      radial-gradient(ellipse at 50% 95%, oklch(0.639 0.256 9.90 / 0.16), transparent 48%),
+      radial-gradient(ellipse at 50% 95%, oklch(0.639 0.256 9.89 / 0.16), transparent 48%),
       linear-gradient(180deg, oklch(0.207 0.032 354.31) 0%, oklch(0.156 0.015 354.31) 48%, oklch(0.184 0.025 354.31) 100%);
   }
 
@@ -3301,9 +3301,9 @@ body[data-theme="v8"] .my-collection-filter-option:hover {
 
 body[data-theme="v8"] .my-collection-filter-radio.is-on {
   /* #FF0068 */
-  border-color: oklch(0.639 0.256 9.90);
+  border-color: oklch(0.639 0.256 9.89);
   background:
-    radial-gradient(circle at center, oklch(0.639 0.256 9.90) 0 5px, transparent 6px);
+    radial-gradient(circle at center, oklch(0.639 0.256 9.89) 0 5px, transparent 6px);
 }
 
 body[data-theme="v8"] .collection-page-skeleton {

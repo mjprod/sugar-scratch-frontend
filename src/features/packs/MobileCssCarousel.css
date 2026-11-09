@@ -216,6 +216,8 @@
   height: auto;
   min-height: 0;
   overflow: visible;
+  /* Let the Continue panel gradient show through (default .stage-packs is black). */
+  background: transparent;
 }
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel-shell {

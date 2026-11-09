@@ -167,3 +167,11 @@ body[data-theme="v8"] .get-diamonds-empty-art {
   width: 100%;
   height: auto;
 }
+
+/* Match Pack Pocket empty open-pack mark. */
+body[data-theme="v8"] .store-empty-pack-art {
+  display: block;
+  width: 9rem;
+  height: auto;
+  rotate: -9deg;
+}
