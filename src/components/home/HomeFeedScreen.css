@@ -99,7 +99,7 @@ body[data-theme="v8"] .hf-tag {
   border-radius: 999px;
   background: oklch(0 0 0 / 0.28);
   color: oklch(1 0 0 / 0.82);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -254,7 +254,7 @@ body[data-theme="v8"] .hf-like-icon {
 
 body[data-theme="v8"] .hf-like-caption {
   color: oklch(1 0 0 / 0.78);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 650;
   letter-spacing: 0.01em;
   line-height: 1;

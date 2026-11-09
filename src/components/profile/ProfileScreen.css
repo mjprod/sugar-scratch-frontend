@@ -65,7 +65,7 @@ body[data-theme="v8"] .profile-edit-link {
   min-height: 28px;
   /* Match display name above (leo.mjpro) */
   color: oklch(1 0 0);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 600;
   line-height: 1.2;
   opacity: 0.88;
@@ -129,7 +129,7 @@ body[data-theme="v8"] .profile-balance-row .diamond-lottie picture {
 }
 
 body[data-theme="v8"] .profile-action-label {
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;

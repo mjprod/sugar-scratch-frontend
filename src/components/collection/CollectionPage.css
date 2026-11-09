@@ -482,7 +482,7 @@ body[data-theme="v8"] .collection-empty-title {
 body[data-theme="v8"] .collection-empty-copy {
   margin: 0;
   color: oklch(1 0 0 / 0.55);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   line-height: 1.45;
 }
 
@@ -1025,7 +1025,7 @@ body[data-theme="v8"] .mc-model-name {
 }
 
 body[data-theme="v8"] .mc-model-place {
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   letter-spacing: 0.24px;
   line-height: 1.2;
   color: rgba(255, 255, 255, 0.7);
@@ -1048,7 +1048,7 @@ body[data-theme="v8"] .mc-model-metric {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 500;
   letter-spacing: 0.2px;
   color: #fff;
