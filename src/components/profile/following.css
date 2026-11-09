@@ -37,11 +37,11 @@
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: var(--color-accent, oklch(0.656 0.212 354.31));
+  background: var(--color-accent, oklch(0.639 0.256 9.89));
   box-shadow: 0 0 8px
     color-mix(
       in oklch,
-      var(--color-accent, oklch(0.656 0.212 354.31)) 55%,
+      var(--color-accent, oklch(0.639 0.256 9.89)) 55%,
       transparent
     );
 }
@@ -56,7 +56,7 @@
   border-radius: 999px;
   background: oklch(0.2 0.01 285);
   color: oklch(1 0 0 / 0.62);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -70,8 +70,8 @@
   padding: var(--space-1) var(--space-0-5);
   border: 0;
   background: transparent;
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
-  font-size: var(--text-caption);
+  color: var(--color-accent, oklch(0.639 0.256 9.89));
+  font-size: var(--text-body);
   font-weight: 600;
   cursor: pointer;
 }
@@ -128,11 +128,11 @@
 }
 
 .following-recent-avatar-wrap.is-new {
-  border-color: var(--color-accent, oklch(0.656 0.212 354.31));
+  border-color: var(--color-accent, oklch(0.639 0.256 9.89));
   box-shadow: 0 0 0 1px
     color-mix(
       in oklch,
-      var(--color-accent, oklch(0.656 0.212 354.31)) 35%,
+      var(--color-accent, oklch(0.639 0.256 9.89)) 35%,
       transparent
     );
 }
@@ -147,7 +147,7 @@
 
 .following-new-badge {
   margin-top: calc(var(--space-0-5) * -1);
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  color: var(--color-accent, oklch(0.639 0.256 9.89));
   font-size: var(--text-caption);
   font-weight: 750;
   letter-spacing: 0.06em;
@@ -211,7 +211,7 @@
   border: 1.5px solid
     color-mix(
       in oklch,
-      var(--color-accent, oklch(0.656 0.212 354.31)) 45%,
+      var(--color-accent, oklch(0.639 0.256 9.89)) 45%,
       transparent
     );
   object-fit: cover;
@@ -240,7 +240,7 @@
 .following-card-handle {
   overflow: hidden;
   color: oklch(1 0 0 / 0.5);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -251,10 +251,10 @@
   flex-shrink: 0;
   margin-top: var(--space-1);
   padding: 7px 12px;
-  border: 1px solid var(--color-accent, oklch(0.656 0.212 354.31));
+  border: 1px solid var(--color-accent, oklch(0.639 0.256 9.89));
   border-radius: 999px;
   background: transparent;
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  color: var(--color-accent, oklch(0.639 0.256 9.89));
   font-size: var(--text-caption);
   font-weight: 650;
   line-height: 1;
@@ -264,7 +264,7 @@
 .following-unfollow-btn:hover {
   background: color-mix(
     in oklch,
-    var(--color-accent, oklch(0.656 0.212 354.31)) 12%,
+    var(--color-accent, oklch(0.639 0.256 9.89)) 12%,
     transparent
   );
 }
@@ -285,7 +285,7 @@
 .following-collection-label {
   margin: 0;
   color: oklch(1 0 0 / 0.42);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -324,7 +324,7 @@
 .following-collection-name {
   overflow: hidden;
   color: oklch(1 0 0 / 0.92);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 650;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -339,7 +339,7 @@
 }
 
 .following-collection-new {
-  color: var(--color-accent, oklch(0.656 0.212 354.31));
+  color: var(--color-accent, oklch(0.639 0.256 9.89));
   font-size: var(--text-caption);
   font-weight: 650;
   line-height: 1.25;
@@ -427,9 +427,9 @@
 }
 
 .following-sort-radio.is-on {
-  border-color: var(--color-accent, oklch(0.656 0.212 354.31));
+  border-color: var(--color-accent, oklch(0.639 0.256 9.89));
   box-shadow: inset 0 0 0 4px
-    var(--color-accent, oklch(0.656 0.212 354.31));
+    var(--color-accent, oklch(0.639 0.256 9.89));
 }
 
 /* —— Empty —— */

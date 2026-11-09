@@ -10,6 +10,7 @@ import { DragToTearControl } from "@/features/packs/DragToTearControl";
 import { useCoverflowTearSlider } from "@/features/packs/useCoverflowTearSlider";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
+import "@/components/home/home-hero-debug.css";
 import { useAuth } from "@/contexts/useAuth";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import {

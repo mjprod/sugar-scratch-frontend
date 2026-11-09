@@ -95,7 +95,7 @@ body[data-theme="v8"] .hub-redeem-cta .cta-button-glow > .border-glow-inner {
 }
 
 body[data-theme="v8"] .hub-redeem-input:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: 2px;
 }
 
@@ -166,4 +166,12 @@ body[data-theme="v8"] .get-diamonds-empty-art {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* Match Pack Pocket empty open-pack mark. */
+body[data-theme="v8"] .store-empty-pack-art {
+  display: block;
+  width: 9rem;
+  height: auto;
+  rotate: -9deg;
 }

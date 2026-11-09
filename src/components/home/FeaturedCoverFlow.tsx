@@ -13,6 +13,7 @@ import {
 } from "@/features/packs/CoverFlowCarousel";
 import { packItemToIteration, type Iteration } from "@/features/packs/types";
 import "@/features/packs/packs.css";
+import "@/components/home/home-hero-debug.css";
 import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import {

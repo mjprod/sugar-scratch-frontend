@@ -166,9 +166,9 @@ body[data-theme="v8"] .auth7-consent-box::before {
 }
 
 body[data-theme="v8"] .auth7-consent-box[aria-checked="true"]::before {
-  border-color: oklch(0.757 0.168 353.61);
-  background: oklch(0.757 0.168 353.61);
-  box-shadow: 0 0 0 3px oklch(0.757 0.168 353.61 / 0.18);
+  border-color: oklch(0.639 0.256 9.89);
+  background: oklch(0.639 0.256 9.89);
+  box-shadow: 0 0 0 3px oklch(0.639 0.256 9.89 / 0.18);
 }
 
 body[data-theme="v8"] .auth7-consent-row.is-error .auth7-consent-box::before {
@@ -181,7 +181,7 @@ body[data-theme="v8"] .auth7-consent-box:focus-visible {
 }
 
 body[data-theme="v8"] .auth7-consent-box:focus-visible::before {
-  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: 2px;
 }
 
@@ -208,7 +208,7 @@ body[data-theme="v8"] .auth7-consent-link {
   padding: 0;
   border: 0;
   background: transparent;
-  color: oklch(0.757 0.168 353.61);
+  color: oklch(0.639 0.256 9.89);
   font: inherit;
   font-weight: 600;
   text-decoration: underline;
@@ -217,7 +217,7 @@ body[data-theme="v8"] .auth7-consent-link {
 }
 
 body[data-theme="v8"] .auth7-consent-link:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66);
+  outline: 2px solid oklch(0.639 0.256 9.89);
   outline-offset: 2px;
   border-radius: 4px;
 }

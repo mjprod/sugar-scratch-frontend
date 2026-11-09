@@ -298,6 +298,8 @@ export function MotionCard({
           <CtaButton
             {...SQUIRCLE_CTA}
             fillParent
+            height={34}
+            cornerRadius={999}
             label="Unlock"
             costAmount={null}
             fontSize={14}

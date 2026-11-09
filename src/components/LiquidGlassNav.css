@@ -272,7 +272,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 .nav-test-top-profile:focus-visible {
-  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline: 2px solid color-mix(in oklab, oklch(0.639 0.256 9.89) 70%, white);
   outline-offset: 2px;
 }
 
@@ -409,7 +409,7 @@ body[data-theme="v8"][data-liquid-nav="to-desktop"] .app-layout--hud {
 }
 
 .nav-test-top-brand:focus-visible {
-  outline: 2px solid color-mix(in oklab, oklch(0.711 0.203 357.66) 70%, white);
+  outline: 2px solid color-mix(in oklab, oklch(0.639 0.256 9.89) 70%, white);
   outline-offset: 2px;
   border-radius: 8px;
 }

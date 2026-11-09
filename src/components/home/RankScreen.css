@@ -137,14 +137,14 @@ body[data-theme="v8"] .category-leaderboard-pack {
 
 body[data-theme="v8"] .category-leaderboard-author {
   color: oklch(1 0 0 / 0.7);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 400;
   letter-spacing: 0.24px;
 }
 
 body[data-theme="v8"] .category-leaderboard-stats {
   color: oklch(1 0 0 / 0.7);
-  font-size: var(--text-caption);
+  font-size: var(--text-title);
   font-weight: 400;
   letter-spacing: 0.24px;
 }
@@ -418,7 +418,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-author {
   font-family: "DM Sans", system-ui, sans-serif;
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 400;
   letter-spacing: 0.24px;
   color: rgba(255, 255, 255, 0.7);
@@ -427,7 +427,7 @@ body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-le
 
 body[data-theme="v8"] .home-v2 .category-leaderboard.is-figma-board .category-leaderboard-stats {
   font-family: "DM Sans", system-ui, sans-serif;
-  font-size: var(--text-caption);
+  font-size: var(--text-title);
   font-weight: 400;
   letter-spacing: 0.24px;
   color: rgba(255, 255, 255, 0.7);

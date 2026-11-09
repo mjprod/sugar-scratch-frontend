@@ -39,7 +39,7 @@ body[data-theme="v8"] .inbox-section-label {
   gap: var(--space-2);
   margin: 0;
   color: oklch(1 0 0 / 0.55);
-  font-size: var(--text-caption);
+  font-size: var(--text-title);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -90,7 +90,7 @@ body[data-theme="v8"] .inbox-item:hover .inbox-item-chevron {
 }
 
 body[data-theme="v8"] .inbox-item:focus-visible {
-  outline: 2px solid oklch(0.711 0.203 357.66 / 0.7);
+  outline: 2px solid oklch(0.639 0.256 9.89 / 0.7);
   outline-offset: -2px;
 }
 
@@ -114,7 +114,7 @@ body[data-theme="v8"] .inbox-thumb {
 
 body[data-theme="v8"] .inbox-thumb--avatar {
   border-radius: 999px;
-  border: 1px solid oklch(0.711 0.203 357.66 / 0.35);
+  border: 1px solid oklch(0.639 0.256 9.89 / 0.35);
 }
 
 body[data-theme="v8"] .inbox-thumb--pack {
@@ -135,7 +135,7 @@ body[data-theme="v8"] .inbox-thumb--icon.is-bell {
 }
 
 body[data-theme="v8"] .inbox-thumb--icon.is-gift {
-  background: oklch(0.656 0.212 354.31 / 0.18);
+  background: oklch(0.639 0.256 9.89 / 0.18);
   color: oklch(0.823 0.11 346.02);
 }
 
@@ -163,7 +163,7 @@ body[data-theme="v8"] .inbox-item-body {
 
 body[data-theme="v8"] .inbox-item-title {
   color: oklch(1 0 0);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -171,7 +171,7 @@ body[data-theme="v8"] .inbox-item-title {
 
 body[data-theme="v8"] .inbox-item-subtitle {
   color: oklch(1 0 0 / 0.48);
-  font-size: var(--text-caption);
+  font-size: var(--text-title);
   line-height: 1.35;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -181,7 +181,7 @@ body[data-theme="v8"] .inbox-item-subtitle {
 
 body[data-theme="v8"] .inbox-item-time {
   color: oklch(1 0 0 / 0.38);
-  font-size: var(--text-caption);
+  font-size: var(--text-title);
   font-weight: 500;
   white-space: nowrap;
   justify-self: end;
@@ -233,7 +233,7 @@ body[data-theme="v8"] .inbox-empty-wrap {
   }
 
   body[data-theme="v8"] .inbox-item-title {
-    font-size: var(--text-body);
+    font-size: var(--text-title);
   }
 }
 

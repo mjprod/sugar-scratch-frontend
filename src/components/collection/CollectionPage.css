@@ -313,7 +313,7 @@ body[data-theme="v8"] .my-collection-preview-title {
 }
 
 body[data-theme="v8"] .my-collection-preview-creator {
-  color: oklch(0.711 0.203 357.66);
+  color: oklch(0.639 0.256 9.89);
 }
 
 body[data-theme="v8"] .my-collection-preview-slash {
@@ -337,7 +337,7 @@ body[data-theme="v8"] .my-collection-view-cta {
   padding: 0;
   border: 0;
   background: transparent;
-  color: oklch(0.711 0.203 357.66);
+  color: oklch(0.639 0.256 9.89);
   font: inherit;
   font-size: var(--text-caption);
   font-weight: 700;
@@ -482,7 +482,7 @@ body[data-theme="v8"] .collection-empty-title {
 body[data-theme="v8"] .collection-empty-copy {
   margin: 0;
   color: oklch(1 0 0 / 0.55);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   line-height: 1.45;
 }
 
@@ -764,12 +764,13 @@ body[data-theme="v8"] .mc-models-title {
 body[data-theme="v8"] .mc-models-empty {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2-5);
   padding: var(--space-4-5) var(--space-4);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
+  text-align: center;
 }
 
 body[data-theme="v8"] .mc-models-empty-art {
@@ -1025,7 +1026,7 @@ body[data-theme="v8"] .mc-model-name {
 }
 
 body[data-theme="v8"] .mc-model-place {
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   letter-spacing: 0.24px;
   line-height: 1.2;
   color: rgba(255, 255, 255, 0.7);
@@ -1048,7 +1049,7 @@ body[data-theme="v8"] .mc-model-metric {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 500;
   letter-spacing: 0.2px;
   color: #fff;
