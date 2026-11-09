@@ -201,7 +201,7 @@ body[data-theme="v8"] .help-danger {
   background: var(--color-danger);
   color: white;
   font: inherit;
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 650;
   cursor: pointer;
 }
@@ -220,7 +220,7 @@ body[data-theme="v8"] .help-list {
   margin: 0;
   padding-left: 1.1rem;
   color: oklch(1 0 0 / 0.72);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   line-height: 1.45;
 }
 

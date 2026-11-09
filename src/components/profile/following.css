@@ -56,7 +56,7 @@
   border-radius: 999px;
   background: oklch(0.2 0.01 285);
   color: oklch(1 0 0 / 0.62);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -71,7 +71,7 @@
   border: 0;
   background: transparent;
   color: var(--color-accent, oklch(0.639 0.256 9.89));
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 600;
   cursor: pointer;
 }
@@ -240,7 +240,7 @@
 .following-card-handle {
   overflow: hidden;
   color: oklch(1 0 0 / 0.5);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 500;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -285,7 +285,7 @@
 .following-collection-label {
   margin: 0;
   color: oklch(1 0 0 / 0.42);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -324,7 +324,7 @@
 .following-collection-name {
   overflow: hidden;
   color: oklch(1 0 0 / 0.92);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 650;
   line-height: 1.25;
   text-overflow: ellipsis;

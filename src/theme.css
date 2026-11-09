@@ -2976,7 +2976,7 @@ body[data-theme="v8"] .collection-snapshot-empty-copy {
   margin: 0;
   max-width: 280px;
   color: oklch(1 0 0 / 0.55);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   line-height: 1.45;
 }
 
@@ -5214,7 +5214,7 @@ body[data-theme="v8"] .auth7-show-toggle {
   border-radius: 999px;
   background: transparent;
   color: var(--color-accent, oklch(0.639 0.256 9.89));
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   font-weight: 600;
   cursor: pointer;
 }
@@ -5235,7 +5235,7 @@ body[data-theme="v8"] .auth7-pw-req {
   gap: var(--space-2);
   margin: calc(var(--space-1) * -1) 0 0;
   color: oklch(1 0 0 / 0.45);
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
   line-height: 1.4;
 }
 
@@ -5544,7 +5544,7 @@ body[data-theme="v8"] .profile-menu-soon {
   border-radius: 999px;
   background: oklch(1 0 0 / 0.08);
   color: oklch(1 0 0 / 0.55);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1.4;
@@ -7975,7 +7975,7 @@ body[data-theme="v8"] .explore-creators-sub {
   display: block;
   width: 100%;
   margin-top: calc(var(--space-1-5) * -1);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 400;
   letter-spacing: 0.2px;
   color: rgba(255, 255, 255, 0.5);
@@ -8878,7 +8878,7 @@ body[data-theme="v8"] .home-v2 .explore-creators-sub {
   display: block;
   width: 100%;
   margin-top: calc(var(--space-1) * -1);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: 400;
   letter-spacing: 0.2px;
   color: rgba(255, 255, 255, 0.5);
