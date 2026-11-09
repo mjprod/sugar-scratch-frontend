@@ -17,7 +17,6 @@ import {
   StaticCarousel,
   type StaticCarouselItem,
 } from "@/components/static-card/StaticCarousel";
-import type { MotionCardTheme } from "@/components/motion-card/MotionCard";
 import { PhotoGateway } from "@/components/photo-gateway/PhotoGateway";
 import { releaseVideos } from "@/components/creator/OffscreenVideo";
 
@@ -60,14 +59,6 @@ function enterDelay(index: number) {
 }
 
 const SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
-
-const THEME_LABEL: Record<MotionCardTheme, string> = {
-  police: "Police",
-  nurse: "Nurse",
-  fire: "Fire",
-  gym: "Gym",
-  teacher: "Teacher",
-};
 
 function gatewayCards(items: StaticCarouselItem[]) {
   return items.flatMap((item) => {
@@ -286,7 +277,7 @@ export function MotionCardHolder({
               <div className="motion-card-holder__head flex w-full shrink-0 items-center gap-2">
                 <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
                   <p className="static-carousel__title min-w-0 font-medium text-white">
-                    {THEME_LABEL[activeCard.theme ?? "police"]} Motion Card
+                    Motion Card
                   </p>
                   <p className="static-carousel__title shrink-0 font-medium text-white">
                     Nº {String(activeIndex + 1).padStart(2, "0")}/
