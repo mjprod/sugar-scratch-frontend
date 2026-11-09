@@ -649,6 +649,11 @@ body[data-theme="v8"] .cpv2-progress-label {
   flex: 0 0 auto;
   display: inline-grid;
   justify-items: start;
+  /*
+    rem (not em): Total uses a larger font — em would widen its column and
+    shove its track right of the theme bars.
+  */
+  min-width: 5.5rem;
   color: #fff;
   font-size: var(--text-body);
   font-weight: 500;
