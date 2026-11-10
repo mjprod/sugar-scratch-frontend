@@ -59,6 +59,32 @@ type ContinueTile = {
  * Figma MyCollection "Continue where you left off…" strip (node 123:491).
  * Unopened packs + ready scratches as compact portrait tiles with play CTA.
  */
+function creatorKey(value: string | null | undefined): string {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function belongsToCreator(
+  wantedKey: string,
+  models: ReturnType<typeof useModels>,
+  hints: { creatorId?: string; name?: string; packId?: string },
+): boolean {
+  if (!wantedKey) return true;
+  const direct = creatorKey(hints.creatorId);
+  if (direct && direct === wantedKey) return true;
+  const model = matchModel(models, {
+    packId: hints.packId || hints.creatorId,
+    name: hints.name,
+  });
+  if (!model) return false;
+  return [model.id, model.label, model.influencerName].some(
+    (value) => creatorKey(value) === wantedKey,
+  );
+}
+
 export function ReadyToReveal({
   onOpenPack,
   onScratch,
@@ -68,6 +94,8 @@ export function ReadyToReveal({
   inventoryRevision = 0,
   /** Keep the continue shell + #ready-heading when reveal=packs lands empty. */
   forceEmptyReveal = false,
+  /** When set, only show packs/scratches for this creator. */
+  creatorId,
 }: {
   onOpenPack: (pack: UnopenedPack) => void;
   onScratch: (group: ScratchReadyGroup) => void;
@@ -77,20 +105,36 @@ export function ReadyToReveal({
   unopenedPacks?: UnopenedPack[];
   inventoryRevision?: number;
   forceEmptyReveal?: boolean;
+  creatorId?: string;
 }) {
   void _onExplorePacks;
   const [searchParams] = useSearchParams();
   const revealPacks =
     forceEmptyReveal || searchParams.get("reveal") === "packs";
   const models = useModels();
-  const packs = useMemo(
-    () => unopenedPacks ?? listUnopenedPackShelf(),
-    [unopenedPacks, inventoryRevision],
-  );
-  const scratches = useMemo(
-    () => scratchGroups ?? listAllReadyScratch(),
-    [scratchGroups, inventoryRevision],
-  );
+  const wantedCreator = creatorKey(creatorId);
+  const packs = useMemo(() => {
+    const all = unopenedPacks ?? listUnopenedPackShelf();
+    if (!wantedCreator) return all;
+    return all.filter((pack) =>
+      belongsToCreator(wantedCreator, models, {
+        creatorId: pack.creatorId,
+        name: pack.creator,
+        packId: pack.catalogPackId ?? pack.id,
+      }),
+    );
+  }, [unopenedPacks, inventoryRevision, models, wantedCreator]);
+  const scratches = useMemo(() => {
+    const all = scratchGroups ?? listAllReadyScratch();
+    if (!wantedCreator) return all;
+    return all.filter((group) =>
+      belongsToCreator(wantedCreator, models, {
+        creatorId: group.creatorId,
+        name: group.creatorName,
+        packId: group.id.replace(/^(photo|motion):/, ""),
+      }),
+    );
+  }, [scratchGroups, inventoryRevision, models, wantedCreator]);
 
   const tiles = useMemo(() => {
     const packTiles = packs.map((pack) => {

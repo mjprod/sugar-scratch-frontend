@@ -20,6 +20,16 @@ const RankPage = lazy(() =>
 const CreatorPage = lazy(() =>
   import("@/pages/CreatorPage").then((m) => ({ default: m.CreatorPage })),
 );
+const CreatorPacksPage = lazy(() =>
+  import("@/pages/CreatorPacksPage").then((m) => ({
+    default: m.CreatorPacksPage,
+  })),
+);
+const CreatorThemePage = lazy(() =>
+  import("@/pages/CreatorThemePage").then((m) => ({
+    default: m.CreatorThemePage,
+  })),
+);
 const MotionCardPage = lazy(() =>
   import("@/pages/MotionCardPage").then((m) => ({ default: m.MotionCardPage })),
 );
@@ -305,6 +315,11 @@ export function AppRoutes() {
               }
             />
             <Route path="creator/:id" element={<CreatorPage />} />
+            <Route path="creator/:id/packs" element={<CreatorPacksPage />} />
+            <Route
+              path="creator/:id/theme/:themeId"
+              element={<CreatorThemePage />}
+            />
             <Route
               path="creator/:id/motion/:cardId"
               element={<MotionCardPage />}

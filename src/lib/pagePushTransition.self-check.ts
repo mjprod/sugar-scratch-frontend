@@ -4,6 +4,7 @@
  */
 import {
   isCreatorBackHop,
+  isCreatorSubpageBackHop,
   isPurchaseFlowPath,
   isScratchGamePath,
   isSettingsBackHop,
@@ -62,6 +63,37 @@ assert(
 assert(
   pagePushDirection("/collection", "/creator/x", 2, 3) === 1,
   "opening creator still pushes",
+);
+
+assert(
+  isCreatorSubpageBackHop("/creator/julianaval/theme/police", "/creator/julianaval"),
+  "theme to creator is back",
+);
+assert(
+  isCreatorSubpageBackHop("/creator/julianaval/packs", "/creator/julianaval"),
+  "packs to creator is back",
+);
+assert(
+  !isCreatorSubpageBackHop("/creator/julianaval", "/creator/julianaval/theme/police"),
+  "opening theme is not back",
+);
+assert(
+  pagePushDirection(
+    "/creator/julianaval/theme/police",
+    "/creator/julianaval",
+    2,
+    3,
+  ) === -1,
+  "theme back pops even when history idx increases",
+);
+assert(
+  pagePushDirection(
+    "/creator/julianaval",
+    "/creator/julianaval/theme/police",
+    2,
+    3,
+  ) === 1,
+  "opening theme still pushes",
 );
 
 assert(isSettingsBackHop("/profile/edit", "/settings"), "edit profile to settings is back");

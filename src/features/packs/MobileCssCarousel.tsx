@@ -95,6 +95,7 @@ function PackSlideHud({
   buyConfirmLeaving,
   buyQuantity,
   confirmingAdd,
+  slideCta = "buy",
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
@@ -102,6 +103,7 @@ function PackSlideHud({
   onAddToPocket,
   onBuyConfirmLeaveEnd,
   onConfirmingAddEnd,
+  onView,
 }: {
   item: Iteration;
   active: boolean;
@@ -110,6 +112,7 @@ function PackSlideHud({
   buyConfirmLeaving: boolean;
   buyQuantity: number;
   confirmingAdd: boolean;
+  slideCta?: "buy" | "view" | "play";
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
   onConfirmBuy: (quantity: number) => void;
@@ -117,6 +120,7 @@ function PackSlideHud({
   onAddToPocket: () => void;
   onBuyConfirmLeaveEnd: () => void;
   onConfirmingAddEnd: () => void;
+  onView?: (item: Iteration) => void;
 }) {
   // Mount hidden, then flip is-visible after paint so CSS entrance transitions run.
   const [revealed, setRevealed] = useState(false);
@@ -176,24 +180,57 @@ function PackSlideHud({
             glowAlwaysOn={false}
             glowOuterBloom="off"
             costIconAnimated={false}
-            label="Buy Pack"
-            costAmount={String(
-              Math.round(
-                (item.price ?? 0) *
-                  (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
-              ),
-            )}
+            label={
+              slideCta === "play"
+                ? "Play"
+                : slideCta === "view"
+                  ? "View Now"
+                  : "Buy Pack"
+            }
+            leadingIcon={
+              slideCta === "play" ? (
+                <Play
+                  className="motion-card-play-cta__triangle"
+                  size={14}
+                  strokeWidth={2.4}
+                  fill="currentColor"
+                  aria-hidden
+                />
+              ) : undefined
+            }
+            costAmount={
+              slideCta === "buy"
+                ? String(
+                    Math.round(
+                      (item.price ?? 0) *
+                        (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
+                    ),
+                  )
+                : null
+            }
             style={{ ["--cta-aurora-angle" as string]: "45deg" }}
             className="coverflow-buy-pack-cta__button"
             tabIndex={revealed ? 0 : -1}
-            aria-expanded={buyConfirmOpen || buyConfirmLeaving}
-            aria-controls={`coverflow-buy-confirm-${item.id}`}
+            aria-expanded={
+              slideCta === "buy"
+                ? buyConfirmOpen || buyConfirmLeaving
+                : undefined
+            }
+            aria-controls={
+              slideCta === "buy"
+                ? `coverflow-buy-confirm-${item.id}`
+                : undefined
+            }
             onClick={(event) => {
               event.stopPropagation();
+              if (slideCta === "view" || slideCta === "play") {
+                onView?.(item);
+                return;
+              }
               onToggleBuyConfirm();
             }}
           />
-          {buyConfirmOpen || buyConfirmLeaving ? (
+          {slideCta === "buy" && (buyConfirmOpen || buyConfirmLeaving) ? (
             <CoverflowBuyConfirm
               id={`coverflow-buy-confirm-${item.id}`}
               leaving={buyConfirmLeaving}
@@ -263,10 +300,12 @@ export function MobileCssCarousel({
   onAddToPocket,
   onFocusChange,
   onSelect,
+  onView,
   buyDisabled = false,
   influencerBackdrop = false,
   selectedId = null,
   compact = false,
+  slideCta = "buy",
 }: {
   items: Iteration[];
   onReady?: () => void;
@@ -275,6 +314,8 @@ export function MobileCssCarousel({
   /** Home pocket path. When omitted, adds directly to the pack cart. */
   onAddToPocket?: (item: Iteration) => void;
   onFocusChange?: (item: Iteration | null) => void;
+  /** Profile coverflow: View Now instead of Buy Pack. */
+  onView?: (item: Iteration) => void;
   /** Compact resume strip: tap active pack (or play) instead of Buy Pack. */
   onSelect?: (item: Iteration) => void;
   buyDisabled?: boolean;
@@ -284,6 +325,8 @@ export function MobileCssCarousel({
   selectedId?: string | null;
   /** Fit a parent panel: no buy HUD, no dim overlay, scaled coverflow. */
   compact?: boolean;
+  /** Profile / theme: View Now or Play on the active slide instead of Buy Pack. */
+  slideCta?: "buy" | "view" | "play";
 }) {
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -292,6 +335,7 @@ export function MobileCssCarousel({
   const onAddToPocketRef = useRef(onAddToPocket);
   const onFocusChangeRef = useRef(onFocusChange);
   const onSelectRef = useRef(onSelect);
+  const onViewRef = useRef(onView);
   const buyDisabledRef = useRef(buyDisabled);
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -330,6 +374,7 @@ export function MobileCssCarousel({
   onAddToPocketRef.current = onAddToPocket;
   onFocusChangeRef.current = onFocusChange;
   onSelectRef.current = onSelect;
+  onViewRef.current = onView;
   buyDisabledRef.current = buyDisabled;
   activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
@@ -996,6 +1041,16 @@ export function MobileCssCarousel({
               /* ignore */
             }
           }}
+          onSliderFirstMove={() => {
+            // Mouse + touch: park as soon as the track moves (touchStart alone
+            // can miss desktop grab drags / late starts).
+            setParked(true);
+            try {
+              liveVideoRef.current?.pause();
+            } catch {
+              /* ignore */
+            }
+          }}
           onTouchStart={() => {
             setParked(true);
             try {
@@ -1010,9 +1065,17 @@ export function MobileCssCarousel({
             attachActiveVideo();
           }}
           onTouchEnd={(swiper) => {
-            if (holdingRef.current || swiper.animating) return;
-            setParked(false);
-            attachActiveVideo();
+            if (holdingRef.current) return;
+            // Snap/momentum often starts after touchEnd; unparking here left the
+            // focus HUD frozen while slides finished moving. Wait one frame —
+            // if a transition began, transitionEnd will reattach instead.
+            window.requestAnimationFrame(() => {
+              if (holdingRef.current || swiper.animating || swiper.destroyed) {
+                return;
+              }
+              setParked(false);
+              attachActiveVideo();
+            });
           }}
           preventClicks={false}
           preventClicksPropagation={false}
@@ -1082,11 +1145,13 @@ export function MobileCssCarousel({
               buyConfirmLeaving={buyConfirmLeaving}
               buyQuantity={buyQuantity}
               confirmingAdd={confirmingAdd}
+              slideCta={slideCta}
               onToggleBuyConfirm={toggleBuyConfirm}
               onCloseBuyConfirm={closeBuyConfirm}
               onConfirmBuy={confirmActiveBuy}
               onBuyQuantityChange={setBuyQuantity}
               onAddToPocket={addActiveToPocket}
+              onView={(pack) => onViewRef.current?.(pack)}
               onBuyConfirmLeaveEnd={() => {
                 buyConfirmLeavingRef.current = false;
                 setBuyConfirmLeaving(false);

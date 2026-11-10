@@ -323,6 +323,8 @@ export function FeaturedCoverFlow({
   influencerBackdrop = false,
   showStatusPager = false,
   creatorId = null,
+  slideCta = "buy",
+  onView,
 }: {
   featured: FeaturedPack[];
   /** Existing Pack Pocket add flow (auth-gated by the parent). */
@@ -334,6 +336,10 @@ export function FeaturedCoverFlow({
   showStatusPager?: boolean;
   /** When set, only packs for this creator are shown. */
   creatorId?: string | null;
+  /** Profile / theme: View Now or Play on slides; Buy Pack lives as a page CTA. */
+  slideCta?: "buy" | "view" | "play";
+  /** Second arg is the pack theme label when known (for theme-page routing). */
+  onView?: (item: Iteration, themeName?: string) => void;
 }) {
   const { authed } = useAuthSession();
   const {
@@ -851,6 +857,7 @@ export function FeaturedCoverFlow({
           buying={buying}
           addedToPocket={addedToPocket}
           influencerBackdrop={influencerBackdrop}
+          slideCta={slideCta}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
           onFocusChange={(item) => {
@@ -865,6 +872,14 @@ export function FeaturedCoverFlow({
           onAddToPocket={(item) => {
             handleAddToPocket(item);
           }}
+          onView={
+            onView
+              ? (item) => {
+                  const target = catalog?.playById.get(item.id);
+                  onView(item, target?.themeName);
+                }
+              : undefined
+          }
           onReady={() => onReadyRef.current?.()}
         />
         {statusPager}

@@ -42,6 +42,22 @@ assert(resolveSecondaryBack(null, "inbox") === "profile", "direct inbox");
 assert(resolveSecondaryBack("bag", "store") === "bag", "store from home");
 assert(tabFromPathname("/creator/sophia") === "bag", "guest creator stays on Collect");
 assert(tabFromPathname("/creator/sophia", true) === "hub", "authed creator stays on Collect");
+assert(
+  tabFromPathname("/creator/sophia/packs") === "bag",
+  "guest creator packs stays on Collect",
+);
+assert(
+  tabFromPathname("/creator/sophia/theme/nurse", true) === "hub",
+  "authed creator theme stays on Collect",
+);
+assert(
+  Paths.creatorPacks("juliana") === "/creator/juliana/packs",
+  "creator packs path",
+);
+assert(
+  Paths.creatorTheme("juliana", "nurse") === "/creator/juliana/theme/nurse",
+  "creator theme path",
+);
 assert(tabFromPathname("/collection") === "bag", "guest collection selects bag");
 assert(tabFromPathname("/collection", true) === "hub", "authed collection selects hub");
 assert(tabFromPathname("/discover") === "home", "guest reel selects Discover");

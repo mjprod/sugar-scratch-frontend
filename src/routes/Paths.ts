@@ -22,6 +22,14 @@ export const Paths = {
   browse: "/",
   creator: (id: string) => `/creator/${id}`,
   creatorPattern: "/creator/:id",
+  /** Buy packs for one influencer (coverflow filtered to that creator). */
+  creatorPacks: (id: string) =>
+    `/creator/${encodeURIComponent(id)}/packs`,
+  creatorPacksPattern: "/creator/:id/packs",
+  /** Theme detail: motion coverflow + photo scratch grid. */
+  creatorTheme: (creatorId: string, themeId: string) =>
+    `/creator/${encodeURIComponent(creatorId)}/theme/${encodeURIComponent(themeId)}`,
+  creatorThemePattern: "/creator/:id/theme/:themeId",
   /** Unlocked motion card detail (Figma 93:590 Keep Playing). */
   motionCard: (creatorId: string, cardId: string) =>
     `/creator/${encodeURIComponent(creatorId)}/motion/${encodeURIComponent(cardId)}`,

@@ -1,0 +1,392 @@
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, Play } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useAuth } from "@/contexts/useAuth";
+import { usePlayedCards } from "@/hooks/usePlayedCards";
+import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
+import { CatalogProvider } from "@/shared/catalog/CatalogContext";
+import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
+import {
+  buildPhotoSlotFills,
+  PHOTO_SLOTS,
+  photoScratchIdForSlot,
+} from "@/features/collection/lib/photoSlots";
+import type { CardConfig } from "@/features/collection/lib/cards";
+import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
+import {
+  fetchPhotoScratchSlots,
+  photoScratchSlotPrices,
+} from "@/shared/backend/collection";
+import { matchLiveThemeId } from "@/services/collection";
+import {
+  packItemToIteration,
+  type Iteration,
+} from "@/features/packs/types";
+import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
+import { Paths } from "@/routes/Paths";
+import { useMarkPageReady } from "@/shared/ui/usePageReady";
+import "./creator-influencer.css";
+import "./motion-card-page.css";
+
+const EMPTY_PHOTOS = Array.from({ length: PHOTO_SLOTS }, () => "");
+
+function isVideoSrc(src: string): boolean {
+  return /\.(mp4|webm|mov)(\?|#|$)/i.test(src);
+}
+
+function motionTileStillUrl(card: CardConfig): string {
+  const poster = card.posterUrl?.trim() || "";
+  if (poster && !isVideoSrc(poster)) return poster;
+  if (card.mediaType === "image") {
+    const media = card.mediaUrl?.trim() || "";
+    if (media && !isVideoSrc(media) && !media.includes("placeholder")) return media;
+  }
+  const photo = card.photoUrls?.find((url) => url?.trim())?.trim() || "";
+  if (photo) return photo;
+  const id = card.id.trim();
+  if (id && !id.includes("-placeholder-")) {
+    return `/cards/${encodeURIComponent(id)}/motion-poster.webp`;
+  }
+  return "";
+}
+
+function motionVideoUrl(card: CardConfig): string {
+  const trailer = card.mediaUrl?.trim() || "";
+  if (trailer && isVideoSrc(trailer)) return trailer;
+  const motion = card.motionUrl?.trim() || "";
+  return motion && isVideoSrc(motion) ? motion : "";
+}
+
+function cardToIteration(card: CardConfig, index: number): Iteration {
+  const still = motionTileStillUrl(card);
+  const video = motionVideoUrl(card);
+  return packItemToIteration({
+    id: card.id,
+    characterId: card.modelId || card.id,
+    name: card.name,
+    modelUrl: "",
+    modelName: card.name,
+    videoUrl: video,
+    posterUrl: still || undefined,
+    price: 0,
+    girlName: card.name,
+    packNumber: index + 1,
+    packName: card.name,
+    flagEmoji: "",
+    backgroundColor: "oklch(0.798 0.104 207.84)",
+    backgroundImageUrl: still || undefined,
+  });
+}
+
+export function CreatorThemeScreen({
+  creatorId,
+  themeId,
+}: {
+  creatorId: string;
+  themeId: string;
+}) {
+  const [modelId, setModelId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveModelIdForCreator(creatorId).then(({ model }) => {
+      if (!cancelled) setModelId(model?.id ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorId]);
+
+  return (
+    <CatalogProvider preferredModelId={modelId}>
+      <CreatorThemeScreenInner
+        creatorId={creatorId}
+        themeId={themeId}
+        modelId={modelId}
+      />
+    </CatalogProvider>
+  );
+}
+
+function CreatorThemeScreenInner({
+  creatorId,
+  themeId,
+  modelId,
+}: {
+  creatorId: string;
+  themeId: string;
+  modelId: string | null;
+}) {
+  const navigate = useNavigate();
+  const { authed } = useAuth();
+  const registerPlay = useRegisterCardPlay();
+  const { isPlayed } = usePlayedCards();
+  const [buying, setBuying] = useState(false);
+  const collection = useCreatorCollection(modelId);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [slotPrices, setSlotPrices] = useState<Array<number | null>>(() =>
+    Array.from({ length: PHOTO_SLOTS }, () => null),
+  );
+
+  const themes = collection.themes;
+  const resolvedThemeId = useMemo(
+    () => matchLiveThemeId(themeId, themes) ?? themes[0]?.id ?? "",
+    [themeId, themes],
+  );
+
+  const theme = useMemo(
+    () => themes.find((entry) => entry.id === resolvedThemeId) ?? null,
+    [themes, resolvedThemeId],
+  );
+
+  const motionCards = useMemo(() => {
+    if (!resolvedThemeId) return [] as CardConfig[];
+    return (collection.cardsByThemeId[resolvedThemeId] ?? []).filter(
+      (card) => !card.id.includes("-placeholder-"),
+    );
+  }, [collection.cardsByThemeId, resolvedThemeId]);
+
+  const items = useMemo(
+    () => motionCards.map((card, index) => cardToIteration(card, index)),
+    [motionCards],
+  );
+
+  useEffect(() => {
+    if (!items.length) {
+      setActiveCardId(null);
+      return;
+    }
+    if (!activeCardId || !items.some((item) => item.id === activeCardId)) {
+      setActiveCardId(items[0]!.id);
+    }
+  }, [activeCardId, items]);
+
+  const activeCard = useMemo(
+    () => motionCards.find((card) => card.id === activeCardId) ?? null,
+    [activeCardId, motionCards],
+  );
+
+  useEffect(() => {
+    const motionId = (activeCard?.id ?? "").trim();
+    if (!motionId || motionId.includes("-placeholder-")) {
+      setSlotPrices(Array.from({ length: PHOTO_SLOTS }, () => null));
+      return;
+    }
+    let cancelled = false;
+    const themeKey = (activeCard?.groupId || activeCard?.groupTheme || "").trim();
+    void fetchPhotoScratchSlots(motionId, themeKey).then((slots) => {
+      if (cancelled) return;
+      setSlotPrices(photoScratchSlotPrices(slots));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCard?.groupId, activeCard?.groupTheme, activeCard?.id]);
+
+  // Invalid theme after load → bounce to profile.
+  useEffect(() => {
+    if (collection.loading || !modelId) return;
+    if (themes.length > 0 && !matchLiveThemeId(themeId, themes)) {
+      navigate(Paths.creator(creatorId), { replace: true });
+    }
+  }, [collection.loading, creatorId, modelId, navigate, themeId, themes]);
+
+  const pageLoading = !modelId || (collection.loading && !theme);
+  useMarkPageReady(!pageLoading);
+
+  const filled = Math.max(
+    0,
+    Math.min(PHOTO_SLOTS, Math.round(activeCard?.photoFilledCount ?? 0)),
+  );
+  const showPersonal = Boolean(authed);
+  const slots = useMemo(
+    () =>
+      buildPhotoSlotFills(
+        activeCard?.id ?? activeCardId ?? "theme",
+        showPersonal ? filled : filled > 0 ? filled : null,
+        activeCard?.photoUrls ?? EMPTY_PHOTOS,
+      ),
+    [activeCard?.id, activeCard?.photoUrls, activeCardId, filled, showPersonal],
+  );
+
+  const photoPlayed = slots.map((_, index) =>
+    isPlayed(
+      "photo",
+      photoScratchIdForSlot(activeCardId ?? "theme", index),
+    ),
+  );
+  const collectedCount = photoPlayed.filter(Boolean).length;
+  const photoTitle = `${theme?.name ?? "Theme"} Photo Card`;
+
+  function goBack() {
+    navigate(Paths.creator(creatorId));
+  }
+
+  async function openMotion(item: Iteration) {
+    if (buying) return;
+    const card = motionCards.find((entry) => entry.id === item.id);
+    if (!card) return;
+    navigate(Paths.motionCard(creatorId, card.id));
+  }
+
+  async function openPhoto(slotIndex: number) {
+    if (buying || !activeCardId) return;
+    const playModelId = activeCard?.modelId?.trim() || modelId || "";
+    const photoId = photoScratchIdForSlot(activeCardId, slotIndex);
+    setBuying(true);
+    const ok = await registerPlay("photo", photoId);
+    setBuying(false);
+    if (!ok) return;
+    navigate(
+      Paths.photoScratchPlay(photoId, {
+        modelId: playModelId || undefined,
+        creatorId,
+      }),
+    );
+  }
+
+  if (pageLoading) {
+    return (
+      <section data-page-scroll className="cpv2-page no-sticky-cta">
+        <div className="cpv2-shell cpv2-page-skeleton" aria-busy="true">
+          <button
+            type="button"
+            className="cpv2-skeleton-back"
+            aria-label="Back"
+            onClick={goBack}
+          />
+          <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section data-page-scroll className="cpv2-page no-sticky-cta">
+      <div className="cpv2-shell cpv2-theme-page">
+        <header className="mcp-top cpv2-theme-page-top">
+          <button
+            type="button"
+            className="mcp-back"
+            aria-label="Back to profile"
+            onClick={goBack}
+          >
+            <ChevronLeft size={18} strokeWidth={2.4} aria-hidden />
+          </button>
+          <h1 className="cpv2-theme-page-title">{theme?.name ?? "Theme"}</h1>
+        </header>
+
+        <section
+          className="cpv2-theme-page-section"
+          aria-label="Motion cards"
+        >
+          {items.length > 0 ? (
+            <MobileCssCarousel
+              items={items}
+              selectedId={activeCardId}
+              slideCta="play"
+              onView={(item) => void openMotion(item)}
+              onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
+            />
+          ) : (
+            <p className="cpv2-theme-page-empty">No motion cards yet.</p>
+          )}
+        </section>
+
+        <section className="mcp-photos cpv2-theme-page-section" aria-label={photoTitle}>
+          <header className="mcp-photos-head">
+            <div className="mcp-photos-title-row">
+              <h2 className="mcp-photos-title">{photoTitle}</h2>
+            </div>
+            <p className="mcp-photos-count">
+              {collectedCount}/{PHOTO_SLOTS}
+            </p>
+          </header>
+
+          <div className="mcp-photo-grid">
+            {slots.map((slot, index) => {
+              const owned = photoPlayed[index];
+              const src =
+                slot.src ||
+                (activeCard ? motionTileStillUrl(activeCard) : "") ||
+                "/img/placeholder.webp";
+              const playPrice = slotPrices[index];
+              const showPrice = !owned && playPrice != null;
+              return (
+                <div
+                  key={`${activeCardId ?? "theme"}-photo-${index}`}
+                  className={[
+                    "mcp-photo-cell",
+                    owned
+                      ? "is-unlocked"
+                      : slot.src
+                        ? "is-unplayed"
+                        : "is-locked",
+                    showPrice ? "has-price-cta" : "has-play-cta",
+                  ].join(" ")}
+                >
+                  <img
+                    src={src || "/img/placeholder.webp"}
+                    alt=""
+                    className="mcp-photo-img"
+                  />
+                  {owned ? (
+                    <span className="mcp-photo-dot" aria-hidden="true" />
+                  ) : null}
+                  <div
+                    className={[
+                      "mcp-photo-play-cta",
+                      showPrice ? "is-priced" : "is-owned",
+                    ].join(" ")}
+                  >
+                    <CtaButton
+                      {...ctaButtonPropsFromTemplate("squircleCTA")}
+                      fillParent
+                      label=""
+                      leadingIcon={
+                        <>
+                          {showPrice ? (
+                            <DiamondLottie
+                              className="mcp-photo-play-diamond"
+                              size={11}
+                              aria-hidden
+                            />
+                          ) : null}
+                          {showPrice ? (
+                            <span className="mcp-photo-play-price">
+                              {playPrice}
+                            </span>
+                          ) : null}
+                          <Play
+                            className="mcp-photo-play-triangle"
+                            size={11}
+                            strokeWidth={2.4}
+                            fill="currentColor"
+                            aria-hidden
+                          />
+                        </>
+                      }
+                      costAmount={null}
+                      fontSize={11}
+                      cornerRadius={999}
+                      aria-label={
+                        showPrice
+                          ? `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
+                          : owned
+                            ? `Replay ${photoTitle} ${index + 1}`
+                            : `Play ${photoTitle} ${index + 1}`
+                      }
+                      onClick={() => void openPhoto(index)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}

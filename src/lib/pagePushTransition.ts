@@ -73,6 +73,17 @@ export function isCreatorBackHop(fromPath: string, toPath: string): boolean {
 }
 
 /**
+ * Creator theme/packs/motion → parent creator profile is a pop even when
+ * `navigate(Paths.creator(id))` grows history idx instead of history.back().
+ */
+export function isCreatorSubpageBackHop(fromPath: string, toPath: string): boolean {
+  const from = pushPathname(fromPath);
+  const to = pushPathname(toPath);
+  if (!from.startsWith("/creator/") || !to.startsWith("/creator/")) return false;
+  return from.startsWith(`${to}/`);
+}
+
+/**
  * Settings hub is `/settings`; subpages live under `/profile/*`.
  * Leaving a subpage for the hub is a pop even if history idx increases
  * (e.g. navigate(Paths.profile) instead of history.back).
@@ -96,6 +107,7 @@ export function pagePushDirection(
   nextIdx: number,
 ): 1 | -1 {
   if (isCreatorBackHop(fromPath, toPath)) return -1;
+  if (isCreatorSubpageBackHop(fromPath, toPath)) return -1;
   if (isSettingsBackHop(fromPath, toPath)) return -1;
   return pushDirection(prevIdx, nextIdx);
 }

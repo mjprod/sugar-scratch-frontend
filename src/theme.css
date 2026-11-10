@@ -6400,6 +6400,13 @@ body[data-theme="v8"] .top-nav-resource-value {
   color: oklch(0.971 0.003 286.35 / 0.9);
 }
 
+body[data-theme="v8"] .top-nav-resource-icon--coin {
+  width: 16px;
+  height: 16px;
+  color: transparent;
+  overflow: hidden;
+}
+
 body[data-theme="v8"] .top-nav-resource-icon--coin canvas,
 body[data-theme="v8"] .top-nav-resource-icon--coin svg {
   width: 100% !important;

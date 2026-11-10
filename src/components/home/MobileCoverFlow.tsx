@@ -6,11 +6,13 @@ export function MobileCoverFlow({
   selectedId,
   buying,
   influencerBackdrop = false,
+  slideCta = "buy",
   onSelect,
   onDeselect,
   onFocusChange,
   onBuy,
   onAddToPocket,
+  onView,
   onReady,
 }: HomeCoverFlowViewProps & { onReady?: () => void }) {
   return (
@@ -28,9 +30,11 @@ export function MobileCoverFlow({
         selectedId={selectedId}
         buyDisabled={buying}
         influencerBackdrop={influencerBackdrop}
+        slideCta={slideCta}
         onReady={onReady}
         onBuy={onBuy}
         onAddToPocket={onAddToPocket}
+        onView={onView}
         onFocusChange={(item) => {
           if (item) onSelect(item.id);
           else onDeselect();

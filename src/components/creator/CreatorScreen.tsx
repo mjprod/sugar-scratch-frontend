@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CreatorHeader } from "@/components/creator/CreatorHeader";
-import { CreatorInfluencerBody } from "@/components/creator/CreatorInfluencerBody";
-import { FeaturedCardOverlay } from "@/components/creator/FeaturedCardOverlay";
+import { CreatorProgressPanel } from "@/components/creator/CreatorProgressPanel";
+import { buildProfileThemeMotionSlides } from "@/components/creator/creatorThemeMotionSlides";
+import { ReadyToReveal } from "@/components/collection/ReadyToReveal";
+import { MobileCoverFlow } from "@/components/home/MobileCoverFlow";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useAuth } from "@/contexts/useAuth";
-import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import { type BackendModel } from "@/shared/backend/collection";
 import { normalizeMediaUrl } from "@/lib/mediaUrl";
@@ -15,8 +17,10 @@ import { formatSocialHandle } from "@/shared/catalog/characters";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
 import {
-  matchLiveThemeId,
+  resolveCollectionThemeLabel,
+  type ScratchReadyGroup,
   type ThemeCardData,
+  type UnopenedPack,
 } from "@/services/collection";
 import {
   followCreator,
@@ -24,33 +28,29 @@ import {
   isFollowing,
   unfollowCreator,
 } from "@/services/following";
-import {
-  modelAvatarUrl,
-  modelUltraCardTrailerPosterUrl,
-  modelUltraCardTrailerUrl,
-} from "@/services/models";
-import {
-  loadPackCatalog,
-  type PurchaseFlowPack,
-} from "@/services/purchase";
+import { modelAvatarUrl } from "@/services/models";
+import { loadPackCatalog } from "@/services/purchase";
+import { trackScratchEvent } from "@/services/readyToScratch";
+import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
 import {
   fetchCreatorBoard,
   type CreatorBoard,
 } from "@/services/creatorBoard";
+import "@/components/collection/CollectionPage.css";
 import "./creator-collection.css";
 import "./creator-influencer.css";
 
+const BUY_PACK_CTA = ctaButtonPropsFromTemplate("squircleCTA");
+
 /**
- * Creator Page — InnerInfluencer Figma layout (profile, packs, progress, themes).
+ * Creator profile — collapsed header (progress when expanded), theme motion coverflow, Buy Pack CTA.
  */
 export function CreatorScreen({
   creatorId,
   onBack,
-  onBuyPack,
 }: {
   creatorId: string;
   onBack: () => void;
-  onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const [resolution, setResolution] = useState<{
     creatorId: string;
@@ -93,7 +93,6 @@ export function CreatorScreen({
         modelResolved={modelResolved}
         packsReady={packsReady}
         onBack={onBack}
-        onBuyPack={onBuyPack}
       />
     </CatalogProvider>
   );
@@ -111,14 +110,12 @@ function CreatorScreenInner({
   modelResolved,
   packsReady,
   onBack,
-  onBuyPack,
 }: {
   creatorId: string;
   model: BackendModel | null;
   modelResolved: boolean;
   packsReady: boolean;
   onBack: () => void;
-  onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const modelId = model?.id ?? null;
   const collection = useCreatorCollection(modelId, {
@@ -132,17 +129,8 @@ function CreatorScreenInner({
         collection.cards.length > 0),
   );
   const navigate = useNavigate();
-  const { authed, requireAuth } = useAuth();
-  const registerPlay = useRegisterCardPlay();
-  const [buying, setBuying] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { authed, requireAuth, openPurchase, inventoryRevision } = useAuth();
   const pageRef = useRef<HTMLElement | null>(null);
-  const [selectedThemeId, setSelectedThemeId] = useState(
-    () => searchParams.get("theme") || "",
-  );
-  const [featuredCardId, setFeaturedCardId] = useState<string | null>(
-    () => searchParams.get("card"),
-  );
   const [toast, setToast] = useState<string | null>(null);
   const [board, setBoard] = useState<CreatorBoard | null>(null);
   const followId = (model?.id ?? creatorId).trim();
@@ -180,7 +168,6 @@ function CreatorScreenInner({
     [collection.themes, authed],
   );
 
-  const usingLiveThemes = themes.length > 0;
   const creatorName =
     (model ? modelDisplayName(model) : "") ||
     titleCaseSlug(creatorId) ||
@@ -189,7 +176,22 @@ function CreatorScreenInner({
     formatSocialHandle(model?.label) ||
     formatSocialHandle(creatorId) ||
     "";
-  const purchaseCreatorId = creatorId || model?.id || "";
+  const themeMotionSlides = useMemo(
+    () =>
+      buildProfileThemeMotionSlides(themes, collection.cardsByThemeId),
+    [themes, collection.cardsByThemeId],
+  );
+  const themeMotionItems = useMemo(
+    () => themeMotionSlides.map((slide) => slide.item),
+    [themeMotionSlides],
+  );
+  const themeIdByCardId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const slide of themeMotionSlides) {
+      map.set(slide.item.id, slide.themeId);
+    }
+    return map;
+  }, [themeMotionSlides]);
 
   const locationLabel = useMemo(() => {
     const city = model?.influencerCity?.trim() || "";
@@ -198,59 +200,9 @@ function CreatorScreenInner({
     return city || country || "";
   }, [model?.influencerCity, model?.influencerCountry]);
 
-  useEffect(() => {
-    if (!usingLiveThemes) return;
-
-    const urlTheme = searchParams.get("theme");
-    const urlCard = searchParams.get("card");
-    const wantedId = urlTheme || selectedThemeId;
-
-    const themeFromCard = urlCard
-      ? themes.find((entry) =>
-          (collection.cardsByThemeId[entry.id] ?? []).some(
-            (card) => card.id === urlCard,
-          ),
-        )
-      : undefined;
-
-    const nextThemeId =
-      themeFromCard?.id ??
-      matchLiveThemeId(wantedId, themes) ??
-      themes[0]!.id;
-
-    if (nextThemeId !== selectedThemeId) {
-      setSelectedThemeId(nextThemeId);
-    }
-    if (featuredCardId) setFeaturedCardId(null);
-    if (urlTheme !== nextThemeId) {
-      const next = new URLSearchParams(searchParams);
-      next.set("theme", nextThemeId);
-      setSearchParams(next, { replace: true });
-    }
-  }, [
-    themes,
-    usingLiveThemes,
-    selectedThemeId,
-    featuredCardId,
-    searchParams,
-    setSearchParams,
-    collection.cardsByThemeId,
-  ]);
-
   // Profile avatar always comes from this model's `/api/models` avatar field
   // (extension varies: .jpg / .jpeg / .png / .webp) — never a hardcoded path.
   const avatarUrl = useMemo(() => modelAvatarUrl(model) ?? "", [model]);
-  const ultraVideoUrl = useMemo(
-    () => modelUltraCardTrailerUrl(model) ?? "",
-    [model],
-  );
-  const ultraPosterUrl = useMemo(
-    () =>
-      modelUltraCardTrailerPosterUrl(model) ??
-      avatarUrl ??
-      "",
-    [model, avatarUrl],
-  );
   // Prefer uploaded landscape cover for the top hero; never swap in theme art.
   const coverUrl =
     (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
@@ -262,42 +214,52 @@ function CreatorScreenInner({
     window.setTimeout(() => setToast(null), 1800);
   }
 
-  function syncCardParam(cardId: string | null, themeId?: string) {
-    const next = new URLSearchParams(searchParams);
-    if (cardId) next.set("card", cardId);
-    else next.delete("card");
-    if (themeId) next.set("theme", themeId);
-    setSearchParams(next, { replace: true });
+  function openContinuePack(pack: UnopenedPack) {
+    const target = resolveUnopenedOpenTarget(pack);
+    const themeName =
+      resolveCollectionThemeLabel({
+        themeName: pack.name,
+        packName: pack.name,
+        catalogPackId: target.catalogPackId,
+        creator: pack.creator,
+      }) || pack.name;
+    openPurchase(
+      {
+        packId: target.catalogPackId,
+        packName: pack.name,
+        themeName,
+        price: "Free",
+        creator: pack.creator,
+        entry: "open",
+        unopenedPacks: pack.count,
+        instanceId: target.instanceId,
+        purchaseId: target.purchaseId,
+      },
+      "open-pack",
+    );
   }
 
-  async function handlePlayGame(
-    playModelId: string,
-    cardId: string,
-    _cardName: string,
-    freePlay = false,
-  ) {
-    const card = cardId.trim();
-    const playModel = playModelId.trim();
-    if (!card || !playModel || buying) return;
-    setBuying(true);
-    try {
-      const ok = await registerPlay("motion", card, freePlay);
-      if (!ok) return;
-      syncCardParam(card, selectedThemeId);
-      navigate(
-        Paths.gamePlay(playModel, card, {
-          creatorId,
-          themeId: selectedThemeId,
-          freePlay,
-        }),
-      );
-    } finally {
-      setBuying(false);
+  function openContinueScratch(group: ScratchReadyGroup) {
+    trackScratchEvent("Ready To Scratch Opened", {
+      packId: group.id,
+    });
+    if (group.kind === "photo") {
+      const packId = group.id.startsWith("photo:")
+        ? group.id.slice("photo:".length)
+        : undefined;
+      requireAuth({ type: "photo-scratch", packId });
+      return;
     }
-  }
-
-  function handlePlayGameFree(playModelId: string, cardId: string, cardName: string) {
-    void handlePlayGame(playModelId, cardId, cardName, true);
+    requireAuth({
+      type: "scratch",
+      pack: {
+        packId: group.id,
+        packName: group.collectionName,
+        price: "",
+        creator: group.creatorName,
+        entry: "scratch",
+      },
+    });
   }
 
   function handleToggleFollow() {
@@ -333,25 +295,6 @@ function CreatorScreenInner({
     followCreator(entry);
     setFollowing(true);
     notice(`Following ${creatorName}`);
-  }
-
-  function addCoverflowPackToPocket(pack: {
-    id: string;
-    foilId?: string;
-    name: string;
-    creatorName: string;
-    diamondCost: number;
-    themeName?: string;
-  }) {
-    const packId = pack.foilId ?? pack.id;
-    onBuyPack({
-      packId,
-      packName: pack.name,
-      themeName: pack.themeName,
-      price: `${pack.diamondCost} ◆`,
-      creator: pack.creatorName || creatorName,
-      entry: "purchase",
-    });
   }
 
   if (
@@ -391,46 +334,66 @@ function CreatorScreenInner({
           onBack={onBack}
           following={following}
           onToggleFollow={handleToggleFollow}
+          expandedChildren={
+            <CreatorProgressPanel
+              themes={themes}
+              board={board}
+              showPersonalProgress={authed}
+              loading={collection.loading || (authed && board === null)}
+              onThemeClick={(themeId) =>
+                navigate(Paths.creatorTheme(creatorId, themeId))
+              }
+            />
+          }
         />
 
-        <CreatorInfluencerBody
-          creatorName={creatorName}
-          creatorId={purchaseCreatorId}
-          avatarUrl={avatarUrl}
-          ultraVideoUrl={ultraVideoUrl}
-          ultraPosterUrl={ultraPosterUrl}
-          themes={themes}
-          cardsByThemeId={collection.cardsByThemeId}
-          board={board}
-          showPersonalProgress={authed}
-          loading={collection.loading || (authed && board === null)}
-          onAddPackToPocket={addCoverflowPackToPocket}
-          onOpenCard={(cardId, themeId) => {
-            // Open the motion card detail route. Do not also write ?card= on the
-            // creator URL — setSearchParams races navigate and can leave the
-            // user stuck on the creator page / featured overlay.
-            setSelectedThemeId(themeId);
-            navigate(Paths.motionCard(creatorId, cardId));
-          }}
-          onPlayGame={handlePlayGame}
-          onPlayGameFree={handlePlayGameFree}
+        <ReadyToReveal
+          creatorId={modelId ?? creatorId}
+          inventoryRevision={inventoryRevision}
+          onOpenPack={openContinuePack}
+          onScratch={openContinueScratch}
         />
+
+        <div className="cpv2-profile-coverflow">
+          {themeMotionItems.length > 0 ? (
+            <div className="home-featured-coverflow-frame">
+              <MobileCoverFlow
+                items={themeMotionItems}
+                selectedId={null}
+                glow="oklch(0.798 0.104 207.84)"
+                buying={false}
+                addedToPocket={false}
+                slideCta="view"
+                onSelect={() => {}}
+                onDeselect={() => {}}
+                onFocusChange={() => {}}
+                onBuy={() => {}}
+                onView={(item) => {
+                  const themeId = themeIdByCardId.get(item.id);
+                  if (!themeId) return;
+                  navigate(Paths.creatorTheme(creatorId, themeId));
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="cpv2-profile-buy-pack">
+          <CtaButton
+            {...BUY_PACK_CTA}
+            fillParent
+            label="Buy Pack"
+            auroraBaseColor="#42001b"
+            auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+            glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+            glowOuterBloom="off"
+            labelColor="#ffe0e8"
+            onClick={() => navigate(Paths.creatorPacks(creatorId))}
+          />
+        </div>
       </div>
 
       {toast ? <div className="cpv2-toast">{toast}</div> : null}
-
-      {featuredCardId && collection.modelId ? (
-        <FeaturedCardOverlay
-          modelId={collection.modelId}
-          cardId={featuredCardId}
-          onClose={() => {
-            setFeaturedCardId(null);
-            syncCardParam(null, selectedThemeId);
-          }}
-          onPlayGame={handlePlayGame}
-          onViewCard={(name) => notice(`View ${name}`)}
-        />
-      ) : null}
     </section>
   );
 }
@@ -453,11 +416,8 @@ function CreatorPageSkeleton({ onBack }: { onBack: () => void }) {
         </span>
       </div>
       <div className="cpv2-influencer" aria-hidden="true">
-        <span className="cpv2-skeleton-block cpv2-skeleton-progress" />
-        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
-        <span className="cpv2-skeleton-block cpv2-skeleton-theme" />
-        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
         <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />
+        <span className="cpv2-skeleton-bar cpv2-skeleton-title" />
       </div>
     </div>
   );

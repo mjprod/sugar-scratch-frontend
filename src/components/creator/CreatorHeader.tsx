@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { ChevronLeft, Instagram } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, ChevronLeft, Instagram } from "lucide-react";
 
 const GLASS_PILL =
   "glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface";
@@ -67,6 +66,7 @@ export function CreatorHeader({
   xUrl,
   onlyfansUrl,
   socialsPending = false,
+  expandedChildren,
 }: {
   name: string;
   username: string;
@@ -82,244 +82,230 @@ export function CreatorHeader({
   onlyfansUrl?: string | null;
   /** True while creator board (socials) is still loading. */
   socialsPending?: boolean;
+  /** Rendered inside the open profile card (e.g. progress bars). */
+  expandedChildren?: ReactNode;
 }) {
   const location = locationLabel?.trim() || "";
-  const cardRef = useRef<HTMLElement | null>(null);
-  const pinRef = useRef<HTMLDivElement | null>(null);
-  const compactBackRef = useRef<HTMLButtonElement | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    const card = cardRef.current;
-    const pin = pinRef.current;
-    if (!card || !pin) return;
-
-    const scroller = card.closest("[data-page-scroll]");
-    const root = scroller instanceof HTMLElement ? scroller : null;
-    let collapsedNow = false;
-    const fadeRange = 48;
-
-    const paint = (progress: number) => {
-      const compact = Math.min(1, Math.max(0, progress));
-      pin.style.opacity = String(compact);
-      card.style.opacity = String(1 - compact);
-    };
-
-    const measureProgress = () => {
-      const scrollTop = root ? Math.max(0, root.scrollTop) : 0;
-      return scrollTop / fadeRange;
-    };
-
-    const applyCollapsed = (next: boolean) => {
-      if (collapsedNow === next) return;
-      collapsedNow = next;
-      setCollapsed(next);
-      card.classList.toggle("is-collapsed", next);
-      card.classList.toggle("is-open", !next);
-      card.toggleAttribute("inert", next);
-      pin.classList.toggle("is-collapsed", next);
-      pin.setAttribute("aria-hidden", next ? "false" : "true");
-      const compactBack = compactBackRef.current;
-      if (compactBack) compactBack.tabIndex = next ? 0 : -1;
-    };
-
-    const sync = () => {
-      const progress = measureProgress();
-      paint(progress);
-      applyCollapsed(progress >= 1);
-    };
-
-    let frame = 0;
-    const onScroll = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        sync();
-      });
-    };
-
-    paint(0);
-    window.requestAnimationFrame(sync);
-    root?.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      root?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-
+  const [expanded, setExpanded] = useState(false);
+  /** Bumped on each open so progress-fill CSS animations replay. */
+  const [progressPlayId, setProgressPlayId] = useState(0);
   const avatarSrc = avatarUrl || "/img/placeholder.webp";
 
-  const compactBar = (
+  function setExpandedOpen(next: boolean) {
+    if (next && !expanded) setProgressPlayId((id) => id + 1);
+    setExpanded(next);
+  }
+
+  return (
     <div
-      ref={pinRef}
-      className={["cpv2-profile-pin", collapsed ? "is-collapsed" : ""]
-        .filter(Boolean)
-        .join(" ")}
-      aria-hidden={!collapsed}
+      className="cpv2-profile-shell"
+      data-open={expanded ? "true" : "false"}
     >
-      <div className="cpv2-profile-bar">
-        <ProfileCardBackground coverUrl={coverUrl} />
-        <div className="cpv2-profile-bar-inner">
-          <button
-            ref={compactBackRef}
-            type="button"
-            aria-label="Back"
-            tabIndex={collapsed ? 0 : -1}
-            onClick={onBack}
-            className="cpv2-profile-bar-back"
-          >
-            <ChevronLeft className="size-4" strokeWidth={2.2} />
-          </button>
-          <div className="cpv2-profile-bar-avatar">
-            <img src={avatarSrc} alt="" decoding="async" />
-          </div>
-          <div className="cpv2-profile-bar-meta">
-            <p className="cpv2-profile-bar-name">{name}</p>
-            {username ? (
-              <p className="cpv2-profile-bar-handle">{username}</p>
-            ) : null}
+      <div className="cpv2-profile-bar-slot">
+        <div className="cpv2-profile-bar-slot-inner">
+          <div className="cpv2-profile-bar is-inline">
+            <ProfileCardBackground coverUrl={coverUrl} />
+            <div className="cpv2-profile-bar-inner">
+              <button
+                type="button"
+                aria-label="Back"
+                onClick={onBack}
+                className="cpv2-profile-bar-back"
+                tabIndex={expanded ? -1 : 0}
+              >
+                <ChevronLeft className="size-4" strokeWidth={2.2} />
+              </button>
+              <div className="cpv2-profile-bar-avatar">
+                <img src={avatarSrc} alt="" decoding="async" />
+              </div>
+              <div className="cpv2-profile-bar-meta">
+                <p className="cpv2-profile-bar-name">{name}</p>
+                {username ? (
+                  <p className="cpv2-profile-bar-handle">{username}</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="cpv2-profile-expand"
+                aria-expanded={expanded}
+                aria-label={expanded ? "Collapse profile" : "Expand profile"}
+                onClick={() => setExpandedOpen(!expanded)}
+              >
+                <span className="cpv2-profile-expand-chevron" aria-hidden="true">
+                  <ChevronDown className="size-4" strokeWidth={2.2} />
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
 
-  return (
-    <>
-      {typeof document !== "undefined"
-        ? createPortal(compactBar, document.body)
-        : compactBar}
-
-      <header
-        ref={cardRef}
-        className={[
-          "cpv2-profile-card",
-          collapsed ? "is-collapsed" : "is-open",
-        ].join(" ")}
-      >
-        <ProfileCardBackground coverUrl={coverUrl} />
-
-        <div className="cpv2-profile-card-toolbar">
-          <button
-            type="button"
-            aria-label="Back"
-            onClick={onBack}
-            className={`cpv2-profile-card-back ${GLASS_PILL}`}
+      <div className="cpv2-profile-panel">
+        <div className="cpv2-profile-panel-inner">
+          <header
+            className={[
+              "cpv2-profile-card is-open",
+              expandedChildren ? "has-progress" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
-            <ChevronLeft className="size-5" strokeWidth={2.2} />
-          </button>
+            <ProfileCardBackground coverUrl={coverUrl} />
 
-          <div className="cpv2-profile-card-actions">
-            {onToggleFollow ? (
+            <div className="cpv2-profile-card-toolbar">
               <button
                 type="button"
-                className={[
-                  "cpv2-profile-card-follow",
-                  following ? "is-following" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-pressed={following}
-                onClick={onToggleFollow}
+                aria-label="Back"
+                onClick={onBack}
+                className={`cpv2-profile-card-back ${GLASS_PILL}`}
+                tabIndex={expanded ? 0 : -1}
               >
-                {following ? "Following" : "Follow"}
+                <ChevronLeft className="size-5" strokeWidth={2.2} />
               </button>
-            ) : null}
-          </div>
-        </div>
 
-        <div className="cpv2-profile-card-body">
-          <div className="cpv2-profile-card-row">
-            <div className="cpv2-profile-card-main">
-              <div className="cpv2-profile-card-avatar">
-                {/* Always the stable creator avatar — never theme/cover swaps. */}
-                <img src={avatarSrc} alt="" decoding="async" />
-              </div>
-              <div className="cpv2-profile-card-identity">
-                <h1 className="cpv2-profile-card-name">{name}</h1>
-                {username ? (
-                  <p className="cpv2-profile-card-handle">{username}</p>
+              <div className="cpv2-profile-card-actions">
+                {onToggleFollow ? (
+                  <button
+                    type="button"
+                    className={[
+                      "cpv2-profile-card-follow",
+                      following ? "is-following" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-pressed={following}
+                    tabIndex={expanded ? 0 : -1}
+                    onClick={onToggleFollow}
+                  >
+                    {following ? "Following" : "Follow"}
+                  </button>
                 ) : null}
-                {location ? (
-                  <p className="cpv2-profile-card-location">{location}</p>
-                ) : null}
+                <button
+                  type="button"
+                  className="cpv2-profile-expand is-on-card"
+                  aria-expanded={expanded}
+                  aria-label="Collapse profile"
+                  tabIndex={expanded ? 0 : -1}
+                  onClick={() => setExpandedOpen(false)}
+                >
+                  <span
+                    className="cpv2-profile-expand-chevron"
+                    aria-hidden="true"
+                  >
+                    <ChevronDown className="size-4" strokeWidth={2.2} />
+                  </span>
+                </button>
               </div>
             </div>
-            <ul className="cpv2-profile-card-socials" aria-label="Social links">
-              {socialsPending ? (
-                <>
-                  <li aria-hidden="true">
-                    <span className="cpv2-profile-card-social is-skeleton" />
-                  </li>
-                  <li aria-hidden="true">
-                    <span className="cpv2-profile-card-social is-skeleton" />
-                  </li>
-                  <li aria-hidden="true">
-                    <span className="cpv2-profile-card-social is-skeleton" />
-                  </li>
-                </>
-              ) : (
-                <>
-                  {instagramUrl ? (
-                    <li>
-                      <a
-                        className="cpv2-profile-card-social"
-                        href={socialHref(instagramUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="Instagram"
-                      >
-                        <Instagram className="size-3.5" strokeWidth={1.8} />
-                      </a>
-                    </li>
-                  ) : null}
-                  {tiktokUrl ? (
-                    <li>
-                      <a
-                        className="cpv2-profile-card-social"
-                        href={socialHref(tiktokUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="TikTok"
-                      >
-                        <TikTokIcon className="size-3.5" />
-                      </a>
-                    </li>
-                  ) : null}
-                  {xUrl ? (
-                    <li>
-                      <a
-                        className="cpv2-profile-card-social"
-                        href={socialHref(xUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="X"
-                      >
-                        <XIcon className="size-3.5" />
-                      </a>
-                    </li>
-                  ) : null}
-                  {onlyfansUrl ? (
-                    <li>
-                      <a
-                        className="cpv2-profile-card-social"
-                        href={socialHref(onlyfansUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="OnlyFans"
-                      >
-                        OF
-                      </a>
-                    </li>
-                  ) : null}
-                </>
-              )}
-            </ul>
-          </div>
+
+            <div className="cpv2-profile-card-body">
+              <div className="cpv2-profile-card-row">
+                <div className="cpv2-profile-card-main">
+                  <div className="cpv2-profile-card-avatar">
+                    {/* Always the stable creator avatar — never theme/cover swaps. */}
+                    <img src={avatarSrc} alt="" decoding="async" />
+                  </div>
+                  <div className="cpv2-profile-card-identity">
+                    <h1 className="cpv2-profile-card-name">{name}</h1>
+                    {username ? (
+                      <p className="cpv2-profile-card-handle">{username}</p>
+                    ) : null}
+                    {location ? (
+                      <p className="cpv2-profile-card-location">{location}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <ul
+                  className="cpv2-profile-card-socials"
+                  aria-label="Social links"
+                >
+                  {socialsPending ? (
+                    <>
+                      <li aria-hidden="true">
+                        <span className="cpv2-profile-card-social is-skeleton" />
+                      </li>
+                      <li aria-hidden="true">
+                        <span className="cpv2-profile-card-social is-skeleton" />
+                      </li>
+                      <li aria-hidden="true">
+                        <span className="cpv2-profile-card-social is-skeleton" />
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      {instagramUrl ? (
+                        <li>
+                          <a
+                            className="cpv2-profile-card-social"
+                            href={socialHref(instagramUrl)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Instagram"
+                            tabIndex={expanded ? 0 : -1}
+                          >
+                            <Instagram className="size-3.5" strokeWidth={1.8} />
+                          </a>
+                        </li>
+                      ) : null}
+                      {tiktokUrl ? (
+                        <li>
+                          <a
+                            className="cpv2-profile-card-social"
+                            href={socialHref(tiktokUrl)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="TikTok"
+                            tabIndex={expanded ? 0 : -1}
+                          >
+                            <TikTokIcon className="size-3.5" />
+                          </a>
+                        </li>
+                      ) : null}
+                      {xUrl ? (
+                        <li>
+                          <a
+                            className="cpv2-profile-card-social"
+                            href={socialHref(xUrl)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="X"
+                            tabIndex={expanded ? 0 : -1}
+                          >
+                            <XIcon className="size-3.5" />
+                          </a>
+                        </li>
+                      ) : null}
+                      {onlyfansUrl ? (
+                        <li>
+                          <a
+                            className="cpv2-profile-card-social"
+                            href={socialHref(onlyfansUrl)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="OnlyFans"
+                            tabIndex={expanded ? 0 : -1}
+                          >
+                            OF
+                          </a>
+                        </li>
+                      ) : null}
+                    </>
+                  )}
+                </ul>
+              </div>
+            </div>
+
+            {expandedChildren ? (
+              <div
+                key={progressPlayId}
+                className="cpv2-profile-card-progress"
+              >
+                {expandedChildren}
+              </div>
+            ) : null}
+          </header>
         </div>
-      </header>
-    </>
+      </div>
+    </div>
   );
 }

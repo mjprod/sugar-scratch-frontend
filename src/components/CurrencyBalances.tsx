@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { WalletBalancesPopover } from "@/components/WalletBalancesPopover";
 import { useWallet } from "@/contexts/WalletContext";
@@ -55,8 +56,7 @@ function isRenderedVisible(el: HTMLElement): boolean {
   return true;
 }
 
-/** Inline diamond HUD counter (TopNav, mobile HUD, and subpage headers).
- * Dust lives in the Diamonds wallet popover. */
+/** Inline coin + diamond HUD counters (TopNav, mobile HUD, and subpage headers). */
 export function CurrencyBalances({
   coins,
   diamonds,
@@ -81,7 +81,9 @@ export function CurrencyBalances({
 }) {
   const { coins: walletCoins, diamonds: walletDiamonds, applyWallet } =
     useWallet();
+  const coinLabel = formatBalance(coins);
   const diamondLabel = formatBalance(diamonds);
+  const showCoins = !diamondsOnly;
   const diamondAnchorRef = useRef<HTMLButtonElement | null>(null);
   const [walletOpen, setWalletOpen] = useState(false);
   const [walletLeaving, setWalletLeaving] = useState(false);
@@ -199,6 +201,24 @@ export function CurrencyBalances({
     return true;
   }
 
+  const coinInner = (
+    <>
+      <CoinLottie
+        className="top-nav-resource-icon top-nav-resource-icon--coin shrink-0"
+        size={16}
+        animated
+        loop
+        autoplay
+        aria-hidden
+      />
+      {compact ? null : (
+        <span className="top-nav-resource-value text-title font-semibold tabular-nums">
+          {coinLabel}
+        </span>
+      )}
+    </>
+  );
+
   const diamondInner = (
     <>
       <DiamondLottie
@@ -217,6 +237,13 @@ export function CurrencyBalances({
     </>
   );
 
+  const coinClass = [
+    "top-nav-resource top-nav-resource--coin inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-1.5",
+    compact ? "is-compact" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const diamondActionClass = [
     "top-nav-resource top-nav-resource--action top-nav-resource--diamond inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-1.5 transition active:scale-95",
     compact ? "is-compact" : "",
@@ -231,6 +258,12 @@ export function CurrencyBalances({
       className="top-nav-resources flex min-w-0 shrink-0 items-center gap-2"
       aria-live="polite"
     >
+      {showCoins ? (
+        <span className={coinClass} aria-label={`${coinLabel} Coins`}>
+          {coinInner}
+        </span>
+      ) : null}
+
       {interactive ? (
         <button
           type="button"

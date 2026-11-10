@@ -53,39 +53,105 @@ body[data-theme="v8"] .cpv2-influencer {
 
 /* —— Profile card: native-scroll open card + compositor-only compact bar —— */
 
-body[data-theme="v8"] .cpv2-profile-pin {
+body[data-theme="v8"] .cpv2-profile-shell {
   --cpv2-profile-closed-h: 63px;
-  --cpv2-profile-collapse-duration: 280ms;
-  --cpv2-profile-collapse-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  position: fixed;
-  left: 50%;
-  top: calc(var(--app-diamond-offset, 64px) + 57px);
-  z-index: 80;
-  width: min(calc(100% - 24px), 428px);
+  --cpv2-profile-expand: 250ms;
+  --cpv2-profile-collapse: 250ms;
+  --cpv2-profile-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /*
+   * Layout height is ALWAYS the collapsed bar. Expanded card/progress is
+   * position:absolute so the coverflow below never reflows.
+   */
+  position: relative;
+  z-index: 40;
+  flex: 0 0 auto;
+  width: 100%;
   height: var(--cpv2-profile-closed-h);
-  margin: 0;
-  transform: translate3d(-50%, 0, 0);
-  pointer-events: none;
+  margin-top: var(--space-5);
+  overflow: visible;
+  isolation: isolate;
+}
+
+body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] {
+  z-index: 60;
+}
+
+/* Collapsed chrome — permanent layout spacer. */
+body[data-theme="v8"] .cpv2-profile-bar-slot {
+  position: relative;
+  z-index: 1;
+  height: var(--cpv2-profile-closed-h);
+  transition: opacity var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] .cpv2-profile-bar-slot {
   opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--cpv2-profile-expand) var(--cpv2-profile-ease);
 }
 
-@media (max-width: 820px) {
-  body[data-theme="v8"] .cpv2-profile-pin {
-    margin-top: var(--space-2);
-  }
+body[data-theme="v8"] .cpv2-profile-bar-slot-inner {
+  height: 100%;
 }
 
-@media (min-width: 821px) and (max-width: 1023px) {
-  body[data-theme="v8"] .cpv2-profile-pin {
-    top: calc(var(--app-diamond-offset, 64px) - 3px);
-    width: min(calc(100% - 40px), var(--app-content-max));
-  }
+/* Expanded card + progress paints over the coverflow. */
+body[data-theme="v8"] .cpv2-profile-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: 0fr;
+  width: 100%;
+  pointer-events: none;
+  transition: grid-template-rows var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
 }
 
-@media (min-width: 1024px) {
-  body[data-theme="v8"] .cpv2-profile-pin {
-    top: calc(var(--app-diamond-offset, 64px) - 3px);
-    width: min(calc(100% - 64px), var(--app-content-max));
+body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] .cpv2-profile-panel {
+  grid-template-rows: 1fr;
+  pointer-events: auto;
+  transition: grid-template-rows var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-panel-inner {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  filter: blur(2px);
+  border-radius: 16px;
+  background: rgba(5, 5, 8, 0.96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  transition:
+    opacity var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    filter var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] .cpv2-profile-panel-inner {
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    filter var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-expand-chevron {
+  display: inline-flex;
+  transform: scaleY(1);
+  transform-origin: center;
+  transition: transform var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] .cpv2-profile-expand-chevron {
+  transform: scaleY(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-profile-bar-slot,
+  body[data-theme="v8"] .cpv2-profile-panel,
+  body[data-theme="v8"] .cpv2-profile-panel-inner,
+  body[data-theme="v8"] .cpv2-profile-expand-chevron {
+    transition: none !important;
   }
 }
 
@@ -96,10 +162,10 @@ body[data-theme="v8"] .cpv2-profile-bar {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   background: #0a0a0a;
-  pointer-events: none;
 }
 
-body[data-theme="v8"] .cpv2-profile-pin.is-collapsed .cpv2-profile-bar-inner {
+body[data-theme="v8"] .cpv2-profile-bar.is-inline {
+  height: var(--cpv2-profile-closed-h);
   pointer-events: auto;
 }
 
@@ -188,13 +254,290 @@ body[data-theme="v8"] .cpv2-profile-bar-handle {
   letter-spacing: 0.28px;
 }
 
+body[data-theme="v8"] .cpv2-profile-expand {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 60px;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="v8"] .cpv2-profile-expand.is-on-card {
+  background-image: linear-gradient(
+    120deg,
+    rgba(170, 170, 170, 0.25) 10%,
+    rgba(68, 68, 68, 0.1) 29%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+body[data-theme="v8"] .cpv2-profile-card.has-progress {
+  height: auto;
+  min-height: 178px;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .cpv2-profile-card.has-progress .cpv2-profile-card-body {
+  height: auto;
+  min-height: 178px;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-profile-card-progress {
+  position: relative;
+  z-index: 2;
+  padding: 0 var(--space-4) var(--space-4);
+  box-sizing: border-box;
+}
+
+/* Progress lives in the header — no nested card chrome. */
+body[data-theme="v8"] .cpv2-profile-card-progress .cpv2-progress-panel {
+  margin: 0;
+  max-width: none;
+  padding: var(--space-3) 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  background-image: none;
+}
+
+body[data-theme="v8"] .cpv2-shell > .mc-continue {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+body[data-theme="v8"] .cpv2-profile-coverflow {
+  position: relative;
+  z-index: 0;
+  margin-top: 0;
+}
+
+body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] ~ .cpv2-profile-coverflow {
+  /* Keep slider visible underneath, but don't steal taps while header is open. */
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-profile-coverflow .home-featured-coverflow-frame {
+  margin-bottom: 0;
+}
+
+body[data-theme="v8"] .cpv2-profile-coverflow .home-featured-coverflow {
+  z-index: 0;
+  /* Profile chrome already clears the HUD — don't inherit home-hero spacing. */
+  padding-top: 0;
+  height: auto;
+  min-height: 0;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"] {
+  align-items: flex-start;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel-stage {
+  height: auto;
+  min-height: 0;
+  translate: 0 0;
+  background: transparent;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .home-featured-coverflow,
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .home-featured-coverflow-frame,
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel-shell,
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel.swiper {
+  background: transparent;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel-stage
+  .packs-glow-stack {
+  display: none;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel-shell {
+  /* Default shell is -6rem for home; keep flush under the profile bar. */
+  margin-top: 0;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel.swiper,
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel.swiper-3d {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-4);
+}
+
+body[data-theme="v8"] .cpv2-profile-buy-pack {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: var(--space-2) 0 var(--space-8);
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body[data-theme="v8"] .cpv2-profile-buy-pack .cta-button {
+  width: 100%;
+  min-height: 56px;
+}
+
+body[data-theme="v8"] .cpv2-packs-page-title,
+body[data-theme="v8"] .cpv2-theme-page-title {
+  margin: var(--space-5) 0 var(--space-3);
+  color: #fff;
+  font-family: var(--font-display, inherit);
+  font-size: var(--text-title);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Packs buy page: hug content under the back row (same as theme carousel). */
+body[data-theme="v8"] .cpv2-packs-coverflow .home-featured-coverflow {
+  height: auto;
+  min-height: 0;
+  padding-top: 0;
+  overflow: visible;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"] {
+  align-items: flex-start;
+}
+
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel-stage {
+  height: auto;
+  min-height: 0;
+  translate: 0 0;
+}
+
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .home-featured-coverflow[data-coverflow="mobile-swiper"]
+  .mobile-css-carousel-shell {
+  margin-top: 0;
+  width: 100%;
+}
+
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .mobile-css-carousel.swiper,
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .mobile-css-carousel.swiper-3d {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+/* Shell already clears the HUD — don't stack mcp-top's diamond offset again. */
+body[data-theme="v8"] .cpv2-theme-page-top.mcp-top {
+  margin-top: var(--space-6);
+}
+
+body[data-theme="v8"] .cpv2-theme-page-top .cpv2-theme-page-title {
+  margin: 0;
+  text-align: left;
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section {
+  margin-top: var(--space-2);
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section + .cpv2-theme-page-section {
+  margin-top: var(--space-6);
+}
+
+/* Hug the back row — don't center a tall stage under the header. */
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel-stage.stage-packs {
+  height: auto;
+  min-height: 0;
+  align-items: flex-start;
+}
+
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel-shell {
+  margin-top: 0;
+  width: 100%;
+}
+
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel.swiper,
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel.swiper-3d {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+body[data-theme="v8"] .cpv2-theme-page-heading {
+  margin: 0 0 var(--space-3);
+  padding: 0 var(--space-3);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section .mcp-photo-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section .mobile-css-carousel-stage.stage-packs {
+  background: transparent;
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section .mobile-css-carousel-stage .packs-glow-stack {
+  display: none;
+}
+
+body[data-theme="v8"] .cpv2-progress-row-hit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 15px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
 body[data-theme="v8"] .cpv2-profile-card {
   position: relative;
   z-index: 2;
   display: block;
   width: 100%;
   height: 178px;
-  margin-top: var(--space-5);
+  margin-top: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
@@ -202,10 +545,6 @@ body[data-theme="v8"] .cpv2-profile-card {
   text-align: left;
   background: #0a0a0a;
   isolation: isolate;
-}
-
-body[data-theme="v8"] .cpv2-profile-card.is-collapsed {
-  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-card-bg {
@@ -730,6 +1069,15 @@ body[data-theme="v8"] .cpv2-progress-fill {
     animation: cpv2-progress-grow 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
     /* After splash + panel enter (280ms) + a beat — grow was getting spent while the panel faded in. */
     animation-delay: calc(640ms + min(var(--cpv2-i, 0), 5) * 40ms);
+  }
+
+  /* Profile accordion: remount replays grow — keep delay short for reopen. */
+  body[data-theme="v8"] .cpv2-profile-shell .cpv2-progress-fill {
+    animation-delay: calc(120ms + min(var(--cpv2-i, 0), 5) * 40ms);
+  }
+
+  body[data-theme="v8"] .cpv2-profile-shell .cpv2-progress-panel.cpv2-enter {
+    animation-delay: 40ms;
   }
 }
 

@@ -102,6 +102,23 @@
    it can rise in after the slide settles. */
 .mobile-css-carousel__focus.is-parked .mobile-css-carousel__video {
   visibility: hidden;
+  opacity: 0;
+}
+
+/*
+ * Instantly drop the CTA while swiping. React `hudActive` lags a frame and the
+ * normal CTA fade is 280ms — both left Play stuck over sliding pack art.
+ */
+.mobile-css-carousel__focus.is-parked .mobile-css-carousel__hud .coverflow-buy-pack-cta,
+.mobile-css-carousel__focus.is-parked
+  .mobile-css-carousel__hud.coverflow-active-stack
+  .coverflow-buy-pack-cta {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  filter: none !important;
+  transform: translate3d(0, 8px, 1px) !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 .mobile-css-carousel__video {

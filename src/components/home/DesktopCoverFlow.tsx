@@ -44,6 +44,9 @@ export type HomeCoverFlowViewProps = {
     quantity?: number,
     options?: { allowDuplicates?: boolean },
   ) => void;
+  /** Profile / theme: View Now or Play on the slide instead of Buy Pack. */
+  slideCta?: "buy" | "view" | "play";
+  onView?: (item: Iteration) => void;
 };
 
 function backdropUrlForItem(item: Iteration | null | undefined) {
