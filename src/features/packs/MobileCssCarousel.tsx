@@ -579,8 +579,19 @@ export function MobileCssCarousel({
         "--slide-dim",
         String((compact ? 0.45 : 0.5) * eased),
       );
+      // Flat profile: side peeks dim + scale; active centers at full.
+      if (flat) {
+        slide.style.setProperty(
+          "--slide-scale",
+          String(1 - 0.15 * eased),
+        );
+        slide.style.setProperty(
+          "--slide-brightness",
+          String(1 - 0.3 * eased),
+        );
+      }
     });
-  }, [compact]);
+  }, [compact, flat]);
 
   /** Kill leftover coverflow rotate/scale if a prior effect left inline 3D styles. */
   const flattenSlideTransforms = useCallback(
@@ -1098,7 +1109,7 @@ export function MobileCssCarousel({
           slidesOffsetAfter={compact && items.length > 1 ? 80 : 0}
           speed={720}
           resistanceRatio={0.85}
-          watchSlidesProgress={useCoverflow}
+          watchSlidesProgress={useCoverflow || flat}
           {...(useCoverflow
             ? {
                 coverflowEffect: {
@@ -1175,7 +1186,7 @@ export function MobileCssCarousel({
           }}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .mobile-css-carousel__glass-plate, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
+          noSwipingSelector=".mobile-css-carousel__hud, .mobile-css-carousel__glass-plate, .mobile-css-carousel__glass-plate-btn, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
             void pocketTick;
@@ -1224,21 +1235,23 @@ export function MobileCssCarousel({
                     />
                   ) : null}
                   {flat ? (
-                    <button
-                      type="button"
-                      className="mobile-css-carousel__glass-plate swiper-no-swiping"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (slideCta === "view") onViewRef.current?.(item);
-                        else if (slideCta === "play") onSelect?.(item);
-                      }}
-                    >
-                      {slideCta === "play"
-                        ? "Play"
-                        : slideCta === "view"
-                          ? "View Theme"
-                          : null}
-                    </button>
+                    <div className="mobile-css-carousel__glass-plate">
+                      <button
+                        type="button"
+                        className="mobile-css-carousel__glass-plate-btn swiper-no-swiping"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (slideCta === "view") onViewRef.current?.(item);
+                          else if (slideCta === "play") onSelect?.(item);
+                        }}
+                      >
+                        {slideCta === "play"
+                          ? "Play"
+                          : slideCta === "view"
+                            ? "View Theme"
+                            : null}
+                      </button>
+                    </div>
                   ) : null}
                   {compact ? null : (
                     <div className="mobile-css-carousel__dim" aria-hidden="true" />

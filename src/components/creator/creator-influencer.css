@@ -12,6 +12,58 @@
   initial-value: rgba(169, 169, 169, 0.25);
 }
 
+/* Shared closed↔open identity morph (animatable lengths / opacity). */
+@property --cpv2-id-left {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 57px;
+}
+@property --cpv2-id-top {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 12px;
+}
+@property --cpv2-id-avatar {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 38px;
+}
+@property --cpv2-id-gap {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 12px;
+}
+@property --cpv2-id-name-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 1rem;
+}
+@property --cpv2-id-handle-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0.875rem;
+}
+@property --cpv2-id-loc-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0.875rem;
+}
+@property --cpv2-id-loc-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --cpv2-id-loc-max-h {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --cpv2-id-text-y {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 body[data-theme="v8"] .cpv2-influencer {
   display: flex;
   flex-direction: column;
@@ -55,9 +107,20 @@ body[data-theme="v8"] .cpv2-influencer {
 
 body[data-theme="v8"] .cpv2-profile-shell {
   --cpv2-profile-closed-h: 63px;
-  --cpv2-profile-expand: 250ms;
-  --cpv2-profile-collapse: 250ms;
+  --cpv2-profile-expand: 260ms;
+  --cpv2-profile-collapse: 220ms;
   --cpv2-profile-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Closed identity geometry (bar). */
+  --cpv2-id-left: 57px;
+  --cpv2-id-top: 12px;
+  --cpv2-id-avatar: 38px;
+  --cpv2-id-gap: 12px;
+  --cpv2-id-name-size: 1rem;
+  --cpv2-id-handle-size: 0.875rem;
+  --cpv2-id-loc-size: 0.875rem;
+  --cpv2-id-loc-opacity: 0;
+  --cpv2-id-loc-max-h: 0px;
+  --cpv2-id-text-y: -0.2rem;
   /*
    * Layout height is ALWAYS the collapsed bar. Expanded card/progress is
    * position:absolute so the coverflow below never reflows.
@@ -70,10 +133,43 @@ body[data-theme="v8"] .cpv2-profile-shell {
   margin-top: var(--space-5);
   overflow: visible;
   isolation: isolate;
+  transition:
+    --cpv2-id-left var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-top var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-avatar var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-gap var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-name-size var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-handle-size var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-loc-size var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-loc-opacity var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-loc-max-h var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    --cpv2-id-text-y var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
 }
 
 body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] {
   z-index: 60;
+  /* Open identity geometry (card). */
+  --cpv2-id-left: 9px;
+  --cpv2-id-top: 58px;
+  --cpv2-id-avatar: 83px;
+  --cpv2-id-gap: 16px;
+  --cpv2-id-name-size: 1.5rem;
+  --cpv2-id-handle-size: 1.25rem;
+  --cpv2-id-loc-size: 0.875rem;
+  --cpv2-id-loc-opacity: 1;
+  --cpv2-id-loc-max-h: 1.4rem;
+  --cpv2-id-text-y: 0px;
+  transition:
+    --cpv2-id-left var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-top var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-avatar var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-gap var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-name-size var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-handle-size var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-loc-size var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-loc-opacity var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-loc-max-h var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    --cpv2-id-text-y var(--cpv2-profile-expand) var(--cpv2-profile-ease);
 }
 
 /* Collapsed chrome — permanent layout spacer. */
@@ -135,24 +231,144 @@ body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] .cpv2-profile-panel-
     filter var(--cpv2-profile-expand) var(--cpv2-profile-ease);
 }
 
-body[data-theme="v8"] .cpv2-profile-expand-chevron {
-  display: inline-flex;
-  transform: scaleY(1);
-  transform-origin: center;
-  transition: transform var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+@keyframes cpv2-chevron-open {
+  0% {
+    transform: rotate(0deg);
+  }
+  /* Anticipation: nudge the opposite way before flipping. */
+  22% {
+    transform: rotate(-22deg);
+  }
+  100% {
+    transform: rotate(180deg);
+  }
 }
 
-body[data-theme="v8"] .cpv2-profile-shell[data-open="true"] .cpv2-profile-expand-chevron {
-  transform: scaleY(-1);
+@keyframes cpv2-chevron-close {
+  0% {
+    transform: rotate(180deg);
+  }
+  22% {
+    transform: rotate(202deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+body[data-theme="v8"] .cpv2-profile-expand-chevron {
+  display: inline-flex;
+  transform: rotate(0deg);
+  transform-origin: center;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-shell[data-chevron-anim="true"][data-open="false"]
+  .cpv2-profile-expand-chevron {
+  animation: cpv2-chevron-close 180ms var(--cpv2-profile-ease) both;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-shell[data-chevron-anim="true"][data-open="true"]
+  .cpv2-profile-expand-chevron {
+  animation: cpv2-chevron-open 200ms var(--cpv2-profile-ease) both;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-shell[data-chevron-anim="false"][data-open="true"]
+  .cpv2-profile-expand-chevron {
+  transform: rotate(180deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .cpv2-profile-shell,
   body[data-theme="v8"] .cpv2-profile-bar-slot,
   body[data-theme="v8"] .cpv2-profile-panel,
   body[data-theme="v8"] .cpv2-profile-panel-inner,
   body[data-theme="v8"] .cpv2-profile-expand-chevron {
     transition: none !important;
+    animation: none !important;
   }
+}
+
+/* One identity for closed + open — position/size driven by shell vars. */
+body[data-theme="v8"] .cpv2-profile-identity {
+  position: absolute;
+  left: var(--cpv2-id-left);
+  top: var(--cpv2-id-top);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--cpv2-id-gap);
+  max-width: calc(100% - var(--cpv2-id-left) - 52px);
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__avatar {
+  flex-shrink: 0;
+  width: var(--cpv2-id-avatar);
+  height: var(--cpv2-id-avatar);
+  border-radius: 60px;
+  border: 2px solid #d4145a;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  transform: translateY(var(--cpv2-id-text-y));
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__name,
+body[data-theme="v8"] .cpv2-profile-identity__handle,
+body[data-theme="v8"] .cpv2-profile-identity__location {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__name {
+  color: #fff;
+  font-size: var(--cpv2-id-name-size);
+  font-weight: 600;
+  letter-spacing: 0.26px;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__handle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--cpv2-id-handle-size);
+  font-weight: 400;
+  letter-spacing: 0.28px;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity__location {
+  max-height: var(--cpv2-id-loc-max-h);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: var(--cpv2-id-loc-size);
+  font-weight: 400;
+  letter-spacing: 0.24px;
+  opacity: var(--cpv2-id-loc-opacity);
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .cpv2-profile-identity-spacer {
+  flex: 1;
+  min-width: 0;
+  height: var(--cpv2-id-avatar);
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-bar {
@@ -193,8 +409,8 @@ body[data-theme="v8"] .cpv2-profile-bar-back {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 60px;
   color: #fff;
@@ -208,67 +424,20 @@ body[data-theme="v8"] .cpv2-profile-bar-back {
   );
 }
 
-body[data-theme="v8"] .cpv2-profile-bar-avatar {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 60px;
-  border: 2px solid #d4145a;
-  overflow: hidden;
-  background: #1a1a1a;
-}
-
-body[data-theme="v8"] .cpv2-profile-bar-avatar > img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-body[data-theme="v8"] .cpv2-profile-bar-meta {
-  min-width: 0;
-  flex: 1;
-}
-
-body[data-theme="v8"] .cpv2-profile-bar-name,
-body[data-theme="v8"] .cpv2-profile-bar-handle {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-body[data-theme="v8"] .cpv2-profile-bar-name {
-  color: #fff;
-  font-size: var(--text-title);
-  font-weight: 600;
-  letter-spacing: 0.26px;
-}
-
-body[data-theme="v8"] .cpv2-profile-bar-handle {
-  margin-top: var(--space-0-5);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: var(--text-body);
-  font-weight: 400;
-  letter-spacing: 0.28px;
-}
-
+/* Shared expand for closed + open — sits in the top-right of the shell. */
 body[data-theme="v8"] .cpv2-profile-expand {
+  position: absolute;
+  top: 13px;
+  right: 12px;
+  z-index: 6;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  margin-left: auto;
+  width: 36px;
+  height: 36px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 60px;
   color: #fff;
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.35);
-}
-
-body[data-theme="v8"] .cpv2-profile-expand.is-on-card {
   background-image: linear-gradient(
     120deg,
     rgba(170, 170, 170, 0.25) 10%,
@@ -276,6 +445,12 @@ body[data-theme="v8"] .cpv2-profile-expand.is-on-card {
     rgba(0, 0, 0, 0.3) 50%,
     rgba(169, 169, 169, 0.25) 85%
   );
+}
+
+body[data-theme="v8"] .cpv2-profile-expand-slot {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
 }
 
 body[data-theme="v8"] .cpv2-profile-card.has-progress {
@@ -393,6 +568,13 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__pack {
     inset 5px 5px 1px -5px #ffffff4a,
     inset -5px -4px 1px -5px #ffffff7a;
   overflow: hidden;
+  /* Side peeks: scale/brightness → full when centered. */
+  transform: scale(var(--slide-scale, 0.85));
+  transform-origin: center center;
+  filter: brightness(var(--slide-brightness, 0.7));
+  transition:
+    transform 320ms ease,
+    filter 320ms ease;
 }
 
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__poster-art {
@@ -403,7 +585,7 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__poster-art {
   pointer-events: none;
 }
 
-/* Glass plate above clothes art — one per card (View Theme). */
+/* Glass plate above clothes art — hosts the View Theme button. */
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__glass-plate {
   position: absolute;
   bottom: 0;
@@ -412,7 +594,8 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__glass-plate 
   width: 96%;
   height: 4.5625rem;
   margin: 0% 0% 2% 2%;
-  padding: 0.5rem 0;
+  padding: 0.5rem;
+  box-sizing: border-box;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -420,13 +603,34 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__glass-plate 
   border-radius: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.3);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel__glass-plate-btn {
+  display: flex;
+  padding: 0.8rem 1rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  align-self: stretch;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(178, 178, 178, 0.2);
+  background: linear-gradient(
+    93deg,
+    rgba(69, 69, 69, 0.41) 0.06%,
+    rgba(68, 68, 68, 0.17) 23.61%,
+    rgba(0, 0, 0, 0.5) 50.06%,
+    rgba(92, 92, 92, 0.41) 84.67%
+  );
   color: #fff;
   font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.2;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   appearance: none;
   -webkit-appearance: none;
 }
@@ -833,18 +1037,26 @@ body[data-theme="v8"] .cpv2-profile-card-follow {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
+  height: 36px;
+  min-height: 36px;
+  min-width: 36px;
   padding: 0 var(--space-3-5);
-  border: 1px solid oklch(1 0 0 / 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  background: oklch(1 0 0 / 0.14);
   color: #fff;
   font-size: var(--text-caption);
   font-weight: 600;
   letter-spacing: 0.24px;
   text-decoration: none;
   cursor: pointer;
+  /* Match expand / back: diagonal glass fill reads as inset bevel. */
+  background-image: linear-gradient(
+    120deg,
+    rgba(170, 170, 170, 0.25) 10%,
+    rgba(68, 68, 68, 0.1) 29%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
 }
 
 body[data-theme="v8"] .cpv2-profile-card-follow:active {
@@ -852,7 +1064,13 @@ body[data-theme="v8"] .cpv2-profile-card-follow:active {
 }
 
 body[data-theme="v8"] .cpv2-profile-card-follow.is-following {
-  background: oklch(1 0 0 / 0.08);
+  background-image: linear-gradient(
+    120deg,
+    rgba(170, 170, 170, 0.14) 10%,
+    rgba(68, 68, 68, 0.06) 29%,
+    rgba(0, 0, 0, 0.22) 50%,
+    rgba(169, 169, 169, 0.14) 85%
+  );
 }
 
 body[data-theme="v8"] .cpv2-profile-card-body {

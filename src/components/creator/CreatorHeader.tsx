@@ -52,6 +52,36 @@ function socialHref(url: string): string {
   return `https://${trimmed}`;
 }
 
+/** One identity stack for closed + open — sizes morph via CSS variables. */
+function ProfileIdentity({
+  name,
+  username,
+  location,
+  avatarSrc,
+}: {
+  name: string;
+  username: string;
+  location: string;
+  avatarSrc: string;
+}) {
+  return (
+    <div className="cpv2-profile-identity">
+      <div className="cpv2-profile-identity__avatar">
+        <img src={avatarSrc} alt="" decoding="async" />
+      </div>
+      <div className="cpv2-profile-identity__text">
+        <p className="cpv2-profile-identity__name">{name}</p>
+        {username ? (
+          <p className="cpv2-profile-identity__handle">{username}</p>
+        ) : null}
+        {location ? (
+          <p className="cpv2-profile-identity__location">{location}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function CreatorHeader({
   name,
   username,
@@ -87,11 +117,14 @@ export function CreatorHeader({
 }) {
   const location = locationLabel?.trim() || "";
   const [expanded, setExpanded] = useState(false);
+  /** Enable chevron keyframes only after first toggle (avoids mount flash). */
+  const [chevronAnimReady, setChevronAnimReady] = useState(false);
   /** Bumped on each open so progress-fill CSS animations replay. */
   const [progressPlayId, setProgressPlayId] = useState(0);
   const avatarSrc = avatarUrl || "/img/placeholder.webp";
 
   function setExpandedOpen(next: boolean) {
+    setChevronAnimReady(true);
     if (next && !expanded) setProgressPlayId((id) => id + 1);
     setExpanded(next);
   }
@@ -100,7 +133,28 @@ export function CreatorHeader({
     <div
       className="cpv2-profile-shell"
       data-open={expanded ? "true" : "false"}
+      data-chevron-anim={chevronAnimReady ? "true" : "false"}
     >
+      <ProfileIdentity
+        name={name}
+        username={username}
+        location={location}
+        avatarSrc={avatarSrc}
+      />
+
+      {/* One expand control for closed + open — chevron rotates in place. */}
+      <button
+        type="button"
+        className="cpv2-profile-expand"
+        aria-expanded={expanded}
+        aria-label={expanded ? "Collapse profile" : "Expand profile"}
+        onClick={() => setExpandedOpen(!expanded)}
+      >
+        <span className="cpv2-profile-expand-chevron" aria-hidden="true">
+          <ChevronDown className="size-5" strokeWidth={2.2} />
+        </span>
+      </button>
+
       <div className="cpv2-profile-bar-slot">
         <div className="cpv2-profile-bar-slot-inner">
           <div className="cpv2-profile-bar is-inline">
@@ -113,27 +167,7 @@ export function CreatorHeader({
                 className="cpv2-profile-bar-back"
                 tabIndex={expanded ? -1 : 0}
               >
-                <ChevronLeft className="size-4" strokeWidth={2.2} />
-              </button>
-              <div className="cpv2-profile-bar-avatar">
-                <img src={avatarSrc} alt="" decoding="async" />
-              </div>
-              <div className="cpv2-profile-bar-meta">
-                <p className="cpv2-profile-bar-name">{name}</p>
-                {username ? (
-                  <p className="cpv2-profile-bar-handle">{username}</p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                className="cpv2-profile-expand"
-                aria-expanded={expanded}
-                aria-label={expanded ? "Collapse profile" : "Expand profile"}
-                onClick={() => setExpandedOpen(!expanded)}
-              >
-                <span className="cpv2-profile-expand-chevron" aria-hidden="true">
-                  <ChevronDown className="size-4" strokeWidth={2.2} />
-                </span>
+                <ChevronLeft className="size-5" strokeWidth={2.2} />
               </button>
             </div>
           </div>
@@ -180,41 +214,18 @@ export function CreatorHeader({
                     {following ? "Following" : "Follow"}
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className="cpv2-profile-expand is-on-card"
-                  aria-expanded={expanded}
-                  aria-label="Collapse profile"
-                  tabIndex={expanded ? 0 : -1}
-                  onClick={() => setExpandedOpen(false)}
-                >
-                  <span
-                    className="cpv2-profile-expand-chevron"
-                    aria-hidden="true"
-                  >
-                    <ChevronDown className="size-4" strokeWidth={2.2} />
-                  </span>
-                </button>
+                {/* Reserves toolbar space for the shared absolute expand control. */}
+                <span className="cpv2-profile-expand-slot" aria-hidden="true" />
               </div>
             </div>
 
             <div className="cpv2-profile-card-body">
               <div className="cpv2-profile-card-row">
-                <div className="cpv2-profile-card-main">
-                  <div className="cpv2-profile-card-avatar">
-                    {/* Always the stable creator avatar — never theme/cover swaps. */}
-                    <img src={avatarSrc} alt="" decoding="async" />
-                  </div>
-                  <div className="cpv2-profile-card-identity">
-                    <h1 className="cpv2-profile-card-name">{name}</h1>
-                    {username ? (
-                      <p className="cpv2-profile-card-handle">{username}</p>
-                    ) : null}
-                    {location ? (
-                      <p className="cpv2-profile-card-location">{location}</p>
-                    ) : null}
-                  </div>
-                </div>
+                {/* Reserves the morphing identity footprint so socials stay right. */}
+                <div
+                  className="cpv2-profile-identity-spacer"
+                  aria-hidden="true"
+                />
                 <ul
                   className="cpv2-profile-card-socials"
                   aria-label="Social links"
