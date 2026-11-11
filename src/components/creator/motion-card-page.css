@@ -230,7 +230,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-photos-title {
   margin: 0;
   color: #fff;
-  font-size: 14px;
+  font-size: var(--text-title);
   font-weight: 500;
   letter-spacing: 0.28px;
   line-height: 1.2;
@@ -250,11 +250,55 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   position: relative;
   margin: 0;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--text-body);
   font-weight: 500;
   letter-spacing: 0.24px;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.mcp-photos-title-count {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: max-content;
+  max-width: 100%;
+}
+
+.mcp-photos-head-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Fit the shared free-play switch beside the 0/10 count. */
+.mcp-photos-head .cpv2-free-play-clip {
+  height: calc(12px * 1.2);
+}
+
+.mcp-photos-head .cpv2-free-play-track.is-on {
+  transform: translateY(calc(12px * -1.2));
+}
+
+.mcp-photos-head .cpv2-free-play-label {
+  font-size: 12px;
+  letter-spacing: 0.24px;
+}
+
+.mcp-photos-head .cpv2-free-play-switch {
+  width: 40px;
+  height: 24px;
+}
+
+.mcp-photos-head .cpv2-free-play-knob {
+  width: 18px;
+  height: 18px;
+}
+
+.mcp-photos-head .cpv2-free-play-switch.is-on .cpv2-free-play-knob {
+  transform: translateX(16px);
 }
 
 .mcp-photos-dot {

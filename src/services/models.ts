@@ -33,6 +33,10 @@ export type BackendModel = {
   ultraCardTrailerPosterUrl?: string | null;
   /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
   coverUrl?: string | null;
+  /** Profile coverflow charcoal bust (1x), e.g. "/models/julianaval/profile-dress.webp". */
+  profileDressUrl?: string | null;
+  /** Profile coverflow charcoal bust (2x). */
+  profileDress2xUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
   tags?: string[];
 };
@@ -288,6 +292,14 @@ export function modelAvatarUrl(model: BackendModel | null | undefined) {
 
 export function modelCoverUrl(model: BackendModel | null | undefined) {
   return optionalMedia(model?.coverUrl);
+}
+
+export function modelProfileDressUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.profileDressUrl);
+}
+
+export function modelProfileDress2xUrl(model: BackendModel | null | undefined) {
+  return optionalMedia(model?.profileDress2xUrl);
 }
 
 export function modelSwipePosterUrl(model: BackendModel | null | undefined) {

@@ -105,11 +105,15 @@ body[data-theme="v8"] .cpv2-influencer {
 
 /* —— Profile card: native-scroll open card + compositor-only compact bar —— */
 
+/* Shared open/close motion tokens — theme page chevron/panel need these too. */
+body[data-theme="v8"] {
+  --cpv2-profile-expand: 260ms;
+  --cpv2-profile-collapse: 380ms;
+  --cpv2-profile-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 body[data-theme="v8"] .cpv2-profile-shell {
   --cpv2-profile-closed-h: 63px;
-  --cpv2-profile-expand: 260ms;
-  --cpv2-profile-collapse: 220ms;
-  --cpv2-profile-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Closed identity geometry (bar). */
   --cpv2-id-left: 57px;
   --cpv2-id-top: 12px;
@@ -264,19 +268,25 @@ body[data-theme="v8"] .cpv2-profile-expand-chevron {
 
 body[data-theme="v8"]
   [data-chevron-anim="true"][data-open="false"]
-  .cpv2-profile-expand-chevron {
-  animation: cpv2-chevron-close 180ms var(--cpv2-profile-ease) both;
+  .cpv2-profile-expand-chevron,
+body[data-theme="v8"]
+  .cpv2-profile-expand-chevron[data-chevron-anim="true"][data-open="false"] {
+  animation: cpv2-chevron-close 280ms var(--cpv2-profile-ease) both;
 }
 
 body[data-theme="v8"]
   [data-chevron-anim="true"][data-open="true"]
-  .cpv2-profile-expand-chevron {
+  .cpv2-profile-expand-chevron,
+body[data-theme="v8"]
+  .cpv2-profile-expand-chevron[data-chevron-anim="true"][data-open="true"] {
   animation: cpv2-chevron-open 200ms var(--cpv2-profile-ease) both;
 }
 
 body[data-theme="v8"]
   [data-chevron-anim="false"][data-open="true"]
-  .cpv2-profile-expand-chevron {
+  .cpv2-profile-expand-chevron,
+body[data-theme="v8"]
+  .cpv2-profile-expand-chevron[data-chevron-anim="false"][data-open="true"] {
   transform: rotate(180deg);
 }
 
@@ -856,6 +866,8 @@ body[data-theme="v8"]
 }
 
 body[data-theme="v8"] .cpv2-theme-page-head {
+  position: relative;
+  z-index: 40;
   display: flex;
   flex-direction: column;
 }
@@ -865,37 +877,72 @@ body[data-theme="v8"] .cpv2-theme-page-top.mcp-top {
   margin-top: var(--space-6);
 }
 
-body[data-theme="v8"] .cpv2-theme-page-top .cpv2-theme-page-title {
-  margin: 0;
-  text-align: left;
+body[data-theme="v8"] .cpv2-theme-page-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
 }
 
-body[data-theme="v8"] .cpv2-theme-page-expand {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  margin-left: auto;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 60px;
-  color: #fff;
-  cursor: pointer;
-  background-image: linear-gradient(
-    120deg,
-    rgba(170, 170, 170, 0.25) 10%,
-    rgba(68, 68, 68, 0.1) 29%,
-    rgba(0, 0, 0, 0.3) 50%,
-    rgba(169, 169, 169, 0.25) 85%
-  );
+body[data-theme="v8"] .cpv2-theme-page-top .cpv2-theme-page-title {
+  margin: 0;
+  text-align: left;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
-/* Same 0fr→1fr + opacity/blur open as creator profile panel. */
+body[data-theme="v8"] .cpv2-theme-page-title-progress {
+  flex: 0 0 auto;
+  width: 3.75rem;
+  max-width: 3.75rem;
+  opacity: 1;
+  transition: opacity 560ms var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"]
+  .cpv2-theme-page-head[data-open="true"]
+  .cpv2-theme-page-title-progress {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="v8"] .cpv2-theme-page-title-progress .cpv2-progress-fill {
+    animation-delay: 120ms;
+  }
+
+  /* After close fade-in (560ms) — remounted fill replays grow. */
+  body[data-theme="v8"]
+    .cpv2-theme-page-title-progress
+    .cpv2-progress-fill[data-replay="true"] {
+    animation-delay: 560ms;
+  }
+}
+
+/* Same expand control as CreatorHeader — in-flow for the theme top bar. */
+body[data-theme="v8"] .cpv2-theme-page-top .cpv2-profile-expand {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
+/* Overlay like CreatorHeader — does not reflow carousel/photos below. */
 body[data-theme="v8"] .cpv2-theme-page-progress {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 2;
   display: grid;
   grid-template-rows: 0fr;
+  width: 100%;
+  margin-top: var(--space-2);
   pointer-events: none;
   transition: grid-template-rows var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
 }
@@ -905,15 +952,18 @@ body[data-theme="v8"]
   .cpv2-theme-page-progress {
   grid-template-rows: 1fr;
   pointer-events: auto;
-  transition: grid-template-rows var(--cpv2-profile-expand) var(--cpv2-profile-ease);
 }
 
 body[data-theme="v8"] .cpv2-theme-page-progress-inner {
   overflow: hidden;
   min-height: 0;
-  padding-top: var(--space-3);
   opacity: 0;
   filter: blur(2px);
+  border-radius: 16px;
+  background: rgb(5 5 8 / 88%);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   transition:
     opacity var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
     filter var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
@@ -924,14 +974,13 @@ body[data-theme="v8"]
   .cpv2-theme-page-progress-inner {
   opacity: 1;
   filter: blur(0);
-  transition:
-    opacity var(--cpv2-profile-expand) var(--cpv2-profile-ease),
-    filter var(--cpv2-profile-expand) var(--cpv2-profile-ease);
 }
 
 body[data-theme="v8"] .cpv2-theme-page-progress .cpv2-progress-panel {
   margin: 0;
   max-width: none;
+  border: 0;
+  background: transparent;
 }
 
 body[data-theme="v8"] .cpv2-theme-page-section {
@@ -957,7 +1006,27 @@ body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel-shell {
 body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel.swiper,
 body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel.swiper-3d {
   padding-top: var(--space-2);
-  padding-bottom: var(--space-4);
+  padding-bottom: 0;
+}
+
+/* Sit the Play CTA near the card bottom (pack HUD sits mid-card). */
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel__hud {
+  bottom: 0.75rem;
+}
+
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel__pack {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+/* Live video is a separate focus overlay — match pack corners. */
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel__focus {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel__video {
+  border-radius: 0.75rem;
 }
 
 body[data-theme="v8"] .cpv2-theme-page-heading {
@@ -966,6 +1035,65 @@ body[data-theme="v8"] .cpv2-theme-page-heading {
   color: rgba(255, 255, 255, 0.9);
   font-size: var(--text-body);
   font-weight: 600;
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section .mcp-photos-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  width: 100%;
+  padding: var(--space-4);
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  background-image: linear-gradient(
+    238deg,
+    rgba(170, 170, 170, 0.25) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+  transition:
+    border-color 300ms cubic-bezier(0.77, 0, 0.175, 1),
+    background-image 300ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Speech-bubble notch pointing up at the motion carousel. */
+body[data-theme="v8"] .cpv2-theme-page-section .mcp-photos-panel::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  translate: -50% 0;
+  rotate: 45deg;
+  border-top: 1px solid rgba(255, 255, 255, 0.13);
+  border-left: 1px solid rgba(255, 255, 255, 0.13);
+  background: oklab(0.2 0 -0.01);
+  pointer-events: none;
+  transition: border-color 300ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+body[data-theme="v8"] .cpv2-theme-page-section .mcp-photos-panel.is-free-play {
+  border-color: #d4145a;
+  background-image: linear-gradient(
+    238deg,
+    oklch(0.51 0.23 4.89 / 0.5) 0%,
+    rgba(68, 68, 68, 0.1) 24%,
+    rgba(0, 0, 0, 0.3) 50%,
+    oklch(0.65 0.3 28.96 / 0.2) 85%
+  );
+}
+
+body[data-theme="v8"]
+  .cpv2-theme-page-section
+  .mcp-photos-panel.is-free-play::before {
+  border-top-color: #d4145a;
+  border-left-color: #d4145a;
+  background: oklch(0.19 0.04 2.33 / 0.95);
 }
 
 body[data-theme="v8"] .cpv2-theme-page-section .mcp-photo-grid {
@@ -1763,14 +1891,31 @@ body[data-theme="v8"] .cpv2-theme-card-count {
   white-space: nowrap;
 }
 
-/* Figma 229:6542 — Free Play? switch, off by default. */
+/* Figma 229:6542 — Free Play? switch, off by default.
+ * One button (not label>button) so iOS doesn't drop/double-fire taps. */
 body[data-theme="v8"] .cpv2-free-play {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: var(--space-2);
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  appearance: none;
+}
+
+body[data-theme="v8"] .cpv2-free-play-clip,
+body[data-theme="v8"] .cpv2-free-play-switch,
+body[data-theme="v8"] .cpv2-free-play-knob,
+body[data-theme="v8"] .cpv2-free-play-label {
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-free-play-clip {
@@ -1810,14 +1955,12 @@ body[data-theme="v8"] .cpv2-free-play-on {
 
 body[data-theme="v8"] .cpv2-free-play-switch {
   position: relative;
+  display: block;
   flex-shrink: 0;
   width: 48px;
   height: 28px;
-  padding: 0;
-  border: 0;
   border-radius: 999px;
   background: oklch(0.35 0.01 285);
-  cursor: pointer;
   transition: background 160ms ease;
 }
 
@@ -1841,9 +1984,10 @@ body[data-theme="v8"] .cpv2-free-play-switch.is-on .cpv2-free-play-knob {
   transform: translateX(20px);
 }
 
-body[data-theme="v8"] .cpv2-free-play-switch:focus-visible {
+body[data-theme="v8"] .cpv2-free-play:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
+  border-radius: 8px;
 }
 
 body[data-theme="v8"] .cpv2-theme-card-row {

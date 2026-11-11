@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { CreatorProgressPanel } from "@/components/creator/CreatorProgressPanel";
@@ -26,6 +26,7 @@ import {
 } from "@/services/collection";
 import {
   fetchCreatorBoard,
+  themeCollectionProgressFromBoard,
   type CreatorBoard,
 } from "@/services/creatorBoard";
 import {
@@ -34,6 +35,7 @@ import {
 } from "@/features/packs/types";
 import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
 import { Paths } from "@/routes/Paths";
+import { packUnitCost } from "@/services/purchase";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import "./creator-influencer.css";
 import "./motion-card-page.css";
@@ -67,7 +69,11 @@ function motionVideoUrl(card: CardConfig): string {
   return motion && isVideoSrc(motion) ? motion : "";
 }
 
-function cardToIteration(card: CardConfig, index: number): Iteration {
+function cardToIteration(
+  card: CardConfig,
+  index: number,
+  price: number,
+): Iteration {
   const still = motionTileStillUrl(card);
   const video = motionVideoUrl(card);
   return packItemToIteration({
@@ -78,7 +84,7 @@ function cardToIteration(card: CardConfig, index: number): Iteration {
     modelName: card.name,
     videoUrl: video,
     posterUrl: still || undefined,
-    price: 0,
+    price,
     girlName: card.name,
     packNumber: index + 1,
     packName: card.name,
@@ -141,6 +147,11 @@ function CreatorThemeScreenInner({
   const [progressOpen, setProgressOpen] = useState(false);
   const [chevronAnimReady, setChevronAnimReady] = useState(false);
   const [progressPlayId, setProgressPlayId] = useState(0);
+  /** Remount title mini-bar fill on close so grow runs after fade-in. */
+  const [titleProgressPlayId, setTitleProgressPlayId] = useState(0);
+  /** Remount chevron each toggle so open/close keyframes always restart. */
+  const [chevronPlayId, setChevronPlayId] = useState(0);
+  const [freePlay, setFreePlay] = useState(false);
 
   const themes = collection.themes;
   const resolvedThemeId = useMemo(
@@ -181,7 +192,9 @@ function CreatorThemeScreenInner({
 
   function setProgressExpanded(next: boolean) {
     setChevronAnimReady(true);
+    setChevronPlayId((id) => id + 1);
     if (next && !progressOpen) setProgressPlayId((id) => id + 1);
+    if (!next && progressOpen) setTitleProgressPlayId((id) => id + 1);
     setProgressOpen(next);
   }
 
@@ -192,10 +205,20 @@ function CreatorThemeScreenInner({
     );
   }, [collection.cardsByThemeId, resolvedThemeId]);
 
-  const items = useMemo(
-    () => motionCards.map((card, index) => cardToIteration(card, index)),
-    [motionCards],
+  const boardTheme = useMemo(
+    () => board?.themes.find((entry) => entry.id === resolvedThemeId) ?? null,
+    [board, resolvedThemeId],
   );
+
+  const items = useMemo(() => {
+    const byId = new Map(
+      (boardTheme?.motionCards ?? []).map((card) => [card.id, card]),
+    );
+    const fallback = packUnitCost();
+    return motionCards.map((card, index) =>
+      cardToIteration(card, index, byId.get(card.id)?.price ?? fallback),
+    );
+  }, [boardTheme, motionCards]);
 
   useEffect(() => {
     if (!items.length) {
@@ -262,7 +285,33 @@ function CreatorThemeScreenInner({
     ),
   );
   const collectedCount = photoPlayed.filter(Boolean).length;
-  const photoTitle = `${theme?.name ?? "Theme"} Photo Card`;
+  const photoTitle = "Photo Card";
+
+  const themeTotalPct = useMemo(() => {
+    const fromBoard = themeCollectionProgressFromBoard(board, resolvedThemeId);
+    const owned = authed
+      ? fromBoard.total > 0
+        ? fromBoard.owned
+        : (themeProgressCard?.collected ?? 0)
+      : 0;
+    const total =
+      fromBoard.total > 0
+        ? fromBoard.total
+        : (themeProgressCard?.total ?? 0);
+    return total > 0 ? Math.min(100, Math.round((owned / total) * 100)) : 0;
+  }, [authed, board, resolvedThemeId, themeProgressCard]);
+  const boardMotion = useMemo(
+    () =>
+      boardTheme?.motionCards.find((card) => card.id === activeCardId) ?? null,
+    [activeCardId, boardTheme],
+  );
+  const freePlayAllowed = Boolean(
+    boardTheme?.motionCards.some(
+      (card) =>
+        card.freePlayable ||
+        card.staticCards.some((slot) => slot.freePlayable),
+    ),
+  );
 
   function goBack() {
     navigate(Paths.creator(creatorId));
@@ -272,21 +321,41 @@ function CreatorThemeScreenInner({
     if (buying) return;
     const card = motionCards.find((entry) => entry.id === item.id);
     if (!card) return;
-    navigate(Paths.motionCard(creatorId, card.id));
+    const playModelId = card.modelId?.trim() || modelId || "";
+    if (!playModelId) return;
+    const boardCard =
+      boardTheme?.motionCards.find((entry) => entry.id === card.id) ?? null;
+    const useFreePlay = freePlay && Boolean(boardCard?.freePlayable);
+    setBuying(true);
+    const ok = await registerPlay("motion", card.id, useFreePlay);
+    setBuying(false);
+    if (!ok) return;
+    navigate(
+      Paths.gamePlay(playModelId, card.id, {
+        creatorId,
+        themeId: card.groupId || resolvedThemeId || undefined,
+        freePlay: useFreePlay,
+      }),
+    );
   }
 
   async function openPhoto(slotIndex: number) {
     if (buying || !activeCardId) return;
     const playModelId = activeCard?.modelId?.trim() || modelId || "";
-    const photoId = photoScratchIdForSlot(activeCardId, slotIndex);
+    const photoId =
+      boardMotion?.staticCards[slotIndex]?.id ||
+      photoScratchIdForSlot(activeCardId, slotIndex);
+    const useFreePlay =
+      freePlay && Boolean(boardMotion?.staticCards[slotIndex]?.freePlayable);
     setBuying(true);
-    const ok = await registerPlay("photo", photoId);
+    const ok = await registerPlay("photo", photoId, useFreePlay);
     setBuying(false);
     if (!ok) return;
     navigate(
       Paths.photoScratchPlay(photoId, {
         modelId: playModelId || undefined,
         creatorId,
+        freePlay: useFreePlay,
       }),
     );
   }
@@ -324,17 +393,47 @@ function CreatorThemeScreenInner({
             >
               <ChevronLeft size={18} strokeWidth={2.4} aria-hidden />
             </button>
-            <h1 className="cpv2-theme-page-title">{theme?.name ?? "Theme"}</h1>
+            <div className="cpv2-theme-page-title-row">
+              <h1 className="cpv2-theme-page-title">
+                {theme?.name ?? "Theme"}
+              </h1>
+              <div
+                className="cpv2-progress-track cpv2-theme-page-title-progress"
+                role="progressbar"
+                aria-valuenow={themeTotalPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${theme?.name ?? "Theme"} total progress, ${themeTotalPct}%`}
+              >
+                <span
+                  key={titleProgressPlayId}
+                  className="cpv2-progress-fill"
+                  data-replay={titleProgressPlayId > 0 ? "true" : undefined}
+                  style={
+                    {
+                      "--cpv2-progress": `${themeTotalPct}%`,
+                      "--cpv2-i": 0,
+                    } as CSSProperties
+                  }
+                />
+              </div>
+            </div>
             <button
               type="button"
-              className="cpv2-theme-page-expand"
+              className="cpv2-profile-expand"
               aria-expanded={progressOpen}
               aria-label={
                 progressOpen ? "Hide theme progress" : "Show theme progress"
               }
               onClick={() => setProgressExpanded(!progressOpen)}
             >
-              <span className="cpv2-profile-expand-chevron" aria-hidden="true">
+              <span
+                key={`${chevronPlayId}-${progressOpen ? "open" : "closed"}`}
+                className="cpv2-profile-expand-chevron"
+                data-open={progressOpen ? "true" : "false"}
+                data-chevron-anim={chevronAnimReady ? "true" : "false"}
+                aria-hidden="true"
+              >
                 <ChevronDown className="size-5" strokeWidth={2.2} />
               </span>
             </button>
@@ -375,16 +474,61 @@ function CreatorThemeScreenInner({
         </section>
 
         <section className="mcp-photos cpv2-theme-page-section" aria-label={photoTitle}>
-          <header className="mcp-photos-head">
-            <div className="mcp-photos-title-row">
-              <h2 className="mcp-photos-title">{photoTitle}</h2>
-            </div>
-            <p className="mcp-photos-count">
-              {collectedCount}/{PHOTO_SLOTS}
-            </p>
-          </header>
+          <div
+            className={[
+              "mcp-photos-panel",
+              freePlay ? "is-free-play" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <header className="mcp-photos-head">
+              <div className="mcp-photos-title-count">
+                <h2 className="mcp-photos-title">{photoTitle}</h2>
+                <p className="mcp-photos-count">
+                  {collectedCount}/{PHOTO_SLOTS}
+                </p>
+              </div>
+              {freePlayAllowed ? (
+                <button
+                  type="button"
+                  className={
+                    freePlay ? "cpv2-free-play is-on" : "cpv2-free-play"
+                  }
+                  role="switch"
+                  aria-checked={freePlay}
+                  aria-label={`Free play for ${theme?.name ?? "theme"}`}
+                  onClick={() => setFreePlay((on) => !on)}
+                >
+                  <span className="cpv2-free-play-clip" aria-hidden="true">
+                    <span
+                      className={
+                        freePlay
+                          ? "cpv2-free-play-track is-on"
+                          : "cpv2-free-play-track"
+                      }
+                    >
+                      <span className="cpv2-free-play-label">Free Play?</span>
+                      <span className="cpv2-free-play-label">
+                        Free: <span className="cpv2-free-play-on">ON</span>
+                      </span>
+                    </span>
+                  </span>
+                  <span
+                    className={
+                      freePlay
+                        ? "cpv2-free-play-switch is-on"
+                        : "cpv2-free-play-switch"
+                    }
+                    aria-hidden="true"
+                  >
+                    <span className="cpv2-free-play-knob" />
+                  </span>
+                </button>
+              ) : null}
+            </header>
 
-          <div className="mcp-photo-grid">
+            <div className="mcp-photo-grid">
             {slots.map((slot, index) => {
               const owned = photoPlayed[index];
               const src =
@@ -392,7 +536,10 @@ function CreatorThemeScreenInner({
                 (activeCard ? motionTileStillUrl(activeCard) : "") ||
                 "/img/placeholder.webp";
               const playPrice = slotPrices[index];
-              const showPrice = !owned && playPrice != null;
+              const slotFree =
+                freePlay &&
+                Boolean(boardMotion?.staticCards[index]?.freePlayable);
+              const showPrice = !owned && playPrice != null && !slotFree;
               return (
                 <div
                   key={`${activeCardId ?? "theme"}-photo-${index}`}
@@ -463,6 +610,7 @@ function CreatorThemeScreenInner({
                 </div>
               );
             })}
+            </div>
           </div>
         </section>
       </div>

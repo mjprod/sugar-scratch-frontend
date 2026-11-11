@@ -779,24 +779,27 @@ function ThemeCollectionCard({
           </h2>
         </div>
         {freePlayAllowed ? (
-          <label className="cpv2-free-play">
+          <button
+            type="button"
+            className={freePlay ? "cpv2-free-play is-on" : "cpv2-free-play"}
+            role="switch"
+            aria-checked={freePlay}
+            aria-label={`Free play for ${theme.name}`}
+            onClick={() => setFreePlay((on) => !on)}
+          >
             <span className="cpv2-free-play-clip" aria-hidden="true">
               <span className={freePlay ? "cpv2-free-play-track is-on" : "cpv2-free-play-track"}>
                 <span className="cpv2-free-play-label">Free Play?</span>
                 <span className="cpv2-free-play-label">Free: <span className="cpv2-free-play-on">ON</span></span>
               </span>
             </span>
-            <button
-              type="button"
+            <span
               className={freePlay ? "cpv2-free-play-switch is-on" : "cpv2-free-play-switch"}
-              role="switch"
-              aria-checked={freePlay}
-              aria-label={`Free play for ${theme.name}`}
-              onClick={() => setFreePlay((on) => !on)}
+              aria-hidden="true"
             >
               <span className="cpv2-free-play-knob" />
-            </button>
-          </label>
+            </span>
+          </button>
         ) : null}
       </header>
 

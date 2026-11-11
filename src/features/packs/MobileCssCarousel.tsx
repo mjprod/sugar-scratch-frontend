@@ -14,6 +14,7 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/shared/ui/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import {
   addPackToCart,
   isPackInCart,
@@ -165,72 +166,101 @@ function PackSlideHud({
         }}
       >
         <div className="coverflow-buy-pack-cta__primary">
-          <CtaButton
-            {...ctaButtonPropsFromTemplate("squircleCTA")}
-            {...BUY_PACK_CTA_SIZE_MOBILE}
-            cornerRadius={12} /* 0.75rem */
-            // Force red squircle plate (coverflow used to pin gold hex chrome).
-            auroraBaseColor="#42001b"
-            auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
-            auroraRotation={45}
-            glowColors={["#aa085f", "#e00083", "#eb6a00"]}
-            glowColor="326 90 30"
-            strokeColor="rgba(170, 8, 95, 0.42)"
-            labelColor="#ffe0e8"
-            auroraPaused
-            glowAlwaysOn={false}
-            glowOuterBloom="off"
-            costIconAnimated={false}
-            label={
-              slideCta === "play"
-                ? "Play"
-                : slideCta === "view"
-                  ? "View Theme"
-                  : "Buy Pack"
-            }
-            leadingIcon={
-              slideCta === "play" ? (
-                <Play
-                  className="motion-card-play-cta__triangle"
-                  size={14}
-                  strokeWidth={2.4}
-                  fill="currentColor"
-                  aria-hidden
-                />
-              ) : undefined
-            }
-            costAmount={
-              slideCta === "buy"
-                ? String(
-                    Math.round(
-                      (item.price ?? 0) *
-                        (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
-                    ),
-                  )
-                : null
-            }
-            style={{ ["--cta-aurora-angle" as string]: "45deg" }}
-            className="coverflow-buy-pack-cta__button"
-            tabIndex={revealed ? 0 : -1}
-            aria-expanded={
-              slideCta === "buy"
-                ? buyConfirmOpen || buyConfirmLeaving
-                : undefined
-            }
-            aria-controls={
-              slideCta === "buy"
-                ? `coverflow-buy-confirm-${item.id}`
-                : undefined
-            }
-            onClick={(event) => {
-              event.stopPropagation();
-              if (slideCta === "view" || slideCta === "play") {
-                onView?.(item);
-                return;
+          {slideCta === "play" ? (
+            <div className="coverflow-compact-play-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                width={210}
+                height={56}
+                strokeWidth={1}
+                label=""
+                leadingIcon={
+                  <>
+                    <DiamondLottie
+                      className="coverflow-compact-play-cta__diamond"
+                      size={14}
+                      aria-hidden
+                    />
+                    <span className="coverflow-compact-play-cta__price">
+                      {Math.round(item.price ?? 0)}
+                    </span>
+                    <span className="coverflow-compact-play-cta__label">
+                      Play Motion
+                    </span>
+                    <Play
+                      className="coverflow-compact-play-cta__triangle"
+                      size={14}
+                      strokeWidth={2.4}
+                      fill="currentColor"
+                      aria-hidden
+                    />
+                  </>
+                }
+                costAmount={null}
+                fontSize={14}
+                cornerRadius={999}
+                tabIndex={revealed ? 0 : -1}
+                aria-label={`Play Motion ${item.packName || item.name} for ${Math.round(item.price ?? 0)} diamonds`}
+                className="coverflow-buy-pack-cta__button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onView?.(item);
+                }}
+              />
+            </div>
+          ) : (
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              {...BUY_PACK_CTA_SIZE_MOBILE}
+              cornerRadius={12} /* 0.75rem */
+              // Force red squircle plate (coverflow used to pin gold hex chrome).
+              auroraBaseColor="#42001b"
+              auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+              auroraRotation={45}
+              glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+              glowColor="326 90 30"
+              strokeColor="rgba(170, 8, 95, 0.42)"
+              labelColor="#ffe0e8"
+              auroraPaused
+              glowAlwaysOn={false}
+              glowOuterBloom="off"
+              costIconAnimated={false}
+              label={slideCta === "view" ? "View Theme" : "Buy Pack"}
+              costAmount={
+                slideCta === "buy"
+                  ? String(
+                      Math.round(
+                        (item.price ?? 0) *
+                          (buyConfirmOpen || buyConfirmLeaving
+                            ? buyQuantity
+                            : 1),
+                      ),
+                    )
+                  : null
               }
-              onToggleBuyConfirm();
-            }}
-          />
+              style={{ ["--cta-aurora-angle" as string]: "45deg" }}
+              className="coverflow-buy-pack-cta__button"
+              tabIndex={revealed ? 0 : -1}
+              aria-expanded={
+                slideCta === "buy"
+                  ? buyConfirmOpen || buyConfirmLeaving
+                  : undefined
+              }
+              aria-controls={
+                slideCta === "buy"
+                  ? `coverflow-buy-confirm-${item.id}`
+                  : undefined
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                if (slideCta === "view") {
+                  onView?.(item);
+                  return;
+                }
+                onToggleBuyConfirm();
+              }}
+            />
+          )}
           {slideCta === "buy" && (buyConfirmOpen || buyConfirmLeaving) ? (
             <CoverflowBuyConfirm
               id={`coverflow-buy-confirm-${item.id}`}
@@ -308,6 +338,8 @@ export function MobileCssCarousel({
   compact = false,
   flat = false,
   stageBackdropBase,
+  stageBackdropSrc,
+  stageBackdropSrc2x,
   stageBackdropLabel,
   slideCta = "buy",
 }: {
@@ -333,6 +365,10 @@ export function MobileCssCarousel({
   flat?: boolean;
   /** Profile charcoal art base (no extension) — fixed behind the slider, not in the track. */
   stageBackdropBase?: string;
+  /** API charcoal bust URL (1x). Wins over stageBackdropBase when set. */
+  stageBackdropSrc?: string;
+  /** API charcoal bust URL (2x). */
+  stageBackdropSrc2x?: string;
   /** Influencer name under the charcoal bust. */
   stageBackdropLabel?: string;
   /** Profile / theme: View Now or Play on the active slide instead of Buy Pack. */
@@ -1067,7 +1103,26 @@ export function MobileCssCarousel({
           </>
         ) : null}
         {/* Fixed behind the track — does not scroll with slides. */}
-        {flat && stageBackdropBase ? (
+        {flat && stageBackdropSrc ? (
+          <picture
+            className="mobile-css-carousel__stage-charcoal"
+            aria-hidden="true"
+          >
+            <img
+              src={stageBackdropSrc}
+              srcSet={
+                stageBackdropSrc2x
+                  ? `${stageBackdropSrc} 1x, ${stageBackdropSrc2x} 2x`
+                  : undefined
+              }
+              alt=""
+              width={347}
+              height={626}
+              decoding="async"
+              draggable={false}
+            />
+          </picture>
+        ) : flat && stageBackdropBase ? (
           <picture
             className="mobile-css-carousel__stage-charcoal"
             aria-hidden="true"

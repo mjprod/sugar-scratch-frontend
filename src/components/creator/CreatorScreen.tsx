@@ -41,7 +41,6 @@ import "./creator-collection.css";
 import "./creator-influencer.css";
 
 const BUY_PACK_CTA = ctaButtonPropsFromTemplate("squircleCTA");
-const PROFILE_COVERFLOW_BACKDROP = "/images/creator/womanCharcoalModel";
 
 /**
  * Creator profile — collapsed header (progress when expanded), theme motion coverflow, Buy Pack CTA.
@@ -208,6 +207,12 @@ function CreatorScreenInner({
     (model?.coverUrl ? normalizeMediaUrl(model.coverUrl) : "") ||
     avatarUrl ||
     "/img/placeholder.webp";
+  const profileDressSrc = model?.profileDressUrl
+    ? normalizeMediaUrl(model.profileDressUrl)
+    : "";
+  const profileDressSrc2x = model?.profileDress2xUrl
+    ? normalizeMediaUrl(model.profileDress2xUrl)
+    : "";
 
   function notice(message: string) {
     setToast(message);
@@ -364,7 +369,8 @@ function CreatorScreenInner({
                 buying={false}
                 addedToPocket={false}
                 flat
-                stageBackdropBase={PROFILE_COVERFLOW_BACKDROP}
+                stageBackdropSrc={profileDressSrc || undefined}
+                stageBackdropSrc2x={profileDressSrc2x || undefined}
                 stageBackdropLabel={creatorName}
                 slideCta="view"
                 onSelect={() => {}}

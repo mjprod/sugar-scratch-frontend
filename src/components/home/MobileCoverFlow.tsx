@@ -9,6 +9,8 @@ export function MobileCoverFlow({
   slideCta = "buy",
   flat = false,
   stageBackdropBase,
+  stageBackdropSrc,
+  stageBackdropSrc2x,
   stageBackdropLabel,
   onSelect,
   onDeselect,
@@ -37,6 +39,8 @@ export function MobileCoverFlow({
         slideCta={slideCta}
         flat={flat}
         stageBackdropBase={stageBackdropBase}
+        stageBackdropSrc={stageBackdropSrc}
+        stageBackdropSrc2x={stageBackdropSrc2x}
         stageBackdropLabel={stageBackdropLabel}
         onReady={onReady}
         onBuy={onBuy}

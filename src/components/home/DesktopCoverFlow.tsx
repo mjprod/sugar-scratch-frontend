@@ -51,6 +51,10 @@ export type HomeCoverFlowViewProps = {
   flat?: boolean;
   /** Profile: charcoal / stage art base path (no extension) rendered once inside the slider. */
   stageBackdropBase?: string;
+  /** Profile: API charcoal bust URL (1x). Prefer over stageBackdropBase when set. */
+  stageBackdropSrc?: string;
+  /** Profile: API charcoal bust URL (2x). */
+  stageBackdropSrc2x?: string;
   /** Label under the charcoal bust (influencer display name). */
   stageBackdropLabel?: string;
 };
