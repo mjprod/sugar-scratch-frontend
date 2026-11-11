@@ -328,6 +328,13 @@ function CreatorThemeScreenInner({
         card.staticCards.some((slot) => slot.freePlayable),
     ),
   );
+  const ownedFreePlayIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const card of boardTheme?.motionCards ?? []) {
+      if (card.status === "unlocked") ids.add(card.id);
+    }
+    return ids;
+  }, [boardTheme]);
 
   function goBack() {
     navigate(Paths.creator(creatorId));
@@ -478,36 +485,15 @@ function CreatorThemeScreenInner({
           className="cpv2-theme-page-section"
           aria-label="Motion cards"
         >
-          {items.length > 0 ? (
-            <MobileCssCarousel
-              items={items}
-              selectedId={activeCardId}
-              slideCta="play"
-              onView={(item) => void openMotion(item)}
-              onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
-            />
-          ) : (
-            <p className="cpv2-theme-page-empty">No motion cards yet.</p>
-          )}
-        </section>
-
-        <section className="mcp-photos cpv2-theme-page-section" aria-label={photoTitle}>
-          <div
-            className={[
-              "mcp-photos-panel",
-              freePlay ? "is-free-play" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            <header className="mcp-photos-head">
-              <div className="mcp-photos-title-count">
-                <h2 className="mcp-photos-title">{photoTitle}</h2>
-                <p className="mcp-photos-count">
-                  {collectedCount}/{PHOTO_SLOTS}
-                </p>
-              </div>
-              {freePlayAllowed ? (
+          {freePlayAllowed ? (
+            <div className="cpv2-theme-motion-toolbar">
+              <div
+                className={
+                  freePlay
+                    ? "cpv2-theme-free-play-glass is-free-play"
+                    : "cpv2-theme-free-play-glass"
+                }
+              >
                 <button
                   type="button"
                   className={
@@ -543,7 +529,39 @@ function CreatorThemeScreenInner({
                     <span className="cpv2-free-play-knob" />
                   </span>
                 </button>
-              ) : null}
+              </div>
+            </div>
+          ) : null}
+          {items.length > 0 ? (
+            <MobileCssCarousel
+              items={items}
+              selectedId={activeCardId}
+              slideCta="play"
+              ownedFreePlayIds={freePlay ? ownedFreePlayIds : null}
+              onView={(item) => void openMotion(item)}
+              onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
+            />
+          ) : (
+            <p className="cpv2-theme-page-empty">No motion cards yet.</p>
+          )}
+        </section>
+
+        <section className="mcp-photos cpv2-theme-page-section" aria-label={photoTitle}>
+          <div
+            className={[
+              "mcp-photos-panel",
+              freePlay ? "is-free-play" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <header className="mcp-photos-head">
+              <div className="mcp-photos-title-count">
+                <h2 className="mcp-photos-title">{photoTitle}</h2>
+                <p className="mcp-photos-count">
+                  {collectedCount}/{PHOTO_SLOTS}
+                </p>
+              </div>
             </header>
 
             <div className="mcp-photo-grid">

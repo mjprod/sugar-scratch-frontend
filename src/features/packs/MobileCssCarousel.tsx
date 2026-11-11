@@ -351,6 +351,7 @@ export function MobileCssCarousel({
   stageBackdropSrc2x,
   stageBackdropLabel,
   slideCta = "buy",
+  ownedFreePlayIds = null,
 }: {
   items: Iteration[];
   onReady?: () => void;
@@ -382,6 +383,8 @@ export function MobileCssCarousel({
   stageBackdropLabel?: string;
   /** Profile / theme: View Now or Play on the active slide instead of Buy Pack. */
   slideCta?: "buy" | "view" | "play";
+  /** Theme free-play: pink border on previously purchased motion packs. */
+  ownedFreePlayIds?: ReadonlySet<string> | null;
 }) {
   const useCoverflow = !compact && !flat;
   const swiperRef = useRef<SwiperClass | null>(null);
@@ -1078,6 +1081,25 @@ export function MobileCssCarousel({
     activeBackdropItem?.backgroundImageUrl?.trim() ||
     activeBackdropItem?.posterUrl?.trim() ||
     "";
+  const activeOwnedFreePlay = Boolean(
+    ownedFreePlayIds?.has(activeBackdropItem?.id ?? ""),
+  );
+
+  // Imperative class toggles — React className on stage/focus must stay stable
+  // or it wipes is-live-video / is-ready / is-parked and kills the live video.
+  useEffect(() => {
+    stageRef.current?.classList.toggle(
+      "is-free-play-owned",
+      Boolean(ownedFreePlayIds),
+    );
+  }, [ownedFreePlayIds]);
+
+  useEffect(() => {
+    focusRef.current?.classList.toggle(
+      "is-owned-free-play",
+      activeOwnedFreePlay,
+    );
+  }, [activeOwnedFreePlay]);
 
   return (
     <div
@@ -1276,9 +1298,16 @@ export function MobileCssCarousel({
           {items.map((item, index) => {
             void pocketTick;
             const near = Math.abs(index - activeIndex) <= 2;
+            const ownedFreePlay = Boolean(ownedFreePlayIds?.has(item.id));
             return (
               <SwiperSlide key={item.id}>
-                <div className="mobile-css-carousel__pack">
+                <div
+                  className={
+                    ownedFreePlay
+                      ? "mobile-css-carousel__pack is-owned-free-play"
+                      : "mobile-css-carousel__pack"
+                  }
+                >
                   {item.posterArtBase ? (
                     <picture className="mobile-css-carousel__poster-art">
                       <source
