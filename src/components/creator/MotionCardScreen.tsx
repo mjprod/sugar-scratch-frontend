@@ -201,7 +201,8 @@ function MotionCardScreenInner({
     navigate(
       Paths.gamePlay(playModelId, cardId, {
         creatorId,
-        themeId: card?.groupId || undefined,
+        // Prefer theme key (nurse) over catalog groupId so exit can reopen theme.
+        themeId: card?.groupTheme || card?.groupId || undefined,
       }),
     );
   }

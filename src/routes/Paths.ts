@@ -98,7 +98,12 @@ export const Paths = {
   /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection / motion page). */
   photoScratchPlay: (
     photoCardId: string,
-    extra?: { modelId?: string; creatorId?: string; freePlay?: boolean },
+    extra?: {
+      modelId?: string;
+      creatorId?: string;
+      themeId?: string;
+      freePlay?: boolean;
+    },
   ) => {
     const params = new URLSearchParams();
     params.set("card", photoCardId);
@@ -106,6 +111,8 @@ export const Paths = {
     if (model) params.set("model", model);
     const creator = extra?.creatorId?.trim();
     if (creator) params.set("creator", creator);
+    const theme = extra?.themeId?.trim();
+    if (theme) params.set("theme", theme);
     if (extra?.freePlay) params.set("freeplay", "1");
     return `/photo-scratch?${params.toString()}`;
   },

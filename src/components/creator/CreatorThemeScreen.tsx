@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { ChevronDown, ChevronLeft, Play } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreatorProgressPanel } from "@/components/creator/CreatorProgressPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
@@ -134,12 +140,17 @@ function CreatorThemeScreenInner({
   modelId: string | null;
 }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnCardId = searchParams.get("card")?.trim() || "";
   const { authed } = useAuth();
   const registerPlay = useRegisterCardPlay();
   const { isPlayed } = usePlayedCards();
   const [buying, setBuying] = useState(false);
   const collection = useCreatorCollection(modelId);
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(
+    () => returnCardId || null,
+  );
+  const appliedReturnCardRef = useRef("");
   const [slotPrices, setSlotPrices] = useState<Array<number | null>>(() =>
     Array.from({ length: PHOTO_SLOTS }, () => null),
   );
@@ -221,14 +232,19 @@ function CreatorThemeScreenInner({
   }, [boardTheme, motionCards]);
 
   useEffect(() => {
-    if (!items.length) {
-      setActiveCardId(null);
+    if (!items.length) return;
+    if (
+      returnCardId &&
+      appliedReturnCardRef.current !== returnCardId &&
+      items.some((item) => item.id === returnCardId)
+    ) {
+      appliedReturnCardRef.current = returnCardId;
+      setActiveCardId(returnCardId);
       return;
     }
-    if (!activeCardId || !items.some((item) => item.id === activeCardId)) {
-      setActiveCardId(items[0]!.id);
-    }
-  }, [activeCardId, items]);
+    if (activeCardId && items.some((item) => item.id === activeCardId)) return;
+    setActiveCardId(items[0]!.id);
+  }, [activeCardId, items, returnCardId]);
 
   const activeCard = useMemo(
     () => motionCards.find((card) => card.id === activeCardId) ?? null,
@@ -333,7 +349,8 @@ function CreatorThemeScreenInner({
     navigate(
       Paths.gamePlay(playModelId, card.id, {
         creatorId,
-        themeId: card.groupId || resolvedThemeId || undefined,
+        // Route theme id (e.g. nurse) — not card.groupId (catalog group key).
+        themeId: resolvedThemeId || undefined,
         freePlay: useFreePlay,
       }),
     );
@@ -355,6 +372,7 @@ function CreatorThemeScreenInner({
       Paths.photoScratchPlay(photoId, {
         modelId: playModelId || undefined,
         creatorId,
+        themeId: resolvedThemeId || undefined,
         freePlay: useFreePlay,
       }),
     );

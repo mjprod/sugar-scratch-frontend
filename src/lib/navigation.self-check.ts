@@ -19,6 +19,10 @@ import {
   SECONDARY_SURFACES,
   SURFACE_KIND,
 } from "./navigation.ts";
+import {
+  collectionReturnHref,
+  gameReturnHrefFromSearch,
+} from "../shared/navigation/collectionReturn.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -115,5 +119,27 @@ assert(Paths.profile === "/settings", "settings hub url");
 assert(pluralize(1, "card") === "card", "one card");
 assert(pluralize(0, "card") === "cards", "zero cards");
 assert(pluralize(2, "card") === "cards", "many cards");
+
+assert(
+  collectionReturnHref({
+    creatorId: "juliana",
+    themeId: "nurse",
+    cardId: "motion-1",
+  }) === "/creator/juliana/theme/nurse?card=motion-1",
+  "game exit with theme returns to creator theme on that card",
+);
+assert(
+  collectionReturnHref({
+    creatorId: "juliana",
+    cardId: "motion-1",
+  }) === "/creator/juliana?card=motion-1",
+  "game exit without theme returns to creator profile",
+);
+assert(
+  gameReturnHrefFromSearch(
+    "?model=m1&card=c1&creator=juliana&theme=nurse",
+  ) === "/creator/juliana/theme/nurse?card=c1",
+  "game search with theme exits to theme page on that card",
+);
 
 console.log("v8 navigation self-check passed");

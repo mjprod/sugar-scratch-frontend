@@ -60,6 +60,15 @@ function glowColorForItem(item: Iteration | undefined) {
   );
 }
 
+function indexForSelectedId(
+  list: Iteration[],
+  selectedId: string | null | undefined,
+) {
+  if (!selectedId) return 0;
+  const index = list.findIndex((item) => item.id === selectedId);
+  return index >= 0 ? index : 0;
+}
+
 function PackGlowStacks({
   baseColor,
   nextColor,
@@ -386,8 +395,12 @@ export function MobileCssCarousel({
   const onViewRef = useRef(onView);
   const buyDisabledRef = useRef(buyDisabled);
   const readySent = useRef(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeIndexRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(() =>
+    indexForSelectedId(items, selectedId),
+  );
+  const activeIndexRef = useRef(indexForSelectedId(items, selectedId));
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const stageRef = useRef<HTMLDivElement | null>(null);
   const focusRef = useRef<HTMLDivElement | null>(null);
   const liveVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -738,16 +751,25 @@ export function MobileCssCarousel({
     return () => clearGlowTimers();
   }, [clearGlowTimers]);
 
-  // Catalog swap / first paint — snap to the focused pack color.
+  // Catalog swap / first paint — keep selected (or current) slide, not always 0.
   useEffect(() => {
     readySent.current = false;
-    setActiveIndex(0);
-    activeIndexRef.current = 0;
-    if (!compact) snapGlow(glowColorForItem(items[0]));
+    const preferredId =
+      selectedIdRef.current ||
+      itemsRef.current[activeIndexRef.current]?.id ||
+      null;
+    const next = indexForSelectedId(items, preferredId);
+    activeIndexRef.current = next;
+    setActiveIndex(next);
+    if (!compact) snapGlow(glowColorForItem(items[next]));
     releaseClaimedDecoder(liveVideoRef.current);
     focusRef.current?.classList.remove("is-ready");
     syncLiveClass();
-    if (swiperRef.current && pageVisibleRef.current && heroVisibleRef.current) {
+    const swiper = swiperRef.current;
+    if (swiper && swiper.activeIndex !== next) {
+      swiper.slideTo(next, 0);
+    }
+    if (swiper && pageVisibleRef.current && heroVisibleRef.current) {
       setParked(false);
       attachActiveVideo();
     }
@@ -842,7 +864,14 @@ export function MobileCssCarousel({
 
   function onSwiper(swiper: SwiperClass) {
     swiperRef.current = swiper;
-    syncPlayback(swiper.activeIndex);
+    const preferred = indexForSelectedId(
+      itemsRef.current,
+      selectedIdRef.current,
+    );
+    if (swiper.activeIndex !== preferred) {
+      swiper.slideTo(preferred, 0);
+    }
+    syncPlayback(preferred);
     applySlideDim(swiper);
     flattenSlideTransforms(swiper);
     swiper.update();
@@ -1177,6 +1206,7 @@ export function MobileCssCarousel({
                 },
               }
             : {})}
+          initialSlide={indexForSelectedId(items, selectedId)}
           onSwiper={onSwiper}
           onProgress={(swiper) => {
             applySlideDim(swiper);
