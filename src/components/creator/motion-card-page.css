@@ -259,10 +259,12 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 
 .mcp-photos-title-count {
   display: flex;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
-  width: max-content;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
 }
 

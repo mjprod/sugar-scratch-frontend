@@ -301,7 +301,13 @@ function CreatorThemeScreenInner({
     ),
   );
   const collectedCount = photoPlayed.filter(Boolean).length;
-  const photoTitle = "Photo Card";
+  const photoTitle = useMemo(() => {
+    const themeName = (theme?.name ?? "").trim();
+    if (!themeName) return "Photo Cards";
+    const motionIndex = items.findIndex((item) => item.id === activeCardId);
+    const n = String((motionIndex >= 0 ? motionIndex : 0) + 1).padStart(3, "0");
+    return `${themeName}${n} Photo Cards`;
+  }, [activeCardId, items, theme?.name]);
 
   const themeTotalPct = useMemo(() => {
     const fromBoard = themeCollectionProgressFromBoard(board, resolvedThemeId);
@@ -588,6 +594,12 @@ function CreatorThemeScreenInner({
                         : "is-locked",
                     showPrice ? "has-price-cta" : "has-play-cta",
                   ].join(" ")}
+                  style={
+                    {
+                      // Column index — stagger left → right on motion change.
+                      ["--mcp-photo-i" as string]: index % 3,
+                    } as CSSProperties
+                  }
                 >
                   <img
                     src={src || "/img/placeholder.webp"}

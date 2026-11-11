@@ -107,6 +107,7 @@ function PackSlideHud({
   buyQuantity,
   confirmingAdd,
   slideCta = "buy",
+  freePlayOwned = false,
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
@@ -124,6 +125,8 @@ function PackSlideHud({
   buyQuantity: number;
   confirmingAdd: boolean;
   slideCta?: "buy" | "view" | "play";
+  /** Theme free-play: owned card — no diamond/price, "Free Play Motion". */
+  freePlayOwned?: boolean;
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
   onConfirmBuy: (quantity: number) => void;
@@ -176,7 +179,13 @@ function PackSlideHud({
       >
         <div className="coverflow-buy-pack-cta__primary">
           {slideCta === "play" ? (
-            <div className="coverflow-compact-play-cta">
+            <div
+              className={
+                freePlayOwned
+                  ? "coverflow-compact-play-cta is-free-play-owned"
+                  : "coverflow-compact-play-cta"
+              }
+            >
               <CtaButton
                 {...ctaButtonPropsFromTemplate("squircleCTA")}
                 width={210}
@@ -184,32 +193,51 @@ function PackSlideHud({
                 strokeWidth={1}
                 label=""
                 leadingIcon={
-                  <>
-                    <DiamondLottie
-                      className="coverflow-compact-play-cta__diamond"
-                      size={14}
-                      aria-hidden
-                    />
-                    <span className="coverflow-compact-play-cta__price">
-                      {Math.round(item.price ?? 0)}
-                    </span>
-                    <span className="coverflow-compact-play-cta__label">
-                      Play Motion
-                    </span>
-                    <Play
-                      className="coverflow-compact-play-cta__triangle"
-                      size={14}
-                      strokeWidth={2.4}
-                      fill="currentColor"
-                      aria-hidden
-                    />
-                  </>
+                  freePlayOwned ? (
+                    <>
+                      <span className="coverflow-compact-play-cta__label">
+                        Free Play Motion
+                      </span>
+                      <Play
+                        className="coverflow-compact-play-cta__triangle"
+                        size={14}
+                        strokeWidth={2.4}
+                        fill="currentColor"
+                        aria-hidden
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <DiamondLottie
+                        className="coverflow-compact-play-cta__diamond"
+                        size={14}
+                        aria-hidden
+                      />
+                      <span className="coverflow-compact-play-cta__price">
+                        {Math.round(item.price ?? 0)}
+                      </span>
+                      <span className="coverflow-compact-play-cta__label">
+                        Play Motion
+                      </span>
+                      <Play
+                        className="coverflow-compact-play-cta__triangle"
+                        size={14}
+                        strokeWidth={2.4}
+                        fill="currentColor"
+                        aria-hidden
+                      />
+                    </>
+                  )
                 }
                 costAmount={null}
                 fontSize={14}
                 cornerRadius={999}
                 tabIndex={revealed ? 0 : -1}
-                aria-label={`Play Motion ${item.packName || item.name} for ${Math.round(item.price ?? 0)} diamonds`}
+                aria-label={
+                  freePlayOwned
+                    ? `Free Play Motion ${item.packName || item.name}`
+                    : `Play Motion ${item.packName || item.name} for ${Math.round(item.price ?? 0)} diamonds`
+                }
                 className="coverflow-buy-pack-cta__button"
                 onClick={(event) => {
                   event.stopPropagation();
@@ -687,10 +715,12 @@ export function MobileCssCarousel({
     if (!pack) return;
     const shellRect = shell.getBoundingClientRect();
     const packRect = pack.getBoundingClientRect();
-    focus.style.left = `${packRect.left - shellRect.left}px`;
-    focus.style.top = `${packRect.top - shellRect.top}px`;
-    focus.style.width = `${packRect.width}px`;
-    focus.style.height = `${packRect.height}px`;
+    // Owned free-play ring is on the pack — inset so live video does not cover it.
+    const inset = pack.classList.contains("is-owned-free-play") ? 2 : 0;
+    focus.style.left = `${packRect.left - shellRect.left + inset}px`;
+    focus.style.top = `${packRect.top - shellRect.top + inset}px`;
+    focus.style.width = `${Math.max(0, packRect.width - inset * 2)}px`;
+    focus.style.height = `${Math.max(0, packRect.height - inset * 2)}px`;
   }, []);
 
   const attachActiveVideo = useCallback(() => {
@@ -1081,25 +1111,6 @@ export function MobileCssCarousel({
     activeBackdropItem?.backgroundImageUrl?.trim() ||
     activeBackdropItem?.posterUrl?.trim() ||
     "";
-  const activeOwnedFreePlay = Boolean(
-    ownedFreePlayIds?.has(activeBackdropItem?.id ?? ""),
-  );
-
-  // Imperative class toggles — React className on stage/focus must stay stable
-  // or it wipes is-live-video / is-ready / is-parked and kills the live video.
-  useEffect(() => {
-    stageRef.current?.classList.toggle(
-      "is-free-play-owned",
-      Boolean(ownedFreePlayIds),
-    );
-  }, [ownedFreePlayIds]);
-
-  useEffect(() => {
-    focusRef.current?.classList.toggle(
-      "is-owned-free-play",
-      activeOwnedFreePlay,
-    );
-  }, [activeOwnedFreePlay]);
 
   return (
     <div
@@ -1413,6 +1424,9 @@ export function MobileCssCarousel({
               buyQuantity={buyQuantity}
               confirmingAdd={confirmingAdd}
               slideCta={slideCta}
+              freePlayOwned={Boolean(
+                ownedFreePlayIds?.has(items[activeIndex].id),
+              )}
               onToggleBuyConfirm={toggleBuyConfirm}
               onCloseBuyConfirm={closeBuyConfirm}
               onConfirmBuy={confirmActiveBuy}

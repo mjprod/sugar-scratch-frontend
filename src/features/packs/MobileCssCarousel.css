@@ -476,6 +476,11 @@
   overflow: visible;
 }
 
+/* Same 210px shell as priced CTA — tighter side pad so label fits without hugging the card. */
+.coverflow-compact-play-cta.is-free-play-owned .cta-button__label {
+  padding: 0 0.65rem;
+}
+
 .coverflow-compact-play-cta .cta-button-glow,
 .coverflow-compact-play-cta .cta-button,
 .coverflow-compact-play-cta .cta-button-glow > .border-glow-inner {
