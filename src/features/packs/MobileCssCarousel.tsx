@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -184,7 +185,7 @@ function PackSlideHud({
               slideCta === "play"
                 ? "Play"
                 : slideCta === "view"
-                  ? "View Now"
+                  ? "View Theme"
                   : "Buy Pack"
             }
             leadingIcon={
@@ -305,6 +306,9 @@ export function MobileCssCarousel({
   influencerBackdrop = false,
   selectedId = null,
   compact = false,
+  flat = false,
+  stageBackdropBase,
+  stageBackdropLabel,
   slideCta = "buy",
 }: {
   items: Iteration[];
@@ -325,11 +329,19 @@ export function MobileCssCarousel({
   selectedId?: string | null;
   /** Fit a parent panel: no buy HUD, no dim overlay, scaled coverflow. */
   compact?: boolean;
+  /** Flat slide carousel (no coverflow 3D) — profile glass cards. */
+  flat?: boolean;
+  /** Profile charcoal art base (no extension) — fixed behind the slider, not in the track. */
+  stageBackdropBase?: string;
+  /** Influencer name under the charcoal bust. */
+  stageBackdropLabel?: string;
   /** Profile / theme: View Now or Play on the active slide instead of Buy Pack. */
   slideCta?: "buy" | "view" | "play";
 }) {
+  const useCoverflow = !compact && !flat;
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const stageNameRef = useRef<HTMLParagraphElement | null>(null);
   const onReadyRef = useRef(onReady);
   const onBuyRef = useRef(onBuy);
   const onAddToPocketRef = useRef(onAddToPocket);
@@ -570,6 +582,24 @@ export function MobileCssCarousel({
     });
   }, [compact]);
 
+  /** Kill leftover coverflow rotate/scale if a prior effect left inline 3D styles. */
+  const flattenSlideTransforms = useCallback(
+    (swiper: SwiperClass) => {
+      if (!flat) return;
+      swiper.el.classList.remove("swiper-3d", "swiper-coverflow");
+      swiper.wrapperEl?.classList.remove("swiper-3d");
+      for (const slide of swiper.slides) {
+        const el = slide as HTMLElement;
+        const transform = el.style.transform || "";
+        if (!transform || transform === "none") continue;
+        if (!/rotate|scale\(|matrix3d/i.test(transform)) continue;
+        el.style.transform = "none";
+        el.style.zIndex = "";
+      }
+    },
+    [flat],
+  );
+
   const syncLiveClass = useCallback(() => {
     const live =
       !parkedRef.current &&
@@ -767,8 +797,10 @@ export function MobileCssCarousel({
     swiperRef.current = swiper;
     syncPlayback(swiper.activeIndex);
     applySlideDim(swiper);
+    flattenSlideTransforms(swiper);
     swiper.update();
     applySlideDim(swiper);
+    flattenSlideTransforms(swiper);
     setParked(false);
     attachActiveVideo();
     markReady(swiper);
@@ -788,17 +820,44 @@ export function MobileCssCarousel({
     if (swiper) markReady(swiper);
   }, [activeIndex, items, markReady]);
 
+  /** Start at 26cqi, then shrink so long influencer names still fit one line. */
+  const fitStageName = useCallback(() => {
+    const el = stageNameRef.current;
+    if (!el) return;
+    el.style.fontSize = "";
+    const maxPx = Number.parseFloat(getComputedStyle(el).fontSize) || 26;
+    const minPx = Math.max(12, maxPx * 0.45);
+    let size = maxPx;
+    el.style.fontSize = `${size}px`;
+    while (size > minPx && el.scrollWidth > el.clientWidth + 1) {
+      size -= 0.5;
+      el.style.fontSize = `${size}px`;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!flat || !stageBackdropLabel) return;
+    fitStageName();
+  }, [flat, stageBackdropLabel, fitStageName]);
+
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => layoutFocus());
+    const observer = new ResizeObserver(() => {
+      layoutFocus();
+      fitStageName();
+    });
     observer.observe(shell);
-    window.addEventListener("resize", layoutFocus);
+    const onResize = () => {
+      layoutFocus();
+      fitStageName();
+    };
+    window.addEventListener("resize", onResize);
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", layoutFocus);
+      window.removeEventListener("resize", onResize);
     };
-  }, [layoutFocus]);
+  }, [layoutFocus, fitStageName]);
 
   useEffect(() => {
     if (compact) return;
@@ -949,9 +1008,11 @@ export function MobileCssCarousel({
       ref={stageRef}
       className={`stage-packs mobile-css-carousel-stage${stageGlowClass}${
         influencerBackdrop ? " has-influencer-backdrop" : ""
-      }${compact ? " is-compact" : ""}${compact && items.length === 1 ? " is-single" : ""}`}
+      }${compact ? " is-compact" : ""}${flat ? " is-flat" : ""}${
+        compact && items.length === 1 ? " is-single" : ""
+      }`}
     >
-      {compact ? null : influencerBackdrop ? (
+      {compact || flat ? null : influencerBackdrop ? (
         <div className="packs-influencer-backdrop" aria-hidden="true">
           {activeBackdropUrl ? (
             <img
@@ -994,22 +1055,52 @@ export function MobileCssCarousel({
             </button>
           </>
         ) : null}
+        {/* Fixed behind the track — does not scroll with slides. */}
+        {flat && stageBackdropBase ? (
+          <picture
+            className="mobile-css-carousel__stage-charcoal"
+            aria-hidden="true"
+          >
+            <source
+              type="image/jxl"
+              srcSet={`${stageBackdropBase}@1x.jxl 1x, ${stageBackdropBase}@2x.jxl 2x`}
+            />
+            <source
+              type="image/webp"
+              srcSet={`${stageBackdropBase}@1x.webp 1x, ${stageBackdropBase}@2x.webp 2x`}
+            />
+            <img
+              src={`${stageBackdropBase}@1x.webp`}
+              srcSet={`${stageBackdropBase}@1x.webp 1x, ${stageBackdropBase}@2x.webp 2x`}
+              alt=""
+              width={347}
+              height={626}
+              decoding="async"
+              draggable={false}
+            />
+          </picture>
+        ) : null}
+        {flat && stageBackdropLabel ? (
+          <p ref={stageNameRef} className="mobile-css-carousel__stage-name">
+            {stageBackdropLabel}
+          </p>
+        ) : null}
         <Swiper
+          key={flat ? "flat" : compact ? "compact" : "coverflow"}
           className="mobile-css-carousel"
-          modules={compact ? [] : [EffectCoverflow]}
-          effect={compact ? "slide" : "coverflow"}
+          modules={useCoverflow ? [EffectCoverflow] : []}
+          effect={useCoverflow ? "coverflow" : "slide"}
           grabCursor
           centeredSlides={!compact}
           slidesPerView="auto"
-          spaceBetween={compact ? 18 : -72}
+          spaceBetween={compact ? 18 : flat ? 16 : -72}
           slidesOffsetBefore={compact && items.length > 1 ? 80 : 0}
           slidesOffsetAfter={compact && items.length > 1 ? 80 : 0}
           speed={720}
           resistanceRatio={0.85}
-          watchSlidesProgress
-          {...(compact
-            ? {}
-            : {
+          watchSlidesProgress={useCoverflow}
+          {...(useCoverflow
+            ? {
                 coverflowEffect: {
                   rotate: 38,
                   stretch: -88,
@@ -1018,11 +1109,16 @@ export function MobileCssCarousel({
                   modifier: 1,
                   slideShadows: false,
                 },
-              })}
+              }
+            : {})}
           onSwiper={onSwiper}
-          onProgress={applySlideDim}
+          onProgress={(swiper) => {
+            applySlideDim(swiper);
+            flattenSlideTransforms(swiper);
+          }}
           onSetTranslate={(swiper) => {
             applySlideDim(swiper);
+            flattenSlideTransforms(swiper);
             markReady(swiper);
           }}
           onSlideChange={(swiper) => {
@@ -1079,7 +1175,7 @@ export function MobileCssCarousel({
           }}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
+          noSwipingSelector=".mobile-css-carousel__hud, .mobile-css-carousel__glass-plate, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
             void pocketTick;
@@ -1087,7 +1183,33 @@ export function MobileCssCarousel({
             return (
               <SwiperSlide key={item.id}>
                 <div className="mobile-css-carousel__pack">
-                  {item.posterUrl ? (
+                  {item.posterArtBase ? (
+                    <picture className="mobile-css-carousel__poster-art">
+                      <source
+                        type="image/jxl"
+                        srcSet={`${item.posterArtBase}.jxl 1x, ${item.posterArtBase}@2x.jxl 2x`}
+                      />
+                      <source
+                        type="image/webp"
+                        srcSet={`${item.posterArtBase}.webp 1x, ${item.posterArtBase}@2x.webp 2x`}
+                      />
+                      <img
+                        className="mobile-css-carousel__poster"
+                        src={`${item.posterArtBase}.webp`}
+                        srcSet={`${item.posterArtBase}.webp 1x, ${item.posterArtBase}@2x.webp 2x`}
+                        alt=""
+                        width={242}
+                        height={300}
+                        draggable={false}
+                        decoding="async"
+                        loading={near ? "eager" : "lazy"}
+                        onLoad={() => {
+                          const swiper = swiperRef.current;
+                          if (swiper) markReady(swiper);
+                        }}
+                      />
+                    </picture>
+                  ) : item.posterUrl ? (
                     <img
                       className="mobile-css-carousel__poster"
                       src={item.posterUrl}
@@ -1100,6 +1222,23 @@ export function MobileCssCarousel({
                         if (swiper) markReady(swiper);
                       }}
                     />
+                  ) : null}
+                  {flat ? (
+                    <button
+                      type="button"
+                      className="mobile-css-carousel__glass-plate swiper-no-swiping"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (slideCta === "view") onViewRef.current?.(item);
+                        else if (slideCta === "play") onSelect?.(item);
+                      }}
+                    >
+                      {slideCta === "play"
+                        ? "Play"
+                        : slideCta === "view"
+                          ? "View Theme"
+                          : null}
+                    </button>
                   ) : null}
                   {compact ? null : (
                     <div className="mobile-css-carousel__dim" aria-hidden="true" />
@@ -1132,7 +1271,8 @@ export function MobileCssCarousel({
               if (swiper) markReady(swiper);
             }}
           />
-          {compact ? null : items[activeIndex] ? (
+          {/* Flat profile: View Theme lives on each pack plate, not the focus HUD. */}
+          {compact || flat ? null : items[activeIndex] ? (
             <PackSlideHud
               key={items[activeIndex].id}
               item={items[activeIndex]}

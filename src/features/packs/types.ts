@@ -50,6 +50,11 @@ export interface Iteration {
   videoUrl: string;
   /** Pack-face still from the API; used before the video is attached. */
   posterUrl?: string;
+  /**
+   * Optional art base for `<picture>` (jxl → webp → png), e.g.
+   * `/images/creator/clothes/imageFire` → `imageFire.webp` / `@2x.webp`.
+   */
+  posterArtBase?: string;
   createdAt: number;
   videoSource: AssetSource;
   fitMode: VideoFitMode;
@@ -102,6 +107,7 @@ export type PackItem = {
   modelName: string;
   videoUrl: string;
   posterUrl?: string;
+  posterArtBase?: string;
   price: number;
   originalPrice?: number | null;
   girlName: string;
@@ -129,6 +135,7 @@ export function packItemToIteration(item: PackItem): Iteration {
     modelRotation: { ...DEFAULT_MODEL_ROTATION },
     videoUrl: item.videoUrl,
     posterUrl: item.posterUrl?.trim() || undefined,
+    posterArtBase: item.posterArtBase?.trim() || undefined,
     videoSource: "bundled",
     fitMode: PACK_VIDEO_FIT_MODE,
     textureTransform: { ...DEFAULT_VIDEO_TEXTURE_TRANSFORM },

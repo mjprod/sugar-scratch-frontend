@@ -1,12 +1,12 @@
 /**
- * Profile theme motion slide picker.
+ * Profile theme static clothes slide picker.
  * Run: npx tsx src/components/creator/creatorThemeMotionSlides.self-check.ts
  */
 import {
   PROFILE_THEME_MOTION_KEYS,
   buildProfileThemeMotionSlides,
+  profileThemeClothesArtBase,
 } from "./creatorThemeMotionSlides.ts";
-import type { CardConfig } from "@/features/collection/lib/cards";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -14,36 +14,26 @@ function assert(condition: unknown, message: string) {
 
 assert(PROFILE_THEME_MOTION_KEYS.includes("police"), "police in order");
 assert(PROFILE_THEME_MOTION_KEYS.includes("fire"), "firegirl aliases to fire");
-
-const motionCard = {
-  id: "police-motion-1",
-  name: "Police 01",
-  mediaType: "video",
-  mediaUrl: "/cards/police-motion-1/motion.mp4",
-  posterUrl: "/cards/police-motion-1/motion-poster.webp",
-} as unknown as CardConfig;
-
-const placeholderCard = {
-  id: "nurse-placeholder-1",
-  name: "Nurse",
-  mediaType: "image",
-  mediaUrl: "",
-} as unknown as CardConfig;
-
-const slides = buildProfileThemeMotionSlides(
-  [
-    { id: "police", name: "Police" },
-    { id: "nurse", name: "Nurse" },
-    { id: "summer", name: "Summer Nights" },
-  ],
-  {
-    police: [motionCard],
-    nurse: [placeholderCard],
-  },
+assert(
+  profileThemeClothesArtBase("fire").endsWith("/imageFire"),
+  "fire clothes art",
 );
+assert(profileThemeClothesArtBase("cowgirl") === "", "no cowgirl art yet");
 
-assert(slides.length === 1, "only police has motion media");
-assert(slides[0]?.themeId === "police", "police first among available");
-assert(slides[0]?.item.videoUrl.includes("motion.mp4"), "uses motion video");
+const slides = buildProfileThemeMotionSlides([
+  { id: "police", name: "Police" },
+  { id: "nurse", name: "Nurse" },
+  { id: "summer", name: "Summer Nights" },
+  { id: "firegirl", name: "Firegirl" },
+]);
+
+assert(slides.length === 3, "nurse + police + fire only");
+assert(slides[0]?.themeId === "nurse", "nurse first in order");
+assert(slides[0]?.item.videoUrl === "", "no video on profile cards");
+assert(
+  slides[0]?.item.posterArtBase?.includes("imageNurse"),
+  "nurse clothes art base",
+);
+assert(slides[2]?.themeName === "Firegirl", "fire alias maps through");
 
 console.log("creatorThemeMotionSlides.self-check: ok");

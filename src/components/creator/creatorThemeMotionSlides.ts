@@ -1,11 +1,10 @@
-import type { CardConfig } from "@/features/collection/lib/cards";
 import {
   packItemToIteration,
   type Iteration,
 } from "@/features/packs/types";
 import { canonicalThemeKey } from "@/services/collection";
 
-/** Profile coverflow: one motion clip per theme, in this order. */
+/** Profile coverflow theme order. */
 export const PROFILE_THEME_MOTION_KEYS = [
   "nurse",
   "police",
@@ -17,65 +16,23 @@ export const PROFILE_THEME_MOTION_KEYS = [
   "greekmythos",
 ] as const;
 
-function isVideoSrc(src: string): boolean {
-  return /\.(mp4|webm|mov)(\?|#|$)/i.test(src);
-}
+/** Static clothes art per theme — files live in /images/creator/clothes/. */
+export const PROFILE_THEME_CLOTHES_ART: Partial<
+  Record<(typeof PROFILE_THEME_MOTION_KEYS)[number], string>
+> = {
+  nurse: "imageNurse",
+  police: "imagePolice",
+  teacher: "imageTeacher",
+  gym: "imageGym",
+  fire: "imageFire",
+};
 
-export function motionTileStillUrl(card: CardConfig): string {
-  const poster = card.posterUrl?.trim() || "";
-  if (poster && !isVideoSrc(poster)) return poster;
-  if (card.mediaType === "image") {
-    const media = card.mediaUrl?.trim() || "";
-    if (media && !isVideoSrc(media) && !media.includes("placeholder")) return media;
-  }
-  const photo = card.photoUrls?.find((url) => url?.trim())?.trim() || "";
-  if (photo) return photo;
-  const id = card.id.trim();
-  if (id && !id.includes("-placeholder-")) {
-    return `/cards/${encodeURIComponent(id)}/motion-poster.webp`;
-  }
-  return "";
-}
-
-export function motionVideoUrl(card: CardConfig): string {
-  const trailer = card.mediaUrl?.trim() || "";
-  if (trailer && isVideoSrc(trailer)) return trailer;
-  const motion = card.motionUrl?.trim() || "";
-  return motion && isVideoSrc(motion) ? motion : "";
-}
-
-function cardToIteration(
-  card: CardConfig,
-  themeName: string,
-  index: number,
-): Iteration {
-  const still = motionTileStillUrl(card);
-  const video = motionVideoUrl(card);
-  return packItemToIteration({
-    id: card.id,
-    characterId: card.modelId || card.id,
-    name: themeName,
-    modelUrl: "",
-    modelName: themeName,
-    videoUrl: video,
-    posterUrl: still || undefined,
-    price: 0,
-    girlName: themeName,
-    packNumber: index + 1,
-    packName: themeName,
-    flagEmoji: "",
-    backgroundColor: "oklch(0.798 0.104 207.84)",
-    backgroundImageUrl: still || undefined,
-  });
-}
-
-function firstMotionCard(cards: CardConfig[]): CardConfig | null {
-  return (
-    cards.find((card) => {
-      if (card.id.includes("-placeholder-")) return false;
-      return Boolean(motionVideoUrl(card) || motionTileStillUrl(card));
-    }) ?? null
-  );
+export function profileThemeClothesArtBase(themeKey: string): string {
+  const file =
+    PROFILE_THEME_CLOTHES_ART[
+      themeKey as keyof typeof PROFILE_THEME_CLOTHES_ART
+    ];
+  return file ? `/images/creator/clothes/${file}` : "";
 }
 
 export type ProfileThemeMotionSlide = {
@@ -85,12 +42,11 @@ export type ProfileThemeMotionSlide = {
 };
 
 /**
- * Pick one motion card per profile theme key from the live collection.
- * Skips themes that are missing or have no motion media yet.
+ * One static clothes card per profile theme (no video).
+ * Skips themes without live catalog entry or clothes art yet.
  */
 export function buildProfileThemeMotionSlides(
   themes: Array<{ id: string; name: string }>,
-  cardsByThemeId: Record<string, CardConfig[]>,
 ): ProfileThemeMotionSlide[] {
   const byKey = new Map<string, { id: string; name: string }>();
   for (const theme of themes) {
@@ -104,10 +60,26 @@ export function buildProfileThemeMotionSlides(
   for (const wanted of PROFILE_THEME_MOTION_KEYS) {
     const theme = byKey.get(wanted);
     if (!theme) continue;
-    const card = firstMotionCard(cardsByThemeId[theme.id] ?? []);
-    if (!card) continue;
+    const artBase = profileThemeClothesArtBase(wanted);
+    if (!artBase) continue;
     slides.push({
-      item: cardToIteration(card, theme.name, slides.length),
+      item: packItemToIteration({
+        id: `profile-theme-${theme.id}`,
+        characterId: theme.id,
+        name: theme.name,
+        modelUrl: "",
+        modelName: theme.name,
+        videoUrl: "",
+        posterUrl: `${artBase}.webp`,
+        posterArtBase: artBase,
+        price: 0,
+        girlName: theme.name,
+        packNumber: slides.length + 1,
+        packName: theme.name,
+        flagEmoji: "",
+        backgroundColor: "oklch(0.798 0.104 207.84)",
+        backgroundImageUrl: `${artBase}.webp`,
+      }),
       themeId: theme.id,
       themeName: theme.name,
     });

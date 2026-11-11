@@ -7,6 +7,9 @@ export function MobileCoverFlow({
   buying,
   influencerBackdrop = false,
   slideCta = "buy",
+  flat = false,
+  stageBackdropBase,
+  stageBackdropLabel,
   onSelect,
   onDeselect,
   onFocusChange,
@@ -20,10 +23,11 @@ export function MobileCoverFlow({
       className={[
         "home-featured-coverflow",
         influencerBackdrop ? "has-influencer-backdrop" : "",
+        flat ? "is-flat" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      data-coverflow="mobile-swiper"
+      data-coverflow={flat ? "mobile-flat" : "mobile-swiper"}
     >
       <MobileCssCarousel
         items={items}
@@ -31,6 +35,9 @@ export function MobileCoverFlow({
         buyDisabled={buying}
         influencerBackdrop={influencerBackdrop}
         slideCta={slideCta}
+        flat={flat}
+        stageBackdropBase={stageBackdropBase}
+        stageBackdropLabel={stageBackdropLabel}
         onReady={onReady}
         onBuy={onBuy}
         onAddToPocket={onAddToPocket}

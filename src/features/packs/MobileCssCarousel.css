@@ -227,6 +227,99 @@
   }
 }
 
+/* Flat profile carousel — charcoal is a fixed shell backdrop; cards drag over it. */
+.mobile-css-carousel-stage.is-flat {
+  overflow: visible;
+  background: transparent;
+  perspective: none !important;
+}
+
+.mobile-css-carousel-stage.is-flat .mobile-css-carousel-shell {
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  container-name: flat-carousel-shell;
+}
+
+.mobile-css-carousel-stage.is-flat .mobile-css-carousel.swiper,
+.mobile-css-carousel-stage.is-flat .mobile-css-carousel.swiper-3d {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  perspective: none !important;
+}
+
+.mobile-css-carousel-stage.is-flat .mobile-css-carousel .swiper-wrapper {
+  transform-style: flat !important;
+  -webkit-transform-style: flat !important;
+}
+
+.mobile-css-carousel-stage.is-flat .mobile-css-carousel .swiper-slide {
+  background: transparent;
+  transform-style: flat !important;
+  -webkit-transform-style: flat !important;
+}
+
+/* Pinned to shell center — not inside the slide track, so scroll doesn't move her. */
+.mobile-css-carousel__stage-charcoal {
+  position: absolute;
+  inset: 0;
+  top: -1.875rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to top,
+    #00000000 30%,
+    #000 50%,
+    #000 100%
+  );
+  mask-image: linear-gradient(to top, #00000000 30%, #000 50%, #000 100%);
+}
+
+.mobile-css-carousel__stage-charcoal img {
+  display: block;
+  width: auto;
+  height: 74%;
+  max-width: none;
+  object-fit: contain;
+  object-position: center center;
+  transform: translateY(-10%);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+/* Full-width name behind the bust, flush with the slider top.
+   26cqi scales with shell width; JS shrinks further if the string overflows. */
+.mobile-css-carousel__stage-name {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff7d 20%, rgb(255 255 255 / 0%) 81%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-family: var(--font-maytra, "Maytra", cursive);
+  font-size: 26cqi;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Compact resume / collection strip: scale coverflow to the parent, no HUD. */
 .mobile-css-carousel-stage.is-compact {
   width: 100%;
