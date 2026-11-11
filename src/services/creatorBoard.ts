@@ -249,6 +249,61 @@ export function collectionProgressFromBoard(
   };
 }
 
+export type ThemeCollectionProgress = {
+  motionOwned: number;
+  motionTotal: number;
+  photoOwned: number;
+  photoTotal: number;
+  owned: number;
+  total: number;
+};
+
+const EMPTY_THEME_PROGRESS: ThemeCollectionProgress = {
+  motionOwned: 0,
+  motionTotal: 0,
+  photoOwned: 0,
+  photoTotal: 0,
+  owned: 0,
+  total: 0,
+};
+
+/** Motion + photo for one theme — theme page only counts real motion cards (no premium slot). */
+export function themeCollectionProgressFromBoard(
+  board: CreatorBoard | null | undefined,
+  themeId: string,
+): ThemeCollectionProgress {
+  const id = themeId.trim();
+  if (!board || !id) return EMPTY_THEME_PROGRESS;
+  const theme = board.themes.find((entry) => entry.id === id);
+  if (!theme) return EMPTY_THEME_PROGRESS;
+
+  const motionOwned = theme.motionCards.filter(
+    (card) => card.status === "unlocked",
+  ).length;
+  const motionTotal = theme.motionCards.length;
+
+  let photoOwned = 0;
+  let photoTotal = 0;
+  for (const card of theme.motionCards) {
+    photoOwned += Math.max(
+      card.staticCards.filter((slot) => slot.owned).length,
+      card.staticCardsOwned,
+    );
+    photoTotal += card.staticCardsTotal || card.staticCards.length;
+  }
+
+  const owned = motionOwned + photoOwned;
+  const total = motionTotal + photoTotal;
+  return {
+    motionOwned,
+    motionTotal,
+    photoOwned,
+    photoTotal,
+    owned,
+    total,
+  };
+}
+
 const boardPromises = new Map<string, Promise<CreatorBoard | null>>();
 
 /** One in-flight board fetch per creator, shared by the collection cards. */

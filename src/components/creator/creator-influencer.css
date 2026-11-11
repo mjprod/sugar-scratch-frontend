@@ -263,19 +263,19 @@ body[data-theme="v8"] .cpv2-profile-expand-chevron {
 }
 
 body[data-theme="v8"]
-  .cpv2-profile-shell[data-chevron-anim="true"][data-open="false"]
+  [data-chevron-anim="true"][data-open="false"]
   .cpv2-profile-expand-chevron {
   animation: cpv2-chevron-close 180ms var(--cpv2-profile-ease) both;
 }
 
 body[data-theme="v8"]
-  .cpv2-profile-shell[data-chevron-anim="true"][data-open="true"]
+  [data-chevron-anim="true"][data-open="true"]
   .cpv2-profile-expand-chevron {
   animation: cpv2-chevron-open 200ms var(--cpv2-profile-ease) both;
 }
 
 body[data-theme="v8"]
-  .cpv2-profile-shell[data-chevron-anim="false"][data-open="true"]
+  [data-chevron-anim="false"][data-open="true"]
   .cpv2-profile-expand-chevron {
   transform: rotate(180deg);
 }
@@ -285,7 +285,9 @@ body[data-theme="v8"]
   body[data-theme="v8"] .cpv2-profile-bar-slot,
   body[data-theme="v8"] .cpv2-profile-panel,
   body[data-theme="v8"] .cpv2-profile-panel-inner,
-  body[data-theme="v8"] .cpv2-profile-expand-chevron {
+  body[data-theme="v8"] .cpv2-profile-expand-chevron,
+  body[data-theme="v8"] .cpv2-theme-page-progress,
+  body[data-theme="v8"] .cpv2-theme-page-progress-inner {
     transition: none !important;
     animation: none !important;
   }
@@ -853,6 +855,11 @@ body[data-theme="v8"]
   padding-bottom: var(--space-4);
 }
 
+body[data-theme="v8"] .cpv2-theme-page-head {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Shell already clears the HUD — don't stack mcp-top's diamond offset again. */
 body[data-theme="v8"] .cpv2-theme-page-top.mcp-top {
   margin-top: var(--space-6);
@@ -861,6 +868,70 @@ body[data-theme="v8"] .cpv2-theme-page-top.mcp-top {
 body[data-theme="v8"] .cpv2-theme-page-top .cpv2-theme-page-title {
   margin: 0;
   text-align: left;
+  min-width: 0;
+  flex: 1;
+}
+
+body[data-theme="v8"] .cpv2-theme-page-expand {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 60px;
+  color: #fff;
+  cursor: pointer;
+  background-image: linear-gradient(
+    120deg,
+    rgba(170, 170, 170, 0.25) 10%,
+    rgba(68, 68, 68, 0.1) 29%,
+    rgba(0, 0, 0, 0.3) 50%,
+    rgba(169, 169, 169, 0.25) 85%
+  );
+}
+
+/* Same 0fr→1fr + opacity/blur open as creator profile panel. */
+body[data-theme="v8"] .cpv2-theme-page-progress {
+  display: grid;
+  grid-template-rows: 0fr;
+  pointer-events: none;
+  transition: grid-template-rows var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"]
+  .cpv2-theme-page-head[data-open="true"]
+  .cpv2-theme-page-progress {
+  grid-template-rows: 1fr;
+  pointer-events: auto;
+  transition: grid-template-rows var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-theme-page-progress-inner {
+  overflow: hidden;
+  min-height: 0;
+  padding-top: var(--space-3);
+  opacity: 0;
+  filter: blur(2px);
+  transition:
+    opacity var(--cpv2-profile-collapse) var(--cpv2-profile-ease),
+    filter var(--cpv2-profile-collapse) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"]
+  .cpv2-theme-page-head[data-open="true"]
+  .cpv2-theme-page-progress-inner {
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    opacity var(--cpv2-profile-expand) var(--cpv2-profile-ease),
+    filter var(--cpv2-profile-expand) var(--cpv2-profile-ease);
+}
+
+body[data-theme="v8"] .cpv2-theme-page-progress .cpv2-progress-panel {
+  margin: 0;
+  max-width: none;
 }
 
 body[data-theme="v8"] .cpv2-theme-page-section {

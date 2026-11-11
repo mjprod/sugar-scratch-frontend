@@ -2,7 +2,11 @@
  * Creator board parser — drop malformed cards, keep null socials null.
  * Run: npx tsx src/services/creatorBoard.self-check.ts
  */
-import { collectionProgressFromBoard, parseCreatorBoard } from "./creatorBoard.ts";
+import {
+  collectionProgressFromBoard,
+  parseCreatorBoard,
+  themeCollectionProgressFromBoard,
+} from "./creatorBoard.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -99,5 +103,12 @@ assert(
   }).pct === 100,
   "total reaches 100% only once ultra is unlocked",
 );
+
+const themeProgress = themeCollectionProgressFromBoard(board, board!.themes[0]!.id);
+assert(themeProgress.motionOwned === 1, "theme motion owned matches unlocked motions");
+assert(themeProgress.motionTotal === 1, "theme motion total is motion cards only");
+assert(themeProgress.photoOwned === 1, "theme photo owned matches static slots");
+assert(themeProgress.photoTotal === 8, "theme photo total uses staticCardsTotal");
+assert(themeProgress.owned === 2 && themeProgress.total === 9, "theme total is motion + photo");
 
 console.log("creatorBoard.self-check: ok");

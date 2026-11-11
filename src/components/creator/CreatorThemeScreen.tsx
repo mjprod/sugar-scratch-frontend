@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Play } from "lucide-react";
+import { ChevronDown, ChevronLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { CreatorProgressPanel } from "@/components/creator/CreatorProgressPanel";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { useAuth } from "@/contexts/useAuth";
@@ -19,7 +20,14 @@ import {
   fetchPhotoScratchSlots,
   photoScratchSlotPrices,
 } from "@/shared/backend/collection";
-import { matchLiveThemeId } from "@/services/collection";
+import {
+  matchLiveThemeId,
+  type ThemeCardData,
+} from "@/services/collection";
+import {
+  fetchCreatorBoard,
+  type CreatorBoard,
+} from "@/services/creatorBoard";
 import {
   packItemToIteration,
   type Iteration,
@@ -129,6 +137,10 @@ function CreatorThemeScreenInner({
   const [slotPrices, setSlotPrices] = useState<Array<number | null>>(() =>
     Array.from({ length: PHOTO_SLOTS }, () => null),
   );
+  const [board, setBoard] = useState<CreatorBoard | null>(null);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [chevronAnimReady, setChevronAnimReady] = useState(false);
+  const [progressPlayId, setProgressPlayId] = useState(0);
 
   const themes = collection.themes;
   const resolvedThemeId = useMemo(
@@ -140,6 +152,38 @@ function CreatorThemeScreenInner({
     () => themes.find((entry) => entry.id === resolvedThemeId) ?? null,
     [themes, resolvedThemeId],
   );
+
+  const themeProgressCard = useMemo((): ThemeCardData | null => {
+    if (!theme) return null;
+    return {
+      id: theme.id,
+      name: theme.name,
+      thumbnailUrl: theme.coverUrl,
+      collected: authed ? theme.collected : 0,
+      total: theme.total,
+      progressColor: "pink",
+    };
+  }, [authed, theme]);
+
+  useEffect(() => {
+    if (!authed) {
+      setBoard(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchCreatorBoard(creatorId).then((next) => {
+      if (!cancelled) setBoard(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, creatorId]);
+
+  function setProgressExpanded(next: boolean) {
+    setChevronAnimReady(true);
+    if (next && !progressOpen) setProgressPlayId((id) => id + 1);
+    setProgressOpen(next);
+  }
 
   const motionCards = useMemo(() => {
     if (!resolvedThemeId) return [] as CardConfig[];
@@ -266,17 +310,52 @@ function CreatorThemeScreenInner({
   return (
     <section data-page-scroll className="cpv2-page no-sticky-cta">
       <div className="cpv2-shell cpv2-theme-page">
-        <header className="mcp-top cpv2-theme-page-top">
-          <button
-            type="button"
-            className="mcp-back"
-            aria-label="Back to profile"
-            onClick={goBack}
-          >
-            <ChevronLeft size={18} strokeWidth={2.4} aria-hidden />
-          </button>
-          <h1 className="cpv2-theme-page-title">{theme?.name ?? "Theme"}</h1>
-        </header>
+        <div
+          className="cpv2-theme-page-head"
+          data-open={progressOpen ? "true" : "false"}
+          data-chevron-anim={chevronAnimReady ? "true" : "false"}
+        >
+          <header className="mcp-top cpv2-theme-page-top">
+            <button
+              type="button"
+              className="mcp-back"
+              aria-label="Back to profile"
+              onClick={goBack}
+            >
+              <ChevronLeft size={18} strokeWidth={2.4} aria-hidden />
+            </button>
+            <h1 className="cpv2-theme-page-title">{theme?.name ?? "Theme"}</h1>
+            <button
+              type="button"
+              className="cpv2-theme-page-expand"
+              aria-expanded={progressOpen}
+              aria-label={
+                progressOpen ? "Hide theme progress" : "Show theme progress"
+              }
+              onClick={() => setProgressExpanded(!progressOpen)}
+            >
+              <span className="cpv2-profile-expand-chevron" aria-hidden="true">
+                <ChevronDown className="size-5" strokeWidth={2.2} />
+              </span>
+            </button>
+          </header>
+
+          {themeProgressCard ? (
+            <div className="cpv2-theme-page-progress">
+              <div className="cpv2-theme-page-progress-inner">
+                <div key={progressPlayId}>
+                  <CreatorProgressPanel
+                    themes={[themeProgressCard]}
+                    board={board}
+                    showPersonalProgress={authed}
+                    loading={collection.loading || (authed && board === null)}
+                    variant="theme"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         <section
           className="cpv2-theme-page-section"
