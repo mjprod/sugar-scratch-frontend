@@ -22,10 +22,11 @@ export function resolveMotionScratchBgmPlan(input: {
 }): MotionScratchBgmPlan {
   if (!input.warm) return { level: "off" };
   if (input.skipToPlay) return { level: "on" };
+  // Hand resolved — fade out during showcase so /game/win|/nowin isn't a hard cut.
+  if (input.topBarPhase === "showcase") return { level: "off" };
   if (input.topBarPhase === "center" || input.topBarPhase === "docked") {
     return { level: "on" };
   }
-  // showcase: leave the loop alone until warm clears.
   return { level: "keep" };
 }
 

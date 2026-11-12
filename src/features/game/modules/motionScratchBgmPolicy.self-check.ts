@@ -35,8 +35,12 @@ assert(plan(true, "docked").level === "on", "docked must play");
 assert(plan(true, "center", true).level === "on", "skipToPlay plays");
 assert(plan(true, "docked", true).level === "on", "skipToPlay plays when docked");
 
-// --- showcase leaves the level alone ---
-assert(plan(true, "showcase").level === "keep", "showcase must keep the level");
+// --- showcase fades the loop out before win/nowin ---
+assert(plan(true, "showcase").level === "off", "showcase must stop (fade)");
+assert(
+  plan(true, "showcase", true).level === "on",
+  "lab skipToPlay keeps BGM through showcase",
+);
 
 // --- ducking never raises the level and caps at the duck gain ---
 assert(resolveMotionScratchBgmGain(1, false, DUCK) === 1, "unducked full stays full");
