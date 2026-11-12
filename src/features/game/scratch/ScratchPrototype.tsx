@@ -5077,7 +5077,7 @@ export function ScratchPrototype({
 
   function applyScratchZoom(point: Vec2) {
     const settings = scratchZoomRef.current;
-    if (!settings.enabled || !getScratchZoomEnabled()) return;
+    if (!settings.enabled || !getScratchZoomEnabled("motion")) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -6235,7 +6235,9 @@ export function ScratchPrototype({
           >
             <div className="stage-game__top-chrome-row is-controls">
               <div className="stage-game__top-chrome-side is-start">
-                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+                {onLeave ? (
+                  <GamePauseButton onLeave={onLeave} zoomMode="motion" />
+                ) : null}
               </div>
               <div className="stage-game__top-chrome-center">
                 {iconRevealerShown &&
@@ -6408,6 +6410,7 @@ export function ScratchPrototype({
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
               })}
               onDockHiddenChange={setDockHidden}
+              zoomMode="motion"
               holdAfterPointerMs={
                 scratchZoom.enabled ? scratchZoom.zoomOutMs : 0
               }

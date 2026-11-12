@@ -21,7 +21,10 @@ import {
 } from "./matchFlightPath";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
 import { noteScratchSoundActivity, stopScratchSounds } from "./scratchSound";
-import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
+import {
+  getScratchZoomEnabled,
+  type ScratchZoomMode,
+} from "@/services/scratchZoomPref";
 
 const BRUSH_RADIUS_CSS = 12;
 const SLOT_REVEAL_THRESHOLD = 0.55;
@@ -157,6 +160,8 @@ type TopSymbolBarProps = {
   onDockHiddenChange?: (hidden: boolean) => void;
   /** After lift, wait this long so zoom-out can finish before AutoScratch drops in. */
   holdAfterPointerMs?: number;
+  /** Which scratch zoom pref gates the post-lift dock hold. */
+  zoomMode?: ScratchZoomMode;
 };
 
 let scratchTexture: HTMLImageElement | null = null;
@@ -409,6 +414,7 @@ export function TopSymbolBar({
   onScratchStart,
   onDockHiddenChange,
   holdAfterPointerMs = 0,
+  zoomMode = "motion",
 }: TopSymbolBarProps) {
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
@@ -935,7 +941,7 @@ export function TopSymbolBar({
     const onPointerEnd = () => {
       if (dockPeekRef.current) return;
       const zoomHold =
-        getScratchZoomEnabled() && holdAfterPointerMs > 0
+        getScratchZoomEnabled(zoomMode) && holdAfterPointerMs > 0
           ? holdAfterPointerMs
           : 0;
       armHide(Math.max(DOCK_SETTLE_MS, zoomHold));
@@ -952,7 +958,7 @@ export function TopSymbolBar({
       window.removeEventListener("pointercancel", onPointerEnd, true);
       onDockHiddenChangeRef.current?.(false);
     };
-  }, [phase, dockExiting, roundKey, matchInFlight, holdAfterPointerMs]);
+  }, [phase, dockExiting, roundKey, matchInFlight, holdAfterPointerMs, zoomMode]);
 
   // AutoScratch fills the slot as soon as the dock leaves. A returning dock
   // hides it again.

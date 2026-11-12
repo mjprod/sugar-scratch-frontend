@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pause, X } from "lucide-react";
+import type { ScratchZoomMode } from "@/services/scratchZoomPref";
 import { setMotionScratchBgmDucked } from "./modules/motionScratchBgm";
 import { ScratchZoomButton } from "./ScratchZoomButton";
 import { StageMuteButton } from "./StageMuteButton";
@@ -13,7 +14,13 @@ import { StageMuteButton } from "./StageMuteButton";
  * centered in the gutter between the frame edge and the middle symbol bar.
  * Panel is solid (no backdrop-filter / glass).
  */
-export function GamePauseButton({ onLeave }: { onLeave: () => void }) {
+export function GamePauseButton({
+  onLeave,
+  zoomMode,
+}: {
+  onLeave: () => void;
+  zoomMode: ScratchZoomMode;
+}) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -34,7 +41,11 @@ export function GamePauseButton({ onLeave }: { onLeave: () => void }) {
         <Pause aria-hidden="true" size={17} strokeWidth={2.4} />
       </button>
       {open ? (
-        <GamePauseModal onResume={() => setOpen(false)} onLeave={onLeave} />
+        <GamePauseModal
+          onResume={() => setOpen(false)}
+          onLeave={onLeave}
+          zoomMode={zoomMode}
+        />
       ) : null}
     </>
   );
@@ -45,9 +56,11 @@ const PAUSE_LEAVE_MS = 320;
 function GamePauseModal({
   onResume,
   onLeave,
+  zoomMode,
 }: {
   onResume: () => void;
   onLeave: () => void;
+  zoomMode: ScratchZoomMode;
 }) {
   const titleId = useId();
   const resumeRef = useRef<HTMLButtonElement>(null);
@@ -141,7 +154,7 @@ function GamePauseModal({
         </h2>
         <div className="game-pause__toggles">
           <StageMuteButton className="game-pause__mute" showLabel />
-          <ScratchZoomButton />
+          <ScratchZoomButton mode={zoomMode} />
         </div>
         <button
           ref={resumeRef}

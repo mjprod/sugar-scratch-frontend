@@ -14,7 +14,10 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
-import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
+import {
+  getScratchZoomEnabled,
+  syncScratchZoomDataset,
+} from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   claimScratchCoins,
@@ -989,6 +992,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   useMarkPageReady(ready || loadError != null);
+  useEffect(() => {
+    syncScratchZoomDataset(getScratchZoomEnabled("photo"));
+  }, []);
   useEffect(() => {
     if (!PHOTO_CURSOR_FX.fairyDust) return;
     let cancelled = false;
@@ -3127,7 +3133,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }, [autoScratch]);
 
   function applyPhotoScratchZoom(clientX: number, clientY: number, zoomIn: boolean) {
-    if (!getScratchZoomEnabled()) return;
+    if (!getScratchZoomEnabled("photo")) return;
     const stage = stageRef.current;
     const canvas = fgCanvasRef.current;
     if (!stage || !canvas) return;
@@ -3754,7 +3760,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           >
             <div className="stage-game__top-chrome-row is-controls">
               <div className="stage-game__top-chrome-side is-start">
-                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+                {onLeave ? (
+                  <GamePauseButton onLeave={onLeave} zoomMode="photo" />
+                ) : null}
               </div>
               <div className="stage-game__top-chrome-center">
                 {selectedCardId &&
@@ -3852,7 +3860,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
               onDockHiddenChange={setDockHidden}
-              holdAfterPointerMs={getScratchZoomEnabled() ? 600 : 0}
+              zoomMode="photo"
+              holdAfterPointerMs={getScratchZoomEnabled("photo") ? 600 : 0}
             />
           ) : null}
           <ScratchFrameProgress
