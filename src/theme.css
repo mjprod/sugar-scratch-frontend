@@ -8515,7 +8515,7 @@ body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-s
 body[data-theme="v8"] .home-v2 .home-featured-coverflow[data-coverflow="mobile-swiper"] .mobile-css-carousel__hud {
   /* Tuned so button bottom → pill top ≈ --coverflow-cta-pager-gap (0.5rem). */
   bottom: calc(
-    var(--coverflow-status-pager-bottom, 3.85rem) - 0.56rem
+    var(--coverflow-status-pager-bottom, 3.85rem) - 0.56rem - 0.7rem
   );
 }
 

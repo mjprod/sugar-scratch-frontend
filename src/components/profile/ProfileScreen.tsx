@@ -578,6 +578,7 @@ export function UserDashboardScreen({
                     {...ctaButtonPropsFromTemplate("squircleCTA")}
                     fillParent
                     type="button"
+                    forceWebgl
                     leadingIcon={
                       <DiamondLottie
                         className="top-nav-resource-icon top-nav-resource-icon--diamond shrink-0"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Play } from "lucide-react";
 import { McpPhotoPlayCta } from "@/components/creator/McpPhotoPlayCta";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   LockStatusBanner,
   type LockStatus,
@@ -105,9 +106,12 @@ export function ComponentLabPage() {
   const [holderMode, setHolderMode] = useState<"live" | "skeleton">(
     "skeleton",
   );
-  const [cssCtaVariant, setCssCtaVariant] = useState<
-    "default" | "gold" | "purple" | "black"
-  >("default");
+  type LabCssCtaVariant = "default" | "gold" | "purple" | "black" | "red";
+  const [cssCtaVariant, setCssCtaVariant] =
+    useState<LabCssCtaVariant>("default");
+  const [sliderCtaVariant, setSliderCtaVariant] =
+    useState<LabCssCtaVariant>("default");
+  const [dangerCtaDisabled, setDangerCtaDisabled] = useState(false);
   const [holderPreview, setHolderPreview] = useState<{
     name: string;
     place: string;
@@ -312,13 +316,7 @@ export function ComponentLabPage() {
               <select
                 value={cssCtaVariant}
                 onChange={(event) =>
-                  setCssCtaVariant(
-                    event.target.value as
-                      | "default"
-                      | "gold"
-                      | "purple"
-                      | "black",
-                  )
+                  setCssCtaVariant(event.target.value as LabCssCtaVariant)
                 }
                 className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium tracking-normal text-ink normal-case"
               >
@@ -326,6 +324,7 @@ export function ComponentLabPage() {
                 <option value="gold">Gold</option>
                 <option value="purple">Purple</option>
                 <option value="black">Black</option>
+                <option value="red">Red</option>
               </select>
             </label>
           </div>
@@ -378,6 +377,140 @@ export function ComponentLabPage() {
                     />
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">sliderCTACSS</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Coverflow Buy Pack (159×60 · 12px). Left = live BorderGlow
+                squircle. Right = CSS twin from the photo-play plate — tweak in{" "}
+                <code className="text-ink-secondary">
+                  mcp-photo-play-cta-css.css
+                </code>{" "}
+                (<code className="text-ink-secondary">--slider</code>) or lab
+                overrides.
+              </p>
+            </div>
+            <label className="flex flex-col gap-1 text-[11px] font-medium tracking-[0.08em] text-ink-tertiary uppercase">
+              CSS variant
+              <select
+                value={sliderCtaVariant}
+                onChange={(event) =>
+                  setSliderCtaVariant(event.target.value as LabCssCtaVariant)
+                }
+                className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium tracking-normal text-ink normal-case"
+              >
+                <option value="default">Default (pink)</option>
+                <option value="gold">Gold</option>
+                <option value="purple">Purple</option>
+                <option value="black">Black</option>
+                <option value="red">Red</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end justify-center gap-10 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-12">
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                Live
+              </p>
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                width={159}
+                height={60}
+                cornerRadius={12}
+                strokeWidth={2}
+                auroraBaseColor="#42001b"
+                auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+                auroraRotation={45}
+                glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+                glowColor="326 90 30"
+                strokeColor="rgba(170, 8, 95, 0.42)"
+                labelColor="#ffe0e8"
+                auroraPaused
+                glowAlwaysOn={false}
+                glowOuterBloom="off"
+                costIconAnimated={false}
+                label="Buy Pack"
+                costAmount={80}
+                style={{ ["--cta-aurora-angle" as string]: "45deg" }}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                CSS · {sliderCtaVariant}
+              </p>
+              <div
+                className={[
+                  "mcp-photo-play-cta-css-wrap",
+                  "mcp-photo-play-cta-css-wrap--slider",
+                  `mcp-photo-play-cta-css-wrap--${sliderCtaVariant}`,
+                ].join(" ")}
+              >
+                <button
+                  type="button"
+                  className={[
+                    "mcp-photo-play-cta-css",
+                    "mcp-photo-play-cta-css--slider",
+                    `mcp-photo-play-cta-css--${sliderCtaVariant}`,
+                  ].join(" ")}
+                  aria-label="Buy Pack for 80 diamonds (CSS)"
+                >
+                  <span className="mcp-photo-play-cta-css__label">Buy Pack</span>
+                  <span className="mcp-photo-play-cta-css__cost">
+                    <span className="mcp-photo-play-cta-css__price">80</span>
+                    <DiamondLottie
+                      className="mcp-photo-play-cta-css__diamond"
+                      size={16}
+                      aria-hidden
+                    />
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Danger CSS CTA</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Red plate used by Delete account (
+                <code className="text-ink-secondary">cssTone=&quot;red&quot;</code>
+                ). Disabled → black plate + paused motion.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-[12px] font-medium text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={dangerCtaDisabled}
+                onChange={(event) => setDangerCtaDisabled(event.target.checked)}
+              />
+              Disabled
+            </label>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end justify-center gap-10 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-12">
+            <div className="flex w-full max-w-sm flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                {dangerCtaDisabled ? "Disabled" : "Red"}
+              </p>
+              <div className="mcp-photo-play-cta-lab-danger">
+                <CtaButton
+                  forceCss
+                  cssTone="red"
+                  fillParent
+                  type="button"
+                  label="Delete account"
+                  costAmount={null}
+                  strokeWidth={1}
+                  cornerRadius={16}
+                  disabled={dangerCtaDisabled}
+                />
               </div>
             </div>
           </div>

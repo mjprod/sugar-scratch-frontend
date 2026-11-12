@@ -1015,7 +1015,8 @@ p {
   }
 }
 
-.coverflow-buy-pack-cta.is-confirming .cta-button {
+.coverflow-buy-pack-cta.is-confirming .cta-button,
+.coverflow-buy-pack-cta.is-confirming .mcp-photo-play-cta-css {
   pointer-events: none;
 }
 

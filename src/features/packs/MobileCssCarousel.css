@@ -215,7 +215,9 @@
 }
 
 .mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button-glow,
-.mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button {
+.mobile-css-carousel__hud .coverflow-buy-pack-cta .cta-button,
+.mobile-css-carousel__hud .coverflow-buy-pack-cta .mcp-photo-play-cta-css-wrap,
+.mobile-css-carousel__hud .coverflow-buy-pack-cta .mcp-photo-play-cta-css {
   pointer-events: auto;
   position: relative;
   z-index: 31;

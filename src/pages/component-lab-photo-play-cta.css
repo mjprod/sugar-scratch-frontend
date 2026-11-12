@@ -42,3 +42,27 @@
  * Color variants live in mcp-photo-play-cta-css.css
  * (--gold / --purple / --black). Lab dropdown toggles those classes.
  */
+
+/*
+ * sliderCTACSS — coverflow Buy Pack CSS twin.
+ * Plate: .mcp-photo-play-cta-css--slider in mcp-photo-play-cta-css.css
+ * Tweak size / stack / type here while iterating in /component-lab.
+ */
+.mcp-photo-play-cta-css-wrap--slider .mcp-photo-play-cta-css--slider {
+  /* Lab override hook — leave empty until you need a one-off. */
+}
+
+/* Danger / Delete account CSS CTA slot. */
+.mcp-photo-play-cta-lab-danger {
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+}
+
+.mcp-photo-play-cta-lab-danger .mcp-photo-play-cta-css-wrap,
+.mcp-photo-play-cta-lab-danger .mcp-photo-play-cta-css {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}

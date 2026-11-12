@@ -16,6 +16,8 @@ import { ChunkErrorBoundary } from "@/components/ui/ChunkErrorBoundary";
 // Aurora pulls in ogl (WebGL); keep it out of the entry chunk.
 const Aurora = lazy(() => import("./Aurora"));
 import "./CtaButton.css";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+import { resolveCssCtaTone, type CssCtaTone } from "./ctaCssTone";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -193,6 +195,18 @@ export type CtaButtonProps = {
    * When omitted, bloom is off. Pass an explicit value to override.
    */
   glowOuterBloom?: boolean | "full" | "lite" | "off";
+  /**
+   * Keep Aurora / BorderGlow on mobile instead of the CSS plate.
+   * Opt-in exception (e.g. profile Get Diamonds purple WebGL).
+   */
+  forceWebgl?: boolean;
+  /** Always use the CSS plate (all viewports). */
+  forceCss?: boolean;
+  /**
+   * Force CSS plate color (skips glow/aurora tone sniff).
+   * Ignored when disabled (disabled always uses black).
+   */
+  cssTone?: CssCtaTone;
   className?: string;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">;
 
@@ -252,6 +266,9 @@ export function CtaButton({
   glowAlwaysOnProximity = 94,
   glowColors = DEFAULT_GLOW_COLORS,
   glowOuterBloom,
+  forceWebgl = false,
+  forceCss = false,
+  cssTone,
   disabled = false,
   className,
   type = "button",
@@ -259,6 +276,7 @@ export function CtaButton({
   ...buttonProps
 }: CtaButtonProps) {
   const isMobileViewport = useIsMobileViewport();
+  const useCssPlate = !forceWebgl && (forceCss || isMobileViewport);
   const reducedMotion = usePrefersReducedMotion();
   const resolvedOuterBloom = resolveGlowOuterBloom(
     glowOuterBloom,
@@ -272,6 +290,9 @@ export function CtaButton({
   });
 
   useLayoutEffect(() => {
+    // CSS plate on mobile — no BorderGlow measure loop.
+    if (useCssPlate) return;
+
     if (!fillParent) {
       setMeasured({
         width: widthProp ?? DEFAULT_WIDTH,
@@ -311,10 +332,110 @@ export function CtaButton({
     ro.observe(el);
     return () => ro.disconnect();
     // Remeasure when glow wraps/unwraps the button in BorderGlow.
-  }, [fillParent, widthProp, heightProp, glowEnabled]);
+  }, [fillParent, widthProp, heightProp, glowEnabled, useCssPlate]);
 
   const width = fillParent ? measured.width : (widthProp ?? DEFAULT_WIDTH);
   const height = fillParent ? measured.height : (heightProp ?? DEFAULT_HEIGHT);
+
+  const showCost =
+    costAmount != null &&
+    costAmount !== "" &&
+    !(typeof costAmount === "number" && Number.isNaN(costAmount));
+  const costText = showCost ? String(costAmount) : "";
+
+  // Mobile: CSS plate twin — no Aurora / BorderGlow WebGL.
+  if (useCssPlate) {
+    // Disabled → black plate (no whole-control opacity fade).
+    const tone = disabled
+      ? "black"
+      : (cssTone ?? resolveCssCtaTone(glowColors, auroraBaseColor));
+    const radiusPx =
+      shape === "hex"
+        ? 12
+        : Math.max(0, Math.min(cornerRadius, 999));
+    const cssPlateVars = {
+      "--mcp-cta-w": fillParent ? "100%" : `${widthProp ?? DEFAULT_WIDTH}px`,
+      "--mcp-cta-h": fillParent ? "100%" : `${heightProp ?? DEFAULT_HEIGHT}px`,
+      "--mcp-cta-r": `${radiusPx}px`,
+      "--mcp-cta-label-color": disabled
+        ? "rgb(255 255 255 / 0.5)"
+        : labelColor,
+      ...(fontSize != null ? { "--mcp-cta-font-size": `${fontSize}px` } : {}),
+    } as CSSProperties;
+
+    const costIconNode = (() => {
+      if (!showCost) return null;
+      if (costIcon === false) return null;
+      if (isDiamondIconMarker(costIcon)) {
+        return (
+          <DiamondLottie
+            className="mcp-photo-play-cta-css__diamond"
+            size={16}
+            aria-hidden
+          />
+        );
+      }
+      return costIcon;
+    })();
+
+    return (
+      <div
+        className={[
+          "mcp-photo-play-cta-css-wrap",
+          "mcp-photo-play-cta-css-wrap--cta",
+          fillParent ? "mcp-photo-play-cta-css-wrap--fill" : "",
+          tone !== "default" ? `mcp-photo-play-cta-css-wrap--${tone}` : "",
+          disabled ? "is-disabled" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={cssPlateVars}
+      >
+        <button
+          {...buttonProps}
+          ref={buttonRef}
+          type={type}
+          disabled={disabled}
+          className={[
+            "mcp-photo-play-cta-css",
+            "mcp-photo-play-cta-css--cta",
+            fillParent ? "mcp-photo-play-cta-css--fill" : "",
+            showCost ? "mcp-photo-play-cta-css--has-cost" : "",
+            tone !== "default" ? `mcp-photo-play-cta-css--${tone}` : "",
+            disabled ? "is-disabled" : "",
+            className ?? "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={{
+            color: disabled ? "rgb(255 255 255 / 0.5)" : labelColor,
+            ...style,
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            buttonProps.onContextMenu?.(event);
+          }}
+        >
+          <span className="mcp-photo-play-cta-css__title-row">
+            {leadingIcon ? (
+              <span className="mcp-photo-play-cta-css__leading" aria-hidden>
+                {leadingIcon}
+              </span>
+            ) : null}
+            {label != null && label !== "" ? (
+              <span className="mcp-photo-play-cta-css__label">{label}</span>
+            ) : null}
+          </span>
+          {showCost ? (
+            <span className="mcp-photo-play-cta-css__cost">
+              <span className="mcp-photo-play-cta-css__price">{costText}</span>
+              {costIconNode}
+            </span>
+          ) : null}
+        </button>
+      </div>
+    );
+  }
 
   const strokeOrbitActive =
     glowEnabled && glowAlwaysOn && !disabled && !reducedMotion && glowOrbitSpeed > 0;
@@ -335,9 +456,6 @@ export function CtaButton({
   const tipRatio = Math.max(0.12, Math.min(0.55, hexTip));
   const tipPx = height * tipRatio;
   const innerTipPx = Math.max(0, tipPx - stroke * 0.85);
-  const showCost =
-    costAmount != null && costAmount !== "" && !(typeof costAmount === "number" && Number.isNaN(costAmount));
-  const costText = showCost ? String(costAmount) : "";
 
   const strokeA = glowColors[0] ?? "#aa085f";
   const strokeB = glowColors[1] ?? "#e00083";

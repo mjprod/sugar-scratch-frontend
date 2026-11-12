@@ -393,6 +393,63 @@ function PackSlideHud({
                 />
               ) : null}
             </div>
+          ) : cssPlayCta ? (
+            <div className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--slider">
+              <button
+                type="button"
+                className="mcp-photo-play-cta-css mcp-photo-play-cta-css--slider coverflow-buy-pack-cta__button"
+                tabIndex={revealed ? 0 : -1}
+                aria-label={
+                  slideCta === "view"
+                    ? `View Theme ${item.packName || item.name}`
+                    : `Buy Pack ${item.packName || item.name} for ${Math.round(
+                        (item.price ?? 0) *
+                          (buyConfirmOpen || buyConfirmLeaving
+                            ? buyQuantity
+                            : 1),
+                      )} diamonds`
+                }
+                aria-expanded={
+                  slideCta === "buy"
+                    ? buyConfirmOpen || buyConfirmLeaving
+                    : undefined
+                }
+                aria-controls={
+                  slideCta === "buy"
+                    ? `coverflow-buy-confirm-${item.id}`
+                    : undefined
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (slideCta === "view") {
+                    onView?.(item);
+                    return;
+                  }
+                  onToggleBuyConfirm();
+                }}
+              >
+                <span className="mcp-photo-play-cta-css__label">
+                  {slideCta === "view" ? "View Theme" : "Buy Pack"}
+                </span>
+                {slideCta === "buy" ? (
+                  <span className="mcp-photo-play-cta-css__cost">
+                    <span className="mcp-photo-play-cta-css__price">
+                      {Math.round(
+                        (item.price ?? 0) *
+                          (buyConfirmOpen || buyConfirmLeaving
+                            ? buyQuantity
+                            : 1),
+                      )}
+                    </span>
+                    <DiamondLottie
+                      className="mcp-photo-play-cta-css__diamond"
+                      size={16}
+                      aria-hidden
+                    />
+                  </span>
+                ) : null}
+              </button>
+            </div>
           ) : (
             <CtaButton
               {...ctaButtonPropsFromTemplate("squircleCTA")}
