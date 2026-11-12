@@ -35,6 +35,7 @@ function useCssPhotoCta() {
 /**
  * Photo-grid play CTA + PlayConfirm.
  * Mobile: CSS plate (no BorderGlow / WebGL). Desktop: squircle CtaButton.
+ * Free Play toggle → "Free ▶" (no diamond / price).
  */
 export function McpPhotoPlayCta({
   playPrice,
@@ -50,7 +51,11 @@ export function McpPhotoPlayCta({
   const openedAtRef = useRef(0);
   const leaveDoneRef = useRef(false);
   const priced = playPrice != null;
-  const showConfirm = !freePlay && priced && (confirm || leaving);
+  const showCost = priced && !freePlay;
+  const showConfirm = showCost && (confirm || leaving);
+  const resolvedAria = freePlay
+    ? ariaLabel.replace(/^Play\b/, "Free Play").replace(/\s+for\s+\d+\s+diamonds$/i, "")
+    : ariaLabel;
 
   function finishLeave() {
     if (leaveDoneRef.current) return;
@@ -93,14 +98,30 @@ export function McpPhotoPlayCta({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leaving]);
 
-  const expanded = priced && !freePlay ? confirm || leaving : undefined;
+  const expanded = showCost ? confirm || leaving : undefined;
+
+  const freeLabel = (
+    <span className="mcp-photo-play-cta-css__label mcp-photo-play-cta-css__free">
+      Free
+    </span>
+  );
+
+  const playIcon = (
+    <Play
+      className="mcp-photo-play-cta-css__play"
+      size={16}
+      strokeWidth={2.4}
+      fill="currentColor"
+      aria-hidden
+    />
+  );
 
   return (
     <div
       ref={setAnchorEl}
       className={[
         "mcp-photo-play-cta",
-        priced ? "is-priced" : "is-owned",
+        freePlay ? "is-free-play" : priced ? "is-priced" : "is-owned",
         cssCta ? "is-css" : "",
       ]
         .filter(Boolean)
@@ -111,28 +132,29 @@ export function McpPhotoPlayCta({
         <div className="mcp-photo-play-cta-css-wrap">
           <button
             type="button"
-            className="mcp-photo-play-cta-css"
-            aria-label={ariaLabel}
+            className={[
+              "mcp-photo-play-cta-css",
+              freePlay ? "mcp-photo-play-cta-css--free" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label={resolvedAria}
             aria-expanded={expanded}
             onClick={activate}
           >
-            {priced ? (
-              <DiamondLottie
-                className="mcp-photo-play-cta-css__diamond"
-                size={16}
-                aria-hidden
-              />
+            {freePlay ? (
+              freeLabel
+            ) : showCost ? (
+              <>
+                <DiamondLottie
+                  className="mcp-photo-play-cta-css__diamond"
+                  size={16}
+                  aria-hidden
+                />
+                <span className="mcp-photo-play-cta-css__price">{playPrice}</span>
+              </>
             ) : null}
-            {priced ? (
-              <span className="mcp-photo-play-cta-css__price">{playPrice}</span>
-            ) : null}
-            <Play
-              className="mcp-photo-play-cta-css__play"
-              size={16}
-              strokeWidth={2.4}
-              fill="currentColor"
-              aria-hidden
-            />
+            {playIcon}
           </button>
         </div>
       ) : (
@@ -142,15 +164,17 @@ export function McpPhotoPlayCta({
           label=""
           leadingIcon={
             <>
-              {priced ? (
-                <DiamondLottie
-                  className="mcp-photo-play-diamond"
-                  size={16}
-                  aria-hidden
-                />
-              ) : null}
-              {priced ? (
-                <span className="mcp-photo-play-price">{playPrice}</span>
+              {freePlay ? (
+                <span className="mcp-photo-play-free">Free</span>
+              ) : showCost ? (
+                <>
+                  <DiamondLottie
+                    className="mcp-photo-play-diamond"
+                    size={16}
+                    aria-hidden
+                  />
+                  <span className="mcp-photo-play-price">{playPrice}</span>
+                </>
               ) : null}
               <Play
                 className="mcp-photo-play-triangle"
@@ -164,7 +188,7 @@ export function McpPhotoPlayCta({
           costAmount={null}
           fontSize={16}
           cornerRadius={999}
-          aria-label={ariaLabel}
+          aria-label={resolvedAria}
           aria-expanded={expanded}
           onClick={activate}
         />

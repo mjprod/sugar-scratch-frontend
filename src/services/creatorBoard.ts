@@ -26,6 +26,19 @@ export type BoardMotionCard = {
   staticCards: BoardStaticCard[];
 };
 
+/** Unlocked motion ids for the Free Play owned ring (null when toggle is off). */
+export function unlockedMotionFreePlayIds(
+  cards: ReadonlyArray<Pick<BoardMotionCard, "id" | "status">>,
+  freePlayOn: boolean,
+): Set<string> | null {
+  if (!freePlayOn) return null;
+  const ids = new Set<string>();
+  for (const card of cards) {
+    if (card.status === "unlocked") ids.add(card.id);
+  }
+  return ids;
+}
+
 export type BoardPremiumCard = {
   id: string;
   price: number;

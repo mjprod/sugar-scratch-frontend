@@ -33,6 +33,7 @@ import {
 import {
   fetchCreatorBoard,
   themeCollectionProgressFromBoard,
+  unlockedMotionFreePlayIds,
   type CreatorBoard,
 } from "@/services/creatorBoard";
 import {
@@ -414,13 +415,11 @@ function CreatorThemeScreenInner({
         card.staticCards.some((slot) => slot.freePlayable),
     ),
   );
-  const ownedFreePlayIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const card of boardTheme?.motionCards ?? []) {
-      if (card.status === "unlocked") ids.add(card.id);
-    }
-    return ids;
-  }, [boardTheme]);
+  /** Pink ring on unlocked motions while Free Play is on. */
+  const ownedFreePlayIds = useMemo(
+    () => unlockedMotionFreePlayIds(boardTheme?.motionCards ?? [], freePlay),
+    [boardTheme, freePlay],
+  );
 
   function goBack() {
     navigate(Paths.creator(creatorId));
@@ -434,7 +433,8 @@ function CreatorThemeScreenInner({
     if (!playModelId) return;
     const boardCard =
       boardTheme?.motionCards.find((entry) => entry.id === card.id) ?? null;
-    const useFreePlay = freePlay && Boolean(boardCard?.freePlayable);
+    // Toggle on → free-play path for every motion CTA (label matches).
+    const useFreePlay = freePlay;
     setBuying(true);
     const ok = await registerPlay("motion", card.id, useFreePlay);
     setBuying(false);
@@ -455,8 +455,7 @@ function CreatorThemeScreenInner({
     const photoId =
       boardMotion?.staticCards[slotIndex]?.id ||
       photoScratchIdForSlot(activeCardId, slotIndex);
-    const useFreePlay =
-      freePlay && Boolean(boardMotion?.staticCards[slotIndex]?.freePlayable);
+    const useFreePlay = freePlay;
     setBuying(true);
     const ok = await registerPlay("photo", photoId, useFreePlay);
     setBuying(false);
@@ -626,7 +625,8 @@ function CreatorThemeScreenInner({
               items={items}
               selectedId={activeCardId}
               slideCta="play"
-              ownedFreePlayIds={freePlay ? ownedFreePlayIds : null}
+              freePlayMode={freePlay}
+              ownedFreePlayIds={ownedFreePlayIds}
               onView={(item) => void openMotion(item)}
               onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
             />
@@ -704,11 +704,12 @@ function CreatorThemeScreenInner({
                   </div>
                   <McpPhotoPlayCta
                     playPrice={playPrice}
-                    freePlay={
-                      freePlay &&
-                      Boolean(boardMotion?.staticCards[index]?.freePlayable)
+                    freePlay={freePlay}
+                    ariaLabel={
+                      freePlay
+                        ? `Free Play ${photoTitle} ${index + 1}`
+                        : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
                     }
-                    ariaLabel={`Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`}
                     onPlay={() => void openPhoto(index)}
                   />
                 </div>

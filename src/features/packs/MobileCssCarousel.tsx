@@ -115,7 +115,7 @@ function PackSlideHud({
   buyQuantity,
   confirmingAdd,
   slideCta = "buy",
-  freePlayOwned = false,
+  freePlayMode = false,
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
@@ -133,8 +133,8 @@ function PackSlideHud({
   buyQuantity: number;
   confirmingAdd: boolean;
   slideCta?: "buy" | "view" | "play";
-  /** Theme free-play: owned card — no diamond/price, "Free Play Motion". */
-  freePlayOwned?: boolean;
+  /** Theme Free Play toggle on — CTA says Free Play (no ◆ price) for every motion. */
+  freePlayMode?: boolean;
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
   onConfirmBuy: (quantity: number) => void;
@@ -157,7 +157,7 @@ function PackSlideHud({
       ? window.matchMedia(MOBILE_CTA_QUERY).matches
       : false,
   );
-  const motionIcon = Math.round(14 * PLAY_MOTION_CTA_SCALE);
+  const motionIcon = 14; /* match --text-body Play Motion type */
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_CTA_QUERY);
@@ -214,7 +214,7 @@ function PackSlideHud({
               ref={setPlayCtaEl}
               className={[
                 "coverflow-compact-play-cta",
-                freePlayOwned ? "is-free-play-owned" : "",
+                freePlayMode ? "is-free-play-owned" : "",
                 cssPlayCta ? "is-css" : "",
               ]
                 .filter(Boolean)
@@ -227,18 +227,18 @@ function PackSlideHud({
                     className="mcp-photo-play-cta-css mcp-photo-play-cta-css--motion coverflow-buy-pack-cta__button"
                     tabIndex={revealed ? 0 : -1}
                     aria-label={
-                      freePlayOwned
-                        ? `Free Play Motion ${item.packName || item.name}`
+                      freePlayMode
+                        ? `Free Play ${item.packName || item.name}`
                         : `Play Motion ${item.packName || item.name} for ${playCost} diamonds`
                     }
                     aria-expanded={
-                      freePlayOwned
+                      freePlayMode
                         ? undefined
                         : playConfirm || playConfirmLeaving
                     }
                     onClick={(event) => {
                       event.stopPropagation();
-                      if (freePlayOwned) {
+                      if (freePlayMode) {
                         onView?.(item);
                         return;
                       }
@@ -253,10 +253,10 @@ function PackSlideHud({
                       setPlayConfirm(true);
                     }}
                   >
-                    {freePlayOwned ? (
+                    {freePlayMode ? (
                       <>
                         <span className="mcp-photo-play-cta-css__label">
-                          Free Play Motion
+                          Free Play
                         </span>
                         <Play
                           className="mcp-photo-play-cta-css__play"
@@ -298,10 +298,10 @@ function PackSlideHud({
                   strokeWidth={1}
                   label=""
                   leadingIcon={
-                    freePlayOwned ? (
+                    freePlayMode ? (
                       <>
                         <span className="coverflow-compact-play-cta__label">
-                          Free Play Motion
+                          Free Play
                         </span>
                         <Play
                           className="coverflow-compact-play-cta__triangle"
@@ -335,23 +335,23 @@ function PackSlideHud({
                     )
                   }
                   costAmount={null}
-                  fontSize={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
+                  fontSize={14} /* body step — was 11 via 0.8 scale */
                   cornerRadius={999}
                   tabIndex={revealed ? 0 : -1}
                   aria-label={
-                    freePlayOwned
-                      ? `Free Play Motion ${item.packName || item.name}`
+                    freePlayMode
+                      ? `Free Play ${item.packName || item.name}`
                       : `Play Motion ${item.packName || item.name} for ${playCost} diamonds`
                   }
                   aria-expanded={
-                    freePlayOwned
+                    freePlayMode
                       ? undefined
                       : playConfirm || playConfirmLeaving
                   }
                   className="coverflow-buy-pack-cta__button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (freePlayOwned) {
+                    if (freePlayMode) {
                       onView?.(item);
                       return;
                     }
@@ -367,7 +367,7 @@ function PackSlideHud({
                   }}
                 />
               )}
-              {!freePlayOwned &&
+              {!freePlayMode &&
               (playConfirm || playConfirmLeaving) &&
               playCtaEl ? (
                 <PlayConfirm
@@ -629,6 +629,7 @@ export function MobileCssCarousel({
   stageBackdropSrc2x,
   stageBackdropLabel,
   slideCta = "buy",
+  freePlayMode = false,
   ownedFreePlayIds = null,
 }: {
   items: Iteration[];
@@ -661,7 +662,12 @@ export function MobileCssCarousel({
   stageBackdropLabel?: string;
   /** Profile / theme: View Now or Play on the active slide instead of Buy Pack. */
   slideCta?: "buy" | "view" | "play";
-  /** Theme free-play: pink border on previously purchased motion packs. */
+  /**
+   * Theme Free Play toggle — CTA says Free Play for every motion while on.
+   * Pink owned ring still uses ownedFreePlayIds (unlocked only).
+   */
+  freePlayMode?: boolean;
+  /** Unlocked motions — pink ring while Free Play is on. */
   ownedFreePlayIds?: ReadonlySet<string> | null;
 }) {
   const useCoverflow = !compact && !flat;
@@ -1554,7 +1560,7 @@ export function MobileCssCarousel({
           }}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .mobile-css-carousel__glass-plate, .mobile-css-carousel__glass-plate-btn, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
+          noSwipingSelector=".mobile-css-carousel__hud, .mobile-css-carousel__glass-plate, .mobile-css-carousel__glass-plate-btn, .mcp-photo-play-cta-css-wrap, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
             void pocketTick;
@@ -1609,23 +1615,25 @@ export function MobileCssCarousel({
                       }}
                     />
                   ) : null}
-                  {flat ? (
+                  {flat && (slideCta === "view" || slideCta === "play") ? (
                     <div className="mobile-css-carousel__glass-plate">
-                      <button
+                      <CtaButton
+                        forceCss
+                        cssTone="black"
+                        fillParent
                         type="button"
+                        label={slideCta === "play" ? "Play" : "View Theme"}
+                        costAmount={null}
+                        labelColor="#f0f0f0"
+                        strokeWidth={1}
+                        cornerRadius={16}
                         className="mobile-css-carousel__glass-plate-btn swiper-no-swiping"
                         onClick={(event) => {
                           event.stopPropagation();
                           if (slideCta === "view") onViewRef.current?.(item);
-                          else if (slideCta === "play") onSelect?.(item);
+                          else onSelect?.(item);
                         }}
-                      >
-                        {slideCta === "play"
-                          ? "Play"
-                          : slideCta === "view"
-                            ? "View Theme"
-                            : null}
-                      </button>
+                      />
                     </div>
                   ) : null}
                   {compact ? null : (
@@ -1674,9 +1682,7 @@ export function MobileCssCarousel({
               buyQuantity={buyQuantity}
               confirmingAdd={confirmingAdd}
               slideCta={slideCta}
-              freePlayOwned={Boolean(
-                ownedFreePlayIds?.has(items[activeIndex].id),
-              )}
+              freePlayMode={freePlayMode}
               onToggleBuyConfirm={toggleBuyConfirm}
               onCloseBuyConfirm={closeBuyConfirm}
               onConfirmBuy={confirmActiveBuy}

@@ -6,6 +6,7 @@ import {
   collectionProgressFromBoard,
   parseCreatorBoard,
   themeCollectionProgressFromBoard,
+  unlockedMotionFreePlayIds,
 } from "./creatorBoard.ts";
 
 function assert(condition: unknown, message: string) {
@@ -75,6 +76,34 @@ assert(board?.themes[0]?.motionCards[0]?.staticCards.length === 1, "blank static
 assert(board?.themes[0]?.premium?.replayPrice === 4, "premium replay price kept");
 assert(board?.ultra === null, "null ultra stays null");
 assert(parseCreatorBoard({ creator: { name: "no id" } }) === null, "board without creator id rejected");
+
+const motionCards = board!.themes[0]!.motionCards;
+assert(
+  unlockedMotionFreePlayIds(motionCards, false) === null,
+  "free-play off → no owned ring ids",
+);
+assert(
+  unlockedMotionFreePlayIds(motionCards, true)?.has("motion-1") === true,
+  "free-play on + unlocked → owned ring",
+);
+assert(
+  unlockedMotionFreePlayIds(
+    [
+      ...motionCards,
+      {
+        id: "locked-2",
+        price: 0,
+        status: "locked",
+        freePlayable: true,
+        staticCardsOwned: 0,
+        staticCardsTotal: 0,
+        staticCards: [],
+      },
+    ],
+    true,
+  )?.has("locked-2") !== true,
+  "free-play on + locked → no owned ring",
+);
 
 const progress = collectionProgressFromBoard(board);
 assert(progress.staticOwned === 1, "static owned counts the owned slot");

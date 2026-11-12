@@ -658,19 +658,19 @@ function ThemeCollectionCard({
           // duplicateCount: demo fixture only — real copy count once the board sends one
           duplicateCount: demoLockedBanner && unlocked && index === 0 ? 3 : undefined,
           playCost: boardCard?.price ?? packUnitCost(),
-          freePlay: freePlay && (demoLockedBanner || Boolean(boardCard?.freePlayable)),
+          // Free Play toggle on → "Free Play" label (locked cards hide the CTA).
+          freePlay,
           staticTotal: boardCard?.staticCardsTotal || 10,
           collectedIndexes,
           photos: photos.map((photo) => ({
             ...photo,
-            freePlay:
-              freePlay && (demoLockedBanner || Boolean(photo.freePlayable)),
+            freePlay,
             onPlay: () =>
               onPlayPhoto(
                 card.id,
                 photo.slotIndex ?? 0,
                 card.modelId ?? "",
-                freePlay && (demoLockedBanner || Boolean(photo.freePlayable)),
+                freePlay,
                 photo.id,
               ),
           })),

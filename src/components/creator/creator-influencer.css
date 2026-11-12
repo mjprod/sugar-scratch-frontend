@@ -597,7 +597,7 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__poster-art {
   pointer-events: none;
 }
 
-/* Glass plate above clothes art — hosts the View Theme button. */
+/* Glass plate above clothes art — hosts the black CSS View Theme CTA. */
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__glass-plate {
   position: absolute;
   bottom: 0;
@@ -610,9 +610,9 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__glass-plate 
   box-sizing: border-box;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
   gap: 0.5rem;
-  border-radius: 0.75rem;
+  border-radius: 1rem; /* squircle plate */
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.3);
   -webkit-backdrop-filter: blur(6px);
@@ -621,30 +621,22 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__glass-plate 
 
 body[data-theme="v8"]
   .cpv2-profile-coverflow
-  .mobile-css-carousel__glass-plate-btn {
-  display: flex;
-  padding: 0.8rem 1rem;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
+  .mobile-css-carousel__glass-plate
+  .mcp-photo-play-cta-css-wrap {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
   align-self: stretch;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(178, 178, 178, 0.2);
-  background: linear-gradient(
-    93deg,
-    rgba(69, 69, 69, 0.41) 0.06%,
-    rgba(68, 68, 68, 0.17) 23.61%,
-    rgba(0, 0, 0, 0.5) 50.06%,
-    rgba(92, 92, 92, 0.41) 84.67%
-  );
-  color: #fff;
+  /* Desync rim sheen from other CSS CTAs on this page (orbit is 7.5s). */
+  animation-delay: 1.2s;
+}
+
+body[data-theme="v8"]
+  .cpv2-profile-coverflow
+  .mobile-css-carousel__glass-plate
+  .mcp-photo-play-cta-css {
   font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
 }
 
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__poster {

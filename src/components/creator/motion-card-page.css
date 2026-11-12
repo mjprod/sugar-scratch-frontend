@@ -565,7 +565,8 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   color: #ffe0e8;
 }
 
-.mcp-photo-play-cta .mcp-photo-play-price {
+.mcp-photo-play-cta .mcp-photo-play-price,
+.mcp-photo-play-cta .mcp-photo-play-free {
   font-size: 16px;
   font-weight: 700;
   line-height: 1;

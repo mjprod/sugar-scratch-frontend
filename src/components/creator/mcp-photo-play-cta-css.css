@@ -153,6 +153,21 @@
   flex-shrink: 0;
 }
 
+/* Theme Free Play — "Free ▶" instead of ◆ price. */
+.mcp-photo-play-cta-css--free {
+  width: auto;
+  min-width: 84px;
+  padding: 0 0.85em;
+  gap: 0.35em;
+}
+
+.mcp-photo-play-cta-css--free .mcp-photo-play-cta-css__free {
+  font-size: var(--text-body);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+
 /* Production shell already absolute-centers; hug the CSS plate. */
 .mcp-photo-play-cta.is-css {
   width: max-content;
@@ -172,21 +187,23 @@
 .mcp-photo-play-cta-css__label {
   position: relative;
   z-index: 1;
-  font-size: 11px;
+  font-size: var(--text-caption);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
+/* Play Motion: one step above caption → body. */
+.mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__label,
 .mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__price {
-  font-size: 11px;
+  font-size: var(--text-body);
 }
 
 .mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__diamond,
 .mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__play {
-  width: 11px;
-  height: 11px;
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .coverflow-compact-play-cta.is-css {
