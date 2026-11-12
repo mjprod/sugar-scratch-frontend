@@ -21,6 +21,9 @@ import {
   shouldArmClaimExitFallback,
   type ClaimUiPhase,
 } from "./playerWelcomeClaimPhase";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
 
 function track(event: string, payload?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
@@ -66,9 +69,22 @@ export function PlayerWelcomeBar({
   const [exitHeightPx, setExitHeightPx] = useState<number | null>(null);
   /** True only after a live claim transition (not cold load already-claimed). */
   const [playClaimedEnter, setPlayClaimedEnter] = useState(false);
+  const [cssClaimCta, setCssClaimCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
   const exitDoneRef = useRef(false);
   const uiPhaseRef = useRef<ClaimUiPhase>(uiPhase);
   uiPhaseRef.current = uiPhase;
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssClaimCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   function finishClaimExit() {
     if (exitDoneRef.current) return;
@@ -225,35 +241,86 @@ export function PlayerWelcomeBar({
           </div>
 
           <div className="player-welcome-reward">
-            <div className="player-welcome-claim">
-              <CtaButton
-                {...ctaButtonPropsFromTemplate("pillGoldCTA")}
-                fillParent
-                type="button"
-                label={
-                  claiming ? (
-                    "Claiming…"
-                  ) : (
-                    <>
-                      Collect<span className="player-welcome-claim-diamonds">
-                        <DiamondLottie size={14} aria-hidden />
-                        {DAILY_REWARD_DIAMONDS}
-                      </span>Now
-                    </>
-                  )
-                }
-                aria-label={
-                  claiming
-                    ? "Claiming…"
-                    : `Collect ${DAILY_REWARD_DIAMONDS} Now`
-                }
-                costAmount={null}
-                strokeWidth={1}
-                auroraFrozen={auroraPaused}
-                disabled={claiming || uiPhase === "exiting"}
-                aria-busy={claiming || uiPhase === "exiting"}
-                onClick={handleClaim}
-              />
+            <div
+              className={[
+                "player-welcome-claim",
+                cssClaimCta ? "is-css" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {cssClaimCta ? (
+                <div className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--gold">
+                  <button
+                    type="button"
+                    className="mcp-photo-play-cta-css mcp-photo-play-cta-css--claim mcp-photo-play-cta-css--gold"
+                    aria-label={
+                      claiming
+                        ? "Claiming…"
+                        : `Collect ${DAILY_REWARD_DIAMONDS} Now`
+                    }
+                    disabled={claiming || uiPhase === "exiting"}
+                    aria-busy={claiming || uiPhase === "exiting"}
+                    onClick={handleClaim}
+                  >
+                    {claiming ? (
+                      <span className="mcp-photo-play-cta-css__label">
+                        Claiming…
+                      </span>
+                    ) : (
+                      <>
+                        <span className="mcp-photo-play-cta-css__label">
+                          Collect
+                        </span>
+                        <span className="player-welcome-claim-diamonds">
+                          <DiamondLottie
+                            className="mcp-photo-play-cta-css__diamond"
+                            size={14}
+                            aria-hidden
+                          />
+                          <span className="mcp-photo-play-cta-css__price">
+                            {DAILY_REWARD_DIAMONDS}
+                          </span>
+                        </span>
+                        <span className="mcp-photo-play-cta-css__label">
+                          Now
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <CtaButton
+                  {...ctaButtonPropsFromTemplate("pillGoldCTA")}
+                  fillParent
+                  type="button"
+                  label={
+                    claiming ? (
+                      "Claiming…"
+                    ) : (
+                      <>
+                        Collect
+                        <span className="player-welcome-claim-diamonds">
+                          <DiamondLottie size={14} aria-hidden />
+                          {DAILY_REWARD_DIAMONDS}
+                        </span>
+                        Now
+                      </>
+                    )
+                  }
+                  aria-label={
+                    claiming
+                      ? "Claiming…"
+                      : `Collect ${DAILY_REWARD_DIAMONDS} Now`
+                  }
+                  costAmount={null}
+                  strokeWidth={1}
+                  auroraFrozen={auroraPaused}
+                  disabled={claiming || uiPhase === "exiting"}
+                  aria-busy={claiming || uiPhase === "exiting"}
+                  onClick={handleClaim}
+                />
+              )}
             </div>
 
             {burst ? (
