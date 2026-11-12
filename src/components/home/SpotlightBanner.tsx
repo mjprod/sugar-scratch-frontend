@@ -2,6 +2,9 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { apiMutate } from "@/lib/api";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
 
 const EFFECT_STOP = 0.55;
 const BG_EFFECT_STOP = 0.65;
@@ -75,6 +78,19 @@ export function SpotlightBanner({
   const blurRef = useRef<HTMLImageElement>(null);
   const dimRef = useRef<HTMLDivElement>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [cssCta, setCssCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -219,15 +235,36 @@ export function SpotlightBanner({
             decoding="async"
           />
         </div>
-        <div className="hub-spotlight-band-cta">
-          <CtaButton
-            {...ctaButtonPropsFromTemplate("squircleCTA")}
-            fillParent
-            label="Tell Us Who"
-            costAmount={null}
-            auroraFrozen={auroraPaused}
-            onClick={() => setSuggestOpen(true)}
-          />
+        <div
+          className={[
+            "hub-spotlight-band-cta",
+            cssCta ? "is-css" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {cssCta ? (
+            <div className="mcp-photo-play-cta-css-wrap">
+              <button
+                type="button"
+                className="mcp-photo-play-cta-css mcp-photo-play-cta-css--spotlight"
+                onClick={() => setSuggestOpen(true)}
+              >
+                <span className="mcp-photo-play-cta-css__label">
+                  Tell Us Who
+                </span>
+              </button>
+            </div>
+          ) : (
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label="Tell Us Who"
+              costAmount={null}
+              auroraFrozen={auroraPaused}
+              onClick={() => setSuggestOpen(true)}
+            />
+          )}
         </div>
       </div>
 

@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
+import { Play } from "lucide-react";
+import { McpPhotoPlayCta } from "@/components/creator/McpPhotoPlayCta";
 import {
   LockStatusBanner,
   type LockStatus,
 } from "@/components/lock-status/LockStatusBanner";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import "@/components/creator/motion-card-page.css";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+import "./component-lab-photo-play-cta.css";
 import {
   MOTION_CARD_THEMES,
   type MotionCardState,
@@ -99,6 +105,9 @@ export function ComponentLabPage() {
   const [holderMode, setHolderMode] = useState<"live" | "skeleton">(
     "skeleton",
   );
+  const [cssCtaVariant, setCssCtaVariant] = useState<
+    "default" | "gold" | "purple" | "black"
+  >("default");
   const [holderPreview, setHolderPreview] = useState<{
     name: string;
     place: string;
@@ -285,6 +294,95 @@ export function ComponentLabPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Photo play CTA</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Theme photo-grid button (84×41). Left = live BorderGlow +
+                DiamondLottie. Right = CSS-only twin — variants in{" "}
+                <code className="text-ink-secondary">
+                  component-lab-photo-play-cta.css
+                </code>
+                .
+              </p>
+            </div>
+            <label className="flex flex-col gap-1 text-[11px] font-medium tracking-[0.08em] text-ink-tertiary uppercase">
+              CSS variant
+              <select
+                value={cssCtaVariant}
+                onChange={(event) =>
+                  setCssCtaVariant(
+                    event.target.value as
+                      | "default"
+                      | "gold"
+                      | "purple"
+                      | "black",
+                  )
+                }
+                className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium tracking-normal text-ink normal-case"
+              >
+                <option value="default">Default (pink)</option>
+                <option value="gold">Gold</option>
+                <option value="purple">Purple</option>
+                <option value="black">Black</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end justify-center gap-10 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-12">
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                Live
+              </p>
+              <div className="mcp-photo-play-cta-lab-card">
+                <img src={staticBackgroundUrl || figmaPoster} alt="" />
+                <McpPhotoPlayCta
+                  playPrice={8}
+                  ariaLabel="Play Photo Cards for 8 diamonds"
+                  onPlay={() => undefined}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                CSS · {cssCtaVariant}
+              </p>
+              <div className="mcp-photo-play-cta-lab-card">
+                <img src={staticBackgroundUrl || figmaPoster} alt="" />
+                <div
+                  className={[
+                    "mcp-photo-play-cta-css-wrap",
+                    `mcp-photo-play-cta-css-wrap--${cssCtaVariant}`,
+                  ].join(" ")}
+                >
+                  <button
+                    type="button"
+                    className={[
+                      "mcp-photo-play-cta-css",
+                      `mcp-photo-play-cta-css--${cssCtaVariant}`,
+                    ].join(" ")}
+                    aria-label="Play Photo Cards for 8 diamonds (CSS)"
+                  >
+                    <DiamondLottie
+                      className="mcp-photo-play-cta-css__diamond"
+                      size={16}
+                      aria-hidden
+                    />
+                    <span className="mcp-photo-play-cta-css__price">8</span>
+                    <Play
+                      className="mcp-photo-play-cta-css__play"
+                      size={16}
+                      strokeWidth={2.4}
+                      fill="currentColor"
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>

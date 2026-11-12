@@ -14,7 +14,9 @@ import {
   ctaButtonPropsFromTemplate,
 } from "@/components/cta";
 import { PackPreview } from "@/components/pack-preview/PackPreview";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import "@/components/pack-preview/PackPreview.css";
+import "@/components/creator/mcp-photo-play-cta-css.css";
 import { useAuthActions, useAuthSession } from "@/contexts/useAuth";
 import {
   feedLikeCount,
@@ -543,34 +545,60 @@ export function CreatorFeedCard({
             className={[
               "hf-buy",
               item.packPosters.length >= 2 ? "has-pack-preview" : "",
+              isMobileFeed ? "is-css" : "",
             ]
               .filter(Boolean)
               .join(" ")}
           >
-            <CtaButton
-              {...ctaButtonPropsFromTemplate(buyCta)}
-              fillParent
-              label="Buy Pack"
-              costAmount={item.diamondCost}
-              /* Hairline on-button ring (iOS-safe stroke layer). */
-              strokeWidth={1}
-              /*
-                Viewport-scoped motion:
-                - active + warm neighbors when settled: aurora / particles / orbit
-                - while scrubbing: pause CTA shaders (video decode already busy)
-                - far slides: static CTA only
-                - diamond Lottie stays active-only (heavier wasm loop)
-              */
-              glowOuterBloom={ctaMotionLive ? "lite" : "off"}
-              glowAlwaysOn={ctaMotionLive}
-              auroraPaused={skipAurora}
-              costIconAnimated={active && !reducedMotion}
-              aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onBuy();
-              }}
-            />
+            {isMobileFeed ? (
+              <div className="mcp-photo-play-cta-css-wrap">
+                <button
+                  type="button"
+                  className="mcp-photo-play-cta-css mcp-photo-play-cta-css--buy"
+                  aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBuy();
+                  }}
+                >
+                  <span className="mcp-photo-play-cta-css__label">Buy Pack</span>
+                  <span className="mcp-photo-play-cta-css__price">
+                    {item.diamondCost}
+                  </span>
+                  <DiamondLottie
+                    className="mcp-photo-play-cta-css__diamond"
+                    size={14}
+                    animated={active && !reducedMotion}
+                    aria-hidden
+                  />
+                </button>
+              </div>
+            ) : (
+              <CtaButton
+                {...ctaButtonPropsFromTemplate(buyCta)}
+                fillParent
+                label="Buy Pack"
+                costAmount={item.diamondCost}
+                /* Hairline on-button ring (iOS-safe stroke layer). */
+                strokeWidth={1}
+                /*
+                  Viewport-scoped motion:
+                  - active + warm neighbors when settled: aurora / particles / orbit
+                  - while scrubbing: pause CTA shaders (video decode already busy)
+                  - far slides: static CTA only
+                  - diamond Lottie stays active-only (heavier wasm loop)
+                */
+                glowOuterBloom={ctaMotionLive ? "lite" : "off"}
+                glowAlwaysOn={ctaMotionLive}
+                auroraPaused={skipAurora}
+                costIconAnimated={active && !reducedMotion}
+                aria-label={`Buy Pack for ${item.diamondCost} diamonds`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBuy();
+                }}
+              />
+            )}
           </div>
           <div className="hf-pack-slot" aria-hidden={item.packPosters.length < 2}>
             {item.packPosters.length >= 2 ? (

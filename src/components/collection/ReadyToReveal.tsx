@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
   DesktopCoverFlow,
@@ -303,12 +304,21 @@ function ContinueSection({
 }) {
   const items = useMemo(() => tiles.map(tileToIteration), [tiles]);
   const desktop = useContinueDesktop();
+  const [open, setOpen] = useState(true);
+  const [chevronAnimReady, setChevronAnimReady] = useState(false);
+  const [chevronPlayId, setChevronPlayId] = useState(0);
   const activateById = useMemo(() => {
     const map = new Map(tiles.map((tile) => [tile.id, tile.onActivate]));
     return (item: Iteration) => {
       map.get(item.id)?.();
     };
   }, [tiles]);
+
+  function setExpanded(next: boolean) {
+    setChevronAnimReady(true);
+    setChevronPlayId((id) => id + 1);
+    setOpen(next);
+  }
 
   useEffect(() => {
     if (scratchCount > 0) {
@@ -320,6 +330,9 @@ function ContinueSection({
 
   useEffect(() => {
     if (!revealPacks) return;
+    setChevronAnimReady(true);
+    setChevronPlayId((id) => id + 1);
+    setOpen(true);
     document.getElementById("ready-heading")?.scrollIntoView({
       block: "start",
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -341,38 +354,65 @@ function ContinueSection({
         ]
           .filter(Boolean)
           .join(" ")}
+        data-open={open ? "true" : "false"}
       >
-        <h2 id="ready-heading" className="mc-continue-title">
-          Continue playing
-        </h2>
-        {items.length > 0 ? (
-          <div className="mc-continue-carousel">
-            {desktop ? (
-              <DesktopCoverFlow
-                items={items}
-                selectedId={null}
-                glow="var(--color-page-title)"
-                playOnlyCta
-                cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
-                buying={false}
-                addedToPocket={false}
-                confirmBuy={false}
-                onSelect={() => {}}
-                onDeselect={() => {}}
-                onFocusChange={() => {}}
-                onBuy={activateById}
-              />
+        <div className="mc-continue-head">
+          <h2 id="ready-heading" className="mc-continue-title">
+            Continue playing
+          </h2>
+          <button
+            type="button"
+            className="mc-continue-expand"
+            aria-expanded={open}
+            aria-controls="mc-continue-body"
+            aria-label={
+              open ? "Collapse continue playing" : "Expand continue playing"
+            }
+            onClick={() => setExpanded(!open)}
+          >
+            <span
+              key={`${chevronPlayId}-${open ? "open" : "closed"}`}
+              className="cpv2-profile-expand-chevron"
+              data-open={open ? "true" : "false"}
+              data-chevron-anim={chevronAnimReady ? "true" : "false"}
+              aria-hidden="true"
+            >
+              <ChevronDown className="size-5" strokeWidth={2.2} />
+            </span>
+          </button>
+        </div>
+        <div id="mc-continue-body" className="mc-continue-body">
+          <div className="mc-continue-body-inner">
+            {items.length > 0 ? (
+              <div className="mc-continue-carousel">
+                {desktop ? (
+                  <DesktopCoverFlow
+                    items={items}
+                    selectedId={null}
+                    glow="var(--color-page-title)"
+                    playOnlyCta
+                    cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
+                    buying={false}
+                    addedToPocket={false}
+                    confirmBuy={false}
+                    onSelect={() => {}}
+                    onDeselect={() => {}}
+                    onFocusChange={() => {}}
+                    onBuy={activateById}
+                  />
+                ) : (
+                  <MobileCssCarousel
+                    items={items}
+                    compact
+                    onSelect={activateById}
+                  />
+                )}
+              </div>
             ) : (
-              <MobileCssCarousel
-                items={items}
-                compact
-                onSelect={activateById}
-              />
+              <div className="mc-continue-row" role="list" />
             )}
           </div>
-        ) : (
-          <div className="mc-continue-row" role="list" />
-        )}
+        </div>
       </div>
     </section>
   );

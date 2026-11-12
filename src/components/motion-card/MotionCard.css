@@ -746,6 +746,13 @@
   transform: translateX(-50%) rotate(45deg);
 }
 
+/* Flip caret when the popup sits above the card (common on iOS photo grid). */
+.static-card-buy-confirm.is-anchored.is-above::before {
+  top: auto;
+  bottom: -6px;
+  transform: translateX(-50%) rotate(225deg);
+}
+
 .static-card-buy-confirm__body {
   display: flex;
   flex-direction: column;

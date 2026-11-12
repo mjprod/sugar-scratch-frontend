@@ -1,0 +1,265 @@
+/**
+ * CSS photo play CTA — mobile stand-in for BorderGlow / WebGL CtaButton.
+ * Lab card keeps absolute placement on the wrap; production uses .mcp-photo-play-cta.
+ */
+
+.mcp-photo-play-cta-css-wrap {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  max-width: max-content;
+  padding: 1px;
+  border-radius: 3rem;
+  background: linear-gradient(45deg, #85002f 30%, #ff8c8c 60%, #7c002c 70%);
+}
+
+.mcp-photo-play-cta-css {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2em;
+  width: 84px;
+  height: 41px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  color: #ffe0e8;
+  cursor: pointer;
+  background: linear-gradient(40deg, #690031 13%, #40051f 43%, #62002e 100%);
+  isolation: isolate;
+}
+
+.mcp-photo-play-cta-css::before,
+.mcp-photo-play-cta-css::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #9c1857;
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.mcp-photo-play-cta-css::before {
+  top: -34%;
+  left: 10%;
+}
+
+.mcp-photo-play-cta-css::after {
+  right: 3%;
+  bottom: -40%;
+  width: 39%;
+  height: 80%;
+}
+
+.mcp-photo-play-cta-css__price {
+  position: relative;
+  z-index: 1;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+
+.mcp-photo-play-cta-css__diamond,
+.mcp-photo-play-cta-css__play {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Production shell already absolute-centers; hug the CSS plate. */
+.mcp-photo-play-cta.is-css {
+  width: max-content;
+  min-width: 0;
+  max-width: none;
+  height: auto;
+  min-height: 0;
+}
+
+/* Theme motion Play — wider plate (210×56 @ 0.8). */
+.mcp-photo-play-cta-css--motion {
+  width: 168px;
+  height: 45px;
+  gap: 0.35em;
+}
+
+.mcp-photo-play-cta-css__label {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__price {
+  font-size: 11px;
+}
+
+.mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__diamond,
+.mcp-photo-play-cta-css--motion .mcp-photo-play-cta-css__play {
+  width: 11px;
+  height: 11px;
+}
+
+.coverflow-compact-play-cta.is-css {
+  width: max-content;
+  height: auto;
+}
+
+/* Home feed Buy Pack — fills .hf-buy 240×56 slot. */
+.mcp-photo-play-cta-css--buy {
+  width: 100%;
+  height: 100%;
+  gap: 0.4em;
+}
+
+.mcp-photo-play-cta-css--buy .mcp-photo-play-cta-css__label {
+  font-size: var(--text-body);
+}
+
+.mcp-photo-play-cta-css--buy .mcp-photo-play-cta-css__price {
+  font-size: var(--text-body);
+}
+
+.mcp-photo-play-cta-css--buy .mcp-photo-play-cta-css__diamond {
+  width: 14px;
+  height: 14px;
+}
+
+.hf-buy.is-css {
+  overflow: visible;
+}
+
+.hf-buy.is-css .mcp-photo-play-cta-css-wrap {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+/* Home feed only: type one step up. Extra left pad only with pack preview. */
+.hf-buy.is-css .mcp-photo-play-cta-css--buy .mcp-photo-play-cta-css__label,
+.hf-buy.is-css .mcp-photo-play-cta-css--buy .mcp-photo-play-cta-css__price {
+  font-size: var(--text-title);
+}
+
+.hf-buy.has-pack-preview.is-css .mcp-photo-play-cta-css {
+  justify-content: flex-start;
+  padding-left: var(--space-8);
+  padding-right: var(--space-10);
+}
+
+/* Collection continue — compact Play under the pack. */
+.coverflow-play-only-cta.is-css {
+  width: max-content;
+  height: auto;
+  min-height: 0;
+}
+
+.coverflow-play-only-cta .mcp-photo-play-cta-css-wrap {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.mcp-photo-play-cta-css--play-only {
+  width: 113px;
+  height: 42px;
+  gap: var(--space-1-5);
+}
+
+.mcp-photo-play-cta-css--play-only .mcp-photo-play-cta-css__label {
+  font-size: var(--text-body);
+}
+
+.mcp-photo-play-cta-css--play-only .mcp-photo-play-cta-css__play {
+  width: 11px;
+  height: 11px;
+}
+
+/* Creator profile sticky Buy Pack — full width of .cpv2-profile-buy-pack. */
+.cpv2-profile-buy-pack.is-css {
+  width: 80%;
+}
+
+.cpv2-profile-buy-pack.is-css .mcp-photo-play-cta-css-wrap {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.mcp-photo-play-cta-css--profile-buy {
+  width: 100%;
+  min-height: 56px;
+  height: 56px;
+  gap: 0.4em;
+}
+
+.mcp-photo-play-cta-css--profile-buy .mcp-photo-play-cta-css__label {
+  font-size: var(--text-title);
+}
+
+/* Spotlight “Tell Us Who” — fills 240×48 band slot. */
+.hub-spotlight-band-cta.is-css {
+  overflow: visible;
+}
+
+.hub-spotlight-band-cta.is-css .mcp-photo-play-cta-css-wrap {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.mcp-photo-play-cta-css--spotlight {
+  width: 100%;
+  height: 100%;
+}
+
+.mcp-photo-play-cta-css--spotlight .mcp-photo-play-cta-css__label {
+  font-size: var(--text-body);
+}
+
+/* Rank / category leaderboard Play — compact ◆ price ▶. */
+.category-leaderboard-play.is-css {
+  width: 88px;
+  min-width: 88px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.category-leaderboard-play.is-css .mcp-photo-play-cta-css-wrap {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.mcp-photo-play-cta-css--leaderboard {
+  width: 100%;
+  height: 100%;
+  gap: 0.2em;
+}
+
+.mcp-photo-play-cta-css--leaderboard .mcp-photo-play-cta-css__price {
+  font-size: var(--text-caption);
+}
+
+.mcp-photo-play-cta-css--leaderboard .mcp-photo-play-cta-css__diamond,
+.mcp-photo-play-cta-css--leaderboard .mcp-photo-play-cta-css__play {
+  width: 11px;
+  height: 11px;
+}

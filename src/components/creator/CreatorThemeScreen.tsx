@@ -5,11 +5,11 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { ChevronDown, ChevronLeft, Play } from "lucide-react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreatorProgressPanel } from "@/components/creator/CreatorProgressPanel";
-import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
-import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { LockStatusBanner } from "@/components/lock-status/LockStatusBanner";
+import { McpPhotoPlayCta } from "@/components/creator/McpPhotoPlayCta";
 import { useAuth } from "@/contexts/useAuth";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
@@ -395,6 +395,18 @@ function CreatorThemeScreenInner({
       boardTheme?.motionCards.find((card) => card.id === activeCardId) ?? null,
     [activeCardId, boardTheme],
   );
+  /** Every photo CTA shows a price — fill gaps from siblings / pack unit. */
+  const defaultPhotoPrice = useMemo(() => {
+    for (const price of slotPrices) {
+      if (price != null) return price;
+    }
+    for (const card of boardMotion?.staticCards ?? []) {
+      if (typeof card.price === "number" && Number.isFinite(card.price)) {
+        return Math.round(card.price);
+      }
+    }
+    return packUnitCost();
+  }, [boardMotion, slotPrices]);
   const freePlayAllowed = Boolean(
     boardTheme?.motionCards.some(
       (card) =>
@@ -653,11 +665,14 @@ function CreatorThemeScreenInner({
                 slot.src ||
                 (activeCard ? motionTileStillUrl(activeCard) : "") ||
                 "/img/placeholder.webp";
-              const playPrice = slotPrices[index];
-              const slotFree =
-                freePlay &&
-                Boolean(boardMotion?.staticCards[index]?.freePlayable);
-              const showPrice = !owned && playPrice != null && !slotFree;
+              const scratchPrice = slotPrices[index];
+              const boardPrice = boardMotion?.staticCards[index]?.price;
+              const playPrice =
+                scratchPrice ??
+                (typeof boardPrice === "number" && Number.isFinite(boardPrice)
+                  ? Math.round(boardPrice)
+                  : null) ??
+                defaultPhotoPrice;
               return (
                 <div
                   key={`${activeCardId ?? "theme"}-photo-${index}`}
@@ -668,7 +683,7 @@ function CreatorThemeScreenInner({
                       : slot.src
                         ? "is-unplayed"
                         : "is-locked",
-                    showPrice ? "has-price-cta" : "has-play-cta",
+                    "has-price-cta",
                   ].join(" ")}
                   style={
                     {
@@ -682,55 +697,20 @@ function CreatorThemeScreenInner({
                     alt=""
                     className="mcp-photo-img"
                   />
-                  {owned ? (
-                    <span className="mcp-photo-dot" aria-hidden="true" />
-                  ) : null}
-                  <div
-                    className={[
-                      "mcp-photo-play-cta",
-                      showPrice ? "is-priced" : "is-owned",
-                    ].join(" ")}
-                  >
-                    <CtaButton
-                      {...ctaButtonPropsFromTemplate("squircleCTA")}
-                      fillParent
-                      label=""
-                      leadingIcon={
-                        <>
-                          {showPrice ? (
-                            <DiamondLottie
-                              className="mcp-photo-play-diamond"
-                              size={11}
-                              aria-hidden
-                            />
-                          ) : null}
-                          {showPrice ? (
-                            <span className="mcp-photo-play-price">
-                              {playPrice}
-                            </span>
-                          ) : null}
-                          <Play
-                            className="mcp-photo-play-triangle"
-                            size={11}
-                            strokeWidth={2.4}
-                            fill="currentColor"
-                            aria-hidden
-                          />
-                        </>
-                      }
-                      costAmount={null}
-                      fontSize={11}
-                      cornerRadius={999}
-                      aria-label={
-                        showPrice
-                          ? `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
-                          : owned
-                            ? `Replay ${photoTitle} ${index + 1}`
-                            : `Play ${photoTitle} ${index + 1}`
-                      }
-                      onClick={() => void openPhoto(index)}
+                  <div className="mcp-photo-lock-banner">
+                    <LockStatusBanner
+                      status={owned ? "unlocked" : "locked"}
                     />
                   </div>
+                  <McpPhotoPlayCta
+                    playPrice={playPrice}
+                    freePlay={
+                      freePlay &&
+                      Boolean(boardMotion?.staticCards[index]?.freePlayable)
+                    }
+                    ariaLabel={`Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`}
+                    onPlay={() => void openPhoto(index)}
+                  />
                 </div>
               );
             })}

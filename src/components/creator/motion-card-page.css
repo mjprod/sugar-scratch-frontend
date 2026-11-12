@@ -487,25 +487,29 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
   box-shadow: 0 0 8px rgba(255, 0, 93, 0.55);
 }
 
+/* Same top-center lock pill as MotionCard. */
+.mcp-photo-lock-banner {
+  position: absolute;
+  top: 3.5px;
+  left: 50%;
+  z-index: 4;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 /* Diamond + API price + play triangle (no "Play" label). */
 .mcp-photo-play-cta {
   position: absolute;
   left: 50%;
-  top: 50%;
+  bottom: 0.3rem;
   z-index: 3;
-  width: 58px;
-  min-width: 58px;
-  max-width: 58px;
-  height: 28px;
-  min-height: 28px;
-  transform: translate(-50%, -50%);
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  height: 41px;
+  min-height: 41px;
+  transform: translateX(-50%);
   overflow: visible;
-}
-
-.mcp-photo-play-cta.is-owned {
-  width: 28px;
-  min-width: 28px;
-  max-width: 28px;
 }
 
 .mcp-photo-play-cta .cta-button-glow,
@@ -513,7 +517,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-photo-play-cta .cta-button,
 .mcp-photo-play-cta .cta-button--fill {
   width: 100%;
-  max-width: 58px;
+  max-width: 84px;
   height: 100%;
   margin: 0;
 }
@@ -562,7 +566,7 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 }
 
 .mcp-photo-play-cta .mcp-photo-play-price {
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -572,8 +576,8 @@ body[data-theme="v8"] .mcp-hero-tile .cpv2-motion-tile-shade {
 .mcp-photo-play-cta .mcp-photo-play-diamond,
 .mcp-photo-play-cta .mcp-photo-play-triangle {
   display: block;
-  width: 11px;
-  height: 11px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 

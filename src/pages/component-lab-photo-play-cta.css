@@ -1,0 +1,98 @@
+/**
+ * Component-lab workshop chrome for the CSS photo play CTA.
+ * Shared plate styles: import mcp-photo-play-cta-css.css from the page.
+ */
+
+.mcp-photo-play-cta-lab-card {
+  position: relative;
+  width: 109px;
+  height: 195px;
+  overflow: visible;
+  border-radius: 4px;
+  background: #121212;
+}
+
+.mcp-photo-play-cta-lab-card > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  filter: grayscale(1);
+}
+
+/* Lab override: live CTA is absolute in production cells; keep that here. */
+.mcp-photo-play-cta-lab-card .mcp-photo-play-cta {
+  position: absolute;
+  left: 50%;
+  bottom: 0.3rem;
+  transform: translateX(-50%);
+}
+
+/* Lab: wrap places itself on the card (production uses .mcp-photo-play-cta). */
+.mcp-photo-play-cta-lab-card .mcp-photo-play-cta-css-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 0.3rem;
+  z-index: 3;
+  transform: translateX(-50%);
+}
+
+/*
+ * Lab color variants — toggle via the Photo play CTA dropdown.
+ * Default (pink) = base plate. Gold / purple / black stubs to paint.
+ */
+
+/* --default: inherits .mcp-photo-play-cta-css-wrap / .mcp-photo-play-cta-css */
+
+.mcp-photo-play-cta-css-wrap--gold {
+  background: linear-gradient(45deg, #6b4a00 30%, #ffe08a 60%, #5a3d00 70%);
+}
+
+.mcp-photo-play-cta-css--gold {
+  color: #fff4d6;
+  background: linear-gradient(
+    40deg,
+    oklch(23.1% 0.0405 75.2deg) 13%,
+    oklch(0.46 0.08 74.12) 43%,
+    oklch(0.27 0.03 76.31) 100%
+  );
+}
+
+.mcp-photo-play-cta-css--gold::before,
+.mcp-photo-play-cta-css--gold::after {
+  background: oklch(0.69 0.1 59.11 / 0.36);
+}
+
+.mcp-photo-play-cta-css-wrap--purple {
+  background: linear-gradient(45deg, #3b0066 30%, #c9a0ff 60%, #2a004d 70%);
+}
+
+.mcp-photo-play-cta-css--purple {
+  color: #f0e4ff;
+  background: linear-gradient(
+    40deg,
+    oklch(29.6% 0.118 312deg) 13%,
+    oklch(0.26 0.13 310.82) 43%,
+    oklch(29.6% 0.118 312deg) 100%
+  );
+}
+
+.mcp-photo-play-cta-css--purple::before,
+.mcp-photo-play-cta-css--purple::after {
+  background: oklch(0.41 0.2 314.6);
+}
+
+.mcp-photo-play-cta-css-wrap--black {
+  background: linear-gradient(45deg, #1a1a1a 30%, #8a8a8a 60%, #0d0d0d 70%);
+}
+
+.mcp-photo-play-cta-css--black {
+  color: #f0f0f0;
+  background: linear-gradient(40deg, #1f1f1f 13%, #0a0a0a 43%, #2a2a2a 100%);
+}
+
+.mcp-photo-play-cta-css--black::before,
+.mcp-photo-play-cta-css--black::after {
+  background: #4a4a4a;
+}

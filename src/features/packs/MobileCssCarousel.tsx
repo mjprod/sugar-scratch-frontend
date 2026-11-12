@@ -21,6 +21,7 @@ import {
   subscribeCart,
 } from "@/services/cart";
 import { CoverflowBuyConfirm } from "@/features/packs/CoverflowBuyConfirm";
+import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { type Iteration } from "@/features/packs/types";
 import {
   claimMediaDecoder,
@@ -31,7 +32,10 @@ import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
 import "@/features/packs/packs-entry.css";
+import "@/components/creator/mcp-photo-play-cta-css.css";
 import "./MobileCssCarousel.css";
+
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
 
 const BUY_PACK_CTA_SIZE_MOBILE = {
   width: 159,
@@ -142,10 +146,33 @@ function PackSlideHud({
 }) {
   // Mount hidden, then flip is-visible after paint so CSS entrance transitions run.
   const [revealed, setRevealed] = useState(false);
+  const [playCtaEl, setPlayCtaEl] = useState<HTMLDivElement | null>(null);
+  const [playConfirm, setPlayConfirm] = useState(false);
+  const [playConfirmLeaving, setPlayConfirmLeaving] = useState(false);
+  const pendingPlayRef = useRef(false);
+  const playOpenedAtRef = useRef(0);
+  const playCost = Math.round(item.price ?? 0);
+  const [cssPlayCta, setCssPlayCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+  const motionIcon = Math.round(14 * PLAY_MOTION_CTA_SCALE);
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssPlayCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (!active) {
       setRevealed(false);
+      setPlayConfirm(false);
+      setPlayConfirmLeaving(false);
+      pendingPlayRef.current = false;
       return;
     }
     if (prefersReducedMotion()) {
@@ -184,70 +211,187 @@ function PackSlideHud({
         <div className="coverflow-buy-pack-cta__primary">
           {slideCta === "play" ? (
             <div
-              className={
-                freePlayOwned
-                  ? "coverflow-compact-play-cta is-free-play-owned"
-                  : "coverflow-compact-play-cta"
-              }
+              ref={setPlayCtaEl}
+              className={[
+                "coverflow-compact-play-cta",
+                freePlayOwned ? "is-free-play-owned" : "",
+                cssPlayCta ? "is-css" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              <CtaButton
-                {...ctaButtonPropsFromTemplate("squircleCTA")}
-                width={Math.round(210 * PLAY_MOTION_CTA_SCALE)}
-                height={Math.round(56 * PLAY_MOTION_CTA_SCALE)}
-                strokeWidth={1}
-                label=""
-                leadingIcon={
-                  freePlayOwned ? (
-                    <>
-                      <span className="coverflow-compact-play-cta__label">
-                        Free Play Motion
-                      </span>
-                      <Play
-                        className="coverflow-compact-play-cta__triangle"
-                        size={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
-                        strokeWidth={2.4}
-                        fill="currentColor"
-                        aria-hidden
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <DiamondLottie
-                        className="coverflow-compact-play-cta__diamond"
-                        size={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
-                        aria-hidden
-                      />
-                      <span className="coverflow-compact-play-cta__price">
-                        {Math.round(item.price ?? 0)}
-                      </span>
-                      <span className="coverflow-compact-play-cta__label">
-                        Play Motion
-                      </span>
-                      <Play
-                        className="coverflow-compact-play-cta__triangle"
-                        size={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
-                        strokeWidth={2.4}
-                        fill="currentColor"
-                        aria-hidden
-                      />
-                    </>
-                  )
-                }
-                costAmount={null}
-                fontSize={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
-                cornerRadius={999}
-                tabIndex={revealed ? 0 : -1}
-                aria-label={
-                  freePlayOwned
-                    ? `Free Play Motion ${item.packName || item.name}`
-                    : `Play Motion ${item.packName || item.name} for ${Math.round(item.price ?? 0)} diamonds`
-                }
-                className="coverflow-buy-pack-cta__button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onView?.(item);
-                }}
-              />
+              {cssPlayCta ? (
+                <div className="mcp-photo-play-cta-css-wrap">
+                  <button
+                    type="button"
+                    className="mcp-photo-play-cta-css mcp-photo-play-cta-css--motion coverflow-buy-pack-cta__button"
+                    tabIndex={revealed ? 0 : -1}
+                    aria-label={
+                      freePlayOwned
+                        ? `Free Play Motion ${item.packName || item.name}`
+                        : `Play Motion ${item.packName || item.name} for ${playCost} diamonds`
+                    }
+                    aria-expanded={
+                      freePlayOwned
+                        ? undefined
+                        : playConfirm || playConfirmLeaving
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (freePlayOwned) {
+                        onView?.(item);
+                        return;
+                      }
+                      if (playConfirmLeaving) return;
+                      if (playConfirm) {
+                        if (Date.now() - playOpenedAtRef.current < 450) return;
+                        pendingPlayRef.current = false;
+                        setPlayConfirmLeaving(true);
+                        return;
+                      }
+                      playOpenedAtRef.current = Date.now();
+                      setPlayConfirm(true);
+                    }}
+                  >
+                    {freePlayOwned ? (
+                      <>
+                        <span className="mcp-photo-play-cta-css__label">
+                          Free Play Motion
+                        </span>
+                        <Play
+                          className="mcp-photo-play-cta-css__play"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <DiamondLottie
+                          className="mcp-photo-play-cta-css__diamond"
+                          size={motionIcon}
+                          aria-hidden
+                        />
+                        <span className="mcp-photo-play-cta-css__price">
+                          {playCost}
+                        </span>
+                        <span className="mcp-photo-play-cta-css__label">
+                          Play Motion
+                        </span>
+                        <Play
+                          className="mcp-photo-play-cta-css__play"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <CtaButton
+                  {...ctaButtonPropsFromTemplate("squircleCTA")}
+                  width={Math.round(210 * PLAY_MOTION_CTA_SCALE)}
+                  height={Math.round(56 * PLAY_MOTION_CTA_SCALE)}
+                  strokeWidth={1}
+                  label=""
+                  leadingIcon={
+                    freePlayOwned ? (
+                      <>
+                        <span className="coverflow-compact-play-cta__label">
+                          Free Play Motion
+                        </span>
+                        <Play
+                          className="coverflow-compact-play-cta__triangle"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <DiamondLottie
+                          className="coverflow-compact-play-cta__diamond"
+                          size={motionIcon}
+                          aria-hidden
+                        />
+                        <span className="coverflow-compact-play-cta__price">
+                          {playCost}
+                        </span>
+                        <span className="coverflow-compact-play-cta__label">
+                          Play Motion
+                        </span>
+                        <Play
+                          className="coverflow-compact-play-cta__triangle"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    )
+                  }
+                  costAmount={null}
+                  fontSize={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
+                  cornerRadius={999}
+                  tabIndex={revealed ? 0 : -1}
+                  aria-label={
+                    freePlayOwned
+                      ? `Free Play Motion ${item.packName || item.name}`
+                      : `Play Motion ${item.packName || item.name} for ${playCost} diamonds`
+                  }
+                  aria-expanded={
+                    freePlayOwned
+                      ? undefined
+                      : playConfirm || playConfirmLeaving
+                  }
+                  className="coverflow-buy-pack-cta__button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (freePlayOwned) {
+                      onView?.(item);
+                      return;
+                    }
+                    if (playConfirmLeaving) return;
+                    if (playConfirm) {
+                      if (Date.now() - playOpenedAtRef.current < 450) return;
+                      pendingPlayRef.current = false;
+                      setPlayConfirmLeaving(true);
+                      return;
+                    }
+                    playOpenedAtRef.current = Date.now();
+                    setPlayConfirm(true);
+                  }}
+                />
+              )}
+              {!freePlayOwned &&
+              (playConfirm || playConfirmLeaving) &&
+              playCtaEl ? (
+                <PlayConfirm
+                  anchor={playCtaEl}
+                  playCost={playCost}
+                  label="Play Motion Card?"
+                  leaving={playConfirmLeaving}
+                  onCancel={() => {
+                    pendingPlayRef.current = false;
+                    setPlayConfirmLeaving(true);
+                  }}
+                  onConfirm={() => {
+                    pendingPlayRef.current = true;
+                    setPlayConfirmLeaving(true);
+                  }}
+                  onLeaveEnd={() => {
+                    const play = pendingPlayRef.current;
+                    pendingPlayRef.current = false;
+                    setPlayConfirm(false);
+                    setPlayConfirmLeaving(false);
+                    if (play) onView?.(item);
+                  }}
+                />
+              ) : null}
             </div>
           ) : (
             <CtaButton
@@ -329,38 +473,83 @@ function CompactPlayButton({
   item: Iteration;
   onPlay: (item: Iteration) => void;
 }) {
+  const [cssCta, setCssCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
   return (
-    <div className="mobile-css-carousel__play coverflow-play-only-cta">
-      <CtaButton
-        {...ctaButtonPropsFromTemplate("squircleCTA")}
-        fillParent
-        strokeWidth={1}
-        cornerRadius={999}
-        auroraBaseColor="#42001b"
-        auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
-        glowColors={["#aa085f", "#e00083", "#eb6a00"]}
-        glowColor="326 90 30"
-        strokeColor="rgba(170, 8, 95, 0.42)"
-        labelColor="#ffe0e8"
-        glowOuterBloom="off"
-        auroraPaused
-        label="Play"
-        leadingIcon={
-          <Play
-            className="motion-card-play-cta__triangle"
-            size={11}
-            strokeWidth={2.4}
-            fill="currentColor"
-            aria-hidden
-          />
-        }
-        costAmount={null}
-        aria-label={`Play ${item.packName || item.name}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onPlay(item);
-        }}
-      />
+    <div
+      className={[
+        "mobile-css-carousel__play",
+        "coverflow-play-only-cta",
+        cssCta ? "is-css" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {cssCta ? (
+        <div className="mcp-photo-play-cta-css-wrap">
+          <button
+            type="button"
+            className="mcp-photo-play-cta-css mcp-photo-play-cta-css--play-only"
+            aria-label={`Play ${item.packName || item.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPlay(item);
+            }}
+          >
+            <Play
+              className="mcp-photo-play-cta-css__play"
+              size={11}
+              strokeWidth={2.4}
+              fill="currentColor"
+              aria-hidden
+            />
+            <span className="mcp-photo-play-cta-css__label">Play</span>
+          </button>
+        </div>
+      ) : (
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          strokeWidth={1}
+          cornerRadius={999}
+          auroraBaseColor="#42001b"
+          auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+          glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+          glowColor="326 90 30"
+          strokeColor="rgba(170, 8, 95, 0.42)"
+          labelColor="#ffe0e8"
+          glowOuterBloom="off"
+          auroraPaused
+          label="Play"
+          leadingIcon={
+            <Play
+              className="motion-card-play-cta__triangle"
+              size={11}
+              strokeWidth={2.4}
+              fill="currentColor"
+              aria-hidden
+            />
+          }
+          costAmount={null}
+          aria-label={`Play ${item.packName || item.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPlay(item);
+          }}
+        />
+      )}
     </div>
   );
 }

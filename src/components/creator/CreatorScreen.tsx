@@ -39,8 +39,10 @@ import {
 import "@/components/collection/CollectionPage.css";
 import "./creator-collection.css";
 import "./creator-influencer.css";
+import "./mcp-photo-play-cta-css.css";
 
 const BUY_PACK_CTA = ctaButtonPropsFromTemplate("squircleCTA");
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
 
 /**
  * Creator profile — collapsed header (progress when expanded), theme motion coverflow, Buy Pack CTA.
@@ -135,10 +137,23 @@ function CreatorScreenInner({
   const [board, setBoard] = useState<CreatorBoard | null>(null);
   const followId = (model?.id ?? creatorId).trim();
   const [following, setFollowing] = useState(() => isFollowing(followId));
+  const [cssBuyCta, setCssBuyCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
 
   useEffect(() => {
     setFollowing(isFollowing(followId));
   }, [followId, authed]);
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssBuyCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (!authed) {
@@ -387,18 +402,38 @@ function CreatorScreenInner({
           ) : null}
         </div>
 
-        <div className="cpv2-profile-buy-pack">
-          <CtaButton
-            {...BUY_PACK_CTA}
-            fillParent
-            label="Buy Pack"
-            auroraBaseColor="#42001b"
-            auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
-            glowColors={["#aa085f", "#e00083", "#eb6a00"]}
-            glowOuterBloom="off"
-            labelColor="#ffe0e8"
-            onClick={() => navigate(Paths.creatorPacks(creatorId))}
-          />
+        <div
+          className={[
+            "cpv2-profile-buy-pack",
+            cssBuyCta ? "is-css" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {cssBuyCta ? (
+            <div className="mcp-photo-play-cta-css-wrap">
+              <button
+                type="button"
+                className="mcp-photo-play-cta-css mcp-photo-play-cta-css--profile-buy"
+                aria-label="Buy Pack"
+                onClick={() => navigate(Paths.creatorPacks(creatorId))}
+              >
+                <span className="mcp-photo-play-cta-css__label">Buy Pack</span>
+              </button>
+            </div>
+          ) : (
+            <CtaButton
+              {...BUY_PACK_CTA}
+              fillParent
+              label="Buy Pack"
+              auroraBaseColor="#42001b"
+              auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+              glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+              glowOuterBloom="off"
+              labelColor="#ffe0e8"
+              onClick={() => navigate(Paths.creatorPacks(creatorId))}
+            />
+          )}
         </div>
       </div>
 

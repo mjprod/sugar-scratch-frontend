@@ -212,11 +212,24 @@ body[data-theme="v8"] .hf-buy.has-pack-preview .cta-button__label {
 body[data-theme="v8"] .hf-pack-slot {
   position: relative;
   z-index: 4;
-  flex: 0 0 72px;
-  width: 72px;
-  height: 86px;
-  margin-left: -36px;
-  transform: translateY(-5px);
+  flex: 0 0 86px;
+  width: 86px;
+  height: 102px;
+  margin-left: -52px;
+  transform: translate(-6px, -5px);
+}
+
+body[data-theme="v8"] .hf-pack-slot .pack-preview {
+  width: 86px;
+  height: 102px;
+}
+
+body[data-theme="v8"] .hf-pack-slot .pack-preview__poster {
+  height: 94px;
+}
+
+body[data-theme="v8"] .hf-pack-slot .pack-preview__poster:last-child {
+  left: 22px;
 }
 
 body[data-theme="v8"] .hf-like-wrap {

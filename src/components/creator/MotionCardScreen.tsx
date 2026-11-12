@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { OffscreenVideo } from "@/components/creator/OffscreenVideo";
 import { ChevronLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { HomeSiteFooter } from "@/components/home/HomeSiteFooter";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { McpPhotoPlayCta } from "@/components/creator/McpPhotoPlayCta";
+import { LockStatusBanner } from "@/components/lock-status/LockStatusBanner";
+import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { packUnitCost } from "@/services/purchase";
 import { useAuth } from "@/contexts/useAuth";
 import { useWallet } from "@/contexts/WalletContext";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
@@ -98,7 +102,13 @@ function MotionCardScreenInner({
   const registerPlay = useRegisterCardPlay();
   const { isPlayed } = usePlayedCards();
   const [buying, setBuying] = useState(false);
+  const [motionPlayEl, setMotionPlayEl] = useState<HTMLDivElement | null>(null);
+  const [motionConfirm, setMotionConfirm] = useState(false);
+  const [motionConfirmLeaving, setMotionConfirmLeaving] = useState(false);
+  const pendingMotionPlayRef = useRef(false);
+  const motionOpenedAtRef = useRef(0);
   const collection = useCreatorCollection(modelId);
+  const motionPlayCost = packUnitCost();
   const [slotPrices, setSlotPrices] = useState<Array<number | null>>(
     () => Array.from({ length: PHOTO_SLOTS }, () => null),
   );
@@ -293,7 +303,7 @@ function MotionCardScreenInner({
                 </svg>
               </span>
             </button>
-            <div className="cpv2-motion-tile-play-cta">
+            <div className="cpv2-motion-tile-play-cta" ref={setMotionPlayEl}>
               <CtaButton
                 {...ctaButtonPropsFromTemplate("squircleCTA")}
                 fillParent
@@ -309,12 +319,44 @@ function MotionCardScreenInner({
                 costAmount={null}
                 fontSize={12}
                 cornerRadius={999}
-                aria-label={`Play ${card?.name ?? motionTitle}`}
+                aria-label={`Play ${card?.name ?? motionTitle} for ${motionPlayCost} diamonds`}
+                aria-expanded={motionConfirm || motionConfirmLeaving}
                 onClick={(event) => {
                   event.stopPropagation();
-                  void playMotion();
+                  if (motionConfirmLeaving) return;
+                  if (motionConfirm) {
+                    if (Date.now() - motionOpenedAtRef.current < 450) return;
+                    pendingMotionPlayRef.current = false;
+                    setMotionConfirmLeaving(true);
+                    return;
+                  }
+                  motionOpenedAtRef.current = Date.now();
+                  setMotionConfirm(true);
                 }}
               />
+              {(motionConfirm || motionConfirmLeaving) && motionPlayEl ? (
+                <PlayConfirm
+                  anchor={motionPlayEl}
+                  playCost={motionPlayCost}
+                  label="Play Motion Card?"
+                  leaving={motionConfirmLeaving}
+                  onCancel={() => {
+                    pendingMotionPlayRef.current = false;
+                    setMotionConfirmLeaving(true);
+                  }}
+                  onConfirm={() => {
+                    pendingMotionPlayRef.current = true;
+                    setMotionConfirmLeaving(true);
+                  }}
+                  onLeaveEnd={() => {
+                    const play = pendingMotionPlayRef.current;
+                    pendingMotionPlayRef.current = false;
+                    setMotionConfirm(false);
+                    setMotionConfirmLeaving(false);
+                    if (play) void playMotion();
+                  }}
+                />
+              ) : null}
             </div>
           </div>
 
@@ -387,8 +429,10 @@ function MotionCardScreenInner({
             {slots.map((slot, index) => {
               const owned = photoPlayed[index];
               const src = slot.src || poster;
-              const playPrice = slotPrices[index];
-              const showPrice = !owned && playPrice != null;
+              const playPrice =
+                slotPrices[index] ??
+                slotPrices.find((price) => price != null) ??
+                motionPlayCost;
               return (
                 <div
                   key={`${cardId}-photo-${index}`}
@@ -399,7 +443,7 @@ function MotionCardScreenInner({
                       : slot.src
                         ? "is-unplayed"
                         : "is-locked",
-                    showPrice ? "has-price-cta" : "has-play-cta",
+                    "has-price-cta",
                   ].join(" ")}
                 >
                   <img
@@ -407,72 +451,16 @@ function MotionCardScreenInner({
                     alt=""
                     className="mcp-photo-img"
                   />
-                  {owned ? (
-                    <span className="mcp-photo-dot" aria-hidden="true" />
-                  ) : null}
-                  <div
-                    className={[
-                      "mcp-photo-play-cta",
-                      showPrice ? "is-priced" : "is-owned",
-                    ].join(" ")}
-                  >
-                    <CtaButton
-                      {...ctaButtonPropsFromTemplate("squircleCTA")}
-                      fillParent
-                      label=""
-                      leadingIcon={
-                        <>
-                          {showPrice ? (
-                            <DiamondLottie
-                              className="mcp-photo-play-diamond"
-                              size={11}
-                              aria-hidden
-                            />
-                          ) : null}
-                          {showPrice ? (
-                            <span className="mcp-photo-play-price">
-                              {playPrice}
-                            </span>
-                          ) : null}
-                          <Play
-                            className="mcp-photo-play-triangle"
-                            size={11}
-                            strokeWidth={2.4}
-                            fill="currentColor"
-                            aria-hidden
-                          />
-                        </>
-                      }
-                      costAmount={null}
-                      fontSize={11}
-                      cornerRadius={999}
-                      aria-label={
-                        showPrice
-                          ? `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
-                          : owned
-                            ? `Replay ${photoTitle} ${index + 1} (free play, no rewards)`
-                            : `Play ${photoTitle} ${index + 1}`
-                      }
-                      onClick={() => void openPhoto(index)}
+                  <div className="mcp-photo-lock-banner">
+                    <LockStatusBanner
+                      status={owned ? "unlocked" : "locked"}
                     />
                   </div>
-                  {owned || showPrice ? null : (
-                    <span className="mcp-photo-lock" aria-hidden="true">
-                      <svg
-                        width="15"
-                        height="20"
-                        viewBox="0 0 15 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M1.875 20C1.359 20 0.918 19.814 0.551 19.441C0.184 19.068 0 18.62 0 18.095V8.571C0 8.048 0.184 7.599 0.551 7.227C0.919 6.854 1.36 6.667 1.875 6.667H2.813V4.762C2.813 3.444 3.27 2.322 4.184 1.393C5.098 0.465 6.204 0 7.5 0C8.796 0 9.902 0.464 10.817 1.393C11.732 2.323 12.189 3.446 12.188 4.762V6.667H13.125C13.641 6.667 14.082 6.853 14.45 7.227C14.817 7.6 15 8.048 15 8.571V18.095C15 18.619 14.817 19.068 14.45 19.441C14.083 19.814 13.641 20 13.125 20H1.875ZM1.875 18.095H13.125V8.571H1.875V18.095ZM4.688 6.667H10.313V4.762C10.313 3.968 10.039 3.294 9.492 2.738C8.945 2.183 8.281 1.905 7.5 1.905C6.719 1.905 6.055 2.183 5.508 2.738C4.961 3.294 4.688 3.968 4.688 4.762V6.667Z"
-                          fill="white"
-                          fillOpacity="0.55"
-                        />
-                      </svg>
-                    </span>
-                  )}
+                  <McpPhotoPlayCta
+                    playPrice={playPrice}
+                    ariaLabel={`Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`}
+                    onPlay={() => void openPhoto(index)}
+                  />
                 </div>
               );
             })}
