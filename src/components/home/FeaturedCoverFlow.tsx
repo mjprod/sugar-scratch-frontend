@@ -325,6 +325,7 @@ export function FeaturedCoverFlow({
   creatorId = null,
   slideCta = "buy",
   onView,
+  forceDesktopCoverflow = false,
 }: {
   featured: FeaturedPack[];
   /** Existing Pack Pocket add flow (auth-gated by the parent). */
@@ -340,6 +341,8 @@ export function FeaturedCoverFlow({
   slideCta?: "buy" | "view" | "play";
   /** Second arg is the pack theme label when known (for theme-page routing). */
   onView?: (item: Iteration, themeName?: string) => void;
+  /** Always mount Three.js coverflow, even on phone (creator packs page). */
+  forceDesktopCoverflow?: boolean;
 }) {
   const { authed } = useAuthSession();
   const {
@@ -459,7 +462,14 @@ export function FeaturedCoverFlow({
     // Mobile uses the Swiper CSS carousel; it reports ready itself.
     // Also bail on the raw media query: a stale false isMobileViewport must
     // not attach a decoder before the CSS carousel takes over.
-    if (!catalog || isMobileViewport || readMobileCoverflowViewport()) return;
+    // forceDesktopCoverflow (creator packs) still needs the WebGL preload path.
+    if (
+      !catalog ||
+      (!forceDesktopCoverflow &&
+        (isMobileViewport || readMobileCoverflowViewport()))
+    ) {
+      return;
+    }
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -482,7 +492,7 @@ export function FeaturedCoverFlow({
       unsubscribe();
       release();
     };
-  }, [catalog, isMobileViewport]);
+  }, [catalog, isMobileViewport, forceDesktopCoverflow]);
 
   const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
     const base = isMobileViewport
@@ -831,7 +841,10 @@ export function FeaturedCoverFlow({
   // Phone must not mount the WebGL hero for even one frame. isMobileViewport
   // starts false before the media-query effect, and that frame is the iOS
   // webglcontextlost (three pack-face decoders + the coverflow context).
-  const phoneHero = isMobileViewport || readMobileCoverflowViewport();
+  // Creator packs sets forceDesktopCoverflow so Three.js runs on mobile too.
+  const phoneHero =
+    !forceDesktopCoverflow &&
+    (isMobileViewport || readMobileCoverflowViewport());
 
   const statusPager =
     showStatusPager && items.length > 1 ? (

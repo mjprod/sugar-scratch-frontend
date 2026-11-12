@@ -141,6 +141,7 @@ function CreatorPacksScreenInner({
                 creatorId={purchaseCreatorId}
                 onPlay={addCoverflowPackToPocket}
                 influencerBackdrop
+                forceDesktopCoverflow
               />
             </Suspense>
           </div>

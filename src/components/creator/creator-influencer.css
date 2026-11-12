@@ -822,9 +822,19 @@ body[data-theme="v8"] .cpv2-theme-page-title {
   text-align: center;
 }
 
-/* Packs buy page: hug content under the back row (same as theme carousel). */
+/*
+ * Packs buy page: container fills remaining viewport; cards keep intrinsic size.
+ * --cpv2-packs-top-chrome ≈ header + safe-area (~126px on phone).
+ */
+body[data-theme="v8"] .cpv2-packs-coverflow {
+  --cpv2-packs-top-chrome: 7.875rem;
+  width: 100%;
+}
+
 body[data-theme="v8"] .cpv2-packs-coverflow .home-featured-coverflow {
-  height: auto;
+  height: calc(
+    100dvh - var(--cpv2-packs-top-chrome) - var(--app-footer-offset, 0px)
+  );
   min-height: 0;
   padding-top: 0;
   overflow: visible;
@@ -835,13 +845,15 @@ body[data-theme="v8"] .cpv2-packs-coverflow .home-featured-coverflow {
 body[data-theme="v8"]
   .cpv2-packs-coverflow
   .home-featured-coverflow[data-coverflow="mobile-swiper"] {
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
 }
 
 body[data-theme="v8"]
   .cpv2-packs-coverflow
   .home-featured-coverflow[data-coverflow="mobile-swiper"]
   .mobile-css-carousel-stage {
+  width: 100%;
   height: auto;
   min-height: 0;
   translate: 0 0;
@@ -863,6 +875,28 @@ body[data-theme="v8"]
   .mobile-css-carousel.swiper-3d {
   padding-top: var(--space-2);
   padding-bottom: var(--space-4);
+}
+
+/* Packs buy page only — drop Buy Pack HUD 2rem. */
+body[data-theme="v8"] .cpv2-packs-coverflow .mobile-css-carousel__hud {
+  bottom: calc(4.9rem - 2rem);
+}
+
+/* Creator packs: taller Buy Pack than the compact 42px home mobile size. */
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .coverflow-buy-pack-cta
+  .mcp-photo-play-cta-css {
+  --mcp-cta-h: 3.75rem; /* 60px — DEFAULT_BUY_PACK_CTA_SIZE.mobile */
+  height: var(--mcp-cta-h);
+}
+
+body[data-theme="v8"]
+  .cpv2-packs-coverflow
+  .coverflow-buy-pack-cta
+  .cta-button {
+  --cta-h: 3.75rem !important;
+  height: var(--cta-h);
 }
 
 body[data-theme="v8"] .cpv2-theme-page-head {

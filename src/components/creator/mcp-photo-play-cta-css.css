@@ -471,7 +471,7 @@
 }
 
 .mcp-photo-play-cta-css--cta::before {
-  top: -45%;
+  top: -85%;
   left: 6%;
   width: 36%;
   max-width: 9rem;
@@ -480,7 +480,7 @@
 
 .mcp-photo-play-cta-css--cta::after {
   right: 4%;
-  bottom: -55%;
+  bottom: -85%;
   width: 42%;
   max-width: 11rem;
   height: 130%;
