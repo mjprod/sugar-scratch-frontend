@@ -80,12 +80,19 @@ export function isCreatorBackHop(fromPath: string, toPath: string): boolean {
 /**
  * Creator theme/packs/motion → parent creator profile is a pop even when
  * `navigate(Paths.creator(id))` grows history idx instead of history.back().
+ * Packs → theme (Buy Packs? return) is the same: a sibling pop, not a push.
  */
 export function isCreatorSubpageBackHop(fromPath: string, toPath: string): boolean {
   const from = pushPathname(fromPath);
   const to = pushPathname(toPath);
   if (!from.startsWith("/creator/") || !to.startsWith("/creator/")) return false;
-  return from.startsWith(`${to}/`);
+  if (from.startsWith(`${to}/`)) return true;
+
+  // /creator/:id/packs → /creator/:id/theme/:themeId
+  const fromParts = from.split("/");
+  const toParts = to.split("/");
+  if (fromParts[2] !== toParts[2]) return false;
+  return fromParts[3] === "packs" && toParts[3] === "theme";
 }
 
 /**

@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { ChevronLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Paths } from "@/routes/Paths";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import { type BackendModel } from "@/shared/backend/collection";
 import { modelDisplayName } from "@/shared/backend/modelProfile";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
+import { navigateBackOr } from "@/hooks/useGoBack";
 import { loadPackCatalog, type PurchaseFlowPack } from "@/services/purchase";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import "./creator-influencer.css";
@@ -86,11 +87,24 @@ function CreatorPacksScreenInner({
   onBuyPack: (pack: PurchaseFlowPack) => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const creatorName =
     (model ? modelDisplayName(model) : "") ||
     titleCaseSlug(creatorId) ||
     creatorId;
   const purchaseCreatorId = creatorId || model?.id || "";
+  const backTo = useMemo(() => {
+    const state = location.state as { from?: unknown } | null;
+    const from = typeof state?.from === "string" ? state.from.trim() : "";
+    // Only allow in-app creator theme return (theme → packs → theme).
+    if (
+      from.startsWith(`/creator/${encodeURIComponent(creatorId)}/theme/`) ||
+      from.startsWith(`/creator/${creatorId}/theme/`)
+    ) {
+      return from;
+    }
+    return Paths.creator(creatorId);
+  }, [creatorId, location.state]);
 
   useMarkPageReady(resolved && packsReady);
 
@@ -125,8 +139,10 @@ function CreatorPacksScreenInner({
           <button
             type="button"
             className="mcp-back"
-            aria-label="Back to profile"
-            onClick={() => navigate(Paths.creator(creatorId))}
+            aria-label={
+              backTo.includes("/theme/") ? "Back to theme" : "Back to profile"
+            }
+            onClick={() => navigateBackOr(navigate, backTo)}
           >
             <ChevronLeft size={18} strokeWidth={2.4} aria-hidden />
           </button>

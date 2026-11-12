@@ -629,7 +629,16 @@ function CreatorThemeScreenInner({
                 width={152}
                 height={40}
                 className="cpv2-theme-motion-buy__btn"
-                onClick={() => navigate(Paths.creatorPacks(creatorId))}
+                onClick={() =>
+                  navigate(Paths.creatorPacks(creatorId), {
+                    state: {
+                      from: Paths.creatorTheme(
+                        creatorId,
+                        resolvedThemeId || themeId,
+                      ),
+                    },
+                  })
+                }
               />
             </div>
           </div>

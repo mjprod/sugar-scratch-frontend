@@ -75,8 +75,31 @@ assert(
   "packs to creator is back",
 );
 assert(
+  isCreatorSubpageBackHop(
+    "/creator/julianaval/packs",
+    "/creator/julianaval/theme/police",
+  ),
+  "packs to theme is back",
+);
+assert(
+  !isCreatorSubpageBackHop(
+    "/creator/julianaval/theme/police",
+    "/creator/julianaval/packs",
+  ),
+  "theme to packs is not back",
+);
+assert(
   !isCreatorSubpageBackHop("/creator/julianaval", "/creator/julianaval/theme/police"),
   "opening theme is not back",
+);
+assert(
+  pagePushDirection(
+    "/creator/julianaval/packs",
+    "/creator/julianaval/theme/police",
+    2,
+    3,
+  ) === -1,
+  "packs back to theme pops even when history idx increases",
 );
 assert(
   pagePushDirection(
