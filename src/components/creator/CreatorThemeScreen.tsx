@@ -100,6 +100,71 @@ function cardToIteration(
   });
 }
 
+/** Slot-machine roll when the focused motion card’s label changes. */
+function PhotoCardLabelRoll({ label }: { label: string }) {
+  const shownRef = useRef(label);
+  const [shown, setShown] = useState(label);
+  const [incoming, setIncoming] = useState<string | null>(null);
+  const [rollKey, setRollKey] = useState(0);
+
+  useEffect(() => {
+    if (!label) {
+      shownRef.current = "";
+      setShown("");
+      setIncoming(null);
+      return;
+    }
+    if (label === shownRef.current) return;
+    if (!shownRef.current) {
+      shownRef.current = label;
+      setShown(label);
+      return;
+    }
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      shownRef.current = label;
+      setShown(label);
+      setIncoming(null);
+      return;
+    }
+    setIncoming(label);
+    setRollKey((key) => key + 1);
+  }, [label]);
+
+  if (!shown && !label) return null;
+
+  const rolling = incoming != null;
+
+  return (
+    <span className="mcp-photos-title-card">
+      <span className="mcp-photos-title-card-viewport">
+        <span
+          key={rollKey}
+          className={
+            rolling
+              ? "mcp-photos-title-card-track is-rolling"
+              : "mcp-photos-title-card-track"
+          }
+          onAnimationEnd={(event) => {
+            if (event.animationName !== "mcp-photos-title-card-roll") return;
+            if (!incoming) return;
+            shownRef.current = incoming;
+            setShown(incoming);
+            setIncoming(null);
+          }}
+        >
+          <span className="mcp-photos-title-card-line">{shown || label}</span>
+          {incoming ? (
+            <span className="mcp-photos-title-card-line">{incoming}</span>
+          ) : null}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function CreatorThemeScreen({
   creatorId,
   themeId,
@@ -301,13 +366,16 @@ function CreatorThemeScreenInner({
     ),
   );
   const collectedCount = photoPlayed.filter(Boolean).length;
-  const photoTitle = useMemo(() => {
+  const photoCardLabel = useMemo(() => {
     const themeName = (theme?.name ?? "").trim();
-    if (!themeName) return "Photo Cards";
+    if (!themeName) return "";
     const motionIndex = items.findIndex((item) => item.id === activeCardId);
     const n = String((motionIndex >= 0 ? motionIndex : 0) + 1).padStart(3, "0");
-    return `${themeName}${n} Photo Cards`;
+    return `${themeName}${n}`;
   }, [activeCardId, items, theme?.name]);
+  const photoTitle = photoCardLabel
+    ? `Photo Cards ${photoCardLabel}`
+    : "Photo Cards";
 
   const themeTotalPct = useMemo(() => {
     const fromBoard = themeCollectionProgressFromBoard(board, resolvedThemeId);
@@ -491,8 +559,11 @@ function CreatorThemeScreenInner({
           className="cpv2-theme-page-section"
           aria-label="Motion cards"
         >
-          {freePlayAllowed ? (
-            <div className="cpv2-theme-motion-toolbar">
+          <div className="cpv2-theme-motion-toolbar">
+            <p className="cpv2-theme-motion-title">
+              {theme?.name ?? "Theme"}
+            </p>
+            {freePlayAllowed ? (
               <div
                 className={
                   freePlay
@@ -536,8 +607,8 @@ function CreatorThemeScreenInner({
                   </span>
                 </button>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
           {items.length > 0 ? (
             <MobileCssCarousel
               items={items}
@@ -563,7 +634,12 @@ function CreatorThemeScreenInner({
           >
             <header className="mcp-photos-head">
               <div className="mcp-photos-title-count">
-                <h2 className="mcp-photos-title">{photoTitle}</h2>
+                <h2 className="mcp-photos-title">
+                  <span className="mcp-photos-title-lead">Photo Cards</span>
+                  {photoCardLabel ? (
+                    <PhotoCardLabelRoll label={photoCardLabel} />
+                  ) : null}
+                </h2>
                 <p className="mcp-photos-count">
                   {collectedCount}/{PHOTO_SLOTS}
                 </p>

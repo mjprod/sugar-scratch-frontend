@@ -469,16 +469,19 @@
 
 /* Theme motion Play — ◆ price · Play Motion · ▶ */
 .coverflow-compact-play-cta {
+  --play-cta-scale: 0.8;
+  --play-cta-font: calc(14px * var(--play-cta-scale));
+  --play-cta-icon: calc(14px * var(--play-cta-scale));
   position: relative;
   z-index: 3;
-  width: 210px;
-  height: 56px;
+  width: calc(210px * var(--play-cta-scale));
+  height: calc(56px * var(--play-cta-scale));
   overflow: visible;
 }
 
-/* Same 210px shell as priced CTA — tighter side pad so label fits without hugging the card. */
+/* Same scaled shell as priced CTA — tighter side pad so label fits. */
 .coverflow-compact-play-cta.is-free-play-owned .cta-button__label {
-  padding: 0 0.65rem;
+  padding: 0 calc(0.65rem * var(--play-cta-scale));
 }
 
 .coverflow-compact-play-cta .cta-button-glow,
@@ -501,7 +504,7 @@
 }
 
 .coverflow-compact-play-cta .cta-button__label {
-  padding: 0 1rem;
+  padding: 0 calc(1rem * var(--play-cta-scale));
 }
 
 .coverflow-compact-play-cta .cta-button__title-row {
@@ -528,14 +531,14 @@
 }
 
 .coverflow-compact-play-cta__price {
-  font-size: 14px;
+  font-size: var(--play-cta-font);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
 }
 
 .coverflow-compact-play-cta__label {
-  font-size: 14px;
+  font-size: var(--play-cta-font);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -546,7 +549,7 @@
 .coverflow-compact-play-cta__diamond,
 .coverflow-compact-play-cta__triangle {
   display: block;
-  width: 14px;
-  height: 14px;
+  width: var(--play-cta-icon);
+  height: var(--play-cta-icon);
   flex-shrink: 0;
 }

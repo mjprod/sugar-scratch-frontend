@@ -17,6 +17,8 @@ import {
   BUY_PACK_MAX_QUANTITY,
   clampBuyPackQuantity,
 } from "@/services/purchase";
+/* Panel chrome + green confirm live here (not in packs.css). */
+import "@/features/packs/packs-entry.css";
 
 export type CoverflowBuyConfirmProps = {
   id: string;

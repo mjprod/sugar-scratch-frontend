@@ -30,6 +30,7 @@ import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
+import "@/features/packs/packs-entry.css";
 import "./MobileCssCarousel.css";
 
 const BUY_PACK_CTA_SIZE_MOBILE = {
@@ -37,6 +38,9 @@ const BUY_PACK_CTA_SIZE_MOBILE = {
   height: 60,
   strokeWidth: 2,
 };
+
+/** Match theme card shrink (~20%); keep CSS --play-cta-scale in sync. */
+const PLAY_MOTION_CTA_SCALE = 0.8;
 
 /** Matches MobileCssCarousel.css dual-stack opacity transition. */
 const GLOW_FADE_MS = 640;
@@ -188,8 +192,8 @@ function PackSlideHud({
             >
               <CtaButton
                 {...ctaButtonPropsFromTemplate("squircleCTA")}
-                width={210}
-                height={56}
+                width={Math.round(210 * PLAY_MOTION_CTA_SCALE)}
+                height={Math.round(56 * PLAY_MOTION_CTA_SCALE)}
                 strokeWidth={1}
                 label=""
                 leadingIcon={
@@ -200,7 +204,7 @@ function PackSlideHud({
                       </span>
                       <Play
                         className="coverflow-compact-play-cta__triangle"
-                        size={14}
+                        size={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
                         strokeWidth={2.4}
                         fill="currentColor"
                         aria-hidden
@@ -210,7 +214,7 @@ function PackSlideHud({
                     <>
                       <DiamondLottie
                         className="coverflow-compact-play-cta__diamond"
-                        size={14}
+                        size={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
                         aria-hidden
                       />
                       <span className="coverflow-compact-play-cta__price">
@@ -221,7 +225,7 @@ function PackSlideHud({
                       </span>
                       <Play
                         className="coverflow-compact-play-cta__triangle"
-                        size={14}
+                        size={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
                         strokeWidth={2.4}
                         fill="currentColor"
                         aria-hidden
@@ -230,7 +234,7 @@ function PackSlideHud({
                   )
                 }
                 costAmount={null}
-                fontSize={14}
+                fontSize={Math.round(14 * PLAY_MOTION_CTA_SCALE)}
                 cornerRadius={999}
                 tabIndex={revealed ? 0 : -1}
                 aria-label={

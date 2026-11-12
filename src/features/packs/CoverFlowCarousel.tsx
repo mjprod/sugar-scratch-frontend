@@ -106,6 +106,8 @@ import {
 import { PACK_OPEN_SPIN_YAW } from './packOpenLock'
 import { CoverflowBuyConfirm } from '@/features/packs/CoverflowBuyConfirm'
 import { clampBuyPackQuantity } from '@/services/purchase'
+import '@/features/packs/packs.css'
+import '@/features/packs/packs-entry.css'
 
 /** Optimized pack mesh with a named cardTop for the tear. */
 export const PACK_MODEL_URL_V2 = '/assets/CardPack2-min.glb'
