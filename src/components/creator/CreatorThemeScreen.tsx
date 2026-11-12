@@ -10,7 +10,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreatorProgressPanel } from "@/components/creator/CreatorProgressPanel";
 import { LockStatusBanner } from "@/components/lock-status/LockStatusBanner";
 import { McpPhotoPlayCta } from "@/components/creator/McpPhotoPlayCta";
+import { CtaButton } from "@/components/cta";
 import { useAuth } from "@/contexts/useAuth";
+import "@/components/creator/mcp-photo-play-cta-css.css";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
 import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
@@ -571,9 +573,6 @@ function CreatorThemeScreenInner({
           aria-label="Motion cards"
         >
           <div className="cpv2-theme-motion-toolbar">
-            <p className="cpv2-theme-motion-title">
-              {theme?.name ?? "Theme"}
-            </p>
             {freePlayAllowed ? (
               <div
                 className={
@@ -619,6 +618,20 @@ function CreatorThemeScreenInner({
                 </button>
               </div>
             ) : null}
+            <div className="cpv2-theme-motion-buy">
+              <CtaButton
+                forceCss
+                type="button"
+                label="Buy Packs?"
+                costAmount={null}
+                strokeWidth={1}
+                cornerRadius={999}
+                width={152}
+                height={40}
+                className="cpv2-theme-motion-buy__btn"
+                onClick={() => navigate(Paths.creatorPacks(creatorId))}
+              />
+            </div>
           </div>
           {items.length > 0 ? (
             <MobileCssCarousel

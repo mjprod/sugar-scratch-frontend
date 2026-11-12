@@ -710,9 +710,18 @@ body[data-theme="v8"] .mc-continue-title {
   margin: 0;
   min-width: 0;
   flex: 1 1 auto;
-  font-size: var(--text-display);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  font-size: var(--text-headline); /* one step below display */
   font-weight: 600;
-  letter-spacing: 0.4px;
+  letter-spacing: var(--text-headline--letter-spacing, 0.4px);
+  line-height: var(--text-headline--line-height, 1.15);
   color: #fff;
 }
 

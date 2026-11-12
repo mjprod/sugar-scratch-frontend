@@ -357,9 +357,16 @@ function ContinueSection({
         data-open={open ? "true" : "false"}
       >
         <div className="mc-continue-head">
-          <h2 id="ready-heading" className="mc-continue-title">
+          <button
+            type="button"
+            id="ready-heading"
+            className="mc-continue-title"
+            aria-expanded={open}
+            aria-controls="mc-continue-body"
+            onClick={() => setExpanded(!open)}
+          >
             Continue playing
-          </h2>
+          </button>
           <button
             type="button"
             className="mc-continue-expand"
