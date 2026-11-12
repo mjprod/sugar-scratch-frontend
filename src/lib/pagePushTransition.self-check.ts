@@ -34,6 +34,7 @@ assert(isPurchaseFlowPath("/purchase/tear-open"), "tear-open is purchase");
 assert(isPurchaseFlowPath("/purchase/abc"), "pack purchase is purchase");
 assert(!isPurchaseFlowPath("/pack-pocket"), "pack pocket is not purchase");
 
+assert(shouldSkipPushTransition("/card-open-test"), "card open lab skips the slide");
 assert(shouldSkipPushTransition("/game"), "skip game");
 assert(shouldSkipPushTransition("/photo-scratch"), "skip photo scratch");
 assert(shouldSkipPushTransition("/purchase/x"), "skip purchase");

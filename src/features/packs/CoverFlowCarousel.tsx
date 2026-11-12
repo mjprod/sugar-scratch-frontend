@@ -93,6 +93,7 @@ import {
 } from './types'
 import {
   DEFAULT_CARD_TOP_DEBUG,
+  DEFAULT_CARD_TOP_LOTTIE_ANCHOR,
   getCardTopDebug,
   reportCardTopBounds,
   subscribeCardTopDebug,
@@ -102,6 +103,7 @@ import {
   loadCardTopTearTimeline,
   sampleCardTopTear,
 } from './cardTopTearTimeline'
+import { PACK_OPEN_SPIN_YAW } from './packOpenLock'
 import { CoverflowBuyConfirm } from '@/features/packs/CoverflowBuyConfirm'
 import { clampBuyPackQuantity } from '@/services/purchase'
 
@@ -128,8 +130,9 @@ const ACTIVE_Y_LIFT = 0.12
 const ACTIVE_SCALE_BOOST = 1.11
 const ACTIVE_Z_FORWARD = 0.18
 
-// --- In-place open sequence (same beats as reveal PackMesh, local coverflow space) ---
+// --- Locked pack-open sequence (flipped tear → opposite Y spin) ---
 // Durations ~10% faster than the original reveal timing.
+// Yaw sense: +anticipation, −spin path, −overshoot (see packOpenLock.ts).
 const OPEN_SPIN_TURNS = 2
 const OPEN_SPIN_MS = 810
 const OPEN_SPIN_BLUR_PX = 1.5
@@ -660,11 +663,23 @@ type CardTopRestTransform = {
 
 function measureCardTopLocalBounds(cardTop: Object3D) {
   cardTop.updateWorldMatrix(true, true)
-  const box = new Box3().setFromObject(cardTop)
-  if (box.isEmpty()) return null
+  const worldBox = new Box3().setFromObject(cardTop)
+  if (worldBox.isEmpty()) return null
+  // Transform all 8 world-AABB corners into cardTop local space, then
+  // rebuild the local AABB (min/max alone break under rotation).
   const inverse = cardTop.matrixWorld.clone().invert()
-  const min = box.min.clone().applyMatrix4(inverse)
-  const max = box.max.clone().applyMatrix4(inverse)
+  const corners = [
+    new Vector3(worldBox.min.x, worldBox.min.y, worldBox.min.z),
+    new Vector3(worldBox.min.x, worldBox.min.y, worldBox.max.z),
+    new Vector3(worldBox.min.x, worldBox.max.y, worldBox.min.z),
+    new Vector3(worldBox.min.x, worldBox.max.y, worldBox.max.z),
+    new Vector3(worldBox.max.x, worldBox.min.y, worldBox.min.z),
+    new Vector3(worldBox.max.x, worldBox.min.y, worldBox.max.z),
+    new Vector3(worldBox.max.x, worldBox.max.y, worldBox.min.z),
+    new Vector3(worldBox.max.x, worldBox.max.y, worldBox.max.z),
+  ].map((corner) => corner.applyMatrix4(inverse))
+  const box = new Box3().setFromPoints(corners)
+  const { min, max } = box
   return {
     min: { x: min.x, y: min.y, z: min.z },
     max: { x: max.x, y: max.y, z: max.z },
@@ -751,6 +766,10 @@ function applyCardTopOpacity(cardTop: Object3D, opacity: number) {
 }
 
 function resolveCardTopDebugPose(debug: CardTopDebugState): CardTopDebugState {
+  // Lab / key editing: keep the live debug pose while a keyframe is selected.
+  if (debug.showGizmo && debug.selectedTearKeyId) {
+    return debug
+  }
   const tearing = debug.tearPlaying || debug.tearT > 0.001
   // Shared debug state keeps a leftover torn pose after rewind (position /
   // opacity persist independently of tearT). Active packs used to apply that
@@ -975,12 +994,14 @@ function TearLottieHud({
 }) {
   const [debug, setDebug] = useState(getCardTopDebug)
   useEffect(() => subscribeCardTopDebug(setDebug), [])
+  // Anchor the swipe HUD to the seal, not the 3D hinge pivot.
+  const anchor = DEFAULT_CARD_TOP_LOTTIE_ANCHOR
   return (
     <Html
       position={[
-        debug.pivot.x + debug.lottieOffset.x,
-        modelY + debug.pivot.y + debug.lottieOffset.y,
-        debug.pivot.z + debug.lottieOffset.z,
+        anchor.x + debug.lottieOffset.x,
+        modelY + anchor.y + debug.lottieOffset.y,
+        anchor.z + debug.lottieOffset.z,
       ]}
       center
       transform={false}
@@ -2124,8 +2145,10 @@ useFrame((state, delta) => {
         motion.scale = lerp(openAnim.fromScale, anticScale, wind)
         modelRot.x = lerp(openAnim.fromRotX, end.rotX, dropT)
         modelRot.z = lerp(openAnim.fromRotZ, end.rotZ, dropT)
+        // Locked yaw (packOpenLock): flipped seal peels right, pack winds the other way.
         modelRot.y =
-          openAnim.baseRotY - wind * OPEN_ANTICIPATION_DEG
+          openAnim.baseRotY +
+          PACK_OPEN_SPIN_YAW.anticipationSign * wind * OPEN_ANTICIPATION_DEG
         applyOpacity(1)
         setPackBlur(0)
 
@@ -2182,10 +2205,13 @@ useFrame((state, delta) => {
         motion.scale = lerp(spinScale, end.scale, spinDropPortion)
 
         const spinPathDeg = OPEN_ANTICIPATION_DEG + OPEN_SPIN_TURNS * 360
-        const spunY = openAnim.baseRotY + spinEased * spinPathDeg
+        const spunY =
+          openAnim.baseRotY +
+          PACK_OPEN_SPIN_YAW.spinPathSign * spinEased * spinPathDeg
         const turns = Math.round((spunY - end.rotY) / 360)
         const spunNorm = spunY - turns * 360
-        const overshootTarget = end.rotY + OPEN_OVERSHOOT_DEG
+        const overshootTarget =
+          end.rotY + PACK_OPEN_SPIN_YAW.overshootSign * OPEN_OVERSHOOT_DEG
         const yawSettle = easeOutCubic(clamp01((t - 0.5) / 0.5))
         const yawEased = easeOutBackSlow(yawSettle, 1.15)
         modelRot.y = lerp(spunNorm, overshootTarget, yawEased)

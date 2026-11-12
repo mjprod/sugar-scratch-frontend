@@ -71,6 +71,13 @@ const AudioTestPage = LABS_ENABLED
       })),
     )
   : NoLabPage;
+const CardOpenTestPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/CardOpenTestPage").then((m) => ({
+        default: m.CardOpenTestPage,
+      })),
+    )
+  : NoLabPage;
 const CoverFlowV2Page = LABS_ENABLED
   ? lazy(() =>
       import("@/pages/CoverFlowV2Page").then((m) => ({
@@ -505,6 +512,14 @@ export function AppRoutes() {
                     <GameCatalogRoute>
                       <AudioTestPage />
                     </GameCatalogRoute>
+                  }
+                />
+                <Route
+                  path="card-open-test"
+                  element={
+                    <CatalogProvider>
+                      <CardOpenTestPage />
+                    </CatalogProvider>
                   }
                 />
               </>

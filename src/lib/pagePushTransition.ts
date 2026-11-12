@@ -37,7 +37,12 @@ export function isPurchaseFlowPath(pathname: string): boolean {
 
 /** True when this pathname must not sit under a transformed push ancestor. */
 export function shouldSkipPushTransition(pathname: string): boolean {
-  return isScratchGamePath(pathname) || isPurchaseFlowPath(pathname);
+  const path = pushPathname(pathname);
+  return (
+    isScratchGamePath(path) ||
+    isPurchaseFlowPath(path) ||
+    path === "/card-open-test"
+  );
 }
 
 /**

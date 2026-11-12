@@ -103,8 +103,9 @@ export function sliderPercentFromTearT(
 }
 
 /**
- * Six equal 200ms chunks over 1000ms.
- * Step 1 is closed. Step 5 sits between the old 4 and 5.
+ * Locked pack-open tear (bottom-right hinge).
+ * Six equal 200ms chunks over 1000ms; start / middle / late-middle / end
+ * tuned on /card-open-test. tear-2 / tear-5 are in-betweens.
  */
 export const DEFAULT_CARD_TOP_TEAR_TIMELINE: CardTopTearTimeline = {
   keys: [
@@ -119,9 +120,9 @@ export const DEFAULT_CARD_TOP_TEAR_TIMELINE: CardTopTearTimeline = {
       x: 0,
       y: 0.02,
       z: 0.02,
-      rotX: -18,
+      rotX: 18,
       rotY: 0,
-      rotZ: -4,
+      rotZ: 4,
       scaleX: 1,
       scaleY: 1,
       scaleZ: 1,
@@ -130,12 +131,12 @@ export const DEFAULT_CARD_TOP_TEAR_TIMELINE: CardTopTearTimeline = {
     {
       id: "tear-3",
       t: cardTopTearStepTime(3),
-      x: -0.01,
+      x: 0.01,
       y: 0.05,
       z: 0.06,
-      rotX: -46,
-      rotY: 2,
-      rotZ: -8,
+      rotX: 43,
+      rotY: -2,
+      rotZ: 8,
       scaleX: 1,
       scaleY: 1,
       scaleZ: 1,
@@ -144,12 +145,12 @@ export const DEFAULT_CARD_TOP_TEAR_TIMELINE: CardTopTearTimeline = {
     {
       id: "tear-4",
       t: cardTopTearStepTime(4),
-      x: -0.03,
+      x: 0.03,
       y: 0.01,
       z: -0.02,
-      rotX: -82,
-      rotY: 4,
-      rotZ: 41,
+      rotX: 116,
+      rotY: -4,
+      rotZ: -41,
       scaleX: 1,
       scaleY: 1,
       scaleZ: 1,
@@ -158,26 +159,26 @@ export const DEFAULT_CARD_TOP_TEAR_TIMELINE: CardTopTearTimeline = {
     {
       id: "tear-5",
       t: cardTopTearStepTime(5),
-      x: -0.35,
-      y: -1.97,
-      z: 0.03,
-      rotX: -84,
-      rotY: 5,
-      rotZ: 136,
+      x: -0.44,
+      y: -1.91,
+      z: 0.08,
+      rotX: 209,
+      rotY: -3.5,
+      rotZ: -15,
       scaleX: 1,
       scaleY: 1,
       scaleZ: 1,
-      opacity: 1,
+      opacity: 0.5,
     },
     {
       id: "tear-6",
       t: cardTopTearStepTime(6),
-      x: 1.6,
-      y: -5,
-      z: 0.34,
-      rotX: -30,
-      rotY: 3,
-      rotZ: -11,
+      x: -0.91,
+      y: -3.83,
+      z: 0.18,
+      rotX: 302,
+      rotY: -3,
+      rotZ: 11,
       scaleX: 1,
       scaleY: 1,
       scaleZ: 1,
@@ -186,7 +187,13 @@ export const DEFAULT_CARD_TOP_TEAR_TIMELINE: CardTopTearTimeline = {
   ],
 };
 
-const STORAGE_KEY = "sugar.coverflowV2.cardTopTear.v7";
+/** Bump when shipping new baked pack-open tear keys so stale lab state drops. */
+const STORAGE_KEY = "sugar.coverflowV2.cardTopTear.v11";
+
+/** Lab-only persistence — prod always ships DEFAULT_CARD_TOP_TEAR_TIMELINE. */
+function allowLabPersistence() {
+  return import.meta.env?.DEV === true;
+}
 
 let cachedTimeline: CardTopTearTimeline | null = null;
 
@@ -284,7 +291,7 @@ function pinEndpoints(keys: CardTopTearKeyframe[]): CardTopTearKeyframe[] {
 
 export function loadCardTopTearTimeline(): CardTopTearTimeline {
   if (cachedTimeline) return cloneCardTopTearTimeline(cachedTimeline);
-  if (typeof window === "undefined") {
+  if (!allowLabPersistence() || typeof window === "undefined") {
     cachedTimeline = cloneCardTopTearTimeline(DEFAULT_CARD_TOP_TEAR_TIMELINE);
     return cloneCardTopTearTimeline(cachedTimeline);
   }
@@ -320,7 +327,7 @@ export function loadCardTopTearTimeline(): CardTopTearTimeline {
 
 export function saveCardTopTearTimeline(timeline: CardTopTearTimeline) {
   cachedTimeline = cloneCardTopTearTimeline(timeline);
-  if (typeof window === "undefined") return;
+  if (!allowLabPersistence() || typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedTimeline));
   } catch {

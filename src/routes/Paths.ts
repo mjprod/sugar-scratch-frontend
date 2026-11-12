@@ -80,6 +80,8 @@ export const Paths = {
   componentLab: "/component-lab",
   /** Scratch card that replays from the intro, for mixing sound levels. */
   audioTest: "/audio-test",
+  /** Isolated Three.js pack tear, for tuning the card-open animation. */
+  cardOpenTest: "/card-open-test",
   photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
   gamePlay: (

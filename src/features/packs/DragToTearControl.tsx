@@ -34,17 +34,19 @@ export function DragToTearControl({
         onDragStart={() => {
           originPercentRef.current = percent;
         }}
-	        onDrag={(_, info: PanInfo) => {
-	          // Negative offset is a left swipe — right swipes must not open.
-	          const next =
-	            originPercentRef.current + (-info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
-	          onScrub(next);
-	        }}
-	        onDragEnd={(_, info: PanInfo) => {
-	          const next =
-	            originPercentRef.current + (-info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
-	          onScrub(next, { snapClosed: true });
-	        }}
+        onDrag={(_, info: PanInfo) => {
+          // Positive offset is a right swipe — seal peels up/right.
+          const next =
+            originPercentRef.current +
+            (info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
+          onScrub(next);
+        }}
+        onDragEnd={(_, info: PanInfo) => {
+          const next =
+            originPercentRef.current +
+            (info.offset.x / TEAR_DRAG_DISTANCE_PX) * 100;
+          onScrub(next, { snapClosed: true });
+        }}
         className="pointer-events-auto flex h-[6.3rem] w-[28rem] cursor-ew-resize items-center justify-center overflow-hidden bg-transparent p-0"
       >
         <DotLottieReact
@@ -53,7 +55,7 @@ export function DragToTearControl({
           loop
           speed={1}
           renderConfig={lottieRenderConfig()}
-	          style={{ width: 288, height: 288, transform: "scaleX(-1)" }}
+          style={{ width: 288, height: 288 }}
         />
       </m.button>
     </div>
