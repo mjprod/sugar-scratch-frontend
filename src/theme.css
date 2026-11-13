@@ -9593,6 +9593,19 @@ body[data-theme="v8"] .mc-popular-arrow {
   touch-action: manipulation;
 }
 
+/* Coverflow / theme motion — match compact & flat chevron size on phone. */
+@media (max-width: 820px) {
+  body[data-theme="v8"] .mobile-css-carousel-stage .mc-popular-arrow {
+    width: 84px;
+    height: 84px;
+  }
+
+  body[data-theme="v8"] .mobile-css-carousel-stage .mc-popular-arrow svg {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 body[data-theme="v8"] .mc-popular-arrow.is-prev {
   left: -4px;
 }

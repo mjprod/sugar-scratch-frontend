@@ -1158,8 +1158,10 @@ body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel-stage.stage-packs {
 }
 
 body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel-shell {
+  position: relative;
   margin-top: 0;
   width: 100%;
+  overflow: visible;
 }
 
 body[data-theme="v8"] .cpv2-theme-page .mobile-css-carousel.swiper,
